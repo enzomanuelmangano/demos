@@ -1,22 +1,1 @@
-import { StyleSheet, View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
-
-import { MainNavigation } from './navigation';
-
-const App = () => {
-  return (
-    <View style={styles.container}>
-      <NavigationContainer>
-        <MainNavigation />
-      </NavigationContainer>
-    </View>
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
-
-export { App };
+import { StyleSheet, View } from 'react-native';import { NavigationContainer } from '@react-navigation/native';import { MainNavigation } from './navigation';const App = () => {  return (    <View style={styles.container}>      <NavigationContainer>        <MainNavigation />      </NavigationContainer>    </View>  );};const styles = StyleSheet.create({  container: {    flex: 1,  },});export { App };

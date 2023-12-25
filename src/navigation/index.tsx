@@ -1,30 +1,1 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React from 'react';
-
-import { Home } from './home';
-import { Screens } from './screens';
-
-const MainStack = createNativeStackNavigator();
-
-const MainNavigation = React.memo(() => {
-  return (
-    <MainStack.Navigator
-      initialRouteName="Home"
-      screenOptions={{
-        headerShown: false,
-      }}>
-      <MainStack.Screen name="Home" component={Home} />
-      {Screens.map(screen => {
-        return (
-          <MainStack.Screen
-            key={screen.route}
-            name={screen.route}
-            component={screen.component}
-          />
-        );
-      })}
-    </MainStack.Navigator>
-  );
-});
-
-export { MainNavigation };
+import { createNativeStackNavigator } from '@react-navigation/native-stack';import React from 'react';import { Home } from './home';import { Screens } from './screens';const MainStack = createNativeStackNavigator();const MainNavigation = React.memo(() => {  return (    <MainStack.Navigator      initialRouteName="Home"      screenOptions={{        headerShown: false,      }}>      <MainStack.Screen name="Home" component={Home} />      {Screens.map(screen => {        return (          <MainStack.Screen            key={screen.route}            name={screen.route}            component={screen.component}          />        );      })}    </MainStack.Navigator>  );});export { MainNavigation };

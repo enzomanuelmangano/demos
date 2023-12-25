@@ -1,2 +1,1 @@
-export * from './clamp';
-export * from './get-reading-time';
+export * from './clamp';export * from './get-reading-time';

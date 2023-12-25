@@ -1,18 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
-import { SwipeableCardRefType } from '../components/Card';
+
+import type { SwipeableCardRefType } from '../components/Card';
 import { IMAGES } from '../constants';
 
 const useSwipeControls = () => {
   const activeIndex = useSharedValue(0);
 
   const refs = useMemo(() => {
-    let pendingRefs = [];
+    const pendingRefs = [];
     for (let i = 0; i < IMAGES.length; i++) {
       pendingRefs.push(React.createRef<SwipeableCardRefType>());
     }
     return pendingRefs;
-  }, [IMAGES.length]);
+  }, []);
 
   const swipeRight = useCallback(() => {
     // check if current ref exists
@@ -38,14 +39,15 @@ const useSwipeControls = () => {
       timeouts.current.push(
         setTimeout(() => {
           ref.current?.reset();
-        }, index * 100)
+        }, index * 100),
       );
     });
-  }, [activeIndex.value, refs]);
+  }, [refs]);
 
   useEffect(() => {
     return () => {
-      timeouts.current.forEach((timeout) => {
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      timeouts.current.forEach(timeout => {
         clearTimeout(timeout);
       });
     };

@@ -1,19 +1,14 @@
 import React, { useCallback, useMemo, useRef } from 'react';
-import {
-  ScrollViewProps,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from 'react-native';
+import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { BottomProgress } from './bottom-progress';
 
+import { BottomProgress } from './bottom-progress';
 import { clamp, getReadingTime } from './utils';
 
 type Section = {
@@ -36,10 +31,14 @@ const SectionContentList: React.FC<SectionContentListProps> = React.memo(
     const isResetting = useSharedValue(false);
     const currentScroll = useSharedValue(0);
 
-    const onLayout = useCallback((event: any) => {
-      const { height } = event.nativeEvent.layout;
-      scrollHeight.value = height;
-    }, []);
+    const onLayout = useCallback(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (event: any) => {
+        const { height } = event.nativeEvent.layout;
+        scrollHeight.value = height;
+      },
+      [scrollHeight],
+    );
 
     const paddingBottom = useMemo(() => {
       return +(
@@ -76,30 +75,28 @@ const SectionContentList: React.FC<SectionContentListProps> = React.memo(
         y: 0,
         animated: true,
       });
-    }, []);
+    }, [isResetting]);
 
     useAnimatedReaction(
       () => isResetting.value && currentScroll.value === 0,
-      (hasCompleteReset) => {
+      hasCompleteReset => {
         if (hasCompleteReset) {
           isResetting.value = false;
         }
       },
-      [isResetting]
+      [isResetting],
     );
 
     return (
       <View
-        onLayout={(event) => {
+        onLayout={event => {
           viewHeight.value = event.nativeEvent.layout.height;
-        }}
-      >
+        }}>
         <Animated.ScrollView
           {...scrollViewProps}
           ref={scrollRef}
           onScroll={onScroll}
-          scrollEventThrottle={16}
-        >
+          scrollEventThrottle={16}>
           <View onLayout={onLayout}>{sections.map(renderSection)}</View>
         </Animated.ScrollView>
         <BottomProgress
@@ -121,7 +118,7 @@ const SectionContentList: React.FC<SectionContentListProps> = React.memo(
         />
       </View>
     );
-  }
+  },
 );
 
 export { SectionContentList };

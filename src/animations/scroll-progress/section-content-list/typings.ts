@@ -1,5 +1,1 @@
-export enum BottomProgressState {
-  INITIAL,
-  EXPANDED,
-  END,
-}
+export enum BottomProgressState {  INITIAL,  EXPANDED,  END,}

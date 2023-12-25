@@ -1,3 +1,4 @@
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View } from 'react-native';
 import { useCallback } from 'react';
@@ -8,7 +9,7 @@ import { ScreenNames } from './constants/screens';
 const BottomTab = createBottomTabNavigator();
 
 export const FloatingBottomBar = () => {
-  const tabBar = useCallback((props: any) => {
+  const tabBar = useCallback((props: BottomTabBarProps) => {
     return <BottomTabBar {...props} />;
   }, []);
 
