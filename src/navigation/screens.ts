@@ -1,7 +1,11 @@
+import { AnimatedClipBox } from '../animations/animated-clip-box';
+import { AnimatedGridList } from '../animations/animated-grid-list';
+import { FloatingBottomBar } from '../animations/floating-bottom-bar';
 import { MobileInput } from '../animations/mobile-input';
 import { ScrollProgress } from '../animations/scroll-progress';
 import { Spiral } from '../animations/spiral';
 import { SwipeCards } from '../animations/swipe-cards';
+import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
 
 const Screens = [
   {
@@ -23,6 +27,26 @@ const Screens = [
     name: 'Scroll Progress',
     route: 'ScrollProgress',
     component: ScrollProgress,
+  },
+  {
+    name: 'Animated Grid List',
+    route: 'AnimatedGridList',
+    component: AnimatedGridList,
+  },
+  {
+    name: 'Floating Bottom Bar',
+    route: 'FloatingBottomBar',
+    component: FloatingBottomBar,
+  },
+  {
+    name: 'Animated Clip Box',
+    route: 'AnimatedClipBox',
+    component: AnimatedClipBox,
+  },
+  {
+    name: 'Theme Canvas Animation',
+    route: 'ThemeCanvasAnimation',
+    component: ThemeCanvasAnimation,
   },
 ] as const;
 

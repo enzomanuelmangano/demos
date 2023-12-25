@@ -1,4 +1,5 @@
 import {
+  Canvas,
   LinearGradient,
   Rect,
   useComputedValue,
@@ -21,7 +22,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { IMAGES } from '../../constants';
-import { Canvas, useCanvas } from '../../../../providers/canvas';
+import {
+  SizeProvider,
+  useDeprecatedCanvas,
+} from '../../../../providers/canvas';
 
 type SwipeableCardProps = {
   image: (typeof IMAGES)[0];
@@ -173,14 +177,20 @@ const SwipeableCard = React.forwardRef<
             style={{ height: '100%', width: '100%' }}
             contentFit="cover"
           />
-          <Canvas
-            style={{
-              ...StyleSheet.absoluteFillObject,
-              bottom: -5,
-              zIndex: 20,
+          <SizeProvider
+            size={{
+              width: 100,
+              height: 300,
             }}>
-            <CardLinearGradient />
-          </Canvas>
+            <Canvas
+              style={{
+                ...StyleSheet.absoluteFillObject,
+                bottom: -5,
+                zIndex: 20,
+              }}>
+              <CardLinearGradient />
+            </Canvas>
+          </SizeProvider>
         </View>
       </Animated.View>
     </GestureDetector>
@@ -188,26 +198,26 @@ const SwipeableCard = React.forwardRef<
 });
 
 const CardLinearGradient = React.memo(() => {
-  const { size } = useCanvas();
+  const { size } = useDeprecatedCanvas();
 
   // linear gradient start value
   const start = useComputedValue(() => {
-    return vec(0, size.value.height);
+    return vec(0, size.height);
   }, [size]);
 
   // linear gradient end value
   const end = useComputedValue(() => {
-    return vec(0, size.value.height * 0.7);
+    return vec(0, size.height * 0.7);
   }, [size]);
 
   // get rect width
   const width = useComputedValue(() => {
-    return size.value.width;
+    return size.width;
   }, [size]);
 
   // get rect height
   const height = useComputedValue(() => {
-    return size.value.height;
+    return size.height;
   }, [size]);
 
   return (

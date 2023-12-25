@@ -1,36 +1,26 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import type { CanvasProps, SkiaValue } from '@shopify/react-native-skia';
-import { Canvas as SkiaCanvas, useValue } from '@shopify/react-native-skia';
-import type Animated from 'react-native-reanimated';
-import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
+import type { PropsWithChildren } from 'react';
+import React, { createContext, useContext } from 'react';
 
-type CanvasContextType = {
-  size: Animated.SharedValue<{ width: number; height: number }>;
+type SizeContextType = {
+  size: { width: number; height: number };
 };
 
-const CanvasContext = createContext<CanvasContextType>({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  size: { value: { width: 0, height: 0 } } as any,
+const SizeContext = createContext<SizeContextType>({
+  size: { width: 0, height: 0 },
 });
 
-const Canvas = (props: CanvasProps) => {
-  const canvasSize = useSharedValue({ width: 0, height: 0 });
-
-  const value = useMemo(() => {
-    return {
-      size: canvasSize,
-    };
-  }, [canvasSize]);
-
+const SizeProvider: React.FC<PropsWithChildren<SizeContextType>> = ({
+  size,
+  children,
+}) => {
   return (
-    <CanvasContext.Provider value={value}>
-      <SkiaCanvas {...props} onSize={canvasSize} />
-    </CanvasContext.Provider>
+    <SizeContext.Provider value={{ size }}>{children}</SizeContext.Provider>
   );
 };
 
-const useCanvas = () => {
-  return useContext(CanvasContext);
+// TODO: Add docs
+const useDeprecatedCanvas = () => {
+  return useContext(SizeContext);
 };
 
-export { Canvas, useCanvas };
+export { SizeProvider, useDeprecatedCanvas };
