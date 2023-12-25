@@ -1,0 +1,31 @@
+import React from 'react';
+import { FlatList, Text, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+
+import { Screens } from './screens';
+
+const Home = React.memo(() => {
+  const navigation = useNavigation();
+
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <FlatList
+        data={Screens}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={{ height: 50, backgroundColor: 'red' }}
+            onPress={() => {
+              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+              // @ts-ignore
+              navigation.navigate(item.route);
+            }}>
+            <Text>{item.name}</Text>
+          </TouchableOpacity>
+        )}
+      />
+    </SafeAreaView>
+  );
+});
+
+export { Home };
