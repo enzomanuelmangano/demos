@@ -1,4 +1,6 @@
+import { ActionTray } from '../animations/action-tray';
 import { AddToCart } from '../animations/add-to-cart';
+import { AirbnbSlider } from '../animations/airbnb-slider';
 import { Animated3DParallax } from '../animations/animated-3d-parallax';
 import { AnimatedClipBox } from '../animations/animated-clip-box';
 import { AnimatedCountText } from '../animations/animated-count-text';
@@ -6,32 +8,44 @@ import { AnimatedGridList } from '../animations/animated-grid-list';
 import { AnimatedIndicatorList } from '../animations/animated-indicator-list';
 import { AudioPlayer } from '../animations/audioplayer';
 import { BlurCircles } from '../animations/blur-circles';
+import { BlurredBottomBar } from '../animations/blurred-bottom-bar';
+import { BlurredScroll } from '../animations/blurred-scroll';
 import { BottomBarSkia } from '../animations/bottom-bar-skia';
 import { CircularSlider } from '../animations/circular-slider';
 import { ColorCarousel } from '../animations/color-carousel';
 import { CubertoSlider } from '../animations/cuberto-slider';
 import { CustomDrawer } from '../animations/custom-drawer';
+import { DragToSort } from '../animations/drag-to-sort';
 import { DynamicTabIndicatorContainer } from '../animations/dynamic-tab-indicator';
 import { FloatingBottomBar } from '../animations/floating-bottom-bar';
 import { FloatingModal } from '../animations/floating-modal';
 import { FluidSlider } from '../animations/fluid-slider';
+import { FourierVisualizer } from '../animations/fourier-visualizer';
+import { FractalGlass } from '../animations/fractal-glass';
+import { GitHubOnboarding } from '../animations/github-onboarding';
 import { ImageCropper } from '../animations/image-cropper';
+import { LoadingButton } from '../animations/loading-button';
 import { Metaball } from '../animations/metaball';
 import { MobileInput } from '../animations/mobile-input';
 import { PopupHandler } from '../animations/popup-handler';
 import { QRCodeGenerator } from '../animations/qrcode';
 import { RadarChartContainer } from '../animations/radar-chart';
 import { ScrollProgress } from '../animations/scroll-progress';
+import { ScrollableBottomSheet } from '../animations/scrollable-bottom-sheet';
 import { SelectableGridList } from '../animations/selectable-grid-list';
 import { SharedTransitions } from '../animations/shared-transition';
 import { SkiaBottomSheet } from '../animations/skia-bottom-sheet';
+import { SkiaColorPicker } from '../animations/skia-color-picker';
+import { SlideToReveal } from '../animations/slide-to-reveal';
 import { SmoothDropdown } from '../animations/smooth-dropdown';
 import { Spiral } from '../animations/spiral';
 import { SplitButton } from '../animations/split-button';
+import { SteddyGraphInteraction } from '../animations/steddy-graph-interaction';
 import { StoryList } from '../animations/story-list';
 import { SwipeCards } from '../animations/swipe-cards';
 import { TelegramThemeSwitch } from '../animations/telegram-theme-switch';
 import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
+import { Toast } from '../animations/toast';
 import { TwitterTabBar } from '../animations/twitter-tab-bar';
 
 const Screens = [
@@ -209,6 +223,76 @@ const Screens = [
     name: 'Telegram Theme Switch',
     route: 'TelegramThemeSwitch',
     component: TelegramThemeSwitch,
+  },
+  {
+    name: 'Fourier Visualizer',
+    route: 'FourierVisualizer',
+    component: FourierVisualizer,
+  },
+  {
+    name: 'GitHub Onboarding',
+    route: 'GitHubOnboarding',
+    component: GitHubOnboarding,
+  },
+  {
+    name: 'Loading Button',
+    route: 'LoadingButton',
+    component: LoadingButton,
+  },
+  {
+    name: 'Scrollable Bottom Sheet',
+    route: 'ScrollableBottomSheet',
+    component: ScrollableBottomSheet,
+  },
+  {
+    name: 'Skia Color Picker',
+    route: 'SkiaColorPicker',
+    component: SkiaColorPicker,
+  },
+  {
+    name: 'Blurred Scroll',
+    route: 'BlurredScroll',
+    component: BlurredScroll,
+  },
+  {
+    name: 'AirBnb Slider',
+    route: 'AirBnbSlider',
+    component: AirbnbSlider,
+  },
+  {
+    name: 'Steddy Graph Interaction',
+    route: 'SteddyGraphInteraction',
+    component: SteddyGraphInteraction,
+  },
+  {
+    name: 'Action Tray',
+    route: 'ActionTray',
+    component: ActionTray,
+  },
+  {
+    name: 'Toast',
+    route: 'Toast',
+    component: Toast,
+  },
+  {
+    name: 'Slide to Reveal',
+    route: 'SlideToReveal',
+    component: SlideToReveal,
+  },
+  {
+    name: 'Blurred Bottom Bar',
+    route: 'BlurredBottomBar',
+    component: BlurredBottomBar,
+  },
+  {
+    name: 'Fractal Glass',
+    route: 'FractalGlass',
+    component: FractalGlass,
+  },
+  {
+    name: 'Drag to Sort',
+    route: 'DragToSort',
+    component: DragToSort,
   },
 ] as const;
 
