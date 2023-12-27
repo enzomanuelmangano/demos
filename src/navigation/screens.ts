@@ -1,17 +1,38 @@
 import { AddToCart } from '../animations/add-to-cart';
+import { Animated3DParallax } from '../animations/animated-3d-parallax';
 import { AnimatedClipBox } from '../animations/animated-clip-box';
+import { AnimatedCountText } from '../animations/animated-count-text';
 import { AnimatedGridList } from '../animations/animated-grid-list';
+import { AnimatedIndicatorList } from '../animations/animated-indicator-list';
+import { AudioPlayer } from '../animations/audioplayer';
+import { BlurCircles } from '../animations/blur-circles';
 import { BottomBarSkia } from '../animations/bottom-bar-skia';
+import { CircularSlider } from '../animations/circular-slider';
+import { ColorCarousel } from '../animations/color-carousel';
 import { CubertoSlider } from '../animations/cuberto-slider';
+import { CustomDrawer } from '../animations/custom-drawer';
+import { DynamicTabIndicatorContainer } from '../animations/dynamic-tab-indicator';
 import { FloatingBottomBar } from '../animations/floating-bottom-bar';
+import { FloatingModal } from '../animations/floating-modal';
+import { FluidSlider } from '../animations/fluid-slider';
+import { ImageCropper } from '../animations/image-cropper';
 import { Metaball } from '../animations/metaball';
 import { MobileInput } from '../animations/mobile-input';
+import { PopupHandler } from '../animations/popup-handler';
+import { QRCodeGenerator } from '../animations/qrcode';
+import { RadarChartContainer } from '../animations/radar-chart';
 import { ScrollProgress } from '../animations/scroll-progress';
+import { SelectableGridList } from '../animations/selectable-grid-list';
 import { SharedTransitions } from '../animations/shared-transition';
+import { SkiaBottomSheet } from '../animations/skia-bottom-sheet';
+import { SmoothDropdown } from '../animations/smooth-dropdown';
 import { Spiral } from '../animations/spiral';
+import { SplitButton } from '../animations/split-button';
 import { StoryList } from '../animations/story-list';
 import { SwipeCards } from '../animations/swipe-cards';
+import { TelegramThemeSwitch } from '../animations/telegram-theme-switch';
 import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
+import { TwitterTabBar } from '../animations/twitter-tab-bar';
 
 const Screens = [
   {
@@ -83,6 +104,111 @@ const Screens = [
     name: 'Story List',
     route: 'StoryList',
     component: StoryList,
+  },
+  {
+    name: 'Dynamic Tab Indicator',
+    route: 'DynamicTabIndicator',
+    component: DynamicTabIndicatorContainer,
+  },
+  {
+    name: 'Blur Circles',
+    route: 'BlurCircles',
+    component: BlurCircles,
+  },
+  {
+    name: 'Smooth Dropdown',
+    route: 'SmoothDropdown',
+    component: SmoothDropdown,
+  },
+  {
+    name: 'Skia BottomSheet',
+    route: 'SkiaBottomSheet',
+    component: SkiaBottomSheet,
+  },
+  {
+    name: 'Floating Modal',
+    route: 'FloatingModal',
+    component: FloatingModal,
+  },
+  {
+    name: 'AudioPlayer',
+    route: 'AudioPlayer',
+    component: AudioPlayer,
+  },
+  {
+    name: 'Color Carousel',
+    route: 'ColorCarousel',
+    component: ColorCarousel,
+  },
+  {
+    name: 'Animated 3D Parallax',
+    route: 'Animated3DParallax',
+    component: Animated3DParallax,
+  },
+  {
+    name: 'Fluid Slider',
+    route: 'FluidSlider',
+    component: FluidSlider,
+  },
+  {
+    name: 'Animated Indicator List',
+    route: 'AnimatedIndicatorList',
+    component: AnimatedIndicatorList,
+  },
+  {
+    name: 'Radar Chart',
+    route: 'RadarChart',
+    component: RadarChartContainer,
+  },
+  {
+    name: 'Image Cropper',
+    route: 'ImageCropper',
+    component: ImageCropper,
+  },
+  {
+    name: 'Custom Drawer',
+    route: 'CustomDrawer',
+    component: CustomDrawer,
+  },
+  {
+    name: 'Selectable Grid List',
+    route: 'SelectableGridList',
+    component: SelectableGridList,
+  },
+  {
+    name: 'Animated Count Text',
+    route: 'AnimatedCountText',
+    component: AnimatedCountText,
+  },
+  {
+    name: 'QR Code Generator',
+    route: 'QRCodeGenerator',
+    component: QRCodeGenerator,
+  },
+  {
+    name: 'Popup Handler',
+    route: 'PopupHandler',
+    component: PopupHandler,
+  },
+  {
+    name: 'Twitter Tab Bar',
+    route: 'TwitterTabBar',
+    component: TwitterTabBar,
+  },
+  {
+    name: 'Circular Slider',
+    route: 'CircularSlider',
+    component: CircularSlider,
+  },
+  {
+    name: 'Split Button',
+    route: 'SplitButton',
+    component: SplitButton,
+  },
+  {
+    name: 'Telegram Theme Switch',
+    route: 'TelegramThemeSwitch',
+    component: TelegramThemeSwitch,
   },
 ] as const;
 
