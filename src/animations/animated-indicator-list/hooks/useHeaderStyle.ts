@@ -50,7 +50,7 @@ const useHeaderStyle = ({
     const translateX = interpolate(
       contentOffsetY.value,
       headersLayoutY.map(({ value }) => value),
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       headersData.map(({ value }) => value!.x),
       Extrapolate.CLAMP,
     );

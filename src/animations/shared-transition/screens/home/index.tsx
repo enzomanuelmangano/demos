@@ -36,6 +36,7 @@ const HomeScreen = React.memo(() => {
                 ]}>
                 <Animated.Image
                   sharedTransitionTag={heroTag}
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   source={source as any}
                   style={[
                     {

@@ -109,6 +109,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     async ({
       node,
       layout,
+      // eslint-disable-next-line @typescript-eslint/no-shadow
       options,
     }: {
       node: React.ReactNode;
@@ -156,13 +157,14 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     setTimeout(() => {
       dismissBlurredPopup();
     }, 200);
-  }, []);
+  }, [dismissBlurredPopup, menuVisible]);
 
   useEffect(() => {
     // Animate the blur when the image changes
     if (params?.node != null) {
       rBlur.value = withTiming(maxBlur);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params?.node]);
 
   // Computed values
@@ -206,7 +208,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
 
   const menuLayout = useMemo(() => {
     return { ...DEFAULT_MENU_LAYOUT, ...menuLayoutProp };
-  }, []);
+  }, [menuLayoutProp]);
 
   const popupItems = options?.length ?? 0;
   const popupHeight = menuLayout.listItemHeight * popupItems;

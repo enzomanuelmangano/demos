@@ -7,6 +7,7 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+
 import { DURATION } from '../../../constants';
 
 // This hook is responsible for the animation of
@@ -54,12 +55,13 @@ const useCurrentPlayingValue = ({
       duration: DURATION * 1000,
       easing: Easing.linear,
     });
-  }, []);
+  }, [currentX, waveformContentWidth]);
 
   useAnimatedReaction(
     () => {
       return touchedX.value;
     },
+    // eslint-disable-next-line @typescript-eslint/no-shadow
     (touchedX, prevTouchedX) => {
       if (touchedX === prevTouchedX || !isDragging.value) {
         return;

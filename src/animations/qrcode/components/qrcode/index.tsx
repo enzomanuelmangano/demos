@@ -62,7 +62,6 @@ const QRCode: React.FC<QRCodeProps> = React.memo(
     }, [canvasSize, errorCorrectionLevel, value]);
 
     const path = useComputedValue(() => {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return Skia.Path.MakeFromSVGString(computedPath.current.path)!;
     }, [computedPath]);
 

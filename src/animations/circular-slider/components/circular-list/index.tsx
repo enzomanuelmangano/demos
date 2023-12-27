@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
+
 import { CircularListItem, LIST_ITEM_WIDTH } from './list-item';
 
 // Define the props type for the CircularList component

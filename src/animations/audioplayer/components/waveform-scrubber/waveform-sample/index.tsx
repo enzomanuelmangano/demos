@@ -3,8 +3,9 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { Palette } from '../../../constants';
 import { StyleSheet, View } from 'react-native';
+
+import { Palette } from '../../../constants';
 
 type WaveformScrubberSampleProps = {
   position: number;

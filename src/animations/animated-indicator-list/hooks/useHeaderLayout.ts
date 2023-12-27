@@ -68,7 +68,7 @@ const useHeaderLayout = ({
         value: headersLayoutX.value[key],
       }))
       .filter(({ value }) => value != null)
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
       .sort((a, b) => a.value!.x - b.value!.x);
 
     if (parsedHeaderData.length !== headers.length) {

@@ -9,6 +9,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+
 import { PressableScale } from '../pressable-scale';
 import { colors } from '../../constants';
 

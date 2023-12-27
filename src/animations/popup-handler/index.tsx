@@ -115,7 +115,7 @@ const PopupHandler = () => {
         }, 800);
       },
     }));
-  }, []);
+  }, [selectedAngle]);
 
   useAnimatedReaction(
     () => {

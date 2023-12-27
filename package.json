@@ -8,7 +8,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "yarn eslint --fix 'src/**/*.ts' 'src/**/*.tsx'"
+    "format": "yarn eslint --fix 'src/**/*.ts' 'src/**/*.tsx'",
+    "prettier-format": "prettier --write 'src/**/*.ts' 'src/**/*.tsx'"
   },
   "dependencies": {
     "@expo/vector-icons": "^13.0.0",
@@ -18,6 +19,7 @@
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/native-stack": "^6.9.17",
     "@shopify/react-native-skia": "0.1.196",
+    "color": "^4.2.3",
     "expo": "^49.0.3",
     "expo-asset": "~8.10.1",
     "expo-image": "~1.3.5",

@@ -190,7 +190,6 @@ function SelectableGridList<T>({
 
       // If the user has only selected one item, we toggle it
       if (pendingIndexes.value.length === 1) {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         const index = pendingIndexes.value[0]!;
         toggleIndex(index);
         return;

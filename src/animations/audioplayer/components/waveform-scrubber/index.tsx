@@ -2,10 +2,11 @@ import { Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useDerivedValue } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
+
 import { zeroPad } from '../../helpers';
 import { DURATION, Palette } from '../../constants';
-import { WaveformScrubberSample } from './waveform-sample';
 
+import { WaveformScrubberSample } from './waveform-sample';
 import { useCurrentPlayingValue } from './waveform-sample/use-current-playing-value';
 
 type WaveformScrubberProps = {
