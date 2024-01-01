@@ -20,7 +20,7 @@ const CustomDrawerContainer = () => {
 
   // Render the App component
   return (
-    <NavigationContainer>
+    <NavigationContainer independent>
       {/* Set the status bar style */}
       <StatusBar barStyle="dark-content" />
 

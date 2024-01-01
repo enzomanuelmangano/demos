@@ -1,12 +1,9 @@
 /* eslint-disable react/no-unstable-nested-components */
-
 // Import necessary modules and components from React Native and other libraries
 import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef } from 'react';
 import { AntDesign } from '@expo/vector-icons';
-
-// Import types and custom hooks
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import type { ToastType } from './toast-manager';

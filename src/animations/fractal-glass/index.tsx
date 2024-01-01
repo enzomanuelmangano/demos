@@ -17,8 +17,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Octicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-
-// Importing a custom PressableScale component and FractalGlassMask component
 import { StatusBar } from 'expo-status-bar';
 
 import { PressableScale } from './components/pressable-scale';
