@@ -6,7 +6,6 @@ import type { MeasureableAnimatedViewRef } from '../components/MeasureableAnimat
 import type { HeaderListItem, ListItem } from '../constants';
 import { isHeader } from '../constants';
 
-import { useConst } from './useConst';
 import { useMounted } from './useMounted';
 
 type UseHeaderLayoutParams = {
@@ -15,6 +14,7 @@ type UseHeaderLayoutParams = {
   headerHeight: number;
   data: (ListItem | HeaderListItem)[];
 };
+
 const useHeaderLayout = ({
   headers,
   data,
@@ -23,9 +23,11 @@ const useHeaderLayout = ({
 }: UseHeaderLayoutParams) => {
   const mounted = useMounted();
 
-  const headersLayoutXRefs = useConst(() =>
-    // use refs to get the layout of the headers
-    headers.map(() => React.createRef<MeasureableAnimatedViewRef>()),
+  const headersLayoutXRefs = useMemo(
+    () =>
+      // use refs to get the layout of the headers
+      headers.map(() => React.createRef<MeasureableAnimatedViewRef>()),
+    [headers],
   );
 
   const headersLayoutX = useDerivedValue<
@@ -41,9 +43,9 @@ const useHeaderLayout = ({
 
     return headers.reduce((acc, { header }, i) => {
       const ref = headersLayoutXRefs[i];
+
       if (
-        ref &&
-        _WORKLET &&
+        ref.current &&
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ((acc as any)?.[header] == null || (acc as any)?.[header]?.width === 0)
       ) {

@@ -1,4 +1,4 @@
-import React, { useCallback, useImperativeHandle } from 'react';
+import React, { useCallback, useImperativeHandle, useMemo } from 'react';
 import type { ViewProps } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
@@ -48,18 +48,16 @@ const MeasureableAnimatedView = React.forwardRef<
   const rMeasure: MeasureFunction = useCallback(() => {
     'worklet';
     // We can only use the measure function in the worklet.
-    // This check is totally useless in this example, but I wanted to show you how to use the _WORKLET variable.
-    if (!_WORKLET) return null;
     return measure(animatedRef);
   }, [animatedRef]);
 
-  useImperativeHandle(
-    ref,
-    () => ({
+  const imperativeValue = useMemo(() => {
+    return {
       reanimatedMeasure: rMeasure,
-    }),
-    [rMeasure],
-  );
+    };
+  }, [rMeasure]);
+
+  useImperativeHandle(ref, () => imperativeValue, [imperativeValue]);
 
   return <Animated.View {...props} ref={animatedRef} />;
 });

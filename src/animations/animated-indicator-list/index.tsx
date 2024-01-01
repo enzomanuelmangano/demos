@@ -40,6 +40,7 @@ export const AnimatedIndicatorList = () => {
       index: headerIndex,
     });
   }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <>
@@ -52,7 +53,11 @@ export const AnimatedIndicatorList = () => {
                 onTouchStart={() => {
                   onSelectHeaderItem(header);
                 }}
-                ref={headerRefs[index]}
+                ref={value => {
+                  // this is fixing a crash while navigating back
+                  // https://github.com/facebook/react-native/issues/32105
+                  headerRefs[index] = { current: value };
+                }}
                 style={{
                   padding: 20,
                 }}>
