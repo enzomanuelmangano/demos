@@ -1,22 +1,17 @@
-import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { FluidSlider } from './components/fluid-slider';
 
 const FluidSliderContainer = () => {
+  const { width: windowWidth } = useWindowDimensions();
+
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       {/* 
           In the height you should also consider the space 
           for the Animated Metaball (with the Text)  
       */}
-      <FluidSlider
-        style={{
-          width: '90%',
-          height: 110,
-        }}
-      />
+      <FluidSlider width={windowWidth * 0.9} height={110} />
     </View>
   );
 };

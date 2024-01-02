@@ -14,32 +14,34 @@ import {
   useValue,
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import { usePickerLayout } from './hooks/use-picker-layout';
 
 type FluidSliderProps = {
-  style?: StyleProp<ViewStyle>;
   color?: string;
+  width: number;
+  height: number;
 };
 
 const DISTANCE_BETWEEN_SLIDER_AND_METABALL = 10;
 
 const FluidSlider: React.FC<FluidSliderProps> = ({
-  style,
+  width,
+  height,
   color = '#1C11A2',
 }) => {
-  // Hook for managing the size of the Canvas
-  const size = useValue({
-    width: 0,
-    height: 0,
-  });
+  const size = useMemo(() => {
+    return {
+      width,
+      height,
+    };
+  }, [width, height]);
 
   // Computed value for the radius of the metaball
   const metaballRadius = useComputedValue(() => {
-    return (size.current.height - DISTANCE_BETWEEN_SLIDER_AND_METABALL / 2) / 4;
-  }, [size]);
+    return (height - DISTANCE_BETWEEN_SLIDER_AND_METABALL / 2) / 4;
+  }, [height]);
 
   // Computed value for the radius of the picker circle text container
   const pickerCircleTextContainerRadius = useComputedValue(() => {
@@ -64,11 +66,9 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   // Computed value for the height of the slider
   const sliderHeight = useComputedValue(() => {
     return (
-      size.current.height -
-      metaballRadius.current * 2 -
-      DISTANCE_BETWEEN_SLIDER_AND_METABALL
+      height - metaballRadius.current * 2 - DISTANCE_BETWEEN_SLIDER_AND_METABALL
     );
-  }, [size, metaballRadius]);
+  }, [height, metaballRadius]);
 
   // State values for tracking sliding and picker position
   const isSliding = useValue(false);
@@ -122,7 +122,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
       interpolate(
         clampedPickerX.current,
         // Input range: radius -> width - radius (Since the picker circle can't go outside the slider)
-        [metaballRadius.current, size.current.width - metaballRadius.current],
+        [metaballRadius.current, size.width - metaballRadius.current],
         // 0 is the min value of the slider
         // 100 is the max value of the slider
         [0, 100],
@@ -142,7 +142,10 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
 
   // Rendering the FluidSlider component
   return (
-    <Touchable.Canvas style={style} onSize={size}>
+    <Touchable.Canvas
+      style={{
+        ...size,
+      }}>
       <Group layer={layer}>
         <Touchable.RoundedRect
           x={0}
@@ -150,7 +153,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
             metaballRadius,
             val => val * 2 + DISTANCE_BETWEEN_SLIDER_AND_METABALL,
           )}
-          width={Selector(size, val => val.width)}
+          width={size.width}
           height={sliderHeight}
           r={5}
           color={color}

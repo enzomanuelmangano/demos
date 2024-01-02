@@ -18,10 +18,10 @@ const usePickerLayout = ({
   pickerX: SkiaValue<number>;
   pickerY: SkiaMutableValue<number>;
   radius: SkiaValue<number>;
-  sliderSize: SkiaValue<{
+  sliderSize: {
     width: number;
     height: number;
-  }>;
+  };
 }) => {
   // This Skia value is used to compute the picker Y position
   // To be honest if the Radius is not changing, you can just use a normal value
@@ -56,7 +56,7 @@ const usePickerLayout = ({
   const clampedPickerX = useComputedValue(() => {
     return Math.max(
       radius.current,
-      Math.min(pickerX.current, sliderSize.current.width - radius.current),
+      Math.min(pickerX.current, sliderSize.width - radius.current),
     );
   }, [pickerX, sliderSize, radius]);
 
