@@ -43,39 +43,38 @@ export const AnimatedIndicatorList = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <>
-        {/* Animated Header Section */}
-        <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
-          {headers.map(({ header }, index) => {
-            return (
-              <MeasureableAnimatedView
-                key={header}
-                onTouchStart={() => {
-                  onSelectHeaderItem(header);
-                }}
-                ref={value => {
-                  // this is fixing a crash while navigating back
-                  // https://github.com/facebook/react-native/issues/32105
-                  headerRefs[index] = { current: value };
-                }}
+      {/* Animated Header Section */}
+      <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
+        {headers.map(({ header }, index) => {
+          return (
+            <MeasureableAnimatedView
+              key={header}
+              onTouchStart={() => {
+                onSelectHeaderItem(header);
+              }}
+              ref={value => {
+                // this is fixing a crash while navigating back
+                // https://github.com/facebook/react-native/issues/32105
+                headerRefs[index] = { current: value };
+              }}
+              style={{
+                padding: 20,
+              }}>
+              <Text
                 style={{
-                  padding: 20,
+                  fontSize: 14,
+                  fontWeight: 'bold',
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
                 }}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    letterSpacing: 1,
-                  }}>
-                  {header}
-                </Text>
-              </MeasureableAnimatedView>
-            );
-          })}
-        </Animated.View>
-        <Animated.View style={rIndicatorStyle} />
-      </>
+                {header}
+              </Text>
+            </MeasureableAnimatedView>
+          );
+        })}
+      </Animated.View>
+      <Animated.View style={rIndicatorStyle} />
+
       {/* List */}
       <FlatList
         onScroll={e => {
@@ -104,5 +103,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    overflow: 'hidden',
   },
 });
