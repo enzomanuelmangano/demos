@@ -19,21 +19,6 @@ type ListItemProps = {
 
 const ListItem: React.FC<ListItemProps> = React.memo(
   ({ item, viewableItems, onPress }) => {
-    const rStyle = useAnimatedStyle(() => {
-      const isVisible = viewableItems.value.some(
-        viewableItem => viewableItem.item.id === item.id,
-      );
-
-      return {
-        opacity: withTiming(isVisible ? 1 : 0),
-        transform: [
-          {
-            scale: withTiming(isVisible ? 1 : 0.6),
-          },
-        ],
-      };
-    }, []);
-
     const isActive = useSharedValue(false);
 
     const gesture = Gesture.Tap()
@@ -48,6 +33,24 @@ const ListItem: React.FC<ListItemProps> = React.memo(
       .onFinalize(() => {
         isActive.value = false;
       });
+
+    const rStyle = useAnimatedStyle(() => {
+      const isVisible = viewableItems.value.some(
+        viewableItem => viewableItem.item.id === item.id,
+      );
+
+      // eslint-disable-next-line no-nested-ternary
+      const scale = isVisible ? (isActive.value ? 0.95 : 1) : 0.6;
+
+      return {
+        opacity: withTiming(isVisible ? 1 : 0),
+        transform: [
+          {
+            scale: withTiming(scale),
+          },
+        ],
+      };
+    }, []);
 
     return (
       <GestureDetector gesture={gesture}>
