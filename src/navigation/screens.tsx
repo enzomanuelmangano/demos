@@ -8,6 +8,7 @@ import {
   MaterialIcons,
   Octicons,
 } from '@expo/vector-icons';
+import React from 'react';
 
 import { ActionTray } from '../animations/action-tray';
 import { AddToCart } from '../animations/add-to-cart';
@@ -59,6 +60,8 @@ import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
 import { Toast } from '../animations/toast';
 import { TwitterTabBar } from '../animations/twitter-tab-bar';
 
+import { withCustomBackIcon } from './with-custom-back-icon-hoc';
+
 const ICON_SIZE = 24;
 const ICON_COLOR = 'black';
 const DefaultIconProps = {
@@ -71,18 +74,21 @@ const Screens = [
     name: 'Mobile Input',
     route: 'MobileInput',
     component: MobileInput,
+    backIconDark: false,
     icon: () => <AntDesign name="smileo" {...DefaultIconProps} />,
   },
   {
     name: 'Swipe Cards',
     route: 'SwipeCards',
     component: SwipeCards,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="cards" {...DefaultIconProps} />,
   },
   {
     name: 'Spiral',
     route: 'Spiral',
     component: Spiral,
+    backIconDark: false,
     icon: () => (
       <MaterialCommunityIcons name="math-compass" {...DefaultIconProps} />
     ),
@@ -91,12 +97,14 @@ const Screens = [
     name: 'Scroll Progress',
     route: 'ScrollProgress',
     component: ScrollProgress,
+    backIconDark: false,
     icon: () => <Feather name="percent" {...DefaultIconProps} />,
   },
   {
     name: 'Animated Grid List',
     route: 'AnimatedGridList',
     component: AnimatedGridList,
+    backIconDark: false,
     icon: () => <Feather name="grid" {...DefaultIconProps} />,
   },
   {
@@ -141,6 +149,7 @@ const Screens = [
     name: 'Metaball',
     route: 'Metaball',
     component: Metaball,
+    backIconDark: false,
     icon: () => <Ionicons name="tennisball" {...DefaultIconProps} />,
   },
   {
@@ -153,6 +162,7 @@ const Screens = [
     name: 'Story List',
     route: 'StoryList',
     component: StoryList,
+    backIconDark: false,
     icon: () => (
       <MaterialCommunityIcons name="book-open" {...DefaultIconProps} />
     ),
@@ -161,6 +171,8 @@ const Screens = [
     name: 'Dynamic Tab Indicator',
     route: 'DynamicTabIndicator',
     component: DynamicTabIndicatorContainer,
+    iconMarginTop: 50,
+    backIconDark: false,
     icon: () => <MaterialIcons name="tab" {...DefaultIconProps} />,
   },
   {
@@ -173,6 +185,7 @@ const Screens = [
     name: 'Smooth Dropdown',
     route: 'SmoothDropdown',
     component: SmoothDropdown,
+    backIconDark: false,
     icon: () => <MaterialIcons name="arrow-drop-down" {...DefaultIconProps} />,
   },
   {
@@ -191,18 +204,21 @@ const Screens = [
     name: 'AudioPlayer',
     route: 'AudioPlayer',
     component: AudioPlayer,
+    backIconDark: false,
     icon: () => <Ionicons name="barcode" {...DefaultIconProps} />,
   },
   {
     name: 'Color Carousel',
     route: 'ColorCarousel',
     component: ColorCarousel,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="palette" {...DefaultIconProps} />,
   },
   {
     name: 'Animated 3D Parallax',
     route: 'Animated3DParallax',
     component: Animated3DParallax,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="twitter" {...DefaultIconProps} />,
   },
   {
@@ -215,6 +231,7 @@ const Screens = [
     name: 'Animated Indicator List',
     route: 'AnimatedIndicatorList',
     component: AnimatedIndicatorList,
+    iconMarginTop: 40,
     icon: () => (
       <MaterialCommunityIcons
         name="format-list-bulleted"
@@ -226,24 +243,29 @@ const Screens = [
     name: 'Radar Chart',
     route: 'RadarChart',
     component: RadarChartContainer,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="radar" {...DefaultIconProps} />,
   },
   {
     name: 'Image Cropper',
     route: 'ImageCropper',
     component: ImageCropper,
+    backIconDark: false,
+    iconMarginTop: 40,
     icon: () => <MaterialCommunityIcons name="crop" {...DefaultIconProps} />,
   },
   {
     name: 'Custom Drawer',
     route: 'CustomDrawer',
     component: CustomDrawer,
+    iconMarginTop: 30,
     icon: () => <MaterialCommunityIcons name="menu" {...DefaultIconProps} />,
   },
   {
     name: 'Selectable Grid List',
     route: 'SelectableGridList',
     component: SelectableGridList,
+    backIconDark: false,
     icon: () => (
       <MaterialCommunityIcons name="select-all" {...DefaultIconProps} />
     ),
@@ -252,12 +274,14 @@ const Screens = [
     name: 'Animated Count Text',
     route: 'AnimatedCountText',
     component: AnimatedCountText,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="counter" {...DefaultIconProps} />,
   },
   {
     name: 'QR Code Generator',
     route: 'QRCodeGenerator',
     component: QRCodeGenerator,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="qrcode" {...DefaultIconProps} />,
   },
   {
@@ -272,6 +296,7 @@ const Screens = [
     name: 'Twitter Tab Bar',
     route: 'TwitterTabBar',
     component: TwitterTabBar,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="twitter" {...DefaultIconProps} />,
   },
   {
@@ -292,6 +317,7 @@ const Screens = [
     name: 'Telegram Theme Switch',
     route: 'TelegramThemeSwitch',
     component: TelegramThemeSwitch,
+    backIconDark: false,
     icon: () => <FontAwesome name="telegram" {...DefaultIconProps} />,
   },
   {
@@ -304,6 +330,7 @@ const Screens = [
     name: 'GitHub Onboarding',
     route: 'GitHubOnboarding',
     component: GitHubOnboarding,
+    backIconDark: false,
     icon: () => <Octicons name="mark-github" {...DefaultIconProps} />,
   },
   {
@@ -316,6 +343,7 @@ const Screens = [
     name: 'Scrollable Bottom Sheet',
     route: 'ScrollableBottomSheet',
     component: ScrollableBottomSheet,
+    backIconDark: false,
     icon: () => (
       <MaterialCommunityIcons name="arrow-up" {...DefaultIconProps} />
     ),
@@ -324,12 +352,14 @@ const Screens = [
     name: 'Skia Color Picker',
     route: 'SkiaColorPicker',
     component: SkiaColorPicker,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="palette" {...DefaultIconProps} />,
   },
   {
     name: 'Blurred Scroll',
     route: 'BlurredScroll',
     component: BlurredScroll,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
   },
   {
@@ -362,12 +392,14 @@ const Screens = [
     name: 'Slide to Reveal',
     route: 'SlideToReveal',
     component: SlideToReveal,
+    backIconDark: false,
     icon: () => <Octicons name="number" {...DefaultIconProps} />,
   },
   {
     name: 'Blurred Bottom Bar',
     route: 'BlurredBottomBar',
     component: BlurredBottomBar,
+    backIconDark: false,
     icon: () => (
       <MaterialCommunityIcons name="blur-linear" {...DefaultIconProps} />
     ),
@@ -388,6 +420,11 @@ const Screens = [
   return {
     ...item,
     id: index,
+    component: withCustomBackIcon({
+      Component: item.component,
+      backIconDark: item.backIconDark,
+      iconMarginTop: item.iconMarginTop,
+    }),
   };
 });
 

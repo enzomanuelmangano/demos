@@ -31,6 +31,7 @@ const Home = React.memo(() => {
         style={{ backgroundColor: '#F5F5F5' }}
         contentContainerStyle={{
           paddingTop: safeTop,
+          paddingBottom: 50,
         }}
         renderItem={({ item }) => (
           <ListItem

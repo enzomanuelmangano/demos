@@ -51,28 +51,7 @@ const ListItem: React.FC<ListItemProps> = React.memo(
 
     return (
       <GestureDetector gesture={gesture}>
-        <Animated.View
-          style={[
-            {
-              height: 80,
-              backgroundColor: '#FFF',
-              borderRadius: 10,
-              shadowColor: '#000',
-              shadowOffset: {
-                width: 0,
-                height: 0,
-              },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              flex: 1,
-              marginHorizontal: 20,
-              marginTop: 20,
-              paddingHorizontal: 15,
-              flexDirection: 'row',
-              alignItems: 'center',
-            },
-            rStyle,
-          ]}>
+        <Animated.View style={[styles.container, rStyle]}>
           <item.icon />
           <Text
             style={{
@@ -89,7 +68,25 @@ const ListItem: React.FC<ListItemProps> = React.memo(
 );
 
 const styles = StyleSheet.create({
-  container: {},
+  container: {
+    height: 80,
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    shadowColor: '#000',
+    elevation: 2,
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    flex: 1,
+    marginHorizontal: 20,
+    marginTop: 20,
+    paddingHorizontal: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });
 
 export { ListItem };
