@@ -101,7 +101,15 @@ const App: React.FC = () => {
               style={'stroke'}
               opacity={opacity}
             />
-            <FourierVisualizer ref={ref} strokeWidth={5} />
+            <FourierVisualizer
+              ref={value => {
+                // this is necessary otherwise the ref will crash on going back
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore
+                ref.current = value;
+              }}
+              strokeWidth={5}
+            />
           </Canvas>
         </Animated.View>
       </GestureDetector>
