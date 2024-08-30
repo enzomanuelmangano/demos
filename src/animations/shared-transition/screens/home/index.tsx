@@ -2,11 +2,11 @@ import React from 'react';
 import MasonryList from '@react-native-seoul/masonry-list';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import Animated from 'react-native-reanimated';
 
 import { dataSources } from '../../constants/images';
 import { ScreenNames } from '../../constants/screen-names';
 import type { MainStackNavigationProp } from '../../typings';
+import { AnimatedImage } from '../../components/animated-image';
 
 const HomeScreen = React.memo(() => {
   const navigation = useNavigation<MainStackNavigationProp>();
@@ -34,8 +34,9 @@ const HomeScreen = React.memo(() => {
                   },
                   styles.container,
                 ]}>
-                <Animated.Image
+                <AnimatedImage
                   sharedTransitionTag={heroTag}
+                  cachePolicy="memory-disk"
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   source={source as any}
                   style={[

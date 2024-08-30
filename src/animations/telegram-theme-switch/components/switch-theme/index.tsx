@@ -5,25 +5,21 @@ import {
   Image,
   Skia,
   makeImageFromView,
-  useValue,
 } from '@shopify/react-native-skia';
-import AnimatedLottieView from 'lottie-react-native';
 import { useMemo, useRef, useState } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import {
-  Animated,
-  Easing,
-  StyleSheet,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Reanimated, {
   interpolate,
+  useAnimatedProps,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
+  Easing,
 } from 'react-native-reanimated';
+
+import { AnimatedLottieView } from '../animated-lottie-view';
 
 import { SwitchThemeContext, useSwitchTheme, type Theme } from './context';
 import {
@@ -41,7 +37,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   children,
 }) => {
   const [theme, setTheme] = useState<Theme>('dark');
-  const animationProgress = useRef(new Animated.Value(0));
+  const animationProgress = useSharedValue(0);
 
   const center = useSharedValue({
     x: 0,
@@ -53,7 +49,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   const viewRef = useRef<View>(null);
 
   const switchThemeStyle = useSharedValue({});
-  const skImage = useValue<SkImage | null>(null);
+  const skImage = useSharedValue<SkImage | null>(null);
 
   const clipPathRadiusScale = useDerivedValue(() => {
     return withTiming(theme === 'light' ? 1 : 0, {
@@ -94,7 +90,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
 
         // Create an image representation of the current view (snapshot)
         const image = await makeImageFromView(viewRef);
-        skImage.current = image;
+        skImage.value = image;
 
         // Update the `center` shared value with the provided center for the toggled item
         center.value = { ...toggledItemCenter };
@@ -106,28 +102,37 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         setTheme(theme === 'light' ? 'dark' : 'light');
 
         // Set and initiate the animation progress
-        animationProgress.current.setValue(1 - toValue);
-        animationProgress.current.stopAnimation();
-        Animated.timing(animationProgress.current, {
+        animationProgress.value = 1 - toValue;
+        animationProgress.value = withTiming(
           toValue,
-          duration: SWITCH_THEME_ANIMATION_DURATION,
-          easing: Easing.linear,
-          useNativeDriver: true,
-        }).start(({ finished }) => {
-          // Reset certain values after the animation is complete
-          isAnimating.value = false;
-          if (finished) {
-            skImage.current = null;
-            switchThemeStyle.value = {};
-          }
-        });
+          {
+            duration: SWITCH_THEME_ANIMATION_DURATION,
+            easing: Easing.linear,
+          },
+          finished => {
+            // Reset certain values after the animation is complete
+            isAnimating.value = false;
+            if (finished) {
+              skImage.value = null;
+              switchThemeStyle.value = {};
+            }
+          },
+        );
 
         // Set the style for the theme switch based on the provided style
         switchThemeStyle.value = { ...StyleSheet.flatten(toggledItemStyle) };
       },
     };
     // Dependency array for `useMemo`: Only recalculate the value if any of these values change
-  }, [center, invertClip, isAnimating, skImage, switchThemeStyle, theme]);
+  }, [
+    center,
+    invertClip,
+    isAnimating,
+    skImage,
+    switchThemeStyle,
+    theme,
+    animationProgress,
+  ]);
 
   const rStyle = useAnimatedStyle(() => {
     return {
@@ -164,6 +169,12 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
     );
     return path;
   }, [center]);
+
+  const animatedProps = useAnimatedProps(() => {
+    return {
+      progress: animationProgress.value,
+    };
+  });
 
   return (
     // Provide the 'value' to child components using the SwitchThemeContext context
@@ -210,8 +221,8 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         ]}>
         {/* Lottie animation for the theme switch */}
         <AnimatedLottieView
+          animatedProps={animatedProps}
           source={require('../../assets/switch-theme.json')} // Lottie animation file
-          progress={animationProgress.current} // Current animation progress
           style={{
             height: MAX_THEME_ANIMATION_SIZE,
             width: MAX_THEME_ANIMATION_SIZE,

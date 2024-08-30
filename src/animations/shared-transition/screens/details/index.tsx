@@ -3,6 +3,7 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import type { DetailsRouteProp } from '../../typings';
+import { AnimatedImage } from '../../components/animated-image';
 
 const DetailsScreen: React.FC<{ route: DetailsRouteProp }> = React.memo(
   ({
@@ -13,7 +14,8 @@ const DetailsScreen: React.FC<{ route: DetailsRouteProp }> = React.memo(
     return (
       <>
         <View style={styles.container}>
-          <Animated.Image
+          <AnimatedImage
+            cachePolicy="memory-disk"
             sharedTransitionTag={heroTag}
             source={source}
             style={styles.imageContainer}

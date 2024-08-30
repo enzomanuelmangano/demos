@@ -1,4 +1,3 @@
-import type { SkiaMutableValue } from '@shopify/react-native-skia';
 import {
   Group,
   Path,
@@ -6,17 +5,18 @@ import {
   Skia,
   clamp,
   rect,
-  useComputedValue,
 } from '@shopify/react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import type { SharedValue } from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { useCornerGestures } from './useCornerGestures';
 
 type GridProps = {
-  x: SkiaMutableValue<number>;
-  y: SkiaMutableValue<number>;
-  width: SkiaMutableValue<number>;
-  height: SkiaMutableValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+  width: SharedValue<number>;
+  height: SharedValue<number>;
   maxHeight: number;
   maxWidth: number;
   dotRadius?: number;
@@ -35,72 +35,69 @@ const Grid: React.FC<GridProps> = ({
   minWidth,
   minHeight,
 }) => {
-  const path = useComputedValue(() => {
+  const path = useDerivedValue(() => {
     const area = Skia.Path.Make();
-    area.addRect(
-      rect(x.current, y.current, gridWidth.current, gridHeight.current),
-    );
+    area.addRect(rect(x.value, y.value, gridWidth.value, gridHeight.value));
     return area;
   }, [x, y, gridWidth, gridHeight]);
 
   // Here I'm manually building the grid path.
   // The code could have been much simpler if I used a loop, but I wanted to
   // visualize the grid and the path it creates while I was building it.
-  const grid = useComputedValue(() => {
+  const grid = useDerivedValue(() => {
     const gridPath = Skia.Path.Make();
 
-    const width = gridWidth.current;
-    const height = gridHeight.current;
+    const width = gridWidth.value;
+    const height = gridHeight.value;
 
-    gridPath.moveTo(x.current, height / 3 + y.current);
-    gridPath.lineTo(width + x.current, height / 3 + y.current);
+    gridPath.moveTo(x.value, height / 3 + y.value);
+    gridPath.lineTo(width + x.value, height / 3 + y.value);
 
-    gridPath.moveTo(x.current, (height / 3) * 2 + y.current);
-    gridPath.lineTo(width + x.current, (height / 3) * 2 + y.current);
+    gridPath.moveTo(x.value, (height / 3) * 2 + y.value);
+    gridPath.lineTo(width + x.value, (height / 3) * 2 + y.value);
 
-    gridPath.moveTo(x.current, height + y.current);
-    gridPath.lineTo(width + x.current, height + y.current);
+    gridPath.moveTo(x.value, height + y.value);
+    gridPath.lineTo(width + x.value, height + y.value);
 
-    gridPath.moveTo(width / 3 + x.current, y.current);
-    gridPath.lineTo(width / 3 + x.current, height + y.current);
+    gridPath.moveTo(width / 3 + x.value, y.value);
+    gridPath.lineTo(width / 3 + x.value, height + y.value);
 
-    gridPath.moveTo((width / 3) * 2 + x.current, y.current);
-    gridPath.lineTo((width / 3) * 2 + x.current, height + y.current);
+    gridPath.moveTo((width / 3) * 2 + x.value, y.value);
+    gridPath.lineTo((width / 3) * 2 + x.value, height + y.value);
 
-    gridPath.moveTo(width + x.current, y.current);
-    gridPath.lineTo(width + x.current, height + y.current);
+    gridPath.moveTo(width + x.value, y.value);
+    gridPath.lineTo(width + x.value, height + y.value);
 
-    gridPath.moveTo(x.current, y.current);
-    gridPath.lineTo(x.current, height + y.current);
+    gridPath.moveTo(x.value, y.value);
+    gridPath.lineTo(x.value, height + y.value);
 
-    gridPath.moveTo(x.current, y.current);
-    gridPath.lineTo(width + x.current, y.current);
+    gridPath.moveTo(x.value, y.value);
+    gridPath.lineTo(width + x.value, y.value);
 
     return gridPath;
   }, [x, y, gridWidth, gridHeight]);
 
+  const ctx = useSharedValue({ x: 0, y: 0 });
   // This gesture handler is used to move the grid around.
-  const gesture = useGestureHandler<{
-    x: number;
-    y: number;
-  }>({
-    onStart: (_, ctx) => {
-      ctx.x = x.current;
-      ctx.y = y.current;
+  const gesture = useGestureHandler({
+    onStart: () => {
+      'worklet';
+      ctx.value = { x: x.value, y: y.value };
     },
-    onActive: (event, ctx) => {
-      x.current =
+    onActive: event => {
+      'worklet';
+      x.value =
         clamp(
           event.translationX,
-          -ctx.x,
-          maxWidth - gridWidth.current - ctx.x,
-        ) + ctx.x;
-      y.current =
+          -ctx.value.x,
+          maxWidth - gridWidth.value - ctx.value.x,
+        ) + ctx.value.x;
+      y.value =
         clamp(
           event.translationY,
-          -ctx.y,
-          maxHeight - gridHeight.current - ctx.y,
-        ) + ctx.y;
+          -ctx.value.y,
+          maxHeight - gridHeight.value - ctx.value.y,
+        ) + ctx.value.y;
     },
   });
 
@@ -116,20 +113,20 @@ const Grid: React.FC<GridProps> = ({
       minHeight,
     });
 
-  const topRightX = useComputedValue(() => {
-    return gridWidth.current + x.current;
+  const topRightX = useDerivedValue(() => {
+    return gridWidth.value + x.value;
   }, [gridWidth, x]);
 
-  const bottomLeftY = useComputedValue(() => {
-    return gridHeight.current + y.current;
+  const bottomLeftY = useDerivedValue(() => {
+    return gridHeight.value + y.value;
   }, [gridHeight, y]);
 
-  const bottomRightX = useComputedValue(() => {
-    return gridWidth.current + x.current;
+  const bottomRightX = useDerivedValue(() => {
+    return gridWidth.value + x.value;
   }, [gridWidth, x]);
 
-  const bottomRightY = useComputedValue(() => {
-    return gridHeight.current + y.current;
+  const bottomRightY = useDerivedValue(() => {
+    return gridHeight.value + y.value;
   }, [gridHeight, y]);
 
   return (

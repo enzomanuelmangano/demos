@@ -6,49 +6,30 @@ import {
   Group,
   rect,
   rrect,
-  runTiming,
   SweepGradient,
-  useComputedValue,
-  useValue,
   vec,
 } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { A, FREQUENCY, noise2D, RADIUS, secondNoise2D } from './constants';
 import { useVec } from './hooks/use-vec';
 
 export const BlurCircles = () => {
-  // Approach: 1 (using useClockValue) - quite laggy in debug mode
-  // const clock = useValue(0);
-
-  // useEffect(() => {
-  //   runTiming(
-  //     clock,
-  //     {
-  //       to: 10000,
-  //       loop: true,
-  //       yoyo: true,
-  //     },
-  //     {
-  //       duration: 10000,
-  //     }
-  //   );
-  // }, []);
-
-  // Approach: 2
-  const clock = useValue(0);
+  const clock = useSharedValue(0);
 
   useEffect(() => {
-    runTiming(
-      clock,
-      {
-        to: 20000,
-        loop: true,
-        yoyo: true,
-      },
-      {
+    clock.value = withRepeat(
+      withTiming(20000, {
         duration: 20000,
-      },
+      }),
+      -1,
+      true,
     );
   }, [clock]);
   //
@@ -76,9 +57,9 @@ export const BlurCircles = () => {
   // Basically that's just a path that has the same shape as the blurred circle.
   // That's super useful for clipping the colored circle,
   // with the shape of the blurred circle.
-  const clipCircle = useComputedValue(() => {
+  const clipCircle = useDerivedValue(() => {
     return rrect(
-      rect(cx2.current - RADIUS, cy2.current - RADIUS, RADIUS * 2, RADIUS * 2),
+      rect(cx2.value - RADIUS, cy2.value - RADIUS, RADIUS * 2, RADIUS * 2),
       RADIUS,
       RADIUS,
     );

@@ -9,12 +9,12 @@ import {
 import React, { useState } from 'react';
 import {
   vec,
-  useValue,
   SweepGradient,
   DiscretePathEffect,
 } from '@shopify/react-native-skia';
+import { useSharedValue } from 'react-native-reanimated';
+import QRCode from 'react-native-qrcode-skia';
 
-import QRCode from './components/qrcode';
 import { Slider } from './components/slider';
 
 // App component
@@ -22,8 +22,8 @@ const QRCodeGenerator = () => {
   const { width: windowWidth } = useWindowDimensions();
 
   // Initialize progress values for stroke width and deviation
-  const strokeWidthProgress = useValue(0.5);
-  const deviationProgress = useValue(6);
+  const strokeWidthProgress = 0.5;
+  const deviationProgress = useSharedValue(6);
 
   // Initialize state for the QR code text
   const [qrText, setQRCode] = useState('reactiive.io');
@@ -47,14 +47,15 @@ const QRCodeGenerator = () => {
       />
 
       {/* QR code component */}
+      {/* I've moved the logic in a separate package! */}
       <QRCode
         value={qrText ? qrText : 'reactiive.io'}
+        size={windowWidth * 0.9}
         style={{
-          width: windowWidth * 0.9,
           alignSelf: 'center',
           aspectRatio: 1,
         }}
-        strokeWidthPercentage={strokeWidthProgress}
+        strokeWidth={strokeWidthProgress}
         errorCorrectionLevel="H">
         {/* Gradient effect for QR code */}
         <SweepGradient
@@ -68,17 +69,6 @@ const QRCodeGenerator = () => {
 
       {/* Slider components for adjusting stroke width and deviation */}
       <View style={styles.sliderContainer}>
-        <Text style={styles.title}>Vertical Stroke</Text>
-        <Slider
-          initialProgress={strokeWidthProgress.current}
-          style={{
-            marginTop: 30,
-            width: windowWidth - 50,
-          }}
-          onUpdate={prog => {
-            strokeWidthProgress.current = prog;
-          }}
-        />
         <View style={{ marginTop: 20 }}>
           <Text style={styles.title}>Deviation</Text>
           <Slider
@@ -89,7 +79,7 @@ const QRCodeGenerator = () => {
               width: windowWidth - 50,
             }}
             onUpdate={prog => {
-              deviationProgress.current = prog;
+              deviationProgress.value = prog;
             }}
           />
         </View>

@@ -1,12 +1,11 @@
-import {
-  runTiming,
-  useValue,
-  interpolateColors,
-  useComputedValue,
-  Group,
-} from '@shopify/react-native-skia';
+import { interpolateColors, Group } from '@shopify/react-native-skia';
 import React, { useEffect } from 'react';
 import Touchable from 'react-native-skia-gesture';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { BottomTabItemContent } from './bottom-tab-item-content';
 
@@ -31,32 +30,33 @@ const BottomTabItem: React.FC<BottomTabIconProps> = React.memo(
     const isActive = index === currentIndex;
 
     const baseTranslateY = y + height / 2 - iconSize / 2 - 8;
-    const translateY = useValue(baseTranslateY);
-    const iconColorProgress = useValue(0);
-    const iconColor = useComputedValue(() => {
+    const translateY = useSharedValue(baseTranslateY);
+    const iconColorProgress = useSharedValue(0);
+
+    const iconColor = useDerivedValue(() => {
       return interpolateColors(
-        iconColorProgress.current,
+        iconColorProgress.value,
         [0, 1],
         ['#7E6CE2', '#FFFFFF'],
       );
     }, [iconColorProgress]);
 
-    const transform = useComputedValue(() => {
+    const transform = useDerivedValue(() => {
       return [
         { translateX: x + width / 2 - iconSize / 2 },
         {
-          translateY: translateY.current,
+          translateY: translateY.value,
         },
       ];
     }, [translateY]);
 
     useEffect(() => {
       if (isActive) {
-        runTiming(translateY, baseTranslateY - 35, timingConfig);
-        runTiming(iconColorProgress, 1, timingConfig);
+        translateY.value = withTiming(baseTranslateY - 35, timingConfig);
+        iconColorProgress.value = withTiming(1, timingConfig);
       } else {
-        runTiming(translateY, baseTranslateY, timingConfig);
-        runTiming(iconColorProgress, 0, timingConfig);
+        translateY.value = withTiming(baseTranslateY, timingConfig);
+        iconColorProgress.value = withTiming(0, timingConfig);
       }
     }, [baseTranslateY, iconColorProgress, isActive, translateY]);
 

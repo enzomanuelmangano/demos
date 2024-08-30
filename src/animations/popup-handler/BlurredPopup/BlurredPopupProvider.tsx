@@ -6,8 +6,6 @@ import {
   Canvas,
   makeImageFromView,
   Image,
-  useValue,
-  useComputedValue,
   rect,
   Blur,
   Group,
@@ -91,7 +89,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     return withTiming(menuVisible.value ? 1 : 0);
   });
 
-  const skImage = useValue<SkImage | null>(null);
+  const skImage = useSharedValue<SkImage | null>(null);
 
   const options = useMemo(() => {
     if (!params) return [];
@@ -120,7 +118,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
       menuVisible.value = true;
 
       // Applying the Snapshot and setting the Popup Params
-      skImage.current = await makeImageFromView(mainView);
+      skImage.value = await makeImageFromView(mainView);
     },
     [menuVisible, skImage],
   );
@@ -168,7 +166,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   }, [params?.node]);
 
   // Computed values
-  const imageRect = useComputedValue(() => {
+  const imageRect = useDerivedValue(() => {
     return rect(0, 0, canvasSize.width, canvasSize.height);
   }, [canvasSize]);
 

@@ -1,14 +1,13 @@
 import type { ImageProps } from '@shopify/react-native-skia';
-import {
-  runTiming,
-  useValue,
-  rect,
-  useComputedValue,
-  Image,
-} from '@shopify/react-native-skia';
+import { rect, Image } from '@shopify/react-native-skia';
 import React, { useImperativeHandle, useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import Touchable from 'react-native-skia-gesture';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Grid } from './grid';
 
@@ -39,17 +38,17 @@ const ImageCropper = React.forwardRef<ImageCropperRef, ImageCropperProps>(
 
     const height = width * imageRatio;
 
-    const imageRect = useComputedValue(() => {
+    const imageRect = useDerivedValue(() => {
       return rect(0, 0, width, height);
     }, [width]);
 
     const minWidth = width / 3;
     const minHeight = height / 3;
 
-    const x = useValue(0);
-    const y = useValue(0);
-    const gridWidth = useValue(minWidth);
-    const gridHeight = useValue(minHeight);
+    const x = useSharedValue(0);
+    const y = useSharedValue(0);
+    const gridWidth = useSharedValue(minWidth);
+    const gridHeight = useSharedValue(minHeight);
 
     // I really use a lot the useImperativeHandle hook.
     // It's a great way to expose a component's API to its parent.
@@ -58,22 +57,19 @@ const ImageCropper = React.forwardRef<ImageCropperRef, ImageCropperProps>(
     // that's super useful to build the image cropped component.
     useImperativeHandle(ref, () => ({
       expand: () => {
-        runTiming(x, { to: 0 }, TimingConfig);
-        runTiming(y, { to: 0 }, TimingConfig);
-        runTiming(gridWidth, { to: width }, TimingConfig);
-        runTiming(gridHeight, { to: height }, TimingConfig);
+        'worklet';
+        x.value = withTiming(0, TimingConfig);
+        y.value = withTiming(0, TimingConfig);
+        gridWidth.value = withTiming(width, TimingConfig);
+        gridHeight.value = withTiming(height, TimingConfig);
       },
       collapse: () => {
-        runTiming(gridWidth, { to: minWidth }, TimingConfig);
-        runTiming(gridHeight, { to: minHeight }, TimingConfig);
+        'worklet';
+        gridWidth.value = withTiming(minWidth, TimingConfig);
+        gridHeight.value = withTiming(minHeight, TimingConfig);
       },
       getGridRect: () => {
-        return rect(
-          x.current,
-          y.current,
-          gridWidth.current,
-          gridHeight.current,
-        );
+        return rect(x.value, y.value, gridWidth.value, gridHeight.value);
       },
     }));
 

@@ -1,19 +1,20 @@
 // Import necessary modules and types
-import type { SkiaValue } from '@shopify/react-native-skia';
 import {
   rect,
   rrect,
   BackdropBlur,
   BlurMask,
   RoundedRect,
-  Selector,
   Skia,
-  runSpring,
-  useComputedValue,
-  useValue,
 } from '@shopify/react-native-skia';
 import React from 'react';
 import { useWindowDimensions } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 // Set default values for bottom sheet props
@@ -26,7 +27,7 @@ const SHEET_HANDLE_WIDTH = 100;
 
 // Define the BottomSheetProps type
 type BottomSheetProps = {
-  window: SkiaValue<{
+  window: SharedValue<{
     width: number;
     height: number;
   }>;
@@ -46,16 +47,16 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
     color = DEFAULT_CARD_COLOR,
   }) => {
     // Set up animated translateY value with default value of 0
-    const translateY = useValue(0);
+    const translateY = useSharedValue(0);
 
     // Get the device height using useWindowDimensions
     const { height } = useWindowDimensions();
 
     // Set up a clamped translateY value that is bound by the minimum and maximum values
-    const clampedTranslateY = useComputedValue(() => {
+    const clampedTranslateY = useDerivedValue(() => {
       return Math.max(
-        translateY.current,
-        -(window.current.height - cardInitialOffset),
+        translateY.value,
+        -(window.value.height - cardInitialOffset),
       );
     }, [translateY, window]);
 
@@ -63,17 +64,15 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
     // This path will be assigned to:
     // 1. The backdrop blur's clip path: This will ensure that the blur is only applied to the bottom sheet
     // 2. The touchable path's path: This will ensure that just this area is touchable
-    const roundedRectPath = useComputedValue(() => {
+    const roundedRectPath = useDerivedValue(() => {
       const path = Skia.Path.Make();
       path.addRRect(
         rrect(
           rect(
             0,
-            window.current.height -
-              cardInitialOffset +
-              clampedTranslateY.current,
-            window.current.width,
-            window.current.height,
+            window.value.height - cardInitialOffset + clampedTranslateY.value,
+            window.value.width,
+            window.value.height,
           ),
           cardRadius,
           cardRadius,
@@ -82,23 +81,28 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
       return path;
     }, [window, clampedTranslateY]);
 
+    const context = useSharedValue({
+      y: 0,
+    });
+
     // Set up a pan gesture handler
-    const panGesture = useGestureHandler<{
-      y: number;
-    }>({
+    const panGesture = useGestureHandler({
       // Set the initial context value of y to the current clampedTranslateY
-      onStart: (_, context) => {
-        context.y = clampedTranslateY.current;
+      onStart: _ => {
+        'worklet';
+        context.value.y = clampedTranslateY.value;
       },
       // Update the translateY value based on the gesture's translation
-      onActive: (event, context) => {
-        translateY.current = event.translationY + context.y;
+      onActive: event => {
+        'worklet';
+        translateY.value = event.translationY + context.value.y;
       },
       // Determine if the sheet should snap to open or closed based on its current position
       onEnd: () => {
+        'worklet';
         // Here we need to consider the initial offset of the card
         const currentTranslation =
-          Math.abs(translateY.current) + cardInitialOffset;
+          Math.abs(translateY.value) + cardInitialOffset;
 
         // Feel free to choose your own thresholds
         const snapThreshold = height / 3;
@@ -106,32 +110,29 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
         const closedCard = 0;
 
         if (currentTranslation > snapThreshold) {
-          runSpring(translateY, {
-            to: openedCard,
-          });
+          translateY.value = withSpring(openedCard);
           return;
         }
-        runSpring(translateY, {
-          to: closedCard,
-        });
+        translateY.value = withSpring(closedCard);
       },
     });
 
     // Calculate the y position of the "sheet handle"
-    const y = useComputedValue(() => {
+    const y = useDerivedValue(() => {
       return (
-        window.current.height -
-        cardInitialOffset +
-        clampedTranslateY.current +
-        10 // some padding
+        window.value.height - cardInitialOffset + clampedTranslateY.value + 10 // some padding
       );
     }, [window, clampedTranslateY]);
+
+    const x = useDerivedValue(() => {
+      return window.value.width / 2 - SHEET_HANDLE_WIDTH / 2;
+    }, [window]);
 
     return (
       <>
         <BackdropBlur clip={roundedRectPath} blur={blur} />
         <RoundedRect
-          x={Selector(window, w => w.width / 2 - SHEET_HANDLE_WIDTH / 2)}
+          x={x}
           y={y}
           r={5}
           width={SHEET_HANDLE_WIDTH}

@@ -2,6 +2,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import Reanimated, {
   measure,
   runOnJS,
+  useAnimatedProps,
   useAnimatedRef,
   useAnimatedStyle,
   useDerivedValue,
@@ -9,7 +10,8 @@ import Reanimated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import AnimatedLottieView from 'lottie-react-native';
+
+import { AnimatedLottieView } from '../animated-lottie-view';
 
 import { useSwitchTheme } from './context';
 
@@ -30,10 +32,8 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
 
   const viewRef = useAnimatedRef<Reanimated.View>();
 
-  const reanimatedProgressValue = useSharedValue(0);
-
-  animationProgress?.current.addListener(({ value }) => {
-    reanimatedProgressValue.value = value;
+  const reanimatedProgressValue = useDerivedValue(() => {
+    return animationProgress.value;
   });
 
   const isInvisible = useDerivedValue(() => {
@@ -53,6 +53,7 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
 
   const tapGesture = Gesture.Tap().onTouchesUp(() => {
     const value = measure(viewRef);
+    if (!value) return;
     const center = {
       x: value.pageX,
       y: value.pageY,
@@ -73,6 +74,12 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
     };
   });
 
+  const animatedProps = useAnimatedProps(() => {
+    return {
+      progress: animationProgress.value,
+    };
+  });
+
   return (
     // A wrapper component to detect gesture interactions, in this case, tap gestures.
     <GestureDetector gesture={tapGesture}>
@@ -88,6 +95,7 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
           ]}>
           {/* Lottie component to play animations */}
           <AnimatedLottieView
+            animatedProps={animatedProps}
             style={[
               style, // Base style
               {
@@ -97,7 +105,6 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
               },
             ]}
             source={require('../../assets/switch-theme.json')} // Lottie animation file
-            progress={animationProgress?.current} // Current progress of the animation
             colorFilters={[
               {
                 // Overriding certain color properties in the animation

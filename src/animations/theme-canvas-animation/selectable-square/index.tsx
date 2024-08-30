@@ -1,1 +1,119 @@
-import type { SkiaValue } from '@shopify/react-native-skia';import {  runSpring,  useValue,  useComputedValue,  Group,  RoundedRect,} from '@shopify/react-native-skia';import React from 'react';import Touchable, { useGestureHandler } from 'react-native-skia-gesture';type SelectableSquareProps = {  cx: SkiaValue<number>;  cy: SkiaValue<number>;  size: number;  color: string;  onSelect?: () => void;  selectedIndex: SkiaValue<number>;  index: number;  borderColor?: string;};const SelectableSquare: React.FC<SelectableSquareProps> = ({  cx,  cy,  size,  color,  onSelect,  selectedIndex,  borderColor = 'white',  index,}) => {  const scale = useValue(1);  const touchableHandler = useGestureHandler({    onStart: () => {      runSpring(scale, 0.9, {        damping: 5,        mass: 1,      });    },    onEnd: () => {      runSpring(scale, 1, {        damping: 5,        mass: 1,      });      onSelect?.();    },  });  const transform = useComputedValue(() => {    return [{ scale: scale.current }];  }, [scale]);  const origin = useComputedValue(() => {    return {      x: cx.current + size / 2,      y: cy.current + size / 2,    };  }, [cx, cy]);  const animatedColor = useComputedValue(() => {    return selectedIndex.current === index ? borderColor : color;  }, [color, borderColor, selectedIndex, index]);  return (    <Group origin={origin} transform={transform}>      <Touchable.RoundedRect        x={cx}        y={cy}        width={size}        height={size}        r={100}        color={color}        {...touchableHandler}      />      <RoundedRect        x={cx}        y={cy}        width={size}        height={size}        r={100}        strokeWidth={2}        color={animatedColor}        style={'stroke'}      />    </Group>  );};type SelectableSquareContainerProps = Omit<  SelectableSquareProps,  'cx' | 'cy'> & {  coordinates: SkiaValue<{ cx: number; cy: number }[]>;};const SelectableSquareContainer: React.FC<SelectableSquareContainerProps> = ({  coordinates,  index,  ...props}) => {  const cx = useComputedValue(    () => coordinates.current[index]?.cx || 0,    [coordinates, index],  );  const cy = useComputedValue(    () => coordinates.current[index]?.cy || 0,    [coordinates, index],  );  return <SelectableSquare cx={cx} cy={cy} {...props} index={index} />;};export { SelectableSquareContainer };
+import { Group, RoundedRect } from '@shopify/react-native-skia';
+import React from 'react';
+import type { SharedValue } from 'react-native-reanimated';
+import {
+  runOnJS,
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+
+type SelectableSquareProps = {
+  cx: SharedValue<number>;
+  cy: SharedValue<number>;
+  size: number;
+  color: string;
+  onSelect?: () => void;
+  selectedIndex: SharedValue<number>;
+  index: number;
+  borderColor?: string;
+};
+
+const SelectableSquare: React.FC<SelectableSquareProps> = ({
+  cx,
+  cy,
+  size,
+  color,
+  onSelect,
+  selectedIndex,
+  borderColor = 'white',
+  index,
+}) => {
+  const scale = useSharedValue(1);
+
+  const touchableHandler = useGestureHandler({
+    onStart: () => {
+      'worklet';
+      scale.value = withSpring(0.9, {
+        damping: 5,
+        mass: 1,
+      });
+    },
+    onEnd: () => {
+      'worklet';
+      scale.value = withSpring(1, {
+        damping: 5,
+        mass: 1,
+      });
+      if (onSelect) {
+        runOnJS(onSelect)();
+      }
+    },
+  });
+
+  const transform = useDerivedValue(() => {
+    return [{ scale: scale.value }];
+  }, [scale]);
+
+  const origin = useDerivedValue(() => {
+    return {
+      x: cx.value + size / 2,
+      y: cy.value + size / 2,
+    };
+  }, [cx, cy]);
+
+  const animatedColor = useDerivedValue(() => {
+    return selectedIndex.value === index ? borderColor : color;
+  }, [color, borderColor, selectedIndex, index]);
+
+  return (
+    <Group origin={origin} transform={transform}>
+      <Touchable.RoundedRect
+        x={cx}
+        y={cy}
+        width={size}
+        height={size}
+        r={100}
+        color={color}
+        {...touchableHandler}
+      />
+      <RoundedRect
+        x={cx}
+        y={cy}
+        width={size}
+        height={size}
+        r={100}
+        strokeWidth={2}
+        color={animatedColor}
+        style={'stroke'}
+      />
+    </Group>
+  );
+};
+
+type SelectableSquareContainerProps = Omit<
+  SelectableSquareProps,
+  'cx' | 'cy'
+> & {
+  coordinates: SharedValue<{ cx: number; cy: number }[]>;
+};
+
+const SelectableSquareContainer: React.FC<SelectableSquareContainerProps> = ({
+  coordinates,
+  index,
+  ...props
+}) => {
+  const cx = useDerivedValue(
+    () => coordinates.value[index]?.cx || 0,
+    [coordinates, index],
+  );
+  const cy = useDerivedValue(
+    () => coordinates.value[index]?.cy || 0,
+    [coordinates, index],
+  );
+
+  return <SelectableSquare cx={cx} cy={cy} {...props} index={index} />;
+};
+
+export { SelectableSquareContainer };

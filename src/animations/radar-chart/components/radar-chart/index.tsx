@@ -1,15 +1,7 @@
-import type { SkPath } from '@shopify/react-native-skia';
-import {
-  Canvas,
-  Group,
-  Path,
-  Points,
-  Selector,
-  Text,
-  useComputedValue,
-} from '@shopify/react-native-skia';
+import { Canvas, Group, Path, Points, Text } from '@shopify/react-native-skia';
 import Color from 'color';
 import React, { useCallback, useMemo } from 'react';
+import { useDerivedValue } from 'react-native-reanimated';
 
 import { useCanvasLayout } from './hooks/use-canvas-layout';
 import { getScaledPolygonPath } from './utils/get-scaled-polygon';
@@ -30,19 +22,19 @@ function RadarChart<K extends string>({
   const { size, centerX, centerY } = useCanvasLayout(style);
 
   const dotStrokeWidth = strokeWidth * 4;
-  const radius = useComputedValue(
-    () =>
-      Math.min(centerX.current, centerY.current) * 0.82 - dotStrokeWidth / 2,
+  const radius = useDerivedValue(
+    () => Math.min(centerX.value, centerY.value) * 0.82 - dotStrokeWidth / 2,
     [centerX, centerY, dotStrokeWidth],
   );
 
   const getPolygonPath = useCallback(
     (pathValues: number[]) => {
+      'worklet';
       return getScaledPolygonPath({
         values: pathValues,
-        centerX: centerX.current,
-        centerY: centerY.current,
-        radius: radius.current,
+        centerX: centerX.value,
+        centerY: centerY.value,
+        radius: radius.value,
       });
     },
     [centerX, centerY, radius],
@@ -60,7 +52,7 @@ function RadarChart<K extends string>({
     });
   }, [internalLayers]);
 
-  const pathByIntensity = useComputedValue(() => {
+  const pathByIntensity = useDerivedValue(() => {
     return layerIntensities.map(intensity => {
       const pathValues = new Array(valuesLength).fill(intensity);
       return getPolygonPath(pathValues);
@@ -76,18 +68,16 @@ function RadarChart<K extends string>({
   });
 
   // Radar Paths
-  const internalPaths = useComputedValue(() => {
-    return allValues.current.map(values => getPolygonPath(values));
+  const internalPaths = useDerivedValue(() => {
+    return allValues.value.map(values => getPolygonPath(values));
   }, [centerX, centerY, radius, allValues]);
 
-  const internalPoints = useComputedValue(() => {
-    return allValues.current.map(values => {
+  const internalPoints = useDerivedValue(() => {
+    return allValues.value.map(values => {
       return values.map((value, index) => {
         const angle = index * ((2 * Math.PI) / values.length);
-        const pointX =
-          centerX.current + Math.sin(angle) * radius.current * value;
-        const pointY =
-          centerY.current - Math.cos(angle) * radius.current * value;
+        const pointX = centerX.value + Math.sin(angle) * radius.value * value;
+        const pointY = centerY.value - Math.cos(angle) * radius.value * value;
         return { x: pointX, y: pointY };
       });
     });
@@ -96,22 +86,13 @@ function RadarChart<K extends string>({
   // Text Skills Positions
 
   const textSkills = useMemo(() => {
-    return Object.keys(unwrapRef(data).current[0]?.values ?? {});
+    return Object.keys(unwrapRef(data).value[0]?.values ?? {});
   }, [data]);
 
-  const textSkillsPositions = useComputedValue(() => {
-    return new Array(valuesLength).fill(1).map((value, index) => {
-      const angle = index * ((2 * Math.PI) / valuesLength);
-      const pointX = centerX.current + Math.sin(angle) * radius.current * value;
-      const pointY = centerY.current - Math.cos(angle) * radius.current * value;
-      return { x: pointX, y: pointY, angle };
-    });
-  }, [internalPoints, valuesLength, radius, centerX, centerY]);
-
-  const transformOrigin = useComputedValue(() => {
+  const transformOrigin = useDerivedValue(() => {
     return {
-      x: centerX.current,
-      y: centerY.current,
+      x: centerX.value,
+      y: centerY.value,
     };
   }, [centerX, centerY]);
 
@@ -127,16 +108,16 @@ function RadarChart<K extends string>({
           />
         )}
         {layerIntensities.map((_, index) => {
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const path = useDerivedValue(() => {
+            return pathByIntensity.value[index];
+          }, [pathByIntensity, index]);
+
           return (
             <Group key={index}>
               <Path
                 key={index}
-                path={
-                  Selector(
-                    pathByIntensity,
-                    paths => paths[index],
-                  ) as unknown as SkPath
-                }
+                path={path}
                 style="stroke"
                 color={strokeColor}
                 strokeWidth={strokeWidth}
@@ -145,17 +126,22 @@ function RadarChart<K extends string>({
           );
         })}
         {textSkills.map((item, index) => {
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const x = useDerivedValue(() => {
+            if (!font) {
+              return 0;
+            }
+            return centerX.value - font.getTextWidth(item) / 2;
+          }, [centerX, font]);
           return (
             <Group
               key={item}
               origin={transformOrigin}
-              transform={Selector(textSkillsPositions, () => {
-                return [
-                  {
-                    rotate: ((2 * Math.PI) / valuesLength) * index,
-                  },
-                ];
-              })}>
+              transform={[
+                {
+                  rotate: ((2 * Math.PI) / valuesLength) * index,
+                },
+              ]}>
               {font && (
                 <Text
                   key={item}
@@ -163,27 +149,27 @@ function RadarChart<K extends string>({
                   text={item}
                   color={'white'}
                   y={20}
-                  x={Selector(centerX, x => x - font.getTextWidth(item) / 2)}
+                  x={x}
                 />
               )}
             </Group>
           );
         })}
 
-        {allValues.current.map((_, index) => {
-          const internalPath = Selector(
-            internalPaths,
-            paths => paths[index],
-          ) as unknown as SkPath;
+        {allValues.value.map((_, index) => {
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const internalPath = useDerivedValue(() => {
+            return internalPaths.value[index];
+          }, [internalPaths, index]);
 
-          const internalPointsData = Selector(
-            internalPoints,
-            points => points[index],
-          ) as unknown as { x: number; y: number }[];
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const internalPointsData = useDerivedValue(() => {
+            return internalPoints.value[index];
+          }, [internalPoints, index]);
 
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
-          const pathColor = unwrapRef(data).current[index].color;
+          const pathColor = unwrapRef(data).value[index].color;
           const pathStrokeColor = Color(pathColor).darken(0.1).hex();
 
           return (

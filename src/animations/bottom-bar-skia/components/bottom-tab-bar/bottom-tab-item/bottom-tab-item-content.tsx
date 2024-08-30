@@ -1,11 +1,11 @@
-import type { SkiaValue } from '@shopify/react-native-skia';
 import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
 import React from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 
 import { BOTTOM_BAR_ICONS } from './svg-icons';
 
 type BottomTabItemProps = {
-  iconColor: SkiaValue<Float32Array>;
+  iconColor: SharedValue<number[]>;
   index: number;
   iconSize: number;
 };

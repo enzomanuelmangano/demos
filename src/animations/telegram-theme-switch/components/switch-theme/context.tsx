@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
-import type { StyleProp, ViewStyle, Animated } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { makeMutable, type SharedValue } from 'react-native-reanimated';
 
 type Theme = 'light' | 'dark';
 
@@ -9,7 +10,7 @@ const SwitchThemeContext = createContext<{
     center: { x: number; y: number; height: number; width: number };
     style: StyleProp<ViewStyle>;
   }) => void;
-  animationProgress?: React.MutableRefObject<Animated.Value>;
+  animationProgress: SharedValue<number>;
 }>({
   theme: 'light',
   toggleTheme: (_: {
@@ -18,6 +19,7 @@ const SwitchThemeContext = createContext<{
   }) => {
     //
   },
+  animationProgress: makeMutable(0),
 });
 
 const useSwitchTheme = () => {

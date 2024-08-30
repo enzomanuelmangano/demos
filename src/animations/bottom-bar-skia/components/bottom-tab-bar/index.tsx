@@ -7,15 +7,18 @@ import {
   Paint,
   Path,
   rect,
-  runSpring,
   Skia,
-  useComputedValue,
-  useValue,
 } from '@shopify/react-native-skia';
 import { useEffect, useMemo } from 'react';
 import { useWindowDimensions, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Touchable from 'react-native-skia-gesture';
+import {
+  runOnJS,
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { ScreenNames } from '../../constants/screens';
 
@@ -32,27 +35,24 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   const tabBarScreens = Object.keys(ScreenNames).length;
 
   const currentIndex = state.index;
-  const animatedIndex = useValue(currentIndex);
+  const animatedIndex = useSharedValue(currentIndex);
 
   useEffect(() => {
-    runSpring(
-      animatedIndex,
-      { to: currentIndex },
-      {
-        mass: 0.3,
-      },
-    );
+    animatedIndex.value = withSpring(currentIndex, {
+      mass: 0.3,
+    });
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
-  const animatedCircleCx = useComputedValue(() => {
+  const animatedCircleCx = useDerivedValue(() => {
     return (
-      (screenWidth / tabBarScreens) * animatedIndex.current +
+      (screenWidth / tabBarScreens) * animatedIndex.value +
       screenWidth / (tabBarScreens * 2)
     );
   }, [screenWidth, animatedIndex, tabBarScreens]);
 
-  const bottomTabPath = useComputedValue(() => {
+  const bottomTabPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     path.addRect(
       rect(
@@ -63,7 +63,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
       ),
     );
     path.addCircle(
-      animatedCircleCx.current,
+      animatedCircleCx.value,
       BOTTOM_BAR_HEIGHT_OFFSET,
       BOTTOM_BAR_HEIGHT_OFFSET,
     );
@@ -92,6 +92,12 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
     );
   }, []);
 
+  const navigateTo = (
+    screenName: (typeof ScreenNames)[keyof typeof ScreenNames],
+  ) => {
+    navigation.navigate(screenName);
+  };
+
   return (
     <>
       <Touchable.Canvas
@@ -118,7 +124,8 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
               x={(screenWidth / tabBarScreens) * index}
               y={BOTTOM_BAR_HEIGHT_OFFSET}
               onEnd={() => {
-                navigation.navigate(screenName);
+                'worklet';
+                runOnJS(navigateTo)(screenName);
               }}
               height={bottomTabBarHeight}
               width={screenWidth / tabBarScreens}

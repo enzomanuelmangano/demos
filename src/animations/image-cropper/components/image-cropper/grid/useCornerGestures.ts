@@ -1,26 +1,18 @@
-import type { SkiaMutableValue } from '@shopify/react-native-skia';
 import { clamp } from '@shopify/react-native-skia';
+import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
 
 type UseCornerGesturesParams = {
-  x: SkiaMutableValue<number>;
-  y: SkiaMutableValue<number>;
-  gridWidth: SkiaMutableValue<number>;
-  gridHeight: SkiaMutableValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
+  gridWidth: SharedValue<number>;
+  gridHeight: SharedValue<number>;
   minWidth: number;
   maxWidth: number;
   minHeight: number;
   maxHeight: number;
 };
 
-// There must be a better way of dealing with each corner gesture.
-// To be honest I've tried to let Chat GPT work. But the final result wasn't readable.
-// So I've decided to go with this approach (even if it's not dry).
-// I'm totally open to suggestions.
-
-// Each function in this hook is quite similar to the others.
-// Each one is responsible for a corner of the grid.
-// The only difference is the way the grid is resized.
 const useCornerGestures = ({
   x,
   y,
@@ -31,135 +23,85 @@ const useCornerGestures = ({
   minHeight,
   maxHeight,
 }: UseCornerGesturesParams) => {
-  const onDragTopLeft = useGestureHandler<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>({
-    onStart: (_, ctx) => {
-      ctx.x = x.current;
-      ctx.y = y.current;
-      ctx.width = gridWidth.current;
-      ctx.height = gridHeight.current;
-    },
-    onActive: (event, ctx) => {
-      const newGridWidth = clamp(
-        -event.translationX + ctx.width,
-        minWidth,
-        maxWidth - x.current,
-      );
-      const newGridHeight = clamp(
-        -event.translationY + ctx.height,
-        minHeight,
-        maxHeight - y.current,
-      );
-      gridHeight.current = newGridHeight;
-      gridWidth.current = newGridWidth;
-      x.current = clamp(event.translationX + ctx.x, 0, maxWidth - newGridWidth);
-      y.current = clamp(
-        event.translationY + ctx.y,
-        0,
-        maxHeight - newGridHeight,
-      );
-    },
+  const ctx = useSharedValue({
+    x: x.value,
+    y: y.value,
+    width: gridWidth.value,
+    height: gridHeight.value,
   });
 
-  const onDragTopRight = useGestureHandler<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>({
-    onStart: (_, ctx) => {
-      ctx.x = x.current;
-      ctx.y = y.current;
-      ctx.width = gridWidth.current;
-      ctx.height = gridHeight.current;
-    },
-    onActive: (event, ctx) => {
-      const newGridWidth = clamp(
-        event.translationX + ctx.width,
-        minWidth,
-        maxWidth - x.current,
-      );
-      const newGridHeight = clamp(
-        -event.translationY + ctx.height,
-        minHeight,
-        maxHeight - y.current,
-      );
-      gridHeight.current = newGridHeight;
-      gridWidth.current = newGridWidth;
-      y.current = clamp(
-        event.translationY + ctx.y,
-        0,
-        maxHeight - newGridHeight,
-      );
-    },
-  });
+  const updateContext = () => {
+    'worklet';
+    ctx.value = {
+      x: x.value,
+      y: y.value,
+      width: gridWidth.value,
+      height: gridHeight.value,
+    };
+  };
 
-  const onDragBottomLeft = useGestureHandler<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>({
-    onStart: (_, ctx) => {
-      ctx.x = x.current;
-      ctx.y = y.current;
-      ctx.width = gridWidth.current;
-      ctx.height = gridHeight.current;
-    },
-    onActive: (event, ctx) => {
-      const newGridWidth = clamp(
-        -event.translationX + ctx.width,
-        minWidth,
-        maxWidth - x.current,
-      );
-      const newGridHeight = clamp(
-        event.translationY + ctx.height,
-        minHeight,
-        maxHeight - y.current,
-      );
-      gridHeight.current = newGridHeight;
-      gridWidth.current = newGridWidth;
-      x.current = clamp(event.translationX + ctx.x, 0, maxWidth - newGridWidth);
-    },
-  });
+  const calculateNewDimensions = (
+    translationX: number,
+    translationY: number,
+    isNegativeX: boolean,
+    isNegativeY: boolean,
+  ) => {
+    'worklet';
+    const newWidth = clamp(
+      (isNegativeX ? -translationX : translationX) + ctx.value.width,
+      minWidth,
+      maxWidth - x.value,
+    );
+    const newHeight = clamp(
+      (isNegativeY ? -translationY : translationY) + ctx.value.height,
+      minHeight,
+      maxHeight - y.value,
+    );
+    return { newWidth, newHeight };
+  };
 
-  const onDragBottomRight = useGestureHandler<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>({
-    onStart: (_, ctx) => {
-      ctx.x = x.current;
-      ctx.y = y.current;
-      ctx.width = gridWidth.current;
-      ctx.height = gridHeight.current;
-    },
-    onActive: (event, ctx) => {
-      const newGridWidth = clamp(
-        event.translationX + ctx.width,
-        minWidth,
-        maxWidth - x.current,
-      );
-      const newGridHeight = clamp(
-        event.translationY + ctx.height,
-        minHeight,
-        maxHeight - y.current,
-      );
-      gridHeight.current = newGridHeight;
-      gridWidth.current = newGridWidth;
-    },
-  });
+  const createCornerHandler = (
+    isNegativeX: boolean,
+    isNegativeY: boolean,
+    updateX: boolean,
+    updateY: boolean,
+  ) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useGestureHandler({
+      onStart: updateContext,
+      onActive: event => {
+        'worklet';
+        const { newWidth, newHeight } = calculateNewDimensions(
+          event.translationX,
+          event.translationY,
+          isNegativeX,
+          isNegativeY,
+        );
+        gridWidth.value = newWidth;
+        gridHeight.value = newHeight;
+        if (updateX) {
+          x.value = clamp(
+            event.translationX + ctx.value.x,
+            0,
+            maxWidth - newWidth,
+          );
+        }
+        if (updateY) {
+          y.value = clamp(
+            event.translationY + ctx.value.y,
+            0,
+            maxHeight - newHeight,
+          );
+        }
+      },
+    });
+  };
 
   return {
-    onDragTopLeft,
-    onDragTopRight,
-    onDragBottomLeft,
-    onDragBottomRight,
+    onDragTopLeft: createCornerHandler(true, true, true, true),
+    onDragTopRight: createCornerHandler(false, true, false, true),
+    onDragBottomLeft: createCornerHandler(true, false, true, false),
+    onDragBottomRight: createCornerHandler(false, false, false, false),
   };
 };
 

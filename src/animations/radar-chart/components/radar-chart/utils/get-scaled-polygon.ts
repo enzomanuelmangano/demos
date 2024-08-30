@@ -45,6 +45,7 @@ const getScaledPolygonPath = ({
   centerY,
   radius,
 }: GetScaledPolygonPath) => {
+  'worklet';
   // Creating a Skia path for the chart canvas
   const chartCanvas = Skia.Path.Make();
 

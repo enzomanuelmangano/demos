@@ -1,10 +1,17 @@
-import type { SkiaValue } from '@shopify/react-native-skia';
-import { useComputedValue, vec } from '@shopify/react-native-skia';
+import { vec } from '@shopify/react-native-skia';
+import type { SharedValue } from 'react-native-reanimated';
+import {
+  runOnJS,
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+} from 'react-native-reanimated';
+import { useCallback } from 'react';
 
 import { center } from '../constants';
 
 type UseVecParams = {
-  clock: SkiaValue;
+  clock: SharedValue<number>;
   frequency: number;
   amplitude: number;
   noise: (x: number, y: number) => number;
@@ -17,12 +24,21 @@ type UseVecParams = {
 // and returns the x and y coordinates of the circle.
 
 const useVec = ({ clock, frequency, amplitude, noise }: UseVecParams) => {
-  const firstVecNoise = useComputedValue(() => {
-    const x = noise(clock.current / frequency, 0);
-    const y = noise(0, clock.current / frequency);
+  const vecNoise = useSharedValue(vec(0, 0));
 
-    return vec(amplitude * x, amplitude * y);
-  }, [clock]);
+  const updateVecNoise = useCallback(() => {
+    const x = noise(clock.value / frequency, 0);
+    const y = noise(0, clock.value / frequency);
+    vecNoise.value = vec(amplitude * x, amplitude * y);
+  }, [clock, frequency, amplitude, noise, vecNoise]);
+
+  useAnimatedReaction(
+    () => clock.value,
+    () => {
+      runOnJS(updateVecNoise)();
+    },
+    [updateVecNoise],
+  );
 
   // The hook uses the useComputedValue hook to create a computed value
   // that is dependent on the clock. The computed value is a vector
@@ -31,13 +47,13 @@ const useVec = ({ clock, frequency, amplitude, noise }: UseVecParams) => {
   // by the amplitude to create a larger value. The vector is then added
   // to the center of the screen to create a vector that is centered
   // on the screen.
-  const cx = useComputedValue(() => {
-    return firstVecNoise.current.x + center.x;
-  }, [firstVecNoise]);
+  const cx = useDerivedValue(() => {
+    return vecNoise.value.x + center.x;
+  }, [vecNoise]);
 
-  const cy = useComputedValue(() => {
-    return firstVecNoise.current.y + center.y;
-  }, [firstVecNoise]);
+  const cy = useDerivedValue(() => {
+    return vecNoise.value.y + center.y;
+  }, [vecNoise]);
 
   return {
     cx,

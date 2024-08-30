@@ -6,15 +6,13 @@ import {
   Extrapolate,
   Group,
   Paint,
-  Selector,
   Text,
   interpolate,
-  useComputedValue,
   useFont,
-  useValue,
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import { useDerivedValue } from 'react-native-reanimated';
 
 import { usePickerLayout } from './hooks/use-picker-layout';
 
@@ -39,13 +37,13 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, [width, height]);
 
   // Computed value for the radius of the metaball
-  const metaballRadius = useComputedValue(() => {
+  const metaballRadius = useDerivedValue(() => {
     return (height - DISTANCE_BETWEEN_SLIDER_AND_METABALL / 2) / 4;
   }, [height]);
 
   // Computed value for the radius of the picker circle text container
-  const pickerCircleTextContainerRadius = useComputedValue(() => {
-    return metaballRadius.current * 0.7;
+  const pickerCircleTextContainerRadius = useDerivedValue(() => {
+    return metaballRadius.value * 0.7;
   }, [metaballRadius]);
 
   // That's the trick behind the "Metaball effect"
@@ -64,42 +62,35 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, []);
 
   // Computed value for the height of the slider
-  const sliderHeight = useComputedValue(() => {
+  const sliderHeight = useDerivedValue(() => {
     return (
-      height - metaballRadius.current * 2 - DISTANCE_BETWEEN_SLIDER_AND_METABALL
+      height - metaballRadius.value * 2 - DISTANCE_BETWEEN_SLIDER_AND_METABALL
     );
   }, [height, metaballRadius]);
 
-  // State values for tracking sliding and picker position
-  const isSliding = useValue(false);
-  const pickerX = useValue(0);
-  const pickerY = useValue(0);
-
-  // Gesture handler for handling slider interactions
-  const gestureHandler = useGestureHandler<{
-    x: number;
-  }>({
-    onStart: ({ x }) => {
-      pickerX.current = x;
-      // This property is used in the usePickerLayout hook
-      // to move the picker circle up and down
-      isSliding.current = true;
-    },
-    onActive: ({ x }) => {
-      pickerX.current = x;
-    },
-    onEnd: () => {
-      isSliding.current = false;
-    },
-  });
-
   // Custom hook for layout calculations
-  const { clampedPickerX } = usePickerLayout({
-    isSliding,
-    pickerX,
-    pickerY,
+  const { clampedPickerX, isSliding, pickerX, pickerY } = usePickerLayout({
     radius: metaballRadius,
     sliderSize: size,
+  });
+
+  // Gesture handler for handling slider interactions
+  const gestureHandler = useGestureHandler({
+    onStart: ({ x }) => {
+      'worklet';
+      pickerX.value = x;
+      // This property is used in the usePickerLayout hook
+      // to move the picker circle up and down
+      isSliding.value = true;
+    },
+    onActive: ({ x }) => {
+      'worklet';
+      pickerX.value = x;
+    },
+    onEnd: () => {
+      'worklet';
+      isSliding.value = false;
+    },
   });
 
   // Font size for the picker circle text
@@ -117,12 +108,12 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   // The ReText component from Redash or the AnimeableText from react-native-animateable-text
   // But in this case we are using the Text component from react-native-skia
   // And that works in the same way but without the usage of useAnimatedProps
-  const pickerCircleText = useComputedValue(() => {
+  const pickerCircleText = useDerivedValue(() => {
     return Math.round(
       interpolate(
-        clampedPickerX.current,
+        clampedPickerX.value,
         // Input range: radius -> width - radius (Since the picker circle can't go outside the slider)
-        [metaballRadius.current, size.width - metaballRadius.current],
+        [metaballRadius.value, size.width - metaballRadius.value],
         // 0 is the min value of the slider
         // 100 is the max value of the slider
         [0, 100],
@@ -132,13 +123,19 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, [clampedPickerX, metaballRadius, size]);
 
   // Computed value for the X position of the picker text
-  const pickerTextX = useComputedValue(() => {
+  const pickerTextX = useDerivedValue(() => {
     if (!font) return 0;
     // That's the trick for centering the text inside the picker circle
-    return (
-      clampedPickerX.current - font.getTextWidth(pickerCircleText.current) / 2
-    );
+    return clampedPickerX.value - font.getTextWidth(pickerCircleText.value) / 2;
   }, [clampedPickerX, pickerCircleTextContainerRadius, font, pickerCircleText]);
+
+  const derivedPickerY = useDerivedValue(() => {
+    return metaballRadius.value * 2 + DISTANCE_BETWEEN_SLIDER_AND_METABALL;
+  }, [metaballRadius]);
+
+  const textY = useDerivedValue(() => {
+    return pickerY.value + fontSize / 3;
+  }, [derivedPickerY, fontSize]);
 
   // Rendering the FluidSlider component
   return (
@@ -149,10 +146,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
       <Group layer={layer}>
         <Touchable.RoundedRect
           x={0}
-          y={Selector(
-            metaballRadius,
-            val => val * 2 + DISTANCE_BETWEEN_SLIDER_AND_METABALL,
-          )}
+          y={derivedPickerY}
           width={size.width}
           height={sliderHeight}
           r={5}
@@ -179,7 +173,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
           // The point is that I need to center the text inside the picker circle
           // And I need a way to get the "fontHeight" / 2 (to center the text vertically)
           // Unfortunately I didn't find a way to get the font height
-          y={Selector(pickerY, val => val + fontSize / 3)}
+          y={textY}
           text={pickerCircleText}
           font={font}
         />

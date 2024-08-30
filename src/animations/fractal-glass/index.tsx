@@ -143,7 +143,7 @@ const App = () => {
               r={CircleRadius}
               color={circleColor}
               clip={rect(x, y, width, height)}>
-              <Blur blur={25} mode={'mirror'} />
+              <Blur blur={25} mode={'decal'} />
             </Circle>
           </Mask>
         </Group>

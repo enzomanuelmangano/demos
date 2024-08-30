@@ -1,8 +1,8 @@
 // Importing the necessary dependencies and types
-import { useComputedValue, useValue } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
+import { useSharedValue, useDerivedValue } from 'react-native-reanimated';
 
 // Custom hook for calculating canvas layout
 const useCanvasLayout = (canvasStyle: StyleProp<ViewStyle>) => {
@@ -21,13 +21,13 @@ const useCanvasLayout = (canvasStyle: StyleProp<ViewStyle>) => {
   }, [canvasStyle]);
 
   // Creating a mutable value for the canvas size using the `useValue` hook
-  const size = useValue({ width: canvasSize, height: canvasSize });
+  const size = useSharedValue({ width: canvasSize, height: canvasSize });
 
   // Calculating the center X coordinate of the canvas using the `useComputedValue` hook
-  const centerX = useComputedValue(() => size.current.width / 2, [size]);
+  const centerX = useDerivedValue(() => size.value.width / 2, [size]);
 
   // Calculating the center Y coordinate of the canvas using the `useComputedValue` hook
-  const centerY = useComputedValue(() => size.current.height / 2, [size]);
+  const centerY = useDerivedValue(() => size.value.height / 2, [size]);
 
   // Returning an object with the canvas size, center X, and center Y
   return {

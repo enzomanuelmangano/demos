@@ -1,5 +1,6 @@
-import type { SkFont, SkiaValue } from '@shopify/react-native-skia';
+import type { SkFont } from '@shopify/react-native-skia';
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 
 export type RadarDataType<K extends string> = {
   color?: string;
@@ -7,7 +8,7 @@ export type RadarDataType<K extends string> = {
 }[];
 
 export type RadarChartProps<K extends string> = {
-  data: Readonly<SkiaValue<RadarDataType<K>>> | Readonly<RadarDataType<K>>;
+  data: Readonly<SharedValue<RadarDataType<K>>> | Readonly<RadarDataType<K>>;
   strokeWidth?: number;
   internalLayers?: number;
   showGrid?: boolean;

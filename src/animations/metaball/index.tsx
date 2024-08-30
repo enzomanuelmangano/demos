@@ -9,55 +9,60 @@ import {
   Path,
   Skia,
   SweepGradient,
-  useComputedValue,
-  useValue,
   vec,
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 const RADIUS = 80;
 
 export function Metaball() {
   const { width, height } = useWindowDimensions();
 
-  const firstCx = useValue(width / 2);
-  const firstCy = useValue(height / 2);
+  const firstCx = useSharedValue(width / 2);
+  const firstCy = useSharedValue(height / 2);
 
-  const circleGesture = useGestureHandler<{
-    x: number;
-    y: number;
-  }>({
-    onStart: (_, context) => {
-      context.x = firstCx.current;
-      context.y = firstCy.current;
+  const context = useSharedValue({
+    x: width / 2,
+    y: height / 2,
+  });
+  const circleGesture = useGestureHandler({
+    onStart: _ => {
+      'worklet';
+      context.value = {
+        x: firstCx.value,
+        y: firstCy.value,
+      };
     },
-    onActive: ({ translationX, translationY }, context) => {
-      firstCx.current = context.x + translationX;
-      firstCy.current = context.y + translationY;
+    onActive: ({ translationX, translationY }) => {
+      'worklet';
+      firstCx.value = context.value.x + translationX;
+      firstCy.value = context.value.y + translationY;
     },
   });
 
-  const secondCx = useValue(width / 2);
-  const secondCy = useValue(height / 2);
+  const secondCx = useSharedValue(width / 2);
+  const secondCy = useSharedValue(height / 2);
 
-  const secondCircleGesture = useGestureHandler<{
-    x: number;
-    y: number;
-  }>({
-    onStart: (_, context) => {
-      context.x = secondCx.current;
-      context.y = secondCy.current;
+  const secondCircleGesture = useGestureHandler({
+    onStart: _ => {
+      'worklet';
+      context.value = {
+        x: secondCx.value,
+        y: secondCy.value,
+      };
     },
-    onActive: ({ translationX, translationY }, context) => {
-      secondCx.current = context.x + translationX;
-      secondCy.current = context.y + translationY;
+    onActive: ({ translationX, translationY }) => {
+      'worklet';
+      secondCx.value = context.value.x + translationX;
+      secondCy.value = context.value.y + translationY;
     },
   });
 
-  const path = useComputedValue(() => {
+  const path = useDerivedValue(() => {
     const circles = Skia.Path.Make();
-    circles.addCircle(firstCx.current, firstCy.current, RADIUS);
-    circles.addCircle(secondCx.current, secondCy.current, RADIUS);
+    circles.addCircle(firstCx.value, firstCy.value, RADIUS);
+    circles.addCircle(secondCx.value, secondCy.value, RADIUS);
     circles.simplify();
     return circles;
   }, [firstCx, firstCy, secondCx, secondCy]);

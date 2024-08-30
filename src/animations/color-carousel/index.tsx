@@ -1,17 +1,14 @@
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Canvas, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
 import {
-  Canvas,
-  RadialGradient,
-  Rect,
-  vec,
-  useComputedValue,
-} from '@shopify/react-native-skia';
-import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { Carousel } from './components/carousel';
 import { BACKGROUND_COLOR, data, windowWidth } from './constants';
-import { useInterpolatedColor } from './hooks/use-interpolated-color';
 
 // Feel free to use any odd number for the max rendered items
 // I've used 5 since I like the result :)
@@ -22,16 +19,12 @@ export const ColorCarousel = () => {
   const activeIndex = useSharedValue(INITIAL_ACTIVE_INDEX);
 
   const radialBackgroundActiveColor = useDerivedValue(() => {
-    return data[activeIndex.value]?.accentColor ?? BACKGROUND_COLOR;
+    return withTiming(data[activeIndex.value]?.accentColor ?? BACKGROUND_COLOR);
   }, []);
 
-  const { skiaColor: skRadialBackgroundActiveColor } = useInterpolatedColor(
-    radialBackgroundActiveColor,
-  );
-
-  const radialGradientColors = useComputedValue(() => {
-    return [skRadialBackgroundActiveColor.current, BACKGROUND_COLOR];
-  }, [skRadialBackgroundActiveColor]);
+  const radialGradientColors = useDerivedValue(() => {
+    return [radialBackgroundActiveColor.value, BACKGROUND_COLOR];
+  }, [radialBackgroundActiveColor]);
 
   return (
     <View style={styles.container}>

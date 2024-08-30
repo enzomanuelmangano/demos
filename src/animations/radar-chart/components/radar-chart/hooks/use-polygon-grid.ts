@@ -1,12 +1,13 @@
 // Importing the necessary dependencies and types
-import type { SkiaValue } from '@shopify/react-native-skia';
-import { Skia, useComputedValue } from '@shopify/react-native-skia';
+import type { SharedValue } from 'react-native-reanimated';
+import { useDerivedValue } from 'react-native-reanimated';
+import { Skia } from '@shopify/react-native-skia';
 
 // Defining the type for the parameters of the hook
 type UsePolygonGridParams = {
-  radius: SkiaValue<number>;
-  centerX: SkiaValue<number>;
-  centerY: SkiaValue<number>;
+  radius: SharedValue<number>;
+  centerX: SharedValue<number>;
+  centerY: SharedValue<number>;
   n: number;
 };
 
@@ -18,7 +19,7 @@ const usePolygonGrid = ({
   n,
 }: UsePolygonGridParams) => {
   // Calculating the connected lines from the center using the `useComputedValue` hook
-  const internalConnectedLinesFromCenter = useComputedValue(() => {
+  const internalConnectedLinesFromCenter = useDerivedValue(() => {
     // Creating an array of length `n` filled with the value `1`
     const externalPoints = new Array(n).fill(1) as 1[];
 
@@ -34,11 +35,11 @@ const usePolygonGrid = ({
       const angle = index * angleStep;
 
       // Calculating the coordinates of the current point based on the center, angle, and radius
-      const pointX = centerX.current + Math.sin(angle) * radius.current * value;
-      const pointY = centerY.current - Math.cos(angle) * radius.current * value;
+      const pointX = centerX.value + Math.sin(angle) * radius.value * value;
+      const pointY = centerY.value - Math.cos(angle) * radius.value * value;
 
       // Moving the path to the center point
-      chartCanvas.moveTo(centerX.current, centerY.current);
+      chartCanvas.moveTo(centerX.value, centerY.value);
 
       // Drawing a line from the center to the current point
       chartCanvas.lineTo(pointX, pointY);
