@@ -4,12 +4,15 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "yarn eslint --fix 'src/**/*.ts' 'src/**/*.tsx'",
-    "prettier-format": "prettier --write 'src/**/*.ts' 'src/**/*.tsx'"
+    "prettier-format": "prettier --write 'src/**/*.ts' 'src/**/*.tsx'",
+    "prebuild": "npx expo prebuild --clean",
+    "build:ios": "eas build --profile production --platform=ios",
+    "submit:ios": "eas submit --profile production --platform=ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
@@ -51,7 +54,6 @@
     "@types/color": "^3.0.6",
     "@types/qrcode": "^1.5.5",
     "@types/react": "~18.2.79",
-    "@types/react-native": "~0.70.6",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
     "eslint": "^8.56.0",

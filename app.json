@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "thankyou",
-    "slug": "thankyou",
+    "name": "Thank You",
+    "slug": "thank-you",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,24 +14,29 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.reactiive.app",
+      "entitlements": {
+        "aps-environment": "development"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.reactiive.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-asset",
-      "expo-font"
-    ]
+    "plugins": ["expo-asset", "expo-font"],
+    "extra": {
+      "eas": {
+        "projectId": "eb1bbf17-5fb9-4743-bccf-3fbcbc95176a"
+      }
+    }
   }
 }
