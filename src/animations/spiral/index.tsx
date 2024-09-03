@@ -19,11 +19,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 
-const { width, height } = Dimensions.get('window');
-
-const MAX_DISTANCE_FROM_CENTER = Math.sqrt(
-  (width / 2) ** 2 + (height / 2) ** 2,
-);
+const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 // The logarithmic spiral will depend on the index
 const logarithmicSpiral = ({
@@ -42,8 +38,16 @@ const logarithmicSpiral = ({
   };
 };
 
-const Spiral = () => {
+const Spiral = (dimensions?: { width: number; height: number }) => {
+  const { width, height } = dimensions ?? {
+    width: windowWidth,
+    height: windowHeight,
+  };
   const progress = useSharedValue(0);
+
+  const MAX_DISTANCE_FROM_CENTER = Math.sqrt(
+    (width / 2) ** 2 + (height / 2) ** 2,
+  );
 
   const finalAngle = useSharedValue(Math.PI * Math.random());
 

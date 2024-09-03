@@ -1,8 +1,20 @@
 {
   "cli": {
-    "version": ">= 11.0.2"
+    "version": ">= 11.0.2",
+    "appVersionSource": "remote"
   },
   "build": {
+    "base": {
+      "ios": {
+        "image": "macos-ventura-13.6-xcode-15.2",
+        "cocoapods": "1.15.2",
+        "autoIncrement": "buildNumber"
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal"
@@ -13,6 +25,12 @@
     "production": {}
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleTeamId": "W3N4N47454",
+        "ascAppId": "6670311735",
+        "bundleIdentifier": "com.reactiive.app"
+      }
+    }
   }
 }

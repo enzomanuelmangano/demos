@@ -59,6 +59,36 @@ import { TelegramThemeSwitch } from '../animations/telegram-theme-switch';
 import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
 import { Toast } from '../animations/toast';
 import { TwitterTabBar } from '../animations/twitter-tab-bar';
+import { FibonacciShader } from '../animations/fibonacci-shader';
+import { FamilyNumberInput } from '../animations/family-number-input';
+import { BalanceSlider } from '../animations/balance-slider';
+import { FibonacciShaderGrid } from '../animations/fibonacci-shader-grid';
+import { VerificationCode } from '../animations/verification-code';
+import { EmailDemo } from '../animations/email-demo';
+import { ScrollTransition3D } from '../animations/3d-scroll-transition';
+import { StaggeredCardNumber } from '../animations/staggered-card-number';
+import { StackedBottomSheet } from '../animations/stacked-bottom-sheet';
+import { GLTransitions } from '../animations/gl-transitions';
+import { PrequelSlider } from '../animations/prequel-slider';
+import { EmptyQRCode } from '../animations/empty-qrcode';
+import { InfiniteCarousel } from '../animations/infinite-carousel';
+import { TwodosSlide } from '../animations/twodos-slide';
+import { WheelPicker } from '../animations/wheel-picker';
+import { StackedList } from '../animations/stacked-list';
+import { GeometryButton } from '../animations/geometry-button';
+import { RecordButton } from '../animations/record-button';
+import { GridVisualizer } from '../animations/grid-visualizer';
+import { IMessageStack } from '../animations/imessage-stack';
+import { AtlasButton } from '../animations/atlas-button';
+import { CheckboxInteractions } from '../animations/checkbox-interactions';
+import { InteractionAppearance } from '../animations/interaction-appearance';
+import { DotSheet } from '../animations/dot-sheet';
+import { CoverflowCarousel } from '../animations/coverflow-carousel';
+import { PaperFolding } from '../animations/paper';
+import { MilesBarChart } from '../animations/miles-bar-chart';
+import { Steps } from '../animations/steps';
+import { PomodoroTimer } from '../animations/pomodoro-timer';
+import { ClerkToast } from '../animations/clerk-toast';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -416,16 +446,226 @@ const Screens = [
     component: DragToSort,
     icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
   },
-].map((item, index) => {
-  return {
-    ...item,
-    id: index,
-    component: withCustomBackIcon({
-      Component: item.component,
-      backIconDark: item.backIconDark,
-      iconMarginTop: item.iconMarginTop,
-    }),
-  };
-});
+  {
+    name: 'Fibonacci Shader',
+    route: 'FibonacciShader',
+    component: FibonacciShader,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Family Number Input',
+    route: 'FamilyNumberInput',
+    component: FamilyNumberInput,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Balance Slider',
+    route: 'BalanceSlider',
+    component: BalanceSlider,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Fibonacci Shader Grid',
+    route: 'FibonacciShaderGrid',
+    component: FibonacciShaderGrid,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Verification Code',
+    route: 'VerificationCode',
+    component: VerificationCode,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Email Demo',
+    route: 'EmailDemo',
+    component: EmailDemo,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: '3D Scroll Transition',
+    route: 'ScrollTransition3D',
+    component: ScrollTransition3D,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Staggered Card Number',
+    route: 'StaggeredCardNumber',
+    component: StaggeredCardNumber,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Stacked Bottom Sheet',
+    route: 'StackedBottomSheet',
+    component: StackedBottomSheet,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'GL Transitions',
+    route: 'GLTransitions',
+    component: GLTransitions,
+    iconMarginTop: 100,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Prequel Slider',
+    route: 'PrequelSlider',
+    component: PrequelSlider,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Empty QR Code',
+    route: 'EmptyQRCode',
+    component: EmptyQRCode,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Infinite Carousel',
+    route: 'InfiniteCarousel',
+    component: InfiniteCarousel,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Twodos Slide',
+    route: 'TwodosSlide',
+    component: TwodosSlide,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Wheel Picker',
+    route: 'WheelPicker',
+    component: WheelPicker,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Stacked List',
+    route: 'StackedList',
+    component: StackedList,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Geometry Button',
+    route: 'GeometryButton',
+    component: GeometryButton,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Record Button',
+    route: 'RecordButton',
+    component: RecordButton,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Grid Visualizer',
+    route: 'GridVisualizer',
+    component: GridVisualizer,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'iMessageStack',
+    route: 'IMessageStack',
+    component: IMessageStack,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Atlas Button',
+    route: 'AtlasButton',
+    component: AtlasButton,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Checkbox Interactions',
+    route: 'CheckboxInteractions',
+    component: CheckboxInteractions,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Interaction Appearance',
+    route: 'InteractionAppearance',
+    component: InteractionAppearance,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Dot Sheet',
+    route: 'DotSheet',
+    component: DotSheet,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Coverflow Carousel',
+    route: 'CoverflowCarousel',
+    component: CoverflowCarousel,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Paper Folding',
+    route: 'PaperFolding',
+    component: PaperFolding,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Miles Bar Chart',
+    route: 'MilesBarChart',
+    component: MilesBarChart,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Steps',
+    route: 'Steps',
+    component: Steps,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Pomodoro Timer',
+    route: 'PomodoroTimer',
+    component: PomodoroTimer,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Clerk Toast',
+    route: 'ClerkToast',
+    component: ClerkToast,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+  },
+]
+  .map((item, index) => {
+    return {
+      ...item,
+      id: index,
+      component: withCustomBackIcon({
+        Component: item.component,
+        backIconDark: item.backIconDark,
+        iconMarginTop: item.iconMarginTop,
+      }),
+    };
+  })
+  .reverse();
 
 export { Screens };

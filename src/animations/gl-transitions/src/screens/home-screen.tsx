@@ -1,0 +1,158 @@
+import { useNavigation } from '@react-navigation/native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  LinearTransition,
+} from 'react-native-reanimated';
+import { AntDesign } from '@expo/vector-icons';
+import { StatusBar } from 'expo-status-bar';
+import { useMemo } from 'react';
+import MasonryList from '@react-native-seoul/masonry-list';
+
+import { useGLTransition } from '../providers/gl-transitions';
+import { Palette } from '../constants/theme';
+import { PressableScale } from '../components/pressable-scale';
+import type { NoteType } from '../atoms/notes';
+import { useNotes } from '../atoms/notes';
+
+export const HomeScreen = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigation = useNavigation<any>();
+  const [notes] = useNotes();
+
+  const { prepareTransition } = useGLTransition();
+
+  const { top: safeTop, bottom: safeBottom } = useSafeAreaInsets();
+
+  const gap = 35 / 3;
+
+  const ListHeaderComponent = useMemo(() => {
+    return (
+      <View style={styles.listHeaderContainer}>
+        <View style={styles.fillStart}>
+          <Text
+            style={[
+              {
+                color: Palette.primary,
+              },
+              styles.headerTitle,
+            ]}>
+            Add Note
+          </Text>
+        </View>
+        <PressableScale
+          onPress={async () => {
+            await prepareTransition();
+            navigation.navigate('AddNote');
+          }}
+          style={[
+            styles.button,
+            {
+              backgroundColor: Palette.primary,
+            },
+          ]}>
+          <AntDesign name="plus" size={24} color="white" />
+        </PressableScale>
+      </View>
+    );
+  }, [navigation, prepareTransition]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: Palette.background }}>
+      <StatusBar style="dark" />
+      {/* 
+        I used the MasonryList from '@react-native-seoul/masonry-list'
+        because the one from @shopify/flash-list was a bit bugged with two columns
+        And the layout animations were not working properly. 
+        https://github.com/Shopify/flash-list/issues/876
+       */}
+      <MasonryList
+        data={notes}
+        numColumns={2}
+        ListHeaderComponent={ListHeaderComponent}
+        contentContainerStyle={{
+          paddingTop: safeTop + 8,
+          paddingBottom: safeBottom,
+          backgroundColor: Palette.background,
+        }}
+        showsVerticalScrollIndicator={false}
+        keyExtractor={item => item.id}
+        // MasonryList is not retrieving the correct type for renderItem
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        renderItem={({ item, i: index }: { item: NoteType; i: number }) => {
+          return (
+            <Animated.View
+              layout={LinearTransition}
+              key={item.id}
+              exiting={FadeOutDown}
+              entering={FadeInDown.delay(index * 100)}
+              style={[
+                {
+                  marginLeft: gap,
+                  marginRight: index % 2 !== 0 ? gap : 0,
+                  marginBottom: gap,
+                  backgroundColor: Palette.surface,
+                },
+                styles.listItem,
+              ]}>
+              <Text
+                style={[
+                  {
+                    color: Palette.text,
+                  },
+                  styles.listItemText,
+                ]}>
+                {item.title}
+              </Text>
+            </Animated.View>
+          );
+        }}
+      />
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  fillStart: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  button: {
+    height: 48,
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 24,
+  },
+  listItem: {
+    borderRadius: 10,
+    shadowColor: 'black',
+    shadowOffset: {
+      width: 0,
+      height: 0,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+  },
+  listItemText: {
+    padding: 15,
+    fontSize: 16,
+    fontWeight: '600',
+    lineHeight: 24,
+  },
+  listHeaderContainer: {
+    height: 50,
+    marginBottom: 16,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    fontWeight: '600',
+  },
+});

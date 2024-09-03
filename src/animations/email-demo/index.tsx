@@ -1,0 +1,197 @@
+import { StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialIcons } from '@expo/vector-icons';
+import Animated, { useSharedValue } from 'react-native-reanimated';
+import { useCallback } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+
+// Import custom components and constants
+import { InteractiveList } from './components/interactive-list';
+import { PressableScale } from './components/pressable-scale';
+import { INITIAL_ITEMS } from './constants';
+import { useAnimatedShake } from './hooks/use-animated-shake';
+import { ListItem } from './components/list-item';
+
+// Constants to define item height and margin
+const ITEM_HEIGHT = 100;
+const ITEM_MARGIN = 10;
+
+// Main App component
+const EmailDemo = () => {
+  // Fetch safe area insets using useSafeAreaInsets hook
+  const { bottom: safeBottom, top: safeTop } = useSafeAreaInsets();
+
+  // Define shared value for erased items count
+  // At the beginning I was thinking to use a state, but the
+  // shared value is a better option to handle the animation
+  // since we're going to avoid useless re-renders
+  const erasedItems = useSharedValue(0);
+
+  // Custom hook to handle animation logic for restore and delete buttons
+  // This hook is EXTREMELY useful (and reusable) to handle shake animations
+  // I've used it also in the Verification Code Input component animation
+  const { shake: shakeRestore, rShakeStyle: rShakeRestoreStyle } =
+    useAnimatedShake();
+  const { shake: shakeDelete, rShakeStyle: rShakeDeleteStyle } =
+    useAnimatedShake();
+
+  // Callback function for delete button press
+  const onDelete = useCallback(() => {
+    // Check if all items are already erased, trigger shake animation if so
+    if (erasedItems.value >= INITIAL_ITEMS.length) {
+      shakeDelete();
+      return;
+    }
+    // Increment erased items count
+    erasedItems.value = erasedItems.value + 1;
+  }, [erasedItems, shakeDelete]);
+
+  // Callback function for restore button press
+  const onRestore = useCallback(() => {
+    // Check if no item is erased, trigger shake animation if so
+    if (erasedItems.value <= 0) {
+      shakeRestore();
+      return;
+    }
+    // Decrement erased items count
+    erasedItems.value = erasedItems.value - 1;
+  }, [erasedItems, shakeRestore]);
+
+  return (
+    <>
+      {/* Main container */}
+      <View style={styles.container}>
+        {/* Status bar */}
+        <StatusBar style="auto" />
+
+        {/* Gradient overlay at the top */}
+        <LinearGradient
+          colors={['rgba(255,255,255,1)', 'rgba(255,255,255,0)']}
+          start={[0, 0]}
+          end={[0, 1]}
+          pointerEvents="none"
+          style={[
+            styles.topGradient,
+            {
+              height: safeTop * 1.5, // Adjust height based on safe area top
+            },
+          ]}
+        />
+
+        {/* Interactive list of items */}
+        <InteractiveList
+          data={INITIAL_ITEMS} // Initial data for list
+          itemHeight={ITEM_HEIGHT + ITEM_MARGIN} // Height of each item including margin
+          amountToShift={erasedItems} // Shared value representing erased items count
+          itemContainerStyle={styles.listContainerItem} // Custom style for item container
+          contentContainerStyle={{
+            paddingBottom: ITEM_HEIGHT + ITEM_MARGIN, // Padding at bottom to prevent items from being hidden behind buttons
+            paddingTop: safeTop, // Padding at top to avoid overlapping with status bar
+          }}
+          renderItem={({ item }) => {
+            // Render each item using ListItem component
+            return <ListItem item={item} itemHeight={ITEM_HEIGHT} />;
+          }}
+        />
+      </View>
+
+      {/* Gradient overlay at the bottom */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
+        start={[0, 0]}
+        end={[0, 1]}
+        pointerEvents="none"
+        style={styles.bottomGradient}
+      />
+
+      {/* Container for restore and delete buttons */}
+      <View
+        style={[
+          styles.buttonsContainer,
+          {
+            bottom: safeBottom + 10, // Position buttons at bottom with safe area padding
+            zIndex: 2, // Ensure buttons overlay other components
+          },
+        ]}>
+        {/* Restore button */}
+        <Animated.View style={rShakeRestoreStyle}>
+          <PressableScale
+            onPress={onRestore} // Callback function for button press
+            style={[
+              styles.floatingButton, // Basic button style
+              {
+                backgroundColor: '#0078CD', // Background color for restore button
+              },
+            ]}>
+            {/* Icon for restore button */}
+            <MaterialIcons name="restore" size={24} color="white" />
+          </PressableScale>
+        </Animated.View>
+
+        {/* Delete button */}
+        <Animated.View style={rShakeDeleteStyle}>
+          <PressableScale
+            onPress={onDelete} // Callback function for button press
+            style={[
+              styles.floatingButton, // Basic button style
+              {
+                backgroundColor: '#CD0000', // Background color for delete button
+              },
+            ]}>
+            {/* Icon for delete button */}
+            <MaterialIcons name="delete" size={24} color="white" />
+          </PressableScale>
+        </Animated.View>
+      </View>
+    </>
+  );
+};
+
+// Stylesheet for the components
+const styles = StyleSheet.create({
+  container: {
+    flex: 1, // Take up all available space
+  },
+  floatingButton: {
+    height: 64, // Fixed height
+    aspectRatio: 1, // Maintain aspect ratio
+    borderRadius: 32, // Circular shape
+    justifyContent: 'center', // Center content vertically
+    alignItems: 'center', // Center content horizontally
+  },
+  buttonsContainer: {
+    position: 'absolute', // Position relative to container
+    left: 0, // Align to left edge
+    right: 0, // Align to right edge
+    justifyContent: 'space-evenly', // Distribute space between buttons
+    marginHorizontal: '20%', // Apply horizontal margin
+    flexDirection: 'row', // Arrange buttons horizontally
+  },
+  topGradient: {
+    position: 'absolute', // Position relative to container
+    left: 0, // Align to left edge
+    right: 0, // Align to right edge
+    top: 0, // Align to top edge
+    zIndex: 1, // Ensure overlay over other components
+  },
+  bottomGradient: {
+    position: 'absolute', // Position relative to container
+    left: 0, // Align to left edge
+    right: 0, // Align to right edge
+    bottom: 0, // Align to bottom edge
+    height: 150, // Fixed height
+    zIndex: 1, // Ensure overlay over other components
+  },
+  listContainerItem: {
+    height: ITEM_HEIGHT, // Fixed height for each item
+    backgroundColor: 'transparent', // Transparent background
+    marginBottom: ITEM_MARGIN, // Margin at bottom of each item
+    width: '95%', // 95% of container width
+    alignSelf: 'center', // Center items horizontally
+    borderRadius: 10, // Rounded corners
+  },
+});
+
+// Export
+export { EmailDemo };
