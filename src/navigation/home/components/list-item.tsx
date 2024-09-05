@@ -59,8 +59,9 @@ const ListItem: React.FC<ListItemProps> = React.memo(
           <Text
             style={{
               fontSize: 16,
-              fontWeight: '400',
               marginLeft: 10,
+              color: 'white',
+              fontFamily: 'FiraCode-Regular',
             }}>
             {item.name}
           </Text>
@@ -73,8 +74,9 @@ const ListItem: React.FC<ListItemProps> = React.memo(
 const styles = StyleSheet.create({
   container: {
     height: 80,
-    backgroundColor: '#FFF',
-    borderRadius: 10,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 15,
+    borderCurve: 'continuous',
     shadowColor: '#000',
     elevation: 2,
     shadowOffset: {
@@ -84,7 +86,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     flex: 1,
-    marginHorizontal: 20,
+    marginHorizontal: 15,
     marginTop: 20,
     paddingHorizontal: 15,
     flexDirection: 'row',

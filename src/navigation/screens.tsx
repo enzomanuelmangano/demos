@@ -93,7 +93,7 @@ import { ClerkToast } from '../animations/clerk-toast';
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
 const ICON_SIZE = 24;
-const ICON_COLOR = 'black';
+const ICON_COLOR = 'white';
 const DefaultIconProps = {
   size: ICON_SIZE,
   color: ICON_COLOR,
