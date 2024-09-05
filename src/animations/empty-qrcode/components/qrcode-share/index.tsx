@@ -17,7 +17,7 @@ import { useActiveQRCode } from './hooks/use-active-qrcode';
 
 // Import the custom font
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const SFProRoundedBold = require('../../assets/fonts/SF-Pro-Rounded-Bold.otf');
+const SFProRoundedBold = require('../../../../../assets/fonts/SF-Pro-Rounded-Bold.otf');
 
 const DEFAULT_FONT_SIZE = 110;
 const DEFAULT_QRCODE_SIZE = 150;

@@ -23,8 +23,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 // Import the custom font
+// TODO: Improve
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const SFProRoundedBold = require('../assets/fonts/SF-Pro-Rounded-Bold.otf');
+const SFProRoundedBold = require('../../../../assets/fonts/SF-Pro-Rounded-Bold.otf');
 
 // Define the BlurredListItem functional component
 export const BlurredListItem: React.FC<{

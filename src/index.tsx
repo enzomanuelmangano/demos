@@ -2,13 +2,16 @@ import { StyleSheet, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 
 import { MainNavigation } from './navigation';
+import { FontsProvider } from './components/fonts-provider';
 
 const App = () => {
   return (
     <View style={styles.container}>
-      <NavigationContainer>
-        <MainNavigation />
-      </NavigationContainer>
+      <FontsProvider>
+        <NavigationContainer>
+          <MainNavigation />
+        </NavigationContainer>
+      </FontsProvider>
     </View>
   );
 };

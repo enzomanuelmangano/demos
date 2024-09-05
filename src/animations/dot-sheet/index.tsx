@@ -3,16 +3,13 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
 import { App } from './src';
-import { FontsProvider } from './src/providers/fonts-provider';
 
 const AppContainer = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <FontsProvider>
-          <StatusBar style="dark" />
-          <App />
-        </FontsProvider>
+        <StatusBar style="dark" />
+        <App />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

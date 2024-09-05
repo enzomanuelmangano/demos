@@ -1,8 +1,7 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import * as Font from 'expo-font';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
@@ -81,22 +80,10 @@ const styles = StyleSheet.create({
 });
 
 const AppContainer = () => {
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  // Load custom fonts using async Font.loadAsync
-  useEffect(() => {
-    (async () => {
-      await Font.loadAsync({
-        'SF-Compact-Rounded-Medium': sfCompactRoundedMedium, // medium
-      });
-      setFontsLoaded(true);
-    })();
-  }, []);
-
   return (
     // Because we're using the PressableScale :) (based on a GestureDetector)
     <GestureHandlerRootView style={localStyles.fill}>
-      {fontsLoaded && <App />}
+      <App />
     </GestureHandlerRootView>
   );
 };

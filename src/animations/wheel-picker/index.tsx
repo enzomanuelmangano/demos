@@ -5,13 +5,9 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useEffect, useState } from 'react';
-import * as Font from 'expo-font';
+import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import sfProRoundedBold from './assets/fonts/SF-Pro-Rounded-Bold.otf';
 import { AnimatedCount } from './components/animated-count/animated-count';
 import { DraggableSlider } from './components/draggable-slider';
 import { PressableScale } from './components/pressable-scale';
@@ -33,23 +29,6 @@ export const WheelPicker = () => {
     const multiplier = 1;
     return Math.ceil(progress.value * LinesAmount * multiplier);
   }, [progress]);
-
-  // State to track whether custom fonts have been loaded
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  // Load custom fonts using async Font.loadAsync
-  useEffect(() => {
-    (async () => {
-      await Font.loadAsync({
-        'SF-Pro-Rounded-Bold': sfProRoundedBold,
-      });
-      setFontsLoaded(true);
-    })();
-  }, []);
-
-  if (!fontsLoaded) {
-    return <></>;
-  }
 
   return (
     <View style={styles.container}>

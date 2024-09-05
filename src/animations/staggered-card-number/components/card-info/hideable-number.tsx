@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardNumber: {
-    fontFamily: 'FiraCode',
+    fontFamily: 'FiraCode-Regular',
     fontSize: 20,
   },
 });

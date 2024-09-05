@@ -1,13 +1,7 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import * as Font from 'expo-font';
-import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import FiraCodeMedium from './assets/fonts/FiraCode-Medium.ttf';
 import { BalanceSlider as BalanceSliderComponent } from './components/balance-slider';
 
 const App = () => {
@@ -64,21 +58,9 @@ const styles = StyleSheet.create({
 });
 
 const BalanceSlider = () => {
-  const [fontsLoaded, setFontsLoaded] = useState(false);
-
-  // Load custom fonts using async Font.loadAsync
-  useEffect(() => {
-    (async () => {
-      await Font.loadAsync({
-        FiraCodeMedium,
-      });
-      setFontsLoaded(true);
-    })();
-  }, []);
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <>{fontsLoaded && <App />}</>
+      <App />
     </GestureHandlerRootView>
   );
 };

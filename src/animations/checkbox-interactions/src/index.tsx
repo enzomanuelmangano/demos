@@ -5,7 +5,6 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
-import { FontsProvider } from './providers/fonts-provider';
 import { Checkbox } from './components/checkbox';
 import { useCuisines } from './hooks/use-cuisines';
 
@@ -55,9 +54,7 @@ const styles = StyleSheet.create({
 const AppContainer = () => {
   return (
     <SafeAreaProvider>
-      <FontsProvider>
-        <App />
-      </FontsProvider>
+      <App />
     </SafeAreaProvider>
   );
 };

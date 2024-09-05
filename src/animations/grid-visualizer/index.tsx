@@ -26,7 +26,7 @@ const InternalPadding = 70;
 const SquareSize = 2.5;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const fontAsset = require('./assets/fonts/SF-Pro-Rounded-Heavy.otf');
+const fontAsset = require('../../../assets/fonts/SF-Pro-Rounded-Heavy.otf');
 const fontSize = 120;
 
 export function GridVisualizer() {
