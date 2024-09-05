@@ -39,9 +39,10 @@ const logarithmicSpiral = ({
 };
 
 const Spiral = (dimensions?: { width: number; height: number }) => {
-  const { width, height } = dimensions ?? {
+  const { width, height } = {
     width: windowWidth,
     height: windowHeight,
+    ...dimensions,
   };
   const progress = useSharedValue(0);
 
