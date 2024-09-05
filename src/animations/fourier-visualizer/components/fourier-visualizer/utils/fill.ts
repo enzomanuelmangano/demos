@@ -2,6 +2,7 @@
 import type { SkPath } from '@shopify/react-native-skia';
 
 import type { Point } from './types';
+import { PathGeometry } from './geometry';
 
 // Extracts and returns an array of points from an SkPath object.
 // The whole point of this animation is using the FFT algorithm.
@@ -9,52 +10,20 @@ import type { Point } from './types';
 // But we are drawing simply a Path, which is a collection of points.
 // This function extracts the points from the Path.
 export const getPoints = (path: SkPath): Point[] => {
-  return Array.from({ length: path.countPoints() }, (_, i) => {
-    const point = path.getPoint(i);
-    return {
+  const pathGeo = new PathGeometry(path);
+  const totalLength = pathGeo.getTotalLength();
+  const PointsAmount = Math.round(totalLength * 5);
+  const points = [];
+  for (let i = 0; i < PointsAmount; i++) {
+    const point = pathGeo.getPointAtLength((i / PointsAmount) * totalLength);
+    points.push({
       x: point.x,
       y: point.y,
-    };
-  });
-};
-
-// Generates linearly interpolated points between each pair of points in the given array.
-// WHY?
-// Consider this case: we have a Path, which is a collection of points.
-// We give to the FFT algorithm the points of the Path, and the FFT algorithm
-// returns the epicycles.
-// But what if before giving the points to the FFT algorithm, we add more points
-// applying a Linear Interpolation?
-// Of course the epicycles will be more accurate, because we have more points.
-// This is what this function is all about :)
-export function generateLinearInterpolatedPoints(
-  points: Point[],
-  density = 10,
-): Point[] {
-  const totalPoints = (points.length - 1) * density + 1;
-  const result: Point[] = new Array(totalPoints);
-
-  let resultIndex = 0;
-  const step = 1 / density;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p1 = points[i];
-    const p2 = points[i + 1];
-
-    const dx = p2.x - p1.x;
-    const dy = p2.y - p1.y;
-
-    // Interpolate points between p1 and p2
-    for (let t = 0; t < 1; t += step) {
-      result[resultIndex++] = {
-        x: p1.x + t * dx,
-        y: p1.y + t * dy,
-      };
-    }
+    });
   }
 
-  result[totalPoints - 1] = points[points.length - 1]; // Add the last point
-  return result;
-}
+  return points;
+};
 
 // Checks if a number is a power of two.
 export function isPowerOfTwo(n: number): boolean {

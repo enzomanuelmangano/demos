@@ -10,11 +10,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 
-import {
-  fillToPowerOfTwo,
-  generateLinearInterpolatedPoints,
-  getPoints,
-} from './utils/fill';
+import { fillToPowerOfTwo, getPoints } from './utils/fill';
 import { extractEpicycles } from './utils/extract-epicycles';
 import { computeFFT } from './utils/fft';
 
@@ -56,7 +52,7 @@ const FourierVisualizer = React.forwardRef<
       opacity.value = withTiming(1);
 
       // Convert path into linearly interpolated points
-      const points = generateLinearInterpolatedPoints(getPoints(path), 10);
+      const points = getPoints(path);
 
       // Ensure the number of points is a power of two for FFT
       const filledPoints = fillToPowerOfTwo(points);
