@@ -444,215 +444,269 @@ const Screens = [
     name: 'Drag to Sort',
     route: 'DragToSort',
     component: DragToSort,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="sort" {...DefaultIconProps} />,
   },
   {
     name: 'Fibonacci Shader',
     route: 'FibonacciShader',
     component: FibonacciShader,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="sphere" {...DefaultIconProps} />,
   },
   {
     name: 'Family Number Input',
     route: 'FamilyNumberInput',
     component: FamilyNumberInput,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="dots-grid" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Balance Slider',
     route: 'BalanceSlider',
     component: BalanceSlider,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="scale-balance" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Fibonacci Shader Grid',
     route: 'FibonacciShaderGrid',
     component: FibonacciShaderGrid,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="grid-large" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Verification Code',
     route: 'VerificationCode',
     component: VerificationCode,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="security" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Email Demo',
     route: 'EmailDemo',
     component: EmailDemo,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="delete" {...DefaultIconProps} />,
   },
   {
     name: '3D Scroll Transition',
     route: 'ScrollTransition3D',
     component: ScrollTransition3D,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="rotate-3d" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Staggered Card Number',
     route: 'StaggeredCardNumber',
     component: StaggeredCardNumber,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="credit-card-outline"
+        {...DefaultIconProps}
+      />
+    ),
   },
   {
     name: 'Stacked Bottom Sheet',
     route: 'StackedBottomSheet',
     component: StackedBottomSheet,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
   },
   {
     name: 'GL Transitions',
     route: 'GLTransitions',
     component: GLTransitions,
     iconMarginTop: 100,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="transition-masked" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Prequel Slider',
     route: 'PrequelSlider',
     component: PrequelSlider,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="picture-in-picture-bottom-right"
+        {...DefaultIconProps}
+      />
+    ),
   },
   {
     name: 'Empty QR Code',
     route: 'EmptyQRCode',
     component: EmptyQRCode,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="qrcode" {...DefaultIconProps} />,
   },
   {
     name: 'Infinite Carousel',
     route: 'InfiniteCarousel',
     component: InfiniteCarousel,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="view-carousel-outline"
+        {...DefaultIconProps}
+      />
+    ),
   },
   {
     name: 'Twodos Slide',
     route: 'TwodosSlide',
     component: TwodosSlide,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="pan-right" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Wheel Picker',
     route: 'WheelPicker',
     component: WheelPicker,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="ship-wheel" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Stacked List',
     route: 'StackedList',
     component: StackedList,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="notification-clear-all"
+        {...DefaultIconProps}
+      />
+    ),
   },
   {
     name: 'Geometry Button',
     route: 'GeometryButton',
     component: GeometryButton,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="sphere" {...DefaultIconProps} />,
   },
   {
     name: 'Record Button',
     route: 'RecordButton',
     component: RecordButton,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="record" {...DefaultIconProps} />,
   },
   {
     name: 'Grid Visualizer',
     route: 'GridVisualizer',
     component: GridVisualizer,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="grid" {...DefaultIconProps} />,
   },
   {
     name: 'iMessageStack',
     route: 'IMessageStack',
     component: IMessageStack,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="gesture-swipe" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Atlas Button',
     route: 'AtlasButton',
     component: AtlasButton,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="react" {...DefaultIconProps} />,
   },
   {
     name: 'Checkbox Interactions',
     route: 'CheckboxInteractions',
     component: CheckboxInteractions,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="checkbox-outline" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Interaction Appearance',
     route: 'InteractionAppearance',
     component: InteractionAppearance,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="theme-light-dark" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Dot Sheet',
     route: 'DotSheet',
     component: DotSheet,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="paperclip" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Coverflow Carousel',
     route: 'CoverflowCarousel',
     component: CoverflowCarousel,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="view-carousel" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Paper Folding',
     route: 'PaperFolding',
     component: PaperFolding,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="paper-roll" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Miles Bar Chart',
     route: 'MilesBarChart',
     component: MilesBarChart,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="chart-bar" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Steps',
     route: 'Steps',
     component: Steps,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="step-forward" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Pomodoro Timer',
     route: 'PomodoroTimer',
     component: PomodoroTimer,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="timer-outline" {...DefaultIconProps} />
+    ),
   },
   {
     name: 'Clerk Toast',
     route: 'ClerkToast',
     component: ClerkToast,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="drag" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="toaster" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
