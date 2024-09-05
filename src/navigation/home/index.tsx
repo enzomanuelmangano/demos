@@ -1,10 +1,12 @@
 import React, { useCallback } from 'react';
-import type { ViewToken } from 'react-native';
-import { FlatList } from 'react-native';
+import type { ListRenderItem, ViewToken } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSharedValue } from 'react-native-reanimated';
+import Animated, { useSharedValue } from 'react-native-reanimated';
+import { useAtomValue } from 'jotai';
 
-import { Screens } from '../screens';
+import type { Screens } from '../screens';
+import { ActiveScreensAtom } from '../states/filters';
 
 import { ListItem } from './components/list-item';
 
@@ -20,16 +22,9 @@ const Home = React.memo(() => {
     [viewableItems],
   );
 
-  return (
-    <FlatList
-      onViewableItemsChanged={onViewableItemsChanged}
-      data={Screens}
-      style={{ backgroundColor: 'black' }}
-      contentContainerStyle={{
-        paddingBottom: 150,
-      }}
-      contentInsetAdjustmentBehavior="automatic"
-      renderItem={({ item }) => (
+  const renderItem: ListRenderItem<(typeof Screens)[number]> = useCallback(
+    ({ item }) => {
+      return (
         <ListItem
           item={item}
           viewableItems={viewableItems}
@@ -39,9 +34,31 @@ const Home = React.memo(() => {
             navigation.navigate(item.route);
           }}
         />
-      )}
+      );
+    },
+    [navigation, viewableItems],
+  );
+
+  const data = useAtomValue(ActiveScreensAtom);
+
+  return (
+    <Animated.FlatList
+      onViewableItemsChanged={onViewableItemsChanged}
+      data={data}
+      scrollEventThrottle={16}
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      contentInsetAdjustmentBehavior="automatic"
+      renderItem={renderItem}
     />
   );
+});
+
+const styles = StyleSheet.create({
+  content: {
+    paddingBottom: 150,
+  },
+  container: { backgroundColor: 'black' },
 });
 
 export { Home };

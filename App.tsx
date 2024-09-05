@@ -1,5 +1,5 @@
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 
 import { App } from './src';
 import { prepareAssets } from './src/animations/swipe-cards';
@@ -10,9 +10,11 @@ const AppContainer = () => {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <App />
-    </GestureHandlerRootView>
+    <Suspense>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <App />
+      </GestureHandlerRootView>
+    </Suspense>
   );
 };
 

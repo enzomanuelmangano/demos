@@ -1,12 +1,16 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import React from 'react';
+import { useSetAtom } from 'jotai';
 
 import { Home } from './home';
 import { Screens } from './screens';
+import { SearchFilterAtom } from './states/filters';
 
 const MainStack = createNativeStackNavigator();
 
 const MainNavigation = React.memo(() => {
+  const updateFilterLabel = useSetAtom(SearchFilterAtom);
+
   return (
     <MainStack.Navigator
       initialRouteName="Home"
@@ -23,8 +27,10 @@ const MainNavigation = React.memo(() => {
           headerSearchBarOptions: {
             placeholder: 'Search',
             tintColor: 'white',
+            textColor: 'white',
+            hintTextColor: 'rgba(255,255,255,0.8)',
             onChangeText: event => {
-              console.log(event.nativeEvent.text);
+              updateFilterLabel(event.nativeEvent.text);
             },
           },
           headerBlurEffect: 'systemThinMaterialDark',

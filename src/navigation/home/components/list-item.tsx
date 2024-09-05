@@ -2,6 +2,8 @@ import React from 'react';
 import type { ViewToken } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import Animated, {
+  FadeIn,
+  FadeOutDown,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -53,20 +55,24 @@ const ListItem: React.FC<ListItemProps> = React.memo(
     }, []);
 
     return (
-      <GestureDetector gesture={gesture}>
-        <Animated.View style={[styles.container, rStyle]}>
-          <item.icon />
-          <Text
-            style={{
-              fontSize: 16,
-              marginLeft: 10,
-              color: 'white',
-              fontFamily: 'FiraCode-Regular',
-            }}>
-            {item.name}
-          </Text>
-        </Animated.View>
-      </GestureDetector>
+      <Animated.View
+        exiting={FadeOutDown.duration(500)}
+        entering={FadeIn.duration(500)}>
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={[styles.container, rStyle]}>
+            <item.icon />
+            <Text
+              style={{
+                fontSize: 16,
+                marginLeft: 10,
+                color: 'white',
+                fontFamily: 'FiraCode-Regular',
+              }}>
+              {item.name}
+            </Text>
+          </Animated.View>
+        </GestureDetector>
+      </Animated.View>
     );
   },
 );
