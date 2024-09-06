@@ -12,7 +12,7 @@ import { PathGeometry } from './geometry';
 export const getPoints = (path: SkPath): Point[] => {
   const pathGeo = new PathGeometry(path);
   const totalLength = pathGeo.getTotalLength();
-  const PointsAmount = Math.round(totalLength * 5);
+  const PointsAmount = Math.round(totalLength);
   const points = [];
   for (let i = 0; i < PointsAmount; i++) {
     const point = pathGeo.getPointAtLength((i / PointsAmount) * totalLength);

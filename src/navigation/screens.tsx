@@ -186,6 +186,7 @@ const Screens = [
     name: 'Shared Transitions',
     route: 'SharedTransitions',
     component: SharedTransitions,
+    alert: true,
     icon: () => <MaterialIcons name="sync" {...DefaultIconProps} />,
   },
   {
@@ -201,6 +202,7 @@ const Screens = [
     name: 'Dynamic Tab Indicator',
     route: 'DynamicTabIndicator',
     component: DynamicTabIndicatorContainer,
+    alert: true,
     iconMarginTop: 50,
     backIconDark: false,
     icon: () => <MaterialIcons name="tab" {...DefaultIconProps} />,
@@ -318,6 +320,7 @@ const Screens = [
     name: 'Popup Handler',
     route: 'PopupHandler',
     component: PopupHandler,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons name="blur-radial" {...DefaultIconProps} />
     ),
@@ -348,6 +351,7 @@ const Screens = [
     route: 'TelegramThemeSwitch',
     component: TelegramThemeSwitch,
     backIconDark: false,
+    alert: true,
     icon: () => <FontAwesome name="telegram" {...DefaultIconProps} />,
   },
   {
@@ -717,6 +721,7 @@ const Screens = [
         Component: item.component,
         backIconDark: item.backIconDark,
         iconMarginTop: item.iconMarginTop,
+        alert: item.alert,
       }),
     };
   })
