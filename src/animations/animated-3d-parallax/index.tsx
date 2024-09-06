@@ -90,7 +90,7 @@ export const Animated3DParallax = () => {
           />
           <Animated.View style={[styles.cardContent, rContentStyle]}>
             <Image
-              source={require('../../../assets/animations/animated-3d-parallax/logo.png')}
+              source={require('./assets/logo.png')}
               style={{
                 height: 200,
                 aspectRatio: 1,
