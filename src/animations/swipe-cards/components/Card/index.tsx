@@ -1,6 +1,5 @@
-import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import React, { useCallback, useImperativeHandle } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
@@ -162,59 +161,23 @@ const SwipeableCard = React.forwardRef<
           },
           rCardStyle,
         ]}>
-        <View style={{ flex: 1, borderRadius: 15, overflow: 'hidden' }}>
+        <View
+          style={{
+            flex: 1,
+            borderRadius: 25,
+            borderCurve: 'continuous',
+            overflow: 'hidden',
+          }}>
           <Image
             source={image}
             style={{ height: '100%', width: '100%' }}
             contentFit="cover"
+            cachePolicy={'memory-disk'}
           />
-          <Canvas
-            style={{
-              ...StyleSheet.absoluteFillObject,
-              bottom: -5,
-              zIndex: 20,
-            }}>
-            <CardLinearGradient />
-          </Canvas>
         </View>
       </Animated.View>
     </GestureDetector>
   );
 });
 
-const CardLinearGradient = React.memo(() => {
-  const { size } = {
-    size: { width: 0, height: 0 },
-  };
-
-  // linear gradient start value
-  const start = useDerivedValue(() => {
-    return vec(0, size.height);
-  }, [size]);
-
-  // linear gradient end value
-  const end = useDerivedValue(() => {
-    return vec(0, size.height * 0.7);
-  }, [size]);
-
-  // get rect width
-  const width = useDerivedValue(() => {
-    return size.width;
-  }, [size]);
-
-  // get rect height
-  const height = useDerivedValue(() => {
-    return size.height;
-  }, [size]);
-
-  return (
-    <Rect x={0} y={0} width={width} height={height}>
-      <LinearGradient
-        start={start}
-        end={end}
-        colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.5)', 'rgba(0,0,0,0)']}
-      />
-    </Rect>
-  );
-});
 export { SwipeableCard };
