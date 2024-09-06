@@ -47,6 +47,7 @@ const Home = React.memo(() => {
       data={data}
       scrollEventThrottle={16}
       style={styles.container}
+      keyboardDismissMode={'on-drag'}
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       renderItem={renderItem}

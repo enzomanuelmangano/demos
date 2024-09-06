@@ -32,6 +32,8 @@ const MainNavigation = React.memo(() => {
             onChangeText: event => {
               updateFilterLabel(event.nativeEvent.text);
             },
+            inputType: 'text',
+            obscureBackground: false,
           },
           headerBlurEffect: 'systemThinMaterialDark',
           headerStyle: {
