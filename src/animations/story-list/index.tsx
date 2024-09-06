@@ -1,34 +1,35 @@
-import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useMemo } from 'react';
+import { Image } from 'expo-image';
 
 import { StoryList } from './components/story-list';
 
 const stories = [
   {
-    image: require('../../../assets/animations/story-list/image_01.png'),
+    image: require('./assets/image_01.png'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_02.jpg'),
+    image: require('./assets/image_02.jpg'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_03.jpg'),
+    image: require('./assets/image_03.jpg'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_04.jpg'),
+    image: require('./assets/image_04.jpg'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_01.png'),
+    image: require('./assets/image_01.png'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_02.jpg'),
+    image: require('./assets/image_02.jpg'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_03.jpg'),
+    image: require('./assets/image_03.jpg'),
   },
   {
-    image: require('../../../assets/animations/story-list/image_04.jpg'),
+    image: require('./assets/image_04.jpg'),
   },
 ];
 
@@ -61,7 +62,8 @@ const StoryListContainer = React.memo(() => {
             renderItem={({ image }) => {
               return (
                 <Image
-                  resizeMode="cover"
+                  contentFit="cover"
+                  cachePolicy={'memory-disk'}
                   style={[
                     {
                       borderRadius: 20,
