@@ -138,9 +138,6 @@ const styles = StyleSheet.create({
   },
   flatList: {
     flex: 1,
-    showsHorizontalScrollIndicator: false,
-    horizontal: true,
-    pagingEnabled: true,
   },
   paginationDots: {
     position: 'absolute',
