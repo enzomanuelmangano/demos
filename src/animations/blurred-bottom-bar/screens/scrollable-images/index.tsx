@@ -2,9 +2,9 @@ import { Image } from 'expo-image';
 import { ScrollView, View, useWindowDimensions } from 'react-native';
 
 const images = [
-  require('../../../../../assets/animations/blurred-bottom-bar/01.jpg'),
-  require('../../../../../assets/animations/blurred-bottom-bar/02.jpg'),
-  require('../../../../../assets/animations/blurred-bottom-bar/03.jpg'),
+  require('../../assets/01.jpg'),
+  require('../../assets/02.jpg'),
+  require('../../assets/03.jpg'),
 ];
 
 export const ScrollableImages = () => {
