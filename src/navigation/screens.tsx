@@ -23,7 +23,7 @@ import { BlurCircles } from '../animations/blur-circles';
 import { BlurredBottomBar } from '../animations/blurred-bottom-bar';
 import { BlurredScroll } from '../animations/blurred-scroll';
 import { BottomBarSkia } from '../animations/bottom-bar-skia';
-import { CircularSlider } from '../animations/circular-slider';
+import { CircularCarousel } from '../animations/circular-carousel';
 import { ColorCarousel } from '../animations/color-carousel';
 import { CubertoSlider } from '../animations/cuberto-slider';
 import { CustomDrawer } from '../animations/custom-drawer';
@@ -333,9 +333,9 @@ const Screens = [
     icon: () => <MaterialCommunityIcons name="twitter" {...DefaultIconProps} />,
   },
   {
-    name: 'Circular Slider',
-    route: 'CircularSlider',
-    component: CircularSlider,
+    name: 'Circular Carousel',
+    route: 'CircularCarousel',
+    component: CircularCarousel,
     icon: () => <MaterialCommunityIcons name="circle" {...DefaultIconProps} />,
   },
   {
