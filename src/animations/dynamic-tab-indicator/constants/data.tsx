@@ -1,22 +1,22 @@
 const data = [
   {
-    image: require('../../../../assets/animations/dynamic-tab-indicator/france.jpg'),
+    image: require('../assets/france.jpg'),
     title: 'France',
   },
   {
-    image: require('../../../../assets/animations/dynamic-tab-indicator/italy.jpg'),
+    image: require('../assets/italy.jpg'),
     title: 'Italy',
   },
   {
-    image: require('../../../../assets/animations/dynamic-tab-indicator/iceland.jpg'),
+    image: require('../assets/iceland.jpg'),
     title: 'Iceland',
   },
   {
-    image: require('../../../../assets/animations/dynamic-tab-indicator/norway.jpg'),
+    image: require('../assets/norway.jpg'),
     title: 'Norway',
   },
   {
-    image: require('../../../../assets/animations/dynamic-tab-indicator/japan.jpg'),
+    image: require('../assets/japan.jpg'),
     title: 'Japan',
   },
 ];
