@@ -12,7 +12,9 @@
     "prettier-format": "prettier --write 'src/**/*.ts' 'src/**/*.tsx'",
     "prebuild": "npx expo prebuild --clean",
     "build:ios": "eas build --profile production --platform=ios --non-interactive --auto-submit --no-wait",
-    "submit:ios": "eas submit --profile production --platform=ios"
+    "submit:ios": "eas submit --profile production --platform=ios",
+    "generate-icons-set": "cd generate-app-icon && yarn install && yarn generate-icons",
+    "eas-build-pre-install": "yarn generate-icons-set"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
@@ -29,6 +31,7 @@
     "expo": "^51.0.31",
     "expo-asset": "~10.0.10",
     "expo-blur": "~13.0.2",
+    "expo-constants": "16.0.2",
     "expo-font": "~12.0.9",
     "expo-haptics": "~13.0.1",
     "expo-image": "~1.12.15",
