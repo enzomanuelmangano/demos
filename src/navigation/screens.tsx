@@ -719,6 +719,7 @@ const Screens = [
       id: index,
       component: withCustomBackIcon({
         Component: item.component,
+        screenName: item.name,
         backIconDark: item.backIconDark,
         iconMarginTop: item.iconMarginTop,
         alert: item.alert,

@@ -2463,6 +2463,11 @@
   resolved "https://registry.yarnpkg.com/@types/json5/-/json5-0.0.29.tgz#ee28707ae94e11d2b827bcbe5270bcea7f3e71ee"
   integrity sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==
 
+"@types/lodash@^4.17.7":
+  version "4.17.7"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.17.7.tgz#2f776bcb53adc9e13b2c0dfd493dfcbd7de43612"
+  integrity sha512-8wTvZawATi/lsmNu10/j2hk1KEP0IvjubqPE3cu1Xz7xfXXt5oCq3SNUz4fMIP4XGF9Ky+Ue2tBA3hcS7LSBlA==
+
 "@types/node-forge@^1.3.0":
   version "1.3.11"
   resolved "https://registry.yarnpkg.com/@types/node-forge/-/node-forge-1.3.11.tgz#0972ea538ddb0f4d9c2fa0ec5db5724773a604da"
@@ -4459,6 +4464,13 @@ expo-modules-core@1.12.23:
   version "1.12.23"
   resolved "https://registry.yarnpkg.com/expo-modules-core/-/expo-modules-core-1.12.23.tgz#ea1c0c876aa52db2cb9d25cb59404c334f92446f"
   integrity sha512-NYp/rWhKW6zlqNdC8/r+FckzlAGWX0IJEjOxwYHuYeRUn/vnKksb43G4E3jcaQEZgmWlKxK4LpxL3gr7m0RJFA==
+  dependencies:
+    invariant "^2.2.4"
+
+expo-sensors@~13.0.9:
+  version "13.0.9"
+  resolved "https://registry.yarnpkg.com/expo-sensors/-/expo-sensors-13.0.9.tgz#7c937925df131f6ea3abd247d60464f80987eb42"
+  integrity sha512-yi/TERUP8dpsJWWRgjT+UuQ7PI604PMndwXh9iBnfNO7q+dtoKZKsVSNJw61IKLNflbtCAyJxgmzPoe/JDT04Q==
   dependencies:
     invariant "^2.2.4"
 

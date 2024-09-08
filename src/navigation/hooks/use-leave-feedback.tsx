@@ -1,0 +1,21 @@
+import { useCallback } from 'react';
+import { Alert, Linking } from 'react-native';
+
+export const useLeaveFeedback = ({ screenName }: { screenName: string }) => {
+  const leaveFeedback = useCallback(() => {
+    Alert.alert('Leave Feedback', 'Do you want to leave feedback?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'OK',
+        onPress: () => {
+          const subject = screenName
+            ? `Feedback on ${screenName} screen`
+            : 'Reactiive Demos Feedback';
+          Linking.openURL(`mailto:hello@reactiive.io?subject=${subject}`);
+        },
+      },
+    ]);
+  }, [screenName]);
+
+  return leaveFeedback;
+};

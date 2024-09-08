@@ -6,9 +6,13 @@ import { useEffect } from 'react';
 
 import { PressableScale } from '../animations/action-tray/components/TouchableScale';
 
+import { useOnShakeEffect } from './hooks/use-shake-gesture';
+import { useLeaveFeedback } from './hooks/use-leave-feedback';
+
 // I'm not a fan of HOCs, but this one is useful :)
 export const withCustomBackIcon = ({
   Component,
+  screenName,
   alert = false,
   backIconDark = true,
   iconMarginTop = 0,
@@ -19,6 +23,7 @@ export const withCustomBackIcon = ({
   backIconDark?: boolean;
   iconMarginTop?: number;
   alert?: boolean;
+  screenName: string;
 }) => {
   return () => {
     const { goBack } = useNavigation();
@@ -27,6 +32,10 @@ export const withCustomBackIcon = ({
       ? 'rgba(0,0,0,0.1)'
       : 'rgba(255,255,255,0.2)';
     const color = backIconDark ? 'black' : 'white';
+
+    const leaveFeedback = useLeaveFeedback({ screenName });
+
+    useOnShakeEffect(leaveFeedback);
 
     useEffect(() => {
       if (!alert) return;

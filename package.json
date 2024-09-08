@@ -33,6 +33,7 @@
     "expo-haptics": "~13.0.1",
     "expo-image": "~1.12.15",
     "expo-linear-gradient": "~13.0.2",
+    "expo-sensors": "~13.0.9",
     "expo-status-bar": "~1.12.1",
     "fft.js": "^4.0.4",
     "jotai": "^2.9.3",
@@ -57,6 +58,7 @@
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@types/color": "^3.0.6",
+    "@types/lodash": "^4.17.7",
     "@types/qrcode": "^1.5.5",
     "@types/react": "~18.2.79",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
