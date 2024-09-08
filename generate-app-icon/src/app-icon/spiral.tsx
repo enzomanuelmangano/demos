@@ -88,7 +88,7 @@ const Spiral = ({
       const radius = interpolate(
         distanceFromCenter,
         [0, MAX_DISTANCE_FROM_CENTER],
-        [1.8, 0.2],
+        [4, 0.2],
       );
 
       circles.addCircle(x, y, radius);
