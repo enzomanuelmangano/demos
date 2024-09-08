@@ -26,7 +26,7 @@ const MainNavigation = React.memo(() => {
     navigate('Settings');
   }, [navigate]);
 
-  const headerRight = useMemo(() => {
+  const headerRight = useCallback(() => {
     return (
       <PressableScale
         onPress={navigateToSettings}
@@ -37,6 +37,7 @@ const MainNavigation = React.memo(() => {
       </PressableScale>
     );
   }, [navigateToSettings]);
+
   const options = useMemo(() => {
     return {
       ...HomeHeaderOptions,
@@ -58,8 +59,7 @@ const MainNavigation = React.memo(() => {
       screenOptions={{
         headerShown: false,
       }}>
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      <MainStack.Screen name="Home" component={Home} options={options as any} />
+      <MainStack.Screen name="Home" component={Home} options={options} />
       <MainStack.Screen
         name="Settings"
         component={Settings}
