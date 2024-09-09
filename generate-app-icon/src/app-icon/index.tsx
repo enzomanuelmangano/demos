@@ -2,9 +2,14 @@ import {
   Fill,
   LinearGradient,
   Group,
+  Text,
+  BlurMask,
 } from '@shopify/react-native-skia/lib/commonjs/headless';
-import React from 'react';
-import type { Skia } from '@shopify/react-native-skia/lib/commonjs/skia/types';
+import React, { useMemo } from 'react';
+import type {
+  SkFont,
+  Skia,
+} from '@shopify/react-native-skia/lib/commonjs/skia/types';
 
 import { Spiral } from './spiral';
 import { Grid } from './grid';
@@ -17,6 +22,9 @@ type AppIconProps = {
   background?: boolean;
   fadedSpiral?: boolean;
   randomFactor?: number;
+  font: SkFont;
+  text: string;
+  fontSize: number;
 };
 
 export const AppIcon = ({
@@ -27,8 +35,21 @@ export const AppIcon = ({
   background = true,
   fadedSpiral = false,
   randomFactor = Math.random(),
+  font,
+  text,
+  fontSize,
 }: AppIconProps) => {
   const size = Math.max(width, height);
+
+  const textY = useMemo(() => {
+    const textHeight = fontSize;
+    return height / 2 + textHeight / 3;
+  }, [fontSize, height]);
+  const textX = useMemo(() => {
+    // font.measureText is not supported in Headless mode
+    const textWidth = font.getTextWidth(text);
+    return width / 2 - textWidth / 2;
+  }, [font, width, text]);
 
   return (
     <Group>
@@ -49,6 +70,23 @@ export const AppIcon = ({
         faded={fadedSpiral}
         randomFactor={randomFactor}
       />
+      <Text
+        x={textX}
+        y={textY}
+        color="rgba(255,255,255,0.5)"
+        text={text}
+        font={font}
+      />
+      <Text
+        x={textX}
+        y={textY}
+        color={'white'}
+        style={'stroke'}
+        strokeWidth={8}
+        text={text}
+        font={font}>
+        <BlurMask blur={5} style="solid" />
+      </Text>
     </Group>
   );
 };

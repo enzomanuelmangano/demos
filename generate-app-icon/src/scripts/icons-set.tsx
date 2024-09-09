@@ -16,6 +16,7 @@ const Icons = [
     name: 'icon',
     width: 1024,
     height: 1024,
+    fadedSpiral: true,
   },
   {
     name: 'splash',
@@ -30,6 +31,7 @@ const Icons = [
     width: 1024,
     height: 1024,
     background: false,
+    fadedSpiral: true,
   },
 ];
 
@@ -40,11 +42,27 @@ const Icons = [
 
   const randomFactor = Math.random();
 
+  const data = Skia.Data.fromBytes(
+    fs.readFileSync(require.resolve('../../assets/SF-Pro-Rounded-Bold.otf')),
+  );
+
+  const tf = Skia.Typeface.MakeFreeTypeFaceFromData(data);
+
+  const fontSize = 500;
+  const font = Skia.Font(tf!, fontSize);
+
   Icons.forEach(icon => {
     const surface = makeOffscreenSurface(icon.width, icon.height);
     const icon_image = drawOffscreen(
       surface,
-      <AppIcon Skia={Skia} {...icon} randomFactor={randomFactor} />,
+      <AppIcon
+        text="80"
+        fontSize={fontSize}
+        font={font}
+        Skia={Skia}
+        {...icon}
+        randomFactor={randomFactor}
+      />,
     );
 
     const base64Image = icon_image.encodeToBase64();

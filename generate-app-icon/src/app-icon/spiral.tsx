@@ -88,7 +88,7 @@ const Spiral = ({
       const radius = interpolate(
         distanceFromCenter,
         [0, MAX_DISTANCE_FROM_CENTER],
-        [4, 0.2],
+        [0, 7],
       );
 
       circles.addCircle(x, y, radius);
@@ -113,9 +113,9 @@ const Spiral = ({
             c={{ x: 0, y: 0 }}
             r={width * 0.5}
             colors={[
-              'rgba(255,255,255,1)',
-              'rgba(255,255,255,0.5)',
               'rgba(255,255,255,0)',
+              'rgba(255,255,255,0.8)',
+              'rgba(255,255,255,1)',
             ]}
           />
         )}
