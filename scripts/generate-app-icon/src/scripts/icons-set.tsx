@@ -35,6 +35,20 @@ const Icons = [
   },
 ];
 
+// Get command line arguments starting from index 2 (first two elements are node and script path)
+const args = process.argv.slice(2);
+
+// Parse the arguments
+const parsedArgs = {};
+args.forEach(arg => {
+  const [key, value] = arg.split('=');
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  parsedArgs[key.replace('--', '')] = value;
+});
+
+const { value: text } = parsedArgs as { value: string };
+
 (async () => {
   await LoadSkiaWeb();
   // Once that CanvasKit is loaded, you can access Skia via getSkiaExports()
@@ -56,7 +70,7 @@ const Icons = [
     const icon_image = drawOffscreen(
       surface,
       <AppIcon
-        text="80"
+        text={text}
         fontSize={fontSize}
         font={font}
         Skia={Skia}
@@ -67,7 +81,7 @@ const Icons = [
 
     const base64Image = icon_image.encodeToBase64();
     const buffer = Buffer.from(base64Image, 'base64');
-    fs.writeFileSync(`../assets/${icon.name}.png`, buffer);
+    fs.writeFileSync(`../../assets/${icon.name}.png`, buffer);
     icon_image.dispose();
     surface.dispose();
   });

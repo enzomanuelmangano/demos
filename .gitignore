@@ -16,6 +16,6 @@ web-build/
 ios
 android
 
-generate-app-icon/build
+scripts/generate-app-icon/build
 build/node_modules
 

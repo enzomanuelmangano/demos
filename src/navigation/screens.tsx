@@ -99,7 +99,7 @@ const DefaultIconProps = {
   color: ICON_COLOR,
 };
 
-const Screens = [
+export const Screens = [
   {
     name: 'Mobile Input',
     route: 'MobileInput',
@@ -727,5 +727,3 @@ const Screens = [
     };
   })
   .reverse();
-
-export { Screens };
