@@ -25,6 +25,7 @@ type AppIconProps = {
   font: SkFont;
   text: string;
   fontSize: number;
+  scaleSpiral?: number;
 };
 
 export const AppIcon = ({
@@ -38,6 +39,7 @@ export const AppIcon = ({
   font,
   text,
   fontSize,
+  scaleSpiral = 1,
 }: AppIconProps) => {
   const size = Math.max(width, height);
 
@@ -63,13 +65,16 @@ export const AppIcon = ({
         </Fill>
       )}
       {grid && <Grid size={size} Skia={Skia} />}
+
       <Spiral
         Skia={Skia}
         width={width}
         height={height}
         faded={fadedSpiral}
         randomFactor={randomFactor}
+        scale={scaleSpiral}
       />
+
       <Text
         x={textX}
         y={textY}

@@ -25,6 +25,7 @@ const Icons = [
     grid: false,
     background: false,
     fadedSpiral: true,
+    scaleSpiral: 3,
   },
   {
     name: 'adaptive-icon',

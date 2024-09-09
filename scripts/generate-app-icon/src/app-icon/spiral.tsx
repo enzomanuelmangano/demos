@@ -61,12 +61,14 @@ const Spiral = ({
   height,
   faded = true,
   randomFactor = Math.random(),
+  scale = 1,
 }: {
   Skia: Skia;
   width: number;
   height: number;
   faded?: boolean;
   randomFactor?: number;
+  scale?: number;
 }) => {
   const MAX_DISTANCE_FROM_CENTER = Math.sqrt(
     (width / 2) ** 2 + (height / 2) ** 2,
@@ -105,6 +107,9 @@ const Spiral = ({
         },
         {
           translateY: height / 2,
+        },
+        {
+          scale: scale,
         },
       ]}>
       <Path path={path} color={'white'}>
