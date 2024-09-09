@@ -43,7 +43,7 @@ export const AppIcon = ({
 
   const textY = useMemo(() => {
     const textHeight = fontSize;
-    return height / 2 + textHeight / 3;
+    return height / 2 + textHeight / 3.5;
   }, [fontSize, height]);
   const textX = useMemo(() => {
     // font.measureText is not supported in Headless mode
