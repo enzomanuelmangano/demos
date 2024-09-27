@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+      "target": "ES2018",
+      "module": "commonjs",
+      "lib": ["es2018", "dom"],
+      "jsx": "react",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true,
+      "outDir": "./build",
+      "rootDir": "./src"
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "**/*.spec.ts"]
+  }

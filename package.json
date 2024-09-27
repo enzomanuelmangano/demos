@@ -13,8 +13,8 @@
     "prebuild": "npx expo prebuild --clean",
     "build:ios": "eas build --profile production --platform=ios --non-interactive --auto-submit --no-wait",
     "submit:ios": "eas submit --profile production --platform=ios",
-    "generate-icons-set": "cd generate-app-icon && yarn install && yarn generate-icons",
-    "eas-build-pre-install": "yarn generate-icons-set"
+    "generate-icons-set": "cd scripts/generate-app-icon && yarn install && yarn generate-icons",
+    "eas-build-pre-install": "yarn generate-icons-set --value=$(node scripts/utils/get-animations-count.js)"
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
