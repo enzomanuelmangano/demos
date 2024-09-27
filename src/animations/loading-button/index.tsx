@@ -26,7 +26,7 @@ const App = () => {
       }
       await wait(2000);
       i.current++;
-      throw new Error('Transaction Unsafe');
+      console.log('Transaction Unsafe Example');
     },
     {
       // After the mutation succeeds, wait for 1.5 seconds and then reset its status

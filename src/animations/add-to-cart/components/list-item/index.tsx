@@ -9,7 +9,8 @@ import Animated, {
   useAnimatedRef,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-import { PressableScale } from 'pressto';
+
+import { PressableScale } from './pressable-scale';
 
 type ListItemProps<T> = {
   index: number;
@@ -53,7 +54,7 @@ const ListItem = <
       runOnJS(onTap)({
         item, // item is the item you passed to the list
         index, // index is the index of the item in the list
-        layout: layout as MeasuredDimensions,
+        layout,
       });
   }, [index, item, onTap, viewRef]);
 
