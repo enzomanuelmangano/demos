@@ -1,9 +1,9 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { Octicons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
 import type { ShowToastParams } from './hooks/use-toast';
 import { useToast } from './hooks/use-toast';
-import { PressableScale } from './components/pressable-scale';
 import { useStackedToast } from './stacked-toast-manager/hooks';
 
 export const useDemoStackedToast = () => {

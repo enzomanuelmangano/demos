@@ -7,8 +7,7 @@ import type {
   NativeSyntheticEvent,
   TextInputChangeEventData,
 } from 'react-native';
-
-import { PressableScale } from '../animations/action-tray/components/TouchableScale';
+import { PressableScale } from 'pressto';
 
 import { Home } from './home';
 import { Screens } from './screens';

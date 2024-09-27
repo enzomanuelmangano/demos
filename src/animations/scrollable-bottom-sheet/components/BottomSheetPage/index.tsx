@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, useWindowDimensions, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-
-import { PressableScale } from '../TouchableScale';
+import { PressableScale } from 'pressto';
 
 // Define the props for the BottomSheetPage component
 type BottomSheetPageProps = {

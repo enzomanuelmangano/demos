@@ -9,8 +9,7 @@ import Animated, {
   useAnimatedRef,
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
-
-import { PressableScale } from '../pressable-scale';
+import { PressableScale } from 'pressto';
 
 type ListItemProps<T> = {
   index: number;

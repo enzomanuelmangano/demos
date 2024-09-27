@@ -18,8 +18,8 @@ import Animated, {
 import { Octicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
+import { PressableScale } from 'pressto';
 
-import { PressableScale } from './components/pressable-scale';
 import { FractalGlassMask } from './components/fractal-glass-mask';
 
 // Defining a type for the theme

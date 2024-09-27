@@ -11,9 +11,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
+import { PressableScale } from 'pressto';
 
 import { hapticFeedback } from '../../utils/haptics';
-import { PressableScale } from '../pressable-scale';
 
 import { getRightLinePath } from './create-skia-line';
 

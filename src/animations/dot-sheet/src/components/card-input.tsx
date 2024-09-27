@@ -13,8 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import React, { useImperativeHandle, useRef } from 'react';
-
-import { PressableScale } from './pressable-scale';
+import { PressableScale } from 'pressto';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 

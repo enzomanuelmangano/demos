@@ -2,11 +2,11 @@ import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from 'pressto';
 
 import type { ScrollableBottomSheetRef } from './components/BottomSheet/ScrollableBottomSheet';
 import { ScrollableBottomSheet } from './components/BottomSheet/ScrollableBottomSheet';
 import { BottomSheetPage } from './components/BottomSheetPage';
-import { PressableScale } from './components/TouchableScale';
 
 // Define the expected heights for the pages
 const FIRST_PAGE_HEIGHT = 350;

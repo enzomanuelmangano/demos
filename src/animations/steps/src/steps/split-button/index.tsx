@@ -4,8 +4,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-
-import { PressableScale } from './pressable-scale';
+import { PressableScale } from 'pressto';
 
 type SplitAction = {
   label: string;

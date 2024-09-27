@@ -1,9 +1,9 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet } from 'react-native';
+import { PressableScale } from 'pressto';
 
 import { isSwitchingThemeShared, useTheme } from '../../theme';
-import { PressableScale } from '../pressable-scale';
 
 export const FloatingButtonTheme: React.FC = () => {
   const { bottom: safeBottom } = useSafeAreaInsets();

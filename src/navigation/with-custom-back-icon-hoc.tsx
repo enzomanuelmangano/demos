@@ -3,8 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Alert, StyleSheet, View } from 'react-native';
 import { useEffect } from 'react';
-
-import { PressableScale } from '../animations/action-tray/components/TouchableScale';
+import { PressableScale } from 'pressto';
 
 import { useOnShakeEffect } from './hooks/use-shake-gesture';
 import { useLeaveFeedback } from './hooks/use-leave-feedback';

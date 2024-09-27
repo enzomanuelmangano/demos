@@ -5,10 +5,10 @@ import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from 'pressto';
 
 // Import custom components and constants
 import { InteractiveList } from './components/interactive-list';
-import { PressableScale } from './components/pressable-scale';
 import { INITIAL_ITEMS } from './constants';
 import { useAnimatedShake } from './hooks/use-animated-shake';
 import { ListItem } from './components/list-item';
