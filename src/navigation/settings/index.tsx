@@ -90,11 +90,11 @@ export const Settings = () => {
   return (
     <View style={{ flex: 1, backgroundColor: '#111111', paddingTop: 48 }}>
       <AppHeader />
-      <SettingsContainer>
+      {/* <SettingsContainer>
         <SettingsItem icon="code" text="Source code access" />
         <SettingsItem icon="code" text="Source code access" />
         <SettingsItem icon="code" text="Source code access" />
-      </SettingsContainer>
+      </SettingsContainer> */}
     </View>
   );
 };
