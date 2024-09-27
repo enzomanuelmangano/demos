@@ -4427,7 +4427,7 @@ expo-font@~12.0.9:
   dependencies:
     fontfaceobserver "^2.1.0"
 
-expo-haptics@~13.0.1:
+expo-haptics@^13.0.1:
   version "13.0.1"
   resolved "https://registry.yarnpkg.com/expo-haptics/-/expo-haptics-13.0.1.tgz#35679c7fde4ae1c21ae3bc2d2cb34c266049dc2c"
   integrity sha512-qG0EOLDE4bROVT3DtUSyV9g3iB3YFu9j3711X7SNNEnBDXc+2/p3wGDPTnJvPW0ao6HG3/McAOrBQA5hVSdWng==
