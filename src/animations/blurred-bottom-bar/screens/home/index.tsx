@@ -11,6 +11,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
+import { PressableOpacity } from 'pressto';
 
 import { BOTTOM_BAR_HEIGHT } from '../../hooks/use-bottom-bar-height';
 
@@ -18,7 +19,6 @@ import { SelectableListItem } from './components/SelectableListItem';
 import type { GridListRefType } from './components/SelectableGridList';
 import { SelectableGridList } from './components/SelectableGridList';
 import { Palette } from './constants';
-import { PressableOpacity } from './components/PressableOpacity';
 
 const GridConfig = {
   // The amount of items per row ("numColumns")

@@ -53,7 +53,7 @@ const ListItem = <
       runOnJS(onTap)({
         item, // item is the item you passed to the list
         index, // index is the index of the item in the list
-        layout,
+        layout: layout as MeasuredDimensions,
       });
   }, [index, item, onTap, viewRef]);
 

@@ -5,10 +5,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PressableScale } from 'pressto';
 
 import type { ToastType } from './toast-manager';
 import { ToastProvider, useToast } from './toast-manager';
-import { PressableScale } from './components/pressable-scale';
 
 // Define the main component of the application
 const App = () => {

@@ -15,10 +15,10 @@ import Animated, {
 import { useCallback, useRef } from 'react';
 import { StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
 import { FourierVisualizer } from './components/fourier-visualizer';
 import type { FourierVisualizerRefType } from './components/fourier-visualizer';
-import { PressableScale } from './components/pressable-scale';
 
 // The main App component.
 const App: React.FC = () => {

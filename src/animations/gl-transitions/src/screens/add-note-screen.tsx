@@ -5,9 +5,9 @@ import { useCallback, useRef } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Easing } from 'react-native-reanimated';
+import { PressableScale } from 'pressto';
 
 import { useGLTransition } from '../providers/gl-transitions';
-import { PressableScale } from '../components/pressable-scale';
 import { Palette } from '../constants/theme';
 import { useNotes } from '../atoms/notes';
 

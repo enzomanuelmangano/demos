@@ -10,10 +10,10 @@ import { AntDesign } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import MasonryList from '@react-native-seoul/masonry-list';
+import { PressableScale } from 'pressto';
 
 import { useGLTransition } from '../providers/gl-transitions';
 import { Palette } from '../constants/theme';
-import { PressableScale } from '../components/pressable-scale';
 import type { NoteType } from '../atoms/notes';
 import { useNotes } from '../atoms/notes';
 

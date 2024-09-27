@@ -115,10 +115,14 @@ const SortableItem: React.FC<SortableListItemProps> = ({
       if (absoluteY <= lowerBound) {
         // while scrolling to the top of the list
         const nextPosition = scrollContentOffsetY.value - scrollSpeed;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       } else if (absoluteY + scrollContentOffsetY.value >= upperBound) {
         // while scrolling to the bottom of the list
         const nextPosition = scrollContentOffsetY.value + scrollSpeed;
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       }
     },

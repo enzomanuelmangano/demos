@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { PressableScale } from 'pressto';
 
-import { PressableScale } from './components/pressable-scale';
 import { useStackedSheet } from './stacked-sheet-manager/hooks';
 import { MagicScreen } from './screens/the-magic';
 import { StackedSheetHandle } from './stacked-sheet-manager/stacked-sheet-handle';

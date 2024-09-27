@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import type Animated from 'react-native-reanimated';
-import { useSharedValue } from 'react-native-reanimated';
+import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
 // Define the type for the ActiveTabBarContext
 type ActiveTabBarContextType = {
@@ -9,9 +9,7 @@ type ActiveTabBarContextType = {
 
 // Create the ActiveTabBarContext with the initial value of isActive as true
 const ActiveTabBarContext = React.createContext<ActiveTabBarContextType>({
-  isActive: {
-    value: true,
-  },
+  isActive: makeMutable(true),
 });
 
 // Define the props for the ActiveTabBarContextProvider

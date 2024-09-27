@@ -7,10 +7,10 @@ import {
 } from 'react-native-reanimated';
 import { useState } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
 import { DraggableSlider } from './components/draggable-slider';
-import { PressableScale } from './components/pressable-scale';
 
 const LinesAmount = 50;
 
