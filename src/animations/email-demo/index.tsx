@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import Animated, { useSharedValue } from 'react-native-reanimated';
@@ -62,9 +61,6 @@ const EmailDemo = () => {
     <>
       {/* Main container */}
       <View style={styles.container}>
-        {/* Status bar */}
-        <StatusBar style="auto" />
-
         {/* Gradient overlay at the top */}
         <LinearGradient
           colors={['rgba(255,255,255,1)', 'rgba(255,255,255,0)']}

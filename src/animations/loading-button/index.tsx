@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider, useMutation } from 'react-query';
 import { useRef } from 'react';
@@ -47,7 +46,6 @@ const App = () => {
   // Component render
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       <LoadingButton
         status={status}
         onPress={async () => {

@@ -1,7 +1,6 @@
 /* eslint-disable react/no-unstable-nested-components */
 // Import necessary modules and components from React Native and other libraries
 import { StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useMemo, useRef } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,9 +49,6 @@ const App = () => {
   // Render the main view of the application
   return (
     <View style={styles.container}>
-      {/* Display the status bar */}
-      <StatusBar style="auto" />
-
       {/* Create a button using the PressableScale component */}
       <PressableScale
         style={styles.button}

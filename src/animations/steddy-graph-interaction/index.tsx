@@ -1,5 +1,4 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -42,9 +41,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      {/* The status bar component */}
-      <StatusBar style="auto" />
-
       {/* SegmentedControl component for selecting scoring difficulty */}
       <SegmentedControl
         data={ScoringDifficultyData}

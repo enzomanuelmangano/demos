@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React from 'react';
 import { AntDesign } from '@expo/vector-icons'; // Icons from Expo's vector icons library
@@ -20,9 +19,6 @@ const SplitButtonContainer = () => {
     <GestureHandlerRootView style={{ flex: 1 }}>
       {/* Main container */}
       <View style={styles.container}>
-        {/* StatusBar for managing the status bar appearance */}
-        <StatusBar style="auto" />
-
         <SplitButton
           rightIcon={
             <AntDesign name="apple1" size={21} color={colors.background} />
