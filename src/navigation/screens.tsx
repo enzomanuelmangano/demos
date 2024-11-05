@@ -96,6 +96,7 @@ import { DeleteButton } from '../animations/delete-button';
 import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
 import { Snake } from '../animations/snake';
 import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
+import { BezierCurveOutline } from '../animations/bezier-curve-outline';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -767,6 +768,15 @@ export const Screens = [
     component: ExpandableMiniPlayer,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="music" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Bezier Curve Outline',
+    route: 'BezierCurveOutline',
+    component: BezierCurveOutline,
+    backIconDark: true,
+    icon: () => (
+      <MaterialCommunityIcons name="vector-bezier" {...DefaultIconProps} />
+    ),
   },
 ]
   .map((item, index) => {
