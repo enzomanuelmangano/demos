@@ -97,6 +97,7 @@ import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
 import { Snake } from '../animations/snake';
 import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
 import { BezierCurveOutline } from '../animations/bezier-curve-outline';
+import { LinearTabInteraction } from '../animations/linear-tab-interaction';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -777,6 +778,13 @@ export const Screens = [
     icon: () => (
       <MaterialCommunityIcons name="vector-bezier" {...DefaultIconProps} />
     ),
+  },
+  {
+    name: 'Linear Tab Interaction',
+    route: 'LinearTabInteraction',
+    component: LinearTabInteraction,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
