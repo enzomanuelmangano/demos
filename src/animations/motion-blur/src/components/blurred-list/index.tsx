@@ -1,0 +1,192 @@
+import { BlurView } from 'expo-blur';
+import React, { useCallback, useEffect } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, {
+  Easing,
+  FadeOut,
+  interpolate,
+  Keyframe,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+
+// Constants
+const LIST_ITEM_HEIGHT = 90;
+const LIST_ITEM_MARGIN_BOTTOM = 20;
+const LIST_ITEM_CONTAINER_HEIGHT = LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM;
+
+// Types
+type BlurredListProps<T> = {
+  maxVisibleItems: number;
+  data: T[];
+  renderItem: ({ item, index }: { item: T; index: number }) => React.ReactNode;
+};
+
+type BlurredListItemContainerProps = {
+  children: React.ReactNode;
+  index: number;
+  maxVisibleItems: number;
+  currentListLength: number;
+};
+
+// Animated components
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+const keyframe = new Keyframe({
+  0: {
+    opacity: 0,
+    transform: [
+      { scale: 0.5 },
+      {
+        translateY: 100,
+      },
+    ],
+  },
+  100: {
+    opacity: 1,
+    transform: [
+      { scale: 1 },
+      {
+        translateY: 0,
+      },
+    ],
+  },
+});
+
+// Utility functions
+const calculateTop = (
+  index: number,
+  currentListLength: number,
+  maxVisibleItems: number,
+) =>
+  index * LIST_ITEM_CONTAINER_HEIGHT -
+  Math.max(currentListLength - maxVisibleItems, 0) * LIST_ITEM_CONTAINER_HEIGHT;
+
+// Sub-components
+const BlurredListItemContainer: React.FC<BlurredListItemContainerProps> = ({
+  children,
+  index,
+  maxVisibleItems,
+  currentListLength,
+}) => {
+  const progress = useSharedValue(0);
+  const blurIntensity = useSharedValue(50);
+  const isOffVisibleArea = index - (currentListLength - maxVisibleItems) < 0;
+  const top = calculateTop(index, currentListLength, maxVisibleItems);
+
+  useEffect(() => {
+    progress.value = withTiming(isOffVisibleArea ? 0 : 1, {
+      duration: 350,
+      easing: Easing.linear,
+    });
+    blurIntensity.value = withTiming(isOffVisibleArea ? 50 : 0, {
+      duration: isOffVisibleArea ? 150 : 500,
+      easing: Easing.linear,
+    });
+  }, [isOffVisibleArea, progress, blurIntensity]);
+
+  const containerStyle = useAnimatedStyle(
+    () => ({
+      top: withSpring(top, { mass: 0.5 }),
+    }),
+    [top],
+  );
+
+  const isLastItemProgress = useDerivedValue(() =>
+    withTiming(index === currentListLength - 1 ? 1 : 0),
+  );
+
+  const contentStyle = useAnimatedStyle(() => ({
+    shadowColor: 'black',
+    shadowOffset: {
+      width: 0,
+      height: interpolate(isLastItemProgress.value, [0, 1], [20, 10]),
+    },
+    shadowOpacity: interpolate(isLastItemProgress.value, [0, 1], [0.03, 0.02]),
+    shadowRadius: interpolate(isLastItemProgress.value, [0, 1], [10, 5]),
+  }));
+
+  if (isOffVisibleArea) {
+    return null;
+  }
+  return (
+    <Animated.View
+      exiting={FadeOut.duration(180)}
+      entering={keyframe.duration(200)}
+      style={[styles.itemContainer, containerStyle]}>
+      <Animated.View style={[styles.itemContent, contentStyle]}>
+        {children}
+      </Animated.View>
+      <AnimatedBlurView
+        tint={'extraLight'}
+        intensity={blurIntensity}
+        style={styles.blurView}
+      />
+    </Animated.View>
+  );
+};
+
+// Main component
+export function BlurredList<T>({
+  maxVisibleItems,
+  data,
+  renderItem,
+}: BlurredListProps<T>) {
+  const renderItemWithBlur = useCallback(
+    ({ item, index }: { item: T; index: number }) => (
+      <BlurredListItemContainer
+        key={index}
+        index={index}
+        currentListLength={data.length}
+        maxVisibleItems={maxVisibleItems}>
+        {renderItem({ item, index })}
+      </BlurredListItemContainer>
+    ),
+    [data.length, maxVisibleItems, renderItem],
+  );
+
+  return (
+    <View
+      style={[
+        styles.container,
+        { height: maxVisibleItems * LIST_ITEM_CONTAINER_HEIGHT },
+      ]}>
+      {data.map((item, index) => renderItemWithBlur({ item, index }))}
+    </View>
+  );
+}
+
+// Styles
+const styles = StyleSheet.create({
+  container: {
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  itemContainer: {
+    position: 'absolute',
+    height: LIST_ITEM_HEIGHT,
+    width: '100%',
+    marginBottom: LIST_ITEM_MARGIN_BOTTOM,
+  },
+  itemContent: {
+    height: LIST_ITEM_HEIGHT,
+    width: '80%',
+    alignSelf: 'center',
+    backgroundColor: 'white',
+    borderRadius: 20,
+    borderCurve: 'continuous',
+    shadowRadius: 10,
+    elevation: 5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blurView: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 100,
+    top: -5,
+    bottom: -20,
+  },
+});

@@ -89,6 +89,9 @@ import { MilesBarChart } from '../animations/miles-bar-chart';
 import { Steps } from '../animations/steps';
 import { PomodoroTimer } from '../animations/pomodoro-timer';
 import { ClerkToast } from '../animations/clerk-toast';
+import { DurationSlider } from '../animations/duration-slider';
+import { AlertDrawer } from '../animations/alert-drawer';
+import { MotionBlur } from '../animations/motion-blur';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -711,6 +714,27 @@ export const Screens = [
     component: ClerkToast,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="toaster" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Duration Slider',
+    route: 'DurationSlider',
+    component: DurationSlider,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="timer" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Alert Drawer',
+    route: 'AlertDrawer',
+    component: AlertDrawer,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="alert" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Motion Blur',
+    route: 'MotionBlur',
+    component: MotionBlur,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
