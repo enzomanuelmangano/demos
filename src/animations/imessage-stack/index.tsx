@@ -76,6 +76,7 @@ export const IMessageStack = () => {
           snapToInterval={CARD_WIDTH}
           disableIntervalMomentum
           pagingEnabled
+          showsHorizontalScrollIndicator={false}
           decelerationRate="fast"
           style={{
             maxHeight: CARD_HEIGHT + VerticalListPadding * 2,

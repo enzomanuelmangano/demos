@@ -1,7 +1,7 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { PressableScale } from 'pressto';
 
-import { PressableScale } from './components/pressable-scale';
 import { useDemoStackedToast } from './hook';
 
 const App = () => {

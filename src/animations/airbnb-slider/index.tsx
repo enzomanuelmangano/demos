@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -44,8 +43,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
-
       <View
         style={{
           flexDirection: 'row',

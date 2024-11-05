@@ -1,12 +1,10 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 import { CardInfo } from './components/card-info';
 
 const StaggeredCardNumber = () => {
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       <CardInfo cardNumber={2223000048400011} />
     </View>
   );

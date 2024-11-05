@@ -10,12 +10,12 @@ import { useCallback, useRef } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PressableOpacity } from 'pressto';
 
 import { SelectableListItem } from './components/SelectableListItem';
 import type { GridListRefType } from './components/SelectableGridList';
 import { SelectableGridList } from './components/SelectableGridList';
 import { Palette } from './constants';
-import { PressableOpacity } from './components/PressableOpacity';
 
 const GridConfig = {
   // The amount of items per row ("numColumns")

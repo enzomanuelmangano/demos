@@ -15,8 +15,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
-import { PressableScale } from './components/TouchableScale';
 import { ActionTray, type ActionTrayRef } from './components/ActionTray';
 import { Palette } from './constants/palette';
 

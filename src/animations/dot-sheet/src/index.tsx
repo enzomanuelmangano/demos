@@ -1,11 +1,11 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRef } from 'react';
+import { PressableScale } from 'pressto';
 
 import { BackgroundGradient } from './components/background-gradient';
 import type { CardInputRefType } from './components/card-input';
 import { CardInput } from './components/card-input';
-import { PressableScale } from './components/pressable-scale';
 
 const App = () => {
   const { bottom: safeBottom } = useSafeAreaInsets();

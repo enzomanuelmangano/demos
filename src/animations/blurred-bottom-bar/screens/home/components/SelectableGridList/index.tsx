@@ -31,7 +31,7 @@ type CustomFlatListProps<T> = Omit<FlatListProps<T>, 'renderItem'> & {
   renderItem: CustomRenderItem<T>;
 };
 
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as FlatList;
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList);
 
 export type GridListRefType = {
   reset: () => void;
@@ -252,6 +252,8 @@ function SelectableGridList<T>({
 
   return (
     <GestureDetector gesture={gesture}>
+      {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+      {/* @ts-ignore */}
       <AnimatedFlatList<T>
         {...rest}
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -2,18 +2,13 @@ import { MotiView, motify } from 'moti';
 import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeIn,
   FadeOut,
-  Layout,
-  runOnJS,
-  useAnimatedStyle,
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
+  LinearTransition,
 } from 'react-native-reanimated';
 import Color from 'color';
+import { PressableScale } from 'pressto';
 
 import { ActivityIndicator, type ActivityStatus } from './activity-indicator';
 
@@ -36,87 +31,49 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   colorFromStatusMap,
   titleFromStatusMap,
 }) => {
-  // Shared value to determine if the button is active
-  const isActive = useSharedValue(false);
-
-  // Define the tap gesture for the button
-  const gesture = Gesture.Tap()
-    .maxDuration(4000)
-    .onTouchesDown(() => {
-      isActive.value = true; // Set button as active when touched
-    })
-    .onTouchesUp(() => {
-      if (onPress) {
-        runOnJS(onPress)(); // Run the onPress function when the button is released
-      }
-    })
-    .onFinalize(() => {
-      isActive.value = false; // Reset the button state when the gesture is finalized
-    });
-
-  // Define the scale of the button based on its active state
-  const scale = useDerivedValue(() => {
-    return withSpring(isActive.value ? 0.9 : 1);
-  });
-
   // Determine the active color based on the status prop
   const activeColor = useMemo(() => {
     return colorFromStatusMap?.[status ?? 'idle'];
   }, [colorFromStatusMap, status]);
 
-  // Define the animated styles for the button based on its scale
-  const rStyle = useAnimatedStyle(() => {
-    return {
-      transform: [
-        {
-          scale: scale.value,
-        },
-      ],
-    };
-  }, []);
-
   // Render the animated button component
   return (
-    <>
-      <GestureDetector gesture={gesture}>
-        <Animated.View layout={Layout.duration(500)} style={rStyle}>
-          <MotiView
-            transition={{
-              type: 'timing',
-              duration: 1000,
-            }}
-            style={[
-              {
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingHorizontal: 20,
-              },
-              style,
-            ]}
-            animate={{
-              backgroundColor: Color(activeColor).lighten(0.6).hex(),
-            }}>
-            <ActivityIndicator status={status} color={activeColor} />
+    <PressableScale onPress={onPress} layout={LinearTransition}>
+      <MotiView
+        transition={{
+          type: 'timing',
+          duration: 1000,
+        }}
+        style={[
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 20,
+          },
+          style,
+        ]}
+        animate={{
+          backgroundColor: Color(activeColor).lighten(0.6).hex(),
+        }}>
+        <ActivityIndicator status={status} color={activeColor} />
 
-            <MotifiedAnimatedText
-              entering={FadeIn}
-              exiting={FadeOut}
-              transition={{
-                type: 'timing',
-                duration: 1000,
-              }}
-              animate={{
-                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
-                color: activeColor,
-              }}
-              style={[styles.title]}>
-              {titleFromStatusMap?.[status ?? 'idle']}
-            </MotifiedAnimatedText>
-          </MotiView>
-        </Animated.View>
-      </GestureDetector>
-    </>
+        <MotifiedAnimatedText
+          entering={FadeIn}
+          exiting={FadeOut}
+          transition={{
+            type: 'timing',
+            duration: 1000,
+          }}
+          animate={{
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            color: activeColor,
+          }}
+          style={[styles.title]}>
+          {titleFromStatusMap?.[status ?? 'idle']}
+        </MotifiedAnimatedText>
+      </MotiView>
+    </PressableScale>
   );
 };
 

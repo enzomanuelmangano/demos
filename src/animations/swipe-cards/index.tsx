@@ -3,10 +3,10 @@ import React, { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { AntDesign } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
 import { IMAGES } from './constants';
 import { SwipeableCard } from './components/Card';
-import { ScaleButton } from './components/ScaleButton';
 import { useSwipeControls } from './hooks/use-swipe-controls';
 
 export const SwipeCards = () => {
@@ -60,17 +60,17 @@ export const SwipeCards = () => {
 
       {/* Define the buttons container */}
       <View style={styles.buttonsContainer}>
-        <ScaleButton style={styles.button} onTap={swipeLeft}>
+        <PressableScale style={styles.button} onPress={swipeLeft}>
           <AntDesign name="close" size={32} color="white" />
-        </ScaleButton>
-        <ScaleButton
+        </PressableScale>
+        <PressableScale
           style={[styles.button, { height: 60, marginHorizontal: 10 }]}
-          onTap={onReset}>
+          onPress={onReset}>
           <AntDesign name="reload1" size={24} color="white" />
-        </ScaleButton>
-        <ScaleButton style={styles.button} onTap={swipeRight}>
+        </PressableScale>
+        <PressableScale style={styles.button} onPress={swipeRight}>
           <AntDesign name="heart" size={32} color="white" />
-        </ScaleButton>
+        </PressableScale>
       </View>
     </View>
   );

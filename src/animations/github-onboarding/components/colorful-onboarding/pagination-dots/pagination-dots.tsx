@@ -6,8 +6,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-
-import { PressableScale } from '../../pressable-scale';
+import { PressableScale } from 'pressto';
 
 const DOT_SIZE = 7;
 const OPACITY_THRESHOLD = 0.7;

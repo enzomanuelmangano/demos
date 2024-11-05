@@ -10,7 +10,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 
-import { PressableScale } from '../pressable-scale';
+import { PressableScale } from './pressable-scale';
 
 type ListItemProps<T> = {
   index: number;

@@ -4427,7 +4427,7 @@ expo-font@~12.0.9:
   dependencies:
     fontfaceobserver "^2.1.0"
 
-expo-haptics@~13.0.1:
+expo-haptics@^13.0.1:
   version "13.0.1"
   resolved "https://registry.yarnpkg.com/expo-haptics/-/expo-haptics-13.0.1.tgz#35679c7fde4ae1c21ae3bc2d2cb34c266049dc2c"
   integrity sha512-qG0EOLDE4bROVT3DtUSyV9g3iB3YFu9j3711X7SNNEnBDXc+2/p3wGDPTnJvPW0ao6HG3/McAOrBQA5hVSdWng==
@@ -7044,6 +7044,11 @@ prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/prelude-ls/-/prelude-ls-1.2.1.tgz#debc6489d7a6e6b0e7611888cec880337d316396"
   integrity sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==
+
+pressto@^0.1.8:
+  version "0.1.8"
+  resolved "https://registry.yarnpkg.com/pressto/-/pressto-0.1.8.tgz#c51a68004aa7b8313dac28aa1645822fa3e969be"
+  integrity sha512-WMFRmHWnGOqlyZuZcjCHbIogbAzQ9K+mesAgoPzqY3AxJcMIj3gpHGFGjxxXIbfGntgj9YXKTg6x2dmGRb+kyQ==
 
 prettier-linter-helpers@^1.0.0:
   version "1.0.0"

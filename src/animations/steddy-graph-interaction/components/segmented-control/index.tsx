@@ -5,8 +5,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+import { PressableScale } from 'pressto';
 
-import { PressableScale } from '../pressable-scale';
 import { Palette } from '../../constants/palette';
 
 // Define a type for the SegmentedControl component's props

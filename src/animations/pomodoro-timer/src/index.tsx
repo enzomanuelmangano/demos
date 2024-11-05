@@ -3,11 +3,11 @@ import { StatusBar } from 'expo-status-bar';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { useRef } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
 import type { CircularDraggableSliderRefType } from './components/draggable-slider';
 import { CircularDraggableSlider } from './components/draggable-slider';
-import { PressableScale } from './components/pressable-scale';
 import { useToggle } from './hooks/useToggle';
 import { hapticLight } from './utils/haptics';
 

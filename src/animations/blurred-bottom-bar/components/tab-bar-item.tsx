@@ -6,8 +6,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { StyleSheet } from 'react-native';
-
-import { PressableScale } from './pressable-scale';
+import { PressableScale } from 'pressto';
 
 // Define the TabBarItem component
 type TabBarItemProps = {

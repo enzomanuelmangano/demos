@@ -17,9 +17,9 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { useEffect } from 'react';
+import { PressableScale } from 'pressto';
 
 import { AnimatedSlider } from './components/animated-slider';
-import { PressableScale } from './components/pressable-scale';
 
 // Note: Please feel free to correct me because honestly I'm not sure of a single word 😅
 //       That's just something I noticed while experimenting.

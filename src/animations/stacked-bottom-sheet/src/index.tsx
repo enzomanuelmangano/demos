@@ -1,8 +1,8 @@
 // Import necessary modules and components from React Native and other libraries
 import { StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { PressableScale } from 'pressto';
 
-import { PressableScale } from './components/pressable-scale';
 import { useDemoStackedSheet } from './hook';
 
 // Define the main component of the application
