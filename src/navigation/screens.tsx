@@ -92,6 +92,9 @@ import { ClerkToast } from '../animations/clerk-toast';
 import { DurationSlider } from '../animations/duration-slider';
 import { AlertDrawer } from '../animations/alert-drawer';
 import { MotionBlur } from '../animations/motion-blur';
+import { DeleteButton } from '../animations/delete-button';
+import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
+import { Snake } from '../animations/snake';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -735,6 +738,27 @@ export const Screens = [
     component: MotionBlur,
     backIconDark: true,
     icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Delete Button',
+    route: 'DeleteButton',
+    component: DeleteButton,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="delete" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Dynamic Blur Tabs',
+    route: 'DynamicBlurTabs',
+    component: DynamicBlurTabs,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Snake',
+    route: 'Snake',
+    component: Snake,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="snake" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
