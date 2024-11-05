@@ -95,6 +95,7 @@ import { MotionBlur } from '../animations/motion-blur';
 import { DeleteButton } from '../animations/delete-button';
 import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
 import { Snake } from '../animations/snake';
+import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -759,6 +760,13 @@ export const Screens = [
     component: Snake,
     backIconDark: true,
     icon: () => <MaterialCommunityIcons name="snake" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Expandable Mini Player',
+    route: 'ExpandableMiniPlayer',
+    component: ExpandableMiniPlayer,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="music" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
