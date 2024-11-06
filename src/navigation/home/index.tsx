@@ -4,11 +4,15 @@ import { StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { useAtomValue } from 'jotai';
+import { renderScrollComponent } from 'pressto';
 
 import type { Screens } from '../screens';
 import { ActiveScreensAtom } from '../states/filters';
 
 import { ListItem } from './components/list-item';
+
+const LIST_ITEM_HEIGHT = 80;
+const LIST_ITEM_MARGIN_TOP = 10;
 
 const Home = React.memo(() => {
   const navigation = useNavigation();
@@ -26,6 +30,7 @@ const Home = React.memo(() => {
     ({ item }) => {
       return (
         <ListItem
+          style={styles.listItem}
           item={item}
           viewableItems={viewableItems}
           onPress={() => {
@@ -41,8 +46,19 @@ const Home = React.memo(() => {
 
   const data = useAtomValue(ActiveScreensAtom);
 
+  const getItemLayout = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (_: any, index: number) => ({
+      length: LIST_ITEM_HEIGHT,
+      offset: LIST_ITEM_HEIGHT * index + LIST_ITEM_MARGIN_TOP * index,
+      index,
+    }),
+    [],
+  );
+
   return (
     <Animated.FlatList
+      renderScrollComponent={renderScrollComponent}
       onViewableItemsChanged={onViewableItemsChanged}
       data={data}
       scrollEventThrottle={16}
@@ -51,6 +67,7 @@ const Home = React.memo(() => {
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       renderItem={renderItem}
+      getItemLayout={getItemLayout}
     />
   );
 });
@@ -60,6 +77,7 @@ const styles = StyleSheet.create({
     paddingBottom: 150,
   },
   container: { backgroundColor: 'black' },
+  listItem: { height: LIST_ITEM_HEIGHT, marginTop: LIST_ITEM_MARGIN_TOP },
 });
 
 export { Home };

@@ -1,40 +1,28 @@
 import React from 'react';
-import type { ViewToken } from 'react-native';
+import type { StyleProp, ViewStyle, ViewToken } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   FadeIn,
   FadeOutDown,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { PressableScale } from 'pressto';
 
 import type { Screens } from '../../screens';
 
 type ListItemProps = {
-  viewableItems: Animated.SharedValue<ViewToken[]>;
+  viewableItems: SharedValue<ViewToken[]>;
   item: (typeof Screens)[number];
   onPress: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
 const ListItem: React.FC<ListItemProps> = React.memo(
-  ({ item, viewableItems, onPress }) => {
+  ({ item, viewableItems, onPress, style }) => {
     const isActive = useSharedValue(false);
-
-    const gesture = Gesture.Tap()
-      .maxDuration(10000)
-      .onTouchesDown(() => {
-        isActive.value = true;
-      })
-      .onTouchesUp(() => {
-        isActive.value = false;
-        runOnJS(onPress)();
-      })
-      .onFinalize(() => {
-        isActive.value = false;
-      });
 
     const rStyle = useAnimatedStyle(() => {
       const isVisible = viewableItems.value.some(
@@ -58,20 +46,26 @@ const ListItem: React.FC<ListItemProps> = React.memo(
       <Animated.View
         exiting={FadeOutDown.duration(500)}
         entering={FadeIn.duration(500)}>
-        <GestureDetector gesture={gesture}>
-          <Animated.View style={[styles.container, rStyle]}>
-            <item.icon />
-            <Text
-              style={{
-                fontSize: 16,
-                marginLeft: 10,
-                color: 'white',
-                fontFamily: 'FiraCode-Regular',
-              }}>
-              {item.name}
-            </Text>
-          </Animated.View>
-        </GestureDetector>
+        <PressableScale
+          onPress={onPress}
+          onPressIn={() => {
+            isActive.value = true;
+          }}
+          onPressOut={() => {
+            isActive.value = false;
+          }}
+          style={[styles.container, rStyle, style]}>
+          <item.icon />
+          <Text
+            style={{
+              fontSize: 16,
+              marginLeft: 10,
+              color: 'white',
+              fontFamily: 'FiraCode-Regular',
+            }}>
+            {item.name}
+          </Text>
+        </PressableScale>
       </Animated.View>
     );
   },
