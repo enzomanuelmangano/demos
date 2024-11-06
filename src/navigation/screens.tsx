@@ -98,6 +98,7 @@ import { Snake } from '../animations/snake';
 import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
 import { BezierCurveOutline } from '../animations/bezier-curve-outline';
 import { LinearTabInteraction } from '../animations/linear-tab-interaction';
+import { TabNavigation } from '../animations/tab-navigation';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -743,6 +744,13 @@ export const Screens = [
     icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
   },
   {
+    name: 'Linear Tab Interaction',
+    route: 'LinearTabInteraction',
+    component: LinearTabInteraction,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
+  },
+  {
     name: 'Delete Button',
     route: 'DeleteButton',
     component: DeleteButton,
@@ -780,10 +788,10 @@ export const Screens = [
     ),
   },
   {
-    name: 'Linear Tab Interaction',
-    route: 'LinearTabInteraction',
-    component: LinearTabInteraction,
-    backIconDark: false,
+    name: 'Tab Navigation',
+    route: 'TabNavigation',
+    component: TabNavigation,
+    backIconDark: true,
     icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
   },
 ]
