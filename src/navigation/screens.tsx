@@ -99,6 +99,7 @@ import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
 import { BezierCurveOutline } from '../animations/bezier-curve-outline';
 import { LinearTabInteraction } from '../animations/linear-tab-interaction';
 import { TabNavigation } from '../animations/tab-navigation';
+import { ExclusionTabs } from '../animations/exclusion-tabs';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -714,6 +715,13 @@ export const Screens = [
     icon: () => (
       <MaterialCommunityIcons name="timer-outline" {...DefaultIconProps} />
     ),
+  },
+  {
+    name: 'Exclusion Tabs',
+    route: 'ExclusionTabs',
+    component: ExclusionTabs,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
   },
   {
     name: 'Clerk Toast',

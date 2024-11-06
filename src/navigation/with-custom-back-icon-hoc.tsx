@@ -58,7 +58,7 @@ export const withCustomBackIcon = ({
 
     return (
       <View style={styles.container}>
-        <PressableScale
+        {/* <PressableScale
           onPress={goBack}
           style={[
             {
@@ -69,7 +69,7 @@ export const withCustomBackIcon = ({
             styles.button,
           ]}>
           <MaterialIcons name="chevron-left" size={32} color={color} />
-        </PressableScale>
+        </PressableScale> */}
         <Component />
       </View>
     );
