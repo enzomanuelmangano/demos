@@ -1,5 +1,4 @@
 import { StyleSheet, Switch, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 
 import { CircularList } from './components/circular-list';
@@ -25,7 +24,6 @@ export const CircularCarousel = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
       <Text style={styles.label}>Scale</Text>
       <Switch
         trackColor={{

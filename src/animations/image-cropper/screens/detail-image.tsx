@@ -7,7 +7,6 @@ import {
   Image,
   rect as skRect,
 } from '@shopify/react-native-skia';
-import { StatusBar } from 'expo-status-bar';
 
 import type { DetailCroppedImageRouteProp } from '../navigation';
 
@@ -26,7 +25,6 @@ const DetailImageScreen: React.FC<DetailImageScreenProps> = ({
 
   return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-      <StatusBar style="light" animated />
       <Canvas
         style={{
           width: width,

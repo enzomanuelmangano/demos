@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ColorfulOnboarding } from './components/colorful-onboarding';
@@ -30,7 +29,6 @@ const data = [
 const App = () => {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <ColorfulOnboarding data={data} />
     </View>
   );

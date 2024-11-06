@@ -1,15 +1,12 @@
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { FloatingModal } from './components/FloatingModal';
 
 const FloatingModalContainer = () => {
   return (
-    <>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        <FloatingModal />
-      </View>
-    </>
+    <View style={styles.container}>
+      <FloatingModal />
+    </View>
   );
 };
 

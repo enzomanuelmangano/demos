@@ -1,7 +1,7 @@
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, StatusBar, StyleSheet, View } from 'react-native';
 import { useEffect } from 'react';
 import { PressableScale } from 'pressto';
 
@@ -25,6 +25,10 @@ export const withCustomBackIcon = ({
   screenName: string;
 }) => {
   return () => {
+    useFocusEffect(() => {
+      StatusBar.setBarStyle('default');
+    });
+
     const { goBack } = useNavigation();
     const { top: safeTop } = useSafeAreaInsets();
     const backgroundColor = backIconDark

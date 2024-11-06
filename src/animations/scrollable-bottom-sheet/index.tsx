@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef, useMemo } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -78,7 +77,6 @@ function App() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       {/* Button for opening/closing the bottom sheet */}
       <PressableScale style={styles.button} onPress={onPress}>
         <LinearGradient style={{ flex: 1 }} colors={['#4E65FF', '#92EFFD']} />

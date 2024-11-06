@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import {
   useDerivedValue,
   useSharedValue,
@@ -32,7 +31,6 @@ export const WheelPicker = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       <AnimatedCount
         count={animatedNumber}
         maxDigits={10}

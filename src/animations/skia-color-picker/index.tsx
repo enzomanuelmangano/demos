@@ -1,5 +1,4 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ColorPicker } from './components/color-picker';
@@ -12,7 +11,6 @@ const App = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <StatusBar style="light" />
         {/* ColorPicker component with specified properties. 
       canvasSize is determined by the width of the window (i.e., the device's screen width).
       blur is set to 20. 

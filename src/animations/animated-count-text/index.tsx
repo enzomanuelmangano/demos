@@ -1,5 +1,4 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { Entypo } from '@expo/vector-icons';
 
@@ -21,9 +20,6 @@ export const AnimatedCountText = () => {
 
   return (
     <View style={styles.container}>
-      {/* StatusBar component for the status bar style */}
-      <StatusBar style="light" />
-
       {/* AnimatedCount component to display the animated number */}
       <AnimatedCount number={number} />
 

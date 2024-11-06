@@ -1,5 +1,4 @@
 import { Alert, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { useRef } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -21,7 +20,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <View
         style={{
           marginBottom: 256,

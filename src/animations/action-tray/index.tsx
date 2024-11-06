@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { View, Text, useWindowDimensions, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Easing,
   Extrapolate,
@@ -98,8 +97,6 @@ function App() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
-
       <PressableScale
         style={[styles.button, rToggleButtonStyle]}
         onPress={toggleActionTray}>

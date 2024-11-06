@@ -1,5 +1,4 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useMemo } from 'react';
 import { Image } from 'expo-image';
@@ -44,40 +43,37 @@ const StoryListContainer = React.memo(() => {
   }, [width]);
 
   return (
-    <>
-      <StatusBar style="light" />
-      <View style={styles.container}>
-        <View
-          style={{
-            height: width,
-            aspectRatio: 1,
-            paddingLeft: 25,
-          }}>
-          <StoryList
-            stories={stories}
-            pagingEnabled={false} // set to true to enable paging
-            storyItemDimensions={storyItemDimensions}
-            visibleItems={3} // number of items visible at a time
-            gap={35} // gap between items
-            renderItem={({ image }) => {
-              return (
-                <Image
-                  contentFit="cover"
-                  cachePolicy={'memory-disk'}
-                  style={[
-                    {
-                      borderRadius: 20,
-                    },
-                    storyItemDimensions,
-                  ]}
-                  source={image}
-                />
-              );
-            }}
-          />
-        </View>
+    <View style={styles.container}>
+      <View
+        style={{
+          height: width,
+          aspectRatio: 1,
+          paddingLeft: 25,
+        }}>
+        <StoryList
+          stories={stories}
+          pagingEnabled={false} // set to true to enable paging
+          storyItemDimensions={storyItemDimensions}
+          visibleItems={3} // number of items visible at a time
+          gap={35} // gap between items
+          renderItem={({ image }) => {
+            return (
+              <Image
+                contentFit="cover"
+                cachePolicy={'memory-disk'}
+                style={[
+                  {
+                    borderRadius: 20,
+                  },
+                  storyItemDimensions,
+                ]}
+                source={image}
+              />
+            );
+          }}
+        />
       </View>
-    </>
+    </View>
   );
 });
 

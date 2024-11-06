@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,8 +15,6 @@ const NumberInput: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="light" />
-
       <View style={styles.fillCenter}>
         <View
           style={[

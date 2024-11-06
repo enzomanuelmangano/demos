@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 import {
@@ -90,7 +89,6 @@ export function Metaball() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <Touchable.Canvas style={{ flex: 1 }}>
         <Group layer={paint}>
           <Path path={path}>

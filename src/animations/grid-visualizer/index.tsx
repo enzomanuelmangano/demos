@@ -6,7 +6,6 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { runOnJS, useSharedValue } from 'react-native-reanimated';
@@ -49,7 +48,6 @@ export function GridVisualizer() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       {/*
        * Honestly there was no need to use a GestureDetector for such a simple tap gesture
        */}

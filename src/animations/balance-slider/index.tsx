@@ -1,5 +1,4 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BalanceSlider as BalanceSliderComponent } from './components/balance-slider';
@@ -9,7 +8,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <BalanceSliderComponent
         width={windowWidth * 0.9}
         height={50}

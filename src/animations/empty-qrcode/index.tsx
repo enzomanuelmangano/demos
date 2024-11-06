@@ -1,4 +1,4 @@
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import React, { useRef } from 'react';
 import { PressableScale } from 'pressto';
 
@@ -10,8 +10,6 @@ export const EmptyQRCode = React.memo(() => {
   const qrCodeShareRef = useRef<QRCodeShareRefType>(null);
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-
       {/* QR code component */}
       <PressableScale
         onPress={() => {

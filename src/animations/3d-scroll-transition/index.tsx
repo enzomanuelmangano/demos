@@ -1,6 +1,5 @@
 // Import necessary components and libraries from React Native and Reanimated
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -61,8 +60,6 @@ export const ScrollTransition3D = React.memo(() => {
   // Render the main component
   return (
     <View style={styles.container}>
-      {/* StatusBar component */}
-      <StatusBar style="light" />
       {/* Animated FlatList */}
       <Animated.FlatList
         inverted // Invert the list to start from bottom

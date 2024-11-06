@@ -1,6 +1,5 @@
 import type { FlatList } from 'react-native';
 import { Dimensions, StyleSheet, Text } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -96,7 +95,6 @@ export const RecordButton = () => {
       }
       return (
         <Animated.View style={styles.container}>
-          <StatusBar style="light" />
           <RecordButtonComponent
             style={{
               position: 'absolute',

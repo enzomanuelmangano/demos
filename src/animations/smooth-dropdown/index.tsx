@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 import { Dropdown } from './components/dropdown';
 
@@ -15,7 +14,6 @@ const options = [
 export const SmoothDropdown = () => {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <Dropdown
         options={options}
         header={{ label: 'Header', iconName: 'ellipsis1' }}

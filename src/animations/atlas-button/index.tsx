@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -36,7 +35,6 @@ const ReactNativeSvg = require('./assets/header_logo.svg');
 export function AtlasButton() {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <AtlasButtonComponent
         width={CanvasWidth}
         height={CanvasHeight}

@@ -1,5 +1,4 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import {
   interpolateColor,
@@ -57,7 +56,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <ImageEditor
         width={imageEditorWidth}
         height={imageEditorHeight}

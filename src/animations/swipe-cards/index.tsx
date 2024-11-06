@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
@@ -26,8 +25,6 @@ export const SwipeCards = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-
       <View style={{ flex: 7 }}>
         <Animated.View
           style={{

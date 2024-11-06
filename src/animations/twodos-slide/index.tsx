@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { AntDesign } from '@expo/vector-icons';
 import { useMemo } from 'react';
@@ -22,7 +21,6 @@ export const TwodosSlide = () => {
 
   return (
     <View style={styles.fill}>
-      <StatusBar style="auto" />
       <View style={styles.squaresContainer}>
         <AnimatedSquares
           clampedProgress={clampedProgress}

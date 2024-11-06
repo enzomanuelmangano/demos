@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Keyframe,
   runOnJS,
@@ -54,7 +53,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       <Dots activeIndex={activeIndex} count={3} dotSize={10} />
       <View style={{ marginTop: 48 }}>
         {/*

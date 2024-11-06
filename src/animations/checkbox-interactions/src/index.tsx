@@ -1,5 +1,4 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
@@ -14,7 +13,6 @@ const App = () => {
 
   return (
     <View style={[styles.container, { paddingTop: safeTop + 24 }]}>
-      <StatusBar style="light" />
       <Text style={styles.sectionTitle}>What are your favorite cuisines?</Text>
       <View style={styles.contentWrap}>
         {cuisines.map(cuisine => (

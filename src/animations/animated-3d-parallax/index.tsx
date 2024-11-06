@@ -1,5 +1,4 @@
 import { Image, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useDerivedValue,
   useSharedValue,
@@ -76,8 +75,6 @@ export const Animated3DParallax = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-
       <GestureDetector gesture={gesture}>
         <Animated.View style={styles.cardContainer}>
           <Animated.View

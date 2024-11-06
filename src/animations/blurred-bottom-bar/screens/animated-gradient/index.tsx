@@ -3,7 +3,6 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { FontAwesome } from '@expo/vector-icons';
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import {
@@ -29,7 +28,6 @@ const AnimatedGradient = () => {
 
   return (
     <>
-      <StatusBar style="light" />
       <Canvas style={{ flex: 1 }}>
         <Rect x={0} y={0} width={width} height={height}>
           <LinearGradient

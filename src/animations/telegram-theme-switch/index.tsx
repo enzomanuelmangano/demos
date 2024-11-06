@@ -1,8 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { StatusBar, View } from 'react-native';
+import { View } from 'react-native';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
 import type { ScreenNames } from './constants/screens';
@@ -80,12 +79,9 @@ const App = () => {
 
 const TelegramThemeSwitchContainer = () => {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StatusBar barStyle="light-content" />
-      <SwitchThemeProvider>
-        <App />
-      </SwitchThemeProvider>
-    </GestureHandlerRootView>
+    <SwitchThemeProvider>
+      <App />
+    </SwitchThemeProvider>
   );
 };
 

@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useDerivedValue } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
 import type { SkPath } from '@shopify/react-native-skia';
@@ -50,7 +49,6 @@ export const BezierOutline = ({ onPathUpdate }: BezierOutlineProps) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <Touchable.Canvas
         style={{
           flex: 1,

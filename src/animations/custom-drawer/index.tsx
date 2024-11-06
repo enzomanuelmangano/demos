@@ -1,4 +1,4 @@
-import { StatusBar, View } from 'react-native';
+import { View } from 'react-native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { NavigationContainer } from '@react-navigation/native';
 import { useCallback } from 'react';
@@ -22,7 +22,6 @@ const CustomDrawerContainer = () => {
   return (
     <NavigationContainer independent>
       {/* Set the status bar style */}
-      <StatusBar barStyle="dark-content" />
 
       {/* Configure the drawer navigator */}
       <Drawer.Navigator

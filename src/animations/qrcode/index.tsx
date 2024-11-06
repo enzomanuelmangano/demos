@@ -1,5 +1,4 @@
 import {
-  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -30,8 +29,6 @@ const QRCodeGenerator = () => {
 
   return (
     <View style={[styles.container, { flex: 1 }]}>
-      <StatusBar barStyle="light-content" />
-
       {/* Input field for QR code text */}
       <TextInput
         style={styles.textInput}

@@ -1,6 +1,5 @@
 import Touchable from 'react-native-skia-gesture';
 import { useImage, Image } from '@shopify/react-native-skia';
-import { StatusBar } from 'expo-status-bar';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { BottomSheet } from './components/bottom-sheet';
@@ -24,22 +23,19 @@ const CanvasContainer = () => {
   }, [window]);
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
-        {image && (
-          <Image
-            x={0}
-            y={0}
-            width={imageWidth}
-            height={imageHeight}
-            fit="cover"
-            image={image}
-          />
-        )}
-        <BottomSheet window={window} />
-      </Touchable.Canvas>
-    </>
+    <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
+      {image && (
+        <Image
+          x={0}
+          y={0}
+          width={imageWidth}
+          height={imageHeight}
+          fit="cover"
+          image={image}
+        />
+      )}
+      <BottomSheet window={window} />
+    </Touchable.Canvas>
   );
 };
 

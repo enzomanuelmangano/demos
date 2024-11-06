@@ -10,7 +10,6 @@ import {
   useTouchHandler,
   vec,
 } from '@shopify/react-native-skia';
-import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { Dimensions } from 'react-native';
 import {
@@ -109,29 +108,26 @@ const Spiral = (dimensions?: { width: number; height: number }) => {
   });
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Canvas
-        style={{ flex: 1, backgroundColor: '#0C0718' }}
-        onTouch={touchHandler}>
-        <Group
-          transform={[
-            {
-              translateX: width / 2,
-            },
-            {
-              translateY: height / 2,
-            },
-          ]}>
-          <Path path={path} />
-          <SweepGradient
-            c={vec(0, 0)}
-            colors={['cyan', 'magenta', 'yellow', 'cyan']}
-          />
-          <BlurMask blur={5} style="solid" />
-        </Group>
-      </Canvas>
-    </>
+    <Canvas
+      style={{ flex: 1, backgroundColor: '#0C0718' }}
+      onTouch={touchHandler}>
+      <Group
+        transform={[
+          {
+            translateX: width / 2,
+          },
+          {
+            translateY: height / 2,
+          },
+        ]}>
+        <Path path={path} />
+        <SweepGradient
+          c={vec(0, 0)}
+          colors={['cyan', 'magenta', 'yellow', 'cyan']}
+        />
+        <BlurMask blur={5} style="solid" />
+      </Group>
+    </Canvas>
   );
 };
 

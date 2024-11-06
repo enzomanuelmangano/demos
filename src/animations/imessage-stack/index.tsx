@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useAnimatedRef,
   useAnimatedStyle,
@@ -59,8 +58,6 @@ export const IMessageStack = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-
       <View
         style={{
           marginBottom: CARD_HEIGHT,

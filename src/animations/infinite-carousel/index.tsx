@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import {
   Extrapolation,
   useDerivedValue,
@@ -27,7 +26,6 @@ export const InfiniteCarousel = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <BackgroundGradient mainColor={backgroundPrimaryColor} />
       <View
       // IMPORTANT!

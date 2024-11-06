@@ -1,10 +1,5 @@
-import { StatusBar } from 'expo-status-bar';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -125,18 +120,6 @@ const App: React.FC = () => {
   );
 };
 
-// App container component, includes the status bar and gesture handlers.
-const AppContainer = () => {
-  return (
-    <>
-      <StatusBar style="dark" />
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <App />
-      </GestureHandlerRootView>
-    </>
-  );
-};
-
 // Styles for the components.
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -154,4 +137,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { AppContainer as FourierVisualizer };
+export { App as FourierVisualizer };

@@ -1,5 +1,4 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import {
   Blur,
   Canvas,
@@ -102,7 +101,6 @@ const FibonacciShaderGrid = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <View
         style={{
           marginTop: 50,

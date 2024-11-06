@@ -1,5 +1,4 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { format } from 'date-fns';
 import Animated, {
   runOnJS,
@@ -48,7 +47,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <WeeklyChart
         width={windowWidth}
         height={150}

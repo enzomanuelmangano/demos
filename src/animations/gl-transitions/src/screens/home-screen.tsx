@@ -7,7 +7,6 @@ import Animated, {
   LinearTransition,
 } from 'react-native-reanimated';
 import { AntDesign } from '@expo/vector-icons';
-import { StatusBar } from 'expo-status-bar';
 import { useMemo } from 'react';
 import MasonryList from '@react-native-seoul/masonry-list';
 import { PressableScale } from 'pressto';
@@ -61,7 +60,6 @@ export const HomeScreen = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: Palette.background }}>
-      <StatusBar style="dark" />
       {/* 
         I used the MasonryList from '@react-native-seoul/masonry-list'
         because the one from @shopify/flash-list was a bit bugged with two columns

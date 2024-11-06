@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 import { CoverFlowCarousel } from './components/coverflow-carousel';
 import { Images } from './constants';
@@ -7,7 +6,6 @@ import { Images } from './constants';
 const CoverflowCarousel = () => {
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
       <View style={styles.coverflow}>
         <CoverFlowCarousel images={Images} />
       </View>

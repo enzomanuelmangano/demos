@@ -1,5 +1,4 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
@@ -146,7 +145,6 @@ const PopupHandler = () => {
           backgroundColor: '#111',
         },
       ]}>
-      <StatusBar style="light" />
       <Image
         source={{
           uri,

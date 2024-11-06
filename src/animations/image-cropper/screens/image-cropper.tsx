@@ -7,7 +7,6 @@ import {
 import { useImage } from '@shopify/react-native-skia';
 import { useCallback, useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
 
 import type { ImageCropperRef } from '../components/image-cropper';
 import { ImageCropper } from '../components/image-cropper';
@@ -40,8 +39,6 @@ const ImageCropperScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" animated />
-
       {image ? (
         <>
           <ImageCropper ref={imageCropperRef} image={image} width={width} />

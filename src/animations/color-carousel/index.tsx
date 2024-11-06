@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { Canvas, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
@@ -28,7 +27,6 @@ export const ColorCarousel = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <View
         style={{
           width: '100%',

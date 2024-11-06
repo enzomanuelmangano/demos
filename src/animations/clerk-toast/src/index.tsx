@@ -1,5 +1,4 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { PressableScale } from 'pressto';
 
 import { useDemoStackedToast } from './hook';
@@ -9,7 +8,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       <ScrollView
         contentContainerStyle={{
           paddingTop: 60,

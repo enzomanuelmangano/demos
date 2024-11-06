@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import {
   View,
   StyleSheet,
@@ -73,7 +72,6 @@ export const RadarChartContainer = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <RadarChart
         data={data}
         showGrid={true}

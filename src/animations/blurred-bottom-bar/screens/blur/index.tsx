@@ -1,5 +1,4 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import Animated, {
   FadeIn,
   Layout,
@@ -23,8 +22,6 @@ const BlurredScroll = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
-
       <Animated.FlatList
         layout={Layout}
         entering={FadeIn}
