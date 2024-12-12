@@ -56,10 +56,17 @@ const Home = React.memo(() => {
     [],
   );
 
+  const keyExtractor = useCallback(
+    (item: (typeof Screens)[number]) => item.route,
+    [],
+  );
+
   return (
     <Animated.FlatList
       renderScrollComponent={renderScrollComponent}
       onViewableItemsChanged={onViewableItemsChanged}
+      viewabilityConfig={viewabilityConfig}
+      keyExtractor={keyExtractor}
       data={data}
       scrollEventThrottle={16}
       style={styles.container}
@@ -71,6 +78,11 @@ const Home = React.memo(() => {
     />
   );
 });
+
+const viewabilityConfig = {
+  itemVisiblePercentThreshold: 50,
+  minimumViewTime: 100,
+};
 
 const styles = StyleSheet.create({
   content: {

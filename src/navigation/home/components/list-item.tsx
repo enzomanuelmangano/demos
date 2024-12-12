@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import type { StyleProp, ViewStyle, ViewToken } from 'react-native';
-import { StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   FadeIn,
@@ -9,7 +9,6 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 import type { Screens } from '../../screens';
 
@@ -42,30 +41,32 @@ const ListItem: React.FC<ListItemProps> = React.memo(
       };
     }, []);
 
+    const onPressIn = useCallback(() => {
+      isActive.value = true;
+    }, [isActive]);
+
+    const onPressOut = useCallback(() => {
+      isActive.value = false;
+    }, [isActive]);
+
+    const onPressWrapper = useCallback(() => {
+      isActive.value = false;
+      onPress();
+    }, [isActive, onPress]);
+
     return (
       <Animated.View
         exiting={FadeOutDown.duration(500)}
         entering={FadeIn.duration(500)}>
-        <PressableScale
-          onPress={onPress}
-          onPressIn={() => {
-            isActive.value = true;
-          }}
-          onPressOut={() => {
-            isActive.value = false;
-          }}
-          style={[styles.container, rStyle, style]}>
-          <item.icon />
-          <Text
-            style={{
-              fontSize: 16,
-              marginLeft: 10,
-              color: 'white',
-              fontFamily: 'FiraCode-Regular',
-            }}>
-            {item.name}
-          </Text>
-        </PressableScale>
+        <Pressable
+          onPress={onPressWrapper}
+          onPressOut={onPressOut}
+          onPressIn={onPressIn}>
+          <Animated.View style={[styles.container, rStyle, style]}>
+            <item.icon />
+            <Text style={styles.label}>{item.name}</Text>
+          </Animated.View>
+        </Pressable>
       </Animated.View>
     );
   },
@@ -91,6 +92,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  label: {
+    fontSize: 16,
+    marginLeft: 10,
+    color: 'white',
+    fontFamily: 'FiraCode-Regular',
   },
 });
 
