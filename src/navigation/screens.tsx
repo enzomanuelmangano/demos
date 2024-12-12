@@ -100,6 +100,7 @@ import { BezierCurveOutline } from '../animations/bezier-curve-outline';
 import { LinearTabInteraction } from '../animations/linear-tab-interaction';
 import { TabNavigation } from '../animations/tab-navigation';
 import { ExclusionTabs } from '../animations/exclusion-tabs';
+import { StackedModals } from '../animations/stacked-modals';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -799,6 +800,13 @@ export const Screens = [
     name: 'Tab Navigation',
     route: 'TabNavigation',
     component: TabNavigation,
+    backIconDark: true,
+    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Stacked Modals',
+    route: 'StackedModals',
+    component: StackedModals,
     backIconDark: true,
     icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
   },
