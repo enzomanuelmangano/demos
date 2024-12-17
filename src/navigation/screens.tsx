@@ -101,6 +101,7 @@ import { LinearTabInteraction } from '../animations/linear-tab-interaction';
 import { TabNavigation } from '../animations/tab-navigation';
 import { ExclusionTabs } from '../animations/exclusion-tabs';
 import { StackedModals } from '../animations/stacked-modals';
+import { VerificationCodeFace } from '../animations/verification-code-face';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -808,7 +809,16 @@ export const Screens = [
     route: 'StackedModals',
     component: StackedModals,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Verification Code Face',
+    route: 'VerificationCodeFace',
+    component: VerificationCodeFace,
+    backIconDark: true,
+    icon: () => (
+      <MaterialCommunityIcons name="baby-face" {...DefaultIconProps} />
+    ),
   },
 ]
   .map((item, index) => {
