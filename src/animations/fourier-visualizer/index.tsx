@@ -16,7 +16,7 @@ import { FourierVisualizer } from './components/fourier-visualizer';
 import type { FourierVisualizerRefType } from './components/fourier-visualizer';
 
 // The main App component.
-const App: React.FC = () => {
+const App = () => {
   // Shared value to represent the drawn path.
   const drawPath = useSharedValue(Skia.Path.Make());
 
