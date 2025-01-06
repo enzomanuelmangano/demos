@@ -102,6 +102,7 @@ import { TabNavigation } from '../animations/tab-navigation';
 import { ExclusionTabs } from '../animations/exclusion-tabs';
 import { StackedModals } from '../animations/stacked-modals';
 import { VerificationCodeFace } from '../animations/verification-code-face';
+import { EverybodyCanCook } from '../animations/everybody-can-cook';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -819,6 +820,13 @@ export const Screens = [
     icon: () => (
       <MaterialCommunityIcons name="baby-face" {...DefaultIconProps} />
     ),
+  },
+  {
+    name: 'Everybody Can Cook',
+    route: 'EverybodyCanCook',
+    component: EverybodyCanCook,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="food" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
