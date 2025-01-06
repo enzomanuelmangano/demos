@@ -8,6 +8,8 @@ import { PressableScale } from 'pressto';
 import { useOnShakeEffect } from './hooks/use-shake-gesture';
 import { useLeaveFeedback } from './hooks/use-leave-feedback';
 
+const BACK_ICON_ENABLED = process.env.EXPO_PUBLIC_BACK_ICON_ENABLED !== 'false';
+
 // I'm not a fan of HOCs, but this one is useful :)
 export const withCustomBackIcon = ({
   Component,
@@ -58,18 +60,20 @@ export const withCustomBackIcon = ({
 
     return (
       <View style={styles.container}>
-        {/* <PressableScale
-          onPress={goBack}
-          style={[
-            {
-              top: 24 + safeTop + iconMarginTop,
-              backgroundColor,
-              borderColor: color,
-            },
-            styles.button,
-          ]}>
-          <MaterialIcons name="chevron-left" size={32} color={color} />
-        </PressableScale> */}
+        {BACK_ICON_ENABLED && (
+          <PressableScale
+            onPress={goBack}
+            style={[
+              {
+                top: 24 + safeTop + iconMarginTop,
+                backgroundColor,
+                borderColor: color,
+              },
+              styles.button,
+            ]}>
+            <MaterialIcons name="chevron-left" size={32} color={color} />
+          </PressableScale>
+        )}
         <Component />
       </View>
     );

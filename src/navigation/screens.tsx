@@ -825,7 +825,7 @@ export const Screens = [
     name: 'Everybody Can Cook',
     route: 'EverybodyCanCook',
     component: EverybodyCanCook,
-    backIconDark: true,
+    backIconDark: false,
     icon: () => <MaterialCommunityIcons name="food" {...DefaultIconProps} />,
   },
 ]
