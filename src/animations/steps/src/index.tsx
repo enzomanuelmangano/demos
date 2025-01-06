@@ -114,7 +114,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    marginBottom: 64,
+    paddingBottom: 64,
   },
   icon: {
     marginRight: 8,
