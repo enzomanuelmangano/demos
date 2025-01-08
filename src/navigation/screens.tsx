@@ -84,7 +84,7 @@ import { CheckboxInteractions } from '../animations/checkbox-interactions';
 import { InteractionAppearance } from '../animations/interaction-appearance';
 import { DotSheet } from '../animations/dot-sheet';
 import { CoverflowCarousel } from '../animations/coverflow-carousel';
-import { PaperFolding } from '../animations/paper';
+import { PaperFolding } from '../animations/paper-folding';
 import { MilesBarChart } from '../animations/miles-bar-chart';
 import { Steps } from '../animations/steps';
 import { PomodoroTimer } from '../animations/pomodoro-timer';
