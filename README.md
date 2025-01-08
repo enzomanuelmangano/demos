@@ -21,6 +21,12 @@ yarn ios     # for iOS
 yarn android # for Android
 ```
 
+**Note**: by default all the animations are going to have a "Back Icon" on the top left of the screen. You can disable it by setting the `EXPO_PUBLIC_BACK_ICON_ENABLED` environment variable to `false`.
+
+```bash
+EXPO_PUBLIC_BACK_ICON_ENABLED=false 
+``` 
+
 ## What's Inside
 
 Built with some awesome tech:

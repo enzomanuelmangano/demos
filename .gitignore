@@ -16,6 +16,8 @@ web-build/
 ios
 android
 
+.env
+
 scripts/generate-app-icon/build
 build/node_modules
 
