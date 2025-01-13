@@ -103,6 +103,7 @@ import { ExclusionTabs } from '../animations/exclusion-tabs';
 import { StackedModals } from '../animations/stacked-modals';
 import { VerificationCodeFace } from '../animations/verification-code-face';
 import { EverybodyCanCook } from '../animations/everybody-can-cook';
+import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -827,6 +828,13 @@ export const Screens = [
     component: EverybodyCanCook,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="food" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Threads Holo Ticket',
+    route: 'ThreadsHoloTicket',
+    component: ThreadsHoloTicket,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="ticket" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
