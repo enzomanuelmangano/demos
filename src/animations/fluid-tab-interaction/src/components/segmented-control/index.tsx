@@ -212,7 +212,7 @@ const localStyles = StyleSheet.create({
   },
   difficultyLabel: {
     fontSize: 14,
-    fontFamily: 'honk-bold',
+    fontFamily: 'Honk-Regular',
     color: Palette.baseGray80,
     textAlign: 'center',
   },

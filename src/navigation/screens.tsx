@@ -842,7 +842,7 @@ export const Screens = [
     route: 'FluidTabInteraction',
     component: FluidTabInteraction,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
+    icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
