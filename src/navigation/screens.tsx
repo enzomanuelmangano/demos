@@ -104,6 +104,7 @@ import { StackedModals } from '../animations/stacked-modals';
 import { VerificationCodeFace } from '../animations/verification-code-face';
 import { EverybodyCanCook } from '../animations/everybody-can-cook';
 import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
+import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -835,6 +836,13 @@ export const Screens = [
     component: ThreadsHoloTicket,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="ticket" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Fluid Tab Interaction',
+    route: 'FluidTabInteraction',
+    component: FluidTabInteraction,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="tab" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
