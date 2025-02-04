@@ -105,6 +105,7 @@ import { VerificationCodeFace } from '../animations/verification-code-face';
 import { EverybodyCanCook } from '../animations/everybody-can-cook';
 import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
 import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
+import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -843,6 +844,13 @@ export const Screens = [
     component: FluidTabInteraction,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="blur" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Shake to Delete',
+    route: 'ShakeToDelete',
+    component: ShakeToDeleteAnimation,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="shaker" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
