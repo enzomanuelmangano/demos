@@ -5,79 +5,78 @@ import {
   Group,
   interpolate,
   Path,
-  Skia,
   SweepGradient,
-  useTouchHandler,
+  usePathValue,
   vec,
 } from '@shopify/react-native-skia';
+import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { Dimensions } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 
+import { logarithmicSpiral } from './utils';
+
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
-// The logarithmic spiral will depend on the index
-const logarithmicSpiral = ({
-  angle,
-  index,
-}: {
-  angle: number;
-  index: number;
-}) => {
-  'worklet';
-  const a = index / 4;
-  const k = 0.005;
-  return {
-    x: a * Math.exp(k * angle) * Math.cos(angle * index),
-    y: a * Math.exp(k * angle) * Math.sin(angle * index),
-  };
+const spiralCircleCount = 1400;
+const TimingConfig = {
+  duration: 1500,
 };
 
-const Spiral = (dimensions?: { width: number; height: number }) => {
+export const Spiral = (dimensions?: { width: number; height: number }) => {
   const { width, height } = {
     width: windowWidth,
     height: windowHeight,
     ...dimensions,
   };
-  const progress = useSharedValue(0);
 
   const MAX_DISTANCE_FROM_CENTER = Math.sqrt(
     (width / 2) ** 2 + (height / 2) ** 2,
   );
 
-  const finalAngle = useSharedValue(Math.PI * Math.random());
+  const angle = useSharedValue(Math.PI / 2);
 
-  const initialAngle = useSharedValue(Math.PI / 2);
-
-  const path = useDerivedValue(() => {
-    const circles = Skia.Path.Make();
-
-    for (let index = 0; index < 1500; index++) {
-      const { x: initialX, y: initialY } = logarithmicSpiral({
-        angle: initialAngle.value,
+  const spiralCoordinates = useDerivedValue(() => {
+    const coordinates = [];
+    for (let index = 0; index < spiralCircleCount; index++) {
+      const { x, y } = logarithmicSpiral({
+        angle: angle.value,
         index,
       });
-      const { x: finalX, y: finalY } = logarithmicSpiral({
-        angle: finalAngle.value,
-        index,
-      });
+      coordinates.push({ x, y });
+    }
+    return coordinates;
+  });
 
-      const x = interpolate(
-        progress.value,
-        [0, 1],
-        [initialX, finalX],
-        Extrapolate.CLAMP,
-      );
-      const y = interpolate(
-        progress.value,
-        [0, 1],
-        [initialY, finalY],
-        Extrapolate.CLAMP,
-      );
+  const animatedSpiralCoordinatesX = useDerivedValue(() => {
+    return withTiming(
+      spiralCoordinates.value.map(coordinate => {
+        return coordinate.x;
+      }),
+      TimingConfig,
+    );
+  });
+
+  const animatedSpiralCoordinatesY = useDerivedValue(() => {
+    return withTiming(
+      spiralCoordinates.value.map(coordinate => {
+        return coordinate.y;
+      }),
+      TimingConfig,
+    );
+  });
+
+  const path = usePathValue(skPath => {
+    'worklet';
+    skPath.reset();
+
+    for (let index = 0; index < spiralCircleCount; index++) {
+      const x = animatedSpiralCoordinatesX.value[index];
+      const y = animatedSpiralCoordinatesY.value[index];
 
       const distanceFromCenter = Math.sqrt(x ** 2 + y ** 2);
 
@@ -88,47 +87,37 @@ const Spiral = (dimensions?: { width: number; height: number }) => {
         Extrapolate.CLAMP,
       );
 
-      circles.addCircle(x, y, radius);
+      skPath.addCircle(x, y, radius);
     }
 
-    return circles;
-  });
-
-  const touchHandler = useTouchHandler({
-    onStart: () => {
-      progress.value = 0;
-      progress.value = withTiming(1, { duration: 2500 }, isFinished => {
-        if (isFinished) {
-          initialAngle.value = finalAngle.value;
-          progress.value = 0;
-          finalAngle.value = Math.PI * 2 * Math.random();
-        }
-      });
-    },
+    return skPath;
   });
 
   return (
-    <Canvas
-      style={{ flex: 1, backgroundColor: '#0C0718' }}
-      onTouch={touchHandler}>
-      <Group
-        transform={[
-          {
-            translateX: width / 2,
-          },
-          {
-            translateY: height / 2,
-          },
-        ]}>
-        <Path path={path} />
-        <SweepGradient
-          c={vec(0, 0)}
-          colors={['cyan', 'magenta', 'yellow', 'cyan']}
-        />
-        <BlurMask blur={5} style="solid" />
-      </Group>
-    </Canvas>
+    <View
+      style={{ flex: 1 }}
+      onTouchEnd={() => {
+        angle.value = Math.PI * 2 * Math.random();
+      }}>
+      <StatusBar style="light" />
+      <Canvas style={{ flex: 1, backgroundColor: '#010101' }}>
+        <Group
+          transform={[
+            {
+              translateX: width / 2,
+            },
+            {
+              translateY: height / 2,
+            },
+          ]}>
+          <Path path={path} />
+          <SweepGradient
+            c={vec(0, 0)}
+            colors={['cyan', 'magenta', 'yellow', 'cyan']}
+          />
+          <BlurMask blur={5} style="solid" />
+        </Group>
+      </Canvas>
+    </View>
   );
 };
-
-export { Spiral };

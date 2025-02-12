@@ -4,7 +4,6 @@ import { StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { useAtomValue } from 'jotai';
-import { renderScrollComponent } from 'pressto';
 
 import type { Screens } from '../screens';
 import { ActiveScreensAtom } from '../states/filters';
@@ -63,7 +62,6 @@ const Home = React.memo(() => {
 
   return (
     <Animated.FlatList
-      renderScrollComponent={renderScrollComponent}
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
       keyExtractor={keyExtractor}
@@ -86,6 +84,7 @@ const viewabilityConfig = {
 
 const styles = StyleSheet.create({
   content: {
+    paddingTop: 3,
     paddingBottom: 150,
   },
   container: { backgroundColor: 'black' },

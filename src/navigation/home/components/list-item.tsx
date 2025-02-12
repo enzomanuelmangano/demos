@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import type { StyleProp, ViewStyle, ViewToken } from 'react-native';
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   FadeIn,
@@ -9,6 +9,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { PressableScale } from 'pressto';
 
 import type { Screens } from '../../screens';
 
@@ -28,8 +29,7 @@ const ListItem: React.FC<ListItemProps> = React.memo(
         viewableItem => viewableItem.item.id === item.id,
       );
 
-      // eslint-disable-next-line no-nested-ternary
-      const scale = isVisible ? (isActive.value ? 0.95 : 1) : 0.6;
+      const scale = isVisible ? 1 : 0.6;
 
       return {
         opacity: withTiming(isVisible ? 1 : 0),
@@ -58,7 +58,7 @@ const ListItem: React.FC<ListItemProps> = React.memo(
       <Animated.View
         exiting={FadeOutDown.duration(500)}
         entering={FadeIn.duration(500)}>
-        <Pressable
+        <PressableScale
           onPress={onPressWrapper}
           onPressOut={onPressOut}
           onPressIn={onPressIn}>
@@ -66,7 +66,7 @@ const ListItem: React.FC<ListItemProps> = React.memo(
             <item.icon />
             <Text style={styles.label}>{item.name}</Text>
           </Animated.View>
-        </Pressable>
+        </PressableScale>
       </Animated.View>
     );
   },
