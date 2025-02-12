@@ -1,5 +1,9 @@
-import { FlatList, SafeAreaView, StyleSheet, Text } from 'react-native';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+import type { FlatList } from 'react-native';
+import { SafeAreaView, StyleSheet, Text } from 'react-native';
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
 import React, { useCallback, useRef } from 'react';
 
 import { MeasureableAnimatedView } from './components/MeasureableAnimatedView';
@@ -31,6 +35,12 @@ export const AnimatedIndicatorList = () => {
   });
 
   const flatlistRef = useRef<FlatList<ListItem | HeaderListItem>>(null);
+
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      contentOffsetY.value = event.contentOffset.y;
+    },
+  });
 
   const onSelectHeaderItem = useCallback((headerItem: string) => {
     const headerIndex = data.findIndex(
@@ -76,10 +86,8 @@ export const AnimatedIndicatorList = () => {
       <Animated.View style={rIndicatorStyle} />
 
       {/* List */}
-      <FlatList
-        onScroll={e => {
-          contentOffsetY.value = e.nativeEvent.contentOffset.y;
-        }}
+      <Animated.FlatList
+        onScroll={onScroll}
         ref={flatlistRef}
         scrollEventThrottle={16}
         data={data}

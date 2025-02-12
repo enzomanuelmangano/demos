@@ -1,7 +1,7 @@
 // Importing necessary libraries and components
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Color from 'color';
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useWindowDimensions, StyleSheet } from 'react-native';
 import Animated, {
   convertToRGBA,

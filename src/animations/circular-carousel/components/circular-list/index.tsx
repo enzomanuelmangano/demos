@@ -1,6 +1,9 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+} from 'react-native-reanimated';
 
 import { CircularListItem, LIST_ITEM_WIDTH } from './list-item';
 
@@ -14,6 +17,12 @@ type CircularListProps = {
 const CircularList: React.FC<CircularListProps> = ({ data, scaleEnabled }) => {
   // Create a shared value to keep track of the content offset
   const contentOffset = useSharedValue(0);
+
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      contentOffset.value = event.contentOffset.x;
+    },
+  });
 
   return (
     // Animated.FlatList renders the circular list
@@ -30,10 +39,7 @@ const CircularList: React.FC<CircularListProps> = ({ data, scaleEnabled }) => {
       // Throttle scroll events to every 16ms for smoother performance
       scrollEventThrottle={16}
       // Listen to scroll events to update the content offset shared value
-      onScroll={event => {
-        // Update the shared value with the current content offset
-        contentOffset.value = event.nativeEvent.contentOffset.x;
-      }}
+      onScroll={onScroll}
       renderItem={({ index }) => (
         <CircularListItem
           imageUri={data[index]}
