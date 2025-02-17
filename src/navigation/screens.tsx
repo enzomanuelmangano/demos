@@ -106,6 +106,7 @@ import { EverybodyCanCook } from '../animations/everybody-can-cook';
 import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
 import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
 import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
+import { ComposableTextScreen } from '../animations/composable-text';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -851,6 +852,13 @@ export const Screens = [
     component: ShakeToDeleteAnimation,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="shaker" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Composable Text',
+    route: 'ComposableText',
+    component: ComposableTextScreen,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="text" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
