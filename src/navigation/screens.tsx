@@ -107,6 +107,7 @@ import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
 import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
 import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
 import { ComposableTextScreen } from '../animations/composable-text';
+import { CardShaderReflections } from '../animations/card-shader-reflections';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -859,6 +860,13 @@ export const Screens = [
     component: ComposableTextScreen,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="text" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Card Shader Reflections',
+    route: 'CardShaderReflections',
+    component: CardShaderReflections,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
