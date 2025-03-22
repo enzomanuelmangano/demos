@@ -108,6 +108,7 @@ import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
 import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
 import { ComposableTextScreen } from '../animations/composable-text';
 import { CardShaderReflections } from '../animations/card-shader-reflections';
+import { ClockTimePicker } from '../animations/clock-time-picker';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -867,6 +868,13 @@ export const Screens = [
     component: CardShaderReflections,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Clock Time Picker',
+    route: 'ClockTimePicker',
+    component: ClockTimePicker,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="clock" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {

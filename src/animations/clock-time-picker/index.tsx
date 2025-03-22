@@ -1,0 +1,95 @@
+/**
+ * Time Picker App
+ *
+ * Main application component that combines a Clock and TimeRange component
+ * to create an interactive time selection interface.
+ *
+ * Features:
+ * - Analog clock display
+ * - Scrollable time range selector
+ * - Timezone handling
+ * - Smooth animations and transitions
+ */
+
+import { StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+
+import { TimeRange } from './components/time-range';
+import { Clock } from './components/clock';
+
+// Handle timezone offset to ensure correct time display
+// Note: This is a simple implementation. For production, consider using a proper timezone library
+const TimezoneOffsetMs = -new Date().getTimezoneOffset() * 60000;
+
+/**
+ * Generate an array of time slots for the time range selector
+ * Creates 20 time slots starting from 13:00 with 30-minute intervals
+ */
+const dates = new Array(20).fill(0).map((_, index) => {
+  const hour = Math.floor(index / 2) + 13;
+  const minutes = index % 2 === 0 ? 0 : 30;
+  return new Date(2025, 0, 1, hour, minutes);
+});
+
+/**
+ * Main App Component
+ *
+ * Orchestrates the time picker interface by:
+ * 1. Managing shared time state
+ * 2. Handling timezone adjustments
+ * 3. Coordinating between Clock and TimeRange components
+ */
+export const ClockTimePicker = () => {
+  // Shared value for the current selected time
+  const date = useSharedValue(dates[0].getTime());
+
+  // Derive the adjusted time for the clock display
+  const clockDate = useDerivedValue(() => {
+    'worklet';
+    return date.value + TimezoneOffsetMs;
+  });
+
+  return (
+    <View style={styles.container}>
+      <StatusBar style="light" />
+      <View style={styles.pickerContainer}>
+        {/* Analog clock display */}
+        <Clock date={clockDate} size={100} />
+
+        {/* Time range selector */}
+        <TimeRange
+          dates={dates}
+          onDateChange={updatedDate => {
+            'worklet';
+            date.value = updatedDate;
+          }}
+        />
+      </View>
+    </View>
+  );
+};
+
+// Styles for the main App component
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#111',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 32,
+    padding: 32,
+    borderRadius: 24,
+    backgroundColor: '#111111',
+    borderWidth: 1,
+    borderColor: '#222222',
+    borderCurve: 'continuous',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 0 },
+  },
+});
