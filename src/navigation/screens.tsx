@@ -109,6 +109,7 @@ import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
 import { ComposableTextScreen } from '../animations/composable-text';
 import { CardShaderReflections } from '../animations/card-shader-reflections';
 import { ClockTimePicker } from '../animations/clock-time-picker';
+import { Sudoku } from '../animations/sudoku';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -875,6 +876,13 @@ export const Screens = [
     component: ClockTimePicker,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="clock" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Sudoku',
+    route: 'Sudoku',
+    component: Sudoku,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="grid" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
