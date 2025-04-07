@@ -110,6 +110,7 @@ import { ComposableTextScreen } from '../animations/composable-text';
 import { CardShaderReflections } from '../animations/card-shader-reflections';
 import { ClockTimePicker } from '../animations/clock-time-picker';
 import { Sudoku } from '../animations/sudoku';
+import { ParticlesButton } from '../animations/particles-button';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -883,6 +884,13 @@ export const Screens = [
     component: Sudoku,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="grid" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Particles Button',
+    route: 'ParticlesButton',
+    component: ParticlesButton,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="atom" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
