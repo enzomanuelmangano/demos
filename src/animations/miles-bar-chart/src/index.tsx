@@ -1,13 +1,10 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { format } from 'date-fns';
 import Animated, {
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedRef,
   useDerivedValue,
   useScrollViewOffset,
 } from 'react-native-reanimated';
-import { useState } from 'react';
 
 import { WeeklyChart } from './components/weekly-chart';
 import { data } from './constants';
@@ -16,56 +13,35 @@ const App = () => {
   const { width: windowWidth } = useWindowDimensions();
 
   // These three hooks are used to synchronize the get the current active index of the scroll view
-  const animatedRef = useAnimatedRef<Animated.ScrollView>();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const animatedRef = useAnimatedRef<any>();
   const scrollOffset = useScrollViewOffset(animatedRef);
   const activeIndex = useDerivedValue(() => {
     return Math.floor((scrollOffset.value + windowWidth / 2) / windowWidth);
   }, [scrollOffset]);
 
-  // These two hooks are used to convert the animated value to a regular JS value
-  // WHY?
-  // It's all about this component:
-  //  <WeeklyChart
-  //   width={windowWidth}
-  //   height={150}
-  //   data={data[activeIndexJS]}
-  // />
-  // data[activeIndex.value] won't work because the SharedValue won't trigger a status update
-  // We need to use a regular js state to trigger a re-render
-  const [activeIndexJS, setActiveIndexJS] = useState(0);
-  // You can see the useAnimatedReaction below as a "useEffect" that listens to the activeIndex value
-  useAnimatedReaction(
-    () => {
-      return activeIndex.value;
-    },
-    (current, previous) => {
-      if (current !== previous) {
-        runOnJS(setActiveIndexJS)(current);
-      }
-    },
-  );
+  const animatedData = useDerivedValue(() => {
+    return data[activeIndex.value];
+  }, [activeIndex, data]);
 
   return (
     <View style={styles.container}>
-      <WeeklyChart
-        width={windowWidth}
-        height={150}
-        data={data[activeIndexJS]}
-      />
+      <WeeklyChart width={windowWidth} height={150} data={animatedData} />
       <View
         style={{
           height: 60,
           width: windowWidth,
         }}>
-        <Animated.ScrollView
+        <Animated.FlatList
           ref={animatedRef}
           horizontal
           snapToInterval={windowWidth}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.listContent}
-          decelerationRate={'fast'}>
-          {data.map((week, index) => {
-            const [{ day }] = week;
+          decelerationRate={'fast'}
+          data={data}
+          renderItem={({ item, index }) => {
+            const [{ date }] = item;
 
             return (
               <View
@@ -77,12 +53,12 @@ const App = () => {
                   styles.labelContainer,
                 ]}>
                 <Text style={styles.label}>
-                  week of {format(day, 'd MMMM')}
+                  week of {format(date, 'd MMMM')}
                 </Text>
               </View>
             );
-          })}
-        </Animated.ScrollView>
+          }}
+        />
       </View>
     </View>
   );

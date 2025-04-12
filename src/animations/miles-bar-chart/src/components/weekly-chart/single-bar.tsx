@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -11,7 +12,7 @@ type BarProps = {
   maxHeight: number;
   minHeight: number;
   width: number;
-  progress: number;
+  progress: SharedValue<number>;
   letter: string;
 };
 
@@ -24,7 +25,7 @@ export const Bar: React.FC<BarProps> = ({
 }) => {
   // Create an animated value that changes based on the `progress` prop/state with a timing function for smooth transitions
   const animatedProgress = useDerivedValue(() => {
-    return withTiming(progress); // Animate the `progress` value smoothly over time
+    return withTiming(progress.value); // Animate the `progress` value smoothly over time
   }, [progress]); // Re-run the animation whenever `progress` changes
 
   // Create an animated style object that will update dynamically based on the animated progress value

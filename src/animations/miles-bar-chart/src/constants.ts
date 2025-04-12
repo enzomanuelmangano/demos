@@ -1,4 +1,4 @@
-import { startOfWeek } from 'date-fns';
+import { format, startOfWeek } from 'date-fns';
 
 // Calculate the date of the Monday from three weeks ago
 const mondayFromThreeWeeksAgo = startOfWeek(
@@ -21,7 +21,8 @@ export const data = new Array(7).fill(null).map((_, weekIndex) => {
 
     // Return an object containing the date and random value
     return {
-      day: day,
+      day: format(day, 'eeeee'),
+      date: day,
       value: value,
     };
   });
