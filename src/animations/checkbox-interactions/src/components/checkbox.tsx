@@ -1,4 +1,5 @@
 import Animated, {
+  Easing,
   FadeIn,
   FadeOut,
   LinearTransition,
@@ -43,7 +44,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
 
   return (
     <Animated.View
-      layout={LinearTransition.springify().mass(0.8)}
+      layout={LinearTransition.springify().mass(1).damping(30).stiffness(250)}
       onTouchEnd={onPress}
       style={[styles.container, rContainerStyle]}>
       <Animated.Text style={[styles.label, rTextStyle]}>{label}</Animated.Text>
@@ -51,8 +52,12 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         <Animated.View
           style={{ marginLeft: 10 }}
           layout={LinearTransition}
-          entering={FadeIn}
-          exiting={FadeOut.duration(150)}>
+          entering={FadeIn.duration(150).easing(
+            Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
+          )}
+          exiting={FadeOut.duration(150).easing(
+            Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
+          )}>
           <AntDesign name="checkcircle" size={20} color={activeColor} />
         </Animated.View>
       )}

@@ -26,6 +26,7 @@ const App = () => {
         layout={Layout}
         entering={FadeIn}
         onScroll={scrollHandler}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingTop: windowHeight / 2 - blurredItemContainerHeight / 2,
           paddingBottom: windowHeight / 2 - blurredItemContainerHeight / 2,
