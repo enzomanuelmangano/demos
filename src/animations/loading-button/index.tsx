@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { QueryClient, QueryClientProvider, useMutation } from 'react-query';
+import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 // Custom button component

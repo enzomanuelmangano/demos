@@ -21,3 +21,7 @@ android
 scripts/generate-app-icon/build
 build/node_modules
 
+.yarn/
+.pnp.loader.mjs
+.pnp.cjs
+
