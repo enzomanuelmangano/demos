@@ -7896,15 +7896,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pressto@npm:^0.2.2-beta.2":
-  version: 0.2.2-beta.3
-  resolution: "pressto@npm:0.2.2-beta.3"
+"pressto@npm:^0.2.1":
+  version: 0.2.1
+  resolution: "pressto@npm:0.2.1"
   peerDependencies:
     react: "*"
     react-native: "*"
     react-native-gesture-handler: "*"
     react-native-reanimated: "*"
-  checksum: 10c0/33435a9484dc6de29648d804c41324d468965affd32e48315a8d0e89b8771cc61fde9b41990f1eed02fca71ec25907aaab357c9a64996d2b18e00346cd352c79
+  checksum: 10c0/fc5dc98b2aa830b94016eaf98bf8ab50ab2ced59754caa7437c8bea82ed5545b7604cf0907b89067442cd04a5462a828ff136a9be788033da857286f593e7b5a
   languageName: node
   linkType: hard
 
@@ -9494,7 +9494,7 @@ __metadata:
     lodash: "npm:^4.17.21"
     lottie-react-native: "npm:7.2.2"
     moti: "npm:^0.27.2"
-    pressto: "npm:^0.2.2-beta.2"
+    pressto: "npm:^0.2.1"
     prettier: "npm:^3.1.1"
     qrcode: "npm:^1.5.3"
     react: "npm:19.0.0"
