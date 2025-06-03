@@ -3,7 +3,6 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useEffect } from 'react';
 
 import type { AppData } from './apps-list/constants';
 import { useCustomNavigation } from './navigation/expansion-provider';
@@ -32,9 +31,6 @@ export const AppDetailScreen: React.FC<AppDetailScreenProps> = ({ route }) => {
   const { top: safeTop } = useSafeAreaInsets();
   const navigation = useCustomNavigation();
 
-  useEffect(() => {
-    console.log('AppDetailScreen mounted');
-  }, []);
   const handleGoBack = () => {
     navigation.backTransition();
   };

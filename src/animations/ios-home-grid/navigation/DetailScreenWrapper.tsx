@@ -7,7 +7,6 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -72,9 +71,6 @@ export const DetailScreenWrapper = ({
     };
   });
 
-  useEffect(() => {
-    console.log('DetailScreenWrapper mounted');
-  }, []);
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={styles.outerContainer}>
