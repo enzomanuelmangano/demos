@@ -111,6 +111,7 @@ import { CardShaderReflections } from '../animations/card-shader-reflections';
 import { ClockTimePicker } from '../animations/clock-time-picker';
 import { Sudoku } from '../animations/sudoku';
 import { ParticlesButton } from '../animations/particles-button';
+import { iOSHomeGrid } from '../animations/ios-home-grid';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -891,6 +892,13 @@ export const Screens = [
     component: ParticlesButton,
     backIconDark: false,
     icon: () => <MaterialCommunityIcons name="atom" {...DefaultIconProps} />,
+  },
+  {
+    name: 'iOS Home Grid',
+    route: 'iOSHomeGrid',
+    component: iOSHomeGrid,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="react" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
