@@ -190,6 +190,7 @@ export const Screens = [
     name: 'BottomBarSkia',
     route: 'BottomBarSkia',
     component: BottomBarSkia,
+    alert: true,
     icon: () => (
       <Feather name="tablet" {...DefaultIconProps} color={'yellow'} />
     ),
@@ -253,6 +254,7 @@ export const Screens = [
     name: 'Skia BottomSheet',
     route: 'SkiaBottomSheet',
     component: SkiaBottomSheet,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="card"
@@ -279,6 +281,7 @@ export const Screens = [
     route: 'ColorCarousel',
     component: ColorCarousel,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="palette"
@@ -332,6 +335,7 @@ export const Screens = [
     route: 'CustomDrawer',
     component: CustomDrawer,
     iconMarginTop: 30,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="menu"
@@ -361,6 +365,7 @@ export const Screens = [
     route: 'QRCodeGenerator',
     component: QRCodeGenerator,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="qrcode"
@@ -417,6 +422,7 @@ export const Screens = [
     name: 'Fourier Visualizer',
     route: 'FourierVisualizer',
     component: FourierVisualizer,
+    alert: true,
     icon: () => (
       <Octicons name="paintbrush" {...DefaultIconProps} color={'yellow'} />
     ),
@@ -432,6 +438,7 @@ export const Screens = [
     name: 'Loading Button',
     route: 'LoadingButton',
     component: LoadingButton,
+    alert: true,
     icon: () => (
       <AntDesign name="loading1" {...DefaultIconProps} color={'yellow'} />
     ),
@@ -587,6 +594,7 @@ export const Screens = [
     name: 'Stacked Bottom Sheet',
     route: 'StackedBottomSheet',
     component: StackedBottomSheet,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="card"
@@ -600,6 +608,7 @@ export const Screens = [
     route: 'GLTransitions',
     component: GLTransitions,
     iconMarginTop: 100,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="transition-masked"
@@ -625,6 +634,7 @@ export const Screens = [
     route: 'EmptyQRCode',
     component: EmptyQRCode,
     backIconDark: true,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="qrcode"
@@ -638,6 +648,7 @@ export const Screens = [
     route: 'InfiniteCarousel',
     component: InfiniteCarousel,
     backIconDark: true,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="view-carousel-outline"
@@ -681,6 +692,7 @@ export const Screens = [
     route: 'GeometryButton',
     component: GeometryButton,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="sphere"
@@ -701,6 +713,7 @@ export const Screens = [
     route: 'GridVisualizer',
     component: GridVisualizer,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="grid"
@@ -714,6 +727,7 @@ export const Screens = [
     route: 'IMessageStack',
     component: IMessageStack,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="gesture-swipe"
@@ -727,6 +741,7 @@ export const Screens = [
     route: 'AtlasButton',
     component: AtlasButton,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="react"
@@ -776,6 +791,7 @@ export const Screens = [
     route: 'PaperFolding',
     component: PaperFolding,
     backIconDark: true,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="paper-roll"
@@ -823,6 +839,7 @@ export const Screens = [
     route: 'ClerkToast',
     component: ClerkToast,
     backIconDark: false,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="toaster"
@@ -908,6 +925,7 @@ export const Screens = [
     route: 'StackedModals',
     component: StackedModals,
     backIconDark: true,
+    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="card"
