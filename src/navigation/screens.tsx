@@ -190,7 +190,9 @@ export const Screens = [
     name: 'BottomBarSkia',
     route: 'BottomBarSkia',
     component: BottomBarSkia,
-    icon: () => <Feather name="tablet" {...DefaultIconProps} />,
+    icon: () => (
+      <Feather name="tablet" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Cuberto Slider',
@@ -210,7 +212,9 @@ export const Screens = [
     route: 'SharedTransitions',
     component: SharedTransitions,
     alert: true,
-    icon: () => <MaterialIcons name="sync" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialIcons name="sync" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Story List',
@@ -228,7 +232,9 @@ export const Screens = [
     alert: true,
     iconMarginTop: 50,
     backIconDark: false,
-    icon: () => <MaterialIcons name="tab" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialIcons name="tab" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Blur Circles',
@@ -247,7 +253,13 @@ export const Screens = [
     name: 'Skia BottomSheet',
     route: 'SkiaBottomSheet',
     component: SkiaBottomSheet,
-    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="card"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Floating Modal',
@@ -267,7 +279,13 @@ export const Screens = [
     route: 'ColorCarousel',
     component: ColorCarousel,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="palette" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="palette"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Animated 3D Parallax',
@@ -314,7 +332,13 @@ export const Screens = [
     route: 'CustomDrawer',
     component: CustomDrawer,
     iconMarginTop: 30,
-    icon: () => <MaterialCommunityIcons name="menu" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="menu"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Selectable Grid List',
@@ -337,7 +361,13 @@ export const Screens = [
     route: 'QRCodeGenerator',
     component: QRCodeGenerator,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="qrcode" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="qrcode"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Popup Handler',
@@ -345,7 +375,11 @@ export const Screens = [
     component: PopupHandler,
     alert: true,
     icon: () => (
-      <MaterialCommunityIcons name="blur-radial" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="blur-radial"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {
@@ -375,13 +409,17 @@ export const Screens = [
     component: TelegramThemeSwitch,
     backIconDark: false,
     alert: true,
-    icon: () => <FontAwesome name="telegram" {...DefaultIconProps} />,
+    icon: () => (
+      <FontAwesome name="telegram" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Fourier Visualizer',
     route: 'FourierVisualizer',
     component: FourierVisualizer,
-    icon: () => <Octicons name="paintbrush" {...DefaultIconProps} />,
+    icon: () => (
+      <Octicons name="paintbrush" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'GitHub Onboarding',
@@ -394,7 +432,9 @@ export const Screens = [
     name: 'Loading Button',
     route: 'LoadingButton',
     component: LoadingButton,
-    icon: () => <AntDesign name="loading1" {...DefaultIconProps} />,
+    icon: () => (
+      <AntDesign name="loading1" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Scrollable Bottom Sheet',
@@ -547,7 +587,13 @@ export const Screens = [
     name: 'Stacked Bottom Sheet',
     route: 'StackedBottomSheet',
     component: StackedBottomSheet,
-    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="card"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'GL Transitions',
@@ -555,7 +601,11 @@ export const Screens = [
     component: GLTransitions,
     iconMarginTop: 100,
     icon: () => (
-      <MaterialCommunityIcons name="transition-masked" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="transition-masked"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {
@@ -575,7 +625,13 @@ export const Screens = [
     route: 'EmptyQRCode',
     component: EmptyQRCode,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="qrcode" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="qrcode"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Infinite Carousel',
@@ -586,6 +642,7 @@ export const Screens = [
       <MaterialCommunityIcons
         name="view-carousel-outline"
         {...DefaultIconProps}
+        color={'yellow'}
       />
     ),
   },
@@ -624,7 +681,13 @@ export const Screens = [
     route: 'GeometryButton',
     component: GeometryButton,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="sphere" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="sphere"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Record Button',
@@ -638,7 +701,13 @@ export const Screens = [
     route: 'GridVisualizer',
     component: GridVisualizer,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="grid" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="grid"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'iMessageStack',
@@ -646,7 +715,11 @@ export const Screens = [
     component: IMessageStack,
     backIconDark: false,
     icon: () => (
-      <MaterialCommunityIcons name="gesture-swipe" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="gesture-swipe"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {
@@ -654,7 +727,13 @@ export const Screens = [
     route: 'AtlasButton',
     component: AtlasButton,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="react" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="react"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Checkbox Interactions',
@@ -698,7 +777,11 @@ export const Screens = [
     component: PaperFolding,
     backIconDark: true,
     icon: () => (
-      <MaterialCommunityIcons name="paper-roll" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="paper-roll"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {
@@ -740,7 +823,13 @@ export const Screens = [
     route: 'ClerkToast',
     component: ClerkToast,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="toaster" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="toaster"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Duration Slider',
@@ -819,7 +908,13 @@ export const Screens = [
     route: 'StackedModals',
     component: StackedModals,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="card"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Verification Code Face',
