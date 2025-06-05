@@ -190,10 +190,7 @@ export const Screens = [
     name: 'BottomBarSkia',
     route: 'BottomBarSkia',
     component: BottomBarSkia,
-    alert: true,
-    icon: () => (
-      <Feather name="tablet" {...DefaultIconProps} color={'yellow'} />
-    ),
+    icon: () => <Feather name="tablet" {...DefaultIconProps} />,
   },
   {
     name: 'Cuberto Slider',
