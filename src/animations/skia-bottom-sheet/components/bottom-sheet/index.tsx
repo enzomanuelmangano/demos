@@ -27,7 +27,7 @@ const SHEET_HANDLE_WIDTH = 100;
 
 // Define the BottomSheetProps type
 type BottomSheetProps = {
-  window: SharedValue<{
+  size: SharedValue<{
     width: number;
     height: number;
   }>;
@@ -40,7 +40,7 @@ type BottomSheetProps = {
 // Define the BottomSheet component
 const BottomSheet: React.FC<BottomSheetProps> = React.memo(
   ({
-    window,
+    size,
     blur = DEFAULT_BLUR,
     cardRadius = DEFAULT_CARD_RADIUS,
     cardInitialOffset = DEFAULT_CARD_INITIAL_OFFSET,
@@ -56,9 +56,9 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
     const clampedTranslateY = useDerivedValue(() => {
       return Math.max(
         translateY.value,
-        -(window.value.height - cardInitialOffset),
+        -(size.value.height - cardInitialOffset),
       );
-    }, [translateY, window]);
+    }, [translateY, size]);
 
     // Create a rounded rectangle path with the current clampedTranslateY value
     // This path will be assigned to:
@@ -70,16 +70,16 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
         rrect(
           rect(
             0,
-            window.value.height - cardInitialOffset + clampedTranslateY.value,
-            window.value.width,
-            window.value.height,
+            size.value.height - cardInitialOffset + clampedTranslateY.value,
+            size.value.width,
+            size.value.height,
           ),
           cardRadius,
           cardRadius,
         ),
       );
       return path;
-    }, [window, clampedTranslateY]);
+    }, [size, clampedTranslateY]);
 
     const context = useSharedValue({
       y: 0,
@@ -120,13 +120,13 @@ const BottomSheet: React.FC<BottomSheetProps> = React.memo(
     // Calculate the y position of the "sheet handle"
     const y = useDerivedValue(() => {
       return (
-        window.value.height - cardInitialOffset + clampedTranslateY.value + 10 // some padding
+        size.value.height - cardInitialOffset + clampedTranslateY.value + 10 // some padding
       );
-    }, [window, clampedTranslateY]);
+    }, [size, clampedTranslateY]);
 
     const x = useDerivedValue(() => {
-      return window.value.width / 2 - SHEET_HANDLE_WIDTH / 2;
-    }, [window]);
+      return size.value.width / 2 - SHEET_HANDLE_WIDTH / 2;
+    }, [size]);
 
     return (
       <>

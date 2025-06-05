@@ -254,14 +254,7 @@ export const Screens = [
     name: 'Skia BottomSheet',
     route: 'SkiaBottomSheet',
     component: SkiaBottomSheet,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="card"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
   },
   {
     name: 'Floating Modal',

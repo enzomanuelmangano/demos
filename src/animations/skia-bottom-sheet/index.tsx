@@ -4,23 +4,22 @@ import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { BottomSheet } from './components/bottom-sheet';
 
+const DEFAULT_IMAGE_URL =
+  'https://fastly.picsum.photos/id/476/2000/2000.jpg?hmac=q5iDkmjCBOQEPQXbafsTJNZlJSaCeVzIC9spBxVEReI';
+
 const CanvasContainer = () => {
   const size = useSharedValue({ width: 0, height: 0 });
-  const window = useDerivedValue(() => {
-    return { width: size.value.width, height: size.value.height };
-  }, [size]);
+
   // generated from this link: 'https://picsum.photos/2000/2000' :)
-  const image = useImage(
-    'https://fastly.picsum.photos/id/476/2000/2000.jpg?hmac=q5iDkmjCBOQEPQXbafsTJNZlJSaCeVzIC9spBxVEReI',
-  );
+  const image = useImage(DEFAULT_IMAGE_URL);
 
   const imageWidth = useDerivedValue(() => {
-    return window.value.width;
-  }, [window]);
+    return size.value.width;
+  }, [size]);
 
   const imageHeight = useDerivedValue(() => {
-    return window.value.height;
-  }, [window]);
+    return size.value.height;
+  }, [size]);
 
   return (
     <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
@@ -34,7 +33,7 @@ const CanvasContainer = () => {
           image={image}
         />
       )}
-      <BottomSheet window={window} />
+      <BottomSheet size={size} />
     </Touchable.Canvas>
   );
 };
