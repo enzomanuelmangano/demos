@@ -438,10 +438,7 @@ export const Screens = [
     name: 'Loading Button',
     route: 'LoadingButton',
     component: LoadingButton,
-    alert: true,
-    icon: () => (
-      <AntDesign name="loading1" {...DefaultIconProps} color={'yellow'} />
-    ),
+    icon: () => <AntDesign name="loading1" {...DefaultIconProps} />,
   },
   {
     name: 'Scrollable Bottom Sheet',

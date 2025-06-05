@@ -76,8 +76,8 @@ const App = () => {
         onPress={handlePress}
         // Style properties for the LoadingButton
         style={{
-          height: 60,
-          borderRadius: 25,
+          height: 40,
+          borderRadius: 16,
         }}
         // Colors for button based on its status (idle, loading, success, error)
         colorFromStatusMap={{

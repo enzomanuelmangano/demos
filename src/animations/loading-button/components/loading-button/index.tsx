@@ -47,7 +47,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
           {
             flexDirection: 'row',
             alignItems: 'center',
-            paddingHorizontal: 20,
+            paddingHorizontal: 12,
           },
           style,
         ]}
@@ -75,7 +75,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
 const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: 14,
   },
 });
 
