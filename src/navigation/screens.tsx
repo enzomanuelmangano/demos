@@ -722,14 +722,7 @@ export const Screens = [
     route: 'AtlasButton',
     component: AtlasButton,
     backIconDark: false,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="react"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="react" {...DefaultIconProps} />,
   },
   {
     name: 'Checkbox Interactions',

@@ -7,7 +7,7 @@ import {
 } from '@shopify/react-native-skia';
 import React from 'react';
 import type { SharedValue } from 'react-native-reanimated';
-import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { useDerivedValue } from 'react-native-reanimated';
 
 // Define the props type for the AnimatedSquares component
 type AnimatedSquaresProps = {
@@ -41,21 +41,24 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = React.memo(
       return progress.value * maxRadius;
     }, [maxRadius]);
 
-    // Create a white texture to be used for the squares
+    // Create a white texture to be used for the squares (covering full canvas like in grid-visualizer)
     const texture = useTexture(<Fill color={'white'} />, {
       width,
       height,
     });
 
-    // Generate a derived value for the colors of the squares, randomly picking from the input colors
-    const colors = useDerivedValue(() => {
-      return new Array(SquaresAmount).fill(0).map(() => {
-        const rand = Math.floor(Math.random() * 100) % _colors.length;
+    // Pre-generate colors array to avoid recreating in derived value
+    const staticColors = React.useMemo(() => {
+      return Array.from({ length: SquaresAmount }, () => {
+        const rand = Math.floor(Math.random() * _colors.length);
         return _colors[rand];
       });
-    }, []);
+    }, [SquaresAmount, _colors]);
 
-    const randomValues = useSharedValue<number[]>([]); // Shared value to store random values for each square
+    // Pre-generate random values for deterministic behavior
+    const randomValues = React.useMemo(() => {
+      return Array.from({ length: SquaresAmount }, () => Math.random());
+    }, [SquaresAmount]);
 
     // Create the transforms for each square based on its position and distance from the center
     const transforms = useRSXformBuffer(SquaresAmount, (val, i) => {
@@ -70,13 +73,8 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = React.memo(
 
       const scale = Math.max(0, 1.5 - distance / activeRadius.value); // Scale the square based on the distance
 
-      // This is ugly, but the truth is that we want a "deterministic" randomness.
-      // In the sense that on the next frame, we want the same random value for the same square.
-      // Try to comment this block and see what happens by replacing randomValue with Math.random()
-      if (randomValues.value[i] == null) {
-        randomValues.value[i] = Math.random();
-      }
-      const randomValue = randomValues.value[i];
+      // Use pre-generated random values for deterministic behavior
+      const randomValue = randomValues[i] || 1;
 
       // Hide the square if the scale is above a certain threshold
       // The randomness is used to make the animation more interesting and less uniform
@@ -105,7 +103,7 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = React.memo(
       <Atlas
         image={texture}
         sprites={sprites}
-        colors={colors}
+        colors={staticColors}
         transforms={transforms}
       />
     );

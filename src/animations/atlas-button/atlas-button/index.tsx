@@ -47,7 +47,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
   colors,
   horizontalSquaresAmount = 50,
 }) => {
-  const iconSize = width * 0.2 ?? _iconSize; // Calculate icon size based on width or use provided iconSize
+  const iconSize = width * 0.2; // Calculate icon size based on width or use provided iconSize
 
   const isActive = useSharedValue(false); // Shared value to track if the button is active
   const tapGesture = Gesture.Tap()
@@ -64,7 +64,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
       isActive.value = false; // Reset isActive to false when the gesture is finalized
     });
 
-  const progress = useDerivedValue(() => {
+  const progress = useDerivedValue<number>(() => {
     return withTiming(isActive.value ? 1 : 0, {
       duration: 1000, // Animate progress with a duration of 1000ms
       easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Use a bezier easing function
@@ -126,7 +126,6 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
     <GestureDetector gesture={tapGesture}>
       <Animated.View style={[rStyle, styles.center]}>
         <Canvas
-          mode="continuous"
           style={{
             width,
             height,
