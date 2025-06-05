@@ -1,9 +1,9 @@
-import { interpolateColors, Group } from '@shopify/react-native-skia';
-import React, { useEffect } from 'react';
+import { Group } from '@shopify/react-native-skia';
+import React from 'react';
 import Touchable from 'react-native-skia-gesture';
 import {
+  interpolateColor,
   useDerivedValue,
-  useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -21,7 +21,7 @@ type BottomTabIconProps = {
 
 const iconSize = 30;
 
-const timingConfig = {
+const TimingConfig = {
   duration: 200,
 };
 
@@ -30,11 +30,20 @@ const BottomTabItem: React.FC<BottomTabIconProps> = React.memo(
     const isActive = index === currentIndex;
 
     const baseTranslateY = y + height / 2 - iconSize / 2 - 8;
-    const translateY = useSharedValue(baseTranslateY);
-    const iconColorProgress = useSharedValue(0);
+
+    const translateY = useDerivedValue(() => {
+      return withTiming(
+        isActive ? baseTranslateY - 35 : baseTranslateY,
+        TimingConfig,
+      );
+    }, [baseTranslateY, isActive]);
+
+    const iconColorProgress = useDerivedValue(() => {
+      return withTiming(isActive ? 1 : 0, TimingConfig);
+    }, [isActive]);
 
     const iconColor = useDerivedValue(() => {
-      return interpolateColors(
+      return interpolateColor(
         iconColorProgress.value,
         [0, 1],
         ['#7E6CE2', '#FFFFFF'],
@@ -49,16 +58,6 @@ const BottomTabItem: React.FC<BottomTabIconProps> = React.memo(
         },
       ];
     }, [translateY]);
-
-    useEffect(() => {
-      if (isActive) {
-        translateY.value = withTiming(baseTranslateY - 35, timingConfig);
-        iconColorProgress.value = withTiming(1, timingConfig);
-      } else {
-        translateY.value = withTiming(baseTranslateY, timingConfig);
-        iconColorProgress.value = withTiming(0, timingConfig);
-      }
-    }, [baseTranslateY, iconColorProgress, isActive, translateY]);
 
     return (
       <Group>
