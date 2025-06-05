@@ -118,6 +118,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
       menuVisible.value = true;
 
       // Applying the Snapshot and setting the Popup Params
+      // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
       skImage.value = await makeImageFromView(mainView);
     },
     [menuVisible, skImage],
@@ -307,7 +308,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
           </Group>
         </Canvas>
         {/* The main content of the application */}
-        <View ref={mainView} style={styles.fill}>
+        <View ref={mainView} collapsable={false} style={styles.fill}>
           {children}
         </View>
       </BlurredPopupContext.Provider>
