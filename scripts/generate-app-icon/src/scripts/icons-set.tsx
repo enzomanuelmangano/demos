@@ -51,7 +51,7 @@ args.forEach(arg => {
 const { value: text } = parsedArgs as { value: string };
 
 // Add default value if text is undefined
-const displayText = text || '0';
+const displayText = text || ':)';
 
 (async () => {
   await LoadSkiaWeb();
