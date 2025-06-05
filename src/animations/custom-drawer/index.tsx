@@ -6,7 +6,6 @@ import { useCallback } from 'react';
 import { DrawerIcon } from './components/drawer/drawer-icon';
 import { CustomDrawer } from './components/drawer';
 
-// Create a drawer navigator
 const Drawer = createDrawerNavigator();
 
 const CustomDrawerContainer = () => {
@@ -32,9 +31,7 @@ const CustomDrawerContainer = () => {
           headerTintColor: '#111',
           headerLeft,
         }}
-        // Here's the magic!
         drawerContent={CustomDrawer}>
-        {/* Define the screens */}
         <Drawer.Screen name="Home" component={View} />
         <Drawer.Screen name="Settings" component={View} />
       </Drawer.Navigator>

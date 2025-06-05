@@ -1,23 +1,21 @@
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { useDrawerStatus } from '@react-navigation/drawer';
 import { useCallback, useEffect } from 'react';
-import { SafeAreaView, StatusBar, Text, StyleSheet } from 'react-native';
+import { StatusBar, Text, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
 
-// Define the CustomDrawer component
-const CustomDrawer: React.FC<DrawerContentComponentProps> = ({ state }) => {
-  // Get the status of the drawer using the useDrawerStatus hook
+const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
   const status = useDrawerStatus();
+  const { top } = useSafeAreaInsets();
 
   // Update the status bar based on the drawer status
   useEffect(() => {
     if (status === 'open') {
-      // Hide the status bar if the drawer is open
       StatusBar.setHidden(true, 'slide');
     } else {
-      // Show the status bar if the drawer is closed
       StatusBar.setHidden(false, 'slide');
     }
   }, [status]);
@@ -36,7 +34,7 @@ const CustomDrawer: React.FC<DrawerContentComponentProps> = ({ state }) => {
 
   // Render the CustomDrawer component
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: top }]}>
       <Text style={styles.heading}>Drawer</Text>
       {/* Map over the routeNames and render a DrawerListItem for each item */}
       {state.routeNames.map(item => {
@@ -48,7 +46,7 @@ const CustomDrawer: React.FC<DrawerContentComponentProps> = ({ state }) => {
           />
         );
       })}
-    </SafeAreaView>
+    </View>
   );
 };
 

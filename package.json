@@ -58,7 +58,7 @@
     "react-native-redash": "^18.1.2",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "~4.11.1",
-    "react-native-skia-gesture": "^0.3.6",
+    "react-native-skia-gesture": "^0.4.0",
     "react-native-svg": "15.11.2",
     "react-native-web": "^0.20.0",
     "simplex-noise": "^4.0.1"

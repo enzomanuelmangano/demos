@@ -8268,13 +8268,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-skia-gesture@npm:^0.3.6":
-  version: 0.3.6
-  resolution: "react-native-skia-gesture@npm:0.3.6"
+"react-native-skia-gesture@npm:^0.4.0":
+  version: 0.4.0
+  resolution: "react-native-skia-gesture@npm:0.4.0"
   peerDependencies:
     react: ">= 18.0.0"
     react-native: "*"
-  checksum: 10c0/0ce5aea69290917ff4423c017856486c61bd21d66d4b4f24f84967853dfe6199251fe4623bcf2b2520e122b2343479dc3a66d92c69df238fea84c82395fa6d8c
+  checksum: 10c0/da42c5c02f57ec57aca3098a102a1d1d5c4e68d515634cbb458b64b4df8aa728005e148819ca4fe62a4d89376e8bdff462e414913a2c974b4374805ec51891ae
   languageName: node
   linkType: hard
 
@@ -9507,7 +9507,7 @@ __metadata:
     react-native-redash: "npm:^18.1.2"
     react-native-safe-area-context: "npm:5.4.0"
     react-native-screens: "npm:~4.11.1"
-    react-native-skia-gesture: "npm:^0.3.6"
+    react-native-skia-gesture: "npm:^0.4.0"
     react-native-svg: "npm:15.11.2"
     react-native-web: "npm:^0.20.0"
     simplex-noise: "npm:^4.0.1"

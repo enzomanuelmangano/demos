@@ -328,14 +328,7 @@ export const Screens = [
     route: 'CustomDrawer',
     component: CustomDrawer,
     iconMarginTop: 30,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="menu"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="menu" {...DefaultIconProps} />,
   },
   {
     name: 'Selectable Grid List',
