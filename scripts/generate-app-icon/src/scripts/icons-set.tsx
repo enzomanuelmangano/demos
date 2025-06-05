@@ -50,6 +50,9 @@ args.forEach(arg => {
 
 const { value: text } = parsedArgs as { value: string };
 
+// Add default value if text is undefined
+const displayText = text || '0';
+
 (async () => {
   await LoadSkiaWeb();
   // Once that CanvasKit is loaded, you can access Skia via getSkiaExports()
@@ -66,12 +69,12 @@ const { value: text } = parsedArgs as { value: string };
   const fontSize = 500;
   const font = Skia.Font(tf!, fontSize);
 
-  Icons.forEach(icon => {
+  for (const icon of Icons) {
     const surface = makeOffscreenSurface(icon.width, icon.height);
-    const icon_image = drawOffscreen(
+    const icon_image = await drawOffscreen(
       surface,
       <AppIcon
-        text={text}
+        text={displayText}
         fontSize={fontSize}
         font={font}
         Skia={Skia}
@@ -85,5 +88,5 @@ const { value: text } = parsedArgs as { value: string };
     fs.writeFileSync(`../../assets/${icon.name}.png`, buffer);
     icon_image.dispose();
     surface.dispose();
-  });
+  }
 })();
