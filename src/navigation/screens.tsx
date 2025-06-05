@@ -281,14 +281,7 @@ export const Screens = [
     route: 'ColorCarousel',
     component: ColorCarousel,
     backIconDark: false,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="palette"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="palette" {...DefaultIconProps} />,
   },
   {
     name: 'Animated 3D Parallax',
@@ -422,10 +415,7 @@ export const Screens = [
     name: 'Fourier Visualizer',
     route: 'FourierVisualizer',
     component: FourierVisualizer,
-    alert: true,
-    icon: () => (
-      <Octicons name="paintbrush" {...DefaultIconProps} color={'yellow'} />
-    ),
+    icon: () => <Octicons name="paintbrush" {...DefaultIconProps} />,
   },
   {
     name: 'GitHub Onboarding',

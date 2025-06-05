@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Extrapolate,
   interpolate,
@@ -16,7 +17,7 @@ type CarouselItemProps = {
   itemHeight: number;
   carouselWidth: number;
   maxRenderedItems: number;
-  activeIndex: Animated.SharedValue<number>;
+  activeIndex: SharedValue<number>;
 };
 
 const CarouselItem: React.FC<CarouselItemProps> = React.memo(
@@ -69,7 +70,7 @@ const CarouselItem: React.FC<CarouselItemProps> = React.memo(
         [-25, -20, 0, 20, 25],
       );
       return {
-        zIndex,
+        zIndex: Math.floor(zIndex),
         transform: [
           {
             scale: scale,
