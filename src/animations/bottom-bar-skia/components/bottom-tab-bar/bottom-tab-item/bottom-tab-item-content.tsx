@@ -1,4 +1,4 @@
-import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
+import { FitBox, Path, rect } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
 import { type SharedValue } from 'react-native-reanimated';
 
@@ -19,11 +19,9 @@ const BottomTabItemContent: React.FC<BottomTabItemProps> = React.memo(
     }, [iconSize]);
 
     return (
-      <Group>
-        <FitBox src={icon.src} dst={dst}>
-          <Path color={iconColor} path={icon.path} />
-        </FitBox>
-      </Group>
+      <FitBox src={icon.src} dst={dst}>
+        <Path path={icon.path} color={iconColor} />
+      </FitBox>
     );
   },
 );
