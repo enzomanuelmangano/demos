@@ -601,13 +601,8 @@ export const Screens = [
     route: 'GLTransitions',
     component: GLTransitions,
     iconMarginTop: 100,
-    alert: true,
     icon: () => (
-      <MaterialCommunityIcons
-        name="transition-masked"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
+      <MaterialCommunityIcons name="transition-masked" {...DefaultIconProps} />
     ),
   },
   {

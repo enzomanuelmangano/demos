@@ -54,9 +54,6 @@ export const GLTransitionsContext =
 // - to take a snapshot of the next screen
 // - to run the transition
 
-// Create AnimatedCanvas component
-const AnimatedCanvas = Animated.createAnimatedComponent(Canvas);
-
 // GLTransitionsProvider component
 export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
   children,
@@ -73,6 +70,7 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
   // Callback to prepare transition
   const prepareTransition = useCallback(async () => {
     // Capture the current screen as a snapshot
+    // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
     firstScreenSnapshot.value = await makeImageFromView(containerRef);
     // Reset the transition progress to 0
     progress.value = 0;
@@ -82,6 +80,7 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
   const runTransition = useCallback(
     async (timingConfig?: WithTimingConfig, onCompleted?: () => void) => {
       // Capture the next screen as a snapshot
+      // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
       secondScreenSnapshot.value = await makeImageFromView(containerRef);
       // Start the transition animation
       progress.value = withTiming(1, timingConfig, isFinished => {
@@ -133,35 +132,39 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
   // Render GLTransitionsProvider
   return (
     <GLTransitionsContext.Provider value={contextValue}>
-      <View
-        ref={containerRef}
-        style={{
-          flex: 1,
-        }}>
+      <View ref={containerRef} collapsable={false} style={styles.fill}>
         {/* Animated canvas for transitioning */}
-        <AnimatedCanvas style={[StyleSheet.absoluteFill, rCanvasStyle]}>
-          <Fill>
-            {/* Apply shader with transition effect */}
-            <Shader source={source} uniforms={uniforms}>
-              {/* Render snapshots of current and next screens */}
-              <ImageShader
-                image={secondScreenSnapshot}
-                fit="cover"
-                width={width}
-                height={height}
-              />
-              <ImageShader
-                image={firstScreenSnapshot}
-                fit="cover"
-                width={width}
-                height={height}
-              />
-            </Shader>
-          </Fill>
-        </AnimatedCanvas>
+        <Animated.View style={[StyleSheet.absoluteFill, rCanvasStyle]}>
+          <Canvas style={styles.fill}>
+            <Fill>
+              {/* Apply shader with transition effect */}
+              <Shader source={source} uniforms={uniforms}>
+                {/* Render snapshots of current and next screens */}
+                <ImageShader
+                  image={secondScreenSnapshot}
+                  fit="cover"
+                  width={width}
+                  height={height}
+                />
+                <ImageShader
+                  image={firstScreenSnapshot}
+                  fit="cover"
+                  width={width}
+                  height={height}
+                />
+              </Shader>
+            </Fill>
+          </Canvas>
+        </Animated.View>
         {/* Render child components */}
         {children}
       </View>
     </GLTransitionsContext.Provider>
   );
 };
+
+const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
+});
