@@ -118,7 +118,7 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
 
     return {
       bottom: bottom.value,
-      zIndex: withTiming(100 - stackedSheetId),
+      zIndex: 100 - stackedSheetId,
       shadowRadius: withTiming(Math.max(10 - stackedSheetId * 2.5, 2)),
       shadowOpacity: withTiming(Math.max(0.1 - stackedSheetId * 0.025, 0.05)),
       transform: [

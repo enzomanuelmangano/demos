@@ -594,14 +594,7 @@ export const Screens = [
     name: 'Stacked Bottom Sheet',
     route: 'StackedBottomSheet',
     component: StackedBottomSheet,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="card"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
   },
   {
     name: 'GL Transitions',
@@ -839,14 +832,7 @@ export const Screens = [
     route: 'ClerkToast',
     component: ClerkToast,
     backIconDark: false,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="toaster"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="toaster" {...DefaultIconProps} />,
   },
   {
     name: 'Duration Slider',
