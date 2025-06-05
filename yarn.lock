@@ -2215,16 +2215,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@shopify/restyle@npm:^2.4.4":
-  version: 2.4.5
-  resolution: "@shopify/restyle@npm:2.4.5"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-  checksum: 10c0/51c92912ef452f89036d27175d7999f3c675868df5977eef4e6e3a1f96336856e68946c3f3c425c501de07a929ac4f6327e3c9f1ac5b91f336a122e32b28dcd9
-  languageName: node
-  linkType: hard
-
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.8
   resolution: "@sinclair/typebox@npm:0.27.8"
@@ -9445,7 +9435,6 @@ __metadata:
     "@react-navigation/native": "npm:^6.1.9"
     "@react-navigation/native-stack": "npm:^6.9.17"
     "@shopify/react-native-skia": "npm:v2.0.0-next.4"
-    "@shopify/restyle": "npm:^2.4.4"
     "@types/color": "npm:^3.0.6"
     "@types/lodash": "npm:^4.17.7"
     "@types/qrcode": "npm:^1.5.5"

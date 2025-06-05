@@ -23,7 +23,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
   description,
   image,
 }) => {
-  const { theme } = useTheme();
+  const { theme, colors } = useTheme();
   const skImage = useImage(image);
 
   const imageHeight = 250;
@@ -34,7 +34,7 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
       <FloatingButtonTheme />
       <ThemeBlurView />
 
-      <View backgroundColor="background">
+      <View style={{ backgroundColor: colors.background, flex: 1 }}>
         <ThemeRescaler>
           <MovieImage skImage={skImage} imageHeight={imageHeight} blur={500} />
           <ScrollView
@@ -42,10 +42,10 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
             contentContainerStyle={styles.contentList}>
             <MovieImage skImage={skImage} imageHeight={imageHeight} />
             <View style={styles.textContainer}>
-              <Text color="primary" style={styles.title}>
+              <Text style={[styles.title, { color: colors.primary }]}>
                 {title}
               </Text>
-              <Text color="text" style={styles.description}>
+              <Text style={[styles.description, { color: colors.text }]}>
                 {description}
               </Text>
             </View>

@@ -1,8 +1,3 @@
-import {
-  // I really like Restyle's theming system, so I'm using it here
-  ThemeProvider as ShopifyThemeProvider,
-  useTheme as useShopifyTheme,
-} from '@shopify/restyle';
 import type { SetStateAction } from 'react';
 import React, { useCallback, useMemo, useState } from 'react';
 
@@ -13,9 +8,22 @@ type ThemeProviderProps = {
   children: React.ReactNode;
 };
 
-const ThemeContext = React.createContext({
-  theme: 'light' as 'light' | 'dark',
-  setTheme: (() => {}) as React.Dispatch<SetStateAction<'light' | 'dark'>>,
+type ThemeContextType = {
+  theme: 'light' | 'dark';
+  setTheme: React.Dispatch<SetStateAction<'light' | 'dark'>>;
+  toggleTheme: () => void;
+  colors: Theme['colors'];
+  spacing: Theme['spacing'];
+  textVariants: Theme['textVariants'];
+};
+
+const ThemeContext = React.createContext<ThemeContextType>({
+  theme: 'light',
+  setTheme: () => {},
+  toggleTheme: () => {},
+  colors: LightTheme.colors,
+  spacing: LightTheme.spacing,
+  textVariants: LightTheme.textVariants,
 });
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
@@ -23,34 +31,33 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   // const theme = useColorScheme() === 'dark' ? DarkTheme : LightTheme;
   const [selectedTheme, setTheme] = useState<'light' | 'dark'>('light');
 
-  const theme = selectedTheme === 'dark' ? DarkTheme : LightTheme;
+  const currentTheme = selectedTheme === 'dark' ? DarkTheme : LightTheme;
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+  }, []);
 
   const value = useMemo(
     () => ({
       theme: selectedTheme,
       setTheme,
+      toggleTheme,
+      colors: currentTheme.colors,
+      spacing: currentTheme.spacing,
+      textVariants: currentTheme.textVariants,
     }),
-    [selectedTheme],
+    [selectedTheme, currentTheme, toggleTheme],
   );
 
   return (
-    <ThemeContext.Provider value={value}>
-      <ShopifyThemeProvider theme={theme}>{children}</ShopifyThemeProvider>
-    </ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 };
 
 export const useTheme = () => {
-  const baseTheme = useShopifyTheme<Theme>();
-  const { setTheme, theme } = React.useContext(ThemeContext);
-  const toggleTheme = useCallback(() => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
-  }, [setTheme]);
-
-  return {
-    ...baseTheme,
-    theme,
-    setTheme,
-    toggleTheme,
-  };
+  const context = React.useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
 };
