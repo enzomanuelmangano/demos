@@ -28,7 +28,6 @@
     "@react-navigation/native-stack": "^6.9.17",
     "@shopify/react-native-skia": "v2.0.0-next.4",
     "@shopify/restyle": "^2.4.4",
-    "@tanstack/react-query": "^5.62.3",
     "color": "^4.2.3",
     "date-fns": "^3.6.0",
     "expo": "~53.0.9",

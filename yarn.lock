@@ -2250,24 +2250,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tanstack/query-core@npm:5.80.2":
-  version: 5.80.2
-  resolution: "@tanstack/query-core@npm:5.80.2"
-  checksum: 10c0/9d3ea434b1c14546fcf1ae6da4594a160aa836d1c896cd33408c22015fc53de7a44b83da9cb8b2e659d999ec29ebd9e9b42f07fcac7e149b1e919cc62551040a
-  languageName: node
-  linkType: hard
-
-"@tanstack/react-query@npm:^5.62.3":
-  version: 5.80.2
-  resolution: "@tanstack/react-query@npm:5.80.2"
-  dependencies:
-    "@tanstack/query-core": "npm:5.80.2"
-  peerDependencies:
-    react: ^18 || ^19
-  checksum: 10c0/24898e6583a3afa45a770344cf3d730a12a7e3094975ab65e580f7ae5af8170ce6b43672ee5685c94c54d8040c2c05bfdd99fb7b170c108d59f7a7d801db3a94
-  languageName: node
-  linkType: hard
-
 "@types/babel__core@npm:^7.1.14":
   version: 7.20.5
   resolution: "@types/babel__core@npm:7.20.5"
@@ -9464,7 +9446,6 @@ __metadata:
     "@react-navigation/native-stack": "npm:^6.9.17"
     "@shopify/react-native-skia": "npm:v2.0.0-next.4"
     "@shopify/restyle": "npm:^2.4.4"
-    "@tanstack/react-query": "npm:^5.62.3"
     "@types/color": "npm:^3.0.6"
     "@types/lodash": "npm:^4.17.7"
     "@types/qrcode": "npm:^1.5.5"
