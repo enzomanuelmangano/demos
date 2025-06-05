@@ -65,7 +65,7 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
   const rStackedModalStyle = useAnimatedStyle(() => {
     return {
       bottom: bottom.value,
-      zIndex: withCustomSpring(100 - stackedModalId),
+      zIndex: 100 - stackedModalId,
       shadowRadius: withCustomSpring(Math.max(10 - stackedModalId * 1, 2)),
       shadowOpacity: withCustomSpring(
         stackedModalId > 3 ? 0.1 - stackedModalId * 0.01 : 0.08,

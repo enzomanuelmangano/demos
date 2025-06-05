@@ -42,21 +42,22 @@ export const withCustomBackIcon = ({
 
     useOnShakeEffect(leaveFeedback);
 
-    useEffect(() => {
-      if (!alert) return;
-      setTimeout(() => {
-        Alert.alert(
-          'Info',
-          "This animation became unstable with the latest update. I'm currently working on a fix 🙈",
-          [
-            {
-              text: 'Ok',
-              style: 'cancel',
-            },
-          ],
-        );
-      }, 500);
-    }, []);
+    // TODO: add it back
+    // useEffect(() => {
+    //   if (!alert) return;
+    //   setTimeout(() => {
+    //     Alert.alert(
+    //       'Info',
+    //       "This animation became unstable with the latest update. I'm currently working on a fix 🙈",
+    //       [
+    //         {
+    //           text: 'Ok',
+    //           style: 'cancel',
+    //         },
+    //       ],
+    //     );
+    //   }, 500);
+    // }, []);
 
     return (
       <View style={styles.container}>

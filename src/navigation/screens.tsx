@@ -925,14 +925,7 @@ export const Screens = [
     route: 'StackedModals',
     component: StackedModals,
     backIconDark: true,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="card"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="card" {...DefaultIconProps} />,
   },
   {
     name: 'Verification Code Face',

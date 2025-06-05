@@ -1,1 +1,44 @@
-import React from 'react';import Animated, {  useAnimatedProps,  useAnimatedStyle,} from 'react-native-reanimated';import { StyleSheet } from 'react-native';type BackdropProps = {  animationProgress: Animated.SharedValue<number>;  onPress?: () => void;};const Backdrop: React.FC<BackdropProps> = React.memo(  ({ animationProgress, onPress }) => {    const animatedProps = useAnimatedProps(() => {      return {        pointerEvents: animationProgress.value ? 'auto' : 'none',        // eslint-disable-next-line @typescript-eslint/no-explicit-any      } as any;    }, []);    const rStyle = useAnimatedStyle(() => {      return {        opacity: animationProgress.value,      };    }, []);    return (      <Animated.View        onTouchEnd={onPress}        animatedProps={animatedProps}        style={[          {            ...StyleSheet.absoluteFillObject,            backgroundColor: 'rgba(0,0,0,0.75)',          },          rStyle,        ]}      />    );  },);export { Backdrop };
+import React from 'react';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
+import { StyleSheet } from 'react-native';
+
+type BackdropProps = {
+  animationProgress: Animated.SharedValue<number>;
+  onPress?: () => void;
+};
+
+const Backdrop: React.FC<BackdropProps> = React.memo(
+  ({ animationProgress, onPress }) => {
+    const animatedProps = useAnimatedProps(() => {
+      return {
+        pointerEvents: animationProgress.value ? 'auto' : 'none',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any;
+    }, []);
+
+    const rStyle = useAnimatedStyle(() => {
+      return {
+        opacity: animationProgress.value,
+      };
+    }, []);
+
+    return (
+      <Animated.View
+        onTouchEnd={onPress}
+        animatedProps={animatedProps}
+        style={[
+          {
+            ...StyleSheet.absoluteFillObject,
+            backgroundColor: 'rgba(0,0,0,0.75)',
+          },
+          rStyle,
+        ]}
+      />
+    );
+  },
+);
+
+export { Backdrop };
