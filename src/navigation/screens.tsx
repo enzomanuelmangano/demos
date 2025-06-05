@@ -210,7 +210,9 @@ export const Screens = [
     route: 'SharedTransitions',
     component: SharedTransitions,
     alert: true,
-    icon: () => <MaterialIcons name="sync" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialIcons name="sync" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Story List',
@@ -225,7 +227,6 @@ export const Screens = [
     name: 'Dynamic Tab Indicator',
     route: 'DynamicTabIndicator',
     component: DynamicTabIndicatorContainer,
-    alert: true,
     iconMarginTop: 50,
     backIconDark: false,
     icon: () => <MaterialIcons name="tab" {...DefaultIconProps} />,
@@ -337,7 +338,14 @@ export const Screens = [
     route: 'QRCodeGenerator',
     component: QRCodeGenerator,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="qrcode" {...DefaultIconProps} />,
+    alert: true,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="qrcode"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Popup Handler',
@@ -345,7 +353,11 @@ export const Screens = [
     component: PopupHandler,
     alert: true,
     icon: () => (
-      <MaterialCommunityIcons name="blur-radial" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="blur-radial"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {
@@ -375,7 +387,9 @@ export const Screens = [
     component: TelegramThemeSwitch,
     backIconDark: false,
     alert: true,
-    icon: () => <FontAwesome name="telegram" {...DefaultIconProps} />,
+    icon: () => (
+      <FontAwesome name="telegram" {...DefaultIconProps} color={'yellow'} />
+    ),
   },
   {
     name: 'Fourier Visualizer',
@@ -575,7 +589,14 @@ export const Screens = [
     route: 'EmptyQRCode',
     component: EmptyQRCode,
     backIconDark: true,
-    icon: () => <MaterialCommunityIcons name="qrcode" {...DefaultIconProps} />,
+    alert: true,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="qrcode"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'Infinite Carousel',
@@ -638,15 +659,27 @@ export const Screens = [
     route: 'GridVisualizer',
     component: GridVisualizer,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="grid" {...DefaultIconProps} />,
+    alert: true,
+    icon: () => (
+      <MaterialCommunityIcons
+        name="grid"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
+    ),
   },
   {
     name: 'iMessageStack',
     route: 'IMessageStack',
     component: IMessageStack,
     backIconDark: false,
+    alert: true,
     icon: () => (
-      <MaterialCommunityIcons name="gesture-swipe" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="gesture-swipe"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {
@@ -697,8 +730,13 @@ export const Screens = [
     route: 'PaperFolding',
     component: PaperFolding,
     backIconDark: true,
+    alert: true,
     icon: () => (
-      <MaterialCommunityIcons name="paper-roll" {...DefaultIconProps} />
+      <MaterialCommunityIcons
+        name="paper-roll"
+        {...DefaultIconProps}
+        color={'yellow'}
+      />
     ),
   },
   {

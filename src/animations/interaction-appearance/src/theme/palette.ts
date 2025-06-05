@@ -1,4 +1,3 @@
-import { createTheme } from '@shopify/restyle';
 import Color from 'color';
 
 // Defining two very simple palettes for light and dark themes
@@ -33,7 +32,7 @@ const spacing = {
   xxxl: 64,
 };
 
-export const LightTheme = createTheme({
+export const LightTheme = {
   spacing,
   colors: {
     ...LightPalette,
@@ -41,9 +40,9 @@ export const LightTheme = createTheme({
   textVariants: {
     defaults: {},
   },
-});
+};
 
-export const DarkTheme = createTheme({
+export const DarkTheme = {
   spacing,
   colors: {
     ...DarkPalette,
@@ -51,6 +50,6 @@ export const DarkTheme = createTheme({
   textVariants: {
     defaults: {},
   },
-});
+};
 
-export type Theme = typeof LightTheme | typeof DarkTheme;
+export type Theme = typeof LightTheme;

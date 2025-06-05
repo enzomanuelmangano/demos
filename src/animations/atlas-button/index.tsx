@@ -11,7 +11,7 @@ const CanvasHeight = 200;
 
 // Why Float32Array? Under the hood the AtlasButton uses the <Atlas/> component from react-native-skia
 // Which accepts just an array of Float32Array colors for the squares. This is the format for the colors.
-const TRANSPARENT = new Float32Array([0, 0, 0, 0]);
+const TRANSPARENT = new Float32Array([0, 0, 0, 1]);
 const BLUE = new Float32Array([0, 0.2, 1, 0.8]);
 const LIGHT_BLUE = new Float32Array([0, 0.5, 1, 0.8]);
 const BLUE_VARIANT = new Float32Array([0.3, 0.2, 1, 0.8]);

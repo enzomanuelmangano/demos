@@ -8,12 +8,21 @@ type SectionTabsProps = {
   width: number;
   data: string[];
   indicatorLayout: Animated.SharedValue<LayoutRectangle>;
-  layouts: Animated.SharedValue<LayoutRectangle[]>;
   onSelectSection?: (index: number) => void;
+  onLayoutChange: (index: number, layout: LayoutRectangle) => void;
+  onInitialLayout: (layout: LayoutRectangle) => void;
 };
 
 const SectionTabs: React.FC<SectionTabsProps> = React.memo(
-  ({ height, width, data, indicatorLayout, layouts, onSelectSection }) => {
+  ({
+    height,
+    width,
+    data,
+    indicatorLayout,
+    onSelectSection,
+    onLayoutChange,
+    onInitialLayout,
+  }) => {
     const rIndicatorLayoutStyle = useAnimatedStyle(() => {
       return {
         position: 'absolute',
@@ -21,53 +30,38 @@ const SectionTabs: React.FC<SectionTabsProps> = React.memo(
         left: indicatorLayout.value.x,
         width: indicatorLayout.value.width,
         height: 2,
+        backgroundColor: 'black',
+        zIndex: 10,
+        borderRadius: 5,
       };
     }, [height]);
 
+    const handleLayout = React.useCallback(
+      (index: number, layout: LayoutRectangle) => {
+        // Update the layouts array
+        onLayoutChange(index, layout);
+
+        // Set initial indicator position for the first tab
+        if (index === 0) {
+          onInitialLayout(layout);
+        }
+      },
+      [onLayoutChange, onInitialLayout],
+    );
+
     return (
-      <SafeAreaView
-        style={[
-          {
-            width,
-            height,
-          },
-          styles.safeContainer,
-        ]}>
-        <Animated.View
-          style={[
-            {
-              backgroundColor: 'black',
-              zIndex: 10,
-              borderRadius: 5,
-            },
-            rIndicatorLayoutStyle,
-          ]}
-        />
+      <SafeAreaView style={[styles.safeContainer, { width, height }]}>
+        <Animated.View style={rIndicatorLayoutStyle} />
         {data.map((title, index) => {
           return (
             <TouchableOpacity
-              onPress={() => {
-                // Nice to have: scroll to the selected section on press.
-                return onSelectSection?.(index);
-              }}
-              style={[styles.container, { width }]}
-              key={index}>
+              key={index}
+              onPress={() => onSelectSection?.(index)}
+              style={[styles.container, { width: width / data.length }]}
+              activeOpacity={0.7}>
               <Text
-                // This is the crucial part.
-                // Animating on the scroll event isn't enough if
-                // we don't have the layout of each section title.
-                // Here, we're solving this problem by using the onLayout event.
                 onLayout={({ nativeEvent: { layout } }) => {
-                  // First we update the layouts value.
-                  layouts.value[index] = { ...layout };
-                  layouts.value = [...layouts.value];
-
-                  // Then if the index is 0, we update the indicatorLayout value.
-                  // This is because we want the indicatorLayout value to be
-                  // the layout of the first section title (at the first render).
-                  if (index === 0) {
-                    indicatorLayout.value = { ...layout };
-                  }
+                  handleLayout(index, layout);
                 }}
                 style={styles.title}>
                 {title}
@@ -85,20 +79,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 8,
   },
   title: {
     fontSize: 17,
     fontWeight: 'bold',
     textAlign: 'center',
+    color: '#000',
   },
-  // Very bad naming :)
   safeContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     zIndex: 5,
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255, 255,0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
 });
 

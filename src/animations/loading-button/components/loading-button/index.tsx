@@ -1,4 +1,4 @@
-import { MotiView, motify } from 'moti';
+import { MotiView } from 'moti';
 import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -21,9 +21,6 @@ type LoadingButtonProps = {
   titleFromStatusMap?: Record<ActivityStatus, string>;
 };
 
-// Creation of an animated Text component using motify
-const MotifiedAnimatedText = motify(Animated.Text)();
-
 const LoadingButton: React.FC<LoadingButtonProps> = ({
   onPress,
   style,
@@ -33,7 +30,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
 }) => {
   // Determine the active color based on the status prop
   const activeColor = useMemo(() => {
-    return colorFromStatusMap?.[status ?? 'idle'];
+    return colorFromStatusMap[status] || colorFromStatusMap.idle;
   }, [colorFromStatusMap, status]);
 
   // Render the animated button component
@@ -41,14 +38,16 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
     <PressableScale onPress={onPress} layout={LinearTransition}>
       <MotiView
         transition={{
-          type: 'timing',
-          duration: 1000,
+          backgroundColor: {
+            type: 'timing',
+            duration: 1000,
+          },
         }}
         style={[
           {
             flexDirection: 'row',
             alignItems: 'center',
-            paddingHorizontal: 20,
+            paddingHorizontal: 12,
           },
           style,
         ]}
@@ -56,22 +55,17 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
           backgroundColor: Color(activeColor).lighten(0.6).hex(),
         }}>
         <ActivityIndicator status={status} color={activeColor} />
-
-        <MotifiedAnimatedText
+        <Animated.Text
           entering={FadeIn}
           exiting={FadeOut}
-          transition={{
-            type: 'timing',
-            duration: 1000,
-          }}
-          animate={{
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            color: activeColor,
-          }}
-          style={[styles.title]}>
-          {titleFromStatusMap?.[status ?? 'idle']}
-        </MotifiedAnimatedText>
+          style={[
+            styles.title,
+            {
+              color: activeColor,
+            },
+          ]}>
+          {titleFromStatusMap?.[status] || ''}
+        </Animated.Text>
       </MotiView>
     </PressableScale>
   );
@@ -81,7 +75,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
 const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
-    fontSize: 20,
+    fontSize: 14,
   },
 });
 

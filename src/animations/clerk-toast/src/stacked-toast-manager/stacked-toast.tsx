@@ -113,7 +113,7 @@ const StackedToast: React.FC<StackedToastProps> = ({
   const rStackedToastStyle = useAnimatedStyle(() => {
     return {
       bottom: bottom.value,
-      zIndex: withTiming(100 - stackedToastId),
+      zIndex: 100 - stackedToastId,
       shadowRadius: withTiming(Math.max(10 - stackedToastId * 2.5, 2)),
       shadowOpacity: withTiming(
         stackedToastId > 3 ? 0.1 - stackedToastId * 0.025 : 0.08,

@@ -180,7 +180,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
     // Provide the 'value' to child components using the SwitchThemeContext context
     <SwitchThemeContext.Provider value={value}>
       {/* Main content container */}
-      <View ref={viewRef} style={{ flex: 1 }}>
+      <View ref={viewRef} style={{ flex: 1 }} collapsable={false}>
         {children}
       </View>
 

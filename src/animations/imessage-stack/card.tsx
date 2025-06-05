@@ -106,10 +106,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
       scrollOffset.value,
       inputRange,
       zIndexOutputRange,
-      // Extrapolation.CLAMP,
-      // Why do we need to clamp the output range?
-      // Try to add the clamp and see what happens while scrolling (till the last card)
-      // hint: look the last card while scrolling slowly
+      Extrapolation.CLAMP,
     );
 
     const perspectiveRotateY = interpolate(
@@ -172,7 +169,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
           rotateY: `${perspectiveRotateY}rad`,
         },
       ],
-      zIndex,
+      zIndex: Math.floor(zIndex),
     };
   }, []);
 

@@ -17,8 +17,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-const AnimatedCanvas = Animated.createAnimatedComponent(Canvas);
-
 type GeometryButtonProps = {
   onPress?: () => void;
   circles: number;
@@ -138,16 +136,18 @@ export const GeometryButton: React.FC<GeometryButtonProps> = React.memo(
 
     return (
       <GestureDetector gesture={tapGesture}>
-        <AnimatedCanvas style={[baseStyle, rCanvasStyle]}>
-          <Group transform={center}>
-            <Path
-              path={animatedCircles}
-              style={'stroke'}
-              strokeWidth={strokeWidth}
-              color={color}
-            />
-          </Group>
-        </AnimatedCanvas>
+        <Animated.View style={rCanvasStyle}>
+          <Canvas style={baseStyle}>
+            <Group transform={center}>
+              <Path
+                path={animatedCircles}
+                style={'stroke'}
+                strokeWidth={strokeWidth}
+                color={color}
+              />
+            </Group>
+          </Canvas>
+        </Animated.View>
       </GestureDetector>
     );
   },
