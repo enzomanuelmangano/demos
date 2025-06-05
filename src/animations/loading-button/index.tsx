@@ -1,7 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { QueryClient, QueryClientProvider, useMutation } from '@tanstack/react-query';
-import { useRef } from 'react';
+import { useRef, useState, useCallback } from 'react';
 
 // Custom button component
 import { LoadingButton } from './components/loading-button';
@@ -11,46 +10,70 @@ const wait = async (timeout: number) => {
   return new Promise(resolve => setTimeout(resolve, timeout));
 };
 
+// Custom hook to manage async mutation state
+const useMutation = () => {
+  const [status, setStatus] = useState<
+    'idle' | 'loading' | 'success' | 'error'
+  >('idle');
+
+  const mutateAsync = useCallback(async (mutationFn: () => Promise<void>) => {
+    try {
+      setStatus('loading');
+      await mutationFn();
+      setStatus('success');
+    } catch (error) {
+      setStatus('error');
+      throw error;
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    setStatus('idle');
+  }, []);
+
+  return { status, mutateAsync, reset };
+};
+
 const App = () => {
   // useRef hook maintains the reference of `i` across component re-renders
   const i = useRef(0);
 
-  // useMutation hook is for executing async mutations (like data updates). It returns the mutation status and other handlers
-  const { status, mutateAsync, reset } = useMutation(
-    async () => {
-      // Every second call results in an error. Otherwise, it waits for 2 seconds before resolving.
-      if (i.current % 2 === 0) {
-        i.current++;
-        return wait(2000);
-      }
+  // Custom mutation hook to manage async operations with status tracking
+  const { status, mutateAsync, reset } = useMutation();
+
+  const handleMutation = useCallback(async () => {
+    // Every second call results in an error. Otherwise, it waits for 2 seconds before resolving.
+    if (i.current % 2 === 0) {
+      i.current++;
+      await wait(2000);
+    } else {
       await wait(2000);
       i.current++;
-      console.log('Transaction Unsafe Example');
-    },
-    {
-      // After the mutation succeeds, wait for 1.5 seconds and then reset its status
-      onSuccess: async () => {
-        wait(1500).then(() => {
-          reset();
-        });
-      },
-      // After the mutation fails, wait for 1.5 seconds and then reset its status
-      onError: async () => {
-        wait(1500).then(() => {
-          reset();
-        });
-      },
-    },
-  );
+      throw new Error('Transaction Unsafe Example');
+    }
+  }, []);
+
+  const handlePress = useCallback(async () => {
+    try {
+      await mutateAsync(handleMutation);
+      // After success, wait for 1.5 seconds and then reset status
+      setTimeout(() => {
+        reset();
+      }, 1500);
+    } catch (error) {
+      // After error, wait for 1.5 seconds and then reset status
+      setTimeout(() => {
+        reset();
+      }, 1500);
+    }
+  }, [mutateAsync, handleMutation, reset]);
 
   // Component render
   return (
     <View style={styles.container}>
       <LoadingButton
         status={status}
-        onPress={async () => {
-          await mutateAsync();
-        }}
+        onPress={handlePress}
         // Style properties for the LoadingButton
         style={{
           height: 60,
@@ -75,28 +98,12 @@ const App = () => {
   );
 };
 
-// Configuration for the React Query client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1, // Retry failed queries once
-      retryDelay: 5000, // Delay retries by 5 seconds
-      refetchOnWindowFocus: false, // Do not refetch on window focus
-      refetchOnMount: false, // Do not refetch when component mounts
-      suspense: false,
-      useErrorBoundary: false,
-    },
-  },
-});
-
-// Main application container wrapping the App in necessary providers
+// Main application container
 const AppContainer = () => {
   return (
-    <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <App />
-      </GestureHandlerRootView>
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <App />
+    </GestureHandlerRootView>
   );
 };
 

@@ -143,6 +143,11 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const svg = (svgMap as any)[status];
 
+    // Only render SVG if it exists for the current status
+    if (!svg) {
+      return null;
+    }
+
     const src = rect(0, 0, svgSize, svgSize);
     const iconSize = size * 0.5;
 
