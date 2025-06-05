@@ -227,12 +227,9 @@ export const Screens = [
     name: 'Dynamic Tab Indicator',
     route: 'DynamicTabIndicator',
     component: DynamicTabIndicatorContainer,
-    alert: true,
     iconMarginTop: 50,
     backIconDark: false,
-    icon: () => (
-      <MaterialIcons name="tab" {...DefaultIconProps} color={'yellow'} />
-    ),
+    icon: () => <MaterialIcons name="tab" {...DefaultIconProps} />,
   },
   {
     name: 'Blur Circles',
