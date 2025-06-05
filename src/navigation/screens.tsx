@@ -685,14 +685,7 @@ export const Screens = [
     route: 'GeometryButton',
     component: GeometryButton,
     backIconDark: false,
-    alert: true,
-    icon: () => (
-      <MaterialCommunityIcons
-        name="sphere"
-        {...DefaultIconProps}
-        color={'yellow'}
-      />
-    ),
+    icon: () => <MaterialCommunityIcons name="sphere" {...DefaultIconProps} />,
   },
   {
     name: 'Record Button',
