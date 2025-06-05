@@ -636,12 +636,10 @@ export const Screens = [
     route: 'InfiniteCarousel',
     component: InfiniteCarousel,
     backIconDark: true,
-    alert: true,
     icon: () => (
       <MaterialCommunityIcons
         name="view-carousel-outline"
         {...DefaultIconProps}
-        color={'yellow'}
       />
     ),
   },
