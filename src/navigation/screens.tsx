@@ -936,7 +936,9 @@ export const Screens = [
     route: 'iOSHomeGrid',
     component: iOSHomeGrid,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="react" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="grid-large" {...DefaultIconProps} />
+    ),
   },
 ]
   .map((item, index) => {
