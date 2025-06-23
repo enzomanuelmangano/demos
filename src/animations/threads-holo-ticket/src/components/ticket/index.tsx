@@ -51,7 +51,7 @@ export const Ticket: React.FC<TicketProps> = React.memo(
         // Apply decay animation when gesture ends
         translateX.value = withDecay({
           velocity: event.velocityX,
-          deceleration: 0.99,
+          deceleration: 0.995,
         });
       });
 
