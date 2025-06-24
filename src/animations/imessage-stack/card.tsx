@@ -101,14 +101,6 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
       Extrapolation.CLAMP,
     );
 
-    const zIndexOutputRange = [100, 200, 300, 400, 300, 200, 100];
-    const zIndex = interpolate(
-      scrollOffset.value,
-      inputRange,
-      zIndexOutputRange,
-      Extrapolation.CLAMP,
-    );
-
     const perspectiveRotateY = interpolate(
       scrollOffset.value, // The current scroll offset value
       [
@@ -163,37 +155,51 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
         { scale },
         { rotate: `${rotate}rad` },
         {
-          perspective: 500,
-        },
-        {
           rotateY: `${perspectiveRotateY}rad`,
         },
       ],
-      zIndex: Math.floor(zIndex),
     };
   }, []);
 
+  const zIndexStyle = useAnimatedStyle(() => {
+    const zIndexOutputRange = [0, 200, 300, 400, 300, 200, 0];
+
+    const zIndex = interpolate(
+      scrollOffset.value,
+      inputRange,
+      zIndexOutputRange,
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      transformOrigin: ['50%', '50%', zIndex],
+      transform: [{ perspective: 10000000 }],
+    };
+  });
+
   return (
-    <Animated.View
-      style={[
-        {
-          position: 'absolute',
-          left: (WindowWidth - CARD_WIDTH) / 2,
-          height: CARD_HEIGHT,
-          width: CARD_WIDTH,
-          borderRadius: 20,
-          borderCurve: 'continuous',
-          backgroundColor: color,
-          shadowColor: 'rgba(0, 0, 0, 0.3)',
-          shadowOffset: {
-            width: 0,
-            height: 10,
+    <Animated.View style={zIndexStyle}>
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            left: (WindowWidth - CARD_WIDTH) / 2,
+            height: CARD_HEIGHT,
+            width: CARD_WIDTH,
+            borderRadius: 20,
+            borderCurve: 'continuous',
+            backgroundColor: color,
+            shadowColor: 'rgba(0, 0, 0, 0.3)',
+            shadowOffset: {
+              width: 0,
+              height: 10,
+            },
+            shadowOpacity: 0.2,
+            shadowRadius: 20,
           },
-          shadowOpacity: 0.2,
-          shadowRadius: 20,
-        },
-        rStyle,
-      ]}
-    />
+          rStyle,
+        ]}
+      />
+    </Animated.View>
   );
 };
