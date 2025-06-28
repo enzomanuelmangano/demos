@@ -37,6 +37,19 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
         width,
       }}>
       {new Array(3).fill(0).map((_, i) => {
+        // Calculate z-index style for proper stacking in new architecture
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const rZIndexStyle = useAnimatedStyle(() => {
+          // Calculate dynamic zIndex - higher values for elements that should be on top
+          // In the paper folding, we want the first fold (index 0) to be on top
+          const zIndex = (2 - i) * 100; // 200, 100, 0 for indices 0, 1, 2
+
+          return {
+            transformOrigin: ['50%', '50%', zIndex],
+            transform: [{ perspective: 1000000 }],
+          };
+        }, []);
+
         // Calculate animated style for each fold section
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const rCardStyle = useAnimatedStyle(() => {
@@ -47,11 +60,8 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
             [height / 2 - foldHeight / 2, 0],
           );
 
-          // Base transform with perspective and translation
-          const baseTransform = [
-            { perspective: 1000 },
-            { translateY: translateY },
-          ];
+          // Base transform without perspective (since it's in the zIndex style now)
+          const baseTransform = [{ translateY: translateY }];
 
           // First Fold Style
           if (i === 0) {
@@ -110,28 +120,28 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
         }, []);
 
         return (
-          <Animated.View
-            key={i}
-            style={[
-              {
-                position: 'absolute',
-                height: foldHeight,
-                width: width,
-                zIndex: -i * 1000,
-              },
-              rCardStyle,
-            ]}>
-            <Canvas style={{ flex: 1 }}>
-              <Rect width={width} height={foldHeight} color={rectColor}>
-                <Shadow
-                  dx={0}
-                  dy={12}
-                  blur={25}
-                  color="#efefef"
-                  inner={i > 0}
-                />
-              </Rect>
-            </Canvas>
+          <Animated.View key={i} style={rZIndexStyle}>
+            <Animated.View
+              style={[
+                {
+                  position: 'absolute',
+                  height: foldHeight,
+                  width: width,
+                },
+                rCardStyle,
+              ]}>
+              <Canvas style={{ flex: 1 }}>
+                <Rect width={width} height={foldHeight} color={rectColor}>
+                  <Shadow
+                    dx={0}
+                    dy={12}
+                    blur={25}
+                    color="#efefef"
+                    inner={i > 0}
+                  />
+                </Rect>
+              </Canvas>
+            </Animated.View>
           </Animated.View>
         );
       })}
