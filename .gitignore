@@ -25,3 +25,4 @@ build/node_modules
 .pnp.loader.mjs
 .pnp.cjs
 
+mcp.json
