@@ -10,111 +10,112 @@ import {
 } from '@expo/vector-icons';
 import React from 'react';
 
+import { ScrollTransition3D } from '../animations/3d-scroll-transition';
 import { ActionTray } from '../animations/action-tray';
 import { AddToCart } from '../animations/add-to-cart';
 import { AirbnbSlider } from '../animations/airbnb-slider';
+import { AlertDrawer } from '../animations/alert-drawer';
 import { Animated3DParallax } from '../animations/animated-3d-parallax';
 import { AnimatedClipBox } from '../animations/animated-clip-box';
 import { AnimatedCountText } from '../animations/animated-count-text';
 import { AnimatedGridList } from '../animations/animated-grid-list';
 import { AnimatedIndicatorList } from '../animations/animated-indicator-list';
+import { AtlasButton } from '../animations/atlas-button';
 import { AudioPlayer } from '../animations/audioplayer';
+import { BalanceSlider } from '../animations/balance-slider';
+import { BezierCurveOutline } from '../animations/bezier-curve-outline';
 import { BlurCircles } from '../animations/blur-circles';
 import { BlurredBottomBar } from '../animations/blurred-bottom-bar';
 import { BlurredScroll } from '../animations/blurred-scroll';
 import { BottomBarSkia } from '../animations/bottom-bar-skia';
+import { CardShaderReflections } from '../animations/card-shader-reflections';
+import { CheckboxInteractions } from '../animations/checkbox-interactions';
 import { CircularCarousel } from '../animations/circular-carousel';
+import { ClerkToast } from '../animations/clerk-toast';
+import { ClockTimePicker } from '../animations/clock-time-picker';
 import { ColorCarousel } from '../animations/color-carousel';
+import { ComposableTextScreen } from '../animations/composable-text';
+import { CoverflowCarousel } from '../animations/coverflow-carousel';
 import { CubertoSlider } from '../animations/cuberto-slider';
 import { CustomDrawer } from '../animations/custom-drawer';
+import { DeleteButton } from '../animations/delete-button';
+import { DotSheet } from '../animations/dot-sheet';
 import { DragToSort } from '../animations/drag-to-sort';
+import { DurationSlider } from '../animations/duration-slider';
+import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
 import { DynamicTabIndicatorContainer } from '../animations/dynamic-tab-indicator';
+import { EmailDemo } from '../animations/email-demo';
+import { EmptyQRCode } from '../animations/empty-qrcode';
+import { EverybodyCanCook } from '../animations/everybody-can-cook';
+import { ExclusionTabs } from '../animations/exclusion-tabs';
+import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
+import { FamilyNumberInput } from '../animations/family-number-input';
+import { FibonacciShader } from '../animations/fibonacci-shader';
+import { FibonacciShaderGrid } from '../animations/fibonacci-shader-grid';
 import { FloatingBottomBar } from '../animations/floating-bottom-bar';
 import { FloatingModal } from '../animations/floating-modal';
 import { FluidSlider } from '../animations/fluid-slider';
+import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
 import { FourierVisualizer } from '../animations/fourier-visualizer';
 import { FractalGlass } from '../animations/fractal-glass';
+import { GeometryButton } from '../animations/geometry-button';
 import { GitHubOnboarding } from '../animations/github-onboarding';
+import { GLTransitions } from '../animations/gl-transitions';
+import { GridVisualizer } from '../animations/grid-visualizer';
 import { ImageCropper } from '../animations/image-cropper';
+import { IMessageStack } from '../animations/imessage-stack';
+import { InfiniteCarousel } from '../animations/infinite-carousel';
+import { InteractionAppearance } from '../animations/interaction-appearance';
+import { iOSHomeGrid } from '../animations/ios-home-grid';
+import { LinearTabInteraction } from '../animations/linear-tab-interaction';
 import { LoadingButton } from '../animations/loading-button';
 import { Metaball } from '../animations/metaball';
+import { MilesBarChart } from '../animations/miles-bar-chart';
 import { MobileInput } from '../animations/mobile-input';
+import { MotionBlur } from '../animations/motion-blur';
+import { PaperFolding } from '../animations/paper-folding';
+import { ParticlesButton } from '../animations/particles-button';
+import { PomodoroTimer } from '../animations/pomodoro-timer';
 import { PopupHandler } from '../animations/popup-handler';
+import { PrequelSlider } from '../animations/prequel-slider';
 import { QRCodeGenerator } from '../animations/qrcode';
 import { RadarChartContainer } from '../animations/radar-chart';
+import { RecordButton } from '../animations/record-button';
 import { ScrollProgress } from '../animations/scroll-progress';
 import { ScrollableBottomSheet } from '../animations/scrollable-bottom-sheet';
 import { SelectableGridList } from '../animations/selectable-grid-list';
+import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
 import { SharedTransitions } from '../animations/shared-transition';
 import { SkiaBottomSheet } from '../animations/skia-bottom-sheet';
 import { SkiaColorPicker } from '../animations/skia-color-picker';
 import { SlideToReveal } from '../animations/slide-to-reveal';
 import { SmoothDropdown } from '../animations/smooth-dropdown';
+import { Snake } from '../animations/snake';
 import { Spiral } from '../animations/spiral';
 import { SplitButton } from '../animations/split-button';
+import { StackedBottomSheet } from '../animations/stacked-bottom-sheet';
+import { StackedList } from '../animations/stacked-list';
+import { StackedModals } from '../animations/stacked-modals';
+import { StaggeredCardNumber } from '../animations/staggered-card-number';
 import { SteddyGraphInteraction } from '../animations/steddy-graph-interaction';
+import { Steps } from '../animations/steps';
 import { StoryList } from '../animations/story-list';
+import { Sudoku } from '../animations/sudoku';
 import { SwipeCards } from '../animations/swipe-cards';
+import { TabNavigation } from '../animations/tab-navigation';
 import { TelegramThemeSwitch } from '../animations/telegram-theme-switch';
 import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
+import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
 import { Toast } from '../animations/toast';
 import { TwitterTabBar } from '../animations/twitter-tab-bar';
-import { FibonacciShader } from '../animations/fibonacci-shader';
-import { FamilyNumberInput } from '../animations/family-number-input';
-import { BalanceSlider } from '../animations/balance-slider';
-import { FibonacciShaderGrid } from '../animations/fibonacci-shader-grid';
-import { VerificationCode } from '../animations/verification-code';
-import { EmailDemo } from '../animations/email-demo';
-import { ScrollTransition3D } from '../animations/3d-scroll-transition';
-import { StaggeredCardNumber } from '../animations/staggered-card-number';
-import { StackedBottomSheet } from '../animations/stacked-bottom-sheet';
-import { GLTransitions } from '../animations/gl-transitions';
-import { PrequelSlider } from '../animations/prequel-slider';
-import { EmptyQRCode } from '../animations/empty-qrcode';
-import { InfiniteCarousel } from '../animations/infinite-carousel';
 import { TwodosSlide } from '../animations/twodos-slide';
-import { WheelPicker } from '../animations/wheel-picker';
-import { StackedList } from '../animations/stacked-list';
-import { GeometryButton } from '../animations/geometry-button';
-import { RecordButton } from '../animations/record-button';
-import { GridVisualizer } from '../animations/grid-visualizer';
-import { IMessageStack } from '../animations/imessage-stack';
-import { AtlasButton } from '../animations/atlas-button';
-import { CheckboxInteractions } from '../animations/checkbox-interactions';
-import { InteractionAppearance } from '../animations/interaction-appearance';
-import { DotSheet } from '../animations/dot-sheet';
-import { CoverflowCarousel } from '../animations/coverflow-carousel';
-import { PaperFolding } from '../animations/paper-folding';
-import { MilesBarChart } from '../animations/miles-bar-chart';
-import { Steps } from '../animations/steps';
-import { PomodoroTimer } from '../animations/pomodoro-timer';
-import { ClerkToast } from '../animations/clerk-toast';
-import { DurationSlider } from '../animations/duration-slider';
-import { AlertDrawer } from '../animations/alert-drawer';
-import { MotionBlur } from '../animations/motion-blur';
-import { DeleteButton } from '../animations/delete-button';
-import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
-import { Snake } from '../animations/snake';
-import { ExpandableMiniPlayer } from '../animations/expandable-mini-player';
-import { BezierCurveOutline } from '../animations/bezier-curve-outline';
-import { LinearTabInteraction } from '../animations/linear-tab-interaction';
-import { TabNavigation } from '../animations/tab-navigation';
-import { ExclusionTabs } from '../animations/exclusion-tabs';
-import { StackedModals } from '../animations/stacked-modals';
+import { VerificationCode } from '../animations/verification-code';
 import { VerificationCodeFace } from '../animations/verification-code-face';
-import { EverybodyCanCook } from '../animations/everybody-can-cook';
-import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
-import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
-import { ShakeToDeleteAnimation } from '../animations/shake-to-delete';
-import { ComposableTextScreen } from '../animations/composable-text';
-import { CardShaderReflections } from '../animations/card-shader-reflections';
-import { ClockTimePicker } from '../animations/clock-time-picker';
-import { Sudoku } from '../animations/sudoku';
-import { ParticlesButton } from '../animations/particles-button';
-import { iOSHomeGrid } from '../animations/ios-home-grid';
+import { WheelPicker } from '../animations/wheel-picker';
 
-import { withCustomBackIcon } from './with-custom-back-icon-hoc';
+import { IosHomeBouncy } from '../animations/ios-home-bouncy';
 import { TimeMachine } from '../animations/time-machine';
+import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
 const ICON_SIZE = 24;
 const ICON_COLOR = 'white';
@@ -946,7 +947,16 @@ export const Screens = [
     route: 'TimeMachine',
     component: TimeMachine,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="timelapse" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="timelapse" {...DefaultIconProps} />
+    ),
+  },
+  {
+    name: 'iOS Home Bouncy',
+    route: 'IosHomeBouncy',
+    component: IosHomeBouncy,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="home" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
