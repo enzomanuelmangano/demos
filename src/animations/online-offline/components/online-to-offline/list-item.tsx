@@ -1,18 +1,18 @@
-import Animated, {
-  withTiming,
-  useDerivedValue,
-  interpolate,
-  Easing,
-} from 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
 import {
   Canvas,
-  Image,
-  useImage,
   ColorMatrix,
   Group,
+  Image,
+  useImage,
 } from '@shopify/react-native-skia';
 import { memo } from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  useDerivedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import { LayoutTransition } from './animations';
 import type { ItemProps } from './types';

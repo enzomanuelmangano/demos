@@ -112,10 +112,10 @@ import { TwodosSlide } from '../animations/twodos-slide';
 import { VerificationCode } from '../animations/verification-code';
 import { VerificationCodeFace } from '../animations/verification-code-face';
 import { WheelPicker } from '../animations/wheel-picker';
-
 import { IosHomeBouncy } from '../animations/ios-home-bouncy';
 import { OnlineOffline } from '../animations/online-offline';
 import { TimeMachine } from '../animations/time-machine';
+
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
 const ICON_SIZE = 24;

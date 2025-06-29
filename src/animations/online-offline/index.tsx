@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+
 import { OnlineToOffline } from './components/online-to-offline';
 
 const InitialItems = [
