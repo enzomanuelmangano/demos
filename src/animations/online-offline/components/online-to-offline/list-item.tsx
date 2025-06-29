@@ -47,59 +47,21 @@ export const ListItem = memo(
       const progress = grayscaleProgress.value;
 
       // Identity matrix (no filter)
+      // prettier-ignore
       const identityMatrix = [
-        // eslint-disable-next-line prettier/prettier
-        1,
-        0,
-        0,
-        0,
-        0, // red channel
-        // eslint-disable-next-line prettier/prettier
-        0,
-        1,
-        0,
-        0,
-        0, // green channel
-        // eslint-disable-next-line prettier/prettier
-        0,
-        0,
-        1,
-        0,
-        0, // blue channel
-        // eslint-disable-next-line prettier/prettier
-        0,
-        0,
-        0,
-        1,
-        0, // alpha channel
+        1, 0, 0, 0, 0, // red channel
+        0, 1, 0, 0, 0, // green channel
+        0, 0, 1, 0, 0, // blue channel
+        0, 0, 0, 1, 0, // alpha channel
       ];
 
       // Grayscale matrix
+      // prettier-ignore
       const grayscaleMatrix = [
-        // eslint-disable-next-line prettier/prettier
-        0,
-        1,
-        0,
-        0,
-        0, // red channel
-        // eslint-disable-next-line prettier/prettier
-        0,
-        1,
-        0,
-        0,
-        0, // green channel
-        // eslint-disable-next-line prettier/prettier
-        0,
-        1,
-        0,
-        0,
-        0, // blue channel
-        // eslint-disable-next-line prettier/prettier
-        0,
-        0,
-        0,
-        1,
-        0, // alpha channel
+        0, 1, 0, 0, 0, // red channel
+        0, 1, 0, 0, 0, // green channel
+        0, 1, 0, 0, 0, // blue channel
+        0, 0, 0, 1, 0, // alpha channel
       ];
 
       // Interpolate between identity and grayscale matrices

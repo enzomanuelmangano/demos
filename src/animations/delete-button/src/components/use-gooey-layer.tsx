@@ -22,23 +22,15 @@ export const useGooeyLayer = ({
         <Blur blur={blurRadius} />
         {/* Apply a color matrix transformation */}
         <ColorMatrix
+          // prettier-ignore
           matrix={[
             // Color matrix values:
             // Each row represents R, G, B, A channels and a bias value
             // The matrix is applied to each pixel: [R', G', B', A'] = [R, G, B, A, 1] * matrix
-            // Red channel: no change
-            // eslint-disable-next-line prettier/prettier
-            1, 0, 0, 0, 0,
-            // Green channel: no change
-            // eslint-disable-next-line prettier/prettier
-            0, 1, 0, 0, 0,
-            // Blue channel: no change
-            // eslint-disable-next-line prettier/prettier
-            0, 0, 1, 0, 0,
-            // Alpha channel: multiplied by 18 and offset by -10
-            // This increases contrast and creates the gooey effect
-            // eslint-disable-next-line prettier/prettier
-            0, 0, 0, alphaMultiplier, alphaOffset,
+            1, 0, 0, 0, 0, // Red channel: no change
+            0, 1, 0, 0, 0, // Green channel: no change
+            0, 0, 1, 0, 0, // Blue channel: no change
+            0, 0, 0, alphaMultiplier, alphaOffset, // Alpha channel: creates gooey effect
           ]}
         />
       </Paint>
