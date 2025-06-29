@@ -1,14 +1,14 @@
 import React, { useLayoutEffect } from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
-import { Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, {
-  Layout,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
   FadeIn,
   FadeOut,
+  Layout,
+  useAnimatedStyle,
   useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
 type AnimatedDigitProps = {

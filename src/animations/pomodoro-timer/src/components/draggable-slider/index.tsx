@@ -77,17 +77,13 @@ export const CircularDraggableSlider = React.forwardRef<
       },
     });
 
-    useImperativeHandle(
-      ref,
-      () => {
-        return {
-          resetTimer,
-          runTimer,
-          stopTimer,
-        };
-      },
-      [resetTimer, runTimer, stopTimer],
-    );
+    useImperativeHandle(ref, () => {
+      return {
+        resetTimer,
+        runTimer,
+        stopTimer,
+      };
+    }, [resetTimer, runTimer, stopTimer]);
 
     const panGesture = Gesture.Pan()
       .onBegin(() => {

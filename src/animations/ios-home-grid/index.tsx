@@ -1,9 +1,9 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import { AppsList } from './apps-list';
 import { AppDetailScreen, type RootStackParamList } from './app-detail-screen';
-import { ExpansionProvider } from './navigation/expansion-provider';
+import { AppsList } from './apps-list';
 import { withDetailScreenWrapper } from './navigation/DetailScreenWrapper';
+import { ExpansionProvider } from './navigation/expansion-provider';
 import { withMainScreenWrapper } from './navigation/MainScreenWrapper';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

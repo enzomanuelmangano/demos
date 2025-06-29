@@ -114,6 +114,7 @@ import { VerificationCodeFace } from '../animations/verification-code-face';
 import { WheelPicker } from '../animations/wheel-picker';
 
 import { IosHomeBouncy } from '../animations/ios-home-bouncy';
+import { OnlineOffline } from '../animations/online-offline';
 import { TimeMachine } from '../animations/time-machine';
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -950,6 +951,13 @@ export const Screens = [
     icon: () => (
       <MaterialCommunityIcons name="timelapse" {...DefaultIconProps} />
     ),
+  },
+  {
+    name: 'Online Offline',
+    route: 'OnlineOffline',
+    component: OnlineOffline,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="network" {...DefaultIconProps} />,
   },
   {
     name: 'iOS Home Bouncy',

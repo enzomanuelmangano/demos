@@ -68,17 +68,13 @@ const SwipeableCard = React.forwardRef<
     }
   }, [translateX, translateY]);
 
-  useImperativeHandle(
-    ref,
-    () => {
-      return {
-        swipeLeft,
-        swipeRight,
-        reset,
-      };
-    },
-    [swipeLeft, swipeRight, reset],
-  );
+  useImperativeHandle(ref, () => {
+    return {
+      swipeLeft,
+      swipeRight,
+      reset,
+    };
+  }, [swipeLeft, swipeRight, reset]);
 
   const inputRange = React.useMemo(() => {
     return [-width / 3, 0, width / 3];
