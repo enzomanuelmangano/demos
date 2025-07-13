@@ -41,6 +41,7 @@ import { CustomDrawer } from '../animations/custom-drawer';
 import { DeleteButton } from '../animations/delete-button';
 import { DotSheet } from '../animations/dot-sheet';
 import { DragToSort } from '../animations/drag-to-sort';
+import { DraggablePanel } from '../animations/draggable-panel';
 import { DurationSlider } from '../animations/duration-slider';
 import { DynamicBlurTabs } from '../animations/dynamic-blur-tabs';
 import { DynamicTabIndicatorContainer } from '../animations/dynamic-tab-indicator';
@@ -66,6 +67,7 @@ import { ImageCropper } from '../animations/image-cropper';
 import { IMessageStack } from '../animations/imessage-stack';
 import { InfiniteCarousel } from '../animations/infinite-carousel';
 import { InteractionAppearance } from '../animations/interaction-appearance';
+import { IosHomeBouncy } from '../animations/ios-home-bouncy';
 import { iOSHomeGrid } from '../animations/ios-home-grid';
 import { LinearTabInteraction } from '../animations/linear-tab-interaction';
 import { LoadingButton } from '../animations/loading-button';
@@ -73,6 +75,7 @@ import { Metaball } from '../animations/metaball';
 import { MilesBarChart } from '../animations/miles-bar-chart';
 import { MobileInput } from '../animations/mobile-input';
 import { MotionBlur } from '../animations/motion-blur';
+import { OnlineOffline } from '../animations/online-offline';
 import { PaperFolding } from '../animations/paper-folding';
 import { ParticlesButton } from '../animations/particles-button';
 import { PomodoroTimer } from '../animations/pomodoro-timer';
@@ -106,15 +109,13 @@ import { TabNavigation } from '../animations/tab-navigation';
 import { TelegramThemeSwitch } from '../animations/telegram-theme-switch';
 import { ThemeCanvasAnimation } from '../animations/theme-canvas-animation';
 import { ThreadsHoloTicket } from '../animations/threads-holo-ticket/src';
+import { TimeMachine } from '../animations/time-machine';
 import { Toast } from '../animations/toast';
 import { TwitterTabBar } from '../animations/twitter-tab-bar';
 import { TwodosSlide } from '../animations/twodos-slide';
 import { VerificationCode } from '../animations/verification-code';
 import { VerificationCodeFace } from '../animations/verification-code-face';
 import { WheelPicker } from '../animations/wheel-picker';
-import { IosHomeBouncy } from '../animations/ios-home-bouncy';
-import { OnlineOffline } from '../animations/online-offline';
-import { TimeMachine } from '../animations/time-machine';
 
 import { withCustomBackIcon } from './with-custom-back-icon-hoc';
 
@@ -953,6 +954,13 @@ export const Screens = [
     ),
   },
   {
+    name: 'iOS Home Bouncy',
+    route: 'IosHomeBouncy',
+    component: IosHomeBouncy,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="home" {...DefaultIconProps} />,
+  },
+  {
     name: 'Online Offline',
     route: 'OnlineOffline',
     component: OnlineOffline,
@@ -960,11 +968,13 @@ export const Screens = [
     icon: () => <MaterialCommunityIcons name="network" {...DefaultIconProps} />,
   },
   {
-    name: 'iOS Home Bouncy',
-    route: 'IosHomeBouncy',
-    component: IosHomeBouncy,
+    name: 'Draggable Panel',
+    route: 'DraggablePanel',
+    component: DraggablePanel,
     backIconDark: false,
-    icon: () => <MaterialCommunityIcons name="home" {...DefaultIconProps} />,
+    icon: () => (
+      <MaterialCommunityIcons name="pan-top-left" {...DefaultIconProps} />
+    ),
   },
 ]
   .map((item, index) => {

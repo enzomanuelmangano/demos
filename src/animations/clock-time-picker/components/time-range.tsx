@@ -16,7 +16,7 @@
 
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 20,
     color: '#d8d8d8',
-    fontFamily: 'honk-regular',
+    fontFamily: 'Honk-Regular',
   },
   gradient: {
     pointerEvents: 'none',
