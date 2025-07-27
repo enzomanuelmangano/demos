@@ -60,6 +60,7 @@ import { FluidTabInteraction } from '../animations/fluid-tab-interaction';
 import { FourierVisualizer } from '../animations/fourier-visualizer';
 import { FractalGlass } from '../animations/fractal-glass';
 import { GeometryButton } from '../animations/geometry-button';
+import { GitHubContributions } from '../animations/github-contributions';
 import { GitHubOnboarding } from '../animations/github-onboarding';
 import { GLTransitions } from '../animations/gl-transitions';
 import { GridVisualizer } from '../animations/grid-visualizer';
@@ -975,6 +976,13 @@ export const Screens = [
     icon: () => (
       <MaterialCommunityIcons name="pan-top-left" {...DefaultIconProps} />
     ),
+  },
+  {
+    name: 'GitHub Contributions',
+    route: 'GitHubContributions',
+    component: GitHubContributions,
+    backIconDark: false,
+    icon: () => <Octicons name="mark-github" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
