@@ -98,6 +98,7 @@ import { Snake } from '../animations/snake';
 import { Spiral } from '../animations/spiral';
 import { SplitButton } from '../animations/split-button';
 import { StackedBottomSheet } from '../animations/stacked-bottom-sheet';
+import { StackedCarousel } from '../animations/stacked-carousel';
 import { StackedList } from '../animations/stacked-list';
 import { StackedModals } from '../animations/stacked-modals';
 import { StaggeredCardNumber } from '../animations/staggered-card-number';
@@ -983,6 +984,15 @@ export const Screens = [
     component: GitHubContributions,
     backIconDark: false,
     icon: () => <Octicons name="mark-github" {...DefaultIconProps} />,
+  },
+  {
+    name: 'Stacked Carousel',
+    route: 'StackedCarousel',
+    component: StackedCarousel,
+    backIconDark: false,
+    icon: () => (
+      <MaterialCommunityIcons name="view-carousel" {...DefaultIconProps} />
+    ),
   },
 ]
   .map((item, index) => {
