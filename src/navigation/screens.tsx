@@ -13,6 +13,7 @@ import React from 'react';
 import { ScrollTransition3D } from '../animations/3d-scroll-transition';
 import { ActionTray } from '../animations/action-tray';
 import { AddToCart } from '../animations/add-to-cart';
+import { AirbnbProfile } from '../animations/airbnb-profile';
 import { AirbnbSlider } from '../animations/airbnb-slider';
 import { AlertDrawer } from '../animations/alert-drawer';
 import { Animated3DParallax } from '../animations/animated-3d-parallax';
@@ -993,6 +994,13 @@ export const Screens = [
     icon: () => (
       <MaterialCommunityIcons name="view-carousel" {...DefaultIconProps} />
     ),
+  },
+  {
+    name: 'Airbnb Profile',
+    route: 'AirbnbProfile',
+    component: AirbnbProfile,
+    backIconDark: false,
+    icon: () => <MaterialCommunityIcons name="account" {...DefaultIconProps} />,
   },
 ]
   .map((item, index) => {
