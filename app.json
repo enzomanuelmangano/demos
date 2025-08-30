@@ -15,7 +15,9 @@
     "updates": {
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "config": {
@@ -24,7 +26,8 @@
       "bundleIdentifier": "com.reactiive.app",
       "entitlements": {
         "aps-environment": "development"
-      }
+      },
+      "appleTeamId": "W3N4N47454"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,7 +39,10 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-asset", "expo-font"],
+    "plugins": [
+      "expo-asset",
+      "expo-font"
+    ],
     "extra": {
       "eas": {
         "projectId": "eb1bbf17-5fb9-4743-bccf-3fbcbc95176a"
