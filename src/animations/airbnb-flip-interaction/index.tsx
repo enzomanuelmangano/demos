@@ -217,4 +217,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { App as AirbnbProfile };
+export { App as AirbnbFlipInteraction };

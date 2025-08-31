@@ -7,10 +7,11 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import { spacing } from '../../constants';
+
 import { CardBack } from './back';
 import { CardFront } from './front';
 import type { ProfileType } from './types';
-import { spacing } from '../../constants';
 
 type FlipCardProps = {
   /** Profile information */
