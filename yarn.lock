@@ -1995,6 +1995,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@legendapp/list@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "@legendapp/list@npm:2.0.4"
+  dependencies:
+    use-sync-external-store: "npm:^1.5.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/2574f41f5e1e9676f931963be0fc9172e318e50488e6365b9ed3be3c7217dc529d0bcfd7bc07665676d1c9bf116afbf78a8cf5d9dd52f4469e90a7eed29b0cdf
+  languageName: node
+  linkType: hard
+
 "@motionone/animation@npm:^10.12.0":
   version: 10.18.0
   resolution: "@motionone/animation@npm:10.18.0"
@@ -5310,14 +5322,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"expo-color-space-plugin@npm:^0.0.1":
-  version: 0.0.1
-  resolution: "expo-color-space-plugin@npm:0.0.1"
+"expo-color-space-plugin@npm:^0.0.3":
+  version: 0.0.3
+  resolution: "expo-color-space-plugin@npm:0.0.3"
   dependencies:
     "@expo/config-plugins": "npm:^7.0.0"
   peerDependencies:
-    expo: "*"
-  checksum: 10c0/bb0fd4921f68ff915ae4d9b7608bc114ceb8071b633c7c687dae3abe2d8b436a45b12e5ef0c38d049140220135d0a7b817193a514a93b5100ca7651a92baf370
+    expo: ">=53.0.0"
+  checksum: 10c0/28509ec685516a93b1ab5787933eac8022e3004fdd2a32c9e1a348032032b21d6a8dd135d68061dbb064fb8b0291a2203f3ebf2e09e0e0b26ab182a9e2407356
   languageName: node
   linkType: hard
 
@@ -9901,6 +9913,7 @@ __metadata:
     "@babel/core": "npm:^7.24.0"
     "@expo/config-plugins": "npm:~54.0.1"
     "@expo/vector-icons": "npm:^15.0.2"
+    "@legendapp/list": "npm:^2.0.4"
     "@react-native-masked-view/masked-view": "npm:0.3.2"
     "@react-native-seoul/masonry-list": "npm:^1.4.2"
     "@react-navigation/bottom-tabs": "npm:^6.5.11"
@@ -9926,7 +9939,7 @@ __metadata:
     expo: "npm:~54.0.7"
     expo-asset: "npm:~12.0.8"
     expo-blur: "npm:~15.0.7"
-    expo-color-space-plugin: "npm:^0.0.1"
+    expo-color-space-plugin: "npm:^0.0.3"
     expo-constants: "npm:~18.0.8"
     expo-font: "npm:~14.0.8"
     expo-haptics: "npm:~15.0.7"
@@ -10338,6 +10351,15 @@ __metadata:
   peerDependencies:
     react: ">=16.8"
   checksum: 10c0/dc87503f6279ce2980f78e1019231ba20d7509e9d17adac05285babe4d6ba6f68c52f4ef7b5ad777cbc2af9fbaaa09d7adb664ca556da0aebab9f020022880be
+  languageName: node
+  linkType: hard
+
+"use-sync-external-store@npm:^1.5.0":
+  version: 1.5.0
+  resolution: "use-sync-external-store@npm:1.5.0"
+  peerDependencies:
+    react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+  checksum: 10c0/1b8663515c0be34fa653feb724fdcce3984037c78dd4a18f68b2c8be55cc1a1084c578d5b75f158d41b5ddffc2bf5600766d1af3c19c8e329bb20af2ec6f52f4
   languageName: node
   linkType: hard
 

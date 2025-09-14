@@ -1,9 +1,10 @@
+import { LegendList } from '@legendapp/list';
+import { useNavigation } from '@react-navigation/native';
+import { useAtomValue } from 'jotai';
 import React, { useCallback } from 'react';
 import type { ListRenderItem, ViewToken } from 'react-native';
 import { StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Animated, { useSharedValue } from 'react-native-reanimated';
-import { useAtomValue } from 'jotai';
+import { useSharedValue } from 'react-native-reanimated';
 
 import type { Screens } from '../screens';
 import { ActiveScreensAtom } from '../states/filters';
@@ -61,7 +62,7 @@ const Home = React.memo(() => {
   );
 
   return (
-    <Animated.FlatList
+    <LegendList
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
       keyExtractor={keyExtractor}
