@@ -1,15 +1,16 @@
 // Import necessary modules and components from React and React Native
 import React, { useCallback } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
+  scrollTo,
+  SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
-  scrollTo,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,13 +23,13 @@ import type { Positions } from './types';
 type SortableListItemProps = {
   children?: React.ReactNode;
   itemHeight: number;
-  positions: Animated.SharedValue<Positions>;
+  positions: SharedValue<Positions>;
   index: number;
-  animatedIndex: Animated.SharedValue<number | null>;
+  animatedIndex: SharedValue<number | null>;
   onDragEnd?: (data: Positions) => void;
   backgroundItem?: React.ReactNode;
-  scrollContentOffsetY: Animated.SharedValue<number>;
-  scrollViewRef: React.RefObject<Animated.ScrollView>;
+  scrollContentOffsetY: SharedValue<number>;
+  scrollViewRef: React.RefObject<Animated.ScrollView | null>;
 };
 
 // Define the SortableItem component

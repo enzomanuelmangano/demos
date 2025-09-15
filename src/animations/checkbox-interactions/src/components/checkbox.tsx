@@ -1,3 +1,6 @@
+import { AntDesign } from '@expo/vector-icons';
+import Color from 'color';
+import { StyleSheet } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -5,9 +8,6 @@ import Animated, {
   LinearTransition,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import { AntDesign } from '@expo/vector-icons';
-import Color from 'color';
-import { StyleSheet } from 'react-native';
 
 type CheckboxProps = {
   label: string;
@@ -58,7 +58,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           exiting={FadeOut.duration(150).easing(
             Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
           )}>
-          <AntDesign name="checkcircle" size={20} color={activeColor} />
+          <AntDesign name="check-circle" size={20} color={activeColor} />
         </Animated.View>
       )}
     </Animated.View>

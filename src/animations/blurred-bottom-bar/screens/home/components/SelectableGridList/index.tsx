@@ -1,3 +1,4 @@
+import { useCallback, useImperativeHandle } from 'react';
 import { useWindowDimensions, type FlatListProps } from 'react-native';
 import {
   FlatList,
@@ -5,14 +6,14 @@ import {
   GestureDetector,
 } from 'react-native-gesture-handler';
 import Animated, {
+  runOnJS,
+  scrollTo,
+  SharedValue,
+  useAnimatedReaction,
   useAnimatedRef,
   useDerivedValue,
   useSharedValue,
-  scrollTo,
-  useAnimatedReaction,
-  runOnJS,
 } from 'react-native-reanimated';
-import { useCallback, useImperativeHandle } from 'react';
 
 import {
   calculateGridItemIndex,
@@ -22,10 +23,12 @@ import {
 
 type CustomRenderItemParams<T> = {
   index: number;
-  activeIndexes: Animated.SharedValue<number[]>;
+  activeIndexes: SharedValue<number[]>;
   item: T;
 };
-type CustomRenderItem<T> = (params: CustomRenderItemParams<T>) => JSX.Element;
+type CustomRenderItem<T> = (
+  params: CustomRenderItemParams<T>,
+) => React.ReactElement;
 
 type CustomFlatListProps<T> = Omit<FlatListProps<T>, 'renderItem'> & {
   renderItem: CustomRenderItem<T>;
@@ -41,7 +44,7 @@ type GridListProps<T> = CustomFlatListProps<T> & {
   itemSize: number;
   containerHeight?: number;
   onSelectionChange?: (indexes: number[]) => void;
-  gridListRef?: React.RefObject<GridListRefType>;
+  gridListRef?: React.RefObject<GridListRefType | null>;
 };
 
 function SelectableGridList<T>({
@@ -50,7 +53,7 @@ function SelectableGridList<T>({
   onSelectionChange,
   gridListRef,
   ...rest
-}: GridListProps<T>): JSX.Element {
+}: GridListProps<T>): React.ReactElement {
   const itemsPerRow = rest.numColumns ?? 1;
 
   const { height: windowHeight } = useWindowDimensions();
@@ -228,27 +231,6 @@ function SelectableGridList<T>({
     });
 
   const gesture = Gesture.Exclusive(panGesture, tapGesture);
-
-  const renderItem = useCallback(
-    (defaultRenderItemParams: { index: number; item: T }) => {
-      return rest.renderItem({
-        ...defaultRenderItemParams,
-        activeIndexes: totalActiveIndexes,
-      });
-    },
-    [rest, totalActiveIndexes],
-  );
-
-  const getItemLayout = useCallback(
-    (_: unknown, index: number) => {
-      return {
-        length: itemSize,
-        offset: itemSize * index,
-        index,
-      };
-    },
-    [itemSize],
-  );
 
   return (
     <GestureDetector gesture={gesture}>

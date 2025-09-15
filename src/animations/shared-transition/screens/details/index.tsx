@@ -8,7 +8,7 @@ import type { DetailsRouteProp } from '../../typings';
 const DetailsScreen: React.FC<{ route: DetailsRouteProp }> = React.memo(
   ({
     route: {
-      params: { source, heroTag },
+      params: { source },
     },
   }) => {
     return (

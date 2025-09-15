@@ -73,7 +73,7 @@ const BlurredListItemContainer: React.FC<BlurredListItemContainerProps> = ({
   currentListLength,
 }) => {
   const progress = useSharedValue(0);
-  const blurIntensity = useSharedValue(50);
+  const blurIntensity = useSharedValue<number | undefined>(50);
   const isOffVisibleArea = index - (currentListLength - maxVisibleItems) < 0;
   const top = calculateTop(index, currentListLength, maxVisibleItems);
 

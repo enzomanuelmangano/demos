@@ -1,9 +1,10 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { spacing } from '../../constants';
+
 import { ProfileAvatar } from './profile-avatar';
 import type { ProfileType } from './types';
-import { spacing } from '../../constants';
 
 type CardBackProps = {
   /** Profile information */

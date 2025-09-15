@@ -11,8 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ColorScheme } from '../config/defaults';
-import { CalendarAnimationControls } from './index';
-import { ContributionLevel } from './types';
+
+import { CalendarAnimationControls, ContributionLevel } from './types';
 
 export type ContributionSquareProps = {
   level: ContributionLevel;
@@ -67,7 +67,7 @@ export const ContributionSquare = forwardRef<
     cancelAnimation(progress);
 
     progress.value = withDelay(delay, withSpring(1, SpringConfig));
-  }, [weekIndex, dayIndex]);
+  }, [weekIndex, dayIndex, progress]);
 
   const resetAnimation = useCallback(() => {
     cancelAnimation(progress);
@@ -80,7 +80,7 @@ export const ContributionSquare = forwardRef<
         stiffness: 60,
       }),
     );
-  }, [weekIndex, dayIndex]);
+  }, [progress]);
 
   useImperativeHandle(
     ref,

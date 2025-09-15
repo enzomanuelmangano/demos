@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import type { TextInputProps, TextProps as RNTextProps } from 'react-native';
+import type { TextProps as RNTextProps, TextInputProps } from 'react-native';
 import { StyleSheet, TextInput } from 'react-native';
-import type { AnimateProps, SharedValue } from 'react-native-reanimated';
+import type { AnimatedProps, SharedValue } from 'react-native-reanimated';
 import Animated, { useAnimatedProps } from 'react-native-reanimated';
 
 const styles = StyleSheet.create({
@@ -14,7 +14,7 @@ Animated.addWhitelistedNativeProps({ text: true });
 
 interface TextProps extends Omit<TextInputProps, 'value' | 'style'> {
   text: SharedValue<string>;
-  style?: AnimateProps<RNTextProps>['style'];
+  style?: AnimatedProps<RNTextProps>['style'];
 }
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);

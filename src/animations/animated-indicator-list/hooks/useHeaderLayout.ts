@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { useDerivedValue } from 'react-native-reanimated';
 import type { LayoutRectangle } from 'react-native';
+import { useDerivedValue } from 'react-native-reanimated';
 
 import type { MeasureableAnimatedViewRef } from '../components/MeasureableAnimatedView';
 import type { HeaderListItem, ListItem } from '../constants';
@@ -61,7 +61,12 @@ const useHeaderLayout = ({
     }, {});
   }, []);
 
-  const headersLayoutXData = useDerivedValue(() => {
+  const headersLayoutXData = useDerivedValue<
+    {
+      header: string;
+      value: LayoutRectangle;
+    }[]
+  >(() => {
     'worklet';
 
     const parsedHeaderData = Object.keys(headersLayoutX.value)

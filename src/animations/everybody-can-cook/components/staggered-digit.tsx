@@ -9,6 +9,7 @@ import Animated, {
  * Props for the StaggeredDigit component
  */
 type StaggeredDigitProps = {
+  key: number;
   /** The character to be animated */
   digit: string;
   /** Animation progress value (0 to 1) */
@@ -36,6 +37,7 @@ const DefaultFontHeight = DefaultFontSize + 5;
  * @internal This component is intended for internal use by StaggeredText
  */
 export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
+  key,
   digit,
   progress,
   fontSize = DefaultFontSize,
@@ -79,7 +81,7 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
   });
 
   return (
-    <Animated.View style={styles.container}>
+    <Animated.View style={styles.container} key={key}>
       {/* Top character that rotates down */}
       <Animated.Text
         style={[

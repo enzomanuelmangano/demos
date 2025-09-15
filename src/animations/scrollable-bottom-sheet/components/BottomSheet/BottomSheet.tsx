@@ -1,9 +1,10 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
 import React from 'react';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -20,8 +21,8 @@ const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 50;
 // Define the props for the BottomSheet component
 type BottomSheetProps = {
   children?: React.ReactNode;
-  active: Animated.SharedValue<boolean>; // Shared value to track activity state
-  translateY: Animated.SharedValue<number>; // Shared value for translateY animation
+  active: SharedValue<boolean>; // Shared value to track activity state
+  translateY: SharedValue<number>; // Shared value for translateY animation
   scrollTo: (destination: number) => void; // Function to scroll to a specific position
 };
 

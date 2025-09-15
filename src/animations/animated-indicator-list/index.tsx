@@ -1,17 +1,18 @@
-import type { FlatList } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import type { FlatList, LayoutRectangle } from 'react-native';
 import { SafeAreaView, StyleSheet, Text } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
-import React, { useCallback, useRef } from 'react';
 
 import { MeasureableAnimatedView } from './components/MeasureableAnimatedView';
+import { SectionListItem } from './components/SectionListItem';
 import type { HeaderListItem, ListItem } from './constants';
-import { isHeader, data } from './constants';
+import { data, isHeader } from './constants';
 import { useHeaderLayout } from './hooks/useHeaderLayout';
 import { useHeaderStyle } from './hooks/useHeaderStyle';
-import { SectionListItem } from './components/SectionListItem';
 
 const HeaderHeight = 65;
 const ItemHeight = 50;
@@ -30,7 +31,9 @@ export const AnimatedIndicatorList = () => {
 
   const { rHeaderListStyle, rIndicatorStyle } = useHeaderStyle({
     contentOffsetY,
-    headersLayoutX,
+    headersLayoutX: headersLayoutX as SharedValue<
+      { header: string; value: LayoutRectangle | undefined }[]
+    >,
     headersLayoutY,
   });
 

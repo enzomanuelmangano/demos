@@ -1,4 +1,6 @@
-import { StyleSheet, View, StatusBar } from 'react-native';
+import { Skia } from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -9,12 +11,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
-import { Skia } from '@shopify/react-native-skia';
 
-import { BezierOutline } from './components/bezier-outline';
-import { AnimatedSquare } from './components/animated-square';
 import { AnimatedBlurView } from './components/animated-blur-view';
+import { AnimatedSquare } from './components/animated-square';
+import { BezierOutline } from './components/bezier-outline';
 import { useAnimateThroughPath } from './hooks/useAnimateThroughPath';
 
 const App = () => {
@@ -68,7 +68,7 @@ const App = () => {
     };
   });
 
-  const animatedBlurIntensity = useDerivedValue(() => {
+  const animatedBlurIntensity = useDerivedValue<number | undefined>(() => {
     return withSpring(blurIntensity.value, {
       mass: 0.5,
       stiffness: 100,

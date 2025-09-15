@@ -1,13 +1,14 @@
+import { AntDesign } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import React, { useMemo } from 'react';
 import { View } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { AntDesign } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 
 import { Palette } from '../constants';
 
@@ -16,7 +17,7 @@ type SelectableListItemProps = {
   containerWidth: number;
   containerHeight: number;
   internalPadding: number;
-  activeIndexes: Animated.SharedValue<number[]>;
+  activeIndexes: SharedValue<number[]>;
 };
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);

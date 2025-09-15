@@ -1,8 +1,8 @@
-import { LegendList } from '@legendapp/list';
+import { LegendList, type LegendListRenderItemProps } from '@legendapp/list';
 import { useNavigation } from '@react-navigation/native';
 import { useAtomValue } from 'jotai';
 import React, { useCallback } from 'react';
-import type { ListRenderItem, ViewToken } from 'react-native';
+import type { ViewToken } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -26,8 +26,8 @@ const Home = React.memo(() => {
     [viewableItems],
   );
 
-  const renderItem: ListRenderItem<(typeof Screens)[number]> = useCallback(
-    ({ item }) => {
+  const renderItem = useCallback(
+    ({ item }: LegendListRenderItemProps<(typeof Screens)[number]>) => {
       return (
         <ListItem
           style={styles.listItem}
@@ -46,16 +46,6 @@ const Home = React.memo(() => {
 
   const data = useAtomValue(ActiveScreensAtom);
 
-  const getItemLayout = useCallback(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (_: any, index: number) => ({
-      length: LIST_ITEM_HEIGHT,
-      offset: LIST_ITEM_HEIGHT * index + LIST_ITEM_MARGIN_TOP * index,
-      index,
-    }),
-    [],
-  );
-
   const keyExtractor = useCallback(
     (item: (typeof Screens)[number]) => item.route,
     [],
@@ -73,7 +63,6 @@ const Home = React.memo(() => {
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       renderItem={renderItem}
-      getItemLayout={getItemLayout}
     />
   );
 });

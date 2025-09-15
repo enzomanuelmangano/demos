@@ -3,8 +3,8 @@ import React, { useMemo, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { COLOR_SCHEMES } from './config/defaults';
-import type { CalendarAnimationControls } from './contribution-calendar';
 import { GitHubContributionCalendar } from './contribution-calendar';
+import { CalendarAnimationControls } from './contribution-calendar/types';
 import { generateContributionData } from './contribution-data';
 
 export const GitHubContributions = () => {

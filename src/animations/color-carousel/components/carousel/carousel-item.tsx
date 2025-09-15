@@ -12,7 +12,7 @@ type CarouselItemProps = {
     mainColor: string;
   } | null;
   index: number;
-  translateX: Animated.SharedValue<number>;
+  translateX: SharedValue<number>;
   itemWidth: number;
   itemHeight: number;
   carouselWidth: number;

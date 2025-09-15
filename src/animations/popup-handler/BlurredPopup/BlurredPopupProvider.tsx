@@ -3,12 +3,12 @@
  */
 import type { SkImage } from '@shopify/react-native-skia';
 import {
-  Canvas,
-  makeImageFromView,
-  Image,
-  rect,
   Blur,
+  Canvas,
   Group,
+  Image,
+  makeImageFromView,
+  rect,
 } from '@shopify/react-native-skia';
 import React, {
   useCallback,
@@ -19,11 +19,11 @@ import React, {
 } from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
 import {
-  View,
   StyleSheet,
+  Text,
   TouchableOpacity,
   useWindowDimensions,
-  Text,
+  View,
 } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
@@ -118,7 +118,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
       menuVisible.value = true;
 
       // Applying the Snapshot and setting the Popup Params
-      // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
       skImage.value = await makeImageFromView(mainView);
     },
     [menuVisible, skImage],

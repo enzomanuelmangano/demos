@@ -1,8 +1,9 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import React, { useCallback } from 'react';
-import { StyleSheet, Dimensions, View, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackActions } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback } from 'react';
+import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -10,8 +11,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenNames } from '../../constants/screens';
 import {
@@ -32,7 +32,7 @@ export const LINEAR_GRADIENT_COLORS = [
   'rgba(0,0,0,0.1)',
   'rgba(0,0,0,0.5)',
   'rgba(0,0,0,0.8)',
-];
+] as const;
 
 // Helper functions
 const createScreensMap = () =>

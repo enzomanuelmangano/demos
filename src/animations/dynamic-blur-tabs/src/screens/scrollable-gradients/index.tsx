@@ -1,6 +1,6 @@
-import { View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedScrollHandler } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ColorValue, View, useWindowDimensions } from 'react-native';
+import Animated, { useAnimatedScrollHandler } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { IsTabBarActive } from '../../components/bottom-tab-bar/states';
@@ -13,7 +13,7 @@ const generateHarmonicColors = () => {
     `hsl(${hue}, ${saturation}%, ${lightness}%)`,
     `hsl(${(hue + 30) % 360}, ${saturation}%, ${lightness}%)`,
     `hsl(${(hue + 60) % 360}, ${saturation}%, ${lightness}%)`,
-  ];
+  ] as const;
 };
 
 const getRandomGradientStartEnd = () => {
@@ -48,7 +48,11 @@ export const ScrollableGradients = () => {
   const renderItem = ({
     item,
   }: {
-    item: { colors: string[]; start: string; end: string };
+    item: {
+      colors: readonly [ColorValue, ColorValue, ...ColorValue[]];
+      start: string;
+      end: string;
+    };
   }) => (
     <View style={{ padding: padding / 2 }}>
       <LinearGradient

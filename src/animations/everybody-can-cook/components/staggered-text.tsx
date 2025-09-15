@@ -1,3 +1,5 @@
+import type { ForwardedRef } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import React, {
   type StyleProp,
   type TextStyle,
@@ -12,8 +14,6 @@ import {
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
-import type { ForwardedRef } from 'react';
-import { forwardRef, useImperativeHandle } from 'react';
 
 import { StaggeredDigit } from './staggered-digit';
 

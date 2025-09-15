@@ -8,6 +8,7 @@ import {
   interpolate,
 } from '@shopify/react-native-skia';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
@@ -18,7 +19,7 @@ type BlurredItemProps = {
   width: number;
   horizontalPadding?: number;
   verticalPadding?: number;
-  contentOffsetY: Animated.SharedValue<number>;
+  contentOffsetY: SharedValue<number>;
 };
 
 const BlurredItem: React.FC<BlurredItemProps> = ({

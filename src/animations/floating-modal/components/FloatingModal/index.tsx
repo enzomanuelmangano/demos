@@ -11,10 +11,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { ModalContent } from './Modal';
-import { FLOATING_BUTTON_SIZE } from './constants';
 import { AddCloseIcon } from './AddCloseIcon';
 import { AnimatedBackdrop } from './AnimatedBackdrop';
+import { ModalContent } from './Modal';
+import { FLOATING_BUTTON_SIZE } from './constants';
 
 const FloatingModal: React.FC = React.memo(() => {
   // This shared value is responsible to handle the modal state
@@ -23,7 +23,7 @@ const FloatingModal: React.FC = React.memo(() => {
 
   // This derived value is responsible to handle the modal progress
   // That's super useful in order to interpolate things nicely
-  const progress = useDerivedValue(() => {
+  const progress = useDerivedValue<number>(() => {
     return withTiming(isOpened.value ? 1 : 0);
   }, []);
 

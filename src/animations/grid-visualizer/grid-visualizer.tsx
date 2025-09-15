@@ -210,7 +210,6 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
 
   return (
     <Canvas
-      mode="continuous"
       style={{
         width: canvasWidth,
         height: canvasHeight,

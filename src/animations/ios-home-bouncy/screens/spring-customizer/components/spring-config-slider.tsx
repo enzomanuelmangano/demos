@@ -1,18 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  useDerivedValue,
   clamp,
+  SharedValue,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { ReText } from '../../../components/ReText';
 
 interface SpringConfigSliderProps {
   label: string;
-  valueSharedValue: Animated.SharedValue<number>;
+  valueSharedValue: SharedValue<number>;
   minimumValue: number;
   maximumValue: number;
   step?: number;

@@ -1,4 +1,5 @@
 import { addDays, format } from 'date-fns';
+
 import {
   ContributionData,
   ContributionLevel,

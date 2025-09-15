@@ -25,7 +25,7 @@ export const AnimatedSquare = ({
   width,
   height,
 }: AnimatedSquareProps) => {
-  const blurIntensity = useDerivedValue(() => {
+  const blurIntensity = useDerivedValue<number | undefined>(() => {
     return interpolate(progress.value, [0, 0.7, 1], [0, 40, 0]);
   }, [progress]);
 

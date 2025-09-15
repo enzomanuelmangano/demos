@@ -1,16 +1,17 @@
+import { AntDesign } from '@expo/vector-icons';
 import React from 'react';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import { AntDesign } from '@expo/vector-icons';
 
 import { FLOATING_BUTTON_SIZE } from '../constants';
 
 type AddCloseIconProps = {
   onPress: () => void;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
 };
 
 const AddCloseIcon: React.FC<AddCloseIconProps> = React.memo(

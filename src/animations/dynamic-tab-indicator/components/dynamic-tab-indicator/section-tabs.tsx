@@ -1,13 +1,16 @@
 import React from 'react';
 import type { LayoutRectangle } from 'react-native';
-import { TouchableOpacity, StyleSheet, SafeAreaView, Text } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { SafeAreaView, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 
 type SectionTabsProps = {
   height: number;
   width: number;
   data: string[];
-  indicatorLayout: Animated.SharedValue<LayoutRectangle>;
+  indicatorLayout: SharedValue<LayoutRectangle>;
   onSelectSection?: (index: number) => void;
   onLayoutChange: (index: number, layout: LayoutRectangle) => void;
   onInitialLayout: (layout: LayoutRectangle) => void;

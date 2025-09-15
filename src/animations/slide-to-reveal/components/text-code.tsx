@@ -2,11 +2,10 @@
 import type { SkFont, TextProps } from '@shopify/react-native-skia';
 import { Group, Text } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
-import type Animated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import {
   Extrapolate,
   interpolate,
-  SharedValue,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -72,7 +71,7 @@ const TextCode: React.FC<TextCodeProps> = ({
 // Define the ScaleableCharacter component
 const ScaleableCharacter: React.FC<
   TextProps & {
-    highlightedPoint: Animated.SharedValue<{
+    highlightedPoint: SharedValue<{
       x: number;
       y: number;
     } | null>;
