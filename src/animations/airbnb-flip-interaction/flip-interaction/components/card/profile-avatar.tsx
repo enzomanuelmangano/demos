@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import React, { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 type ProfileAvatarProps = {
   name: string;
@@ -8,43 +8,89 @@ type ProfileAvatarProps = {
   isVerified?: boolean;
 };
 
-export const ProfileAvatar: React.FC<ProfileAvatarProps> = ({
-  name,
-  size = 80,
-  isVerified = false,
-}) => {
-  const initial = name.charAt(0).toUpperCase();
-  const fontSize = size * 0.4;
+export const ProfileAvatar: React.FC<ProfileAvatarProps> = React.memo(
+  ({ name, size = 80, isVerified = false }) => {
+    // Memoize computed values to prevent recalculation
+    const computedValues = useMemo(() => {
+      const initial = name.charAt(0).toUpperCase();
+      const fontSize = size * 0.4;
+      const badgeSize = size * 0.32;
+      const badgeRadius = size * 0.16;
+      const checkmarkSize = size * 0.14;
 
-  return (
-    <View style={[styles.container, { width: size, height: size }]}>
-      <LinearGradient
-        colors={['#4A5568', '#2D3748']}
-        style={[
-          styles.avatar,
-          { width: size, height: size, borderRadius: size / 2 },
-        ]}>
-        <Text style={[styles.initial, { fontSize }]}>{initial}</Text>
-      </LinearGradient>
-      {isVerified && (
-        <LinearGradient
-          colors={['#FF6B6B', '#FF5252']}
-          style={[
-            styles.verificationBadge,
-            {
-              width: size * 0.32,
-              height: size * 0.32,
-              borderRadius: size * 0.16,
-              bottom: -2,
-              right: -2,
-            },
-          ]}>
-          <Text style={[styles.checkmark, { fontSize: size * 0.14 }]}>✓</Text>
+      return {
+        initial,
+        fontSize,
+        badgeSize,
+        badgeRadius,
+        checkmarkSize,
+      };
+    }, [name, size]);
+
+    // Memoize container style
+    const containerStyle = useMemo(
+      () => [styles.container, { width: size, height: size }],
+      [size],
+    );
+
+    // Memoize avatar style
+    const avatarStyle = useMemo(
+      () => [
+        styles.avatar,
+        { width: size, height: size, borderRadius: size / 2 },
+      ],
+      [size],
+    );
+
+    // Memoize initial text style
+    const initialTextStyle = useMemo(
+      () => [styles.initial, { fontSize: computedValues.fontSize }],
+      [computedValues.fontSize],
+    );
+
+    // Memoize verification badge style
+    const badgeStyle = useMemo(
+      () => [
+        styles.verificationBadge,
+        {
+          width: computedValues.badgeSize,
+          height: computedValues.badgeSize,
+          borderRadius: computedValues.badgeRadius,
+          bottom: -2,
+          right: -2,
+        },
+      ],
+      [computedValues.badgeSize, computedValues.badgeRadius],
+    );
+
+    // Memoize checkmark text style
+    const checkmarkStyle = useMemo(
+      () => [styles.checkmark, { fontSize: computedValues.checkmarkSize }],
+      [computedValues.checkmarkSize],
+    );
+
+    return (
+      <View style={containerStyle}>
+        <LinearGradient colors={['#4A5568', '#2D3748']} style={avatarStyle}>
+          <Text style={initialTextStyle}>{computedValues.initial}</Text>
         </LinearGradient>
-      )}
-    </View>
-  );
-};
+        {isVerified && (
+          <LinearGradient colors={['#FF6B6B', '#FF5252']} style={badgeStyle}>
+            <Text style={checkmarkStyle}>✓</Text>
+          </LinearGradient>
+        )}
+      </View>
+    );
+  },
+  // Custom comparison function for optimal re-rendering
+  (prevProps, nextProps) => {
+    return (
+      prevProps.name === nextProps.name &&
+      prevProps.size === nextProps.size &&
+      prevProps.isVerified === nextProps.isVerified
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   container: {

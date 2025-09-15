@@ -172,7 +172,18 @@ export const StackedCarousel = <T,>({
       ))}
 
       {/* Invisible horizontal scroll view positioned over the cards */}
-      <Animated.ScrollView
+      <Animated.FlatList
+        data={data}
+        renderItem={() => (
+          <View
+            style={{
+              width: screenWidth,
+              height: cardHeight + stackOffset * 6,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          />
+        )}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -184,19 +195,8 @@ export const StackedCarousel = <T,>({
           width: screenWidth,
           height: cardHeight + stackOffset * 6,
           zIndex: 1000,
-        }}>
-        {data.map((_, index) => (
-          <View
-            key={index}
-            style={{
-              width: screenWidth,
-              height: cardHeight + stackOffset * 6,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          />
-        ))}
-      </Animated.ScrollView>
+        }}
+      />
 
       {/* Paginator */}
       {showPaginator && (
