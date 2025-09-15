@@ -10,10 +10,12 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { Dimensions, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Dimensions, StyleSheet, View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import {
-  useDerivedValue,
+  makeMutable,
+  useAnimatedReaction,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -40,43 +42,42 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
 
   const angle = useSharedValue(Math.PI / 2);
 
-  const spiralCoordinates = useDerivedValue(() => {
-    const coordinates = [];
+  const spiralCoordinates = useMemo(() => {
+    const coordinates: SharedValue<{ x: number; y: number }>[] = [];
     for (let index = 0; index < spiralCircleCount; index++) {
-      const { x, y } = logarithmicSpiral({
-        angle: angle.value,
-        index,
-      });
-      coordinates.push({ x, y });
+      const coordinate = makeMutable(
+        logarithmicSpiral({
+          angle: angle.get(),
+          index,
+        }),
+      );
+      coordinates.push(coordinate);
     }
     return coordinates;
-  });
+  }, [angle]);
 
-  const animatedSpiralCoordinatesX = useDerivedValue(() => {
-    return withTiming(
-      spiralCoordinates.value.map(coordinate => {
-        return coordinate.x;
-      }),
-      TimingConfig,
-    );
-  });
-
-  const animatedSpiralCoordinatesY = useDerivedValue(() => {
-    return withTiming(
-      spiralCoordinates.value.map(coordinate => {
-        return coordinate.y;
-      }),
-      TimingConfig,
-    );
-  });
+  useAnimatedReaction(
+    () => angle.get(),
+    newAngle => {
+      for (let index = 0; index < spiralCircleCount; index++) {
+        spiralCoordinates[index].set(
+          withTiming(
+            logarithmicSpiral({
+              angle: newAngle,
+              index,
+            }),
+            TimingConfig,
+          ),
+        );
+      }
+    },
+  );
 
   const path = usePathValue(skPath => {
     'worklet';
-    skPath.reset();
 
     for (let index = 0; index < spiralCircleCount; index++) {
-      const x = animatedSpiralCoordinatesX.value[index];
-      const y = animatedSpiralCoordinatesY.value[index];
+      const { x, y } = spiralCoordinates[index].value;
 
       const distanceFromCenter = Math.sqrt(x ** 2 + y ** 2);
 
@@ -94,11 +95,7 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
   });
 
   return (
-    <View
-      style={{ flex: 1 }}
-      onTouchEnd={() => {
-        angle.value = Math.PI * 2 * Math.random();
-      }}>
+    <View style={{ flex: 1 }}>
       <StatusBar style="light" />
       <Canvas style={{ flex: 1, backgroundColor: '#010101' }}>
         <Group
@@ -118,6 +115,12 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
           <BlurMask blur={5} style="solid" />
         </Group>
       </Canvas>
+      <View
+        onTouchStart={() => {
+          angle.set(Math.PI * 2 * Math.random());
+        }}
+        style={StyleSheet.absoluteFill}
+      />
     </View>
   );
 };
