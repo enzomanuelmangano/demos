@@ -1,73 +1,26 @@
-import React, { useCallback } from 'react';
-import type { StyleProp, ViewStyle, ViewToken } from 'react-native';
-import { StyleSheet, Text } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
-import Animated, {
-  FadeIn,
-  FadeOutDown,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { PressableScale } from 'pressto';
+import React from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import type { Screens } from '../../screens';
 
 type ListItemProps = {
-  viewableItems: SharedValue<ViewToken[]>;
   item: (typeof Screens)[number];
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 };
 
 const ListItem: React.FC<ListItemProps> = React.memo(
-  ({ item, viewableItems, onPress, style }) => {
-    const isActive = useSharedValue(false);
-
-    const rStyle = useAnimatedStyle(() => {
-      const isVisible = viewableItems.value.some(
-        viewableItem => viewableItem.item.id === item.id,
-      );
-
-      const scale = isVisible ? 1 : 0.6;
-
-      return {
-        opacity: withTiming(isVisible ? 1 : 0),
-        transform: [
-          {
-            scale: withTiming(scale),
-          },
-        ],
-      };
-    }, []);
-
-    const onPressIn = useCallback(() => {
-      isActive.value = true;
-    }, [isActive]);
-
-    const onPressOut = useCallback(() => {
-      isActive.value = false;
-    }, [isActive]);
-
-    const onPressWrapper = useCallback(() => {
-      isActive.value = false;
-      onPress();
-    }, [isActive, onPress]);
-
+  ({ item, onPress, style }) => {
     return (
-      <Animated.View
-        exiting={FadeOutDown.duration(500)}
-        entering={FadeIn.duration(500)}>
-        <PressableScale
-          onPress={onPressWrapper}
-          onPressOut={onPressOut}
-          onPressIn={onPressIn}>
-          <Animated.View style={[styles.container, rStyle, style]}>
-            <item.icon />
-            <Text style={styles.label}>{item.name}</Text>
-          </Animated.View>
-        </PressableScale>
-      </Animated.View>
+      <PressableScale onPress={onPress}>
+        <Animated.View style={[styles.container, style]}>
+          <item.icon />
+          <Text style={styles.label}>{item.name}</Text>
+        </Animated.View>
+      </PressableScale>
     );
   },
 );
