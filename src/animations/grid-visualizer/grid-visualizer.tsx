@@ -175,7 +175,7 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
   // But the main idea was just to make the squares fade in and fade out.
   // Now we read from individual shared values instead of a shared value array
   const colors = useMemo(() => {
-    return progressValues.map(progressValue => {
+    return progressValues.map(() => {
       // const progress = progressValue.value;
       // const alpha = interpolate(
       //   progress,

@@ -1,5 +1,5 @@
 import { AntDesign } from '@expo/vector-icons';
-import debounce from 'lodash/debounce';
+import debounce from 'lodash.debounce';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
