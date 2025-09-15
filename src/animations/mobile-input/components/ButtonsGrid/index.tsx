@@ -1,7 +1,7 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type Animated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 
 import { InputButton } from './InputButton';
 
@@ -21,7 +21,7 @@ const items = [
 ];
 
 type ButtonsGridProps = {
-  pin: Animated.SharedValue<number[]>;
+  pin: SharedValue<number[]>;
   onReset?: () => void;
 };
 

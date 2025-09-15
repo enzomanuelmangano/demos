@@ -1,4 +1,6 @@
+import { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -6,12 +8,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useCallback, useEffect, useMemo } from 'react';
 
 import type { StackedSheetType } from './context';
-import { StackedSheetHandle } from './stacked-sheet-handle';
 import { useInternalStackedSheet } from './hooks';
+import { StackedSheetHandle } from './stacked-sheet-handle';
 
 // Define the props for the StackedSheet component
 type StackedSheetProps = {
@@ -56,11 +56,9 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
     bottom.value = withSpring(BaseSafeArea + bottomHeight, {
-      duration: 500,
-      dampingRatio: 1.5,
-      stiffness: 1,
+      stiffness: 100,
+      mass: 1,
       overshootClamping: false,
-      restSpeedThreshold: 50,
     });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -75,11 +73,9 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
     translateY.value = withSpring(
       stackedSheet.componentHeight + BaseSafeArea,
       {
-        duration: 120,
-        dampingRatio: 1.5,
-        stiffness: 1,
+        stiffness: 100,
+        mass: 1,
         overshootClamping: true,
-        restSpeedThreshold: 50,
       },
       isFinished => {
         if (isFinished) {
