@@ -1,7 +1,7 @@
 {
   "name": "thank-you",
   "version": "1.0.0",
-  "main": "node_modules/expo/AppEntry.js",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
@@ -38,6 +38,8 @@
     "expo-haptics": "~15.0.7",
     "expo-image": "~3.0.8",
     "expo-linear-gradient": "~15.0.7",
+    "expo-linking": "~8.0.8",
+    "expo-router": "~6.0.4",
     "expo-sensors": "~15.0.7",
     "expo-status-bar": "~3.0.8",
     "fft.js": "^4.0.4",
