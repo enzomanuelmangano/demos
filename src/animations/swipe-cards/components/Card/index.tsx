@@ -1,6 +1,6 @@
-import React, { useCallback, useImperativeHandle } from 'react';
-import { View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
+import React, { useCallback, useImperativeHandle } from 'react';
+import { useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
