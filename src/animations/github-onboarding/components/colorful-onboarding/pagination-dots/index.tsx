@@ -1,8 +1,8 @@
 // Import necessary modules and types from React and React Native libraries.
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
 import type { ViewProps } from 'react-native';
-import type Animated from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue } from 'react-native-reanimated';
 
 // Importing PaginationDot component from local files.
@@ -11,7 +11,7 @@ import { PaginationDot } from './pagination-dots';
 // Define the props type for the PaginationDots component.
 export interface PaginationDotsProps extends ViewProps {
   count: number; // Total number of dots
-  progress: Animated.SharedValue<number>; // Current progress value (which dot is active)
+  progress: SharedValue<number>; // Current progress value (which dot is active)
   onDotPress?: (index: number) => void; // Optional callback for dot press events
   reversed?: boolean; // Optional prop to reverse the order of dots
 }

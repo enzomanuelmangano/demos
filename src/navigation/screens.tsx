@@ -135,7 +135,7 @@ export const Screens = [
     route: 'MobileInput',
     component: MobileInput,
     backIconDark: false,
-    icon: () => <AntDesign name="smileo" {...DefaultIconProps} />,
+    icon: () => <AntDesign name="smile" {...DefaultIconProps} />,
   },
   {
     name: 'Swipe Cards',
@@ -415,7 +415,7 @@ export const Screens = [
     name: 'Loading Button',
     route: 'LoadingButton',
     component: LoadingButton,
-    icon: () => <AntDesign name="loading1" {...DefaultIconProps} />,
+    icon: () => <AntDesign name="loading" {...DefaultIconProps} />,
   },
   {
     name: 'Scrollable Bottom Sheet',

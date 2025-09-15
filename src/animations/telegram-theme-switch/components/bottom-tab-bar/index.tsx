@@ -1,15 +1,16 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import React, { useCallback } from 'react';
-import { StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackActions, useTheme } from '@react-navigation/native';
+import React, { useCallback } from 'react';
+import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { MaterialIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Import constants and custom hooks
 import { ScreenNames } from '../../constants/screens';
@@ -105,7 +106,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 type TabBarItemProps = {
   children?: React.ReactNode;
   onPress: () => void;
-  focusedIndex: Animated.SharedValue<number>;
+  focusedIndex: SharedValue<number>;
   index: number;
   iconName: string;
 };

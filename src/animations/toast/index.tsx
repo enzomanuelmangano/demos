@@ -1,10 +1,10 @@
 /* eslint-disable react/no-unstable-nested-components */
 // Import necessary modules and components from React Native and other libraries
-import { StyleSheet, Text, View } from 'react-native';
-import { useMemo, useRef } from 'react';
 import { AntDesign } from '@expo/vector-icons';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PressableScale } from 'pressto';
+import { useMemo, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import type { ToastType } from './toast-manager';
 import { ToastProvider, useToast } from './toast-manager';
@@ -22,7 +22,9 @@ const App = () => {
     return [
       {
         title: 'I am a simple toast',
-        leading: () => <AntDesign name="checkcircle" size={20} color="black" />,
+        leading: () => (
+          <AntDesign name="check-circle" size={20} color="black" />
+        ),
       },
       {
         title: 'Well, not so simple',
@@ -35,7 +37,7 @@ const App = () => {
       {
         title: 'You can add a subtitle',
         subtitle: 'Here I am',
-        leading: () => <AntDesign name="smileo" size={20} color="black" />,
+        leading: () => <AntDesign name="smile" size={20} color="black" />,
       },
       {
         title: "And if you're lazy",

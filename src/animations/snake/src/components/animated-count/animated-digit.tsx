@@ -2,20 +2,21 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback } from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
-import { Text, StyleSheet, Platform } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import Animated, {
+  runOnJS,
+  SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
   withSpring,
   withTiming,
-  useDerivedValue,
-  useAnimatedReaction,
-  useSharedValue,
-  runOnJS,
 } from 'react-native-reanimated';
 
 type AnimatedDigitProps = {
   index: number;
-  count: Animated.SharedValue<number>;
+  count: SharedValue<number>;
   height: number;
   width: number;
   textStyle: StyleProp<TextStyle>;

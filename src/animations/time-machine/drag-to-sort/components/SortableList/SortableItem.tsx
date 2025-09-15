@@ -3,15 +3,16 @@ import React, { useCallback } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
+  SharedValue,
   runOnJS,
+  scrollTo,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
-  scrollTo,
-  Easing,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,12 +25,12 @@ import type { Positions } from './types';
 type SortableListItemProps = {
   children?: React.ReactNode;
   itemHeight: number;
-  positions: Animated.SharedValue<Positions>;
+  positions: SharedValue<Positions>;
   index: number;
-  animatedIndex: Animated.SharedValue<number | null>;
+  animatedIndex: SharedValue<number | null>;
   onDragEnd?: (data: Positions) => void;
   backgroundItem?: React.ReactNode;
-  scrollContentOffsetY: Animated.SharedValue<number>;
+  scrollContentOffsetY: SharedValue<number>;
   scrollViewRef: React.RefObject<Animated.ScrollView>;
 };
 

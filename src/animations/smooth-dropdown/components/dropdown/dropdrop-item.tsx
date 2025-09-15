@@ -1,14 +1,15 @@
+import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import Color from 'color';
 import React, { useCallback } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet, Text, View } from 'react-native';
-import Color from 'color';
-import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 
 type DropdownOptionType = {
   label: string;
@@ -21,7 +22,7 @@ type DropdownItemProps = {
       isHeader: boolean;
     },
   ) => void;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
   isHeader: boolean;
   index: number;
   itemHeight: number;

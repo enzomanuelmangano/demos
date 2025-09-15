@@ -129,8 +129,6 @@ const App = () => {
       stiffness: 80,
       damping: 12,
       velocity: 0.3,
-      restDisplacementThreshold: 0.001,
-      restSpeedThreshold: 0.001,
     });
   }, [isFlipped]);
 

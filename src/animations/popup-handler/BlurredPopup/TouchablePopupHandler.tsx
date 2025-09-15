@@ -76,7 +76,16 @@ const TouchablePopupHandler: React.FC<TouchablePopupHandlerProps> = ({
       // The measure function is a Reanimated function that returns a MeasuredDimensions object
       const dimensions = measure(viewRef); // Sync measure
       // Since the showPopup function is not a Reanimated function, we need to wrap it with runOnJS
-      runOnJS(wrappedJsShowPopup)(dimensions);
+      runOnJS(wrappedJsShowPopup)(
+        dimensions ?? {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          pageX: 0,
+          pageY: 0,
+        },
+      );
       // run smooth feedback on long press
       runOnJS(runLightFeedback)();
     });

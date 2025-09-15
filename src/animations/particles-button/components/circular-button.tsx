@@ -16,10 +16,10 @@
  * ```
  */
 
-import { StyleSheet, View } from 'react-native';
-import { useCallback, useMemo, useRef } from 'react';
-import { PressableScale } from 'pressto';
 import { AntDesign, FontAwesome6 } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
+import { useCallback, useMemo, useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -90,7 +90,7 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
     if (baseIconProp) {
       return baseIconProp;
     }
-    return <AntDesign name="pluscircleo" size={size} color={lightColor} />;
+    return <AntDesign name="plus-circle" size={size} color={lightColor} />;
   }, [baseIconProp, size]);
 
   const activeIcon = useMemo(() => {

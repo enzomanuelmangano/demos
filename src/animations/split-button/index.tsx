@@ -1,10 +1,10 @@
+import { AntDesign } from '@expo/vector-icons'; // Icons from Expo's vector icons library
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import React from 'react';
-import { AntDesign } from '@expo/vector-icons'; // Icons from Expo's vector icons library
 
-import { colors } from './constants';
 import { SplitButton } from './components/split-button';
+import { colors } from './constants';
 
 const SplitButtonContainer = () => {
   return (
@@ -21,7 +21,7 @@ const SplitButtonContainer = () => {
       <View style={styles.container}>
         <SplitButton
           rightIcon={
-            <AntDesign name="apple1" size={21} color={colors.background} />
+            <AntDesign name="apple" size={21} color={colors.background} />
           }
           leftIcon={
             <AntDesign name="google" size={22} color={colors.almostBlack} />

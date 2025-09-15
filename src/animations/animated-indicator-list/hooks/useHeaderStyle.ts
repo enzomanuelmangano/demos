@@ -1,15 +1,15 @@
 import type { LayoutRectangle } from 'react-native';
-import type Animated from 'react-native-reanimated';
 import {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
 type UseHeaderStyleParams = {
-  contentOffsetY: Animated.SharedValue<number>;
+  contentOffsetY: SharedValue<number>;
   headersLayoutX: Readonly<
-    Animated.SharedValue<
+    SharedValue<
       {
         header: string;
         value: LayoutRectangle | undefined;

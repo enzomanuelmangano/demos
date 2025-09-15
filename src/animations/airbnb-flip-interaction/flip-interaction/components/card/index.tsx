@@ -34,8 +34,6 @@ export const FlipCard: React.FC<FlipCardProps> = React.memo(
         stiffness: 60,
         damping: 12,
         velocity: 0.2,
-        restDisplacementThreshold: 0.001,
-        restSpeedThreshold: 0.001,
       });
     }, [isFlipped]);
 

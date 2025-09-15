@@ -1,4 +1,5 @@
 import React from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
 import { AnimatedDigit } from './animated-digit';
@@ -11,7 +12,7 @@ const TEXT_COLOR = 'black';
 
 // Define the prop types for the AnimatedCount component
 type AnimatedCountProps = {
-  count: Animated.SharedValue<number>;
+  count: SharedValue<number>;
   maxDigits: number;
   textDigitHeight?: number;
   textDigitWidth?: number;

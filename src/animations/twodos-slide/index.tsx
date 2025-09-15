@@ -1,11 +1,11 @@
+import { AntDesign } from '@expo/vector-icons';
+import debounce from 'lodash/debounce';
+import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { runOnJS, useSharedValue } from 'react-native-reanimated';
-import { AntDesign } from '@expo/vector-icons';
-import { useMemo } from 'react';
-import debounce from 'lodash/debounce';
 
-import { FrictionSlider } from './components/friction-slider';
 import { AnimatedSquares } from './components/animated-squares';
+import { FrictionSlider } from './components/friction-slider';
 import { hapticFeedback } from './utils/haptic';
 
 export const TwodosSlide = () => {
@@ -51,7 +51,7 @@ export const TwodosSlide = () => {
             clampedProgress.value = cProgress;
           }}>
           <Text style={styles.slideActionLabel}>Slide to Unlock</Text>
-          <AntDesign name="arrowright" size={20} color="gray" />
+          <AntDesign name="arrow-right" size={20} color="gray" />
         </FrictionSlider>
       </View>
     </View>

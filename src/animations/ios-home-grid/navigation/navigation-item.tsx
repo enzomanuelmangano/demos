@@ -1,4 +1,8 @@
+import { useCallback, useId } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  AnimatedRef,
   Easing,
   runOnJS,
   useAnimatedRef,
@@ -7,9 +11,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type { StyleProp, ViewStyle } from 'react-native';
-import { useCallback, useId } from 'react';
+import { WrapperRef } from 'react-native-reanimated/lib/typescript/commonTypes';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -50,7 +52,7 @@ const NavigationItem = ({
     })
     .onEnd(() => {
       active.value = false;
-      startTransition(ref, {
+      startTransition(ref as AnimatedRef<WrapperRef>, {
         id,
         borderRadius: config?.borderRadius,
         color: config?.color,

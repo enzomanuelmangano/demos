@@ -1,19 +1,19 @@
+import type { SkPath } from '@shopify/react-native-skia';
+import { Canvas, Path } from '@shopify/react-native-skia';
 import React, { forwardRef, useImperativeHandle } from 'react';
 import { type ViewStyle } from 'react-native';
-import type { AnimateStyle, SharedValue } from 'react-native-reanimated';
+import type { AnimatedStyle, SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import type { SkPath } from '@shopify/react-native-skia';
-import { Canvas, Path } from '@shopify/react-native-skia';
 
-import { useIconPaths } from './useIconPaths';
 import { Eye } from './eye';
+import { useIconPaths } from './useIconPaths';
 
 // Define the props for the InternalIcon component
 type InternalIconProps = {
-  style: AnimateStyle<ViewStyle>;
+  style: AnimatedStyle<ViewStyle>;
   progress: SharedValue<number>;
 };
 

@@ -1,2 +1,34 @@
-scripts/**
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs
+build/
+dist/
+lib/
+coverage/
+
+# Generated files
+android/
+ios/
+web-build/
+
+# Scripts directory
 scripts/
+
+# Expo generated files
+.expo/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

@@ -1,14 +1,15 @@
+import { Image } from 'expo-image';
 import React, { useCallback } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { Text, View, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
-  useAnimatedStyle,
   measure,
   runOnJS,
+  SharedValue,
   useAnimatedRef,
+  useAnimatedStyle,
 } from 'react-native-reanimated';
-import { Image } from 'expo-image';
 
 import { PressableScale } from './pressable-scale';
 
@@ -22,9 +23,9 @@ type ListItemProps<T> = {
   }) => void;
   style: StyleProp<ViewStyle>;
   buttonStyle: StyleProp<ViewStyle>;
-  selectedIndex: Animated.SharedValue<number | null>;
+  selectedIndex: SharedValue<number | null>;
   confirmButtonChildren?: React.ReactNode;
-  animationProgress: Animated.SharedValue<number>;
+  animationProgress: SharedValue<number>;
 };
 
 const ListItem = <
@@ -54,7 +55,14 @@ const ListItem = <
       runOnJS(onTap)({
         item, // item is the item you passed to the list
         index, // index is the index of the item in the list
-        layout,
+        layout: layout ?? {
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          pageX: 0,
+          pageY: 0,
+        },
       });
   }, [index, item, onTap, viewRef]);
 

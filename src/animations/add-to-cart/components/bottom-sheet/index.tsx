@@ -1,5 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Extrapolate,
   interpolate,
@@ -7,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 type BottomSheetProps = {
-  animationProgress: Animated.SharedValue<number>;
+  animationProgress: SharedValue<number>;
 };
 
 const BOTTOM_SHEET_OFFSET = 100;

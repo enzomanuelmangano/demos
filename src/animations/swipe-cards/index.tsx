@@ -1,11 +1,11 @@
+import { AntDesign } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import React, { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { AntDesign } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
 
-import { IMAGES } from './constants';
 import { SwipeableCard } from './components/Card';
+import { IMAGES } from './constants';
 import { useSwipeControls } from './hooks/use-swipe-controls';
 
 export const SwipeCards = () => {
@@ -63,7 +63,7 @@ export const SwipeCards = () => {
         <PressableScale
           style={[styles.button, { height: 60, marginHorizontal: 10 }]}
           onPress={onReset}>
-          <AntDesign name="reload1" size={24} color="white" />
+          <AntDesign name="reload" size={24} color="white" />
         </PressableScale>
         <PressableScale style={styles.button} onPress={swipeRight}>
           <AntDesign name="heart" size={32} color="white" />

@@ -6,6 +6,7 @@ import type Animated from 'react-native-reanimated';
 import {
   Extrapolate,
   interpolate,
+  SharedValue,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -18,7 +19,7 @@ type TextCodeProps = {
   font: SkFont | null;
   children?: React.ReactNode;
   color?: string;
-  highlightedPoint: Animated.SharedValue<{
+  highlightedPoint: SharedValue<{
     x: number;
     y: number;
   } | null>;

@@ -1,16 +1,17 @@
 import React from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
-import { Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   withSpring,
   withTiming,
-  useDerivedValue,
 } from 'react-native-reanimated';
 
 type AnimatedDigitProps = {
   index: number;
-  count: Animated.SharedValue<number>;
+  count: SharedValue<number>;
   height: number;
   width: number;
   textStyle: StyleProp<TextStyle>;

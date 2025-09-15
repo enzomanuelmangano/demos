@@ -1,20 +1,20 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { PressableOpacity } from 'pressto';
+import { useCallback, useRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import type Animated from 'react-native-reanimated';
 import {
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useCallback, useRef } from 'react';
-import { MaterialIcons } from '@expo/vector-icons';
 import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PressableOpacity } from 'pressto';
 
-import { SelectableListItem } from './components/SelectableListItem';
 import type { GridListRefType } from './components/SelectableGridList';
 import { SelectableGridList } from './components/SelectableGridList';
+import { SelectableListItem } from './components/SelectableListItem';
 import { Palette } from './constants';
 
 const GridConfig = {
@@ -51,7 +51,7 @@ const SelectableGridListContainer = () => {
       activeIndexes,
     }: {
       index: number;
-      activeIndexes: Animated.SharedValue<number[]>;
+      activeIndexes: SharedValue<number[]>;
     }) => {
       return (
         <SelectableListItem

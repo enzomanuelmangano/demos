@@ -1,4 +1,6 @@
+import { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeOutLeft,
   runOnJS,
@@ -7,12 +9,10 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useCallback, useEffect, useMemo } from 'react';
 
+import { MAX_VISIBLE_TOASTS, TOAST_HEIGHT } from './constants';
 import type { StackedToastType } from './context';
 import { useInternalStackedToast } from './hooks';
-import { MAX_VISIBLE_TOASTS, TOAST_HEIGHT } from './constants';
 
 // Define the props for the StackedToast component
 type StackedToastProps = {
@@ -57,11 +57,10 @@ const StackedToast: React.FC<StackedToastProps> = ({
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
     bottom.value = withSpring(BaseSafeArea + bottomHeight, {
-      duration: 500,
-      dampingRatio: 1.5,
-      stiffness: 1,
+      mass: 1,
+      damping: 100,
+      stiffness: 80,
       overshootClamping: false,
-      restSpeedThreshold: 50,
     });
 
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,12 +1,13 @@
 import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
-  useSharedValue,
+  Extrapolation,
+  interpolate,
+  SharedValue,
   useAnimatedScrollHandler,
   useAnimatedStyle,
-  interpolate,
-  Extrapolation,
   useDerivedValue,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { Paginator } from '../paginator';
@@ -35,7 +36,7 @@ const AnimatedCard = ({
   children,
 }: {
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   screenWidth: number;
   cardWidth: number;
   cardHeight: number;

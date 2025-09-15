@@ -1,10 +1,10 @@
-import type Animated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 
 // Defining the type for the parameters of the use3DRotationStyle function
 type Use3DRotationStyleParams = {
-  x: Animated.SharedValue<number>;
-  y: Animated.SharedValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
   maxSize: number;
   maxRotation: number;
 };

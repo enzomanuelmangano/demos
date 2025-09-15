@@ -7,7 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios --device",
     "web": "expo start --web",
-    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "format": "yarn eslint --fix 'src/**/*.ts' 'src/**/*.tsx'",
     "prettier-format": "prettier --write 'src/**/*.ts' 'src/**/*.tsx'",
     "prebuild": "npx expo prebuild --clean",

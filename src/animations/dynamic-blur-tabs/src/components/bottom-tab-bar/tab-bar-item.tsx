@@ -1,18 +1,19 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useCallback } from 'react';
+import { StyleSheet } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
 
 import { PressableScale } from '../pressable-scale';
 
 // Define the TabBarItem component
 type TabBarItemProps = {
   onPress: () => void;
-  focusedIndex: Animated.SharedValue<number>;
+  focusedIndex: SharedValue<number>;
   index: number;
   screenName: string;
 };

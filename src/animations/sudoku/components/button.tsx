@@ -1,14 +1,14 @@
 import React, { useCallback } from 'react';
-import type { ViewStyle, TextStyle } from 'react-native';
-import { StyleSheet, Text, Platform, Pressable } from 'react-native';
-import type { AnimateProps } from 'react-native-reanimated';
+import type { TextStyle, ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text } from 'react-native';
+import type { AnimatedProps } from 'react-native-reanimated';
 import Animated, {
   FadeIn,
   FadeOut,
-  withSpring,
+  interpolate,
   useAnimatedStyle,
   useSharedValue,
-  interpolate,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { COLORS } from '../theme';
@@ -20,8 +20,8 @@ type ButtonProps = {
   size?: 'small' | 'medium' | 'large';
   style?: ViewStyle;
   textStyle?: TextStyle;
-  entering?: AnimateProps<ViewStyle>['entering'];
-  exiting?: AnimateProps<ViewStyle>['exiting'];
+  entering?: AnimatedProps<ViewStyle>['entering'];
+  exiting?: AnimatedProps<ViewStyle>['exiting'];
   disabled?: boolean;
 };
 

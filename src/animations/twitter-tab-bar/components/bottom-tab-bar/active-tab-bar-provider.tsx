@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
-import type Animated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
 // Define the type for the ActiveTabBarContext
 type ActiveTabBarContextType = {
-  isActive: Animated.SharedValue<boolean>; // Animated shared value to track the active state
+  isActive: SharedValue<boolean>; // Animated shared value to track the active state
 };
 
 // Create the ActiveTabBarContext with the initial value of isActive as true

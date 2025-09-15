@@ -1,5 +1,5 @@
 // Import necessary modules and components from React and React Native
-import React, { useCallback } from 'react';
+import React, { RefObject, useCallback } from 'react';
 import type { ScrollViewProps } from 'react-native';
 import Animated, {
   runOnJS,
@@ -78,7 +78,7 @@ function SortableList<T>({
           animatedIndex={animatedIndex}
           onDragEnd={onDragEnd}
           backgroundItem={backgroundItem}
-          scrollViewRef={scrollView}
+          scrollViewRef={scrollView as RefObject<Animated.ScrollView>}
           scrollContentOffsetY={scrollContentOffsetY}
           key={params.index}>
           {renderItemProp?.(params)}
