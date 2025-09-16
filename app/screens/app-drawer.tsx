@@ -1,7 +1,7 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
-import { StatusBar } from 'react-native';
+import { Dimensions, StatusBar } from 'react-native';
 
 import { CustomDrawerContent } from '../../src/components/custom-drawer-content';
 
@@ -30,8 +30,8 @@ export function AppDrawer() {
           },
           overlayColor: 'rgba(0, 0, 0, 0.5)',
           swipeEnabled: true,
-          swipeEdgeWidth: 300,
-          swipeMinDistance: 50,
+          swipeEdgeWidth: Dimensions.get('window').width / 3,
+          swipeMinDistance: 100,
         }}>
         <Drawer.Screen
           name="Home"

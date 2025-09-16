@@ -152,7 +152,7 @@ const styles = StyleSheet.create({
   },
   listItem: {
     height: LIST_ITEM_HEIGHT,
-    marginTop: LIST_ITEM_MARGIN_TOP,
+    // marginTop: LIST_ITEM_MARGIN_TOP,
     paddingHorizontal: 20,
   },
 });
