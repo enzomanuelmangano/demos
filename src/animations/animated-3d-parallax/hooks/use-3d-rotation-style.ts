@@ -7,6 +7,7 @@ type Use3DRotationStyleParams = {
   y: SharedValue<number>;
   maxSize: number;
   maxRotation: number;
+  perspective?: number;
 };
 
 // If you want to fully understand the math behind this function,
@@ -17,6 +18,7 @@ const use3DRotationStyle = ({
   y,
   maxSize,
   maxRotation,
+  perspective = 500,
 }: Use3DRotationStyleParams) => {
   // Define the animated style using useAnimatedStyle hook
   const rStyle = useAnimatedStyle(() => {
@@ -37,7 +39,7 @@ const use3DRotationStyle = ({
     // Return the animated style with perspective and rotation transformations
     return {
       transform: [
-        { perspective: 500 },
+        { perspective: perspective },
         { rotateX: `${rotateX}deg` },
         { rotateY: `${rotateY}deg` },
       ],
