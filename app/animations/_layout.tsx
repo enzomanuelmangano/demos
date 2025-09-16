@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+
 import { getAnimationMetadata } from '../../src/animations/registry';
 
 export default function AnimationsLayout() {
