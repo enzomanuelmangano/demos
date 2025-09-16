@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
-import React, { useRef } from 'react';
 import { PressableScale } from 'pressto';
+import React, { useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import type { QRCodeShareRefType } from './components/qrcode-share';
 import { QRCodeShare } from './components/qrcode-share';

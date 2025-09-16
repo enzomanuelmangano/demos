@@ -1,5 +1,5 @@
-import { LegendList, type LegendListRenderItemProps } from '@legendapp/list';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import { useAtom } from 'jotai';
 import React, { useCallback, useMemo } from 'react';
 import type {
@@ -63,7 +63,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
   }, [allAnimations, searchFilter]);
 
   const renderItem = useCallback(
-    ({ item }: LegendListRenderItemProps<AnimationItem>) => {
+    ({ item }: ListRenderItem<AnimationItem>) => {
       return (
         <ExpoRouterListItem
           style={styles.listItem}
@@ -102,11 +102,11 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         />
       </View>
 
-      <LegendList
+      <FlashList
         keyExtractor={keyExtractor}
         data={filteredAnimations}
+        recycleItems={false}
         scrollEventThrottle={16}
-        style={styles.list}
         keyboardDismissMode={'on-drag'}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
@@ -145,9 +145,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     color: '#fff',
     fontSize: 16,
-  },
-  list: {
-    flex: 1,
   },
   content: {
     paddingTop: 8,
