@@ -1,5 +1,4 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { format } from 'date-fns';
 import Animated, {
   useAnimatedRef,
   useDerivedValue,
@@ -7,7 +6,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { WeeklyChart } from './components/weekly-chart';
-import { data } from './constants';
+import { data, weekLabels } from './constants';
 
 const App = () => {
   const { width: windowWidth } = useWindowDimensions();
@@ -40,9 +39,8 @@ const App = () => {
           contentContainerStyle={styles.listContent}
           decelerationRate={'fast'}
           data={data}
-          renderItem={({ item, index }) => {
-            const [{ date }] = item;
-
+          hitSlop={100}
+          renderItem={({ index }) => {
             return (
               <View
                 key={index}
@@ -52,9 +50,7 @@ const App = () => {
                   },
                   styles.labelContainer,
                 ]}>
-                <Text style={styles.label}>
-                  week of {format(date, 'd MMMM')}
-                </Text>
+                <Text style={styles.label}>{weekLabels[index]}</Text>
               </View>
             );
           }}
