@@ -9,7 +9,6 @@ export default function HomeScreen() {
         options={{
           headerShown: true,
           headerTransparent: true,
-          headerBlurEffect: 'systemThinMaterialDark',
           headerStyle: {
             backgroundColor: 'transparent',
           },

@@ -4,6 +4,7 @@ import React from 'react';
 import { StatusBar } from 'react-native';
 
 import { CustomDrawerContent } from '../../src/components/custom-drawer-content';
+
 import { AnimationScreen } from './animation-screen';
 import { HomeScreen } from './home-screen';
 
@@ -28,6 +29,9 @@ export function AppDrawer() {
             fontWeight: '500',
           },
           overlayColor: 'rgba(0, 0, 0, 0.5)',
+          swipeEnabled: true,
+          swipeEdgeWidth: 300,
+          swipeMinDistance: 50,
         }}>
         <Drawer.Screen
           name="Home"

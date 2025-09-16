@@ -1,6 +1,12 @@
+import { useDrawerProgress } from '@react-navigation/drawer';
 import { useRoute } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
 import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useDerivedValue,
+} from 'react-native-reanimated';
 
 import {
   getAnimationComponent,
@@ -11,10 +17,24 @@ type RouteParams = {
   slug: string;
 };
 
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
 export function AnimationScreen() {
   const route = useRoute();
   const { slug } = (route.params as RouteParams) || {};
   const dimensions = useWindowDimensions();
+
+  const drawerProgress = useDrawerProgress();
+
+  const blurProgress = useDerivedValue(() => {
+    return drawerProgress.value * 20;
+  }, []);
+
+  const rStyle = useAnimatedStyle(() => {
+    return {
+      opacity: blurProgress.value,
+    };
+  }, []);
 
   if (!slug) {
     return (
@@ -37,7 +57,20 @@ export function AnimationScreen() {
 
   // Render the component - use type assertion since components have different prop signatures
   // Some expect dimensions, some expect no props, some expect other props
-  return <AnimationComponent {...(dimensions as any)} />;
+  return (
+    <View style={{ flex: 1 }}>
+      <AnimationComponent {...dimensions} />
+      <AnimatedBlurView
+        style={[
+          StyleSheet.absoluteFill,
+          { zIndex: 100, pointerEvents: 'none' },
+          rStyle,
+        ]}
+        tint="light"
+        intensity={blurProgress}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
