@@ -5,7 +5,7 @@ export default function AnimationsLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerTintColor: 'white',
         headerStyle: {
           backgroundColor: 'black',
@@ -24,19 +24,20 @@ export default function AnimationsLayout() {
 
           return {
             title: metadata?.name || 'Animation',
-            headerShown: true,
+            headerShown: false,
+
             // You can add more dynamic options based on metadata
-            headerStyle: {
-              backgroundColor: (metadata as any)?.backIconDark
-                ? 'white'
-                : 'black',
-            },
-            headerTintColor: (metadata as any)?.backIconDark
-              ? 'black'
-              : 'white',
-            headerTitleStyle: {
-              color: (metadata as any)?.backIconDark ? 'black' : 'white',
-            },
+            // headerStyle: {
+            //   backgroundColor: (metadata as any)?.backIconDark
+            //     ? 'white'
+            //     : 'black',
+            // },
+            // headerTintColor: (metadata as any)?.backIconDark
+            //   ? 'black'
+            //   : 'white',
+            // headerTitleStyle: {
+            //   color: (metadata as any)?.backIconDark ? 'black' : 'white',
+            // },
           };
         }}
       />
