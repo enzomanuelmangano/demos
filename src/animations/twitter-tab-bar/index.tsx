@@ -1,13 +1,13 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View } from 'react-native';
 import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { View } from 'react-native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
+import { ActiveTabBarContextProvider } from './components/bottom-tab-bar/active-tab-bar-provider';
+import { Palette } from './constants/palette';
 import type { ScreenNames } from './constants/screens';
 import { ScreenNamesArray } from './constants/screens';
 import { HomeScreen } from './screens/home';
-import { ActiveTabBarContextProvider } from './components/bottom-tab-bar/active-tab-bar-provider';
-import { Palette } from './constants/palette';
 
 const BottomTab = createBottomTabNavigator();
 

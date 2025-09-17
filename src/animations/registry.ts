@@ -651,10 +651,8 @@ export const AnimationMetadata = {
     name: 'Empty QR Code',
     route: 'EmptyQRCode',
     backIconDark: true,
-    alert: true,
     iconName: 'qrcode' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    iconColor: 'yellow' as const,
   },
   'infinite-carousel': {
     name: 'Infinite Carousel',

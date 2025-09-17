@@ -26,7 +26,7 @@ export function AnimationScreen() {
 
   const drawerProgress = useDrawerProgress();
 
-  const blurProgress = useDerivedValue(() => {
+  const blurProgress = useDerivedValue<number | undefined>(() => {
     return drawerProgress.value * 20;
   }, []);
 
@@ -63,7 +63,7 @@ export function AnimationScreen() {
       <AnimatedBlurView
         style={[
           StyleSheet.absoluteFill,
-          { zIndex: 100, pointerEvents: 'none' },
+          { zIndex: 100000, pointerEvents: 'none' },
           rStyle,
         ]}
         tint="light"

@@ -107,8 +107,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
 
       <FlashList
         keyExtractor={keyExtractor}
-        data={filteredAnimations}
-        recycleItems
+        data={filteredAnimations as AnimationItem[]}
         scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
