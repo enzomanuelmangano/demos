@@ -265,12 +265,14 @@ export const AnimationMetadata = {
     route: 'FloatingBottomBar',
     iconName: 'highlight' as const,
     iconFamily: 'MaterialIcons' as const,
+    alert: true,
   },
   'animated-clip-box': {
     name: 'Animated Clip Box',
     route: 'AnimatedClipBox',
     iconName: 'crop-square' as const,
     iconFamily: 'MaterialIcons' as const,
+    alert: true,
   },
   'theme-canvas-animation': {
     name: 'Theme Canvas Animation',
@@ -302,6 +304,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'tennisball' as const,
     iconFamily: 'Ionicons' as const,
+    alert: true,
   },
   'shared-transitions': {
     name: 'Shared Transitions',
@@ -338,6 +341,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'arrow-drop-down' as const,
     iconFamily: 'MaterialIcons' as const,
+    alert: true,
   },
   'skia-bottom-sheet': {
     name: 'Skia BottomSheet',
@@ -364,6 +368,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'palette' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'animated-3d-parallax': {
     name: 'Animated 3D Parallax',
@@ -377,6 +382,7 @@ export const AnimationMetadata = {
     route: 'FluidSlider',
     iconName: 'water' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'animated-indicator-list': {
     name: 'Animated Indicator List',
@@ -391,6 +397,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'radar' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'image-cropper': {
     name: 'Image Cropper',
@@ -406,6 +413,7 @@ export const AnimationMetadata = {
     iconMarginTop: 30,
     iconName: 'menu' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'selectable-grid-list': {
     name: 'Selectable Grid List',
@@ -444,6 +452,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'twitter' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'circular-carousel': {
     name: 'Circular Carousel',
@@ -484,11 +493,13 @@ export const AnimationMetadata = {
     route: 'LoadingButton',
     iconName: 'loading' as const,
     iconFamily: 'AntDesign' as const,
+    alert: true,
   },
   'scrollable-bottom-sheet': {
     name: 'Scrollable Bottom Sheet',
     route: 'ScrollableBottomSheet',
     backIconDark: false,
+    alert: true,
     iconName: 'arrow-up' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
   },
@@ -523,6 +534,7 @@ export const AnimationMetadata = {
     route: 'ActionTray',
     iconName: 'card' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   toast: {
     name: 'Toast',
@@ -569,6 +581,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'dots-grid' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'balance-slider': {
     name: 'Balance Slider',
@@ -590,8 +603,10 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'security' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'email-demo': {
+    alert: true,
     name: 'Email Demo',
     route: 'EmailDemo',
     backIconDark: false,
@@ -623,6 +638,7 @@ export const AnimationMetadata = {
     iconMarginTop: 100,
     iconName: 'transition-masked' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'prequel-slider': {
     name: 'Prequel Slider',
@@ -697,7 +713,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'gesture-swipe' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    iconColor: 'yellow' as const,
   },
   'atlas-button': {
     name: 'Atlas Button',
@@ -740,7 +755,6 @@ export const AnimationMetadata = {
     backIconDark: true,
     iconName: 'paper-roll' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    iconColor: 'yellow' as const,
   },
   'miles-bar-chart': {
     name: 'Miles Bar Chart',
@@ -923,6 +937,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'atom' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'ios-home-grid': {
     name: 'iOS Home Grid',
@@ -930,6 +945,7 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'grid-large' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'time-machine': {
     name: 'Time Machine',
