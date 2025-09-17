@@ -1,5 +1,5 @@
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
-import { FlashList, ListRenderItem } from '@shopify/flash-list';
+import { FlashList } from '@shopify/flash-list';
 import { useAtom } from 'jotai';
 import React, { useCallback, useMemo } from 'react';
 import type {
@@ -16,12 +16,11 @@ import { SearchFilterAtom } from '../navigation/states/filters';
 import { ExpoRouterListItem } from './expo-router-list-item';
 
 const LIST_ITEM_HEIGHT = 60;
-const LIST_ITEM_MARGIN_TOP = 8;
 
 type AnimationItem = {
   slug: string;
-  component: any;
-  metadata: any;
+  component: () => React.JSX.Element;
+  metadata: Record<string, unknown>;
   id: number;
   route: string;
   name: string;
@@ -45,9 +44,12 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         route: animation.slug,
         name: animation.metadata.name,
         icon: () => createIcon(animation.metadata),
-        backIconDark: (animation.metadata as any).backIconDark || false,
-        iconMarginTop: (animation.metadata as any).iconMarginTop,
-        alert: (animation.metadata as any).alert,
+        backIconDark:
+          ((animation.metadata as Record<string, unknown>)
+            .backIconDark as boolean) || false,
+        iconMarginTop: (animation.metadata as Record<string, unknown>)
+          .iconMarginTop as number,
+        alert: (animation.metadata as Record<string, unknown>).alert as boolean,
       }))
       .reverse(); // Maintain your existing order
   }, []);
@@ -63,7 +65,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
   }, [allAnimations, searchFilter]);
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItem<AnimationItem>) => {
+    ({ item }: { item: AnimationItem }) => {
       return (
         <ExpoRouterListItem
           style={styles.listItem}
@@ -90,24 +92,24 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Demos</Text>
-      </View>
-
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search animations..."
-          placeholderTextColor="#666"
-          value={searchFilter}
-          onChange={handleSearchChange}
-        />
+        <View style={styles.searchContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search animations..."
+            placeholderTextColor="#666"
+            value={searchFilter}
+            onChange={handleSearchChange}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+        </View>
       </View>
 
       <FlashList
         keyExtractor={keyExtractor}
         data={filteredAnimations}
-        recycleItems={false}
+        recycleItems
         scrollEventThrottle={16}
-        keyboardDismissMode={'on-drag'}
         contentContainerStyle={styles.content}
         contentInsetAdjustmentBehavior="automatic"
         renderItem={renderItem}
@@ -119,40 +121,46 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#131313',
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    marginTop: 24,
+    marginBottom: 12,
+    gap: 12,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.5,
   },
   searchContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    position: 'relative',
   },
   searchInput: {
-    backgroundColor: '#222',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    backgroundColor: '#1c1c1c',
+    borderRadius: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
     color: '#fff',
     fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a2a',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   content: {
-    paddingTop: 8,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
   listItem: {
     height: LIST_ITEM_HEIGHT,
-    // marginTop: LIST_ITEM_MARGIN_TOP,
     paddingHorizontal: 20,
   },
 });
