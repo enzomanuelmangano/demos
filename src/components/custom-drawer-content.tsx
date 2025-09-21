@@ -11,7 +11,10 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { createIcon } from '../animations/icon-factory';
-import { getAllAnimations } from '../animations/registry';
+import {
+  getAllAnimations,
+  type AnimationMetadataType,
+} from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
 
 import { ExpoRouterListItem } from './expo-router-list-item';
@@ -21,13 +24,11 @@ const LIST_ITEM_HEIGHT = 60;
 type AnimationItem = {
   slug: string;
   component: () => React.JSX.Element;
-  metadata: Record<string, unknown>;
+  metadata: AnimationMetadataType;
   id: number;
   route: string;
   name: string;
   icon: () => React.JSX.Element;
-  backIconDark: boolean;
-  iconMarginTop?: number;
   alert?: boolean;
 };
 
@@ -45,12 +46,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
         route: animation.slug,
         name: animation.metadata.name,
         icon: () => createIcon(animation.metadata),
-        backIconDark:
-          ((animation.metadata as Record<string, unknown>)
-            .backIconDark as boolean) || false,
-        iconMarginTop: (animation.metadata as Record<string, unknown>)
-          .iconMarginTop as number,
-        alert: (animation.metadata as Record<string, unknown>).alert as boolean,
+        alert: animation.metadata.alert,
       }))
       .reverse(); // Maintain your existing order
   }, []);
