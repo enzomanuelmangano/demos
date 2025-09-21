@@ -377,7 +377,6 @@ export const AnimationMetadata = {
     route: 'FluidSlider',
     iconName: 'water' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'animated-indicator-list': {
     name: 'Animated Indicator List',
@@ -392,7 +391,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'radar' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'image-cropper': {
     name: 'Image Cropper',
@@ -428,18 +426,14 @@ export const AnimationMetadata = {
     name: 'QR Code Generator',
     route: 'QRCodeGenerator',
     backIconDark: false,
-    alert: true,
     iconName: 'qrcode' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    iconColor: 'yellow' as const,
   },
   'popup-handler': {
     name: 'Popup Handler',
     route: 'PopupHandler',
-    alert: true,
     iconName: 'blur-radial' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    iconColor: 'yellow' as const,
   },
   'twitter-tab-bar': {
     name: 'Twitter Tab Bar',
@@ -488,7 +482,6 @@ export const AnimationMetadata = {
     route: 'LoadingButton',
     iconName: 'loading' as const,
     iconFamily: 'AntDesign' as const,
-    alert: true,
   },
   'scrollable-bottom-sheet': {
     name: 'Scrollable Bottom Sheet',

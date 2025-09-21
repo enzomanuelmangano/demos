@@ -1,7 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { StackActions } from '@react-navigation/native';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
   SharedValue,
@@ -13,8 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Palette } from '../../constants/palette';
 import { ScreenNames } from '../../constants/screens';
+import { useTheme } from '../theme-provider';
 
 import { useActiveTabBarContext } from './active-tab-bar-provider';
 import { BottomFloatingButton } from './floating-button';
@@ -32,25 +30,32 @@ const screensMap = Object.keys(ScreenNames).reduce((acc, key, index) => {
   };
 }, {}) as Record<number, keyof typeof ScreenNames>;
 
+// Define custom props interface
+interface CustomBottomTabBarProps {
+  activeTabIndex: number;
+  onTabPress: (tabName: string) => void;
+}
+
 // Define the BottomTabBar component
-const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
+const BottomTabBar: React.FC<CustomBottomTabBarProps> = ({
+  activeTabIndex,
+  onTabPress,
+}) => {
   // Define shared animated values for tracking focused index and floating button progress
-  const focusedIndex = useSharedValue(0);
+  const focusedIndex = useSharedValue(activeTabIndex);
   const { isActive } = useActiveTabBarContext();
-  const currentIndex = state.index;
+  const { colors } = useTheme();
   const floatingProgress = useSharedValue(0);
+
+  // Update focusedIndex when activeTabIndex changes
+  useEffect(() => {
+    focusedIndex.value = activeTabIndex;
+  }, [activeTabIndex, focusedIndex]);
 
   // Callback function to handle tap on a tab bar icon
   const onTapIcon = useCallback(
     (selectedIndex: keyof typeof screensMap) => {
       const nextScreen = screensMap[selectedIndex];
-      console.log({
-        currentIndex,
-        selectedIndex,
-      });
-
-      // Check if the route is changing
-      const isChangingRoute = currentIndex !== selectedIndex;
 
       // Set the bottom floating button state based on the next screen
       isActive.value = true;
@@ -64,24 +69,10 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
         });
       }
 
-      // Get the number of screens to pop if the selected screen is already focused
-      const popsAmount = navigation.getState().routes.find(item => {
-        return item.name === nextScreen;
-      })?.state?.index;
-
-      // If not changing route and there are screens to pop, perform a pop action
-      if (!isChangingRoute && popsAmount !== 0 && Boolean(popsAmount)) {
-        const popAction = StackActions.pop(popsAmount);
-
-        navigation.dispatch(popAction);
-        return;
-      }
-
       // Navigate to the next screen
-      navigation.navigate(nextScreen);
-      return;
+      onTabPress(nextScreen);
     },
-    [currentIndex, floatingProgress, isActive, navigation],
+    [floatingProgress, isActive, onTabPress],
   );
 
   // Get safe area insets for bottom padding
@@ -131,7 +122,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
             right: 16,
             height: 64,
             aspectRatio: 1,
-            backgroundColor: Palette.primary,
+            backgroundColor: colors.primary,
             borderRadius: 32,
           },
           rFloatingActionStyle,
@@ -144,6 +135,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
         style={[
           localStyles.container,
           {
+            backgroundColor: colors.card,
             paddingBottom: safeBottom / 2,
           },
           rContainerStyle,
@@ -156,6 +148,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
               iconName={key}
               focusedIndex={focusedIndex}
               index={index}
+              textColor={colors.text}
               onPress={() => {
                 onTapIcon(index);
                 focusedIndex.value = index;
@@ -175,11 +168,12 @@ type TabBarItemProps = {
   focusedIndex: SharedValue<number>;
   index: number;
   iconName: string;
+  textColor: string;
 };
 
 // React.memo for performance optimization (to prevent unnecessary re-renders)
 const TabBarItem: React.FC<TabBarItemProps> = React.memo(
-  ({ onPress, focusedIndex, index, iconName }) => {
+  ({ onPress, focusedIndex, index, iconName, textColor }) => {
     // Derive the focus state from the shared animated value
     const isFocused = useDerivedValue(() => {
       return focusedIndex.value === index;
@@ -202,7 +196,7 @@ const TabBarItem: React.FC<TabBarItemProps> = React.memo(
             // @ts-ignore
             name={iconName.toLowerCase()}
             size={28}
-            color={Palette.text}
+            color={textColor}
           />
         </TouchableOpacity>
       </Animated.View>
@@ -218,7 +212,6 @@ const localStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: Palette.card,
     flexDirection: 'row',
   },
   fill: {

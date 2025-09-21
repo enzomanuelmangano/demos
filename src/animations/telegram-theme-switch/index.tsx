@@ -7,6 +7,7 @@ import { ScreenNamesArray } from './constants/screens';
 import { HomeScreen } from './screens/home';
 import { SearchScreen } from './screens/search';
 import { SwitchThemeProvider } from './components/switch-theme';
+import { ThemeProvider, useTheme } from './components/theme-provider';
 
 const BackgroundView = () => {
   return <View style={{ flex: 1 }} />;
@@ -21,6 +22,7 @@ const ScreenMap = {
 
 const TelegramThemeSwitch = () => {
   const [activeTab, setActiveTab] = useState('Search');
+  const { colors } = useTheme();
 
   const handleTabPress = (routeName: string) => {
     setActiveTab(routeName);
@@ -29,48 +31,20 @@ const TelegramThemeSwitch = () => {
   const ActiveScreen =
     ScreenMap[activeTab as keyof typeof ScreenMap] || SearchScreen;
 
+  const activeTabIndex = ScreenNamesArray.indexOf(
+    activeTab as (typeof ScreenNamesArray)[number],
+  );
+
   return (
     <SafeAreaProvider>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ flex: 1 }}>
           <ActiveScreen />
         </View>
         <BottomTabBar
-          state={
-            {
-              key: 'tab',
-              index: ScreenNamesArray.indexOf(activeTab as any),
-              routeNames: [...ScreenNamesArray],
-              routes: ScreenNamesArray.map(name => ({ key: name, name })),
-              type: 'tab',
-              stale: false,
-              history: [],
-              preloadedRouteKeys: [],
-            } as any
-          }
-          descriptors={
-            Object.fromEntries(
-              ScreenNamesArray.map(name => [
-                name,
-                {
-                  navigation: {
-                    navigate: handleTabPress,
-                    emit: () => ({ defaultPrevented: false }),
-                  },
-                  route: { key: name, name },
-                  options: {},
-                  render: () => null,
-                },
-              ]),
-            ) as any
-          }
-          navigation={
-            {
-              navigate: handleTabPress,
-              emit: () => ({ defaultPrevented: false }),
-            } as any
-          }
-          insets={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          activeTabIndex={activeTabIndex}
+          onTabPress={handleTabPress}
+          colors={colors}
         />
       </View>
     </SafeAreaProvider>
@@ -80,7 +54,9 @@ const TelegramThemeSwitch = () => {
 const TelegramThemeSwitchContainer = () => {
   return (
     <SwitchThemeProvider>
-      <TelegramThemeSwitch />
+      <ThemeProvider>
+        <TelegramThemeSwitch />
+      </ThemeProvider>
     </SwitchThemeProvider>
   );
 };

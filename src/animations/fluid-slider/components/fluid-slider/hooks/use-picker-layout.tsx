@@ -5,8 +5,6 @@ import {
   withSpring,
 } from 'react-native-reanimated';
 
-const DISTANCE_BETWEEN_SLIDER_AND_METABALL = 10;
-
 const usePickerLayout = ({
   radius,
   sliderSize,
@@ -29,11 +27,14 @@ const usePickerLayout = ({
   }, [sliderSize]);
 
   const pickerY = useDerivedValue(() => {
-    return withSpring(isSliding.value ? sliderSize.height / 2 - 25 : closedPickerY.value, {
-      stiffness: 200,
-      damping: 20,
-      mass: 0.8,
-    });
+    return withSpring(
+      isSliding.value ? sliderSize.height / 2 - 25 : closedPickerY.value,
+      {
+        stiffness: 200,
+        damping: 20,
+        mass: 0.8,
+      },
+    );
   }, [isSliding, closedPickerY, sliderSize]);
 
   const clampedPickerX = useDerivedValue(() => {

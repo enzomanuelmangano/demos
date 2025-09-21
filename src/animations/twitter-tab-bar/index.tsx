@@ -3,6 +3,7 @@ import { View } from 'react-native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
 import { ActiveTabBarContextProvider } from './components/bottom-tab-bar/active-tab-bar-provider';
+import { ThemeProvider, useTheme } from './components/theme-provider';
 import { ScreenNamesArray } from './constants/screens';
 import { HomeScreen } from './screens/home';
 
@@ -17,8 +18,9 @@ const ScreenMap = {
   Message: BackgroundView,
 };
 
-export const TwitterTabBar = () => {
+const TwitterTabBarContent = () => {
   const [activeTab, setActiveTab] = useState('Home');
+  const { colors } = useTheme();
 
   const handleTabPress = (routeName: string) => {
     setActiveTab(routeName);
@@ -27,50 +29,29 @@ export const TwitterTabBar = () => {
   const ActiveScreen =
     ScreenMap[activeTab as keyof typeof ScreenMap] || HomeScreen;
 
+  const activeTabIndex = ScreenNamesArray.indexOf(
+    activeTab as (typeof ScreenNamesArray)[number],
+  );
+
   return (
     <ActiveTabBarContextProvider>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
         <View style={{ flex: 1 }}>
           <ActiveScreen />
         </View>
         <BottomTabBar
-          state={
-            {
-              key: 'tab',
-              index: ScreenNamesArray.indexOf(activeTab as any),
-              routeNames: [...ScreenNamesArray],
-              routes: ScreenNamesArray.map(name => ({ key: name, name })),
-              type: 'tab',
-              stale: false,
-              history: [],
-              preloadedRouteKeys: [],
-            } as any
-          }
-          descriptors={
-            Object.fromEntries(
-              ScreenNamesArray.map(name => [
-                name,
-                {
-                  navigation: {
-                    navigate: handleTabPress,
-                    emit: () => ({ defaultPrevented: false }),
-                  },
-                  route: { key: name, name },
-                  options: {},
-                  render: () => null,
-                },
-              ]),
-            ) as any
-          }
-          navigation={
-            {
-              navigate: handleTabPress,
-              emit: () => ({ defaultPrevented: false }),
-            } as any
-          }
-          insets={{ top: 0, right: 0, bottom: 0, left: 0 }}
+          activeTabIndex={activeTabIndex}
+          onTabPress={handleTabPress}
         />
       </View>
     </ActiveTabBarContextProvider>
+  );
+};
+
+export const TwitterTabBar = () => {
+  return (
+    <ThemeProvider>
+      <TwitterTabBarContent />
+    </ThemeProvider>
   );
 };
