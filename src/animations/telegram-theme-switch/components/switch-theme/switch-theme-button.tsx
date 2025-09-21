@@ -81,33 +81,26 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
   });
 
   return (
-    // A wrapper component to detect gesture interactions, in this case, tap gestures.
     <GestureDetector gesture={tapGesture}>
-      {/* Animated view acting as the main container with styles dynamically generated from animations */}
       <Reanimated.View style={[contentContainerStyle, rContainerStyle]}>
-        {/* Another animated view which possibly undergoes transformations or opacity changes */}
         <Reanimated.View
-          ref={viewRef} // Reference to access this view programmatically
+          ref={viewRef}
           style={[
-            // Common styling to center content both vertically and horizontally
             { flex: 1, justifyContent: 'center', alignItems: 'center' },
-            rAnimatedStyle, // Dynamic style for animations
+            rAnimatedStyle,
           ]}>
-          {/* Lottie component to play animations */}
           <AnimatedLottieView
             animatedProps={animatedProps}
             style={[
-              style, // Base style
+              style,
               {
-                // Set the dimensions for the Lottie animation view
                 height: MAX_THEME_ANIMATION_SIZE,
                 width: MAX_THEME_ANIMATION_SIZE,
               },
             ]}
-            source={require('../../assets/switch-theme.json')} // Lottie animation file
+            source={require('../../assets/switch-theme.json')}
             colorFilters={[
               {
-                // Overriding certain color properties in the animation
                 keypath: 'Layer 1/icons Outlines',
                 color: '#fff',
               },

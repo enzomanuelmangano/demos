@@ -1,4 +1,3 @@
-// Import necessary modules and components from React and React Native
 import React, { useCallback } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -14,12 +13,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Import the Positions type
 import { lightHapticFeedback } from '../../utils/haptics';
 
 import type { Positions } from './types';
 
-// Define the props for the SortableItem component
 type SortableListItemProps = {
   children?: React.ReactNode;
   itemHeight: number;
@@ -32,7 +29,6 @@ type SortableListItemProps = {
   scrollViewRef: React.RefObject<Animated.ScrollView | null>;
 };
 
-// Define the SortableItem component
 const SortableItem: React.FC<SortableListItemProps> = ({
   children,
   itemHeight,
@@ -44,19 +40,15 @@ const SortableItem: React.FC<SortableListItemProps> = ({
   scrollContentOffsetY,
   scrollViewRef,
 }) => {
-  // Get safe area insets and window dimensions
   const inset = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const containerHeight = windowHeight - inset.top;
 
-  // Shared values for gesture handling
   const contextY = useSharedValue(0);
   const translateX = useSharedValue(0);
 
-  // Shared values for tracking gesture and animation state
   const wasLastActiveIndex = useSharedValue(false);
 
-  // Animated reaction to update last active index
   useAnimatedReaction(
     () => animatedIndex.value,
     currentActiveIndex => {
@@ -66,7 +58,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
     },
   );
 
-  // Derived value to check if the gesture is active
   const isGestureActive = useDerivedValue(() => {
     return animatedIndex.value === index;
   }, [index]);
@@ -134,9 +125,7 @@ const SortableItem: React.FC<SortableListItemProps> = ({
   // This is needed to trigger the onDragEnd callback
   const prevPositions = useSharedValue({});
 
-  // Gesture handler for pan gestures
   const panGesture = Gesture.Pan()
-    // Activate the gesture after a long press
     .activateAfterLongPress(500)
     .onStart(({ translationX }) => {
       // Store the previous positions (before the gesture starts)
@@ -188,7 +177,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
       animatedIndex.value = null;
     });
 
-  // Derived value for the top position of the item
   const top = useDerivedValue(() => {
     if (isGestureActive.value) return positions.value[index];
 
@@ -215,7 +203,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
     return 0;
   }, [isGestureActive.value, wasLastActiveIndex.value]);
 
-  // Animated style for the item
   const rStyle = useAnimatedStyle(() => {
     const zIndex = getZIndex();
 
@@ -234,7 +221,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
     };
   }, []);
 
-  // Render the SortableItem component
   return (
     <>
       <View
@@ -263,7 +249,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
   );
 };
 
-// Styles for SortableItem component
 const styles = StyleSheet.create({
   backgroundItem: {
     position: 'absolute',
@@ -286,5 +271,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the SortableItem component
 export { SortableItem };

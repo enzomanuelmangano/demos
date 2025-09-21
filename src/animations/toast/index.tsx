@@ -1,5 +1,4 @@
 /* eslint-disable react/no-unstable-nested-components */
-// Import necessary modules and components from React Native and other libraries
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 import { useMemo, useRef } from 'react';
@@ -9,15 +8,11 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { ToastType } from './toast-manager';
 import { ToastProvider, useToast } from './toast-manager';
 
-// Define the main component of the application
 const App = () => {
-  // Access the showToast function from the custom useToast hook
   const { showToast } = useToast();
 
-  // Use useRef to persistently store and update a numerical value
   const value = useRef(0);
 
-  // Define an array of toast configurations using useMemo to memoize the array
   const toasts: Omit<ToastType, 'id'>[] = useMemo(() => {
     return [
       {
@@ -48,17 +43,13 @@ const App = () => {
     ];
   }, []);
 
-  // Render the main view of the application
   return (
     <View style={styles.container}>
-      {/* Create a button using the PressableScale component */}
       <PressableScale
         style={styles.button}
         onPress={() => {
-          // Get the next toast configuration from the array
           const toast = toasts[value.current++];
 
-          // If a toast is available, show it; otherwise, create a spam toast
           if (toast) {
             showToast(toast);
             return;
@@ -81,7 +72,6 @@ const App = () => {
             ),
           });
         }}>
-        {/* Text displayed on the button */}
         <Text style={styles.textButton}>Toast!</Text>
       </PressableScale>
     </View>
@@ -98,7 +88,6 @@ const AppContainer = () => {
   );
 };
 
-// Define the styles for the components using StyleSheet.create
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -112,7 +101,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#111',
     borderRadius: 25,
     marginBottom: 20,
-    borderCurve: 'continuous', // Note: 'borderCurve' is not a valid property, perhaps 'borderRadius' is intended
+    borderCurve: 'continuous',
     borderWidth: 1,
   },
   textButton: {
@@ -123,5 +112,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the main App component for use in other files
 export { AppContainer as Toast };

@@ -25,7 +25,6 @@ import {
 import { useConst } from './use-const';
 import { SnakeGame } from './snake-game';
 
-// Define prop types for the SnakeBoard component
 export type SnakeBoardProps = {
   n: number;
   boardSize: number;
@@ -33,27 +32,22 @@ export type SnakeBoardProps = {
   onScoreChange?: (score: number) => void;
 };
 
-// Define ref type for the SnakeBoard component
 export type SnakeBoardRef = {
   restart: () => void;
 };
 
 export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
   ({ n, boardSize, onScoreChange, onGameOver }, ref) => {
-    // Calculate board dimensions
     const rows = n;
     const columns = n;
     const squareSize = Math.floor(boardSize / n);
 
-    // Initialize the snake game
     const snakeGame = useConst(
       () => new SnakeGame(rows, columns, squareSize, true),
     );
 
-    // Create a shared value for the game state
     const gameState = useSharedValue(snakeGame.getState());
 
-    // Wrapper function to change snake direction
     const changeDirectionWrapper = useCallback(
       (direction: Directions) => {
         snakeGame.changeDirection(direction);
@@ -61,7 +55,6 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       [snakeGame],
     );
 
-    // Expose restart function through ref
     useImperativeHandle(ref, () => ({
       restart: () => {
         snakeGame.clear();
@@ -69,7 +62,6 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       },
     }));
 
-    // Define gesture handlers for different directions
     const createFlingGesture = (direction: Directions) =>
       Gesture.Fling()
         .direction(direction)
@@ -84,14 +76,12 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       createFlingGesture(Directions.DOWN),
     );
 
-    // Function to update the game state
     const updateGame = useCallback(() => {
       snakeGame.move();
 
       gameState.value = snakeGame.getState();
     }, [gameState, snakeGame]);
 
-    // Use frame callback to update game state
     const lastTimestamp = useSharedValue(0);
     useFrameCallback(frameInfo => {
       if (!frameInfo.timeSincePreviousFrame || gameState.value.isGameOver) {
@@ -105,7 +95,6 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       }
     });
 
-    // Handle game over event
     const onGameOverWrapper = useCallback(() => {
       onGameOver?.();
     }, [onGameOver]);
@@ -119,7 +108,6 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       },
     );
 
-    // Handle score change event
     const onScoreChangeWrapper = useCallback(
       (score: number) => {
         onScoreChange?.(score);
@@ -136,7 +124,6 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       },
     );
 
-    // Create snake path for rendering
     const snakePath = useDerivedValue(() => {
       const skPath = Skia.Path.Make();
       gameState.value.snake.forEach(segment => {
@@ -151,7 +138,6 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       return skPath;
     }, [gameState.value.snake, squareSize]);
 
-    // Create food path for rendering
     const foodPath = useDerivedValue(() => {
       const skPath = Skia.Path.Make();
       skPath.addRRect(
@@ -169,14 +155,12 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       return skPath;
     }, [gameState.value.food?.x, gameState.value.food?.y, squareSize]);
 
-    // Create blur mask for game over effect
     const gameOverBlurMask = useDerivedValue(() => {
       return withTiming(gameState.value.isGameOver ? 50 : 0, {
         duration: 1000,
       });
     }, []);
 
-    // Render the game board
     return (
       <GestureDetector gesture={gestures}>
         <Canvas

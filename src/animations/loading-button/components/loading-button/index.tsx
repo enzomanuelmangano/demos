@@ -12,7 +12,6 @@ import Animated, {
 
 import { ActivityIndicator, type ActivityStatus } from './activity-indicator';
 
-// Type definitions for the props of the LoadingButton component
 type LoadingButtonProps = {
   onPress?: () => Promise<void>;
   style?: StyleProp<ViewStyle>;
@@ -28,12 +27,10 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   colorFromStatusMap,
   titleFromStatusMap,
 }) => {
-  // Determine the active color based on the status prop
   const activeColor = useMemo(() => {
     return colorFromStatusMap[status] || colorFromStatusMap.idle;
   }, [colorFromStatusMap, status]);
 
-  // Render the animated button component
   return (
     <PressableScale onPress={onPress} layout={LinearTransition.springify()}>
       <MotiView
@@ -72,7 +69,6 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   );
 };
 
-// Define static styles for the component
 const styles = StyleSheet.create({
   title: {
     fontWeight: 'bold',
@@ -80,5 +76,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the LoadingButton component
 export { LoadingButton };

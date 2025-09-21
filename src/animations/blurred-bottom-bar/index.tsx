@@ -9,14 +9,12 @@ const BottomTab = createBottomTabNavigator();
 
 const { width, height } = Dimensions.get('window');
 
-// Simple Image Screen Component
 const ImageScreen = ({ source }: { source: any }) => (
   <View style={styles.container}>
     <Image source={source} style={styles.image} resizeMode="cover" />
   </View>
 );
 
-// Create screen components for each image
 const Screen1 = () => <ImageScreen source={require('./assets/01.jpg')} />;
 const Screen2 = () => <ImageScreen source={require('./assets/02.jpg')} />;
 const Screen3 = () => <ImageScreen source={require('./assets/03.jpg')} />;

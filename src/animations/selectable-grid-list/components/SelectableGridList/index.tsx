@@ -55,13 +55,10 @@ function SelectableGridList<T>({
   const flatListRef = useAnimatedRef<Animated.FlatList<T>>();
 
   const contentOffsetY = useSharedValue(0);
-  // The currentActiveIndexes are the indexes that are currently selected (not pending)
   const currentActiveIndexes = useSharedValue<number[]>([]);
 
-  // The pendingIndexes are the indexes that are currently being selected
   const pendingIndexes = useSharedValue<number[]>([]);
 
-  // The totalActiveIndexes are all the indexes that are currently selected (pending + current)
   const totalActiveIndexes = useDerivedValue(() => {
     const combinedIndexes = [
       ...currentActiveIndexes.value,
@@ -118,8 +115,6 @@ function SelectableGridList<T>({
         onSelectionChange &&
         !sameElements(updatedActiveIndexes, prevActiveIndexes ?? [])
       ) {
-        // runOnJS is a helper function from reanimated that allows us to run a JS function
-        // asynchronously from the UI thread.
         runOnJS(onSelectionChange)(updatedActiveIndexes);
       }
     },
@@ -143,14 +138,12 @@ function SelectableGridList<T>({
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {
-      // Setup the initialSelectedIndex value
       initialSelectedIndex.value = calculateGridItemPosition({
         x: event.x,
-        y: event.y + contentOffsetY.value, // we need to add the contentOffsetY because the grid is scrollable
+        y: event.y + contentOffsetY.value,
       });
     })
     .onUpdate(event => {
-      // If the initialSelectedIndex is null, it means that the user has not started the gesture
       if (initialSelectedIndex.value == null) return;
 
       const pendingFinalIndex = calculateGridItemPosition({
@@ -166,11 +159,9 @@ function SelectableGridList<T>({
         index => !pendingIndexes.value.includes(index),
       );
 
-      // Handling scroll when the user drags the item to the top or bottom of the screen
       const lowerBound = contentOffsetY.value + itemSize;
       const upperBound = lowerBound + containerHeight - 2 * itemSize;
 
-      // Not sure if this is the best way to name it
       const scrollSpeed = itemSize * 0.15;
       if (event.y + contentOffsetY.value <= lowerBound) {
         scrollTo(flatListRef, 0, contentOffsetY.value - scrollSpeed, false);
@@ -191,7 +182,6 @@ function SelectableGridList<T>({
         finalIndex,
       );
 
-      // If the user has only selected one item, we toggle it
       if (pendingIndexes.value.length === 1) {
         const index = pendingIndexes.value[0]!;
         toggleIndex(index);

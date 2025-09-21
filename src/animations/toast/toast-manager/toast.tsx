@@ -58,7 +58,6 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
 
-  // Callback to dismiss the toast with animation
   const dismissItem = useCallback(() => {
     'worklet';
     translateX.value = withTiming(-windowWidth, undefined, isFinished => {
@@ -68,19 +67,16 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
     });
   }, [onDismiss, toast.id, translateX, windowWidth]);
 
-  // Gesture handler for swipe interactions
   const gesture = Gesture.Pan()
     .enabled(isActiveToast)
     .onBegin(() => {
       isSwiping.value = true;
     })
     .onUpdate(event => {
-      // Allow swiping only to the left
       if (event.translationX > 0) return;
       translateX.value = event.translationX;
     })
     .onEnd(event => {
-      // Dismiss the toast if swiped enough, otherwise animate back to the initial position
       if (event.translationX < -50) {
         dismissItem();
       } else {
@@ -91,7 +87,6 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
       isSwiping.value = false;
     });
 
-  // Autodismiss the last toast after a delay (if it's active)
   useEffect(() => {
     if (!toast.autodismiss || !isActiveToast) return;
     const timeout = setTimeout(() => {
@@ -102,7 +97,6 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
     };
   }, [dismissItem, isActiveToast, toast.autodismiss]);
 
-  // Animated styles for the toast container
   const rToastStyle = useAnimatedStyle(() => {
     const baseScale = 1 - toast.id * 0.05;
     const scale = isSwiping.value ? baseScale * 0.96 : baseScale;
@@ -121,16 +115,12 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
     };
   }, [toast]);
 
-  // Animated styles for the visible container (opacity)
   const rVisibleContainerStyle = useAnimatedStyle(() => {
     return {
-      // The content of the first two toasts is visible
-      // The content of the other toasts is hidden
       opacity: withTiming(toast.id <= 1 ? 1 : 0),
     };
   }, [toast.id]);
 
-  // Render the Toast component
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
@@ -141,7 +131,6 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
             left: windowWidth * 0.05,
             shadowRadius: Math.max(10 - toast.id * 2, 5),
             zIndex: 100 - toast.id,
-            // Note: 'borderCurve' works just on iOS
             borderCurve: 'continuous',
           },
           styles.container,
@@ -169,7 +158,6 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
   );
 };
 
-// Styles for the Toast component
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -211,5 +199,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the Toast component for use in other files
 export { Toast };

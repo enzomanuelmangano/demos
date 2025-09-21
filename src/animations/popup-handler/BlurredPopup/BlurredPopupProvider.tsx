@@ -1,6 +1,3 @@
-/**
- * React component for providing a blurred popup menu.
- */
 import { BlurView } from 'expo-blur';
 import React, { useCallback, useMemo, useState } from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
@@ -25,44 +22,29 @@ import Animated, {
 import type { PopupAlignment, PopupOptionType } from './BlurredContext';
 import { BlurredPopupContext } from './BlurredContext';
 
-/**
- * Represents the layout properties of the menu.
- */
 type MenuLayout = {
   backgroundColor?: string;
   titleColor?: string;
   listItemHeight?: number;
 };
 
-/**
- * Represents the properties of the BlurredPopupProvider component.
- */
 type BlurredPopupProviderProps = {
   children?: React.ReactNode;
   menuLayout?: MenuLayout;
   maxBlur?: number;
 };
 
-// Define default menu layout
 const DEFAULT_MENU_LAYOUT: Required<MenuLayout> = {
   backgroundColor: 'rgba(255,255,255,0.95)',
   titleColor: '#1a1a1a',
   listItemHeight: 54,
 };
 
-/**
- * The `BlurredPopupProvider` component wraps the main content of the application and provides a popup menu functionality with a blurred background effect.
- * It uses expo-blur for the background blur effect and Reanimated for animations.
- */
 const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   children,
   menuLayout: menuLayoutProp,
   maxBlur = 5,
 }) => {
-  // State variables
-  // Node: Is the component that is triggering the Popup (or a custom version of it named "highlightedChildren")
-  // Layout: Node Measured Dimensions
-  // Options: The Popup Menu Options
   const [params, setParams] = useState<{
     node: React.ReactNode;
     layout: MeasuredDimensions;
@@ -89,9 +71,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     return params.options;
   }, [params]);
 
-  /**
-   * Show the popup menu with the provided parameters.
-   */
   const showPopup = useCallback(
     ({
       node,
@@ -123,7 +102,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     setParams(null);
   }, []);
 
-  // When the blur opacity is 0, the popup shouldn't be visible anymore
   useAnimatedReaction(
     () => {
       return blurOpacity.value;
@@ -135,9 +113,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     },
   );
 
-  /**
-   * Close the popup menu.
-   */
   const close = useCallback(() => {
     menuVisible.value = false;
     setTimeout(() => {
@@ -145,7 +120,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     }, 100);
   }, [dismissBlurredPopup, menuVisible]);
 
-  // Recomputes the position of the Node Style (by using the MeasuredDimension)
   const nodeStyle = useMemo(() => {
     if (!params) return { opacity: 0 } as ViewStyle;
     const { pageX, pageY, width, height } = params.layout;
@@ -160,15 +134,12 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   }, [params]);
 
   const hasParams = params != null;
-  // The MenuAnimatedProps is responsible for disabling the touch events on the main view
-  // when the popup is visible (and vice versa)
   const menuAnimatedProps = useAnimatedProps(() => {
     return {
       pointerEvents: hasParams ? 'auto' : 'none',
     } as Partial<ViewProps>;
   }, [hasParams]);
 
-  // The BlurViewStyle is responsible for hiding the BlurView when the popup is not visible
   const blurViewStyle = useMemo(() => {
     return {
       ...StyleSheet.absoluteFillObject,
@@ -189,15 +160,12 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   const popupItems = options?.length ?? 0;
   const popupHeight = menuLayout.listItemHeight * popupItems;
 
-  // The PopupStyle is responsible for positioning the Popup Menu
   const popupStyle = useMemo(() => {
     if (!params) return {} as ViewStyle;
     const { pageX, pageY, width, height } = params.layout;
 
-    // The popup will be positioned on the top or bottom of the Node (depending on the available space)
     const yAlignment =
       canvasSize.height - pageY - popupHeight < 100 ? 'top' : 'bottom';
-    // The popup will be positioned on the left or right of the Node (depending on the available space)
     const xAlignment = canvasSize.width - pageX > 200 ? 'left' : 'right';
 
     const alignment: PopupAlignment =
@@ -230,7 +198,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     };
   }, [showPopup]);
 
-  // Render the component
   return (
     <>
       <BlurredPopupContext.Provider value={value}>
@@ -294,7 +261,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
             tint="dark"
           />
         </Animated.View>
-        {/* The main content of the application */}
         <View style={styles.fill}>{children}</View>
       </BlurredPopupContext.Provider>
     </>

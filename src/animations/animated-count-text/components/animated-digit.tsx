@@ -16,15 +16,12 @@ type AnimatedDigitProps = {
   textStyle: StyleProp<TextStyle>;
 };
 
-// AnimatedDigit component
 const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
   ({ digit, height, width, textStyle }) => {
-    // Flatten the textStyle object into a single style object
     const flattenedTextStyle = React.useMemo(() => {
       return StyleSheet.flatten(textStyle);
     }, [textStyle]);
 
-    // Define the animated style for the digit transformation
     const rStyle = useAnimatedStyle(() => {
       return {
         transform: [
@@ -47,7 +44,6 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
         style={{
           height,
           width,
-          // Comment this out to see the real trick behind the animation :)
           overflow: 'hidden',
         }}>
         <Animated.View

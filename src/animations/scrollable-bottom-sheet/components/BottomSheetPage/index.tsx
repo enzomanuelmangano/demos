@@ -9,35 +9,32 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-// Define the props for the BottomSheetPage component
 type BottomSheetPageProps = {
-  onPress?: () => void; // Function to handle press event
-  gradientColors?: [ColorValue, ColorValue, ...ColorValue[]]; // Array of gradient colors
-  buttonTitle?: string; // Title text for the button
+  onPress?: () => void;
+  gradientColors?: [ColorValue, ColorValue, ...ColorValue[]];
+  buttonTitle?: string;
 };
 
-// Create the BottomSheetPage component
 const BottomSheetPage: React.FC<BottomSheetPageProps> = ({
   onPress,
   gradientColors = ['#4E65FF', '#92EFFD'] as const,
-  buttonTitle = 'Tap Here', // Default button title
+  buttonTitle = 'Tap Here',
 }) => {
-  // Get the window width using React Native's useWindowDimensions
   const { width: windowWidth } = useWindowDimensions();
 
   return (
     <View
       style={[
-        styles.container, // Apply the styles defined in the container object
+        styles.container,
         {
-          width: windowWidth, // Set the width to the window's width
+          width: windowWidth,
         },
       ]}>
       <PressableScale onPress={onPress}>
         <LinearGradient
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0 }}
-          colors={gradientColors} // Apply gradient colors
+          colors={gradientColors}
           style={styles.button}>
           <Text style={styles.buttonText}>{buttonTitle}</Text>
         </LinearGradient>

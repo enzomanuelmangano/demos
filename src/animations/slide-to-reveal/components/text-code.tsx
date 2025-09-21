@@ -1,4 +1,3 @@
-// Import necessary types and components from external packages
 import type { SkFont, TextProps } from '@shopify/react-native-skia';
 import { Group, Text } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
@@ -10,7 +9,6 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 
-// Define the props for the TextCode component
 type TextCodeProps = {
   containerWidth: number;
   code: string;
@@ -24,7 +22,6 @@ type TextCodeProps = {
   } | null>;
 };
 
-// Define the TextCode component
 const TextCode: React.FC<TextCodeProps> = ({
   textY,
   containerWidth,
@@ -34,23 +31,19 @@ const TextCode: React.FC<TextCodeProps> = ({
   color = 'white',
   highlightedPoint,
 }) => {
-  // Calculate the total width of the text based on the font
   const textWidth = font?.getTextWidth(code) || 0;
 
-  // Render the component
   return (
     <Group>
       {code
         .toString()
         .split('')
         .map((char, index) => {
-          // Calculate the horizontal position for each character
           const spacingBetweenLetters = (index * textWidth) / code.length;
           const marginHorizontal = (containerWidth - textWidth) / 2 - 5;
 
           const charX = spacingBetweenLetters + marginHorizontal;
 
-          // Render a ScaleableCharacter component for each character
           return (
             <ScaleableCharacter
               key={index}
@@ -68,7 +61,6 @@ const TextCode: React.FC<TextCodeProps> = ({
   );
 };
 
-// Define the ScaleableCharacter component
 const ScaleableCharacter: React.FC<
   TextProps & {
     highlightedPoint: SharedValue<{
@@ -77,7 +69,6 @@ const ScaleableCharacter: React.FC<
     } | null>;
   }
 > = ({ highlightedPoint, x, y, ...rest }) => {
-  // Calculate the distance between the character and the highlighted point
   const distance = useDerivedValue(() => {
     if (highlightedPoint.value === null) return withTiming(80);
     const dx = x - highlightedPoint.value.x;
@@ -85,7 +76,6 @@ const ScaleableCharacter: React.FC<
     return Math.sqrt(dx * dx + dy * dy);
   });
 
-  // Calculate the scale based on the distance
   const transform = useDerivedValue(() => {
     const scale = interpolate(
       distance.value,
@@ -97,7 +87,6 @@ const ScaleableCharacter: React.FC<
     return [{ scale }];
   });
 
-  // Calculate the origin for scaling
   const origin = useMemo(() => {
     if (!rest.font || !rest.text) return { x, y };
 
@@ -107,7 +96,6 @@ const ScaleableCharacter: React.FC<
     };
   }, [x, y, rest.font, rest.text]);
 
-  // Render the scaled Text component
   return (
     <Group transform={transform} origin={origin}>
       <Text x={x} y={y} {...rest} />
@@ -115,5 +103,4 @@ const ScaleableCharacter: React.FC<
   );
 };
 
-// Export the TextCode component
 export { TextCode };

@@ -23,17 +23,13 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
   onPress,
   size = 18,
 }) => {
-  // Get the drawer progress from the expo router drawer
   const drawerProgress = useDrawerProgress();
 
-  // Derive a reanimated value from the drawer progress
   const progress = useDerivedValue(() => {
     return (drawerProgress as SharedValue<number>).value;
   }, []);
 
-  // Define the animated style for the top bar
   const topBarStyle = useAnimatedStyle(() => {
-    // Interpolate the rotation based on the progress value
     const rotateInterpolation = interpolate(
       progress.value,
       [0, 1],
@@ -42,19 +38,15 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
 
     return {
       transform: [
-        // Translate the bar vertically based on the progress value
         {
           translateY: (progress.value * (ICON_HEIGHT - LINE_HEIGHT)) / 2,
         },
-        // Rotate the bar based on the interpolated rotation value
         { rotate: `${rotateInterpolation}rad` },
       ],
     };
   });
 
-  // Define the animated style for the middle bar
   const middleBarStyle = useAnimatedStyle(() => {
-    // Interpolate the opacity based on the progress value
     const opacityInterpolation = interpolate(
       progress.value,
       [0, 0.5],
@@ -67,9 +59,7 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
     };
   });
 
-  // Define the animated style for the bottom bar
   const bottomBarStyle = useAnimatedStyle(() => {
-    // Interpolate the rotation based on the progress value
     const rotateInterpolation = interpolate(
       progress.value,
       [0, 1],
@@ -78,11 +68,9 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
 
     return {
       transform: [
-        // Translate the bar vertically based on the progress value
         {
           translateY: -(progress.value * (ICON_HEIGHT - LINE_HEIGHT)) / 2,
         },
-        // Rotate the bar based on the interpolated rotation value
         { rotate: `${rotateInterpolation}rad` },
       ],
     };
@@ -98,7 +86,6 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
 
   const content = (
     <View style={containerStyle}>
-      {/* Animated top bar */}
       <Animated.View
         style={[
           {
@@ -108,7 +95,6 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
           topBarStyle,
         ]}
       />
-      {/* Animated middle bar */}
       <Animated.View
         style={[
           {
@@ -118,7 +104,6 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
           middleBarStyle,
         ]}
       />
-      {/* Animated bottom bar */}
       <Animated.View
         style={[
           {

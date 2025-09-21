@@ -1,4 +1,3 @@
-// Import necessary modules and types from React and React Native
 import React, { useEffect } from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import Animated, {
@@ -12,7 +11,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// Define the props for the AnimatedSingleNumber component
 type AnimatedSingleNumberProps = {
   // Value can be a number (0-9) or a string (',')
   value: number | string;
@@ -27,7 +25,6 @@ type AnimatedSingleNumberProps = {
   scaleWidthOffset?: number;
 };
 
-// AnimatedSingleNumber component definition
 export const AnimatedSingleNumber: React.FC<AnimatedSingleNumberProps> = ({
   value,
   style,
@@ -81,10 +78,7 @@ export const AnimatedSingleNumber: React.FC<AnimatedSingleNumberProps> = ({
     };
   }, [index, itemWidth, totalNumbersLength]);
 
-  // Render the AnimatedSingleNumber component
   return (
-    // I'm using two Animated.View here because I want to handle the exiting animation
-    // with both a FadeOut and a SlideOutDown animation.
     <Animated.View layout={Layout} exiting={FadeOut.duration(100)}>
       <Animated.View
         layout={Layout}

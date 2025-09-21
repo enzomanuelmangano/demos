@@ -18,8 +18,6 @@ import { SelectableListItem } from './components/SelectableListItem';
 import { Palette } from './constants';
 
 const GridConfig = {
-  // The amount of items per row ("numColumns")
-  // Update it as you like
   itemsPerRow: 4,
   internalPadding: 4,
 };

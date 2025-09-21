@@ -24,7 +24,6 @@ import { IsTabBarActive } from './states';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
-// Constants
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 export const IS_SMALL_DEVICE = SCREEN_HEIGHT < 700;
 export const LINEAR_GRADIENT_COLORS = [
@@ -34,7 +33,6 @@ export const LINEAR_GRADIENT_COLORS = [
   'rgba(0,0,0,0.8)',
 ] as const;
 
-// Helper functions
 const createScreensMap = () =>
   Object.keys(ScreenNames).reduce(
     (acc, key, index) => ({
@@ -46,14 +44,11 @@ const createScreensMap = () =>
 
 const screensMap = createScreensMap();
 
-// Define the BottomTabBar component
 const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
-  // Define shared animated values for tracking focused index and floating button progress
   const focusedIndex = useSharedValue(state.index);
 
   const currentIndex = state.index;
 
-  // Callback function to handle tap on a tab bar icon
   const onTapIcon = useCallback(
     (selectedIndex: keyof typeof screensMap) => {
       const nextScreen = screensMap[selectedIndex];
@@ -73,7 +68,6 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
     [currentIndex, navigation],
   );
 
-  // Get safe area insets for bottom padding
   const { bottom: safeBottom } = useSafeAreaInsets();
 
   const bottomBarSafeHeight = useSafeBottomBarHeight();
@@ -132,7 +126,6 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
         colors={LINEAR_GRADIENT_COLORS}
         style={[{ height: bottomBarSafeHeight }, localStyles.gradientContainer]}
       />
-      {/* Animated View representing the tab bar */}
       <Animated.View style={[localStyles.bottomContainer, rBarStyle]}>
         <AnimatedBlurView
           tint="systemMaterialDark"
@@ -142,7 +135,6 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
             Platform.select({ android: localStyles.androidBlurView }),
             rBlurStyle,
           ]}>
-          {/* Render tab bar items */}
           <View style={{ flex: 1 }}>
             <View style={localStyles.container}>
               {Object.keys(ScreenNames).map((key, index) => {
@@ -168,7 +160,6 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   );
 };
 
-// Define local styles
 const localStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -195,5 +186,4 @@ const localStyles = StyleSheet.create({
   },
 });
 
-// Export the BottomTabBar component for usage in other components
 export { BottomTabBar };

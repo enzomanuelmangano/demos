@@ -8,8 +8,6 @@ type ListItemProps = {
   item: (typeof INITIAL_ITEMS)[number];
 };
 
-// Nothing too fancy here, just a simple ListItem component
-
 export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
   return (
     <View style={styles.container}>

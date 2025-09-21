@@ -115,7 +115,6 @@ const CircularListItem: React.FC<{
     };
   }, []);
 
-  // Render the CircularListItem component
   return (
     <Animated.View style={[styles.container, rStyle]}>
       <Image style={styles.image} source={{ uri: imageUri }} />
@@ -123,7 +122,6 @@ const CircularListItem: React.FC<{
   );
 };
 
-// Styles for the CircularListItem component
 const styles = StyleSheet.create({
   container: {
     width: LIST_ITEM_WIDTH,
@@ -146,5 +144,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the CircularListItem component and the list item width
 export { CircularListItem, LIST_ITEM_WIDTH };
