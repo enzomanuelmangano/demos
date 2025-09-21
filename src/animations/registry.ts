@@ -441,7 +441,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'twitter' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'circular-carousel': {
     name: 'Circular Carousel',
@@ -459,10 +458,8 @@ export const AnimationMetadata = {
     name: 'Telegram Theme Switch',
     route: 'TelegramThemeSwitch',
     backIconDark: false,
-    alert: true,
     iconName: 'telegram' as const,
     iconFamily: 'FontAwesome' as const,
-    iconColor: 'yellow' as const,
   },
   'fourier-visualizer': {
     name: 'Fourier Visualizer',
