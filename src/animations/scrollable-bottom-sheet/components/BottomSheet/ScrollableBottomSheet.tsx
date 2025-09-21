@@ -78,7 +78,7 @@ const ScrollableBottomSheet = React.forwardRef<
     translateY.value = withSpring(destination, {
       damping: 25,
       stiffness: 180,
-      mass: 0.9
+      mass: 0.9,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -17,7 +17,7 @@ export const EmptyQRCode = React.memo(() => {
         }}>
         <QRCodeShare
           ref={qrCodeShareRef}
-          qrCodeValue="https://www.reactiive.io/patreon"
+          qrCodeValue="https://reactiive.io/demos"
         />
       </PressableScale>
     </View>

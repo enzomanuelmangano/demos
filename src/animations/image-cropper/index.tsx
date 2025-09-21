@@ -8,7 +8,11 @@ import type { ImageCropperRef } from './components/image-cropper';
 import { ImageCropper as ImageCropperComponent } from './components/image-cropper';
 import { FancyBorderButton } from './components/border-button';
 
-const ImageCropperScreen = ({ onNavigateToDetail }: { onNavigateToDetail: () => void }) => {
+const ImageCropperScreen = ({
+  onNavigateToDetail,
+}: {
+  onNavigateToDetail: () => void;
+}) => {
   const image = useImage(
     'https://images.unsplash.com/photo-1621996346565-e3dbc646d9a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2706&q=80',
   );
@@ -30,7 +34,13 @@ const ImageCropperScreen = ({ onNavigateToDetail }: { onNavigateToDetail: () => 
 
   if (!image) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: '#000',
+        }}>
         {/* Loading indicator would go here */}
       </View>
     );
@@ -52,7 +62,13 @@ const ImageCropperScreen = ({ onNavigateToDetail }: { onNavigateToDetail: () => 
 
 const DetailScreen = ({ onGoBack }: { onGoBack: () => void }) => {
   return (
-    <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
+      }}>
       {/* Detail view would show the cropped image here */}
       <FancyBorderButton onPress={onGoBack} title="Back" />
     </View>
@@ -60,7 +76,9 @@ const DetailScreen = ({ onGoBack }: { onGoBack: () => void }) => {
 };
 
 const ImageCropper = () => {
-  const [currentScreen, setCurrentScreen] = useState<'cropper' | 'detail'>('cropper');
+  const [currentScreen, setCurrentScreen] = useState<'cropper' | 'detail'>(
+    'cropper',
+  );
 
   const navigateToDetail = () => {
     setCurrentScreen('detail');
