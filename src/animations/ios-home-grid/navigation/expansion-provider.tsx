@@ -1,4 +1,5 @@
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import debounce from 'lodash.debounce';
 import React, { createContext, useCallback, useContext, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import type { SharedValue, useAnimatedRef } from 'react-native-reanimated';
@@ -139,10 +140,14 @@ export const ExpansionProvider = ({
     ],
   );
 
-  const navigation = useNavigation();
+  const navigation = useRouter();
+  const debouncedBackNavigation = useMemo(
+    () => debounce(navigation.back, 1000, { leading: true, trailing: false }),
+    [navigation.back],
+  );
   const backTransition = useCallback(() => {
     'worklet';
-    runOnJS(navigation.goBack)();
+    runOnJS(debouncedBackNavigation)();
     transitionOpacityProgress.value = withSequence(
       withTiming(1, { duration: 0 }),
       withTiming(0, { duration: 700, easing: Easing.in(Easing.ease) }),
@@ -158,7 +163,7 @@ export const ExpansionProvider = ({
       damping: 4,
     });
   }, [
-    navigation.goBack,
+    debouncedBackNavigation,
     springIconProgress,
     transitionOpacityProgress,
     transitionProgress,
@@ -242,24 +247,7 @@ export const ExpansionProvider = ({
 };
 
 export const useCustomNavigation = () => {
-  const {
-    startTransition,
-    resetTransition,
-    backTransition,
-    timingProgress,
-    springProgress,
-    transitionScale,
-    transitionId,
-  } = useContext(ExpansionContext);
-  return {
-    startTransition,
-    resetTransition,
-    backTransition,
-    timingProgress,
-    springProgress,
-    transitionScale,
-    transitionId,
-  };
+  return useContext(ExpansionContext);
 };
 
 const styles = StyleSheet.create({
