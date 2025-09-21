@@ -265,14 +265,12 @@ export const AnimationMetadata = {
     route: 'FloatingBottomBar',
     iconName: 'highlight' as const,
     iconFamily: 'MaterialIcons' as const,
-    alert: true,
   },
   'animated-clip-box': {
     name: 'Animated Clip Box',
     route: 'AnimatedClipBox',
     iconName: 'crop-square' as const,
     iconFamily: 'MaterialIcons' as const,
-    alert: true,
   },
   'theme-canvas-animation': {
     name: 'Theme Canvas Animation',
@@ -304,7 +302,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'tennisball' as const,
     iconFamily: 'Ionicons' as const,
-    alert: true,
   },
   'shared-transitions': {
     name: 'Shared Transitions',
@@ -341,7 +338,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'arrow-drop-down' as const,
     iconFamily: 'MaterialIcons' as const,
-    alert: true,
   },
   'skia-bottom-sheet': {
     name: 'Skia BottomSheet',
@@ -499,7 +495,6 @@ export const AnimationMetadata = {
     name: 'Scrollable Bottom Sheet',
     route: 'ScrollableBottomSheet',
     backIconDark: false,
-    alert: true,
     iconName: 'arrow-up' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
   },
@@ -606,7 +601,6 @@ export const AnimationMetadata = {
     alert: true,
   },
   'email-demo': {
-    alert: true,
     name: 'Email Demo',
     route: 'EmailDemo',
     backIconDark: false,
@@ -638,7 +632,6 @@ export const AnimationMetadata = {
     iconMarginTop: 100,
     iconName: 'transition-masked' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'prequel-slider': {
     name: 'Prequel Slider',
@@ -872,6 +865,7 @@ export const AnimationMetadata = {
     backIconDark: true,
     iconName: 'baby-face' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
+    alert: true,
   },
   'everybody-can-cook': {
     name: 'Everybody Can Cook',
@@ -935,7 +929,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'atom' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'ios-home-grid': {
     name: 'iOS Home Grid',
