@@ -1,5 +1,6 @@
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { FlashList } from '@shopify/flash-list';
+import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import React, { useCallback, useMemo } from 'react';
 import type {
@@ -30,8 +31,8 @@ type AnimationItem = {
   alert?: boolean;
 };
 
-export function CustomDrawerContent(props: DrawerContentComponentProps) {
-  const { navigation } = props;
+export function CustomDrawerContent(_props: DrawerContentComponentProps) {
+  const router = useRouter();
   const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
   const { top } = useSafeAreaInsets();
 
@@ -71,12 +72,12 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
           style={styles.listItem}
           item={item}
           onPress={() => {
-            navigation.navigate('Animation', { slug: item.slug });
+            router.push(`/animations/${item.slug}`);
           }}
         />
       );
     },
-    [navigation],
+    [router],
   );
 
   const keyExtractor = useCallback((item: AnimationItem) => item.slug, []);

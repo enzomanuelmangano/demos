@@ -1,4 +1,4 @@
-const ScreenNamesArray = ['Home', 'View-List', 'Blur-On', 'Gradient'] as const;
+const ScreenNamesArray = ['Home', 'Explore', 'Camera', 'Settings'] as const;
 
 const ScreenNames = ScreenNamesArray.reduce(
   (acc, name) => {

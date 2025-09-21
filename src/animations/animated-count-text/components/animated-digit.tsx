@@ -14,12 +14,11 @@ type AnimatedDigitProps = {
   height: number;
   width: number;
   textStyle: StyleProp<TextStyle>;
-  duration?: number;
 };
 
 // AnimatedDigit component
 const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
-  ({ digit, height, width, textStyle, duration = 1000 }) => {
+  ({ digit, height, width, textStyle }) => {
     // Flatten the textStyle object into a single style object
     const flattenedTextStyle = React.useMemo(() => {
       return StyleSheet.flatten(textStyle);
