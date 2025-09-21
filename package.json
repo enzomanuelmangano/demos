@@ -49,7 +49,7 @@
     "lodash.debounce": "^4.0.8",
     "lottie-react-native": "~7.3.1",
     "moti": "^0.27.2",
-    "pressto": "^0.2.1",
+    "pressto": "0.2.2-beta.3",
     "qrcode": "^1.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -85,7 +85,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-native": "^5.0.0",
-    "expo-color-space-plugin": "^0.0.3",
+    "expo-color-space-plugin": "^0.0.4",
     "prettier": "^3.1.1",
     "typescript": "~5.9.2"
   },
