@@ -8,7 +8,7 @@ function useConst<T>(initialValue: T | (() => T)): T {
     ref.current = {
       value:
         typeof initialValue === 'function'
-          ? (initialValue as Function)()
+          ? (initialValue as () => T)()
           : initialValue,
     };
   }

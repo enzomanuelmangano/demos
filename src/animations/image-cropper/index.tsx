@@ -10,7 +10,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const ImageCropper = () => {
   return (
-    <NavigationContainer independent>
+    <NavigationContainer>
       <Stack.Navigator
         screenOptions={{
           presentation: 'modal',

@@ -69,7 +69,7 @@ const App = () => {
   const selectedTheme = theme === 'light' ? LightTheme : DarkTheme;
 
   return (
-    <NavigationContainer theme={selectedTheme} independent>
+    <NavigationContainer theme={selectedTheme}>
       <SafeAreaProvider>
         <TelegramThemeSwitch />
       </SafeAreaProvider>

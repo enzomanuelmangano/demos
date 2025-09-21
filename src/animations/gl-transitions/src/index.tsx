@@ -37,7 +37,7 @@ const App = () => {
             Here they are: https://gl-transitions.com/gallery
            */}
           <GLTransitionsProvider transition={DirectionalWarp}>
-            <NavigationContainer independent={true}>
+            <NavigationContainer>
               <Stack.Navigator
                 initialRouteName="Home"
                 screenOptions={{

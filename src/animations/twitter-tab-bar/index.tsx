@@ -35,7 +35,7 @@ const AppTheme: typeof DefaultTheme = {
 
 export const TwitterTabBar = () => {
   return (
-    <NavigationContainer theme={AppTheme} independent>
+    <NavigationContainer theme={AppTheme}>
       <ActiveTabBarContextProvider>
         <BottomTab.Navigator
           // eslint-disable-next-line react/no-unstable-nested-components

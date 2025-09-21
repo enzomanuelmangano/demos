@@ -19,7 +19,7 @@ const CustomDrawerContainer = () => {
 
   // Render the App component
   return (
-    <NavigationContainer independent>
+    <NavigationContainer>
       {/* Set the status bar style */}
 
       {/* Configure the drawer navigator */}

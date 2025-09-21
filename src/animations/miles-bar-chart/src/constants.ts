@@ -36,7 +36,7 @@ export const data = new Array(7).fill(null).map((_, weekIndex) => {
 
 // Generate week labels using the actual dates
 export const weekLabels = data.map(weekData => {
-  const firstDayOfWeek = weekData[0];
+  const [firstDayOfWeek] = weekData;
   // Calculate the date for the first day of this week
   const weekStartDate = new Date(
     mondayFromThreeWeeksAgo.getTime() +
