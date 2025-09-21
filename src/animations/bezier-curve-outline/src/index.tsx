@@ -21,10 +21,7 @@ const App = () => {
   const outlineMode = useSharedValue(false);
   const blurIntensity = useSharedValue(0);
   const outlineModeProgress = useDerivedValue(() => {
-    return withSpring(outlineMode.value ? 1 : 0, {
-      mass: 0.5,
-      stiffness: 100,
-    });
+    return withSpring(outlineMode.value ? 1 : 0);
   }, []);
 
   const updateBarStyle = (outlineModeEnabled: boolean) => {
@@ -69,10 +66,7 @@ const App = () => {
   });
 
   const animatedBlurIntensity = useDerivedValue<number | undefined>(() => {
-    return withSpring(blurIntensity.value, {
-      mass: 0.5,
-      stiffness: 100,
-    });
+    return withSpring(blurIntensity.value);
   }, []);
 
   const skiaPath = useSharedValue(Skia.Path.Make());

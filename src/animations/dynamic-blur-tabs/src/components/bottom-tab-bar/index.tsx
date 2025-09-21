@@ -78,9 +78,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const bottomBarSafeHeight = useSafeBottomBarHeight();
   const progress = useDerivedValue(() => {
-    return withSpring(IsTabBarActive.value ? 1 : 0, {
-      mass: 0.5,
-    });
+    return withSpring(IsTabBarActive.value ? 1 : 0);
   }, [IsTabBarActive.value]);
 
   const paddingBottom = useDerivedValue(() => {
