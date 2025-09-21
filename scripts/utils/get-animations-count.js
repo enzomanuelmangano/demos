@@ -2,29 +2,25 @@ const path = require('path');
 const fs = require('fs');
 
 const getAnimationsAmount = () => {
-  const screensDir = path.join(__dirname, '../../src/navigation/');
-  const file = fs.readFileSync(path.join(screensDir, 'screens.tsx'), 'utf8');
-  // Just import Total
+  const registryFile = path.join(__dirname, '../../src/animations/registry.ts');
+  const file = fs.readFileSync(registryFile, 'utf8');
 
-  // Function to extract Screens array from the file
-  const extractScreens = fileContent => {
-    const screenPattern =
-      /name:\s*['"](.+?)['"],\s*route:\s*['"](.+?)['"],\s*component:\s*(\w+),/g;
-    const screens = [];
-    let match;
+  // Extract the AnimationRegistry object and count its keys
+  const registryPattern = /export const AnimationRegistry = \{([\s\S]*?)\} as const;/;
+  const match = registryPattern.exec(file);
 
-    while ((match = screenPattern.exec(fileContent)) !== null) {
-      screens.push({
-        name: match[1],
-        route: match[2],
-        component: match[3],
-      });
-    }
+  if (!match) {
+    throw new Error('Could not find AnimationRegistry in registry.ts');
+  }
 
-    return screens;
-  };
+  // Count the number of animation entries by splitting on commas and filtering out empty lines
+  const registryContent = match[1];
+  const entries = registryContent
+    .split('\n')
+    .filter(line => line.trim() && line.includes(':') && !line.trim().startsWith('//'))
+    .length;
 
-  return extractScreens(file).length;
+  return entries;
 };
 
 console.log(getAnimationsAmount());

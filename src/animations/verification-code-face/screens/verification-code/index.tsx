@@ -10,7 +10,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { StatusBar } from 'expo-status-bar';
 
 import { VerificationCode } from '../../components/verification-code';
 import { useAnimatedShake } from '../../components/verification-code/hooks/use-animated-shake';
@@ -75,7 +74,6 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
       <Animated.View style={rKeyboardAvoidingViewStyle}>
         <View
           style={{

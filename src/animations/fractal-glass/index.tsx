@@ -17,7 +17,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Octicons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { StatusBar } from 'expo-status-bar';
 import { PressableScale } from 'pressto';
 
 import { FractalGlassMask } from './components/fractal-glass-mask';
@@ -93,7 +92,6 @@ const App = () => {
   // Rendering the main UI
   return (
     <Animated.View style={[styles.fill, rBackgroundStyle]}>
-      <StatusBar style={theme === 'light' ? 'dark' : 'light'} animated />
       <GestureDetector gesture={panGesture}>
         {/* 1. Transparent (Fake) Circle */}
         <Animated.View

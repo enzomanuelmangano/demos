@@ -1,5 +1,4 @@
 import { BlurView } from 'expo-blur';
-import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -146,7 +145,6 @@ const App = () => {
         styles.container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
-      <StatusBar style="dark" />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Main Card Section */}
         <View style={styles.cardSection}>

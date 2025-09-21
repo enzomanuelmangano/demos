@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useMemo, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
@@ -25,7 +24,6 @@ export const GitHubContributions = () => {
 
   return (
     <View style={styles.appContainer} onTouchStart={handleToggleAnimation}>
-      <StatusBar style="auto" />
       <GitHubContributionCalendar
         ref={calendarRef}
         data={contributionData}

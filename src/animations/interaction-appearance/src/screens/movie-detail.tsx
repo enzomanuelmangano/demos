@@ -1,16 +1,15 @@
-import { ScrollView, StyleSheet } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useImage } from '@shopify/react-native-skia';
 import React from 'react';
+import { ScrollView, StyleSheet } from 'react-native';
 
-import { Text, View, useTheme } from '../theme';
+import { BottomLinearGradient } from '../components/bottom-linear-gradient';
+import { MovieImage } from '../components/movie-image';
 import {
   FloatingButtonTheme,
   ThemeBlurView,
   ThemeRescaler,
 } from '../components/theme-switch';
-import { BottomLinearGradient } from '../components/bottom-linear-gradient';
-import { MovieImage } from '../components/movie-image';
+import { Text, View, useTheme } from '../theme';
 
 type MovieDetailProps = {
   title: string;
@@ -23,14 +22,13 @@ export const MovieDetail: React.FC<MovieDetailProps> = ({
   description,
   image,
 }) => {
-  const { theme, colors } = useTheme();
+  const { colors } = useTheme();
   const skImage = useImage(image);
 
   const imageHeight = 250;
 
   return (
     <>
-      <StatusBar style={theme === 'dark' ? 'light' : 'dark'} animated />
       <FloatingButtonTheme />
       <ThemeBlurView />
 

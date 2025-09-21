@@ -1,11 +1,9 @@
 import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -23,23 +21,6 @@ const App = () => {
   const outlineModeProgress = useDerivedValue(() => {
     return withSpring(outlineMode.value ? 1 : 0);
   }, []);
-
-  const updateBarStyle = (outlineModeEnabled: boolean) => {
-    StatusBar.setBarStyle(
-      outlineModeEnabled ? 'light-content' : 'dark-content',
-      true,
-    );
-  };
-
-  useAnimatedReaction(
-    () => outlineModeProgress.value,
-    (current, previous) => {
-      if (current !== previous) {
-        runOnJS(updateBarStyle)(current > 0);
-      }
-    },
-    [outlineModeProgress],
-  );
 
   const rBezierOutlineStyle = useAnimatedStyle(() => {
     return {
