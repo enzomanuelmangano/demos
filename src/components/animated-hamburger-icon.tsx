@@ -1,10 +1,11 @@
 import { useDrawerProgress } from '@react-navigation/drawer';
+import { PressableOpacity } from 'pressto';
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
-  useAnimatedStyle,
   interpolate,
+  useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
 
@@ -131,7 +132,11 @@ export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
   );
 
   if (onPress) {
-    return <TouchableOpacity onPress={onPress}>{content}</TouchableOpacity>;
+    return (
+      <PressableOpacity hitSlop={20} onPress={onPress}>
+        {content}
+      </PressableOpacity>
+    );
   }
 
   return content;

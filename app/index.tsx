@@ -23,14 +23,15 @@ export default function HomeScreen() {
           },
           swipeEdgeWidth: Dimensions.get('window').width * 0.35,
           headerLeft: () => (
-            <AnimatedHamburgerIcon
-              tintColor="white"
-              onPress={() => (navigation as any).toggleDrawer()}
-            />
+            <View style={{ paddingLeft: 16 }}>
+              <AnimatedHamburgerIcon
+                tintColor="white"
+                onPress={() => (navigation as any).toggleDrawer()}
+              />
+            </View>
           ),
         }}
       />
-
       <View style={styles.container} />
     </>
   );

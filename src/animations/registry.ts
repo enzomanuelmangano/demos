@@ -864,7 +864,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'iOSHomeGrid',
     iconName: 'grid-large',
     iconFamily: 'MaterialCommunityIcons',
-    alert: true,
   },
   'time-machine': {
     name: 'Time Machine',
