@@ -1,13 +1,17 @@
 import React from 'react';
 import type { LayoutRectangle } from 'react-native';
-import { TouchableOpacity, StyleSheet, SafeAreaView, Text } from 'react-native';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 
 type SectionTabsProps = {
   height: number;
   width: number;
   data: string[];
-  indicatorLayout: Animated.SharedValue<LayoutRectangle>;
+  indicatorLayout: SharedValue<LayoutRectangle>;
   onSelectSection?: (index: number) => void;
   onLayoutChange: (index: number, layout: LayoutRectangle) => void;
   onInitialLayout: (layout: LayoutRectangle) => void;
@@ -23,6 +27,8 @@ const SectionTabs: React.FC<SectionTabsProps> = React.memo(
     onLayoutChange,
     onInitialLayout,
   }) => {
+    const insets = useSafeAreaInsets();
+
     const rIndicatorLayoutStyle = useAnimatedStyle(() => {
       return {
         position: 'absolute',
@@ -50,7 +56,16 @@ const SectionTabs: React.FC<SectionTabsProps> = React.memo(
     );
 
     return (
-      <SafeAreaView style={[styles.safeContainer, { width, height }]}>
+      <View
+        style={[
+          styles.safeContainer,
+          {
+            width,
+            height,
+            paddingTop: insets.top,
+            paddingBottom: insets.bottom,
+          },
+        ]}>
         <Animated.View style={rIndicatorLayoutStyle} />
         {data.map((title, index) => {
           return (
@@ -69,7 +84,7 @@ const SectionTabs: React.FC<SectionTabsProps> = React.memo(
             </TouchableOpacity>
           );
         })}
-      </SafeAreaView>
+      </View>
     );
   },
 );

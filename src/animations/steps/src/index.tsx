@@ -1,3 +1,5 @@
+import { AntDesign } from '@expo/vector-icons';
+import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Keyframe,
@@ -5,8 +7,6 @@ import Animated, {
   useAnimatedReaction,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useCallback, useState } from 'react';
-import { AntDesign } from '@expo/vector-icons';
 
 import { Dots } from './steps/dots';
 import { SplitButton } from './steps/split-button';
@@ -90,7 +90,7 @@ const App = () => {
                 entering={ScaleIconEnteringKeyframe}
                 exiting={ScaleIconExitingKeyframe}
                 style={styles.icon}>
-                <AntDesign name="checkcircle" size={18} color="white" />
+                <AntDesign name="check-circle" size={18} color="white" />
               </Animated.View>
             ),
             iconVisible: isLastStep,

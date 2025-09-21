@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
@@ -8,7 +9,7 @@ import Animated, {
 
 type AnimatedBackdropProps = {
   onBackdropPress?: () => void;
-  isVisible: Animated.SharedValue<boolean>;
+  isVisible: SharedValue<boolean>;
 };
 
 const AnimatedBackdrop: React.FC<AnimatedBackdropProps> = React.memo(

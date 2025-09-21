@@ -1,17 +1,15 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import React, { useCallback } from 'react';
-import { StyleSheet, Dimensions, View, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StackActions } from '@react-navigation/native';
-import { useSharedValue } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import React, { useCallback } from 'react';
+import { Dimensions, Platform, StyleSheet, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenNames } from '../constants/screens';
-import {
-  BOTTOM_BAR_HEIGHT,
-  useSafeBottomBarHeight,
-} from '../hooks/use-bottom-bar-height';
+
+export const BOTTOM_BAR_HEIGHT = 60;
 
 import { TabBarItem } from './tab-bar-item';
 
@@ -24,7 +22,7 @@ export const LINEAR_GRADIENT_COLORS = [
   'rgba(0,0,0,0.1)',
   'rgba(0,0,0,0.5)',
   'rgba(0,0,0,0.8)',
-];
+] as const;
 
 // Map screen keys to their corresponding index for tab bar items
 const screensMap = Object.keys(ScreenNames).reduce((acc, key, index) => {
@@ -74,7 +72,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   // Get safe area insets for bottom padding
   const { bottom: safeBottom } = useSafeAreaInsets();
 
-  const bottomBarSafeHeight = useSafeBottomBarHeight();
+  const bottomBarSafeHeight = BOTTOM_BAR_HEIGHT + safeBottom + 30;
 
   // Render the BottomTabBar component
   return (

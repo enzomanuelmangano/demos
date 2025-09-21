@@ -52,8 +52,7 @@ export const startAnimation = () => {
       withSequence(
         withSpring(1, {
           ...OpeningSpringConfigShared.get(),
-          restDisplacementThreshold: 0.002,
-          restSpeedThreshold: 10,
+          energyThreshold: 10,
         }),
         withSpring(2, ClosingSpringConfigShared.value),
       ),

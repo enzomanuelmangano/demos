@@ -1,16 +1,17 @@
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet, View } from 'react-native';
 
 import { Palette } from '../../../constants';
 
 type WaveformScrubberSampleProps = {
   position: number;
-  currentX: Animated.SharedValue<number>;
-  isDragging: Animated.SharedValue<boolean>;
+  currentX: SharedValue<number>;
+  isDragging: SharedValue<boolean>;
   value: number;
 };
 

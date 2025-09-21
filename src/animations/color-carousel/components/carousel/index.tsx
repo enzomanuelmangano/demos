@@ -1,6 +1,7 @@
 // Import necessary modules for the component
 import React from 'react';
 import Animated, {
+  SharedValue,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -18,7 +19,7 @@ type CarouselProps<T extends BaseCarouselItemType = BaseCarouselItemType> = {
   items: (T | null)[];
   maxRenderedItems: number;
   width: number;
-  activeIndex: Animated.SharedValue<number>;
+  activeIndex: SharedValue<number>;
 };
 
 // Define a constant that holds the aspect ratio of each item in the list
@@ -62,6 +63,7 @@ const Carousel: React.FC<CarouselProps> = React.memo(
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
+          decelerationRate={0.8}
           snapToOffsets={items.map((_, index) => index * LIST_ITEM_WIDTH)}>
           {items.map((item, index) => {
             return (

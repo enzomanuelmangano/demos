@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from 'react';
 import { Accelerometer } from 'expo-sensors';
-import debounce from 'lodash/debounce';
+import debounce from 'lodash.debounce';
+import { useEffect, useMemo } from 'react';
 
 export const useOnShakeEffect = (callback: () => void) => {
   const debouncedCallback = useMemo(

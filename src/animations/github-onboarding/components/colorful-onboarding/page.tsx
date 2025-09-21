@@ -1,9 +1,10 @@
 // Imports from libraries
 import { Image } from 'expo-image';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
@@ -12,7 +13,7 @@ type OnboardingPageProps = {
   image: ReturnType<typeof require>;
   title: string;
   index: number;
-  currentOffset: Animated.SharedValue<number>;
+  currentOffset: SharedValue<number>;
   width: number;
   height: number;
 };

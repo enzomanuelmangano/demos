@@ -1,17 +1,19 @@
-import type { FlatList } from 'react-native';
-import { SafeAreaView, StyleSheet, Text } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import type { FlatList, LayoutRectangle } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  SharedValue,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
-import React, { useCallback, useRef } from 'react';
 
 import { MeasureableAnimatedView } from './components/MeasureableAnimatedView';
+import { SectionListItem } from './components/SectionListItem';
 import type { HeaderListItem, ListItem } from './constants';
-import { isHeader, data } from './constants';
+import { data, isHeader } from './constants';
 import { useHeaderLayout } from './hooks/useHeaderLayout';
 import { useHeaderStyle } from './hooks/useHeaderStyle';
-import { SectionListItem } from './components/SectionListItem';
 
 const HeaderHeight = 65;
 const ItemHeight = 50;
@@ -19,6 +21,7 @@ const ItemHeight = 50;
 const headers = data.filter(isHeader) as HeaderListItem[];
 
 export const AnimatedIndicatorList = () => {
+  const insets = useSafeAreaInsets();
   const contentOffsetY = useSharedValue(0);
   // Where the magic happens :)
   const { headerRefs, headersLayoutX, headersLayoutY } = useHeaderLayout({
@@ -30,7 +33,9 @@ export const AnimatedIndicatorList = () => {
 
   const { rHeaderListStyle, rIndicatorStyle } = useHeaderStyle({
     contentOffsetY,
-    headersLayoutX,
+    headersLayoutX: headersLayoutX as SharedValue<
+      { header: string; value: LayoutRectangle | undefined }[]
+    >,
     headersLayoutY,
   });
 
@@ -52,7 +57,11 @@ export const AnimatedIndicatorList = () => {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}>
       {/* Animated Header Section */}
       <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
         {headers.map(({ header }, index) => {
@@ -103,7 +112,7 @@ export const AnimatedIndicatorList = () => {
           );
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

@@ -5,12 +5,13 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { BOTTOM_BAR_HEIGHT } from '../../components/bottom-tab-bar';
-import { Palette } from '../../constants/palette';
 import { useActiveTabBarContext } from '../../components/bottom-tab-bar/active-tab-bar-provider';
+import { useTheme } from '../../components/theme-provider';
 
 const HomeScreen = () => {
   // Get the 'isActive' value from the active tab bar context
   const { isActive } = useActiveTabBarContext();
+  const { colors } = useTheme();
 
   // Create a shared value for storing the previous scroll offset
   const prevContentOffsetY = useSharedValue(0);
@@ -34,7 +35,7 @@ const HomeScreen = () => {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Animated FlatList to handle scrolling */}
       <Animated.FlatList
         onScroll={scrollHandler}
@@ -44,7 +45,9 @@ const HomeScreen = () => {
           paddingBottom: BOTTOM_BAR_HEIGHT, // Add padding for the bottom tab bar
         }}
         data={new Array(50).fill(0)} // Dummy data for FlatList
-        renderItem={() => <View style={styles.listItem} />} // Render list items
+        renderItem={() => (
+          <View style={[styles.listItem, { borderColor: colors.border }]} />
+        )} // Render list items
       />
     </View>
   );
@@ -58,7 +61,6 @@ const styles = StyleSheet.create({
   listItem: {
     height: 100, // Set the height of each list item
     borderBottomWidth: 1, // Add a bottom border to each list item
-    borderColor: Palette.border, // Use the specified color for the bottom border
   },
 });
 

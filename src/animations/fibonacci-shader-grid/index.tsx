@@ -1,4 +1,3 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
 import {
   Blur,
   Canvas,
@@ -8,6 +7,8 @@ import {
   Shader,
   Skia,
 } from '@shopify/react-native-skia';
+import { useEffect } from 'react';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import {
   Easing,
   useDerivedValue,
@@ -15,19 +16,8 @@ import {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
 
 import { ControlPanel } from './components/control-panel';
-
-// Note: Please feel free to correct me because honestly I'm not sure of a single word 😅
-//       That's just something I noticed while experimenting.
-
-// By incresing the RESCALE_FACTOR, you'll improve performance but the quality will decrease.
-// Why?
-// The trick (?) is to determine the CanvasSize (Width and Height) based on the
-// Screen Width / Rescale Factor.
-// By doing that the shader will be applied to reduced portion of the screen and it will run by using less resources
-const RESCALE_FACTOR = 3;
 
 // Max 350 circles, but you can update this value as you want.
 // It all depends on how fast is you're computer 😁
@@ -42,7 +32,7 @@ const MAX_MAGICAL_MUL = 3.6;
 const INITIAL_MAGICAL_MUL = (MAX_MAGICAL_MUL + MIN_MAGICAL_MUL) / 2;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CANVAS_SIZE = SCREEN_WIDTH / RESCALE_FACTOR;
+const CANVAS_SIZE = SCREEN_WIDTH;
 
 const FibonacciShaderGrid = () => {
   // N is the amount of circles
@@ -113,11 +103,6 @@ const FibonacciShaderGrid = () => {
           style={{
             width: CANVAS_SIZE,
             height: CANVAS_SIZE,
-            transform: [
-              {
-                scale: RESCALE_FACTOR, // Upscaling factor
-              },
-            ],
             // backgroundColor: 'blue', // Decomment me to visualize the purpose of the mask!! :)
           }}>
           {/* 

@@ -1,13 +1,13 @@
 import { View, StyleSheet } from 'react-native';
-import { useTheme } from '@react-navigation/native';
 
 import { SwitchThemeButton } from '../../components/switch-theme';
+import { useTheme } from '../../components/theme-provider';
 
 const SearchScreen = () => {
   const { colors } = useTheme();
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={{ position: 'absolute', bottom: 20, right: 10 }}>
         <SwitchThemeButton
           contentContainerStyle={{

@@ -1,8 +1,9 @@
 // Import necessary modules and components from React and React Native
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
@@ -20,7 +21,7 @@ export type ItemInfo = {
 // Define the type for the props of the ListItem component
 type ListItemProps = {
   style?: StyleProp<ViewStyle>;
-  activeIndex: Animated.SharedValue<number | null>;
+  activeIndex: SharedValue<number | null>;
   index: number;
   maxBorderRadius?: number;
   item: ItemInfo;

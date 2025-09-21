@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 
 // Custom button component
 import { LoadingButton } from './components/loading-button';
@@ -15,23 +15,50 @@ const useMutation = () => {
   const [status, setStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
+  const [isLoading, setIsLoading] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const mutateAsync = useCallback(async (mutationFn: () => Promise<void>) => {
-    try {
-      setStatus('loading');
-      await mutationFn();
-      setStatus('success');
-    } catch (error) {
-      setStatus('error');
-      throw error;
-    }
-  }, []);
+  const mutateAsync = useCallback(
+    async (mutationFn: () => Promise<void>) => {
+      // Prevent multiple simultaneous mutations
+      if (isLoading) {
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setStatus('loading');
+        await mutationFn();
+        setStatus('success');
+      } catch (error) {
+        setStatus('error');
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading],
+  );
 
   const reset = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     setStatus('idle');
+    setIsLoading(false);
   }, []);
 
-  return { status, mutateAsync, reset };
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  return { status, mutateAsync, reset, isLoading, timeoutRef };
 };
 
 const App = () => {
@@ -39,7 +66,7 @@ const App = () => {
   const i = useRef(0);
 
   // Custom mutation hook to manage async operations with status tracking
-  const { status, mutateAsync, reset } = useMutation();
+  const { status, mutateAsync, reset, isLoading, timeoutRef } = useMutation();
 
   const handleMutation = useCallback(async () => {
     // Every second call results in an error. Otherwise, it waits for 2 seconds before resolving.
@@ -54,19 +81,24 @@ const App = () => {
   }, []);
 
   const handlePress = useCallback(async () => {
+    // Prevent handling press if already loading
+    if (isLoading) {
+      return;
+    }
+
     try {
       await mutateAsync(handleMutation);
       // After success, wait for 1.5 seconds and then reset status
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         reset();
       }, 1500);
     } catch (error) {
       // After error, wait for 1.5 seconds and then reset status
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         reset();
       }, 1500);
     }
-  }, [mutateAsync, handleMutation, reset]);
+  }, [mutateAsync, handleMutation, reset, isLoading, timeoutRef]);
 
   // Component render
   return (

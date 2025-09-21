@@ -1,12 +1,13 @@
+import { PressableScale } from 'pressto';
 import React from 'react';
 import type { ViewProps } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 const DOT_SIZE = 7;
 const OPACITY_THRESHOLD = 0.7;
@@ -16,7 +17,7 @@ const DISABLED_OPACITY = 0.2;
 export interface PaginationDotProps extends ViewProps {
   count: number;
   index: number;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
   onPress?: (index: number) => void;
 }
 

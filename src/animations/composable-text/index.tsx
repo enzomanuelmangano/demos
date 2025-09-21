@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
   LinearTransition,
@@ -32,7 +31,6 @@ export const ComposableTextScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <PressableScale
         layout={LinearTransition.springify()
           .mass(0.4)

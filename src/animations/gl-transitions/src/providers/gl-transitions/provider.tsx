@@ -70,7 +70,6 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
   // Callback to prepare transition
   const prepareTransition = useCallback(async () => {
     // Capture the current screen as a snapshot
-    // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
     firstScreenSnapshot.value = await makeImageFromView(containerRef);
     // Reset the transition progress to 0
     progress.value = 0;
@@ -80,7 +79,6 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
   const runTransition = useCallback(
     async (timingConfig?: WithTimingConfig, onCompleted?: () => void) => {
       // Capture the next screen as a snapshot
-      // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
       secondScreenSnapshot.value = await makeImageFromView(containerRef);
       // Start the transition animation
       progress.value = withTiming(1, timingConfig, isFinished => {

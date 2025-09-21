@@ -1,26 +1,27 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback } from 'react';
-import type { StyleProp, TextStyle } from 'react-native';
-import { Text, StyleSheet, Platform } from 'react-native';
+import type { ColorValue, StyleProp, TextStyle } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import Animated, {
+  runOnJS,
+  SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
   withSpring,
   withTiming,
-  useDerivedValue,
-  useAnimatedReaction,
-  useSharedValue,
-  runOnJS,
 } from 'react-native-reanimated';
 
 type AnimatedDigitProps = {
   index: number;
-  count: Animated.SharedValue<number>;
+  count: SharedValue<number>;
   height: number;
   width: number;
   textStyle: StyleProp<TextStyle>;
   maxDigits: number;
-  gradientAccentColor: string;
+  gradientAccentColor: ColorValue;
 };
 
 const getDigitByIndex = ({
@@ -47,7 +48,7 @@ const BASE_TRANSPARENTS_COLOR_GRADIENT = [
   '#ffffff00',
   '#ffffff00',
   '#ffffff00',
-];
+] as const;
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -65,11 +66,11 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
     const TOP_GRADIENT = [
       gradientAccentColor,
       ...BASE_TRANSPARENTS_COLOR_GRADIENT,
-    ];
+    ] as const;
     const BOTTOM_GRADIENT = [
       ...BASE_TRANSPARENTS_COLOR_GRADIENT,
       gradientAccentColor,
-    ];
+    ] as const;
 
     // Calculate the digit at the specified index.
     const digit = useDerivedValue(() => {
@@ -162,7 +163,7 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       return withTiming(isChanging.value ? 1 : 0);
     }, []);
 
-    const blurIntensity = useDerivedValue(() => {
+    const blurIntensity = useDerivedValue<number | undefined>(() => {
       return isChangingProgress.value * 17;
     }, []);
 

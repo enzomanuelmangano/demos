@@ -1,6 +1,6 @@
-import Animated, { useDerivedValue } from 'react-native-reanimated';
-import { StyleSheet, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { StyleSheet, View } from 'react-native';
+import Animated, { useDerivedValue } from 'react-native-reanimated';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -10,7 +10,7 @@ Animated.addWhitelistedNativeProps({ intensity: true });
 const MainScreenWrapper = ({ children }: { children: React.ReactNode }) => {
   const { springProgress } = useCustomNavigation();
 
-  const intensity = useDerivedValue(() => {
+  const intensity = useDerivedValue<number | undefined>(() => {
     return springProgress.value * 50;
   });
 

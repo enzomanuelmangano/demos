@@ -1,12 +1,13 @@
 import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
-  useSharedValue,
+  Extrapolation,
+  interpolate,
+  SharedValue,
   useAnimatedScrollHandler,
   useAnimatedStyle,
-  interpolate,
-  Extrapolation,
   useDerivedValue,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { Paginator } from '../paginator';
@@ -35,7 +36,7 @@ const AnimatedCard = ({
   children,
 }: {
   index: number;
-  scrollX: Animated.SharedValue<number>;
+  scrollX: SharedValue<number>;
   screenWidth: number;
   cardWidth: number;
   cardHeight: number;
@@ -171,7 +172,18 @@ export const StackedCarousel = <T,>({
       ))}
 
       {/* Invisible horizontal scroll view positioned over the cards */}
-      <Animated.ScrollView
+      <Animated.FlatList
+        data={data}
+        renderItem={() => (
+          <View
+            style={{
+              width: screenWidth,
+              height: cardHeight + stackOffset * 6,
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          />
+        )}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -183,19 +195,8 @@ export const StackedCarousel = <T,>({
           width: screenWidth,
           height: cardHeight + stackOffset * 6,
           zIndex: 1000,
-        }}>
-        {data.map((_, index) => (
-          <View
-            key={index}
-            style={{
-              width: screenWidth,
-              height: cardHeight + stackOffset * 6,
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}
-          />
-        ))}
-      </Animated.ScrollView>
+        }}
+      />
 
       {/* Paginator */}
       {showPaginator && (

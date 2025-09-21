@@ -1,10 +1,10 @@
 import { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import Animated, {
-  useDerivedValue,
-  type SharedValue,
   useAnimatedStyle,
+  useDerivedValue,
   withSpring,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
 
@@ -81,17 +81,28 @@ export const TextLabel: React.FC<TextLabelProps> = ({
         styles.labelContainer,
         rContainerStyle,
       ]}>
-      <Animated.Text
-        style={[
-          {
-            color: color.label,
-          },
-          styles.label,
-        ]}>
-        {type === 'right' && percentageLabel}
-        {label}
-        {type === 'left' && percentageLabel}
-      </Animated.Text>
+      <Animated.View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}>
+        {type === 'right' && (
+          <Text style={styles.labelPercentage}>{percentageLabel}</Text>
+        )}
+        <Text
+          style={[
+            {
+              color: color.label,
+            },
+            styles.label,
+          ]}>
+          {label}
+        </Text>
+        {type === 'left' && (
+          <Text style={styles.labelPercentage}>{percentageLabel}</Text>
+        )}
+      </Animated.View>
     </Animated.View>
   );
 };
@@ -108,5 +119,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'FiraCodeMedium',
     textTransform: 'uppercase',
+    height: 20,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+  },
+  labelPercentage: {
+    fontSize: 16,
+    fontFamily: 'FiraCodeMedium',
+    textTransform: 'uppercase',
+    height: 20,
+    marginBottom: 4,
   },
 });

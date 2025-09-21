@@ -1,12 +1,12 @@
 /* eslint-disable camelcase */
 import fs from 'fs';
 
-import { LoadSkiaWeb } from '@shopify/react-native-skia/lib/commonjs/web/LoadSkiaWeb';
 import {
-  makeOffscreenSurface,
   drawOffscreen,
   getSkiaExports,
+  makeOffscreenSurface,
 } from '@shopify/react-native-skia/lib/commonjs/headless';
+import { LoadSkiaWeb } from '@shopify/react-native-skia/lib/commonjs/web/LoadSkiaWeb';
 import React from 'react';
 
 import { AppIcon } from '../app-icon';
@@ -66,7 +66,7 @@ const displayText = text || ':)';
 
   const tf = Skia.Typeface.MakeFreeTypeFaceFromData(data);
 
-  const fontSize = 500;
+  const fontSize = 400;
   const font = Skia.Font(tf!, fontSize);
 
   for (const icon of Icons) {

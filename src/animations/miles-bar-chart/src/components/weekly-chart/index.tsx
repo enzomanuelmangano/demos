@@ -1,13 +1,15 @@
+import { useMemo } from 'react';
 import { View } from 'react-native';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
-import { useMemo } from 'react';
 
 import { Bar } from './single-bar';
 
 type DayInfo = {
   day: string;
+  weekIndex: number;
+  dayIndex: number;
   value: number;
-  date: Date;
+  dateString: string;
 };
 
 type WeekData = DayInfo[];

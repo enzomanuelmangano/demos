@@ -4,11 +4,10 @@ import React, { useCallback, useMemo } from 'react';
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { useCanvasLayout } from './hooks/use-canvas-layout';
-import { getScaledPolygonPath } from './utils/get-scaled-polygon';
-import { unwrapRef } from './utils/unwrap-ref';
-import type { RadarChartProps } from './typings';
-import { useUnwrappedValues } from './hooks/use-unwrapped-radar-values';
 import { usePolygonGrid } from './hooks/use-polygon-grid';
+import { useUnwrappedValues } from './hooks/use-unwrapped-radar-values';
+import type { RadarChartProps, RadarDataType } from './typings';
+import { getScaledPolygonPath } from './utils/get-scaled-polygon';
 
 function RadarChart<K extends string>({
   data,
@@ -69,12 +68,12 @@ function RadarChart<K extends string>({
 
   // Radar Paths
   const internalPaths = useDerivedValue(() => {
-    return allValues.value.map(values => getPolygonPath(values));
+    return allValues.value.map((values: number[]) => getPolygonPath(values));
   }, [centerX, centerY, radius, allValues]);
 
   const internalPoints = useDerivedValue(() => {
-    return allValues.value.map(values => {
-      return values.map((value, index) => {
+    return allValues.value.map((values: number[]) => {
+      return values.map((value: number, index: number) => {
         const angle = index * ((2 * Math.PI) / values.length);
         const pointX = centerX.value + Math.sin(angle) * radius.value * value;
         const pointY = centerY.value - Math.cos(angle) * radius.value * value;
@@ -86,7 +85,9 @@ function RadarChart<K extends string>({
   // Text Skills Positions
 
   const textSkills = useMemo(() => {
-    return Object.keys(unwrapRef(data).value[0]?.values ?? {});
+    const isSharedValue = typeof data === 'object' && 'value' in data;
+    const dataArray = isSharedValue ? data.value : (data as RadarDataType<K>);
+    return Object.keys(dataArray[0]?.values ?? {});
   }, [data]);
 
   const transformOrigin = useDerivedValue(() => {
@@ -156,7 +157,7 @@ function RadarChart<K extends string>({
           );
         })}
 
-        {allValues.value.map((_, index) => {
+        {allValues.value.map((_: number[], index: number) => {
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const internalPath = useDerivedValue(() => {
             return internalPaths.value[index];
@@ -167,9 +168,17 @@ function RadarChart<K extends string>({
             return internalPoints.value[index];
           }, [internalPoints, index]);
 
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          const pathColor = unwrapRef(data).value[index].color;
+          const isSharedValue = typeof data === 'object' && 'value' in data;
+          const dataArray = isSharedValue
+            ? (
+                data as Readonly<
+                  import('react-native-reanimated').SharedValue<
+                    RadarDataType<K>
+                  >
+                >
+              ).value
+            : (data as RadarDataType<K>);
+          const pathColor = dataArray[index].color;
           const pathStrokeColor = Color(pathColor).darken(0.1).hex();
 
           return (
@@ -197,6 +206,5 @@ function RadarChart<K extends string>({
   );
 }
 
-export { RadarChart };
 export * from './typings';
-export * from './use-radar-value';
+export { RadarChart };

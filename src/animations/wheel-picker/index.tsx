@@ -1,12 +1,12 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useState } from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
 import { DraggableSlider } from './components/draggable-slider';
@@ -16,7 +16,7 @@ const LinesAmount = 50;
 export const WheelPicker = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const animatedSpacePerLine = useDerivedValue(() => {
+  const animatedSpacePerLine = useDerivedValue<number>(() => {
     return withTiming(isExpanded ? 50 : 20);
   }, [isExpanded]);
 

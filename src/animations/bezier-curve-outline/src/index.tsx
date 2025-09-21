@@ -1,48 +1,26 @@
-import { StyleSheet, View, StatusBar } from 'react-native';
+import { Skia } from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
-import { Skia } from '@shopify/react-native-skia';
 
-import { BezierOutline } from './components/bezier-outline';
-import { AnimatedSquare } from './components/animated-square';
 import { AnimatedBlurView } from './components/animated-blur-view';
+import { AnimatedSquare } from './components/animated-square';
+import { BezierOutline } from './components/bezier-outline';
 import { useAnimateThroughPath } from './hooks/useAnimateThroughPath';
 
 const App = () => {
   const outlineMode = useSharedValue(false);
   const blurIntensity = useSharedValue(0);
   const outlineModeProgress = useDerivedValue(() => {
-    return withSpring(outlineMode.value ? 1 : 0, {
-      mass: 0.5,
-      stiffness: 100,
-    });
+    return withSpring(outlineMode.value ? 1 : 0);
   }, []);
-
-  const updateBarStyle = (outlineModeEnabled: boolean) => {
-    StatusBar.setBarStyle(
-      outlineModeEnabled ? 'light-content' : 'dark-content',
-      true,
-    );
-  };
-
-  useAnimatedReaction(
-    () => outlineModeProgress.value,
-    (current, previous) => {
-      if (current !== previous) {
-        runOnJS(updateBarStyle)(current > 0);
-      }
-    },
-    [outlineModeProgress],
-  );
 
   const rBezierOutlineStyle = useAnimatedStyle(() => {
     return {
@@ -68,11 +46,8 @@ const App = () => {
     };
   });
 
-  const animatedBlurIntensity = useDerivedValue(() => {
-    return withSpring(blurIntensity.value, {
-      mass: 0.5,
-      stiffness: 100,
-    });
+  const animatedBlurIntensity = useDerivedValue<number | undefined>(() => {
+    return withSpring(blurIntensity.value);
   }, []);
 
   const skiaPath = useSharedValue(Skia.Path.Make());

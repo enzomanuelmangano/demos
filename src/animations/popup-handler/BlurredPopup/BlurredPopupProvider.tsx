@@ -1,29 +1,15 @@
 /**
  * React component for providing a blurred popup menu.
  */
-import type { SkImage } from '@shopify/react-native-skia';
-import {
-  Canvas,
-  makeImageFromView,
-  Image,
-  rect,
-  Blur,
-  Group,
-} from '@shopify/react-native-skia';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { BlurView } from 'expo-blur';
+import React, { useCallback, useMemo, useState } from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
 import {
-  View,
   StyleSheet,
+  Text,
   TouchableOpacity,
   useWindowDimensions,
-  Text,
+  View,
 } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
@@ -59,14 +45,14 @@ type BlurredPopupProviderProps = {
 
 // Define default menu layout
 const DEFAULT_MENU_LAYOUT: Required<MenuLayout> = {
-  backgroundColor: 'rgba(255,255,255,0.75)',
-  titleColor: 'black',
-  listItemHeight: 50,
+  backgroundColor: 'rgba(255,255,255,0.95)',
+  titleColor: '#1a1a1a',
+  listItemHeight: 54,
 };
 
 /**
  * The `BlurredPopupProvider` component wraps the main content of the application and provides a popup menu functionality with a blurred background effect.
- * It uses Skia for image manipulation and Reanimated for animations.
+ * It uses expo-blur for the background blur effect and Reanimated for animations.
  */
 const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   children,
@@ -74,7 +60,6 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   maxBlur = 5,
 }) => {
   // State variables
-  // Image: Skia Image (It's basically a screenshot of the current rendered View)
   // Node: Is the component that is triggering the Popup (or a custom version of it named "highlightedChildren")
   // Layout: Node Measured Dimensions
   // Options: The Popup Menu Options
@@ -86,60 +71,62 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
 
   const menuVisible = useSharedValue(false);
   const menuOpacity = useDerivedValue(() => {
-    return withTiming(menuVisible.value ? 1 : 0);
+    return withTiming(menuVisible.value ? 1 : 0, {
+      duration: 200,
+    });
   });
 
-  const skImage = useSharedValue<SkImage | null>(null);
+  const menuScale = useDerivedValue(() => {
+    return withTiming(menuVisible.value ? 1 : 0.95, {
+      duration: 200,
+    });
+  });
+
+  const blurOpacity = useSharedValue(0);
 
   const options = useMemo(() => {
     if (!params) return [];
     return params.options;
   }, [params]);
 
-  // This Ref is needed in order to apply a ScreenShot to the RenderedView
-  // The following snapshot is going to be a Skia Image (and it will be possible to apply Blur on it through the Skia Thread)
-  const mainView = useRef(null);
-
   /**
    * Show the popup menu with the provided parameters.
    */
   const showPopup = useCallback(
-    async ({
+    ({
       node,
       layout,
-      // eslint-disable-next-line @typescript-eslint/no-shadow
-      options,
+      options: popupOptions,
     }: {
       node: React.ReactNode;
       layout: MeasuredDimensions;
       options: PopupOptionType[];
     }) => {
-      setParams({ node, layout, options });
+      setParams({ node, layout, options: popupOptions });
       menuVisible.value = true;
-
-      // Applying the Snapshot and setting the Popup Params
-      // @ts-expect-error - makeImageFromView expects a ref object, but we're passing a view ref
-      skImage.value = await makeImageFromView(mainView);
+      blurOpacity.value = withTiming(1, {
+        duration: 300,
+      });
     },
-    [menuVisible, skImage],
+    [menuVisible, blurOpacity],
   );
 
   const canvasSize = useWindowDimensions();
 
-  const rBlur = useSharedValue(0);
-
   const dismissBlurredPopup = useCallback(() => {
-    rBlur.value = withTiming(0);
-  }, [rBlur]);
+    blurOpacity.value = withTiming(0, {
+      duration: 300,
+    });
+  }, [blurOpacity]);
 
   const resetParams = useCallback(() => {
     setParams(null);
   }, []);
 
-  // When the blur value is 0, the popup shouldn't be visible anymore
+  // When the blur opacity is 0, the popup shouldn't be visible anymore
   useAnimatedReaction(
     () => {
-      return rBlur.value;
+      return blurOpacity.value;
     },
     (value, prevValue) => {
       if (value === 0 && prevValue && prevValue > value) {
@@ -155,21 +142,8 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     menuVisible.value = false;
     setTimeout(() => {
       dismissBlurredPopup();
-    }, 200);
+    }, 100);
   }, [dismissBlurredPopup, menuVisible]);
-
-  useEffect(() => {
-    // Animate the blur when the image changes
-    if (params?.node != null) {
-      rBlur.value = withTiming(maxBlur);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params?.node]);
-
-  // Computed values
-  const imageRect = useDerivedValue(() => {
-    return rect(0, 0, canvasSize.width, canvasSize.height);
-  }, [canvasSize]);
 
   // Recomputes the position of the Node Style (by using the MeasuredDimension)
   const nodeStyle = useMemo(() => {
@@ -194,16 +168,19 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     } as Partial<ViewProps>;
   }, [hasParams]);
 
-  // The CanvasStyle is responsible for hiding the Canvas when the popup is not visible
-  // The Canvas will simply contain the blurred image (and it will be visible only when the popup is visible)
-  const canvasStyle = useMemo(() => {
+  // The BlurViewStyle is responsible for hiding the BlurView when the popup is not visible
+  const blurViewStyle = useMemo(() => {
     return {
       ...StyleSheet.absoluteFillObject,
-      flex: 1,
       zIndex: params?.node ? 100 : -10,
-      backgroundColor: '#112',
     };
   }, [params?.node]);
+
+  const rBlurViewStyle = useAnimatedStyle(() => {
+    return {
+      opacity: blurOpacity.value,
+    };
+  });
 
   const menuLayout = useMemo(() => {
     return { ...DEFAULT_MENU_LAYOUT, ...menuLayoutProp };
@@ -243,6 +220,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
   const rMenuPopupStyle = useAnimatedStyle(() => {
     return {
       opacity: menuOpacity.value,
+      transform: [{ scale: menuScale.value }],
     };
   });
 
@@ -272,7 +250,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
                       close();
                       onPress?.();
                     }}
-                    activeOpacity={0.9}
+                    activeOpacity={0.6}
                     key={index}
                     style={[
                       {
@@ -280,14 +258,20 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
                         backgroundColor: menuLayout.backgroundColor,
                       },
                       styles.popupListItem,
+                      index === 0 && styles.firstItem,
+                      index === (options?.length ?? 0) - 1 && styles.lastItem,
                     ]}>
-                    {leading}
+                    {leading && (
+                      <View style={styles.leadingContainer}>{leading}</View>
+                    )}
                     <Text
                       style={[{ color: menuLayout.titleColor }, styles.title]}>
                       {label}
                     </Text>
                     <View style={styles.fill} />
-                    {trailing}
+                    {trailing && (
+                      <View style={styles.trailingContainer}>{trailing}</View>
+                    )}
                   </TouchableOpacity>
                 );
               })
@@ -300,17 +284,18 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
             </Animated.View>
           </>
         </Animated.View>
-        <Canvas style={canvasStyle} onTouchEnd={close}>
-          <Group>
-            <Image rect={imageRect} image={skImage}>
-              <Blur blur={rBlur} />
-            </Image>
-          </Group>
-        </Canvas>
+        <Animated.View
+          style={[blurViewStyle, rBlurViewStyle]}
+          pointerEvents={hasParams ? 'auto' : 'none'}>
+          <BlurView
+            intensity={maxBlur * 20}
+            style={StyleSheet.absoluteFillObject}
+            onTouchEnd={close}
+            tint="dark"
+          />
+        </Animated.View>
         {/* The main content of the application */}
-        <View ref={mainView} collapsable={false} style={styles.fill}>
-          {children}
-        </View>
+        <View style={styles.fill}>{children}</View>
       </BlurredPopupContext.Provider>
     </>
   );
@@ -328,9 +313,17 @@ const styles = StyleSheet.create({
     zIndex: -30,
   },
   popup: {
-    borderRadius: 5,
+    borderRadius: 12,
     overflow: 'hidden',
     zIndex: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 8,
   },
   popupBackground: {
     ...StyleSheet.absoluteFillObject,
@@ -339,12 +332,29 @@ const styles = StyleSheet.create({
   popupListItem: {
     alignItems: 'center',
     flexDirection: 'row',
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  firstItem: {
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+  },
+  lastItem: {
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    borderBottomWidth: 0,
+  },
+  leadingContainer: {
+    marginRight: 12,
+  },
+  trailingContainer: {
+    marginLeft: 8,
   },
   title: {
-    marginLeft: 5,
-    marginRight: 10,
-    letterSpacing: 0.5,
+    fontSize: 16,
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
 });
 

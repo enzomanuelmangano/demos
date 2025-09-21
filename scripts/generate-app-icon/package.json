@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "generate-icons": "yarn build && node build/scripts/icons-set.js"
+    "generate-icons": "bun run build && node build/scripts/icons-set.js"
   },
   "devDependencies": {
     "@shopify/react-native-skia": "v2.0.0-next.4",

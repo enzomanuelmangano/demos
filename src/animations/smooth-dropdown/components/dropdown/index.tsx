@@ -41,7 +41,7 @@ const Dropdown: React.FC<DropdownProps> = React.memo(
 
     // Creating a derived value that maps the isToggled value to a spring animation value
     // Almost all the animations in this app are done using this progress value :)
-    const progress = useDerivedValue(() => {
+    const progress = useDerivedValue<number>(() => {
       return withSpring(isToggled.value ? 1 : 0);
     }, []);
 

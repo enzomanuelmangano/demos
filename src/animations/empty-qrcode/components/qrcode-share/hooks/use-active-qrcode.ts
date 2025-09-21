@@ -14,9 +14,9 @@ export const useActiveQRCode = () => {
   // Define animated style for scaling and rotating the QR code
   const rStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: withSpring(showQRCode.value ? 1.4 : 1, { mass: 0.5 }) }, // Scale animation when showing or hiding QR code
+      { scale: withSpring(showQRCode.value ? 1.4 : 1) }, // Scale animation when showing or hiding QR code
       {
-        rotate: withSpring(showQRCode.value ? '0deg' : '-10deg', { mass: 0.5 }),
+        rotate: withSpring(showQRCode.value ? '0deg' : '-10deg'),
       }, // Rotate animation when showing or hiding QR code
     ],
   }));

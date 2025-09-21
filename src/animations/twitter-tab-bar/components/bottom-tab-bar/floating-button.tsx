@@ -1,19 +1,20 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
   runOnJS,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { Palette } from '../../constants/palette';
 
 // Define the type for BottomFloatingButtonProps
 type BottomFloatingButtonProps = {
-  progress: Animated.SharedValue<number>; // Animated shared value for tracking the progress of animations
+  progress: SharedValue<number>; // Animated shared value for tracking the progress of animations
   style?: StyleProp<ViewStyle>; // Optional style prop for customizing the button's appearance
   onSelect?: (option: 'message' | 'default') => void; // Optional callback function for handling icon selection
 };

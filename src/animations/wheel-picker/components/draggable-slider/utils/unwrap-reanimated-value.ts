@@ -3,5 +3,5 @@ import { isSharedValue } from 'react-native-reanimated';
 
 export const unwrapReanimatedValue = <T>(value: T | SharedValue<T>): T => {
   'worklet';
-  return isSharedValue(value) ? value.value : value;
+  return isSharedValue<T>(value) ? value.value : value;
 };

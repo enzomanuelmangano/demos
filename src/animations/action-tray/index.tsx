@@ -1,5 +1,7 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, useWindowDimensions, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   Extrapolate,
@@ -13,8 +15,6 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
 
 import { ActionTray, type ActionTrayRef } from './components/ActionTray';
 import { Palette } from './constants/palette';
@@ -165,7 +165,7 @@ function App() {
                     fontWeight: 'bold',
                     color: 'rgba(0,0,0,0.5)',
                   }}>
-                  patreon.com/reactiive
+                  reactiive.io/demos
                 </Text>
               </Text>
             </Animated.View>

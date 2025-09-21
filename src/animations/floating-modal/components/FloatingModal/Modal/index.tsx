@@ -1,7 +1,8 @@
 import React from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { TouchableOpacity, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
@@ -12,7 +13,7 @@ import { FLOATING_BUTTON_SIZE } from '../constants';
 type ModalProps = {
   children?: React.ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
-  isVisible: Animated.SharedValue<boolean>;
+  isVisible: SharedValue<boolean>;
 };
 
 const ModalContent: React.FC<ModalProps> = React.memo(

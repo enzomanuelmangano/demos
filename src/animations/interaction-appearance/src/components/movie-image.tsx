@@ -9,8 +9,8 @@ import {
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import { View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isSwitchingThemeShared } from '../theme';
 
@@ -58,11 +58,10 @@ export const MovieImage: React.FC<MovieImageProps> = ({
     () =>
       ({
         height: canvasHeight + 500,
-        paddingTop: safeTop + 32,
         position: 'absolute',
         width: '100%',
       }) as const,
-    [canvasHeight, safeTop],
+    [canvasHeight],
   );
   return (
     <>

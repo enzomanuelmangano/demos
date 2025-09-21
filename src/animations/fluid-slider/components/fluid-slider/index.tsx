@@ -11,8 +11,8 @@ import {
   useFont,
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
-import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 import { useDerivedValue } from 'react-native-reanimated';
+import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import { usePickerLayout } from './hooks/use-picker-layout';
 
@@ -27,7 +27,7 @@ const DISTANCE_BETWEEN_SLIDER_AND_METABALL = 10;
 const FluidSlider: React.FC<FluidSliderProps> = ({
   width,
   height,
-  color = '#1C11A2',
+  color = '#007AFF',
 }) => {
   const size = useMemo(() => {
     return {
@@ -36,14 +36,24 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
     };
   }, [width, height]);
 
+  const sliderSize = useMemo(() => {
+    return {
+      width: width * 0.95,
+      height: height,
+    };
+  }, [width, height]);
+
   // Computed value for the radius of the metaball
   const metaballRadius = useDerivedValue(() => {
-    return (height - DISTANCE_BETWEEN_SLIDER_AND_METABALL / 2) / 4;
+    return Math.min(
+      20,
+      (height - DISTANCE_BETWEEN_SLIDER_AND_METABALL / 2) / 3,
+    );
   }, [height]);
 
   // Computed value for the radius of the picker circle text container
   const pickerCircleTextContainerRadius = useDerivedValue(() => {
-    return metaballRadius.value * 0.7;
+    return metaballRadius.value * 0.8;
   }, [metaballRadius]);
 
   // That's the trick behind the "Metaball effect"
@@ -51,10 +61,10 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   const layer = useMemo(() => {
     return (
       <Paint>
-        <Blur blur={10} />
+        <Blur blur={4} />
         <ColorMatrix
           matrix={[
-            1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 80, -40,
+            1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 50, -25,
           ]}
         />
       </Paint>
@@ -63,15 +73,13 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
 
   // Computed value for the height of the slider
   const sliderHeight = useDerivedValue(() => {
-    return (
-      height - metaballRadius.value * 2 - DISTANCE_BETWEEN_SLIDER_AND_METABALL
-    );
-  }, [height, metaballRadius]);
+    return 12; // Better thickness for slider track
+  }, []);
 
   // Custom hook for layout calculations
   const { clampedPickerX, isSliding, pickerX, pickerY } = usePickerLayout({
     radius: metaballRadius,
-    sliderSize: size,
+    sliderSize: sliderSize,
   });
 
   // Gesture handler for handling slider interactions
@@ -94,7 +102,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   });
 
   // Font size for the picker circle text
-  const fontSize = 15;
+  const fontSize = 12;
 
   // Custom font for the text
   const font = useFont(
@@ -113,14 +121,14 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
       interpolate(
         clampedPickerX.value,
         // Input range: radius -> width - radius (Since the picker circle can't go outside the slider)
-        [metaballRadius.value, size.width - metaballRadius.value],
+        [metaballRadius.value, sliderSize.width - metaballRadius.value],
         // 0 is the min value of the slider
         // 100 is the max value of the slider
         [0, 100],
         Extrapolate.CLAMP,
       ),
     ).toString();
-  }, [clampedPickerX, metaballRadius, size]);
+  }, [clampedPickerX, metaballRadius, sliderSize]);
 
   // Computed value for the X position of the picker text
   const pickerTextX = useDerivedValue(() => {
@@ -130,54 +138,62 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, [clampedPickerX, pickerCircleTextContainerRadius, font, pickerCircleText]);
 
   const derivedPickerY = useDerivedValue(() => {
-    return metaballRadius.value * 2 + DISTANCE_BETWEEN_SLIDER_AND_METABALL;
-  }, [metaballRadius]);
+    return height / 2; // Center the slider track vertically
+  }, [height]);
 
   const textY = useDerivedValue(() => {
     return pickerY.value + fontSize / 3;
   }, [derivedPickerY, fontSize]);
+
+  const roundedRectY = useDerivedValue(() => {
+    return derivedPickerY.value - sliderHeight.value / 2 + 1;
+  }, [derivedPickerY, sliderHeight]);
 
   // Rendering the FluidSlider component
   return (
     <Touchable.Canvas
       style={{
         ...size,
+        height: size.height,
+        transform: [{ translateX: (size.width - sliderSize.width) / 2 }],
       }}>
-      <Group layer={layer}>
-        <Touchable.RoundedRect
-          x={0}
-          y={derivedPickerY}
-          width={size.width}
-          height={sliderHeight}
-          r={5}
-          color={color}
-          {...gestureHandler}
-        />
+      <Group>
+        <Group layer={layer}>
+          <Touchable.RoundedRect
+            x={0}
+            y={roundedRectY}
+            width={sliderSize.width}
+            height={sliderHeight}
+            r={6}
+            color={color}
+            {...gestureHandler}
+          />
+          <Circle
+            cx={clampedPickerX}
+            cy={pickerY}
+            r={metaballRadius}
+            color={color}
+          />
+        </Group>
         <Circle
           cx={clampedPickerX}
           cy={pickerY}
-          r={metaballRadius}
-          color={color}
+          r={pickerCircleTextContainerRadius}
+          color={'white'}
         />
+        {font && (
+          <Text
+            x={pickerTextX}
+            // Why the font size is divided by 3? I have no idea 😅 (But it works)
+            // The point is that I need to center the text inside the picker circle
+            // And I need a way to get the "fontHeight" / 2 (to center the text vertically)
+            // Unfortunately I didn't find a way to get the font height
+            y={textY}
+            text={pickerCircleText}
+            font={font}
+          />
+        )}
       </Group>
-      <Circle
-        cx={clampedPickerX}
-        cy={pickerY}
-        r={pickerCircleTextContainerRadius}
-        color={'white'}
-      />
-      {font && (
-        <Text
-          x={pickerTextX}
-          // Why the font size is divided by 3? I have no idea 😅 (But it works)
-          // The point is that I need to center the text inside the picker circle
-          // And I need a way to get the "fontHeight" / 2 (to center the text vertically)
-          // Unfortunately I didn't find a way to get the font height
-          y={textY}
-          text={pickerCircleText}
-          font={font}
-        />
-      )}
     </Touchable.Canvas>
   );
 };

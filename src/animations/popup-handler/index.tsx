@@ -1,18 +1,18 @@
+import { FontAwesome } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useMemo } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Gesture,
+  GestureDetector,
+  GestureHandlerRootView,
+} from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useMemo } from 'react';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
-import { FontAwesome } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 
 import { BlurredPopupProvider, TouchablePopupHandler } from './BlurredPopup';
 
@@ -128,12 +128,8 @@ const PopupHandler = () => {
         ? width - internalPadding
         : internalPadding;
       const y = angle.includes('bottom') ? height - size : internalPadding * 2;
-      translateX.value = withSpring(x, {
-        mass: 0.5,
-      });
-      translateY.value = withSpring(y, {
-        mass: 0.5,
-      });
+      translateX.value = withSpring(x);
+      translateY.value = withSpring(y);
     },
   );
 

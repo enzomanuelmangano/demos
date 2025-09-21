@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { PressableScale } from 'pressto';
 
 import { useDemoStackedModal } from './hook';
@@ -10,7 +9,6 @@ const StackedModals = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
       <PressableScale onPress={onPress} style={styles.button} />
     </View>
   );

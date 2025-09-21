@@ -1,14 +1,14 @@
+import Color from 'color';
 import { MotiView } from 'moti';
+import { PressableScale } from 'pressto';
 import { useMemo } from 'react';
-import { StyleSheet } from 'react-native';
 import type { StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
 } from 'react-native-reanimated';
-import Color from 'color';
-import { PressableScale } from 'pressto';
 
 import { ActivityIndicator, type ActivityStatus } from './activity-indicator';
 
@@ -35,7 +35,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
 
   // Render the animated button component
   return (
-    <PressableScale onPress={onPress} layout={LinearTransition}>
+    <PressableScale onPress={onPress} layout={LinearTransition.springify()}>
       <MotiView
         transition={{
           backgroundColor: {
@@ -56,6 +56,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
         }}>
         <ActivityIndicator status={status} color={activeColor} />
         <Animated.Text
+          key={`text`}
           entering={FadeIn}
           exiting={FadeOut}
           style={[

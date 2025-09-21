@@ -1,12 +1,11 @@
 import { StyleSheet } from 'react-native';
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
 
-import { AnimatedBlurView } from '../animated-blur-view';
 import { isSwitchingThemeShared } from '../../theme';
+import { AnimatedBlurView } from '../animated-blur-view';
 
 export const ThemeBlurView = () => {
-  // Create an animated value for the blurIntensity using useDerivedValue
-  const intensity = useDerivedValue(() => {
+  const intensity = useDerivedValue<number | undefined>(() => {
     return withTiming(isSwitchingThemeShared.value ? 15 : 0, {
       duration: 350,
     });

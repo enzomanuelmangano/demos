@@ -1,16 +1,15 @@
-import React, { useImperativeHandle } from 'react';
-import { View, StyleSheet } from 'react-native';
-import Animated, { useDerivedValue } from 'react-native-reanimated';
-import QRCode from 'react-native-qrcode-skia';
 import {
-  vec,
-  RadialGradient,
-  Path1DPathEffect,
   Canvas,
+  RadialGradient,
   Rect,
   Text,
   useFont,
+  vec,
 } from '@shopify/react-native-skia';
+import React, { useImperativeHandle } from 'react';
+import { StyleSheet, View } from 'react-native';
+import QRCode from 'react-native-qrcode-skia';
+import Animated, { useDerivedValue } from 'react-native-reanimated';
 
 import { useActiveLetterAnimation } from './hooks/use-active-letter';
 import { useActiveQRCode } from './hooks/use-active-qrcode';
@@ -22,7 +21,6 @@ const SFProRoundedBold = require('../../../../../assets/fonts/SF-Pro-Rounded-Bol
 const DEFAULT_FONT_SIZE = 110;
 const DEFAULT_QRCODE_SIZE = 150;
 const DEFAULT_QRCODE_PADDING = 30;
-const pathLineWidth = 1;
 
 // Define the type for the props passed to the QRCodeShare component
 type QRCodeShareProps = {
@@ -107,7 +105,13 @@ const QRCodeShare = React.forwardRef<QRCodeShareRefType, QRCodeShareProps>(
           </Canvas>
         </Animated.View>
         {/* Render the QR code */}
-        <View style={{ flex: 1, backgroundColor: '#111' }}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: '#111',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
           {/*
            * At the beginning the whole custom QRCode was defined in this demo
            * But I realized that it would be better to create a package out of it
@@ -116,17 +120,10 @@ const QRCodeShare = React.forwardRef<QRCodeShareRefType, QRCodeShareProps>(
           <QRCode
             value={qrCodeValue}
             errorCorrectionLevel="H"
-            padding={qrCodePadding}
-            pathColor="white"
-            size={qrCodeSize}>
-            {/* Apply a path effect for a custom path */}
-            <Path1DPathEffect
-              path={`M ${pathLineWidth} 0 A ${pathLineWidth} ${pathLineWidth} 0 0 0 0 -${pathLineWidth} A ${pathLineWidth} ${pathLineWidth} 0 0 0 -${pathLineWidth} 0 A ${pathLineWidth} ${pathLineWidth} 0 0 0 0 ${pathLineWidth} A ${pathLineWidth} ${pathLineWidth} 0 0 0 ${pathLineWidth} 0`}
-              advance={2.8}
-              phase={1}
-              style="rotate"
-            />
-          </QRCode>
+            pathStyle="fill"
+            color="white"
+            size={qrCodeSize - qrCodePadding * 2}
+          />
         </View>
       </Animated.View>
     );

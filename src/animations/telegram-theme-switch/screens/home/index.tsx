@@ -1,7 +1,13 @@
 import { View, StyleSheet } from 'react-native';
 
+import { useTheme } from '../../components/theme-provider';
+
 const HomeScreen = () => {
-  return <View style={styles.container} />;
+  const { colors } = useTheme();
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]} />
+  );
 };
 
 // Styles for the HomeScreen component

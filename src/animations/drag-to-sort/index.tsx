@@ -1,13 +1,13 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { SortableList } from './components/SortableList';
 import { ListItem } from './components/ListItem';
-import { ITEMS } from './constants';
+import { SortableList } from './components/SortableList';
 import type { Positions } from './components/SortableList/types';
+import { ITEMS } from './constants';
 
 const PADDING = 6;
 const HEIGHT = 80;
@@ -18,7 +18,7 @@ const LINEAR_GRADIENT_COLORS = [
   'rgba(255,255,255,1)',
   'rgba(255,255,255,0.05)',
   'rgba(255,255,255,0.025)',
-];
+] as const;
 
 const App = () => {
   const { width: windowWidth } = useWindowDimensions();

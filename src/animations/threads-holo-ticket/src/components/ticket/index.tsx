@@ -4,16 +4,16 @@
  */
 
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withDecay,
   withTiming,
-  cancelAnimation,
 } from 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
 
 import { HolographicCard } from '../holographic-card';
 
@@ -51,7 +51,7 @@ export const Ticket: React.FC<TicketProps> = React.memo(
         // Apply decay animation when gesture ends
         translateX.value = withDecay({
           velocity: event.velocityX,
-          deceleration: 0.995,
+          deceleration: 0.996,
         });
       });
 

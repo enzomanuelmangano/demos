@@ -1,18 +1,19 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import React, { useCallback } from 'react';
+import { StyleSheet } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
-import { PressableScale } from 'pressto';
 
 // Define the TabBarItem component
 type TabBarItemProps = {
   children?: React.ReactNode;
   onPress: () => void;
-  focusedIndex: Animated.SharedValue<number>;
+  focusedIndex: SharedValue<number>;
   index: number;
   screenName: string;
 };
@@ -33,11 +34,20 @@ export const TabBarItem: React.FC<TabBarItemProps> = React.memo(
     }, []);
 
     const getIconByScreenName = useCallback((pageName: string) => {
+      const iconMap: { [key: string]: string } = {
+        home: 'home',
+        explore: 'explore',
+        camera: 'camera-alt',
+        settings: 'settings',
+      };
+
+      const iconName = iconMap[pageName.toLowerCase()] || 'home';
+
       return (
         <MaterialIcons
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
           // @ts-ignore
-          name={pageName.toLowerCase()}
+          name={iconName}
           size={25}
           color={'white'}
         />

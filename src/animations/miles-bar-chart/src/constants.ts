@@ -8,6 +8,9 @@ const mondayFromThreeWeeksAgo = startOfWeek(
   },
 );
 
+// Day labels for the week (Monday to Sunday)
+const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
 // Generate data for a 7x7 grid (7 weeks, 7 days each)
 export const data = new Array(7).fill(null).map((_, weekIndex) => {
   return new Array(7).fill(null).map((__, dayIndex) => {
@@ -19,13 +22,27 @@ export const data = new Array(7).fill(null).map((_, weekIndex) => {
     // Generate a random value for each day
     const value = Math.random();
 
-    // Return an object containing the date and random value
+    // Return an object containing the formatted day label, indices, and random value
     return {
-      day: format(day, 'eeeee'),
-      date: day,
+      day: dayLabels[dayIndex],
+      weekIndex: weekIndex,
+      dayIndex: dayIndex,
       value: value,
+      // Store formatted date string for display purposes
+      dateString: format(day, 'd MMMM'),
     };
   });
+});
+
+// Generate week labels using the actual dates
+export const weekLabels = data.map(weekData => {
+  const [firstDayOfWeek] = weekData;
+  // Calculate the date for the first day of this week
+  const weekStartDate = new Date(
+    mondayFromThreeWeeksAgo.getTime() +
+      86400000 * (firstDayOfWeek.weekIndex * 7),
+  );
+  return `week of ${format(weekStartDate, 'd MMMM')}`;
 });
 
 /*

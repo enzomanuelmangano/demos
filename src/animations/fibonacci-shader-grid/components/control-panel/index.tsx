@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -11,8 +12,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 type ControlPanelProps = {
-  x: Animated.SharedValue<number>;
-  y: Animated.SharedValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
   minX: number;
   maxX: number;
   minY: number;

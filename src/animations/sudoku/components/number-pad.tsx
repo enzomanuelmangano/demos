@@ -6,15 +6,16 @@
  * for button presses and highlighting of selected numbers.
  */
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { memo, useCallback, useMemo } from 'react';
-import { StyleSheet, View, Pressable, Dimensions } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   useAnimatedStyle,
-  withSpring,
-  useSharedValue,
   useDerivedValue,
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
 
 import { COLORS } from '../theme';
 
@@ -26,7 +27,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 type NumberPadButtonProps = {
   value: number | 'backspace';
   onPress: (value: number | 'backspace') => void;
-  highlightedNumber: Animated.SharedValue<number>;
+  highlightedNumber: SharedValue<number>;
 };
 
 /**
@@ -99,7 +100,7 @@ NumberPadButton.displayName = 'NumberPadButton';
 type NumberPadProps = {
   onNumberPress: (number: number) => void;
   onBackspace: () => void;
-  highlightedNumber: Animated.SharedValue<number>;
+  highlightedNumber: SharedValue<number>;
 };
 
 /**

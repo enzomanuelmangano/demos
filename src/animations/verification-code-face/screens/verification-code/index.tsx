@@ -6,15 +6,15 @@ import {
   View,
 } from 'react-native';
 import Animated, {
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { StatusBar } from 'expo-status-bar';
 
+import { useFocusEffect } from 'expo-router';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { VerificationCode } from '../../components/verification-code';
-import { useAnimatedShake } from '../../components/verification-code/hooks/use-animated-shake';
 import type { StatusType } from '../../components/verification-code/animated-code-number';
+import { useAnimatedShake } from '../../components/verification-code/hooks/use-animated-shake';
 import { IconSquare } from '../../components/verification-code/icon-square';
 import type { InternalIconRef } from '../../components/verification-code/icon-square/icon';
 
@@ -31,13 +31,13 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 }) => {
   const [code, setCode] = useState<number[]>([]);
   const verificationStatus = useSharedValue<StatusType>('inProgress');
-  const { height: keyboardHeight } = useAnimatedKeyboard();
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
 
   const rKeyboardAvoidingViewStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          translateY: -keyboardHeight.value / 2,
+          translateY: keyboardHeight.value / 2,
         },
       ],
     };
@@ -46,6 +46,16 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   const { shake, rShakeStyle } = useAnimatedShake();
   const invisibleTextInputRef = useRef<TextInput>(null);
   const iconSquareRef = useRef<InternalIconRef>(null);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      invisibleTextInputRef.current?.focus();
+
+      return () => {
+        invisibleTextInputRef.current?.blur();
+      };
+    }, []),
+  );
 
   const resetCode = useCallback(() => {
     setTimeout(() => {
@@ -75,7 +85,6 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
       <Animated.View style={rKeyboardAvoidingViewStyle}>
         <View
           style={{
@@ -93,7 +102,11 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
           onPress={() => {
             invisibleTextInputRef.current?.focus();
           }}>
-          <Animated.View style={[styles.codeContainer, rShakeStyle]}>
+          <Animated.View
+            style={[styles.codeContainer, rShakeStyle]}
+            onTouchEnd={() => {
+              invisibleTextInputRef.current?.focus();
+            }}>
             <VerificationCode
               status={verificationStatus}
               code={code}

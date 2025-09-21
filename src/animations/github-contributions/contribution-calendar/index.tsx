@@ -10,11 +10,16 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 
 import { ColorScheme, DEFAULT_COLOR_SCHEME } from '../config/defaults';
+
 import {
   ContributionSquare,
   SquareAnimationControls,
 } from './contribution-square';
-import { ContributionData, ContributionLevel } from './types';
+import {
+  CalendarAnimationControls,
+  ContributionData,
+  ContributionLevel,
+} from './types';
 import { generateDayLabels, groupDaysIntoWeeks } from './utils/date-utils';
 
 const dayLabels = generateDayLabels();
@@ -22,12 +27,6 @@ const dayLabels = generateDayLabels();
 export type GitHubContributionCalendarProps = {
   data: ContributionData;
   colorScheme?: ColorScheme;
-};
-
-export type CalendarAnimationControls = {
-  startAnimation: () => void;
-  resetAnimation: () => void;
-  toggleAnimation: () => void;
 };
 
 export const GitHubContributionCalendar = forwardRef<
@@ -87,14 +86,14 @@ export const GitHubContributionCalendar = forwardRef<
     squareRefs.current.forEach(squareRef => {
       squareRef?.startAnimation();
     });
-  }, []);
+  }, [isAnimating]);
 
   const resetAnimation = useCallback(() => {
     isAnimating.value = false;
     squareRefs.current.forEach(squareRef => {
       squareRef?.resetAnimation();
     });
-  }, []);
+  }, [isAnimating]);
 
   const toggleAnimation = useCallback(() => {
     if (isAnimating.value) {

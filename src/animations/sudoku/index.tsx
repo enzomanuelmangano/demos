@@ -8,7 +8,6 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { StyleSheet, View, Text, Alert, Pressable } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeIn,
@@ -94,7 +93,6 @@ export const Sudoku = () => {
 
   return (
     <View style={styles.safeArea}>
-      <StatusBar style="light" />
       <LinearGradient
         colors={[COLORS.background, COLORS.surface]}
         style={styles.container}>

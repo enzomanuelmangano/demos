@@ -4,17 +4,17 @@
  */
 
 import React, { memo, useMemo } from 'react';
-import { StyleSheet, Text, Pressable } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   useAnimatedStyle,
-  withSpring,
   useDerivedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
-import { COLORS } from '../../theme';
 import type { CellValue } from '../../logic';
+import { COLORS } from '../../theme';
 
 import { CELL_SIZE } from './constants';
 
@@ -45,9 +45,7 @@ export const Cell = memo<CellProps>(
     }, [value, highlightedNumber]);
 
     const scale = useDerivedValue(() => {
-      return withSpring(isHighlighted.value ? 1 : 0, {
-        mass: 0.5,
-      });
+      return withSpring(isHighlighted.value ? 1 : 0);
     }, [isHighlighted]);
 
     const cellAnimatedStyle = useAnimatedStyle(() => {
@@ -60,9 +58,6 @@ export const Cell = memo<CellProps>(
           isHighlighted.value
             ? COLORS.highlightStrong
             : COLORS.highlightTransparent,
-          {
-            mass: 0.5,
-          },
         ),
       };
     }, [isHighlighted, scale]);
@@ -96,8 +91,6 @@ export const Cell = memo<CellProps>(
     );
   },
 );
-
-Cell.displayName = 'Cell';
 
 const styles = StyleSheet.create({
   cellBackground: {

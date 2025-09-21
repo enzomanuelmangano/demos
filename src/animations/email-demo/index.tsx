@@ -63,7 +63,7 @@ const EmailDemo = () => {
       <View style={styles.container}>
         {/* Gradient overlay at the top */}
         <LinearGradient
-          colors={['rgba(255,255,255,1)', 'rgba(255,255,255,0)']}
+          colors={['rgba(248,250,252,1)', 'rgba(248,250,252,0)']}
           start={[0, 0]}
           end={[0, 1]}
           pointerEvents="none"
@@ -94,7 +94,7 @@ const EmailDemo = () => {
 
       {/* Gradient overlay at the bottom */}
       <LinearGradient
-        colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
+        colors={['rgba(248,250,252,0)', 'rgba(248,250,252,1)']}
         start={[0, 0]}
         end={[0, 1]}
         pointerEvents="none"
@@ -117,7 +117,7 @@ const EmailDemo = () => {
             style={[
               styles.floatingButton, // Basic button style
               {
-                backgroundColor: '#0078CD', // Background color for restore button
+                backgroundColor: '#10b981', // Background color for restore button
               },
             ]}>
             {/* Icon for restore button */}
@@ -132,7 +132,7 @@ const EmailDemo = () => {
             style={[
               styles.floatingButton, // Basic button style
               {
-                backgroundColor: '#CD0000', // Background color for delete button
+                backgroundColor: '#ef4444', // Background color for delete button
               },
             ]}>
             {/* Icon for delete button */}
@@ -147,14 +147,23 @@ const EmailDemo = () => {
 // Stylesheet for the components
 const styles = StyleSheet.create({
   container: {
-    flex: 1, // Take up all available space
+    flex: 1,
+    backgroundColor: '#f8fafc',
   },
   floatingButton: {
-    height: 64, // Fixed height
-    aspectRatio: 1, // Maintain aspect ratio
-    borderRadius: 32, // Circular shape
-    justifyContent: 'center', // Center content vertically
-    alignItems: 'center', // Center content horizontally
+    height: 64,
+    aspectRatio: 1,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
   },
   buttonsContainer: {
     position: 'absolute', // Position relative to container
@@ -180,12 +189,21 @@ const styles = StyleSheet.create({
     zIndex: 1, // Ensure overlay over other components
   },
   listContainerItem: {
-    height: ITEM_HEIGHT, // Fixed height for each item
-    backgroundColor: 'transparent', // Transparent background
-    marginBottom: ITEM_MARGIN, // Margin at bottom of each item
-    width: '95%', // 95% of container width
-    alignSelf: 'center', // Center items horizontally
-    borderRadius: 10, // Rounded corners
+    height: ITEM_HEIGHT,
+    backgroundColor: 'white',
+    marginBottom: ITEM_MARGIN - 2,
+    marginHorizontal: 12,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+    borderWidth: 0.5,
+    borderColor: 'rgba(229, 231, 235, 0.3)',
   },
 });
 

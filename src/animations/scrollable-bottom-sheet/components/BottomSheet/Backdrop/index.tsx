@@ -1,15 +1,16 @@
 import React from 'react';
+import { StyleSheet } from 'react-native';
 import Animated, {
+  SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet } from 'react-native';
 
 // Define the props for the Backdrop component
 type BackdropProps = {
   onTap: () => void; // Function to handle tap event
-  isActive: Animated.SharedValue<boolean>; // Animated shared value to track activity state
+  isActive: SharedValue<boolean>; // Animated shared value to track activity state
 };
 
 // Create the Backdrop component

@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "Thank You",
+    "name": "Demos",
     "slug": "thank-you",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "scheme": "thank-you",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -37,7 +38,17 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": ["expo-asset", "expo-font"],
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      [
+        "expo-color-space-plugin",
+        {
+          "colorSpace": "displayP3"
+        }
+      ],
+      "expo-router"
+    ],
     "extra": {
       "eas": {
         "projectId": "eb1bbf17-5fb9-4743-bccf-3fbcbc95176a"

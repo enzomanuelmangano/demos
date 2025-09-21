@@ -1,3 +1,6 @@
+import { Blur, Canvas, Rect, Shader, vec } from '@shopify/react-native-skia';
+import { useAtomValue } from 'jotai';
+import { useEffect } from 'react';
 import { StyleSheet } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import {
@@ -8,20 +11,10 @@ import {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  Blur,
-  Canvas,
-  Rect,
-  Shader,
-  useClock,
-  vec,
-} from '@shopify/react-native-skia';
-import { useEffect } from 'react';
 import { withPause } from 'react-native-redash';
-import { useAtomValue } from 'jotai';
 
-import { shader } from '../shader';
 import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
+import { shader } from '../shader';
 
 type BackgroundCanvasProps = {
   timeMachineProgress: SharedValue<number>;

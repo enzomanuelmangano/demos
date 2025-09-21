@@ -1,18 +1,20 @@
+import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
+import Color from 'color';
 import React, { useCallback } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet, Text, View } from 'react-native';
-import Color from 'color';
-import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 
 type DropdownOptionType = {
   label: string;
-  iconName: string;
+  iconName: ComponentProps<typeof AntDesign>['name'];
 };
 
 type DropdownItemProps = {
@@ -21,7 +23,7 @@ type DropdownItemProps = {
       isHeader: boolean;
     },
   ) => void;
-  progress: Animated.SharedValue<number>;
+  progress: SharedValue<number>;
   isHeader: boolean;
   index: number;
   itemHeight: number;
@@ -135,8 +137,6 @@ const DropdownItem: React.FC<DropdownItemProps> = React.memo(
         style={[styles.item, { height: itemHeight }, rItemStyle]}>
         <Animated.View style={[styles.content, rContentStyle]}>
           <View style={styles.iconBox}>
-            {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-            {/* @ts-ignore */}
             <AntDesign name={iconName} color={'white'} size={20} />
           </View>
           <Text style={styles.title}>{label}</Text>
@@ -147,8 +147,6 @@ const DropdownItem: React.FC<DropdownItemProps> = React.memo(
           />
           <View style={styles.arrowBox}>
             <Animated.View style={rArrowContainerStyle}>
-              {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-              {/* @ts-ignore */}
               <MaterialIcons
                 name={isHeader ? 'arrow-forward-ios' : 'arrow-forward'}
                 size={20}

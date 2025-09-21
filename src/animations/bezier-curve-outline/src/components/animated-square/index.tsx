@@ -1,12 +1,12 @@
-import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { PressableScale } from 'pressto';
+import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
-import { Image } from 'expo-image';
-import { PressableScale } from 'pressto';
 
 import { AnimatedBlurView } from '../animated-blur-view';
 
@@ -25,7 +25,7 @@ export const AnimatedSquare = ({
   width,
   height,
 }: AnimatedSquareProps) => {
-  const blurIntensity = useDerivedValue(() => {
+  const blurIntensity = useDerivedValue<number | undefined>(() => {
     return interpolate(progress.value, [0, 0.7, 1], [0, 40, 0]);
   }, [progress]);
 

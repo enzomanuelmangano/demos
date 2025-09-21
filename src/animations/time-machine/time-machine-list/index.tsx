@@ -1,10 +1,10 @@
+import { useAtomValue } from 'jotai';
+import { useMemo } from 'react';
 import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
   useScrollViewOffset,
 } from 'react-native-reanimated';
-import { useMemo } from 'react';
-import { useAtomValue } from 'jotai';
 
 import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
 
@@ -37,6 +37,7 @@ export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
   );
 
   const scrollEnabled = useAtomValue(IsTimeMachineActiveAtom);
+
   return (
     <Animated.ScrollView
       ref={animatedRef}

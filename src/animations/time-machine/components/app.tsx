@@ -1,4 +1,4 @@
-import { Dimensions, StatusBar, View } from 'react-native';
+import { Dimensions, View } from 'react-native';
 import { useAtom } from 'jotai';
 import {
   useDerivedValue,
@@ -12,7 +12,6 @@ import { TimeMachineList } from '../time-machine-list';
 import { StoryListItemWidth } from '../time-machine-list/item';
 import { ActiveItemKeyAtom, HistoryAtom } from '../atoms/history-atom';
 import { useTimeMachineGesture } from '../hooks/use-time-machine-gesture';
-import { useStatusBar } from '../hooks/use-status-bar';
 
 import { TimeMachineListItem } from './time-machine-list-item';
 import { BackgroundCanvas } from './background-canvas';
@@ -73,8 +72,6 @@ export const App = () => {
     onClose: onTimeMachineClose,
   });
 
-  useStatusBar(timeMachineProgress);
-
   return (
     <GestureDetector gesture={panGesture}>
       <View
@@ -84,7 +81,6 @@ export const App = () => {
           width={width}
           height={height}
         />
-        <StatusBar barStyle="dark-content" animated />
 
         <TimeMachineList
           onScroll={offset => {

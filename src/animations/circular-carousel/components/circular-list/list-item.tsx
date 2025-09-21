@@ -1,9 +1,10 @@
-import React from 'react';
 import { Image } from 'expo-image';
+import React from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
+  SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withSpring,
@@ -23,7 +24,7 @@ const LIST_ITEM_WIDTH = windowWidth / 4;
 const CircularListItem: React.FC<{
   index: number;
   imageUri: string;
-  contentOffset: Animated.SharedValue<number>;
+  contentOffset: SharedValue<number>;
   scaleEnabled?: boolean;
 }> = ({ index, contentOffset, imageUri, scaleEnabled }) => {
   // Define input range for interpolation

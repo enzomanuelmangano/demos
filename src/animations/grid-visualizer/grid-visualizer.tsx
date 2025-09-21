@@ -8,9 +8,12 @@ import {
   useTexture,
   type SkFont,
 } from '@shopify/react-native-skia';
+import React, { useMemo } from 'react';
 import {
   Extrapolation,
   interpolate,
+  makeMutable,
+  useAnimatedReaction,
   useDerivedValue,
   withSpring,
   type SharedValue,
@@ -121,46 +124,68 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
   //   );
   // }, []);
 
-  // To understand what's going on here, check first the activeProgress declaration.
-  const randomDelays = useDerivedValue(() => {
-    return withSpring(
-      activeRects.value.map(isActive => (isActive ? 1 : Math.random() - 0.5)),
-      {
-        duration: 2000,
-      },
-    );
-  }, []);
+  // Create an array of individual shared values for progress, one for each square
+  // This follows the spiral pattern of using makeMutable for each element
+  const progressValues = useMemo(() => {
+    const values: SharedValue<number>[] = [];
+    for (let i = 0; i < SquaresAmount; i++) {
+      values.push(makeMutable(0));
+    }
+    return values;
+  }, [SquaresAmount]);
 
-  // Here we're checking if the square is active, and if it is, we're going to animate it.
-  // If it's not active, we're going to set the progress to 0.
-  // If it's active, we're going to set the progress to the "random delay" which is a value
-  // that after 2 seconds is going to be 1, but it's going to be different for each square.
-  const activeProgress = useDerivedValue(() => {
-    return withSpring(
-      activeRects.value.map((isActive, i) => {
-        return isActive ? randomDelays.value[i] : 0;
-      }),
-      { mass: 2 },
-    );
-  }, []);
+  // Create an array of individual shared values for random delays, one for each square
+  const delayValues = useMemo(() => {
+    const values: SharedValue<number>[] = [];
+    for (let i = 0; i < SquaresAmount; i++) {
+      values.push(makeMutable(Math.random() - 0.5));
+    }
+    return values;
+  }, [SquaresAmount]);
+
+  // Use animated reaction to update each individual shared value when activeRects changes
+  // This mimics the spiral's pattern of updating individual shared values
+  useAnimatedReaction(
+    () => activeRects.value,
+    newActiveRects => {
+      // First update delay values
+      for (let i = 0; i < SquaresAmount; i++) {
+        const isActive = newActiveRects[i];
+        delayValues[i].set(
+          withSpring(isActive ? 1 : Math.random() - 0.5, {
+            duration: 2000,
+          }),
+        );
+      }
+
+      // Then update progress values based on delay values
+      for (let i = 0; i < SquaresAmount; i++) {
+        const isActive = newActiveRects[i];
+        progressValues[i].set(
+          withSpring(isActive ? delayValues[i].get() : 0, { mass: 2 }),
+        );
+      }
+    },
+  );
 
   // Since we're using the Atlas API, we need to pass a Float32Array as color.
   // The Float32Array accepts 4 values: [R, G, B, A]
   // The idea is to animate organically the alpha value of the color.
   // The interpolation function is a bit tricky because I just played with the values until I got something that I liked.
   // But the main idea was just to make the squares fade in and fade out.
-  // const alpha = interpolate(progress, [0, 1], [0.8, 0], Extrapolation.CLAMP)),
-  const colors = useDerivedValue(() => {
-    return activeProgress.value.map(progress => {
-      const alpha = interpolate(
-        progress,
-        [-3, 0, 1, 2],
-        [0, 0.8, 0, 0],
-        Extrapolation.CLAMP,
-      );
-      return new Float32Array([0, 0, 0, alpha]);
+  // Now we read from individual shared values instead of a shared value array
+  const colors = useMemo(() => {
+    return progressValues.map(() => {
+      // const progress = progressValue.value;
+      // const alpha = interpolate(
+      //   progress,
+      //   [-3, 0, 1, 2],
+      //   [0, 0.8, 0, 0],
+      //   Extrapolation.CLAMP,
+      // );
+      return new Float32Array([1, 1, 1, 0.8]);
     });
-  }, []);
+  }, [progressValues]);
 
   // We need to provide a texture to the Atlas (We're just saying that the texture is a white by default)
   const texture = useTexture(<Fill color={'white'} />, {
@@ -172,7 +197,7 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
   // The idea is that by default, the squares are going to be positioned in a shrinked grid (because of the scaleFactor).
   // When the square gets active, the squares are going to be positioned in a scaled grid
   // If the scaleFactor is 0, the shrinked grid is going to be the same as the scaled grid.
-  // The magic happens because of the activeProgress array and the interpolate function.
+  // The magic happens because of the individual progress shared values and the interpolate function.
   const transforms = useRSXformBuffer(SquaresAmount, (val, i) => {
     'worklet';
 
@@ -188,7 +213,8 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
     const scaledTx = (i % HSquares) * ScaledXSpacing + xScaledOffset;
     const scaledTy = Math.floor(i / HSquares) * ScaledYSpacing + yScaledOffset;
 
-    const prog = activeProgress.value[i];
+    // Read from individual shared value instead of shared value array
+    const prog = progressValues[i].value;
     const tx = interpolate(prog, [0, 1], [shrinkedTx, scaledTx]);
     const ty = interpolate(prog, [0, 1], [shrinkedTy, scaledTy]);
 
@@ -210,7 +236,6 @@ export const GridVisualizer: React.FC<GridVisualizerProps> = ({
 
   return (
     <Canvas
-      mode="continuous"
       style={{
         width: canvasWidth,
         height: canvasHeight,

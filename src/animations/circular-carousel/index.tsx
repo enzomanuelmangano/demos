@@ -1,5 +1,5 @@
-import { StyleSheet, Switch, Text, View } from 'react-native';
 import { useCallback, useState } from 'react';
+import { StyleSheet, Switch, Text, View } from 'react-native';
 
 import { CircularList } from './components/circular-list';
 
@@ -25,14 +25,16 @@ export const CircularCarousel = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Scale</Text>
-      <Switch
-        trackColor={{
-          false: '#ccc',
-          true: '#111',
-        }}
-        value={scaleEnabled}
-        onValueChange={onToggleSwitch}
-      />
+      <View>
+        <Switch
+          trackColor={{
+            false: '#ccc',
+            true: '#111',
+          }}
+          value={scaleEnabled}
+          onValueChange={onToggleSwitch}
+        />
+      </View>
       <CircularList data={data} scaleEnabled={scaleEnabled} />
     </View>
   );

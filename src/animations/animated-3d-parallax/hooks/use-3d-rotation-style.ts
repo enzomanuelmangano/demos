@@ -1,12 +1,13 @@
-import type Animated from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 import { interpolate, useAnimatedStyle } from 'react-native-reanimated';
 
 // Defining the type for the parameters of the use3DRotationStyle function
 type Use3DRotationStyleParams = {
-  x: Animated.SharedValue<number>;
-  y: Animated.SharedValue<number>;
+  x: SharedValue<number>;
+  y: SharedValue<number>;
   maxSize: number;
   maxRotation: number;
+  perspective?: number;
 };
 
 // If you want to fully understand the math behind this function,
@@ -17,6 +18,7 @@ const use3DRotationStyle = ({
   y,
   maxSize,
   maxRotation,
+  perspective = 500,
 }: Use3DRotationStyleParams) => {
   // Define the animated style using useAnimatedStyle hook
   const rStyle = useAnimatedStyle(() => {
@@ -37,7 +39,7 @@ const use3DRotationStyle = ({
     // Return the animated style with perspective and rotation transformations
     return {
       transform: [
-        { perspective: 500 },
+        { perspective: perspective },
         { rotateX: `${rotateX}deg` },
         { rotateY: `${rotateY}deg` },
       ],

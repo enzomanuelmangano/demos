@@ -1,1 +1,93 @@
-import { useCallback, useState } from 'react';import { SafeAreaView, StyleSheet, Text, Image } from 'react-native';import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';import type { AnimatedLayoutListProps } from './components/animated-layout-list';import { AnimatedLayoutList } from './components/animated-layout-list';import { FloatingButton } from './components/floating-button';import { data } from './constants';const AnimatedImage = Animated.createAnimatedComponent(Image);export function AnimatedGridList() {  const [layout, setLayout] = useState<'grid' | 'list'>('grid');  const renderItem: AnimatedLayoutListProps<(typeof data)[0]>['renderItem'] =    useCallback((item, _, isExpanded) => {      return (        <Animated.View          style={{            flex: 1,            alignItems: 'center',            flexDirection: isExpanded ? 'row' : 'column',          }}>          <AnimatedImage            layout={Layout}            source={{ uri: item.img }}            style={{              width: isExpanded ? 64 : 200,              aspectRatio: 1,              borderRadius: isExpanded ? 32 : 0,              marginHorizontal: isExpanded ? 16 : 0,            }}          />          {isExpanded && (            <Animated.View              layout={Layout.duration(600)}              entering={FadeIn}              exiting={FadeOut}>              <Text                style={{                  marginBottom: 2,                  maxWidth: '80%',                }}                numberOfLines={1}>                {item.title}              </Text>              <Text                style={{                  color: '#383838',                  fontSize: 12,                  maxWidth: 200,                }}                numberOfLines={1}>                {item.subtitle}              </Text>            </Animated.View>          )}        </Animated.View>      );    }, []);  return (    <SafeAreaView style={styles.container}>      <AnimatedLayoutList data={data} layout={layout} renderItem={renderItem} />      <FloatingButton        style={{          position: 'absolute',          bottom: 50,          right: 16,        }}        onPress={() => {          setLayout(currentLayout =>            currentLayout === 'grid' ? 'list' : 'grid',          );        }}        layout={layout}      />    </SafeAreaView>  );}const styles = StyleSheet.create({  container: {    flex: 1,    backgroundColor: '#EEEEEE',  },});
+import { useCallback, useState } from 'react';
+import { StyleSheet, Text, Image, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
+
+import type { AnimatedLayoutListProps } from './components/animated-layout-list';
+import { AnimatedLayoutList } from './components/animated-layout-list';
+import { FloatingButton } from './components/floating-button';
+import { data } from './constants';
+
+const AnimatedImage = Animated.createAnimatedComponent(Image);
+
+export function AnimatedGridList() {
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const insets = useSafeAreaInsets();
+
+  const renderItem: AnimatedLayoutListProps<(typeof data)[0]>['renderItem'] =
+    useCallback((item, _, isExpanded) => {
+      return (
+        <Animated.View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            flexDirection: isExpanded ? 'row' : 'column',
+          }}>
+          <AnimatedImage
+            layout={Layout}
+            source={{ uri: item.img }}
+            style={{
+              width: isExpanded ? 64 : 200,
+              aspectRatio: 1,
+              borderRadius: isExpanded ? 32 : 0,
+              marginHorizontal: isExpanded ? 16 : 0,
+            }}
+          />
+          {isExpanded && (
+            <Animated.View
+              layout={Layout.duration(600)}
+              entering={FadeIn}
+              exiting={FadeOut}>
+              <Text
+                style={{
+                  marginBottom: 2,
+                  maxWidth: '80%',
+                }}
+                numberOfLines={1}>
+                {item.title}
+              </Text>
+              <Text
+                style={{
+                  color: '#383838',
+                  fontSize: 12,
+                  maxWidth: 200,
+                }}
+                numberOfLines={1}>
+                {item.subtitle}
+              </Text>
+            </Animated.View>
+          )}
+        </Animated.View>
+      );
+    }, []);
+
+  return (
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}>
+      <AnimatedLayoutList data={data} layout={layout} renderItem={renderItem} />
+      <FloatingButton
+        style={{
+          position: 'absolute',
+          bottom: 50,
+          right: 16,
+        }}
+        onPress={() => {
+          setLayout(currentLayout =>
+            currentLayout === 'grid' ? 'list' : 'grid',
+          );
+        }}
+        layout={layout}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#EEEEEE',
+  },
+});

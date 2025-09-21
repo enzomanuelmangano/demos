@@ -10,10 +10,10 @@ import {
   Skia,
 } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
-import { useWindowDimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { runOnJS, useDerivedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Touchable from 'react-native-skia-gesture';
-import { runOnJS, useDerivedValue, withSpring } from 'react-native-reanimated';
 
 import { ScreenNames } from '../../constants/screens';
 
@@ -31,9 +31,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const currentIndex = state.index;
   const animatedIndex = useDerivedValue(() => {
-    return withSpring(currentIndex, {
-      mass: 0.3,
-    });
+    return withSpring(currentIndex);
   }, [currentIndex]);
 
   const animatedCircleCx = useDerivedValue(() => {
