@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import { StyleSheet, TextInput, View, Text } from 'react-native';
 import Animated, {
   useAnimatedKeyboard,
@@ -48,6 +48,15 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 
   // Reference to the invisible TextInput for handling code input
   const invisibleTextInputRef = useRef<TextInput>(null);
+
+  // Focus the input after a small delay to let the screen transition complete
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      invisibleTextInputRef.current?.focus();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // Function to reset the code and verification status after a delay
   const resetCode = useCallback(() => {
@@ -126,7 +135,6 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
           verificationStatus.value = 'inProgress';
         }}
         keyboardType="number-pad"
-        autoFocus
         style={styles.invisibleInput}
       />
     </View>

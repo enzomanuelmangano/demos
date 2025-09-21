@@ -1,5 +1,4 @@
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { NavigationContainer } from '@react-navigation/native';
 import React from 'react';
 import { Dimensions, StatusBar } from 'react-native';
 
@@ -12,7 +11,7 @@ const Drawer = createDrawerNavigator();
 
 export function AppDrawer() {
   return (
-    <NavigationContainer>
+    <>
       <StatusBar barStyle="light-content" backgroundColor="#000" />
       <Drawer.Navigator
         drawerContent={CustomDrawerContent}
@@ -50,6 +49,6 @@ export function AppDrawer() {
           }}
         />
       </Drawer.Navigator>
-    </NavigationContainer>
+    </>
   );
 }

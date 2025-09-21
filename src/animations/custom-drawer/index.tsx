@@ -1,6 +1,5 @@
 import { View } from 'react-native';
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { NavigationContainer } from '@react-navigation/native';
 import { useCallback } from 'react';
 
 import { DrawerIcon } from './components/drawer/drawer-icon';
@@ -19,23 +18,18 @@ const CustomDrawerContainer = () => {
 
   // Render the App component
   return (
-    <NavigationContainer>
-      {/* Set the status bar style */}
-
-      {/* Configure the drawer navigator */}
-      <Drawer.Navigator
-        defaultStatus="closed"
-        screenOptions={{
-          overlayColor: 'transparent',
-          drawerType: 'slide',
-          headerTintColor: '#111',
-          headerLeft,
-        }}
-        drawerContent={CustomDrawer}>
-        <Drawer.Screen name="Home" component={View} />
-        <Drawer.Screen name="Settings" component={View} />
-      </Drawer.Navigator>
-    </NavigationContainer>
+    <Drawer.Navigator
+      defaultStatus="closed"
+      screenOptions={{
+        overlayColor: 'transparent',
+        drawerType: 'slide',
+        headerTintColor: '#111',
+        headerLeft,
+      }}
+      drawerContent={CustomDrawer}>
+      <Drawer.Screen name="Home" component={View} />
+      <Drawer.Screen name="Settings" component={View} />
+    </Drawer.Navigator>
   );
 };
 

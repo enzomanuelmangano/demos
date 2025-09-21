@@ -13,35 +13,26 @@ type ListItemProps = {
 export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.fillCenter}>
-        <Image
-          contentFit="cover"
-          source={
-            item.image ?? {
+      <View style={styles.avatarContainer}>
+        <View style={styles.avatarWrapper}>
+          <Image
+            contentFit="cover"
+            source={{
               uri: item.imageUrl,
-            }
-          }
-          style={{
-            width: itemHeight * 0.6,
-            height: itemHeight * 0.6,
-            borderRadius: 100,
-          }}
-        />
+            }}
+            style={{
+              width: itemHeight * 0.45,
+              height: itemHeight * 0.45,
+              borderRadius: itemHeight * 0.225,
+            }}
+          />
+        </View>
       </View>
       <View style={styles.labelsContainer}>
-        <Text
-          numberOfLines={2}
-          style={{
-            fontWeight: '500',
-          }}>
+        <Text numberOfLines={1} style={styles.titleText}>
           {item.title}
         </Text>
-        <Text
-          numberOfLines={1}
-          style={{
-            color: 'rgba(0,0,0,0.7)',
-            marginTop: 5,
-          }}>
+        <Text numberOfLines={2} style={styles.subtitleText}>
           {item.subtitle}
         </Text>
       </View>
@@ -53,15 +44,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: 'row',
-  },
-  fillCenter: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  avatarContainer: {
+    marginRight: 12,
+  },
+  avatarWrapper: {
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   labelsContainer: {
-    flex: 3,
+    flex: 1,
     justifyContent: 'center',
-    marginRight: 40,
+  },
+  titleText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+    letterSpacing: -0.2,
+  },
+  subtitleText: {
+    fontSize: 15,
+    color: '#6b7280',
+    lineHeight: 20,
+    letterSpacing: -0.1,
   },
 });

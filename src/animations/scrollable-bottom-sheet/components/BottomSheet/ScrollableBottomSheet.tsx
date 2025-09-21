@@ -75,7 +75,11 @@ const ScrollableBottomSheet = React.forwardRef<
     if (destination === 0) {
       runOnJS(scrollToX)(0, 500);
     }
-    translateY.value = withSpring(destination, { damping: 50 });
+    translateY.value = withSpring(destination, {
+      damping: 25,
+      stiffness: 180,
+      mass: 0.9
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

@@ -15,7 +15,7 @@ import { CircularButton } from './components/circular-button';
 
 // Configuration constants for the button
 const buttonSize = 48;
-const blastRadius = buttonSize;
+const blastRadius = buttonSize * 2;
 
 /**
  * Main App component that renders the demo interface

@@ -1,58 +1,69 @@
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
+import { useState } from 'react';
 import { View } from 'react-native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
 import { ActiveTabBarContextProvider } from './components/bottom-tab-bar/active-tab-bar-provider';
-import { Palette } from './constants/palette';
-import type { ScreenNames } from './constants/screens';
 import { ScreenNamesArray } from './constants/screens';
 import { HomeScreen } from './screens/home';
-
-const BottomTab = createBottomTabNavigator();
 
 const BackgroundView = () => {
   return <View style={{ flex: 1 }} />;
 };
 
-const ScreenMap: Record<keyof typeof ScreenNames, () => React.ReactNode> = {
+const ScreenMap = {
   Home: HomeScreen,
   Search: BackgroundView,
   Notifications: BackgroundView,
   Message: BackgroundView,
 };
 
-const AppTheme: typeof DefaultTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: Palette.background,
-    text: Palette.text,
-    border: Palette.text,
-    card: Palette.card,
-  },
-};
-
 export const TwitterTabBar = () => {
+  const [activeTab, setActiveTab] = useState('Home');
+
+  const handleTabPress = (routeName: string) => {
+    setActiveTab(routeName);
+  };
+
+  const ActiveScreen = ScreenMap[activeTab as keyof typeof ScreenMap] || HomeScreen;
+
   return (
-    <NavigationContainer theme={AppTheme}>
-      <ActiveTabBarContextProvider>
-        <BottomTab.Navigator
-          // eslint-disable-next-line react/no-unstable-nested-components
-          tabBar={props => {
-            return <BottomTabBar {...props} />;
-          }}>
-          {ScreenNamesArray.map(key => {
-            return (
-              <BottomTab.Screen
-                key={key}
-                name={key}
-                component={ScreenMap[key]}
-              />
-            );
-          })}
-        </BottomTab.Navigator>
-      </ActiveTabBarContextProvider>
-    </NavigationContainer>
+    <ActiveTabBarContextProvider>
+      <View style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
+          <ActiveScreen />
+        </View>
+        <BottomTabBar
+          state={{
+            key: 'tab',
+            index: ScreenNamesArray.indexOf(activeTab as any),
+            routeNames: [...ScreenNamesArray],
+            routes: ScreenNamesArray.map(name => ({ key: name, name })),
+            type: 'tab',
+            stale: false,
+            history: [],
+            preloadedRouteKeys: [],
+          } as any}
+          descriptors={Object.fromEntries(
+            ScreenNamesArray.map(name => [
+              name,
+              {
+                navigation: {
+                  navigate: handleTabPress,
+                  emit: () => ({ defaultPrevented: false }),
+                },
+                route: { key: name, name },
+                options: {},
+                render: () => null,
+              },
+            ])
+          ) as any}
+          navigation={{
+            navigate: handleTabPress,
+            emit: () => ({ defaultPrevented: false }),
+          } as any}
+          insets={{ top: 0, right: 0, bottom: 0, left: 0 }}
+        />
+      </View>
+    </ActiveTabBarContextProvider>
   );
 };

@@ -3,9 +3,8 @@ import type { FlatListProps, StyleProp, ViewStyle } from 'react-native';
 import { FlatList } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
-  Easing,
   useAnimatedStyle,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 // Define props type for the InteractiveList component
@@ -68,36 +67,54 @@ const AnimatedListItem = ({
 
     // Define animation values for the item
     return {
-      backgroundColor: withTiming(
+      backgroundColor: withSpring(
         // Background color animation
-        index === shiftedAmount ? 'rgba(225,225,240,0.8)' : 'transparent', // If index matches shiftedAmount, set color, otherwise transparent
+        index === shiftedAmount ? 'rgba(59, 130, 246, 0.06)' : 'transparent',
         {
-          easing: Easing.linear,
+          damping: 25,
+          stiffness: 200,
+          mass: 1.2,
         },
       ),
-      shadowOpacity: withTiming(index === shiftedAmount ? 0.1 : 0, {
+      shadowOpacity: withSpring(index === shiftedAmount ? 0.15 : 0, {
         // Shadow opacity animation
-        easing: Easing.linear,
+        damping: 25,
+        stiffness: 200,
+        mass: 1.2,
       }),
-      shadowRadius: 20, // Static shadow radius
-      shadowColor: 'rgba(0,0,240,1)', // Static shadow color
+      shadowRadius: withSpring(index === shiftedAmount ? 12 : 4, {
+        damping: 25,
+        stiffness: 200,
+        mass: 1.2,
+      }),
+      shadowColor: 'rgba(59, 130, 246, 0.4)',
       shadowOffset: {
-        // Static shadow offset
         width: 0,
-        height: 0,
+        height: withSpring(index === shiftedAmount ? 6 : 1, {
+          damping: 25,
+          stiffness: 200,
+          mass: 1.2,
+        }),
       },
+      elevation: withSpring(index === shiftedAmount ? 12 : 2, {
+        damping: 25,
+        stiffness: 200,
+        mass: 1.2,
+      }),
       transform: [
-        // Translate Y animation
+        // Translate Y animation with spring physics
         {
-          translateY: withTiming(-shiftedAmount * itemHeight, {
-            // Translate based on shiftedAmount and item height
-            easing: Easing.linear,
+          translateY: withSpring(-shiftedAmount * itemHeight, {
+            damping: 30,
+            stiffness: 180,
+            mass: 1.5,
           }),
         },
       ],
-      opacity: withTiming(index >= shiftedAmount ? 1 : 0, {
-        // Opacity animation
-        easing: Easing.quad,
+      opacity: withSpring(index >= shiftedAmount ? 1 : 0, {
+        damping: 26,
+        stiffness: 190,
+        mass: 1.4,
       }),
     };
   }, [index, amountToShift, itemHeight]); // Re-compute styles when these values change
