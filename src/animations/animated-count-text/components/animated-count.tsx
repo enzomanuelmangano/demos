@@ -34,7 +34,6 @@ const AnimatedCount: React.FC<AnimatedCountProps> = React.memo(({ number }) => {
         // Use position from left (first digit gets position 0, second gets 1, etc)
         return (
           <AnimatedDigit
-            duration={1250}
             key={`position-${index}`}
             digit={digit}
             height={TEXT_DIGIT_HEIGHT}
