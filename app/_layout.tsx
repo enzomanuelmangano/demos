@@ -17,7 +17,7 @@ const globalPressableHandlers = {
 export default function RootLayout() {
   return (
     <Suspense>
-      <StatusBar barStyle={'default'} animated />
+      <StatusBar barStyle="default" animated />
       <PressablesConfig globalHandlers={globalPressableHandlers}>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <FontsProvider>

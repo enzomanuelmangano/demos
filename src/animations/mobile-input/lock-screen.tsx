@@ -7,7 +7,7 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { AnimatedFaceRefType } from './components/AnimatedFace';
 import { AnimatedFace } from './components/AnimatedFace';
@@ -29,6 +29,7 @@ const LockScreen: React.FC<LockScreenProps> = ({
   onCompleted,
   onError,
 }) => {
+  const insets = useSafeAreaInsets();
   const animatedFaceRef = useRef<AnimatedFaceRefType>(null);
   const { shake, rShakeStyle: rPinContainerStyle } = useAnimatedShake();
 
@@ -92,7 +93,11 @@ const LockScreen: React.FC<LockScreenProps> = ({
         <CircleStroke />
         <AnimatedFace ref={animatedFaceRef} />
       </Canvas>
-      <SafeAreaView style={styles.fill}>
+      <View
+        style={[
+          styles.fill,
+          { paddingTop: insets.top, paddingBottom: insets.bottom },
+        ]}>
         <View style={styles.fill} />
         <View style={{ height: '60%' }}>
           <Animated.View style={rPinContainerStyle}>
@@ -107,7 +112,7 @@ const LockScreen: React.FC<LockScreenProps> = ({
           </Animated.View>
           <ButtonsGrid pin={pin} onReset={reset} />
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };

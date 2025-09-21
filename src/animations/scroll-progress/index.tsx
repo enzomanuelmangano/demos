@@ -1,10 +1,13 @@
 import { useCallback } from 'react';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sections } from './constants';
 import { SectionContentList } from './section-content-list';
 
 export function ScrollProgress() {
+  const insets = useSafeAreaInsets();
+
   const renderSection = useCallback(
     (item: (typeof sections)[0], index: number) => {
       return (
@@ -18,7 +21,11 @@ export function ScrollProgress() {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}>
       <SectionContentList
         sections={sections}
         renderSection={renderSection}
@@ -28,7 +35,7 @@ export function ScrollProgress() {
           paddingBottom: 100,
         }}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

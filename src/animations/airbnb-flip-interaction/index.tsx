@@ -1,13 +1,8 @@
 import { BlurView } from 'expo-blur';
 import { StatusBar } from 'expo-status-bar';
 import React, { useState } from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   interpolate,
   Keyframe,
@@ -122,6 +117,7 @@ const sampleProfile: ProfileType = {
 
 const App = () => {
   const [isFlipped, setIsFlipped] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const progress = useDerivedValue(() => {
     return withSpring(isFlipped ? 1 : 0, {
@@ -145,7 +141,11 @@ const App = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}>
       <StatusBar style="dark" />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Main Card Section */}
@@ -189,7 +189,7 @@ const App = () => {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
