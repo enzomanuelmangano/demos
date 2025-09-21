@@ -1,7 +1,7 @@
-import { Drawer } from 'expo-router/drawer';
 import { useNavigation } from '@react-navigation/native';
+import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { AnimatedHamburgerIcon } from '../src/components/animated-hamburger-icon';
 
 export default function HomeScreen() {
@@ -21,6 +21,7 @@ export default function HomeScreen() {
           headerTitleStyle: {
             color: 'white',
           },
+          swipeEdgeWidth: Dimensions.get('window').width * 0.35,
           headerLeft: () => (
             <AnimatedHamburgerIcon
               tintColor="white"
@@ -30,7 +31,7 @@ export default function HomeScreen() {
         }}
       />
 
-      <View style={styles.container}></View>
+      <View style={styles.container} />
     </>
   );
 }
