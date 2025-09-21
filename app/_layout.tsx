@@ -1,8 +1,8 @@
-import { Drawer } from 'expo-router/drawer';
 import * as Haptics from 'expo-haptics';
+import { Drawer } from 'expo-router/drawer';
 import { PressablesConfig } from 'pressto';
 import { Suspense } from 'react';
-import { StatusBar } from 'react-native';
+import { Dimensions, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { CustomDrawerContent } from '../src/components/custom-drawer-content';
@@ -37,6 +37,7 @@ export default function RootLayout() {
                 },
                 overlayColor: 'rgba(0, 0, 0, 0.5)',
                 swipeEnabled: true,
+                swipeEdgeWidth: Dimensions.get('window').width * 0.3,
               }}>
               <Drawer.Screen
                 name="index"
