@@ -1,5 +1,4 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -20,7 +19,6 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="auto" />
       <SegmentedControl
         data={Data}
         onPress={item => setSelected(item)}

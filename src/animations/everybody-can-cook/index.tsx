@@ -1,5 +1,4 @@
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useRef } from 'react';
 
 import type { StaggeredTextRef } from './components/staggered-text';
@@ -54,7 +53,6 @@ const App = () => {
         canCookStaggeredTextRef.current?.reset();
         canCookStaggeredTextRef.current?.animate();
       }, 800)}>
-      <StatusBar style="light" />
       <StaggeredText
         text="Everybody"
         ref={everybodyStaggeredTextRef}

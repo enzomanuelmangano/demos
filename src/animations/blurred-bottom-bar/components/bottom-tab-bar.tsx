@@ -8,10 +8,8 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenNames } from '../constants/screens';
-import {
-  BOTTOM_BAR_HEIGHT,
-  useSafeBottomBarHeight,
-} from '../hooks/use-bottom-bar-height';
+
+export const BOTTOM_BAR_HEIGHT = 60;
 
 import { TabBarItem } from './tab-bar-item';
 
@@ -74,7 +72,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   // Get safe area insets for bottom padding
   const { bottom: safeBottom } = useSafeAreaInsets();
 
-  const bottomBarSafeHeight = useSafeBottomBarHeight();
+  const bottomBarSafeHeight = BOTTOM_BAR_HEIGHT + safeBottom + 30;
 
   // Render the BottomTabBar component
   return (

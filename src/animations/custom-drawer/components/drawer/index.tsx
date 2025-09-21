@@ -1,24 +1,13 @@
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
-import { useDrawerStatus } from '@react-navigation/drawer';
-import { useCallback, useEffect } from 'react';
-import { StatusBar, Text, StyleSheet, View } from 'react-native';
+import { useCallback } from 'react';
+import { Text, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
 
 const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
-  const status = useDrawerStatus();
   const { top } = useSafeAreaInsets();
-
-  // Update the status bar based on the drawer status
-  useEffect(() => {
-    if (status === 'open') {
-      StatusBar.setHidden(true, 'slide');
-    } else {
-      StatusBar.setHidden(false, 'slide');
-    }
-  }, [status]);
 
   // Get the navigation object using the useNavigation hook
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

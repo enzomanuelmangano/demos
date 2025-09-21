@@ -1,5 +1,3 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 import {
   Blur,
   ColorMatrix,
@@ -11,7 +9,13 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
-import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 const RADIUS = 80;
 
@@ -56,6 +60,11 @@ export function Metaball() {
       secondCx.value = context.value.x + translationX;
       secondCy.value = context.value.y + translationY;
     },
+    onEnd: () => {
+      'worklet';
+      secondCx.value = withSpring(width / 2);
+      secondCy.value = withSpring(height / 2);
+    },
   });
 
   const path = useDerivedValue(() => {
@@ -98,14 +107,14 @@ export function Metaball() {
         <Touchable.Circle
           cx={secondCx}
           cy={secondCy}
-          r={(RADIUS / 60) * 30}
+          r={RADIUS}
           {...secondCircleGesture}
           color={'transparent'}
         />
         <Touchable.Circle
           cx={firstCx}
           cy={firstCy}
-          r={(RADIUS / 60) * 30}
+          r={RADIUS}
           {...circleGesture}
           color={'transparent'}
         />

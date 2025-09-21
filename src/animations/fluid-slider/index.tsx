@@ -11,7 +11,7 @@ const FluidSliderContainer = () => {
           In the height you should also consider the space 
           for the Animated Metaball (with the Text)  
       */}
-      <FluidSlider width={windowWidth * 0.9} height={110} />
+      <FluidSlider width={windowWidth} height={100} />
     </View>
   );
 };
@@ -19,7 +19,7 @@ const FluidSliderContainer = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8f9fa',
     alignItems: 'center',
     justifyContent: 'center',
   },

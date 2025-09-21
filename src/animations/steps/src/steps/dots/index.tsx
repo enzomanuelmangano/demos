@@ -1,10 +1,10 @@
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
-import React from 'react';
 
 import { Dot } from './dot';
 
@@ -32,9 +32,7 @@ export const Dots: React.FC<DotsProps> = React.memo(
 
       return {
         // Spring animations, spring animations everywhere!
-        width: withSpring(activeWidth, {
-          mass: 0.5,
-        }),
+        width: withSpring(activeWidth),
       };
     }, []);
 

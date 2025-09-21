@@ -9,7 +9,6 @@ import {
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
-import { StatusBar } from 'expo-status-bar';
 import React, { useMemo } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
@@ -96,7 +95,6 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
 
   return (
     <View style={{ flex: 1 }}>
-      <StatusBar style="light" />
       <Canvas style={{ flex: 1, backgroundColor: '#010101' }}>
         <Group
           transform={[

@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "Thank You",
+    "name": "Demos",
     "slug": "thank-you",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "scheme": "thank-you",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -40,7 +41,13 @@
     "plugins": [
       "expo-asset",
       "expo-font",
-      ["expo-color-space-plugin", { "colorSpace": "displayP3" }]
+      [
+        "expo-color-space-plugin",
+        {
+          "colorSpace": "displayP3"
+        }
+      ],
+      "expo-router"
     ],
     "extra": {
       "eas": {

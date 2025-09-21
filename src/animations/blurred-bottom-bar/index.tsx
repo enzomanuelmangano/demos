@@ -1,23 +1,33 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useCallback } from 'react';
+import { View, Image, StyleSheet, Dimensions } from 'react-native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
-import type { ScreenNames } from './constants/screens';
-import { ScreenNamesArray } from './constants/screens';
-import { Home } from './screens/home';
-import { BlurredScroll } from './screens/blur';
-import { AnimatedGradient } from './screens/animated-gradient';
-import { ScrollableImages } from './screens/scrollable-images';
 
 const BottomTab = createBottomTabNavigator();
 
-const ScreenMap: Record<keyof typeof ScreenNames, () => React.ReactNode> = {
-  Home: Home,
-  'View-List': ScrollableImages,
-  'Blur-On': BlurredScroll,
-  Gradient: AnimatedGradient,
-};
+const { width, height } = Dimensions.get('window');
+
+// Simple Image Screen Component
+const ImageScreen = ({ source }: { source: any }) => (
+  <View style={styles.container}>
+    <Image source={source} style={styles.image} resizeMode="cover" />
+  </View>
+);
+
+// Create screen components for each image
+const Screen1 = () => <ImageScreen source={require('./assets/01.jpg')} />;
+const Screen2 = () => <ImageScreen source={require('./assets/02.jpg')} />;
+const Screen3 = () => <ImageScreen source={require('./assets/03.jpg')} />;
+const Screen4 = () => <ImageScreen source={require('./assets/01.jpg')} />;
+
+const screens = [
+  { name: 'Home', component: Screen1 },
+  { name: 'Explore', component: Screen2 },
+  { name: 'Camera', component: Screen3 },
+  { name: 'Settings', component: Screen4 },
+];
 
 const App = () => {
   const tabBar = useCallback((props: BottomTabBarProps) => {
@@ -31,20 +41,29 @@ const App = () => {
         headerShown: false,
       }}
       tabBar={tabBar}>
-      {ScreenNamesArray.map(key => {
-        return (
-          <BottomTab.Screen
-            key={key}
-            name={key}
-            component={ScreenMap[key]}
-            options={{
-              freezeOnBlur: true,
-            }}
-          />
-        );
-      })}
+      {screens.map(({ name, component }) => (
+        <BottomTab.Screen
+          key={name}
+          name={name}
+          component={component}
+          options={{
+            freezeOnBlur: true,
+          }}
+        />
+      ))}
     </BottomTab.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  image: {
+    width,
+    height,
+  },
+});
 
 export { App as BlurredBottomBar };

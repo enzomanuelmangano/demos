@@ -90,7 +90,7 @@ const BlurredListItemContainer: React.FC<BlurredListItemContainerProps> = ({
 
   const containerStyle = useAnimatedStyle(
     () => ({
-      top: withSpring(top, { mass: 0.5 }),
+      top: withSpring(top),
     }),
     [top],
   );

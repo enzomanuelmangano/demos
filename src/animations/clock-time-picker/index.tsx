@@ -12,7 +12,6 @@
  */
 
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { TimeRange } from './components/time-range';
@@ -52,7 +51,6 @@ export const ClockTimePicker = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <View style={styles.pickerContainer}>
         {/* Analog clock display */}
         <Clock date={clockDate} size={100} />

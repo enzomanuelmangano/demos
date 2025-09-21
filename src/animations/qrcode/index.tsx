@@ -1,18 +1,18 @@
 import {
+  DiscretePathEffect,
+  SweepGradient,
+  vec,
+} from '@shopify/react-native-skia';
+import React, { useState } from 'react';
+import {
   StyleSheet,
   Text,
   TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
-import React, { useState } from 'react';
-import {
-  vec,
-  SweepGradient,
-  DiscretePathEffect,
-} from '@shopify/react-native-skia';
-import { useSharedValue } from 'react-native-reanimated';
 import QRCode from 'react-native-qrcode-skia';
+import { useSharedValue } from 'react-native-reanimated';
 
 import { Slider } from './components/slider';
 
@@ -61,7 +61,7 @@ const QRCodeGenerator = () => {
         />
 
         {/* Path effect for QR code */}
-        <DiscretePathEffect length={10} deviation={deviationProgress} />
+        <DiscretePathEffect length={10} deviation={0} />
       </QRCode>
 
       {/* Slider components for adjusting stroke width and deviation */}

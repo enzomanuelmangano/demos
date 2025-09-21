@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { ButtonsGrid } from './components/buttons-grid';
@@ -8,13 +8,18 @@ import { AnimatedNumber } from './components/animated-number';
 
 const NumberInput: React.FC = () => {
   const [input, updateInput] = useState<number>(0);
+  const insets = useSafeAreaInsets();
 
   const reset = useCallback(() => {
     updateInput(0);
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top, paddingBottom: insets.bottom },
+      ]}>
       <View style={styles.fillCenter}>
         <View
           style={[
@@ -46,7 +51,7 @@ const NumberInput: React.FC = () => {
           }}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

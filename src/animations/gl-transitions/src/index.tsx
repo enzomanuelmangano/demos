@@ -1,4 +1,3 @@
-import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -37,21 +36,19 @@ const App = () => {
             Here they are: https://gl-transitions.com/gallery
            */}
           <GLTransitionsProvider transition={DirectionalWarp}>
-            <NavigationContainer independent={true}>
-              <Stack.Navigator
-                initialRouteName="Home"
+            <Stack.Navigator
+              initialRouteName="Home"
+              screenOptions={{
+                headerShown: false,
+              }}>
+              <Stack.Screen name="Home" component={HomeScreen} />
+              <Stack.Group
                 screenOptions={{
-                  headerShown: false,
+                  presentation: 'containedModal',
                 }}>
-                <Stack.Screen name="Home" component={HomeScreen} />
-                <Stack.Group
-                  screenOptions={{
-                    presentation: 'containedModal',
-                  }}>
-                  <Stack.Screen name="AddNote" component={AddNoteScreen} />
-                </Stack.Group>
-              </Stack.Navigator>
-            </NavigationContainer>
+                <Stack.Screen name="AddNote" component={AddNoteScreen} />
+              </Stack.Group>
+            </Stack.Navigator>
           </GLTransitionsProvider>
         </SafeAreaProvider>
       </View>

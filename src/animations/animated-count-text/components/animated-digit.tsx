@@ -1,14 +1,12 @@
-import React, { useLayoutEffect } from 'react';
+import React from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
-  Layout,
+  LinearTransition,
   useAnimatedStyle,
-  useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 type AnimatedDigitProps = {
@@ -16,12 +14,11 @@ type AnimatedDigitProps = {
   height: number;
   width: number;
   textStyle: StyleProp<TextStyle>;
-  duration?: number;
 };
 
 // AnimatedDigit component
 const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
-  ({ digit, height, width, textStyle, duration = 1000 }) => {
+  ({ digit, height, width, textStyle }) => {
     // Flatten the textStyle object into a single style object
     const flattenedTextStyle = React.useMemo(() => {
       return StyleSheet.flatten(textStyle);
@@ -33,44 +30,26 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
         transform: [
           {
             translateY: withSpring(-height * digit, {
-              mass: 0.6,
+              damping: 20,
+              stiffness: 300,
+              mass: 1,
             }),
           },
         ],
       };
     });
 
-    // Create a shared value for opacity animation
-    const opacity = useSharedValue(0);
-
-    // Trigger the opacity animation when the component is mounted or the duration changes
-    useLayoutEffect(() => {
-      opacity.value = withTiming(1, {
-        duration,
-      });
-    }, [duration, opacity]);
-
-    // Define the animated style for the container opacity
-    const rContainerStyle = useAnimatedStyle(() => {
-      return {
-        opacity: opacity.value,
-      };
-    });
-
     return (
       <Animated.View
-        layout={Layout}
-        exiting={FadeOut}
-        entering={FadeIn.duration(duration)}
-        style={[
-          {
-            height,
-            width,
-            // Comment this out to see the real trick behind the animation :)
-            overflow: 'hidden',
-          },
-          rContainerStyle,
-        ]}>
+        layout={LinearTransition.duration(800)}
+        entering={FadeIn.duration(250)}
+        exiting={FadeOut.duration(250)}
+        style={{
+          height,
+          width,
+          // Comment this out to see the real trick behind the animation :)
+          overflow: 'hidden',
+        }}>
         <Animated.View
           style={[
             {

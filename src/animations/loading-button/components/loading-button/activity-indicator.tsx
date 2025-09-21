@@ -76,10 +76,12 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
 
   const transform = useDerivedValue(() => [{ rotate: rotation.value }]);
   const loadingOpacity = useDerivedValue(() =>
-    withTiming(status === 'loading' ? 1 : 0),
+    withTiming(status === 'loading' ? 1 : 0, { duration: 200 }),
   );
   const iconOpacity = useDerivedValue(() =>
-    withTiming(status === 'success' || status === 'error' ? 1 : 0),
+    withTiming(status === 'success' || status === 'error' ? 1 : 0, {
+      duration: 200,
+    }),
   );
 
   const svgIcon = useMemo(() => {
@@ -104,9 +106,10 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
   }, [size, status]);
 
   const containerStyle = useAnimatedStyle(() => ({
-    height: withTiming(status === 'idle' ? 0 : size),
-    width: withTiming(status === 'idle' ? 0 : size),
-    marginRight: 6,
+    height: withTiming(status === 'idle' ? 0 : size, { duration: 300 }),
+    width: withTiming(status === 'idle' ? 0 : size, { duration: 300 }),
+    marginRight: withTiming(status === 'idle' ? 0 : 6, { duration: 300 }),
+    overflow: 'hidden',
   }));
 
   const center = size / 2;

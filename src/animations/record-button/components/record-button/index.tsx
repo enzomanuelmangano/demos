@@ -1,5 +1,8 @@
 import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
 import { useMemo } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedReaction,
@@ -9,9 +12,6 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet, View } from 'react-native';
-import { PressableScale } from 'pressto';
 
 import { hapticFeedback } from '../../utils/haptics';
 
@@ -73,9 +73,7 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
     return {
       transform: [
         {
-          scale: withSpring(!activated.value ? 1 : 1.1, {
-            mass: 0.5,
-          }),
+          scale: withSpring(!activated.value ? 1 : 1.1),
         },
       ],
     };

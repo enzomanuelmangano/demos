@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef } from 'react';
 import { Octicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
+import { useCallback, useMemo, useRef } from 'react';
 
 import type { ShowToastParams } from './hooks/use-toast';
 import { useToast } from './hooks/use-toast';
@@ -59,7 +59,7 @@ export const useDemoStackedToast = () => {
         iconName: 'code',
       },
       {
-        title: 'You can find it at patreon.com/reactiive',
+        title: 'You can find it at reactiive.io/demos',
         iconName: 'package',
       },
       {

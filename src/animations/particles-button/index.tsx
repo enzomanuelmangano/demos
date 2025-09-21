@@ -9,13 +9,12 @@
  */
 
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 import { CircularButton } from './components/circular-button';
 
 // Configuration constants for the button
 const buttonSize = 48;
-const blastRadius = buttonSize;
+const blastRadius = buttonSize * 2;
 
 /**
  * Main App component that renders the demo interface
@@ -23,7 +22,6 @@ const blastRadius = buttonSize;
 export const ParticlesButton = () => {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       <CircularButton
         blastRadius={blastRadius}
         size={buttonSize}

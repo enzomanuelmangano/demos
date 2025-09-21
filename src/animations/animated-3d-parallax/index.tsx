@@ -1,10 +1,10 @@
 import { Image, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { use3DRotationStyle } from './hooks/use-3d-rotation-style';
 
@@ -12,8 +12,9 @@ const CARD_SIZE = 300;
 const MAX_CARD_ROTATE_DEG = 18;
 
 const delayedSpringConfig = {
-  stiffness: 80,
-  mass: 2,
+  stiffness: 100,
+  damping: 10,
+  mass: 1,
 };
 
 export const Animated3DParallax = () => {
@@ -71,6 +72,7 @@ export const Animated3DParallax = () => {
     y: touchCardContentY,
     maxSize: CARD_SIZE,
     maxRotation: MAX_CARD_ROTATE_DEG,
+    perspective: 500,
   });
 
   return (
@@ -85,7 +87,14 @@ export const Animated3DParallax = () => {
               rStyle,
             ]}
           />
-          <Animated.View style={[styles.cardContent, rContentStyle]}>
+          <Animated.View
+            style={[
+              styles.cardContent,
+              rContentStyle,
+              {
+                transformOrigin: ['50%', '50%', 100],
+              },
+            ]}>
             <Image
               source={require('./assets/logo.png')}
               style={{
@@ -123,9 +132,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 5,
-    // Try to comment this line :)
-    // It will be super weird but you will totally see the 3D effect
-    zIndex: 100,
+    // Using transformOrigin instead of zIndex for proper 3D layering
   },
   cardShadow: {
     shadowColor: '#000',

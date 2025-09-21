@@ -2,9 +2,10 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { spacing } from '../../constants';
+
 import { ProfileAvatar } from './profile-avatar';
 import type { ProfileType } from './types';
-import { spacing } from '../../constants';
 
 type CardFrontProps = {
   /** Profile information */

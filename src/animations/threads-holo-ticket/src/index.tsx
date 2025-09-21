@@ -4,7 +4,6 @@
  */
 
 import { StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 
 import { Ticket } from './components/ticket';
 import { FrontSide } from './components/ticket/front-side';
@@ -17,7 +16,6 @@ import { BackSide } from './components/ticket/back-side';
 export const ThreadsHoloTicket = () => {
   return (
     <View style={styles.container}>
-      <StatusBar style="light" />
       {/* Ticket container with elevated z-index to ensure proper rendering */}
       <View style={{ zIndex: 10000 }}>
         <Ticket

@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
-import React, { useRef } from 'react';
 import { PressableScale } from 'pressto';
+import React, { useRef } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import type { QRCodeShareRefType } from './components/qrcode-share';
 import { QRCodeShare } from './components/qrcode-share';
@@ -17,7 +17,7 @@ export const EmptyQRCode = React.memo(() => {
         }}>
         <QRCodeShare
           ref={qrCodeShareRef}
-          qrCodeValue="https://www.reactiive.io/patreon"
+          qrCodeValue="https://reactiive.io/demos"
         />
       </PressableScale>
     </View>

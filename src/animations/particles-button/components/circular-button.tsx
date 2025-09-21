@@ -25,8 +25,8 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withSpring,
+  cancelAnimation,
 } from 'react-native-reanimated';
 
 import type { BlastEffectRefType } from './blast-effect';
@@ -54,9 +54,27 @@ type CircularButtonProps = {
  * Spring animation configuration for the blast effect
  */
 const BlastCurveConfig = {
-  mass: 1,
+  mass: 0.5,
   stiffness: 70,
   damping: 16,
+};
+
+/**
+ * Faster spring configuration for reset animation
+ */
+const FastResetConfig = {
+  mass: 0.5,
+  stiffness: 120,
+  damping: 14,
+};
+
+/**
+ * Less bouncy spring configuration for blast effect
+ */
+const BlastEffectConfig = {
+  mass: 1,
+  stiffness: 100,
+  damping: 20,
 };
 
 // Default colors for the button
@@ -72,6 +90,7 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
   onPress,
 }) => {
   const progress = useSharedValue(0);
+  const isAnimating = useSharedValue(false);
 
   const boxStyle = useMemo(() => {
     return {
@@ -147,14 +166,29 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
    * Handles the button press animation and blast effect
    */
   const onPressHandler = useCallback(() => {
+    if (isAnimating.get()) {
+      return;
+    }
+
     onPress?.();
+
+    // Cancel any existing animations
+    cancelAnimation(progress);
+    isAnimating.set(true);
+
     progress.value = withSpring(1, BlastCurveConfig, isFinished => {
       if (autoReset && isFinished) {
-        progress.value = withDelay(800, withSpring(0, BlastCurveConfig));
+        progress.value = withSpring(0, FastResetConfig, resetFinished => {
+          if (resetFinished) {
+            isAnimating.set(false);
+          }
+        });
+      } else {
+        isAnimating.set(false);
       }
     });
-    blastEffectRef.current?.blast(BlastCurveConfig, 500);
-  }, [autoReset, blastEffectRef, onPress, progress]);
+    blastEffectRef.current?.blast(BlastEffectConfig, 100);
+  }, [autoReset, blastEffectRef, onPress, progress, isAnimating]);
 
   return (
     <View style={styles.boxContainer}>

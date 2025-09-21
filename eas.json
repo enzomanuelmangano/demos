@@ -6,7 +6,7 @@
   "build": {
     "base": {
       "ios": {
-        "image": "macos-ventura-13.6-xcode-15.2",
+        "image": "macos-sequoia-15.6-xcode-26.0",
         "cocoapods": "1.15.2",
         "autoIncrement": "buildNumber"
       },
