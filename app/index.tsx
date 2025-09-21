@@ -1,8 +1,12 @@
 import { Drawer } from 'expo-router/drawer';
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { AnimatedHamburgerIcon } from '../src/components/animated-hamburger-icon';
 
 export default function HomeScreen() {
+  const navigation = useNavigation();
+
   return (
     <>
       <Drawer.Screen
@@ -17,6 +21,12 @@ export default function HomeScreen() {
           headerTitleStyle: {
             color: 'white',
           },
+          headerLeft: () => (
+            <AnimatedHamburgerIcon
+              tintColor="white"
+              onPress={() => (navigation as any).toggleDrawer()}
+            />
+          ),
         }}
       />
 

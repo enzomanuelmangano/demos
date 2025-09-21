@@ -1,5 +1,6 @@
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { FlashList } from '@shopify/flash-list';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import React, { useCallback, useMemo } from 'react';
@@ -89,9 +90,11 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
-        <PressableScale onPress={() => router.push('/')}>
-          <Text style={styles.title}>Demos</Text>
-        </PressableScale>
+        <View style={styles.titleRow}>
+          <PressableScale onPress={() => router.push('/')}>
+            <Text style={styles.title}>Demos</Text>
+          </PressableScale>
+        </View>
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
@@ -105,14 +108,21 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
         </View>
       </View>
 
-      <FlashList
-        keyExtractor={keyExtractor}
-        data={filteredAnimations as AnimationItem[]}
-        scrollEventThrottle={16}
-        contentContainerStyle={styles.content}
-        contentInsetAdjustmentBehavior="automatic"
-        renderItem={renderItem}
-      />
+      <View style={styles.listContainer}>
+        <FlashList
+          keyExtractor={keyExtractor}
+          data={filteredAnimations as AnimationItem[]}
+          scrollEventThrottle={16}
+          contentContainerStyle={styles.content}
+          contentInsetAdjustmentBehavior="automatic"
+          renderItem={renderItem}
+        />
+        <LinearGradient
+          colors={['#030303', '#03030300']}
+          style={styles.topGradient}
+          pointerEvents="none"
+        />
+      </View>
     </View>
   );
 }
@@ -124,9 +134,14 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    marginTop: 24,
-    marginBottom: 12,
-    gap: 12,
+    marginBottom: 8,
+    marginTop: 6,
+    gap: 8,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
   title: {
     fontSize: 28,
@@ -137,24 +152,20 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     position: 'relative',
+    marginBottom: 8,
   },
   searchInput: {
-    backgroundColor: '#1c1c1c',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     color: '#fff',
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    fontSize: 14,
+    borderWidth: 0,
+  },
+  listContainer: {
+    flex: 1,
+    position: 'relative',
   },
   content: {
     paddingBottom: 24,
@@ -162,5 +173,13 @@ const styles = StyleSheet.create({
   listItem: {
     height: LIST_ITEM_HEIGHT,
     paddingHorizontal: 20,
+  },
+  topGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 40,
+    zIndex: 1,
   },
 });
