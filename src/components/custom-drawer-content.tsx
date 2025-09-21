@@ -17,7 +17,8 @@ import {
 } from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
 
-import { ExpoRouterListItem } from './expo-router-list-item';
+import { PressableScale } from 'pressto';
+import { DrawerListItem } from './drawer-list-item';
 
 const LIST_ITEM_HEIGHT = 60;
 
@@ -64,7 +65,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const renderItem = useCallback(
     ({ item }: { item: AnimationItem }) => {
       return (
-        <ExpoRouterListItem
+        <DrawerListItem
           style={styles.listItem}
           item={item}
           onPress={() => {
@@ -88,7 +89,9 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Demos</Text>
+        <PressableScale onPress={() => router.push('/')}>
+          <Text style={styles.title}>Demos</Text>
+        </PressableScale>
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
@@ -117,7 +120,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#131313',
+    backgroundColor: '#030303',
   },
   header: {
     paddingHorizontal: 20,
@@ -130,6 +133,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     letterSpacing: -0.5,
+    fontFamily: 'honk-regular',
   },
   searchContainer: {
     position: 'relative',

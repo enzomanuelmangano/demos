@@ -26,7 +26,7 @@ const PressableHighlight = createAnimatedPressable(progress => {
   };
 });
 
-const ExpoRouterListItem: React.FC<ExpoRouterListItemProps> = React.memo(
+const DrawerListItem: React.FC<ExpoRouterListItemProps> = React.memo(
   ({ item, onPress, style }) => {
     return (
       <PressableHighlight style={[styles.container, style]} onPress={onPress}>
@@ -38,7 +38,7 @@ const ExpoRouterListItem: React.FC<ExpoRouterListItemProps> = React.memo(
   },
 );
 
-ExpoRouterListItem.displayName = 'ExpoRouterListItem';
+DrawerListItem.displayName = 'DrawerListItem';
 
 const styles = StyleSheet.create({
   container: {
@@ -63,4 +63,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export { ExpoRouterListItem };
+export { DrawerListItem };

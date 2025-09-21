@@ -2,14 +2,27 @@ import { useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { useDrawerProgress } from '@react-navigation/drawer';
+import { BlurView } from 'expo-blur';
+import Animated, {
+  interpolate,
+  useDerivedValue,
+} from 'react-native-reanimated';
 import {
   getAnimationComponent,
   getAnimationMetadata,
 } from '../../src/animations/registry';
 
+const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
 export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const dimensions = useWindowDimensions();
+  const rDrawerProgress = useDrawerProgress();
+
+  const rBlurIntensity = useDerivedValue<number | undefined>(() => {
+    return interpolate(rDrawerProgress.value, [0, 1], [0, 40]);
+  });
 
   if (!slug) {
     return (
@@ -32,7 +45,16 @@ export default function AnimationScreen() {
 
   // Render the component - use type assertion since components have different prop signatures
   // Some expect dimensions, some expect no props, some expect other props
-  return <AnimationComponent {...(dimensions as any)} />;
+  return (
+    <>
+      <AnimationComponent {...(dimensions as any)} />
+      <AnimatedBlurView
+        tint="default"
+        intensity={rBlurIntensity}
+        style={styles.blurView}
+      />
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -46,5 +68,10 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
+  },
+  blurView: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
+    zIndex: 1000000,
   },
 });

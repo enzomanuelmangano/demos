@@ -1,6 +1,6 @@
 import { Drawer } from 'expo-router/drawer';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 export default function HomeScreen() {
   return (
@@ -12,20 +12,15 @@ export default function HomeScreen() {
           headerStyle: {
             backgroundColor: 'transparent',
           },
-          title: 'Welcome',
+          title: 'Demos',
+          headerTintColor: 'white',
           headerTitleStyle: {
             color: 'white',
           },
         }}
       />
 
-      <View style={styles.container}>
-        <Text style={styles.title}>Welcome to Demos</Text>
-        <Text style={styles.subtitle}>
-          Swipe from the left edge or tap the menu button to browse all
-          available animations
-        </Text>
-      </View>
+      <View style={styles.container}></View>
     </>
   );
 }
@@ -36,19 +31,5 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#ccc',
-    textAlign: 'center',
-    lineHeight: 24,
   },
 });
