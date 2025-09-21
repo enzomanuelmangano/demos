@@ -1,14 +1,15 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
-import { StyleSheet, TextInput, View, Text } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
 
+import { useFocusEffect } from 'expo-router';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useAnimatedShake } from '../../../email-demo/hooks/use-animated-shake';
-import type { StatusType } from '../../components/verification-code/animated-code-number';
 import { VerificationCode } from '../../components/verification-code';
+import type { StatusType } from '../../components/verification-code/animated-code-number';
 
 // Define props for VerificationCodeScreen component
 type VerificationCodeScreenProps = {
@@ -30,14 +31,14 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   const verificationStatus = useSharedValue<StatusType>('inProgress');
 
   // Hook to get the animated keyboard height
-  const { height: keyboardHeight } = useAnimatedKeyboard();
+  const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
 
   // Animated style for the keyboard avoiding view to adjust its position based on the keyboard height
   const rKeyboardAvoidingViewStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          translateY: -keyboardHeight.value / 2,
+          translateY: keyboardHeight.value / 2,
         },
       ],
     };
@@ -48,15 +49,6 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
 
   // Reference to the invisible TextInput for handling code input
   const invisibleTextInputRef = useRef<TextInput>(null);
-
-  // Focus the input after a small delay to let the screen transition complete
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      invisibleTextInputRef.current?.focus();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   // Function to reset the code and verification status after a delay
   const resetCode = useCallback(() => {
@@ -86,6 +78,18 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   // Maximum length of the code input based on the correct code
   const maxCodeLength = correctCode.toString().length;
 
+  useFocusEffect(
+    React.useCallback(() => {
+      // When screen becomes active → focus
+      invisibleTextInputRef.current?.focus();
+
+      return () => {
+        // When leaving screen → blur
+        invisibleTextInputRef.current?.blur();
+      };
+    }, []),
+  );
+
   // Render the component
   return (
     <View style={styles.container}>
@@ -93,7 +97,11 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
         <View>
           <Text style={styles.headerText}>Enter Code</Text>
         </View>
-        <Animated.View style={[styles.codeContainer, rShakeStyle]}>
+        <Animated.View
+          style={[styles.codeContainer, rShakeStyle]}
+          onTouchEnd={() => {
+            invisibleTextInputRef.current?.focus();
+          }}>
           <VerificationCode
             status={verificationStatus}
             code={code}
@@ -111,7 +119,8 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
           VerificationCode component.
        */}
       <TextInput
-        keyboardAppearance="dark"
+        keyboardAppearance="default"
+        autoFocus
         ref={invisibleTextInputRef}
         onChangeText={text => {
           const newCode = text.split('').map(item => +item);
