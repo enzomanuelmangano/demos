@@ -406,7 +406,6 @@ export const AnimationMetadata = {
     iconMarginTop: 30,
     iconName: 'menu' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'selectable-grid-list': {
     name: 'Selectable Grid List',
@@ -518,7 +517,6 @@ export const AnimationMetadata = {
     route: 'ActionTray',
     iconName: 'card' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   toast: {
     name: 'Toast',
@@ -565,7 +563,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'dots-grid' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'balance-slider': {
     name: 'Balance Slider',
@@ -587,7 +584,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'security' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'email-demo': {
     name: 'Email Demo',
@@ -854,7 +850,6 @@ export const AnimationMetadata = {
     backIconDark: true,
     iconName: 'baby-face' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'everybody-can-cook': {
     name: 'Everybody Can Cook',
