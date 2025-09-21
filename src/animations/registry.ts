@@ -364,7 +364,6 @@ export const AnimationMetadata = {
     backIconDark: false,
     iconName: 'palette' as const,
     iconFamily: 'MaterialCommunityIcons' as const,
-    alert: true,
   },
   'animated-3d-parallax': {
     name: 'Animated 3D Parallax',

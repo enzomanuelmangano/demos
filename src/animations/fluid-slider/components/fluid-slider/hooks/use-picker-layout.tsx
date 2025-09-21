@@ -25,14 +25,16 @@ const usePickerLayout = ({
   // To be honest if the Radius is not changing, you can just use a normal value
   // In this case the radius itself is retrieved from the Skia height (see src/components/fluid-slider/index.tsx)
   const closedPickerY = useDerivedValue(() => {
-    return radius.value * 3 + DISTANCE_BETWEEN_SLIDER_AND_METABALL / 1.5;
-  }, [radius]);
+    return sliderSize.height / 2; // Center position when not sliding
+  }, [sliderSize]);
 
   const pickerY = useDerivedValue(() => {
-    return withSpring(isSliding.value ? radius.value : closedPickerY.value, {
-      stiffness: 40,
+    return withSpring(isSliding.value ? sliderSize.height / 2 - 25 : closedPickerY.value, {
+      stiffness: 200,
+      damping: 20,
+      mass: 0.8,
     });
-  }, [isSliding, closedPickerY, radius]);
+  }, [isSliding, closedPickerY, sliderSize]);
 
   const clampedPickerX = useDerivedValue(() => {
     return Math.max(

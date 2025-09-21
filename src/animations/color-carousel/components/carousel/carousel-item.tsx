@@ -48,13 +48,6 @@ const CarouselItem: React.FC<CarouselItemProps> = React.memo(
         Extrapolate.CLAMP,
       );
 
-      const zIndex = interpolate(
-        normalizedDistanceFromCenter,
-        [0, 1],
-        [50, 0],
-        Extrapolate.CLAMP,
-      );
-
       const initialActiveIndex = Math.floor(maxRenderedItems / 2);
       const preciseActiveIndex =
         initialActiveIndex +
@@ -70,7 +63,6 @@ const CarouselItem: React.FC<CarouselItemProps> = React.memo(
         [-25, -20, 0, 20, 25],
       );
       return {
-        zIndex: Math.floor(zIndex),
         transform: [
           {
             scale: scale,
@@ -83,26 +75,50 @@ const CarouselItem: React.FC<CarouselItemProps> = React.memo(
       };
     }, []);
 
+    const rZIndexStyle = useAnimatedStyle(() => {
+      const position = index * itemWidth + translateX.value;
+      const center = carouselWidth / 2;
+
+      const distanceFromCenter = Math.abs(
+        center - ((position + center + itemWidth / 2) % carouselWidth),
+      );
+      const maxDistance = carouselWidth / 2;
+      const normalizedDistanceFromCenter = 1 - distanceFromCenter / maxDistance;
+
+      const zIndex = interpolate(
+        normalizedDistanceFromCenter,
+        [0, 1],
+        [1000, 0],
+        Extrapolate.CLAMP,
+      );
+
+      return {
+        zIndex: Math.floor(zIndex),
+      };
+    }, []);
+
     return (
-      <Animated.View
-        key={index}
-        style={[
-          {
-            height: itemHeight,
-            width: itemWidth,
-          },
-          rItemListStyle,
-        ]}>
-        <View
+      <Animated.View style={rZIndexStyle}>
+        <Animated.View
+          key={index}
           style={[
             {
-              flex: 1,
-              borderRadius: 5,
-              backgroundColor: item?.mainColor ?? 'transparent',
+              height: itemHeight,
+              width: itemWidth,
             },
-            item?.mainColor ? styles.shadow : {},
-          ]}
-        />
+            rItemListStyle,
+          ]}>
+          <View
+            style={[
+              {
+                flex: 1,
+                borderRadius: 5,
+                backgroundColor: item?.mainColor ?? 'transparent',
+              },
+              item?.mainColor ? styles.shadow : {},
+            ]}
+          />
+        </Animated.View>
       </Animated.View>
     );
   },

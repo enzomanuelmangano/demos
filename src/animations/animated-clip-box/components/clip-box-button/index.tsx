@@ -8,6 +8,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+
 import { ExpandedCircle } from './expanded-circle';
 
 type ClipBoxButtonProps = {

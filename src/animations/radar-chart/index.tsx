@@ -1,14 +1,15 @@
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  useWindowDimensions,
-} from 'react-native';
 import { useFont } from '@shopify/react-native-skia';
+import { useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import type { RadarDataType } from './components/radar-chart';
-import { RadarChart, useRadarValue } from './components/radar-chart';
+import { RadarChart } from './components/radar-chart';
 
 type RadarKeys = 'Checkmate' | 'Deflection' | 'Endgame' | 'Fork' | 'Sacrifice';
 
@@ -60,7 +61,7 @@ const generateRandomDataChart = () => {
 // }]
 
 export const RadarChartContainer = () => {
-  const { data, updateData } = useRadarValue(generateRandomDataChart());
+  const [data, setData] = useState(generateRandomDataChart);
 
   const font = useFont(
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -83,7 +84,7 @@ export const RadarChartContainer = () => {
       />
       <TouchableOpacity
         onPress={() => {
-          updateData(generateRandomDataChart());
+          setData(generateRandomDataChart());
         }}
         style={{
           marginTop: 50,

@@ -63,6 +63,7 @@ const Carousel: React.FC<CarouselProps> = React.memo(
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
+          decelerationRate={0.8}
           snapToOffsets={items.map((_, index) => index * LIST_ITEM_WIDTH)}>
           {items.map((item, index) => {
             return (
