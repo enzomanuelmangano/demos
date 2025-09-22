@@ -1,20 +1,21 @@
-import { StyleSheet, View, Text, FlatList } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, Text, View } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
-  withTiming,
+  cancelAnimation,
   Extrapolate,
   interpolate,
   useAnimatedStyle,
-  cancelAnimation,
   useSharedValue,
+  withTiming,
 } from 'react-native-reanimated';
-import { useCallback, useMemo, useState } from 'react';
-import { Feather } from '@expo/vector-icons';
 
-import { ListItem } from './components/list-item';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Backdrop } from './components/backdrop';
-import { ConfirmButton } from './components/confirm-button';
 import { BottomSheet } from './components/bottom-sheet';
+import { ConfirmButton } from './components/confirm-button';
+import { ListItem } from './components/list-item';
 
 const items = new Array(20).fill(0).map((_, index) => ({
   id: index,
@@ -28,7 +29,7 @@ const items = new Array(20).fill(0).map((_, index) => ({
 
 const AddToCart = () => {
   const [listItems, setListItems] = useState(items);
-
+  const { top } = useSafeAreaInsets();
   const animationProgress = useSharedValue(0);
   const layoutData = useSharedValue<null | MeasuredDimensions>(null);
   const selectedIndex = useSharedValue<number | null>(null);
@@ -104,7 +105,10 @@ const AddToCart = () => {
     <View style={[styles.container, { flex: 1 }]}>
       <FlatList
         data={listItems}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{
+          paddingBottom: 100,
+          paddingTop: top + 24,
+        }}
         renderItem={({ item }) => {
           return (
             <ListItem
@@ -169,7 +173,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
-    paddingTop: 70,
   },
   buyButton: {
     height: 40,
