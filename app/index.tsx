@@ -1,27 +1,50 @@
 import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
-import React from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
+import React, { useCallback, useRef } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  StaggeredText,
+  StaggeredTextRef,
+} from '../src/animations/everybody-can-cook/components/staggered-text';
 import { AnimatedHamburgerIcon } from '../src/components/animated-hamburger-icon';
+
+const baseDrawerOptions = {
+  headerShown: true,
+  headerTransparent: true,
+  headerStyle: {
+    backgroundColor: 'transparent',
+  },
+  title: 'Demos',
+  headerTintColor: 'white',
+  headerTitleStyle: {
+    color: 'white',
+  },
+};
 
 export default function HomeScreen() {
   const navigation = useNavigation();
+  const { width: windowWidth } = useWindowDimensions();
+
+  const staggeredTextRef = useRef<StaggeredTextRef>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      setTimeout(() => {
+        staggeredTextRef.current?.reset();
+        staggeredTextRef.current?.animate();
+      }, 500);
+    }, []),
+  );
 
   return (
     <>
       <Drawer.Screen
         options={{
-          headerShown: true,
-          headerTransparent: true,
-          headerStyle: {
-            backgroundColor: 'transparent',
-          },
-          title: 'Demos',
-          headerTintColor: 'white',
-          headerTitleStyle: {
-            color: 'white',
-          },
-          swipeEdgeWidth: Dimensions.get('window').width * 0.35,
+          ...baseDrawerOptions,
+          swipeEdgeWidth: windowWidth * 0.35,
+          swipeEnabled: true,
+          swipeMinDistance: 40,
           headerLeft: () => (
             <View style={{ paddingLeft: 16 }}>
               <AnimatedHamburgerIcon
@@ -32,7 +55,14 @@ export default function HomeScreen() {
           ),
         }}
       />
-      <View style={styles.container} />
+      <View style={styles.container}>
+        <StaggeredText
+          ref={staggeredTextRef}
+          textStyle={styles.title}
+          text="Swipe to explore."
+          delay={250}
+        />
+      </View>
     </>
   );
 }
@@ -43,5 +73,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  title: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 24,
+    fontFamily: 'honk-regular',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });
