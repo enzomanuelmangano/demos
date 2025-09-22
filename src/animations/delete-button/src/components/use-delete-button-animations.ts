@@ -1,9 +1,9 @@
 import {
-  useSharedValue,
+  runOnJS,
   useDerivedValue,
+  useSharedValue,
   withSpring,
   withTiming,
-  runOnJS,
 } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
 
@@ -41,7 +41,7 @@ export const useDeleteButtonAnimations = ({
       'worklet';
       isButtonPressed.value = true;
     },
-    onEnd: () => {
+    onTap: () => {
       'worklet';
       isButtonPressed.value = false;
       if (isToggled.value) {

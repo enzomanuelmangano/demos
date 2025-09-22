@@ -1,11 +1,11 @@
 import { Skia } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 import {
-  useSharedValue,
+  useAnimatedReaction,
   useDerivedValue,
+  useSharedValue,
   withSpring,
   withTiming,
-  useAnimatedReaction,
 } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
 
@@ -47,7 +47,7 @@ export const useCloseButtonAnimations = ({
       'worklet';
       isCloseButtonPressed.value = true; // Set pressed state when touch starts
     },
-    onEnd: () => {
+    onTap: () => {
       'worklet';
       isCloseButtonPressed.value = false; // Reset pressed state when touch ends
       isToggled.value = false; // Toggle off the button
