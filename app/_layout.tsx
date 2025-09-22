@@ -15,6 +15,23 @@ const globalPressableHandlers = {
   },
 };
 
+const drawerScreenOptions = {
+  headerShown: false,
+  drawerStyle: {
+    backgroundColor: '#000',
+    width: 270,
+  },
+  drawerActiveTintColor: '#fff',
+  drawerInactiveTintColor: '#666',
+  drawerLabelStyle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  overlayColor: 'rgba(0, 0, 0, 0.5)',
+  swipeEnabled: true,
+  swipeEdgeWidth: Dimensions.get('window').width * 0.35,
+} as const;
+
 export default function RootLayout() {
   return (
     <Suspense>
@@ -25,22 +42,7 @@ export default function RootLayout() {
             <FontsProvider>
               <Drawer
                 drawerContent={CustomDrawerContent}
-                screenOptions={{
-                  headerShown: false,
-                  drawerStyle: {
-                    backgroundColor: '#000',
-                    width: 300,
-                  },
-                  drawerActiveTintColor: '#fff',
-                  drawerInactiveTintColor: '#666',
-                  drawerLabelStyle: {
-                    fontSize: 16,
-                    fontWeight: '500',
-                  },
-                  overlayColor: 'rgba(0, 0, 0, 0.5)',
-                  swipeEnabled: true,
-                  swipeEdgeWidth: Dimensions.get('window').width * 0.3,
-                }}>
+                screenOptions={drawerScreenOptions}>
                 <Drawer.Screen
                   name="index"
                   options={{

@@ -106,7 +106,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
             value={searchFilter}
             onChange={handleSearchChange}
             returnKeyType="search"
-            clearButtonMode="while-editing"
+            clearButtonMode="always"
           />
         </View>
       </View>
@@ -156,6 +156,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     position: 'relative',
     marginBottom: 8,
+    marginTop: 6,
   },
   searchInput: {
     backgroundColor: '#1a1a1a',
