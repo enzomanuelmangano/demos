@@ -43,7 +43,6 @@ const DropdownItem: React.FC<DropdownItemProps> = React.memo(
     label,
     iconName,
   }) => {
-    // Creating a shared value that keeps track of the scale of the item when it's tapped
     const tapGestureScale = useSharedValue(1);
 
     const onTouchStart = useCallback(() => {
@@ -92,14 +91,12 @@ const DropdownItem: React.FC<DropdownItemProps> = React.memo(
         zIndex: optionsLength - index,
         transform: [
           {
-            // Here we're considering both the scale of the item and the scale of the tap gesture
             scale: scale * tapGestureScale.value,
           },
         ],
       };
     }, [index, optionsLength]);
 
-    // When the dropdown is collapsed, we want to hide the icon and the text (except for the header)
     const rContentStyle = useAnimatedStyle(() => {
       const opacity = interpolate(
         progress.value,
@@ -111,7 +108,6 @@ const DropdownItem: React.FC<DropdownItemProps> = React.memo(
       };
     }, []);
 
-    // When the dropdown is collapsed, we want to rotate the arrow icon (just for the header)
     const rArrowContainerStyle = useAnimatedStyle(() => {
       const rotation = interpolate(
         progress.value,

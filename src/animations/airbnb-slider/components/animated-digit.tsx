@@ -29,7 +29,6 @@ const getDigitByIndex = ({
 }) => {
   'worklet';
 
-  // Ensure the number is zero-padded to the maxDigits length, then extract the digit at the given index.
   const paddedValue = count.toString().padStart(maxDigits, '0');
 
   return parseInt(
@@ -38,10 +37,8 @@ const getDigitByIndex = ({
   );
 };
 
-// AnimatedDigit component
 const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
   ({ height, width, textStyle, index, count, maxDigits }) => {
-    // Calculate the digit at the specified index.
     const digit = useDerivedValue(() => {
       return getDigitByIndex({
         digitIndex: index,
@@ -57,7 +54,6 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       return maxDigits - count.value.toString().length;
     }, [maxDigits]);
 
-    // Check if it's 0 and all the previous digits are 0
     const isVisible = useDerivedValue(() => {
       const isZero = digit.value === 0;
 
@@ -66,12 +62,10 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       return index < maxDigits - invisibleDigitsAmount.value;
     }, [index, maxDigits]);
 
-    // Flatten the textStyle object into a single style object
     const flattenedTextStyle = React.useMemo(() => {
       return StyleSheet.flatten(textStyle);
     }, [textStyle]);
 
-    // Define the animated style for the digit transformation
     const rStyle = useAnimatedStyle(() => {
       return {
         transform: [
@@ -84,18 +78,15 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       };
     }, [height]);
 
-    // Create a shared value for opacity animation
     const opacity = useDerivedValue(() => {
       return withTiming(isVisible.value ? 1 : 0);
     }, []);
 
-    // Define the animated style for the container opacity
     const rContainerStyle = useAnimatedStyle(() => {
       return {
         opacity: opacity.value,
         transform: [
           {
-            // Translate the container to the left by half of the width of the invisible digits
             translateX: withTiming((-width * invisibleDigitsAmount.value) / 2),
           },
         ],

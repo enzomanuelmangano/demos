@@ -1,4 +1,3 @@
-// Type definitions for icon families
 export type IconFamily =
   | 'AntDesign'
   | 'Entypo'
@@ -22,8 +21,6 @@ export interface IconMetadata {
   iconName: string;
   iconFamily: IconFamily;
 }
-
-// Animation component imports
 
 import { ScrollTransition3D } from './3d-scroll-transition';
 import { ActionTray } from './action-tray';
@@ -135,7 +132,6 @@ import { VerificationCode } from './verification-code';
 import { VerificationCodeFace } from './verification-code-face';
 import { WheelPicker } from './wheel-picker';
 
-// Registry of all animation components
 export const AnimationRegistry = {
   'mobile-input': MobileInput,
   'swipe-cards': SwipeCards,
@@ -248,7 +244,6 @@ export const AnimationRegistry = {
   'airbnb-flip-interaction': AirbnbFlipInteraction,
 } as const;
 
-// Metadata for each animation (icons are defined as functions to avoid JSX parsing issues)
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   'mobile-input': {
     name: 'Mobile Input',
@@ -913,7 +908,6 @@ export type AnimationSlug = keyof typeof AnimationRegistry;
 export type AnimationComponent = (typeof AnimationRegistry)[AnimationSlug];
 export type AnimationMeta = (typeof AnimationMetadata)[AnimationSlug];
 
-// Helper functions
 export const getAnimationComponent = (
   slug: string,
 ): AnimationComponent | undefined => {

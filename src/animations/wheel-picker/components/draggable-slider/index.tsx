@@ -1,4 +1,3 @@
-// Importing necessary modules and components
 import { Canvas, Path } from '@shopify/react-native-skia';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -23,7 +22,6 @@ import { snapPoint } from './utils/snap-point';
 import { BoundaryGradient } from './boundary-gradient';
 import { unwrapReanimatedValue } from './utils/unwrap-reanimated-value';
 
-// Defining type for props
 type DraggableSliderProps = {
   // Total number of lines in the slider
   linesAmount: number;
@@ -58,7 +56,6 @@ type DraggableSliderProps = {
   bigLineColor?: string;
 };
 
-// DraggableSlider component
 export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   linesAmount,
   spacePerLine: spacePerLineProp,
@@ -74,9 +71,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   lineColor = '#c6c6c6',
   bigLineColor = '#c6c6c6',
 }) => {
-  // Shared value for scroll context
   const scrollContext = useSharedValue(0);
-  // Shared value for scroll offset
   const scrollOffset = useSharedValue(ScreenWidth / 2);
   const clampedScrollOffset = useSharedValue(ScreenWidth / 2);
 
@@ -84,15 +79,10 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     return unwrapReanimatedValue(spacePerLineProp);
   }, [spacePerLineProp]);
 
-  // Calculating total width of the progress bar
-  // const ProgressWidth = Math.round(linesAmount * spacePerLine);
   const progressWidth = useDerivedValue(() => {
     return Math.round(linesAmount * spacePerLine.value);
   }, [linesAmount, spacePerLine]);
 
-  // Memoizing spacings for snapping
-  // This is used to determine the snap points for the spring animation
-  // when the user releases the slider
   const linesArray = useMemo(() => {
     return new Array(Math.round(linesAmount / snapEach) + 1).fill(0);
   }, [linesAmount, snapEach]);
@@ -103,31 +93,24 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     );
   }, [linesArray, snapEach, spacePerLine]);
 
-  // Reactions to scroll offset changes
   useAnimatedReaction(
     () => clampedScrollOffset.value,
     offset => {
-      // Interpolating progress based on scroll offset
       const progress = interpolate(
         offset,
         [ScreenWidth / 2, -progressWidth.value + ScreenWidth / 2],
         [0, 1],
       );
-      // Calling the progress change callback if provided
       if (onProgressChange) onProgressChange(progress);
     },
   );
 
-  // Gesture handler for panning
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      // Storing current scroll offset
       scrollContext.value = scrollOffset.value;
-      // Cancelling any ongoing animations
       cancelAnimation(scrollOffset);
     })
     .onUpdate(event => {
-      // Updating scroll offset based on pan gesture
       scrollOffset.value = clamp(
         scrollContext.value + event.translationX,
         -progressWidth.value + ScreenWidth / 2,
@@ -136,7 +119,6 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
       clampedScrollOffset.value = scrollOffset.value;
     })
     .onEnd(event => {
-      // Applying spring animation for snapping
       scrollOffset.value = withSpring(
         snapPoint(scrollOffset.value, event.velocityX, spacings.value),
         {
@@ -173,7 +155,6 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     },
   );
 
-  // Derived value for big lines path
   const bigLinesPath = useDerivedValue(() => {
     return getLinesPath({
       linesAmount,
@@ -186,7 +167,6 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     });
   }, []);
 
-  // Derived value for small lines path
   const smallLinesPath = useDerivedValue(() => {
     return getLinesPath({
       linesAmount,
@@ -199,18 +179,15 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     });
   }, []);
 
-  // Calculating dimensions for indicator line
   const indicatorLineWidth = lineWidth * 1.4;
   const indicatorLineHeight = maxLineHeight * 1.5;
 
-  // Animated style for indicator line
   const rIndicatorStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: indicatorColor?.value ?? 'orange',
     };
   }, []);
 
-  // Rendering draggable slider component
   return (
     <View>
       <GestureDetector gesture={gesture}>
@@ -255,7 +232,6 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
         </Animated.View>
       </GestureDetector>
 
-      {/* Rendering indicator line */}
       <Animated.View
         pointerEvents="none"
         style={[

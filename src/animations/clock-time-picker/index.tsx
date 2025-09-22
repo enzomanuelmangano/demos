@@ -52,10 +52,8 @@ export const ClockTimePicker = () => {
   return (
     <View style={styles.container}>
       <View style={styles.pickerContainer}>
-        {/* Analog clock display */}
         <Clock date={clockDate} size={100} />
 
-        {/* Time range selector */}
         <TimeRange
           dates={dates}
           onDateChange={updatedDate => {
@@ -68,7 +66,6 @@ export const ClockTimePicker = () => {
   );
 };
 
-// Styles for the main App component
 const styles = StyleSheet.create({
   container: {
     flex: 1,

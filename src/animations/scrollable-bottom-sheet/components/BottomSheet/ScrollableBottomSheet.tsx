@@ -16,12 +16,10 @@ import Animated, {
 
 import { BottomSheet } from './BottomSheet';
 
-// Define the props for the ScrollableBottomSheet component
 type BottomSheetProps = {
   pages: { height: number; component: React.ReactNode }[];
 };
 
-// Define the ref type for ScrollableBottomSheet
 export type ScrollableBottomSheetRef = {
   scrollToY: (destination: number) => void;
   scrollToX: (destination: number) => void;
@@ -29,7 +27,6 @@ export type ScrollableBottomSheetRef = {
   close: () => void;
 };
 
-// Create the ScrollableBottomSheet component
 const ScrollableBottomSheet = React.forwardRef<
   ScrollableBottomSheetRef,
   BottomSheetProps
@@ -51,23 +48,18 @@ const ScrollableBottomSheet = React.forwardRef<
   // I've opened a discussion about this issue here:
   // https://github.com/software-mansion/react-native-reanimated/discussions/5199 😅
 
-  // Create a shared value for translateY animation
   const translateY = useSharedValue(pages?.[0]?.height ?? 0);
 
-  // Create a shared value to track the active state
   const active = useSharedValue(false);
 
-  // Create a ref for the ScrollView
   const scrollViewRef = useRef<Animated.ScrollView>(null);
 
-  // Function to scroll to a specific X position
   const scrollToX = useCallback((destination: number, delay = 0) => {
     setTimeout(() => {
       scrollViewRef.current?.scrollTo({ x: destination });
     }, delay);
   }, []);
 
-  // Function to scroll to a specific Y position
   const scrollToY = useCallback((destination: number) => {
     'worklet';
     active.value = destination !== 0;
@@ -83,13 +75,11 @@ const ScrollableBottomSheet = React.forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Function to close the bottom sheet
   const close = useCallback(() => {
     'worklet';
     return scrollToY(0);
   }, [scrollToY]);
 
-  // Expose functions and values through useImperativeHandle
   useImperativeHandle(
     ref,
     () => ({
@@ -105,25 +95,20 @@ const ScrollableBottomSheet = React.forwardRef<
     [scrollToY, close, active.value],
   );
 
-  // Get the window width
   const { width: windowWidth } = useWindowDimensions();
 
-  // Extract page heights from the props
   const pagesHeight = useMemo(() => {
     return pages.map(item => item.height);
   }, [pages]);
 
-  // Extract page components from the props
   const pagesComponent = useMemo(() => {
     return pages.map(item => item.component);
   }, [pages]);
 
-  // Create an animated scroll handler 🙌
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
       if (!active.value) return;
 
-      // Interpolate the scroll position to update translateY
       const interpolatedHeight = interpolate(
         event.contentOffset.x,
         pages.map((_, index) => index * windowWidth),
@@ -131,17 +116,15 @@ const ScrollableBottomSheet = React.forwardRef<
         Extrapolate.CLAMP,
       );
 
-      // Update the translateY value of the bottom sheet
       scrollToY(-interpolatedHeight);
     },
   });
 
-  // Render the ScrollableBottomSheet component
   return (
     <BottomSheet translateY={translateY} active={active} scrollTo={scrollToY}>
       <Animated.ScrollView
         ref={scrollViewRef}
-        scrollEventThrottle={16} // 60fps 🤘
+        scrollEventThrottle={16}
         onScroll={scrollHandler}
         horizontal
         pagingEnabled

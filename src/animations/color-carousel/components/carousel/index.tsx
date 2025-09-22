@@ -1,4 +1,3 @@
-// Import necessary modules for the component
 import React from 'react';
 import Animated, {
   SharedValue,
@@ -7,9 +6,6 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CarouselItem } from './carousel-item';
-
-// Define the props for the component
-// Here the best thing to do is to parametrize the type of the items
 
 type BaseCarouselItemType = {
   mainColor: string;

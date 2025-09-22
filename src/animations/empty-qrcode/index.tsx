@@ -5,12 +5,10 @@ import { StyleSheet, View } from 'react-native';
 import type { QRCodeShareRefType } from './components/qrcode-share';
 import { QRCodeShare } from './components/qrcode-share';
 
-// App component
 export const EmptyQRCode = React.memo(() => {
   const qrCodeShareRef = useRef<QRCodeShareRefType>(null);
   return (
     <View style={styles.container}>
-      {/* QR code component */}
       <PressableScale
         onPress={() => {
           qrCodeShareRef.current?.toggle();
@@ -24,7 +22,6 @@ export const EmptyQRCode = React.memo(() => {
   );
 });
 
-// Styles for the components
 const styles = StyleSheet.create({
   container: {
     flex: 1,

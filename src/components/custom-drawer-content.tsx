@@ -100,6 +100,9 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
             style={styles.searchInput}
             placeholder="Search animations..."
             placeholderTextColor="#666"
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
             value={searchFilter}
             onChange={handleSearchChange}
             returnKeyType="search"

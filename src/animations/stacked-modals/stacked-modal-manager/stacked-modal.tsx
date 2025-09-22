@@ -12,7 +12,6 @@ import type { StackedModalType } from './context';
 import { useInternalStackedModal } from './hooks';
 import { MAX_VISIBLE_MODALS, MODAL_HEIGHT } from './constants';
 
-// Define the props for the StackedModal component
 type StackedModalProps = {
   index: number;
   stackedSheet: StackedModalType;
@@ -61,7 +60,6 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
     baseOpacity.value = withCustomSpring(1);
   }, [baseOpacity]);
 
-  // Animated styles for the StackedModal container
   const rStackedModalStyle = useAnimatedStyle(() => {
     return {
       bottom: bottom.value,
@@ -109,7 +107,6 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
     return stackedSheet.children();
   }, [stackedSheet]);
 
-  // Render the StackedModal component
   return (
     <Animated.View
       key={index}
@@ -146,7 +143,6 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
   );
 };
 
-// Styles for the StackedModal component
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -159,5 +155,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the StackedModal component for use in other files
 export { StackedModal };

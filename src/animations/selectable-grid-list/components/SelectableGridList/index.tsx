@@ -55,20 +55,18 @@ function SelectableGridList<T>({
   const flatListRef = useAnimatedRef<Animated.FlatList<T>>();
 
   const contentOffsetY = useSharedValue(0);
-  // The currentActiveIndexes are the indexes that are currently selected (not pending)
   const currentActiveIndexes = useSharedValue<number[]>([]);
 
-  // The pendingIndexes are the indexes that are currently being selected
   const pendingIndexes = useSharedValue<number[]>([]);
+  const pendingIndexesSet = useSharedValue<Set<number>>(new Set());
+  const currentActiveIndexesSet = useSharedValue<Set<number>>(new Set());
 
-  // The totalActiveIndexes are all the indexes that are currently selected (pending + current)
   const totalActiveIndexes = useDerivedValue(() => {
-    const combinedIndexes = [
-      ...currentActiveIndexes.value,
-      ...pendingIndexes.value,
-    ];
-
-    return [...new Set(combinedIndexes)];
+    const combined = new Set([...currentActiveIndexes.value]);
+    for (const idx of pendingIndexes.value) {
+      combined.add(idx);
+    }
+    return Array.from(combined);
   }, []);
 
   const calculateGridItemPosition = useCallback(
@@ -90,6 +88,8 @@ function SelectableGridList<T>({
     // its value is derived from the currentActiveIndexes and pendingIndexes
     currentActiveIndexes.value = [];
     pendingIndexes.value = [];
+    currentActiveIndexesSet.value = new Set();
+    pendingIndexesSet.value = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -118,8 +118,6 @@ function SelectableGridList<T>({
         onSelectionChange &&
         !sameElements(updatedActiveIndexes, prevActiveIndexes ?? [])
       ) {
-        // runOnJS is a helper function from reanimated that allows us to run a JS function
-        // asynchronously from the UI thread.
         runOnJS(onSelectionChange)(updatedActiveIndexes);
       }
     },
@@ -129,28 +127,28 @@ function SelectableGridList<T>({
 
   const toggleIndex = useCallback((index: number) => {
     'worklet';
-    if (currentActiveIndexes.value.includes(index)) {
-      currentActiveIndexes.value = currentActiveIndexes.value.filter(
-        i => i !== index,
-      );
+    const currentSet = new Set(currentActiveIndexes.value);
+    if (currentSet.has(index)) {
+      currentSet.delete(index);
     } else {
-      currentActiveIndexes.value = [...currentActiveIndexes.value, index];
+      currentSet.add(index);
     }
+    currentActiveIndexes.value = Array.from(currentSet);
+    currentActiveIndexesSet.value = currentSet;
 
     pendingIndexes.value = [];
+    pendingIndexesSet.value = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {
-      // Setup the initialSelectedIndex value
       initialSelectedIndex.value = calculateGridItemPosition({
         x: event.x,
-        y: event.y + contentOffsetY.value, // we need to add the contentOffsetY because the grid is scrollable
+        y: event.y + contentOffsetY.value,
       });
     })
     .onUpdate(event => {
-      // If the initialSelectedIndex is null, it means that the user has not started the gesture
       if (initialSelectedIndex.value == null) return;
 
       const pendingFinalIndex = calculateGridItemPosition({
@@ -158,19 +156,26 @@ function SelectableGridList<T>({
         y: event.y + contentOffsetY.value,
       });
 
-      pendingIndexes.value = generateNumbersInRange(
+      const newPending = generateNumbersInRange(
         initialSelectedIndex.value,
         pendingFinalIndex,
       );
-      currentActiveIndexes.value = currentActiveIndexes.value.filter(
-        index => !pendingIndexes.value.includes(index),
-      );
+      pendingIndexes.value = newPending;
+      const pendingSet = new Set(newPending);
+      pendingIndexesSet.value = pendingSet;
 
-      // Handling scroll when the user drags the item to the top or bottom of the screen
+      const filteredCurrent = [];
+      for (const idx of currentActiveIndexes.value) {
+        if (!pendingSet.has(idx)) {
+          filteredCurrent.push(idx);
+        }
+      }
+      currentActiveIndexes.value = filteredCurrent;
+      currentActiveIndexesSet.value = new Set(filteredCurrent);
+
       const lowerBound = contentOffsetY.value + itemSize;
       const upperBound = lowerBound + containerHeight - 2 * itemSize;
 
-      // Not sure if this is the best way to name it
       const scrollSpeed = itemSize * 0.15;
       if (event.y + contentOffsetY.value <= lowerBound) {
         scrollTo(flatListRef, 0, contentOffsetY.value - scrollSpeed, false);
@@ -186,24 +191,28 @@ function SelectableGridList<T>({
         y: event.y + contentOffsetY.value,
       });
 
-      pendingIndexes.value = generateNumbersInRange(
+      const finalPending = generateNumbersInRange(
         initialSelectedIndex.value,
         finalIndex,
       );
+      pendingIndexes.value = finalPending;
 
-      // If the user has only selected one item, we toggle it
-      if (pendingIndexes.value.length === 1) {
-        const index = pendingIndexes.value[0]!;
+      if (finalPending.length === 1) {
+        const index = finalPending[0]!;
         toggleIndex(index);
         return;
       }
 
-      currentActiveIndexes.value = [
-        ...new Set([...currentActiveIndexes.value, ...pendingIndexes.value]),
-      ];
+      const combined = new Set(currentActiveIndexes.value);
+      for (const idx of finalPending) {
+        combined.add(idx);
+      }
+      currentActiveIndexes.value = Array.from(combined);
+      currentActiveIndexesSet.value = combined;
     })
     .onFinalize(() => {
       pendingIndexes.value = [];
+      pendingIndexesSet.value = new Set();
       initialSelectedIndex.value = null;
     });
 
@@ -254,7 +263,12 @@ function SelectableGridList<T>({
       <Animated.FlatList<T>
         {...rest}
         ref={flatListRef}
-        scrollEventThrottle={16}
+        scrollEventThrottle={1}
+        removeClippedSubviews={true}
+        windowSize={10}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={20}
         onScroll={event => {
           contentOffsetY.value = event.nativeEvent.contentOffset.y;
           return rest?.onScroll?.(event);

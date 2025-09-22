@@ -44,10 +44,8 @@ const SectionTabs: React.FC<SectionTabsProps> = React.memo(
 
     const handleLayout = React.useCallback(
       (index: number, layout: LayoutRectangle) => {
-        // Update the layouts array
         onLayoutChange(index, layout);
 
-        // Set initial indicator position for the first tab
         if (index === 0) {
           onInitialLayout(layout);
         }

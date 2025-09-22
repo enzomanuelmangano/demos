@@ -67,7 +67,6 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
   const translateY = useSharedValue(0);
   const isSwiping = useSharedValue(false);
 
-  // Callback to dismiss the StackedSheet with animation
   const dismissItem = useCallback(() => {
     'worklet';
     translateY.value = withSpring(
@@ -85,19 +84,16 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
     );
   }, [onDismiss, stackedSheet.componentHeight, stackedSheetId, translateY]);
 
-  // Gesture handler for swipe interactions
   const gesture = Gesture.Pan()
     .enabled(isActiveStackedSheet)
     .onBegin(() => {
       isSwiping.value = true;
     })
     .onUpdate(event => {
-      // Allow swiping only to the down direction
       if (event.translationY < 0) return;
       translateY.value = event.translationY;
     })
     .onEnd(event => {
-      // Dismiss the StackedSheet if swiped enough, otherwise animate back to the initial position
       if (event.translationY > -50) {
         dismissItem();
       } else {
@@ -108,7 +104,6 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
       isSwiping.value = false;
     });
 
-  // Animated styles for the StackedSheet container
   const rStackedSheetStyle = useAnimatedStyle(() => {
     const scale = 1 - stackedSheetId * 0.05;
 
@@ -128,11 +123,8 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
     };
   }, [stackedSheet, stackedSheetId]);
 
-  // Animated styles for the visible container (opacity)
   const rVisibleContainerStyle = useAnimatedStyle(() => {
     return {
-      // The content of the first two StackedSheets is visible
-      // The content of the other StackedSheets is hidden
       opacity: withTiming(stackedSheetId <= 1 ? 1 : 0),
     };
   }, [stackedSheetId]);
@@ -142,7 +134,6 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
     return stackedSheet.children();
   }, [stackedSheet]);
 
-  // Render the StackedSheet component
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
@@ -177,7 +168,6 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
   );
 };
 
-// Styles for the StackedSheet component
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -191,5 +181,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the StackedSheet component for use in other files
 export { StackedSheet };

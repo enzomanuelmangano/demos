@@ -1,4 +1,3 @@
-// Import necessary modules and components from React and React Native
 import React, { useCallback } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -16,12 +15,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Import the Positions type
 import { lightHapticFeedback } from '../../utils/haptics';
 
 import type { Positions } from './types';
 
-// Define the props for the SortableItem component
 type SortableListItemProps = {
   children?: React.ReactNode;
   itemHeight: number;
@@ -34,7 +31,6 @@ type SortableListItemProps = {
   scrollViewRef: React.RefObject<Animated.ScrollView>;
 };
 
-// Define the SortableItem component
 const SortableItem: React.FC<SortableListItemProps> = ({
   children,
   itemHeight,
@@ -46,19 +42,15 @@ const SortableItem: React.FC<SortableListItemProps> = ({
   scrollContentOffsetY,
   scrollViewRef,
 }) => {
-  // Get safe area insets and window dimensions
   const inset = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const containerHeight = windowHeight - inset.top;
 
-  // Shared values for gesture handling
   const contextY = useSharedValue(0);
   const translateX = useSharedValue(0);
 
-  // Shared values for tracking gesture and animation state
   const wasLastActiveIndex = useSharedValue(false);
 
-  // Animated reaction to update last active index
   useAnimatedReaction(
     () => animatedIndex.value,
     currentActiveIndex => {
@@ -68,12 +60,10 @@ const SortableItem: React.FC<SortableListItemProps> = ({
     },
   );
 
-  // Derived value to check if the gesture is active
   const isGestureActive = useDerivedValue(() => {
     return animatedIndex.value === index;
   }, [index]);
 
-  // Callback to get the position of a list item
   // The idea is very simple here:
   // Imagine to have the positions.value map built as follows:
   // {
@@ -116,13 +106,11 @@ const SortableItem: React.FC<SortableListItemProps> = ({
       const scrollSpeed = itemHeight * 0.1;
 
       if (absoluteY <= lowerBound) {
-        // while scrolling to the top of the list
         const nextPosition = scrollContentOffsetY.value - scrollSpeed;
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       } else if (absoluteY + scrollContentOffsetY.value >= upperBound) {
-        // while scrolling to the bottom of the list
         const nextPosition = scrollContentOffsetY.value + scrollSpeed;
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -174,7 +162,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
     })
     .onFinalize(() => {
       translateX.value = withTiming(0, undefined, isFinished => {
-        // Check if the positions have changed to trigger the onDragEnd callback
         const positionsHaveChanged = Object.entries(prevPositions.value).some(
           ([key, value]) => {
             return positions.value[+key] !== value;
@@ -186,11 +173,9 @@ const SortableItem: React.FC<SortableListItemProps> = ({
         }
       });
       wasLastActiveIndex.value = true;
-      // Reset the animated index
       animatedIndex.value = null;
     });
 
-  // Derived value for the top position of the item
   const top = useDerivedValue(() => {
     if (isGestureActive.value) return positions.value[index];
 
@@ -246,7 +231,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
     };
   }, []);
 
-  // Render the SortableItem component
   return (
     <>
       <View
@@ -275,7 +259,6 @@ const SortableItem: React.FC<SortableListItemProps> = ({
   );
 };
 
-// Styles for SortableItem component
 const styles = StyleSheet.create({
   backgroundItem: {
     position: 'absolute',
@@ -298,5 +281,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the SortableItem component
 export { SortableItem };

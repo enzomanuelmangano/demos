@@ -1,4 +1,3 @@
-// Importing necessary libraries and components
 import React, { useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import {
@@ -21,37 +20,28 @@ import { PressableScale } from 'pressto';
 
 import { FractalGlassMask } from './components/fractal-glass-mask';
 
-// Defining a type for the theme
 type Theme = 'light' | 'dark';
 
-// Constant for circle radius
 const CircleRadius = 100;
 
-// Main App component
 const App = () => {
-  // State for the theme
   const [theme, setTheme] = useState<Theme>('light');
 
-  // Getting window dimensions
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
-  // Constants for positioning and dimensions
   const x = 40;
   const height = 300;
   const y = (windowHeight - height) / 2;
   const gradientsAmount = 4;
   const width = windowWidth - x * 2;
 
-  // Shared values for animated circle position
   const cx = useSharedValue(180);
   const cy = useSharedValue(270);
   const prevCx = useSharedValue(0);
   const prevCy = useSharedValue(0);
 
-  // Creating a Skia FractalMaskRectPath for the rectangle
   const fractalGlassMaskPath = rect(x, y, width, height);
 
-  // Gesture handler for panning
   const panGesture = Gesture.Pan()
     .onBegin(() => {
       prevCx.value = cx.value;
@@ -62,26 +52,22 @@ const App = () => {
       cy.value = prevCy.value + event.translationY;
     });
 
-  // Styling for the background color
   const rBackgroundStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: withTiming(theme === 'light' ? 'white' : 'black'),
     };
   }, [theme]);
 
-  // Derived value for circle color
   const circleColor = useDerivedValue(() => {
     return withTiming(theme === 'light' ? 'orange' : '#78C0E0');
   }, [theme]);
 
-  // Styling for the floating circle background color
   const rFloatingBackgroundStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: circleColor.value,
     };
   }, [theme]);
 
-  // Styling for the fake circle position
   const rFakeCircleStyle = useAnimatedStyle(() => {
     return {
       left: cx.value - CircleRadius,
@@ -89,11 +75,9 @@ const App = () => {
     };
   }, []);
 
-  // Rendering the main UI
   return (
     <Animated.View style={[styles.fill, rBackgroundStyle]}>
       <GestureDetector gesture={panGesture}>
-        {/* 1. Transparent (Fake) Circle */}
         <Animated.View
           style={[
             rFakeCircleStyle,
@@ -109,7 +93,6 @@ const App = () => {
       </GestureDetector>
 
       <Canvas style={styles.fill}>
-        {/* Uncomment this code to visualize the FractalGlassMask component 🪄 */}
         {/* <FractalGlassMask
           x={x}
           y={y}
@@ -118,7 +101,6 @@ const App = () => {
           gradientsN={gradientsAmount}
         /> */}
         <Group clip={fractalGlassMaskPath} invertClip>
-          {/* 2. Default Circle */}
           <Circle cx={cx} cy={cy} r={CircleRadius} color={circleColor} />
         </Group>
 
@@ -134,7 +116,6 @@ const App = () => {
                 gradientsN={gradientsAmount}
               />
             }>
-            {/* 3. Default Circle (Blurred Copy) */}
             <Circle
               cx={cx}
               cy={cy}
@@ -147,7 +128,6 @@ const App = () => {
         </Group>
       </Canvas>
 
-      {/* PressableScale component for theme toggle */}
       <PressableScale
         style={styles.floatingButton}
         onPress={() => {
@@ -166,7 +146,6 @@ const App = () => {
   );
 };
 
-// Styles for the components
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
@@ -187,5 +166,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Exporting the App component
 export { App as FractalGlass };

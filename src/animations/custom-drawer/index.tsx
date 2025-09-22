@@ -8,7 +8,6 @@ import { HomeScreen, SettingsScreen } from './components/screens';
 const Drawer = createDrawerNavigator();
 
 const CustomDrawerContainer = () => {
-  // Define the headerLeft component using the useCallback hook
   const headerLeft = useCallback(
     (props: { tintColor?: string | undefined }) => {
       return <DrawerIcon {...props} />;
@@ -16,7 +15,6 @@ const CustomDrawerContainer = () => {
     [],
   );
 
-  // Render the App component
   return (
     <Drawer.Navigator
       defaultStatus="closed"
@@ -33,5 +31,4 @@ const CustomDrawerContainer = () => {
   );
 };
 
-// Export the App component
 export { CustomDrawerContainer as CustomDrawer };

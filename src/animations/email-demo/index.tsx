@@ -59,9 +59,7 @@ const EmailDemo = () => {
 
   return (
     <>
-      {/* Main container */}
       <View style={styles.container}>
-        {/* Gradient overlay at the top */}
         <LinearGradient
           colors={['rgba(248,250,252,1)', 'rgba(248,250,252,0)']}
           start={[0, 0]}
@@ -70,29 +68,26 @@ const EmailDemo = () => {
           style={[
             styles.topGradient,
             {
-              height: safeTop * 1.5, // Adjust height based on safe area top
+              height: safeTop * 1.5,
             },
           ]}
         />
 
-        {/* Interactive list of items */}
         <InteractiveList
-          data={INITIAL_ITEMS} // Initial data for list
-          itemHeight={ITEM_HEIGHT + ITEM_MARGIN} // Height of each item including margin
-          amountToShift={erasedItems} // Shared value representing erased items count
-          itemContainerStyle={styles.listContainerItem} // Custom style for item container
+          data={INITIAL_ITEMS}
+          itemHeight={ITEM_HEIGHT + ITEM_MARGIN}
+          amountToShift={erasedItems}
+          itemContainerStyle={styles.listContainerItem}
           contentContainerStyle={{
-            paddingBottom: ITEM_HEIGHT + ITEM_MARGIN, // Padding at bottom to prevent items from being hidden behind buttons
-            paddingTop: safeTop, // Padding at top to avoid overlapping with status bar
+            paddingBottom: ITEM_HEIGHT + ITEM_MARGIN,
+            paddingTop: safeTop,
           }}
           renderItem={({ item }) => {
-            // Render each item using ListItem component
             return <ListItem item={item} itemHeight={ITEM_HEIGHT} />;
           }}
         />
       </View>
 
-      {/* Gradient overlay at the bottom */}
       <LinearGradient
         colors={['rgba(248,250,252,0)', 'rgba(248,250,252,1)']}
         start={[0, 0]}
@@ -101,13 +96,12 @@ const EmailDemo = () => {
         style={styles.bottomGradient}
       />
 
-      {/* Container for restore and delete buttons */}
       <View
         style={[
           styles.buttonsContainer,
           {
-            bottom: safeBottom + 10, // Position buttons at bottom with safe area padding
-            zIndex: 2, // Ensure buttons overlay other components
+            bottom: safeBottom + 10,
+            zIndex: 2,
           },
         ]}>
         {/* Restore button */}

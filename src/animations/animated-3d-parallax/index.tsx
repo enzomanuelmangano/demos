@@ -132,7 +132,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 5,
-    // Using transformOrigin instead of zIndex for proper 3D layering
   },
   cardShadow: {
     shadowColor: '#000',

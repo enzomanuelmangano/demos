@@ -1,4 +1,3 @@
-// Import necessary modules and components from React and React Native
 import React from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
@@ -8,7 +7,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// Define the type for information about each list item
 export type ItemInfo = {
   title: string;
   subtitle: string;
@@ -18,7 +16,6 @@ export type ItemInfo = {
   textIcon: string;
 };
 
-// Define the type for the props of the ListItem component
 type ListItemProps = {
   style?: StyleProp<ViewStyle>;
   activeIndex: SharedValue<number | null>;
@@ -27,7 +24,6 @@ type ListItemProps = {
   item: ItemInfo;
 };
 
-// Define the ListItem component
 export const ListItem: React.FC<ListItemProps> = ({
   style,
   activeIndex,
@@ -35,7 +31,6 @@ export const ListItem: React.FC<ListItemProps> = ({
   maxBorderRadius = 10,
   item,
 }) => {
-  // Use animated style for dynamic styling based on the active index
   const rStyle = useAnimatedStyle(() => {
     return {
       borderRadius: withTiming(
@@ -44,10 +39,8 @@ export const ListItem: React.FC<ListItemProps> = ({
     };
   }, [maxBorderRadius, index]);
 
-  // Render the ListItem component
   return (
     <Animated.View style={[styles.container, style, rStyle]}>
-      {/* Icon and Text Container */}
       <View style={styles.iconContainer}>
         <View style={[styles.icon, { backgroundColor: item.color }]}>
           <Text style={styles.iconText}>{item.textIcon}</Text>
@@ -58,9 +51,7 @@ export const ListItem: React.FC<ListItemProps> = ({
         </View>
       </View>
 
-      {/* Status Indicator Container */}
       <View style={styles.statusContainer}>
-        {/* Map through activeValues to render status items */}
         {new Array(item.activeValues.length).fill(0).map((_, i) => (
           <View
             key={i}
@@ -83,7 +74,6 @@ export const ListItem: React.FC<ListItemProps> = ({
   );
 };
 
-// Define styles for the ListItem component
 const styles = StyleSheet.create({
   container: {
     flex: 1,
