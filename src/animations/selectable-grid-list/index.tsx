@@ -84,6 +84,7 @@ const SelectableGridListContainer = () => {
           selectedIndexesAmount.value = indexes.length;
         }}
         renderItem={renderItem}
+        keyExtractor={(_, index) => index.toString()}
       />
       <PressableOpacity
         onPress={() => {

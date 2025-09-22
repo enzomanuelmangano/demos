@@ -58,14 +58,15 @@ function SelectableGridList<T>({
   const currentActiveIndexes = useSharedValue<number[]>([]);
 
   const pendingIndexes = useSharedValue<number[]>([]);
+  const pendingIndexesSet = useSharedValue<Set<number>>(new Set());
+  const currentActiveIndexesSet = useSharedValue<Set<number>>(new Set());
 
   const totalActiveIndexes = useDerivedValue(() => {
-    const combinedIndexes = [
-      ...currentActiveIndexes.value,
-      ...pendingIndexes.value,
-    ];
-
-    return [...new Set(combinedIndexes)];
+    const combined = new Set([...currentActiveIndexes.value]);
+    for (const idx of pendingIndexes.value) {
+      combined.add(idx);
+    }
+    return Array.from(combined);
   }, []);
 
   const calculateGridItemPosition = useCallback(
@@ -87,6 +88,8 @@ function SelectableGridList<T>({
     // its value is derived from the currentActiveIndexes and pendingIndexes
     currentActiveIndexes.value = [];
     pendingIndexes.value = [];
+    currentActiveIndexesSet.value = new Set();
+    pendingIndexesSet.value = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -124,15 +127,17 @@ function SelectableGridList<T>({
 
   const toggleIndex = useCallback((index: number) => {
     'worklet';
-    if (currentActiveIndexes.value.includes(index)) {
-      currentActiveIndexes.value = currentActiveIndexes.value.filter(
-        i => i !== index,
-      );
+    const currentSet = new Set(currentActiveIndexes.value);
+    if (currentSet.has(index)) {
+      currentSet.delete(index);
     } else {
-      currentActiveIndexes.value = [...currentActiveIndexes.value, index];
+      currentSet.add(index);
     }
+    currentActiveIndexes.value = Array.from(currentSet);
+    currentActiveIndexesSet.value = currentSet;
 
     pendingIndexes.value = [];
+    pendingIndexesSet.value = new Set();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -151,13 +156,22 @@ function SelectableGridList<T>({
         y: event.y + contentOffsetY.value,
       });
 
-      pendingIndexes.value = generateNumbersInRange(
+      const newPending = generateNumbersInRange(
         initialSelectedIndex.value,
         pendingFinalIndex,
       );
-      currentActiveIndexes.value = currentActiveIndexes.value.filter(
-        index => !pendingIndexes.value.includes(index),
-      );
+      pendingIndexes.value = newPending;
+      const pendingSet = new Set(newPending);
+      pendingIndexesSet.value = pendingSet;
+
+      const filteredCurrent = [];
+      for (const idx of currentActiveIndexes.value) {
+        if (!pendingSet.has(idx)) {
+          filteredCurrent.push(idx);
+        }
+      }
+      currentActiveIndexes.value = filteredCurrent;
+      currentActiveIndexesSet.value = new Set(filteredCurrent);
 
       const lowerBound = contentOffsetY.value + itemSize;
       const upperBound = lowerBound + containerHeight - 2 * itemSize;
@@ -177,23 +191,28 @@ function SelectableGridList<T>({
         y: event.y + contentOffsetY.value,
       });
 
-      pendingIndexes.value = generateNumbersInRange(
+      const finalPending = generateNumbersInRange(
         initialSelectedIndex.value,
         finalIndex,
       );
+      pendingIndexes.value = finalPending;
 
-      if (pendingIndexes.value.length === 1) {
-        const index = pendingIndexes.value[0]!;
+      if (finalPending.length === 1) {
+        const index = finalPending[0]!;
         toggleIndex(index);
         return;
       }
 
-      currentActiveIndexes.value = [
-        ...new Set([...currentActiveIndexes.value, ...pendingIndexes.value]),
-      ];
+      const combined = new Set(currentActiveIndexes.value);
+      for (const idx of finalPending) {
+        combined.add(idx);
+      }
+      currentActiveIndexes.value = Array.from(combined);
+      currentActiveIndexesSet.value = combined;
     })
     .onFinalize(() => {
       pendingIndexes.value = [];
+      pendingIndexesSet.value = new Set();
       initialSelectedIndex.value = null;
     });
 
@@ -244,7 +263,12 @@ function SelectableGridList<T>({
       <Animated.FlatList<T>
         {...rest}
         ref={flatListRef}
-        scrollEventThrottle={16}
+        scrollEventThrottle={1}
+        removeClippedSubviews={true}
+        windowSize={10}
+        maxToRenderPerBatch={10}
+        updateCellsBatchingPeriod={50}
+        initialNumToRender={20}
         onScroll={event => {
           contentOffsetY.value = event.nativeEvent.contentOffset.y;
           return rest?.onScroll?.(event);

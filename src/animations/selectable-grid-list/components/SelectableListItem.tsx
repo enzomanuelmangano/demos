@@ -40,8 +40,6 @@ const SelectableListItem: React.FC<SelectableListItemProps> = React.memo(
       return withTiming(isActive.value ? 4 : 0);
     }, []);
 
-    // The Math behind the perfect internalBorderRadius:
-    // https://www.30secondsofcode.org/css/s/nested-border-radius#:~:text=The%20border%20radius%20of%20the,tersely%20R1%20%2B%20D%20%3D%20R2%20.
     const internalBorderRadius = useDerivedValue(() => {
       return externalBorderRadius + activeBorderWidth.value;
     }, [externalBorderRadius]);
@@ -67,7 +65,7 @@ const SelectableListItem: React.FC<SelectableListItemProps> = React.memo(
 
     const source = useMemo(() => {
       return {
-        uri: `https://picsum.photos/400/400?key=${index}`,
+        uri: `https://picsum.photos/200/200?key=${index}`,
       };
     }, [index]);
 
@@ -83,7 +81,9 @@ const SelectableListItem: React.FC<SelectableListItemProps> = React.memo(
           source={source}
           style={[{ flex: 1 }, rImageStyle]}
           recyclingKey={index.toString()}
-          cachePolicy={'memory'}
+          cachePolicy={'memory-disk'}
+          contentFit="cover"
+          transition={100}
         />
         <Animated.View
           style={[
