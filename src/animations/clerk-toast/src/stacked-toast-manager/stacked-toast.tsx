@@ -3,13 +3,12 @@ import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeOutLeft,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { MAX_VISIBLE_TOASTS, TOAST_HEIGHT } from './constants';
 import type { StackedToastType } from './context';
 import { useInternalStackedToast } from './hooks';
@@ -79,7 +78,7 @@ const StackedToast: React.FC<StackedToastProps> = ({
       },
       isFinished => {
         if (isFinished) {
-          runOnJS(onDismiss)(stackedToastId);
+          scheduleOnRN(onDismiss, stackedToastId);
         }
       },
     );

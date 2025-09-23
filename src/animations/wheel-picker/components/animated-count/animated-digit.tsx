@@ -4,7 +4,6 @@ import React, { useCallback } from 'react';
 import type { ColorValue, StyleProp, TextStyle } from 'react-native';
 import { Platform, StyleSheet, Text } from 'react-native';
 import Animated, {
-  runOnJS,
   SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -13,6 +12,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type AnimatedDigitProps = {
   index: number;
@@ -115,7 +115,7 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       },
       (curr, prev) => {
         isChanging.value = curr !== prev;
-        runOnJS(resetIsChanging)();
+        scheduleOnRN(resetIsChanging);
       },
     );
 

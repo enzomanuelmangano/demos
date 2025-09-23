@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import React, { useCallback, useMemo, useState } from 'react';
+import { type FC, type ReactNode, useCallback, useMemo, useState } from 'react';
 import type { ViewProps, ViewStyle } from 'react-native';
 import {
   StyleSheet,
@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
-  runOnJS,
   useAnimatedProps,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -18,6 +17,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { PopupAlignment, PopupOptionType } from './BlurredContext';
 import { BlurredPopupContext } from './BlurredContext';
@@ -29,7 +29,7 @@ type MenuLayout = {
 };
 
 type BlurredPopupProviderProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   menuLayout?: MenuLayout;
   maxBlur?: number;
 };
@@ -40,13 +40,13 @@ const DEFAULT_MENU_LAYOUT: Required<MenuLayout> = {
   listItemHeight: 54,
 };
 
-const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
+const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
   children,
   menuLayout: menuLayoutProp,
   maxBlur = 5,
 }) => {
   const [params, setParams] = useState<{
-    node: React.ReactNode;
+    node: ReactNode;
     layout: MeasuredDimensions;
     options?: PopupOptionType[];
   } | null>(null);
@@ -77,7 +77,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
       layout,
       options: popupOptions,
     }: {
-      node: React.ReactNode;
+      node: ReactNode;
       layout: MeasuredDimensions;
       options: PopupOptionType[];
     }) => {
@@ -108,7 +108,7 @@ const BlurredPopupProvider: React.FC<BlurredPopupProviderProps> = ({
     },
     (value, prevValue) => {
       if (value === 0 && prevValue && prevValue > value) {
-        runOnJS(resetParams)();
+        scheduleOnRN(resetParams);
       }
     },
   );

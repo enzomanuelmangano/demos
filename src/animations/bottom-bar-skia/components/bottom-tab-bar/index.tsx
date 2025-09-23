@@ -9,11 +9,13 @@ import {
   rect,
   Skia,
 } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import type React from 'react';
+import { useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { runOnJS, useDerivedValue, withSpring } from 'react-native-reanimated';
+import { useDerivedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Touchable from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { ScreenNames } from '../../constants/screens';
 
@@ -114,7 +116,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
               y={BOTTOM_BAR_HEIGHT_OFFSET}
               onTap={() => {
                 'worklet';
-                runOnJS(navigateTo)(screenName);
+                scheduleOnRN(navigateTo, screenName);
               }}
               height={bottomTabBarHeight}
               width={screenWidth / tabBarScreens}

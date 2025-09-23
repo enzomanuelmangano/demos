@@ -6,10 +6,11 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
-import Animated, { runOnJS, useSharedValue } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { GridVisualizer as GridVisualizerComponent } from './grid-visualizer';
 
@@ -43,7 +44,7 @@ export function GridVisualizer() {
   }, [text]);
 
   const tapGesture = Gesture.Tap().onTouchesUp(() => {
-    runOnJS(generateRandomText)();
+    scheduleOnRN(generateRandomText);
   });
 
   return (

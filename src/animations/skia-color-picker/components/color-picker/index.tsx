@@ -10,20 +10,20 @@ import {
   Skia,
   SweepGradient,
 } from '@shopify/react-native-skia';
+import type { FC } from 'react';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-
-import { hsvToRgb } from './utils/hsv-to-rgb';
+import { scheduleOnRN } from 'react-native-worklets';
 import { radialGradientShader } from './shader';
+import type { Point } from './types';
 import { clampToCircle } from './utils/clamp-to-circle';
 import { getHueFromPosition } from './utils/get-hue-from-position';
 import { getSaturationFromPosition } from './utils/get-saturation-from-position';
-import type { Point } from './types';
+import { hsvToRgb } from './utils/hsv-to-rgb';
 
 type ColorPickerProps = {
   canvasSize: number;
@@ -33,7 +33,7 @@ type ColorPickerProps = {
 };
 
 // ColorPicker component
-const ColorPicker: React.FC<ColorPickerProps> = ({
+const ColorPicker: FC<ColorPickerProps> = ({
   canvasSize,
   blur,
   // Set default shape for the color picker if none provided
@@ -131,7 +131,7 @@ const ColorPicker: React.FC<ColorPickerProps> = ({
     () => rgba.value,
     color => {
       if (onColorUpdate) {
-        runOnJS(onColorUpdate)(color);
+        scheduleOnRN(onColorUpdate, color);
       }
     },
   );

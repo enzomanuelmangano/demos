@@ -1,8 +1,9 @@
-import { Alert, StyleSheet, View } from 'react-native';
-import { runOnJS, useSharedValue } from 'react-native-reanimated';
-import { useRef } from 'react';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
+import { useRef } from 'react';
+import { Alert, StyleSheet, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
 import type { CircularDraggableSliderRefType } from './components/draggable-slider';
@@ -59,7 +60,7 @@ const App = () => {
         }}
         onProgressChange={sliderProgress => {
           'worklet';
-          runOnJS(hapticLight)();
+          scheduleOnRN(hapticLight);
           if (sliderProgress < 0) {
             return;
           }

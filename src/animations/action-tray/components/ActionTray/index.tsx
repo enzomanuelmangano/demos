@@ -1,19 +1,18 @@
+import React, { useCallback, useImperativeHandle } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Dimensions, StyleSheet } from 'react-native';
-import React, { useCallback, useImperativeHandle } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolate,
   FadeIn,
   FadeOut,
-  Layout,
   interpolate,
-  runOnJS,
+  Layout,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { Backdrop } from './Backdrop';
 
 // Get the screen height
@@ -97,7 +96,7 @@ const ActionTray = React.forwardRef<ActionTrayRef, ActionTrayProps>(
         if (event.translationY > 100) {
           // Close the Action Tray when the user swipes down
           if (onClose) {
-            runOnJS(onClose)();
+            scheduleOnRN(onClose);
           } else close();
         } else {
           // Restore to the previous position if the users doesn't swipe down enough

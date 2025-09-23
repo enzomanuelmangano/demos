@@ -1,27 +1,27 @@
-import React, { useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { type FC, type ReactNode, useCallback } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedProps,
+  useAnimatedStyle,
   useSharedValue,
   withSpring,
-  useAnimatedStyle,
-  runOnJS,
-  interpolate,
-  Extrapolation,
-  useAnimatedProps,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { startAnimation } from '../../../animations/bouncy';
 
 interface PullToDismissGestureProps {
   onClose?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
-export const PullToDismissGesture: React.FC<PullToDismissGestureProps> = ({
+export const PullToDismissGesture: FC<PullToDismissGestureProps> = ({
   onClose,
   children,
 }) => {
@@ -51,14 +51,14 @@ export const PullToDismissGesture: React.FC<PullToDismissGestureProps> = ({
         translateY.set(event.translationY);
 
         if (translateY.value > 120) {
-          runOnJS(triggerMainAnimation)();
+          scheduleOnRN(triggerMainAnimation);
         }
       }
     })
     .onEnd(event => {
       // If pulled down enough or velocity is high, close modal
       if (translateY.get() > 80 || event.velocityY > 800) {
-        runOnJS(handleClose)();
+        scheduleOnRN(handleClose);
       } else {
         // Snap back
         translateY.set(

@@ -5,12 +5,12 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { MeasuredDimensions, SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type ConfirmButtonProps = {
   animationProgress: SharedValue<number>;
@@ -64,7 +64,7 @@ const ConfirmButton: React.FC<ConfirmButtonProps> = React.memo(
         scale.value = withTiming(0.95);
       })
       .onTouchesUp(() => {
-        if (onConfirm) runOnJS(onConfirm)();
+        if (onConfirm) scheduleOnRN(onConfirm);
       })
       .onFinalize(() => {
         scale.value = withTiming(1);

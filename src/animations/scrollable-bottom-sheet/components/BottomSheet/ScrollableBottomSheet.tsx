@@ -1,4 +1,6 @@
-import React, {
+import {
+  forwardRef,
+  type ReactNode,
   useCallback,
   useImperativeHandle,
   useMemo,
@@ -8,16 +10,16 @@ import { useWindowDimensions } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
-  runOnJS,
   useAnimatedScrollHandler,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { BottomSheet } from './BottomSheet';
 
 type BottomSheetProps = {
-  pages: { height: number; component: React.ReactNode }[];
+  pages: { height: number; component: ReactNode }[];
 };
 
 export type ScrollableBottomSheetRef = {
@@ -27,7 +29,7 @@ export type ScrollableBottomSheetRef = {
   close: () => void;
 };
 
-const ScrollableBottomSheet = React.forwardRef<
+const ScrollableBottomSheet = forwardRef<
   ScrollableBottomSheetRef,
   BottomSheetProps
 >(({ pages }, ref) => {
@@ -65,7 +67,7 @@ const ScrollableBottomSheet = React.forwardRef<
     active.value = destination !== 0;
 
     if (destination === 0) {
-      runOnJS(scrollToX)(0, 500);
+      scheduleOnRN(scrollToX, 0, 500);
     }
     translateY.value = withSpring(destination, {
       damping: 25,

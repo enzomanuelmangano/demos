@@ -1,22 +1,22 @@
-import { useCallback, useId } from 'react';
+import { type ReactNode, useCallback, useId } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  AnimatedRef,
+  type AnimatedRef,
   Easing,
-  runOnJS,
   useAnimatedRef,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { WrapperRef } from 'react-native-reanimated/lib/typescript/commonTypes';
+import type { WrapperRef } from 'react-native-reanimated/lib/typescript/commonTypes';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { useCustomNavigation } from './expansion-provider';
 
 type NavigationItemProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onNavigate?: () => void;
   config?: {
@@ -39,7 +39,7 @@ const NavigationItem = ({
     useCustomNavigation();
   const onNavigateWrapper = useCallback(() => {
     if (onNavigate) {
-      runOnJS(onNavigate)();
+      scheduleOnRN(onNavigate);
     }
   }, [onNavigate]);
 
@@ -58,7 +58,7 @@ const NavigationItem = ({
         color: config?.color,
         onComplete: () => {
           'worklet';
-          runOnJS(onNavigateWrapper)();
+          scheduleOnRN(onNavigateWrapper);
         },
       });
     });

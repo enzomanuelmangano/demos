@@ -3,12 +3,12 @@ import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
-  runOnJS,
   SharedValue,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Palette } from '../../constants/palette';
 
@@ -64,7 +64,7 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
     })
     .onTouchesUp(() => {
       const option = floatingProgress.value > 0.5 ? 'default' : 'message';
-      if (onSelect) runOnJS(onSelect)(option);
+      if (onSelect) scheduleOnRN(onSelect, option);
     })
     .onFinalize(() => {
       highlighted.value = false;

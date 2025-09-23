@@ -1,16 +1,16 @@
 import { Image } from 'expo-image';
-import React, { useCallback } from 'react';
+import type React from 'react';
+import { useCallback } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
   measure,
-  runOnJS,
-  SharedValue,
+  type SharedValue,
   useAnimatedRef,
   useAnimatedStyle,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { PressableScale } from './pressable-scale';
 
 type ListItemProps<T> = {
@@ -52,7 +52,7 @@ const ListItem = <
     'worklet';
     const layout = measure(viewRef);
     if (onTap)
-      runOnJS(onTap)({
+      scheduleOnRN(onTap, {
         item, // item is the item you passed to the list
         index, // index is the index of the item in the list
         layout: layout ?? {

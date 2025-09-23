@@ -9,15 +9,14 @@ import {
 } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import {
-  runOnJS,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
-
-import { Donut } from './donut';
+import { scheduleOnRN } from 'react-native-worklets';
 import { BackgroundDots } from './background-dots';
+import { Donut } from './donut';
 import { Picker } from './picker';
 
 type CircularSliderProps = {
@@ -89,7 +88,7 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     () => animatedValue.value,
     (curr, prev) => {
       if (prev == null) return;
-      if (onValueChange) runOnJS(onValueChange)(curr);
+      if (onValueChange) scheduleOnRN(onValueChange, curr);
     },
   );
 

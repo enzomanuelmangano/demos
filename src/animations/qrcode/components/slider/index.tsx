@@ -1,16 +1,16 @@
-import { useMemo } from 'react';
+import { type FC, useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
-  useAnimatedReaction,
-  interpolate,
-  runOnJS,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type SliderProps = {
   pickerSize?: number;
@@ -37,7 +37,7 @@ const clamp = (value: number, lowerBound: number, upperBound: number) => {
 // Basically I took the structure of the slider from my previous slider animation
 // - https://www.patreon.com/posts/balloon-slider-79018863
 
-const Slider: React.FC<SliderProps> = ({
+const Slider: FC<SliderProps> = ({
   pickerSize = 50,
   minValue = 0,
   maxValue = 1,
@@ -78,7 +78,7 @@ const Slider: React.FC<SliderProps> = ({
         [0, sliderWidth],
         [minValue, maxValue],
       );
-      if (onUpdate) runOnJS(onUpdate)(progress);
+      if (onUpdate) scheduleOnRN(onUpdate, progress);
     },
   );
 

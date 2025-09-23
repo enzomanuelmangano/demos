@@ -1,17 +1,17 @@
 import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { useMemo } from 'react';
+import { type FC, useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  runOnJS,
+  type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   withSpring,
   withTiming,
-  type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { hapticFeedback } from '../../utils/haptics';
 
@@ -29,7 +29,7 @@ export type RecordButtonProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export const RecordButton: React.FC<RecordButtonProps> = ({
+export const RecordButton: FC<RecordButtonProps> = ({
   width,
   height,
   progress,
@@ -74,7 +74,7 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
     () => activated.value,
     (currentlyActivated, prevActivated) => {
       if (currentlyActivated && !prevActivated) {
-        runOnJS(hapticFeedback)();
+        scheduleOnRN(hapticFeedback);
       }
     },
   );

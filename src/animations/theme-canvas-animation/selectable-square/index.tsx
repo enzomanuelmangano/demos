@@ -1,13 +1,13 @@
 import { Group, RoundedRect } from '@shopify/react-native-skia';
-import React from 'react';
+import type { FC } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import {
-  runOnJS,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type SelectableSquareProps = {
   cx: SharedValue<number>;
@@ -20,7 +20,7 @@ type SelectableSquareProps = {
   borderColor?: string;
 };
 
-const SelectableSquare: React.FC<SelectableSquareProps> = ({
+const SelectableSquare: FC<SelectableSquareProps> = ({
   cx,
   cy,
   size,
@@ -41,7 +41,7 @@ const SelectableSquare: React.FC<SelectableSquareProps> = ({
       'worklet';
       scale.value = withSpring(1);
       if (onSelect) {
-        runOnJS(onSelect)();
+        scheduleOnRN(onSelect);
       }
     },
   });
@@ -93,7 +93,7 @@ type SelectableSquareContainerProps = Omit<
   coordinates: SharedValue<{ cx: number; cy: number }[]>;
 };
 
-const SelectableSquareContainer: React.FC<SelectableSquareContainerProps> = ({
+const SelectableSquareContainer: FC<SelectableSquareContainerProps> = ({
   coordinates,
   index,
   ...props

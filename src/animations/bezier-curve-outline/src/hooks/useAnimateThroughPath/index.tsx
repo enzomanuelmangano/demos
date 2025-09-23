@@ -1,17 +1,16 @@
 import type { SkPath } from '@shopify/react-native-skia';
+import { useCallback } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import {
   cancelAnimation,
   Easing,
   interpolate,
-  runOnJS,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useCallback } from 'react';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { PathGeometry } from './utils/geometry';
 
 type Point = {
@@ -58,7 +57,7 @@ export const useAnimateThroughPath = ({
   useAnimatedReaction(
     () => pathReference.value,
     () => {
-      runOnJS(assignPathPoints)();
+      scheduleOnRN(assignPathPoints);
     },
     [assignPathPoints],
   );

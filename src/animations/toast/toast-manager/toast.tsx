@@ -1,13 +1,13 @@
+import { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useCallback, useEffect } from 'react';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { ToastType } from './context';
 
@@ -62,7 +62,7 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
     'worklet';
     translateX.value = withTiming(-windowWidth, undefined, isFinished => {
       if (isFinished) {
-        runOnJS(onDismiss)(toast.id);
+        scheduleOnRN(onDismiss, toast.id);
       }
     });
   }, [onDismiss, toast.id, translateX, windowWidth]);

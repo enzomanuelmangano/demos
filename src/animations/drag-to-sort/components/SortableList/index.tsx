@@ -1,14 +1,14 @@
 // Import necessary modules and components from React and React Native
-import React, { useCallback } from 'react';
+import type { ReactNode } from 'react';
+import { useCallback } from 'react';
 import type { ScrollViewProps } from 'react-native';
 import Animated, {
-  runOnJS,
   useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 // Import the SortableItem component and Positions type
 import { SortableItem } from './SortableItem';
 import type { Positions } from './types';
@@ -17,10 +17,10 @@ import type { Positions } from './types';
 type SortableListProps<T> = {
   listItemHeight: number;
   data: T[];
-  renderItem?: (_: { item: T; index: number }) => React.ReactNode;
+  renderItem?: (_: { item: T; index: number }) => ReactNode;
   onAnimatedIndexChange?: (index: number | null) => void;
   onDragEnd?: (positions: Positions) => void;
-  backgroundItem?: React.ReactNode;
+  backgroundItem?: ReactNode;
 } & ScrollViewProps;
 
 // Define the SortableList component
@@ -63,7 +63,8 @@ function SortableList<T>({
   useAnimatedReaction(
     () => animatedIndex.value,
     currentIndex => {
-      if (onAnimatedIndexChange) runOnJS(onAnimatedIndexChange)(currentIndex);
+      if (onAnimatedIndexChange)
+        scheduleOnRN(onAnimatedIndexChange, currentIndex);
     },
   );
 

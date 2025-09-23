@@ -2,7 +2,8 @@ import { AntDesign } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { runOnJS, useSharedValue } from 'react-native-reanimated';
+import { useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedSquares } from './components/animated-squares';
 import { FrictionSlider } from './components/friction-slider';
@@ -40,7 +41,7 @@ export const TwodosSlide = () => {
               // This is going to be called every time the progress changes
               // So the idea is to call the haptic feedback only once when the progress is 1
               // With a debounce (leading: true, trailing: false)
-              runOnJS(debouncedHapticFeedback)();
+              scheduleOnRN(debouncedHapticFeedback);
               // unlock with Burnt
               // Burnt.toast({
               //   title: 'Unlocked 🎉',

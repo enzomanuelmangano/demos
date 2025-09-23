@@ -7,23 +7,22 @@ import {
   rrect,
   Skia,
 } from '@shopify/react-native-skia';
-import React, { useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import {
-  runOnJS,
+  Directions,
+  Gesture,
+  GestureDetector,
+} from 'react-native-gesture-handler';
+import {
   useAnimatedReaction,
   useDerivedValue,
   useFrameCallback,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  Directions,
-  Gesture,
-  GestureDetector,
-} from 'react-native-gesture-handler';
-
-import { useConst } from './use-const';
+import { scheduleOnRN } from 'react-native-worklets';
 import { SnakeGame } from './snake-game';
+import { useConst } from './use-const';
 
 export type SnakeBoardProps = {
   n: number;
@@ -36,7 +35,7 @@ export type SnakeBoardRef = {
   restart: () => void;
 };
 
-export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
+export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
   ({ n, boardSize, onScoreChange, onGameOver }, ref) => {
     const rows = n;
     const columns = n;
@@ -66,7 +65,7 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       Gesture.Fling()
         .direction(direction)
         .onStart(() => {
-          runOnJS(changeDirectionWrapper)(direction);
+          scheduleOnRN(changeDirectionWrapper, direction);
         });
 
     const gestures = Gesture.Simultaneous(
@@ -90,7 +89,7 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
 
       const { timestamp } = frameInfo;
       if (timestamp - lastTimestamp.value > 120) {
-        runOnJS(updateGame)();
+        scheduleOnRN(updateGame);
         lastTimestamp.value = timestamp;
       }
     });
@@ -103,7 +102,7 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       () => gameState.value.isGameOver,
       isGameOver => {
         if (isGameOver) {
-          runOnJS(onGameOverWrapper)();
+          scheduleOnRN(onGameOverWrapper);
         }
       },
     );
@@ -119,7 +118,7 @@ export const SnakeBoard = React.forwardRef<SnakeBoardRef, SnakeBoardProps>(
       () => gameState.value.score,
       (score, prevScore) => {
         if (prevScore !== score) {
-          runOnJS(onScoreChangeWrapper)(score);
+          scheduleOnRN(onScoreChangeWrapper, score);
         }
       },
     );

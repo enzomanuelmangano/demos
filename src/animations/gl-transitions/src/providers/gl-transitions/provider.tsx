@@ -3,19 +3,19 @@ import {
   Canvas,
   Fill,
   ImageShader,
-  Shader,
   makeImageFromView,
+  Shader,
 } from '@shopify/react-native-skia';
 import React, { useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import type { WithTimingConfig } from 'react-native-reanimated';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { transition } from './utils/transition';
 
@@ -87,7 +87,7 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
           firstScreenSnapshot.value = null;
           secondScreenSnapshot.value = null;
           progress.value = 0;
-          if (onCompleted) runOnJS(onCompleted)();
+          if (onCompleted) scheduleOnRN(onCompleted);
         }
       });
     },

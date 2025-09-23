@@ -2,20 +2,20 @@ import {
   Canvas,
   Group,
   Path,
-  Skia,
   rect,
   rrect,
+  Skia,
 } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type GeometryButtonProps = {
   onPress?: () => void;
@@ -34,7 +34,7 @@ export const GeometryButton: React.FC<GeometryButtonProps> = React.memo(
         isActive.value = true;
       })
       .onTouchesUp(() => {
-        if (onPress) runOnJS(onPress)();
+        if (onPress) scheduleOnRN(onPress);
       })
       .onFinalize(() => {
         isActive.value = false;

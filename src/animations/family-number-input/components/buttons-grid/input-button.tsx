@@ -4,11 +4,11 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 // Define the props for the InputButton component
 type InputButtonProps = {
@@ -30,7 +30,7 @@ const InputButton: React.FC<InputButtonProps> = React.memo(
         progress.value = withTiming(1, { duration: 100 });
       })
       .onTouchesUp(() => {
-        if (onTap) runOnJS(onTap)();
+        if (onTap) scheduleOnRN(onTap);
       })
       .onFinalize(() => {
         progress.value = withTiming(0);
@@ -41,7 +41,7 @@ const InputButton: React.FC<InputButtonProps> = React.memo(
     const longTapGesture = Gesture.LongPress()
       .minDuration(500)
       .onStart(() => {
-        if (onLongTap) runOnJS(onLongTap)();
+        if (onLongTap) scheduleOnRN(onLongTap);
       });
 
     // Animated style based on touch progress

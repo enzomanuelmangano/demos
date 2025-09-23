@@ -1,19 +1,18 @@
+import { MaterialIcons } from '@expo/vector-icons';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
+import { useCallback, useRef } from 'react';
+import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import React, { useCallback, useRef } from 'react';
-import { StyleSheet } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
-
-import { FourierVisualizer } from './components/fourier-visualizer';
+import { scheduleOnRN } from 'react-native-worklets';
 import type { FourierVisualizerRefType } from './components/fourier-visualizer';
+import { FourierVisualizer } from './components/fourier-visualizer';
 
 // The main App component.
 const App = () => {
@@ -57,7 +56,7 @@ const App = () => {
   // Define the pan gesture for drawing.
   const panGesture = Gesture.Pan()
     .onStart(({ x, y }) => {
-      runOnJS(clear)();
+      scheduleOnRN(clear);
       isDrawing.value = false;
       drawPath.value.reset();
       opacity.value = withTiming(1);
@@ -76,7 +75,7 @@ const App = () => {
     .onEnd(() => {
       opacity.value = withTiming(0);
       const svgString = drawPath.value.toSVGString();
-      runOnJS(drawPathWrapper)(svgString);
+      scheduleOnRN(drawPathWrapper, svgString);
     });
 
   // Animated style for the clear button.
@@ -103,7 +102,7 @@ const App = () => {
               ref={value => {
                 // this is necessary otherwise the ref will crash on going back
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                // @ts-ignore
+                // @ts-expect-error
                 ref.current = value;
               }}
               strokeWidth={5}
