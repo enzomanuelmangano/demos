@@ -1,18 +1,18 @@
 import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
 import React, { useMemo } from 'react';
-import Touchable from 'react-native-skia-gesture';
 import {
   interpolateColor,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+import Touchable from 'react-native-skia-gesture';
 
 import { BOTTOM_BAR_ICONS } from './svg-icons';
 
 type BottomTabIconProps = {
   x: number;
   y: number;
-  onEnd: () => void;
+  onTap: () => void;
   height: number;
   width: number;
   currentIndex: number;
@@ -26,7 +26,7 @@ const TimingConfig = {
 };
 
 const BottomTabItem: React.FC<BottomTabIconProps> = React.memo(
-  ({ x, y, height, width, onEnd, currentIndex, index }) => {
+  ({ x, y, height, width, onTap, currentIndex, index }) => {
     const isActive = index === currentIndex;
 
     const baseTranslateY = y + height / 2 - iconSize / 2 - 8;
@@ -69,7 +69,7 @@ const BottomTabItem: React.FC<BottomTabIconProps> = React.memo(
       <Group>
         <Touchable.Rect
           x={x}
-          onEnd={onEnd}
+          onTap={onTap}
           height={height}
           width={width}
           y={y}

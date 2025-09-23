@@ -26,3 +26,5 @@ build/node_modules
 .pnp.cjs
 
 mcp.json
+
+CLAUDE.md

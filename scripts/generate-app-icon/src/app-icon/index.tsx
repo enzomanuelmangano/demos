@@ -1,18 +1,18 @@
 import {
-  Fill,
-  LinearGradient,
-  Group,
-  Text,
   BlurMask,
+  Fill,
+  Group,
+  LinearGradient,
+  Text,
 } from '@shopify/react-native-skia/lib/commonjs/headless';
-import React, { useMemo } from 'react';
 import type {
   SkFont,
   Skia,
 } from '@shopify/react-native-skia/lib/commonjs/skia/types';
+import React, { useMemo } from 'react';
 
-import { Spiral } from './spiral';
 import { Grid } from './grid';
+import { Spiral } from './spiral';
 
 type AppIconProps = {
   width: number;
@@ -45,8 +45,9 @@ export const AppIcon = ({
 
   const textY = useMemo(() => {
     const textHeight = fontSize;
-    return height / 2 + textHeight / 3.2;
+    return height / 2 + textHeight / 3;
   }, [fontSize, height]);
+
   const textX = useMemo(() => {
     // font.measureText is not supported in Headless mode
     const textWidth = font.getTextWidth(text);

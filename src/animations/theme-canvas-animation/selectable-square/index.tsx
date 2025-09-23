@@ -35,17 +35,11 @@ const SelectableSquare: React.FC<SelectableSquareProps> = ({
   const touchableHandler = useGestureHandler({
     onStart: () => {
       'worklet';
-      scale.value = withSpring(0.9, {
-        damping: 5,
-        mass: 1,
-      });
+      scale.value = withSpring(0.9);
     },
-    onEnd: () => {
+    onTap: () => {
       'worklet';
-      scale.value = withSpring(1, {
-        damping: 5,
-        mass: 1,
-      });
+      scale.value = withSpring(1);
       if (onSelect) {
         runOnJS(onSelect)();
       }

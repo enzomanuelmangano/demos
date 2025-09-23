@@ -56,7 +56,7 @@ export const ExclusionTabBox: React.FC<ExclusionTabBoxProps> = ({
     // I'm using the onEnd callback to trigger the onPress function
     // but since the onPress function is not a worklet function I need to wrap it with runOnJS
     <Touchable.Path
-      onEnd={() => {
+      onTap={() => {
         'worklet';
         runOnJS(onTap)();
       }}

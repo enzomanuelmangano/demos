@@ -112,7 +112,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
               currentIndex={currentIndex}
               x={(screenWidth / tabBarScreens) * index}
               y={BOTTOM_BAR_HEIGHT_OFFSET}
-              onEnd={() => {
+              onTap={() => {
                 'worklet';
                 runOnJS(navigateTo)(screenName);
               }}
