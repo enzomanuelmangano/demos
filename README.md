@@ -46,6 +46,24 @@ src/
 └── utils/        # Helper functions
 ```
 
+## Sponsors
+
+If you find these animations helpful, consider supporting the project:
+
+- 💖 [GitHub Sponsors](https://github.com/sponsors/enzomanuelmangano)
+- ✨ [Demos](https://reactiive.io/demos)
+- 🎓 **Learn to build these animations**: Check out my course at [reanimate.dev](https://reanimate.dev). Dive deep into the world of React Native animations with this course, designed to guide you from the basics to advanced techniques
+
+Your support helps maintain this project and support my open-source work!
+
 ## License
 
-You can find the full license [here](https://reactiive.io/docs/license).
+This project is licensed under a custom Software License Agreement. See [LICENSE.md](./LICENSE.md) for details.
+
+**Key points:**
+
+- ✅ Free for everyone (individuals and companies)
+- ✅ Can use in commercial projects
+- ✅ Can modify and customize for your needs
+- ❌ Cannot resell or redistribute the code
+- ❌ Cannot create competing animation libraries
