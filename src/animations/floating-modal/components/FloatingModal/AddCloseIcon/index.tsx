@@ -1,7 +1,7 @@
 import { AntDesign } from '@expo/vector-icons';
 import { type FC, memo } from 'react';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   type SharedValue,
   useAnimatedStyle,
@@ -20,7 +20,7 @@ const AddCloseIcon: FC<AddCloseIconProps> = memo(({ onPress, progress }) => {
       progress.value,
       [0, 1],
       [0, Math.PI / 4],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {

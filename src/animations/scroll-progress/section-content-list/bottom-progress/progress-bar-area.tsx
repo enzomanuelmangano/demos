@@ -1,7 +1,7 @@
 import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   type SharedValue,
   useAnimatedStyle,
@@ -28,7 +28,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
         progress.value,
         [0, 1],
         [0, 100],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
 
       return {

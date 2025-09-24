@@ -8,7 +8,7 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   FadeIn,
   FadeOut,
   interpolate,
@@ -116,7 +116,7 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
         translateY.value,
         [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
         [25, 5],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
 
       return {

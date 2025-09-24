@@ -2,7 +2,7 @@ import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
@@ -20,7 +20,7 @@ const BottomSheet: FC<BottomSheetProps> = memo(({ animationProgress }) => {
       animationProgress.value,
       [0, 1],
       [BOTTOM_SHEET_HEIGHT, BOTTOM_SHEET_OFFSET],
-      Extrapolate.EXTEND,
+      Extrapolation.EXTEND,
     );
     return {
       transform: [
@@ -36,7 +36,7 @@ const BottomSheet: FC<BottomSheetProps> = memo(({ animationProgress }) => {
       animationProgress.value,
       [0.2, 1],
       [0, 1],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
     return {
       opacity,

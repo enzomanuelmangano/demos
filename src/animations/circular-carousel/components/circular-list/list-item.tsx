@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { type FC } from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -64,12 +64,12 @@ const CircularListItem: FC<{
     // Interpolate the content offset value within the specified input and output ranges.
     // The input range is a set of values determined by the list item's position.
     // The output range is the corresponding scale values based on whether scaling is enabled.
-    // Extrapolate.CLAMP ensures that the scale value stays within the defined output range.
+    // Extrapolation.CLAMP ensures that the scale value stays within the defined output range.
     const interpolatedScale = interpolate(
       contentOffset.value, // Current content offset value from the shared value
       inputRange, // Input range array based on the list item's position
       scaleOutputRange.value, // Output range array for scale values
-      Extrapolate.CLAMP, // Clamp the interpolated value within the output range
+      Extrapolation.CLAMP, // Clamp the interpolated value within the output range
     );
 
     return interpolatedScale; // Return the interpolated scale value
@@ -97,7 +97,7 @@ const CircularListItem: FC<{
       contentOffset.value,
       inputRange,
       opacityOutputRange,
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     // Return the animated style object

@@ -2,7 +2,7 @@ import { type FC, type ReactNode } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -54,7 +54,7 @@ const BottomSheet: FC<BottomSheetProps> = ({
       translateY.value,
       [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
       [25, 5],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {

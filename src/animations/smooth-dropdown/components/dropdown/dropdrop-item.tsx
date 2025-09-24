@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import { type FC, memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -113,7 +113,7 @@ const DropdownItem: FC<DropdownItemProps> = memo(
         progress.value,
         [0, 1],
         [0, Math.PI / 2],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
       const rotateRad = `${rotation}rad`;
 

@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useWindowDimensions } from 'react-native';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useAnimatedScrollHandler,
   useSharedValue,
@@ -115,7 +115,7 @@ const ScrollableBottomSheet = forwardRef<
         event.contentOffset.x,
         pages.map((_, index) => index * windowWidth),
         pagesHeight,
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
 
       scrollToY(-interpolatedHeight);

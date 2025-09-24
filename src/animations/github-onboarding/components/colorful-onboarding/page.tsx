@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -51,7 +51,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
       currentOffset.value,
       inputRange,
       [-1, 1, -1],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {

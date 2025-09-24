@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -39,7 +39,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     (xCoord: number) => {
       'worklet';
       // Using linear interpolation to map x-coordinate from screen width to the specified range.
-      return interpolate(xCoord, [0, width], [minX, maxX], Extrapolate.CLAMP);
+      return interpolate(xCoord, [0, width], [minX, maxX], Extrapolation.CLAMP);
     },
     [maxX, minX, width],
   );
@@ -49,7 +49,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     (yCoord: number) => {
       'worklet';
       // Using linear interpolation to map y-coordinate from screen height to the specified range.
-      return interpolate(yCoord, [0, height], [minY, maxY], Extrapolate.CLAMP);
+      return interpolate(
+        yCoord,
+        [0, height],
+        [minY, maxY],
+        Extrapolation.CLAMP,
+      );
     },
     [height, maxY, minY],
   );
@@ -59,7 +64,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     (xCoord: number) => {
       'worklet';
       // Using linear interpolation to map x-coordinate from the specified range to screen width.
-      return interpolate(xCoord, [minX, maxX], [0, width], Extrapolate.CLAMP);
+      return interpolate(xCoord, [minX, maxX], [0, width], Extrapolation.CLAMP);
     },
     [maxX, minX, width],
   );
@@ -69,7 +74,12 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     (yCoord: number) => {
       'worklet';
       // Using linear interpolation to map y-coordinate from the specified range to screen height.
-      return interpolate(yCoord, [minY, maxY], [0, height], Extrapolate.CLAMP);
+      return interpolate(
+        yCoord,
+        [minY, maxY],
+        [0, height],
+        Extrapolation.CLAMP,
+      );
     },
     [height, maxY, minY],
   );

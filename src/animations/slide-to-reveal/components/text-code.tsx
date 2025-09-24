@@ -3,7 +3,7 @@ import { Group, Text } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useDerivedValue,
   withTiming,
@@ -81,7 +81,7 @@ const ScaleableCharacter: React.FC<
       distance.value,
       [0, 80],
       [1, 0.5],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return [{ scale }];

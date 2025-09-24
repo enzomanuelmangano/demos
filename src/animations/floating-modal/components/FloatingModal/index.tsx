@@ -2,7 +2,7 @@ import { type FC, memo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
@@ -82,26 +82,26 @@ const FloatingModal: FC = memo(() => {
       progress.value,
       [0, 1],
       [FLOATING_BUTTON_SIZE, screenWidth * 0.9],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
     const rightDistance = interpolate(
       progress.value,
       [0, 1],
       [FLOATING_BUTTON_SIZE / 2, screenWidth * 0.05],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
     const bottomDistance = interpolate(
       progress.value,
       [0, 1],
       [FLOATING_BUTTON_SIZE / 2, screenHeight / 2 - size / 2],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     const borderRadius = interpolate(
       progress.value,
       [0, 1],
       [32, 15],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {
