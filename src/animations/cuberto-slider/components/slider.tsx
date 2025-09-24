@@ -2,7 +2,7 @@ import { Canvas, FitBox, Path, rect, Skia } from '@shopify/react-native-skia';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
@@ -124,7 +124,7 @@ const Slider: React.FC<SliderProps> = ({
       clampedTranslateX.value,
       [0, sliderWidth],
       [minValue, maxValue],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
     return `${Math.floor(interpolatedValue)}`;
   }, []);
