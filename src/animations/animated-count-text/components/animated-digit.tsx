@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo, useMemo } from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import Animated, {
@@ -16,9 +16,9 @@ type AnimatedDigitProps = {
   textStyle: StyleProp<TextStyle>;
 };
 
-const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
+const AnimatedDigit: FC<AnimatedDigitProps> = memo(
   ({ digit, height, width, textStyle }) => {
-    const flattenedTextStyle = React.useMemo(() => {
+    const flattenedTextStyle = useMemo(() => {
       return StyleSheet.flatten(textStyle);
     }, [textStyle]);
 

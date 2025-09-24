@@ -1,8 +1,8 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
-import React, { useContext } from 'react';
 import MaskedView from '@react-native-masked-view/masked-view';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useContext } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withTiming,

@@ -1,7 +1,7 @@
+import { Image } from 'expo-image';
+import { memo, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import React, { useMemo } from 'react';
-import { Image } from 'expo-image';
 
 import { StoryList } from './components/story-list';
 
@@ -32,7 +32,7 @@ const stories = [
   },
 ];
 
-const StoryListContainer = React.memo(() => {
+const StoryListContainer = memo(() => {
   const { width } = useWindowDimensions();
 
   const storyItemDimensions = useMemo(() => {

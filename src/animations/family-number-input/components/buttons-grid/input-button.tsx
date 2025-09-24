@@ -1,5 +1,5 @@
 // Import necessary modules and types from React and React Native
-import React from 'react';
+import { type FC, memo, type ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -15,11 +15,11 @@ type InputButtonProps = {
   style?: StyleProp<ViewStyle>;
   onTap?: () => void;
   onLongTap?: () => void;
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
 // InputButton component definition
-const InputButton: React.FC<InputButtonProps> = React.memo(
+const InputButton: FC<InputButtonProps> = memo(
   ({ children, style, onTap, onLongTap }) => {
     // Shared value for tracking touch progress
     const progress = useSharedValue(0);

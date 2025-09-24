@@ -1,11 +1,11 @@
-import React, { useImperativeHandle, useCallback } from 'react';
 import {
   Group,
-  Circle as SkiaCircle,
-  Skia,
   Path,
+  Skia,
+  Circle as SkiaCircle,
   interpolate,
 } from '@shopify/react-native-skia';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import { useWindowDimensions } from 'react-native';
 import {
   useDerivedValue,
@@ -31,7 +31,7 @@ export type AnimatedFaceRefType = {
 
 const runTimingConfig = { duration: 250 };
 
-const AnimatedFace = React.forwardRef<AnimatedFaceRefType>((_, ref) => {
+const AnimatedFace = forwardRef<AnimatedFaceRefType>((_, ref) => {
   const mouthProgress = useSharedValue(0.5);
   const eyesProgress = useSharedValue(0);
 

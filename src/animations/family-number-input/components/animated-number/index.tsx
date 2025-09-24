@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import { type FC, useCallback, useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
@@ -10,7 +10,7 @@ type AnimatedNumberProps = {
   value: number;
 };
 
-export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ value }) => {
+export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
   const splittedValue = useMemo(() => {
     return value.toString().split('');
   }, [value]);

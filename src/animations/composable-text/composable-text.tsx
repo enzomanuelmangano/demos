@@ -1,10 +1,10 @@
-import type { TextStyle, ViewStyle, StyleProp } from 'react-native';
-import React, { useMemo } from 'react';
+import { memo, useMemo } from 'react';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import Animated, {
-  LinearTransition,
-  FadeOut,
   FadeIn,
+  FadeOut,
   LayoutAnimationConfig,
+  LinearTransition,
 } from 'react-native-reanimated';
 
 // Props interface for the ComposableText component
@@ -15,7 +15,7 @@ type ComposableTextProps = {
 };
 
 // A memoized component that renders text with per-character animations
-export const ComposableText = React.memo(
+export const ComposableText = memo(
   ({ text, style, containerStyle }: ComposableTextProps) => {
     // Generate unique keys for each character to maintain animation stability
     // This is necessary when the same character appears multiple times

@@ -1,8 +1,8 @@
 import { AntDesign } from '@expo/vector-icons';
-import React, { useCallback } from 'react';
+import { type FC, memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
@@ -15,7 +15,7 @@ type CollapsedAreaProps = {
   onReset: () => void;
 };
 
-const CollapsedArea: React.FC<CollapsedAreaProps> = React.memo(
+const CollapsedArea: FC<CollapsedAreaProps> = memo(
   ({ state, readingTime, onReset }) => {
     const rCollapsedAreaStyle = useAnimatedStyle(() => {
       const isCollapsed =

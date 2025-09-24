@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { PressableScale } from 'pressto';
+import { useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 import { Palette } from '../../constants/palette';
 

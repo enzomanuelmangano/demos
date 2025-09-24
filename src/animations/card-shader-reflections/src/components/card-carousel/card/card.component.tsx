@@ -1,19 +1,18 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import { type FC } from 'react';
+import { Text, View } from 'react-native';
 import Animated, {
-  useAnimatedStyle,
   interpolate,
+  useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
 
-import { CARD_WIDTH, CARD_HEIGHT } from '../utils/constants';
+import { CARD_HEIGHT, CARD_WIDTH } from '../utils/constants';
 import type { CardProps } from '../utils/types';
-
-import { styles } from './card.styles';
-import { CardChip } from './card-chip.component';
 import { CardCanvas } from './card-canvas.component';
+import { CardChip } from './card-chip.component';
+import { styles } from './card.styles';
 
-export const Card: React.FC<CardProps> = ({ item, index, scrollX }) => {
+export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
   /**
    * Main card animation style
    * Handles rotation, translation, and opacity based on scroll position

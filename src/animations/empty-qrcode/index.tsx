@@ -1,11 +1,11 @@
 import { PressableScale } from 'pressto';
-import React, { useRef } from 'react';
+import { memo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import type { QRCodeShareRefType } from './components/qrcode-share';
 import { QRCodeShare } from './components/qrcode-share';
 
-export const EmptyQRCode = React.memo(() => {
+export const EmptyQRCode = memo(() => {
   const qrCodeShareRef = useRef<QRCodeShareRefType>(null);
   return (
     <View style={styles.container}>

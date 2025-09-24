@@ -1,4 +1,4 @@
-import React from 'react';
+import type { FC } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -24,7 +24,7 @@ type ListItemProps = {
   item: ItemInfo;
 };
 
-export const ListItem: React.FC<ListItemProps> = ({
+export const ListItem: FC<ListItemProps> = ({
   style,
   activeIndex,
   index,

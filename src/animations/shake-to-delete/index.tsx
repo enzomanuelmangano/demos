@@ -1,6 +1,5 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet } from 'react-native';
 
 import { AppsList } from './apps-list';
 

@@ -1,8 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback } from 'react';
+import { type FC, memo, useCallback } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
@@ -18,8 +18,8 @@ type TabBarItemProps = {
   screenName: string;
 };
 
-// React.memo for performance optimization (to prevent unnecessary re-renders)
-export const TabBarItem: React.FC<TabBarItemProps> = React.memo(
+// memo for performance optimization (to prevent unnecessary re-renders)
+export const TabBarItem: FC<TabBarItemProps> = memo(
   ({ onPress, focusedIndex, index, screenName }) => {
     // Derive the focus state from the shared animated value
     const isFocused = useDerivedValue(() => {

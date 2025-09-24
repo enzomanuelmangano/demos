@@ -1,6 +1,6 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -23,7 +23,7 @@ type CarouselProps<T extends BaseCarouselItemType = BaseCarouselItemType> = {
 const LIST_ITEM_ASPECT_RATIO = 3 / 4;
 
 // Define the Carousel component with the given props
-const Carousel: React.FC<CarouselProps> = React.memo(
+const Carousel: FC<CarouselProps> = memo(
   ({ items, maxRenderedItems, width, activeIndex }) => {
     // Calculate the width and height of each list item based on the given width and aspect ratio
     const LIST_ITEM_WIDTH = width / maxRenderedItems;

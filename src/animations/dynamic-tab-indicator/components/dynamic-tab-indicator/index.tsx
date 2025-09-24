@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import { type FC, memo, useCallback, useMemo, useRef, useState } from 'react';
 import type { LayoutRectangle } from 'react-native';
 import { Image, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -19,136 +19,131 @@ type DynamicTabIndicatorProps = {
 
 const INDICATOR_CONTAINER_HEIGHT = 120;
 
-const DynamicTabIndicator: React.FC<DynamicTabIndicatorProps> = React.memo(
-  ({ data }) => {
-    const { width, height } = useWindowDimensions();
+const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
+  const { width, height } = useWindowDimensions();
 
-    // Use regular state for layouts since we don't need shared values for this
-    const [layouts, setLayouts] = useState<LayoutRectangle[]>([]);
+  // Use regular state for layouts since we don't need shared values for this
+  const [layouts, setLayouts] = useState<LayoutRectangle[]>([]);
 
-    const indicatorLayout = useSharedValue<LayoutRectangle>({
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
+  const indicatorLayout = useSharedValue<LayoutRectangle>({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+  });
+
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  // Memoize input and output ranges for better performance
+  const interpolationRanges = useMemo(() => {
+    const inputRange = data.map((_, index) => index * width);
+
+    const xOutputRange = data.map((_, index) => {
+      const layout = layouts[index];
+      return (layout?.x ?? 0) + (index * width) / data.length;
     });
 
-    const scrollRef = React.useRef<Animated.ScrollView>(null);
-
-    // Memoize input and output ranges for better performance
-    const interpolationRanges = useMemo(() => {
-      const inputRange = data.map((_, index) => index * width);
-
-      const xOutputRange = data.map((_, index) => {
-        const layout = layouts[index];
-        return (layout?.x ?? 0) + (index * width) / data.length;
-      });
-
-      const widthOutputRange = data.map((_, index) => {
-        const layout = layouts[index];
-        return layout?.width ?? 0;
-      });
-
-      return { inputRange, xOutputRange, widthOutputRange };
-    }, [data, width, layouts]);
-
-    // Callback to update layouts from JS thread
-    const updateLayout = useCallback(
-      (index: number, layout: LayoutRectangle) => {
-        setLayouts(prevLayouts => {
-          const newLayouts = [...prevLayouts];
-          newLayouts[index] = layout;
-          return newLayouts;
-        });
-      },
-      [],
-    );
-
-    // Callback to update initial indicator layout
-    const updateInitialIndicator = useCallback(
-      (layout: LayoutRectangle) => {
-        indicatorLayout.value = layout;
-      },
-      [indicatorLayout],
-    );
-
-    // Optimized scroll handler with memoized ranges
-    const scrollHandler = useAnimatedScrollHandler({
-      onScroll: event => {
-        const { inputRange, xOutputRange, widthOutputRange } =
-          interpolationRanges;
-
-        // Only interpolate if we have valid ranges
-        if (inputRange.length > 0 && xOutputRange.length > 0) {
-          const contentOffsetX = event.contentOffset.x;
-
-          indicatorLayout.value = {
-            ...indicatorLayout.value,
-            x: interpolate(
-              contentOffsetX,
-              inputRange,
-              xOutputRange,
-              Extrapolation.CLAMP,
-            ),
-            width: interpolate(
-              contentOffsetX,
-              inputRange,
-              widthOutputRange,
-              Extrapolation.CLAMP,
-            ),
-          };
-        }
-      },
+    const widthOutputRange = data.map((_, index) => {
+      const layout = layouts[index];
+      return layout?.width ?? 0;
     });
 
-    // Memoize section titles to prevent unnecessary re-renders
-    const sectionTitles = useMemo(() => data.map(item => item.title), [data]);
+    return { inputRange, xOutputRange, widthOutputRange };
+  }, [data, width, layouts]);
 
-    // Optimized scroll to section handler
-    const handleSelectSection = useCallback(
-      (index: number) => {
-        scrollRef.current?.scrollTo({
-          x: index * width,
-          animated: true,
-        });
-      },
-      [width],
-    );
+  // Callback to update layouts from JS thread
+  const updateLayout = useCallback((index: number, layout: LayoutRectangle) => {
+    setLayouts(prevLayouts => {
+      const newLayouts = [...prevLayouts];
+      newLayouts[index] = layout;
+      return newLayouts;
+    });
+  }, []);
 
-    return (
-      <>
-        <SectionTabs
-          height={INDICATOR_CONTAINER_HEIGHT}
-          width={width}
-          indicatorLayout={indicatorLayout}
-          data={sectionTitles}
-          onSelectSection={handleSelectSection}
-          onLayoutChange={updateLayout}
-          onInitialLayout={updateInitialIndicator}
-        />
-        <Animated.ScrollView
-          ref={scrollRef}
-          horizontal
-          pagingEnabled
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          showsHorizontalScrollIndicator={false}
-          removeClippedSubviews={true}>
-          {data.map((item, index) => (
-            <Image
-              key={`${index}-${item.title}`}
-              source={item.image}
-              style={{
-                width,
-                height,
-              }}
-              resizeMode="cover"
-            />
-          ))}
-        </Animated.ScrollView>
-      </>
-    );
-  },
-);
+  // Callback to update initial indicator layout
+  const updateInitialIndicator = useCallback(
+    (layout: LayoutRectangle) => {
+      indicatorLayout.value = layout;
+    },
+    [indicatorLayout],
+  );
+
+  // Optimized scroll handler with memoized ranges
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: event => {
+      const { inputRange, xOutputRange, widthOutputRange } =
+        interpolationRanges;
+
+      // Only interpolate if we have valid ranges
+      if (inputRange.length > 0 && xOutputRange.length > 0) {
+        const contentOffsetX = event.contentOffset.x;
+
+        indicatorLayout.value = {
+          ...indicatorLayout.value,
+          x: interpolate(
+            contentOffsetX,
+            inputRange,
+            xOutputRange,
+            Extrapolation.CLAMP,
+          ),
+          width: interpolate(
+            contentOffsetX,
+            inputRange,
+            widthOutputRange,
+            Extrapolation.CLAMP,
+          ),
+        };
+      }
+    },
+  });
+
+  // Memoize section titles to prevent unnecessary re-renders
+  const sectionTitles = useMemo(() => data.map(item => item.title), [data]);
+
+  // Optimized scroll to section handler
+  const handleSelectSection = useCallback(
+    (index: number) => {
+      scrollRef.current?.scrollTo({
+        x: index * width,
+        animated: true,
+      });
+    },
+    [width],
+  );
+
+  return (
+    <>
+      <SectionTabs
+        height={INDICATOR_CONTAINER_HEIGHT}
+        width={width}
+        indicatorLayout={indicatorLayout}
+        data={sectionTitles}
+        onSelectSection={handleSelectSection}
+        onLayoutChange={updateLayout}
+        onInitialLayout={updateInitialIndicator}
+      />
+      <Animated.ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        showsHorizontalScrollIndicator={false}
+        removeClippedSubviews={true}>
+        {data.map((item, index) => (
+          <Image
+            key={`${index}-${item.title}`}
+            source={item.image}
+            style={{
+              width,
+              height,
+            }}
+            resizeMode="cover"
+          />
+        ))}
+      </Animated.ScrollView>
+    </>
+  );
+});
 
 export { DynamicTabIndicator };

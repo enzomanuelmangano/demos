@@ -1,7 +1,7 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
@@ -12,7 +12,7 @@ type AnimatedBackdropProps = {
   isVisible: SharedValue<boolean>;
 };
 
-const AnimatedBackdrop: React.FC<AnimatedBackdropProps> = React.memo(
+const AnimatedBackdrop: FC<AnimatedBackdropProps> = memo(
   ({ onBackdropPress, isVisible }) => {
     const rAnimatedStyle = useAnimatedStyle(() => {
       return {

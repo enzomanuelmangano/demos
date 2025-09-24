@@ -1,5 +1,5 @@
-import React from 'react';
-import type { ViewStyle, StyleProp } from 'react-native';
+import { type FC } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { View } from 'react-native';
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 
@@ -9,7 +9,7 @@ type CardChipProps = {
   chipAnimatedStyle: StyleProp<AnimatedStyle<ViewStyle>>;
 };
 
-export const CardChip: React.FC<CardChipProps> = ({ chipAnimatedStyle }) => {
+export const CardChip: FC<CardChipProps> = ({ chipAnimatedStyle }) => {
   return (
     <Animated.View style={[styles.chipContainer, chipAnimatedStyle]}>
       <View style={styles.chip}>

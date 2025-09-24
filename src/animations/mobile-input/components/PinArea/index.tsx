@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
@@ -11,27 +11,25 @@ type PinAreaProps = {
   dotsAmount?: number;
 };
 
-const PinArea: React.FC<PinAreaProps> = React.memo(
-  ({ activeDots, style, dotsAmount }) => {
-    return (
-      <View style={style}>
-        <Text
-          style={{
-            textAlign: 'center',
-            color: 'rgba(255,255,255,0.9)',
-            fontSize: 15,
-          }}>
-          Enter PIN Mode
-        </Text>
-        <Dots
-          activeDots={activeDots}
-          contentContainerStyle={styles.dotsContainer}
-          amount={dotsAmount}
-        />
-      </View>
-    );
-  },
-);
+const PinArea: FC<PinAreaProps> = memo(({ activeDots, style, dotsAmount }) => {
+  return (
+    <View style={style}>
+      <Text
+        style={{
+          textAlign: 'center',
+          color: 'rgba(255,255,255,0.9)',
+          fontSize: 15,
+        }}>
+        Enter PIN Mode
+      </Text>
+      <Dots
+        activeDots={activeDots}
+        contentContainerStyle={styles.dotsContainer}
+        amount={dotsAmount}
+      />
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   dotsContainer: {

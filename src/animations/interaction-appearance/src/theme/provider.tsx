@@ -1,23 +1,32 @@
-import type { SetStateAction } from 'react';
-import React, { useCallback, useMemo, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+  type Dispatch,
+  type FC,
+  type ReactNode,
+  type SetStateAction,
+} from 'react';
 
 import type { Theme } from './palette';
 import { DarkTheme, LightTheme } from './palette';
 
 type ThemeProviderProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 type ThemeContextType = {
   theme: 'light' | 'dark';
-  setTheme: React.Dispatch<SetStateAction<'light' | 'dark'>>;
+  setTheme: Dispatch<SetStateAction<'light' | 'dark'>>;
   toggleTheme: () => void;
   colors: Theme['colors'];
   spacing: Theme['spacing'];
   textVariants: Theme['textVariants'];
 };
 
-const ThemeContext = React.createContext<ThemeContextType>({
+const ThemeContext = createContext<ThemeContextType>({
   theme: 'light',
   setTheme: () => {},
   toggleTheme: () => {},
@@ -26,7 +35,7 @@ const ThemeContext = React.createContext<ThemeContextType>({
   textVariants: LightTheme.textVariants,
 });
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+export const ThemeProvider: FC<ThemeProviderProps> = ({ children }) => {
   // Normally it makes sense to use the device's color scheme
   // const theme = useColorScheme() === 'dark' ? DarkTheme : LightTheme;
   const [selectedTheme, setTheme] = useState<'light' | 'dark'>('light');
@@ -55,7 +64,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 };
 
 export const useTheme = () => {
-  const context = React.useContext(ThemeContext);
+  const context = useContext(ThemeContext);
   if (!context) {
     throw new Error('useTheme must be used within a ThemeProvider');
   }

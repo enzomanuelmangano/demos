@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
+import { type FC, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { BlurredList } from './components/blurred-list';
-import { generateRandomItem, type Item } from './utils/generate-random-item';
 import { ListItem } from './components/list-item';
+import { generateRandomItem, type Item } from './utils/generate-random-item';
 
-const AddButton: React.FC<{ onPress: () => void }> = ({ onPress }) => (
+const AddButton: FC<{ onPress: () => void }> = ({ onPress }) => (
   <PressableScale onPress={onPress} style={styles.addButton}>
     <Entypo name="plus" size={40} color="white" />
   </PressableScale>

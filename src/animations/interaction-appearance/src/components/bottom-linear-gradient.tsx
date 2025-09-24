@@ -1,5 +1,5 @@
 import { Canvas, Fill, LinearGradient } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { useTheme } from '../theme';
@@ -14,7 +14,7 @@ const end = {
   y: 400,
 };
 
-export const BottomLinearGradient = React.memo(() => {
+export const BottomLinearGradient = memo(() => {
   const { theme, colors } = useTheme();
 
   // This is a bit of a hack to make the gradient look good on both light and dark themes

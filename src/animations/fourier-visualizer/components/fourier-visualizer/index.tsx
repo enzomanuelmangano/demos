@@ -1,6 +1,6 @@
 import type { SkPath } from '@shopify/react-native-skia';
 import { Path, Skia } from '@shopify/react-native-skia';
-import React, { useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import {
   cancelAnimation,
   Easing,
@@ -26,7 +26,7 @@ export type FourierVisualizerRefType = {
   clear: () => void;
 };
 
-const FourierVisualizer = React.forwardRef<
+const FourierVisualizer = forwardRef<
   FourierVisualizerRefType,
   {
     strokeWidth?: number;

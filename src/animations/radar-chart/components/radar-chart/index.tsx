@@ -1,6 +1,6 @@
 import { Canvas, Group, Path, Points, Text } from '@shopify/react-native-skia';
 import Color from 'color';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { useCanvasLayout } from './hooks/use-canvas-layout';

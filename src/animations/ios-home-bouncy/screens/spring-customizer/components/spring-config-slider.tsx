@@ -1,9 +1,9 @@
-import React from 'react';
+import { type FC } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -25,7 +25,7 @@ const THUMB_SIZE = 24;
  * SpringConfigSlider component provides an interactive slider for adjusting spring animation parameters
  * Features a draggable thumb and real-time value display
  */
-export const SpringConfigSlider: React.FC<SpringConfigSliderProps> = ({
+export const SpringConfigSlider: FC<SpringConfigSliderProps> = ({
   label,
   valueSharedValue,
   minimumValue,

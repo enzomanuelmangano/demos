@@ -1,6 +1,7 @@
-import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
 import { Octicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { memo, type FC } from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
@@ -10,7 +11,6 @@ import Animated, {
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 
 type HideableNumberProps = {
   number: string;
@@ -24,7 +24,7 @@ const DotSize = 14;
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 // Component to display a number that can be hidden
-export const HideableNumber: React.FC<HideableNumberProps> = React.memo(
+export const HideableNumber: FC<HideableNumberProps> = memo(
   ({ number, hiddenIndexes, index }) => {
     // Check if this number is hidden
     const isHidden = useDerivedValue(

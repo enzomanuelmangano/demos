@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableScale } from 'pressto';
-import React from 'react';
+import { type FC } from 'react';
 import {
   ColorValue,
   StyleSheet,
@@ -15,7 +15,7 @@ type BottomSheetPageProps = {
   buttonTitle?: string;
 };
 
-const BottomSheetPage: React.FC<BottomSheetPageProps> = ({
+const BottomSheetPage: FC<BottomSheetPageProps> = ({
   onPress,
   gradientColors = ['#4E65FF', '#92EFFD'] as const,
   buttonTitle = 'Tap Here',

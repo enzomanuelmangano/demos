@@ -1,6 +1,6 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   withSpring,
   withTiming,
@@ -11,7 +11,7 @@ type DotProps = {
   activeDots: SharedValue<number>;
 };
 
-const Dot: React.FC<DotProps> = React.memo(({ index, activeDots }) => {
+const Dot: FC<DotProps> = memo(({ index, activeDots }) => {
   const rStyle = useAnimatedStyle(() => {
     const isActive = activeDots.value > index;
     const opacity = withTiming(isActive ? 1 : 0.4);

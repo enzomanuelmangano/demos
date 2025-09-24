@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { type FC, memo, useCallback } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { View } from 'react-native';
 import {
@@ -21,7 +21,7 @@ type DropdownProps = {
 const DROP_DOWN_ITEM_HEIGHT = 75;
 const DROP_DOWN_ITEM_PADDING = 10;
 
-const Dropdown: React.FC<DropdownProps> = React.memo(
+const Dropdown: FC<DropdownProps> = memo(
   ({
     options,
     header,

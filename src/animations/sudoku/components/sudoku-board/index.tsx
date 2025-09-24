@@ -5,25 +5,25 @@
  * and visual feedback. It handles cell selection, number input, and game state management.
  */
 
-import React, {
-  useEffect,
-  useState,
-  useImperativeHandle,
+import {
   forwardRef,
   useCallback,
+  useEffect,
+  useImperativeHandle,
   useMemo,
+  useState,
 } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  useSharedValue,
   FadeIn,
   FadeInDown,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import type { SudokuBoard as SudokuBoardType } from '../../logic';
 import { SudokuGame } from '../../logic';
-import { NumberPad } from '../number-pad';
 import { COLORS } from '../../theme';
+import { NumberPad } from '../number-pad';
 
 import { CellContainer } from './cell-container';
 import { BOARD_SIZE } from './constants';

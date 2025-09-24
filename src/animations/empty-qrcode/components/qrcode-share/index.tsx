@@ -6,7 +6,7 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import React, { useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-skia';
 import Animated, { useDerivedValue } from 'react-native-reanimated';
@@ -32,7 +32,7 @@ export type QRCodeShareRefType = {
   toggle: () => void; // Function to toggle QR code visibility
 };
 
-const QRCodeShare = React.forwardRef<QRCodeShareRefType, QRCodeShareProps>(
+const QRCodeShare = forwardRef<QRCodeShareRefType, QRCodeShareProps>(
   (
     {
       fontSize = DEFAULT_FONT_SIZE,

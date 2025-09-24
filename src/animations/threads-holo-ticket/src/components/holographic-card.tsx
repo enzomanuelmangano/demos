@@ -3,20 +3,20 @@
  * The card displays a grid of circles with a dynamic holographic gradient that responds to rotation.
  */
 
-import React, { useMemo } from 'react';
 import {
-  Canvas,
-  LinearGradient,
-  Rect,
-  Group,
-  Mask,
-  Circle,
   BlurMask,
+  Canvas,
+  Circle,
+  Group,
   interpolate,
-  Skia,
-  RoundedRect,
+  LinearGradient,
+  Mask,
   Path,
+  Rect,
+  RoundedRect,
+  Skia,
 } from '@shopify/react-native-skia';
+import { type FC, useMemo } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import { Extrapolation, useDerivedValue } from 'react-native-reanimated';
 
@@ -46,7 +46,7 @@ interface HolographicCardProps {
 // </svg>`;
 // const LogoSvg = Skia.SVG.MakeFromString(LogoSvgString);
 
-export const HolographicCard: React.FC<HolographicCardProps> = ({
+export const HolographicCard: FC<HolographicCardProps> = ({
   width,
   height,
   rotateY,

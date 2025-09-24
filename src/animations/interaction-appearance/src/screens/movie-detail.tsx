@@ -1,5 +1,5 @@
 import { useImage } from '@shopify/react-native-skia';
-import React from 'react';
+import { type FC } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { BottomLinearGradient } from '../components/bottom-linear-gradient';
@@ -17,7 +17,7 @@ type MovieDetailProps = {
   image: string;
 };
 
-export const MovieDetail: React.FC<MovieDetailProps> = ({
+export const MovieDetail: FC<MovieDetailProps> = ({
   title,
   description,
   image,

@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
-import React, { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import {
   StaggeredText,

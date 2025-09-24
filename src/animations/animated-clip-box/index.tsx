@@ -1,4 +1,3 @@
-import React from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { ClipBoxButton } from './components/clip-box-button';

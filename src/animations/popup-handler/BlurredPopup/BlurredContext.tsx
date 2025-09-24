@@ -1,4 +1,4 @@
-import React from 'react';
+import { createContext, type ReactNode } from 'react';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 
 /**
@@ -12,8 +12,8 @@ type PopupAlignment = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 type PopupOptionType = {
   label: string;
   onPress?: () => void;
-  leading?: React.ReactNode;
-  trailing?: React.ReactNode;
+  leading?: ReactNode;
+  trailing?: ReactNode;
 };
 
 /**
@@ -28,7 +28,7 @@ type BlurredContextType = {
    */
   showPopup: (params: {
     layout: MeasuredDimensions;
-    node: React.ReactNode;
+    node: ReactNode;
     options: PopupOptionType[];
   }) => void;
 };
@@ -36,15 +36,15 @@ type BlurredContextType = {
 /**
  * The context object used to provide the blurred popup menu functionality.
  */
-const BlurredPopupContext = React.createContext<BlurredContextType>({
+const BlurredPopupContext = createContext<BlurredContextType>({
   showPopup: () => {
     // Default showPopup function does nothing
   },
 });
 
 export {
-  PopupAlignment,
-  PopupOptionType,
   BlurredContextType,
   BlurredPopupContext,
+  PopupAlignment,
+  PopupOptionType,
 };

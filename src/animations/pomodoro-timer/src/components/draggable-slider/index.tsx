@@ -1,4 +1,4 @@
-import React, { useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,9 +11,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { TickLine } from './components/tick-line';
 import { useTimer } from './hooks/useTimer';
 import type { DraggableSliderProps } from './types';
-import { TickLine } from './components/tick-line';
 
 const { height: WindowHeight } = Dimensions.get('window');
 const radius = 280;
@@ -41,7 +41,7 @@ export type CircularDraggableSliderRefType = {
 // outputRange: [0, 2 * Math.PI]
 // I have added an offset in the actual code to rotate the circle by 90 degrees at the very beginning
 
-export const CircularDraggableSlider = React.forwardRef<
+export const CircularDraggableSlider = forwardRef<
   CircularDraggableSliderRefType,
   DraggableSliderProps
 >(

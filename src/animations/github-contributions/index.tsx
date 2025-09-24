@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { COLOR_SCHEMES } from './config/defaults';

@@ -1,9 +1,9 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolate,
   interpolate,
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
@@ -15,7 +15,7 @@ type ProgressBarAreaProps = {
   progress: SharedValue<number>;
 };
 
-const ProgressBarArea: React.FC<ProgressBarAreaProps> = React.memo(
+const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
   ({ isVisible, progress }) => {
     const rAnimatedStyle = useAnimatedStyle(() => {
       return {

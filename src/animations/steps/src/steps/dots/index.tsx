@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
@@ -14,60 +14,58 @@ type DotsProps = {
   dotSize: number;
 };
 
-export const Dots: React.FC<DotsProps> = React.memo(
-  ({ count, activeIndex, dotSize }) => {
-    const dotSpacing = 20;
-    const externalSpacing = dotSpacing;
-    const height = dotSize + 20;
+export const Dots: FC<DotsProps> = memo(({ count, activeIndex, dotSize }) => {
+  const dotSpacing = 20;
+  const externalSpacing = dotSpacing;
+  const height = dotSize + 20;
 
-    const rBarStyle = useAnimatedStyle(() => {
-      // Here we calculate the width of the bar based on the active index
-      // The maxWidth = (count) * dotSize + (count - 1) * dotSpacing + externalSpacing
-      // So by knowing the maxWidth, we can easily replace the count with (activeIndex + 1)
-      // and get the general formula for the activeWidth
-      const activeWidth =
-        (activeIndex.value + 1) * dotSize +
-        activeIndex.value * dotSpacing +
-        externalSpacing;
+  const rBarStyle = useAnimatedStyle(() => {
+    // Here we calculate the width of the bar based on the active index
+    // The maxWidth = (count) * dotSize + (count - 1) * dotSpacing + externalSpacing
+    // So by knowing the maxWidth, we can easily replace the count with (activeIndex + 1)
+    // and get the general formula for the activeWidth
+    const activeWidth =
+      (activeIndex.value + 1) * dotSize +
+      activeIndex.value * dotSpacing +
+      externalSpacing;
 
-      return {
-        // Spring animations, spring animations everywhere!
-        width: withSpring(activeWidth),
-      };
-    }, []);
+    return {
+      // Spring animations, spring animations everywhere!
+      width: withSpring(activeWidth),
+    };
+  }, []);
 
-    return (
-      <View
+  return (
+    <View
+      style={[
+        {
+          paddingHorizontal: externalSpacing / 2,
+          gap: dotSpacing,
+        },
+        styles.container,
+      ]}>
+      <Animated.View
         style={[
           {
-            paddingHorizontal: externalSpacing / 2,
-            gap: dotSpacing,
+            height,
           },
-          styles.container,
-        ]}>
-        <Animated.View
-          style={[
-            {
-              height,
-            },
-            styles.bar,
-            rBarStyle,
-          ]}
-        />
-        {new Array(count).fill(null).map((_, index) => {
-          return (
-            <Dot
-              key={index}
-              index={index}
-              activeIndex={activeIndex}
-              dotSize={dotSize}
-            />
-          );
-        })}
-      </View>
-    );
-  },
-);
+          styles.bar,
+          rBarStyle,
+        ]}
+      />
+      {new Array(count).fill(null).map((_, index) => {
+        return (
+          <Dot
+            key={index}
+            index={index}
+            activeIndex={activeIndex}
+            dotSize={dotSize}
+          />
+        );
+      })}
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

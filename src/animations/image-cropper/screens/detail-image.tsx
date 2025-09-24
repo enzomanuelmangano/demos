@@ -1,5 +1,3 @@
-import React from 'react';
-import { View, useWindowDimensions } from 'react-native';
 import {
   Canvas,
   FitBox,
@@ -7,12 +5,14 @@ import {
   Image,
   rect as skRect,
 } from '@shopify/react-native-skia';
+import { type FC } from 'react';
+import { View, useWindowDimensions } from 'react-native';
 
 import type { DetailCroppedImageRouteProp } from '../navigation';
 
 type DetailImageScreenProps = { route: DetailCroppedImageRouteProp };
 
-const DetailImageScreen: React.FC<DetailImageScreenProps> = ({
+const DetailImageScreen: FC<DetailImageScreenProps> = ({
   route: {
     params: { image, rect },
   },

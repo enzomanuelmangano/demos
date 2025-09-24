@@ -1,9 +1,8 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
-  useAnimatedStyle,
   interpolate,
+  useAnimatedStyle,
 } from 'react-native-reanimated';
 
 export const Eye = ({ progress }: { progress: SharedValue<number> }) => {

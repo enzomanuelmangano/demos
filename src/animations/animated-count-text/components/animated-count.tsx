@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo, useMemo } from 'react';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 
 import { AnimatedDigit } from './animated-digit';
@@ -14,9 +14,9 @@ type AnimatedCountProps = {
 };
 
 // AnimatedCount component
-const AnimatedCount: React.FC<AnimatedCountProps> = React.memo(({ number }) => {
+const AnimatedCount: FC<AnimatedCountProps> = memo(({ number }) => {
   // Split the number into individual digits and store them in an array
-  const digits = React.useMemo(() => {
+  const digits = useMemo(() => {
     return number
       .toString()
       .split('')

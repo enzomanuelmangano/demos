@@ -3,7 +3,7 @@
  * with animations for highlighting and selection
  */
 
-import React, { memo, useMemo } from 'react';
+import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {

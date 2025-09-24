@@ -1,11 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { DraggableControlPanel } from '../draggable-panel';
 
+import { CollapsedButton } from './collapsed-button';
 import { PanelContent } from './panel-content';
 import { springAnimationConfigs } from './utils/spring-configs';
-import { CollapsedButton } from './collapsed-button';
 
 type SpringType = 'elegant' | 'springy' | 'super-springy';
 

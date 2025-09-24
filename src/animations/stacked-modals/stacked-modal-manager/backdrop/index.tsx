@@ -1,5 +1,5 @@
+import { useContext } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import React, { useContext } from 'react';
 import Animated, {
   useAnimatedStyle,
   withTiming,

@@ -1,4 +1,6 @@
-import React, { useMemo } from 'react';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
+import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -9,8 +11,6 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { Palette } from '../../constants';
 import { AnimatedBlurView } from '../animated-blur-view';

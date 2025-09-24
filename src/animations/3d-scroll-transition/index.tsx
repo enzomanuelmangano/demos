@@ -1,10 +1,10 @@
 // Import necessary components and libraries from React Native and Reanimated
+import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
-import React, { useCallback, useMemo } from 'react';
 
 // Import the BlurredListItem component
 import { BlurredListItem } from './components/blurred-list-item';
@@ -16,7 +16,7 @@ const NUMBERS_ARRAY = new Array(100)
   .reverse();
 
 // Define the main App component
-export const ScrollTransition3D = React.memo(() => {
+export const ScrollTransition3D = memo(() => {
   // Get window dimensions
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 

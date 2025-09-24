@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo, type ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -16,11 +16,11 @@ type ConfirmButtonProps = {
   animationProgress: SharedValue<number>;
   layoutData: SharedValue<null | MeasuredDimensions>;
   style?: StyleProp<ViewStyle>;
-  children?: React.ReactNode;
+  children?: ReactNode;
   onConfirm?: () => void;
 };
 
-const ConfirmButton: React.FC<ConfirmButtonProps> = React.memo(
+const ConfirmButton: FC<ConfirmButtonProps> = memo(
   ({ animationProgress, layoutData, style, children, onConfirm }) => {
     const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } =
       useWindowDimensions();

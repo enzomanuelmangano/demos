@@ -1,4 +1,4 @@
-import React, { useCallback, useImperativeHandle, useMemo } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import type { ViewProps } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
@@ -39,7 +39,7 @@ type MeasureableAnimatedViewRef = {
 // I know that's super abstract as an explanation, but I hope it helps.
 // Simply keep in mind that the MeasureableAnimatedView component is just a wrapper around Animated.View.
 // That can be useful if you want to get the layout of a view by using a React Ref instead of a Reanimated Ref.
-const MeasureableAnimatedView = React.forwardRef<
+const MeasureableAnimatedView = forwardRef<
   MeasureableAnimatedViewRef,
   ViewProps
 >((props, ref) => {

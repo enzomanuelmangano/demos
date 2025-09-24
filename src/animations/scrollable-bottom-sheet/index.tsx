@@ -1,7 +1,7 @@
-import React, { useCallback, useRef, useMemo } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableScale } from 'pressto';
+import { useCallback, useMemo, useRef } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import type { ScrollableBottomSheetRef } from './components/BottomSheet/ScrollableBottomSheet';
 import { ScrollableBottomSheet } from './components/BottomSheet/ScrollableBottomSheet';

@@ -1,12 +1,12 @@
-import React from 'react';
+import { type FC } from 'react';
 import type { ViewProps } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
 
-const AnimatedOpacityView: React.FC<
+const AnimatedOpacityView: FC<
   ViewProps & {
     activeIndex: SharedValue<number>;
     index: number;

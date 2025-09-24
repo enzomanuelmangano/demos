@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
   useAnimatedScrollHandler,
@@ -14,7 +14,7 @@ type CircularListProps = {
 };
 
 // CircularList component definition
-const CircularList: React.FC<CircularListProps> = ({ data, scaleEnabled }) => {
+const CircularList: FC<CircularListProps> = ({ data, scaleEnabled }) => {
   // Create a shared value to keep track of the content offset
   const contentOffset = useSharedValue(0);
 

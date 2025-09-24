@@ -1,8 +1,7 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { spacing } from '../../constants';
-
 import { ProfileAvatar } from './profile-avatar';
 import type { ProfileType } from './types';
 
@@ -13,7 +12,7 @@ type CardBackProps = {
   isFlipped?: boolean;
 };
 
-export const CardBack: React.FC<CardBackProps> = React.memo(({ profile }) => {
+export const CardBack: FC<CardBackProps> = memo(({ profile }) => {
   return (
     <View style={styles.container}>
       <View style={styles.background}>

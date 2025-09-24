@@ -1,13 +1,13 @@
 import type { ImageProps } from '@shopify/react-native-skia';
-import { rect, Image } from '@shopify/react-native-skia';
-import React, { useImperativeHandle, useMemo } from 'react';
+import { Image, rect } from '@shopify/react-native-skia';
+import { forwardRef, useImperativeHandle, useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import Touchable from 'react-native-skia-gesture';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import Touchable from 'react-native-skia-gesture';
 
 import { Grid } from './grid';
 
@@ -30,7 +30,7 @@ const TimingConfig = {
 
 // The main point was to build a generic component that could be used to crop any image.
 // I've done my best to make it as generic as possible, but of course, there is room for improvement :)
-const ImageCropper = React.forwardRef<ImageCropperRef, ImageCropperProps>(
+const ImageCropper = forwardRef<ImageCropperRef, ImageCropperProps>(
   ({ image, style, width }, ref) => {
     const imageRatio = useMemo(() => {
       return (image?.height() ?? 0) / (image?.width() ?? 1);
@@ -99,5 +99,5 @@ const ImageCropper = React.forwardRef<ImageCropperRef, ImageCropperProps>(
   },
 );
 
-export type { ImageCropperRef };
 export { ImageCropper };
+export type { ImageCropperRef };

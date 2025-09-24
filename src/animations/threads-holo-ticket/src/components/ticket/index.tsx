@@ -3,7 +3,7 @@
  * The ticket has two sides (front and back) and uses a holographic effect.
  */
 
-import React from 'react';
+import { type FC, memo, type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -22,17 +22,17 @@ import { HolographicCard } from '../holographic-card';
  * @typedef {Object} TicketProps
  * @property {number} width - The width of the ticket
  * @property {number} height - The height of the ticket
- * @property {React.ReactNode} [frontSide] - Content to display on the front of the ticket
- * @property {React.ReactNode} [backSide] - Content to display on the back of the ticket
+ * @property {ReactNode} [frontSide] - Content to display on the front of the ticket
+ * @property {ReactNode} [backSide] - Content to display on the back of the ticket
  */
 type TicketProps = {
   width: number;
   height: number;
-  frontSide?: React.ReactNode;
-  backSide?: React.ReactNode;
+  frontSide?: ReactNode;
+  backSide?: ReactNode;
 };
 
-export const Ticket: React.FC<TicketProps> = React.memo(
+export const Ticket: FC<TicketProps> = memo(
   ({ width, height, frontSide, backSide }) => {
     // Shared values for tracking horizontal translation and gesture context
     const translateX = useSharedValue(0);

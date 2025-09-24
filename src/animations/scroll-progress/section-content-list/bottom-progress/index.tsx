@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import type { ViewProps } from 'react-native';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
@@ -20,7 +20,7 @@ type BottomProgressProps = {
   onReset: () => void;
 };
 
-const BottomProgress: React.FC<BottomProgressProps> = React.memo(
+const BottomProgress: FC<BottomProgressProps> = memo(
   ({ style, progress, readingTime, onReset }) => {
     const state = useDerivedValue(() => {
       if (progress.value === 0) {

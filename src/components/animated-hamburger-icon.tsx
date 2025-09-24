@@ -1,6 +1,6 @@
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { PressableOpacity } from 'pressto';
-import React from 'react';
+import { type FC } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
@@ -18,7 +18,7 @@ type AnimatedHamburgerIconProps = {
   size?: number;
 };
 
-export const AnimatedHamburgerIcon: React.FC<AnimatedHamburgerIconProps> = ({
+export const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
   tintColor = '#fff',
   onPress,
   size = 18,

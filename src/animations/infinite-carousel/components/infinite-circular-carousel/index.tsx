@@ -1,4 +1,11 @@
-import React, { useCallback, useImperativeHandle, useMemo } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  type ReactElement,
+  type Ref,
+} from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,13 +18,13 @@ import Animated, {
 
 import { WindowWidth } from '../../constants';
 
-import { snapPoint } from './utils/snap-point';
 import { CarouselItem } from './carousel-item';
 import { useInterpolateConfig } from './hooks/use-interpolate-config';
 import type {
   InfiniteCircularCarouselProps,
   InfiniteCircularCarouselRef,
 } from './types';
+import { snapPoint } from './utils/snap-point';
 
 // Before being scared by the code, let me tell you that all this complexity
 // is there just to create a simple Infinite Circular Carousel.
@@ -41,7 +48,7 @@ const BaseInfiniteCircularCarousel = <T,>(
     onActiveIndexChanged, // Callback function for active index change
     snapEnabled = true, // Whether snapping is enabled
   }: InfiniteCircularCarouselProps<T>, // Props for the component
-  ref: React.Ref<InfiniteCircularCarouselRef>, // Ref for the component
+  ref: Ref<InfiniteCircularCarouselRef>, // Ref for the component
 ) => {
   const listOffset = listItemWidth * data.length; // Total width of the list
 
@@ -228,13 +235,13 @@ const styles = StyleSheet.create({
 });
 
 // Export InfiniteCircularCarousel component with forwardRef
-export const InfiniteCircularCarousel = React.forwardRef(
+export const InfiniteCircularCarousel = forwardRef(
   BaseInfiniteCircularCarousel,
 ) as <T>(
   p: InfiniteCircularCarouselProps<T> & {
-    ref?: React.Ref<InfiniteCircularCarouselRef>;
+    ref?: Ref<InfiniteCircularCarouselRef>;
   },
-) => React.ReactElement;
+) => ReactElement;
 
 // Exporting types for props and ref
 export { InfiniteCircularCarouselProps, InfiniteCircularCarouselRef };

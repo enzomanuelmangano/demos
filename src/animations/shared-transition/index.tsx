@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import React from 'react';
+import { memo } from 'react';
 
 import { ScreenNames } from './constants/screen-names';
 import { DetailsScreen } from './screens/details';
@@ -8,7 +8,7 @@ import type { RootStackParamsList } from './typings';
 
 const Stack = createNativeStackNavigator<RootStackParamsList>();
 
-export const SharedTransitions = React.memo(() => {
+export const SharedTransitions = memo(() => {
   return (
     <>
       <Stack.Navigator

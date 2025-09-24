@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { type FC, useEffect } from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import Animated, {
   Easing,
@@ -25,7 +25,7 @@ type AnimatedSingleNumberProps = {
   scaleWidthOffset?: number;
 };
 
-export const AnimatedSingleNumber: React.FC<AnimatedSingleNumberProps> = ({
+export const AnimatedSingleNumber: FC<AnimatedSingleNumberProps> = ({
   value,
   style,
   index,

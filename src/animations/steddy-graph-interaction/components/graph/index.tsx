@@ -1,5 +1,3 @@
-import React from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import {
   Canvas,
   CornerPathEffect,
@@ -7,10 +5,12 @@ import {
   Line,
   Path,
   Skia,
+  Text,
   useFont,
   vec,
-  Text,
 } from '@shopify/react-native-skia';
+import { type FC, memo } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 import { useDerivedValue, withSpring } from 'react-native-reanimated';
 
 import { Palette } from '../../constants/palette';
@@ -25,7 +25,7 @@ type GraphProps = {
   maxValue?: number;
 };
 
-const Graph: React.FC<GraphProps> = React.memo(
+const Graph: FC<GraphProps> = memo(
   ({
     scores,
     canvasHeight,

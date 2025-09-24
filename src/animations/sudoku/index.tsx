@@ -6,9 +6,11 @@
  * a beautiful UI with animations and visual feedback.
  */
 
-import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, View, Text, Alert, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { ConfettiMethods } from 'react-native-fast-confetti';
+import { PIConfetti } from 'react-native-fast-confetti';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -16,12 +18,10 @@ import Animated, {
   FadeOutRight,
   LinearTransition,
 } from 'react-native-reanimated';
-import type { ConfettiMethods } from 'react-native-fast-confetti';
-import { PIConfetti } from 'react-native-fast-confetti';
 
-import { generateSudoku } from './logic';
-import { SudokuBoard, type SudokuBoardRef } from './components/sudoku-board';
 import { Button } from './components/button';
+import { SudokuBoard, type SudokuBoardRef } from './components/sudoku-board';
+import { generateSudoku } from './logic';
 import { COLORS, ELEVATION } from './theme';
 
 const Transition = LinearTransition;

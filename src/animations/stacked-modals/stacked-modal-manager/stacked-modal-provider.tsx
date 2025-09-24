@@ -1,18 +1,23 @@
 import type { PropsWithChildren } from 'react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type FC,
+  type ReactNode,
+} from 'react';
 
+import { Backdrop } from './backdrop';
 import {
   InternalStackedModalContext,
   StackedModalContext,
   type StackedModalType,
 } from './context';
 import { StackedModal } from './stacked-modal';
-import { Backdrop } from './backdrop';
 
 // Define a StackedModalProvider component to manage and display StackedModals
-export const StackedModalProvider: React.FC<PropsWithChildren> = ({
-  children,
-}) => {
+export const StackedModalProvider: FC<PropsWithChildren> = ({ children }) => {
   // State to manage the list of StackedModals
   const [stackedModals, setStackedModals] = useState<StackedModalType[]>([]);
 
@@ -63,7 +68,7 @@ export const StackedModalProvider: React.FC<PropsWithChildren> = ({
   }, [clearAllStackedModals, showStackedModal, clearModal]);
 
   const stackedModalsMemoizedByKeys = useRef<
-    Record<string | number, React.ReactNode>
+    Record<string | number, ReactNode>
   >({});
 
   const renderStackedModal = useCallback(

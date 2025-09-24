@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
@@ -6,7 +6,7 @@ type StackedSheetHandleProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export const StackedSheetHandle: React.FC<StackedSheetHandleProps> = React.memo(
+export const StackedSheetHandle: FC<StackedSheetHandleProps> = memo(
   ({ style }) => {
     return <View style={[styles.handle, style]} />;
   },

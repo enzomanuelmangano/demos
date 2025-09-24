@@ -1,6 +1,6 @@
-import React from 'react';
+import type { FC } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
-import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -26,7 +26,7 @@ const clamp = (value: number, lowerBound: number, upperBound: number) => {
   return Math.min(Math.max(value, lowerBound), upperBound);
 };
 
-const ClipBoxButton: React.FC<ClipBoxButtonProps> = ({
+const ClipBoxButton: FC<ClipBoxButtonProps> = ({
   style,
   initialRadius = 35,
   primaryColor = '#4BA2E4',

@@ -1,4 +1,9 @@
-import React, { useCallback, useImperativeHandle } from 'react';
+import {
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useImperativeHandle,
+} from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -20,7 +25,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Define the props for the ActionTray component
 type ActionTrayProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   maxHeight?: number;
   style?: StyleProp<ViewStyle>;
   onClose?: () => void;
@@ -33,7 +38,7 @@ export type ActionTrayRef = {
 };
 
 // Create the ActionTray component
-const ActionTray = React.forwardRef<ActionTrayRef, ActionTrayProps>(
+const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
   ({ children, style, maxHeight = SCREEN_HEIGHT, onClose }, ref) => {
     // Create a shared value for translateY animation
     const translateY = useSharedValue(maxHeight);

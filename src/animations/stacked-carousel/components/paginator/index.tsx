@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { memo, useMemo, type FC, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Easing,
@@ -15,7 +15,7 @@ type PaginatorProps = {
   visibleDots: number;
   dotSize?: number;
   spacing?: number;
-  background?: React.ReactNode;
+  background?: ReactNode;
 };
 
 const SpringConfig = {
@@ -24,7 +24,7 @@ const SpringConfig = {
   mass: 0.5,
 } as const;
 
-export const Paginator: React.FC<PaginatorProps> = React.memo(
+export const Paginator: FC<PaginatorProps> = memo(
   ({
     pagesAmount,
     currentPageIndex,
@@ -103,7 +103,7 @@ type AnimatedDotProps = {
   dotSize: number;
 };
 
-const AnimatedDot = React.memo(
+const AnimatedDot = memo(
   ({
     index,
     visibleDotsIndices,

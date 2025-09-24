@@ -1,15 +1,15 @@
-// Import React and useContext from React library
-import React from 'react';
+// Import createContext from React library
+import { createContext, type ReactNode } from 'react';
 
 // Define the type for a StackedModal
 export type StackedModalType = {
   id: number;
   key: string;
-  children?: () => React.ReactNode;
+  children?: () => ReactNode;
 };
 
 // Create a context for managing StackedModals
-export const StackedModalContext = React.createContext<{
+export const StackedModalContext = createContext<{
   showStackedModal: (StackedModal: Omit<StackedModalType, 'id'>) => void;
   clearAllStackedModals: () => void;
   clearModal: (key: string) => void;
@@ -35,6 +35,6 @@ export type InternalStackedModalContextType = {
 };
 
 export const InternalStackedModalContext =
-  React.createContext<InternalStackedModalContextType>({
+  createContext<InternalStackedModalContextType>({
     stackedModals: [],
   });

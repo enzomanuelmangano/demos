@@ -1,6 +1,6 @@
 import type { ForwardedRef } from 'react';
 import { forwardRef, useImperativeHandle } from 'react';
-import React, {
+import {
   type StyleProp,
   type TextStyle,
   type ViewStyle,

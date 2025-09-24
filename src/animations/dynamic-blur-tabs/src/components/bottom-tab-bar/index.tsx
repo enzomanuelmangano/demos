@@ -2,7 +2,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { StackActions } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback } from 'react';
+import { type FC, useCallback } from 'react';
 import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -44,7 +44,7 @@ const createScreensMap = () =>
 
 const screensMap = createScreensMap();
 
-const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
+const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
   const focusedIndex = useSharedValue(state.index);
 
   const currentIndex = state.index;

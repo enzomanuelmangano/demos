@@ -1,5 +1,5 @@
 import { BlurView } from 'expo-blur';
-import React, { useCallback, useEffect } from 'react';
+import { type FC, type ReactNode, useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -22,11 +22,11 @@ const LIST_ITEM_CONTAINER_HEIGHT = LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM;
 type BlurredListProps<T> = {
   maxVisibleItems: number;
   data: T[];
-  renderItem: ({ item, index }: { item: T; index: number }) => React.ReactNode;
+  renderItem: ({ item, index }: { item: T; index: number }) => ReactNode;
 };
 
 type BlurredListItemContainerProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   index: number;
   maxVisibleItems: number;
   currentListLength: number;
@@ -66,7 +66,7 @@ const calculateTop = (
   Math.max(currentListLength - maxVisibleItems, 0) * LIST_ITEM_CONTAINER_HEIGHT;
 
 // Sub-components
-const BlurredListItemContainer: React.FC<BlurredListItemContainerProps> = ({
+const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   children,
   index,
   maxVisibleItems,

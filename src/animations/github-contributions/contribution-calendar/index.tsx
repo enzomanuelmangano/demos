@@ -1,5 +1,5 @@
 import { eachDayOfInterval, endOfWeek, format, startOfWeek } from 'date-fns';
-import React, {
+import {
   forwardRef,
   useCallback,
   useImperativeHandle,

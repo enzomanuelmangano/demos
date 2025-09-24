@@ -1,4 +1,11 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import {
+  type FC,
+  type ReactNode,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -18,11 +25,11 @@ type Section = {
 
 type SectionContentListProps = ScrollViewProps & {
   sections: Section[];
-  renderSection: (section: Section, index: number) => React.ReactNode;
+  renderSection: (section: Section, index: number) => ReactNode;
   bottomProgressStyle?: StyleProp<ViewStyle>;
 };
 
-const SectionContentList: React.FC<SectionContentListProps> = React.memo(
+const SectionContentList: FC<SectionContentListProps> = memo(
   ({ sections, renderSection, bottomProgressStyle, ...scrollViewProps }) => {
     const viewHeight = useSharedValue(1000);
     const scrollHeight = useSharedValue(1000);

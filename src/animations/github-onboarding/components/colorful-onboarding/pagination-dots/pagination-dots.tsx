@@ -1,5 +1,5 @@
 import { PressableScale } from 'pressto';
-import React from 'react';
+import type { ReactElement } from 'react';
 import type { ViewProps } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
@@ -28,7 +28,7 @@ export function PaginationDot({
   onPress,
   style,
   ...props
-}: PaginationDotProps): React.ReactElement {
+}: PaginationDotProps): ReactElement {
   const animatedDotStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       progress.value,

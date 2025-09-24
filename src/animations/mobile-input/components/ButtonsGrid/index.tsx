@@ -1,5 +1,5 @@
 import { FontAwesome5 } from '@expo/vector-icons';
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -25,37 +25,35 @@ type ButtonsGridProps = {
   onReset?: () => void;
 };
 
-const ButtonsGrid: React.FC<ButtonsGridProps> = React.memo(
-  ({ pin, onReset }) => {
-    return (
-      <View style={styles.container}>
-        {items.map(({ label }, index) => {
-          return (
-            <InputButton
-              key={index}
-              style={styles.input}
-              onTap={() => {
-                if (typeof label === 'number') {
-                  pin.value = [...pin.value, label];
-                  return;
-                }
-                if (label === 'backspace') {
-                  onReset?.();
-                }
-              }}>
-              {typeof label === 'number' && (
-                <Text style={styles.number}>{label}</Text>
-              )}
-              {label === 'backspace' && (
-                <FontAwesome5 name={label} size={24} color="white" />
-              )}
-            </InputButton>
-          );
-        })}
-      </View>
-    );
-  },
-);
+const ButtonsGrid: FC<ButtonsGridProps> = memo(({ pin, onReset }) => {
+  return (
+    <View style={styles.container}>
+      {items.map(({ label }, index) => {
+        return (
+          <InputButton
+            key={index}
+            style={styles.input}
+            onTap={() => {
+              if (typeof label === 'number') {
+                pin.value = [...pin.value, label];
+                return;
+              }
+              if (label === 'backspace') {
+                onReset?.();
+              }
+            }}>
+            {typeof label === 'number' && (
+              <Text style={styles.number}>{label}</Text>
+            )}
+            {label === 'backspace' && (
+              <FontAwesome5 name={label} size={24} color="white" />
+            )}
+          </InputButton>
+        );
+      })}
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   container: {

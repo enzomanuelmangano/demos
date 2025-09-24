@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, type FC } from 'react';
 import Animated, { LayoutAnimationConfig } from 'react-native-reanimated';
 
 import {
@@ -6,16 +6,16 @@ import {
   OpeningSpringConfigShared,
 } from '../../animations/bouncy';
 
-import { TabSelector } from './components/tab-selector';
-import { SpringSliderContainer } from './components/spring-slider-container';
-import { PullToDismissGesture } from './components/pull-to-dismiss';
-import { ModalContent } from './components/modal-content';
 import {
   ClosingEnteringKeyframe,
   ClosingExitingKeyframe,
   OpeningEnteringKeyframe,
   OpeningExitingKeyframe,
 } from './animations';
+import { ModalContent } from './components/modal-content';
+import { PullToDismissGesture } from './components/pull-to-dismiss';
+import { SpringSliderContainer } from './components/spring-slider-container';
+import { TabSelector } from './components/tab-selector';
 
 type SpringTab = 'closing' | 'opening';
 
@@ -32,9 +32,7 @@ const TAB_OPTIONS = [
  * SpringCustomizer component provides an interface to adjust spring animation parameters
  * Allows users to customize both opening and closing spring animations
  */
-export const SpringCustomizer: React.FC<SpringCustomizerProps> = ({
-  onClose,
-}) => {
+export const SpringCustomizer: FC<SpringCustomizerProps> = ({ onClose }) => {
   const [selectedTab, setSelectedTab] = useState<SpringTab>('opening');
 
   return (

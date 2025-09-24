@@ -1,12 +1,12 @@
-import React, { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import type { FlatList, LayoutRectangle } from 'react-native';
-import { View, StyleSheet, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MeasureableAnimatedView } from './components/MeasureableAnimatedView';
 import { SectionListItem } from './components/SectionListItem';

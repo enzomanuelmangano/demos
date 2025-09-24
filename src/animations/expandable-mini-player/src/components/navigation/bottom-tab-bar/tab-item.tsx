@@ -1,8 +1,8 @@
-import { StyleSheet } from 'react-native';
-import { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import React, { useCallback } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { PressableScale } from 'pressto';
+import { useCallback } from 'react';
+import { StyleSheet } from 'react-native';
+import { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 
 import { EasingsUtils } from '../../../animations/easings';
 import * as Icons from '../../../components/icons';

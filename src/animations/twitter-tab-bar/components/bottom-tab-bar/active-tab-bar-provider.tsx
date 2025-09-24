@@ -1,4 +1,10 @@
-import React, { useMemo } from 'react';
+import {
+  createContext,
+  type FC,
+  type ReactNode,
+  useContext,
+  useMemo,
+} from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import { makeMutable, useSharedValue } from 'react-native-reanimated';
 
@@ -6,17 +12,17 @@ type ActiveTabBarContextType = {
   isActive: SharedValue<boolean>;
 };
 
-const ActiveTabBarContext = React.createContext<ActiveTabBarContextType>({
+const ActiveTabBarContext = createContext<ActiveTabBarContextType>({
   isActive: makeMutable(true),
 });
 
 type ActiveTabBarContextProviderProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
-const ActiveTabBarContextProvider: React.FC<
-  ActiveTabBarContextProviderProps
-> = ({ children }) => {
+const ActiveTabBarContextProvider: FC<ActiveTabBarContextProviderProps> = ({
+  children,
+}) => {
   const isActive = useSharedValue(true);
 
   const value = useMemo(() => {
@@ -33,7 +39,7 @@ const ActiveTabBarContextProvider: React.FC<
 };
 
 const useActiveTabBarContext = () => {
-  return React.useContext(ActiveTabBarContext);
+  return useContext(ActiveTabBarContext);
 };
 
 export { ActiveTabBarContextProvider, useActiveTabBarContext };

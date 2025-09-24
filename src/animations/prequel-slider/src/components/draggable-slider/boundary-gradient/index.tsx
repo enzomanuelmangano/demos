@@ -1,5 +1,5 @@
 import { LinearGradient, Rect } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import { type FC, memo, useMemo } from 'react';
 
 // Defining type for props
 type BoundaryGradientProps = {
@@ -11,7 +11,7 @@ type BoundaryGradientProps = {
 };
 
 // Functional component for boundary gradient
-export const BoundaryGradient: React.FC<BoundaryGradientProps> = React.memo(
+export const BoundaryGradient: FC<BoundaryGradientProps> = memo(
   ({ x, y, width, height, mainColor }) => {
     // Memoizing the colors array
     const colors = useMemo(() => {

@@ -1,4 +1,3 @@
-import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 

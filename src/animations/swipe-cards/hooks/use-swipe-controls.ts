@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { createRef, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useSharedValue } from 'react-native-reanimated';
 
 import type { SwipeableCardRefType } from '../components/Card';
@@ -10,7 +10,7 @@ const useSwipeControls = () => {
   const refs = useMemo(() => {
     const pendingRefs = [];
     for (let i = 0; i < IMAGES.length; i++) {
-      pendingRefs.push(React.createRef<SwipeableCardRefType>());
+      pendingRefs.push(createRef<SwipeableCardRefType>());
     }
     return pendingRefs;
   }, []);

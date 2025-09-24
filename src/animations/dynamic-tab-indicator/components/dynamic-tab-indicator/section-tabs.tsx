@@ -1,11 +1,11 @@
-import React from 'react';
+import { type FC, memo, useCallback } from 'react';
 import type { LayoutRectangle } from 'react-native';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type SectionTabsProps = {
   height: number;
@@ -17,7 +17,7 @@ type SectionTabsProps = {
   onInitialLayout: (layout: LayoutRectangle) => void;
 };
 
-const SectionTabs: React.FC<SectionTabsProps> = React.memo(
+const SectionTabs: FC<SectionTabsProps> = memo(
   ({
     height,
     width,
@@ -42,7 +42,7 @@ const SectionTabs: React.FC<SectionTabsProps> = React.memo(
       };
     }, [height]);
 
-    const handleLayout = React.useCallback(
+    const handleLayout = useCallback(
       (index: number, layout: LayoutRectangle) => {
         onLayoutChange(index, layout);
 

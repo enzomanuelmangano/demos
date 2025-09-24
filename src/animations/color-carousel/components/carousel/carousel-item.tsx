@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
@@ -20,7 +20,7 @@ type CarouselItemProps = {
   activeIndex: SharedValue<number>;
 };
 
-const CarouselItem: React.FC<CarouselItemProps> = React.memo(
+const CarouselItem: FC<CarouselItemProps> = memo(
   ({
     item,
     index,

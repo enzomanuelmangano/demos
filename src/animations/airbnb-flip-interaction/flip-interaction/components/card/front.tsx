@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { type FC, memo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { spacing } from '../../constants';
 
@@ -12,7 +12,7 @@ type CardFrontProps = {
   profile: ProfileType;
 };
 
-export const CardFront: React.FC<CardFrontProps> = React.memo(({ profile }) => {
+export const CardFront: FC<CardFrontProps> = memo(({ profile }) => {
   return (
     <View style={styles.container}>
       <LinearGradient

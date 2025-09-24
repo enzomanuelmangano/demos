@@ -1,13 +1,13 @@
 // Import necessary React components and types
 import type { PropsWithChildren } from 'react';
-import React, { useCallback, useMemo, useState } from 'react';
+import { type FC, useCallback, useMemo, useState } from 'react';
 
 // Import the ToastContext and Toast component
 import { ToastContext, type ToastType } from './context';
 import { Toast } from './toast';
 
 // Define a ToastProvider component to manage and display toasts
-export const ToastProvider: React.FC<PropsWithChildren> = ({ children }) => {
+export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
   // State to manage the list of toasts
   const [toasts, setToasts] = useState<ToastType[]>([]);
 

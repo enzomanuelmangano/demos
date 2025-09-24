@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -16,7 +16,7 @@ import { AnimatedBackdrop } from './AnimatedBackdrop';
 import { ModalContent } from './Modal';
 import { FLOATING_BUTTON_SIZE } from './constants';
 
-const FloatingModal: React.FC = React.memo(() => {
+const FloatingModal: FC = memo(() => {
   // This shared value is responsible to handle the modal state
   // Basically all the animations are based on this value
   const isOpened = useSharedValue(false);

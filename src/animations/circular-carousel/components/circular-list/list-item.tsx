@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import React from 'react';
+import { type FC } from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
 import Animated, {
   Extrapolate,
@@ -21,7 +21,7 @@ const LIST_ITEM_WIDTH = windowWidth / 4;
 // React Native Advanced Onboarding: https://youtu.be/OT-73hpwxXQ
 
 // CircularListItem component definition
-const CircularListItem: React.FC<{
+const CircularListItem: FC<{
   index: number;
   imageUri: string;
   contentOffset: SharedValue<number>;

@@ -1,5 +1,5 @@
 import { createAnimatedPressable } from 'pressto';
-import React from 'react';
+import { type FC, type JSX, memo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import { interpolate } from 'react-native-reanimated';
@@ -8,7 +8,7 @@ type ExpoRouterListItemProps = {
   item: {
     id: number;
     name: string;
-    icon: () => React.JSX.Element;
+    icon: () => JSX.Element;
     alert?: boolean;
   };
   onPress: () => void;
@@ -26,7 +26,7 @@ const PressableHighlight = createAnimatedPressable(progress => {
   };
 });
 
-const DrawerListItem: React.FC<ExpoRouterListItemProps> = React.memo(
+const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
   ({ item, onPress, style }) => {
     return (
       <PressableHighlight style={[styles.container, style]} onPress={onPress}>

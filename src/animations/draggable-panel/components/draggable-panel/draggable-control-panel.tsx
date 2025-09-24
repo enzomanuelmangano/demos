@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import React, { useCallback, useMemo, useState } from 'react';
+import { type FC, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type {
@@ -8,16 +8,16 @@ import type {
   WithSpringConfig,
 } from 'react-native-reanimated';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  LinearTransition,
+  Easing,
   FadeIn,
   FadeOut,
-  withTiming,
-  useDerivedValue,
   interpolate,
-  Easing,
+  LinearTransition,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
 import {
@@ -58,7 +58,7 @@ const unwrapAnimatedValue = <T,>(
   return isSharedValue<T>(animatedValue) ? animatedValue.get() : animatedValue;
 };
 
-export const DraggableControlPanel: React.FC<DraggableControlPanelProps> = ({
+export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
   springConfig,
   collapsedChildren,
   expandedChildren,

@@ -3,7 +3,7 @@ import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type JSX } from 'react';
 import type {
   NativeSyntheticEvent,
   TextInputChangeEventData,
@@ -25,12 +25,12 @@ const LIST_ITEM_HEIGHT = 60;
 
 type AnimationItem = {
   slug: string;
-  component: () => React.JSX.Element;
+  component: () => JSX.Element;
   metadata: AnimationMetadataType;
   id: number;
   route: string;
   name: string;
-  icon: () => React.JSX.Element;
+  icon: () => JSX.Element;
   alert?: boolean;
 };
 

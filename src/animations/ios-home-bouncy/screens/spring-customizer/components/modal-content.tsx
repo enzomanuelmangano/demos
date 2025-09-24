@@ -1,13 +1,13 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { type FC, type ReactNode } from 'react';
+import { StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ModalContentProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const ModalContent: React.FC<ModalContentProps> = ({ children }) => {
+export const ModalContent: FC<ModalContentProps> = ({ children }) => {
   const insets = useSafeAreaInsets();
 
   return (

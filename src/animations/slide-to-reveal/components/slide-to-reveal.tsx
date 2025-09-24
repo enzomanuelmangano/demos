@@ -8,7 +8,7 @@ import {
   RoundedRect,
   useFont,
 } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import { type FC, memo, useMemo } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   useDerivedValue,
@@ -28,7 +28,7 @@ type SlideToRevealProps = {
 };
 
 // Define the SlideToReveal component
-const SlideToReveal: React.FC<SlideToRevealProps> = React.memo(
+const SlideToReveal: FC<SlideToRevealProps> = memo(
   ({ code, width, height, fontSize = 34 }) => {
     // Load the custom font for displaying the code
     const font = useFont(

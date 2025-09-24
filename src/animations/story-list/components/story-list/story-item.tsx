@@ -1,8 +1,8 @@
-import React from 'react';
+import { type ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
@@ -13,7 +13,7 @@ type StoryListItemProps<T> = {
   translateX: SharedValue<number>;
   activeIndex: SharedValue<number>;
   itemWidth: number;
-  renderItem: (item: T, index: number) => React.ReactNode;
+  renderItem: (item: T, index: number) => ReactNode;
   visibleItems: number;
   gap: number;
 };

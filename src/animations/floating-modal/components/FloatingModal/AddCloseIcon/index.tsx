@@ -1,9 +1,9 @@
 import { AntDesign } from '@expo/vector-icons';
-import React from 'react';
+import { type FC, memo } from 'react';
 import Animated, {
   Extrapolate,
   interpolate,
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
@@ -14,44 +14,42 @@ type AddCloseIconProps = {
   progress: SharedValue<number>;
 };
 
-const AddCloseIcon: React.FC<AddCloseIconProps> = React.memo(
-  ({ onPress, progress }) => {
-    const rIconStyle = useAnimatedStyle(() => {
-      const rotate = interpolate(
-        progress.value,
-        [0, 1],
-        [0, Math.PI / 4],
-        Extrapolate.CLAMP,
-      );
-
-      return {
-        transform: [
-          {
-            rotate: `${rotate}rad`,
-          },
-        ],
-      };
-    }, []);
-
-    return (
-      <Animated.View
-        onTouchEnd={onPress}
-        style={[
-          {
-            position: 'absolute',
-            width: FLOATING_BUTTON_SIZE,
-            aspectRatio: 1,
-            top: 0,
-            left: 0,
-            justifyContent: 'center',
-            alignItems: 'center',
-          },
-          rIconStyle,
-        ]}>
-        <AntDesign name="plus" size={28} color="black" />
-      </Animated.View>
+const AddCloseIcon: FC<AddCloseIconProps> = memo(({ onPress, progress }) => {
+  const rIconStyle = useAnimatedStyle(() => {
+    const rotate = interpolate(
+      progress.value,
+      [0, 1],
+      [0, Math.PI / 4],
+      Extrapolate.CLAMP,
     );
-  },
-);
+
+    return {
+      transform: [
+        {
+          rotate: `${rotate}rad`,
+        },
+      ],
+    };
+  }, []);
+
+  return (
+    <Animated.View
+      onTouchEnd={onPress}
+      style={[
+        {
+          position: 'absolute',
+          width: FLOATING_BUTTON_SIZE,
+          aspectRatio: 1,
+          top: 0,
+          left: 0,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        rIconStyle,
+      ]}>
+      <AntDesign name="plus" size={28} color="black" />
+    </Animated.View>
+  );
+});
 
 export { AddCloseIcon };

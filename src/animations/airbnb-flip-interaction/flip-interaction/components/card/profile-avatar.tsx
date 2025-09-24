@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useMemo } from 'react';
+import { type FC, memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 type ProfileAvatarProps = {
@@ -8,7 +8,7 @@ type ProfileAvatarProps = {
   isVerified?: boolean;
 };
 
-export const ProfileAvatar: React.FC<ProfileAvatarProps> = React.memo(
+export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
   ({ name, size = 80, isVerified = false }) => {
     // Memoize computed values to prevent recalculation
     const computedValues = useMemo(() => {
