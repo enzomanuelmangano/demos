@@ -23,7 +23,7 @@ const ActiveTabBarContextProvider: React.FC<
     return {
       isActive,
     };
-  }, []);
+  }, [isActive]);
 
   return (
     <ActiveTabBarContext.Provider value={value}>
