@@ -23,5 +23,8 @@ jobs:
       - name: Run ESLint
         run: bun run lint
 
+      - name: Run TypeScript type check
+        run: bun run typecheck
+
       - name: Run Prettier
         run: bun prettier --check 'src/**/*.ts' 'src/**/*.tsx'
