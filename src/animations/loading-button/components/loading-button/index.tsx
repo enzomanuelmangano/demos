@@ -1,5 +1,4 @@
 import Color from 'color';
-import { MotiView } from 'moti';
 import { PressableScale } from 'pressto';
 import { useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -33,24 +32,17 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
 
   return (
     <PressableScale onPress={onPress} layout={LinearTransition.springify()}>
-      <MotiView
-        transition={{
-          backgroundColor: {
-            type: 'timing',
-            duration: 1000,
-          },
-        }}
+      <Animated.View
         style={[
           {
             flexDirection: 'row',
             alignItems: 'center',
             paddingHorizontal: 12,
+            backgroundColor: Color(activeColor).lighten(0.6).hex(),
+            transition: 'backgroundColor 200ms',
           },
           style,
-        ]}
-        animate={{
-          backgroundColor: Color(activeColor).lighten(0.6).hex(),
-        }}>
+        ]}>
         <ActivityIndicator status={status} color={activeColor} />
         <Animated.Text
           key={`text`}
@@ -64,7 +56,7 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
           ]}>
           {titleFromStatusMap?.[status] || ''}
         </Animated.Text>
-      </MotiView>
+      </Animated.View>
     </PressableScale>
   );
 };
