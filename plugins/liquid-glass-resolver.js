@@ -184,11 +184,11 @@ function scanDirectory(directoryPath, config, logger) {
  */
 function safeFileExists(filePath, logger) {
   if (cache.fileExists.has(filePath)) {
-    logger.incrementStat('cacheHits');
+    logger?.incrementStat('cacheHits');
     return cache.fileExists.get(filePath);
   }
 
-  logger.incrementStat('cacheMisses');
+  logger?.incrementStat('cacheMisses');
 
   try {
     const exists = fs.existsSync(filePath);
@@ -338,7 +338,7 @@ function hasLiquidVariants(
  * @param {object} config - Plugin configuration
  * @returns {object|null} - Liquid variant info or null if not found
  */
-function findLiquidVariantsUncached(importPath, currentFile, config) {
+function findLiquidVariantsUncached(importPath, currentFile, config, logger) {
   const validatedPath = validateImportPath(
     importPath,
     currentFile,
@@ -361,11 +361,12 @@ function findLiquidVariantsUncached(importPath, currentFile, config) {
   possiblePaths.unshift(basePath);
 
   for (const resolvedPath of possiblePaths) {
-    if (safeFileExists(resolvedPath)) {
+    if (safeFileExists(resolvedPath, logger)) {
       const liquidInfo = checkForLiquidVariant(
         resolvedPath,
         currentFile,
         config,
+        logger,
       );
       if (liquidInfo) {
         return liquidInfo;
@@ -383,19 +384,25 @@ function findLiquidVariantsUncached(importPath, currentFile, config) {
  * @param {object} config - Plugin configuration
  * @returns {object|null} - Liquid variant info or null if not found
  */
-function checkForLiquidVariant(resolvedPath, currentFile, config) {
+function checkForLiquidVariant(resolvedPath, currentFile, config, logger) {
   const dir = path.dirname(resolvedPath);
   const ext = path.extname(resolvedPath);
   const name = path.basename(resolvedPath, ext);
   const componentName = name === 'index' ? path.basename(dir) : name;
 
-  const liquidPath = path.join(
-    dir,
-    `${componentName}${config.liquidSuffix}${ext}`,
-  );
+  // For index files, check for index.liquid.ext first
+  let liquidPath;
+  if (name === 'index') {
+    liquidPath = path.join(dir, `index${config.liquidSuffix}${ext}`);
+  } else {
+    liquidPath = path.join(dir, `${componentName}${config.liquidSuffix}${ext}`);
+  }
   const regularPath = resolvedPath;
 
-  if (safeFileExists(liquidPath) && safeFileExists(regularPath)) {
+  if (
+    safeFileExists(liquidPath, logger) &&
+    safeFileExists(regularPath, logger)
+  ) {
     // Calculate the relative import path from currentFile to the liquid component
     const liquidRelativePath = path.relative(
       path.dirname(currentFile),
@@ -405,13 +412,17 @@ function checkForLiquidVariant(resolvedPath, currentFile, config) {
       .replace(new RegExp(`\${ext}$`), '')
       .replace(/\\/g, '/');
 
+    const regularRelativePath = path
+      .relative(path.dirname(currentFile), resolvedPath)
+      .replace(new RegExp(`\${ext}$`), '')
+      .replace(/\\/g, '/');
+
     return {
       componentName,
       dir,
-      importPath: path
-        .relative(path.dirname(currentFile), resolvedPath)
-        .replace(new RegExp(`\${ext}$`), '')
-        .replace(/\\/g, '/'),
+      importPath: regularRelativePath.startsWith('.')
+        ? regularRelativePath
+        : `./${regularRelativePath}`,
       liquidImportPath: liquidImportPath.startsWith('.')
         ? liquidImportPath
         : `./${liquidImportPath}`,
@@ -550,6 +561,8 @@ function createLiquidGlassAvailableFunction(t) {
  * @param {string} regularImportName - Name for regular import
  * @param {string} liquidImportPath - Path to liquid variant
  * @param {string} regularImportPath - Path to regular variant
+ * @param {boolean} isNamed - Whether this is a named import
+ * @param {string} importedName - The original imported name for named imports
  * @returns {Array} - Array of import AST nodes
  */
 function createVariantImports(
@@ -558,14 +571,26 @@ function createVariantImports(
   regularImportName,
   liquidImportPath,
   regularImportPath,
+  isNamed = false,
+  importedName = null,
 ) {
+  const createSpecifier = localName => {
+    if (isNamed) {
+      return [
+        t.importSpecifier(t.identifier(localName), t.identifier(importedName)),
+      ];
+    } else {
+      return [t.importDefaultSpecifier(t.identifier(localName))];
+    }
+  };
+
   return [
     t.importDeclaration(
-      [t.importDefaultSpecifier(t.identifier(liquidImportName))],
+      createSpecifier(liquidImportName),
       t.stringLiteral(liquidImportPath),
     ),
     t.importDeclaration(
-      [t.importDefaultSpecifier(t.identifier(regularImportName))],
+      createSpecifier(regularImportName),
       t.stringLiteral(regularImportPath),
     ),
   ];
@@ -607,6 +632,7 @@ function createConditionalComponent(
 function processImportDeclaration(importPath, state, t, config) {
   const importValue = importPath.node.source.value;
   const currentFile = state.filename;
+  const logger = new PluginLogger(config);
 
   // Skip if this is already a liquid import (to prevent infinite loops)
   if (importValue.includes(config.liquidSuffix)) {
@@ -626,7 +652,12 @@ function processImportDeclaration(importPath, state, t, config) {
   }
   state.processedImports.add(importKey);
 
-  const liquidInfo = hasLiquidVariants(importValue, currentFile, config);
+  const liquidInfo = hasLiquidVariants(
+    importValue,
+    currentFile,
+    config,
+    logger,
+  );
   if (!liquidInfo) {
     if (config.debugLogging) {
       console.log(
@@ -636,21 +667,44 @@ function processImportDeclaration(importPath, state, t, config) {
     return;
   }
 
-  const defaultSpecifier = importPath.node.specifiers.find(
-    spec => spec.type === 'ImportDefaultSpecifier',
-  );
-  if (!defaultSpecifier) {
+  // Handle both default and named imports
+  const specifiers = importPath.node.specifiers;
+  if (!specifiers || specifiers.length === 0) {
     if (config.debugLogging) {
       console.log(
-        `[liquid-glass-resolver] No default specifier found for: ${importValue}`,
+        `[liquid-glass-resolver] No specifiers found for: ${importValue}`,
       );
     }
     return;
   }
 
-  const localName = defaultSpecifier.local.name;
   const liquidImportPath = liquidInfo.liquidImportPath;
   const regularImportPath = liquidInfo.importPath;
+
+  // Process named imports
+  const namedSpecifiers = specifiers.filter(
+    spec => spec.type === 'ImportSpecifier',
+  );
+
+  // Process default import
+  const defaultSpecifier = specifiers.find(
+    spec => spec.type === 'ImportDefaultSpecifier',
+  );
+
+  if (!defaultSpecifier && namedSpecifiers.length === 0) {
+    if (config.debugLogging) {
+      console.log(
+        `[liquid-glass-resolver] No valid specifiers found for: ${importValue}`,
+      );
+    }
+    return;
+  }
+
+  // For simplicity, we'll handle the first named import or default import
+  const specifier = defaultSpecifier || namedSpecifiers[0];
+  const isNamed = !defaultSpecifier;
+  const localName = specifier.local.name;
+  const importedName = isNamed ? specifier.imported.name : null;
   const liquidImportName = `${localName}Liquid`;
   const regularImportName = `${localName}Regular`;
 
@@ -670,6 +724,8 @@ function processImportDeclaration(importPath, state, t, config) {
       regularImportName,
       liquidImportPath,
       regularImportPath,
+      isNamed,
+      importedName,
     );
 
     const conditionalComponent = createConditionalComponent(
@@ -695,6 +751,8 @@ function processImportDeclaration(importPath, state, t, config) {
       regularImportName,
       liquidImportPath,
       regularImportPath,
+      isNamed,
+      importedName,
     );
 
     const conditionalComponent = createConditionalComponent(
