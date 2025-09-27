@@ -4,12 +4,14 @@ import { useEffect } from 'react';
 
 import {
   Blur,
+  BlurMask,
   Canvas,
   Circle,
+  LinearGradient,
   Mask,
-  Rect,
-  Shader,
+  Path,
   Skia,
+  vec,
 } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import {
@@ -27,34 +29,40 @@ const MAX_CIRCLES_AMOUNT = 350;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_SIZE = SCREEN_WIDTH;
 
-const shaderSource = Skia.RuntimeEffect.Make(`
-  uniform float iTime;
-  uniform float N;
-  uniform float magicalMul;
-  const vec2 iResolution = vec2(${CANVAS_SIZE}, ${CANVAS_SIZE});
-  const float MAX_N = ${MAX_CIRCLES_AMOUNT}.0;
+const createFibonacci3DPath = (
+  N: number,
+  magicalMul: number,
+  iTime: number,
+  zOffset: number = 0,
+) => {
+  'worklet';
+  const path = Skia.Path.Make();
+  const centerX = CANVAS_SIZE / 2;
+  const centerY = CANVAS_SIZE / 2;
 
-  vec4 main(vec2 FC) {
-    vec4 o = vec4(0, 0, 0, 1);
-    vec2 u = FC.xy * 2.0 - iResolution.xy;
+  for (let i = 0; i < N; i++) {
+    const a = i / (N * 0.5) - 1.0;
+    const px = Math.cos(i * magicalMul + iTime) * Math.sqrt(1.0 - a * a);
+    const py = Math.cos(i * magicalMul + iTime + 11) * Math.sqrt(1.0 - a * a);
 
-    // Early exit for pixels far from center
-    if (length(u / iResolution.y) > 1.5) return o;
+    // 3D position calculation
+    const z = Math.sin(i * 0.1 + iTime * 0.5 + zOffset) * 100; // Z depth in world units
 
-    for (float i = 0.0; i < MAX_N; i++) {
-      if (i >= N) break;
+    // Perspective projection (objects further away appear smaller and closer to center)
+    const distance = 200; // Camera distance
+    const scale = distance / (distance + z);
 
-      float a = i / (N * 0.5) - 1.0;
-      vec2 p = cos(i * magicalMul + iTime + vec2(0, 11)) * sqrt(max(0.0, 1.0 - a * a));
-      vec2 c = u / iResolution.y + vec2(p.x, a) / max(0.1, p.y + 2.0);
+    const x = centerX + px * CANVAS_SIZE * 0.4 * scale;
+    const y = centerY + a * CANVAS_SIZE * 0.4 * scale;
 
-      float dist2 = dot(c, c);
-      if (dist2 > 0.001) {
-        o += (cos(i + vec4(0, 2, 4, 0)) + 1.0) / dist2 * (1.0 - p.y) / (N * 75.0);
-      }
-    }
-    return o;
-  }`)!;
+    const intensity = (1.0 - Math.abs(py)) / (N * 0.01);
+    const radius = Math.max(0.3, Math.min(intensity * 5 * scale, 12));
+
+    path.addCircle(x, y, radius);
+  }
+
+  return path;
+};
 
 const FibonacciShader = () => {
   const N = useSharedValue(5.0);
@@ -62,12 +70,17 @@ const FibonacciShader = () => {
 
   const iTime = useSharedValue(0.0);
 
-  const uniforms = useDerivedValue(() => {
-    return {
-      iTime: iTime.value,
-      N: N.value,
-      magicalMul: magicalMul.value,
-    };
+  const fibonacciPath = useDerivedValue(() => {
+    return createFibonacci3DPath(N.value, magicalMul.value, iTime.value);
+  }, [iTime, N, magicalMul]);
+
+  const fibonacciBackPath = useDerivedValue(() => {
+    return createFibonacci3DPath(
+      N.value,
+      magicalMul.value,
+      iTime.value,
+      Math.PI,
+    );
   }, [iTime, N, magicalMul]);
 
   useEffect(() => {
@@ -109,9 +122,34 @@ const FibonacciShader = () => {
                 <Blur blur={10} />
               </Circle>
             }>
-            <Rect x={0} y={0} width={CANVAS_SIZE} height={CANVAS_SIZE}>
-              <Shader source={shaderSource} uniforms={uniforms} />
-            </Rect>
+            {/* Back layer - darker for depth */}
+            <Path path={fibonacciBackPath} style="fill" opacity={0.4}>
+              <LinearGradient
+                start={vec(0, 0)}
+                end={vec(CANVAS_SIZE, CANVAS_SIZE)}
+                colors={['#8B3A62', '#2E8B8B', '#2E5984']}
+              />
+              <BlurMask blur={8} style="outer" />
+            </Path>
+
+            {/* Main front layer */}
+            <Path path={fibonacciPath} style="fill">
+              <LinearGradient
+                start={vec(0, 0)}
+                end={vec(CANVAS_SIZE, CANVAS_SIZE)}
+                colors={['#FF6B6B', '#4ECDC4', '#45B7D1']}
+              />
+            </Path>
+
+            {/* Bright glow for front layer */}
+            <Path path={fibonacciPath} style="fill" opacity={0.6}>
+              <LinearGradient
+                start={vec(0, 0)}
+                end={vec(CANVAS_SIZE, CANVAS_SIZE)}
+                colors={['#FFB3B3', '#B3F5F5', '#B3D7F5']}
+              />
+              <BlurMask blur={6} style="outer" />
+            </Path>
           </Mask>
         </Canvas>
       </View>
