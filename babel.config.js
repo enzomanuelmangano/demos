@@ -4,7 +4,7 @@ module.exports = function (api) {
     presets: ['babel-preset-expo'],
     plugins: [
       'react-native-worklets/plugin',
-      './babel-plugin-liquid-glass-simple.js',
+      './plugins/liquid-glass-resolver',
     ],
   };
 };
