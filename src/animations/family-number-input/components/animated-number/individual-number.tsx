@@ -3,7 +3,7 @@ import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeOut,
-  Layout,
+  LinearTransition,
   SlideOutDown,
   useAnimatedStyle,
   useDerivedValue,
@@ -79,9 +79,9 @@ export const AnimatedSingleNumber: FC<AnimatedSingleNumberProps> = ({
   }, [index, itemWidth, totalNumbersLength]);
 
   return (
-    <Animated.View layout={Layout} exiting={FadeOut.duration(100)}>
+    <Animated.View layout={LinearTransition} exiting={FadeOut.duration(100)}>
       <Animated.View
-        layout={Layout}
+        layout={LinearTransition}
         exiting={SlideOutDown.duration(3000).easing(Easing.linear)}>
         <Animated.View
           style={[

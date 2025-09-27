@@ -1,7 +1,7 @@
 import { type ReactElement, useCallback } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import Animated, {
-  Layout,
+  LinearTransition,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
@@ -109,7 +109,7 @@ function AnimatedLayoutList<T>({
       {data.map((item, i) => (
         <Animated.View
           key={i}
-          layout={Layout.duration(700)}
+          layout={LinearTransition.duration(700)}
           style={[
             {
               height: isExpanded ? 100 : 120,

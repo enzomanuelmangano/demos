@@ -12,7 +12,7 @@ import Animated, {
   FadeIn,
   FadeOut,
   interpolate,
-  Layout,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -134,7 +134,10 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
         <GestureDetector gesture={gesture}>
           <Animated.View
             style={[styles.actionTrayContainer, rActionTrayStyle, style]}>
-            <Animated.View layout={Layout} entering={FadeIn} exiting={FadeOut}>
+            <Animated.View
+              layout={LinearTransition}
+              entering={FadeIn}
+              exiting={FadeOut}>
               {children}
             </Animated.View>
           </Animated.View>

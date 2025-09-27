@@ -7,7 +7,7 @@ import Animated, {
   Extrapolation,
   FadeIn,
   FadeOut,
-  Layout,
+  LinearTransition,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
@@ -129,7 +129,7 @@ function App() {
         <Animated.View style={rContentStyle}>
           {step === 0 && (
             <Animated.Text
-              layout={Layout.easing(Easing.linear).duration(250)}
+              layout={LinearTransition.easing(Easing.linear).duration(250)}
               exiting={FadeOut.delay(100)}
               style={styles.contentText}>
               Content here
@@ -137,7 +137,7 @@ function App() {
           )}
           {step === 1 && (
             <Animated.View
-              layout={Layout.easing(Easing.linear).duration(250)}
+              layout={LinearTransition.easing(Easing.linear).duration(250)}
               entering={FadeIn.delay(100)}
               exiting={FadeOut.delay(100)}
               style={{ flex: 1 }}>
@@ -151,7 +151,7 @@ function App() {
           )}
           {step === 2 && (
             <Animated.View
-              layout={Layout.easing(Easing.linear).duration(250)}
+              layout={LinearTransition.easing(Easing.linear).duration(250)}
               entering={FadeIn.delay(100)}
               exiting={FadeOut.delay(100)}
               style={{ flex: 1 }}>

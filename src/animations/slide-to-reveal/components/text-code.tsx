@@ -31,7 +31,7 @@ const TextCode: React.FC<TextCodeProps> = ({
   color = 'white',
   highlightedPoint,
 }) => {
-  const textWidth = font?.getTextWidth(code) || 0;
+  const textWidth = font?.measureText(code).width || 0;
 
   return (
     <Group>
@@ -91,7 +91,7 @@ const ScaleableCharacter: React.FC<
     if (!rest.font || !rest.text) return { x, y };
 
     return {
-      x: x + rest.font?.getTextWidth(rest.text) / 2,
+      x: x + rest.font?.measureText(rest.text).width / 2,
       y: y - rest.font?.getSize() / 3,
     };
   }, [x, y, rest.font, rest.text]);

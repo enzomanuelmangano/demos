@@ -139,7 +139,7 @@ export const BlurredListItem: FC<{
                 color={'white'}
                 font={font}
                 text={text}
-                x={windowWidth / 2 - font.getTextWidth(text) / 2}
+                x={windowWidth / 2 - font.measureText(text).width / 2}
                 y={size / 2 + font.getSize() / 4}
               />
             }>

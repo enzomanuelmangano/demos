@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
-  Layout,
+  LinearTransition,
   useAnimatedStyle,
   withSpring,
   withTiming,
@@ -90,7 +90,7 @@ const SplitButton: FC<SplitButtonProps> = memo(
                 <Animated.View
                   entering={FadeIn}
                   exiting={FadeOut}
-                  layout={Layout}
+                  layout={LinearTransition}
                   style={[styles.chipContent, rAnimatedChipStyle]}>
                   {leftIcon}
                 </Animated.View>

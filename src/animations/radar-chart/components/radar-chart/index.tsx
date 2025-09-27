@@ -132,7 +132,7 @@ function RadarChart<K extends string>({
             if (!font) {
               return 0;
             }
-            return centerX.value - font.getTextWidth(item) / 2;
+            return centerX.value - font.measureText(item).width / 2;
           }, [centerX, font]);
           return (
             <Group

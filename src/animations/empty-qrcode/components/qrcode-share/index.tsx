@@ -51,7 +51,7 @@ const QRCodeShare = forwardRef<QRCodeShareRefType, QRCodeShareProps>(
 
     const letterX = useDerivedValue(() => {
       if (!font) return -100;
-      return -font.getTextWidth(activeLetter.value) / 2 + qrCodeSize / 2;
+      return -font.measureText(activeLetter.value).width / 2 + qrCodeSize / 2;
     }, [font, qrCodeSize]);
 
     useImperativeHandle(

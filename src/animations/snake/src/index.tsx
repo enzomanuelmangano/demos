@@ -1,15 +1,15 @@
-import { StyleSheet, useWindowDimensions, View, Text } from 'react-native';
+import { PressableScale } from 'pressto';
 import { useRef } from 'react';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { TouchableOpacity } from 'react-native-gesture-handler';
 
+import { AnimatedCount } from './components/animated-count/animated-count';
 import type { SnakeBoardRef } from './snake-game';
 import { SnakeBoard } from './snake-game';
-import { AnimatedCount } from './components/animated-count/animated-count';
 
 const App = () => {
   const snakeGameRef = useRef<SnakeBoardRef>(null);
@@ -24,7 +24,7 @@ const App = () => {
   const rRestartButtonViewStyle = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isGameOver.value ? 1 : 0, {
-        duration: 750,
+        duration: 250,
       }),
       pointerEvents: isGameOver.value ? 'auto' : 'none',
     };
@@ -73,7 +73,7 @@ const App = () => {
               },
               rRestartButtonViewStyle,
             ]}>
-            <TouchableOpacity
+            <PressableScale
               style={{
                 backgroundColor: 'black',
                 padding: 10,
@@ -88,7 +88,7 @@ const App = () => {
               <Text style={{ color: 'white', fontSize: 16, fontWeight: '500' }}>
                 Life goes on...
               </Text>
-            </TouchableOpacity>
+            </PressableScale>
           </Animated.View>
         </View>
       </View>

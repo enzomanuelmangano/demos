@@ -1,6 +1,5 @@
-import { Group, Rect, Skia, useFont, Text } from '@shopify/react-native-skia';
+import { Group, Rect, Skia, Text, useFont } from '@shopify/react-native-skia';
 import { useCallback } from 'react';
-import Touchable from 'react-native-skia-gesture';
 import { useWindowDimensions } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import {
@@ -8,6 +7,7 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import Touchable from 'react-native-skia-gesture';
 
 import { SelectableSquareContainer } from './selectable-square';
 
@@ -96,7 +96,7 @@ const ThemeScreen = () => {
   }, [canvasHeight]);
 
   const textX = useDerivedValue(() => {
-    return canvasWidth / 2 - (font?.getTextWidth(APP_TEXT) || 0) / 2;
+    return canvasWidth / 2 - (font?.measureText(APP_TEXT).width || 0) / 2;
   }, [canvasWidth, font]);
 
   const selectedTextColor = useDerivedValue(() => {
