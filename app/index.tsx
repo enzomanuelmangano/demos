@@ -3,11 +3,9 @@ import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 import React, { useCallback, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import {
-  StaggeredText,
-  StaggeredTextRef,
-} from '../src/animations/everybody-can-cook/components/staggered-text';
+import { StaggeredTextRef } from '../src/animations/everybody-can-cook/components/staggered-text';
 import { AnimatedHamburgerIcon } from '../src/components/animated-hamburger-icon';
+import LiquidButton from '../src/components/LiquidButton/LiquidButton';
 
 const baseDrawerOptions = {
   headerShown: true,
@@ -56,12 +54,7 @@ export default function HomeScreen() {
         }}
       />
       <View style={styles.container}>
-        <StaggeredText
-          ref={staggeredTextRef}
-          textStyle={styles.title}
-          text="Swipe to explore."
-          delay={250}
-        />
+        <LiquidButton title="Liquid Glass Button" onPress={() => {}} />
       </View>
     </>
   );
