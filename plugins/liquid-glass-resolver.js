@@ -500,6 +500,18 @@ function createRequireNativeModuleImport(t) {
 }
 
 /**
+ * Creates the Constants import declaration
+ * @param {object} t - Babel types
+ * @returns {object} - AST node for the import
+ */
+function createConstantsImport(t) {
+  return t.importDeclaration(
+    [t.importDefaultSpecifier(t.identifier('Constants'))],
+    t.stringLiteral('expo-constants'),
+  );
+}
+
+/**
  * Creates the liquid glass availability variable declaration
  * @param {object} t - Babel types
  * @returns {object} - AST node for the variable declaration
@@ -534,11 +546,22 @@ function createLiquidGlassAvailableFunction(t) {
             t.assignmentExpression(
               '=',
               t.identifier('IS_LIQUID_GLASS_AVAILABLE'),
-              t.memberExpression(
-                t.callExpression(t.identifier('requireNativeModule'), [
-                  t.stringLiteral('ExpoGlassEffect'),
-                ]),
-                t.identifier('isLiquidGlassAvailable'),
+              t.logicalExpression(
+                '&&',
+                t.binaryExpression(
+                  '!==',
+                  t.memberExpression(
+                    t.identifier('Constants'),
+                    t.identifier('appOwnership'),
+                  ),
+                  t.stringLiteral('expo'),
+                ),
+                t.memberExpression(
+                  t.callExpression(t.identifier('requireNativeModule'), [
+                    t.stringLiteral('ExpoGlassEffect'),
+                  ]),
+                  t.identifier('isLiquidGlassAvailable'),
+                ),
               ),
             ),
           ),
@@ -736,6 +759,7 @@ function processImportDeclaration(importPath, state, t, config) {
     );
 
     importPath.replaceWithMultiple([
+      createConstantsImport(t),
       createRequireNativeModuleImport(t),
       createLiquidGlassAvailableDeclaration(t),
       createLiquidGlassAvailableFunction(t),
