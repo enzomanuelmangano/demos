@@ -1,8 +1,13 @@
 import { Host, Slider } from '@expo/ui/swift-ui';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
-import { Extrapolation, interpolate } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedProps,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { Palette } from '../../constants';
 
 type SliderProps = {
@@ -18,6 +23,8 @@ type SliderProps = {
   initialProgress?: number;
 };
 
+const ReanimatedSlider = Animated.createAnimatedComponent(Slider);
+
 const AnimatedSlider: React.FC<SliderProps> = ({
   minValue = 0,
   maxValue = 1,
@@ -32,27 +39,32 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 
   const sliderWidth = flattenedStyle.width;
 
-  const [value, setValue] = useState(initialProgress);
+  const sliderProgress = useSharedValue(initialProgress);
+
+  const animatedProps = useAnimatedProps(() => {
+    return {
+      value: sliderProgress.value,
+    };
+  }, []);
 
   return (
     <Host
       style={{
         borderRadius: 5,
-        // backgroundColor: Palette.secondary,
         ...flattenedStyle,
         height: 60,
         width: sliderWidth,
         justifyContent: 'center',
         alignItems: 'center',
       }}>
-      <Slider
-        value={value}
+      <ReanimatedSlider
+        animatedProps={animatedProps}
         color={color}
-        onValueChange={v => {
-          setValue(v);
+        onValueChange={updatedValue => {
+          sliderProgress.set(updatedValue);
           if (onUpdate) {
             const progress = interpolate(
-              v,
+              updatedValue,
               [0, 1],
               [minValue, maxValue],
               Extrapolation.CLAMP,
