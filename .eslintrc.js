@@ -3,10 +3,18 @@ module.exports = {
   extends: [
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
-    'prettier'
+    'prettier',
   ],
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint', 'prettier', 'jest', 'import', 'react', 'react-hooks', 'react-native'],
+  plugins: [
+    '@typescript-eslint',
+    'prettier',
+    'jest',
+    'import',
+    'react',
+    'react-hooks',
+    'react-native',
+  ],
   ignorePatterns: [
     'node_modules/',
     '**/node_modules/',

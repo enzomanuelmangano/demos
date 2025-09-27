@@ -75,7 +75,7 @@ export const StackedToastProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [clearAllStackedToasts, showStackedToast]);
 
   const stackedToastsMemoizedByKeys = useRef<
-    Record<string | number, ReactNode>
+    Record<string | number, React.ReactNode>
   >({});
 
   const renderStackedToast = useCallback(

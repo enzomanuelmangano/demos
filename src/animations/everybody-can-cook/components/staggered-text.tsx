@@ -131,7 +131,6 @@ export const StaggeredText = forwardRef(
           return (
             <StaggeredDigit
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-expect-error
               key={index}
               digit={char}
               progress={delayedProgress}
