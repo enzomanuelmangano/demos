@@ -4,10 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import { useCallback, useMemo, type JSX } from 'react';
-import type {
-  NativeSyntheticEvent,
-  TextInputChangeEventData,
-} from 'react-native';
+import type { TextInputChangeEvent } from 'react-native';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -81,7 +78,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const keyExtractor = useCallback((item: AnimationItem) => item.slug, []);
 
   const handleSearchChange = useCallback(
-    (event: NativeSyntheticEvent<TextInputChangeEventData>) => {
+    (event: TextInputChangeEvent) => {
       setSearchFilter(event.nativeEvent.text);
     },
     [setSearchFilter],
