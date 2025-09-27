@@ -1,12 +1,11 @@
 import {
-  runOnJS,
   useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { SpringConfig } from './constants';
 
 type UseDeleteButtonAnimationsParams = {
@@ -46,7 +45,7 @@ export const useDeleteButtonAnimations = ({
       isButtonPressed.value = false;
       if (isToggled.value) {
         // If already toggled, trigger delete action
-        return runOnJS(onDelete)();
+        return scheduleOnRN(onDelete);
       }
       // Otherwise, toggle the button
       isToggled.value = true;

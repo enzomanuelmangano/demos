@@ -1,15 +1,20 @@
-import { useCallback, useImperativeHandle } from 'react';
-import { useWindowDimensions, type FlatListProps } from 'react-native';
+import {
+  type ReactElement,
+  type RefObject,
+  useCallback,
+  useImperativeHandle,
+} from 'react';
+import { type FlatListProps, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
+  type SharedValue,
   scrollTo,
   useAnimatedReaction,
   useAnimatedRef,
   useDerivedValue,
   useSharedValue,
-  type SharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   calculateGridItemIndex,
@@ -22,9 +27,7 @@ type CustomRenderItemParams<T> = {
   activeIndexes: SharedValue<number[]>;
   item: T;
 };
-type CustomRenderItem<T> = (
-  params: CustomRenderItemParams<T>,
-) => React.ReactElement;
+type CustomRenderItem<T> = (params: CustomRenderItemParams<T>) => ReactElement;
 
 type CustomFlatListProps<T> = Omit<FlatListProps<T>, 'renderItem'> & {
   renderItem: CustomRenderItem<T>;
@@ -38,7 +41,7 @@ type GridListProps<T> = CustomFlatListProps<T> & {
   itemSize: number;
   containerHeight?: number;
   onSelectionChange?: (indexes: number[]) => void;
-  gridListRef?: React.RefObject<GridListRefType | null>;
+  gridListRef?: RefObject<GridListRefType | null>;
 };
 
 function SelectableGridList<T>({
@@ -47,7 +50,7 @@ function SelectableGridList<T>({
   onSelectionChange,
   gridListRef,
   ...rest
-}: GridListProps<T>): React.ReactElement {
+}: GridListProps<T>): ReactElement {
   const itemsPerRow = rest.numColumns ?? 1;
 
   const { height: windowHeight } = useWindowDimensions();
@@ -118,7 +121,7 @@ function SelectableGridList<T>({
         onSelectionChange &&
         !sameElements(updatedActiveIndexes, prevActiveIndexes ?? [])
       ) {
-        runOnJS(onSelectionChange)(updatedActiveIndexes);
+        scheduleOnRN(onSelectionChange, updatedActiveIndexes);
       }
     },
   );

@@ -1,5 +1,4 @@
 import { useLocalSearchParams } from 'expo-router';
-import React from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { useDrawerProgress } from '@react-navigation/drawer';

@@ -1,4 +1,4 @@
-import React from 'react';
+import { Fragment, type ReactElement } from 'react';
 import type { ViewProps } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
@@ -20,7 +20,7 @@ export function PaginationDots({
   style,
   reversed,
   ...props
-}: PaginationDotsProps): React.ReactElement {
+}: PaginationDotsProps): ReactElement {
   const effectiveProgress = useDerivedValue(() => {
     return reversed ? count - 1 - progress.value : progress.value;
   }, [reversed, count]);
@@ -30,7 +30,7 @@ export function PaginationDots({
       {Array(count)
         .fill(0)
         .map((_, index) => (
-          <React.Fragment key={index}>
+          <Fragment key={index}>
             <PaginationDot
               count={count}
               index={index}
@@ -38,7 +38,7 @@ export function PaginationDots({
               onPress={onDotPress}
               key={index}
             />
-          </React.Fragment>
+          </Fragment>
         ))}
     </View>
   );

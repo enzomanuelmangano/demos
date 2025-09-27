@@ -4,8 +4,7 @@
  * Uses platform-specific fonts for iOS and Android.
  */
 
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import React from 'react';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 export const FrontSide = () => {
   return (

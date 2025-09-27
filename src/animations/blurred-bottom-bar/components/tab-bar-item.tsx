@@ -1,9 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import React, { useCallback } from 'react';
+import { type FC, memo, type ReactNode, useCallback } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
@@ -11,15 +11,15 @@ import Animated, {
 
 // Define the TabBarItem component
 type TabBarItemProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   onPress: () => void;
   focusedIndex: SharedValue<number>;
   index: number;
   screenName: string;
 };
 
-// React.memo for performance optimization (to prevent unnecessary re-renders)
-export const TabBarItem: React.FC<TabBarItemProps> = React.memo(
+// memo for performance optimization (to prevent unnecessary re-renders)
+export const TabBarItem: FC<TabBarItemProps> = memo(
   ({ onPress, focusedIndex, index, screenName }) => {
     // Derive the focus state from the shared animated value
     const isFocused = useDerivedValue(() => {

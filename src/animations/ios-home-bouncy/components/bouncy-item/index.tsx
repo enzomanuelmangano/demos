@@ -1,14 +1,14 @@
 import { useLayoutEffect } from 'react';
+import { Dimensions } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   measure,
-  runOnUI,
   useAnimatedRef,
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { Dimensions } from 'react-native';
+import { scheduleOnUI } from 'react-native-worklets';
 
 import { BouncyProgressShared } from '../../animations/bouncy';
 
@@ -29,9 +29,9 @@ export const BouncyView = ({ children }: BouncyViewProps) => {
 
   // Measure component dimensions after layout
   useLayoutEffect(() => {
-    runOnUI(() => {
+    scheduleOnUI(() => {
       dimensions.value = measure(aRef);
-    })();
+    });
   }, [aRef, dimensions]);
 
   const mainDiagonal = Math.sqrt(

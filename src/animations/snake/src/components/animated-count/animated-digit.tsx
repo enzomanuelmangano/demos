@@ -1,11 +1,10 @@
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback } from 'react';
+import { type FC, memo, useCallback, useMemo } from 'react';
 import type { ColorValue, StyleProp, TextStyle } from 'react-native';
 import { Platform, StyleSheet, Text } from 'react-native';
 import Animated, {
-  runOnJS,
-  SharedValue,
+  type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
@@ -13,6 +12,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type AnimatedDigitProps = {
   index: number;
@@ -53,7 +53,7 @@ const BASE_TRANSPARENTS_COLOR_GRADIENT = [
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 // AnimatedDigit component
-const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
+const AnimatedDigit: FC<AnimatedDigitProps> = memo(
   ({
     height,
     width,
@@ -98,7 +98,7 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
     }, [index, maxDigits]);
 
     // Flatten the textStyle object into a single style object
-    const flattenedTextStyle = React.useMemo(() => {
+    const flattenedTextStyle = useMemo(() => {
       return StyleSheet.flatten(textStyle);
     }, [textStyle]);
 
@@ -121,7 +121,7 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       (curr, prev) => {
         isChanging.value = curr !== prev;
         // If the digit is changing, reset the isChanging value after 200ms
-        runOnJS(resetIsChanging)();
+        scheduleOnRN(resetIsChanging);
       },
     );
 

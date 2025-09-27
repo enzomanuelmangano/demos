@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { type FC, useCallback } from 'react';
 import type { TextStyle, ViewStyle } from 'react-native';
 import { Platform, Pressable, StyleSheet, Text } from 'react-native';
 import type { AnimatedProps } from 'react-native-reanimated';
@@ -27,7 +27,7 @@ type ButtonProps = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: FC<ButtonProps> = ({
   onPress,
   title,
   variant = 'primary',

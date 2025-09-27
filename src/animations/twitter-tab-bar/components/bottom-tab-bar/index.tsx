@@ -1,8 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback, useEffect } from 'react';
+import { type FC, memo, type ReactNode, useCallback, useEffect } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -33,7 +33,7 @@ interface CustomBottomTabBarProps {
   onTabPress: (tabName: string) => void;
 }
 
-const BottomTabBar: React.FC<CustomBottomTabBarProps> = ({
+const BottomTabBar: FC<CustomBottomTabBarProps> = ({
   activeTabIndex,
   onTabPress,
 }) => {
@@ -146,7 +146,7 @@ const BottomTabBar: React.FC<CustomBottomTabBarProps> = ({
 };
 
 type TabBarItemProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   onPress: () => void;
   focusedIndex: SharedValue<number>;
   index: number;
@@ -154,7 +154,7 @@ type TabBarItemProps = {
   textColor: string;
 };
 
-const TabBarItem: React.FC<TabBarItemProps> = React.memo(
+const TabBarItem: FC<TabBarItemProps> = memo(
   ({ onPress, focusedIndex, index, iconName, textColor }) => {
     const isFocused = useDerivedValue(() => {
       return focusedIndex.value === index;

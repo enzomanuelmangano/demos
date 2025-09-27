@@ -1,13 +1,14 @@
 import { Canvas } from '@shopify/react-native-skia';
-import React, { useCallback, useRef } from 'react';
+import type { FC } from 'react';
+import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  runOnJS,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { AnimatedFaceRefType } from './components/AnimatedFace';
 import { AnimatedFace } from './components/AnimatedFace';
@@ -23,7 +24,7 @@ type LockScreenProps = {
   onError?: (wrongPin: string) => void;
 };
 
-const LockScreen: React.FC<LockScreenProps> = ({
+const LockScreen: FC<LockScreenProps> = ({
   correctPin,
   onClear,
   onCompleted,
@@ -71,16 +72,16 @@ const LockScreen: React.FC<LockScreenProps> = ({
       }
 
       if (currentPin.join('') === correctPin) {
-        runOnJS(correct)();
+        scheduleOnRN(correct);
         return;
       }
 
       if (currentPin.length === correctPin.length) {
-        runOnJS(wrong)();
+        scheduleOnRN(wrong);
         return;
       }
       if (active) {
-        runOnJS(activate)();
+        scheduleOnRN(activate);
         return;
       }
     },

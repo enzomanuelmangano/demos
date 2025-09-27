@@ -1,6 +1,6 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import React, { useState } from 'react';
 import { Entypo } from '@expo/vector-icons';
+import { useState } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AnimatedCount } from './components/animated-count';
 

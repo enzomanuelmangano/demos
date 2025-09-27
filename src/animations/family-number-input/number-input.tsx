@@ -1,12 +1,12 @@
-import React, { useCallback, useState } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { type FC, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 
-import { ButtonsGrid } from './components/buttons-grid';
 import { AnimatedNumber } from './components/animated-number';
+import { ButtonsGrid } from './components/buttons-grid';
 
-const NumberInput: React.FC = () => {
+const NumberInput: FC = () => {
   const [input, updateInput] = useState<number>(0);
   const insets = useSafeAreaInsets();
 

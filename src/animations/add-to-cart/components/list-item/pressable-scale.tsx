@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import type { TouchableOpacityProps } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,7 +11,7 @@ type PressableScaleProps = Omit<TouchableOpacityProps, 'activeOpacity'> & {
   onPress: () => void;
 };
 
-const PressableScale: React.FC<PressableScaleProps> = React.memo(
+const PressableScale: FC<PressableScaleProps> = memo(
   ({ children, onPress, style, ...props }) => {
     const scale = useSharedValue(1);
 

@@ -8,7 +8,7 @@ import {
   useTexture,
   type SkFont,
 } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import { useMemo, type FC } from 'react';
 import {
   Extrapolation,
   interpolate,
@@ -57,7 +57,7 @@ type GridVisualizerProps = {
 
 // The Atlas API is a bit low-level, but it's super powerful.
 // Keep in mind that (in my opinion) without Atlas, you just can't make this animation with a decent performance :)
-export const GridVisualizer: React.FC<GridVisualizerProps> = ({
+export const GridVisualizer: FC<GridVisualizerProps> = ({
   text,
   font,
   width: canvasWidth,

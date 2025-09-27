@@ -2,7 +2,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { StackActions } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback } from 'react';
+import { type FC, useCallback } from 'react';
 import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +33,7 @@ const screensMap = Object.keys(ScreenNames).reduce((acc, key, index) => {
 }, {}) as Record<number, keyof typeof ScreenNames>;
 
 // Define the BottomTabBar component
-const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
+const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
   // Define shared animated values for tracking focused index and floating button progress
   const focusedIndex = useSharedValue(state.index);
 

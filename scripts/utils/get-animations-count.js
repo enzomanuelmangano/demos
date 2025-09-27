@@ -6,7 +6,8 @@ const getAnimationsAmount = () => {
   const file = fs.readFileSync(registryFile, 'utf8');
 
   // Extract the AnimationRegistry object and count its keys
-  const registryPattern = /export const AnimationRegistry = \{([\s\S]*?)\} as const;/;
+  const registryPattern =
+    /export const AnimationRegistry = \{([\s\S]*?)\} as const;/;
   const match = registryPattern.exec(file);
 
   if (!match) {
@@ -17,8 +18,10 @@ const getAnimationsAmount = () => {
   const registryContent = match[1];
   const entries = registryContent
     .split('\n')
-    .filter(line => line.trim() && line.includes(':') && !line.trim().startsWith('//'))
-    .length;
+    .filter(
+      line =>
+        line.trim() && line.includes(':') && !line.trim().startsWith('//'),
+    ).length;
 
   return entries;
 };

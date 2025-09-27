@@ -1,7 +1,6 @@
 import { BlurView } from 'expo-blur';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   interpolate,
   Keyframe,
@@ -9,6 +8,7 @@ import Animated, {
   useDerivedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing } from './constants';
 import { FlipCard } from './flip-interaction';

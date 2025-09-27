@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { type FC, memo, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   interpolate,
@@ -30,7 +30,7 @@ type FlipCardProps = {
   isFlipped?: boolean;
 };
 
-export const FlipCard: React.FC<FlipCardProps> = React.memo(
+export const FlipCard: FC<FlipCardProps> = memo(
   ({ isFlipped, profile, angle = 'horizontal' }) => {
     const { width: screenWidth } = useWindowDimensions();
 
@@ -137,7 +137,7 @@ export const FlipCard: React.FC<FlipCardProps> = React.memo(
       </View>
     );
   },
-  // Custom comparison function for React.memo to optimize re-renders
+  // Custom comparison function for memo to optimize re-renders
   (prevProps, nextProps) => {
     return (
       prevProps.isFlipped === nextProps.isFlipped &&

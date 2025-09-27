@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import React from 'react';
+import type { FC, ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { SharedValue, WithSpringConfig } from 'react-native-reanimated';
 import Animated, {
@@ -85,7 +85,7 @@ const springOptions: Array<{
   },
 ];
 
-const SpringIndicator: React.FC<{
+const SpringIndicator: FC<{
   type: SpringType;
   indicators: Array<{ opacity?: number; scale?: number }>;
 }> = ({ type, indicators }) => {
@@ -112,12 +112,12 @@ const SpringIndicator: React.FC<{
   );
 };
 
-const SpringOption: React.FC<{
+const SpringOption: FC<{
   type: SpringType;
   label: string;
   isActive: boolean;
   onPress: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }> = ({ type, label, isActive, onPress, children }) => {
   const progress = useDerivedValue(() => {
     return withTiming(isActive ? 1 : 0, {
@@ -165,7 +165,7 @@ const SpringOption: React.FC<{
   );
 };
 
-export const PanelContent: React.FC<PanelContentProps> = ({
+export const PanelContent: FC<PanelContentProps> = ({
   springType,
   onToggleCollapse,
   onSelectSpringType,

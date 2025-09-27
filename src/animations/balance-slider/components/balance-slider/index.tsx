@@ -3,12 +3,12 @@ import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 // Import custom TextLabel component
 import { TextLabel } from './text-label';
@@ -94,7 +94,7 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     })
     .onUpdate(event => {
       x.value = event.x + pickerWidth / 2;
-      runOnJS(onChangeWrapper)(xPercentage.value);
+      scheduleOnRN(onChangeWrapper, xPercentage.value);
     });
 
   // Derived animated value to check if the slider has reached its boundaries (left or right)

@@ -3,13 +3,13 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
-  useAnimatedReaction,
-  interpolate,
-  Extrapolate,
 } from 'react-native-reanimated';
 
 type SliderProps = {
@@ -81,7 +81,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
         translation,
         [0, sliderWidth],
         [minValue, maxValue],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
       if (onUpdate) onUpdate(progress);
     },

@@ -1,9 +1,9 @@
-import React, { useEffect } from 'react';
+import { type FC, useEffect } from 'react';
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeOut,
-  Layout,
+  LinearTransition,
   SlideOutDown,
   useAnimatedStyle,
   useDerivedValue,
@@ -25,7 +25,7 @@ type AnimatedSingleNumberProps = {
   scaleWidthOffset?: number;
 };
 
-export const AnimatedSingleNumber: React.FC<AnimatedSingleNumberProps> = ({
+export const AnimatedSingleNumber: FC<AnimatedSingleNumberProps> = ({
   value,
   style,
   index,
@@ -79,9 +79,9 @@ export const AnimatedSingleNumber: React.FC<AnimatedSingleNumberProps> = ({
   }, [index, itemWidth, totalNumbersLength]);
 
   return (
-    <Animated.View layout={Layout} exiting={FadeOut.duration(100)}>
+    <Animated.View layout={LinearTransition} exiting={FadeOut.duration(100)}>
       <Animated.View
-        layout={Layout}
+        layout={LinearTransition}
         exiting={SlideOutDown.duration(3000).easing(Easing.linear)}>
         <Animated.View
           style={[

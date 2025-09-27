@@ -1,12 +1,9 @@
-import type { SharedValue } from 'react-native-reanimated';
-import {
-  runOnJS,
-  useAnimatedReaction,
-  useSharedValue,
-} from 'react-native-reanimated';
-import { Gesture } from 'react-native-gesture-handler';
 import { useSetAtom } from 'jotai';
 import { useCallback } from 'react';
+import { Gesture } from 'react-native-gesture-handler';
+import type { SharedValue } from 'react-native-reanimated';
+import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
 
@@ -33,9 +30,9 @@ export const useTimeMachineGesture = ({
     () => timeMachineProgress.value,
     value => {
       if (value > 0.5) {
-        runOnJS(updateTimeMachineActiveWrapper)(true);
+        scheduleOnRN(updateTimeMachineActiveWrapper, true);
       } else {
-        runOnJS(updateTimeMachineActiveWrapper)(false);
+        scheduleOnRN(updateTimeMachineActiveWrapper, false);
       }
     },
     [updateTimeMachineActiveWrapper],
@@ -66,13 +63,13 @@ export const useTimeMachineGesture = ({
       } else if (translationY < -50 || velocityY < -300) {
         // Snap to closed
         timeMachineProgress.value = 0;
-        runOnJS(onClose)();
+        scheduleOnRN(onClose);
       } else {
         // Snap to nearest state
         const currentProgress = timeMachineProgress.value;
         const targetProgress = currentProgress > 0.5 ? 1 : 0;
         if (targetProgress === 0) {
-          runOnJS(onClose)();
+          scheduleOnRN(onClose);
         }
         timeMachineProgress.value = targetProgress;
       }

@@ -1,13 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
-  Extrapolate,
+  Extrapolation,
   FadeIn,
   FadeOut,
-  Layout,
+  LinearTransition,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
@@ -46,7 +46,7 @@ function App() {
 
   const rContentHeight = useDerivedValue(() => {
     // Just a simple interpolation to make the content height dynamic based on the step
-    return interpolate(step, [0, 1, 2], [80, 200, 250], Extrapolate.CLAMP);
+    return interpolate(step, [0, 1, 2], [80, 200, 250], Extrapolation.CLAMP);
   }, [step]);
 
   const rContentStyle = useAnimatedStyle(() => {
@@ -129,7 +129,7 @@ function App() {
         <Animated.View style={rContentStyle}>
           {step === 0 && (
             <Animated.Text
-              layout={Layout.easing(Easing.linear).duration(250)}
+              layout={LinearTransition.easing(Easing.linear).duration(250)}
               exiting={FadeOut.delay(100)}
               style={styles.contentText}>
               Content here
@@ -137,7 +137,7 @@ function App() {
           )}
           {step === 1 && (
             <Animated.View
-              layout={Layout.easing(Easing.linear).duration(250)}
+              layout={LinearTransition.easing(Easing.linear).duration(250)}
               entering={FadeIn.delay(100)}
               exiting={FadeOut.delay(100)}
               style={{ flex: 1 }}>
@@ -151,7 +151,7 @@ function App() {
           )}
           {step === 2 && (
             <Animated.View
-              layout={Layout.easing(Easing.linear).duration(250)}
+              layout={LinearTransition.easing(Easing.linear).duration(250)}
               entering={FadeIn.delay(100)}
               exiting={FadeOut.delay(100)}
               style={{ flex: 1 }}>

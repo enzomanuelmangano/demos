@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { type ReactNode, useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,7 +20,7 @@ type StoryListProps<T> = {
     width: number;
     height: number;
   };
-  renderItem: (story: T, index: number) => React.ReactNode;
+  renderItem: (story: T, index: number) => ReactNode;
   visibleItems?: number;
   gap?: number;
 };

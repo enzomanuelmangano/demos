@@ -1,8 +1,8 @@
 // Importing necessary libraries and components
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Color from 'color';
-import React, { useMemo } from 'react';
-import { useWindowDimensions, StyleSheet } from 'react-native';
+import { type FC, useMemo } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   convertToRGBA,
   interpolateColor,
@@ -12,8 +12,8 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { PaginationDots } from './pagination-dots';
 import { OnboardingPage } from './page';
+import { PaginationDots } from './pagination-dots';
 
 // Types for Color List Item
 type ColorListItemType = {
@@ -27,9 +27,7 @@ type ColorfulOnboardingProps = {
   data: ColorListItemType[];
 };
 
-export const ColorfulOnboarding: React.FC<ColorfulOnboardingProps> = ({
-  data,
-}) => {
+export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
   // Getting window dimensions
   const { width, height } = useWindowDimensions();
 

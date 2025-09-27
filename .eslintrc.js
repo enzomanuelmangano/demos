@@ -3,10 +3,19 @@ module.exports = {
   extends: [
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
-    'prettier'
+    'prettier',
   ],
   parser: '@typescript-eslint/parser',
-  plugins: ['@typescript-eslint', 'prettier', 'jest', 'import', 'react', 'react-hooks', 'react-native'],
+  plugins: [
+    '@typescript-eslint',
+    'prettier',
+    'jest',
+    'import',
+    'react',
+    'react-hooks',
+    'react-native',
+    'deprecation',
+  ],
   ignorePatterns: [
     'node_modules/',
     '**/node_modules/',
@@ -26,6 +35,7 @@ module.exports = {
     'prettier/prettier': 'error',
     '@typescript-eslint/consistent-type-imports': 'off',
     '@typescript-eslint/no-unused-vars': 'off',
+    'deprecation/deprecation': 'error',
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
     'react/display-name': 'off',
@@ -42,6 +52,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2020,
     sourceType: 'module',
+    project: './tsconfig.json',
     ecmaFeatures: {
       jsx: true,
     },

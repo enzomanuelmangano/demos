@@ -1,7 +1,7 @@
 import type { StyleProp, ViewStyle } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   measure,
-  runOnJS,
   useAnimatedProps,
   useAnimatedRef,
   useAnimatedStyle,
@@ -9,7 +9,7 @@ import Reanimated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedLottieView } from '../animated-lottie-view';
 
@@ -61,7 +61,7 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
       width: 80,
     };
 
-    runOnJS(toggleTheme)({ center, style });
+    scheduleOnRN(toggleTheme, { center, style });
   });
 
   const rContainerStyle = useAnimatedStyle(() => {

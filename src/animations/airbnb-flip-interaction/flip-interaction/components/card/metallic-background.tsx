@@ -1,11 +1,11 @@
-import React from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import type { ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
 type MetallicBackgroundProps = {
   style?: ViewStyle;
-  children?: React.ReactNode;
+  children?: ReactNode;
 };
 
 export const MetallicBackground = ({

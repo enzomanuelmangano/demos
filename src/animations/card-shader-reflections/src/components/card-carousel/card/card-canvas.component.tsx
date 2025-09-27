@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
 import { Canvas, Fill, Shader } from '@shopify/react-native-skia';
+import { type FC } from 'react';
+import { StyleSheet } from 'react-native';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 import { cardShader } from './card.shader';
@@ -12,7 +12,7 @@ interface CardCanvasProps {
   height: number;
 }
 
-export const CardCanvas: React.FC<CardCanvasProps> = ({
+export const CardCanvas: FC<CardCanvasProps> = ({
   rotation,
   cardType,
   width,

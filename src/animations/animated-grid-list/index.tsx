@@ -1,7 +1,11 @@
 import { useCallback, useState } from 'react';
-import { StyleSheet, Text, Image, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  LinearTransition,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 
 import type { AnimatedLayoutListProps } from './components/animated-layout-list';
 import { AnimatedLayoutList } from './components/animated-layout-list';
@@ -24,7 +28,7 @@ export function AnimatedGridList() {
             flexDirection: isExpanded ? 'row' : 'column',
           }}>
           <AnimatedImage
-            layout={Layout}
+            layout={LinearTransition}
             source={{ uri: item.img }}
             style={{
               width: isExpanded ? 64 : 200,
@@ -35,7 +39,7 @@ export function AnimatedGridList() {
           />
           {isExpanded && (
             <Animated.View
-              layout={Layout.duration(600)}
+              layout={LinearTransition.duration(600)}
               entering={FadeIn}
               exiting={FadeOut}>
               <Text

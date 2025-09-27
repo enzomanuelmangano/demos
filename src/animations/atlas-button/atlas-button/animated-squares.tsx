@@ -5,7 +5,7 @@ import {
   useRectBuffer,
   useTexture,
 } from '@shopify/react-native-skia';
-import React from 'react';
+import { type FC, memo, useMemo } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue } from 'react-native-reanimated';
 
@@ -17,7 +17,7 @@ type AnimatedSquaresProps = {
   horizontalSquaresAmount?: number;
 };
 
-export const AnimatedSquares: React.FC<AnimatedSquaresProps> = React.memo(
+export const AnimatedSquares: FC<AnimatedSquaresProps> = memo(
   ({
     width,
     height,
@@ -42,14 +42,14 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = React.memo(
       height,
     });
 
-    const staticColors = React.useMemo(() => {
+    const staticColors = useMemo(() => {
       return Array.from({ length: SquaresAmount }, () => {
         const rand = Math.floor(Math.random() * _colors.length);
         return _colors[rand];
       });
     }, [SquaresAmount, _colors]);
 
-    const randomValues = React.useMemo(() => {
+    const randomValues = useMemo(() => {
       return Array.from({ length: SquaresAmount }, () => Math.random());
     }, [SquaresAmount]);
 

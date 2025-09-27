@@ -3,25 +3,32 @@ import {
   Canvas,
   Fill,
   ImageShader,
-  Shader,
   makeImageFromView,
+  Shader,
 } from '@shopify/react-native-skia';
-import React, { useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  createContext,
+  type FC,
+  type ReactNode,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import type { WithTimingConfig } from 'react-native-reanimated';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { transition } from './utils/transition';
 
 // Define prop types for the GLTransitionsProvider component
 type GLTransitionsProviderProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   transition: string;
 };
 
@@ -35,11 +42,10 @@ type GLTransitionsContextType = {
 };
 
 // Create a context for GL transitions with default values
-export const GLTransitionsContext =
-  React.createContext<GLTransitionsContextType>({
-    prepareTransition: async () => {},
-    runTransition: async (_?: WithTimingConfig, __?: () => void) => {},
-  });
+export const GLTransitionsContext = createContext<GLTransitionsContextType>({
+  prepareTransition: async () => {},
+  runTransition: async (_?: WithTimingConfig, __?: () => void) => {},
+});
 
 // This code seems quite complex, but it really isn't.
 // It's just a provider that wraps the GLTransitionsContext.
@@ -55,7 +61,7 @@ export const GLTransitionsContext =
 // - to run the transition
 
 // GLTransitionsProvider component
-export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
+export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
   children,
   transition: glTransition,
 }) => {
@@ -87,7 +93,7 @@ export const GLTransitionsProvider: React.FC<GLTransitionsProviderProps> = ({
           firstScreenSnapshot.value = null;
           secondScreenSnapshot.value = null;
           progress.value = 0;
-          if (onCompleted) runOnJS(onCompleted)();
+          if (onCompleted) scheduleOnRN(onCompleted);
         }
       });
     },

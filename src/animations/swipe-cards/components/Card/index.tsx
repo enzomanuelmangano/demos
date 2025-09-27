@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import React, { useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { SharedValue } from 'react-native-reanimated';
@@ -7,14 +7,13 @@ import Animated, {
   cancelAnimation,
   Extrapolation,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import type { IMAGES } from '../../constants';
 
 type SwipeableCardProps = {
@@ -31,7 +30,7 @@ export type SwipeableCardRefType = {
   reset: () => void;
 };
 
-const SwipeableCard = React.forwardRef<
+const SwipeableCard = forwardRef<
   {
     //
   },
@@ -76,7 +75,7 @@ const SwipeableCard = React.forwardRef<
     };
   }, [swipeLeft, swipeRight, reset]);
 
-  const inputRange = React.useMemo(() => {
+  const inputRange = useMemo(() => {
     return [-width / 3, 0, width / 3];
   }, [width]);
 
@@ -115,9 +114,9 @@ const SwipeableCard = React.forwardRef<
       if (nextActiveIndex.value === activeIndex.value + 1) {
         const sign = Math.sign(event.translationX);
         if (sign === 1) {
-          runOnJS(swipeRight)();
+          scheduleOnRN(swipeRight);
         } else {
-          runOnJS(swipeLeft)();
+          scheduleOnRN(swipeLeft);
         }
       } else {
         translateX.value = withSpring(0);

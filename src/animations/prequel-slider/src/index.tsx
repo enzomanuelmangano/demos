@@ -1,15 +1,14 @@
+import { useImage } from '@shopify/react-native-skia';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import React from 'react';
 import {
   interpolateColor,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useImage } from '@shopify/react-native-skia';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { DraggableSlider } from './components/draggable-slider';
 import { DonutCircularProgress } from './components/donut-circular-progress';
+import { DraggableSlider } from './components/draggable-slider';
 import { ImageEditor } from './components/image-editor';
 import { ButterflyWaveScrawlerGL } from './gl-transition';
 

@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
@@ -20,7 +20,7 @@ type CarouselItemProps = {
   activeIndex: SharedValue<number>;
 };
 
-const CarouselItem: React.FC<CarouselItemProps> = React.memo(
+const CarouselItem: FC<CarouselItemProps> = memo(
   ({
     item,
     index,
@@ -45,7 +45,7 @@ const CarouselItem: React.FC<CarouselItemProps> = React.memo(
         normalizedDistanceFromCenter,
         [0, 1],
         [2, 0.8],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
 
       const initialActiveIndex = Math.floor(maxRenderedItems / 2);
@@ -89,7 +89,7 @@ const CarouselItem: React.FC<CarouselItemProps> = React.memo(
         normalizedDistanceFromCenter,
         [0, 1],
         [1000, 0],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
 
       return {

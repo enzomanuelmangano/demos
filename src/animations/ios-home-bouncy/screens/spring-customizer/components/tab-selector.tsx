@@ -1,8 +1,8 @@
-import React, { useState, useLayoutEffect, useRef } from 'react';
-import { View, StyleSheet, Text, Pressable } from 'react-native';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  useAnimatedStyle,
   interpolate,
+  useAnimatedStyle,
   useDerivedValue,
   withSpring,
 } from 'react-native-reanimated';

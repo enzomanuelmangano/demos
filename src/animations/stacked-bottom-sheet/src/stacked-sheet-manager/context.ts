@@ -1,16 +1,15 @@
-// Import React and useContext from React library
-import React from 'react';
+import { type ReactNode, createContext } from 'react';
 
 // Define the type for a StackedSheet
 export type StackedSheetType = {
   id: number;
   key: string;
   componentHeight: number;
-  children?: () => React.ReactNode;
+  children?: () => ReactNode;
 };
 
 // Create a context for managing StackedSheets
-export const StackedSheetContext = React.createContext<{
+export const StackedSheetContext = createContext<{
   showStackedSheet: (StackedSheet: Omit<StackedSheetType, 'id'>) => void;
 }>({
   showStackedSheet: () => {}, // Default empty function for showStackedSheet
@@ -32,6 +31,6 @@ export type InternalStackedSheetContextType = {
 };
 
 export const InternalStackedSheetContext =
-  React.createContext<InternalStackedSheetContextType>({
+  createContext<InternalStackedSheetContextType>({
     stackedSheets: [],
   });

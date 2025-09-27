@@ -3,16 +3,15 @@ import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
-  useAnimatedReaction,
-  interpolate,
-  runOnJS,
-  Extrapolate,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { Palette } from '../../constants';
 
 type SliderProps = {
@@ -84,9 +83,9 @@ const AnimatedSlider: React.FC<SliderProps> = ({
         translation,
         [0, sliderWidth],
         [minValue, maxValue],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
-      if (onUpdate) runOnJS(onUpdate)(progress);
+      if (onUpdate) scheduleOnRN(onUpdate, progress);
     },
   );
 

@@ -1,25 +1,25 @@
-import React, { useCallback } from 'react';
+import { FontAwesome, Ionicons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
+import type React from 'react';
+import { useCallback } from 'react';
 import { Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { FontAwesome, Ionicons } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import {
-  styles,
   ALERT_COLOR,
   BUTTON_HEIGHT,
   BUTTON_WIDTH,
   EXPANDED_CARD_HEIGHT,
   EXPANDED_CARD_WIDTH,
   MIN_BUTTON_WIDTH,
+  styles,
 } from './styles';
 
 // Types
@@ -154,7 +154,7 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
       <PressableScale
         onPress={() => {
           if (isExpanded.value && onConfirm) {
-            return runOnJS(onConfirm)();
+            return scheduleOnRN(onConfirm);
           }
           toggleExpansion();
         }}

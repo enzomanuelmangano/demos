@@ -1,6 +1,6 @@
 import MasonryList from '@react-native-seoul/masonry-list';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
+import { memo } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AnimatedImage } from '../../components/animated-image';
@@ -8,7 +8,7 @@ import { dataSources } from '../../constants/images';
 import { ScreenNames } from '../../constants/screen-names';
 import type { MainStackNavigationProp } from '../../typings';
 
-const HomeScreen = React.memo(() => {
+const HomeScreen = memo(() => {
   const navigation = useNavigation<MainStackNavigationProp>();
 
   return (

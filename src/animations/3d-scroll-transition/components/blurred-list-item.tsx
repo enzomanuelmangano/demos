@@ -12,7 +12,7 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
+import { FC, useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
@@ -28,7 +28,7 @@ import Animated, {
 const SFProRoundedBold = require('../../../../assets/fonts/SF-Pro-Rounded-Bold.otf');
 
 // Define the BlurredListItem functional component
-export const BlurredListItem: React.FC<{
+export const BlurredListItem: FC<{
   text: string;
   size: number;
   index: number;
@@ -139,7 +139,7 @@ export const BlurredListItem: React.FC<{
                 color={'white'}
                 font={font}
                 text={text}
-                x={windowWidth / 2 - font.getTextWidth(text) / 2}
+                x={windowWidth / 2 - font.measureText(text).width / 2}
                 y={size / 2 + font.getSize() / 4}
               />
             }>

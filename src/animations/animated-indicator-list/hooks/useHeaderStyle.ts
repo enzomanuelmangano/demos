@@ -1,6 +1,6 @@
 import type { LayoutRectangle } from 'react-native';
 import {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -34,7 +34,7 @@ const useHeaderStyle = ({
       contentOffsetY.value,
       headersLayoutY.map(({ value }) => value),
       headersData.map(({ value }) => value?.width ?? 0),
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {
@@ -52,7 +52,7 @@ const useHeaderStyle = ({
       headersLayoutY.map(({ value }) => value),
 
       headersData.map(({ value }) => value!.x),
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {

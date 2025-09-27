@@ -1,13 +1,12 @@
-import type { PropsWithChildren } from 'react';
-import React from 'react';
+import type { FC, PropsWithChildren } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type PressableScaleProps = PropsWithChildren<{
   onPress?: () => void;
@@ -15,7 +14,7 @@ type PressableScaleProps = PropsWithChildren<{
 }>;
 
 // Create the PressableScale component
-const PressableScale: React.FC<PressableScaleProps> = ({
+const PressableScale: FC<PressableScaleProps> = ({
   children,
   onPress,
   style,
@@ -30,7 +29,7 @@ const PressableScale: React.FC<PressableScaleProps> = ({
       active.value = true; // Mark as active on touch down
     })
     .onTouchesUp(() => {
-      if (onPress != null) runOnJS(onPress)(); // Execute onPress on touch up
+      if (onPress != null) scheduleOnRN(onPress); // Execute onPress on touch up
     })
     .onFinalize(() => {
       active.value = false; // Reset press state on finalize

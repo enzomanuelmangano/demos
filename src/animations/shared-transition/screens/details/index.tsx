@@ -1,11 +1,11 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { AnimatedImage } from '../../components/animated-image';
 import type { DetailsRouteProp } from '../../typings';
 
-const DetailsScreen: React.FC<{ route: DetailsRouteProp }> = React.memo(
+const DetailsScreen: FC<{ route: DetailsRouteProp }> = memo(
   ({
     route: {
       params: { source },

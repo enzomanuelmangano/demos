@@ -1,12 +1,12 @@
 import { vec } from '@shopify/react-native-skia';
+import { useCallback } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import {
-  runOnJS,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useCallback } from 'react';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { center } from '../constants';
 
@@ -35,7 +35,7 @@ const useVec = ({ clock, frequency, amplitude, noise }: UseVecParams) => {
   useAnimatedReaction(
     () => clock.value,
     () => {
-      runOnJS(updateVecNoise)();
+      scheduleOnRN(updateVecNoise);
     },
     [updateVecNoise],
   );

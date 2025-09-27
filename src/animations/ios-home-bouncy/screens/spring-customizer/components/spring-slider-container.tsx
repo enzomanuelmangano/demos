@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useSharedValue, useAnimatedReaction } from 'react-native-reanimated';
+import { type FC } from 'react';
+import { StyleSheet, View } from 'react-native';
+import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 
 import type { ClosingSpringConfigShared } from '../../../animations/bouncy';
 
@@ -10,7 +10,7 @@ type SpringSliderContainerProps = {
   mutableConfig: typeof ClosingSpringConfigShared;
 };
 
-export const SpringSliderContainer: React.FC<SpringSliderContainerProps> = ({
+export const SpringSliderContainer: FC<SpringSliderContainerProps> = ({
   mutableConfig,
 }) => {
   // Use shared values for config

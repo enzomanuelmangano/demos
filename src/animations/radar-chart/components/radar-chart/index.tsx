@@ -1,6 +1,6 @@
 import { Canvas, Group, Path, Points, Text } from '@shopify/react-native-skia';
 import Color from 'color';
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { useCanvasLayout } from './hooks/use-canvas-layout';
@@ -132,7 +132,7 @@ function RadarChart<K extends string>({
             if (!font) {
               return 0;
             }
-            return centerX.value - font.getTextWidth(item) / 2;
+            return centerX.value - font.measureText(item).width / 2;
           }, [centerX, font]);
           return (
             <Group

@@ -1,5 +1,5 @@
 import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
-import React, { useMemo } from 'react';
+import { type FC, memo, useMemo } from 'react';
 import {
   interpolateColor,
   useDerivedValue,
@@ -25,7 +25,7 @@ const TimingConfig = {
   duration: 200,
 };
 
-const BottomTabItem: React.FC<BottomTabIconProps> = React.memo(
+const BottomTabItem: FC<BottomTabIconProps> = memo(
   ({ x, y, height, width, onTap, currentIndex, index }) => {
     const isActive = index === currentIndex;
 

@@ -1,7 +1,5 @@
-import React from 'react';
-
-import { data } from './constants/data';
 import { DynamicTabIndicator } from './components/dynamic-tab-indicator';
+import { data } from './constants/data';
 
 const DynamicTabIndicatorContainer = () => {
   return <DynamicTabIndicator data={data} />;

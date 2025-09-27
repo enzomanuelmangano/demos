@@ -1,13 +1,12 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
-import React, { useContext } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useContext } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
 
 import { InternalStackedToastContext } from '../context';
-
 import { useGradientHeight } from './use-gradient-height';
 
 export const Backdrop = () => {

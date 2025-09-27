@@ -3,10 +3,10 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Keyframe,
-  runOnJS,
   useAnimatedReaction,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Dots } from './steps/dots';
 import { SplitButton } from './steps/split-button';
@@ -47,7 +47,7 @@ const App = () => {
   useAnimatedReaction(
     () => activeIndex.value,
     index => {
-      runOnJS(setIsLastStep)(index === 2);
+      scheduleOnRN(setIsLastStep, index === 2);
     },
   );
 

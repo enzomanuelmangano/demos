@@ -1,10 +1,9 @@
-import React, { useCallback } from 'react';
+import { type FC, type ReactNode, type RefObject, useCallback } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
+  type SharedValue,
   scrollTo,
-  SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
@@ -12,24 +11,25 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { lightHapticFeedback } from '../../utils/haptics';
 
 import type { Positions } from './types';
 
 type SortableListItemProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   itemHeight: number;
   positions: SharedValue<Positions>;
   index: number;
   animatedIndex: SharedValue<number | null>;
   onDragEnd?: (data: Positions) => void;
-  backgroundItem?: React.ReactNode;
+  backgroundItem?: ReactNode;
   scrollContentOffsetY: SharedValue<number>;
-  scrollViewRef: React.RefObject<Animated.ScrollView | null>;
+  scrollViewRef: RefObject<Animated.ScrollView | null>;
 };
 
-const SortableItem: React.FC<SortableListItemProps> = ({
+const SortableItem: FC<SortableListItemProps> = ({
   children,
   itemHeight,
   positions,
@@ -108,13 +108,13 @@ const SortableItem: React.FC<SortableListItemProps> = ({
         // while scrolling to the top of the list
         const nextPosition = scrollContentOffsetY.value - scrollSpeed;
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
+        // @ts-expect-error
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       } else if (absoluteY + scrollContentOffsetY.value >= upperBound) {
         // while scrolling to the bottom of the list
         const nextPosition = scrollContentOffsetY.value + scrollSpeed;
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
+        // @ts-expect-error
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       }
     },
@@ -146,7 +146,7 @@ const SortableItem: React.FC<SortableListItemProps> = ({
 
       translateX.value = translationX;
       // Trigger haptic feedback if the gesture starts ✨
-      runOnJS(lightHapticFeedback)();
+      scheduleOnRN(lightHapticFeedback);
     })
     .onUpdate(({ translationY, translationX, absoluteY }) => {
       translateX.value = translationX;
@@ -169,7 +169,7 @@ const SortableItem: React.FC<SortableListItemProps> = ({
         );
 
         if (isFinished && onDragEnd && positionsHaveChanged) {
-          runOnJS(onDragEnd)(positions.value);
+          scheduleOnRN(onDragEnd, positions.value);
         }
       });
       wasLastActiveIndex.value = true;

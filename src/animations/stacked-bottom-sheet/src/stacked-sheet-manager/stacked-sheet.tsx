@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { type FC, useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import type { StackedSheetType } from './context';
 import { useInternalStackedSheet } from './hooks';
 import { StackedSheetHandle } from './stacked-sheet-handle';
@@ -25,7 +24,7 @@ type StackedSheetProps = {
 const BaseSafeArea = 50;
 
 // Define the StackedSheet component
-const StackedSheet: React.FC<StackedSheetProps> = ({
+const StackedSheet: FC<StackedSheetProps> = ({
   stackedSheet,
   index,
   onDismiss,
@@ -78,7 +77,7 @@ const StackedSheet: React.FC<StackedSheetProps> = ({
       },
       isFinished => {
         if (isFinished) {
-          runOnJS(onDismiss)(stackedSheetId);
+          scheduleOnRN(onDismiss, stackedSheetId);
         }
       },
     );

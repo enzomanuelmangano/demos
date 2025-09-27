@@ -1,19 +1,23 @@
+import {
+  forwardRef,
+  type ReactNode,
+  useCallback,
+  useImperativeHandle,
+} from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Dimensions, StyleSheet } from 'react-native';
-import React, { useCallback, useImperativeHandle } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   FadeIn,
   FadeOut,
-  Layout,
   interpolate,
-  runOnJS,
+  LinearTransition,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-
+import { scheduleOnRN } from 'react-native-worklets';
 import { Backdrop } from './Backdrop';
 
 // Get the screen height
@@ -21,7 +25,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Define the props for the ActionTray component
 type ActionTrayProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   maxHeight?: number;
   style?: StyleProp<ViewStyle>;
   onClose?: () => void;
@@ -34,7 +38,7 @@ export type ActionTrayRef = {
 };
 
 // Create the ActionTray component
-const ActionTray = React.forwardRef<ActionTrayRef, ActionTrayProps>(
+const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
   ({ children, style, maxHeight = SCREEN_HEIGHT, onClose }, ref) => {
     // Create a shared value for translateY animation
     const translateY = useSharedValue(maxHeight);
@@ -97,7 +101,7 @@ const ActionTray = React.forwardRef<ActionTrayRef, ActionTrayProps>(
         if (event.translationY > 100) {
           // Close the Action Tray when the user swipes down
           if (onClose) {
-            runOnJS(onClose)();
+            scheduleOnRN(onClose);
           } else close();
         } else {
           // Restore to the previous position if the users doesn't swipe down enough
@@ -112,7 +116,7 @@ const ActionTray = React.forwardRef<ActionTrayRef, ActionTrayProps>(
         translateY.value,
         [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
         [25, 5],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
 
       return {
@@ -130,7 +134,10 @@ const ActionTray = React.forwardRef<ActionTrayRef, ActionTrayProps>(
         <GestureDetector gesture={gesture}>
           <Animated.View
             style={[styles.actionTrayContainer, rActionTrayStyle, style]}>
-            <Animated.View layout={Layout} entering={FadeIn} exiting={FadeOut}>
+            <Animated.View
+              layout={LinearTransition}
+              entering={FadeIn}
+              exiting={FadeOut}>
               {children}
             </Animated.View>
           </Animated.View>

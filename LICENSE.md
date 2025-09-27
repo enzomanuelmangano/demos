@@ -57,4 +57,4 @@ All rights reserved.
 
 For licensing inquiries: hello@reactiive.io
 Website: [reactiive.io](https://reactiive.io)
-Twitter: [@reactiive_](https://x.com/reactiive_)
+Twitter: [@reactiive\_](https://x.com/reactiive_)

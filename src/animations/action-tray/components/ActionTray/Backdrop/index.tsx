@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
@@ -14,7 +14,7 @@ type BackdropProps = {
 };
 
 // Create the Backdrop component
-const Backdrop: React.FC<BackdropProps> = React.memo(({ isActive, onTap }) => {
+const Backdrop: FC<BackdropProps> = memo(({ isActive, onTap }) => {
   // Define animated style for the backdrop's opacity
   const rBackdropStyle = useAnimatedStyle(() => {
     return {

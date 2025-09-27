@@ -1,15 +1,15 @@
-// Import React and useContext from React library
-import React from 'react';
+// Import useContext from React library
+import { type ReactNode, createContext } from 'react';
 
 // Define the type for a StackedToast
 export type StackedToastType = {
   id: number;
   key: string;
-  children?: () => React.ReactNode;
+  children?: () => ReactNode;
 };
 
 // Create a context for managing StackedToasts
-export const StackedToastContext = React.createContext<{
+export const StackedToastContext = createContext<{
   showStackedToast: (StackedToast: Omit<StackedToastType, 'id'>) => void;
   clearAllStackedToasts: () => void;
 }>({
@@ -33,6 +33,6 @@ export type InternalStackedToastContextType = {
 };
 
 export const InternalStackedToastContext =
-  React.createContext<InternalStackedToastContextType>({
+  createContext<InternalStackedToastContextType>({
     stackedToasts: [],
   });

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { createRef, useMemo } from 'react';
 import type { LayoutRectangle } from 'react-native';
 import { useDerivedValue } from 'react-native-reanimated';
 
@@ -26,7 +26,7 @@ const useHeaderLayout = ({
   const headersLayoutXRefs = useMemo(
     () =>
       // use refs to get the layout of the headers
-      headers.map(() => React.createRef<MeasureableAnimatedViewRef>()),
+      headers.map(() => createRef<MeasureableAnimatedViewRef>()),
     [headers],
   );
 

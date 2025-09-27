@@ -112,7 +112,9 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
 
   const pickerTextX = useDerivedValue(() => {
     if (!font) return 0;
-    return clampedPickerX.value - font.getTextWidth(pickerCircleText.value) / 2;
+    return (
+      clampedPickerX.value - font.measureText(pickerCircleText.value).width / 2
+    );
   }, [clampedPickerX, pickerCircleTextContainerRadius, font, pickerCircleText]);
 
   const derivedPickerY = useDerivedValue(() => {

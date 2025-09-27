@@ -1,26 +1,23 @@
-import React, { useCallback, useContext } from 'react';
+import { type FC, type ReactNode, useCallback, useContext } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { MeasuredDimensions } from 'react-native-reanimated';
-import Animated, {
-  measure,
-  runOnJS,
-  useAnimatedRef,
-} from 'react-native-reanimated';
-
+import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 import type { PopupOptionType } from './BlurredContext';
 import { BlurredPopupContext } from './BlurredContext';
+
 // import HapticFeedback from 'react-native-haptic-feedback';
 
 type TouchablePopupHandlerProps = {
   /**
    * The content to be wrapped by the `TouchablePopupHandler` component.
    */
-  children?: React.ReactNode;
+  children?: ReactNode;
   /**
    * An alternative content to be displayed in the popup instead of the wrapped content.
    */
-  highlightedChildren?: React.ReactNode;
+  highlightedChildren?: ReactNode;
   /**
    * The style to be applied to the wrapped view.
    */
@@ -41,7 +38,7 @@ type TouchablePopupHandlerProps = {
  * and shows the popup using the BlurredPopupContext.
  * It also supports a single tap gesture that can trigger an optional onPress callback.
  */
-const TouchablePopupHandler: React.FC<TouchablePopupHandlerProps> = ({
+const TouchablePopupHandler: FC<TouchablePopupHandlerProps> = ({
   children,
   style,
   onPress,
@@ -76,7 +73,8 @@ const TouchablePopupHandler: React.FC<TouchablePopupHandlerProps> = ({
       // The measure function is a Reanimated function that returns a MeasuredDimensions object
       const dimensions = measure(viewRef); // Sync measure
       // Since the showPopup function is not a Reanimated function, we need to wrap it with runOnJS
-      runOnJS(wrappedJsShowPopup)(
+      scheduleOnRN(
+        wrappedJsShowPopup,
         dimensions ?? {
           x: 0,
           y: 0,
@@ -86,14 +84,14 @@ const TouchablePopupHandler: React.FC<TouchablePopupHandlerProps> = ({
           pageY: 0,
         },
       );
-      // run smooth feedback on long press
-      runOnJS(runLightFeedback)();
+      // run smooth feedback on long pr;ess
+      scheduleOnRN(runLightFeedback);
     });
 
   // Create a single tap gesture that triggers the onPress function when the user taps on the node.
   const singleTapGesture = Gesture.Tap().onTouchesUp(() => {
     // If the user taps on the node, we call the onPress function
-    if (onPress) runOnJS(onPress)();
+    if (onPress) scheduleOnRN(onPress);
   });
 
   // To avoid conflicts between the two gestures, we use the Exclusive Gesture.

@@ -1,5 +1,4 @@
 import { AntDesign } from '@expo/vector-icons'; // Icons from Expo's vector icons library
-import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 

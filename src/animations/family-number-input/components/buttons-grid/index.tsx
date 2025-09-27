@@ -1,6 +1,6 @@
 // Import necessary modules from React and React Native
 import { FontAwesome5 } from '@expo/vector-icons';
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 // Import the InputButton component
@@ -32,7 +32,7 @@ type ButtonsGridProps = {
 };
 
 // ButtonsGrid component definition
-const ButtonsGrid: React.FC<ButtonsGridProps> = React.memo(
+const ButtonsGrid: FC<ButtonsGridProps> = memo(
   ({ input, onReset, onUpdate, onBackspace, onMaxReached }) => {
     return (
       <View style={styles.container}>

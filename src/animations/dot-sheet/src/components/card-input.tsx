@@ -1,4 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   Platform,
   StyleSheet,
@@ -12,8 +14,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import React, { useImperativeHandle, useRef } from 'react';
-import { PressableScale } from 'pressto';
 
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
@@ -22,7 +22,7 @@ export type CardInputRefType = {
   focus: () => void;
 };
 
-export const CardInput = React.forwardRef<
+export const CardInput = forwardRef<
   CardInputRefType,
   {
     //

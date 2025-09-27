@@ -1,12 +1,12 @@
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { type FC } from 'react';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
-  Extrapolate,
-  useAnimatedStyle,
+  Extrapolation,
   interpolate,
+  useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
 
@@ -17,7 +17,7 @@ type DrawerIconProps = {
   tintColor?: string | undefined;
 };
 
-const DrawerIcon: React.FC<DrawerIconProps> = ({ tintColor = '#111' }) => {
+const DrawerIcon: FC<DrawerIconProps> = ({ tintColor = '#111' }) => {
   // Get the drawer progress from the navigation drawer
   const drawerProgress = useDrawerProgress();
 
@@ -54,7 +54,7 @@ const DrawerIcon: React.FC<DrawerIconProps> = ({ tintColor = '#111' }) => {
       progress.value,
       [0, 0.5],
       [1, 0],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {

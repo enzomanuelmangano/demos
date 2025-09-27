@@ -1,25 +1,25 @@
 import type { DataSourceParam } from '@shopify/react-native-skia';
 import {
   Canvas,
+  fitbox,
+  Group,
+  ImageSVG,
   rect,
   useSVG,
-  ImageSVG,
-  Group,
-  fitbox,
 } from '@shopify/react-native-skia';
+import { useMemo } from 'react';
+import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
   Extrapolation,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { StyleSheet, type StyleProp, type TextStyle } from 'react-native';
-import { useMemo } from 'react';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedSquares } from './animated-squares';
 
@@ -57,7 +57,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
     })
     .onTouchesUp(() => {
       if (onPress) {
-        runOnJS(onPress)(); // Call the onPress callback if provided
+        scheduleOnRN(onPress); // Call the onPress callback if provided
       }
     })
     .onFinalize(() => {

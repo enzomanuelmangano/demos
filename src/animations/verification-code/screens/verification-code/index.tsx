@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import { type FC, useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -17,7 +17,7 @@ type VerificationCodeScreenProps = {
   onWrongCode?: () => void;
 };
 
-export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
+export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
   correctCode,
   onCorrectCode,
   onWrongCode,
@@ -66,7 +66,7 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   const maxCodeLength = correctCode.toString().length;
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       invisibleTextInputRef.current?.focus();
 
       return () => {

@@ -1,11 +1,10 @@
-import React, { useCallback } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { type FC, type ReactNode, type RefObject, useCallback } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
-  SharedValue,
-  runOnJS,
   scrollTo,
+  type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
@@ -14,24 +13,25 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { lightHapticFeedback } from '../../utils/haptics';
 
 import type { Positions } from './types';
 
 type SortableListItemProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   itemHeight: number;
   positions: SharedValue<Positions>;
   index: number;
   animatedIndex: SharedValue<number | null>;
   onDragEnd?: (data: Positions) => void;
-  backgroundItem?: React.ReactNode;
+  backgroundItem?: ReactNode;
   scrollContentOffsetY: SharedValue<number>;
-  scrollViewRef: React.RefObject<Animated.ScrollView>;
+  scrollViewRef: RefObject<Animated.ScrollView>;
 };
 
-const SortableItem: React.FC<SortableListItemProps> = ({
+const SortableItem: FC<SortableListItemProps> = ({
   children,
   itemHeight,
   positions,
@@ -147,7 +147,7 @@ const SortableItem: React.FC<SortableListItemProps> = ({
 
       translateX.value = translationX;
       // Trigger haptic feedback if the gesture starts ✨
-      runOnJS(lightHapticFeedback)();
+      scheduleOnRN(lightHapticFeedback);
     })
     .onUpdate(({ translationY, translationX, absoluteY }) => {
       translateX.value = translationX;
@@ -169,7 +169,7 @@ const SortableItem: React.FC<SortableListItemProps> = ({
         );
 
         if (isFinished && onDragEnd && positionsHaveChanged) {
-          runOnJS(onDragEnd)(positions.value);
+          scheduleOnRN(onDragEnd, positions.value);
         }
       });
       wasLastActiveIndex.value = true;

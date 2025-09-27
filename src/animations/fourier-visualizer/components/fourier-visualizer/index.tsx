@@ -1,19 +1,18 @@
 import type { SkPath } from '@shopify/react-native-skia';
 import { Path, Skia } from '@shopify/react-native-skia';
-import React, { useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import {
-  Easing,
   cancelAnimation,
-  runOnJS,
+  Easing,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-
-import { fillToPowerOfTwo, getPoints } from './utils/fill';
+import { scheduleOnRN } from 'react-native-worklets';
 import { extractEpicycles } from './utils/extract-epicycles';
 import { computeFFT } from './utils/fft';
+import { fillToPowerOfTwo, getPoints } from './utils/fill';
 
 // Define the ref type for external interaction with the FourierVisualizer component
 export type FourierVisualizerRefType = {
@@ -27,7 +26,7 @@ export type FourierVisualizerRefType = {
   clear: () => void;
 };
 
-const FourierVisualizer = React.forwardRef<
+const FourierVisualizer = forwardRef<
   FourierVisualizerRefType,
   {
     strokeWidth?: number;
@@ -85,7 +84,7 @@ const FourierVisualizer = React.forwardRef<
           if (finished) {
             opacity.value = withTiming(0);
             if (onComplete) {
-              runOnJS(onComplete)();
+              scheduleOnRN(onComplete);
             }
           }
         },

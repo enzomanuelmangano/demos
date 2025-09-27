@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC, memo, useMemo } from 'react';
 import type { StyleProp, TextStyle } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withSpring,
@@ -37,7 +37,7 @@ const getDigitByIndex = ({
   );
 };
 
-const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
+const AnimatedDigit: FC<AnimatedDigitProps> = memo(
   ({ height, width, textStyle, index, count, maxDigits }) => {
     const digit = useDerivedValue(() => {
       return getDigitByIndex({
@@ -62,7 +62,7 @@ const AnimatedDigit: React.FC<AnimatedDigitProps> = React.memo(
       return index < maxDigits - invisibleDigitsAmount.value;
     }, [index, maxDigits]);
 
-    const flattenedTextStyle = React.useMemo(() => {
+    const flattenedTextStyle = useMemo(() => {
       return StyleSheet.flatten(textStyle);
     }, [textStyle]);
 

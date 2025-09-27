@@ -1,5 +1,5 @@
+import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Slider } from './components/slider';
@@ -12,7 +12,7 @@ const App = () => {
   );
 };
 
-export const CubertoSlider = React.memo(() => {
+export const CubertoSlider = memo(() => {
   return (
     <GestureHandlerRootView style={styles.fill}>
       <App />

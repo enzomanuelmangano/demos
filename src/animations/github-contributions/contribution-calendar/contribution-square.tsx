@@ -1,4 +1,4 @@
-import React, { forwardRef, useCallback, useImperativeHandle } from 'react';
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
   cancelAnimation,

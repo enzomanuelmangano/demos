@@ -1,6 +1,6 @@
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import React, { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 

@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
+import { PressableScale } from 'pressto';
+import { type FC, type ReactNode, memo, useState } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   FadeIn,
   FadeOut,
-  Layout,
+  LinearTransition,
   useAnimatedStyle,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 import { colors } from '../../constants';
 
@@ -22,14 +22,14 @@ type SplitButtonProps = {
   style?: StyleProp<ViewStyle>;
   onLeft?: () => void;
   onRight?: () => void;
-  leftIcon: React.ReactNode;
-  rightIcon: React.ReactNode;
+  leftIcon: ReactNode;
+  rightIcon: ReactNode;
   label?: string;
   buttonWidth?: number;
   maxSpacing?: number;
 };
 
-const SplitButton: React.FC<SplitButtonProps> = React.memo(
+const SplitButton: FC<SplitButtonProps> = memo(
   ({
     style,
     onLeft,
@@ -90,7 +90,7 @@ const SplitButton: React.FC<SplitButtonProps> = React.memo(
                 <Animated.View
                   entering={FadeIn}
                   exiting={FadeOut}
-                  layout={Layout}
+                  layout={LinearTransition}
                   style={[styles.chipContent, rAnimatedChipStyle]}>
                   {leftIcon}
                 </Animated.View>

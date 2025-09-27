@@ -1,9 +1,9 @@
 import { AntDesign } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import React, { useMemo } from 'react';
+import { type FC, memo, useMemo } from 'react';
 import { View } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withSpring,
@@ -22,7 +22,7 @@ type SelectableListItemProps = {
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
-const SelectableListItem: React.FC<SelectableListItemProps> = React.memo(
+const SelectableListItem: FC<SelectableListItemProps> = memo(
   ({
     internalPadding,
     index,

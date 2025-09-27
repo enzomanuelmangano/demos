@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC } from 'react';
 
 import { Spiral } from '../../../spiral';
 
-const MagicScreen: React.FC<{
+const MagicScreen: FC<{
   height: number;
   width: number;
 }> = ({ height, width }) => {

@@ -5,7 +5,7 @@ import {
   SweepGradient,
   vec,
 } from '@shopify/react-native-skia';
-import React from 'react';
+import { memo, type FC } from 'react';
 import { StyleSheet } from 'react-native';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
@@ -21,7 +21,7 @@ type BackgroundGradientProps = {
 // But the truth is that everything is based on a very simple concept.
 // Learn more: Animated Gradient in React Native (Skia) https://youtu.be/ZSPvvGU2LBg
 
-export const BackgroundGradient: React.FC<BackgroundGradientProps> = React.memo(
+export const BackgroundGradient: FC<BackgroundGradientProps> = memo(
   ({ mainColor }) => {
     const sweepGradientColors = useDerivedValue(() => {
       return [DEFAULT_WHITE, mainColor.value, mainColor.value];

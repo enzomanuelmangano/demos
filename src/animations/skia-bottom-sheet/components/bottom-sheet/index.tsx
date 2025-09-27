@@ -1,13 +1,13 @@
 // Import necessary modules and types
 import {
-  rect,
-  rrect,
   BackdropBlur,
   BlurMask,
+  rect,
   RoundedRect,
+  rrect,
   Skia,
 } from '@shopify/react-native-skia';
-import React from 'react';
+import { type FC, memo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 import {
@@ -38,7 +38,7 @@ type BottomSheetProps = {
 };
 
 // Define the BottomSheet component
-const BottomSheet: React.FC<BottomSheetProps> = React.memo(
+const BottomSheet: FC<BottomSheetProps> = memo(
   ({
     size,
     blur = DEFAULT_BLUR,

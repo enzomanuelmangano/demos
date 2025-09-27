@@ -3,7 +3,7 @@ import { Group, Text } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useDerivedValue,
   withTiming,
@@ -31,7 +31,7 @@ const TextCode: React.FC<TextCodeProps> = ({
   color = 'white',
   highlightedPoint,
 }) => {
-  const textWidth = font?.getTextWidth(code) || 0;
+  const textWidth = font?.measureText(code).width || 0;
 
   return (
     <Group>
@@ -81,7 +81,7 @@ const ScaleableCharacter: React.FC<
       distance.value,
       [0, 80],
       [1, 0.5],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return [{ scale }];
@@ -91,7 +91,7 @@ const ScaleableCharacter: React.FC<
     if (!rest.font || !rest.text) return { x, y };
 
     return {
-      x: x + rest.font?.getTextWidth(rest.text) / 2,
+      x: x + rest.font?.measureText(rest.text).width / 2,
       y: y - rest.font?.getSize() / 3,
     };
   }, [x, y, rest.font, rest.text]);

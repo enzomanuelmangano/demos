@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import { type FC, useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   TextInput,
@@ -24,7 +24,7 @@ type VerificationCodeScreenProps = {
   onWrongCode?: () => void;
 };
 
-export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
+export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
   correctCode,
   onCorrectCode,
   onWrongCode,
@@ -48,7 +48,7 @@ export const VerificationCodeScreen: React.FC<VerificationCodeScreenProps> = ({
   const iconSquareRef = useRef<InternalIconRef>(null);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       invisibleTextInputRef.current?.focus();
 
       return () => {

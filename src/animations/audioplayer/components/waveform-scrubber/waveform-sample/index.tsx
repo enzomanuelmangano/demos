@@ -1,7 +1,7 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
@@ -45,8 +45,8 @@ const getNextScaleY = ({
   return 0.7;
 };
 
-const WaveformScrubberSample: React.FC<WaveformScrubberSampleProps> =
-  React.memo(({ position, currentX, isDragging, value }) => {
+const WaveformScrubberSample: FC<WaveformScrubberSampleProps> = memo(
+  ({ position, currentX, isDragging, value }) => {
     const rStyle = useAnimatedStyle(() => {
       const isActive = currentX.value > position;
       const isNearCurrentX = Math.abs(currentX.value - position) < 20;
@@ -84,7 +84,8 @@ const WaveformScrubberSample: React.FC<WaveformScrubberSampleProps> =
         />
       </View>
     );
-  });
+  },
+);
 
 const styles = StyleSheet.create({
   sampleContainer: {

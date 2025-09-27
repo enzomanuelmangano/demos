@@ -1,18 +1,16 @@
 import type { PropsWithChildren } from 'react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { type FC, useCallback, useMemo, useRef, useState } from 'react';
 
+import { Backdrop } from './backdrop';
 import {
   InternalStackedToastContext,
   StackedToastContext,
   type StackedToastType,
 } from './context';
 import { StackedToast } from './stacked-toast';
-import { Backdrop } from './backdrop';
 
 // Define a StackedToastProvider component to manage and display StackedToasts
-export const StackedToastProvider: React.FC<PropsWithChildren> = ({
-  children,
-}) => {
+export const StackedToastProvider: FC<PropsWithChildren> = ({ children }) => {
   // State to manage the list of StackedToasts
   const [stackedToasts, setStackedToasts] = useState<StackedToastType[]>([]);
 

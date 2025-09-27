@@ -5,7 +5,6 @@ import Animated, { useDerivedValue } from 'react-native-reanimated';
 import { useCustomNavigation } from './expansion-provider';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
-Animated.addWhitelistedNativeProps({ intensity: true });
 
 const MainScreenWrapper = ({ children }: { children: React.ReactNode }) => {
   const { springProgress } = useCustomNavigation();

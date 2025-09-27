@@ -1,26 +1,26 @@
-import React from 'react';
+import { type FC, memo, type ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import type { MeasuredDimensions, SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type ConfirmButtonProps = {
   animationProgress: SharedValue<number>;
   layoutData: SharedValue<null | MeasuredDimensions>;
   style?: StyleProp<ViewStyle>;
-  children?: React.ReactNode;
+  children?: ReactNode;
   onConfirm?: () => void;
 };
 
-const ConfirmButton: React.FC<ConfirmButtonProps> = React.memo(
+const ConfirmButton: FC<ConfirmButtonProps> = memo(
   ({ animationProgress, layoutData, style, children, onConfirm }) => {
     const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } =
       useWindowDimensions();
@@ -64,7 +64,7 @@ const ConfirmButton: React.FC<ConfirmButtonProps> = React.memo(
         scale.value = withTiming(0.95);
       })
       .onTouchesUp(() => {
-        if (onConfirm) runOnJS(onConfirm)();
+        if (onConfirm) scheduleOnRN(onConfirm);
       })
       .onFinalize(() => {
         scale.value = withTiming(1);

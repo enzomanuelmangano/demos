@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import type { FC } from 'react';
 import type { AnimatedCodeNumberProps } from './animated-code-number';
 import { AnimatedCodeNumber } from './animated-code-number';
 
@@ -8,7 +9,7 @@ type VerificationCodeProps = {
   maxLength?: number;
 } & Pick<AnimatedCodeNumberProps, 'status'>;
 
-export const VerificationCode: React.FC<VerificationCodeProps> = ({
+export const VerificationCode: FC<VerificationCodeProps> = ({
   code,
   maxLength = 5,
   status,

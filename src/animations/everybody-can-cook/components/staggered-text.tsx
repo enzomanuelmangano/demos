@@ -1,6 +1,6 @@
 import type { ForwardedRef } from 'react';
 import { forwardRef, useImperativeHandle } from 'react';
-import React, {
+import {
   type StyleProp,
   type TextStyle,
   type ViewStyle,
@@ -131,7 +131,6 @@ export const StaggeredText = forwardRef(
           return (
             <StaggeredDigit
               // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-expect-error
               key={index}
               digit={char}
               progress={delayedProgress}

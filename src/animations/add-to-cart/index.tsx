@@ -4,7 +4,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, {
   cancelAnimation,
-  Extrapolate,
+  Extrapolation,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
@@ -86,13 +86,13 @@ const AddToCart = () => {
         animationProgress.value,
         [0.5, 1],
         [0, 1],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       ),
       flex: interpolate(
         animationProgress.value,
         [0, 1],
         [0, 4],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       ),
     };
   }, []);

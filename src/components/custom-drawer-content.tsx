@@ -3,11 +3,8 @@ import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
-import React, { useCallback, useMemo } from 'react';
-import type {
-  NativeSyntheticEvent,
-  TextInputChangeEventData,
-} from 'react-native';
+import { useCallback, useMemo, type JSX } from 'react';
+import type { TextInputChangeEvent } from 'react-native';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,12 +22,12 @@ const LIST_ITEM_HEIGHT = 60;
 
 type AnimationItem = {
   slug: string;
-  component: () => React.JSX.Element;
+  component: () => JSX.Element;
   metadata: AnimationMetadataType;
   id: number;
   route: string;
   name: string;
-  icon: () => React.JSX.Element;
+  icon: () => JSX.Element;
   alert?: boolean;
 };
 
@@ -81,7 +78,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const keyExtractor = useCallback((item: AnimationItem) => item.slug, []);
 
   const handleSearchChange = useCallback(
-    (event: NativeSyntheticEvent<TextInputChangeEventData>) => {
+    (event: TextInputChangeEvent) => {
       setSearchFilter(event.nativeEvent.text);
     },
     [setSearchFilter],

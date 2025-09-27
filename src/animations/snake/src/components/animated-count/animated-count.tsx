@@ -1,4 +1,4 @@
-import React from 'react';
+import { type FC, memo } from 'react';
 import type { SharedValue } from 'react-native-reanimated';
 import Animated from 'react-native-reanimated';
 
@@ -46,7 +46,7 @@ type AnimatedCountProps = {
 // but that would mean that we would have to re-render the component every time the count changes.
 // And that's not what we want (if the amount of digits isn't too big).
 
-const AnimatedCount: React.FC<AnimatedCountProps> = React.memo(
+const AnimatedCount: FC<AnimatedCountProps> = memo(
   ({
     count,
     maxDigits,

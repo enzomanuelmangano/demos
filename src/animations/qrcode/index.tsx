@@ -3,7 +3,7 @@ import {
   SweepGradient,
   vec,
 } from '@shopify/react-native-skia';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   StyleSheet,
   Text,

@@ -1,6 +1,13 @@
 // Import necessary React components and types
 import type { PropsWithChildren } from 'react';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type FC,
+  type ReactNode,
+} from 'react';
 
 import {
   InternalStackedSheetContext,
@@ -10,9 +17,7 @@ import {
 import { StackedSheet } from './stacked-sheet';
 
 // Define a StackedSheetProvider component to manage and display StackedSheets
-export const StackedSheetProvider: React.FC<PropsWithChildren> = ({
-  children,
-}) => {
+export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
   // State to manage the list of StackedSheets
   const [stackedSheets, setStackedSheets] = useState<StackedSheetType[]>([]);
   // const [stackedSheets, setStackedSheets] = useAtom(StackedSheetsAtom);
@@ -73,7 +78,7 @@ export const StackedSheetProvider: React.FC<PropsWithChildren> = ({
   }, [showStackedSheet]);
 
   const stackedSheetsMemoizedByKeys = useRef<
-    Record<string | number, React.ReactNode>
+    Record<string | number, ReactNode>
   >({});
 
   const renderStackedSheet = useCallback(

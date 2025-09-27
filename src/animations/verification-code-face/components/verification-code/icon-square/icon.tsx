@@ -1,6 +1,6 @@
 import type { SkPath } from '@shopify/react-native-skia';
 import { Canvas, Path } from '@shopify/react-native-skia';
-import React, { forwardRef, useImperativeHandle } from 'react';
+import { forwardRef, useImperativeHandle } from 'react';
 import { type ViewStyle } from 'react-native';
 import type { AnimatedStyle, SharedValue } from 'react-native-reanimated';
 import Animated, {

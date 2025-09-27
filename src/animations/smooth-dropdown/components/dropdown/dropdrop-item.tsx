@@ -1,10 +1,10 @@
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
-import type { ComponentProps } from 'react';
 import Color from 'color';
-import React, { useCallback } from 'react';
+import type { ComponentProps } from 'react';
+import { type FC, memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -31,7 +31,7 @@ type DropdownItemProps = {
   optionsLength: number;
 } & DropdownOptionType;
 
-const DropdownItem: React.FC<DropdownItemProps> = React.memo(
+const DropdownItem: FC<DropdownItemProps> = memo(
   ({
     onPress,
     progress,
@@ -113,7 +113,7 @@ const DropdownItem: React.FC<DropdownItemProps> = React.memo(
         progress.value,
         [0, 1],
         [0, Math.PI / 2],
-        Extrapolate.CLAMP,
+        Extrapolation.CLAMP,
       );
       const rotateRad = `${rotation}rad`;
 

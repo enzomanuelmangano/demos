@@ -1,7 +1,7 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, {
   FadeIn,
-  Layout,
+  LinearTransition,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -23,7 +23,7 @@ const App = () => {
   return (
     <View style={styles.container}>
       <Animated.FlatList
-        layout={Layout}
+        layout={LinearTransition}
         entering={FadeIn}
         onScroll={scrollHandler}
         showsVerticalScrollIndicator={false}

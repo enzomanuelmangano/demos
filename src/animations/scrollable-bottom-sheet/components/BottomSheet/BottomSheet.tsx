@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC, type ReactNode } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolate,
+  Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
@@ -17,13 +17,13 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const MAX_TRANSLATE_Y = -SCREEN_HEIGHT + 50;
 
 type BottomSheetProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   active: SharedValue<boolean>;
   translateY: SharedValue<number>;
   scrollTo: (destination: number) => void;
 };
 
-const BottomSheet: React.FC<BottomSheetProps> = ({
+const BottomSheet: FC<BottomSheetProps> = ({
   children,
   translateY,
   active,
@@ -54,7 +54,7 @@ const BottomSheet: React.FC<BottomSheetProps> = ({
       translateY.value,
       [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
       [25, 5],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {

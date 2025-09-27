@@ -1,6 +1,12 @@
 import { useRouter } from 'expo-router';
 import debounce from 'lodash.debounce';
-import React, { createContext, useCallback, useContext, useMemo } from 'react';
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useMemo,
+} from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
 import type { SharedValue, useAnimatedRef } from 'react-native-reanimated';
 import Animated, {
@@ -9,13 +15,13 @@ import Animated, {
   interpolate,
   makeMutable,
   measure,
-  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type AnimatedRef = ReturnType<typeof useAnimatedRef>;
 
@@ -62,11 +68,7 @@ const SpringConfig = {
   stiffness: 25,
 } as const;
 
-export const ExpansionProvider = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
   const dimensionsSharedValue = useSharedValue<null | ReturnType<
     typeof measure
   >>(null);
@@ -147,7 +149,7 @@ export const ExpansionProvider = ({
   );
   const backTransition = useCallback(() => {
     'worklet';
-    runOnJS(debouncedBackNavigation)();
+    scheduleOnRN(debouncedBackNavigation);
     transitionOpacityProgress.value = withSequence(
       withTiming(1, { duration: 0 }),
       withTiming(0, { duration: 700, easing: Easing.in(Easing.ease) }),

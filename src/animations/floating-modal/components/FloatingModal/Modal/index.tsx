@@ -1,8 +1,8 @@
-import React from 'react';
+import { type FC, memo, type ReactNode } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-  SharedValue,
+  type SharedValue,
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
@@ -11,12 +11,12 @@ import Animated, {
 import { FLOATING_BUTTON_SIZE } from '../constants';
 
 type ModalProps = {
-  children?: React.ReactNode;
+  children?: ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
   isVisible: SharedValue<boolean>;
 };
 
-const ModalContent: React.FC<ModalProps> = React.memo(
+const ModalContent: FC<ModalProps> = memo(
   ({ children, isVisible, contentContainerStyle }) => {
     const rAnimatedStyle = useAnimatedStyle(() => {
       return {

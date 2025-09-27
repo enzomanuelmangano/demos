@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { Octicons } from '@expo/vector-icons';
 import {
   Blur,
   Canvas,
@@ -8,15 +7,16 @@ import {
   Mask,
   rect,
 } from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
+import { useState } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Octicons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { PressableScale } from 'pressto';
 
 import { FractalGlassMask } from './components/fractal-glass-mask';
 
