@@ -23,8 +23,7 @@ const ActiveTabBarContextProvider: React.FC<
     return {
       isActive,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- this is a context provider
-  }, []);
+  }, [isActive]);
 
   return (
     <ActiveTabBarContext.Provider value={value}>
