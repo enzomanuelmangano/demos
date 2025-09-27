@@ -11,7 +11,6 @@ import {
   StaggeredTextRef,
 } from '../src/animations/everybody-can-cook/components/staggered-text';
 import { AnimatedHamburgerIcon } from '../src/components/animated-hamburger-icon';
-import LiquidButton from '../src/components/LiquidButton/LiquidButton';
 
 const baseDrawerOptions = {
   headerShown: true,
