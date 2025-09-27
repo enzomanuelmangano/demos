@@ -55,8 +55,8 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
 
     rotation.value = withRepeat(
       withTiming(4 * Math.PI, {
-        duration: 1000,
-        easing: Easing.bezier(0.35, 0.7, 0.29, 0.32),
+        duration: 800,
+        easing: Easing.linear,
       }),
       -1,
       false,
