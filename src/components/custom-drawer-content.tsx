@@ -36,19 +36,19 @@ type AnimationItem = {
 
 export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
-  const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
   const { top, bottom } = useSafeAreaInsets();
+  const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
 
   // Convert registry to the format expected by your existing components
   const allAnimations = useMemo(() => {
     return getAllAnimations()
       .map((animation, index) => ({
-        ...animation,
         id: index,
+        ...animation,
         route: animation.slug,
         name: animation.metadata.name,
-        icon: () => createIcon(animation.metadata),
         alert: animation.metadata.alert,
+        icon: () => createIcon(animation.metadata),
       }))
       .reverse(); // Maintain your existing order
   }, []);
@@ -67,8 +67,8 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
     ({ item }) => {
       return (
         <DrawerListItem
-          style={styles.listItem}
           item={item}
+          style={styles.listItem}
           onPress={() => {
             router.push(`/animations/${item.slug}`);
           }}
@@ -95,16 +95,16 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
         </View>
         <View style={styles.searchContainer}>
           <TextInput
-            style={styles.searchInput}
-            placeholder="Search animations..."
-            placeholderTextColor="#666"
-            autoCapitalize="none"
-            autoCorrect={false}
             autoComplete="off"
+            autoCorrect={false}
             value={searchFilter}
-            onChange={handleSearchChange}
+            autoCapitalize="none"
             returnKeyType="search"
             clearButtonMode="always"
+            style={styles.searchInput}
+            placeholderTextColor="#666"
+            onChange={handleSearchChange}
+            placeholder="Search animations..."
           />
         </View>
       </View>
@@ -115,13 +115,13 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
           scrollEventThrottle={16}
           data={filteredAnimations}
           keyExtractor={keyExtractor}
-          contentContainerStyle={{ paddingBottom: bottom }}
           contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingBottom: bottom }}
         />
         <LinearGradient
-          colors={['#030303', '#03030300']}
-          style={styles.topGradient}
           pointerEvents="none"
+          style={styles.topGradient}
+          colors={['#030303', '#03030300']}
         />
       </View>
     </View>
@@ -134,51 +134,51 @@ const styles = StyleSheet.create({
     backgroundColor: '#030303',
   },
   header: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-    marginTop: 6,
     gap: 8,
+    marginTop: 6,
+    marginBottom: 8,
+    paddingHorizontal: 20,
   },
   titleRow: {
+    gap: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
     color: '#fff',
+    fontWeight: '700',
     letterSpacing: -0.5,
     fontFamily: 'honk-regular',
   },
   searchContainer: {
-    position: 'relative',
-    marginBottom: 8,
     marginTop: 6,
+    marginBottom: 8,
+    position: 'relative',
   },
   searchInput: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: '#fff',
     fontSize: 14,
+    color: '#fff',
     borderWidth: 0,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#1a1a1a',
   },
   listContainer: {
     flex: 1,
     position: 'relative',
   },
   listItem: {
-    height: LIST_ITEM_HEIGHT,
     paddingHorizontal: 20,
+    height: LIST_ITEM_HEIGHT,
   },
   topGradient: {
-    position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 25,
     zIndex: 1,
+    height: 25,
+    position: 'absolute',
   },
 });
