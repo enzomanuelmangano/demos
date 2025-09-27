@@ -14,6 +14,7 @@ module.exports = {
     'react',
     'react-hooks',
     'react-native',
+    'deprecation',
   ],
   ignorePatterns: [
     'node_modules/',
@@ -34,6 +35,8 @@ module.exports = {
     'prettier/prettier': 'error',
     '@typescript-eslint/consistent-type-imports': 'off',
     '@typescript-eslint/no-unused-vars': 'off',
+    '@typescript-eslint/no-deprecated': 'error',
+    'deprecation/deprecation': 'warn',
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
     'react/display-name': 'off',
@@ -50,6 +53,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 2020,
     sourceType: 'module',
+    project: './tsconfig.json',
     ecmaFeatures: {
       jsx: true,
     },
