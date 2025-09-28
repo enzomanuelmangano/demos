@@ -9,6 +9,8 @@ import {
 import { useCallback, useMemo, type JSX } from 'react';
 import React from 'react';
 
+import { LegendList, LegendListRenderItemProps } from '@legendapp/list';
+import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
@@ -23,9 +25,6 @@ import {
   type AnimationMetadataType,
 } from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
-
-import { LegendList, LegendListRenderItemProps } from '@legendapp/list';
-import { DrawerContentComponentProps } from '@react-navigation/drawer';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
@@ -143,9 +142,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#030303',
     flex: 1,
-  },
-  content: {
-    paddingBottom: 24,
   },
   header: {
     gap: 8,
