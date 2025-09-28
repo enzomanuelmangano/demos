@@ -93,6 +93,7 @@ import { MotionBlur } from './motion-blur';
 import { OnlineOffline } from './online-offline';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
+import { Playground } from './liquid-glass-playground';
 import { PomodoroTimer } from './pomodoro-timer';
 import { PopupHandler } from './popup-handler';
 import { PrequelSlider } from './prequel-slider';
