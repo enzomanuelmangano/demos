@@ -12,6 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 type AnimatedSingleNumberProps = {
+  // Value can be a number (0-9) or a string (',')
   value: number | string;
   containerStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<TextStyle>;

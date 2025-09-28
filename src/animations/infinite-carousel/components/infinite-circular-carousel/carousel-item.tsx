@@ -83,6 +83,9 @@ export const CarouselItem = <T,>({
           translateX: translatedAmount,
         },
       ],
+      // Set zIndex based on progress for layering
+      // This might not be necessary for all use cases and can be removed
+      // It's a bit tricky to parametrize this style, but it can be done
       zIndex: Math.floor(Math.abs(progress.value * 100)),
     };
   }, []);

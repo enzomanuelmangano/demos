@@ -82,6 +82,7 @@ const StackedToast: React.FC<StackedToastProps> = ({
   }, [onDismiss, stackedToastId, translateX, windowWidth]);
 
   const gesture = Gesture.Pan()
+    // .enabled(isActiveStackedToast)
     .onBegin(() => {
       isSwiping.value = true;
     })
@@ -123,6 +124,8 @@ const StackedToast: React.FC<StackedToastProps> = ({
 
   const rVisibleContainerStyle = useAnimatedStyle(() => {
     return {
+      // The content of the first two StackedToasts is visible
+      // The content of the other StackedToasts is hidden
       opacity: withTiming(stackedToastId < MAX_VISIBLE_TOASTS ? 1 : 0),
     };
   }, [stackedToastId]);

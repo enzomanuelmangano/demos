@@ -28,6 +28,7 @@ export const useActiveLetterAnimation = ({
 
   useEffect(() => {
     const interval = setInterval(() => {
+      // Update the active letter index based on the time interval and the length of letters and colors arrays
       activeLetterIndex.value =
         (activeLetterIndex.value + 1) % Math.min(letters.length, colors.length);
     }, timeInterval);

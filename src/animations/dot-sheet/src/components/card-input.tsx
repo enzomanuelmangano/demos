@@ -41,6 +41,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
     [],
   );
 
+  // @@TODO: useHeaderHeight hook
   const potentialHeaderHeight = 52;
 
   const inputRange = [0, 1];
@@ -153,9 +154,11 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
         <AnimatedTextInput
           ref={animatedTextInput}
           onFocus={() => {
+            // Here's the magic, we animate the progress value in a reactive way
             progress.value = withTiming(1, { duration: 600 });
           }}
           onBlur={() => {
+            // When the input is unfocused, we animate the progress value back to 0
             progress.value = withTiming(0, { duration: 600 });
           }}
           style={[styles.input, rTextInputStyle]}

@@ -1,15 +1,15 @@
-import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import Animated, { useSharedValue } from 'react-native-reanimated';
-import { useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableScale } from 'pressto';
+import { useCallback } from 'react';
+import { StyleSheet, View } from 'react-native';
+import Animated, { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { InteractiveList } from './components/interactive-list';
+import { ListItem } from './components/list-item';
 import { INITIAL_ITEMS } from './constants';
 import { useAnimatedShake } from './hooks/use-animated-shake';
-import { ListItem } from './components/list-item';
 
 const ITEM_HEIGHT = 100;
 const ITEM_MARGIN = 10;
@@ -17,8 +17,15 @@ const ITEM_MARGIN = 10;
 const EmailDemo = () => {
   const { bottom: safeBottom, top: safeTop } = useSafeAreaInsets();
 
+  // Define shared value for erased items count
+  // At the beginning I was thinking to use a state, but the
+  // shared value is a better option to handle the animation
+  // since we're going to avoid useless re-renders
   const erasedItems = useSharedValue(0);
 
+  // Custom hook to handle animation logic for restore and delete buttons
+  // This hook is EXTREMELY useful (and reusable) to handle shake animations
+  // I've used it also in the Verification Code Input component animation
   const { shake: shakeRestore, rShakeStyle: rShakeRestoreStyle } =
     useAnimatedShake();
   const { shake: shakeDelete, rShakeStyle: rShakeDeleteStyle } =

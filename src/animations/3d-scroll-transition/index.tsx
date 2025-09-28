@@ -50,6 +50,7 @@ export const ScrollTransition3D = memo(() => {
         onScroll={onScroll}
         data={NUMBERS_ARRAY}
         getItemLayout={getItemLayout}
+        // Without this prop, the list will be a bit janky (that's the secret ingredient! 🤫)
         windowSize={2}
         snapToInterval={itemSize}
         decelerationRate={'fast'}

@@ -15,12 +15,14 @@ type ComposableTextProps = {
 
 export const ComposableText = memo(
   ({ text, style, containerStyle }: ComposableTextProps) => {
+    // Generate unique keys for each character to maintain animation stability
+    // This is necessary when the same character appears multiple time
     const buildKeys = useMemo(() => {
       const charCounts: Record<string, number> = {};
       return text.split('').map(char => {
         const count = charCounts[char] || 0;
         charCounts[char] = count + 1;
-        return `${char}-${count}`;
+        return `${char}-${count}`; // Creates keys like 'a-0', 'a-1' for repeated chars
       });
     }, [text]);
 

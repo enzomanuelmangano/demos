@@ -61,7 +61,12 @@ function SegmentedControl<T extends { name: string; icon: string }>({
       [0, data.length - 1],
       [internalPadding, -internalPadding],
     );
-
+    // Example (with 5 items):
+    // 0 -> internalPadding / 2
+    // 1 ->  internalPadding / 4
+    // 2 -> 0
+    // 3 -> -internalPadding / 4
+    // 4 -> -internalPadding / 2
     return {
       left: withTiming(
         cellBackgroundWidth * selectedCellIndex + padding,

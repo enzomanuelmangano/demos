@@ -57,6 +57,9 @@ export const useCloseButtonAnimations = ({
     return [{ scale: closeButtonScale.value }];
   }, []);
 
+  // Create a shared Skia Paint object for opacity updates
+  // This is a workaround for SVG opacity updates in react-native-skia
+  // See: https://github.com/Shopify/react-native-skia/issues/1709
   const paint = useSharedValue(Skia.Paint());
   useAnimatedReaction(
     () => closeButtonOpacity.value,

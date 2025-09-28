@@ -68,6 +68,8 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     return clamp((x.value - pickerWidth / 2) / width, 0, 1);
   });
 
+  // This is a hacky way to prevent the slider from shifting when it reaches the right limit
+  // This value is going to be used by components in order to fix the styling
   const uiXPercentage = useDerivedValue(() => {
     return xPercentage.value * (1 - PICKER_WIDTH_PERCENTAGE);
   }, []);
@@ -91,6 +93,8 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
   }, [leftPercentageLimitBeforeShift, rightPercentageLimitBeforeShift]);
 
   const boxHeightPercentage = useDerivedValue(() => {
+    // if the slider has reached its boundaries, we want to shrink the box height
+    // of the left, right, and picker containers!
     return withSpring(hasReachedBoundaries.value ? 0.3 : 1);
   }, []);
 
