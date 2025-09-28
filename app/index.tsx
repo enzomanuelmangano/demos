@@ -60,13 +60,13 @@ export default function HomeScreen() {
       />
       <View
         style={styles.container}
-        onTouchStart={() => {
-          staggeredTextRef.current?.reset();
-          staggeredTextRef.current?.animate();
+        onTouchEnd={() => {
+          staggeredTextRef.current?.toggleAnimate();
         }}>
         <StaggeredText
           ref={staggeredTextRef}
           textStyle={styles.title}
+          enableReverse
           text="Swipe to explore."
         />
       </View>

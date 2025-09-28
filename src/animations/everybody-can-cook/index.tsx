@@ -6,36 +6,6 @@ import { StaggeredText } from './components/staggered-text';
 
 import type { StaggeredTextRef } from './components/staggered-text';
 
-/**
- * A debounce utility function that ensures the callback is executed only once
- * during rapid successive calls within the specified delay.
- * This implementation includes a "leading" behavior, meaning it executes
- * immediately on the first call.
- *
- * @param fn - The callback function to be debounced
- * @param delay - The delay in milliseconds before allowing another execution
- * @returns A debounced version of the callback function
- */
-const debounce = (fn: () => void, delay: number) => {
-  let timeout: NodeJS.Timeout;
-  let isLeading = true;
-  return () => {
-    if (isLeading) {
-      fn();
-      isLeading = false;
-    }
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      isLeading = true;
-    }, delay);
-  };
-};
-
-/**
- * Main App component that demonstrates the usage of StaggeredText animations.
- * The component renders two animated text elements that can be triggered
- * by touching the screen.
- */
 const App = () => {
   // Refs to control the animation of each StaggeredText component
   const everybodyStaggeredTextRef = useRef<StaggeredTextRef>(null);
@@ -44,7 +14,7 @@ const App = () => {
   return (
     <View
       style={styles.container}
-      onTouchStart={debounce(() => {
+      onTouchEnd={() => {
         // Reset and animate both text components in sequence
         // Note: If enableReverse prop is used, you can use toggleAnimate instead:
         // everybodyStaggeredTextRef.current?.toggleAnimate();
@@ -54,7 +24,7 @@ const App = () => {
         everybodyStaggeredTextRef.current?.animate();
         canCookStaggeredTextRef.current?.reset();
         canCookStaggeredTextRef.current?.animate();
-      }, 800)}>
+      }}>
       <StaggeredText
         text="Everybody"
         ref={everybodyStaggeredTextRef}
@@ -63,7 +33,7 @@ const App = () => {
         // enableReverse
       />
       <StaggeredText
-        delay={300} // Delays the animation start by 300ms
+        delay={280} // Delays the animation
         text="can cook."
         ref={canCookStaggeredTextRef}
         textStyle={styles.text}

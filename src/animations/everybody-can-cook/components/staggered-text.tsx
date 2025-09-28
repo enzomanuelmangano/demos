@@ -9,11 +9,10 @@ import {
 import { forwardRef, useImperativeHandle } from 'react';
 
 import {
-  Easing,
   useDerivedValue,
   useSharedValue,
   withDelay,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { StaggeredDigit } from './staggered-digit';
@@ -115,19 +114,18 @@ export const StaggeredText = forwardRef(
               return 0;
             }
 
-            const delayMs = index * 60 + delay;
+            const delayMs = index * 40 + delay;
             return withDelay(
               delayMs,
-              withTiming(progress.value, {
-                duration: 500,
-                easing: Easing.bezier(0.455, 0.03, 0.515, 0.955),
+              withSpring(progress.value, {
+                duration: 350,
+                dampingRatio: 2.8,
               }),
             );
           }, []);
 
           return (
             <StaggeredDigit
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
               key={index}
               digit={char}
               progress={delayedProgress}
