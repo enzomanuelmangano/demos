@@ -1,8 +1,9 @@
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useCallback, useMemo, type JSX } from 'react';
+import React from 'react';
 
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
@@ -13,6 +14,7 @@ import { DrawerListItem } from './drawer-list-item';
 import { createIcon } from '../animations/icon-factory';
 import {
   getAllAnimations,
+  type AnimationComponent,
   type AnimationMetadataType,
 } from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
@@ -20,40 +22,42 @@ import { SearchFilterAtom } from '../navigation/states/filters';
 import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 import type { TextInputChangeEvent } from 'react-native';
 
+const keyExtractor = (item: AnimationItem) => item.slug;
+
 const LIST_ITEM_HEIGHT = 60;
 
 type AnimationItem = {
-  slug: string;
-  component: () => JSX.Element;
-  metadata: AnimationMetadataType;
   id: number;
-  route: string;
   name: string;
-  icon: () => JSX.Element;
+  slug: string;
+  route: string;
   alert?: boolean;
+  icon: () => JSX.Element;
+  component: AnimationComponent;
+  metadata: AnimationMetadataType;
 };
 
 export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
+  const { top, bottom } = useSafeAreaInsets();
   const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
-  const { top } = useSafeAreaInsets();
 
   // Convert registry to the format expected by your existing components
   const allAnimations = useMemo(() => {
     return getAllAnimations()
       .map((animation, index) => ({
-        ...animation,
         id: index,
+        ...animation,
         route: animation.slug,
         name: animation.metadata.name,
-        icon: () => createIcon(animation.metadata),
         alert: animation.metadata.alert,
+        icon: () => createIcon(animation.metadata),
       }))
       .reverse(); // Maintain your existing order
   }, []);
 
   // Filter animations based on search
-  const filteredAnimations = useMemo(() => {
+  const filteredAnimations: AnimationItem[] = useMemo(() => {
     if (!searchFilter.trim()) {
       return allAnimations;
     }
@@ -62,12 +66,12 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
     );
   }, [allAnimations, searchFilter]);
 
-  const renderItem = useCallback(
-    ({ item }: { item: AnimationItem }) => {
+  const renderItem: ListRenderItem<AnimationItem> = useCallback(
+    ({ item }) => {
       return (
         <DrawerListItem
-          style={styles.listItem}
           item={item}
+          style={styles.listItem}
           onPress={() => {
             router.push(`/animations/${item.slug}`);
           }}
@@ -76,8 +80,6 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
     },
     [router],
   );
-
-  const keyExtractor = useCallback((item: AnimationItem) => item.slug, []);
 
   const handleSearchChange = useCallback(
     (event: TextInputChangeEvent) => {
@@ -96,33 +98,33 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
         </View>
         <View style={styles.searchContainer}>
           <TextInput
-            style={styles.searchInput}
-            placeholder="Search animations..."
-            placeholderTextColor="#666"
-            autoCapitalize="none"
-            autoCorrect={false}
             autoComplete="off"
+            autoCorrect={false}
             value={searchFilter}
-            onChange={handleSearchChange}
+            autoCapitalize="none"
             returnKeyType="search"
             clearButtonMode="always"
+            style={styles.searchInput}
+            placeholderTextColor="#666"
+            onChange={handleSearchChange}
+            placeholder="Search animations..."
           />
         </View>
       </View>
 
       <View style={styles.listContainer}>
         <FlashList
-          keyExtractor={keyExtractor}
-          data={filteredAnimations as AnimationItem[]}
-          scrollEventThrottle={16}
-          contentContainerStyle={styles.content}
-          contentInsetAdjustmentBehavior="automatic"
           renderItem={renderItem}
+          scrollEventThrottle={16}
+          data={filteredAnimations}
+          keyExtractor={keyExtractor}
+          contentInsetAdjustmentBehavior="automatic"
+          contentContainerStyle={{ paddingBottom: bottom }}
         />
         <LinearGradient
-          colors={['#030303', '#03030300']}
-          style={styles.topGradient}
           pointerEvents="none"
+          style={styles.topGradient}
+          colors={['#030303', '#03030300']}
         />
       </View>
     </View>
