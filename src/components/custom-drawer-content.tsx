@@ -1,9 +1,16 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  TextInputChangeEvent,
+  View,
+} from 'react-native';
 
 import { useCallback, useMemo, type JSX } from 'react';
 import React from 'react';
 
-import { FlashList, ListRenderItem } from '@shopify/flash-list';
+import { LegendList, LegendListRenderItemProps } from '@legendapp/list';
+import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
@@ -18,9 +25,6 @@ import {
   type AnimationMetadataType,
 } from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
-
-import type { DrawerContentComponentProps } from '@react-navigation/drawer';
-import type { TextInputChangeEvent } from 'react-native';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
@@ -66,8 +70,8 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
     );
   }, [allAnimations, searchFilter]);
 
-  const renderItem: ListRenderItem<AnimationItem> = useCallback(
-    ({ item }) => {
+  const renderItem = useCallback(
+    ({ item }: LegendListRenderItemProps<AnimationItem>) => {
       return (
         <DrawerListItem
           item={item}
@@ -113,11 +117,14 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
       </View>
 
       <View style={styles.listContainer}>
-        <FlashList
+        <LegendList
+          recycleItems
+          waitForInitialLayout
           renderItem={renderItem}
           scrollEventThrottle={16}
           data={filteredAnimations}
           keyExtractor={keyExtractor}
+          estimatedItemSize={LIST_ITEM_HEIGHT}
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={{ paddingBottom: bottom }}
         />
@@ -135,9 +142,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#030303',
     flex: 1,
-  },
-  content: {
-    paddingBottom: 24,
   },
   header: {
     gap: 8,
