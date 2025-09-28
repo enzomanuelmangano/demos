@@ -1,8 +1,9 @@
-import { StyleSheet, Text, TextInput, View, ListRenderItem } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useCallback, useMemo, type JSX } from 'react';
+import React from 'react';
 
-import { FlashList } from '@shopify/flash-list';
+import { FlashList, ListRenderItem } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
@@ -140,50 +141,50 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: 8,
-    marginTop: 6,
     marginBottom: 8,
+    marginTop: 6,
     paddingHorizontal: 20,
-  },
-  titleRow: {
-    gap: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    fontFamily: 'honk-regular',
-  },
-  searchContainer: {
-    marginTop: 6,
-    marginBottom: 8,
-    position: 'relative',
-  },
-  searchInput: {
-    fontSize: 14,
-    color: '#fff',
-    borderWidth: 0,
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
   },
   listContainer: {
     flex: 1,
     position: 'relative',
   },
   listItem: {
-    paddingHorizontal: 20,
     height: LIST_ITEM_HEIGHT,
+    paddingHorizontal: 20,
+  },
+  searchContainer: {
+    marginBottom: 8,
+    marginTop: 6,
+    position: 'relative',
+  },
+  searchInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 0,
+    color: '#fff',
+    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  title: {
+    color: '#fff',
+    fontFamily: 'honk-regular',
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  titleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 16,
   },
   topGradient: {
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 1,
     height: 25,
+    left: 0,
     position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1,
   },
 });
