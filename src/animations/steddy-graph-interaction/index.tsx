@@ -4,9 +4,6 @@ import { useMemo, useState } from 'react';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-
 import { Graph } from './components/graph';
 import { SegmentedControl } from './components/segmented-control';
 import {
@@ -15,13 +12,10 @@ import {
   STANRDARD_GRAPH_SCORES,
 } from './constants/graph-scores';
 import { Palette } from './constants/palette';
-import sfCompactRoundedMedium from '../../../assets/fonts/SF-Compact-Rounded-Medium.otf'; // medium
 
-// Define an array of scoring difficulties and their types
 const ScoringDifficultyData = ['Light', 'Standard', 'Pro'] as const;
 type ScoringDifficultyType = (typeof ScoringDifficultyData)[number];
 
-// Map scoring difficulties to their respective score data
 const ScoringMap = {
   Light: LIGHT_GRAPH_SCORES,
   Standard: STANRDARD_GRAPH_SCORES,
@@ -79,7 +73,6 @@ const styles = StyleSheet.create({
 
 const AppContainer = () => {
   return (
-    // Because we're using the PressableScale :) (based on a GestureDetector)
     <GestureHandlerRootView style={localStyles.fill}>
       <App />
     </GestureHandlerRootView>

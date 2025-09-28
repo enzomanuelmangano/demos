@@ -2,9 +2,8 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useFont } from '@shopify/react-native-skia';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
 import { CircularSlider } from './components/circular-slider';
+// @ts-ignore
 import sfProRoundedBold from '../../../../assets/fonts/SF-Pro-Rounded-Bold.otf';
 
 const App = () => {
