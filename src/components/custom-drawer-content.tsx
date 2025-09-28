@@ -136,9 +136,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#030303',
     flex: 1,
   },
-  content: {
-    paddingBottom: 24,
-  },
   header: {
     gap: 8,
     marginBottom: 8,
