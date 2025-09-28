@@ -5,7 +5,7 @@
       "name": "thank-you",
       "dependencies": {
         "@expo/metro-runtime": "~6.1.2",
-        "@expo/ui": "~0.2.0-beta.4",
+        "@expo/ui": "0.2.0-canary-20250919-7a31b96",
         "@expo/vector-icons": "^15.0.2",
         "@legendapp/list": "^2.0.8",
         "@react-native-masked-view/masked-view": "0.3.2",
@@ -338,7 +338,7 @@
 
     "@expo/sudo-prompt": ["@expo/sudo-prompt@9.3.2", "", {}, "sha512-HHQigo3rQWKMDzYDLkubN5WQOYXJJE2eNqIQC2axC2iO3mHdwnIR7FgZVvHWtBwAdzBgAP0ECp8KqS8TiMKvgw=="],
 
-    "@expo/ui": ["@expo/ui@0.2.0-beta.4", "", { "dependencies": { "sf-symbols-typescript": "^2.1.0" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-49DoNCQ5jyLFvnTZpVU1aMSbfgRtX4QQtnX7WM97A7dJhocvaF7g7MA3LBeoZ07MMVKuuwfcIBM2F/f52S+6zw=="],
+    "@expo/ui": ["@expo/ui@0.2.0-canary-20250919-7a31b96", "", { "dependencies": { "sf-symbols-typescript": "^2.1.0" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-gJ5aKHUSnF/CkaeVH00TF48NgasOiq09sf+gZtzyx7kiDduHSrLIULa/xFg1Ip3OEInKgxclZUVyAxmuCHd26Q=="],
 
     "@expo/vector-icons": ["@expo/vector-icons@15.0.2", "", { "peerDependencies": { "expo-font": ">=14.0.4", "react": "*", "react-native": "*" } }, "sha512-IiBjg7ZikueuHNf40wSGCf0zS73a3guJLdZzKnDUxsauB8VWPLMeWnRIupc+7cFhLUkqyvyo0jLNlcxG5xPOuQ=="],
 
