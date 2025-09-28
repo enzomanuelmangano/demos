@@ -14,7 +14,7 @@ const App = () => {
   return (
     <View
       style={styles.container}
-      onTouchStart={() => {
+      onTouchEnd={() => {
         // Reset and animate both text components in sequence
         // Note: If enableReverse prop is used, you can use toggleAnimate instead:
         // everybodyStaggeredTextRef.current?.toggleAnimate();

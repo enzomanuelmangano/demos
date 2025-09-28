@@ -60,7 +60,7 @@ export default function HomeScreen() {
       />
       <View
         style={styles.container}
-        onTouchStart={() => {
+        onTouchEnd={() => {
           staggeredTextRef.current?.toggleAnimate();
         }}>
         <StaggeredText
