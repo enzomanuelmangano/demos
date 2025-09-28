@@ -43,7 +43,7 @@ module.exports = {
     'react-native/no-unused-styles': 'warn',
     'react-native/no-inline-styles': 'off',
     'react-native/no-color-literals': 'off',
-    // Sort StyleSheet properties in a consistent order
+    'react-native/no-unused-styles': 'warn',
     'react-native/sort-styles': [
       'error',
       'asc',
