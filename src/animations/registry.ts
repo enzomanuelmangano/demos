@@ -92,6 +92,7 @@ import { MotionBlur } from './motion-blur';
 import { OnlineOffline } from './online-offline';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
+import { Playground } from './liquid-glass-playground';
 import { PomodoroTimer } from './pomodoro-timer';
 import { PopupHandler } from './popup-handler';
 import { PrequelSlider } from './prequel-slider';
@@ -242,6 +243,7 @@ export const AnimationRegistry = {
   'github-contributions': GitHubContributions,
   'stacked-carousel': StackedCarousel,
   'airbnb-flip-interaction': AirbnbFlipInteraction,
+  'liquid-glass-playground': Playground,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -900,6 +902,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Airbnb Flip Interaction',
     route: 'AirbnbFlipInteraction',
     iconName: 'account',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'liquid-glass-playground': {
+    name: 'Liquid Glass Playground',
+    route: 'Playground',
+    iconName: 'play',
     iconFamily: 'MaterialCommunityIcons',
   },
 } as const;
