@@ -3,10 +3,16 @@ const path = require('path');
 
 /**
  * Default plugin configuration
+ *
+ * @typedef {Object} PluginConfig
+ * @property {string[]} extensions - File extensions to process
+ * @property {string} suffix - Suffix for variant files (e.g., '.liquid', '.glass', '.native')
+ * @property {boolean} debugLogging - Enable debug logging
+ * @property {string} projectRoot - Project root directory
  */
 const DEFAULT_CONFIG = {
   extensions: ['.tsx', '.jsx', '.ts', '.js'],
-  liquidSuffix: '.liquid',
+  suffix: '.liquid', // Can be customized to '.glass', '.native', '.enhanced', etc.
   debugLogging: false,
   projectRoot: process.cwd(),
 };
@@ -315,18 +321,6 @@ function hasLiquidVariants(
     logger,
   );
 
-  // If no liquid variants found, try fallback strategy
-  if (!result && config.fallbackStrategy) {
-    const fallbackResult = handleMissingVariant(
-      importPath,
-      currentFile,
-      config,
-      logger,
-    );
-    cache.liquidVariants.set(cacheKey, fallbackResult);
-    return fallbackResult;
-  }
-
   cache.liquidVariants.set(cacheKey, result);
   return result;
 }
@@ -393,9 +387,9 @@ function checkForLiquidVariant(resolvedPath, currentFile, config, logger) {
   // For index files, check for index.liquid.ext first
   let liquidPath;
   if (name === 'index') {
-    liquidPath = path.join(dir, `index${config.liquidSuffix}${ext}`);
+    liquidPath = path.join(dir, `index${config.suffix}${ext}`);
   } else {
-    liquidPath = path.join(dir, `${componentName}${config.liquidSuffix}${ext}`);
+    liquidPath = path.join(dir, `${componentName}${config.suffix}${ext}`);
   }
   const regularPath = resolvedPath;
 
@@ -430,56 +424,6 @@ function checkForLiquidVariant(resolvedPath, currentFile, config, logger) {
   }
 
   return null;
-}
-
-/**
- * Fallback handler for missing variants
- * @param {string} importPath - Original import path
- * @param {string} currentFile - Current file
- * @param {object} config - Plugin configuration
- * @param {PluginLogger} logger - Logger instance
- * @returns {object|null} - Fallback variant info
- */
-function handleMissingVariant(importPath, currentFile, config, logger) {
-  const strategy = config.fallbackStrategy || 'use-regular';
-
-  switch (strategy) {
-    case 'use-regular':
-      logger?.debug('Using regular variant as fallback', { importPath });
-      return {
-        componentName: path.basename(importPath),
-        importPath,
-        liquidImportPath: importPath,
-        hasLiquidVariant: false,
-        isFallback: true,
-      };
-
-    case 'skip':
-      logger?.debug('Skipping transformation due to missing variant', {
-        importPath,
-      });
-      return null;
-
-    case 'warn':
-      logger?.warn('Missing liquid variant, proceeding with regular', {
-        importPath,
-        currentFile,
-      });
-      return {
-        componentName: path.basename(importPath),
-        importPath,
-        liquidImportPath: importPath,
-        hasLiquidVariant: false,
-        isFallback: true,
-      };
-
-    default:
-      logger?.error('Unknown fallback strategy', null, {
-        strategy,
-        importPath,
-      });
-      return null;
-  }
 }
 
 /**
@@ -658,7 +602,7 @@ function processImportDeclaration(importPath, state, t, config) {
   const logger = new PluginLogger(config);
 
   // Skip if this is already a liquid import (to prevent infinite loops)
-  if (importValue.includes(config.liquidSuffix)) {
+  if (importValue.includes(config.suffix)) {
     if (config.debugLogging) {
       console.log(
         `[liquid-glass-resolver] Skipping liquid import: ${importValue}`,
