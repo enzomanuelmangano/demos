@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { useCallback, useEffect, useRef } from 'react';
+
 import { useSharedValue, withTiming } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type UseTimerParams = {
   incrementOffset: number;

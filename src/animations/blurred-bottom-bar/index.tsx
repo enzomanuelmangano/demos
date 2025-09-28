@@ -1,9 +1,12 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useCallback } from 'react';
 import { View, Image, StyleSheet, Dimensions } from 'react-native';
 
+import { useCallback } from 'react';
+
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
 import { BottomTabBar } from './components/bottom-tab-bar';
+
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const BottomTab = createBottomTabNavigator();
 
@@ -55,12 +58,12 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#000',
+    flex: 1,
   },
   image: {
-    width,
     height,
+    width,
   },
 });
 

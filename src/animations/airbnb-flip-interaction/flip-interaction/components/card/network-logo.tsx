@@ -1,5 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { spacing } from '../../constants';
 
@@ -39,31 +40,31 @@ export const NetworkLogo = ({ position = 'bottomRight' }: NetworkLogoProps) => {
 };
 
 const styles = StyleSheet.create({
-  networkLogo: {
-    position: 'absolute',
-    flexDirection: 'row',
-    alignItems: 'center',
-    right: spacing.xl,
-  },
-  topRight: {
-    top: spacing.xl,
-  },
   bottomRight: {
     bottom: spacing.xl,
   },
   networkCircle1: {
-    width: 30,
-    height: 30,
+    borderColor: 'rgba(0,0,0,0.3)',
     borderRadius: 15,
     borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.3)',
+    height: 30,
+    width: 30,
   },
   networkCircle2: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    marginLeft: -15,
-    borderWidth: 0.5,
     borderColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 15,
+    borderWidth: 0.5,
+    height: 30,
+    marginLeft: -15,
+    width: 30,
+  },
+  networkLogo: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    position: 'absolute',
+    right: spacing.xl,
+  },
+  topRight: {
+    top: spacing.xl,
   },
 });

@@ -17,6 +17,8 @@
  * ```
  */
 
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
+
 import {
   Atlas,
   Canvas,
@@ -26,8 +28,6 @@ import {
   useRSXformBuffer,
   useTexture,
 } from '@shopify/react-native-skia';
-import { forwardRef, useCallback, useImperativeHandle } from 'react';
-import type { WithSpringConfig } from 'react-native-reanimated';
 import {
   cancelAnimation,
   interpolate,
@@ -36,6 +36,8 @@ import {
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
+
+import type { WithSpringConfig } from 'react-native-reanimated';
 
 /**
  * Props for the BlastCircleEffect component

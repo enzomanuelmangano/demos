@@ -1,12 +1,13 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { View } from 'react-native';
 
-import { HomeScreen } from './screens/home-screen';
-import { AddNoteScreen } from './screens/add-note-screen';
-import { GLTransitionsProvider } from './providers/gl-transitions';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { Palette } from './constants/theme';
+import { GLTransitionsProvider } from './providers/gl-transitions';
+import { AddNoteScreen } from './screens/add-note-screen';
+import { HomeScreen } from './screens/home-screen';
 // use the others!
 import {
   DirectionalWarp,

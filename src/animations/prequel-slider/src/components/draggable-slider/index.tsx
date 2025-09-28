@@ -1,8 +1,10 @@
 // Importing necessary modules and components
-import { Canvas, Path } from '@shopify/react-native-skia';
 import { View } from 'react-native';
+
+import { useMemo } from 'react';
+
+import { Canvas, Path } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   cancelAnimation,
   clamp,
@@ -13,13 +15,15 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useMemo } from 'react';
+
+import { BoundaryGradient } from './boundary-gradient';
+import { ScreenWidth } from './constants';
+import { getLinesPath } from './utils/get-lines-path';
+import { snapPoint } from './utils/snap-point';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 // Importing utility functions and components
-import { getLinesPath } from './utils/get-lines-path';
-import { ScreenWidth } from './constants';
-import { snapPoint } from './utils/snap-point';
-import { BoundaryGradient } from './boundary-gradient';
 
 // Defining type for props
 type DraggableSliderProps = {

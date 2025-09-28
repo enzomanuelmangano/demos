@@ -1,6 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, useCallback, useState } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedNumber } from './components/animated-number';
@@ -57,23 +59,23 @@ const NumberInput: FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#000',
-  },
-  gradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
+    flex: 1,
   },
   fill: {
     flex: 1,
   },
   fillCenter: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  gradient: {
+    bottom: 0,
+    height: '50%',
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
 });
 

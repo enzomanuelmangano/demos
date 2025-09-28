@@ -1,3 +1,7 @@
+import { Dimensions, StyleSheet, View } from 'react-native';
+
+import { useEffect } from 'react';
+
 import {
   Blur,
   Canvas,
@@ -7,8 +11,6 @@ import {
   Shader,
   Skia,
 } from '@shopify/react-native-skia';
-import { useEffect } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
 import {
   Easing,
   useDerivedValue,
@@ -150,8 +152,8 @@ const FibonacciShaderGrid = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: 'black',
+    flex: 1,
   },
 });
 

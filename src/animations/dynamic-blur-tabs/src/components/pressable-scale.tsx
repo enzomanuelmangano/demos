@@ -1,5 +1,3 @@
-import type { FC, PropsWithChildren } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -7,6 +5,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { FC, PropsWithChildren } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type PressableScaleProps = PropsWithChildren<{
   onPress?: () => void;

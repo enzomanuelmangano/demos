@@ -1,7 +1,8 @@
-import { PressableScale } from 'pressto';
-import { type FC, type ReactNode, memo, useState } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { type FC, type ReactNode, memo, useState } from 'react';
+
+import { PressableScale } from 'pressto';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -12,6 +13,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { colors } from '../../constants';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 // Configuration for timing animations
 const WithTimingConfig = {
@@ -131,51 +134,51 @@ const SplitButton: FC<SplitButtonProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    height: 100,
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chip: {
-    width: 140,
-    height: 60,
-    shadowRadius: 5,
-    shadowOpacity: 0.1,
-    shadowOffset: { height: 1, width: 0 },
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
   activeChip: {
     width: 120, // Adjust as needed
     borderColor: colors.border,
     borderWidth: 1,
   },
-  rightChipContainer: {
-    position: 'absolute',
-    zIndex: 100,
-  },
-  rightChip: {
-    backgroundColor: colors.background,
+  activeChipText: {
+    color: colors.white,
   },
   activeRightChip: {
-    shadowOpacity: 0.3,
     backgroundColor: colors.black,
+    shadowOpacity: 0.3,
+  },
+  chip: {
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 60,
+    shadowOffset: { height: 1, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    width: 140,
   },
   chipContent: {
+    alignItems: 'center',
     flex: 1,
-    paddingVertical: 16,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 16,
   },
   chipText: {
     fontSize: 20,
     fontWeight: '600',
   },
-  activeChipText: {
-    color: colors.white,
+  container: {
+    alignItems: 'center',
+    height: 100,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  rightChip: {
+    backgroundColor: colors.background,
+  },
+  rightChipContainer: {
+    position: 'absolute',
+    zIndex: 100,
   },
 });
 

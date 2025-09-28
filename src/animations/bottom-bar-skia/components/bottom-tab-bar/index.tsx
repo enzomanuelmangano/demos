@@ -1,4 +1,7 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import {
   Blur,
   Circle,
@@ -9,17 +12,16 @@ import {
   rect,
   Skia,
 } from '@shopify/react-native-skia';
-import type React from 'react';
-import { useMemo } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useDerivedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { BottomTabItem } from './bottom-tab-item';
 import { ScreenNames } from '../../constants/screens';
 
-import { BottomTabItem } from './bottom-tab-item';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import type React from 'react';
 
 const BOTTOM_BAR_HEIGHT_OFFSET = 50;
 
@@ -139,19 +141,19 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
-    width: '100%',
     elevation: 5,
-    shadowOpacity: 0.2,
+    left: 0,
+    position: 'absolute',
+    right: 0,
     shadowColor: 'rgba(0, 0, 0, 0.2)',
-    shadowRadius: 25,
     shadowOffset: {
       width: 0,
       height: -10,
     },
+    shadowOpacity: 0.2,
+    shadowRadius: 25,
+    width: '100%',
   },
 });
 

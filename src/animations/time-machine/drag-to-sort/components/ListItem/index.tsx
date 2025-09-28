@@ -1,11 +1,13 @@
-import type { FC } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
+
 import Animated, {
   SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { FC } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 export type ItemInfo = {
   title: string;
@@ -80,22 +82,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 10,
   },
-  iconContainer: {
-    flex: 1,
+  icon: {
     alignItems: 'center',
+    aspectRatio: 1,
+    borderRadius: 100,
+    height: '55%',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    alignItems: 'center',
+    flex: 1,
     flexDirection: 'row',
   },
-  icon: {
-    height: '55%',
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 100,
-  },
   iconText: {
+    color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+  },
+  statusContainer: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statusItem: {
+    borderRadius: 10,
+    height: 25,
+    width: 25,
+  },
+  subtitle: {
+    color: 'gray',
+    fontSize: 14,
   },
   textContainer: {
     flex: 1,
@@ -105,20 +122,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: 'gray',
-  },
-  statusContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  statusItem: {
-    height: 25,
-    width: 25,
-    borderRadius: 10,
   },
 });

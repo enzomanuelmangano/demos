@@ -1,6 +1,8 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { type FC, memo, useCallback } from 'react';
 import { StyleSheet } from 'react-native';
+
+import { type FC, memo, useCallback } from 'react';
+
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -55,5 +57,5 @@ const localStyles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  fillCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fillCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' },
 });

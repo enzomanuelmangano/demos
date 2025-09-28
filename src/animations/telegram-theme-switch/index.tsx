@@ -1,13 +1,15 @@
-import { useState } from 'react';
 import { View } from 'react-native';
+
+import { useState } from 'react';
+
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
+import { SwitchThemeProvider } from './components/switch-theme';
+import { ThemeProvider, useTheme } from './components/theme-provider';
 import { ScreenNamesArray } from './constants/screens';
 import { HomeScreen } from './screens/home';
 import { SearchScreen } from './screens/search';
-import { SwitchThemeProvider } from './components/switch-theme';
-import { ThemeProvider, useTheme } from './components/theme-provider';
 
 const BackgroundView = () => {
   return <View style={{ flex: 1 }} />;

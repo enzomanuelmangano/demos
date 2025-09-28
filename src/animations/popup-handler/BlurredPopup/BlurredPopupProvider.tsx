@@ -1,6 +1,3 @@
-import { BlurView } from 'expo-blur';
-import { type FC, type ReactNode, useCallback, useMemo, useState } from 'react';
-import type { ViewProps, ViewStyle } from 'react-native';
 import {
   StyleSheet,
   Text,
@@ -8,7 +5,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import type { MeasuredDimensions } from 'react-native-reanimated';
+
+import { type FC, type ReactNode, useCallback, useMemo, useState } from 'react';
+
+import { BlurView } from 'expo-blur';
 import Animated, {
   useAnimatedProps,
   useAnimatedReaction,
@@ -19,8 +19,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { PopupAlignment, PopupOptionType } from './BlurredContext';
 import { BlurredPopupContext } from './BlurredContext';
+
+import type { PopupAlignment, PopupOptionType } from './BlurredContext';
+import type { ViewProps, ViewStyle } from 'react-native';
+import type { MeasuredDimensions } from 'react-native-reanimated';
 
 type MenuLayout = {
   backgroundColor?: string;
@@ -271,37 +274,6 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  mainPopupContainerView: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 500,
-  },
-  nodeZ: {
-    zIndex: -30,
-  },
-  popup: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    zIndex: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  popupBackground: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: -20,
-  },
-  popupListItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-  },
   firstItem: {
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
@@ -314,13 +286,44 @@ const styles = StyleSheet.create({
   leadingContainer: {
     marginRight: 12,
   },
-  trailingContainer: {
-    marginLeft: 8,
+  mainPopupContainerView: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 500,
+  },
+  nodeZ: {
+    zIndex: -30,
+  },
+  popup: {
+    borderRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    zIndex: 20,
+  },
+  popupBackground: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: -20,
+  },
+  popupListItem: {
+    alignItems: 'center',
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+    borderBottomWidth: 0.5,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
   },
   title: {
     fontSize: 16,
     fontWeight: '500',
     letterSpacing: 0.3,
+  },
+  trailingContainer: {
+    marginLeft: 8,
   },
 });
 

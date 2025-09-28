@@ -1,5 +1,6 @@
-import { BlurView } from 'expo-blur';
 import { StyleSheet, View } from 'react-native';
+
+import { BlurView } from 'expo-blur';
 import Animated, { useDerivedValue } from 'react-native-reanimated';
 
 import { useCustomNavigation } from './expansion-provider';
@@ -38,16 +39,16 @@ export const withMainScreenWrapper = <T extends object>(
 };
 
 const styles = StyleSheet.create({
+  blurView: {
+    bottom: 0,
+    left: 0,
+    pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1,
+  },
   container: {
     flex: 1,
-  },
-  blurView: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    pointerEvents: 'none',
-    zIndex: 1,
   },
 });

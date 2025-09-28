@@ -1,7 +1,9 @@
+import { StyleSheet } from 'react-native';
+
+import { type FC, memo, type ReactNode, useCallback } from 'react';
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { type FC, memo, type ReactNode, useCallback } from 'react';
-import { StyleSheet } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -58,5 +60,5 @@ const localStyles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  fillCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fillCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' },
 });

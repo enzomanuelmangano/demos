@@ -1,14 +1,17 @@
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { type FC } from 'react';
+
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { useNavigation } from '@react-navigation/native';
-import { type FC } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const ICON_HEIGHT = 18;
 const LINE_HEIGHT = 2;
@@ -112,16 +115,16 @@ const DrawerIcon: FC<DrawerIconProps> = ({ tintColor = '#111' }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    height: ICON_HEIGHT,
-    width: 25,
-    marginLeft: 15,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   bar: {
-    width: '100%',
     height: 2,
+    width: '100%',
+  },
+  container: {
+    alignItems: 'center',
+    height: ICON_HEIGHT,
+    justifyContent: 'space-between',
+    marginLeft: 15,
+    width: 25,
   },
 });
 

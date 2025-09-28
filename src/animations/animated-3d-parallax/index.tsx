@@ -1,4 +1,5 @@
 import { Image, StyleSheet, View } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useDerivedValue,
@@ -111,29 +112,24 @@ export const Animated3DParallax = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#17202A',
+  card: {
     alignItems: 'center',
+    backgroundColor: '#1E2731',
+    borderRadius: 10,
     justifyContent: 'center',
   },
   cardContainer: {
     height: CARD_SIZE,
     width: CARD_SIZE,
   },
-  card: {
-    backgroundColor: '#1E2731',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   cardContent: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 5,
+    flex: 1,
+    justifyContent: 'center',
   },
   cardShadow: {
+    elevation: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -141,6 +137,11 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 10,
-    elevation: 10,
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#17202A',
+    flex: 1,
+    justifyContent: 'center',
   },
 });

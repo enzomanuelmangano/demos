@@ -1,5 +1,6 @@
-import { useImage } from '@shopify/react-native-skia';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { useImage } from '@shopify/react-native-skia';
 import {
   interpolateColor,
   useDerivedValue,
@@ -108,10 +109,10 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
   },
 });
 

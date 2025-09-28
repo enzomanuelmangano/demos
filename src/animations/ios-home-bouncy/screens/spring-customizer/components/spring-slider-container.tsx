@@ -1,10 +1,12 @@
-import { type FC } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC } from 'react';
+
 import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 
-import type { ClosingSpringConfigShared } from '../../../animations/bouncy';
-
 import { SpringConfigSlider } from './spring-config-slider';
+
+import type { ClosingSpringConfigShared } from '../../../animations/bouncy';
 
 type SpringSliderContainerProps = {
   mutableConfig: typeof ClosingSpringConfigShared;
@@ -58,8 +60,11 @@ export const SpringSliderContainer: FC<SpringSliderContainerProps> = ({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: 'rgba(255, 255, 255, 0.98)',
-    borderRadius: 32,
+    borderColor: 'rgba(243, 244, 246, 0.8)',
     borderCurve: 'continuous',
+    borderRadius: 32,
+    borderWidth: 1,
+    elevation: 6,
     padding: 24,
     shadowColor: '#D1D5DB',
     shadowOffset: {
@@ -68,8 +73,5 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 16,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(243, 244, 246, 0.8)',
   },
 });

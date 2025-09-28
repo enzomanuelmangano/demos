@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { Dimensions } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -12,6 +13,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type FrictionSliderProps = {
   onProgressChange?: ({

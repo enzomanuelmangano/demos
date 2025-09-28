@@ -1,6 +1,8 @@
-import { FontAwesome5 } from '@expo/vector-icons';
-import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { type FC, memo } from 'react';
+
+import { FontAwesome5 } from '@expo/vector-icons';
 
 import { InputButton } from './input-button';
 
@@ -73,10 +75,10 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(
 
 const styles = StyleSheet.create({
   container: {
+    alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
   },
   input: {
     width: '30%',
@@ -91,10 +93,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   number: {
-    textAlign: 'center',
-    fontSize: 30,
     color: 'white',
     fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 30,
+    textAlign: 'center',
   },
 });
 

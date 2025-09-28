@@ -1,6 +1,7 @@
-import { useLayoutEffect } from 'react';
 import { Dimensions } from 'react-native';
-import type { MeasuredDimensions } from 'react-native-reanimated';
+
+import { useLayoutEffect } from 'react';
+
 import Animated, {
   interpolate,
   measure,
@@ -11,6 +12,8 @@ import Animated, {
 import { scheduleOnUI } from 'react-native-worklets';
 
 import { BouncyProgressShared } from '../../animations/bouncy';
+
+import type { MeasuredDimensions } from 'react-native-reanimated';
 
 type BouncyViewProps = {
   children: React.ReactNode;

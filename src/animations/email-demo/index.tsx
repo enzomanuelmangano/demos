@@ -1,8 +1,10 @@
+import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableScale } from 'pressto';
-import { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -125,16 +127,33 @@ const EmailDemo = () => {
 };
 
 const styles = StyleSheet.create({
+  bottomGradient: {
+    bottom: 0,
+    height: 150,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    zIndex: 1,
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly',
+    left: 0,
+    marginHorizontal: '20%',
+    position: 'absolute',
+    right: 0,
+  },
   container: {
-    flex: 1,
     backgroundColor: '#f8fafc',
+    flex: 1,
   },
   floatingButton: {
-    height: 64,
+    alignItems: 'center',
     aspectRatio: 1,
     borderRadius: 32,
+    elevation: 8,
+    height: 64,
     justifyContent: 'center',
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -142,37 +161,16 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    elevation: 8,
-  },
-  buttonsContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    justifyContent: 'space-evenly',
-    marginHorizontal: '20%',
-    flexDirection: 'row',
-  },
-  topGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    zIndex: 1,
-  },
-  bottomGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 150,
-    zIndex: 1,
   },
   listContainerItem: {
-    height: ITEM_HEIGHT,
     backgroundColor: 'white',
+    borderColor: 'rgba(229, 231, 235, 0.3)',
+    borderRadius: 20,
+    borderWidth: 0.5,
+    elevation: 2,
+    height: ITEM_HEIGHT,
     marginBottom: ITEM_MARGIN - 2,
     marginHorizontal: 12,
-    borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -180,9 +178,13 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 0.5,
-    borderColor: 'rgba(229, 231, 235, 0.3)',
+  },
+  topGradient: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1,
   },
 });
 

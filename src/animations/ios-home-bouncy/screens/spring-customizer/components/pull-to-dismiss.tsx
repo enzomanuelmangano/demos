@@ -1,6 +1,8 @@
-import { BlurView } from 'expo-blur';
-import { type FC, type ReactNode, useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, type ReactNode, useCallback } from 'react';
+
+import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,

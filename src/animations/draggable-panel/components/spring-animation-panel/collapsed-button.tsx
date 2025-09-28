@@ -1,7 +1,9 @@
+import { StyleSheet } from 'react-native';
+
+import { type FC } from 'react';
+
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { type FC } from 'react';
-import { StyleSheet } from 'react-native';
 
 type CollapsedButtonProps = {
   onPress: () => void;
@@ -17,9 +19,9 @@ export const CollapsedButton: FC<CollapsedButtonProps> = ({ onPress }) => {
 
 const styles = StyleSheet.create({
   button: {
-    width: 64,
+    alignItems: 'center',
     height: 64,
     justifyContent: 'center',
-    alignItems: 'center',
+    width: 64,
   },
 });

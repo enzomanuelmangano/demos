@@ -1,17 +1,19 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { Dimensions, Platform, StyleSheet, View } from 'react-native';
+
+import { type FC, useCallback } from 'react';
+
 import { StackActions } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, useCallback } from 'react';
-import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { TabBarItem } from './tab-bar-item';
 import { ScreenNames } from '../constants/screens';
 
-export const BOTTOM_BAR_HEIGHT = 60;
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
-import { TabBarItem } from './tab-bar-item';
+export const BOTTOM_BAR_HEIGHT = 60;
 
 export const SCREEN_HEIGHT = Dimensions.get('window').height;
 export const IS_SMALL_DEVICE = SCREEN_HEIGHT < 700;
@@ -124,25 +126,25 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
 };
 
 const localStyles = StyleSheet.create({
+  bottomContainer: {
+    borderColor: 'rgb(216, 216, 216)',
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    borderWidth: 1,
+    left: '15%',
+    overflow: 'hidden',
+    position: 'absolute',
+    right: '15%',
+  },
   container: {
     flexDirection: 'row',
     paddingHorizontal: 15,
   },
   gradientContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 0,
-  },
-  bottomContainer: {
-    borderRadius: 30,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-    left: '15%',
-    right: '15%',
-    borderWidth: 1,
-    borderColor: 'rgb(216, 216, 216)',
+    left: 0,
     position: 'absolute',
+    right: 0,
   },
 });
 

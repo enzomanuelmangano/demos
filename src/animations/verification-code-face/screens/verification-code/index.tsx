@@ -1,21 +1,24 @@
-import { type FC, useCallback, useRef, useState } from 'react';
 import {
   StyleSheet,
   TextInput,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+
+import { type FC, useCallback, useRef, useState } from 'react';
+
+import { useFocusEffect } from 'expo-router';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { useFocusEffect } from 'expo-router';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { VerificationCode } from '../../components/verification-code';
-import type { StatusType } from '../../components/verification-code/animated-code-number';
 import { useAnimatedShake } from '../../components/verification-code/hooks/use-animated-shake';
 import { IconSquare } from '../../components/verification-code/icon-square';
+
+import type { StatusType } from '../../components/verification-code/animated-code-number';
 import type { InternalIconRef } from '../../components/verification-code/icon-square/icon';
 
 type VerificationCodeScreenProps = {
@@ -145,17 +148,17 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'white',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   codeContainer: {
     width: '100%',
   },
+  container: {
+    alignItems: 'center',
+    backgroundColor: 'white',
+    flex: 1,
+    justifyContent: 'center',
+  },
   invisibleInput: {
-    position: 'absolute',
     bottom: -50,
+    position: 'absolute',
   },
 });

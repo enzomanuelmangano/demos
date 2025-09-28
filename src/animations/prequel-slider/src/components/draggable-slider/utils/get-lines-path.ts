@@ -1,9 +1,11 @@
 // Importing necessary modules and types
 import { Skia, rect, rrect } from '@shopify/react-native-skia';
+
+import { ScreenWidth } from '../constants';
+
 import type { SharedValue } from 'react-native-reanimated';
 
 // Importing constant for screen width
-import { ScreenWidth } from '../constants';
 
 // Function to determine if a line is a big line
 const isBigLine = (i: number, bigLineEach: number = 10) => {

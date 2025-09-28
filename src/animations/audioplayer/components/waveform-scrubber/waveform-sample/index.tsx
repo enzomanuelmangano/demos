@@ -1,5 +1,7 @@
-import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -88,16 +90,16 @@ const WaveformScrubberSample: FC<WaveformScrubberSampleProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  sampleContainer: {
-    height: 80,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   sample: {
-    width: 3,
     backgroundColor: Palette.body,
     borderRadius: 15,
+    width: 3,
+  },
+  sampleContainer: {
+    alignItems: 'center',
+    flex: 1,
+    height: 80,
+    justifyContent: 'center',
   },
 });
 

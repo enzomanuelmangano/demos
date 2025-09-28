@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedReaction,
@@ -80,17 +81,17 @@ export const DetailScreenWrapper = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   outerContainer: {
+    elevation: 5,
     flex: 1,
     shadowColor: 'black',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 30,
-    elevation: 5,
     zIndex: 1000,
-  },
-  container: {
-    flex: 1,
   },
 });
 

@@ -1,4 +1,5 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { ColorPicker } from './components/color-picker';
@@ -29,9 +30,9 @@ const App = () => {
 };
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: 'black',
     alignItems: 'center',
+    backgroundColor: 'black',
+    flex: 1,
     justifyContent: 'center',
   },
 });

@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -50,8 +51,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   listItem: {
-    height: 100,
     borderBottomWidth: 1,
+    height: 100,
   },
 });
 

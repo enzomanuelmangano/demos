@@ -3,15 +3,10 @@ import { StyleSheet, Platform } from 'react-native';
 import { CARD_WIDTH, CARD_HEIGHT, SPACING } from '../utils/constants';
 
 export const styles = StyleSheet.create({
-  cardContainer: {
-    width: CARD_WIDTH,
-    paddingTop: SPACING,
-    height: CARD_HEIGHT + SPACING,
-  },
   card: {
+    borderRadius: 20,
     flex: 1,
     overflow: 'hidden',
-    borderRadius: 20,
     padding: SPACING * 1.5,
     ...Platform.select({
       ios: {
@@ -28,24 +23,29 @@ export const styles = StyleSheet.create({
       },
     }),
   },
+  cardContainer: {
+    height: CARD_HEIGHT + SPACING,
+    paddingTop: SPACING,
+    width: CARD_WIDTH,
+  },
   cardContent: {
     flex: 1,
   },
-  titleWrapper: {
-    position: 'absolute',
-    bottom: SPACING,
-    left: SPACING,
-    height: 40,
-    justifyContent: 'flex-start',
-    transform: [{ rotate: '-90deg' }, { translateY: 10 }, { translateX: -20 }],
-    transformOrigin: 'left bottom',
-  },
   cardTitle: {
+    color: '#000',
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
-    opacity: 0.9,
     letterSpacing: -1,
+    opacity: 0.9,
     textTransform: 'uppercase',
+  },
+  titleWrapper: {
+    bottom: SPACING,
+    height: 40,
+    justifyContent: 'flex-start',
+    left: SPACING,
+    position: 'absolute',
+    transform: [{ rotate: '-90deg' }, { translateY: 10 }, { translateX: -20 }],
+    transformOrigin: 'left bottom',
   },
 });

@@ -1,9 +1,10 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { Dimensions, Platform, StyleSheet, View } from 'react-native';
+
+import { type FC, useCallback } from 'react';
+
 import { StackActions } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, useCallback } from 'react';
-import { Dimensions, Platform, StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -13,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { IsTabBarActive } from './states';
 import { ScreenNames } from '../../constants/screens';
 import {
   BOTTOM_BAR_HEIGHT,
@@ -20,7 +22,7 @@ import {
 } from '../../hooks/use-bottom-bar-height';
 import { TabBarItem } from '../bottom-tab-bar/tab-bar-item';
 
-import { IsTabBarActive } from './states';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -161,28 +163,28 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
 };
 
 const localStyles = StyleSheet.create({
+  androidBlurView: {
+    backgroundColor: '#959595',
+  },
+  blurViewStyle: {
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    flex: 1,
+  },
+  bottomContainer: {
+    borderColor: 'rgba(216, 216, 216, 0.597)',
+    borderCurve: 'continuous',
+    overflow: 'hidden',
+    position: 'absolute',
+  },
   container: {
     flexDirection: 'row',
     flex: 1,
   },
   gradientContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 0,
-  },
-  bottomContainer: {
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-    borderColor: 'rgba(216, 216, 216, 0.597)',
+    left: 0,
     position: 'absolute',
-  },
-  blurViewStyle: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
-  androidBlurView: {
-    backgroundColor: '#959595',
+    right: 0,
   },
 });
 

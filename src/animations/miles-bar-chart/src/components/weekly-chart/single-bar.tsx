@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   interpolate,
   interpolateColor,
@@ -7,6 +7,8 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type BarProps = {
   maxHeight: number;
@@ -66,8 +68,8 @@ export const Bar: React.FC<BarProps> = ({
 const styles = StyleSheet.create({
   label: {
     color: 'white',
-    textAlign: 'center',
-    marginTop: 8,
     fontFamily: 'FiraCode-Regular',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

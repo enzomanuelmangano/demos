@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
 import { View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 import { Bar } from './single-bar';

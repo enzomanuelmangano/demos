@@ -1,7 +1,8 @@
 import { Text, View, StyleSheet } from 'react-native';
 
-import type { HeaderListItem, ListItem } from '../constants';
 import { isHeader } from '../constants';
+
+import type { HeaderListItem, ListItem } from '../constants';
 
 type SectionListItemProps = {
   item: ListItem | HeaderListItem;
@@ -50,9 +51,9 @@ const localStyles = StyleSheet.create({
     paddingLeft: 15,
   },
   itemContainer: {
+    alignItems: 'center',
     backgroundColor: 'white',
     flexDirection: 'row',
-    alignItems: 'center',
     paddingLeft: 15,
   },
 });

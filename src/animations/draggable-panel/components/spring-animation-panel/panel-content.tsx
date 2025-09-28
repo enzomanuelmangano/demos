@@ -1,8 +1,7 @@
+import { StyleSheet, Text, View } from 'react-native';
+
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import type { FC, ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import type { SharedValue, WithSpringConfig } from 'react-native-reanimated';
 import Animated, {
   Easing,
   interpolateColor,
@@ -10,6 +9,9 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { FC, ReactNode } from 'react';
+import type { SharedValue, WithSpringConfig } from 'react-native-reanimated';
 
 type SpringType = 'elegant' | 'springy' | 'super-springy';
 
@@ -205,51 +207,51 @@ export const PanelContent: FC<PanelContentProps> = ({
 };
 
 const styles = StyleSheet.create({
+  collapseButton: {
+    padding: 4,
+  },
   header: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 18,
   },
   panelTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Honk-Regular',
     color: '#343a40',
     flex: 1,
+    fontFamily: 'Honk-Regular',
+    fontSize: 16,
+    fontWeight: '600',
   },
-  collapseButton: {
-    padding: 4,
+  springDot: {
+    borderRadius: 4,
+    height: 8,
+    width: 8,
+  },
+  springIndicator: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 2,
+    height: 12,
+    marginBottom: 8,
+  },
+  springOption: {
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
+    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+  },
+  springOptionText: {
+    color: '#495057',
+    fontFamily: 'Honk-Regular',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   springOptionsContainer: {
     flexDirection: 'row',
     gap: 8,
-  },
-  springOption: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
-    alignItems: 'center',
-  },
-  springIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginBottom: 8,
-    height: 12,
-  },
-  springDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  springOptionText: {
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: 'Honk-Regular',
-    color: '#495057',
-    marginBottom: 4,
   },
 });

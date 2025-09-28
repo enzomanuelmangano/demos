@@ -1,4 +1,5 @@
-import type { SkFont } from '@shopify/react-native-skia';
+import { useMemo } from 'react';
+
 import {
   BlurMask,
   Circle,
@@ -7,7 +8,6 @@ import {
   Skia,
   Text,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -15,9 +15,12 @@ import {
 } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { BackgroundDots } from './background-dots';
 import { Donut } from './donut';
 import { Picker } from './picker';
+
+import type { SkFont } from '@shopify/react-native-skia';
 
 type CircularSliderProps = {
   width: number;

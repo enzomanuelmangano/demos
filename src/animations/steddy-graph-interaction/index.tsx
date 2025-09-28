@@ -1,19 +1,21 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
 import { useMemo, useState } from 'react';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
-import sfCompactRoundedMedium from '../../../assets/fonts/SF-Compact-Rounded-Medium.otf'; // medium
 
-import { SegmentedControl } from './components/segmented-control';
 import { Graph } from './components/graph';
-import { Palette } from './constants/palette';
+import { SegmentedControl } from './components/segmented-control';
 import {
   LIGHT_GRAPH_SCORES,
   PRO_GRAPH_SCORES,
   STANRDARD_GRAPH_SCORES,
 } from './constants/graph-scores';
+import { Palette } from './constants/palette';
+import sfCompactRoundedMedium from '../../../assets/fonts/SF-Compact-Rounded-Medium.otf'; // medium
 
 // Define an array of scoring difficulties and their types
 const ScoringDifficultyData = ['Light', 'Standard', 'Pro'] as const;
@@ -68,9 +70,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: Palette.background,
     alignItems: 'center',
+    backgroundColor: Palette.background,
+    flex: 1,
     justifyContent: 'center',
   },
 });

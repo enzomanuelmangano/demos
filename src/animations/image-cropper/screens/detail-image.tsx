@@ -1,3 +1,7 @@
+import { View, useWindowDimensions } from 'react-native';
+
+import { type FC } from 'react';
+
 import {
   Canvas,
   FitBox,
@@ -5,8 +9,6 @@ import {
   Image,
   rect as skRect,
 } from '@shopify/react-native-skia';
-import { type FC } from 'react';
-import { View, useWindowDimensions } from 'react-native';
 
 import type { DetailCroppedImageRouteProp } from '../navigation';
 

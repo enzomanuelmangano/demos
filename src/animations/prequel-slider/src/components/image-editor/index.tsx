@@ -1,11 +1,13 @@
 // Importing necessary modules and components
-import type { CanvasProps, SkImage } from '@shopify/react-native-skia';
-import { Canvas, Fill, ImageShader, Shader } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
+
+import { Canvas, Fill, ImageShader, Shader } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 // Importing utility function for transitioning effects
 import { transition } from './utils';
+
+import type { CanvasProps, SkImage } from '@shopify/react-native-skia';
 
 // Defining type for props
 type ImageEditorProps = {

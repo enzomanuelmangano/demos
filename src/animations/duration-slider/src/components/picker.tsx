@@ -7,9 +7,10 @@ import {
   Skia,
   vec,
 } from '@shopify/react-native-skia';
-import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type PickerProps = {
   cx: number; // X-coordinate of the circle's center

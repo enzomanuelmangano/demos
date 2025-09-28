@@ -1,6 +1,6 @@
 // Import necessary modules and types from React and React Native
 import { type FC, memo, type ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -9,6 +9,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 // Define the props for the InputButton component
 type InputButtonProps = {

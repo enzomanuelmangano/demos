@@ -1,8 +1,10 @@
 import { type FC, memo } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated from 'react-native-reanimated';
 
 import { AnimatedDigit } from './animated-digit';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const TEXT_DIGIT_HEIGHT = 60;
 const TEXT_DIGIT_WIDTH = 35;

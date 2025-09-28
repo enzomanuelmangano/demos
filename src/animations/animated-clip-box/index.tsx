@@ -24,20 +24,20 @@ export const AnimatedClipBox = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
-    height: 250,
     backgroundColor: 'white',
-    width: boxWidth,
-    shadowOffset: { width: 0, height: 0 },
+    elevation: 5,
+    height: 250,
     shadowColor: 'black',
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.15,
     shadowRadius: 20,
-    elevation: 5,
+    width: boxWidth,
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
+    justifyContent: 'center',
   },
 });

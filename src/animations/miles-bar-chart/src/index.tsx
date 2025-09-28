@@ -1,4 +1,5 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+
 import Animated, {
   useAnimatedRef,
   useDerivedValue,
@@ -62,22 +63,22 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    alignItems: 'center',
     backgroundColor: '#392F40',
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
-  },
-  listContent: {
-    paddingTop: 20,
-  },
-  labelContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   label: {
     color: 'white',
     fontFamily: 'FiraCode-Regular',
     fontSize: 16,
+  },
+  labelContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  listContent: {
+    paddingTop: 20,
   },
 });
 

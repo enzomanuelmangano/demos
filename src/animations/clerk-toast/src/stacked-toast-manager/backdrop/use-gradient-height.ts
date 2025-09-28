@@ -1,8 +1,9 @@
-import { useContext } from 'react';
 import { useWindowDimensions } from 'react-native';
 
-import { InternalStackedToastContext } from '../context';
+import { useContext } from 'react';
+
 import { MAX_VISIBLE_TOASTS, TOAST_HEIGHT } from '../constants';
+import { InternalStackedToastContext } from '../context';
 
 export const useGradientHeight = () => {
   const { stackedToasts } = useContext(InternalStackedToastContext);

@@ -6,10 +6,11 @@
  * for button presses and highlighting of selected numbers.
  */
 
-import { Ionicons } from '@expo/vector-icons';
-import { memo, useCallback, useMemo } from 'react';
 import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { memo, useCallback, useMemo } from 'react';
+
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
@@ -18,6 +19,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { COLORS } from '../theme';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -154,26 +157,26 @@ const styles = StyleSheet.create({
   numpad: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
     gap: 10,
+    justifyContent: 'center',
     marginTop: 32,
-    padding: 12,
     maxWidth: BOARD_SIZE,
+    padding: 12,
   },
   numpadButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
-    borderCurve: 'continuous',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
+    borderColor: COLORS.border,
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 46,
+    justifyContent: 'center',
+    width: 46,
   },
   numpadButtonText: {
+    color: COLORS.userInput,
     fontSize: 18,
     fontWeight: '500',
-    color: COLORS.userInput,
   },
 });

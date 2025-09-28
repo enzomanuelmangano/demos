@@ -1,5 +1,6 @@
-import { useState } from 'react';
 import { View } from 'react-native';
+
+import { useState } from 'react';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
 import { ActiveTabBarContextProvider } from './components/bottom-tab-bar/active-tab-bar-provider';

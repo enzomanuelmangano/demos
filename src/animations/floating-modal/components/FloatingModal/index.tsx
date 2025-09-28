@@ -1,5 +1,7 @@
-import { type FC, memo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { type FC, memo } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -13,8 +15,8 @@ import Animated, {
 
 import { AddCloseIcon } from './AddCloseIcon';
 import { AnimatedBackdrop } from './AnimatedBackdrop';
-import { ModalContent } from './Modal';
 import { FLOATING_BUTTON_SIZE } from './constants';
+import { ModalContent } from './Modal';
 
 const FloatingModal: FC = memo(() => {
   // This shared value is responsible to handle the modal state
@@ -165,15 +167,15 @@ const FloatingModal: FC = memo(() => {
 const styles = StyleSheet.create({
   floatingModal: {
     backgroundColor: 'white',
+    elevation: 4,
     position: 'absolute',
     shadowColor: 'black',
-    shadowRadius: 12,
     shadowOffset: {
       width: 0,
       height: 12,
     },
     shadowOpacity: 0.2,
-    elevation: 4,
+    shadowRadius: 12,
   },
 });
 

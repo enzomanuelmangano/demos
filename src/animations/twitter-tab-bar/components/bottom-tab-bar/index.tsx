@@ -1,6 +1,8 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { type FC, memo, type ReactNode, useCallback, useEffect } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
+
+import { type FC, memo, type ReactNode, useCallback, useEffect } from 'react';
+
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -13,7 +15,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ScreenNames } from '../../constants/screens';
 import { useTheme } from '../theme-provider';
-
 import { useActiveTabBarContext } from './active-tab-bar-provider';
 import { BottomFloatingButton } from './floating-button';
 
@@ -184,17 +185,17 @@ const TabBarItem: FC<TabBarItemProps> = memo(
 
 const localStyles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    height: BOTTOM_BAR_HEIGHT,
     bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
+    height: BOTTOM_BAR_HEIGHT,
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
   fill: {
     flex: 1,
   },
-  fillCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fillCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' },
 });
 
 export { BottomTabBar };

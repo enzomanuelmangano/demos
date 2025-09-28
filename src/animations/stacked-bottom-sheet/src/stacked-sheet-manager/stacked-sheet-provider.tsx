@@ -1,11 +1,10 @@
-// Import necessary React components and types
-import type { PropsWithChildren } from 'react';
 import {
   useCallback,
   useMemo,
   useRef,
   useState,
   type FC,
+  type PropsWithChildren,
   type ReactNode,
 } from 'react';
 
@@ -16,13 +15,11 @@ import {
 } from './context';
 import { StackedSheet } from './stacked-sheet';
 
-// Define a StackedSheetProvider component to manage and display StackedSheets
 export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
   // State to manage the list of StackedSheets
   const [stackedSheets, setStackedSheets] = useState<StackedSheetType[]>([]);
   // const [stackedSheets, setStackedSheets] = useAtom(StackedSheetsAtom);
 
-  // Function to show a new StackedSheet
   const showStackedSheet = useCallback(
     (stackedSheet: Omit<StackedSheetType, 'id'>) => {
       setStackedSheets(prev => {
@@ -38,7 +35,6 @@ export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
     [setStackedSheets],
   );
 
-  // Memoized sorted list of StackedSheets based on their IDs
   const sortedStackedSheets = useMemo(() => {
     return stackedSheets.sort((a, b) => a.id - b.id);
   }, [stackedSheets]);
@@ -70,7 +66,6 @@ export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
     [setStackedSheets],
   );
 
-  // Memoized context value containing the showStackedSheet function
   const value = useMemo(() => {
     return {
       showStackedSheet,
@@ -110,7 +105,6 @@ export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [stackedSheets]);
 
-  // Render the StackedSheetContext.Provider with children and mapped StackedSheet components
   return (
     <StackedSheetContext.Provider value={value}>
       <InternalStackedSheetContext.Provider value={internalStackedSheetValue}>

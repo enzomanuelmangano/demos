@@ -1,9 +1,10 @@
-import type { Extrapolation, SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+
+import type { Extrapolation, SharedValue } from 'react-native-reanimated';
 
 export type CarouselItemProps<T> = {
   renderItem: (itemData: {

@@ -1,3 +1,7 @@
+import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { useState } from 'react';
+
 import { Octicons } from '@expo/vector-icons';
 import {
   Blur,
@@ -8,8 +12,6 @@ import {
   rect,
 } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -151,18 +153,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   floatingButton: {
-    height: 58,
     aspectRatio: 1,
-    position: 'absolute',
     bottom: 64,
+    height: 58,
+    position: 'absolute',
     right: 64,
     zIndex: 100,
   },
   floatingContent: {
+    alignItems: 'center',
     borderRadius: 29,
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 

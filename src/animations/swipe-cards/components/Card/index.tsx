@@ -1,8 +1,9 @@
-import { Image } from 'expo-image';
-import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
 import { useWindowDimensions, View } from 'react-native';
+
+import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
+
+import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -14,7 +15,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import type { IMAGES } from '../../constants';
+import type { SharedValue } from 'react-native-reanimated';
 
 type SwipeableCardProps = {
   image: (typeof IMAGES)[0];

@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback, useState } from 'react';
 
 import { OnlineToOffline } from './components/online-to-offline';
 
@@ -119,9 +120,9 @@ export const OnlineOffline = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

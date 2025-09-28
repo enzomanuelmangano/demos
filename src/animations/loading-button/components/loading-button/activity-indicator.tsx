@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from 'react';
+
 import {
   Canvas,
   Circle,
@@ -9,7 +11,6 @@ import {
   rect,
   type SkSVG,
 } from '@shopify/react-native-skia';
-import { useEffect, useMemo } from 'react';
 import Animated, {
   Easing,
   cancelAnimation,

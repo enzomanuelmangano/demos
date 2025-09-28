@@ -1,11 +1,14 @@
-import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type CarouselItemProps = {
   item: {
@@ -125,6 +128,7 @@ const CarouselItem: FC<CarouselItemProps> = memo(
 
 const styles = StyleSheet.create({
   shadow: {
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -132,7 +136,6 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 5,
-    elevation: 5,
   },
 });
 export { CarouselItem };

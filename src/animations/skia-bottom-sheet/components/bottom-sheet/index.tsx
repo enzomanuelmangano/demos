@@ -1,4 +1,8 @@
 // Import necessary modules and types
+import { useWindowDimensions } from 'react-native';
+
+import { type FC, memo } from 'react';
+
 import {
   BackdropBlur,
   BlurMask,
@@ -7,15 +11,14 @@ import {
   rrect,
   Skia,
 } from '@shopify/react-native-skia';
-import { type FC, memo } from 'react';
-import { useWindowDimensions } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 // Set default values for bottom sheet props
 const DEFAULT_CARD_RADIUS = 30;

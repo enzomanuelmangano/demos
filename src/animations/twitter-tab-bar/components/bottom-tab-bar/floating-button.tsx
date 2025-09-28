@@ -1,5 +1,6 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+
+import { MaterialIcons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -98,8 +99,8 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
 
 const styles = StyleSheet.create({
   center: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

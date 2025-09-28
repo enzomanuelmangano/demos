@@ -1,5 +1,7 @@
-import { type FC, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, type ReactNode } from 'react';
+
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -20,21 +22,21 @@ export const ModalContent: FC<ModalContentProps> = ({ children }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    borderCurve: 'continuous',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    borderCurve: 'continuous',
+    flex: 1,
   },
   content: {
     paddingHorizontal: 24,
   },
   pullIndicator: {
-    width: 40,
-    height: 4,
+    alignSelf: 'center',
     backgroundColor: '#E5E7EB',
     borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 12,
+    height: 4,
     marginBottom: 20,
+    marginTop: 12,
+    width: 40,
   },
 });

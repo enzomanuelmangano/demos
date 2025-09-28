@@ -1,11 +1,13 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useCallback } from 'react';
 
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+
 import { BottomTabBar } from './components/bottom-tab-bar';
-import type { ScreenNames } from './constants/screens';
 import { ScreenNamesArray } from './constants/screens';
 import { ScrollableGradients } from './screens/scrollable-gradients';
+
+import type { ScreenNames } from './constants/screens';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const BottomTab = createBottomTabNavigator();
 

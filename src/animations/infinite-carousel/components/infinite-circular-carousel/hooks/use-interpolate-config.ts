@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react';
+
 import { Extrapolation } from 'react-native-reanimated';
 
 type InterpolateConfig = {

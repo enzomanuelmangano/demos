@@ -1,6 +1,8 @@
-import { BlurView } from 'expo-blur';
-import { type FC, type ReactNode, useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, type ReactNode, useCallback, useEffect } from 'react';
+
+import { BlurView } from 'expo-blur';
 import Animated, {
   Easing,
   FadeOut,
@@ -154,32 +156,32 @@ export function BlurredList<T>({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  itemContainer: {
-    position: 'absolute',
-    height: LIST_ITEM_HEIGHT,
-    width: '100%',
-    marginBottom: LIST_ITEM_MARGIN_BOTTOM,
-  },
-  itemContent: {
-    height: LIST_ITEM_HEIGHT,
-    width: '80%',
-    alignSelf: 'center',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    borderCurve: 'continuous',
-    shadowRadius: 10,
-    elevation: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   blurView: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-    top: -5,
     bottom: -20,
+    top: -5,
+    zIndex: 100,
+  },
+  container: {
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  itemContainer: {
+    height: LIST_ITEM_HEIGHT,
+    marginBottom: LIST_ITEM_MARGIN_BOTTOM,
+    position: 'absolute',
+    width: '100%',
+  },
+  itemContent: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'white',
+    borderCurve: 'continuous',
+    borderRadius: 20,
+    elevation: 5,
+    height: LIST_ITEM_HEIGHT,
+    justifyContent: 'center',
+    shadowRadius: 10,
+    width: '80%',
   },
 });

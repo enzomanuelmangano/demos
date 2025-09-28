@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
-import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   Platform,
   StyleSheet,
   TextInput,
   useWindowDimensions,
 } from 'react-native';
+
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+
+import { Ionicons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -175,18 +177,17 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
 
 const styles = StyleSheet.create({
   back: {
-    position: 'absolute',
-    left: 16,
-    height: 32,
-    width: 32,
-    justifyContent: 'center',
     alignItems: 'center',
+    height: 32,
+    justifyContent: 'center',
+    left: 16,
+    position: 'absolute',
+    width: 32,
   },
   card: {
-    position: 'absolute',
-    borderCurve: 'continuous',
-    zIndex: 1,
     backgroundColor: '#fff',
+    borderCurve: 'continuous',
+    position: 'absolute',
     shadowColor: '#c1c1c1',
     shadowOffset: {
       width: 0,
@@ -194,12 +195,13 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 20,
+    zIndex: 1,
   },
   input: {
+    fontFamily: 'AddingtonCF-Light',
     marginLeft: 16,
     marginRight: 12,
     marginTop: 24,
-    fontFamily: 'AddingtonCF-Light',
     textAlignVertical: 'top',
   },
 });

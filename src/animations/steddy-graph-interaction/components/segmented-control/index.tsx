@@ -1,6 +1,8 @@
-import { PressableScale } from 'pressto';
-import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { useMemo } from 'react';
+
+import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -107,9 +109,9 @@ const localStyles = StyleSheet.create({
     borderColor: Palette.baseGray05,
   },
   difficultyLabel: {
-    fontSize: 17,
-    fontFamily: 'SF-Compact-Rounded-Medium',
     color: Palette.baseGray80,
+    fontFamily: 'SF-Compact-Rounded-Medium',
+    fontSize: 17,
     textAlign: 'center',
   },
   highlightedCellContent: {
@@ -125,8 +127,8 @@ const localStyles = StyleSheet.create({
     shadowRadius: 2,
   },
   labelContainer: {
-    flex: 1,
     alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
     zIndex: 2,
   },

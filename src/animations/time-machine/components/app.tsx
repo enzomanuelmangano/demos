@@ -1,20 +1,21 @@
 import { Dimensions, View } from 'react-native';
+
+import { useCallback, useEffect, useRef } from 'react';
+
 import { useAtom } from 'jotai';
+import { GestureDetector } from 'react-native-gesture-handler';
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { GestureDetector } from 'react-native-gesture-handler';
-import { useCallback, useEffect, useRef } from 'react';
 
-import { TimeMachineList } from '../time-machine-list';
-import { StoryListItemWidth } from '../time-machine-list/item';
 import { ActiveItemKeyAtom, HistoryAtom } from '../atoms/history-atom';
 import { useTimeMachineGesture } from '../hooks/use-time-machine-gesture';
-
-import { TimeMachineListItem } from './time-machine-list-item';
+import { TimeMachineList } from '../time-machine-list';
 import { BackgroundCanvas } from './background-canvas';
+import { TimeMachineListItem } from './time-machine-list-item';
+import { StoryListItemWidth } from '../time-machine-list/item';
 
 const usePreviousRef = <T,>(value: T) => {
   const ref = useRef<T>(value);

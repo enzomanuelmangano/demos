@@ -1,5 +1,6 @@
-import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
+
+import { Image } from 'expo-image';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -75,29 +76,29 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   badge: {
     aspectRatio: 1,
     backgroundColor: 'white',
     overflow: 'hidden',
     padding: 10,
   },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   image: {
-    flex: 1,
     borderRadius: 400,
+    flex: 1,
   },
   title: {
+    color: 'white',
     fontSize: 40,
     fontWeight: 'bold',
-    color: 'white',
-    marginTop: 50,
-    marginHorizontal: 40,
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    marginHorizontal: 40,
+    marginTop: 50,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
 });
 

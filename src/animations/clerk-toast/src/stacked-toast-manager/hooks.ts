@@ -1,7 +1,7 @@
 import { useContext, useMemo } from 'react';
 
-import { InternalStackedToastContext, StackedToastContext } from './context';
 import { MAX_VISIBLE_TOASTS, TOAST_HEIGHT } from './constants';
+import { InternalStackedToastContext, StackedToastContext } from './context';
 
 export const useStackedToast = () => {
   return useContext(StackedToastContext);

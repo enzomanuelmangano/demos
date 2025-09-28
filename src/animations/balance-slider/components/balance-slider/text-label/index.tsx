@@ -1,5 +1,7 @@
-import { useMemo } from 'react';
 import { StyleSheet, Text } from 'react-native';
+
+import { useMemo } from 'react';
+
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
@@ -107,26 +109,26 @@ export const TextLabel: React.FC<TextLabelProps> = ({
 };
 
 const styles = StyleSheet.create({
-  labelContainer: {
-    position: 'absolute',
-    bottom: 0,
-    zIndex: 10,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-start',
-  },
   label: {
-    fontSize: 16,
     fontFamily: 'FiraCodeMedium',
-    textTransform: 'uppercase',
+    fontSize: 16,
     height: 20,
     textAlign: 'center',
     textAlignVertical: 'center',
+    textTransform: 'uppercase',
+  },
+  labelContainer: {
+    alignItems: 'flex-start',
+    bottom: 0,
+    justifyContent: 'flex-end',
+    position: 'absolute',
+    zIndex: 10,
   },
   labelPercentage: {
-    fontSize: 16,
     fontFamily: 'FiraCodeMedium',
-    textTransform: 'uppercase',
+    fontSize: 16,
     height: 20,
     marginBottom: 4,
+    textTransform: 'uppercase',
   },
 });

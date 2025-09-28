@@ -1,7 +1,9 @@
+import { View } from 'react-native';
+
+import { type FC, memo, useMemo } from 'react';
+
 import { AntDesign } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { type FC, memo, useMemo } from 'react';
-import { View } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,

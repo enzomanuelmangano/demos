@@ -1,5 +1,6 @@
-import type { SharedValue } from 'react-native-reanimated';
 import { interpolate, useAnimatedStyle } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type Use3DRotationStyleParams = {
   x: SharedValue<number>;

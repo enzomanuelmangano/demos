@@ -1,7 +1,8 @@
-import type { AntDesign } from '@expo/vector-icons';
 import { useWindowDimensions, View } from 'react-native';
 
 import { Tab } from './tab';
+
+import type { AntDesign } from '@expo/vector-icons';
 
 type TabsProps = {
   tabs: { label: string; icon: keyof typeof AntDesign.glyphMap }[];

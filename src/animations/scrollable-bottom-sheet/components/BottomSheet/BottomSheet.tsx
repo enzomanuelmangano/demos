@@ -1,5 +1,7 @@
-import { type FC, type ReactNode } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
+
+import { type FC, type ReactNode } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -98,22 +100,22 @@ const BottomSheet: FC<BottomSheetProps> = ({
 
 const styles = StyleSheet.create({
   bottomSheetContainer: {
-    height: SCREEN_HEIGHT,
-    width: '100%',
     backgroundColor: '#171717',
+    borderRadius: 25,
+    height: SCREEN_HEIGHT,
     position: 'absolute',
     top: SCREEN_HEIGHT,
-    borderRadius: 25,
-  },
-  line: {
-    width: 75,
-    height: 4,
-    backgroundColor: 'grey',
-    alignSelf: 'center',
-    marginVertical: 15,
-    borderRadius: 2,
+    width: '100%',
   },
   fill: { flex: 1 },
+  line: {
+    alignSelf: 'center',
+    backgroundColor: 'grey',
+    borderRadius: 2,
+    height: 4,
+    marginVertical: 15,
+    width: 75,
+  },
 });
 
 export { BottomSheet };

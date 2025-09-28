@@ -1,6 +1,5 @@
-import type { StyleProp, ViewStyle } from 'react-native';
-
 import type { CarouselItemProps } from './carousel-item';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 export type InfiniteCircularCarouselProps<T> = {
   data: T[];

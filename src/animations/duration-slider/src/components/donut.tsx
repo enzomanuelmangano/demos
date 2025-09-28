@@ -1,4 +1,5 @@
-import type { AnimatedProp, SkPaint } from '@shopify/react-native-skia';
+import { useMemo } from 'react';
+
 import {
   Group,
   Path,
@@ -6,7 +7,8 @@ import {
   Skia,
   vec,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
+
+import type { AnimatedProp, SkPaint } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 
 // The Donut component creates a circular progress indicator using Skia.

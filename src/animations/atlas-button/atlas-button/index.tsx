@@ -1,4 +1,7 @@
-import type { DataSourceParam } from '@shopify/react-native-skia';
+import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
+
+import { useMemo } from 'react';
+
 import {
   Canvas,
   fitbox,
@@ -7,8 +10,6 @@ import {
   rect,
   useSVG,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
-import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -22,6 +23,8 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedSquares } from './animated-squares';
+
+import type { DataSourceParam } from '@shopify/react-native-skia';
 
 type AtlasButtonProps = {
   width: number;
@@ -156,21 +159,21 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
-  content: {
-    position: 'absolute',
+  center: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  center: {
-    justifyContent: 'center',
+  content: {
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
   },
   label: {
-    textAlign: 'center',
-    marginTop: 10,
+    color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    marginTop: 10,
     position: 'absolute',
+    textAlign: 'center',
   },
 });

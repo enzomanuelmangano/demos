@@ -6,6 +6,7 @@ import {
 } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { SpringConfig } from './constants';
 
 type UseDeleteButtonAnimationsParams = {

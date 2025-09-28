@@ -1,4 +1,7 @@
-import type { SkImage } from '@shopify/react-native-skia';
+import { View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import {
   Blur,
   Canvas,
@@ -7,12 +10,12 @@ import {
   rect,
   rrect,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
-import { View } from 'react-native';
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isSwitchingThemeShared } from '../theme';
+
+import type { SkImage } from '@shopify/react-native-skia';
 
 type MovieImageProps = {
   skImage: SkImage | null;

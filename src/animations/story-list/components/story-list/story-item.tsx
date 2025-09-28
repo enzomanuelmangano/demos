@@ -1,10 +1,13 @@
-import { type ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
+
+import { type ReactNode } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type StoryListItemProps<T> = {
   story: T;

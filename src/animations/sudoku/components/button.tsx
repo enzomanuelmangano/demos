@@ -1,7 +1,7 @@
-import { type FC, useCallback } from 'react';
-import type { TextStyle, ViewStyle } from 'react-native';
 import { Platform, Pressable, StyleSheet, Text } from 'react-native';
-import type { AnimatedProps } from 'react-native-reanimated';
+
+import { type FC, useCallback } from 'react';
+
 import Animated, {
   FadeIn,
   FadeOut,
@@ -12,6 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { COLORS } from '../theme';
+
+import type { TextStyle, ViewStyle } from 'react-native';
+import type { AnimatedProps } from 'react-native-reanimated';
 
 type ButtonProps = {
   onPress: () => void;
@@ -131,9 +134,9 @@ const SIZE_MAP = {
 
 const styles = StyleSheet.create({
   container: {
+    alignSelf: 'flex-start',
     borderRadius: 10,
     overflow: 'hidden',
-    alignSelf: 'flex-start',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -150,38 +153,38 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary + '08', // 3% opacity
   },
   button: {
-    borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
+    borderRadius: 10,
     flexDirection: 'row',
     gap: 8,
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   primary: {
     backgroundColor: COLORS.primary,
   },
   secondary: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: COLORS.border + '40', // 25% opacity
+    borderColor: COLORS.border + '40',
+    borderWidth: 1, // 25% opacity
   },
   // eslint-disable-next-line react-native/no-unused-styles
   small: {
+    minWidth: 64,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    minWidth: 64,
   },
   // eslint-disable-next-line react-native/no-unused-styles
   medium: {
+    minWidth: 80,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    minWidth: 80,
   },
   // eslint-disable-next-line react-native/no-unused-styles
   large: {
+    minWidth: 96,
     paddingHorizontal: 20,
     paddingVertical: 10,
-    minWidth: 96,
   },
   text: {
     color: COLORS.text,
@@ -192,8 +195,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   disabled: {
-    opacity: 0.4,
     backgroundColor: COLORS.surface + '80',
+    opacity: 0.4,
   },
   disabledText: {
     color: COLORS.textTertiary,

@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -187,12 +189,12 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
 
 const styles = StyleSheet.create({
   box: {
-    height: '100%',
     borderRadius: 5,
+    height: '100%',
   },
   pickerContainer: {
+    alignItems: 'center',
     height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
   },
 });

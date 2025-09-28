@@ -1,10 +1,11 @@
 import { useCallback } from 'react';
+
+import { Skia, usePathInterpolation } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Skia, usePathInterpolation } from '@shopify/react-native-skia';
 
 import { DefaultEyebrowPaths, DefaultMouthPaths } from './constants';
 

@@ -8,13 +8,13 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   plugins: [
     '@typescript-eslint',
-    'prettier',
     'jest',
     'import',
     'react',
     'react-hooks',
     'react-native',
     'deprecation',
+    'prettier',
   ],
   ignorePatterns: [
     'node_modules/',
@@ -43,6 +43,59 @@ module.exports = {
     'react-native/no-unused-styles': 'warn',
     'react-native/no-inline-styles': 'off',
     'react-native/no-color-literals': 'off',
+    // Sort StyleSheet properties in a consistent order
+    'react-native/sort-styles': [
+      'error',
+      'asc',
+      {
+        ignoreClassNames: false,
+        ignoreStyleProperties: false,
+      },
+    ],
+    // Import ordering rules to ensure styles are always at the top
+    'import/order': [
+      'error',
+      {
+        groups: [
+          ['builtin', 'external'], // Node built-ins and external packages
+          'internal', // Internal modules
+          ['parent', 'sibling'], // Parent and sibling imports
+          'index', // Index file imports
+          'object', // Object imports
+          'type', // Type imports
+        ],
+        pathGroups: [
+          {
+            pattern: '*.{css,scss,sass,less,styl,stylus,pcss,postcss}',
+            group: 'builtin',
+            position: 'before',
+          },
+          {
+            pattern: '**/*.{css,scss,sass,less,styl,stylus,pcss,postcss}',
+            group: 'builtin',
+            position: 'before',
+          },
+          {
+            pattern: 'react-native',
+            group: 'external',
+            position: 'before',
+          },
+          {
+            pattern: 'react',
+            group: 'external',
+            position: 'before',
+          },
+        ],
+        pathGroupsExcludedImportTypes: ['type'],
+        'newlines-between': 'always',
+        alphabetize: {
+          order: 'asc',
+          caseInsensitive: true,
+        },
+      },
+    ],
+    'import/newline-after-import': ['error', { count: 1 }],
+    'import/no-duplicates': 'error',
   },
   env: {
     'jest/globals': true,

@@ -6,8 +6,8 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Ticket } from './components/ticket';
-import { FrontSide } from './components/ticket/front-side';
 import { BackSide } from './components/ticket/back-side';
+import { FrontSide } from './components/ticket/front-side';
 
 /**
  * Root component of the application.

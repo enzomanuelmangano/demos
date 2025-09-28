@@ -1,5 +1,6 @@
-import type { Transition } from '../components/image-editor/utils';
 import { glsl } from '../components/image-editor/utils';
+
+import type { Transition } from '../components/image-editor/utils';
 
 // I started from the ButterflyWaveScrawler transition from gl-transitions.com
 // https://gl-transitions.com/editor/ButterflyWaveScrawler

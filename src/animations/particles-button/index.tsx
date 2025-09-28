@@ -37,9 +37,9 @@ export const ParticlesButton = () => {
  */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#111',
     alignItems: 'center',
+    backgroundColor: '#111',
+    flex: 1,
     justifyContent: 'center',
   },
 });

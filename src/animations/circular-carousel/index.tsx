@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
 import { StyleSheet, Switch, Text, View } from 'react-native';
+
+import { useCallback, useState } from 'react';
 
 import { CircularList } from './components/circular-list';
 
@@ -42,15 +43,15 @@ export const CircularCarousel = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
   },
   label: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
     letterSpacing: 1,
+    marginBottom: 8,
     textTransform: 'uppercase',
   },
 });

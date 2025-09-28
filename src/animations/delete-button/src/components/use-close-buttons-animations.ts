@@ -1,5 +1,4 @@
 import { Skia } from '@shopify/react-native-skia';
-import type { SharedValue } from 'react-native-reanimated';
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -10,6 +9,8 @@ import {
 import { useGestureHandler } from 'react-native-skia-gesture';
 
 import { SpringConfig } from './constants';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type UseCloseButtonAnimationsParams = {
   isToggled: SharedValue<boolean>;

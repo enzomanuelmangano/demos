@@ -1,5 +1,6 @@
-import { AntDesign } from '@expo/vector-icons'; // Icons from Expo's vector icons library
 import { StyleSheet, View } from 'react-native';
+
+import { AntDesign } from '@expo/vector-icons'; // Icons from Expo's vector icons library
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SplitButton } from './components/split-button';
@@ -33,8 +34,8 @@ const SplitButtonContainer = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
   },
 });

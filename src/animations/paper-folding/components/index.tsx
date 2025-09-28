@@ -1,12 +1,14 @@
-import { Canvas, Rect, Shadow } from '@shopify/react-native-skia';
 import { View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { Canvas, Rect, Shadow } from '@shopify/react-native-skia';
 import Animated, {
   interpolate,
   interpolateColor,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type PaperProps = {
   height: number;

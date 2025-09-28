@@ -1,7 +1,8 @@
 // Importing the necessary dependencies and types
-import type { SharedValue } from 'react-native-reanimated';
-import { useDerivedValue } from 'react-native-reanimated';
 import { Skia } from '@shopify/react-native-skia';
+import { useDerivedValue } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 // Defining the type for the parameters of the hook
 type UsePolygonGridParams = {

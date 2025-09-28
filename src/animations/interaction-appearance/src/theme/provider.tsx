@@ -10,8 +10,9 @@ import {
   type SetStateAction,
 } from 'react';
 
-import type { Theme } from './palette';
 import { DarkTheme, LightTheme } from './palette';
+
+import type { Theme } from './palette';
 
 type ThemeProviderProps = {
   children: ReactNode;

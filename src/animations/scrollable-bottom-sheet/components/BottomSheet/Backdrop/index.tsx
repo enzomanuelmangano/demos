@@ -1,5 +1,7 @@
-import { type FC, memo } from 'react';
 import { StyleSheet } from 'react-native';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedProps,

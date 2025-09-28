@@ -1,6 +1,8 @@
-import { Entypo } from '@expo/vector-icons';
-import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { useState } from 'react';
+
+import { Entypo } from '@expo/vector-icons';
 
 import { AnimatedCount } from './components/animated-count';
 
@@ -33,20 +35,20 @@ export const AnimatedCountText = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
     justifyContent: 'center',
   },
   floatingBottomButton: {
-    position: 'absolute',
-    bottom: 80,
-    right: 30,
-    backgroundColor: 'white',
-    height: 64,
-    aspectRatio: 1,
-    borderRadius: 32,
-    justifyContent: 'center',
     alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: 'white',
+    borderRadius: 32,
+    bottom: 80,
+    height: 64,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 30,
   },
 });

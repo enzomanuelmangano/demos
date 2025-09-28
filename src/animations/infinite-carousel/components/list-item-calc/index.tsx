@@ -1,12 +1,14 @@
+import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
+import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Animated, {
   useAnimatedStyle,
   type SharedValue,
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
-import { StyleSheet, View } from 'react-native';
-import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
-import { useCallback } from 'react';
 
 import {
   DEFAULT_WHITE,
@@ -132,8 +134,8 @@ export const ListItemCard = ({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 15,
     borderCurve: 'continuous',
+    borderRadius: 15,
     overflow: 'hidden',
   },
   listContainer: {

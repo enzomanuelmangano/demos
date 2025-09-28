@@ -1,5 +1,6 @@
-import { createDrawerNavigator } from '@react-navigation/drawer';
 import { useCallback } from 'react';
+
+import { createDrawerNavigator } from '@react-navigation/drawer';
 
 import { CustomDrawer } from './components/drawer';
 import { DrawerIcon } from './components/drawer/drawer-icon';

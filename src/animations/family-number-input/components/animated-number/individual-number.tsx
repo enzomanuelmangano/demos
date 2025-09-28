@@ -1,5 +1,5 @@
 import { type FC, useEffect } from 'react';
-import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+
 import Animated, {
   Easing,
   FadeOut,
@@ -10,6 +10,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 type AnimatedSingleNumberProps = {
   // Value can be a number (0-9) or a string (',')

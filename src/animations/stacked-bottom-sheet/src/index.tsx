@@ -1,5 +1,6 @@
 // Import necessary modules and components from React Native and other libraries
 import { StyleSheet, Text, View } from 'react-native';
+
 import { PressableScale } from 'pressto';
 
 import { useDemoStackedSheet } from './hook';
@@ -22,12 +23,6 @@ const App = () => {
 
 // Define the styles for the components using StyleSheet.create
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fefefe',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
     paddingVertical: 18,
     paddingHorizontal: 25,
@@ -37,13 +32,19 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous', // Note: 'borderCurve' is not a valid property, perhaps 'borderRadius' is intended
     borderWidth: 1,
   },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#fefefe',
+    flex: 1,
+    justifyContent: 'center',
+  },
   textButton: {
+    borderCurve: 'continuous',
     color: 'white',
+    fontFamily: 'SF-Pro-Rounded-Bold',
+    fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    fontWeight: '700',
-    borderCurve: 'continuous',
-    fontFamily: 'SF-Pro-Rounded-Bold',
   },
 });
 

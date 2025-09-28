@@ -1,6 +1,7 @@
-import { memo, useMemo, type FC, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { memo, useMemo, type FC, type ReactNode } from 'react';
+
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -8,6 +9,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type PaginatorProps = {
   pagesAmount: number;
@@ -159,36 +162,36 @@ const AnimatedDot = memo(
 
 const styles = StyleSheet.create({
   backgroundContainer: {
-    position: 'absolute',
+    alignItems: 'center',
     bottom: 0,
-    left: 0,
-    right: 0,
     height: 208,
-    alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
-    pointerEvents: 'none',
-  },
-  paginatorContainer: {
-    position: 'absolute',
-    bottom: 0,
     left: 0,
-    right: 0,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
     overflow: 'hidden',
     pointerEvents: 'none',
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    position: 'absolute',
+    right: 0,
   },
   dot: {
     alignItems: 'flex-start',
-    justifyContent: 'center',
-    borderRadius: 9999,
     backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderRadius: 9999,
+    justifyContent: 'center',
+  },
+  dotsContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  paginatorContainer: {
+    alignItems: 'center',
+    bottom: 0,
+    height: 40,
+    justifyContent: 'center',
+    left: 0,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
   },
 });

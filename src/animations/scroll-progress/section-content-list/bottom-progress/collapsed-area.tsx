@@ -1,6 +1,8 @@
-import { AntDesign } from '@expo/vector-icons';
-import { type FC, memo, useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { type FC, memo, useCallback } from 'react';
+
+import { AntDesign } from '@expo/vector-icons';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -82,9 +84,9 @@ const CollapsedArea: FC<CollapsedAreaProps> = memo(
 
 const styles = StyleSheet.create({
   fillCenter: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 

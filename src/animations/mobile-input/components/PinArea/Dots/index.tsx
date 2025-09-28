@@ -1,9 +1,11 @@
-import { type FC, memo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { View } from 'react-native';
 
-import type { DotProps } from './Dot';
+import { type FC, memo } from 'react';
+
 import { Dot } from './Dot';
+
+import type { DotProps } from './Dot';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type DotsProps = Pick<DotProps, 'activeDots'> & {
   contentContainerStyle?: StyleProp<ViewStyle>;

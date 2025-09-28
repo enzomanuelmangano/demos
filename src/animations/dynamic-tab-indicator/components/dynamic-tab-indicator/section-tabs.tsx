@@ -1,11 +1,14 @@
-import { type FC, memo, useCallback } from 'react';
-import type { LayoutRectangle } from 'react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { type FC, memo, useCallback } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import type { LayoutRectangle } from 'react-native';
 
 type SectionTabsProps = {
   height: number;
@@ -89,24 +92,24 @@ const SectionTabs: FC<SectionTabsProps> = memo(
 
 const styles = StyleSheet.create({
   container: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
     paddingHorizontal: 8,
   },
+  safeContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    flexDirection: 'row',
+    left: 0,
+    position: 'absolute',
+    top: 0,
+    zIndex: 5,
+  },
   title: {
+    color: '#000',
     fontSize: 17,
     fontWeight: 'bold',
     textAlign: 'center',
-    color: '#000',
-  },
-  safeContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    zIndex: 5,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
 });
 

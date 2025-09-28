@@ -1,8 +1,10 @@
 import { StyleSheet, View } from 'react-native';
+
 import { useRef } from 'react';
 
-import type { StaggeredTextRef } from './components/staggered-text';
 import { StaggeredText } from './components/staggered-text';
+
+import type { StaggeredTextRef } from './components/staggered-text';
 
 /**
  * A debounce utility function that ensures the callback is executed only once
@@ -77,10 +79,10 @@ const App = () => {
  */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#000',
-    paddingHorizontal: 42,
+    flex: 1,
     justifyContent: 'center',
+    paddingHorizontal: 42,
   },
   text: {
     fontFamily: 'Honk-Regular', // Custom font for the animated text

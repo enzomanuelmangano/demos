@@ -1,11 +1,12 @@
-import { Feather } from '@expo/vector-icons';
-import { memo, useCallback, useState, type FC } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { memo, useCallback, useState, type FC } from 'react';
+
+import { Feather } from '@expo/vector-icons';
 import { useDerivedValue } from 'react-native-reanimated';
 
-import { TouchableFeedback } from '../touchables/touchable-feedback';
-
 import { HideableNumber } from './hideable-number';
+import { TouchableFeedback } from '../touchables/touchable-feedback';
 
 type CardInfoProps = {
   cardNumber: number;
@@ -58,14 +59,21 @@ export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
 });
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    aspectRatio: 1,
+    borderRadius: 4,
+    height: '100%',
+    justifyContent: 'center',
+  },
   container: {
-    height: 80,
-    width: '90%',
     backgroundColor: 'white',
     borderRadius: 20,
+    flexDirection: 'row',
+    height: 80,
+    paddingBottom: 10,
     paddingHorizontal: 25,
     paddingTop: 15,
-    paddingBottom: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -73,22 +81,15 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 20,
-    flexDirection: 'row',
-  },
-  title: {
-    fontSize: 17,
-    color: '#787878',
-    fontWeight: '400',
-  },
-  button: {
-    height: '100%',
-    aspectRatio: 1,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '90%',
   },
   numbers: {
     flexDirection: 'row',
     marginTop: 5,
+  },
+  title: {
+    color: '#787878',
+    fontSize: 17,
+    fontWeight: '400',
   },
 });

@@ -1,6 +1,7 @@
-import { type FC, memo, useMemo } from 'react';
-import type { StyleProp, TextStyle } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
+
+import { type FC, memo, useMemo } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -8,6 +9,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { StyleProp, TextStyle } from 'react-native';
 
 type AnimatedDigitProps = {
   index: number;

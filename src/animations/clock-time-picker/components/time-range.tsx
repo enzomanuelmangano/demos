@@ -14,10 +14,12 @@
  * ```
  */
 
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useCallback, useMemo } from 'react';
+
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -109,32 +111,32 @@ export const TimeRange: React.FC<TimePickerProps> = ({
 };
 
 const styles = StyleSheet.create({
+  bottomGradient: {
+    bottom: 0,
+  },
   container: {
     height: TimeRangeHeight,
+  },
+  gradient: {
+    height: TimeRangeHeight,
+    left: 0,
+    pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
+    zIndex: 100,
   },
   scrollViewContent: {
     paddingVertical: TimeRangeHeight / 2 - ITEM_HEIGHT / 2,
   },
   timeItem: {
+    alignItems: 'center',
     height: ITEM_HEIGHT,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   timeText: {
-    fontSize: 20,
     color: '#d8d8d8',
     fontFamily: 'Honk-Regular',
-  },
-  gradient: {
-    pointerEvents: 'none',
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: TimeRangeHeight,
-    zIndex: 100,
-  },
-  bottomGradient: {
-    bottom: 0,
+    fontSize: 20,
   },
   topGradient: {
     top: 0,

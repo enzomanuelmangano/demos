@@ -1,5 +1,5 @@
 import { type ReactElement, useCallback } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
 import Animated, {
   LinearTransition,
   useAnimatedScrollHandler,
@@ -8,6 +8,8 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 export type AnimatedLayoutListProps<T> = {
   data: T[];

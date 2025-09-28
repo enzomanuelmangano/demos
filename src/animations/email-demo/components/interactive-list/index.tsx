@@ -1,10 +1,12 @@
-import type { FlatListProps, StyleProp, ViewStyle } from 'react-native';
 import { FlatList } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
+
+import type { FlatListProps, StyleProp, ViewStyle } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 
 type InteractiveListProps<T> = FlatListProps<T> & {
   amountToShift?: SharedValue<number>;

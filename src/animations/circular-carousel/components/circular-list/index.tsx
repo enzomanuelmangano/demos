@@ -1,5 +1,7 @@
-import { type FC } from 'react';
 import { StyleSheet } from 'react-native';
+
+import { type FC } from 'react';
+
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -52,15 +54,15 @@ const CircularList: FC<CircularListProps> = ({ data, scaleEnabled }) => {
 
 const styles = StyleSheet.create({
   list: {
-    position: 'absolute',
     bottom: 0,
     height: LIST_ITEM_WIDTH * 3,
     left: 0,
+    position: 'absolute',
     right: 0,
   },
   listContent: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingRight: LIST_ITEM_WIDTH * 3,
   },
 });

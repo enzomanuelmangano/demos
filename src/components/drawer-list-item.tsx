@@ -1,8 +1,11 @@
-import { createAnimatedPressable } from 'pressto';
-import { type FC, type JSX, memo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text } from 'react-native';
+
+import { type FC, type JSX, memo } from 'react';
+
+import { createAnimatedPressable } from 'pressto';
 import { interpolate } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type ExpoRouterListItemProps = {
   item: {
@@ -41,25 +44,25 @@ const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
 DrawerListItem.displayName = 'DrawerListItem';
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    flex: 1,
-  },
-  text: {
-    color: 'white',
-    fontSize: 15,
-    fontWeight: '500',
-    marginLeft: 12,
-    flex: 1,
-  },
   alert: {
     fontSize: 16,
     marginLeft: 6,
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 12,
+    flexDirection: 'row',
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  text: {
+    color: 'white',
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    marginLeft: 12,
   },
 });
 

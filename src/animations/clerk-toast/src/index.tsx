@@ -1,4 +1,5 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
+
 import { PressableScale } from 'pressto';
 
 import { useDemoStackedToast } from './hook';
@@ -26,16 +27,16 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#fefefe',
+    flex: 1,
   },
   listItem: {
-    height: 100,
     backgroundColor: 'black',
+    borderCurve: 'continuous',
+    borderRadius: 20,
+    height: 100,
     marginHorizontal: 20,
     marginVertical: 10,
-    borderRadius: 20,
-    borderCurve: 'continuous',
   },
 });
 

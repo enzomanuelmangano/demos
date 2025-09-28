@@ -1,11 +1,13 @@
-import { useSetAtom } from 'jotai';
 import { useCallback } from 'react';
+
+import { useSetAtom } from 'jotai';
 import { Gesture } from 'react-native-gesture-handler';
-import type { SharedValue } from 'react-native-reanimated';
 import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type UseTimeMachineGestureProps = {
   timeMachineProgress: SharedValue<number>;

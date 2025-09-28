@@ -1,6 +1,8 @@
-import { BlurView } from 'expo-blur';
-import { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { useState } from 'react';
+
+import { BlurView } from 'expo-blur';
 import Animated, {
   interpolate,
   Keyframe,
@@ -14,6 +16,7 @@ import { spacing } from './constants';
 import { FlipCard } from './flip-interaction';
 import { MainPage } from './flip-interaction/components/card/pages/MainPage';
 import { SecondPage } from './flip-interaction/components/card/pages/SecondPage';
+
 import type { ProfileType } from './flip-interaction/components/card/types';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
@@ -183,24 +186,24 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   cardSection: {
+    alignItems: 'center',
+    paddingBottom: spacing.xl,
     paddingHorizontal: 20,
     paddingTop: 30,
-    paddingBottom: spacing.xl,
-    alignItems: 'center',
   },
-  descriptionSection: {
-    paddingHorizontal: spacing.xxl,
-    paddingTop: 0,
-    paddingBottom: 40,
+  container: {
+    backgroundColor: '#FFFFFF',
+    flex: 1,
   },
   descriptionContainer: {
     borderRadius: spacing.m,
     overflow: 'hidden',
+  },
+  descriptionSection: {
+    paddingBottom: 40,
+    paddingHorizontal: spacing.xxl,
+    paddingTop: 0,
   },
 });
 

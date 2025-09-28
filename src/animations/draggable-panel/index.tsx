@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SpringAnimationPanel } from './components/spring-animation-panel';
@@ -13,8 +14,8 @@ const DraggablePanel = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#f5f7fa',
+    flex: 1,
   },
 });
 

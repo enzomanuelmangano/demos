@@ -1,8 +1,8 @@
-import type { SkPath } from '@shopify/react-native-skia';
-import { Canvas, Path } from '@shopify/react-native-skia';
-import { forwardRef, useImperativeHandle } from 'react';
 import { type ViewStyle } from 'react-native';
-import type { AnimatedStyle, SharedValue } from 'react-native-reanimated';
+
+import { forwardRef, useImperativeHandle } from 'react';
+
+import { Canvas, Path } from '@shopify/react-native-skia';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -10,6 +10,9 @@ import Animated, {
 
 import { Eye } from './eye';
 import { useIconPaths } from './useIconPaths';
+
+import type { SkPath } from '@shopify/react-native-skia';
+import type { AnimatedStyle, SharedValue } from 'react-native-reanimated';
 
 type InternalIconProps = {
   style: AnimatedStyle<ViewStyle>;

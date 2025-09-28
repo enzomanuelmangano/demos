@@ -1,8 +1,8 @@
-import { type FC, memo, type ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { useWindowDimensions } from 'react-native';
+
+import { type FC, memo, type ReactNode } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type { MeasuredDimensions, SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -11,6 +11,9 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { StyleProp, ViewStyle } from 'react-native';
+import type { MeasuredDimensions, SharedValue } from 'react-native-reanimated';
 
 type ConfirmButtonProps = {
   animationProgress: SharedValue<number>;

@@ -12,9 +12,9 @@ const StaggeredCardNumber = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#eaeaea',
     alignItems: 'center',
+    backgroundColor: '#eaeaea',
+    flex: 1,
     justifyContent: 'center',
   },
 });

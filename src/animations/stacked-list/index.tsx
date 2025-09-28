@@ -1,5 +1,5 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   Extrapolation,
   interpolate,
@@ -8,6 +8,8 @@ import Animated, {
   useDerivedValue,
   useScrollViewOffset,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 // Constants for list item height, margin, and additional measurements
 const ListItemHeight = 100;
@@ -184,7 +186,7 @@ export const StackedList = () => {
 // Styles for the main application component
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#fff',
+    flex: 1,
   },
 });

@@ -1,15 +1,18 @@
-import { Canvas, Group, Path } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { useMemo } from 'react';
+
+import { Entypo } from '@expo/vector-icons';
+import { Canvas, Group, Path } from '@shopify/react-native-skia';
 import Animated, {
   clamp,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
-import { Entypo } from '@expo/vector-icons';
 
 import { drawSquirclePath } from '../../utils/draw-squircle';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type AnimatedSquaresProps = {
   clampedProgress: SharedValue<number>;
@@ -193,15 +196,15 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = ({
 
 const styles = StyleSheet.create({
   base: {
+    borderCurve: 'continuous',
+    borderRadius: externalBorderRadius,
     position: 'absolute',
+    shadowColor: 'black',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    shadowColor: 'black',
     shadowOpacity: 0.1,
     shadowRadius: 10,
-    borderRadius: externalBorderRadius,
-    borderCurve: 'continuous',
   },
 });

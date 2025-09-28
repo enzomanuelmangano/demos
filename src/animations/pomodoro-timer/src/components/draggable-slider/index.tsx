@@ -1,5 +1,7 @@
-import { forwardRef, useImperativeHandle } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
+
+import { forwardRef, useImperativeHandle } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -13,6 +15,7 @@ import Animated, {
 
 import { TickLine } from './components/tick-line';
 import { useTimer } from './hooks/useTimer';
+
 import type { DraggableSliderProps } from './types';
 
 const { height: WindowHeight } = Dimensions.get('window');
@@ -201,15 +204,15 @@ export const CircularDraggableSlider = forwardRef<
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-    justifyContent: 'center',
     alignItems: 'center',
+    height: '100%',
+    justifyContent: 'center',
+    position: 'absolute',
+    width: '100%',
   },
   timer: {
-    position: 'absolute',
     bottom: 0,
+    position: 'absolute',
     width: '100%',
   },
 });

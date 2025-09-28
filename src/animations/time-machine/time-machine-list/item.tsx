@@ -1,11 +1,13 @@
-import type { PropsWithChildren } from 'react';
 import { Dimensions } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { PropsWithChildren } from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 
 export const WindowWidth = Dimensions.get('window').width;
 export const StoryListItemWidth = WindowWidth * 0.8;

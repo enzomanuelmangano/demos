@@ -1,3 +1,5 @@
+import { type FC, memo } from 'react';
+
 import {
   Canvas,
   CornerPathEffect,
@@ -9,11 +11,11 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import { type FC, memo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { useDerivedValue, withSpring } from 'react-native-reanimated';
 
 import { Palette } from '../../constants/palette';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type GraphProps = {
   scores: number[];

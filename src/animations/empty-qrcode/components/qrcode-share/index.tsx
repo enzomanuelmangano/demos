@@ -1,3 +1,7 @@
+import { StyleSheet, View } from 'react-native';
+
+import { forwardRef, useImperativeHandle } from 'react';
+
 import {
   Canvas,
   RadialGradient,
@@ -6,8 +10,6 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import { forwardRef, useImperativeHandle } from 'react';
-import { StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-skia';
 import Animated, { useDerivedValue } from 'react-native-reanimated';
 
@@ -115,10 +117,10 @@ const QRCodeShare = forwardRef<QRCodeShareRefType, QRCodeShareProps>(
 
 const styles = StyleSheet.create({
   container: {
-    overflow: 'hidden',
     alignSelf: 'center',
-    borderRadius: 50,
     borderCurve: 'continuous',
+    borderRadius: 50,
+    overflow: 'hidden',
   },
 });
 

@@ -1,16 +1,19 @@
-import { type FC } from 'react';
 import { Text, View } from 'react-native';
+
+import { type FC } from 'react';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
 
-import { CARD_HEIGHT, CARD_WIDTH } from '../utils/constants';
-import type { CardProps } from '../utils/types';
 import { CardCanvas } from './card-canvas.component';
 import { CardChip } from './card-chip.component';
 import { styles } from './card.styles';
+import { CARD_HEIGHT, CARD_WIDTH } from '../utils/constants';
+
+import type { CardProps } from '../utils/types';
 
 export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
   const animatedStyle = useAnimatedStyle(() => {

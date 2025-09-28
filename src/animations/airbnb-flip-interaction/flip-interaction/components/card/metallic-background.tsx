@@ -1,7 +1,9 @@
+import { StyleSheet } from 'react-native';
+
 import { LinearGradient } from 'expo-linear-gradient';
+
 import type { ReactNode } from 'react';
 import type { ViewStyle } from 'react-native';
-import { StyleSheet } from 'react-native';
 
 type MetallicBackgroundProps = {
   style?: ViewStyle;
@@ -105,21 +107,21 @@ export const MetallicBackground = ({
 
 const styles = StyleSheet.create({
   background: {
-    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
+    borderWidth: 1,
     overflow: 'hidden',
   },
-  shine: {
+  edgeLighting: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.5,
+    opacity: 0.25,
   },
   horizontalHighlight: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.35,
   },
-  edgeLighting: {
+  shine: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.25,
+    opacity: 0.5,
   },
   texture: {
     ...StyleSheet.absoluteFillObject,

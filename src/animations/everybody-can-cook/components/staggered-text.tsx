@@ -1,5 +1,3 @@
-import type { ForwardedRef } from 'react';
-import { forwardRef, useImperativeHandle } from 'react';
 import {
   type StyleProp,
   type TextStyle,
@@ -7,6 +5,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+
+import { forwardRef, useImperativeHandle } from 'react';
+
 import {
   Easing,
   useDerivedValue,
@@ -16,6 +17,8 @@ import {
 } from 'react-native-reanimated';
 
 import { StaggeredDigit } from './staggered-digit';
+
+import type { ForwardedRef } from 'react';
 
 /**
  * Props for the StaggeredText component

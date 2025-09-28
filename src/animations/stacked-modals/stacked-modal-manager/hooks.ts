@@ -1,7 +1,7 @@
 import { useContext, useMemo } from 'react'; // Importing useContext and useMemo hooks from React
 
-import { InternalStackedModalContext, StackedModalContext } from './context'; // Importing custom context objects
 import { MAX_VISIBLE_MODALS } from './constants';
+import { InternalStackedModalContext, StackedModalContext } from './context'; // Importing custom context objects
 
 // Custom hook to access the stacked modal context
 export const useStackedModal = () => {

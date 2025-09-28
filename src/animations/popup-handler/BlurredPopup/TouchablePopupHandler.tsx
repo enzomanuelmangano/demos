@@ -1,11 +1,14 @@
 import { type FC, type ReactNode, useCallback, useContext } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type { MeasuredDimensions } from 'react-native-reanimated';
 import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import type { PopupOptionType } from './BlurredContext';
+
 import { BlurredPopupContext } from './BlurredContext';
+
+import type { PopupOptionType } from './BlurredContext';
+import type { StyleProp, ViewStyle } from 'react-native';
+import type { MeasuredDimensions } from 'react-native-reanimated';
 
 // import HapticFeedback from 'react-native-haptic-feedback';
 

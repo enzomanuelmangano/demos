@@ -1,6 +1,8 @@
-import { AntDesign } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback, useState } from 'react';
+
+import { AntDesign } from '@expo/vector-icons';
 import Animated, {
   Keyframe,
   useAnimatedReaction,
@@ -110,19 +112,19 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'flex-end',
     paddingBottom: 64,
   },
   icon: {
-    marginRight: 8,
-    justifyContent: 'center',
     alignItems: 'center',
-    width: 18,
     height: 18,
+    justifyContent: 'center',
     marginBottom: -1.5,
+    marginRight: 8,
+    width: 18,
   },
 });
 

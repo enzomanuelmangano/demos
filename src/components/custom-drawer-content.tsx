@@ -1,13 +1,15 @@
-import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { useCallback, useMemo, type JSX } from 'react';
+
 import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
-import { useCallback, useMemo, type JSX } from 'react';
-import type { TextInputChangeEvent } from 'react-native';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableScale } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DrawerListItem } from './drawer-list-item';
 import { createIcon } from '../animations/icon-factory';
 import {
   getAllAnimations,
@@ -15,8 +17,8 @@ import {
 } from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
 
-import { PressableScale } from 'pressto';
-import { DrawerListItem } from './drawer-list-item';
+import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import type { TextInputChangeEvent } from 'react-native';
 
 const LIST_ITEM_HEIGHT = 60;
 
@@ -129,58 +131,58 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#030303',
+    flex: 1,
+  },
+  content: {
+    paddingBottom: 24,
   },
   header: {
-    paddingHorizontal: 20,
-    marginBottom: 8,
-    marginTop: 6,
     gap: 8,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: -0.5,
-    fontFamily: 'honk-regular',
-  },
-  searchContainer: {
-    position: 'relative',
     marginBottom: 8,
     marginTop: 6,
-  },
-  searchInput: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: '#fff',
-    fontSize: 14,
-    borderWidth: 0,
+    paddingHorizontal: 20,
   },
   listContainer: {
     flex: 1,
     position: 'relative',
   },
-  content: {
-    paddingBottom: 24,
-  },
   listItem: {
     height: LIST_ITEM_HEIGHT,
     paddingHorizontal: 20,
   },
+  searchContainer: {
+    marginBottom: 8,
+    marginTop: 6,
+    position: 'relative',
+  },
+  searchInput: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderWidth: 0,
+    color: '#fff',
+    fontSize: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  title: {
+    color: '#fff',
+    fontFamily: 'honk-regular',
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  titleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 16,
+  },
   topGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     height: 25,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
     zIndex: 1,
   },
 });
