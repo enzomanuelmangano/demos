@@ -133,6 +133,14 @@ const SIZE_MAP = {
 } as const;
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    borderRadius: 10,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
   container: {
     alignSelf: 'flex-start',
     borderRadius: 10,
@@ -149,36 +157,12 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  primaryContainer: {
-    backgroundColor: COLORS.primary + '08', // 3% opacity
+  disabled: {
+    backgroundColor: COLORS.surface + '80',
+    opacity: 0.4,
   },
-  button: {
-    alignItems: 'center',
-    borderRadius: 10,
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  primary: {
-    backgroundColor: COLORS.primary,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderColor: COLORS.border + '40',
-    borderWidth: 1, // 25% opacity
-  },
-  // eslint-disable-next-line react-native/no-unused-styles
-  small: {
-    minWidth: 64,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  // eslint-disable-next-line react-native/no-unused-styles
-  medium: {
-    minWidth: 80,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  disabledText: {
+    color: COLORS.textTertiary,
   },
   // eslint-disable-next-line react-native/no-unused-styles
   large: {
@@ -186,19 +170,35 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 10,
   },
-  text: {
-    color: COLORS.text,
-    fontWeight: '500',
-    letterSpacing: 0.2,
+  // eslint-disable-next-line react-native/no-unused-styles
+  medium: {
+    minWidth: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  primary: {
+    backgroundColor: COLORS.primary,
+  },
+  primaryContainer: {
+    backgroundColor: COLORS.primary + '08',
+  },
+  secondary: {
+    backgroundColor: 'transparent',
+    borderColor: COLORS.border + '40',
+    borderWidth: 1,
   },
   secondaryText: {
     color: COLORS.textSecondary,
   },
-  disabled: {
-    backgroundColor: COLORS.surface + '80',
-    opacity: 0.4,
+  // eslint-disable-next-line react-native/no-unused-styles
+  small: {
+    minWidth: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
-  disabledText: {
-    color: COLORS.textTertiary,
+  text: {
+    color: COLORS.text,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
 });

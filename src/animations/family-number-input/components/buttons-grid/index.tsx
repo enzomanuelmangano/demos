@@ -81,16 +81,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   input: {
-    width: '30%',
-    height: '20%',
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    marginLeft: 7 / 3 + '%',
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    marginBottom: 7 / 3 + '%',
-    justifyContent: 'center',
     alignItems: 'center',
+    height: '20%',
+    justifyContent: 'center',
+    marginBottom: `${7 / 3}%`,
+    marginLeft: `${7 / 3}%`,
+    width: '30%',
   },
   number: {
     color: 'white',

@@ -44,9 +44,6 @@ export const FrontSide = () => {
  * Styles for the FrontSide component
  */
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24,
-  },
   container: {
     alignItems: 'flex-start',
     flex: 1,
@@ -55,7 +52,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     paddingTop: 42,
   },
-  // Label style with platform-specific font family
+  footer: {
+    alignItems: 'center',
+    borderTopColor: 'rgba(60, 60, 67, 0.15)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
+    paddingTop: 16,
+    width: '100%',
+  },
   label: {
     color: '#8E8E93',
     fontFamily: Platform.select({
@@ -67,36 +73,26 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     textTransform: 'uppercase',
   },
-  // Value style with platform-specific font family
-  value: {
-    color: '#1C1C1E',
-    fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      default: 'System',
-    }),
-    fontSize: 21,
-    fontWeight: '600',
-    letterSpacing: -0.3,
+  section: {
+    marginBottom: 24,
   },
   spacer: {
     flex: 1,
   },
-  // Footer section with border and spacing
-  footer: {
-    alignItems: 'center',
-    borderTopColor: 'rgba(60, 60, 67, 0.15)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 'auto',
-    paddingTop: 16,
-    width: '100%',
+  ticketNumber: {
+    color: '#8E8E93',
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      default: 'System',
+    }),
+    fontSize: 15,
+    fontWeight: '400',
+    letterSpacing: -0.1,
   },
   userInfo: {
     alignItems: 'center',
     flexDirection: 'row',
   },
-  // Username text style with platform-specific font
   username: {
     color: '#1C1C1E',
     fontFamily: Platform.select({
@@ -107,15 +103,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     letterSpacing: -0.1,
   },
-  // Ticket number style with platform-specific font
-  ticketNumber: {
-    color: '#8E8E93',
+  value: {
+    color: '#1C1C1E',
     fontFamily: Platform.select({
-      ios: 'SF Pro Text',
+      ios: 'SF Pro Display',
       default: 'System',
     }),
-    fontSize: 15,
-    fontWeight: '400',
-    letterSpacing: -0.1,
+    fontSize: 21,
+    fontWeight: '600',
+    letterSpacing: -0.3,
   },
 });

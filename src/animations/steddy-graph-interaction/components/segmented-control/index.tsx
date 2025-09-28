@@ -103,10 +103,10 @@ function SegmentedControl<T extends string>({
 // Define local styles using StyleSheet.create
 const localStyles = StyleSheet.create({
   backgroundContainer: {
-    flexDirection: 'row',
-    borderRadius: 18,
-    borderWidth: 1, // Add border to the entire control
     borderColor: Palette.baseGray05,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: 'row',
   },
   difficultyLabel: {
     color: Palette.baseGray80,
@@ -115,16 +115,16 @@ const localStyles = StyleSheet.create({
     textAlign: 'center',
   },
   highlightedCellContent: {
-    zIndex: 1,
     alignSelf: 'center',
-    position: 'absolute',
     backgroundColor: Palette.background,
-    borderRadius: 12,
-    borderWidth: 1, // Add border to separate cells
     borderColor: Palette.baseGray05,
-    shadowOpacity: 0.1,
+    borderRadius: 12,
+    borderWidth: 1,
+    position: 'absolute',
     shadowOffset: { height: 1, width: 0 },
+    shadowOpacity: 0.1,
     shadowRadius: 2,
+    zIndex: 1,
   },
   labelContainer: {
     alignItems: 'center',

@@ -135,9 +135,9 @@ const SplitButton: FC<SplitButtonProps> = memo(
 
 const styles = StyleSheet.create({
   activeChip: {
-    width: 120, // Adjust as needed
     borderColor: colors.border,
     borderWidth: 1,
+    width: 120,
   },
   activeChipText: {
     color: colors.white,

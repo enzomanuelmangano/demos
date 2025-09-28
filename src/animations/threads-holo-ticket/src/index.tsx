@@ -34,9 +34,9 @@ export const ThreadsHoloTicket = () => {
  */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#070018', // Dark purple background
     alignItems: 'center',
+    backgroundColor: '#070018', // Dark purple background
+    flex: 1,
     justifyContent: 'center',
   },
 });
