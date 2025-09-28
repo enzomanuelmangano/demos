@@ -65,7 +65,11 @@ const styles = StyleSheet.create({
   input: {
     width: '30%',
     height: '20%',
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     marginLeft: 7 / 3 + '%',
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     marginBottom: 7 / 3 + '%',
     justifyContent: 'center',
     alignItems: 'center',
