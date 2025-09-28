@@ -1,14 +1,18 @@
-import { Host, Slider } from '@expo/ui/swift-ui';
-import { useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
+
+import { useMemo } from 'react';
+
+import { Host, Slider } from '@expo/ui/swift-ui';
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedProps,
   useSharedValue,
 } from 'react-native-reanimated';
+
 import { Palette } from '../../constants';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type SliderProps = {
   pickerSize?: number;
