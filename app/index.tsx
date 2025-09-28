@@ -1,8 +1,11 @@
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
 import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
-import { useCallback, useRef } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import {
   StaggeredText,
   StaggeredTextRef,
@@ -55,12 +58,16 @@ export default function HomeScreen() {
           ),
         }}
       />
-      <View style={styles.container}>
+      <View
+        style={styles.container}
+        onTouchStart={() => {
+          staggeredTextRef.current?.reset();
+          staggeredTextRef.current?.animate();
+        }}>
         <StaggeredText
           ref={staggeredTextRef}
           textStyle={styles.title}
           text="Swipe to explore."
-          delay={250}
         />
       </View>
     </>
@@ -69,19 +76,19 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: 'black',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'black',
+    flex: 1,
+    justifyContent: 'center',
   },
   title: {
     color: 'white',
+    fontFamily: 'honk-regular',
     fontSize: 24,
     fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 24,
-    fontFamily: 'honk-regular',
     letterSpacing: 1,
+    marginBottom: 24,
+    textAlign: 'center',
     textTransform: 'uppercase',
   },
 });

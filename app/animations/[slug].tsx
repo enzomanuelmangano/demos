@@ -1,12 +1,13 @@
-import { useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
+import { useLocalSearchParams } from 'expo-router';
 import Animated, {
   interpolate,
   useDerivedValue,
 } from 'react-native-reanimated';
+
 import {
   getAnimationComponent,
   getAnimationMetadata,
@@ -57,20 +58,20 @@ export default function AnimationScreen() {
 }
 
 const styles = StyleSheet.create({
+  blurView: {
+    ...StyleSheet.absoluteFillObject,
+    pointerEvents: 'none',
+    zIndex: 1000000,
+  },
   errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'black',
+    flex: 1,
+    justifyContent: 'center',
   },
   errorText: {
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-  },
-  blurView: {
-    ...StyleSheet.absoluteFillObject,
-    pointerEvents: 'none',
-    zIndex: 1000000,
   },
 });

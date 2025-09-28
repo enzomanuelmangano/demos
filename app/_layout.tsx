@@ -1,11 +1,13 @@
+import { Dimensions, StatusBar } from 'react-native';
+
+import { Suspense } from 'react';
+
 import * as Haptics from 'expo-haptics';
 import { Drawer } from 'expo-router/drawer';
 import { PressablesConfig } from 'pressto';
-import { Suspense } from 'react';
-import { Dimensions, StatusBar } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+
 import { CustomDrawerContent } from '../src/components/custom-drawer-content';
 import { FontsProvider } from '../src/components/fonts-provider';
 
