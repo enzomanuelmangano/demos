@@ -42,18 +42,15 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
   maxVal = 100,
   minVal = 0,
 }) => {
-  // Calculate dimensions and positions
   const internalOffset = 20;
   const initialAngleRad = Math.PI / 2;
   const cx = width / 2;
   const cy = height / 2;
   const radius = (width - internalOffset - strokeWidth) / 2;
 
-  // Shared values for picker position
   const translateX = useSharedValue(cx);
   const translateY = useSharedValue(0);
 
-  // Calculate progress based on picker position
   const progress = useDerivedValue(() => {
     const x = translateX.value - cx;
     const y = translateY.value - cy;
@@ -62,14 +59,12 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     return theta / (2 * Math.PI);
   }, [translateX.value, translateY.value]);
 
-  // Create circle path for clipping
   const circlePath = useMemo(() => {
     const path = Skia.Path.Make();
     path.addCircle(cx, cy, radius + strokeWidth / 2);
     return path;
   }, [cx, cy, radius, strokeWidth]);
 
-  // Calculate and format the current value
   const animatedValue = useDerivedValue(() => {
     return Math.min(Math.round(progress.value * maxVal) + minVal, maxVal);
   }, [progress.value]);
@@ -78,12 +73,10 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     return animatedValue.value.toString();
   }, [animatedValue.value]);
 
-  // Calculate text position
   const textPositionX = useDerivedValue(() => {
     return cx - font.measureText(currentTextValue.value).width / 2 - 2;
   }, [font, cx]);
 
-  // Trigger onValueChange callback when value changes
   useAnimatedReaction(
     () => animatedValue.value,
     (curr, prev) => {
@@ -94,7 +87,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
 
   return (
     <Touchable.Canvas style={{ width, height }}>
-      {/* Background circles */}
       <Group>
         <Circle cx={cx} cy={cy} r={radius + strokeWidth / 2} color={'#ebebeb'}>
           <BlurMask blur={30} style={'inner'} />
@@ -109,7 +101,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         </Circle>
       </Group>
 
-      {/* Background dots */}
       <BackgroundDots
         cx={cx}
         cy={cy}
@@ -117,7 +108,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         initialAngleRad={initialAngleRad}
       />
 
-      {/* Donut progress indicator */}
       <Donut
         cx={cx}
         cy={cy}
@@ -127,7 +117,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         initialAngleRad={initialAngleRad}
       />
 
-      {/* Clipped donut for visual effect */}
       <Group clip={circlePath}>
         <Donut
           cx={cx}
@@ -140,7 +129,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         </Donut>
       </Group>
 
-      {/* Picker for user interaction */}
       <Group clip={circlePath}>
         <Picker
           cx={cx}
@@ -152,7 +140,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         />
       </Group>
 
-      {/* Center circles for visual effect */}
       <Circle
         cx={cx}
         cy={cy}
@@ -163,7 +150,6 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
       </Circle>
       <Circle cx={cx} cy={cy} r={radius - strokeWidth / 2} color={'#FFFFFF'} />
 
-      {/* Display current value */}
       <Text
         text={currentTextValue}
         color={'#111'}

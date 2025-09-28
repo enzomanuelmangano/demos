@@ -13,12 +13,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// Constants
 const LIST_ITEM_HEIGHT = 90;
 const LIST_ITEM_MARGIN_BOTTOM = 20;
 const LIST_ITEM_CONTAINER_HEIGHT = LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM;
 
-// Types
 type BlurredListProps<T> = {
   maxVisibleItems: number;
   data: T[];
@@ -32,7 +30,6 @@ type BlurredListItemContainerProps = {
   currentListLength: number;
 };
 
-// Animated components
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 const keyframe = new Keyframe({
@@ -56,7 +53,6 @@ const keyframe = new Keyframe({
   },
 });
 
-// Utility functions
 const calculateTop = (
   index: number,
   currentListLength: number,
@@ -65,7 +61,6 @@ const calculateTop = (
   index * LIST_ITEM_CONTAINER_HEIGHT -
   Math.max(currentListLength - maxVisibleItems, 0) * LIST_ITEM_CONTAINER_HEIGHT;
 
-// Sub-components
 const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   children,
   index,
@@ -129,7 +124,6 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   );
 };
 
-// Main component
 export function BlurredList<T>({
   maxVisibleItems,
   data,
@@ -159,7 +153,6 @@ export function BlurredList<T>({
   );
 }
 
-// Styles
 const styles = StyleSheet.create({
   container: {
     position: 'relative',

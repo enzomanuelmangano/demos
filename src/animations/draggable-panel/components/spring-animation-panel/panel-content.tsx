@@ -20,14 +20,11 @@ type PanelContentProps = {
   onSelectSpringType: (type: SpringType) => void;
 };
 
-// Color constants for animations
 const COLORS = {
-  // Default colors
   DEFAULT_BORDER: 'rgba(233, 236, 239, 1)', // #e9ecef
   DEFAULT_BG: 'rgba(255, 255, 255, 1)', // #ffffff
   DEFAULT_TEXT: 'rgba(73, 80, 87, 1)', // #495057
 
-  // Theme colors
   ELEGANT: 'rgba(111, 66, 193, 1)', // #6f42c1
   ELEGANT_BG: 'rgba(248, 244, 255, 1)', // #f8f4ff
 
@@ -59,7 +56,6 @@ const springConfigs = {
   },
 };
 
-// Spring option configurations with their indicators
 const springOptions: Array<{
   type: SpringType;
   label: string;

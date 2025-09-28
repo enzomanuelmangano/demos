@@ -62,13 +62,11 @@ const StackedToast: React.FC<StackedToastProps> = ({
       overshootClamping: false,
     });
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomHeight]);
 
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
 
-  // Callback to dismiss the StackedToast with animation
   const dismissItem = useCallback(() => {
     'worklet';
     translateX.value = withTiming(
@@ -84,19 +82,15 @@ const StackedToast: React.FC<StackedToastProps> = ({
     );
   }, [onDismiss, stackedToastId, translateX, windowWidth]);
 
-  // Gesture handler for swipe interactions
   const gesture = Gesture.Pan()
-    // .enabled(isActiveStackedToast)
     .onBegin(() => {
       isSwiping.value = true;
     })
     .onUpdate(event => {
-      // Allow swiping only to the left direction
       if (event.translationX > 0) return;
       translateX.value = event.translationX;
     })
     .onEnd(event => {
-      // Dismiss the StackedToast if swiped enough, otherwise animate back to the initial position
       if (event.translationX < -50) {
         dismissItem();
       } else {
@@ -107,7 +101,6 @@ const StackedToast: React.FC<StackedToastProps> = ({
       isSwiping.value = false;
     });
 
-  // Animated styles for the StackedToast container
   const rStackedToastStyle = useAnimatedStyle(() => {
     return {
       bottom: bottom.value,
@@ -129,11 +122,8 @@ const StackedToast: React.FC<StackedToastProps> = ({
     };
   }, []);
 
-  // Animated styles for the visible container (opacity)
   const rVisibleContainerStyle = useAnimatedStyle(() => {
     return {
-      // The content of the first two StackedToasts is visible
-      // The content of the other StackedToasts is hidden
       opacity: withTiming(stackedToastId < MAX_VISIBLE_TOASTS ? 1 : 0),
     };
   }, [stackedToastId]);
@@ -143,7 +133,6 @@ const StackedToast: React.FC<StackedToastProps> = ({
     return stackedSheet.children();
   }, [stackedSheet]);
 
-  // Render the StackedToast component
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
@@ -180,7 +169,6 @@ const StackedToast: React.FC<StackedToastProps> = ({
   );
 };
 
-// Styles for the StackedToast component
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -193,5 +181,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the StackedToast component for use in other files
 export { StackedToast };

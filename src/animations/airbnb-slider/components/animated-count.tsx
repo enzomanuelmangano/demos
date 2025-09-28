@@ -4,13 +4,10 @@ import Animated from 'react-native-reanimated';
 
 import { AnimatedDigit } from './animated-digit';
 
-// Constants for the dimensions and styling of the animated digits
 const TEXT_DIGIT_HEIGHT = 60;
 const TEXT_DIGIT_WIDTH = 35;
 const FONT_SIZE = 50;
 const TEXT_COLOR = 'black';
-
-// Define the prop types for the AnimatedCount component
 type AnimatedCountProps = {
   count: SharedValue<number>;
   maxDigits: number;
@@ -49,7 +46,6 @@ const AnimatedCount: FC<AnimatedCountProps> = memo(
     fontSize = FONT_SIZE,
     color = TEXT_COLOR,
   }) => {
-    // Render the animated digits
     return (
       <Animated.View
         style={{

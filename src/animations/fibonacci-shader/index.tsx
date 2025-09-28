@@ -20,17 +20,13 @@ import {
 
 import { AnimatedSlider } from './components/animated-slider';
 
-// Max 350 circles, but you can update this value as you want.
-// It all depends on how fast is you're computer 😁
 const MAX_CIRCLES_AMOUNT = 350;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_SIZE = SCREEN_WIDTH;
 
 const FibonacciShader = () => {
-  // N is the amount of circles
   const N = useSharedValue(5.0);
-  // Try with this value: 77.51937688783158. The result is beautiful!
   const magicalMul = useSharedValue(2.4);
 
   const iTime = useSharedValue(0.0);
@@ -125,7 +121,6 @@ const FibonacciShader = () => {
           maxValue={MAX_CIRCLES_AMOUNT}
           onUpdate={value => {
             'worklet';
-            // While updating the Slider, I'm updating the N value as well
             N.value = value;
           }}
           color="white"
@@ -136,7 +131,6 @@ const FibonacciShader = () => {
       </View>
       <PressableScale
         onPress={() => {
-          // I love randomness :)
           magicalMul.value = Math.random() * 100;
         }}
         style={styles.floatingButton}>

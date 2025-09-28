@@ -5,9 +5,3 @@ export const Palette = {
   text: '#333',
 };
 
-// export const Palette = {
-//   background: '#171717',
-//   surface: '#232323',
-//   primary: '#e65529',
-//   text: '#dedede',
-// };

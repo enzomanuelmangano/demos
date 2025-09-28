@@ -13,7 +13,6 @@ const AddButton: FC<{ onPress: () => void }> = ({ onPress }) => (
   </PressableScale>
 );
 
-// Main App Component
 const App = () => {
   const [items, setItems] = useState<Item[]>([]);
 

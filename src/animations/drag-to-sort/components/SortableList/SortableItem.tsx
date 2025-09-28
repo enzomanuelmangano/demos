@@ -145,7 +145,6 @@ const SortableItem: FC<SortableListItemProps> = ({
       contextY.value = positions.value[index] - scrollContentOffsetY.value;
 
       translateX.value = translationX;
-      // Trigger haptic feedback if the gesture starts ✨
       scheduleOnRN(lightHapticFeedback);
     })
     .onUpdate(({ translationY, translationX, absoluteY }) => {
@@ -161,7 +160,6 @@ const SortableItem: FC<SortableListItemProps> = ({
     })
     .onFinalize(() => {
       translateX.value = withTiming(0, undefined, isFinished => {
-        // Check if the positions have changed to trigger the onDragEnd callback
         const positionsHaveChanged = Object.entries(prevPositions.value).some(
           ([key, value]) => {
             return positions.value[+key] !== value;
@@ -173,7 +171,6 @@ const SortableItem: FC<SortableListItemProps> = ({
         }
       });
       wasLastActiveIndex.value = true;
-      // Reset the animated index
       animatedIndex.value = null;
     });
 
@@ -189,7 +186,6 @@ const SortableItem: FC<SortableListItemProps> = ({
     });
   }, [itemHeight, index]);
 
-  // Callback to get the zIndex of the item
   const getZIndex = useCallback(() => {
     'worklet';
     // If it's the active item, it should be on top of the other items

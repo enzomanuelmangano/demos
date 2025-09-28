@@ -1,4 +1,3 @@
-// Function to generate a waveform array
 const generateWaveform = (
   sampleRate: number,
   frequency: number,

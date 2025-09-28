@@ -54,7 +54,6 @@ const CarouselItem: FC<CarouselItemProps> = memo(
         (-translateX.value + itemWidth / 2) /
           (carouselWidth / maxRenderedItems);
 
-      // Update main activeIndex
       activeIndex.value = Math.floor(preciseActiveIndex);
 
       const rotateY = interpolate(

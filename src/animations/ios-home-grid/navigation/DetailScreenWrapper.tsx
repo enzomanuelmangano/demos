@@ -23,12 +23,10 @@ export const DetailScreenWrapper = ({
 
   const gesture = Gesture.Pan()
     .onChange(event => {
-      // Add friction by reducing scaling sensitivity and using exponential curve
       const translationY = Math.max(0, event.translationY);
-      const frictionFactor = 0.3; // Reduce sensitivity
+      const frictionFactor = 0.3;
       const resistanceY = translationY * frictionFactor;
 
-      // Calculate scale with exponential resistance for more friction
       const scaleValue = Math.max(
         maxScale,
         Math.min(1, 1 - Math.pow(resistanceY / 400, 1.2)),
@@ -40,7 +38,6 @@ export const DetailScreenWrapper = ({
       }
     })
     .onEnd(event => {
-      // Add velocity-based friction - slower gestures are more likely to reset
       const shouldReset = !trigger.value || Math.abs(event.velocityY) < 300;
 
       if (shouldReset) {

@@ -39,5 +39,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the main App component for use in other files
 export { App };

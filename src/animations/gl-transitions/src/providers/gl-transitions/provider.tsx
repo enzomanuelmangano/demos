@@ -26,13 +26,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { transition } from './utils/transition';
 
-// Define prop types for the GLTransitionsProvider component
 type GLTransitionsProviderProps = {
   children?: ReactNode;
   transition: string;
 };
 
-// Define context type for GLTransitionsContext
 type GLTransitionsContextType = {
   prepareTransition: () => Promise<void>;
   runTransition: (
@@ -100,7 +98,6 @@ export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
     [firstScreenSnapshot, progress, secondScreenSnapshot],
   );
 
-  // Memoized context value
   const contextValue = useMemo(() => {
     return {
       prepareTransition,
@@ -108,22 +105,17 @@ export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
     };
   }, [prepareTransition, runTransition]);
 
-  // Animated style for canvas
   const rCanvasStyle = useAnimatedStyle(() => {
     return {
-      // Ensure the canvas is rendered above other elements during transition
       zIndex: progress.value === 0 ? -10 : 10,
-      // Disable pointer events during transition to prevent interaction
       pointerEvents: progress.value === 0 ? 'none' : 'auto',
     };
   }, []);
 
-  // Determine shader source based on transition
   const source = useMemo(() => {
     return transition(glTransition);
   }, [glTransition]);
 
-  // Get window dimensions
   const { width, height } = useWindowDimensions();
 
   const uniforms = useDerivedValue(() => {

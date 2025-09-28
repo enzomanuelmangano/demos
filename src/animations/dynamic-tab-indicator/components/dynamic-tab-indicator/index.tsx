@@ -22,7 +22,6 @@ const INDICATOR_CONTAINER_HEIGHT = 120;
 const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
   const { width, height } = useWindowDimensions();
 
-  // Use regular state for layouts since we don't need shared values for this
   const [layouts, setLayouts] = useState<LayoutRectangle[]>([]);
 
   const indicatorLayout = useSharedValue<LayoutRectangle>({
@@ -34,7 +33,6 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
 
   const scrollRef = useRef<Animated.ScrollView>(null);
 
-  // Memoize input and output ranges for better performance
   const interpolationRanges = useMemo(() => {
     const inputRange = data.map((_, index) => index * width);
 
@@ -51,7 +49,6 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
     return { inputRange, xOutputRange, widthOutputRange };
   }, [data, width, layouts]);
 
-  // Callback to update layouts from JS thread
   const updateLayout = useCallback((index: number, layout: LayoutRectangle) => {
     setLayouts(prevLayouts => {
       const newLayouts = [...prevLayouts];
@@ -60,7 +57,6 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
     });
   }, []);
 
-  // Callback to update initial indicator layout
   const updateInitialIndicator = useCallback(
     (layout: LayoutRectangle) => {
       indicatorLayout.value = layout;
@@ -68,13 +64,11 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
     [indicatorLayout],
   );
 
-  // Optimized scroll handler with memoized ranges
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
       const { inputRange, xOutputRange, widthOutputRange } =
         interpolationRanges;
 
-      // Only interpolate if we have valid ranges
       if (inputRange.length > 0 && xOutputRange.length > 0) {
         const contentOffsetX = event.contentOffset.x;
 
@@ -97,10 +91,8 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
     },
   });
 
-  // Memoize section titles to prevent unnecessary re-renders
   const sectionTitles = useMemo(() => data.map(item => item.title), [data]);
 
-  // Optimized scroll to section handler
   const handleSelectSection = useCallback(
     (index: number) => {
       scrollRef.current?.scrollTo({

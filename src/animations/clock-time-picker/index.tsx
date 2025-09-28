@@ -40,10 +40,8 @@ const dates = new Array(20).fill(0).map((_, index) => {
  * 3. Coordinating between Clock and TimeRange components
  */
 export const ClockTimePicker = () => {
-  // Shared value for the current selected time
   const date = useSharedValue(dates[0].getTime());
 
-  // Derive the adjusted time for the clock display
   const clockDate = useDerivedValue(() => {
     'worklet';
     return date.value + TimezoneOffsetMs;

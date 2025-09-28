@@ -44,7 +44,6 @@ export function Home() {
       <PressableHighlight
         style={styles.pressableHighlight}
         onPress={() => {
-          // TODO: Fix this type error
           navigation.navigate('issues' as never);
         }}>
         <Text style={styles.text}>My issues</Text>

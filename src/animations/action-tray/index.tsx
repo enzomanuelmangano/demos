@@ -25,19 +25,13 @@ function App() {
 
   const [step, setStep] = useState(0);
 
-  // Is it really necessary to use a shared value here?
-  // I don't know :)
   const isActionTrayOpened = useSharedValue(false);
 
-  // Close the action tray and reset the step
   const close = useCallback(() => {
     ref.current?.close();
     isActionTrayOpened.value = false;
     setStep(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Toggle the action tray state (open/close)
   const toggleActionTray = useCallback(() => {
     const isActive = ref.current?.isActive() ?? false;
     isActionTrayOpened.value = !isActive;
@@ -45,19 +39,14 @@ function App() {
   }, [close, isActionTrayOpened]);
 
   const rContentHeight = useDerivedValue(() => {
-    // Just a simple interpolation to make the content height dynamic based on the step
     return interpolate(step, [0, 1, 2], [80, 200, 250], Extrapolation.CLAMP);
   }, [step]);
 
   const rContentStyle = useAnimatedStyle(() => {
     return {
-      // Spring animations. Spring animations everywhere! 😅
       height: withSpring(rContentHeight.value),
     };
   }, []);
-
-  // Get the title, action button title and the rotation animation for the action button
-  // based on the current step
   const title = useMemo(() => {
     switch (step) {
       case 0:
@@ -88,7 +77,6 @@ function App() {
     return {
       transform: [
         {
-          // Rotate the button when the action tray is opened + -> x
           rotate: withTiming(isActionTrayOpened.value ? '45deg' : '0deg'),
         },
       ],
@@ -107,13 +95,11 @@ function App() {
         />
       </PressableScale>
 
-      {/* Reuse this ActionTray whenever you want, you just need to update the children :) */}
       <ActionTray
         ref={ref}
         maxHeight={screenHeight * 0.6}
         style={styles.actionTray}
         onClose={close}>
-        {/* All this content is fully customizable, you can use whatever you want here */}
         <View style={styles.headingContainer}>
           <Text style={styles.headingText}>{title}</Text>
           <View style={styles.fill} />

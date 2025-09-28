@@ -6,54 +6,37 @@ import { useCallback } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableScale } from 'pressto';
 
-// Import custom components and constants
 import { InteractiveList } from './components/interactive-list';
 import { INITIAL_ITEMS } from './constants';
 import { useAnimatedShake } from './hooks/use-animated-shake';
 import { ListItem } from './components/list-item';
 
-// Constants to define item height and margin
 const ITEM_HEIGHT = 100;
 const ITEM_MARGIN = 10;
 
-// Main App component
 const EmailDemo = () => {
-  // Fetch safe area insets using useSafeAreaInsets hook
   const { bottom: safeBottom, top: safeTop } = useSafeAreaInsets();
 
-  // Define shared value for erased items count
-  // At the beginning I was thinking to use a state, but the
-  // shared value is a better option to handle the animation
-  // since we're going to avoid useless re-renders
   const erasedItems = useSharedValue(0);
 
-  // Custom hook to handle animation logic for restore and delete buttons
-  // This hook is EXTREMELY useful (and reusable) to handle shake animations
-  // I've used it also in the Verification Code Input component animation
   const { shake: shakeRestore, rShakeStyle: rShakeRestoreStyle } =
     useAnimatedShake();
   const { shake: shakeDelete, rShakeStyle: rShakeDeleteStyle } =
     useAnimatedShake();
 
-  // Callback function for delete button press
   const onDelete = useCallback(() => {
-    // Check if all items are already erased, trigger shake animation if so
     if (erasedItems.value >= INITIAL_ITEMS.length) {
       shakeDelete();
       return;
     }
-    // Increment erased items count
     erasedItems.value = erasedItems.value + 1;
   }, [erasedItems, shakeDelete]);
 
-  // Callback function for restore button press
   const onRestore = useCallback(() => {
-    // Check if no item is erased, trigger shake animation if so
     if (erasedItems.value <= 0) {
       shakeRestore();
       return;
     }
-    // Decrement erased items count
     erasedItems.value = erasedItems.value - 1;
   }, [erasedItems, shakeRestore]);
 
@@ -104,32 +87,28 @@ const EmailDemo = () => {
             zIndex: 2,
           },
         ]}>
-        {/* Restore button */}
         <Animated.View style={rShakeRestoreStyle}>
           <PressableScale
-            onPress={onRestore} // Callback function for button press
+            onPress={onRestore}
             style={[
-              styles.floatingButton, // Basic button style
+              styles.floatingButton,
               {
-                backgroundColor: '#10b981', // Background color for restore button
+                backgroundColor: '#10b981',
               },
             ]}>
-            {/* Icon for restore button */}
             <MaterialIcons name="restore" size={24} color="white" />
           </PressableScale>
         </Animated.View>
 
-        {/* Delete button */}
         <Animated.View style={rShakeDeleteStyle}>
           <PressableScale
-            onPress={onDelete} // Callback function for button press
+            onPress={onDelete}
             style={[
-              styles.floatingButton, // Basic button style
+              styles.floatingButton,
               {
-                backgroundColor: '#ef4444', // Background color for delete button
+                backgroundColor: '#ef4444',
               },
             ]}>
-            {/* Icon for delete button */}
             <MaterialIcons name="delete" size={24} color="white" />
           </PressableScale>
         </Animated.View>
@@ -138,7 +117,6 @@ const EmailDemo = () => {
   );
 };
 
-// Stylesheet for the components
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -160,27 +138,27 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   buttonsContainer: {
-    position: 'absolute', // Position relative to container
-    left: 0, // Align to left edge
-    right: 0, // Align to right edge
-    justifyContent: 'space-evenly', // Distribute space between buttons
-    marginHorizontal: '20%', // Apply horizontal margin
-    flexDirection: 'row', // Arrange buttons horizontally
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    justifyContent: 'space-evenly',
+    marginHorizontal: '20%',
+    flexDirection: 'row',
   },
   topGradient: {
-    position: 'absolute', // Position relative to container
-    left: 0, // Align to left edge
-    right: 0, // Align to right edge
-    top: 0, // Align to top edge
-    zIndex: 1, // Ensure overlay over other components
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 1,
   },
   bottomGradient: {
-    position: 'absolute', // Position relative to container
-    left: 0, // Align to left edge
-    right: 0, // Align to right edge
-    bottom: 0, // Align to bottom edge
-    height: 150, // Fixed height
-    zIndex: 1, // Ensure overlay over other components
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 150,
+    zIndex: 1,
   },
   listContainerItem: {
     height: ITEM_HEIGHT,
@@ -201,5 +179,4 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export
 export { EmailDemo };

@@ -13,7 +13,6 @@ type SpringSliderContainerProps = {
 export const SpringSliderContainer: FC<SpringSliderContainerProps> = ({
   mutableConfig,
 }) => {
-  // Use shared values for config
   const mass = useSharedValue(mutableConfig.get().mass);
   const damping = useSharedValue(mutableConfig.get().damping);
   const stiffness = useSharedValue(mutableConfig.get().stiffness);

@@ -103,7 +103,6 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
   const toggleCollapse = useCallback(() => {
     setIsCollapsed(prev => {
       const newIsCollapsed = !prev;
-      // Snap immediately with new dimensions
       const newWidth = newIsCollapsed ? collapsedWidth : expandedWidth;
       const newHeight = newIsCollapsed ? collapsedHeight : expandedHeight;
       snapWithDimensions(newWidth, newHeight);
@@ -132,7 +131,6 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
       .onEnd(event => {
         isDraggingPanel.set(false);
 
-        // Snap to nearest corner
         const currentHeight = isCollapsed ? collapsedHeight : expandedHeight;
         const currentWidth = isCollapsed ? collapsedWidth : expandedWidth;
         const snapPosition = snapToCorner(

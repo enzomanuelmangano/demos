@@ -17,9 +17,9 @@ const Palette = {
 // - src/helpers/normalize-array.ts
 // - src/helpers/convert-array-to-string.ts
 
-const sampleRate = 44100; // Number of samples per second (standard for audio)
-const frequency = 440; // Frequency of the waveform in Hz (A4 note)
-const DURATION = 22.0; // Duration of the waveform in seconds
+const sampleRate = 44100;
+const frequency = 440;
+const DURATION = 22.0;
 
 const waveform = generateWaveform(sampleRate, frequency, DURATION);
 

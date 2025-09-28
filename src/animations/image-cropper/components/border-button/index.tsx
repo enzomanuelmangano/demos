@@ -5,7 +5,6 @@ type FancyBorderButtonProps = {
   title: string;
 };
 
-// Just a simple button with a border and a white text.
 const FancyBorderButton: React.FC<FancyBorderButtonProps> = ({
   onPress,
   title,

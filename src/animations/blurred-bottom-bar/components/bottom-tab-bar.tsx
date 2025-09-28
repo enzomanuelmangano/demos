@@ -13,7 +13,6 @@ export const BOTTOM_BAR_HEIGHT = 60;
 
 import { TabBarItem } from './tab-bar-item';
 
-// Get the screen height and define constants for small devices and bottom bar height
 export const SCREEN_HEIGHT = Dimensions.get('window').height;
 export const IS_SMALL_DEVICE = SCREEN_HEIGHT < 700;
 
@@ -87,7 +86,6 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
           localStyles.gradientContainer,
         ]}
       />
-      {/* Animated View representing the tab bar */}
       <View
         style={[
           localStyles.bottomContainer,
@@ -105,7 +103,6 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
               flex: 1,
             },
           ]}>
-          {/* Render tab bar items */}
           {Object.keys(ScreenNames).map((key, index) => {
             return (
               <TabBarItem
@@ -126,7 +123,6 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
   );
 };
 
-// Define local styles
 const localStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -150,5 +146,4 @@ const localStyles = StyleSheet.create({
   },
 });
 
-// Export the BottomTabBar component for usage in other components
 export { BottomTabBar };

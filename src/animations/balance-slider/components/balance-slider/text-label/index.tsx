@@ -75,7 +75,6 @@ export const TextLabel: React.FC<TextLabelProps> = ({
     <Animated.View
       style={[
         {
-          // left/right: 8
           [type]: 8,
         },
         styles.labelContainer,

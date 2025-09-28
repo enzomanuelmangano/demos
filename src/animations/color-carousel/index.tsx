@@ -32,14 +32,12 @@ export const ColorCarousel = () => {
           width: '100%',
           aspectRatio: 1,
         }}>
-        {/* That's the Reanimated Carousel */}
         <Carousel
           items={data}
           maxRenderedItems={MAX_RENDERED_ITEMS}
           width={windowWidth}
           activeIndex={activeIndex}
         />
-        {/* That's the Radial Gradient in the Background */}
         <Canvas style={[StyleSheet.absoluteFill, { zIndex: -1 }]}>
           <Rect x={0} y={0} width={windowWidth} height={windowWidth}>
             <RadialGradient

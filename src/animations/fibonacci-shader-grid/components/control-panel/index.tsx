@@ -34,21 +34,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   width,
   height,
 }) => {
-  // Function to remap x-coordinate from screen width (0 to width) to a specified range [minX, maxX].
   const remapXcoord = useCallback(
     (xCoord: number) => {
       'worklet';
-      // Using linear interpolation to map x-coordinate from screen width to the specified range.
       return interpolate(xCoord, [0, width], [minX, maxX], Extrapolation.CLAMP);
     },
     [maxX, minX, width],
   );
 
-  // Function to remap y-coordinate from screen height (0 to height) to a specified range [minY, maxY].
   const remapYcoord = useCallback(
     (yCoord: number) => {
       'worklet';
-      // Using linear interpolation to map y-coordinate from screen height to the specified range.
       return interpolate(
         yCoord,
         [0, height],
@@ -59,21 +55,17 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     [height, maxY, minY],
   );
 
-  // Function to map x-coordinate from a specified range [minX, maxX] to screen width.
   const mapXvalue = useCallback(
     (xCoord: number) => {
       'worklet';
-      // Using linear interpolation to map x-coordinate from the specified range to screen width.
       return interpolate(xCoord, [minX, maxX], [0, width], Extrapolation.CLAMP);
     },
     [maxX, minX, width],
   );
 
-  // Function to map y-coordinate from a specified range [minY, maxY] to screen height.
   const mapYvalue = useCallback(
     (yCoord: number) => {
       'worklet';
-      // Using linear interpolation to map y-coordinate from the specified range to screen height.
       return interpolate(
         yCoord,
         [minY, maxY],
@@ -84,61 +76,47 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
     [height, maxY, minY],
   );
 
-  // Shared state variable to track whether a pan gesture is currently active.
   const isActive = useSharedValue(false);
 
-  // Gesture handler for panning.
   const gesture = Gesture.Pan()
     .onBegin(event => {
-      // Set isActive to true when the pan gesture begins.
       isActive.value = true;
 
-      // Interpolate and animate x, y coordinates on gesture start.
       const interpolatedX = remapXcoord(event.x);
       const interpolatedY = remapYcoord(event.y);
 
-      // Use spring animation to smoothly transition to the new interpolated coordinates.
       x.value = withSpring(interpolatedX, {
-        mass: 0.5, // Mass parameter for spring animation.
+        mass: 0.5,
       });
       y.value = withSpring(interpolatedY, {
-        mass: 0.5, // Mass parameter for spring animation.
+        mass: 0.5,
       });
     })
     .onUpdate(event => {
-      // Interpolate and update x, y coordinates during the pan gesture.
       const interpolatedX = remapXcoord(event.x);
       const interpolatedY = remapYcoord(event.y);
 
-      // Update the animated values with the newly interpolated coordinates.
       x.value = interpolatedX;
       y.value = interpolatedY;
     })
     .onFinalize(() => {
-      // Set isActive to false when the pan gesture ends.
       isActive.value = false;
     });
 
-  // Animated style for a pointer, including opacity, translation, and scaling animations.
   const rPointerStyle = useAnimatedStyle(() => {
-    // Calculate translated x, y coordinates for the pointer animation.
     const translateX = mapXvalue(x.value) - BUTTON_RADIUS;
     const translateY = mapYvalue(y.value) - BUTTON_RADIUS;
 
     return {
-      // Animate opacity based on whether the pan gesture is active.
       opacity: withTiming(isActive.value ? 0.6 : 1),
       transform: [
         {
-          // Translate animation for x-coordinate.
           translateX,
         },
         {
-          // Translate animation for y-coordinate.
           translateY,
         },
         {
-          // Scale animation based on whether the pan gesture is active.
           scale: withSpring(isActive.value ? 1.2 : 1),
         },
       ],

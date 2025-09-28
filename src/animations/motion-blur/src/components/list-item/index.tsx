@@ -2,7 +2,6 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import type { Item } from '../../utils/generate-random-item';
 
-// Components
 const EmojiCircle: React.FC<{ emoji: string }> = ({ emoji }) => (
   <View style={styles.emojiCircle}>
     <Text style={styles.emoji}>{emoji}</Text>
@@ -26,7 +25,6 @@ export const ListItem: React.FC<{ item: Item }> = ({ item }) => (
   </View>
 );
 
-// Styles
 const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row',

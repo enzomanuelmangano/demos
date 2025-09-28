@@ -24,9 +24,7 @@ export type CardInputRefType = {
 
 export const CardInput = forwardRef<
   CardInputRefType,
-  {
-    //
-  }
+  {}
 >((_, ref) => {
   const { width, height } = useWindowDimensions();
   const progress = useSharedValue(0);
@@ -46,12 +44,9 @@ export const CardInput = forwardRef<
     [],
   );
 
-  // useHeaderHeight() from react-navigation in a real use case
   const potentialHeaderHeight = 52;
 
   const inputRange = [0, 1];
-
-  // -- Output Ranges constants --
 
   const initialCardHeight = height / 2.8;
   const expandedCardHeight = height;
@@ -144,7 +139,6 @@ export const CardInput = forwardRef<
         }}
         style={[
           {
-            // There are better ways to handle the top value, but this is just a demo :)
             top: safeTop + (Platform.OS === 'android' ? 8 : 0),
           },
           rBackIconStyle,
@@ -162,11 +156,9 @@ export const CardInput = forwardRef<
         <AnimatedTextInput
           ref={animatedTextInput}
           onFocus={() => {
-            // Here's the magic, we animate the progress value in a reactive way
             progress.value = withTiming(1, { duration: 600 });
           }}
           onBlur={() => {
-            // When the input is unfocused, we animate the progress value back to 0
             progress.value = withTiming(0, { duration: 600 });
           }}
           style={[styles.input, rTextInputStyle]}

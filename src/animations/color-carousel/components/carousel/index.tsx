@@ -116,5 +116,4 @@ const Carousel: FC<CarouselProps> = memo(
 />; */
 }
 
-// Export the Carousel component
 export { Carousel };

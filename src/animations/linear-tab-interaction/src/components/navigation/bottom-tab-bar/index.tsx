@@ -46,7 +46,6 @@ const TabBar = ({ activeScreenName }: TabBarProps) => {
   return (
     <View style={styles.container}>
       <View style={styles.tabsContainer}>
-        {/* Notes tab */}
         {SecondLayerTabs.map((screen, index) => {
           if (isEmptyTab(screen))
             return <View key={index} style={styles.empty} />;

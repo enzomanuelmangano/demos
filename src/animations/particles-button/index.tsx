@@ -12,7 +12,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { CircularButton } from './components/circular-button';
 
-// Configuration constants for the button
 const buttonSize = 48;
 const blastRadius = buttonSize * 2;
 

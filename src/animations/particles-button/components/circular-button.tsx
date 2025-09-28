@@ -77,7 +77,6 @@ const BlastEffectConfig = {
   damping: 20,
 };
 
-// Default colors for the button
 const lightColor = '#afafaf';
 const darkColor = '#1d1d1d';
 
@@ -172,7 +171,6 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
 
     onPress?.();
 
-    // Cancel any existing animations
     cancelAnimation(progress);
     isAnimating.set(true);
 

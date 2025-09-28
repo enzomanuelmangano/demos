@@ -10,7 +10,6 @@ type ProfileAvatarProps = {
 
 export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
   ({ name, size = 80, isVerified = false }) => {
-    // Memoize computed values to prevent recalculation
     const computedValues = useMemo(() => {
       const initial = name.charAt(0).toUpperCase();
       const fontSize = size * 0.4;
@@ -27,13 +26,11 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       };
     }, [name, size]);
 
-    // Memoize container style
     const containerStyle = useMemo(
       () => [styles.container, { width: size, height: size }],
       [size],
     );
 
-    // Memoize avatar style
     const avatarStyle = useMemo(
       () => [
         styles.avatar,
@@ -42,13 +39,11 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       [size],
     );
 
-    // Memoize initial text style
     const initialTextStyle = useMemo(
       () => [styles.initial, { fontSize: computedValues.fontSize }],
       [computedValues.fontSize],
     );
 
-    // Memoize verification badge style
     const badgeStyle = useMemo(
       () => [
         styles.verificationBadge,
@@ -63,7 +58,6 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       [computedValues.badgeSize, computedValues.badgeRadius],
     );
 
-    // Memoize checkmark text style
     const checkmarkStyle = useMemo(
       () => [styles.checkmark, { fontSize: computedValues.checkmarkSize }],
       [computedValues.checkmarkSize],
@@ -82,7 +76,6 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       </View>
     );
   },
-  // Custom comparison function for optimal re-rendering
   (prevProps, nextProps) => {
     return (
       prevProps.name === nextProps.name &&

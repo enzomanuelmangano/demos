@@ -16,7 +16,6 @@ const ItemWidth = 160;
 export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
   images,
 }) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const animatedRef = useAnimatedRef<any>();
   const scrollOffset = useScrollViewOffset(animatedRef);
 

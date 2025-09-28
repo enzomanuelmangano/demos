@@ -15,7 +15,6 @@ const Backdrop: FC<BackdropProps> = memo(({ animationProgress, onPress }) => {
   const animatedProps = useAnimatedProps(() => {
     return {
       pointerEvents: animationProgress.value ? 'auto' : 'none',
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any;
   }, []);
 
