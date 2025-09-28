@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Palette } from '../../../constants/palette';
@@ -29,15 +30,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subtitle: {
-    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 8,
+    fontSize: 12,
     fontWeight: '600',
+    marginBottom: 8,
   },
   title: {
-    fontSize: 24,
     color: 'white',
-    marginBottom: 32,
+    fontSize: 24,
     fontWeight: '600',
+    marginBottom: 32,
   },
 });

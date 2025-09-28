@@ -1,6 +1,8 @@
-import { Image } from 'expo-image';
-import { type FC } from 'react';
 import { Dimensions, StyleSheet } from 'react-native';
+
+import { type FC } from 'react';
+
+import { Image } from 'expo-image';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -124,7 +126,6 @@ const CircularListItem: FC<{
 
 const styles = StyleSheet.create({
   container: {
-    width: LIST_ITEM_WIDTH,
     aspectRatio: 1,
     shadowColor: '#000',
     shadowOffset: {
@@ -133,14 +134,15 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.2,
     shadowRadius: 10,
+    width: LIST_ITEM_WIDTH,
   },
   image: {
-    flex: 1,
-    borderWidth: 2,
     borderColor: '#fff',
-    shadowRadius: 20,
     borderRadius: 100,
+    borderWidth: 2,
+    flex: 1,
     margin: 8,
+    shadowRadius: 20,
   },
 });
 

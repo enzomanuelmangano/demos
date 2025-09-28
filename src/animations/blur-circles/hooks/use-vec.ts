@@ -1,6 +1,6 @@
-import { vec } from '@shopify/react-native-skia';
 import { useCallback } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { vec } from '@shopify/react-native-skia';
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -9,6 +9,8 @@ import {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { center } from '../constants';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type UseVecParams = {
   clock: SharedValue<number>;

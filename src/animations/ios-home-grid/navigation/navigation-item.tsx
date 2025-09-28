@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback, useId } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type AnimatedRef,
@@ -10,10 +10,12 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import type { WrapperRef } from 'react-native-reanimated/lib/typescript/commonTypes';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useCustomNavigation } from './expansion-provider';
+
+import type { StyleProp, ViewStyle } from 'react-native';
+import type { WrapperRef } from 'react-native-reanimated/lib/typescript/commonTypes';
 
 type NavigationItemProps = {
   children: ReactNode;

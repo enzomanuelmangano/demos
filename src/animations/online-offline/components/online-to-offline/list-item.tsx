@@ -1,3 +1,7 @@
+import { StyleSheet } from 'react-native';
+
+import { memo } from 'react';
+
 import {
   Canvas,
   ColorMatrix,
@@ -5,8 +9,6 @@ import {
   Image,
   useImage,
 } from '@shopify/react-native-skia';
-import { memo } from 'react';
-import { StyleSheet } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -15,6 +17,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { LayoutTransition } from './animations';
+
 import type { ItemProps } from './types';
 
 /**
@@ -106,13 +109,13 @@ export const ListItem = memo(
 );
 
 const styles = StyleSheet.create({
-  item: {
-    position: 'absolute',
-    overflow: 'hidden',
-    borderWidth: 3,
-  },
   canvas: {
-    width: '100%',
     height: '100%',
+    width: '100%',
+  },
+  item: {
+    borderWidth: 3,
+    overflow: 'hidden',
+    position: 'absolute',
   },
 });

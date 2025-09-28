@@ -1,5 +1,7 @@
-import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { memo } from 'react';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Slider } from './components/slider';
@@ -21,13 +23,13 @@ export const CubertoSlider = memo(() => {
 });
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
+    justifyContent: 'center',
+  },
   fill: {
     flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

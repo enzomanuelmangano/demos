@@ -1,10 +1,13 @@
-import type { DrawerContentComponentProps } from '@react-navigation/drawer';
-import { useCallback } from 'react';
 import { Text, StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
+
+import type { DrawerContentComponentProps } from '@react-navigation/drawer';
 
 const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
   const { top } = useSafeAreaInsets();
@@ -36,18 +39,18 @@ const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#111',
+    flex: 1,
   },
   heading: {
     color: 'white',
-    fontWeight: '600',
-    textTransform: 'uppercase',
     fontSize: 20,
+    fontWeight: '600',
     letterSpacing: 5,
-    textAlign: 'center',
-    marginTop: 7,
     marginBottom: 35,
+    marginTop: 7,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
 });
 

@@ -1,16 +1,18 @@
 import {
-  DiscretePathEffect,
-  SweepGradient,
-  vec,
-} from '@shopify/react-native-skia';
-import { useState } from 'react';
-import {
   StyleSheet,
   Text,
   TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
+
+import { useState } from 'react';
+
+import {
+  DiscretePathEffect,
+  SweepGradient,
+  vec,
+} from '@shopify/react-native-skia';
 import QRCode from 'react-native-qrcode-skia';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -78,20 +80,21 @@ const QRCodeGenerator = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: 'black',
+    flex: 1,
     justifyContent: 'center',
   },
+  sliderContainer: { marginLeft: 25, marginTop: 30 },
   textInput: {
-    borderWidth: 1,
-    marginHorizontal: '5%',
     borderColor: 'white',
+    borderRadius: 10,
+    borderWidth: 1,
     color: 'white',
     fontSize: 20,
-    paddingVertical: 15,
-    paddingHorizontal: 15,
     marginBottom: 25,
-    borderRadius: 10,
+    marginHorizontal: '5%',
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
   title: {
     color: 'white',
@@ -99,7 +102,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 1,
   },
-  sliderContainer: { marginLeft: 25, marginTop: 30 },
 });
 
 export { QRCodeGenerator };

@@ -1,7 +1,9 @@
 import { useCallback } from 'react';
+
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { useAnimatedPathData } from './hooks/use-animated-path-data';
 
 type ExclusionTabBoxProps = {

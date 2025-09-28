@@ -30,21 +30,21 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   section: {
-    marginBottom: spacing.m,
     backgroundColor: 'transparent',
     borderRadius: spacing.m,
+    marginBottom: spacing.m,
     paddingVertical: spacing.s,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontFamily: 'SF-Pro-Rounded-Bold',
-    color: '#000000',
-    marginBottom: spacing.s,
-  },
   sectionText: {
-    fontSize: 16,
-    lineHeight: 24,
     color: '#1A1D29',
     fontFamily: 'regular',
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  sectionTitle: {
+    color: '#000000',
+    fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 20,
+    marginBottom: spacing.s,
   },
 });

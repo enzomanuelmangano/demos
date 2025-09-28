@@ -1,3 +1,5 @@
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
+
 import {
   BlurMask,
   Canvas,
@@ -7,7 +9,6 @@ import {
   rrect,
   Skia,
 } from '@shopify/react-native-skia';
-import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import {
   Directions,
   Gesture,
@@ -21,6 +22,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { SnakeGame } from './snake-game';
 import { useConst } from './use-const';
 

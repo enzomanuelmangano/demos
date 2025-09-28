@@ -1,8 +1,11 @@
-import { type FC, memo } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
+
+import { type FC, memo } from 'react';
+
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { AnimatedImage } from '../../components/animated-image';
+
 import type { DetailsRouteProp } from '../../typings';
 
 const DetailsScreen: FC<{ route: DetailsRouteProp }> = memo(
@@ -50,8 +53,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   imageContainer: {
-    width: Dimensions.get('window').width,
     height: 300,
+    width: Dimensions.get('window').width,
+  },
+  paragraph: {
+    fontSize: 16,
+    marginTop: 20,
   },
   textContainer: {
     paddingHorizontal: 10,
@@ -60,10 +67,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     marginTop: 15,
-  },
-  paragraph: {
-    fontSize: 16,
-    marginTop: 20,
   },
 });
 

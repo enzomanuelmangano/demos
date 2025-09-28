@@ -11,6 +11,8 @@
  * ```
  */
 
+import { useMemo } from 'react';
+
 import {
   Canvas,
   Circle,
@@ -18,7 +20,6 @@ import {
   Line,
   Shadow,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 /**

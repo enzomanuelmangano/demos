@@ -1,5 +1,6 @@
-import { AntDesign } from '@expo/vector-icons';
 import { type FC, memo } from 'react';
+
+import { AntDesign } from '@expo/vector-icons';
 import Animated, {
   Extrapolation,
   interpolate,

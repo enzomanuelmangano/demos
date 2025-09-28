@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+
 import { Canvas, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
@@ -54,9 +55,9 @@ export const ColorCarousel = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: BACKGROUND_COLOR,
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: BACKGROUND_COLOR,
+    flex: 1,
+    justifyContent: 'center',
   },
 });

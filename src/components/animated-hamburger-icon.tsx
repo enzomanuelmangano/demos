@@ -1,13 +1,16 @@
+import { StyleSheet, View } from 'react-native';
+
+import { type FC } from 'react';
+
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { PressableOpacity } from 'pressto';
-import { type FC } from 'react';
-import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const ICON_HEIGHT = 14;
 const LINE_HEIGHT = 1.5;
@@ -128,12 +131,12 @@ export const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
   bar: {
-    width: '100%',
     height: LINE_HEIGHT,
+    width: '100%',
+  },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });

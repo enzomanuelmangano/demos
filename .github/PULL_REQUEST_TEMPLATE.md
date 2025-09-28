@@ -6,4 +6,4 @@
 
 ## Test plan
 
-<!-- Provide instructions or files for testing the changes, especially if special setup is required. -->
+<!-- Provide instructions or files for testing the changes, especially if a special setup is required. -->

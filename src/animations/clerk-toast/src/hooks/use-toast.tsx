@@ -1,10 +1,13 @@
-import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
+import { useCallback } from 'react';
+
 import { Octicons } from '@expo/vector-icons';
-import type { Icon } from '@expo/vector-icons/build/createIconSet';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useStackedToast } from '../stacked-toast-manager/hooks';
+
+import type { Icon } from '@expo/vector-icons/build/createIconSet';
 
 type IconName<T, H extends string> = T extends Icon<infer U, H> ? U : never;
 // Is there a better way to do this?
@@ -53,16 +56,16 @@ export const useToast = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: 'center',
     backgroundColor: '#2A292F',
+    flex: 1,
     flexDirection: 'row',
     paddingHorizontal: 20,
   },
   internalText: {
+    color: 'white',
     fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 14,
-    color: 'white',
     marginLeft: 10,
   },
 });

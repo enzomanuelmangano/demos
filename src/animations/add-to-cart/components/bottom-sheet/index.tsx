@@ -1,11 +1,14 @@
-import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type BottomSheetProps = {
   animationProgress: SharedValue<number>;
@@ -60,14 +63,14 @@ const BottomSheet: FC<BottomSheetProps> = memo(({ animationProgress }) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: BOTTOM_SHEET_HEIGHT,
-    paddingBottom: BOTTOM_SHEET_OFFSET,
     backgroundColor: 'white',
     borderRadius: 20,
+    bottom: 0,
+    height: BOTTOM_SHEET_HEIGHT,
+    left: 0,
+    paddingBottom: BOTTOM_SHEET_OFFSET,
+    position: 'absolute',
+    right: 0,
   },
 });
 

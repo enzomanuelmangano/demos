@@ -1,11 +1,12 @@
+import { Dimensions, StyleSheet } from 'react-native';
+
 import {
   forwardRef,
   type ReactNode,
   useCallback,
   useImperativeHandle,
 } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
-import { Dimensions, StyleSheet } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -18,7 +19,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { Backdrop } from './Backdrop';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 type ActionTrayProps = {
@@ -127,22 +131,22 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
 );
 const styles = StyleSheet.create({
   actionTrayContainer: {
+    alignSelf: 'center',
     backgroundColor: '#FFF',
-    width: '95%',
-    position: 'absolute',
-    bottom: 30,
     borderCurve: 'continuous',
-    alignSelf: 'center',
-  },
-  line: {
-    width: 75,
-    height: 4,
-    backgroundColor: 'grey',
-    alignSelf: 'center',
-    marginVertical: 15,
-    borderRadius: 2,
+    bottom: 30,
+    position: 'absolute',
+    width: '95%',
   },
   fill: { flex: 1 },
+  line: {
+    alignSelf: 'center',
+    backgroundColor: 'grey',
+    borderRadius: 2,
+    height: 4,
+    marginVertical: 15,
+    width: 75,
+  },
 });
 
 export { ActionTray };

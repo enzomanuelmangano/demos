@@ -1,3 +1,7 @@
+import { useWindowDimensions } from 'react-native';
+
+import { memo, useEffect } from 'react';
+
 import {
   BlurMask,
   Group,
@@ -5,8 +9,6 @@ import {
   SweepGradient,
   vec,
 } from '@shopify/react-native-skia';
-import { memo, useEffect } from 'react';
-import { useWindowDimensions } from 'react-native';
 import {
   useDerivedValue,
   useSharedValue,

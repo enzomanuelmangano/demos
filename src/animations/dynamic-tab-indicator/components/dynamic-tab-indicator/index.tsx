@@ -1,6 +1,7 @@
-import { type FC, memo, useCallback, useMemo, useRef, useState } from 'react';
-import type { LayoutRectangle } from 'react-native';
 import { Image, useWindowDimensions } from 'react-native';
+
+import { type FC, memo, useCallback, useMemo, useRef, useState } from 'react';
+
 import Animated, {
   Extrapolation,
   interpolate,
@@ -9,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { SectionTabs } from './section-tabs';
+
+import type { LayoutRectangle } from 'react-native';
 
 type DynamicTabIndicatorProps = {
   data: {

@@ -1,14 +1,14 @@
-import { useAtomValue } from 'jotai';
 import { useMemo } from 'react';
+
+import { useAtomValue } from 'jotai';
 import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
   useScrollViewOffset,
 } from 'react-native-reanimated';
 
-import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
-
 import { StoryListItem, StoryListItemWidth, WindowWidth } from './item';
+import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
 
 type TimeMachineListProps = {
   data: React.ReactNode[];

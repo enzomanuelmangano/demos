@@ -1,6 +1,7 @@
-import { useCallback } from 'react';
 import { StyleSheet } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { useCallback } from 'react';
+
 import Animated, {
   Easing,
   FadeIn,
@@ -10,6 +11,8 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 export type StatusType = 'inProgress' | 'correct' | 'wrong';
 
@@ -91,13 +94,13 @@ export const AnimatedCodeNumber: React.FC<AnimatedCodeNumberProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: '90%',
-    width: '80%',
-    borderWidth: 2,
-    borderRadius: 25,
-    borderCurve: 'continuous',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'white',
+    borderCurve: 'continuous',
+    borderRadius: 25,
+    borderWidth: 2,
+    height: '90%',
+    justifyContent: 'center',
     shadowColor: 'black',
     shadowOffset: {
       width: 0,
@@ -105,11 +108,11 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    backgroundColor: 'white',
+    width: '80%',
   },
   text: {
     color: 'black',
-    fontSize: 40,
     fontFamily: 'FiraCode-Regular',
+    fontSize: 40,
   },
 });

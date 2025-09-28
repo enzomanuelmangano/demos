@@ -1,8 +1,9 @@
+import { Platform, StyleSheet, Text, View } from 'react-native';
+
+import { memo, type FC } from 'react';
+
 import { Octicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { memo, type FC } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedProps,
@@ -11,6 +12,8 @@ import Animated, {
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type HideableNumberProps = {
   number: string;
@@ -108,9 +111,9 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
 // Styles
 const styles = StyleSheet.create({
   box: {
-    position: 'absolute',
     height: HideableNumberHeight,
     justifyContent: 'center',
+    position: 'absolute',
   },
   cardNumber: {
     fontFamily: 'FiraCode-Regular',

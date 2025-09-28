@@ -28,34 +28,19 @@ const SettingsScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#f5f5f5',
+    flex: 1,
     padding: 20,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#666',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  settingsContainer: {
-    flex: 1,
-  },
   settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'white',
-    padding: 15,
-    marginBottom: 10,
     borderRadius: 8,
+    elevation: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    padding: 15,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -63,16 +48,31 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
   },
   settingLabel: {
+    color: '#333',
     fontSize: 16,
     fontWeight: '500',
-    color: '#333',
   },
   settingValue: {
-    fontSize: 16,
     color: '#666',
+    fontSize: 16,
+  },
+  settingsContainer: {
+    flex: 1,
+  },
+  subtitle: {
+    color: '#666',
+    fontSize: 18,
+    marginBottom: 30,
+    textAlign: 'center',
+  },
+  title: {
+    color: '#333',
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
   },
 });
 

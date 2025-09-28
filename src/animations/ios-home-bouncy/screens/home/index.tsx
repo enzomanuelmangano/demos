@@ -1,12 +1,13 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { useMemo } from 'react';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { APPS_DATA as items } from '../../constants';
-import { BouncyView } from '../../components/bouncy-item';
+import { useMemo } from 'react';
+
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppItem } from './app-item';
 import { LayoutConfig, NUM_COLUMNS, SPACING } from './constants';
+import { BouncyView } from '../../components/bouncy-item';
+import { APPS_DATA as items } from '../../constants';
 
 /**
  * AppsList component displays a grid of app items with bouncy animations
@@ -76,13 +77,13 @@ export const AppsList = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#fafafa',
+    flex: 1,
   },
   gridContainer: {
     flexGrow: 1,
-    width: '100%',
     paddingBottom: SPACING * 2,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',

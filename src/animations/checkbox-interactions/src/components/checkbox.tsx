@@ -1,6 +1,7 @@
+import { StyleSheet } from 'react-native';
+
 import { AntDesign } from '@expo/vector-icons';
 import Color from 'color';
-import { StyleSheet } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -67,14 +68,14 @@ export const Checkbox: React.FC<CheckboxProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingLeft: 24,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderRadius: 36,
+    alignItems: 'center',
     borderCurve: 'continuous',
+    borderRadius: 36,
+    borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingLeft: 24,
+    paddingVertical: 12,
   },
   label: {
     fontFamily: 'SF-Pro-Rounded-Bold',

@@ -1,3 +1,7 @@
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import {
   Blur,
   ColorMatrix,
@@ -8,8 +12,6 @@ import {
   SweepGradient,
   vec,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import {
   useDerivedValue,
   useSharedValue,
@@ -125,7 +127,7 @@ export function Metaball() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#0A0A0A',
+    flex: 1,
   },
 });

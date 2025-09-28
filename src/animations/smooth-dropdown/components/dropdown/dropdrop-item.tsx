@@ -1,8 +1,9 @@
+import { StyleSheet, Text, View } from 'react-native';
+
+import { type FC, memo, useCallback, ComponentProps } from 'react';
+
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import Color from 'color';
-import type { ComponentProps } from 'react';
-import { type FC, memo, useCallback } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -159,37 +160,37 @@ const DropdownItem: FC<DropdownItemProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  item: {
-    width: '80%',
-    position: 'absolute',
-    borderRadius: 10,
-    padding: 15,
+  arrowBox: {
+    alignItems: 'center',
+    height: '80%',
+    justifyContent: 'center',
+    marginRight: 5,
   },
   content: {
+    alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
   },
   iconBox: {
-    height: '80%',
+    alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#0C0C0C',
-    marginRight: 12,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  arrowBox: {
     height: '80%',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 5,
+    marginRight: 12,
+  },
+  item: {
+    borderRadius: 10,
+    padding: 15,
+    position: 'absolute',
+    width: '80%',
   },
   title: {
     color: 'white',
-    textTransform: 'uppercase',
     fontSize: 16,
     letterSpacing: 1.2,
+    textTransform: 'uppercase',
   },
 });
 

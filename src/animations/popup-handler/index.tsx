@@ -1,7 +1,9 @@
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { useMemo } from 'react';
+
 import { FontAwesome } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useMemo } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import {
   Gesture,
   GestureDetector,

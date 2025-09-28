@@ -1,5 +1,6 @@
-import { makeMutable } from 'react-native-reanimated';
 import { useCallback } from 'react';
+
+import { makeMutable } from 'react-native-reanimated';
 
 /**
  * Shared mutable state to track the shaking status across components.

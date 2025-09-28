@@ -1,5 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet } from 'react-native';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { AppsList } from './apps-list';
 
@@ -19,11 +20,11 @@ const ShakeToDeleteAnimation = () => {
 
 const styles = StyleSheet.create({
   background: {
-    position: 'absolute',
+    bottom: 0,
     left: 0,
+    position: 'absolute',
     right: 0,
     top: 0,
-    bottom: 0,
   },
 });
 

@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
 
 import { isSwitchingThemeShared } from '../../theme';

@@ -1,14 +1,17 @@
-import { type FC, useCallback, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
+
+import { type FC, useCallback, useRef, useState } from 'react';
+
+import { useFocusEffect } from 'expo-router';
+import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { useFocusEffect } from 'expo-router';
-import { useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import { useAnimatedShake } from '../../../email-demo/hooks/use-animated-shake';
 import { VerificationCode } from '../../components/verification-code';
+
 import type { StatusType } from '../../components/verification-code/animated-code-number';
 
 type VerificationCodeScreenProps = {
@@ -131,10 +134,13 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 };
 
 const styles = StyleSheet.create({
+  codeContainer: {
+    width: '100%',
+  },
   container: {
-    flex: 1,
-    backgroundColor: 'black',
     alignItems: 'center',
+    backgroundColor: 'black',
+    flex: 1,
     justifyContent: 'center',
   },
   headerText: {
@@ -143,11 +149,8 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     marginLeft: 18,
   },
-  codeContainer: {
-    width: '100%',
-  },
   invisibleInput: {
-    position: 'absolute',
     bottom: -50,
+    position: 'absolute',
   },
 });

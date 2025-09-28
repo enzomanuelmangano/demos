@@ -1,8 +1,9 @@
+import { Text, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import type React from 'react';
-import { useCallback } from 'react';
-import { Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -12,6 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import {
   ALERT_COLOR,
   BUTTON_HEIGHT,
@@ -21,6 +23,8 @@ import {
   MIN_BUTTON_WIDTH,
   styles,
 } from './styles';
+
+import type React from 'react';
 
 type AlertDrawerProps = {
   title: string;

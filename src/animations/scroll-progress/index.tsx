@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sections } from './constants';
@@ -41,20 +43,20 @@ export function ScrollProgress() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#111',
+    flex: 1,
+  },
+  description: {
+    color: '#999',
+    fontSize: 14,
   },
   textContainer: {
     marginBottom: 20,
   },
   title: {
+    color: '#EEE',
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#EEE',
     marginBottom: 10,
-  },
-  description: {
-    fontSize: 14,
-    color: '#999',
   },
 });

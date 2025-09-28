@@ -1,11 +1,14 @@
-import { memo, useCallback, useMemo } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { memo, useCallback, useMemo } from 'react';
+
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
 
 import { BlurredListItem } from './components/blurred-list-item';
+
 const NUMBERS_ARRAY = new Array(100)
   .fill(0)
   .map((_, i) => i.toString())
@@ -69,9 +72,9 @@ export const ScrollTransition3D = memo(() => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
     justifyContent: 'center',
   },
 });

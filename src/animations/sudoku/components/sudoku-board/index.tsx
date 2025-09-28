@@ -5,6 +5,8 @@
  * and visual feedback. It handles cell selection, number input, and game state management.
  */
 
+import { StyleSheet, View } from 'react-native';
+
 import {
   forwardRef,
   useCallback,
@@ -13,20 +15,20 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { StyleSheet, View } from 'react-native';
+
 import Animated, {
   FadeIn,
   FadeInDown,
   useSharedValue,
 } from 'react-native-reanimated';
 
-import type { SudokuBoard as SudokuBoardType } from '../../logic';
 import { SudokuGame } from '../../logic';
 import { COLORS } from '../../theme';
 import { NumberPad } from '../number-pad';
-
 import { CellContainer } from './cell-container';
 import { BOARD_SIZE } from './constants';
+
+import type { SudokuBoard as SudokuBoardType } from '../../logic';
 
 export type SudokuBoardRef = {
   solve: () => boolean;
@@ -158,20 +160,15 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
 SudokuBoard.displayName = 'SudokuBoard';
 
 export const styles = StyleSheet.create({
-  boardContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   board: {
-    width: BOARD_SIZE,
-    height: BOARD_SIZE,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    justifyContent: 'center',
     alignItems: 'center',
+    borderColor: COLORS.primary,
     borderRadius: 8,
-    overflow: 'hidden',
+    borderWidth: 2,
     elevation: 8,
+    height: BOARD_SIZE,
+    justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: COLORS.primary,
     shadowOffset: {
       width: 0,
@@ -179,6 +176,11 @@ export const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+    width: BOARD_SIZE,
+  },
+  boardContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   row: {
     flexDirection: 'row',

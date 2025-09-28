@@ -1,6 +1,5 @@
-import type { ReactNode } from 'react';
 import { useCallback } from 'react';
-import type { ScrollViewProps } from 'react-native';
+
 import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
@@ -8,8 +7,12 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { SortableItem } from './SortableItem';
+
 import type { Positions } from './types';
+import type { ReactNode } from 'react';
+import type { ScrollViewProps } from 'react-native';
 
 type SortableListProps<T> = {
   listItemHeight: number;

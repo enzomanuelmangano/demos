@@ -1,7 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { AnimatedCodeNumberProps } from './animated-code-number';
 import { AnimatedCodeNumber } from './animated-code-number';
+
+import type { AnimatedCodeNumberProps } from './animated-code-number';
 
 type VerificationCodeProps = {
   code: number[];
@@ -29,16 +30,16 @@ export const VerificationCode: React.FC<VerificationCodeProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: '100%',
-    flexDirection: 'row',
-    paddingHorizontal: 10,
-  },
   codeContainer: {
+    alignItems: 'center',
     aspectRatio: 0.95,
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  container: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    width: '100%',
   },
 });

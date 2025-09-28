@@ -26,39 +26,39 @@ export const ListItem: React.FC<{ item: Item }> = ({ item }) => (
 );
 
 const styles = StyleSheet.create({
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
+  address: {
+    color: 'black',
+    fontFamily: 'Honk-Regular',
+    fontSize: 14,
+    marginTop: 5,
+    opacity: 0.3,
   },
-  emojiCircle: {
-    height: 60,
-    aspectRatio: 1,
-    borderRadius: 30,
-    backgroundColor: '#F4F4F4',
-    justifyContent: 'center',
-    alignItems: 'center',
+  amount: {
+    color: 'black',
+    fontFamily: 'Honk-Bold',
+    fontSize: 22,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  detailsContainer: {
+    alignItems: 'flex-end',
+    flex: 1,
+    marginLeft: 10,
   },
   emoji: {
     fontSize: 25,
   },
-  detailsContainer: {
-    flex: 1,
-    marginLeft: 10,
-    alignItems: 'flex-end',
+  emojiCircle: {
+    alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: '#F4F4F4',
+    borderRadius: 30,
+    height: 60,
+    justifyContent: 'center',
   },
-  amount: {
-    fontSize: 22,
-    color: 'black',
-    fontWeight: 'bold',
-    letterSpacing: 1,
-    fontFamily: 'Honk-Bold',
-  },
-  address: {
-    fontSize: 14,
-    color: 'black',
-    opacity: 0.3,
-    fontFamily: 'Honk-Regular',
-    marginTop: 5,
+  listItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    padding: 10,
   },
 });

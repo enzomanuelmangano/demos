@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
 
 import { StackedCarousel } from './components/stacked-carousel';
 
@@ -45,17 +46,17 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  fill: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#eeeeee',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   carousel: {
     backgroundColor: 'transparent',
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#eeeeee',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  fill: {
+    flex: 1,
   },
 });
 

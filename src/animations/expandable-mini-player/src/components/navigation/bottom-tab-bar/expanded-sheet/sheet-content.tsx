@@ -1,13 +1,14 @@
 import { View, Image, StyleSheet } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
+import { MiniPlayerHeight } from './constants';
 import { Palette } from '../../../../constants/palette';
 
-import { MiniPlayerHeight } from './constants';
+import type { SharedValue } from 'react-native-reanimated';
 
 type SheetContentProps = {
   progress: SharedValue<number>;
@@ -106,12 +107,12 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  title: {
-    color: Palette.text,
-  },
   subtitle: {
     color: Palette.text,
-    opacity: 0.5,
     marginTop: 2,
+    opacity: 0.5,
+  },
+  title: {
+    color: Palette.text,
   },
 });

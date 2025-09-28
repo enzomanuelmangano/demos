@@ -1,3 +1,5 @@
+import { useWindowDimensions } from 'react-native';
+
 import {
   forwardRef,
   type ReactNode,
@@ -6,7 +8,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { useWindowDimensions } from 'react-native';
+
 import Animated, {
   Extrapolation,
   interpolate,

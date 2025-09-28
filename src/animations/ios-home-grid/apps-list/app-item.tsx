@@ -1,10 +1,11 @@
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
+
 import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { NavigationItem } from '../navigation/navigation-item';
 
 import type { AppData } from './constants';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 /**
  * Props for the AppItem component
@@ -55,16 +56,16 @@ export const AppItem: React.FC<AppItemProps> = ({ item, onPress, style }) => {
 };
 
 const styles = StyleSheet.create({
+  gradient: {
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    flex: 1,
+    overflow: 'hidden',
+  },
   itemContainer: {
     aspectRatio: 1,
   },
   touchable: {
     flex: 1,
-  },
-  gradient: {
-    flex: 1,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
   },
 });

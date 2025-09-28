@@ -1,10 +1,12 @@
 import { type FC } from 'react';
-import type { ViewProps } from 'react-native';
+
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { ViewProps } from 'react-native';
 
 const AnimatedOpacityView: FC<
   ViewProps & {

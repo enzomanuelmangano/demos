@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { WaveformScrubber } from './components/waveform-scrubber';
@@ -16,9 +17,9 @@ export const AudioPlayer = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: Palette.background,
     alignItems: 'center',
+    backgroundColor: Palette.background,
+    flex: 1,
     justifyContent: 'center',
   },
 });

@@ -1,6 +1,3 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { PressableScale } from 'pressto';
-import { type FC } from 'react';
 import {
   ColorValue,
   StyleSheet,
@@ -8,6 +5,11 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+
+import { type FC } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from 'pressto';
 
 type BottomSheetPageProps = {
   onPress?: () => void;
@@ -44,21 +46,21 @@ const BottomSheetPage: FC<BottomSheetPageProps> = ({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   button: {
-    height: 50,
-    width: 200,
-    borderRadius: 40,
-    justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 40,
+    height: 50,
+    justifyContent: 'center',
+    width: 200,
   },
   buttonText: {
     color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

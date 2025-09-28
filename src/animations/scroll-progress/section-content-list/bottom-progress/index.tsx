@@ -1,6 +1,7 @@
-import { type FC, memo } from 'react';
-import type { ViewProps } from 'react-native';
 import { StyleSheet } from 'react-native';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -9,9 +10,10 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { BottomProgressState } from '../typings';
-
 import { CollapsedArea } from './collapsed-area';
 import { ProgressBarArea } from './progress-bar-area';
+
+import type { ViewProps } from 'react-native';
 
 type BottomProgressProps = {
   style?: ViewProps['style'];

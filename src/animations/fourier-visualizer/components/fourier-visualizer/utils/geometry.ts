@@ -1,14 +1,15 @@
-import type {
-  SkContourMeasure,
-  SkPath,
-  SkRect,
-  Vector,
-} from '@shopify/react-native-skia';
 import {
   fitbox,
   processTransform2d,
   Skia,
   vec,
+} from '@shopify/react-native-skia';
+
+import type {
+  SkContourMeasure,
+  SkPath,
+  SkRect,
+  Vector,
 } from '@shopify/react-native-skia';
 
 export const fitRect = (src: SkRect, dst: SkRect) =>

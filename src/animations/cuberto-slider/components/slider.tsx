@@ -1,5 +1,6 @@
-import { Canvas, FitBox, Path, rect, Skia } from '@shopify/react-native-skia';
 import { StyleSheet } from 'react-native';
+
+import { Canvas, FitBox, Path, rect, Skia } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -186,25 +187,25 @@ const Slider: React.FC<SliderProps> = ({
 const styles = StyleSheet.create({
   balloonText: {
     ...StyleSheet.absoluteFillObject,
-    color: 'white',
-    fontStyle: 'normal',
-    textAlign: 'center',
-    fontSize: 20,
     bottom: 10,
+    color: 'white',
+    fontSize: 20,
+    fontStyle: 'normal',
     fontWeight: 'bold',
-  },
-  progressBar: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
+    textAlign: 'center',
   },
   picker: {
     aspectRatio: 1,
     backgroundColor: 'white',
-    position: 'absolute',
-    left: 0,
     bottom: 0,
+    left: 0,
+    position: 'absolute',
+  },
+  progressBar: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    top: 0,
   },
 });
 

@@ -1,14 +1,17 @@
-import { type FC, memo, useCallback } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { View } from 'react-native';
+
+import { type FC, memo, useCallback } from 'react';
+
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 
-import type { DropdownOptionType } from './dropdrop-item';
 import { DropdownItem } from './dropdrop-item';
+
+import type { DropdownOptionType } from './dropdrop-item';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type DropdownProps = {
   options: DropdownOptionType[];

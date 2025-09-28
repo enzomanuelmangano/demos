@@ -1,3 +1,5 @@
+import { StyleSheet, View } from 'react-native';
+
 import {
   forwardRef,
   useCallback,
@@ -6,7 +8,7 @@ import {
   type ReactElement,
   type Ref,
 } from 'react';
-import { StyleSheet, View } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -16,15 +18,15 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { WindowWidth } from '../../constants';
-
 import { CarouselItem } from './carousel-item';
+import { WindowWidth } from '../../constants';
 import { useInterpolateConfig } from './hooks/use-interpolate-config';
+import { snapPoint } from './utils/snap-point';
+
 import type {
   InfiniteCircularCarouselProps,
   InfiniteCircularCarouselRef,
 } from './types';
-import { snapPoint } from './utils/snap-point';
 
 // Before being scared by the code, let me tell you that all this complexity
 // is there just to create a simple Infinite Circular Carousel.

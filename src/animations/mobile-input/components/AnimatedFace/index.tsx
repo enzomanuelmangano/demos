@@ -1,3 +1,7 @@
+import { useWindowDimensions } from 'react-native';
+
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
+
 import {
   Group,
   Path,
@@ -5,8 +9,6 @@ import {
   Circle as SkiaCircle,
   interpolate,
 } from '@shopify/react-native-skia';
-import { forwardRef, useCallback, useImperativeHandle } from 'react';
-import { useWindowDimensions } from 'react-native';
 import {
   useDerivedValue,
   useSharedValue,

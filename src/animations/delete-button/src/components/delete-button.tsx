@@ -1,9 +1,6 @@
 import { Group, ImageSVG, Text } from '@shopify/react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
-import { useDeleteButtonAnimations } from './use-delete-button-animations';
-import { useCloseButtonAnimations } from './use-close-buttons-animations';
-import { useTextAnimations } from './use-text-animations';
 import {
   CloseSvgPath,
   CloseSvgPathHeight,
@@ -11,7 +8,10 @@ import {
   font,
   fontStyle,
 } from './constants';
+import { useCloseButtonAnimations } from './use-close-buttons-animations';
+import { useDeleteButtonAnimations } from './use-delete-button-animations';
 import { useGooeyLayer } from './use-gooey-layer';
+import { useTextAnimations } from './use-text-animations';
 
 type DeleteButtonProps = {
   onConfirmDeletion: () => void;

@@ -1,11 +1,13 @@
 import { memo, useMemo } from 'react';
-import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+
 import Animated, {
   FadeIn,
   FadeOut,
   LayoutAnimationConfig,
   LinearTransition,
 } from 'react-native-reanimated';
+
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 
 type ComposableTextProps = {
   text: string;

@@ -1,6 +1,7 @@
-import { type FC, useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
+
+import { type FC, useMemo } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -11,6 +12,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type SliderProps = {
   pickerSize?: number;
@@ -153,18 +156,18 @@ const Slider: FC<SliderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  progressBar: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-  },
   picker: {
     aspectRatio: 1,
     backgroundColor: 'white',
-    position: 'absolute',
-    left: 0,
     bottom: 0,
+    left: 0,
+    position: 'absolute',
+  },
+  progressBar: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    top: 0,
   },
 });
 

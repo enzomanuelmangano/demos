@@ -1,5 +1,7 @@
-import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -187,28 +189,28 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(255,255,255,0.09)',
+    borderColor: 'rgba(255,255,255,0.4)',
     borderRadius: BUTTON_RADIUS,
     borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    flexWrap: 'wrap',
     flexDirection: 'row',
+    flexWrap: 'wrap',
     overflow: 'visible',
   },
-  pointer: {
-    position: 'absolute',
-    aspectRatio: 1,
-    backgroundColor: 'white',
-    height: BUTTON_RADIUS * 2,
-    borderRadius: BUTTON_RADIUS,
-  },
   gridItem: {
-    overflow: 'hidden',
     borderColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
+    overflow: 'hidden',
   },
   line: {
-    position: 'absolute',
     backgroundColor: 'rgba(255,255,255,0.8)',
+    position: 'absolute',
     zIndex: 10,
+  },
+  pointer: {
+    aspectRatio: 1,
+    backgroundColor: 'white',
+    borderRadius: BUTTON_RADIUS,
+    height: BUTTON_RADIUS * 2,
+    position: 'absolute',
   },
 });

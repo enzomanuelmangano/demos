@@ -1,4 +1,3 @@
-import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Reanimated, {
   measure,
@@ -12,8 +11,9 @@ import Reanimated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedLottieView } from '../animated-lottie-view';
-
 import { useSwitchTheme } from './context';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type SwitchThemeButtonProps = {
   style?: StyleProp<ViewStyle>;

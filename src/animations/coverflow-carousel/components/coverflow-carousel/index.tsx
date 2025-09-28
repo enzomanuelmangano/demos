@@ -1,9 +1,11 @@
+import { useWindowDimensions } from 'react-native';
+
+import { useCallback } from 'react';
+
 import Animated, {
   useAnimatedRef,
   useScrollViewOffset,
 } from 'react-native-reanimated';
-import { useWindowDimensions } from 'react-native';
-import { useCallback } from 'react';
 
 import { CarouselItem } from './carousel-item';
 

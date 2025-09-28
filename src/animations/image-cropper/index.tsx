@@ -1,3 +1,7 @@
+import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { useCallback, useRef, useState } from 'react';
+
 import {
   Canvas,
   FitBox,
@@ -6,12 +10,11 @@ import {
   rect as skRect,
   useImage,
 } from '@shopify/react-native-skia';
-import { useCallback, useRef, useState } from 'react';
-import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { FancyBorderButton } from './components/border-button';
-import type { ImageCropperRef } from './components/image-cropper';
 import { ImageCropper as ImageCropperComponent } from './components/image-cropper';
+
+import type { ImageCropperRef } from './components/image-cropper';
 
 const ImageCropper = () => {
   const image = useImage(
@@ -108,36 +111,36 @@ const ImageCropper = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#000',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
-  },
-  detailContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#000',
+  backButtonContainer: {
+    bottom: 100,
+    position: 'absolute',
+    right: 20,
   },
   buttonsContainer: {
-    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-evenly',
     marginHorizontal: 10,
     marginTop: 20,
+    width: '100%',
   },
-  backButtonContainer: {
-    position: 'absolute',
-    bottom: 100,
-    right: 20,
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  detailContainer: {
+    alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
   },
 });
 

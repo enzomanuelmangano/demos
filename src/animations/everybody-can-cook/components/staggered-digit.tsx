@@ -1,9 +1,11 @@
 import { StyleSheet, type StyleProp, type TextStyle } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 /**
  * Props for the StaggeredDigit component
@@ -105,11 +107,11 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   digit: {
     color: 'white',
-  },
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

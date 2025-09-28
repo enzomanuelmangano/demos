@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import debounce from 'lodash.debounce';
+import { StyleSheet, useWindowDimensions } from 'react-native';
+
 import {
   createContext,
   type ReactNode,
@@ -7,8 +7,9 @@ import {
   useContext,
   useMemo,
 } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
-import type { SharedValue, useAnimatedRef } from 'react-native-reanimated';
+
+import { useRouter } from 'expo-router';
+import debounce from 'lodash.debounce';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -22,6 +23,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { SharedValue, useAnimatedRef } from 'react-native-reanimated';
 
 type AnimatedRef = ReturnType<typeof useAnimatedRef>;
 
@@ -254,12 +257,12 @@ export const useCustomNavigation = () => {
 
 const styles = StyleSheet.create({
   animatedView: {
+    elevation: 5,
     position: 'absolute',
     shadowColor: 'black',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.2,
     shadowRadius: 20,
-    elevation: 5,
     zIndex: 1000,
   },
 });

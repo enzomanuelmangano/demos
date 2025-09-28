@@ -1,11 +1,13 @@
 import { type FC, memo } from 'react';
-import type { TouchableOpacityProps } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+
+import type { TouchableOpacityProps } from 'react-native';
 
 type PressableScaleProps = Omit<TouchableOpacityProps, 'activeOpacity'> & {
   onPress: () => void;

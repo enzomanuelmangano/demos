@@ -1,9 +1,11 @@
-import { useCallback, useRef } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
 import { PressableScale } from 'pressto';
 
-import { useStackedSheet } from './stacked-sheet-manager/hooks';
 import { MagicScreen } from './screens/the-magic';
+import { useStackedSheet } from './stacked-sheet-manager/hooks';
 import { StackedSheetHandle } from './stacked-sheet-manager/stacked-sheet-handle';
 
 // THIS HOOK IS A MESS, JUST TO BUILD THE FANCY DEMO
@@ -152,9 +154,9 @@ export const useDemoStackedSheet = () => {
 // Define the styles for the components using StyleSheet.create
 const styles = StyleSheet.create({
   fillCenter: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   internalText: {
     fontFamily: 'SF-Pro-Rounded-Bold',

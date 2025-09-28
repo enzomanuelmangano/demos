@@ -1,4 +1,5 @@
 import { Dimensions } from 'react-native';
+
 import { createNoise2D } from 'simplex-noise';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');

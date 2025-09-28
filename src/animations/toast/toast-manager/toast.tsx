@@ -1,5 +1,7 @@
-import { useCallback, useEffect } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
+import { useCallback, useEffect } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -159,43 +161,43 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
 };
 
 const styles = StyleSheet.create({
+  columnCenter: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
   container: {
-    position: 'absolute',
-    height: 70,
     backgroundColor: 'white',
     borderRadius: 20,
+    elevation: 5,
+    height: 70,
+    paddingHorizontal: 25,
+    position: 'absolute',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 0,
     },
     shadowOpacity: 0.2,
-    elevation: 5,
-    paddingHorizontal: 25,
   },
   rowCenter: {
+    alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  columnCenter: {
+  subtitle: {
+    color: '#666',
+    fontSize: 13,
+  },
+  textContainer: {
+    alignItems: 'flex-start',
     flex: 1,
-    flexDirection: 'column',
     justifyContent: 'center',
+    rowGap: 2,
   },
   title: {
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  subtitle: {
-    fontSize: 13,
-    color: '#666',
-  },
-  textContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    rowGap: 2,
   },
 });
 

@@ -1,6 +1,7 @@
-import { type FC, memo, type ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+import { type FC, memo, type ReactNode } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedProps,
@@ -9,6 +10,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { FLOATING_BUTTON_SIZE } from '../constants';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type ModalProps = {
   children?: ReactNode;
@@ -59,6 +62,20 @@ const ModalContent: FC<ModalProps> = memo(
 );
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    backgroundColor: '#111',
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+    margin: 10,
+  },
+  buttonContainer: {
+    height: 80,
+    width: '100%',
+  },
+
+  buttonTitle: { color: 'white', fontSize: 20, fontWeight: '700' },
   modalContainerTitle: {
     height: FLOATING_BUTTON_SIZE,
     justifyContent: 'center',
@@ -67,20 +84,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
   },
-
-  buttonContainer: {
-    height: 80,
-    width: '100%',
-  },
-  button: {
-    flex: 1,
-    backgroundColor: '#111',
-    margin: 10,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonTitle: { color: 'white', fontSize: 20, fontWeight: '700' },
 });
 
 export { ModalContent };

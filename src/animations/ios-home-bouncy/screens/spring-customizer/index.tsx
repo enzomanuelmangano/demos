@@ -1,10 +1,6 @@
 import { useState, type FC } from 'react';
-import Animated, { LayoutAnimationConfig } from 'react-native-reanimated';
 
-import {
-  ClosingSpringConfigShared,
-  OpeningSpringConfigShared,
-} from '../../animations/bouncy';
+import Animated, { LayoutAnimationConfig } from 'react-native-reanimated';
 
 import {
   ClosingEnteringKeyframe,
@@ -16,6 +12,10 @@ import { ModalContent } from './components/modal-content';
 import { PullToDismissGesture } from './components/pull-to-dismiss';
 import { SpringSliderContainer } from './components/spring-slider-container';
 import { TabSelector } from './components/tab-selector';
+import {
+  ClosingSpringConfigShared,
+  OpeningSpringConfigShared,
+} from '../../animations/bouncy';
 
 type SpringTab = 'closing' | 'opening';
 

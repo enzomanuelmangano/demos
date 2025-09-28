@@ -1,7 +1,9 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo } from 'react';
+
+import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
+
 import type { ViewProps } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
-import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
 
 type MeasureFunction = () => MeasuredDimensions | null;
 

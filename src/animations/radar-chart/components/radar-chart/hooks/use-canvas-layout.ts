@@ -1,8 +1,11 @@
 // Importing the necessary dependencies and types
-import { useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
+
+import { useMemo } from 'react';
+
 import { useSharedValue, useDerivedValue } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 // Custom hook for calculating canvas layout
 const useCanvasLayout = (canvasStyle: StyleProp<ViewStyle>) => {

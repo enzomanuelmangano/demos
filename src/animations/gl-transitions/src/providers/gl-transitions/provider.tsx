@@ -1,11 +1,5 @@
-import type { SkImage } from '@shopify/react-native-skia';
-import {
-  Canvas,
-  Fill,
-  ImageShader,
-  makeImageFromView,
-  Shader,
-} from '@shopify/react-native-skia';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import {
   createContext,
   type FC,
@@ -14,8 +8,14 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import type { WithTimingConfig } from 'react-native-reanimated';
+
+import {
+  Canvas,
+  Fill,
+  ImageShader,
+  makeImageFromView,
+  Shader,
+} from '@shopify/react-native-skia';
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
@@ -25,6 +25,9 @@ import Animated, {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { transition } from './utils/transition';
+
+import type { SkImage } from '@shopify/react-native-skia';
+import type { WithTimingConfig } from 'react-native-reanimated';
 
 type GLTransitionsProviderProps = {
   children?: ReactNode;

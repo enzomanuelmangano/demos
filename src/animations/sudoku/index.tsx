@@ -6,10 +6,11 @@
  * a beautiful UI with animations and visual feedback.
  */
 
-import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ConfettiMethods } from 'react-native-fast-confetti';
+
+import { useCallback, useRef, useState } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 import { PIConfetti } from 'react-native-fast-confetti';
 import Animated, {
   FadeIn,
@@ -23,6 +24,8 @@ import { Button } from './components/button';
 import { SudokuBoard, type SudokuBoardRef } from './components/sudoku-board';
 import { generateSudoku } from './logic';
 import { COLORS, ELEVATION } from './theme';
+
+import type { ConfettiMethods } from 'react-native-fast-confetti';
 
 const Transition = LinearTransition;
 
@@ -182,16 +185,28 @@ const ConfettiColors = [
 ];
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: COLORS.background,
+  boardContainer: {
+    ...ELEVATION.medium,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    justifyContent: 'center',
+    minHeight: 160,
+    minWidth: '100%',
+    overflow: 'hidden',
+    padding: 16,
+  },
+  boardWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   container: {
     flex: 1,
   },
   content: {
-    flex: 1,
     alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
     padding: 20,
   },
@@ -202,40 +217,28 @@ const styles = StyleSheet.create({
   headerActions: {
     marginTop: 16,
   },
-  title: {
-    fontSize: 40,
-    fontWeight: '700',
-    color: COLORS.text,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
+  safeArea: {
+    backgroundColor: COLORS.background,
+    flex: 1,
   },
-  subtitle: {
-    fontSize: 15,
-    color: COLORS.textTertiary,
-    marginTop: 6,
-    letterSpacing: 0.3,
-  },
-  boardContainer: {
-    ...ELEVATION.medium,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-    backgroundColor: COLORS.surface,
-    padding: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: '100%',
-    minHeight: 160,
-  },
-  boardWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  startButton: {
+    minWidth: 200,
   },
   startContainer: {
     alignItems: 'center',
     padding: 24,
   },
-  startButton: {
-    minWidth: 200,
+  subtitle: {
+    color: COLORS.textTertiary,
+    fontSize: 15,
+    letterSpacing: 0.3,
+    marginTop: 6,
+  },
+  title: {
+    color: COLORS.text,
+    fontSize: 40,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });

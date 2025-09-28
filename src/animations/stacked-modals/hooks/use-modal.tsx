@@ -1,11 +1,14 @@
-import { useCallback } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { Octicons } from '@expo/vector-icons';
-import type { Icon } from '@expo/vector-icons/build/createIconSet';
+
+import { useCallback } from 'react';
+
 import { createAnimatedPressable } from 'pressto';
 import { interpolateColor } from 'react-native-reanimated';
 
 import { useStackedModal } from '../stacked-modal-manager/hooks';
+
+import type { Octicons } from '@expo/vector-icons';
+import type { Icon } from '@expo/vector-icons/build/createIconSet';
 
 type IconName<T, H extends string> = T extends Icon<infer U, H> ? U : never;
 type OcticonsIconName = IconName<typeof Octicons, 'octicons'>;
@@ -99,45 +102,45 @@ export const useModal = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
+  button: {
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  message: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  trailingContainer: {
-    marginBottom: 12,
+    justifyContent: 'center',
+
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   buttonContainer: {
     flexDirection: 'row',
-    marginRight: 12,
-    marginBottom: 12,
     justifyContent: 'flex-end',
-  },
-  button: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 12,
+    marginRight: 12,
   },
   buttonText: {
     color: '#141414',
     fontWeight: 'bold',
+  },
+  container: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    flex: 1,
+    padding: 16,
+  },
+  header: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  message: {
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 12,
+  },
+  title: {
+    color: '#333',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  trailingContainer: {
+    marginBottom: 12,
   },
 });

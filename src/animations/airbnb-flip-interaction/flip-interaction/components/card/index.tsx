@@ -1,5 +1,7 @@
-import { type FC, memo, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { type FC, memo, useMemo } from 'react';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -7,10 +9,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { spacing } from '../../constants';
-
 import { CardBack } from './back';
 import { CardFront } from './front';
+import { spacing } from '../../constants';
+
 import type { ProfileType } from './types';
 
 const SPRING_CONFIG = {
@@ -141,16 +143,9 @@ export const FlipCard: FC<FlipCardProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rotationContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   card: {
     aspectRatio: 1.6,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -158,16 +153,23 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 4,
   },
   cardFace: {
-    width: '100%',
-    height: '100%',
     borderRadius: spacing.l + 4,
+    height: '100%',
     overflow: 'hidden',
+    width: '100%',
+  },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   flipContainer: {
-    width: '100%',
     height: '100%',
+    width: '100%',
+  },
+  rotationContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

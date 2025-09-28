@@ -1,4 +1,5 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { SlideToReveal } from './components/slide-to-reveal';
@@ -17,9 +18,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000000',
     alignItems: 'center',
+    backgroundColor: '#000000',
+    flex: 1,
     justifyContent: 'center',
   },
 });

@@ -1,10 +1,12 @@
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, TouchableOpacity } from 'react-native';
+
 import Animated, {
   FadeIn,
   FadeOut,
   LinearTransition,
 } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type FloatingButtonProps = {
   layout: 'grid' | 'list';
@@ -60,20 +62,20 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    bottom: 50,
-    right: 16,
-    height: 70,
     aspectRatio: 1,
-    borderRadius: 35,
     backgroundColor: 'white',
+    borderRadius: 35,
+    bottom: 50,
+    height: 70,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 16,
     shadowOffset: {
       width: 0,
       height: 10,
     },
     shadowOpacity: 0.25,
     shadowRadius: 20,
-    justifyContent: 'center',
   },
 });
 

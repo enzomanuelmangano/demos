@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 type UseActiveLetterAnimationParams = {

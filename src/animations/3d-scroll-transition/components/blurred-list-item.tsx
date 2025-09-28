@@ -1,3 +1,7 @@
+import { useWindowDimensions } from 'react-native';
+
+import { FC, useMemo } from 'react';
+
 import {
   Blur,
   BlurMask,
@@ -11,15 +15,14 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import { FC, useMemo } from 'react';
-import { useWindowDimensions } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 // Import the custom font
 // TODO: Improve

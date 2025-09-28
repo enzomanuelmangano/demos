@@ -1,4 +1,5 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { BalanceSlider as BalanceSliderComponent } from './components/balance-slider';
@@ -48,9 +49,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
     justifyContent: 'center',
   },
 });

@@ -1,4 +1,3 @@
-import type { PropsWithChildren } from 'react';
 import {
   useCallback,
   useMemo,
@@ -6,6 +5,7 @@ import {
   useState,
   type FC,
   type ReactNode,
+  PropsWithChildren,
 } from 'react';
 
 import { Backdrop } from './backdrop';

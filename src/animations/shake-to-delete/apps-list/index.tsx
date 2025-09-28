@@ -1,12 +1,15 @@
 import { StyleSheet, useWindowDimensions, Pressable } from 'react-native';
+
 import { useState, useMemo } from 'react';
+
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppItem } from './app-item';
-import type { AppData } from './constants';
 import { APPS_DATA } from './constants';
 import { useIsShaking } from './hooks';
+
+import type { AppData } from './constants';
 
 /** Grid layout constants */
 const SPACING = 8;
@@ -84,8 +87,8 @@ export const AppsList = () => {
 const styles = StyleSheet.create({
   gridContainer: {
     flexGrow: 1,
-    width: '100%',
     paddingBottom: SPACING * 2,
+    width: '100%',
   },
   rowWrapper: {
     flexDirection: 'row',

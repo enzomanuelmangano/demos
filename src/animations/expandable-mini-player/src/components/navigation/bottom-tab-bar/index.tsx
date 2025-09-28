@@ -1,11 +1,11 @@
 import { StyleSheet, View } from 'react-native';
+
 import Animated from 'react-native-reanimated';
 
-import { BaseTabs } from '../../../constants/tabs';
-
-import { TabItem } from './tab-item';
-import { ExpandedSheet } from './expanded-sheet';
 import { TabBarHeight } from './constants';
+import { ExpandedSheet } from './expanded-sheet';
+import { TabItem } from './tab-item';
+import { BaseTabs } from '../../../constants/tabs';
 
 type TabBarProps = {
   activeIndex: number;
@@ -33,19 +33,19 @@ const TabBar = ({ activeIndex }: TabBarProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     height: TabBarHeight,
+    justifyContent: 'space-between',
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
   tabsContainer: {
     ...StyleSheet.absoluteFillObject,
+    bottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    bottom: 10,
   },
 });
 

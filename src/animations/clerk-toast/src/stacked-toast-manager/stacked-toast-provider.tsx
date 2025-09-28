@@ -1,5 +1,11 @@
-import type { PropsWithChildren } from 'react';
-import { type FC, useCallback, useMemo, useRef, useState } from 'react';
+import {
+  type FC,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  PropsWithChildren,
+} from 'react';
 
 import { Backdrop } from './backdrop';
 import {

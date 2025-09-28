@@ -1,3 +1,7 @@
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+
+import { useEffect } from 'react';
+
 import {
   Blur,
   Canvas,
@@ -8,8 +12,6 @@ import {
   Skia,
 } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import {
   Easing,
   useDerivedValue,
@@ -141,25 +143,25 @@ const FibonacciShader = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  floatingButton: {
-    position: 'absolute',
-    right: 60,
-    bottom: 120,
-    backgroundColor: '#232323',
-    borderRadius: 32,
-    height: 64,
-    width: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   animatedSlider: {
-    marginTop: 80,
     alignItems: 'center',
     flexDirection: 'column',
+    marginTop: 80,
+  },
+  container: {
+    backgroundColor: 'black',
+    flex: 1,
+  },
+  floatingButton: {
+    alignItems: 'center',
+    backgroundColor: '#232323',
+    borderRadius: 32,
+    bottom: 120,
+    height: 64,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 60,
+    width: 64,
   },
   floatingContent: { fontSize: 32 },
 });

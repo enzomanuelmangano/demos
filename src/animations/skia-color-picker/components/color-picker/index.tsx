@@ -1,4 +1,3 @@
-import type { SkPath } from '@shopify/react-native-skia';
 import {
   BlurMask,
   Canvas,
@@ -10,7 +9,6 @@ import {
   Skia,
   SweepGradient,
 } from '@shopify/react-native-skia';
-import type { FC } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedReaction,
@@ -18,12 +16,16 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { radialGradientShader } from './shader';
-import type { Point } from './types';
 import { clampToCircle } from './utils/clamp-to-circle';
 import { getHueFromPosition } from './utils/get-hue-from-position';
 import { getSaturationFromPosition } from './utils/get-saturation-from-position';
 import { hsvToRgb } from './utils/hsv-to-rgb';
+
+import type { Point } from './types';
+import type { SkPath } from '@shopify/react-native-skia';
+import type { FC } from 'react';
 
 type ColorPickerProps = {
   canvasSize: number;

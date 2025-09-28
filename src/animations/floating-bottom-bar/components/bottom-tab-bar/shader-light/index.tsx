@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+
 import {
   Canvas,
   LinearGradient,
@@ -5,7 +7,6 @@ import {
   RoundedRect,
   Skia,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
 
 type HighlightedPathProps = {
   width: number;

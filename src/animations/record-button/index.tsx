@@ -1,5 +1,7 @@
-import type { FlatList } from 'react-native';
 import { Dimensions, StyleSheet, Text } from 'react-native';
+
+import { useCallback } from 'react';
+
 import Animated, {
   Extrapolation,
   interpolate,
@@ -9,9 +11,10 @@ import Animated, {
   useScrollViewOffset,
   useSharedValue,
 } from 'react-native-reanimated';
-import { useCallback } from 'react';
 
 import { RecordButton as RecordButtonComponent } from './components/record-button';
+
+import type { FlatList } from 'react-native';
 
 const { width: WindowWidth, height: WindowHeight } = Dimensions.get('window');
 
@@ -134,12 +137,12 @@ export const RecordButton = () => {
 };
 
 const styles = StyleSheet.create({
-  list: { flex: 1, backgroundColor: '#252525' },
   container: {
-    height: WindowHeight,
-    width: WindowWidth,
-    backgroundColor: '#252525',
     alignItems: 'center',
+    backgroundColor: '#252525',
+    height: WindowHeight,
     justifyContent: 'center',
+    width: WindowWidth,
   },
+  list: { backgroundColor: '#252525', flex: 1 },
 });

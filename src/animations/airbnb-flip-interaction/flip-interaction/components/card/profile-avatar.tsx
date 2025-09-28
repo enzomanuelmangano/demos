@@ -1,6 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { type FC, memo, useMemo } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 type ProfileAvatarProps = {
   name: string;
@@ -86,29 +88,11 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-  },
   avatar: {
-    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  initial: {
-    color: 'white',
-    fontWeight: '700',
-    fontFamily: 'SF-Pro-Rounded-Heavy',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  verificationBadge: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'white',
+    justifyContent: 'center',
   },
   checkmark: {
     color: 'white',
@@ -116,5 +100,23 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
+  },
+  container: {
+    position: 'relative',
+  },
+  initial: {
+    color: 'white',
+    fontFamily: 'SF-Pro-Rounded-Heavy',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  verificationBadge: {
+    alignItems: 'center',
+    borderColor: 'white',
+    borderWidth: 3,
+    justifyContent: 'center',
+    position: 'absolute',
   },
 });

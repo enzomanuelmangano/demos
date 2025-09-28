@@ -1,11 +1,13 @@
 import { StyleSheet, View } from 'react-native';
+
 import { useState } from 'react';
+
+import { PressableScale } from 'pressto';
 import {
   LinearTransition,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 import { ComposableText } from './composable-text';
 
@@ -53,9 +55,9 @@ export const ComposableTextScreen = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#0c0c0c',
     alignItems: 'center',
+    backgroundColor: '#0c0c0c',
+    flex: 1,
     justifyContent: 'center',
   },
   text: {
@@ -65,8 +67,8 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     backgroundColor: '#181818',
+    borderRadius: 32,
     padding: 16,
     paddingHorizontal: 22,
-    borderRadius: 32,
   },
 });

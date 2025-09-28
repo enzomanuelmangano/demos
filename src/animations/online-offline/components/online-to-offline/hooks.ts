@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 
-import type { LayoutDimensions, ListItem, OfflineToOnlineProps } from './types';
 import {
   calculateGapWidth,
   calculateOverlap,
   calculateSectionWidth,
 } from './utils';
+
+import type { LayoutDimensions, ListItem, OfflineToOnlineProps } from './types';
 
 export const useLayoutDimensions = ({
   online,

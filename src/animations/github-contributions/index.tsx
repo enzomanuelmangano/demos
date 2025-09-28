@@ -1,5 +1,6 @@
-import { useMemo, useRef } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { useMemo, useRef } from 'react';
 
 import { COLOR_SCHEMES } from './config/defaults';
 import { GitHubContributionCalendar } from './contribution-calendar';
@@ -34,9 +35,9 @@ export const GitHubContributions = () => {
 
 const styles = StyleSheet.create({
   appContainer: {
-    flex: 1,
-    backgroundColor: '#f7f7f7',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    flex: 1,
+    justifyContent: 'center',
   },
 });

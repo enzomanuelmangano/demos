@@ -1,10 +1,11 @@
-import { type FC, useCallback, useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
 
-import { getCommasArray } from '../../utils/get-commas-array';
+import { type FC, useCallback, useMemo } from 'react';
 
 import { AnimatedSingleNumber } from './individual-number';
+import { getCommasArray } from '../../utils/get-commas-array';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type AnimatedNumberProps = {
   value: number;
@@ -82,15 +83,15 @@ export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
 
 const styles = StyleSheet.create({
   item: {
-    fontSize: 90,
     color: 'white',
-    fontWeight: 'bold',
-    width: 60,
-    textAlign: 'center',
     fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 90,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    width: 60,
   },
   itemContainer: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
 });

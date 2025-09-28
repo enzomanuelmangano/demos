@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import { useSharedValue } from 'react-native-reanimated';
 
 import { useTimeout } from './useTimeout';

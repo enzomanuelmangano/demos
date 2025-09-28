@@ -4,13 +4,16 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { useImage } from '@shopify/react-native-skia';
+
 import { useCallback, useRef } from 'react';
+
 import { useNavigation } from '@react-navigation/native';
+import { useImage } from '@shopify/react-native-skia';
+
+import { FancyBorderButton } from '../components/border-button';
+import { ImageCropper } from '../components/image-cropper';
 
 import type { ImageCropperRef } from '../components/image-cropper';
-import { ImageCropper } from '../components/image-cropper';
-import { FancyBorderButton } from '../components/border-button';
 import type { RootStackNavigationProp } from '../navigation';
 
 const ImageCropperScreen = () => {
@@ -68,18 +71,18 @@ const ImageCropperScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   buttonsContainer: {
-    width: '100%',
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-evenly',
     marginHorizontal: 10,
     marginTop: 20,
+    width: '100%',
+  },
+  container: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
 });
 

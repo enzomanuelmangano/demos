@@ -3,8 +3,10 @@
  * The ticket has two sides (front and back) and uses a holographic effect.
  */
 
-import { type FC, memo, type ReactNode } from 'react';
 import { StyleSheet } from 'react-native';
+
+import { type FC, memo, type ReactNode } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,

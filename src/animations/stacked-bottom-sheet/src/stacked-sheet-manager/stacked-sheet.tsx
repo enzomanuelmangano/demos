@@ -1,5 +1,7 @@
-import { type FC, useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { type FC, useCallback, useEffect, useMemo } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -8,9 +10,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import type { StackedSheetType } from './context';
+
 import { useInternalStackedSheet } from './hooks';
 import { StackedSheetHandle } from './stacked-sheet-handle';
+
+import type { StackedSheetType } from './context';
 
 // Define the props for the StackedSheet component
 type StackedSheetProps = {
@@ -169,14 +173,14 @@ const StackedSheet: FC<StackedSheetProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
     backgroundColor: 'white',
     borderRadius: 35,
+    elevation: 2,
+    position: 'absolute',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    elevation: 2,
   },
 });
 

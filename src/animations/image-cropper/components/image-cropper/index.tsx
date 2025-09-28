@@ -1,7 +1,6 @@
-import type { ImageProps } from '@shopify/react-native-skia';
-import { Image, rect } from '@shopify/react-native-skia';
 import { forwardRef, useImperativeHandle, useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
+import { Image, rect } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
@@ -10,6 +9,9 @@ import {
 import Touchable from 'react-native-skia-gesture';
 
 import { Grid } from './grid';
+
+import type { ImageProps } from '@shopify/react-native-skia';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type ImageCropperProps = {
   image: ImageProps['image'];

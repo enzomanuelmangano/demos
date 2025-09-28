@@ -1,5 +1,7 @@
-import { type ReactNode, useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
+
+import { type ReactNode, useMemo } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -9,9 +11,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { clamp, findClosestSnapPoint } from '../../helpers';
-
 import { StoryListItem } from './story-item';
+import { clamp, findClosestSnapPoint } from '../../helpers';
 
 type StoryListProps<T> = {
   stories: T[];

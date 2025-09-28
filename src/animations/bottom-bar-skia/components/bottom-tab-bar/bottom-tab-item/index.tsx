@@ -1,5 +1,6 @@
-import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
 import { type FC, memo, useMemo } from 'react';
+
+import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
 import {
   interpolateColor,
   useDerivedValue,

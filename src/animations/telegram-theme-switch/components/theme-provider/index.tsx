@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo } from 'react';
 
-import { useSwitchTheme } from '../switch-theme';
 import { DarkPalette, LightPalette } from '../../constants/palette';
+import { useSwitchTheme } from '../switch-theme';
 
 type ThemeColors = typeof DarkPalette;
 

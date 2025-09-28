@@ -1,17 +1,19 @@
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, TouchableOpacity } from 'react-native';
+
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   FadeOut,
   LinearTransition,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 
-import { useShakingAnimation } from './hooks/use-shaking-animation';
-import type { AppData } from './constants';
 import { useIsShaking } from './hooks';
+import { useShakingAnimation } from './hooks/use-shaking-animation';
+
+import type { AppData } from './constants';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 /**
  * Props for the AppItem component
@@ -97,35 +99,35 @@ export const AppItem: React.FC<AppItemProps> = ({
 const DeleteButtonHitSlop = { top: 10, bottom: 10, left: 10, right: 10 };
 
 const styles = StyleSheet.create({
+  deleteButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 100,
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  deleteButtonContainer: {
+    left: -4,
+    position: 'absolute',
+    top: -4,
+    zIndex: 1,
+  },
+  gradient: {
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    flex: 1,
+    overflow: 'hidden',
+  },
   itemContainer: {
     aspectRatio: 1,
   },
   touchable: {
+    elevation: 2,
     flex: 1,
     shadowColor: '#b8b8b8',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 2,
-  },
-  gradient: {
-    flex: 1,
-    borderRadius: 16,
-    borderCurve: 'continuous',
-    overflow: 'hidden',
-  },
-  deleteButton: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    borderRadius: 100,
-    width: 20,
-    height: 20,
-  },
-  deleteButtonContainer: {
-    position: 'absolute',
-    top: -4,
-    left: -4,
-    zIndex: 1,
   },
 });

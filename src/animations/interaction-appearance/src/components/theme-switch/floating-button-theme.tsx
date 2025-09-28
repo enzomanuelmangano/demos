@@ -1,7 +1,8 @@
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
 import { StyleSheet } from 'react-native';
+
+import { MaterialIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isSwitchingThemeShared, useTheme } from '../../theme';
 
@@ -38,16 +39,16 @@ export const FloatingButtonTheme: React.FC = () => {
 
 const styles = StyleSheet.create({
   button: {
-    position: 'absolute',
-    alignSelf: 'center',
-    height: 64,
-    right: 32,
-    aspectRatio: 1,
-    borderRadius: 32,
-    borderCurve: 'continuous',
     alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 999,
+    alignSelf: 'center',
+    aspectRatio: 1,
+    borderCurve: 'continuous',
+    borderRadius: 32,
     borderWidth: 1,
+    height: 64,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 32,
+    zIndex: 999,
   },
 });

@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { useCallback, useEffect, useMemo } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   FadeOutLeft,
@@ -9,9 +11,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { MAX_VISIBLE_TOASTS, TOAST_HEIGHT } from './constants';
-import type { StackedToastType } from './context';
 import { useInternalStackedToast } from './hooks';
+
+import type { StackedToastType } from './context';
 
 // Define the props for the StackedToast component
 type StackedToastProps = {
@@ -173,13 +177,13 @@ const StackedToast: React.FC<StackedToastProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
     borderRadius: 35,
+    elevation: 2,
+    position: 'absolute',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    elevation: 2,
   },
 });
 

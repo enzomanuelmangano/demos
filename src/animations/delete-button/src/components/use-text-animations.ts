@@ -1,6 +1,7 @@
+import { useDerivedValue, withTiming } from 'react-native-reanimated';
+
 import type { SkFont } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
-import { useDerivedValue, withTiming } from 'react-native-reanimated';
 
 type UseTextAnimationsParams = {
   isToggled: SharedValue<boolean>;

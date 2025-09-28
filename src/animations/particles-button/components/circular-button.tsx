@@ -16,10 +16,12 @@
  * ```
  */
 
+import { StyleSheet, View } from 'react-native';
+
+import { useCallback, useMemo, useRef } from 'react';
+
 import { AntDesign, FontAwesome6 } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useCallback, useMemo, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -29,8 +31,9 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 
-import type { BlastEffectRefType } from './blast-effect';
 import { BlastCircleEffect } from './blast-effect';
+
+import type { BlastEffectRefType } from './blast-effect';
 
 /**
  * Props for the CircularButton component
@@ -212,19 +215,19 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
+  blastContainer: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
   boxContainer: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   iconContainer: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     ...StyleSheet.absoluteFillObject,
-  },
-  blastContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
   },
 });

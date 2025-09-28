@@ -1,7 +1,9 @@
+import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { type FC, useMemo } from 'react';
+
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Color from 'color';
-import { type FC, useMemo } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   convertToRGBA,
   interpolateColor,
@@ -115,18 +117,18 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
 
 const styles = StyleSheet.create({
   canvas: {
+    left: 0,
     position: 'absolute',
     top: 0,
-    left: 0,
   },
   flatList: {
     flex: 1,
   },
   paginationDots: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 100,
+    left: 0,
+    position: 'absolute',
+    right: 0,
     zIndex: 10,
   },
 });

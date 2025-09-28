@@ -1,6 +1,8 @@
-import { PressableScale } from 'pressto';
-import { useRef } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+
+import { useRef } from 'react';
+
+import { PressableScale } from 'pressto';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -8,8 +10,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
-import type { SnakeBoardRef } from './snake-game';
 import { SnakeBoard } from './snake-game';
+
+import type { SnakeBoardRef } from './snake-game';
 
 const App = () => {
   const snakeGameRef = useRef<SnakeBoardRef>(null);
@@ -97,31 +100,31 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   boardContainer: {
-    padding: 10,
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'white',
+    borderRadius: 18,
+    elevation: 5,
+    justifyContent: 'center',
+    padding: 10,
     shadowColor: '#5c5c5c',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
-    elevation: 5,
-    backgroundColor: 'white',
-    borderRadius: 18,
   },
-  statsContainer: { marginBottom: 8, alignItems: 'center' },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
+    justifyContent: 'center',
+  },
   scoreText: {
+    color: 'gray',
     fontSize: 18,
     fontWeight: 'bold',
-    color: 'gray',
     marginBottom: 4,
   },
+  statsContainer: { alignItems: 'center', marginBottom: 8 },
 });
 
 export { App };

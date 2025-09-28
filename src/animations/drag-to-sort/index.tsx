@@ -1,13 +1,16 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { useCallback } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ListItem } from './components/ListItem';
 import { SortableList } from './components/SortableList';
-import type { Positions } from './components/SortableList/types';
 import { ITEMS } from './constants';
+
+import type { Positions } from './components/SortableList/types';
 
 const PADDING = 6;
 const HEIGHT = 80;
@@ -108,18 +111,18 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  backgroundItem: {
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: MAX_BORDER_RADIUS,
+    flex: 1,
+    margin: PADDING,
+  },
   gradient: {
-    position: 'absolute',
     left: 0,
+    position: 'absolute',
     right: 0,
     top: 0,
     zIndex: 50,
-  },
-  backgroundItem: {
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    flex: 1,
-    borderRadius: MAX_BORDER_RADIUS,
-    margin: PADDING,
   },
 });
 

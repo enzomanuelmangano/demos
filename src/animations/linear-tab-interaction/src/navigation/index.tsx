@@ -1,16 +1,18 @@
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { ReanimatedScreenProvider } from 'react-native-screens/reanimated';
 import { useCallback } from 'react';
 
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ReanimatedScreenProvider } from 'react-native-screens/reanimated';
+
+import { Home } from '../app/(stack)/(tabs)/(home-stack)/home';
 import { Issues } from '../app/(stack)/(tabs)/(home-stack)/issues';
 import { Inbox } from '../app/(stack)/(tabs)/inbox';
 import { Search } from '../app/(stack)/(tabs)/search';
 import { Settings } from '../app/(stack)/(tabs)/settings';
 import { Note } from '../app/(stack)/note';
-import { Home } from '../app/(stack)/(tabs)/(home-stack)/home';
 import { TabBar } from '../components/navigation/bottom-tab-bar';
+
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();

@@ -1,3 +1,7 @@
+import { Dimensions, StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import {
   BlurMask,
   Canvas,
@@ -6,8 +10,6 @@ import {
   useFont,
   vec,
 } from '@shopify/react-native-skia';
-import { useCallback } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -27,6 +29,7 @@ const SquareSize = 2.5;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const fontAsset = require('../../../assets/fonts/SF-Pro-Rounded-Heavy.otf');
+
 const fontSize = 120;
 
 export function GridVisualizer() {
@@ -91,10 +94,10 @@ export function GridVisualizer() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
     paddingTop: 10,
   },
 });

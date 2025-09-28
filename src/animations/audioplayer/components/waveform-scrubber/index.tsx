@@ -1,12 +1,12 @@
 import { Text, View, useWindowDimensions, StyleSheet } from 'react-native';
+
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useDerivedValue } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
 
-import { zeroPad } from '../../helpers';
-import { DURATION, Palette } from '../../constants';
-
 import { WaveformScrubberSample } from './waveform-sample';
+import { DURATION, Palette } from '../../constants';
+import { zeroPad } from '../../helpers';
 import { useCurrentPlayingValue } from './waveform-sample/use-current-playing-value';
 
 type WaveformScrubberProps = {
@@ -70,28 +70,28 @@ const WaveformScrubber: React.FC<WaveformScrubberProps> = ({
 };
 
 const styles = StyleSheet.create({
-  timeContainer: {
-    height: 35,
-    aspectRatio: 16 / 9,
-    borderRadius: 10,
+  samplesContainer: {
     backgroundColor: Palette.primary,
-    marginBottom: 15,
-    justifyContent: 'center',
+    borderRadius: 15,
+    flexDirection: 'row',
+    height: 80,
+    paddingHorizontal: 18,
+  },
+  timeContainer: {
     alignItems: 'center',
+    aspectRatio: 16 / 9,
+    backgroundColor: Palette.primary,
+    borderRadius: 10,
+    height: 35,
+    justifyContent: 'center',
+    marginBottom: 15,
   },
   timeText: {
     color: Palette.body,
     fontSize: 14,
     fontWeight: '700',
-    width: '100%',
     textAlign: 'center',
-  },
-  samplesContainer: {
-    height: 80,
-    backgroundColor: Palette.primary,
-    borderRadius: 15,
-    flexDirection: 'row',
-    paddingHorizontal: 18,
+    width: '100%',
   },
 });
 

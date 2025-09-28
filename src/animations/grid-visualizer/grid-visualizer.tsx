@@ -1,3 +1,5 @@
+import { useMemo, type FC } from 'react';
+
 import {
   Atlas,
   Canvas,
@@ -8,7 +10,6 @@ import {
   useTexture,
   type SkFont,
 } from '@shopify/react-native-skia';
-import { useMemo, type FC } from 'react';
 import {
   Extrapolation,
   interpolate,

@@ -1,8 +1,9 @@
+import { StyleSheet, View } from 'react-native';
+
+import { type FC, useMemo } from 'react';
+
 import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { type FC, useMemo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet, View } from 'react-native';
 import Animated, {
   type SharedValue,
   useAnimatedReaction,
@@ -13,9 +14,10 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { getRightLinePath } from './create-skia-line';
 import { hapticFeedback } from '../../utils/haptics';
 
-import { getRightLinePath } from './create-skia-line';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 export type RecordButtonProps = {
   width: number;
@@ -153,13 +155,13 @@ export const RecordButton: FC<RecordButtonProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   label: {
-    position: 'absolute',
-    alignSelf: 'center',
     alignItems: 'baseline',
+    alignSelf: 'center',
     flex: 1,
+    position: 'absolute',
   },
 });

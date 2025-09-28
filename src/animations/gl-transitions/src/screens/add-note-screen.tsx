@@ -1,15 +1,17 @@
 import { View, StyleSheet, Text, TextInput, Alert } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
+import { AntDesign } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useRef } from 'react';
-import { AntDesign } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Easing } from 'react-native-reanimated';
 import { PressableScale } from 'pressto';
+import { Easing } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useGLTransition } from '../providers/gl-transitions';
-import { Palette } from '../constants/theme';
 import { useNotes } from '../atoms/notes';
+import { Palette } from '../constants/theme';
+import { useGLTransition } from '../providers/gl-transitions';
 
 export const AddNoteScreen = () => {
   const { runTransition } = useGLTransition();
@@ -123,35 +125,35 @@ export const AddNoteScreen = () => {
 
 const styles = StyleSheet.create({
   button: {
-    height: 48,
-    aspectRatio: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    aspectRatio: 1,
     borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
   },
   fillCenter: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  inputHeader: {
+    color: Palette.primary,
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+    marginTop: 8,
+    textTransform: 'uppercase',
+  },
+  inputText: {
+    color: Palette.text,
+    fontSize: 20,
+    marginTop: 16,
   },
   notesContainer: {
     backgroundColor: Palette.surface,
-    padding: 16,
     borderRadius: 8,
     marginTop: 16,
     minHeight: 200,
-  },
-  inputHeader: {
-    textTransform: 'uppercase',
-    fontSize: 12,
-    marginTop: 8,
-    marginBottom: 4,
-    color: Palette.primary,
-    fontWeight: '500',
-  },
-  inputText: {
-    fontSize: 20,
-    color: Palette.text,
-    marginTop: 16,
+    padding: 16,
   },
 });

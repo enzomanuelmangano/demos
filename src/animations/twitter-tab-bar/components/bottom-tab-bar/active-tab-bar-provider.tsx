@@ -5,8 +5,10 @@ import {
   useContext,
   useMemo,
 } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+
 import { makeMutable, useSharedValue } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type ActiveTabBarContextType = {
   isActive: SharedValue<boolean>;

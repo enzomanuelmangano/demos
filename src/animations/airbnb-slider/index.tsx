@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -86,9 +87,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: Palette.background,
     alignItems: 'center',
+    backgroundColor: Palette.background,
+    flex: 1,
     justifyContent: 'center',
   },
 });

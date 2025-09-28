@@ -1,3 +1,7 @@
+import { Dimensions, StyleSheet, View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import {
   BlurMask,
   Canvas,
@@ -9,9 +13,6 @@ import {
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import {
   makeMutable,
   useAnimatedReaction,
@@ -20,6 +21,8 @@ import {
 } from 'react-native-reanimated';
 
 import { logarithmicSpiral } from './utils';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 

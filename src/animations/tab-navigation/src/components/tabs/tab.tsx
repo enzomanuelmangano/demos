@@ -1,12 +1,13 @@
-import { AntDesign } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
+
+import { AntDesign } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 type TabProps = {
   label: string;
@@ -89,28 +90,28 @@ export const Tab = ({
 
 const styles = StyleSheet.create({
   container: {
-    height: 60,
     backgroundColor: '#f1f1f1',
-    borderRadius: 15,
     borderCurve: 'continuous',
+    borderRadius: 15,
+    height: 60,
     justifyContent: 'center',
   },
+  iconContainer: {
+    backgroundColor: '#f1f1f1',
+    height: IconSize,
+    width: IconSize,
+    zIndex: 100,
+  },
   innerContainer: {
-    flexDirection: 'row',
-    width: '100%',
-    overflow: 'hidden',
-    justifyContent: 'center',
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: '100%',
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
     zIndex: 100,
-  },
-  iconContainer: {
-    width: IconSize,
-    height: IconSize,
-    zIndex: 100,
-    backgroundColor: '#f1f1f1',
   },
 });

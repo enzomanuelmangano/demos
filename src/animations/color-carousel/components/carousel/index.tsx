@@ -1,4 +1,5 @@
 import { type FC, memo } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedScrollHandler,
