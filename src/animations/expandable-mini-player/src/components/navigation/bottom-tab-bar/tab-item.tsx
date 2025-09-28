@@ -36,7 +36,7 @@ export const TabItem = ({
     return {
       opacity: withTiming(isActive ? 0.8 * opacity : 0.2 * opacity, {
         easing: EasingsUtils.inOut,
-      });
+      }),
     };
   }, [isActive, opacity]);
 

@@ -24,8 +24,7 @@ const useHeaderLayout = ({
   const mounted = useMounted();
 
   const headersLayoutXRefs = useMemo(
-    () =>
-      headers.map(() => createRef<MeasureableAnimatedViewRef>()),
+    () => headers.map(() => createRef<MeasureableAnimatedViewRef>()),
     [headers],
   );
 

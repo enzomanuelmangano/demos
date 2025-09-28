@@ -31,7 +31,8 @@ function App() {
     ref.current?.close();
     isActionTrayOpened.value = false;
     setStep(0);
-  }, []);
+  }, [isActionTrayOpened]);
+
   const toggleActionTray = useCallback(() => {
     const isActive = ref.current?.isActive() ?? false;
     isActionTrayOpened.value = !isActive;

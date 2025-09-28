@@ -4,4 +4,3 @@ export const Palette = {
   primary: '#EB6439',
   text: '#333',
 };
-

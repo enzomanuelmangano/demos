@@ -1,7 +1,6 @@
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-
 
 import { App } from './src';
 import { StackedToastProvider } from './src/stacked-toast-manager';

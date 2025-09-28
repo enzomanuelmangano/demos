@@ -46,7 +46,6 @@ export const GitHubContributionCalendar = forwardRef<
     };
   }, [data]);
 
-
   const weeks = useMemo(() => {
     const calendarStart = startOfWeek(startDate, { weekStartsOn: 1 });
     const calendarEnd = endOfWeek(endDate, { weekStartsOn: 1 });

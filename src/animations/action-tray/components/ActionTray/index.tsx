@@ -41,14 +41,17 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
     const MAX_TRANSLATE_Y = -maxHeight;
 
     const active = useSharedValue(false);
-    const scrollTo = useCallback((destination: number) => {
-      'worklet';
-      active.value = destination !== maxHeight;
+    const scrollTo = useCallback(
+      (destination: number) => {
+        'worklet';
+        active.value = destination !== maxHeight;
 
-      translateY.value = withSpring(destination, {
-        mass: 0.4,
-      });
-    }, []);
+        translateY.value = withSpring(destination, {
+          mass: 0.4,
+        });
+      },
+      [active, maxHeight, translateY],
+    );
 
     const close = useCallback(() => {
       'worklet';

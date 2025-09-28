@@ -39,13 +39,9 @@ export const TabBarItem: FC<TabBarItemProps> = memo(
 
       const iconName = iconMap[pageName.toLowerCase()] || 'home';
 
-      return (
-        <MaterialIcons
-          name={iconName}
-          size={25}
-          color={'white'}
-        />
-      );
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      return <MaterialIcons name={iconName} size={25} color={'white'} />;
     }, []);
 
     return (

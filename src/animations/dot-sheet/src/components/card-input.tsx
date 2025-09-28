@@ -22,10 +22,7 @@ export type CardInputRefType = {
   focus: () => void;
 };
 
-export const CardInput = forwardRef<
-  CardInputRefType,
-  {}
->((_, ref) => {
+export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   const { width, height } = useWindowDimensions();
   const progress = useSharedValue(0);
   const { top: safeTop } = useSafeAreaInsets();

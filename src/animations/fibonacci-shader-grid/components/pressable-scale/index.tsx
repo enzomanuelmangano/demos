@@ -8,7 +8,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-
 export type PressableScaleProps = {
   children?: ReactNode;
   onPress?: () => void;

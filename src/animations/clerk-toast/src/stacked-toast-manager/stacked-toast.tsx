@@ -61,8 +61,7 @@ const StackedToast: React.FC<StackedToastProps> = ({
       stiffness: 80,
       overshootClamping: false,
     });
-
-  }, [bottomHeight]);
+  }, [bottom, bottomHeight]);
 
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
