@@ -39,7 +39,6 @@ const AnimatedWeeklyBar = ({
 }: AnimatedWeeklyBarProps) => {
   const barWidth = (width - internalPaddingHorizontal * 2 - gap * 6) / 7;
 
-  // Format the day from the data to get a single letter representing the day of the week
   const letter = useMemo(() => {
     return data.value[index].day;
   }, [data, index]);
@@ -50,12 +49,12 @@ const AnimatedWeeklyBar = ({
 
   return (
     <Bar
-      key={index} // Unique key for each bar component for efficient rendering
-      letter={letter} // Single letter representing the day of the week
-      maxHeight={height} // Maximum height of the bar
-      minHeight={height / 5} // Minimum height of the bar
-      width={barWidth} // Calculated width of the bar
-      progress={progress} // Progress value determining the height of the bar
+      key={index}
+      letter={letter}
+      maxHeight={height}
+      minHeight={height / 5}
+      width={barWidth}
+      progress={progress}
     />
   );
 };

@@ -22,12 +22,7 @@ export type CardInputRefType = {
   focus: () => void;
 };
 
-export const CardInput = forwardRef<
-  CardInputRefType,
-  {
-    //
-  }
->((_, ref) => {
+export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   const { width, height } = useWindowDimensions();
   const progress = useSharedValue(0);
   const { top: safeTop } = useSafeAreaInsets();
@@ -46,12 +41,10 @@ export const CardInput = forwardRef<
     [],
   );
 
-  // useHeaderHeight() from react-navigation in a real use case
+  // @@TODO: useHeaderHeight hook
   const potentialHeaderHeight = 52;
 
   const inputRange = [0, 1];
-
-  // -- Output Ranges constants --
 
   const initialCardHeight = height / 2.8;
   const expandedCardHeight = height;
@@ -144,7 +137,6 @@ export const CardInput = forwardRef<
         }}
         style={[
           {
-            // There are better ways to handle the top value, but this is just a demo :)
             top: safeTop + (Platform.OS === 'android' ? 8 : 0),
           },
           rBackIconStyle,

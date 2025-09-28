@@ -107,9 +107,9 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
         (index - 3) * CARD_WIDTH,
         (index - 2) * CARD_WIDTH,
         (index - 1) * CARD_WIDTH,
-        (index - 0.5) * CARD_WIDTH, // Detailed control over the swap between cards
+        (index - 0.5) * CARD_WIDTH,
         index * CARD_WIDTH,
-        (index + 0.5) * CARD_WIDTH, // Detailed control over the swap between cards
+        (index + 0.5) * CARD_WIDTH,
         (index + 1) * CARD_WIDTH,
         (index + 2) * CARD_WIDTH,
         (index + 3) * CARD_WIDTH,
@@ -134,15 +134,13 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
         (index - 3) * CARD_WIDTH,
         (index - 2) * CARD_WIDTH,
         (index - 1) * CARD_WIDTH,
-        (index - 0.5) * CARD_WIDTH, // Detailed control over the swap between cards
+        (index - 0.5) * CARD_WIDTH,
         index * CARD_WIDTH,
-        (index + 0.5) * CARD_WIDTH, // Detailed control over the swap between cards
+        (index + 0.5) * CARD_WIDTH,
         (index + 1) * CARD_WIDTH,
         (index + 2) * CARD_WIDTH,
         (index + 3) * CARD_WIDTH,
       ],
-      // While swapping we push the card to the left or to the right to avoid the overlap
-      // Try to replace -CARD_WIDTH / 2.8 with 0 and see what happens
       [0, 0, 0, -CARD_WIDTH / 2.8, 0, CARD_WIDTH / 2.8, 0, 0, 0],
       Extrapolation.CLAMP,
     );

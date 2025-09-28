@@ -12,7 +12,6 @@ export const GitHubContributions = () => {
   const calendarWidth = windowWidth * 0.9;
 
   const contributionData = useMemo(() => {
-    // this calculation should require a bit more love, but it's a start 😅
     return generateContributionData({
       days: Math.floor(calendarWidth / 3),
     });

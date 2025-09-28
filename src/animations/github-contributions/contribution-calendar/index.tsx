@@ -36,7 +36,6 @@ export const GitHubContributionCalendar = forwardRef<
   const squareRefs = useRef<(SquareAnimationControls | null)[]>([]);
   const isAnimating = useSharedValue(false);
 
-  // Calculate date range from data
   const { startDate, endDate } = useMemo(() => {
     const dates = Object.keys(data)
       .map(dateStr => new Date(dateStr))
@@ -47,9 +46,6 @@ export const GitHubContributionCalendar = forwardRef<
     };
   }, [data]);
 
-  // Generate day labels
-
-  // Calculate calendar grid
   const weeks = useMemo(() => {
     const calendarStart = startOfWeek(startDate, { weekStartsOn: 1 });
     const calendarEnd = endOfWeek(endDate, { weekStartsOn: 1 });
@@ -62,7 +58,6 @@ export const GitHubContributionCalendar = forwardRef<
     return groupDaysIntoWeeks(allCalendarDays);
   }, [startDate, endDate]);
 
-  // Pre-calculate square indices for valid dates
   const squareIndexMap = useMemo(() => {
     const indexMap = new Map<string, number>();
     let squareIndex = 0;
@@ -102,7 +97,6 @@ export const GitHubContributionCalendar = forwardRef<
     return startAnimation();
   }, [startAnimation, resetAnimation, isAnimating]);
 
-  // Animation controls
   useImperativeHandle(
     ref,
     () => ({
@@ -116,7 +110,6 @@ export const GitHubContributionCalendar = forwardRef<
   return (
     <View style={styles.calendarContainer}>
       <View style={styles.calendarGrid}>
-        {/* Day labels */}
         <View style={styles.dayLabelsContainer}>
           {dayLabels.map(day => (
             <Text key={day} style={styles.dayLabel}>
@@ -125,7 +118,6 @@ export const GitHubContributionCalendar = forwardRef<
           ))}
         </View>
 
-        {/* Contribution grid */}
         <View style={styles.gridContainer}>
           {weeks.map((week, weekIndex) => (
             <View key={weekIndex} style={styles.week}>
@@ -133,10 +125,8 @@ export const GitHubContributionCalendar = forwardRef<
                 const dateStr = format(date, 'yyyy-MM-dd');
                 const level = data[dateStr] || 0;
 
-                // Check if this date is within our actual data range
                 const isInDataRange = date >= startDate && date <= endDate;
 
-                // If outside data range, show empty square
                 if (!isInDataRange) {
                   return (
                     <View

@@ -49,22 +49,18 @@ export const AnimatedSingleNumber: FC<AnimatedSingleNumberProps> = ({
   // The problem is that handling the "exiting" means "stopping" the unmouting of the component
   // until the animation is finished. And I have absolutely no idea how to do it 👀
 
-  // Shared values for animation
   const bottom = useSharedValue(-50);
   const opacity = useSharedValue(0);
 
-  // Calculate the scaled item width based on scale and offset
   const scaledItemWidth = useDerivedValue(() => {
     return itemWidth * (scale + scaleWidthOffset);
   }, [itemWidth, scale]);
 
-  // Effect to trigger animations on mount
   useEffect(() => {
     bottom.value = withTiming(0);
     opacity.value = withTiming(1);
   }, [bottom, opacity]);
 
-  // Animated style for positioning and scaling
   const rStyle = useAnimatedStyle(() => {
     const left = (index - totalNumbersLength / 2) * scaledItemWidth.value;
 

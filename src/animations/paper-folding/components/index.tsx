@@ -8,7 +8,6 @@ import Animated, {
   useDerivedValue,
 } from 'react-native-reanimated';
 
-// Define the props type for the Paper component
 type PaperProps = {
   height: number;
   width: number;
@@ -27,7 +26,6 @@ type PaperProps = {
 
 // The trick is to transform each fold section based on the previous transformation.
 export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
-  // Calculate the height of each fold section
   const foldHeight = height / 3;
 
   return (
@@ -81,7 +79,6 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
             { translateY: foldHeight / 2 },
           ];
 
-          // Second Fold Style
           if (i === 1) {
             return {
               top: height / 2 - foldHeight / 2,
@@ -89,7 +86,6 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
             };
           }
 
-          // Additional transforms for the third fold
           return {
             top: height / 2 - foldHeight / 2,
             transform: [

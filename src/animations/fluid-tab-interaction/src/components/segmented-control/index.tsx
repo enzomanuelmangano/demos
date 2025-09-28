@@ -22,16 +22,14 @@ const TimingConfig = {
   easing: Easing.bezier(0.4, 0.0, 0.2, 1),
 };
 
-// Define a type for the SegmentedControl component's props
 type SegmentedControlProps<T extends { name: string; icon: string }> = {
-  data: readonly T[]; // An array of items to display in the control
-  onPress: (item: T) => void; // A function to handle item selection
-  selected: T; // The currently selected item
-  width: number; // The width of the control
-  height: number; // The height of the control
+  data: readonly T[];
+  onPress: (item: T) => void;
+  selected: T;
+  width: number;
+  height: number;
 };
 
-// Define the SegmentedControl component
 function SegmentedControl<T extends { name: string; icon: string }>({
   data,
   onPress,
@@ -39,14 +37,11 @@ function SegmentedControl<T extends { name: string; icon: string }>({
   width,
   height,
 }: SegmentedControlProps<T>) {
-  // Internal padding for spacing between elements
   const internalPadding = 5;
 
-  // Calculate the width of each cell background based on the number of items
   const cellBackgroundWidth = width / data.length;
   const activeIndexes = useSharedValue<number[]>([]);
 
-  // Find the index of the selected item in the data array
   const selectedCellIndex = useMemo(
     () => data.findIndex(item => item === selected),
     [data, selected],
@@ -60,9 +55,7 @@ function SegmentedControl<T extends { name: string; icon: string }>({
     };
   }, [blurProgress]);
 
-  // Create an animated style for the selected cell background
   const rCellMessageStyle = useAnimatedStyle(() => {
-    // Define the padding based on the selected item's index
     const padding = interpolate(
       selectedCellIndex,
       [0, data.length - 1],
@@ -74,7 +67,6 @@ function SegmentedControl<T extends { name: string; icon: string }>({
     // 2 -> 0
     // 3 -> -internalPadding / 4
     // 4 -> -internalPadding / 2
-
     return {
       left: withTiming(
         cellBackgroundWidth * selectedCellIndex + padding,
@@ -129,7 +121,6 @@ function SegmentedControl<T extends { name: string; icon: string }>({
             key={item.name}
             style={localStyles.labelContainer}
             onPress={() => {
-              // Call the provided onPress function with the selected item
               onPress(item);
               const prevIndex = data.findIndex(
                 dataItem => dataItem.name === selected.name,
@@ -161,7 +152,6 @@ function SegmentedControl<T extends { name: string; icon: string }>({
         );
       })}
 
-      {/* CELL BACKGROUND */}
       <Animated.View
         style={[
           {
@@ -207,7 +197,7 @@ const localStyles = StyleSheet.create({
   backgroundContainer: {
     flexDirection: 'row',
     borderRadius: 30,
-    borderWidth: 1, // Add border to the entire control
+    borderWidth: 1,
     borderColor: Palette.baseGray05,
   },
   difficultyLabel: {
@@ -227,7 +217,7 @@ const localStyles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: Palette.background,
     borderRadius: 30,
-    borderWidth: 1, // Add border to separate cells
+    borderWidth: 1,
     borderColor: Palette.baseGray05,
     shadowOpacity: 0.1,
     shadowOffset: { height: 1, width: 0 },

@@ -15,28 +15,20 @@ import { AppItem } from './app-item';
 import type { AppData } from './constants';
 import { APPS_DATA as items } from './constants';
 
-/** Grid layout constants */
 const SPACING = 8;
 const NUM_COLUMNS = 4;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/**
- * AppsList component displays a grid of app
- */
 export const AppsList = () => {
   const { width: screenWidth } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
-  /**
-   * Calculate layout dimensions based on screen width
-   */
   const layoutConfig = useMemo(() => {
     const horizontalPadding = SPACING * 2;
     const availableWidth = screenWidth - horizontalPadding;
 
-    // Calculate item size based on available width and fixed number of columns
     const totalSpacing = SPACING * (NUM_COLUMNS - 1);
     const itemSize = Math.floor((availableWidth - totalSpacing) / NUM_COLUMNS);
 
@@ -47,9 +39,6 @@ export const AppsList = () => {
     };
   }, [screenWidth]);
 
-  /**
-   * Group items into rows for proper grid layout
-   */
   const itemRows = useMemo(() => {
     const rows = [];
     for (let i = 0; i < items.length; i += NUM_COLUMNS) {
@@ -92,7 +81,6 @@ export const AppsList = () => {
             key={rowIndex}
             style={[
               styles.row,
-              // Only center if the row has the full number of columns
               row.length < NUM_COLUMNS && { justifyContent: 'flex-start' },
             ]}
             layout={LinearTransition}>

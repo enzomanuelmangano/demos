@@ -62,7 +62,6 @@ export const AnimatedIndicatorList = () => {
         styles.container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
-      {/* Animated Header Section */}
       <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
         {headers.map(({ header }, index) => {
           return (
@@ -94,7 +93,6 @@ export const AnimatedIndicatorList = () => {
       </Animated.View>
       <Animated.View style={rIndicatorStyle} />
 
-      {/* List */}
       <Animated.FlatList
         onScroll={onScroll}
         ref={flatlistRef}

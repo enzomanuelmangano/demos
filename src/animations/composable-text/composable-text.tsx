@@ -7,18 +7,16 @@ import Animated, {
   LinearTransition,
 } from 'react-native-reanimated';
 
-// Props interface for the ComposableText component
 type ComposableTextProps = {
-  text: string; // The text to be animated
-  style?: StyleProp<TextStyle>; // Optional style for each character
-  containerStyle?: StyleProp<ViewStyle>; // Optional style for the container
+  text: string;
+  style?: StyleProp<TextStyle>;
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
-// A memoized component that renders text with per-character animations
 export const ComposableText = memo(
   ({ text, style, containerStyle }: ComposableTextProps) => {
     // Generate unique keys for each character to maintain animation stability
-    // This is necessary when the same character appears multiple times
+    // This is necessary when the same character appears multiple time
     const buildKeys = useMemo(() => {
       const charCounts: Record<string, number> = {};
       return text.split('').map(char => {
@@ -29,30 +27,24 @@ export const ComposableText = memo(
     }, [text]);
 
     return (
-      // Layout animation wrapper that skips enter animation
       <LayoutAnimationConfig skipEntering>
-        {/* Container for all characters with spring-based layout transitions */}
         <Animated.View
           style={[{ flexDirection: 'row' }, containerStyle]}
           layout={LinearTransition.springify()
             .mass(0.4)
             .damping(12)
             .stiffness(100)}>
-          {/* Map each character to an animated text component */}
           {text.split('').map((char, index) => {
             return (
               <Animated.Text
                 key={buildKeys[index]}
-                // Entrance animation: fade in with scale
                 entering={FadeIn.duration(200)
                   .withInitialValues({ transform: [{ scale: 0.5 }] })
                   .springify()
                   .mass(0.3)
                   .damping(12)
                   .stiffness(80)}
-                // Exit animation: simple fade out
                 exiting={FadeOut.duration(200)}
-                // Layout animation for position changes
                 layout={LinearTransition.springify()
                   .mass(0.3)
                   .damping(12)
@@ -68,5 +60,4 @@ export const ComposableText = memo(
   },
 );
 
-// Component display name for debugging purposes
 ComposableText.displayName = 'ComposableText';

@@ -17,7 +17,6 @@ import type { NoteType } from '../atoms/notes';
 import { useNotes } from '../atoms/notes';
 
 export const HomeScreen = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const [notes] = useNotes();
 

@@ -9,11 +9,8 @@ import { DrawerListItem } from './drawer-list-item';
 const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
   const { top } = useSafeAreaInsets();
 
-  // Get the navigation object using the useNavigation hook
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
 
-  // Define the onPress function to navigate to the selected route
   const onPress = useCallback(
     (route: string) => {
       navigation.navigate(route);
@@ -21,11 +18,9 @@ const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
     [navigation],
   );
 
-  // Render the CustomDrawer component
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <Text style={styles.heading}>Drawer</Text>
-      {/* Map over the routeNames and render a DrawerListItem for each item */}
       {state.routeNames.map(item => {
         return (
           <DrawerListItem
@@ -39,7 +34,6 @@ const CustomDrawer = ({ state }: DrawerContentComponentProps) => {
   );
 };
 
-// Define the styles using StyleSheet.create
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -57,6 +51,5 @@ const styles = StyleSheet.create({
   },
 });
 
-// Export the CustomDrawer component
 export * from './drawer-icon';
 export { CustomDrawer };

@@ -1,4 +1,3 @@
-// Some random images installed from Unsplash
 export const Images = [
   'https://plus.unsplash.com/premium_photo-1676321688612-4451a8721435?q=30&w=3414&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
   'https://images.unsplash.com/photo-1484154218962-a197022b5858?q=30&w=3548&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',

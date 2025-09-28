@@ -109,10 +109,8 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
       Extrapolation.CLAMP,
     );
 
-    // Calculate the width of the image based on scaleX
     const width = Math.round(itemWidth * scaleX);
 
-    // Return the animated style object
     return {
       borderRadius: borderRadius,
       opacity,

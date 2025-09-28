@@ -27,7 +27,6 @@ const ModalContent: FC<ModalProps> = memo(
     }, [isVisible]);
 
     const rAnimatedProps = useAnimatedProps(() => {
-      // Check the AnimatedBackdrop component for more details :)
       return {
         pointerEvents: isVisible.value ? 'auto' : 'none',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

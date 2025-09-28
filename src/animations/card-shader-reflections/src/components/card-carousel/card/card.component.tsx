@@ -13,22 +13,15 @@ import { CardChip } from './card-chip.component';
 import { styles } from './card.styles';
 
 export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
-  /**
-   * Main card animation style
-   * Handles rotation, translation, and opacity based on scroll position
-   */
   const animatedStyle = useAnimatedStyle(() => {
-    // Define input range for interpolation based on card position
     const input = [
       (index - 1) * CARD_WIDTH,
       index * CARD_WIDTH,
       (index + 1) * CARD_WIDTH,
     ];
 
-    // Calculate rotation angle based on scroll position
     const rotate = interpolate(scrollX.value, input, [180, 0, -180], 'clamp');
 
-    // Calculate vertical translation for 3D effect
     const fullInput = [
       (index - 1) * CARD_WIDTH,
       (index - 0.5) * CARD_WIDTH,
@@ -75,10 +68,6 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
     };
   });
 
-  /**
-   * Title animation style
-   * Controls the visibility of the card title based on scroll position
-   */
   const rTitleWrapper = useAnimatedStyle(() => {
     const input = [
       (index - 1) * CARD_WIDTH,
@@ -89,7 +78,7 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
     const opacity = interpolate(scrollX.value, input, [0, 1, 0], 'clamp');
 
     return {
-      opacity: Math.round(opacity), // Round for sharp fade in/out
+      opacity: Math.round(opacity),
     };
   });
 
@@ -107,7 +96,6 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
     <View style={styles.cardContainer}>
       <Animated.View style={[{ flex: 1, padding: 16 }, animatedStyle]}>
         <View style={styles.card}>
-          {/* Skia canvas for card background effects - the magic happens here */}
           <CardCanvas
             rotation={rotate}
             cardType={item.id - 1}

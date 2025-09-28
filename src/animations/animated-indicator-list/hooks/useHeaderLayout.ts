@@ -24,9 +24,7 @@ const useHeaderLayout = ({
   const mounted = useMounted();
 
   const headersLayoutXRefs = useMemo(
-    () =>
-      // use refs to get the layout of the headers
-      headers.map(() => createRef<MeasureableAnimatedViewRef>()),
+    () => headers.map(() => createRef<MeasureableAnimatedViewRef>()),
     [headers],
   );
 
@@ -46,7 +44,6 @@ const useHeaderLayout = ({
 
       if (
         ref.current &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ((acc as any)?.[header] == null || (acc as any)?.[header]?.width === 0)
       ) {
         const layout = ref.current?.reanimatedMeasure();

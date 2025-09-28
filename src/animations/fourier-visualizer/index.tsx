@@ -53,7 +53,6 @@ const App = () => {
   const clear = () => {
     ref.current?.clear();
   };
-  // Define the pan gesture for drawing.
   const panGesture = Gesture.Pan()
     .onStart(({ x, y }) => {
       scheduleOnRN(clear);
@@ -78,7 +77,6 @@ const App = () => {
       scheduleOnRN(drawPathWrapper, svgString);
     });
 
-  // Animated style for the clear button.
   const rClearButton = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isDrawing.value ? 1 : 0),
@@ -86,7 +84,6 @@ const App = () => {
     };
   });
 
-  // Render the app components.
   return (
     <>
       <GestureDetector gesture={panGesture}>
@@ -100,7 +97,6 @@ const App = () => {
             />
             <FourierVisualizer
               ref={value => {
-                // this is necessary otherwise the ref will crash on going back
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
                 ref.current = value;
@@ -122,7 +118,6 @@ const App = () => {
   );
 };
 
-// Styles for the components.
 const styles = StyleSheet.create({
   container: { flex: 1 },
   canvas: { flex: 1, backgroundColor: '#D4D4D4' },

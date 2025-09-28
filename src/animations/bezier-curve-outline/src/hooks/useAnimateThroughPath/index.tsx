@@ -40,7 +40,6 @@ const withCustomTiming = (value: number) => {
   'worklet';
   return withTiming(value, {
     duration: 1000,
-    // cubic-bezier(0.455, 0.03, 0.515, 0.955);
     easing: Easing.bezier(0.455, 0.03, 0.515, 0.955),
   });
 };

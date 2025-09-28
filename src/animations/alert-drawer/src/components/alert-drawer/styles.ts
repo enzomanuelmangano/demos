@@ -1,6 +1,5 @@
 import { Dimensions, StyleSheet } from 'react-native';
 
-// Constants
 const { width: windowWidth } = Dimensions.get('window');
 export const BUTTON_HEIGHT = 50;
 export const BUTTON_WIDTH = windowWidth * 0.82;

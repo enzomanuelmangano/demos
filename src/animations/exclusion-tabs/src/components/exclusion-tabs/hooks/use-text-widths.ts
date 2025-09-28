@@ -9,10 +9,9 @@ export const useBoxWidths = ({
   tabs: readonly string[];
   internalBoxPadding: number;
 }) => {
-  // Calculate the widths of all tab labels using the defined font.
   const textWidths = useMemo(() => {
     return tabs.map(tab => {
-      return font.measureText(tab).width; // Measure the width of each tab's text.
+      return font.measureText(tab).width;
     });
   }, [tabs]);
 
@@ -20,18 +19,17 @@ export const useBoxWidths = ({
     return textWidths.reduce(
       (acc, width) => acc + width + internalBoxPadding * 2,
       0,
-    ); // Calculate the total width of all tabs.
+    );
   }, [internalBoxPadding, textWidths]);
 
-  // Calculate the accumulated width of all previous tabs and their padding.
   const getPreviousBoxWidth = useCallback(
     (index: number) => {
-      'worklet'; // Indicates that this function will be executed on the UI thread in Reanimated.
+      'worklet';
       let width = 0;
       for (let i = 0; i < index; i++) {
-        width += textWidths[i] + internalBoxPadding * 2; // Add each tab's width and padding.
+        width += textWidths[i] + internalBoxPadding * 2;
       }
-      return width; // Return the accumulated width.
+      return width;
     },
     [internalBoxPadding, textWidths],
   );

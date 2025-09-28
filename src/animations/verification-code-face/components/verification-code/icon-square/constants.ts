@@ -31,7 +31,6 @@ export const DefaultMouthPaths = {
 };
 
 export const DefaultEyebrowPaths = {
-  // Switching the order of the paths to make the animation look smoother
   Happy: createPath('Sad', { height: EYEBROW_HEIGHT, width: EYEBROW_WIDTH }),
   Sad: createPath('Happy', { height: EYEBROW_HEIGHT, width: EYEBROW_WIDTH }),
   Normal: createPath('Normal', {

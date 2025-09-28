@@ -9,7 +9,6 @@ import { ScrollableGradients } from './screens/scrollable-gradients';
 
 const BottomTab = createBottomTabNavigator();
 
-// Create a map of screen names to components
 const ScreenMap: Record<keyof typeof ScreenNames, React.FC> =
   ScreenNamesArray.reduce(
     (acc, key) => ({

@@ -13,7 +13,6 @@ import { CardBack } from './back';
 import { CardFront } from './front';
 import type { ProfileType } from './types';
 
-// Move spring configuration outside component to prevent recreation
 const SPRING_CONFIG = {
   mass: 1.2,
   stiffness: 60,
@@ -34,7 +33,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
   ({ isFlipped, profile, angle = 'horizontal' }) => {
     const { width: screenWidth } = useWindowDimensions();
 
-    // Memoize card dimensions to prevent unnecessary recalculations
     const cardDimensions = useMemo(() => {
       const cardWidth = screenWidth - spacing.xxl;
       const cardHeight = cardWidth / 1.6;
@@ -46,8 +44,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
     const progress = useDerivedValue(() => {
       return withSpring(isFlipped ? 1 : 0, SPRING_CONFIG);
     }, [isFlipped]);
-
-    // Animated styles for front face
     const frontAnimatedStyle = useAnimatedStyle(() => {
       const rotateY = interpolate(progress.value, [0, 1], [0, 180]);
       const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
@@ -62,7 +58,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
       };
     }, [progress]);
 
-    // Animated styles for back face
     const backAnimatedStyle = useAnimatedStyle(() => {
       const rotateY = interpolate(progress.value, [0, 1], [180, 360]);
       const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
@@ -112,7 +107,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
       };
     }, [angle, cardWidth, cardHeight]);
 
-    // Memoize card style to prevent recreation
     const cardStyle = useMemo(
       () => [styles.card, { width: cardWidth }],
       [cardWidth],
@@ -137,7 +131,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
       </View>
     );
   },
-  // Custom comparison function for memo to optimize re-renders
   (prevProps, nextProps) => {
     return (
       prevProps.isFlipped === nextProps.isFlipped &&
