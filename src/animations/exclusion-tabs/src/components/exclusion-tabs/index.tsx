@@ -1,9 +1,10 @@
-import { Blur, ColorMatrix, Group, Paint } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
+
+import { Blur, ColorMatrix, Group, Paint } from '@shopify/react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
-import { ExclusionTabText } from './exclusion-tab-text';
 import { ExclusionTabBox } from './exclusion-tab-box';
+import { ExclusionTabText } from './exclusion-tab-text';
 import { useBoxWidths } from './hooks/use-text-widths';
 
 type ExclusionTabsProps = {

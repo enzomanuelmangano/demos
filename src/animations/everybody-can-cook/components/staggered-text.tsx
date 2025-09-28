@@ -1,5 +1,3 @@
-import type { ForwardedRef } from 'react';
-import { forwardRef, useImperativeHandle } from 'react';
 import {
   type StyleProp,
   type TextStyle,
@@ -7,6 +5,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
+
+import { forwardRef, useImperativeHandle } from 'react';
+
 import {
   Easing,
   useDerivedValue,
@@ -16,6 +17,8 @@ import {
 } from 'react-native-reanimated';
 
 import { StaggeredDigit } from './staggered-digit';
+
+import type { ForwardedRef } from 'react';
 
 /**
  * Props for the StaggeredText component
@@ -79,10 +82,8 @@ export const StaggeredText = forwardRef(
     }: StaggeredTextProps,
     ref: ForwardedRef<StaggeredTextRef>,
   ) => {
-    // Shared value to control the animation progress (0 to 1)
     const progress = useSharedValue(0);
 
-    // Expose methods through the ref
     useImperativeHandle(ref, () => ({
       animate: () => {
         setTimeout(() => {
@@ -106,7 +107,6 @@ export const StaggeredText = forwardRef(
     return (
       <View style={[styles.container, containerStyle]}>
         {text.split('').map((char, index) => {
-          // Create a delayed progress value for each character
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const delayedProgress = useDerivedValue(() => {
             'worklet';
@@ -115,14 +115,11 @@ export const StaggeredText = forwardRef(
               return 0;
             }
 
-            // Calculate delay based on character index
             const delayMs = index * 60 + delay;
             return withDelay(
               delayMs,
               withTiming(progress.value, {
                 duration: 500,
-                // Smooth easing curve for natural animation
-                // https://www.easing.dev/in-out-quad
                 easing: Easing.bezier(0.455, 0.03, 0.515, 0.955),
               }),
             );

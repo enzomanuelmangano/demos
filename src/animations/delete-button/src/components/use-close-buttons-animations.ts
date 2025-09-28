@@ -1,5 +1,4 @@
 import { Skia } from '@shopify/react-native-skia';
-import type { SharedValue } from 'react-native-reanimated';
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -11,7 +10,8 @@ import { useGestureHandler } from 'react-native-skia-gesture';
 
 import { SpringConfig } from './constants';
 
-// Define the parameters for the useCloseButtonAnimations hook
+import type { SharedValue } from 'react-native-reanimated';
+
 type UseCloseButtonAnimationsParams = {
   isToggled: SharedValue<boolean>;
   width: number;
@@ -23,43 +23,37 @@ export const useCloseButtonAnimations = ({
   width,
   additionalWidth,
 }: UseCloseButtonAnimationsParams) => {
-  // Track whether the close button is currently pressed
   const isCloseButtonPressed = useSharedValue(false);
 
-  // Calculate the x-position of the close icon circle
   const closeIconCircleX = useDerivedValue(() => {
     return withSpring(
       isToggled.value
-        ? width + additionalWidth / 2 // Fully expanded position
-        : width / 2 + additionalWidth / 2, // Default position
+        ? width + additionalWidth / 2
+        : width / 2 + additionalWidth / 2,
       SpringConfig,
     );
   }, []);
 
-  // Animate the opacity of the close button
   const closeButtonOpacity = useDerivedValue(() => {
-    return withTiming(isToggled.value ? 1 : 0); // Fade in when toggled, fade out when not
+    return withTiming(isToggled.value ? 1 : 0);
   }, []);
 
-  // Handle gesture events for the close button
   const gestureHandlerClose = useGestureHandler({
     onStart: () => {
       'worklet';
-      isCloseButtonPressed.value = true; // Set pressed state when touch starts
+      isCloseButtonPressed.value = true;
     },
     onTap: () => {
       'worklet';
-      isCloseButtonPressed.value = false; // Reset pressed state when touch ends
-      isToggled.value = false; // Toggle off the button
+      isCloseButtonPressed.value = false;
+      isToggled.value = false;
     },
   });
 
-  // Animate the scale of the close button when pressed
   const closeButtonScale = useDerivedValue(() => {
-    return withTiming(isCloseButtonPressed.value ? 0.95 : 1); // Slightly shrink when pressed
+    return withTiming(isCloseButtonPressed.value ? 0.95 : 1);
   }, []);
 
-  // Create a transform object for the close button
   const closeButtonTransform = useDerivedValue(() => {
     return [{ scale: closeButtonScale.value }];
   }, []);
@@ -71,11 +65,10 @@ export const useCloseButtonAnimations = ({
   useAnimatedReaction(
     () => closeButtonOpacity.value,
     opacity => {
-      paint.value.setAlphaf(opacity); // Update the paint's alpha value
+      paint.value.setAlphaf(opacity);
     },
   );
 
-  // Return all the animated values and handlers
   return {
     closeIconCircleX,
     closeButtonOpacity,

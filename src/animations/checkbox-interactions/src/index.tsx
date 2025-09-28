@@ -1,4 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
+
 import {
   SafeAreaProvider,
   useSafeAreaInsets,
@@ -32,20 +33,20 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#0C0A0C',
+    flex: 1,
     paddingLeft: 12,
+  },
+  contentWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 24,
   },
   sectionTitle: {
     color: 'white',
     fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 24,
-  },
-  contentWrap: {
-    flexWrap: 'wrap',
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
   },
 });
 

@@ -1,15 +1,18 @@
+import { Alert, StyleSheet, View } from 'react-native';
+
+import { useRef } from 'react';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useRef } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
-import type { CircularDraggableSliderRefType } from './components/draggable-slider';
 import { CircularDraggableSlider } from './components/draggable-slider';
 import { useToggle } from './hooks/useToggle';
 import { hapticLight } from './utils/haptics';
+
+import type { CircularDraggableSliderRefType } from './components/draggable-slider';
 
 const LinesAmount = 200;
 
@@ -92,26 +95,26 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
+  button: {
     alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: 'white',
+    borderRadius: 32,
+    height: 64,
     justifyContent: 'center',
   },
   buttonsContainer: {
-    position: 'absolute',
     bottom: 48,
-    right: 32,
     flexDirection: 'row',
     gap: 8,
+    position: 'absolute',
+    right: 32,
   },
-  button: {
-    height: 64,
-    aspectRatio: 1,
-    borderRadius: 32,
-    backgroundColor: 'white',
-    justifyContent: 'center',
+  container: {
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
   },
 });
 

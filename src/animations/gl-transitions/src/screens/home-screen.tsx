@@ -1,23 +1,25 @@
-import { useNavigation } from '@react-navigation/native';
 import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { useMemo } from 'react';
+
+import { AntDesign } from '@expo/vector-icons';
+import MasonryList from '@react-native-seoul/masonry-list';
+import { useNavigation } from '@react-navigation/native';
+import { PressableScale } from 'pressto';
 import Animated, {
   FadeInDown,
   FadeOutDown,
   LinearTransition,
 } from 'react-native-reanimated';
-import { AntDesign } from '@expo/vector-icons';
-import { useMemo } from 'react';
-import MasonryList from '@react-native-seoul/masonry-list';
-import { PressableScale } from 'pressto';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useGLTransition } from '../providers/gl-transitions';
-import { Palette } from '../constants/theme';
-import type { NoteType } from '../atoms/notes';
 import { useNotes } from '../atoms/notes';
+import { Palette } from '../constants/theme';
+import { useGLTransition } from '../providers/gl-transitions';
+
+import type { NoteType } from '../atoms/notes';
 
 export const HomeScreen = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigation = useNavigation<any>();
   const [notes] = useNotes();
 
@@ -114,16 +116,28 @@ export const HomeScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    aspectRatio: 1,
+    borderRadius: 24,
+    height: 48,
+    justifyContent: 'center',
+  },
   fillStart: {
     flex: 1,
     justifyContent: 'center',
   },
-  button: {
-    height: 48,
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 24,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  listHeaderContainer: {
+    flexDirection: 'row',
+    height: 50,
+    marginBottom: 16,
+    paddingHorizontal: 16,
   },
   listItem: {
     borderRadius: 10,
@@ -136,21 +150,9 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   listItemText: {
-    padding: 15,
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 24,
-  },
-  listHeaderContainer: {
-    height: 50,
-    marginBottom: 16,
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    fontWeight: '600',
+    padding: 15,
   },
 });

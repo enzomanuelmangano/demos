@@ -7,9 +7,10 @@ import {
   Skia,
   vec,
 } from '@shopify/react-native-skia';
-import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type PickerProps = {
   cx: number; // X-coordinate of the circle's center
@@ -32,7 +33,6 @@ export const Picker: React.FC<PickerProps> = ({
   translateX,
   translateY,
 }) => {
-  // Gesture handler for touch interactions
   const gesture = useGestureHandler({
     onStart: event => {
       'worklet';
@@ -46,21 +46,18 @@ export const Picker: React.FC<PickerProps> = ({
     },
   });
 
-  // Helper function to normalize the angle between 0 and 2π
   const normalizeAngle = (angle: number) => {
     'worklet';
     const twoPi = 2 * Math.PI;
     return (angle + twoPi) % twoPi;
   };
 
-  // Calculate the angle based on touch position
   const theta = useDerivedValue(() => {
     const x = translateX.value - cx;
     const y = translateY.value - cy;
     return normalizeAngle(Math.atan2(y, x));
   }, [translateX.value, translateY.value]);
 
-  // Create the path for the outer picker circle
   const pickerPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     path.addCircle(
@@ -71,7 +68,6 @@ export const Picker: React.FC<PickerProps> = ({
     return path;
   }, [cx, radius, strokeWidth, theta.value]);
 
-  // Create the path for the inner picker circle
   const internalPickerPath = useDerivedValue(() => {
     const path = Skia.Path.Make();
     path.addCircle(

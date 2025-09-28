@@ -1,14 +1,17 @@
-import { type FC } from 'react';
 import { View } from 'react-native';
+
+import { type FC } from 'react';
+
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { styles } from './card-carousel.styles';
 import { Card } from './card/card.component';
+import { styles } from './card-carousel.styles';
 import { CARD_DATA, CARD_HEIGHT, CARD_WIDTH } from './utils/constants';
+
 import type { CardData } from './utils/types';
 
 export const CardCarousel: FC = () => {

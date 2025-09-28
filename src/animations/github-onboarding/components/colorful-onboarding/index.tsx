@@ -1,8 +1,9 @@
-// Importing necessary libraries and components
+import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { type FC, useMemo } from 'react';
+
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Color from 'color';
-import { type FC, useMemo } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   convertToRGBA,
   interpolateColor,
@@ -15,42 +16,34 @@ import Animated, {
 import { OnboardingPage } from './page';
 import { PaginationDots } from './pagination-dots';
 
-// Types for Color List Item
 type ColorListItemType = {
   title: string;
   color: string;
   image: ReturnType<typeof require>;
 };
 
-// Props for the ColorfulOnboarding component
 type ColorfulOnboardingProps = {
   data: ColorListItemType[];
 };
 
 export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
-  // Getting window dimensions
   const { width, height } = useWindowDimensions();
 
-  // Shared value to track the current scroll offset
   const currentOffset = useSharedValue(0);
 
-  // Calculating the scroll progress based on the window width
   const progress = useDerivedValue(() => {
     return currentOffset.value / width;
   }, [width]);
 
-  // Creating arrays of indexes and colors from the data
   const indexes = useMemo(() => data.map((_, i) => i), [data]);
   const colors = useMemo(() => data.map(({ color }) => color), [data]);
 
-  // Darkening the colors for gradient effect
   const darkenColors = useMemo(() => {
     return data.map(({ color }) => {
       return Color(color).darken(0.8).hex();
     });
   }, [data]);
 
-  // Generating gradient colors for the background
   const gradientColors = useDerivedValue(() => {
     const nextBaseColor = convertToRGBA(
       interpolateColor(progress.value, indexes, colors),
@@ -63,19 +56,16 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
     return [nextBaseColor, nextDarkenColor];
   });
 
-  // Handler to update currentOffset on scroll
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { x } }) => {
       currentOffset.value = x;
     },
   });
 
-  // Reference for the Animated FlatList
   const ref = useAnimatedRef();
 
   return (
     <>
-      {/* Canvas for drawing the background gradient */}
       <Canvas style={[styles.canvas, { width, height }]}>
         <Rect x={0} y={0} width={width} height={height}>
           <LinearGradient
@@ -85,7 +75,6 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
           />
         </Rect>
       </Canvas>
-      {/* Animated FlatList to display onboarding pages */}
       <Animated.FlatList
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
@@ -109,7 +98,6 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
         pagingEnabled
         style={styles.flatList}
       />
-      {/* Component for the pagination dots at the bottom */}
       <PaginationDots
         style={styles.paginationDots}
         progress={progress}
@@ -127,21 +115,20 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
   );
 };
 
-// Styling for the components using StyleSheet for performance optimization
 const styles = StyleSheet.create({
   canvas: {
+    left: 0,
     position: 'absolute',
     top: 0,
-    left: 0,
   },
   flatList: {
     flex: 1,
   },
   paginationDots: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
     bottom: 100,
+    left: 0,
+    position: 'absolute',
+    right: 0,
     zIndex: 10,
   },
 });

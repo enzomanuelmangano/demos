@@ -1,9 +1,12 @@
-import { type FC } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { View } from 'react-native';
+
+import { type FC } from 'react';
+
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 
 import { styles } from './card-chip.styles';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type CardChipProps = {
   chipAnimatedStyle: StyleProp<AnimatedStyle<ViewStyle>>;

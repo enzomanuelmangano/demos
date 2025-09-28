@@ -4,8 +4,9 @@
  * The QR code links to the reactiive.io demos page.
  */
 
-import { LinearGradient } from '@shopify/react-native-skia';
 import { View } from 'react-native';
+
+import { LinearGradient } from '@shopify/react-native-skia';
 import QRCode from 'react-native-qrcode-skia';
 
 export const BackSide = () => {

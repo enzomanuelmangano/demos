@@ -1,12 +1,14 @@
-// Import necessary React components and types
-import type { PropsWithChildren } from 'react';
-import { type FC, useCallback, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type FC,
+  type PropsWithChildren,
+} from 'react';
 
-// Import the ToastContext and Toast component
 import { ToastContext, type ToastType } from './context';
 import { Toast } from './toast';
 
-// Define a ToastProvider component to manage and display toasts
 export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
   // State to manage the list of toasts
   const [toasts, setToasts] = useState<ToastType[]>([]);
@@ -30,7 +32,6 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
     });
   }, []);
 
-  // Memoized sorted list of toasts based on their IDs
   const sortedToasts = useMemo(() => {
     return toasts.sort((a, b) => a.id - b.id);
   }, [toasts]);
@@ -55,18 +56,16 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
 
           return item;
         })
-        .filter(Boolean) as ToastType[]; // Filter out null values and cast to ToastType
+        .filter(Boolean) as ToastType[];
     });
   }, []);
 
-  // Memoized context value containing the showToast function
   const value = useMemo(() => {
     return {
       showToast,
     };
   }, [showToast]);
 
-  // Render the ToastContext.Provider with children and mapped Toast components
   return (
     <>
       <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
@@ -76,7 +75,6 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
           typeof toast.title === 'string' ? toast.title : toast.id;
         const key = toast.key || textKey;
 
-        // Render each Toast component with the given key, toast, index, and onDismiss function
         return (
           <Toast key={key} toast={toast} index={index} onDismiss={onDismiss} />
         );

@@ -1,4 +1,5 @@
-import { eachDayOfInterval, endOfWeek, format, startOfWeek } from 'date-fns';
+import { StyleSheet, Text, View } from 'react-native';
+
 import {
   forwardRef,
   useCallback,
@@ -6,10 +7,9 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
 
-import { ColorScheme, DEFAULT_COLOR_SCHEME } from '../config/defaults';
+import { eachDayOfInterval, endOfWeek, format, startOfWeek } from 'date-fns';
+import { useSharedValue } from 'react-native-reanimated';
 
 import {
   ContributionSquare,
@@ -20,6 +20,7 @@ import {
   ContributionData,
   ContributionLevel,
 } from './types';
+import { ColorScheme, DEFAULT_COLOR_SCHEME } from '../config/defaults';
 import { generateDayLabels, groupDaysIntoWeeks } from './utils/date-utils';
 
 const dayLabels = generateDayLabels();
@@ -36,7 +37,6 @@ export const GitHubContributionCalendar = forwardRef<
   const squareRefs = useRef<(SquareAnimationControls | null)[]>([]);
   const isAnimating = useSharedValue(false);
 
-  // Calculate date range from data
   const { startDate, endDate } = useMemo(() => {
     const dates = Object.keys(data)
       .map(dateStr => new Date(dateStr))
@@ -47,9 +47,6 @@ export const GitHubContributionCalendar = forwardRef<
     };
   }, [data]);
 
-  // Generate day labels
-
-  // Calculate calendar grid
   const weeks = useMemo(() => {
     const calendarStart = startOfWeek(startDate, { weekStartsOn: 1 });
     const calendarEnd = endOfWeek(endDate, { weekStartsOn: 1 });
@@ -62,7 +59,6 @@ export const GitHubContributionCalendar = forwardRef<
     return groupDaysIntoWeeks(allCalendarDays);
   }, [startDate, endDate]);
 
-  // Pre-calculate square indices for valid dates
   const squareIndexMap = useMemo(() => {
     const indexMap = new Map<string, number>();
     let squareIndex = 0;
@@ -102,7 +98,6 @@ export const GitHubContributionCalendar = forwardRef<
     return startAnimation();
   }, [startAnimation, resetAnimation, isAnimating]);
 
-  // Animation controls
   useImperativeHandle(
     ref,
     () => ({
@@ -116,7 +111,6 @@ export const GitHubContributionCalendar = forwardRef<
   return (
     <View style={styles.calendarContainer}>
       <View style={styles.calendarGrid}>
-        {/* Day labels */}
         <View style={styles.dayLabelsContainer}>
           {dayLabels.map(day => (
             <Text key={day} style={styles.dayLabel}>
@@ -125,7 +119,6 @@ export const GitHubContributionCalendar = forwardRef<
           ))}
         </View>
 
-        {/* Contribution grid */}
         <View style={styles.gridContainer}>
           {weeks.map((week, weekIndex) => (
             <View key={weekIndex} style={styles.week}>
@@ -133,10 +126,8 @@ export const GitHubContributionCalendar = forwardRef<
                 const dateStr = format(date, 'yyyy-MM-dd');
                 const level = data[dateStr] || 0;
 
-                // Check if this date is within our actual data range
                 const isInDataRange = date >= startDate && date <= endDate;
 
-                // If outside data range, show empty square
                 if (!isInDataRange) {
                   return (
                     <View
@@ -172,44 +163,44 @@ export const GitHubContributionCalendar = forwardRef<
 
 const styles = StyleSheet.create({
   calendarContainer: {
-    padding: 16,
     backgroundColor: '#ffffff',
-    borderRadius: 16,
     borderCurve: 'continuous',
+    borderRadius: 16,
     boxShadow: '0px 0px 20px 0px rgba(0, 0, 0, 0.05)',
+    padding: 16,
   },
   calendarGrid: {
-    flexDirection: 'row',
     alignItems: 'flex-start',
-  },
-  dayLabelsContainer: {
-    marginRight: 8,
-    justifyContent: 'flex-start',
+    flexDirection: 'row',
   },
   dayLabel: {
-    fontSize: 11,
     color: '#656d76',
+    fontFamily: 'regular',
+    fontSize: 11,
     height: 14,
+    marginBottom: 3,
     textAlign: 'left',
     textAlignVertical: 'center',
     width: 25,
-    marginBottom: 3,
-    fontFamily: 'regular',
   },
-  gridContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  week: {
-    marginRight: 3,
-  },
-  square: {
-    width: 14,
-    height: 14,
-    marginBottom: 3,
-    borderRadius: 2,
+  dayLabelsContainer: {
+    justifyContent: 'flex-start',
+    marginRight: 8,
   },
   emptySquare: {
     backgroundColor: 'transparent',
+  },
+  gridContainer: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+  },
+  square: {
+    borderRadius: 2,
+    height: 14,
+    marginBottom: 3,
+    width: 14,
+  },
+  week: {
+    marginRight: 3,
   },
 });

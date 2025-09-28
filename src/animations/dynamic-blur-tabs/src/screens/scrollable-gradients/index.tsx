@@ -1,5 +1,6 @@
-import { LinearGradient } from 'expo-linear-gradient';
 import { ColorValue, View, useWindowDimensions } from 'react-native';
+
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedScrollHandler } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

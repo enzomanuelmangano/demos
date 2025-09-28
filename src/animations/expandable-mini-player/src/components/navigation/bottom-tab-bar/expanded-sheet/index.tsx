@@ -1,3 +1,6 @@
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -5,17 +8,14 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EasingsUtils } from '../../../../animations/easings';
+import { Palette } from '../../../../constants/palette';
 import { TabBarHeight } from '../constants';
 import { ExpandedSheetMutableProgress } from '../shared-progress';
-import { Palette } from '../../../../constants/palette';
-
-import { SheetContent } from './sheet-content';
 import { MiniPlayerHeight } from './constants';
+import { SheetContent } from './sheet-content';
 
 export const ExpandedSheet = () => {
   const { height: windowHeight } = useWindowDimensions();
@@ -143,25 +143,25 @@ export const ExpandedSheet = () => {
 };
 
 const styles = StyleSheet.create({
-  knob: {
-    width: 48,
-    height: 4,
-    borderRadius: 24,
-    backgroundColor: '#767676',
-  },
   container: {
-    position: 'absolute',
     borderCurve: 'continuous',
-    zIndex: 1000,
+    borderWidth: StyleSheet.hairlineWidth,
+    position: 'absolute',
     shadowColor: Palette.card,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 16,
-    borderWidth: StyleSheet.hairlineWidth,
+    zIndex: 1000,
+  },
+  knob: {
+    backgroundColor: '#767676',
+    borderRadius: 24,
+    height: 4,
+    width: 48,
   },
   knobContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
     width: '100%',
   },
 });

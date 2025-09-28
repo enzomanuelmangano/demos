@@ -1,6 +1,8 @@
-import { type FC, memo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, memo } from 'react';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type StackedSheetHandleProps = {
   style?: StyleProp<ViewStyle>;
@@ -14,12 +16,12 @@ export const StackedSheetHandle: FC<StackedSheetHandleProps> = memo(
 
 const styles = StyleSheet.create({
   handle: {
-    position: 'absolute',
-    top: 7.5,
-    height: 2,
-    width: 50,
     alignSelf: 'center',
     backgroundColor: 'rgba(0,0,0,0.08)',
     borderRadius: 5,
+    height: 2,
+    position: 'absolute',
+    top: 7.5,
+    width: 50,
   },
 });

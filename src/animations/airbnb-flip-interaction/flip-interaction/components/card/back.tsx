@@ -1,8 +1,10 @@
-import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { spacing } from '../../constants';
+import { type FC, memo } from 'react';
+
 import { ProfileAvatar } from './profile-avatar';
+import { spacing } from '../../constants';
+
 import type { ProfileType } from './types';
 
 type CardBackProps = {
@@ -50,64 +52,64 @@ export const CardBack: FC<CardBackProps> = memo(({ profile }) => {
 });
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    height: '100%',
-    borderRadius: spacing.l + 4,
-    overflow: 'hidden',
-  },
   background: {
-    width: '100%',
-    height: '100%',
     backgroundColor: 'white',
     borderRadius: spacing.l + 4,
-    padding: spacing.l,
+    height: '100%',
     justifyContent: 'center',
+    padding: spacing.l,
+    width: '100%',
   },
-  statsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginTop: spacing.s,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1D29',
-    fontFamily: 'SF-Pro-Rounded-Heavy',
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontFamily: 'SF-Pro-Rounded-Bold',
-    marginTop: 4,
-    letterSpacing: 0.2,
+  container: {
+    borderRadius: spacing.l + 4,
+    height: '100%',
+    overflow: 'hidden',
+    width: '100%',
   },
   headerSection: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'space-between',
+  },
+  locationText: {
+    color: '#6B7280',
+    fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 15,
+    letterSpacing: 0.1,
+  },
+  nameText: {
+    color: '#1A1D29',
+    fontFamily: 'SF-Pro-Rounded-Heavy',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginBottom: spacing.xs,
   },
   profileInfo: {
     flex: 1,
     marginLeft: spacing.l,
   },
-  nameText: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1A1D29',
-    fontFamily: 'SF-Pro-Rounded-Heavy',
-    marginBottom: spacing.xs,
-    letterSpacing: -0.3,
+  statItem: {
+    alignItems: 'center',
   },
-  locationText: {
-    fontSize: 15,
+  statLabel: {
     color: '#6B7280',
     fontFamily: 'SF-Pro-Rounded-Bold',
-    letterSpacing: 0.1,
+    fontSize: 13,
+    letterSpacing: 0.2,
+    marginTop: 4,
+  },
+  statNumber: {
+    color: '#1A1D29',
+    fontFamily: 'SF-Pro-Rounded-Heavy',
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  statsContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: spacing.s,
   },
 });

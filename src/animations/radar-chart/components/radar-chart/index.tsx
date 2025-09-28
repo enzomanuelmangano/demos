@@ -1,13 +1,15 @@
+import { useCallback, useMemo } from 'react';
+
 import { Canvas, Group, Path, Points, Text } from '@shopify/react-native-skia';
 import Color from 'color';
-import { useCallback, useMemo } from 'react';
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { useCanvasLayout } from './hooks/use-canvas-layout';
 import { usePolygonGrid } from './hooks/use-polygon-grid';
 import { useUnwrappedValues } from './hooks/use-unwrapped-radar-values';
-import type { RadarChartProps, RadarDataType } from './typings';
 import { getScaledPolygonPath } from './utils/get-scaled-polygon';
+
+import type { RadarChartProps, RadarDataType } from './typings';
 
 function RadarChart<K extends string>({
   data,

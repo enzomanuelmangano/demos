@@ -1,6 +1,7 @@
-import { useCallback, useRef } from 'react';
-import type { FlatList, LayoutRectangle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedScrollHandler,
@@ -10,10 +11,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MeasureableAnimatedView } from './components/MeasureableAnimatedView';
 import { SectionListItem } from './components/SectionListItem';
-import type { HeaderListItem, ListItem } from './constants';
 import { data, isHeader } from './constants';
 import { useHeaderLayout } from './hooks/useHeaderLayout';
 import { useHeaderStyle } from './hooks/useHeaderStyle';
+
+import type { HeaderListItem, ListItem } from './constants';
+import type { FlatList, LayoutRectangle } from 'react-native';
 
 const HeaderHeight = 65;
 const ItemHeight = 50;
@@ -62,7 +65,6 @@ export const AnimatedIndicatorList = () => {
         styles.container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
-      {/* Animated Header Section */}
       <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
         {headers.map(({ header }, index) => {
           return (
@@ -94,7 +96,6 @@ export const AnimatedIndicatorList = () => {
       </Animated.View>
       <Animated.View style={rIndicatorStyle} />
 
-      {/* List */}
       <Animated.FlatList
         onScroll={onScroll}
         ref={flatlistRef}
@@ -118,8 +119,8 @@ export const AnimatedIndicatorList = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#fff',
+    flex: 1,
     overflow: 'hidden',
   },
 });

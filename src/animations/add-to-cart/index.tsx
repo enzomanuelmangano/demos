@@ -1,7 +1,8 @@
-import { Feather } from '@expo/vector-icons';
-import { useCallback, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
-import type { MeasuredDimensions } from 'react-native-reanimated';
+
+import { useCallback, useMemo, useState } from 'react';
+
+import { Feather } from '@expo/vector-icons';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -10,12 +11,14 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { Backdrop } from './components/backdrop';
 import { BottomSheet } from './components/bottom-sheet';
 import { ConfirmButton } from './components/confirm-button';
 import { ListItem } from './components/list-item';
+
+import type { MeasuredDimensions } from 'react-native-reanimated';
 
 const items = new Array(20).fill(0).map((_, index) => ({
   id: index,
@@ -170,26 +173,28 @@ const AddToCart = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   buyButton: {
+    backgroundColor: '#000',
+    borderRadius: 10,
     height: 40,
     width: 40,
-    borderRadius: 10,
-    backgroundColor: '#000',
+  },
+  container: {
+    backgroundColor: '#fff',
+    flex: 1,
   },
   listItem: {
-    width: '90%',
-    height: 85,
+    alignItems: 'center',
     alignSelf: 'center',
+    backgroundColor: 'white',
+    borderRadius: 10,
+    elevation: 5,
+    flexDirection: 'row',
+    height: 85,
+    justifyContent: 'space-between',
     margin: 10,
     paddingLeft: 15,
     paddingRight: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -197,9 +202,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.2,
     shadowRadius: 10,
-    elevation: 5,
-    backgroundColor: 'white',
-    borderRadius: 10,
+    width: '90%',
   },
 });
 

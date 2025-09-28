@@ -1,12 +1,15 @@
-import { type FC, memo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   useAnimatedStyle,
   withSpring,
 } from 'react-native-reanimated';
 
 import { Dot } from './dot';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type DotsProps = {
   count: number;
@@ -68,14 +71,14 @@ export const Dots: FC<DotsProps> = memo(({ count, activeIndex, dotSize }) => {
 });
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   bar: {
-    position: 'absolute',
     backgroundColor: '#66e070',
-    borderRadius: 100,
     borderCurve: 'continuous',
+    borderRadius: 100,
+    position: 'absolute',
+  },
+  container: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
 });

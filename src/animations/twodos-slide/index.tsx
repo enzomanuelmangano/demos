@@ -1,7 +1,9 @@
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import { AntDesign } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
-import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -63,23 +65,23 @@ const styles = StyleSheet.create({
   fill: {
     flex: 1,
   },
-  squaresContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
   frictionSliderContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginTop: 45,
     paddingBottom: 280,
     paddingTop: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
   },
   slideActionLabel: {
+    color: 'gray',
     fontSize: 16,
     fontWeight: 'bold',
     marginRight: 5,
-    color: 'gray',
+  },
+  squaresContainer: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'flex-end',
   },
 });

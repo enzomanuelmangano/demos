@@ -1,8 +1,10 @@
 import { createRef, useCallback, useEffect, useMemo, useRef } from 'react';
+
 import { useSharedValue } from 'react-native-reanimated';
 
-import type { SwipeableCardRefType } from '../components/Card';
 import { IMAGES } from '../constants';
+
+import type { SwipeableCardRefType } from '../components/Card';
 
 const useSwipeControls = () => {
   const activeIndex = useSharedValue(0);

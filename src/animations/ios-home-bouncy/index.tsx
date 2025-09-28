@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
 import { Modal, Pressable } from 'react-native';
+
+import { useEffect, useState } from 'react';
+
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { startAnimation } from './animations/bouncy';

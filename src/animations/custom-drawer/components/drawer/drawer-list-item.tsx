@@ -15,17 +15,17 @@ const DrawerListItem: React.FC<DrawerListItemProps> = ({ label, onPress }) => {
 
 const styles = StyleSheet.create({
   container: {
+    borderRadius: 2,
     height: 50,
     justifyContent: 'center',
     marginBottom: 5,
     marginHorizontal: 10,
-    borderRadius: 2,
   },
   label: {
     color: 'white',
-    marginLeft: 15,
     fontWeight: '500',
     letterSpacing: 1,
+    marginLeft: 15,
   },
 });
 

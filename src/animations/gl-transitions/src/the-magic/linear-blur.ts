@@ -1,5 +1,6 @@
-import type { Transition } from '../providers/gl-transitions';
 import { glsl } from '../providers/gl-transitions';
+
+import type { Transition } from '../providers/gl-transitions';
 
 // Took from here: https://gl-transitions.com/editor/LinearBlur
 export const LinearBlur: Transition = glsl`

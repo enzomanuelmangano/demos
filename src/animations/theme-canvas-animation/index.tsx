@@ -1,7 +1,8 @@
-import { Group, Rect, Skia, Text, useFont } from '@shopify/react-native-skia';
-import { useCallback } from 'react';
 import { useWindowDimensions } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { useCallback } from 'react';
+
+import { Group, Rect, Skia, Text, useFont } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
@@ -10,6 +11,8 @@ import {
 import Touchable from 'react-native-skia-gesture';
 
 import { SelectableSquareContainer } from './selectable-square';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const SQUARE_SIZE = 35;
 

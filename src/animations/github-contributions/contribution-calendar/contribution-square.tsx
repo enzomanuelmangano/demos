@@ -1,5 +1,7 @@
-import { forwardRef, useCallback, useImperativeHandle } from 'react';
 import { StyleSheet } from 'react-native';
+
+import { forwardRef, useCallback, useImperativeHandle } from 'react';
+
 import Animated, {
   cancelAnimation,
   interpolate,
@@ -10,9 +12,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { ColorScheme } from '../config/defaults';
-
 import { CalendarAnimationControls, ContributionLevel } from './types';
+import { ColorScheme } from '../config/defaults';
 
 export type ContributionSquareProps = {
   level: ContributionLevel;
@@ -115,9 +116,9 @@ export const ContributionSquare = forwardRef<
 
 const styles = StyleSheet.create({
   square: {
-    width: 14,
+    borderRadius: 2,
     height: 14,
     marginBottom: 3,
-    borderRadius: 2,
+    width: 14,
   },
 });

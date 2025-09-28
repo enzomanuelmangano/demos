@@ -1,7 +1,8 @@
-import { Canvas } from '@shopify/react-native-skia';
-import type { FC } from 'react';
-import { useCallback, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
+import { Canvas } from '@shopify/react-native-skia';
 import Animated, {
   useAnimatedReaction,
   useDerivedValue,
@@ -10,12 +11,14 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { AnimatedFaceRefType } from './components/AnimatedFace';
 import { AnimatedFace } from './components/AnimatedFace';
 import { ButtonsGrid } from './components/ButtonsGrid';
 import { CircleStroke } from './components/CircleStroke';
 import { PinArea } from './components/PinArea';
 import { useAnimatedShake } from './hooks/use-animated-shake';
+
+import type { AnimatedFaceRefType } from './components/AnimatedFace';
+import type { FC } from 'react';
 
 type LockScreenProps = {
   correctPin: string;
@@ -120,8 +123,8 @@ const LockScreen: FC<LockScreenProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#1C274D',
+    flex: 1,
   },
   fill: {
     flex: 1,

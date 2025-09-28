@@ -1,6 +1,7 @@
-// Import necessary modules and components from React and React Native
-import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -10,10 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-// Import custom TextLabel component
 import { TextLabel } from './text-label';
 
-// Define types for color schemes and BalanceSliderProps
 type ColorScheme = {
   box: string;
   label: string;
@@ -35,13 +34,11 @@ type BalanceSliderProps = {
   rightPercentageLimitBeforeShift: number;
 };
 
-// Clamp function to restrict a value within a given range
 const clamp = (value: number, lowerBound: number, upperBound: number) => {
   'worklet';
   return Math.min(Math.max(lowerBound, value), upperBound);
 };
 
-// React functional component for the BalanceSlider
 export const BalanceSlider: React.FC<BalanceSliderProps> = ({
   width,
   height,
@@ -53,14 +50,11 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
   leftPercentageLimitBeforeShift,
   rightPercentageLimitBeforeShift,
 }) => {
-  // Constants for picker width percentage and picker width calculation
   const PICKER_WIDTH_PERCENTAGE = 0.05;
   const pickerWidth = width * PICKER_WIDTH_PERCENTAGE;
 
-  // Shared animated value for the x-coordinate of the slider
   const x = useSharedValue((width + pickerWidth) * initialPercentage);
 
-  // Callback function to handle percentage change
   const onChangeWrapper = useCallback(
     (percentage: number) => {
       if (onChange)
@@ -72,7 +66,6 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     [onChange],
   );
 
-  // This is the percentage of the slider from the left
   const xPercentage = useDerivedValue(() => {
     return clamp((x.value - pickerWidth / 2) / width, 0, 1);
   });
@@ -83,11 +76,8 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     return xPercentage.value * (1 - PICKER_WIDTH_PERCENTAGE);
   }, []);
 
-  // Gesture handler for pan gestures
   const gesture = Gesture.Pan()
     .onBegin(event => {
-      // We substract the picker width / 2 because we want the picker to be centered
-      // + withSpring is used to add spring animation to the slider
       x.value = withSpring(event.x + pickerWidth / 2, {
         overshootClamping: true,
       });
@@ -97,7 +87,6 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
       scheduleOnRN(onChangeWrapper, xPercentage.value);
     });
 
-  // Derived animated value to check if the slider has reached its boundaries (left or right)
   const hasReachedBoundaries = useDerivedValue(() => {
     return (
       xPercentage.value < leftPercentageLimitBeforeShift ||
@@ -105,14 +94,12 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     );
   }, [leftPercentageLimitBeforeShift, rightPercentageLimitBeforeShift]);
 
-  // Derived animated value for box height percentage with spring animation
   const boxHeightPercentage = useDerivedValue(() => {
     // if the slider has reached its boundaries, we want to shrink the box height
     // of the left, right, and picker containers!
     return withSpring(hasReachedBoundaries.value ? 0.3 : 1);
   }, []);
 
-  // Animated styles for the first container, second container, and picker container
   const rFirstContainerStyle = useAnimatedStyle(() => {
     return {
       width: `${uiXPercentage.value * 100}%`,
@@ -160,7 +147,6 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
           height={height}
           shifted={hasReachedBoundaries}
         />
-        {/* Left Box */}
         <Animated.View
           style={[
             styles.box,
@@ -170,7 +156,6 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
             rFirstContainerStyle,
           ]}
         />
-        {/* Custom Picker */}
         <Animated.View
           style={[
             {
@@ -188,7 +173,6 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
             }}
           />
         </Animated.View>
-        {/* Right Box */}
         <Animated.View
           style={[
             styles.box,
@@ -203,15 +187,14 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
   );
 };
 
-// Stylesheet for the BalanceSlider component
 const styles = StyleSheet.create({
   box: {
-    height: '100%',
     borderRadius: 5,
+    height: '100%',
   },
   pickerContainer: {
+    alignItems: 'center',
     height: '100%',
     justifyContent: 'center',
-    alignItems: 'center',
   },
 });

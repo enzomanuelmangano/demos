@@ -1,25 +1,20 @@
-// Define types for our Sudoku game
 export type CellValue = number | null;
 export type SudokuBoard = CellValue[][];
 
-// Sudoku validation functions
 export const isValidMove = (
   board: SudokuBoard,
   row: number,
   col: number,
   num: number,
 ): boolean => {
-  // Check row
   for (let x = 0; x < 9; x++) {
     if (board[row][x] === num && x !== col) return false;
   }
 
-  // Check column
   for (let x = 0; x < 9; x++) {
     if (board[x][col] === num && x !== row) return false;
   }
 
-  // Check 3x3 box
   const boxRow = Math.floor(row / 3) * 3;
   const boxCol = Math.floor(col / 3) * 3;
   for (let i = 0; i < 3; i++) {

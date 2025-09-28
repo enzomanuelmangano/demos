@@ -1,3 +1,5 @@
+import { type FC, memo, useMemo } from 'react';
+
 import {
   Atlas,
   Fill,
@@ -5,9 +7,9 @@ import {
   useRectBuffer,
   useTexture,
 } from '@shopify/react-native-skia';
-import { type FC, memo, useMemo } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type AnimatedSquaresProps = {
   width: number;

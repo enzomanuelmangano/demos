@@ -1,6 +1,6 @@
-import type { SkPath } from '@shopify/react-native-skia';
-import { Path, Skia } from '@shopify/react-native-skia';
 import { forwardRef, useCallback, useImperativeHandle } from 'react';
+
+import { Path, Skia } from '@shopify/react-native-skia';
 import {
   cancelAnimation,
   Easing,
@@ -10,11 +10,13 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { extractEpicycles } from './utils/extract-epicycles';
 import { computeFFT } from './utils/fft';
 import { fillToPowerOfTwo, getPoints } from './utils/fill';
 
-// Define the ref type for external interaction with the FourierVisualizer component
+import type { SkPath } from '@shopify/react-native-skia';
+
 export type FourierVisualizerRefType = {
   draw: ({
     path,
@@ -32,48 +34,35 @@ const FourierVisualizer = forwardRef<
     strokeWidth?: number;
   }
 >(({ strokeWidth = 2.5 }, ref) => {
-  // Time value for animation progression
   const time = useSharedValue(0);
 
-  // Shared value to store the base epicycles data
   const baseEpicycles = useSharedValue<ReturnType<typeof extractEpicycles>>([]);
 
-  // Paths for visualizing the Fourier series
   const resultPath = useSharedValue(Skia.Path.Make());
   const circlesPath = useSharedValue(Skia.Path.Make());
 
-  // Shared value for the opacity of drawn paths
   const opacity = useSharedValue(1);
 
-  // Function to initiate the Fourier visualization based on a provided path
   const draw = useCallback(
     ({ path, onComplete }: { path: SkPath; onComplete?: () => void }) => {
       'worklet';
-      // Start by setting full opacity
       opacity.value = withTiming(1);
 
-      // Convert path into linearly interpolated points
       const points = getPoints(path);
 
-      // Ensure the number of points is a power of two for FFT
       const filledPoints = fillToPowerOfTwo(points);
 
-      // Compute the Fast Fourier Transform on the points
       const data = computeFFT(filledPoints);
 
-      // Extract the epicycles from the FFT data
       const extractedEpicycles = extractEpicycles(data).sort(
         (a, b) => b.amplitude - a.amplitude,
       );
 
-      // Store the base epicycles data
       baseEpicycles.value = extractedEpicycles;
 
-      // Reset paths
       resultPath.value.reset();
       time.value = 0;
 
-      // Animate over time to visualize the epicycles
       time.value = withTiming(
         2 * Math.PI - 0.05,
         {
@@ -93,10 +82,8 @@ const FourierVisualizer = forwardRef<
     [baseEpicycles, time, opacity, resultPath],
   );
 
-  // Shared values to store computed epicycle positions
   const epicyclePositions = useSharedValue<{ x: number; y: number }[]>([]);
 
-  // Animated reaction to compute epicycle positions based on time changes
   useAnimatedReaction(
     () => [time.value, baseEpicycles.value] as const,
     ([newTime, epicycles]) => {
@@ -109,7 +96,6 @@ const FourierVisualizer = forwardRef<
       for (let index = 0; index < epicycles.length; index++) {
         const { frequency, amplitude, phase } = epicycles[index];
 
-        // Calculate the position on the circle for the current epicycle
         const x =
           cumulativeX + amplitude * Math.cos(frequency * newTime + phase);
         const y =
@@ -117,7 +103,6 @@ const FourierVisualizer = forwardRef<
 
         positions.push({ x, y });
 
-        // Update cumulative position for next epicycle
         cumulativeX = x;
         cumulativeY = y;
       }
@@ -126,7 +111,6 @@ const FourierVisualizer = forwardRef<
     },
   );
 
-  // Clear all visualizations
   const clear = useCallback(() => {
     'worklet';
     opacity.value = 0;
@@ -138,7 +122,6 @@ const FourierVisualizer = forwardRef<
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opacity, baseEpicycles, epicyclePositions, time]);
 
-  // Expose functions to parent component via ref
   useImperativeHandle(
     ref,
     () => ({
@@ -148,7 +131,6 @@ const FourierVisualizer = forwardRef<
     [draw, clear],
   );
 
-  // Derive the visualization path based on the computed positions
   const drawPath = useDerivedValue(() => {
     const skPath = Skia.Path.Make();
     circlesPath.value.reset();
@@ -163,18 +145,15 @@ const FourierVisualizer = forwardRef<
     let finalX = 0;
     let finalY = 0;
 
-    // Compute the visualization based on each epicycle position
     for (let index = 0; index < positions.length; index++) {
       const { x, y } = positions[index];
       const { amplitude } = epicycles[index];
 
-      // Visualize the circles around the path
       if (index > 0) {
         const { x: prevX, y: prevY } = positions[index - 1];
         circlesPath.value.addCircle(prevX, prevY, amplitude);
       }
 
-      // Connect the path to the new position
       const lastSkiaPathPt = skPath.getLastPt();
       if (lastSkiaPathPt.x === 0 && lastSkiaPathPt.y === 0) {
         skPath.moveTo(x, y);
@@ -186,7 +165,6 @@ const FourierVisualizer = forwardRef<
       finalY = y;
     }
 
-    // Update the resultPath to visualize the overall path over time
     if (finalX !== 0 || finalY !== 0) {
       const lastResultPathPt = resultPath.value.getLastPt();
       if (lastResultPathPt.x === 0 && lastResultPathPt.y === 0) {
@@ -200,7 +178,6 @@ const FourierVisualizer = forwardRef<
   });
 
   return (
-    // Render the visualization paths
     <>
       <Path
         opacity={opacity}

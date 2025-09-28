@@ -1,17 +1,20 @@
 import { StyleSheet, View } from 'react-native';
+
+import { useRef } from 'react';
+
 import {
   Extrapolation,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { useRef } from 'react';
+
+import { BackgroundGradient } from './components/background-gradient';
+import { InfiniteCircularCarousel } from './components/infinite-circular-carousel';
+import { ListItemCard, ListItemSize } from './components/list-item-calc';
+import { ThemeData } from './constants';
 
 import type { InfiniteCircularCarouselRef } from './components/infinite-circular-carousel';
-import { InfiniteCircularCarousel } from './components/infinite-circular-carousel';
-import { ThemeData } from './constants';
-import { ListItemCard, ListItemSize } from './components/list-item-calc';
-import { BackgroundGradient } from './components/background-gradient';
 
 export const InfiniteCarousel = () => {
   const ref = useRef<InfiniteCircularCarouselRef>(null);
@@ -86,8 +89,8 @@ export const InfiniteCarousel = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     alignItems: 'center',
+    flex: 1,
     justifyContent: 'center',
   },
 });

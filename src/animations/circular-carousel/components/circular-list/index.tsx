@@ -1,5 +1,7 @@
-import { type FC } from 'react';
 import { StyleSheet } from 'react-native';
+
+import { type FC } from 'react';
+
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -7,15 +9,12 @@ import Animated, {
 
 import { CircularListItem, LIST_ITEM_WIDTH } from './list-item';
 
-// Define the props type for the CircularList component
 type CircularListProps = {
   data: string[];
   scaleEnabled?: boolean;
 };
 
-// CircularList component definition
 const CircularList: FC<CircularListProps> = ({ data, scaleEnabled }) => {
-  // Create a shared value to keep track of the content offset
   const contentOffset = useSharedValue(0);
 
   const onScroll = useAnimatedScrollHandler({
@@ -48,31 +47,24 @@ const CircularList: FC<CircularListProps> = ({ data, scaleEnabled }) => {
           contentOffset={contentOffset}
         />
       )}
-      // Generate unique keys for each item
       keyExtractor={(_, index) => index.toString()}
     />
   );
 };
 
-// Styles for the CircularList component
 const styles = StyleSheet.create({
-  // Position the list absolutely at the bottom
   list: {
-    position: 'absolute',
     bottom: 0,
-    // Height is set to accommodate three list items
     height: LIST_ITEM_WIDTH * 3,
     left: 0,
+    position: 'absolute',
     right: 0,
   },
-  // Center the list content and add padding for circular movement illusion
   listContent: {
-    justifyContent: 'center',
     alignItems: 'center',
-    // Add padding to the left and right to accommodate space for three list items
+    justifyContent: 'center',
     paddingRight: LIST_ITEM_WIDTH * 3,
   },
 });
 
-// Export the CircularList component
 export { CircularList };

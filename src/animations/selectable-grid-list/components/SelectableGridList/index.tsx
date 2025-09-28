@@ -1,10 +1,12 @@
+import { type FlatListProps, useWindowDimensions } from 'react-native';
+
 import {
   type ReactElement,
   type RefObject,
   useCallback,
   useImperativeHandle,
 } from 'react';
-import { type FlatListProps, useWindowDimensions } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type SharedValue,

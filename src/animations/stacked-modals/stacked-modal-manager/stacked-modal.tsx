@@ -1,4 +1,7 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { useEffect, useMemo } from 'react';
+
 import Animated, {
   FadeOutDown,
   useAnimatedStyle,
@@ -6,11 +9,11 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { useEffect, useMemo } from 'react';
+
+import { MAX_VISIBLE_MODALS, MODAL_HEIGHT } from './constants';
+import { useInternalStackedModal } from './hooks';
 
 import type { StackedModalType } from './context';
-import { useInternalStackedModal } from './hooks';
-import { MAX_VISIBLE_MODALS, MODAL_HEIGHT } from './constants';
 
 type StackedModalProps = {
   index: number;
@@ -145,13 +148,13 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
     borderRadius: 35,
+    elevation: 2,
+    position: 'absolute',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    elevation: 2,
   },
 });
 

@@ -1,9 +1,11 @@
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useCallback } from 'react';
+
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 
 import { Screen } from '../components/navigation';
 import { TabBar } from '../components/navigation/bottom-tab-bar';
+
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const Tab = createBottomTabNavigator();
 

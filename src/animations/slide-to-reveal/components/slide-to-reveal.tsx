@@ -1,4 +1,6 @@
 // Import necessary components and libraries from external packages
+import { type FC, memo, useMemo } from 'react';
+
 import {
   BlurMask,
   Canvas,
@@ -8,7 +10,6 @@ import {
   RoundedRect,
   useFont,
 } from '@shopify/react-native-skia';
-import { type FC, memo, useMemo } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   useDerivedValue,

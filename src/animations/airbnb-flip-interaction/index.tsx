@@ -1,6 +1,8 @@
-import { BlurView } from 'expo-blur';
-import { useState } from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { useState } from 'react';
+
+import { BlurView } from 'expo-blur';
 import Animated, {
   interpolate,
   Keyframe,
@@ -14,11 +16,11 @@ import { spacing } from './constants';
 import { FlipCard } from './flip-interaction';
 import { MainPage } from './flip-interaction/components/card/pages/MainPage';
 import { SecondPage } from './flip-interaction/components/card/pages/SecondPage';
+
 import type { ProfileType } from './flip-interaction/components/card/types';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
-// Animation configuration
 const ANIMATION = {
   translate: {
     initial: 5,
@@ -30,8 +32,6 @@ const ANIMATION = {
     final: 1,
   },
 } as const;
-
-// Quick spring-like animation for front description
 const enteringFront = new Keyframe({
   0: {
     opacity: ANIMATION.opacity.initial,
@@ -46,8 +46,6 @@ const enteringFront = new Keyframe({
     transform: [{ translateY: 0 }],
   },
 }).duration(400);
-
-// Quick fade out for front description
 const exitingFront = new Keyframe({
   0: {
     opacity: ANIMATION.opacity.final,
@@ -62,8 +60,6 @@ const exitingFront = new Keyframe({
     transform: [{ translateY: ANIMATION.translate.initial }],
   },
 }).duration(250);
-
-// Quick spring-like animation for back description
 const enteringBack = new Keyframe({
   0: {
     opacity: ANIMATION.opacity.initial,
@@ -78,8 +74,6 @@ const enteringBack = new Keyframe({
     transform: [{ translateY: 0 }],
   },
 }).duration(400);
-
-// Quick fade out for back description
 const exitingBack = new Keyframe({
   0: {
     opacity: ANIMATION.opacity.final,
@@ -192,24 +186,24 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
   cardSection: {
+    alignItems: 'center',
+    paddingBottom: spacing.xl,
     paddingHorizontal: 20,
     paddingTop: 30,
-    paddingBottom: spacing.xl,
-    alignItems: 'center',
   },
-  descriptionSection: {
-    paddingHorizontal: spacing.xxl,
-    paddingTop: 0,
-    paddingBottom: 40,
+  container: {
+    backgroundColor: '#FFFFFF',
+    flex: 1,
   },
   descriptionContainer: {
     borderRadius: spacing.m,
     overflow: 'hidden',
+  },
+  descriptionSection: {
+    paddingBottom: 40,
+    paddingHorizontal: spacing.xxl,
+    paddingTop: 0,
   },
 });
 

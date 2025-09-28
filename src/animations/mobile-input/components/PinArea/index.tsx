@@ -1,9 +1,11 @@
-import { type FC, memo } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { type FC, memo } from 'react';
 
 import { Dots } from './Dots';
+
+import type { StyleProp, ViewStyle } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 
 type PinAreaProps = {
   activeDots: SharedValue<number>;
@@ -33,12 +35,12 @@ const PinArea: FC<PinAreaProps> = memo(({ activeDots, style, dotsAmount }) => {
 
 const styles = StyleSheet.create({
   dotsContainer: {
-    width: '100%',
-    justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
-    marginTop: 20,
+    justifyContent: 'center',
     marginBottom: 25,
+    marginTop: 20,
+    width: '100%',
   },
 });
 

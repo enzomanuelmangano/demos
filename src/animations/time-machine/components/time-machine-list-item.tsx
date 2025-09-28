@@ -1,15 +1,17 @@
 import { Dimensions, StyleSheet } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { memo } from 'react';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
-import { memo } from 'react';
-
-import type { HistoryItem } from '../atoms/history-atom';
 
 import { PriorityListView } from './priority-list-view';
+
+import type { HistoryItem } from '../atoms/history-atom';
+import type { SharedValue } from 'react-native-reanimated';
 
 type TimeMachineListItemProps = {
   progress: SharedValue<number>;
@@ -73,16 +75,16 @@ const OptimizedPriorityListView = memo(
 
 const styles = StyleSheet.create({
   container: {
+    elevation: 5,
     shadowColor: '#00000088',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
-    elevation: 5,
   },
   content: {
-    flex: 1,
-    borderRadius: 25,
-    overflow: 'hidden',
     backgroundColor: '#f3f3f3',
+    borderRadius: 25,
+    flex: 1,
+    overflow: 'hidden',
   },
 });

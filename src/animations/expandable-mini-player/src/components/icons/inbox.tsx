@@ -1,5 +1,6 @@
-import type { SvgProps } from 'react-native-svg';
 import { Path, Svg } from 'react-native-svg';
+
+import type { SvgProps } from 'react-native-svg';
 
 export function Inbox(props: SvgProps) {
   return (

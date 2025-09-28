@@ -1,6 +1,4 @@
 import { Group, RoundedRect } from '@shopify/react-native-skia';
-import type { FC } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
 import {
   useDerivedValue,
   useSharedValue,
@@ -8,6 +6,9 @@ import {
 } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { FC } from 'react';
+import type { SharedValue } from 'react-native-reanimated';
 
 type SelectableSquareProps = {
   cx: SharedValue<number>;

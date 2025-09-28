@@ -1,7 +1,9 @@
+import { StyleSheet, View } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useCallback, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { SwipeableCard } from './components/Card';
@@ -74,30 +76,30 @@ export const SwipeCards = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#242831',
-  },
-  buttonsContainer: {
-    flexDirection: 'row',
-    flex: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
-    height: 80,
-    borderRadius: 40,
-    marginHorizontal: 20,
+    alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#3A3D45',
+    borderRadius: 40,
     elevation: 4,
+    height: 80,
     justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: 20,
     shadowColor: 'black',
-    shadowOpacity: 0.1,
     shadowOffset: {
       width: 0,
       height: 4,
     },
+    shadowOpacity: 0.1,
+  },
+  buttonsContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flex: 2,
+    justifyContent: 'center',
+  },
+  container: {
+    backgroundColor: '#242831',
+    flex: 1,
   },
 });

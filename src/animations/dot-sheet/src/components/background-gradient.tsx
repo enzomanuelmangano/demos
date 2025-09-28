@@ -1,6 +1,8 @@
-import { Blur, Canvas, Fill, SweepGradient } from '@shopify/react-native-skia';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { useWindowDimensions } from 'react-native';
+
+import { Blur, Canvas, Fill, SweepGradient } from '@shopify/react-native-skia';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type BackgroundGradientProps = {
   style?: StyleProp<ViewStyle>;

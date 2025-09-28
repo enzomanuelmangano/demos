@@ -1,10 +1,11 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { PressableScale } from 'pressto';
 import Animated, {
   LinearTransition,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
-import { PressableScale } from 'pressto';
 
 type SplitAction = {
   label: string;
@@ -148,20 +149,20 @@ export const SplitButton: React.FC<SplitButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
-  label: {
-    fontSize: 18,
-    color: 'white',
-    position: 'absolute',
-    overflow: 'visible',
-    letterSpacing: 0.5,
-    fontFamily: 'SF-Pro-Rounded-Bold',
-  },
   button: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    flexDirection: 'row',
     height: ButtonHeight,
     justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 30,
-    borderCurve: 'continuous',
-    flexDirection: 'row',
+  },
+  label: {
+    color: 'white',
+    fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 18,
+    letterSpacing: 0.5,
+    overflow: 'visible',
+    position: 'absolute',
   },
 });

@@ -1,3 +1,5 @@
+import { useEffect, useMemo } from 'react';
+
 import {
   Blur,
   BlurMask,
@@ -9,7 +11,6 @@ import {
   SweepGradient,
   vec,
 } from '@shopify/react-native-skia';
-import { useEffect, useMemo } from 'react';
 import {
   useDerivedValue,
   useSharedValue,

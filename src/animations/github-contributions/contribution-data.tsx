@@ -16,7 +16,6 @@ export const generateContributionData = ({
   const { startDate } = getDateRange(endDate, days);
   const data: ContributionData = {};
 
-  // Generate data for each day in the range
   for (let i = 0; i < days; i++) {
     const currentDate = addDays(startDate, i);
     const dateStr = format(currentDate, 'yyyy-MM-dd');

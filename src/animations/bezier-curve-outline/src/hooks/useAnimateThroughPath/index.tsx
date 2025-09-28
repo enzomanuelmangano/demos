@@ -1,6 +1,5 @@
-import type { SkPath } from '@shopify/react-native-skia';
 import { useCallback } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+
 import {
   cancelAnimation,
   Easing,
@@ -11,7 +10,11 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { PathGeometry } from './utils/geometry';
+
+import type { SkPath } from '@shopify/react-native-skia';
+import type { SharedValue } from 'react-native-reanimated';
 
 type Point = {
   x: number;
@@ -40,7 +43,6 @@ const withCustomTiming = (value: number) => {
   'worklet';
   return withTiming(value, {
     duration: 1000,
-    // cubic-bezier(0.455, 0.03, 0.515, 0.955);
     easing: Easing.bezier(0.455, 0.03, 0.515, 0.955),
   });
 };

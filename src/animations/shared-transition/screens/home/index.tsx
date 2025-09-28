@@ -1,11 +1,14 @@
+import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+import { memo } from 'react';
+
 import MasonryList from '@react-native-seoul/masonry-list';
 import { useNavigation } from '@react-navigation/native';
-import { memo } from 'react';
-import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import { AnimatedImage } from '../../components/animated-image';
 import { dataSources } from '../../constants/images';
 import { ScreenNames } from '../../constants/screen-names';
+
 import type { MainStackNavigationProp } from '../../typings';
 
 const HomeScreen = memo(() => {
@@ -62,8 +65,8 @@ const styles = StyleSheet.create({
     marginTop: 20 / 3,
   },
   image: {
-    width: Dimensions.get('window').width / 2 - 10,
     borderRadius: 10,
+    width: Dimensions.get('window').width / 2 - 10,
   },
   listContainer: {
     paddingBottom: 100,

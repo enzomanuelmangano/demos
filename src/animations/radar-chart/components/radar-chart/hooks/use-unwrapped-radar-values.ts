@@ -1,14 +1,15 @@
 import { useMemo, useEffect } from 'react';
+
+import { Extrapolate, interpolate } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
   cancelAnimation,
 } from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
-import { Extrapolate, interpolate } from '@shopify/react-native-skia';
 
 import type { RadarChartProps, RadarDataType } from '../typings';
+import type { SharedValue } from 'react-native-reanimated';
 
 const useUnwrappedValues = <K extends string>({
   data,

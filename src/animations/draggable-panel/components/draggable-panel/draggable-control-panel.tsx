@@ -1,12 +1,8 @@
-import type { ReactNode } from 'react';
-import { type FC, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { type FC, useCallback, useMemo, useState, ReactNode } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import type {
-  DerivedValue,
-  SharedValue,
-  WithSpringConfig,
-} from 'react-native-reanimated';
 import Animated, {
   Easing,
   FadeIn,
@@ -24,6 +20,12 @@ import {
   snapToCorner,
   useInitialPanelPosition,
 } from './utils/animation-helpers';
+
+import type {
+  DerivedValue,
+  SharedValue,
+  WithSpringConfig,
+} from 'react-native-reanimated';
 
 type AnimatedSpringConfig =
   | WithSpringConfig
@@ -103,7 +105,6 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
   const toggleCollapse = useCallback(() => {
     setIsCollapsed(prev => {
       const newIsCollapsed = !prev;
-      // Snap immediately with new dimensions
       const newWidth = newIsCollapsed ? collapsedWidth : expandedWidth;
       const newHeight = newIsCollapsed ? collapsedHeight : expandedHeight;
       snapWithDimensions(newWidth, newHeight);
@@ -132,7 +133,6 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
       .onEnd(event => {
         isDraggingPanel.set(false);
 
-        // Snap to nearest corner
         const currentHeight = isCollapsed ? collapsedHeight : expandedHeight;
         const currentWidth = isCollapsed ? collapsedWidth : expandedWidth;
         const snapPosition = snapToCorner(
@@ -242,13 +242,13 @@ const LayoutTransition = LinearTransition.springify()
   .stiffness(250);
 
 const styles = StyleSheet.create({
-  controls: {
-    position: 'absolute',
-  },
   controlPanel: {
     backgroundColor: '#ffffff',
     boxShadow: '0px 0px 24px rgba(0, 0, 0, 0.05)',
     elevation: 24,
     overflow: 'hidden',
+  },
+  controls: {
+    position: 'absolute',
   },
 });

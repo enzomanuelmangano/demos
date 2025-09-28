@@ -1,6 +1,8 @@
-import { useImage } from '@shopify/react-native-skia';
-import { type FC } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
+
+import { type FC } from 'react';
+
+import { useImage } from '@shopify/react-native-skia';
 
 import { BottomLinearGradient } from '../components/bottom-linear-gradient';
 import { MovieImage } from '../components/movie-image';
@@ -56,19 +58,19 @@ export const MovieDetail: FC<MovieDetailProps> = ({
 };
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 32,
-  },
-  description: {
-    marginTop: 16,
-    lineHeight: 22,
-    marginRight: 32,
-    fontSize: 16,
-  },
   contentList: {
     paddingBottom: 200,
   },
+  description: {
+    fontSize: 16,
+    lineHeight: 22,
+    marginRight: 32,
+    marginTop: 16,
+  },
   textContainer: {
     paddingHorizontal: 32,
+  },
+  title: {
+    fontSize: 32,
   },
 });

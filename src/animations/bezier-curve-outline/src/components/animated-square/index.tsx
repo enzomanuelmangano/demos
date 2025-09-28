@@ -1,7 +1,7 @@
+import { StyleSheet, View } from 'react-native';
+
 import { Image } from 'expo-image';
 import { PressableScale } from 'pressto';
-import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -9,8 +9,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { AnimatedBlurView } from '../animated-blur-view';
-
 import { ChessboardLayout } from './chessboard-layout';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type AnimatedSquareProps = {
   progress: SharedValue<number>;
@@ -63,43 +64,43 @@ export const AnimatedSquare = ({
 };
 
 const styles = StyleSheet.create({
+  blurView: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 100,
+  },
   container: {
-    borderRadius: 20,
-    borderCurve: 'continuous',
     backgroundColor: '#a5a5a5',
+    borderCurve: 'continuous',
+    borderRadius: 20,
+    elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
-    elevation: 5,
   },
   content: {
+    borderCurve: 'continuous',
+    borderRadius: 20,
     flex: 1,
     overflow: 'hidden',
-    borderRadius: 20,
-    borderCurve: 'continuous',
-  },
-  blurView: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-  },
-  iconContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#AD8969',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   icon: {
-    width: 48,
     height: 48,
     marginBottom: 4,
+    width: 48,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    backgroundColor: '#AD8969',
+    bottom: 0,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
 });

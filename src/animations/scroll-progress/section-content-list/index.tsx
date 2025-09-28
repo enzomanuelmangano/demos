@@ -1,3 +1,5 @@
+import { StyleSheet, View } from 'react-native';
+
 import {
   type FC,
   type ReactNode,
@@ -6,8 +8,7 @@ import {
   useMemo,
   useRef,
 } from 'react';
-import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
-import { StyleSheet, View } from 'react-native';
+
 import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
@@ -17,6 +18,8 @@ import Animated, {
 
 import { BottomProgress } from './bottom-progress';
 import { clamp, getReadingTime } from './utils';
+
+import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
 
 type Section = {
   title: string;

@@ -1,8 +1,9 @@
+import { Text, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import type React from 'react';
-import { useCallback } from 'react';
-import { Text, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -12,6 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import {
   ALERT_COLOR,
   BUTTON_HEIGHT,
@@ -22,7 +24,8 @@ import {
   styles,
 } from './styles';
 
-// Types
+import type React from 'react';
+
 type AlertDrawerProps = {
   title: string;
   description: string;
@@ -37,7 +40,6 @@ type CardContentProps = {
   onClose: () => void;
 };
 
-// CardContent component
 // Renders the content of the expanded card, including:
 // - Icon
 // - Title and description
@@ -71,7 +73,6 @@ const CardContent: React.FC<CardContentProps> = ({
   </View>
 );
 
-// AlertDrawer component
 // Main component that handles the expandable drawer animation
 // It uses Reanimated 3 for smooth animations and interpolations
 // The component can be in two states: collapsed (button only) or expanded (full card)
@@ -81,18 +82,14 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
   buttonLabel,
   onConfirm,
 }) => {
-  // Animation control
   const isExpanded = useSharedValue(false);
 
-  // Derive animation progress
   const progress = useDerivedValue(() =>
     withTiming(isExpanded.value ? 1 : 0, { duration: 300 }),
   );
 
-  // Create a delayed progress for smoother animations
   const delayedProgress = useDerivedValue(() => progress.value ** 2);
 
-  // Calculate padding based on animation progress
   const padding = useDerivedValue(() =>
     interpolate(
       progress.value,
@@ -101,7 +98,6 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
     ),
   );
 
-  // Animated styles for the card container
   const rCardContainerStyle = useAnimatedStyle(() => ({
     left: interpolate(
       progress.value,
@@ -128,7 +124,6 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
     ),
   }));
 
-  // Animated styles for the button
   const rButtonStyle = useAnimatedStyle(() => ({
     bottom: padding.value,
     width: interpolate(
@@ -139,12 +134,10 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
     right: (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2,
   }));
 
-  // Animated styles for the card content
   const rCardContentStyle = useAnimatedStyle(() => ({
     opacity: delayedProgress.value,
   }));
 
-  // Toggle expansion state
   const toggleExpansion = useCallback(() => {
     isExpanded.value = !isExpanded.value;
   }, [isExpanded]);

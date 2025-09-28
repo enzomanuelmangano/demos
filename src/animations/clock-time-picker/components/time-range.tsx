@@ -14,10 +14,12 @@
  * ```
  */
 
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useCallback, useMemo } from 'react';
+
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import Animated, {
   interpolate,
   useAnimatedScrollHandler,
@@ -33,7 +35,6 @@ type TimePickerProps = {
   onDateChange?: (dateMs: number) => void;
 };
 
-// Constants for time range dimensions
 const ITEM_HEIGHT = 30; // Height of each time item in pixels
 const TimeRangeHeight = ITEM_HEIGHT * 4; // Total height of visible time range
 
@@ -41,10 +42,8 @@ export const TimeRange: React.FC<TimePickerProps> = ({
   dates,
   onDateChange,
 }) => {
-  // Convert dates to timestamps for interpolation
   const datesMs = useMemo(() => dates.map(date => date.getTime()), [dates]);
 
-  // Format dates for display (e.g., "1:00 pm")
   const formattedDates = useMemo(
     () => dates.map(date => format(date, 'h:mm aaa').toLowerCase()),
     [dates],
@@ -82,7 +81,6 @@ export const TimeRange: React.FC<TimePickerProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Scrollable time list with snap points */}
       <Animated.FlatList
         onScroll={onScroll}
         decelerationRate="fast"
@@ -96,7 +94,6 @@ export const TimeRange: React.FC<TimePickerProps> = ({
         disableIntervalMomentum
       />
 
-      {/* Gradient overlays for fade effect */}
       <LinearGradient
         colors={['#111111', '#11111100']}
         start={{ x: 0, y: 0 }}
@@ -113,34 +110,33 @@ export const TimeRange: React.FC<TimePickerProps> = ({
   );
 };
 
-// Styles for the TimeRange component
 const styles = StyleSheet.create({
+  bottomGradient: {
+    bottom: 0,
+  },
   container: {
     height: TimeRangeHeight,
+  },
+  gradient: {
+    height: TimeRangeHeight,
+    left: 0,
+    pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
+    zIndex: 100,
   },
   scrollViewContent: {
     paddingVertical: TimeRangeHeight / 2 - ITEM_HEIGHT / 2,
   },
   timeItem: {
+    alignItems: 'center',
     height: ITEM_HEIGHT,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   timeText: {
-    fontSize: 20,
     color: '#d8d8d8',
     fontFamily: 'Honk-Regular',
-  },
-  gradient: {
-    pointerEvents: 'none',
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: TimeRangeHeight,
-    zIndex: 100,
-  },
-  bottomGradient: {
-    bottom: 0,
+    fontSize: 20,
   },
   topGradient: {
     top: 0,

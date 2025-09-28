@@ -1,5 +1,7 @@
-import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
+
+import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
+
 import type { SharedValue } from 'react-native-reanimated';
 
 // Defining type for props

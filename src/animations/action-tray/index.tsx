@@ -1,7 +1,9 @@
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
+import { useCallback, useMemo, useRef, useState } from 'react';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useCallback, useMemo, useRef, useState } from 'react';
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -25,19 +27,14 @@ function App() {
 
   const [step, setStep] = useState(0);
 
-  // Is it really necessary to use a shared value here?
-  // I don't know :)
   const isActionTrayOpened = useSharedValue(false);
 
-  // Close the action tray and reset the step
   const close = useCallback(() => {
     ref.current?.close();
     isActionTrayOpened.value = false;
     setStep(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isActionTrayOpened]);
 
-  // Toggle the action tray state (open/close)
   const toggleActionTray = useCallback(() => {
     const isActive = ref.current?.isActive() ?? false;
     isActionTrayOpened.value = !isActive;
@@ -45,19 +42,14 @@ function App() {
   }, [close, isActionTrayOpened]);
 
   const rContentHeight = useDerivedValue(() => {
-    // Just a simple interpolation to make the content height dynamic based on the step
     return interpolate(step, [0, 1, 2], [80, 200, 250], Extrapolation.CLAMP);
   }, [step]);
 
   const rContentStyle = useAnimatedStyle(() => {
     return {
-      // Spring animations. Spring animations everywhere! 😅
       height: withSpring(rContentHeight.value),
     };
   }, []);
-
-  // Get the title, action button title and the rotation animation for the action button
-  // based on the current step
   const title = useMemo(() => {
     switch (step) {
       case 0:
@@ -88,7 +80,6 @@ function App() {
     return {
       transform: [
         {
-          // Rotate the button when the action tray is opened + -> x
           rotate: withTiming(isActionTrayOpened.value ? '45deg' : '0deg'),
         },
       ],
@@ -107,13 +98,11 @@ function App() {
         />
       </PressableScale>
 
-      {/* Reuse this ActionTray whenever you want, you just need to update the children :) */}
       <ActionTray
         ref={ref}
         maxHeight={screenHeight * 0.6}
         style={styles.actionTray}
         onClose={close}>
-        {/* All this content is fully customizable, you can use whatever you want here */}
         <View style={styles.headingContainer}>
           <Text style={styles.headingText}>{title}</Text>
           <View style={styles.fill} />
@@ -189,65 +178,65 @@ function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Palette.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fill: { flex: 1 },
-  button: {
-    marginTop: 200,
-    height: 50,
-    backgroundColor: Palette.primary,
-    borderRadius: 25,
-    aspectRatio: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   actionTray: {
     backgroundColor: '#FFF',
     flex: 1,
     padding: 25,
   },
-  headingContainer: {
-    flexDirection: 'row',
+  button: {
     alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: Palette.primary,
+    borderRadius: 25,
+    height: 50,
+    justifyContent: 'center',
+    marginTop: 200,
+  },
+  buttonText: {
+    color: Palette.background,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    aspectRatio: 1,
+    backgroundColor: Palette.surface,
+    borderRadius: 20,
+    height: 24,
+    justifyContent: 'center',
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: Palette.background,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  contentText: {
+    color: Palette.text,
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 25,
+    marginTop: 15,
+  },
+  continueButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: Palette.primary,
+    borderRadius: 25,
+    flex: 1,
+    height: 55,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  fill: { flex: 1 },
+  headingContainer: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   headingText: {
     fontSize: 20,
     fontWeight: '600',
-  },
-  closeButton: {
-    height: 24,
-    aspectRatio: 1,
-    borderRadius: 20,
-    backgroundColor: Palette.surface,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  contentText: {
-    fontSize: 16,
-    marginTop: 15,
-    marginBottom: 25,
-    fontWeight: '600',
-    color: Palette.text,
-  },
-  continueButton: {
-    backgroundColor: Palette.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 55,
-    flex: 1,
-    alignSelf: 'center',
-    width: '100%',
-    borderRadius: 25,
-  },
-  buttonText: {
-    color: Palette.background,
-    fontWeight: 'bold',
-    fontSize: 16,
   },
 });
 

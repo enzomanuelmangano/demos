@@ -1,9 +1,6 @@
 import { Group, ImageSVG, Text } from '@shopify/react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
-import { useDeleteButtonAnimations } from './use-delete-button-animations';
-import { useCloseButtonAnimations } from './use-close-buttons-animations';
-import { useTextAnimations } from './use-text-animations';
 import {
   CloseSvgPath,
   CloseSvgPathHeight,
@@ -11,9 +8,11 @@ import {
   font,
   fontStyle,
 } from './constants';
+import { useCloseButtonAnimations } from './use-close-buttons-animations';
+import { useDeleteButtonAnimations } from './use-delete-button-animations';
 import { useGooeyLayer } from './use-gooey-layer';
+import { useTextAnimations } from './use-text-animations';
 
-// Define the props for the DeleteButton component
 type DeleteButtonProps = {
   onConfirmDeletion: () => void;
   height: number;
@@ -33,7 +32,6 @@ export const DeleteButton = ({
   confirmText = 'Confirm',
   closeOnConfirm = false,
 }: DeleteButtonProps) => {
-  // Hook for managing delete button animations
   const {
     isToggled,
     deleteButtonRectX,
@@ -43,13 +41,11 @@ export const DeleteButton = ({
   } = useDeleteButtonAnimations({
     additionalWidth,
     onDelete: () => {
-      // Toggle the button state and call the onConfirmDeletion callback
       isToggled.value = !closeOnConfirm;
       onConfirmDeletion?.();
     },
   });
 
-  // Hook for managing close button animations
   const {
     closeIconCircleX,
     closeButtonOpacity,
@@ -58,7 +54,6 @@ export const DeleteButton = ({
     paint,
   } = useCloseButtonAnimations({ isToggled, width, additionalWidth });
 
-  // Hook for managing text animations
   const { deleteTextX, deleteTextOpacity, confirmTextX, confirmTextOpacity } =
     useTextAnimations({
       isToggled,
@@ -69,19 +64,15 @@ export const DeleteButton = ({
       confirmText,
     });
 
-  // Hook for creating a gooey effect layer
   const layer = useGooeyLayer();
 
   return (
-    // Canvas component that wraps the entire button
     <Touchable.Canvas
       style={{
         height: height,
         width: width + additionalWidth,
       }}>
-      {/* Group for the main button elements with gooey effect */}
       <Group layer={layer}>
-        {/* Delete button */}
         <Group
           origin={{ x: width / 2, y: height / 2 }}
           transform={buttonTransform}>
@@ -95,7 +86,6 @@ export const DeleteButton = ({
             color={deleteButtonColor}
           />
         </Group>
-        {/* Close button */}
         <Group
           opacity={closeButtonOpacity}
           transform={closeButtonTransform}
@@ -112,7 +102,6 @@ export const DeleteButton = ({
           />
         </Group>
       </Group>
-      {/* Initial text ("Delete") */}
       <Group>
         <Text
           x={deleteTextX}
@@ -123,7 +112,6 @@ export const DeleteButton = ({
           opacity={deleteTextOpacity}
         />
       </Group>
-      {/* Confirmation text ("Confirm") */}
       <Group>
         <Text
           x={confirmTextX}
@@ -134,7 +122,6 @@ export const DeleteButton = ({
           opacity={confirmTextOpacity}
         />
       </Group>
-      {/* Close icon SVG */}
       <Group
         layer={paint}
         transform={[

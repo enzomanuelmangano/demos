@@ -1,5 +1,3 @@
-import { useFont } from '@shopify/react-native-skia';
-import { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,8 +6,13 @@ import {
   View,
 } from 'react-native';
 
-import type { RadarDataType } from './components/radar-chart';
+import { useState } from 'react';
+
+import { useFont } from '@shopify/react-native-skia';
+
 import { RadarChart } from './components/radar-chart';
+
+import type { RadarDataType } from './components/radar-chart';
 
 type RadarKeys = 'Checkmate' | 'Deflection' | 'Endgame' | 'Fork' | 'Sacrifice';
 
@@ -113,9 +116,9 @@ export const RadarChartContainer = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: 'black',
     alignItems: 'center',
+    backgroundColor: 'black',
+    flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },

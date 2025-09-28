@@ -1,4 +1,7 @@
-import type { DataSourceParam } from '@shopify/react-native-skia';
+import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
+
+import { useMemo } from 'react';
+
 import {
   Canvas,
   fitbox,
@@ -7,8 +10,6 @@ import {
   rect,
   useSVG,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
-import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -23,7 +24,8 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedSquares } from './animated-squares';
 
-// Define the props type for the AtlasButton component
+import type { DataSourceParam } from '@shopify/react-native-skia';
+
 type AtlasButtonProps = {
   width: number;
   height: number;
@@ -36,7 +38,6 @@ type AtlasButtonProps = {
   horizontalSquaresAmount?: number;
 };
 
-// Define the AtlasButton functional component
 export const AtlasButton: React.FC<AtlasButtonProps> = ({
   width,
   height,
@@ -47,27 +48,27 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
   colors,
   horizontalSquaresAmount = 50,
 }) => {
-  const iconSize = width * 0.2; // Calculate icon size based on width or use provided iconSize
+  const iconSize = width * 0.2;
 
-  const isActive = useSharedValue(false); // Shared value to track if the button is active
+  const isActive = useSharedValue(false);
   const tapGesture = Gesture.Tap()
-    .maxDuration(10000) // Set maximum duration for the tap gesture
+    .maxDuration(10000)
     .onTouchesDown(() => {
-      isActive.value = true; // Set isActive to true when the button is pressed
+      isActive.value = true;
     })
     .onTouchesUp(() => {
       if (onPress) {
-        scheduleOnRN(onPress); // Call the onPress callback if provided
+        scheduleOnRN(onPress);
       }
     })
     .onFinalize(() => {
-      isActive.value = false; // Reset isActive to false when the gesture is finalized
+      isActive.value = false;
     });
 
   const progress = useDerivedValue<number>(() => {
     return withTiming(isActive.value ? 1 : 0, {
-      duration: 1000, // Animate progress with a duration of 1000ms
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1), // Use a bezier easing function
+      duration: 1000,
+      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
     });
   });
 
@@ -75,23 +76,23 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
     return {
       transform: [
         {
-          scale: interpolate(progress.value, [0, 1], [1, 0.95]), // Animate scale based on progress
+          scale: interpolate(progress.value, [0, 1], [1, 0.95]),
         },
       ],
     };
   }, []);
 
-  const imageSvg = useSVG(svgIcon); // Load the SVG icon
+  const imageSvg = useSVG(svgIcon);
 
   const textStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value * 3, // Animate opacity based on progress
+      opacity: progress.value * 3,
       top: interpolate(
         progress.value * 3,
         [0, 1],
         [50, 25],
         Extrapolation.CLAMP,
-      ), // Animate top position based on progress
+      ),
     };
   }, []);
 
@@ -102,7 +103,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
         [0, 1],
         [0, -25],
         Extrapolation.CLAMP,
-      ), // Animate top position of the icon based on progress
+      ),
     };
   }, []);
 
@@ -110,7 +111,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
     return {
       width: iconSize,
       height: iconSize,
-    }; // Memoize the icon canvas size
+    };
   }, [iconSize]);
 
   const iconTransform = useMemo(() => {
@@ -119,7 +120,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
       'contain',
       rect(0, 0, imageSvg.width(), imageSvg.height()),
       rect(0, 0, iconSize, iconSize),
-    ); // Memoize the icon transform
+    );
   }, [iconSize, imageSvg]);
 
   return (
@@ -158,21 +159,21 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
 };
 
 const styles = StyleSheet.create({
-  content: {
-    position: 'absolute',
+  center: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  center: {
-    justifyContent: 'center',
+  content: {
     alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
   },
   label: {
-    textAlign: 'center',
-    marginTop: 10,
+    color: 'white',
     fontSize: 20,
     fontWeight: 'bold',
-    color: 'white',
+    marginTop: 10,
     position: 'absolute',
+    textAlign: 'center',
   },
 });

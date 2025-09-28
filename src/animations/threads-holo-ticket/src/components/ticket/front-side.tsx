@@ -44,78 +44,73 @@ export const FrontSide = () => {
  * Styles for the FrontSide component
  */
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 24,
-  },
   container: {
-    flex: 1,
-    paddingHorizontal: 28,
     alignItems: 'flex-start',
+    flex: 1,
     justifyContent: 'space-between',
-    paddingTop: 42,
     paddingBottom: 60,
+    paddingHorizontal: 28,
+    paddingTop: 42,
   },
-  // Label style with platform-specific font family
+  footer: {
+    alignItems: 'center',
+    borderTopColor: 'rgba(60, 60, 67, 0.15)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
+    paddingTop: 16,
+    width: '100%',
+  },
   label: {
-    fontSize: 13,
     color: '#8E8E93',
-    marginBottom: 6,
     fontFamily: Platform.select({
       ios: 'SF Pro Text',
       default: 'System',
     }),
+    fontSize: 13,
     letterSpacing: 0.5,
+    marginBottom: 6,
     textTransform: 'uppercase',
   },
-  // Value style with platform-specific font family
-  value: {
-    fontSize: 21,
-    color: '#1C1C1E',
-    fontWeight: '600',
-    fontFamily: Platform.select({
-      ios: 'SF Pro Display',
-      default: 'System',
-    }),
-    letterSpacing: -0.3,
+  section: {
+    marginBottom: 24,
   },
   spacer: {
     flex: 1,
   },
-  // Footer section with border and spacing
-  footer: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 'auto',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(60, 60, 67, 0.15)',
-    paddingTop: 16,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  // Username text style with platform-specific font
-  username: {
-    fontSize: 15,
-    color: '#1C1C1E',
-    fontFamily: Platform.select({
-      ios: 'SF Pro Text',
-      default: 'System',
-    }),
-    fontWeight: '500',
-    letterSpacing: -0.1,
-  },
-  // Ticket number style with platform-specific font
   ticketNumber: {
-    fontSize: 15,
     color: '#8E8E93',
     fontFamily: Platform.select({
       ios: 'SF Pro Text',
       default: 'System',
     }),
+    fontSize: 15,
     fontWeight: '400',
     letterSpacing: -0.1,
+  },
+  userInfo: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  username: {
+    color: '#1C1C1E',
+    fontFamily: Platform.select({
+      ios: 'SF Pro Text',
+      default: 'System',
+    }),
+    fontSize: 15,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+  },
+  value: {
+    color: '#1C1C1E',
+    fontFamily: Platform.select({
+      ios: 'SF Pro Display',
+      default: 'System',
+    }),
+    fontSize: 21,
+    fontWeight: '600',
+    letterSpacing: -0.3,
   },
 });

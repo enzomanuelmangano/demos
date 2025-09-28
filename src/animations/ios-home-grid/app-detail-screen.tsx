@@ -1,11 +1,13 @@
-import type { RouteProp } from '@react-navigation/native';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { AppData } from './apps-list/constants';
 import { useCustomNavigation } from './navigation/expansion-provider';
+
+import type { AppData } from './apps-list/constants';
+import type { RouteProp } from '@react-navigation/native';
 
 /**
  * Navigation stack parameter list
@@ -58,21 +60,15 @@ export const AppDetailScreen: React.FC<AppDetailScreenProps> = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  gradient: {
-    flex: 1,
-  },
   backButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 22,
+    elevation: 3,
+    height: 44,
+    justifyContent: 'center',
     position: 'absolute',
     right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -80,6 +76,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 3,
+    width: 44,
+  },
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
   },
 });

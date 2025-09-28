@@ -3,12 +3,13 @@
  */
 
 import { memo, useCallback, useMemo } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+
 import { useDerivedValue } from 'react-native-reanimated';
 
-import type { CellValue, SudokuBoard } from '../../logic';
-
 import { Cell } from './cell';
+
+import type { CellValue, SudokuBoard } from '../../logic';
+import type { SharedValue } from 'react-native-reanimated';
 
 export type CellContainerProps = {
   rowIndex: number;

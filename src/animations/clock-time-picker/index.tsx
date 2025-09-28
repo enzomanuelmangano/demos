@@ -12,10 +12,11 @@
  */
 
 import { StyleSheet, View } from 'react-native';
+
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
-import { TimeRange } from './components/time-range';
 import { Clock } from './components/clock';
+import { TimeRange } from './components/time-range';
 
 // Handle timezone offset to ensure correct time display
 // Note: This is a simple implementation. For production, consider using a proper timezone library
@@ -40,10 +41,8 @@ const dates = new Array(20).fill(0).map((_, index) => {
  * 3. Coordinating between Clock and TimeRange components
  */
 export const ClockTimePicker = () => {
-  // Shared value for the current selected time
   const date = useSharedValue(dates[0].getTime());
 
-  // Derive the adjusted time for the clock display
   const clockDate = useDerivedValue(() => {
     'worklet';
     return date.value + TimezoneOffsetMs;
@@ -68,22 +67,22 @@ export const ClockTimePicker = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#111',
     alignItems: 'center',
+    backgroundColor: '#111',
+    flex: 1,
     justifyContent: 'center',
   },
   pickerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
     alignItems: 'center',
-    gap: 32,
-    padding: 32,
-    borderRadius: 24,
     backgroundColor: '#111111',
-    borderWidth: 1,
     borderColor: '#222222',
     borderCurve: 'continuous',
+    borderRadius: 24,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 32,
+    justifyContent: 'center',
+    padding: 32,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 0 },
   },

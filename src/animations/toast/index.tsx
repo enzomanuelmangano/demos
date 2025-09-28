@@ -1,12 +1,15 @@
 /* eslint-disable react/no-unstable-nested-components */
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useMemo, useRef } from 'react';
+
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useMemo, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import type { ToastType } from './toast-manager';
 import { ToastProvider, useToast } from './toast-manager';
+
+import type { ToastType } from './toast-manager';
 
 const App = () => {
   const { showToast } = useToast();
@@ -89,26 +92,26 @@ const AppContainer = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
-    paddingVertical: 18,
-    paddingHorizontal: 25,
     backgroundColor: '#111',
-    borderRadius: 25,
-    marginBottom: 20,
     borderCurve: 'continuous',
+    borderRadius: 25,
     borderWidth: 1,
+    marginBottom: 20,
+    paddingHorizontal: 25,
+    paddingVertical: 18,
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
+    justifyContent: 'center',
   },
   textButton: {
     color: 'white',
+    fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
-    fontWeight: '700',
   },
 });
 

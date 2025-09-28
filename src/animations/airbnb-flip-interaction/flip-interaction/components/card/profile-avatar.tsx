@@ -1,6 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, memo, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { type FC, memo, useMemo } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 type ProfileAvatarProps = {
   name: string;
@@ -10,7 +12,6 @@ type ProfileAvatarProps = {
 
 export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
   ({ name, size = 80, isVerified = false }) => {
-    // Memoize computed values to prevent recalculation
     const computedValues = useMemo(() => {
       const initial = name.charAt(0).toUpperCase();
       const fontSize = size * 0.4;
@@ -27,13 +28,11 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       };
     }, [name, size]);
 
-    // Memoize container style
     const containerStyle = useMemo(
       () => [styles.container, { width: size, height: size }],
       [size],
     );
 
-    // Memoize avatar style
     const avatarStyle = useMemo(
       () => [
         styles.avatar,
@@ -42,13 +41,11 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       [size],
     );
 
-    // Memoize initial text style
     const initialTextStyle = useMemo(
       () => [styles.initial, { fontSize: computedValues.fontSize }],
       [computedValues.fontSize],
     );
 
-    // Memoize verification badge style
     const badgeStyle = useMemo(
       () => [
         styles.verificationBadge,
@@ -63,7 +60,6 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       [computedValues.badgeSize, computedValues.badgeRadius],
     );
 
-    // Memoize checkmark text style
     const checkmarkStyle = useMemo(
       () => [styles.checkmark, { fontSize: computedValues.checkmarkSize }],
       [computedValues.checkmarkSize],
@@ -82,7 +78,6 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
       </View>
     );
   },
-  // Custom comparison function for optimal re-rendering
   (prevProps, nextProps) => {
     return (
       prevProps.name === nextProps.name &&
@@ -93,29 +88,11 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-  },
   avatar: {
-    justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  initial: {
-    color: 'white',
-    fontWeight: '700',
-    fontFamily: 'SF-Pro-Rounded-Heavy',
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  verificationBadge: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
     borderWidth: 3,
-    borderColor: 'white',
+    justifyContent: 'center',
   },
   checkmark: {
     color: 'white',
@@ -123,5 +100,23 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
+  },
+  container: {
+    position: 'relative',
+  },
+  initial: {
+    color: 'white',
+    fontFamily: 'SF-Pro-Rounded-Heavy',
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  verificationBadge: {
+    alignItems: 'center',
+    borderColor: 'white',
+    borderWidth: 3,
+    justifyContent: 'center',
+    position: 'absolute',
   },
 });

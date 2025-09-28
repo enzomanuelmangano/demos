@@ -28,7 +28,6 @@ const colors = [
   BLUE_VARIANT,
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const ReactNativeSvg = require('./assets/header_logo.svg');
 
 export function AtlasButton() {
@@ -51,10 +50,10 @@ export function AtlasButton() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
     paddingTop: 10,
   },
 });

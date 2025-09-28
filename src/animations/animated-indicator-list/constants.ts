@@ -102,9 +102,7 @@ export const data = [
   },
 ] as (ListItem | HeaderListItem)[];
 
-// Simple utility function to check if an item is a header or not.
 export const isHeader = (item: ListItem | HeaderListItem) =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   Boolean((item as any)?.header);
 
 export type { ListItem, HeaderListItem };

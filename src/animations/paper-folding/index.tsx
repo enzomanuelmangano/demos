@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+
 import { useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { BackgroundGradient } from './background-gradient';
@@ -28,16 +29,16 @@ export const PaperFolding = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   canvasContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
     bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  container: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
 });

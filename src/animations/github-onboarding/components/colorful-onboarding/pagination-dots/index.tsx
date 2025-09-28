@@ -1,10 +1,13 @@
-import { Fragment, type ReactElement } from 'react';
-import type { ViewProps } from 'react-native';
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { Fragment, type ReactElement } from 'react';
+
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { PaginationDot } from './pagination-dots';
+
+import type { ViewProps } from 'react-native';
+import type { SharedValue } from 'react-native-reanimated';
 
 export interface PaginationDotsProps extends ViewProps {
   count: number;
@@ -46,8 +49,8 @@ export function PaginationDots({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
     alignItems: 'center',
+    flexDirection: 'row',
     justifyContent: 'center',
   },
 });

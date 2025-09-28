@@ -1,5 +1,7 @@
-import { type FC, memo, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { type FC, memo, useMemo } from 'react';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -7,13 +9,12 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { spacing } from '../../constants';
-
 import { CardBack } from './back';
 import { CardFront } from './front';
+import { spacing } from '../../constants';
+
 import type { ProfileType } from './types';
 
-// Move spring configuration outside component to prevent recreation
 const SPRING_CONFIG = {
   mass: 1.2,
   stiffness: 60,
@@ -34,7 +35,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
   ({ isFlipped, profile, angle = 'horizontal' }) => {
     const { width: screenWidth } = useWindowDimensions();
 
-    // Memoize card dimensions to prevent unnecessary recalculations
     const cardDimensions = useMemo(() => {
       const cardWidth = screenWidth - spacing.xxl;
       const cardHeight = cardWidth / 1.6;
@@ -46,8 +46,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
     const progress = useDerivedValue(() => {
       return withSpring(isFlipped ? 1 : 0, SPRING_CONFIG);
     }, [isFlipped]);
-
-    // Animated styles for front face
     const frontAnimatedStyle = useAnimatedStyle(() => {
       const rotateY = interpolate(progress.value, [0, 1], [0, 180]);
       const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
@@ -62,7 +60,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
       };
     }, [progress]);
 
-    // Animated styles for back face
     const backAnimatedStyle = useAnimatedStyle(() => {
       const rotateY = interpolate(progress.value, [0, 1], [180, 360]);
       const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
@@ -112,7 +109,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
       };
     }, [angle, cardWidth, cardHeight]);
 
-    // Memoize card style to prevent recreation
     const cardStyle = useMemo(
       () => [styles.card, { width: cardWidth }],
       [cardWidth],
@@ -137,7 +133,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
       </View>
     );
   },
-  // Custom comparison function for memo to optimize re-renders
   (prevProps, nextProps) => {
     return (
       prevProps.isFlipped === nextProps.isFlipped &&
@@ -148,16 +143,9 @@ export const FlipCard: FC<FlipCardProps> = memo(
 );
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rotationContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   card: {
     aspectRatio: 1.6,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -165,16 +153,23 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 12,
-    elevation: 4,
   },
   cardFace: {
-    width: '100%',
-    height: '100%',
     borderRadius: spacing.l + 4,
+    height: '100%',
     overflow: 'hidden',
+    width: '100%',
+  },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   flipContainer: {
-    width: '100%',
     height: '100%',
+    width: '100%',
+  },
+  rotationContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

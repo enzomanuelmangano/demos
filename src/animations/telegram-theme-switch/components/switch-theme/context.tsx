@@ -1,6 +1,8 @@
 import { createContext, useContext } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
 import { makeMutable, type SharedValue } from 'react-native-reanimated';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type Theme = 'light' | 'dark';
 

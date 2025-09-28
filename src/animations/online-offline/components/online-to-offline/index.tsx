@@ -1,11 +1,14 @@
-import { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback } from 'react';
+
 import Animated from 'react-native-reanimated';
 
 import { LayoutTransition } from './animations';
 import { BackgroundSection } from './background-section';
 import { useLayoutDimensions, useListItems } from './hooks';
 import { ListItem } from './list-item';
+
 import type { ListItem as ListItemType, OfflineToOnlineProps } from './types';
 
 export const OnlineToOffline = ({
@@ -83,9 +86,9 @@ export const OnlineToOffline = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
   listContainer: {
     position: 'relative',

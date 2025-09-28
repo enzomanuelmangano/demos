@@ -1,4 +1,5 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import Animated, {
   FadeIn,
   LinearTransition,
@@ -55,8 +56,8 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: 'black',
+    flex: 1,
   },
 });
 

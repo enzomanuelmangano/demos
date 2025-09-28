@@ -1,12 +1,14 @@
-import { Ionicons } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
-import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
   Platform,
   StyleSheet,
   TextInput,
   useWindowDimensions,
 } from 'react-native';
+
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+
+import { Ionicons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -22,12 +24,7 @@ export type CardInputRefType = {
   focus: () => void;
 };
 
-export const CardInput = forwardRef<
-  CardInputRefType,
-  {
-    //
-  }
->((_, ref) => {
+export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   const { width, height } = useWindowDimensions();
   const progress = useSharedValue(0);
   const { top: safeTop } = useSafeAreaInsets();
@@ -46,12 +43,10 @@ export const CardInput = forwardRef<
     [],
   );
 
-  // useHeaderHeight() from react-navigation in a real use case
+  // @@TODO: useHeaderHeight hook
   const potentialHeaderHeight = 52;
 
   const inputRange = [0, 1];
-
-  // -- Output Ranges constants --
 
   const initialCardHeight = height / 2.8;
   const expandedCardHeight = height;
@@ -144,7 +139,6 @@ export const CardInput = forwardRef<
         }}
         style={[
           {
-            // There are better ways to handle the top value, but this is just a demo :)
             top: safeTop + (Platform.OS === 'android' ? 8 : 0),
           },
           rBackIconStyle,
@@ -183,18 +177,17 @@ export const CardInput = forwardRef<
 
 const styles = StyleSheet.create({
   back: {
-    position: 'absolute',
-    left: 16,
-    height: 32,
-    width: 32,
-    justifyContent: 'center',
     alignItems: 'center',
+    height: 32,
+    justifyContent: 'center',
+    left: 16,
+    position: 'absolute',
+    width: 32,
   },
   card: {
-    position: 'absolute',
-    borderCurve: 'continuous',
-    zIndex: 1,
     backgroundColor: '#fff',
+    borderCurve: 'continuous',
+    position: 'absolute',
     shadowColor: '#c1c1c1',
     shadowOffset: {
       width: 0,
@@ -202,12 +195,13 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 20,
+    zIndex: 1,
   },
   input: {
+    fontFamily: 'AddingtonCF-Light',
     marginLeft: 16,
     marginRight: 12,
     marginTop: 24,
-    fontFamily: 'AddingtonCF-Light',
     textAlignVertical: 'top',
   },
 });

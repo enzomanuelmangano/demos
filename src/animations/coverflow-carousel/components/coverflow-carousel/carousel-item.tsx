@@ -1,11 +1,13 @@
-import { Image } from 'expo-image';
 import { StyleSheet } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { Image } from 'expo-image';
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type CarouselItemProps = {
   image: string;
@@ -109,10 +111,8 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
       Extrapolation.CLAMP,
     );
 
-    // Calculate the width of the image based on scaleX
     const width = Math.round(itemWidth * scaleX);
 
-    // Return the animated style object
     return {
       borderRadius: borderRadius,
       opacity,
@@ -160,8 +160,8 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
   image: {
-    overflow: 'hidden',
     borderCurve: 'continuous',
+    overflow: 'hidden',
   },
 });

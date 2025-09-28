@@ -2,7 +2,6 @@ import { Dimensions } from 'react-native';
 
 import type { CardData } from './types';
 
-// Card type enum for better type safety
 export enum CardType {
   Silver = 0,
   Gold = 1,

@@ -1,8 +1,10 @@
+import { StyleSheet } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { useCallback, useRef } from 'react';
-import { StyleSheet } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -11,8 +13,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-import type { FourierVisualizerRefType } from './components/fourier-visualizer';
+
 import { FourierVisualizer } from './components/fourier-visualizer';
+
+import type { FourierVisualizerRefType } from './components/fourier-visualizer';
 
 // The main App component.
 const App = () => {
@@ -53,7 +57,6 @@ const App = () => {
   const clear = () => {
     ref.current?.clear();
   };
-  // Define the pan gesture for drawing.
   const panGesture = Gesture.Pan()
     .onStart(({ x, y }) => {
       scheduleOnRN(clear);
@@ -78,7 +81,6 @@ const App = () => {
       scheduleOnRN(drawPathWrapper, svgString);
     });
 
-  // Animated style for the clear button.
   const rClearButton = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isDrawing.value ? 1 : 0),
@@ -86,7 +88,6 @@ const App = () => {
     };
   });
 
-  // Render the app components.
   return (
     <>
       <GestureDetector gesture={panGesture}>
@@ -100,7 +101,6 @@ const App = () => {
             />
             <FourierVisualizer
               ref={value => {
-                // this is necessary otherwise the ref will crash on going back
                 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                 // @ts-expect-error
                 ref.current = value;
@@ -122,21 +122,20 @@ const App = () => {
   );
 };
 
-// Styles for the components.
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  canvas: { flex: 1, backgroundColor: '#D4D4D4' },
+  canvas: { backgroundColor: '#D4D4D4', flex: 1 },
   clearButton: {
-    position: 'absolute',
-    bottom: 100,
-    height: 64,
+    alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#111',
-    right: 30,
     borderRadius: 32,
+    bottom: 100,
+    height: 64,
     justifyContent: 'center',
-    alignItems: 'center',
+    position: 'absolute',
+    right: 30,
   },
+  container: { flex: 1 },
 });
 
 export { App as FourierVisualizer };

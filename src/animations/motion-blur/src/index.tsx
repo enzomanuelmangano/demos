@@ -1,7 +1,9 @@
+import { StyleSheet, View } from 'react-native';
+
+import { type FC, useState } from 'react';
+
 import { Entypo } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { type FC, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 
 import { BlurredList } from './components/blurred-list';
 import { ListItem } from './components/list-item';
@@ -13,7 +15,6 @@ const AddButton: FC<{ onPress: () => void }> = ({ onPress }) => (
   </PressableScale>
 );
 
-// Main App Component
 const App = () => {
   const [items, setItems] = useState<Item[]>([]);
 
@@ -43,26 +44,26 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  addButton: {
+    alignItems: 'center',
+    backgroundColor: 'black',
+    borderRadius: 32,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
+  },
+  buttonContainer: {
+    alignItems: 'center',
+    top: -50,
+  },
   container: {
-    flex: 1,
     backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
   listContainer: {
     flex: 1,
     justifyContent: 'center',
-  },
-  addButton: {
-    width: 64,
-    height: 64,
-    backgroundColor: 'black',
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonContainer: {
-    alignItems: 'center',
-    top: -50,
   },
 });
 

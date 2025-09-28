@@ -1,8 +1,9 @@
+import { Platform, StyleSheet, Text } from 'react-native';
+
+import { type FC, memo, useCallback, useMemo } from 'react';
+
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, memo, useCallback, useMemo } from 'react';
-import type { ColorValue, StyleProp, TextStyle } from 'react-native';
-import { Platform, StyleSheet, Text } from 'react-native';
 import Animated, {
   SharedValue,
   useAnimatedReaction,
@@ -13,6 +14,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { ColorValue, StyleProp, TextStyle } from 'react-native';
 
 type AnimatedDigitProps = {
   index: number;
@@ -233,10 +236,10 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
 
 const styles = StyleSheet.create({
   gradientContainer: {
-    position: 'absolute',
-    top: 0,
     left: 0,
+    position: 'absolute',
     right: 0,
+    top: 0,
     zIndex: 50,
   },
 });

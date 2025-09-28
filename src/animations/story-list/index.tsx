@@ -1,6 +1,8 @@
-import { Image } from 'expo-image';
-import { memo, useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { memo, useMemo } from 'react';
+
+import { Image } from 'expo-image';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { StoryList } from './components/story-list';
@@ -88,14 +90,14 @@ const StoryListGestureContainer = () => {
 };
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#2D3045',
+    flex: 1,
+    justifyContent: 'center',
+  },
   fill: {
     flex: 1,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#2D3045',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 

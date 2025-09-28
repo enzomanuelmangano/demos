@@ -1,6 +1,7 @@
-import { forwardRef } from 'react';
-import type { ViewStyle } from 'react-native';
 import { StyleSheet } from 'react-native';
+
+import { forwardRef } from 'react';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -8,8 +9,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { InternalIconRef } from './icon';
 import { InternalIcon } from './icon';
+
+import type { InternalIconRef } from './icon';
+import type { ViewStyle } from 'react-native';
 
 type IconSquareProps = {
   style?: ViewStyle;
@@ -83,12 +86,12 @@ export const IconSquare = forwardRef<InternalIconRef, IconSquareProps>(
 
 const styles = StyleSheet.create({
   container: {
-    height: 96,
-    width: 96,
-    borderRadius: 24,
-    borderCurve: 'continuous',
-    backgroundColor: 'black',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'black',
+    borderCurve: 'continuous',
+    borderRadius: 24,
+    height: 96,
+    justifyContent: 'center',
+    width: 96,
   },
 });

@@ -12,7 +12,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { CircularButton } from './components/circular-button';
 
-// Configuration constants for the button
 const buttonSize = 48;
 const blastRadius = buttonSize * 2;
 
@@ -38,9 +37,9 @@ export const ParticlesButton = () => {
  */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#111',
     alignItems: 'center',
+    backgroundColor: '#111',
+    flex: 1,
     justifyContent: 'center',
   },
 });

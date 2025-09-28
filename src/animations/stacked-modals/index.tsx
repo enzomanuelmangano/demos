@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+
 import { PressableScale } from 'pressto';
 
 import { useDemoStackedModal } from './hook';
@@ -15,20 +16,20 @@ const StackedModals = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fefefe',
-  },
   button: {
-    height: 64,
     aspectRatio: 1,
-    borderRadius: 32,
     backgroundColor: 'black',
-    marginHorizontal: 20,
     borderCurve: 'continuous',
-    position: 'absolute',
+    borderRadius: 32,
     bottom: 48,
+    height: 64,
+    marginHorizontal: 20,
+    position: 'absolute',
     right: 20,
+  },
+  container: {
+    backgroundColor: '#fefefe',
+    flex: 1,
   },
 });
 

@@ -2,7 +2,6 @@ import { Group, Text } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
 
 import { font } from '../../constants';
-
 import { useAnimatedPathData } from './hooks/use-animated-path-data';
 
 type ExclusionTabTextProps = {

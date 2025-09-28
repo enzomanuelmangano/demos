@@ -1,12 +1,13 @@
 import { createRef, useMemo } from 'react';
-import type { LayoutRectangle } from 'react-native';
+
 import { useDerivedValue } from 'react-native-reanimated';
+
+import { isHeader } from '../constants';
+import { useMounted } from './useMounted';
 
 import type { MeasureableAnimatedViewRef } from '../components/MeasureableAnimatedView';
 import type { HeaderListItem, ListItem } from '../constants';
-import { isHeader } from '../constants';
-
-import { useMounted } from './useMounted';
+import type { LayoutRectangle } from 'react-native';
 
 type UseHeaderLayoutParams = {
   headers: HeaderListItem[];
@@ -24,9 +25,7 @@ const useHeaderLayout = ({
   const mounted = useMounted();
 
   const headersLayoutXRefs = useMemo(
-    () =>
-      // use refs to get the layout of the headers
-      headers.map(() => createRef<MeasureableAnimatedViewRef>()),
+    () => headers.map(() => createRef<MeasureableAnimatedViewRef>()),
     [headers],
   );
 
@@ -46,7 +45,6 @@ const useHeaderLayout = ({
 
       if (
         ref.current &&
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ((acc as any)?.[header] == null || (acc as any)?.[header]?.width === 0)
       ) {
         const layout = ref.current?.reanimatedMeasure();

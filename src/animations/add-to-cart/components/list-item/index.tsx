@@ -1,17 +1,21 @@
-import { Image } from 'expo-image';
-import type React from 'react';
-import { useCallback } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, Text, View } from 'react-native';
-import type { MeasuredDimensions } from 'react-native-reanimated';
+
+import { useCallback } from 'react';
+
+import { Image } from 'expo-image';
 import Animated, {
   measure,
+  type MeasuredDimensions,
   type SharedValue,
   useAnimatedRef,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
 import { PressableScale } from './pressable-scale';
+
+import type React from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type ListItemProps<T> = {
   index: number;
@@ -127,15 +131,15 @@ const ListItem = <
 
 const styles = StyleSheet.create({
   badge: {
-    position: 'absolute',
-    top: -2.5,
-    right: -2.5,
-    borderRadius: 10,
-    height: 15,
+    alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#D12727',
+    borderRadius: 10,
+    height: 15,
     justifyContent: 'center',
-    alignItems: 'center',
+    position: 'absolute',
+    right: -2.5,
+    top: -2.5,
     zIndex: 100,
   },
 });

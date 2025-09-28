@@ -1,9 +1,10 @@
-import type { SharedValue } from 'react-native-reanimated';
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const usePickerLayout = ({
   radius,

@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
 import { Alert, Linking } from 'react-native';
+
+import { useCallback } from 'react';
 
 export const useLeaveFeedback = ({ screenName }: { screenName: string }) => {
   const leaveFeedback = useCallback(() => {

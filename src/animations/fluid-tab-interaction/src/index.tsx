@@ -1,8 +1,10 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import { useState } from 'react';
-import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { SegmentedControl } from './components/segmented-control';
+
+import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const Data: {
   name: string;
@@ -32,9 +34,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

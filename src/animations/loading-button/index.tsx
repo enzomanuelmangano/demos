@@ -1,6 +1,8 @@
 import { StyleSheet, View } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { useRef, useState, useCallback, useEffect } from 'react';
+
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { LoadingButton } from './components/loading-button';
 
@@ -125,9 +127,9 @@ const AppContainer = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

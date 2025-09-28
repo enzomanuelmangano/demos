@@ -1,5 +1,3 @@
-import type { FC, PropsWithChildren } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -8,39 +6,38 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import type { FC, PropsWithChildren } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
+
 type PressableScaleProps = PropsWithChildren<{
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }>;
 
-// Create the PressableScale component
 const PressableScale: FC<PressableScaleProps> = ({
   children,
   onPress,
   style,
 }) => {
-  // Create a shared value to track the press state
   const active = useSharedValue(false);
 
-  // Create a tap gesture handler
   const gesture = Gesture.Tap()
-    .maxDuration(4000) // Set maximum duration for tap gesture
+    .maxDuration(4000)
     .onTouchesDown(() => {
-      active.value = true; // Mark as active on touch down
+      active.value = true;
     })
     .onTouchesUp(() => {
-      if (onPress != null) scheduleOnRN(onPress); // Execute onPress on touch up
+      if (onPress != null) scheduleOnRN(onPress);
     })
     .onFinalize(() => {
-      active.value = false; // Reset press state on finalize
+      active.value = false;
     });
 
-  // Create an animated style for scaling effect
   const rAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          scale: withTiming(active.value ? 0.92 : 1), // Scale down when active, return to normal otherwise
+          scale: withTiming(active.value ? 0.92 : 1),
         },
       ],
     };

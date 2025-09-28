@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+
 import { useState } from 'react';
 
 import { Tabs } from './components/tabs';
@@ -20,9 +21,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

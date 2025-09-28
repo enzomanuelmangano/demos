@@ -1,5 +1,6 @@
-import type { Transition } from '../providers/gl-transitions';
 import { glsl } from '../providers/gl-transitions';
+
+import type { Transition } from '../providers/gl-transitions';
 
 export const CrossZoom: Transition = glsl`
 // License: MIT

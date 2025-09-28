@@ -1,6 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { useContext } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { useContext } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   withTiming,

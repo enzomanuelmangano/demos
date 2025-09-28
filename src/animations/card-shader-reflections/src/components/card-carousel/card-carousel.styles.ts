@@ -4,10 +4,10 @@ import { CARD_WIDTH, SCREEN_WIDTH } from './utils/constants';
 
 export const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#111',
-    justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#111',
+    flex: 1,
+    justifyContent: 'center',
   },
   flatListContent: {
     paddingHorizontal: (SCREEN_WIDTH - CARD_WIDTH) / 2,

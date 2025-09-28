@@ -1,6 +1,7 @@
+import { StyleSheet, View } from 'react-native';
+
 import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
   interpolateColor,
@@ -135,14 +136,14 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  button: {
+    alignSelf: 'center',
+    bottom: 48,
+    position: 'absolute',
+    zIndex: 2000,
+  },
   container: {
     flex: 1,
-  },
-  button: {
-    position: 'absolute',
-    bottom: 48,
-    alignSelf: 'center',
-    zIndex: 2000,
   },
   text: {
     color: 'white',

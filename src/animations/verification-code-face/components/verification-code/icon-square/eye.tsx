@@ -1,9 +1,11 @@
 import { StyleSheet, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 export const Eye = ({ progress }: { progress: SharedValue<number> }) => {
   const rStyle = useAnimatedStyle(() => {
@@ -32,12 +34,12 @@ export const Eye = ({ progress }: { progress: SharedValue<number> }) => {
 
 const styles = StyleSheet.create({
   eyeContainer: {
-    width: 20,
-    height: 20,
+    alignItems: 'center',
     backgroundColor: 'white',
     borderRadius: 10,
+    height: 20,
     justifyContent: 'center',
-    alignItems: 'center',
     overflow: 'hidden',
+    width: 20,
   },
 });

@@ -3,9 +3,10 @@
  * with animations for highlighting and selection
  */
 
-import { memo, useMemo } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { memo, useMemo } from 'react';
+
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
@@ -13,10 +14,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import type { CellValue } from '../../logic';
+import { CELL_SIZE } from './constants';
 import { COLORS } from '../../theme';
 
-import { CELL_SIZE } from './constants';
+import type { CellValue } from '../../logic';
+import type { SharedValue } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -93,36 +95,36 @@ export const Cell = memo<CellProps>(
 );
 
 const styles = StyleSheet.create({
-  cellBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 100,
-    zIndex: -1,
-    pointerEvents: 'none',
-  },
-  cell: {
-    width: CELL_SIZE,
-    height: CELL_SIZE,
-    borderWidth: 0.5,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+  borderBottom: {
+    borderBottomColor: COLORS.primary + '50',
+    borderBottomWidth: 2,
   },
   borderRight: {
-    borderRightWidth: 2,
     borderRightColor: COLORS.primary + '50',
+    borderRightWidth: 2,
   },
-  borderBottom: {
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.primary + '50',
+  cell: {
+    alignItems: 'center',
+    borderColor: COLORS.border,
+    borderWidth: 0.5,
+    height: CELL_SIZE,
+    justifyContent: 'center',
+    width: CELL_SIZE,
+  },
+  cellBackground: {
+    borderRadius: 100,
+    bottom: 0,
+    left: 0,
+    pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: -1,
   },
   cellText: {
+    color: COLORS.userInput,
     fontSize: 20,
     fontWeight: '600',
-    color: COLORS.userInput,
   },
   initialCellText: {
     color: COLORS.initial,

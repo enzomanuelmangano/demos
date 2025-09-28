@@ -1,46 +1,42 @@
-import { type FC, memo } from 'react';
 import { StyleSheet } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { type FC, memo } from 'react';
+
 import Animated, {
   useAnimatedProps,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
 
-// Define the props for the Backdrop component
+import type { SharedValue } from 'react-native-reanimated';
+
 type BackdropProps = {
-  onTap: () => void; // Function to handle tap event
-  isActive: SharedValue<boolean>; // Animated shared value to track activity state
+  onTap: () => void;
+  isActive: SharedValue<boolean>;
 };
 
-// Create the Backdrop component
 const Backdrop: FC<BackdropProps> = memo(({ isActive, onTap }) => {
-  // Define animated style for the backdrop's opacity
   const rBackdropStyle = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(isActive.value ? 1 : 0), // Animate opacity based on isActive value
+      opacity: withTiming(isActive.value ? 1 : 0),
     };
   }, []);
 
-  // Define animated props for the backdrop
   const rBackdropProps = useAnimatedProps(() => {
     return {
-      pointerEvents: isActive.value ? 'auto' : 'none', // Enable or disable touch events based on isActive value
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      pointerEvents: isActive.value ? 'auto' : 'none',
     } as any;
   }, []);
-
-  // Render the Backdrop component
   return (
     <Animated.View
-      onTouchStart={onTap} // Handle touch start event with onTap function
-      animatedProps={rBackdropProps} // Apply animated props to the View
+      onTouchStart={onTap}
+      animatedProps={rBackdropProps}
       style={[
         {
-          ...StyleSheet.absoluteFillObject, // Make the View cover the entire parent
-          backgroundColor: 'rgba(0,0,0,0.2)', // Set the background color with transparency
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: 'rgba(0,0,0,0.2)',
         },
-        rBackdropStyle, // Apply the animated style for opacity
+        rBackdropStyle,
       ]}
     />
   );

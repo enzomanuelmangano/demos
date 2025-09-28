@@ -1,4 +1,5 @@
 import { Text, View, StyleSheet } from 'react-native';
+
 import { Image } from 'expo-image';
 
 import type { INITIAL_ITEMS } from '../../constants';
@@ -39,17 +40,11 @@ export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
   avatarContainer: {
     marginRight: 12,
   },
   avatarWrapper: {
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -57,23 +52,29 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 3,
+  },
+  container: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   labelsContainer: {
     flex: 1,
     justifyContent: 'center',
   },
+  subtitleText: {
+    color: '#6b7280',
+    fontSize: 15,
+    letterSpacing: -0.1,
+    lineHeight: 20,
+  },
   titleText: {
+    color: '#111827',
     fontSize: 17,
     fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
     letterSpacing: -0.2,
-  },
-  subtitleText: {
-    fontSize: 15,
-    color: '#6b7280',
-    lineHeight: 20,
-    letterSpacing: -0.1,
+    marginBottom: 4,
   },
 });

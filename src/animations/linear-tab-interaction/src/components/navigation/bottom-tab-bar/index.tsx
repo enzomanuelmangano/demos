@@ -1,18 +1,18 @@
 import { StyleSheet, View } from 'react-native';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
-import { useSharedTransitionProgress } from '../../../navigation/custom/shared-progress';
+import { TabItem } from './tab-item';
 import {
   BaseTabs,
   isEmptyTab,
   SecondLayerTabs,
   ThirdLayerTabs,
 } from '../../../constants/tabs';
-
-import { TabItem } from './tab-item';
+import { useSharedTransitionProgress } from '../../../navigation/custom/shared-progress';
 
 const tabBarHeight = 80;
 
@@ -46,7 +46,6 @@ const TabBar = ({ activeScreenName }: TabBarProps) => {
   return (
     <View style={styles.container}>
       <View style={styles.tabsContainer}>
-        {/* Notes tab */}
         {SecondLayerTabs.map((screen, index) => {
           if (isEmptyTab(screen))
             return <View key={index} style={styles.empty} />;
@@ -97,23 +96,23 @@ const TabBar = ({ activeScreenName }: TabBarProps) => {
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     height: tabBarHeight,
-  },
-  tabsContainer: {
-    ...StyleSheet.absoluteFillObject,
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    bottom: 10,
+    left: 0,
+    position: 'absolute',
+    right: 0,
   },
   empty: {
     flex: 1,
     pointerEvents: 'none',
+  },
+  tabsContainer: {
+    ...StyleSheet.absoluteFillObject,
+    bottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
 });
 

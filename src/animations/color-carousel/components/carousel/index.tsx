@@ -1,4 +1,5 @@
 import { type FC, memo } from 'react';
+
 import Animated, {
   type SharedValue,
   useAnimatedScrollHandler,
@@ -116,5 +117,4 @@ const Carousel: FC<CarouselProps> = memo(
 />; */
 }
 
-// Export the Carousel component
 export { Carousel };

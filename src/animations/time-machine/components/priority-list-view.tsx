@@ -1,11 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { useSetAtom } from 'jotai';
+
 import { memo, useCallback } from 'react';
 
-import { SortableList } from '../drag-to-sort/components/SortableList';
-import type { Positions } from '../drag-to-sort/components/SortableList/types';
+import { useSetAtom } from 'jotai';
+
 import { ActiveItemKeyAtom, HistoryAtom } from '../atoms/history-atom';
 import { LIST_ITEM_HEIGHT, generateKey } from '../constants';
+import { SortableList } from '../drag-to-sort/components/SortableList';
+
+import type { Positions } from '../drag-to-sort/components/SortableList/types';
 
 type TodoItem = {
   id: string;
@@ -102,53 +105,53 @@ export const PriorityListView = memo(({ items }: PriorityListViewProps) => {
 });
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  listContainer: {
-    height: LIST_ITEM_HEIGHT * 4,
-    width: '100%',
-    borderRadius: 12,
-  },
-  item: {
-    height: LIST_ITEM_HEIGHT,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-    width: '80%',
-    alignSelf: 'center',
-  },
-  itemContent: {
-    flex: 1,
-    backgroundColor: '#f7f7f7',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.01,
-    shadowRadius: 10,
-    elevation: 5,
+  backgroundItem: {
+    backgroundColor: '#f8f8f8',
+    borderColor: '#e0e0e0',
     borderRadius: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    flex: 1,
+    marginHorizontal: 4,
+  },
+  container: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
   },
   emoji: {
     fontSize: 24,
     marginRight: 12,
   },
+  item: {
+    alignSelf: 'center',
+    height: LIST_ITEM_HEIGHT,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    width: '80%',
+  },
+  itemContent: {
+    alignItems: 'center',
+    backgroundColor: '#f7f7f7',
+    borderColor: '#f0f0f0',
+    borderRadius: 8,
+    borderWidth: 1,
+    elevation: 5,
+    flex: 1,
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.01,
+    shadowRadius: 10,
+  },
+  listContainer: {
+    borderRadius: 12,
+    height: LIST_ITEM_HEIGHT * 4,
+    width: '100%',
+  },
   title: {
-    fontSize: 16,
-    fontWeight: '500',
     color: '#333333',
     flex: 1,
-  },
-  backgroundItem: {
-    flex: 1,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    fontSize: 16,
+    fontWeight: '500',
   },
 });

@@ -1,13 +1,15 @@
-import type { SkFont, TextProps } from '@shopify/react-native-skia';
-import { Group, Text } from '@shopify/react-native-skia';
 import { useMemo } from 'react';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { Group, Text } from '@shopify/react-native-skia';
 import {
   Extrapolation,
   interpolate,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+
+import type { SkFont, TextProps } from '@shopify/react-native-skia';
+import type { SharedValue } from 'react-native-reanimated';
 
 type TextCodeProps = {
   containerWidth: number;

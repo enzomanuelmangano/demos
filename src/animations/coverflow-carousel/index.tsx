@@ -15,15 +15,15 @@ const CoverflowCarousel = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
   coverflow: {
+    alignItems: 'center',
     height: 250,
     justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 

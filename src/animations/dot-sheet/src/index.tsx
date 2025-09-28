@@ -1,11 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { useRef } from 'react';
+
 import { PressableScale } from 'pressto';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BackgroundGradient } from './components/background-gradient';
-import type { CardInputRefType } from './components/card-input';
 import { CardInput } from './components/card-input';
+
+import type { CardInputRefType } from './components/card-input';
 
 const App = () => {
   const { bottom: safeBottom } = useSafeAreaInsets();
@@ -40,47 +43,47 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  background: {
+    height: '100%',
+    position: 'absolute',
+  },
+  bottomButton: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'rgba(55, 55, 55, 0.2)',
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    height: 52,
+    justifyContent: 'center',
+    position: 'absolute',
+    width: '85%',
+  },
+  buttonTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
   fill: {
     flex: 1,
   },
   fillCenter: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+  },
+  subtitle: {
+    color: '#6c6c6c',
+    fontFamily: 'AddingtonCF-Light',
+    fontSize: 18,
+    letterSpacing: -0.5,
+    marginTop: 12,
+    maxWidth: '60%',
+    textAlign: 'center',
   },
   title: {
     fontFamily: 'AddingtonCF-Light',
     fontSize: 28,
     letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontFamily: 'AddingtonCF-Light',
-    fontSize: 18,
-    letterSpacing: -0.5,
-    color: '#6c6c6c',
-    textAlign: 'center',
-    marginTop: 12,
-    maxWidth: '60%',
-  },
-  background: {
-    position: 'absolute',
-    height: '100%',
-  },
-  bottomButton: {
-    position: 'absolute',
-    width: '85%',
-    height: 52,
-    borderRadius: 30,
-    borderCurve: 'continuous',
-    backgroundColor: 'rgba(55, 55, 55, 0.2)',
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  buttonTitle: {
-    fontSize: 16,
-    color: '#fff',
-    fontWeight: '700',
   },
 });
 

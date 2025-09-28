@@ -1,11 +1,10 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import { useFont } from '@shopify/react-native-skia';
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+import { CircularSlider } from './components/circular-slider';
 // @ts-ignore
 import sfProRoundedBold from '../../../../assets/fonts/SF-Pro-Rounded-Bold.otf';
-
-import { CircularSlider } from './components/circular-slider';
 
 const App = () => {
   const { width: windowWidth } = useWindowDimensions();
@@ -33,9 +32,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

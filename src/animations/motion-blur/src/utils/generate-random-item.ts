@@ -1,4 +1,3 @@
-// Types
 export type Item = {
   id: number;
   amount: string;
@@ -6,7 +5,6 @@ export type Item = {
   emoji: string;
 };
 
-// Helper function to generate random items
 export const generateRandomItem = (id: number): Item => {
   const emojis = [
     '🫠',

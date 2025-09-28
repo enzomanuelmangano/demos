@@ -1,5 +1,5 @@
 import { type FC, memo, type ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -8,6 +8,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type InputButtonProps = {
   style?: StyleProp<ViewStyle>;

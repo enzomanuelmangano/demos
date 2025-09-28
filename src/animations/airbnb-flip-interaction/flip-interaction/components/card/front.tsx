@@ -1,10 +1,12 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { spacing } from '../../constants';
+import { type FC, memo } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { ProfileAvatar } from './profile-avatar';
+import { spacing } from '../../constants';
+
 import type { ProfileType } from './types';
 
 type CardFrontProps = {
@@ -42,47 +44,47 @@ export const CardFront: FC<CardFrontProps> = memo(({ profile }) => {
 });
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
+  avatarSection: {
+    alignItems: 'flex-end',
     flex: 1,
-    borderRadius: spacing.l + 4,
-    overflow: 'hidden',
-  },
-  paddingContainer: {
-    padding: spacing.l,
-    flex: 1,
+    justifyContent: 'flex-end',
   },
   background: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     borderRadius: spacing.l + 4,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  container: {
+    borderRadius: spacing.l + 4,
+    flex: 1,
+    overflow: 'hidden',
+    width: '100%',
   },
   nameText: {
-    fontSize: 32,
-    fontWeight: '700',
     color: 'white',
     fontFamily: 'SF-Pro-Rounded-Heavy',
-    marginBottom: spacing.xs,
+    fontSize: 32,
+    fontWeight: '700',
     letterSpacing: -0.5,
+    marginBottom: spacing.xs,
+  },
+  paddingContainer: {
+    flex: 1,
+    padding: spacing.l,
+  },
+  spacer: {
+    flex: 1,
   },
   verifiedText: {
-    fontSize: 17,
     color: 'rgba(255, 255, 255, 0.95)',
     fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 17,
     letterSpacing: 0.2,
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 1,
-  },
-  avatarSection: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-end',
-    flex: 1,
-  },
-  spacer: {
-    flex: 1,
   },
 });

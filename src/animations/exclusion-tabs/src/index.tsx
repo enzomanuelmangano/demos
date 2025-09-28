@@ -1,4 +1,5 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import { useState } from 'react';
 
 import { ExclusionTabs } from './components/exclusion-tabs';
@@ -26,9 +27,9 @@ const App = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

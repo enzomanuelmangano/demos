@@ -1,6 +1,3 @@
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { type FC, memo, useCallback, useMemo } from 'react';
 import {
   Platform,
   type StyleProp,
@@ -8,6 +5,11 @@ import {
   Text,
   type TextStyle,
 } from 'react-native';
+
+import { type FC, memo, useCallback, useMemo } from 'react';
+
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   type SharedValue,
   useAnimatedReaction,
@@ -248,10 +250,10 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
 
 const styles = StyleSheet.create({
   gradientContainer: {
-    position: 'absolute',
-    top: 0,
     left: 0,
+    position: 'absolute',
     right: 0,
+    top: 0,
     zIndex: 50,
   },
 });

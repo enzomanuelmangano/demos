@@ -1,3 +1,7 @@
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+
+import { useEffect } from 'react';
+
 import {
   Blur,
   Canvas,
@@ -8,8 +12,6 @@ import {
   Skia,
 } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
-import { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import {
   Easing,
   useDerivedValue,
@@ -20,17 +22,13 @@ import {
 
 import { AnimatedSlider } from './components/animated-slider';
 
-// Max 350 circles, but you can update this value as you want.
-// It all depends on how fast is you're computer 😁
 const MAX_CIRCLES_AMOUNT = 350;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_SIZE = SCREEN_WIDTH;
 
 const FibonacciShader = () => {
-  // N is the amount of circles
   const N = useSharedValue(5.0);
-  // Try with this value: 77.51937688783158. The result is beautiful!
   const magicalMul = useSharedValue(2.4);
 
   const iTime = useSharedValue(0.0);
@@ -125,7 +123,6 @@ const FibonacciShader = () => {
           maxValue={MAX_CIRCLES_AMOUNT}
           onUpdate={value => {
             'worklet';
-            // While updating the Slider, I'm updating the N value as well
             N.value = value;
           }}
           color="white"
@@ -136,7 +133,6 @@ const FibonacciShader = () => {
       </View>
       <PressableScale
         onPress={() => {
-          // I love randomness :)
           magicalMul.value = Math.random() * 100;
         }}
         style={styles.floatingButton}>
@@ -147,25 +143,25 @@ const FibonacciShader = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: 'black',
-  },
-  floatingButton: {
-    position: 'absolute',
-    right: 60,
-    bottom: 120,
-    backgroundColor: '#232323',
-    borderRadius: 32,
-    height: 64,
-    width: 64,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   animatedSlider: {
-    marginTop: 80,
     alignItems: 'center',
     flexDirection: 'column',
+    marginTop: 80,
+  },
+  container: {
+    backgroundColor: 'black',
+    flex: 1,
+  },
+  floatingButton: {
+    alignItems: 'center',
+    backgroundColor: '#232323',
+    borderRadius: 32,
+    bottom: 120,
+    height: 64,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 60,
+    width: 64,
   },
   floatingContent: { fontSize: 32 },
 });

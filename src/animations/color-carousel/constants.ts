@@ -1,5 +1,6 @@
-import Color from 'color';
 import { Dimensions } from 'react-native';
+
+import Color from 'color';
 
 const colors = [
   '#336699',

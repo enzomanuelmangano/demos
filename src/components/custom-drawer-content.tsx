@@ -1,13 +1,15 @@
-import type { DrawerContentComponentProps } from '@react-navigation/drawer';
-import { FlashList, ListRenderItem } from '@shopify/flash-list';
+import { StyleSheet, Text, TextInput, View, ListRenderItem } from 'react-native';
+
+import { useCallback, useMemo, type JSX } from 'react';
+
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
-import { useCallback, useMemo, type JSX } from 'react';
-import type { TextInputChangeEvent } from 'react-native';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { PressableScale } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DrawerListItem } from './drawer-list-item';
 import { createIcon } from '../animations/icon-factory';
 import {
   getAllAnimations,
@@ -16,8 +18,8 @@ import {
 } from '../animations/registry';
 import { SearchFilterAtom } from '../navigation/states/filters';
 
-import { PressableScale } from 'pressto';
-import { DrawerListItem } from './drawer-list-item';
+import type { DrawerContentComponentProps } from '@react-navigation/drawer';
+import type { TextInputChangeEvent } from 'react-native';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
@@ -130,8 +132,11 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#030303',
+    flex: 1,
+  },
+  content: {
+    paddingBottom: 24,
   },
   header: {
     gap: 8,

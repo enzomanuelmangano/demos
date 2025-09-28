@@ -1,6 +1,8 @@
-import { BlurView } from 'expo-blur';
-import { type FC, type ReactNode, useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { type FC, type ReactNode, useCallback, useEffect } from 'react';
+
+import { BlurView } from 'expo-blur';
 import Animated, {
   Easing,
   FadeOut,
@@ -13,12 +15,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-// Constants
 const LIST_ITEM_HEIGHT = 90;
 const LIST_ITEM_MARGIN_BOTTOM = 20;
 const LIST_ITEM_CONTAINER_HEIGHT = LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM;
 
-// Types
 type BlurredListProps<T> = {
   maxVisibleItems: number;
   data: T[];
@@ -32,7 +32,6 @@ type BlurredListItemContainerProps = {
   currentListLength: number;
 };
 
-// Animated components
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 const keyframe = new Keyframe({
@@ -56,7 +55,6 @@ const keyframe = new Keyframe({
   },
 });
 
-// Utility functions
 const calculateTop = (
   index: number,
   currentListLength: number,
@@ -65,7 +63,6 @@ const calculateTop = (
   index * LIST_ITEM_CONTAINER_HEIGHT -
   Math.max(currentListLength - maxVisibleItems, 0) * LIST_ITEM_CONTAINER_HEIGHT;
 
-// Sub-components
 const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   children,
   index,
@@ -129,7 +126,6 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   );
 };
 
-// Main component
 export function BlurredList<T>({
   maxVisibleItems,
   data,
@@ -159,34 +155,33 @@ export function BlurredList<T>({
   );
 }
 
-// Styles
 const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  itemContainer: {
-    position: 'absolute',
-    height: LIST_ITEM_HEIGHT,
-    width: '100%',
-    marginBottom: LIST_ITEM_MARGIN_BOTTOM,
-  },
-  itemContent: {
-    height: LIST_ITEM_HEIGHT,
-    width: '80%',
-    alignSelf: 'center',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    borderCurve: 'continuous',
-    shadowRadius: 10,
-    elevation: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   blurView: {
     ...StyleSheet.absoluteFillObject,
-    zIndex: 100,
-    top: -5,
     bottom: -20,
+    top: -5,
+    zIndex: 100,
+  },
+  container: {
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  itemContainer: {
+    height: LIST_ITEM_HEIGHT,
+    marginBottom: LIST_ITEM_MARGIN_BOTTOM,
+    position: 'absolute',
+    width: '100%',
+  },
+  itemContent: {
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: 'white',
+    borderCurve: 'continuous',
+    borderRadius: 20,
+    elevation: 5,
+    height: LIST_ITEM_HEIGHT,
+    justifyContent: 'center',
+    shadowRadius: 10,
+    width: '80%',
   },
 });

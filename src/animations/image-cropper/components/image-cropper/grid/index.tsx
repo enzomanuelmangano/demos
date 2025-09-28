@@ -6,11 +6,12 @@ import {
   clamp,
   rect,
 } from '@shopify/react-native-skia';
-import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
-import type { SharedValue } from 'react-native-reanimated';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import { useCornerGestures } from './useCornerGestures';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 type GridProps = {
   x: SharedValue<number>;

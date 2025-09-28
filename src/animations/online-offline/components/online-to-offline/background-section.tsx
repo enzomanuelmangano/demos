@@ -1,7 +1,9 @@
-import Animated from 'react-native-reanimated';
 import { StyleSheet } from 'react-native';
 
+import Animated from 'react-native-reanimated';
+
 import { LayoutTransition } from './animations';
+
 import type { BackgroundSectionProps } from './types';
 
 export const BackgroundSection = ({
@@ -31,9 +33,9 @@ export const BackgroundSection = ({
 
 const styles = StyleSheet.create({
   backgroundSection: {
+    borderCurve: 'continuous',
+    borderRadius: 999,
     position: 'absolute',
     zIndex: 0,
-    borderRadius: 999,
-    borderCurve: 'continuous',
   },
 });

@@ -1,5 +1,7 @@
-import { useLayoutEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { useLayoutEffect, useRef, useState } from 'react';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -83,11 +85,21 @@ export function TabSelector<T extends string>({
 }
 
 const styles = StyleSheet.create({
-  tabContainer: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    borderCurve: 'continuous',
+  tab: {
     alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  tabContainer: {
+    alignItems: 'center',
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    elevation: 2,
+    flexDirection: 'row',
     marginBottom: 12,
     position: 'relative',
     shadowColor: '#D1D5DB',
@@ -97,14 +109,14 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.05,
     shadowRadius: 4,
-    elevation: 2,
   },
   tabIndicator: {
-    position: 'absolute',
-    height: 40,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     borderCurve: 'continuous',
+    borderRadius: 12,
+    elevation: 3,
+    height: 40,
+    position: 'absolute',
     shadowColor: '#D1D5DB',
     shadowOffset: {
       width: 0,
@@ -112,22 +124,12 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 6,
-    elevation: 3,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    borderCurve: 'continuous',
   },
   tabText: {
+    color: '#9CA3AF',
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 16,
     fontWeight: '600',
-    fontFamily: 'SF-Pro-Rounded-Bold',
-    color: '#9CA3AF',
     letterSpacing: -0.3,
   },
   tabTextActive: {

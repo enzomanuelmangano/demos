@@ -1,20 +1,17 @@
-// Import useContext from React library
 import { type ReactNode, createContext } from 'react';
 
-// Define the type for a StackedToast
 export type StackedToastType = {
   id: number;
   key: string;
   children?: () => ReactNode;
 };
 
-// Create a context for managing StackedToasts
 export const StackedToastContext = createContext<{
   showStackedToast: (StackedToast: Omit<StackedToastType, 'id'>) => void;
   clearAllStackedToasts: () => void;
 }>({
-  showStackedToast: () => {}, // Default empty function for showStackedToast
-  clearAllStackedToasts: () => {}, // Default empty function for clearAllStackedToasts
+  showStackedToast: () => {},
+  clearAllStackedToasts: () => {},
 });
 
 // Why did I create two contexts?

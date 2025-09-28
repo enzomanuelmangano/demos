@@ -1,5 +1,6 @@
-import type { Transition } from '../providers/gl-transitions';
 import { glsl } from '../providers/gl-transitions';
+
+import type { Transition } from '../providers/gl-transitions';
 
 // https://gl-transitions.com/editor/directionalwarp
 export const DirectionalWarp: Transition = glsl`

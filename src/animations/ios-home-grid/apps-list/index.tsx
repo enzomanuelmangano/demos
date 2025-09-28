@@ -1,42 +1,36 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
+
 import { useMemo } from 'react';
+
+import { useNavigation } from '@react-navigation/native';
 import Animated, {
   LinearTransition,
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-
-import type { RootStackParamList } from '../app-detail-screen';
-import { useCustomNavigation } from '../navigation/expansion-provider';
 
 import { AppItem } from './app-item';
-import type { AppData } from './constants';
 import { APPS_DATA as items } from './constants';
+import { useCustomNavigation } from '../navigation/expansion-provider';
 
-/** Grid layout constants */
+import type { RootStackParamList } from '../app-detail-screen';
+import type { AppData } from './constants';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 const SPACING = 8;
 const NUM_COLUMNS = 4;
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-/**
- * AppsList component displays a grid of app
- */
 export const AppsList = () => {
   const { width: screenWidth } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
   const navigation = useNavigation<NavigationProp>();
 
-  /**
-   * Calculate layout dimensions based on screen width
-   */
   const layoutConfig = useMemo(() => {
     const horizontalPadding = SPACING * 2;
     const availableWidth = screenWidth - horizontalPadding;
 
-    // Calculate item size based on available width and fixed number of columns
     const totalSpacing = SPACING * (NUM_COLUMNS - 1);
     const itemSize = Math.floor((availableWidth - totalSpacing) / NUM_COLUMNS);
 
@@ -47,9 +41,6 @@ export const AppsList = () => {
     };
   }, [screenWidth]);
 
-  /**
-   * Group items into rows for proper grid layout
-   */
   const itemRows = useMemo(() => {
     const rows = [];
     for (let i = 0; i < items.length; i += NUM_COLUMNS) {
@@ -92,7 +83,6 @@ export const AppsList = () => {
             key={rowIndex}
             style={[
               styles.row,
-              // Only center if the row has the full number of columns
               row.length < NUM_COLUMNS && { justifyContent: 'flex-start' },
             ]}
             layout={LinearTransition}>
@@ -122,8 +112,8 @@ export const AppsList = () => {
 const styles = StyleSheet.create({
   gridContainer: {
     flexGrow: 1,
-    width: '100%',
     paddingBottom: SPACING * 2,
+    width: '100%',
   },
   row: {
     flexDirection: 'row',

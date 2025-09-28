@@ -1,3 +1,5 @@
+import { StyleSheet, View } from 'react-native';
+
 import {
   forwardRef,
   useCallback,
@@ -6,7 +8,7 @@ import {
   type ReactElement,
   type Ref,
 } from 'react';
-import { StyleSheet, View } from 'react-native';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -16,15 +18,15 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { WindowWidth } from '../../constants';
-
 import { CarouselItem } from './carousel-item';
+import { WindowWidth } from '../../constants';
 import { useInterpolateConfig } from './hooks/use-interpolate-config';
+import { snapPoint } from './utils/snap-point';
+
 import type {
   InfiniteCircularCarouselProps,
   InfiniteCircularCarouselRef,
 } from './types';
-import { snapPoint } from './utils/snap-point';
 
 // Before being scared by the code, let me tell you that all this complexity
 // is there just to create a simple Infinite Circular Carousel.
@@ -99,7 +101,6 @@ const BaseInfiniteCircularCarousel = <T,>(
     [listItemWidth, listOffset, translateX.value],
   );
 
-  // Function to scroll to a specific index
   const scrollToIndex = useCallback(
     (index: number, animated = true) => {
       if (!animated) {
@@ -116,7 +117,6 @@ const BaseInfiniteCircularCarousel = <T,>(
     [findClosestIndexPosition, translateX, listItemWidth],
   );
 
-  // Expose scrollToIndex function to the parent component
   useImperativeHandle(
     ref,
     () => ({
@@ -125,7 +125,6 @@ const BaseInfiniteCircularCarousel = <T,>(
     [scrollToIndex],
   );
 
-  // Update active index based on translation value
   useAnimatedReaction(
     () => {
       const scrolledAmount = (translateX.value % listOffset) / listItemWidth;
@@ -138,7 +137,6 @@ const BaseInfiniteCircularCarousel = <T,>(
     },
   );
 
-  // Calculate snap intervals for gesture snapping
   const snapIntervals = useMemo(() => {
     const negativeIntervals = data.map(
       (_, index) => -(index + 1) * listItemWidth,
@@ -182,13 +180,11 @@ const BaseInfiniteCircularCarousel = <T,>(
       });
     });
 
-  // Get interpolated configuration for items
   const selectedInterpolateConfig = useInterpolateConfig({
     listItemWidth,
     interpolateConfig,
   });
 
-  // Render the carousel
   return (
     <View>
       <GestureDetector gesture={gesture}>
@@ -227,14 +223,12 @@ const BaseInfiniteCircularCarousel = <T,>(
   );
 };
 
-// Styles for the component
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
   },
 });
 
-// Export InfiniteCircularCarousel component with forwardRef
 export const InfiniteCircularCarousel = forwardRef(
   BaseInfiniteCircularCarousel,
 ) as <T>(
@@ -243,5 +237,4 @@ export const InfiniteCircularCarousel = forwardRef(
   },
 ) => ReactElement;
 
-// Exporting types for props and ref
 export { InfiniteCircularCarouselProps, InfiniteCircularCarouselRef };

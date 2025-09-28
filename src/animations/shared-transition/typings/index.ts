@@ -1,6 +1,5 @@
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-
 import type { ScreenNames } from '../constants/screen-names';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 type RootStackParamsList = {
   [ScreenNames.Home]: undefined;

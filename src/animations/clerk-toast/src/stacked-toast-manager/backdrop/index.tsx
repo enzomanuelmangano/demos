@@ -1,15 +1,16 @@
+import { StyleSheet, useWindowDimensions } from 'react-native';
+
+import { useContext } from 'react';
+
 import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useContext } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
 
 import { InternalStackedToastContext } from '../context';
-
 import { useGradientHeight } from './use-gradient-height';
 
 // The Backdrop component creates a visually appealing background for stacked toasts.

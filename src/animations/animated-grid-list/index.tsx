@@ -1,5 +1,7 @@
-import { useCallback, useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+
+import { useCallback, useState } from 'react';
+
 import Animated, {
   FadeIn,
   FadeOut,
@@ -7,10 +9,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { AnimatedLayoutListProps } from './components/animated-layout-list';
 import { AnimatedLayoutList } from './components/animated-layout-list';
 import { FloatingButton } from './components/floating-button';
 import { data } from './constants';
+
+import type { AnimatedLayoutListProps } from './components/animated-layout-list';
 
 const AnimatedImage = Animated.createAnimatedComponent(Image);
 
@@ -91,7 +94,7 @@ export function AnimatedGridList() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     backgroundColor: '#EEEEEE',
+    flex: 1,
   },
 });

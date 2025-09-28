@@ -1,3 +1,5 @@
+import { type FC, memo, useMemo } from 'react';
+
 import {
   Canvas,
   Group,
@@ -6,7 +8,6 @@ import {
   rrect,
   Skia,
 } from '@shopify/react-native-skia';
-import { type FC, memo, useMemo } from 'react';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,

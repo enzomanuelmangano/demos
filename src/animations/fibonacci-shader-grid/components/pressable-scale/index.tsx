@@ -1,5 +1,3 @@
-import type { FC, ReactNode } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -8,44 +6,39 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-// I use this component a lot in my projects, and maybe
-// it's worth to create a package for it (one day) :)
+import type { FC, ReactNode } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 
-// Define the props for the PressableScale component
 export type PressableScaleProps = {
-  children?: ReactNode; // Content to be wrapped by the pressable component
-  onPress?: () => void; // Function to be executed on press
-  style?: StyleProp<ViewStyle>; // Custom styles for the pressable component
+  children?: ReactNode;
+  onPress?: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
-// Create the PressableScale component
 const PressableScale: FC<PressableScaleProps> = ({
   children,
   onPress,
   style,
 }) => {
-  // Create a shared value to track the press state
   const active = useSharedValue(false);
 
-  // Create a tap gesture handler
   const gesture = Gesture.Tap()
-    .maxDuration(4000) // Set maximum duration for tap gesture
+    .maxDuration(4000)
     .onTouchesDown(() => {
-      active.value = true; // Mark as active on touch down
+      active.value = true;
     })
     .onTouchesUp(() => {
-      if (onPress != null) scheduleOnRN(onPress); // Execute onPress on touch up
+      if (onPress != null) scheduleOnRN(onPress);
     })
     .onFinalize(() => {
-      active.value = false; // Reset press state on finalize
+      active.value = false;
     });
 
-  // Create an animated style for scaling effect
   const rAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          scale: withTiming(active.value ? 0.9 : 1), // Scale down when active, return to normal otherwise
+          scale: withTiming(active.value ? 0.9 : 1),
         },
       ],
     };

@@ -1,13 +1,15 @@
-import { PressableScale } from 'pressto';
-import type { ReactElement } from 'react';
-import type { ViewProps } from 'react-native';
 import { StyleSheet, View } from 'react-native';
+
+import { PressableScale } from 'pressto';
 import Animated, {
   Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { ReactElement } from 'react';
+import type { ViewProps } from 'react-native';
 
 const DOT_SIZE = 7;
 const OPACITY_THRESHOLD = 0.7;
@@ -59,9 +61,9 @@ export function PaginationDot({
 
 const styles = StyleSheet.create({
   dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
     backgroundColor: '#D4D4D4',
+    borderRadius: DOT_SIZE / 2,
+    height: DOT_SIZE,
+    width: DOT_SIZE,
   },
 });

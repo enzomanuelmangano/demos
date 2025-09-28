@@ -1,6 +1,8 @@
-import { MaterialIcons } from '@expo/vector-icons';
-import { type FC, memo, type ReactNode, useCallback, useEffect } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
+
+import { type FC, memo, type ReactNode, useCallback, useEffect } from 'react';
+
+import { MaterialIcons } from '@expo/vector-icons';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -122,13 +124,13 @@ const TabBarItem: FC<TabBarItemProps> = memo(
 
 const localStyles = StyleSheet.create({
   container: {
-    height: BOTTOM_BAR_HEIGHT,
     flexDirection: 'row',
+    height: BOTTOM_BAR_HEIGHT,
   },
   fill: {
     flex: 1,
   },
-  fillCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  fillCenter: { alignItems: 'center', flex: 1, justifyContent: 'center' },
 });
 
 export { BottomTabBar };

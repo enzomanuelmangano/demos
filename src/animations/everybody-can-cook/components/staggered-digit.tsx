@@ -1,9 +1,11 @@
 import { StyleSheet, type StyleProp, type TextStyle } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 /**
  * Props for the StaggeredDigit component
@@ -21,7 +23,6 @@ type StaggeredDigitProps = {
   textStyle?: StyleProp<TextStyle>;
 };
 
-// Default values for font sizing
 const DefaultFontSize = 50;
 const DefaultFontHeight = DefaultFontSize + 5;
 
@@ -42,7 +43,6 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
   fontHeight = DefaultFontHeight,
   textStyle,
 }) => {
-  // Animated style for the top character (rotating down)
   const rStyle = useAnimatedStyle(() => {
     const rotateX = `${progress.value * 90}deg`;
     return {
@@ -61,7 +61,6 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
     };
   });
 
-  // Animated style for the bottom character (rotating up)
   const rBottomDigitStyle = useAnimatedStyle(() => {
     const rotateX = interpolate(progress.value, [0, 1], [-90, 0]);
     const translateY = interpolate(progress.value, [0, 1], [fontHeight / 2, 0]);
@@ -80,7 +79,6 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
 
   return (
     <Animated.View style={styles.container}>
-      {/* Top character that rotates down */}
       <Animated.Text
         style={[
           styles.digit,
@@ -92,7 +90,6 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
         ]}>
         {digit}
       </Animated.Text>
-      {/* Bottom character that rotates up */}
       <Animated.Text
         style={[
           styles.digit,
@@ -110,11 +107,11 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
 };
 
 const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   digit: {
     color: 'white',
-  },
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

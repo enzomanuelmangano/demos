@@ -6,8 +6,8 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Ticket } from './components/ticket';
-import { FrontSide } from './components/ticket/front-side';
 import { BackSide } from './components/ticket/back-side';
+import { FrontSide } from './components/ticket/front-side';
 
 /**
  * Root component of the application.
@@ -34,9 +34,9 @@ export const ThreadsHoloTicket = () => {
  */
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#070018', // Dark purple background
     alignItems: 'center',
+    backgroundColor: '#070018', // Dark purple background
+    flex: 1,
     justifyContent: 'center',
   },
 });

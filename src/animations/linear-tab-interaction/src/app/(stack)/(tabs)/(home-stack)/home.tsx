@@ -1,5 +1,6 @@
-import { useNavigation } from '@react-navigation/native';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { useNavigation } from '@react-navigation/native';
 import { createAnimatedPressable } from 'pressto';
 import {
   interpolate,
@@ -44,7 +45,6 @@ export function Home() {
       <PressableHighlight
         style={styles.pressableHighlight}
         onPress={() => {
-          // TODO: Fix this type error
           navigation.navigate('issues' as never);
         }}>
         <Text style={styles.text}>My issues</Text>
@@ -55,14 +55,14 @@ export function Home() {
 }
 
 const styles = StyleSheet.create({
-  text: {
-    color: 'white',
-  },
   pressableHighlight: {
+    alignItems: 'center',
     borderRadius: 10,
-    width: 100,
     height: 50,
     justifyContent: 'center',
-    alignItems: 'center',
+    width: 100,
+  },
+  text: {
+    color: 'white',
   },
 });

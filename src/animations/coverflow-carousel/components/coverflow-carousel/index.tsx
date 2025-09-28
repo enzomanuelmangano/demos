@@ -1,9 +1,11 @@
+import { useWindowDimensions } from 'react-native';
+
+import { useCallback } from 'react';
+
 import Animated, {
   useAnimatedRef,
   useScrollViewOffset,
 } from 'react-native-reanimated';
-import { useWindowDimensions } from 'react-native';
-import { useCallback } from 'react';
 
 import { CarouselItem } from './carousel-item';
 
@@ -16,7 +18,6 @@ const ItemWidth = 160;
 export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
   images,
 }) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const animatedRef = useAnimatedRef<any>();
   const scrollOffset = useScrollViewOffset(animatedRef);
 

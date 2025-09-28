@@ -1,11 +1,14 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { PressableScale } from 'pressto';
-import { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import type { ScrollableBottomSheetRef } from './components/BottomSheet/ScrollableBottomSheet';
+import { useCallback, useMemo, useRef } from 'react';
+
+import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from 'pressto';
+
 import { ScrollableBottomSheet } from './components/BottomSheet/ScrollableBottomSheet';
 import { BottomSheetPage } from './components/BottomSheetPage';
+
+import type { ScrollableBottomSheetRef } from './components/BottomSheet/ScrollableBottomSheet';
 
 // Define the expected heights for the pages
 const FIRST_PAGE_HEIGHT = 350;
@@ -88,17 +91,17 @@ function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
-    height: 50,
-    borderRadius: 25,
     aspectRatio: 1,
+    borderRadius: 25,
+    height: 50,
     overflow: 'hidden',
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
+    justifyContent: 'center',
   },
 });
 

@@ -1,9 +1,12 @@
-import { FontAwesome5 } from '@expo/vector-icons';
-import { type FC, memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { SharedValue } from 'react-native-reanimated';
+
+import { type FC, memo } from 'react';
+
+import { FontAwesome5 } from '@expo/vector-icons';
 
 import { InputButton } from './InputButton';
+
+import type { SharedValue } from 'react-native-reanimated';
 
 const items = [
   { label: 1 },
@@ -57,27 +60,23 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(({ pin, onReset }) => {
 
 const styles = StyleSheet.create({
   container: {
+    alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'center',
   },
   input: {
-    width: '30%',
-    height: '20%',
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    marginLeft: 7 / 3 + '%',
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    marginBottom: 7 / 3 + '%',
-    justifyContent: 'center',
     alignItems: 'center',
+    height: '20%',
+    justifyContent: 'center',
+    marginBottom: `${7 / 3}%`,
+    marginLeft: `${7 / 3}%`,
+    width: '30%',
   },
   number: {
-    textAlign: 'center',
-    fontSize: 30,
     color: 'white',
+    fontSize: 30,
+    textAlign: 'center',
   },
 });
 

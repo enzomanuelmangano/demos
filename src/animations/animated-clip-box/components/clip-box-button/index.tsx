@@ -1,6 +1,5 @@
-import type { FC } from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -10,6 +9,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { ExpandedCircle } from './expanded-circle';
+
+import type { FC } from 'react';
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type ClipBoxButtonProps = {
   style: StyleProp<ViewStyle>;

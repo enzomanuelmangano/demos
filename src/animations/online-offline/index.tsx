@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+import { useCallback, useState } from 'react';
 
 import { OnlineToOffline } from './components/online-to-offline';
 
@@ -42,7 +43,6 @@ export const OnlineOffline = () => {
 
   const handleTouchEnd = useCallback(() => {
     setItems(prevItems => {
-      // Randomly decide whether to move an online or offline item
       const onlineCount = prevItems.filter(item => !item.isOffline).length;
       const offlineCount = prevItems.filter(item => item.isOffline).length;
 
@@ -51,7 +51,6 @@ export const OnlineOffline = () => {
       const moveOnlineToOffline = Math.random() > 0.5;
 
       if (moveOnlineToOffline && onlineCount > 0) {
-        // Move a random online item to offline
         const onlineIndices = prevItems
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => !item.isOffline)
@@ -61,7 +60,6 @@ export const OnlineOffline = () => {
           onlineIndices[Math.floor(Math.random() * onlineIndices.length)];
         const itemToMove = { ...prevItems[randomIndex], isOffline: true };
 
-        // Remove the item and add it to the end
         const newItems = [
           ...prevItems.slice(0, randomIndex),
           ...prevItems.slice(randomIndex + 1),
@@ -70,7 +68,6 @@ export const OnlineOffline = () => {
 
         return newItems;
       } else if (!moveOnlineToOffline && offlineCount > 0) {
-        // Move a random offline item to online
         const offlineIndices = prevItems
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => item.isOffline)
@@ -80,13 +77,11 @@ export const OnlineOffline = () => {
           offlineIndices[Math.floor(Math.random() * offlineIndices.length)];
         const itemToMove = { ...prevItems[randomIndex], isOffline: false };
 
-        // Remove the item from its current position
         const itemsWithoutMoved = [
           ...prevItems.slice(0, randomIndex),
           ...prevItems.slice(randomIndex + 1),
         ];
 
-        // Find the last online item position
         let insertPosition = 0;
         for (let i = itemsWithoutMoved.length - 1; i >= 0; i--) {
           if (!itemsWithoutMoved[i].isOffline) {
@@ -95,7 +90,6 @@ export const OnlineOffline = () => {
           }
         }
 
-        // Insert at the correct position
         const newItems = [
           ...itemsWithoutMoved.slice(0, insertPosition),
           itemToMove,
@@ -126,9 +120,9 @@ export const OnlineOffline = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    flex: 1,
     justifyContent: 'center',
   },
 });

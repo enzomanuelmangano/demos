@@ -1,7 +1,9 @@
+import { StyleSheet, View } from 'react-native';
+
+import { useState } from 'react';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 import {
   useDerivedValue,
   useSharedValue,
@@ -78,21 +80,21 @@ export const WheelPicker = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   button: {
-    position: 'absolute',
-    bottom: 48,
-    right: 32,
-    height: 64,
-    aspectRatio: 1,
-    borderRadius: 32,
-    backgroundColor: '#111',
-    justifyContent: 'center',
     alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: '#111',
+    borderRadius: 32,
+    bottom: 48,
+    height: 64,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 32,
+  },
+  container: {
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    flex: 1,
+    justifyContent: 'center',
   },
 });

@@ -1,5 +1,5 @@
-import type { StyleProp, ViewStyle } from 'react-native';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
 import Animated, {
   Extrapolation,
   interpolate,
@@ -11,6 +11,8 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { Paginator } from '../paginator';
+
+import type { StyleProp, ViewStyle } from 'react-native';
 
 type StackedCarouselProps<T = unknown> = {
   style?: StyleProp<ViewStyle>;
@@ -223,20 +225,20 @@ export const StackedCarousel = <T,>({
 };
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
   cardContainer: {
     position: 'absolute',
   },
   cardShadow: {
-    flex: 1,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderCurve: 'continuous',
-    boxShadow: '0 0 5px 0 rgba(0, 0, 0, 0.05)',
     backgroundColor: 'white',
+    borderCurve: 'continuous',
+    borderRadius: 16,
+    boxShadow: '0 0 5px 0 rgba(0, 0, 0, 0.05)',
+    flex: 1,
+    overflow: 'hidden',
+  },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
   },
 });

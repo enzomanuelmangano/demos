@@ -2,7 +2,6 @@ import { Easing, Keyframe } from 'react-native-reanimated';
 
 const Offset = 20;
 const Duration = 500;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const EasingFunction = Easing.bezier(0.25, 0.46, 0.45, 0.94).factory() as any;
 
 export const OpeningEnteringKeyframe = new Keyframe({

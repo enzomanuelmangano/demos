@@ -1,5 +1,7 @@
-import { type FC, type ReactNode, type RefObject, useCallback } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+
+import { type FC, type ReactNode, type RefObject, useCallback } from 'react';
+
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type SharedValue,
@@ -145,7 +147,6 @@ const SortableItem: FC<SortableListItemProps> = ({
       contextY.value = positions.value[index] - scrollContentOffsetY.value;
 
       translateX.value = translationX;
-      // Trigger haptic feedback if the gesture starts ✨
       scheduleOnRN(lightHapticFeedback);
     })
     .onUpdate(({ translationY, translationX, absoluteY }) => {
@@ -161,7 +162,6 @@ const SortableItem: FC<SortableListItemProps> = ({
     })
     .onFinalize(() => {
       translateX.value = withTiming(0, undefined, isFinished => {
-        // Check if the positions have changed to trigger the onDragEnd callback
         const positionsHaveChanged = Object.entries(prevPositions.value).some(
           ([key, value]) => {
             return positions.value[+key] !== value;
@@ -173,7 +173,6 @@ const SortableItem: FC<SortableListItemProps> = ({
         }
       });
       wasLastActiveIndex.value = true;
-      // Reset the animated index
       animatedIndex.value = null;
     });
 
@@ -189,7 +188,6 @@ const SortableItem: FC<SortableListItemProps> = ({
     });
   }, [itemHeight, index]);
 
-  // Callback to get the zIndex of the item
   const getZIndex = useCallback(() => {
     'worklet';
     // If it's the active item, it should be on top of the other items
@@ -251,23 +249,23 @@ const SortableItem: FC<SortableListItemProps> = ({
 
 const styles = StyleSheet.create({
   backgroundItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    left: 0,
     position: 'absolute',
     right: 0,
-    left: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
     zIndex: -50,
   },
   item: {
-    position: 'absolute',
     left: 0,
+    position: 'absolute',
     right: 0,
     shadowColor: 'black',
-    shadowRadius: 10,
     shadowOffset: {
       width: 0,
       height: 0,
     },
+    shadowRadius: 10,
   },
 });
 

@@ -1,7 +1,8 @@
 import { StyleSheet, View } from 'react-native';
 
-import type { DropdownOptionType } from './components/dropdown/dropdrop-item';
 import { Dropdown } from './components/dropdown';
+
+import type { DropdownOptionType } from './components/dropdown/dropdrop-item';
 
 // Defining the options to be passed down to the Dropdown component (except the header option)
 // All the iconName values are from the expo/vector-icons package (AntDesign)
@@ -30,9 +31,9 @@ export const SmoothDropdown = () => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000',
     alignItems: 'center',
+    backgroundColor: '#000',
+    flex: 1,
     justifyContent: 'center',
   },
 });

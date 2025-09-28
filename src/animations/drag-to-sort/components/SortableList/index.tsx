@@ -1,7 +1,5 @@
-// Import necessary modules and components from React and React Native
-import type { ReactNode } from 'react';
 import { useCallback } from 'react';
-import type { ScrollViewProps } from 'react-native';
+
 import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
@@ -9,11 +7,13 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
-// Import the SortableItem component and Positions type
-import { SortableItem } from './SortableItem';
-import type { Positions } from './types';
 
-// Define the props for the SortableList component
+import { SortableItem } from './SortableItem';
+
+import type { Positions } from './types';
+import type { ReactNode } from 'react';
+import type { ScrollViewProps } from 'react-native';
+
 type SortableListProps<T> = {
   listItemHeight: number;
   data: T[];
@@ -23,7 +23,6 @@ type SortableListProps<T> = {
   backgroundItem?: ReactNode;
 } & ScrollViewProps;
 
-// Define the SortableList component
 function SortableList<T>({
   renderItem: renderItemProp,
   data,
@@ -33,11 +32,9 @@ function SortableList<T>({
   backgroundItem,
   ...rest
 }: SortableListProps<T>) {
-  // Shared values for tracking scroll position, animated index, and scroll view reference
   const scrollContentOffsetY = useSharedValue(0);
   const scrollView = useAnimatedRef<Animated.ScrollView>();
 
-  // Initial positions for list items
   const initialPositions = new Array(data?.length)
     .fill(0)
     .map((_, index) => index * listItemHeight)
@@ -46,20 +43,16 @@ function SortableList<T>({
       return acc;
     }, {} as Positions);
 
-  // Shared value for tracking positions of list items
   const positions = useSharedValue<Positions>(initialPositions);
 
-  // Shared value for tracking the currently animated index during drag-and-drop
   const animatedIndex = useSharedValue<number | null>(null);
 
-  // Animated scroll handler to update the scroll position
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { y } }) => {
       scrollContentOffsetY.value = y;
     },
   });
 
-  // Animated reaction to trigger a callback when the animated index changes
   useAnimatedReaction(
     () => animatedIndex.value,
     currentIndex => {
@@ -68,7 +61,6 @@ function SortableList<T>({
     },
   );
 
-  // Callback function for rendering each item
   const renderItem = useCallback(
     (params: { item: T; index: number }) => {
       return (
@@ -98,7 +90,6 @@ function SortableList<T>({
     ],
   );
 
-  // Render the SortableList component with an Animated.ScrollView
   return (
     <Animated.ScrollView
       {...rest}
@@ -121,5 +112,4 @@ function SortableList<T>({
   );
 }
 
-// Export the SortableList component
 export { SortableList };

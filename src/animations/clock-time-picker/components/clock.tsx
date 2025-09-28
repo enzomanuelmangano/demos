@@ -11,6 +11,8 @@
  * ```
  */
 
+import { useMemo } from 'react';
+
 import {
   Canvas,
   Circle,
@@ -18,7 +20,6 @@ import {
   Line,
   Shadow,
 } from '@shopify/react-native-skia';
-import { useMemo } from 'react';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 /**
@@ -52,7 +53,6 @@ const convertMsToHours = (ms: number) => {
 };
 
 export const Clock = ({ date, size }: ClockProps) => {
-  // Generate 12 tick marks for the clock face
   const ticks = useMemo(() => {
     return new Array(12).fill(0).map((_, index) => {
       return {
@@ -91,7 +91,6 @@ export const Clock = ({ date, size }: ClockProps) => {
     );
   }, [center, tickLength, ticks]);
 
-  // Calculate angles for hour and minute hands using derived values
   const hourAngle = useDerivedValue(() => {
     const hours = convertMsToHours(date.value);
     return (hours * (Math.PI * 2)) / 12;
@@ -102,11 +101,9 @@ export const Clock = ({ date, size }: ClockProps) => {
     return (minutes * (Math.PI * 2)) / 60;
   }, [date]);
 
-  // Define hand lengths relative to clock size
   const hourHandLength = size * 0.15;
   const minuteHandLength = size * 0.32;
 
-  // Calculate hand positions using derived values
   const hourHandPath = useDerivedValue(() => {
     return {
       x: center + hourHandLength * Math.sin(hourAngle.value),

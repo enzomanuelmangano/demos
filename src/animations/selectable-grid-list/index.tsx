@@ -1,7 +1,9 @@
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
+import { useCallback, useRef } from 'react';
+
 import { MaterialIcons } from '@expo/vector-icons';
 import { PressableOpacity } from 'pressto';
-import { useCallback, useRef } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import {
   SharedValue,
   useAnimatedStyle,
@@ -12,10 +14,11 @@ import {
 import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { GridListRefType } from './components/SelectableGridList';
 import { SelectableGridList } from './components/SelectableGridList';
 import { SelectableListItem } from './components/SelectableListItem';
 import { Palette } from './constants';
+
+import type { GridListRefType } from './components/SelectableGridList';
 
 const GridConfig = {
   itemsPerRow: 4,
@@ -109,25 +112,25 @@ const SelectableGridListContainer = () => {
 
 const styles = StyleSheet.create({
   floating: {
-    zIndex: 1000,
-    position: 'absolute',
+    alignItems: 'center',
+    backgroundColor: Palette.primary,
+    borderRadius: 20,
     bottom: 20,
+    flexDirection: 'row',
+    height: 64,
+    justifyContent: 'space-evenly',
+    paddingHorizontal: 10,
+    position: 'absolute',
     right: 20,
     shadowColor: 'black',
     shadowOffset: {
       width: 0,
       height: 0,
     },
-    shadowRadius: 20,
     shadowOpacity: 0.5,
-    height: 64,
+    shadowRadius: 20,
     width: 96,
-    borderRadius: 20,
-    backgroundColor: Palette.primary,
-    flexDirection: 'row',
-    justifyContent: 'space-evenly',
-    paddingHorizontal: 10,
-    alignItems: 'center',
+    zIndex: 1000,
   },
 });
 

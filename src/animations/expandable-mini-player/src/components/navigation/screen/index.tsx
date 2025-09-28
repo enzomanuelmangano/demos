@@ -1,12 +1,13 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import Animated, {
   interpolate,
   useAnimatedStyle,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ExpandedSheetMutableProgress } from '../bottom-tab-bar/shared-progress';
 import { Palette } from '../../../constants/palette';
+import { ExpandedSheetMutableProgress } from '../bottom-tab-bar/shared-progress';
 
 type ScreenProps = {
   children?: React.ReactNode;
@@ -48,18 +49,18 @@ export function Screen({ children, title }: ScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
   container: {
     backgroundColor: Palette.background,
     flex: 1,
   },
+  screenWrapper: {
+    backgroundColor: '#000',
+    flex: 1,
+  },
   title: {
-    fontSize: 24,
     color: 'white',
-    marginBottom: 32,
+    fontSize: 24,
     fontWeight: '600',
+    marginBottom: 32,
   },
 });

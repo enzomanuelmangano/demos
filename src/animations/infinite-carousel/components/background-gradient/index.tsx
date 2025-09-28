@@ -1,3 +1,7 @@
+import { StyleSheet } from 'react-native';
+
+import { memo, type FC } from 'react';
+
 import {
   Blur,
   Canvas,
@@ -5,8 +9,6 @@ import {
   SweepGradient,
   vec,
 } from '@shopify/react-native-skia';
-import { memo, type FC } from 'react';
-import { StyleSheet } from 'react-native';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 
 import { DEFAULT_WHITE, WindowHeight, WindowWidth } from '../../constants';

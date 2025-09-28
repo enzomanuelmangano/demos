@@ -1,7 +1,9 @@
+import { StyleSheet, View } from 'react-native';
+
+import { useMemo } from 'react';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -22,16 +24,14 @@ const TimingConfig = {
   easing: Easing.bezier(0.4, 0.0, 0.2, 1),
 };
 
-// Define a type for the SegmentedControl component's props
 type SegmentedControlProps<T extends { name: string; icon: string }> = {
-  data: readonly T[]; // An array of items to display in the control
-  onPress: (item: T) => void; // A function to handle item selection
-  selected: T; // The currently selected item
-  width: number; // The width of the control
-  height: number; // The height of the control
+  data: readonly T[];
+  onPress: (item: T) => void;
+  selected: T;
+  width: number;
+  height: number;
 };
 
-// Define the SegmentedControl component
 function SegmentedControl<T extends { name: string; icon: string }>({
   data,
   onPress,
@@ -39,14 +39,11 @@ function SegmentedControl<T extends { name: string; icon: string }>({
   width,
   height,
 }: SegmentedControlProps<T>) {
-  // Internal padding for spacing between elements
   const internalPadding = 5;
 
-  // Calculate the width of each cell background based on the number of items
   const cellBackgroundWidth = width / data.length;
   const activeIndexes = useSharedValue<number[]>([]);
 
-  // Find the index of the selected item in the data array
   const selectedCellIndex = useMemo(
     () => data.findIndex(item => item === selected),
     [data, selected],
@@ -60,9 +57,7 @@ function SegmentedControl<T extends { name: string; icon: string }>({
     };
   }, [blurProgress]);
 
-  // Create an animated style for the selected cell background
   const rCellMessageStyle = useAnimatedStyle(() => {
-    // Define the padding based on the selected item's index
     const padding = interpolate(
       selectedCellIndex,
       [0, data.length - 1],
@@ -74,7 +69,6 @@ function SegmentedControl<T extends { name: string; icon: string }>({
     // 2 -> 0
     // 3 -> -internalPadding / 4
     // 4 -> -internalPadding / 2
-
     return {
       left: withTiming(
         cellBackgroundWidth * selectedCellIndex + padding,
@@ -129,7 +123,6 @@ function SegmentedControl<T extends { name: string; icon: string }>({
             key={item.name}
             style={localStyles.labelContainer}
             onPress={() => {
-              // Call the provided onPress function with the selected item
               onPress(item);
               const prevIndex = data.findIndex(
                 dataItem => dataItem.name === selected.name,
@@ -161,7 +154,6 @@ function SegmentedControl<T extends { name: string; icon: string }>({
         );
       })}
 
-      {/* CELL BACKGROUND */}
       <Animated.View
         style={[
           {
@@ -193,53 +185,53 @@ function SegmentedControl<T extends { name: string; icon: string }>({
 }
 
 const localStyles = StyleSheet.create({
+  backgroundContainer: {
+    borderColor: Palette.baseGray05,
+    borderRadius: 30,
+    borderWidth: 1,
+    flexDirection: 'row',
+  },
+  blurView: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 1,
+  },
+  difficultyLabel: {
+    color: Palette.baseGray80,
+    fontFamily: 'Honk-Regular',
+    fontSize: 14,
+    textAlign: 'center',
+  },
   fill: {
     flex: 1,
   },
-  blurView: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  backgroundContainer: {
-    flexDirection: 'row',
-    borderRadius: 30,
-    borderWidth: 1, // Add border to the entire control
-    borderColor: Palette.baseGray05,
-  },
-  difficultyLabel: {
-    fontSize: 14,
-    fontFamily: 'Honk-Regular',
-    color: Palette.baseGray80,
-    textAlign: 'center',
-  },
   highlightedCellBlurContent: {
-    zIndex: 1,
     alignSelf: 'center',
     position: 'absolute',
+    zIndex: 1,
   },
   highlightedCellContent: {
-    zIndex: 1,
     alignSelf: 'center',
-    position: 'absolute',
     backgroundColor: Palette.background,
-    borderRadius: 30,
-    borderWidth: 1, // Add border to separate cells
     borderColor: Palette.baseGray05,
-    shadowOpacity: 0.1,
+    borderRadius: 30,
+    borderWidth: 1,
+    position: 'absolute',
     shadowOffset: { height: 1, width: 0 },
+    shadowOpacity: 0.1,
     shadowRadius: 2,
+    zIndex: 1,
   },
   labelContainer: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
+    flex: 1,
     flexDirection: 'row',
     gap: 5,
+    justifyContent: 'center',
+    zIndex: 2,
   },
 });
 

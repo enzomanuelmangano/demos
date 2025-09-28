@@ -1,7 +1,7 @@
-import { type FC, useCallback } from 'react';
-import type { TextStyle, ViewStyle } from 'react-native';
 import { Platform, Pressable, StyleSheet, Text } from 'react-native';
-import type { AnimatedProps } from 'react-native-reanimated';
+
+import { type FC, useCallback } from 'react';
+
 import Animated, {
   FadeIn,
   FadeOut,
@@ -12,6 +12,9 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { COLORS } from '../theme';
+
+import type { TextStyle, ViewStyle } from 'react-native';
+import type { AnimatedProps } from 'react-native-reanimated';
 
 type ButtonProps = {
   onPress: () => void;
@@ -130,10 +133,18 @@ const SIZE_MAP = {
 } as const;
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    borderRadius: 10,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
   container: {
+    alignSelf: 'flex-start',
     borderRadius: 10,
     overflow: 'hidden',
-    alignSelf: 'flex-start',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -146,56 +157,48 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  primaryContainer: {
-    backgroundColor: COLORS.primary + '08', // 3% opacity
+  disabled: {
+    backgroundColor: COLORS.surface + '80',
+    opacity: 0.4,
   },
-  button: {
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexDirection: 'row',
-    gap: 8,
+  disabledText: {
+    color: COLORS.textTertiary,
+  },
+  // eslint-disable-next-line react-native/no-unused-styles
+  large: {
+    minWidth: 96,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  // eslint-disable-next-line react-native/no-unused-styles
+  medium: {
+    minWidth: 80,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   primary: {
     backgroundColor: COLORS.primary,
   },
+  primaryContainer: {
+    backgroundColor: COLORS.primary + '08',
+  },
   secondary: {
     backgroundColor: 'transparent',
+    borderColor: COLORS.border + '40',
     borderWidth: 1,
-    borderColor: COLORS.border + '40', // 25% opacity
+  },
+  secondaryText: {
+    color: COLORS.textSecondary,
   },
   // eslint-disable-next-line react-native/no-unused-styles
   small: {
+    minWidth: 64,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    minWidth: 64,
-  },
-  // eslint-disable-next-line react-native/no-unused-styles
-  medium: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    minWidth: 80,
-  },
-  // eslint-disable-next-line react-native/no-unused-styles
-  large: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    minWidth: 96,
   },
   text: {
     color: COLORS.text,
     fontWeight: '500',
     letterSpacing: 0.2,
-  },
-  secondaryText: {
-    color: COLORS.textSecondary,
-  },
-  disabled: {
-    opacity: 0.4,
-    backgroundColor: COLORS.surface + '80',
-  },
-  disabledText: {
-    color: COLORS.textTertiary,
   },
 });
