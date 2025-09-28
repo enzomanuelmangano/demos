@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { Host, Slider } from '@expo/ui/swift-ui';
 import Animated, {
@@ -51,34 +51,46 @@ const AnimatedSlider: React.FC<SliderProps> = ({
     };
   }, []);
 
+  const onSliderValueChange = useCallback(
+    (updatedValue: number) => {
+      sliderProgress.set(updatedValue);
+      if (onUpdate) {
+        const progress = interpolate(
+          updatedValue,
+          [0, 1],
+          [minValue, maxValue],
+          Extrapolation.CLAMP,
+        );
+        onUpdate(progress);
+      }
+    },
+    [onUpdate, minValue, maxValue, sliderProgress],
+  );
+
   return (
     <Host
-      style={{
-        borderRadius: 5,
-        ...flattenedStyle,
-        height: 60,
-        width: sliderWidth,
-        justifyContent: 'center',
-        alignItems: 'center',
-      }}>
+      style={[
+        {
+          width: sliderWidth,
+        },
+        styles.container,
+      ]}>
       <ReanimatedSlider
         animatedProps={animatedProps}
         color={color}
-        onValueChange={updatedValue => {
-          sliderProgress.set(updatedValue);
-          if (onUpdate) {
-            const progress = interpolate(
-              updatedValue,
-              [0, 1],
-              [minValue, maxValue],
-              Extrapolation.CLAMP,
-            );
-            onUpdate(progress);
-          }
-        }}
+        onValueChange={onSliderValueChange}
       />
     </Host>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    borderRadius: 5,
+    height: 60,
+    justifyContent: 'center',
+  },
+});
 
 export { AnimatedSlider };
