@@ -1,0 +1,51 @@
+{
+  "author": {
+    "name": "padunk",
+    "url": "https://github.com/padunk"
+  },
+  "bin": {
+    "demos": "./dist/index.js"
+  },
+  "bugs": {
+    "url": "https://github.com/enzomanuelmangano/demos/issues"
+  },
+  "description": "CLI tool to download React Native animations from the demos repository",
+  "devDependencies": {
+    "typescript": "~5.9.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "dist/**",
+    "README.md"
+  ],
+  "homepage": "https://github.com/enzomanuelmangano/demos#readme",
+  "keywords": [
+    "react-native",
+    "animations",
+    "cli",
+    "demos",
+    "reanimated",
+    "skia",
+    "expo",
+    "gesture-handler"
+  ],
+  "license": "MIT",
+  "main": "dist/index.js",
+  "name": "demos-cli",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/enzomanuelmangano/demos.git"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepublishOnly": "npm run build && chmod +x dist/index.js",
+    "publish": "./publish.sh",
+    "test": "node dist/index.js list",
+    "test-link": "npm link",
+    "test-local": "./test-local.sh"
+  },
+  "types": "dist/index.d.ts",
+  "version": "1.0.0"
+}
