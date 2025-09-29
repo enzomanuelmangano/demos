@@ -1,93 +1,69 @@
 import { StyleSheet, View } from 'react-native';
 
-import { useCallback } from 'react';
+import { Image } from 'expo-image';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue, withSpring } from 'react-native-reanimated';
 
-import { Host, Slider } from '@expo/ui/swift-ui';
-import { GlassView } from 'expo-glass-effect';
-import Animated, {
-  useAnimatedProps,
-  useDerivedValue,
-  useSharedValue,
-} from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
+import { Overlay } from './overlay';
 
-import { BackgroundGradient } from '../dot-sheet/src/components/background-gradient';
-
-const AnimatedSlider = Animated.createAnimatedComponent(Slider);
-
-const bodyColor = '#202020';
+const image = {
+  uri: 'https://images.unsplash.com/photo-1592330169142-b488cfd72b2b?q=80&w=2832&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+};
 
 export function Playground() {
-  const progress = useSharedValue(0);
+  const translateY = useSharedValue(0);
 
-  const onUpdate = useCallback(
-    (value: number) => {
-      progress.set(value);
-    },
-    [progress],
-  );
-
-  const animatedProps = useAnimatedProps(() => {
-    return {
-      value: progress.value,
-    };
-  }, []);
-
-  const animatedText = useDerivedValue(() => {
-    return Math.ceil(progress.value * 100).toString();
-  }, []);
+  const panGesture = Gesture.Pan()
+    .onUpdate(event => {
+      const friction = 0.5;
+      translateY.value = event.translationY * friction;
+    })
+    .onEnd(() => {
+      translateY.value = withSpring(0, {
+        duration: 600,
+        dampingRatio: 1,
+      });
+    });
 
   return (
     <View style={styles.container}>
-      <BackgroundGradient style={styles.backgroundGradient} />
-      <GlassView
-        style={styles.glassView}
-        glassEffectStyle="clear"
-        isInteractive
-        tintColor="rgba(255,255,255,0.1)">
-        <ReText text={animatedText} style={styles.title} />
-      </GlassView>
-      <Host style={styles.host}>
-        <AnimatedSlider
-          animatedProps={animatedProps}
-          color={bodyColor}
-          onValueChange={onUpdate}
-        />
-      </Host>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View
+          style={[
+            styles.glassView,
+            {
+              transform: [{ translateY }],
+            },
+          ]}>
+          <Overlay style={styles.glassView} />
+        </Animated.View>
+      </GestureDetector>
+      <Image
+        source={image}
+        contentFit="cover"
+        style={{
+          width: '100%',
+          height: '100%',
+        }}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backgroundGradient: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
   container: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
   },
   glassView: {
-    alignItems: 'center',
-    borderRadius: 100,
-    height: 100,
-    justifyContent: 'center',
-    width: 200,
-  },
-  host: {
-    height: 100,
-    marginTop: 32,
-    width: '80%',
-  },
-  title: {
-    color: bodyColor,
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    ...StyleSheet.absoluteFillObject,
+    borderCurve: 'continuous',
+    borderRadius: 50,
+    height: '100%',
+    overflow: 'hidden',
     width: '100%',
+    zIndex: 2,
   },
 });
