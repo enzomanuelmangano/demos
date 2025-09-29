@@ -11,7 +11,7 @@ const path = require('path');
  * @property {string} projectRoot - Project root directory
  */
 const DEFAULT_CONFIG = {
-  extensions: ['.tsx', '.jsx', '.ts', '.js'],
+  extensions: ['.tsx', '.jsx', '.ts', '.js'], // Order matters: iOS-specific files (.ios.tsx) are checked first, then fallback to regular files (.tsx)
   suffix: '.liquid', // Can be customized to '.glass', '.native', '.enhanced', etc.
   debugLogging: false,
   projectRoot: process.cwd(),
@@ -345,8 +345,13 @@ function findLiquidVariantsUncached(importPath, currentFile, config, logger) {
   const basePath = validatedPath;
   const possiblePaths = [];
 
-  // Generate possible paths with different extensions
+  // Generate possible paths with different extensions, prioritizing iOS-specific files
   for (const ext of config.extensions) {
+    // First, try iOS-specific variant
+    possiblePaths.push(basePath + `.ios${ext}`);
+    possiblePaths.push(path.join(basePath, `index.ios${ext}`));
+
+    // Then, try the regular extension
     possiblePaths.push(basePath + ext);
     possiblePaths.push(path.join(basePath, `index${ext}`));
   }
@@ -386,10 +391,29 @@ function checkForLiquidVariant(resolvedPath, currentFile, config, logger) {
 
   // For index files, check for index.liquid.ext first
   let liquidPath;
+
+  // Check if the resolved path is an iOS-specific file
+  const isIosFile =
+    name.endsWith('.ios') ||
+    (name === 'index' && resolvedPath.includes('.ios'));
+
   if (name === 'index') {
-    liquidPath = path.join(dir, `index${config.suffix}${ext}`);
+    if (isIosFile) {
+      liquidPath = path.join(dir, `index${config.suffix}.ios${ext}`);
+    } else {
+      liquidPath = path.join(dir, `index${config.suffix}${ext}`);
+    }
   } else {
-    liquidPath = path.join(dir, `${componentName}${config.suffix}${ext}`);
+    if (isIosFile) {
+      // Handle component.ios.tsx -> component.liquid.ios.tsx
+      const baseComponentName = componentName.replace(/\.ios$/, '');
+      liquidPath = path.join(
+        dir,
+        `${baseComponentName}${config.suffix}.ios${ext}`,
+      );
+    } else {
+      liquidPath = path.join(dir, `${componentName}${config.suffix}${ext}`);
+    }
   }
   const regularPath = resolvedPath;
 
