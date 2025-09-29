@@ -3,7 +3,11 @@ import { StyleSheet, Text } from 'react-native';
 import { type FC, type JSX, memo } from 'react';
 
 import { createAnimatedPressable } from 'pressto';
-import { interpolate } from 'react-native-reanimated';
+import {
+  interpolate,
+  SharedValue,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 
 import type { StyleProp, ViewStyle } from 'react-native';
 
@@ -16,23 +20,31 @@ type ExpoRouterListItemProps = {
   };
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
+  selectedItemId: SharedValue<number>;
 };
 
 const PressableHighlight = createAnimatedPressable(progress => {
   'worklet';
-  const opacity = interpolate(progress.value, [0, 1], [0, 0.1]).toFixed(2);
   const scale = interpolate(progress.value, [0, 1], [1, 0.95]);
 
   return {
-    backgroundColor: `rgba(255,255,255,${opacity})`,
     transform: [{ scale }],
   };
 });
 
 const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
-  ({ item, onPress, style }) => {
+  ({ item, onPress, style, selectedItemId }) => {
+    const animatedStyle = useAnimatedStyle(() => {
+      const isSelected = selectedItemId.value === item.id;
+      return {
+        backgroundColor: isSelected ? 'rgba(69, 69, 69, 0.3)' : 'transparent',
+      };
+    });
+
     return (
-      <PressableHighlight style={[styles.container, style]} onPress={onPress}>
+      <PressableHighlight
+        style={[styles.container, style, animatedStyle]}
+        onPress={onPress}>
         <item.icon />
         <Text style={styles.text}>{item.name}</Text>
         {item.alert && <Text style={styles.alert}>⚠️</Text>}

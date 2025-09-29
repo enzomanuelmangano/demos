@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
+import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
@@ -43,6 +44,7 @@ type AnimationItem = {
 
 export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
+  const selectedItemId = useSharedValue(0);
   const { top, bottom } = useSafeAreaInsets();
   const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
 
@@ -75,14 +77,16 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
       return (
         <DrawerListItem
           item={item}
+          selectedItemId={selectedItemId}
           style={styles.listItem}
           onPress={() => {
+            selectedItemId.value = item.id;
             router.push(`/animations/${item.slug}`);
           }}
         />
       );
     },
-    [router],
+    [router, selectedItemId],
   );
 
   const handleSearchChange = useCallback(
@@ -142,6 +146,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#030303',
     flex: 1,
+    marginEnd: 12,
   },
   header: {
     gap: 8,
