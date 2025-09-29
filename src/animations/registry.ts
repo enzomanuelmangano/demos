@@ -84,6 +84,7 @@ import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
 import { LinearTabInteraction } from './linear-tab-interaction';
+import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
 import { Metaball } from './metaball';
 import { MilesBarChart } from './miles-bar-chart';
@@ -242,6 +243,7 @@ export const AnimationRegistry = {
   'github-contributions': GitHubContributions,
   'stacked-carousel': StackedCarousel,
   'airbnb-flip-interaction': AirbnbFlipInteraction,
+  'liquid-glass-playground': Playground,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -900,6 +902,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Airbnb Flip Interaction',
     route: 'AirbnbFlipInteraction',
     iconName: 'account',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'liquid-glass-playground': {
+    name: 'Liquid Glass Playground',
+    route: 'Playground',
+    iconName: 'play',
     iconFamily: 'MaterialCommunityIcons',
   },
 } as const;
