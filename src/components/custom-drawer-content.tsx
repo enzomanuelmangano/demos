@@ -77,7 +77,12 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
           item={item}
           style={styles.listItem}
           onPress={() => {
-            router.push(`/animations/${item.slug}`);
+            router.push({
+              pathname: `/animations/${item.slug}`,
+              params: {
+                name: item.name,
+              },
+            });
           }}
         />
       );

@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native';
 import { useCallback, useMemo, useState } from 'react';
 
 import { Feather } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -17,6 +18,8 @@ import { Backdrop } from './components/backdrop';
 import { BottomSheet } from './components/bottom-sheet';
 import { ConfirmButton } from './components/confirm-button';
 import { ListItem } from './components/list-item';
+import { Header } from '../../components/header';
+import { NavigationParams } from '../../navigation/types/navigationParams';
 
 import type { MeasuredDimensions } from 'react-native-reanimated';
 
@@ -31,8 +34,10 @@ const items = new Array(20).fill(0).map((_, index) => ({
 }));
 
 const AddToCart = () => {
+  const { bottom } = useSafeAreaInsets();
   const [listItems, setListItems] = useState(items);
-  const { top } = useSafeAreaInsets();
+  const { name } = useLocalSearchParams<NavigationParams>();
+
   const animationProgress = useSharedValue(0);
   const layoutData = useSharedValue<null | MeasuredDimensions>(null);
   const selectedIndex = useSharedValue<number | null>(null);
@@ -105,12 +110,12 @@ const AddToCart = () => {
   }, []);
 
   return (
-    <View style={[styles.container, { flex: 1 }]}>
+    <View style={styles.container}>
+      <Header name={name} />
       <FlatList
         data={listItems}
         contentContainerStyle={{
-          paddingBottom: 100,
-          paddingTop: top + 24,
+          paddingBottom: Math.max(bottom, 15),
         }}
         renderItem={({ item }) => {
           return (
