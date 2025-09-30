@@ -4,7 +4,7 @@ import { FC } from 'react';
 
 import { Header as RNHeader } from '@codeherence/react-native-header';
 import { Feather } from '@expo/vector-icons';
-import { DrawerActions, useNavigation } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { PressableScale } from 'pressto';
 import { useSharedValue } from 'react-native-reanimated';
 
@@ -22,7 +22,7 @@ const Header: FC<Props> = ({ name }) => {
       headerLeft={
         <PressableScale
           hitSlop={15}
-          onPress={() => navigation.dispatch(DrawerActions.openDrawer())}>
+          onPress={() => (navigation as any).toggleDrawer()}>
           <Feather name="arrow-left" size={20} color="black" />
         </PressableScale>
       }
