@@ -14,7 +14,7 @@ type Props = {
 
 const Header: FC<Props> = ({ name }) => {
   const navigation = useNavigation();
-  const showNavBar = useSharedValue(10);
+  const showNavBar = useSharedValue(1);
 
   return (
     <RNHeader
