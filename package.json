@@ -20,6 +20,7 @@
     "update-expo-packages": "expo install --fix"
   },
   "dependencies": {
+    "@codeherence/react-native-header": "^1.0.0",
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.2",
     "@legendapp/list": "^2.0.8",
