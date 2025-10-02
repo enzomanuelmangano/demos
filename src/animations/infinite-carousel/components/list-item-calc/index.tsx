@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useCallback } from 'react';
 
-import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
   type SharedValue,
@@ -92,20 +92,18 @@ export const ListItemCard = ({
         },
         rStyle,
       ]}>
-      <Canvas style={StyleSheet.absoluteFill}>
-        <Rect
-          x={0}
-          y={0}
-          width={itemWidth}
-          height={itemHeight}
-          color={DEFAULT_WHITE}>
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(itemWidth, 0)}
-            colors={['#343f3dff', '#242d2bff']}
-          />
-        </Rect>
-      </Canvas>
+      <LinearGradient
+        style={StyleSheet.absoluteFill}
+        start={{
+          x: 0,
+          y: 0,
+        }}
+        end={{
+          x: 1,
+          y: 0,
+        }}
+        colors={['#343f3dff', '#242d2bff']}
+      />
       <View style={{ flex: 2 }} />
       <View style={styles.listContainer}>
         {new Array(9).fill(0).map((_, i) => {

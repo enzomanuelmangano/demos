@@ -50,9 +50,7 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
         'worklet';
         active.value = destination !== maxHeight;
 
-        translateY.value = withSpring(destination, {
-          mass: 0.4,
-        });
+        translateY.value = withSpring(destination);
       },
       [active, maxHeight, translateY],
     );

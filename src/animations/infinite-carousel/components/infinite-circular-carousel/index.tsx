@@ -175,9 +175,7 @@ const BaseInfiniteCircularCarousel = <T,>(
 
       const snapTo = snapPoint(fixedTranslateX, event.velocityX, snapIntervals);
 
-      translateX.value = withSpring(baseTranslation + snapTo, {
-        mass: 0.25,
-      });
+      translateX.value = withSpring(baseTranslation + snapTo);
     });
 
   const selectedInterpolateConfig = useInterpolateConfig({
