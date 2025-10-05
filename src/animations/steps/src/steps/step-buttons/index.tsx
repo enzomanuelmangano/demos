@@ -26,6 +26,7 @@ const SPRING_CONFIG = {
 type StepButtonsProps = {
   activeIndex: SharedValue<number>;
   rightLabel: string;
+  backButtonLabel: string;
   onBack: () => void;
   onContinue: () => void;
 };
@@ -33,6 +34,7 @@ type StepButtonsProps = {
 export const StepButtons: React.FC<StepButtonsProps> = ({
   activeIndex,
   rightLabel,
+  backButtonLabel,
   onBack,
   onContinue,
 }) => {
@@ -90,7 +92,9 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
               styles.backButton,
               { width: backButtonWidth },
             ]}>
-            <Animated.Text style={styles.backButtonLabel}>Back</Animated.Text>
+            <Animated.Text style={styles.backButtonLabel}>
+              {backButtonLabel}
+            </Animated.Text>
           </PressableScale>
         </Animated.View>
       </Animated.View>

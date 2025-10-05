@@ -15,15 +15,15 @@ const App = () => {
   const rightLabel = isLastStep ? 'Finish' : 'Continue';
 
   const increaseActiveIndex = useCallback(() => {
-    activeIndex.value = (activeIndex.value + 1) % 3;
+    activeIndex.set((activeIndex.get() + 1) % 3);
   }, [activeIndex]);
 
   const decreaseActiveIndex = useCallback(() => {
-    activeIndex.value = Math.max(0, activeIndex.value - 1);
+    activeIndex.set(Math.max(0, activeIndex.get() - 1));
   }, [activeIndex]);
 
   useAnimatedReaction(
-    () => activeIndex.value,
+    () => activeIndex.get(),
     index => {
       scheduleOnRN(setIsLastStep, index === 2);
     },
@@ -35,6 +35,7 @@ const App = () => {
       <StepButtons
         activeIndex={activeIndex}
         rightLabel={rightLabel}
+        backButtonLabel="Back"
         onBack={decreaseActiveIndex}
         onContinue={increaseActiveIndex}
       />
