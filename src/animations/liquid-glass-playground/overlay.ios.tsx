@@ -15,7 +15,6 @@ export const Overlay: FC<OverlayProps> = ({ style }) => {
         {
           borderWidth: StyleSheet.hairlineWidth,
           borderColor: 'rgba(255,255,255,0.5)',
-          backgroundColor: 'rgba(27, 186, 201, 0.5)',
         },
         style,
       ]}
