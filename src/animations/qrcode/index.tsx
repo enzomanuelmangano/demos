@@ -10,7 +10,7 @@ import { useState } from 'react';
 
 import {
   DiscretePathEffect,
-  SweepGradient,
+  LinearGradient,
   vec,
 } from '@shopify/react-native-skia';
 import QRCode from 'react-native-qrcode-skia';
@@ -50,12 +50,12 @@ const QRCodeGenerator = () => {
         }}
         strokeWidth={strokeWidthProgress}
         errorCorrectionLevel="H">
-        <SweepGradient
-          c={vec(windowWidth / 2, windowWidth / 2)}
-          colors={['cyan', 'magenta', 'cyan']}
+        <LinearGradient
+          start={vec(0, 0)}
+          end={vec(windowWidth, windowWidth)}
+          colors={['#FF0000', '#FF4D00', '#FF9900', '#FFCC00']}
         />
-
-        <DiscretePathEffect length={10} deviation={0} />
+        <DiscretePathEffect length={10} deviation={deviationProgress} />
       </QRCode>
 
       <View style={styles.sliderContainer}>

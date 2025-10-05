@@ -13,6 +13,9 @@
       "android": {
         "buildType": "app-bundle",
         "autoIncrement": "versionCode"
+      },
+      "env": {
+        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true"
       }
     },
     "development": {
@@ -23,7 +26,10 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true"
+      }
     }
   },
   "submit": {
