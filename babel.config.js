@@ -13,6 +13,8 @@ module.exports = function (api) {
 
           // Enable debug logging to see transformation details
           debugLogging: false,
+
+          disabled: process.env.EXPO_PUBLIC_LIQUID_GLASS_ENABLED !== 'true',
         },
       ],
     ],

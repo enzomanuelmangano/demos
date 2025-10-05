@@ -783,12 +783,23 @@ module.exports = function ({ types: t }, options = {}) {
     visitor: {
       Program: {
         enter(path, state) {
+          // Skip plugin if disabled via config
+          if (config.disabled) {
+            state.skipPlugin = true;
+            return;
+          }
+
           // Reset state for each file
           state.processedImports = new Set();
           state.sharedComponentsAdded = false;
         },
       },
       ImportDeclaration(path, state) {
+        // Skip if plugin is disabled
+        if (state.skipPlugin) {
+          return;
+        }
+
         const importValue = path.node.source.value;
 
         // Only process relative imports
