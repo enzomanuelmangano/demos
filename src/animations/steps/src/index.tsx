@@ -2,10 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useCallback, useState } from 'react';
 
-import {
-  useAnimatedReaction,
-  useSharedValue,
-} from 'react-native-reanimated';
+import { useAnimatedReaction, useSharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { Dots } from './steps/dots';
