@@ -25,7 +25,7 @@ import { SudokuBoard, type SudokuBoardRef } from './components/sudoku-board';
 import { generateSudoku } from './logic';
 import { COLORS, ELEVATION } from './theme';
 
-import type { ConfettiMethods } from 'react-native-fast-confetti';
+import type { PIConfettiMethods } from 'react-native-fast-confetti';
 
 const Transition = LinearTransition;
 
@@ -39,7 +39,7 @@ export const Sudoku = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [board, setBoard] = useState(INITIAL_BOARD);
   const sudokuRef = useRef<SudokuBoardRef>(null);
-  const confettiRef = useRef<ConfettiMethods>(null);
+  const confettiRef = useRef<PIConfettiMethods>(null);
 
   const handleReset = useCallback(() => {
     Alert.alert(
