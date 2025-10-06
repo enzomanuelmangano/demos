@@ -27,6 +27,24 @@ This project is a work in progress (almost by definition). Here are the current 
 
 ## Quick Start
 
+### Using the CLI (Recommended)
+
+Download animations directly to your project:
+
+```bash
+# Download an animation
+npx demos-cli get action-tray
+
+# List all available animations
+npx demos-cli list
+
+# Install globally
+npm install -g demos-cli
+demos get airbnb-slider
+```
+
+### Running the Demo App
+
 This is an Expo Go project. To get started:
 
 ```bash
@@ -44,6 +62,11 @@ src/
 ├── navigation/   # Getting around the app
 ├── components/   # Building blocks
 └── utils/        # Helper functions
+
+cli/              # CLI tool for downloading animations
+├── index.js      # Main CLI entry point
+├── package.json  # CLI package configuration
+└── README.md     # CLI documentation
 ```
 
 ## Sponsors
