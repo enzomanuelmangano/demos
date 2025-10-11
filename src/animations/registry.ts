@@ -34,7 +34,7 @@ import { AnimatedCountText } from './animated-count-text';
 import { AnimatedGridList } from './animated-grid-list';
 import { AnimatedIndicatorList } from './animated-indicator-list';
 import { AtlasButton } from './atlas-button';
-import { AudioPlayer } from './audioplayer';
+import { AudioPlayer } from './audio-player';
 import { BalanceSlider } from './balance-slider';
 import { BezierCurveOutline } from './bezier-curve-outline';
 import { BlurCircles } from './blur-circles';
@@ -50,7 +50,6 @@ import { ColorCarousel } from './color-carousel';
 import { ComposableTextScreen } from './composable-text';
 import { CoverflowCarousel } from './coverflow-carousel';
 import { CubertoSlider } from './cuberto-slider';
-import { CustomDrawer } from './custom-drawer';
 import { DeleteButton } from './delete-button';
 import { DotSheet } from './dot-sheet';
 import { DragToSort } from './drag-to-sort';
@@ -160,7 +159,6 @@ export const AnimationRegistry = {
   'animated-indicator-list': AnimatedIndicatorList,
   'radar-chart': RadarChartContainer,
   'image-cropper': ImageCropper,
-  'custom-drawer': CustomDrawer,
   'selectable-grid-list': SelectableGridList,
   'animated-count-text': AnimatedCountText,
   'qr-code-generator': QRCodeGenerator,
@@ -403,12 +401,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Image Cropper',
     route: 'ImageCropper',
     iconName: 'crop',
-    iconFamily: 'MaterialCommunityIcons',
-  },
-  'custom-drawer': {
-    name: 'Custom Drawer',
-    route: 'CustomDrawer',
-    iconName: 'menu',
     iconFamily: 'MaterialCommunityIcons',
   },
   'selectable-grid-list': {
