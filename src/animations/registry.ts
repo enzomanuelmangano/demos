@@ -34,7 +34,7 @@ import { AnimatedCountText } from './animated-count-text';
 import { AnimatedGridList } from './animated-grid-list';
 import { AnimatedIndicatorList } from './animated-indicator-list';
 import { AtlasButton } from './atlas-button';
-import { AudioPlayer } from './audioplayer';
+import { AudioPlayer } from './audio-player';
 import { BalanceSlider } from './balance-slider';
 import { BezierCurveOutline } from './bezier-curve-outline';
 import { BlurCircles } from './blur-circles';
@@ -50,7 +50,6 @@ import { ColorCarousel } from './color-carousel';
 import { ComposableTextScreen } from './composable-text';
 import { CoverflowCarousel } from './coverflow-carousel';
 import { CubertoSlider } from './cuberto-slider';
-import { CustomDrawer } from './custom-drawer';
 import { DeleteButton } from './delete-button';
 import { DotSheet } from './dot-sheet';
 import { DragToSort } from './drag-to-sort';
@@ -83,7 +82,6 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
-import { LinearTabInteraction } from './linear-tab-interaction';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
 import { Metaball } from './metaball';
@@ -160,7 +158,6 @@ export const AnimationRegistry = {
   'animated-indicator-list': AnimatedIndicatorList,
   'radar-chart': RadarChartContainer,
   'image-cropper': ImageCropper,
-  'custom-drawer': CustomDrawer,
   'selectable-grid-list': SelectableGridList,
   'animated-count-text': AnimatedCountText,
   'qr-code-generator': QRCodeGenerator,
@@ -217,7 +214,6 @@ export const AnimationRegistry = {
   'duration-slider': DurationSlider,
   'alert-drawer': AlertDrawer,
   'motion-blur': MotionBlur,
-  'linear-tab-interaction': LinearTabInteraction,
   'delete-button': DeleteButton,
   'dynamic-blur-tabs': DynamicBlurTabs,
   snake: Snake,
@@ -403,12 +399,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Image Cropper',
     route: 'ImageCropper',
     iconName: 'crop',
-    iconFamily: 'MaterialCommunityIcons',
-  },
-  'custom-drawer': {
-    name: 'Custom Drawer',
-    route: 'CustomDrawer',
-    iconName: 'menu',
     iconFamily: 'MaterialCommunityIcons',
   },
   'selectable-grid-list': {
@@ -746,12 +736,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Motion Blur',
     route: 'MotionBlur',
     iconName: 'blur',
-    iconFamily: 'MaterialCommunityIcons',
-  },
-  'linear-tab-interaction': {
-    name: 'Linear Tab Interaction',
-    route: 'LinearTabInteraction',
-    iconName: 'tab',
     iconFamily: 'MaterialCommunityIcons',
   },
   'delete-button': {
