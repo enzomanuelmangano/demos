@@ -18,11 +18,11 @@ const PressableHighlight = createAnimatedPressable(progress => {
   'worklet';
   return {
     backgroundColor: interpolateColor(
-      progress.value,
+      progress,
       [0, 1],
       ['rgba(255,255,255,0)', 'rgba(255,255,255,0.1)'],
     ),
-    transform: [{ scale: interpolate(progress.value, [0, 1], [1, 0.98]) }],
+    transform: [{ scale: interpolate(progress, [0, 1], [1, 0.98]) }],
   };
 });
 

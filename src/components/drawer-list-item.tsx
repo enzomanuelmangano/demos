@@ -18,16 +18,18 @@ type ExpoRouterListItemProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-const PressableHighlight = createAnimatedPressable(progress => {
-  'worklet';
-  const opacity = interpolate(progress.value, [0, 1], [0, 0.1]).toFixed(2);
-  const scale = interpolate(progress.value, [0, 1], [1, 0.95]);
+const PressableHighlight = createAnimatedPressable(
+  (progress, { isSelected }) => {
+    'worklet';
+    const opacity = interpolate(progress, [0, 1], [0, 0.1]).toFixed(2);
+    const scale = interpolate(progress, [0, 1], [1, 0.95]);
 
-  return {
-    backgroundColor: `rgba(255,255,255,${opacity})`,
-    transform: [{ scale }],
-  };
-});
+    return {
+      backgroundColor: `rgba(255,255,255,${isSelected ? 0.1 : opacity})`,
+      transform: [{ scale }],
+    };
+  },
+);
 
 const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
   ({ item, onPress, style }) => {
@@ -54,6 +56,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flexDirection: 'row',
     flex: 1,
+    marginRight: 10,
+    marginVertical: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
