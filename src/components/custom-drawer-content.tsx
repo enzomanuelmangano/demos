@@ -14,7 +14,7 @@ import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
-import { PressableScale } from 'pressto';
+import { PressableScale, PressablesGroup } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
@@ -28,7 +28,7 @@ import { SearchFilterAtom } from '../navigation/states/filters';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
-const LIST_ITEM_HEIGHT = 60;
+const LIST_ITEM_HEIGHT = 50;
 
 type AnimationItem = {
   id: number;
@@ -117,17 +117,19 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
       </View>
 
       <View style={styles.listContainer}>
-        <LegendList
-          recycleItems
-          waitForInitialLayout
-          renderItem={renderItem}
-          scrollEventThrottle={16}
-          data={filteredAnimations}
-          keyExtractor={keyExtractor}
-          estimatedItemSize={LIST_ITEM_HEIGHT}
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={{ paddingBottom: bottom }}
-        />
+        <PressablesGroup>
+          <LegendList
+            recycleItems
+            waitForInitialLayout
+            renderItem={renderItem}
+            scrollEventThrottle={16}
+            data={filteredAnimations}
+            keyExtractor={keyExtractor}
+            estimatedItemSize={LIST_ITEM_HEIGHT}
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={{ paddingBottom: bottom, marginTop: 12 }}
+          />
+        </PressablesGroup>
         <LinearGradient
           pointerEvents="none"
           style={styles.topGradient}
@@ -158,7 +160,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   searchContainer: {
-    marginBottom: 8,
+    marginBottom: 0,
     marginTop: 6,
     position: 'relative',
   },
@@ -184,7 +186,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   topGradient: {
-    height: 25,
+    height: 20,
     left: 0,
     position: 'absolute',
     right: 0,
