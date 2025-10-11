@@ -40,7 +40,7 @@ const DismissButton = createAnimatedPressable(progress => {
   'worklet';
   return {
     backgroundColor: interpolateColor(
-      progress.value,
+      progress,
       [0, 1],
       ['#d5534a00', '#e14f4482'],
     ),
