@@ -82,7 +82,6 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
-import { LinearTabInteraction } from './linear-tab-interaction';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
 import { Metaball } from './metaball';
@@ -215,7 +214,6 @@ export const AnimationRegistry = {
   'duration-slider': DurationSlider,
   'alert-drawer': AlertDrawer,
   'motion-blur': MotionBlur,
-  'linear-tab-interaction': LinearTabInteraction,
   'delete-button': DeleteButton,
   'dynamic-blur-tabs': DynamicBlurTabs,
   snake: Snake,
@@ -738,12 +736,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Motion Blur',
     route: 'MotionBlur',
     iconName: 'blur',
-    iconFamily: 'MaterialCommunityIcons',
-  },
-  'linear-tab-interaction': {
-    name: 'Linear Tab Interaction',
-    route: 'LinearTabInteraction',
-    iconName: 'tab',
     iconFamily: 'MaterialCommunityIcons',
   },
   'delete-button': {
