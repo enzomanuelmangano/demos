@@ -1,9 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { type FC } from 'react';
+import { useCallback, useMemo, type FC } from 'react';
 
 import { useDrawerProgress } from '@react-navigation/drawer';
-import { PressableOpacity } from 'pressto';
+import { useNavigation } from 'expo-router';
+import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -17,15 +18,16 @@ const LINE_HEIGHT = 1.5;
 
 type AnimatedHamburgerIconProps = {
   tintColor?: string;
-  onPress?: () => void;
   size?: number;
+  containerStyle?: StyleProp<ViewStyle>;
 };
 
 export const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
   tintColor = '#fff',
-  onPress,
   size = 18,
+  containerStyle: containerStyleProp,
 }) => {
+  const navigation = useNavigation();
   const drawerProgress = useDrawerProgress();
 
   const progress = useDerivedValue(() => {
@@ -79,55 +81,54 @@ export const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
     };
   });
 
-  const containerStyle = [
-    styles.container,
-    {
-      height: ICON_HEIGHT,
-      width: size,
-    },
-  ];
-
-  const content = (
-    <View style={containerStyle}>
-      <Animated.View
-        style={[
-          {
-            backgroundColor: tintColor,
-          },
-          styles.bar,
-          topBarStyle,
-        ]}
-      />
-      <Animated.View
-        style={[
-          {
-            backgroundColor: tintColor,
-          },
-          styles.bar,
-          middleBarStyle,
-        ]}
-      />
-      <Animated.View
-        style={[
-          {
-            backgroundColor: tintColor,
-          },
-          styles.bar,
-          bottomBarStyle,
-        ]}
-      />
-    </View>
+  const containerStyle = useMemo(
+    () => [
+      styles.container,
+      {
+        height: ICON_HEIGHT,
+        width: size,
+      },
+    ],
+    [size],
   );
 
-  if (onPress) {
-    return (
-      <PressableOpacity hitSlop={20} onPress={onPress}>
-        {content}
-      </PressableOpacity>
-    );
-  }
+  const onPress = useCallback(() => {
+    (navigation as any).toggleDrawer();
+  }, [navigation]);
 
-  return content;
+  return (
+    <PressableScale hitSlop={20} onPress={onPress} style={containerStyleProp}>
+      <View style={containerStyle}>
+        <Animated.View
+          style={[
+            {
+              backgroundColor: tintColor,
+            },
+            styles.bar,
+            topBarStyle,
+          ]}
+        />
+        <Animated.View
+          style={[
+            {
+              backgroundColor: tintColor,
+            },
+            styles.bar,
+            middleBarStyle,
+          ]}
+        />
+        <Animated.View
+          style={[
+            {
+              backgroundColor: tintColor,
+            },
+            styles.bar,
+            bottomBarStyle,
+          ]}
+        />
+      </View>
+    </PressableScale>
+  );
 };
 
 const styles = StyleSheet.create({
