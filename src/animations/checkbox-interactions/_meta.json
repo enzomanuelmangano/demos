@@ -1,0 +1,789 @@
+{
+  "animation_name": "Checkbox Interactions",
+  "animation_slug": "checkbox-interactions",
+  "description": "An interactive checkbox list with smooth layout animations, dynamic color transitions, and icon fade effects. Features pill-shaped checkboxes that expand to show check icons when selected, with spring-based layout transitions and color fade effects using the Color library for alpha manipulation.",
+  "main_features": [
+    "Pill-shaped checkbox buttons with rounded corners",
+    "Check icon with fade-in/fade-out animations",
+    "Dynamic padding animation when checkbox is checked",
+    "Color transitions between active and inactive states",
+    "Alpha color manipulation using Color library",
+    "Spring-based layout transitions",
+    "Wrap layout for responsive multi-column display",
+    "Custom hook for state management",
+    "Safe area handling for notch/status bar",
+    "Continuous border curve (iOS squircle style)"
+  ],
+  "file_structure": {
+    "index.tsx": "Main App component with layout and state orchestration",
+    "components/checkbox.tsx": "Checkbox component with animations and layout transitions",
+    "hooks/use-cuisines.ts": "Custom hook managing checkbox state (toggle functionality)",
+    "constants.ts": "Mock data array with cuisine items"
+  },
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "colors": "color",
+    "safe_area": "react-native-safe-area-context",
+    "icons": "@expo/vector-icons"
+  },
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useAnimatedStyle"
+      ],
+      "layout_animations": [
+        "LinearTransition",
+        "FadeIn",
+        "FadeOut"
+      ],
+      "critical_feature": "Layout animations for smooth checkbox expansion/contraction with spring physics"
+    },
+    "color": {
+      "version": "^4.2.3",
+      "methods": [
+        "Color()",
+        "alpha()",
+        "rgb()",
+        "toString()"
+      ],
+      "usage": "Creates faded color variants with alpha transparency for backgrounds and borders",
+      "pattern": "Color(activeColor).alpha(0.1).rgb().toString()"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
+      "usage": "Top padding for container to avoid notch/status bar overlap"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": [
+        "AntDesign"
+      ],
+      "icon_used": "check-circle",
+      "size": 20,
+      "usage": "Check icon displayed when checkbox is selected"
+    }
+  },
+  "animation_techniques": {
+    "layout_transitions": {
+      "animation": "LinearTransition.springify()",
+      "config": {
+        "mass": 1,
+        "damping": 30,
+        "stiffness": 250
+      },
+      "applied_to": "Checkbox container",
+      "effect": "Smooth expansion/contraction when check icon appears/disappears",
+      "benefit": "Natural spring physics creates polished feel"
+    },
+    "icon_fade_in": {
+      "animation": "FadeIn",
+      "duration": "150ms",
+      "easing": "Easing.bezier(0.895, 0.03, 0.685, 0.22)",
+      "easing_type": "easeInQuint",
+      "effect": "Check icon fades in quickly when checkbox is selected",
+      "conditional": "Only rendered when checked === true"
+    },
+    "icon_fade_out": {
+      "animation": "FadeOut",
+      "duration": "150ms",
+      "easing": "Easing.bezier(0.895, 0.03, 0.685, 0.22)",
+      "easing_type": "easeInQuint",
+      "effect": "Check icon fades out quickly when checkbox is deselected",
+      "timing": "Completes before layout contracts"
+    },
+    "padding_animation": {
+      "pattern": "Dynamic padding via useAnimatedStyle",
+      "checked_state": "paddingRight: 14",
+      "unchecked_state": "paddingRight: 24",
+      "effect": "Right padding reduces when check icon appears, increases when it disappears",
+      "purpose": "Maintains visual balance with icon spacing",
+      "coordination": "Synchronized with layout transition"
+    },
+    "color_transitions": {
+      "border_color": {
+        "checked": "fadedActiveColor (activeColor with 10% alpha)",
+        "unchecked": "fadedInactiveColor (inactiveColor with 10% alpha)",
+        "pattern": "useAnimatedStyle with conditional logic"
+      },
+      "background_color": {
+        "checked": "fadedActiveColor (10% alpha orange)",
+        "unchecked": "transparent",
+        "effect": "Subtle background fill when selected"
+      },
+      "text_color": {
+        "checked": "activeColor (#EF8E52 orange)",
+        "unchecked": "inactiveColor (#B3B1B4 gray)",
+        "effect": "Text color emphasizes selection state"
+      },
+      "border_width": {
+        "value": "1.5px",
+        "constant": "Same for both states"
+      }
+    },
+    "icon_layout": {
+      "animation": "LinearTransition",
+      "margin_left": "10px",
+      "applied_to": "Wrapper view around check icon",
+      "effect": "Icon position animates smoothly during layout changes"
+    }
+  },
+  "reanimated_patterns": {
+    "useAnimatedStyle_instances": [
+      {
+        "name": "rContainerStyle",
+        "target": "Checkbox container",
+        "animated_properties": [
+          "paddingRight (14 or 24 based on checked state)",
+          "borderColor (faded active or inactive color)",
+          "borderWidth (1.5px constant)",
+          "backgroundColor (faded active color or transparent)"
+        ],
+        "dependencies": [
+          "checked",
+          "fadedActiveColor",
+          "fadedInactiveColor"
+        ],
+        "pattern": "Conditional ternary expressions based on checked boolean"
+      },
+      {
+        "name": "rTextStyle",
+        "target": "Checkbox label text",
+        "animated_properties": [
+          "color (activeColor or inactiveColor)"
+        ],
+        "dependencies": [
+          "checked"
+        ],
+        "effect": "Text color transitions between orange and gray"
+      }
+    ],
+    "layout_animations": {
+      "container": {
+        "type": "LinearTransition",
+        "modifiers": [
+          "springify()",
+          "mass(1)",
+          "damping(30)",
+          "stiffness(250)"
+        ],
+        "trigger": "Check icon conditional rendering changes",
+        "effect": "Width animates smoothly as content changes"
+      },
+      "icon_wrapper": {
+        "type": "LinearTransition",
+        "entering": "FadeIn.duration(150).easing(...)",
+        "exiting": "FadeOut.duration(150).easing(...)",
+        "effect": "Icon position and opacity animate together"
+      }
+    },
+    "conditional_rendering": {
+      "pattern": "{checked && <Animated.View>...</Animated.View>}",
+      "benefit": "Triggers layout animation when condition changes",
+      "element": "Check icon wrapper view"
+    }
+  },
+  "state_management": {
+    "custom_hook": {
+      "name": "useCuisines",
+      "returns": {
+        "cuisines": "Array<{id: number, name: string, selected: boolean}>",
+        "toggleCuisine": "(cuisineId: number) => void"
+      },
+      "implementation": "useState with array map for immutable updates",
+      "pattern": "Controlled component pattern"
+    },
+    "react_state": {
+      "cuisines": {
+        "type": "Array of cuisine objects",
+        "initial": "20 items with selected: false",
+        "updates": "Immutably via map when toggleCuisine is called",
+        "properties": [
+          "id: number (unique identifier)",
+          "name: string (cuisine name)",
+          "selected: boolean (checkbox state)"
+        ]
+      }
+    },
+    "useCallback_optimization": {
+      "function": "toggleCuisine",
+      "dependencies": [
+        "setCuisines"
+      ],
+      "benefit": "Stable function reference prevents unnecessary re-renders",
+      "usage": "Passed to each Checkbox onPress"
+    },
+    "immutable_updates": {
+      "pattern": "prevCuisines.map(cuisine => cuisine.id === cuisineId ? {...cuisine, selected: !cuisine.selected} : cuisine)",
+      "benefit": "Proper React state update pattern",
+      "effect": "Only updates the clicked checkbox, preserves others"
+    }
+  },
+  "component_architecture": {
+    "App": {
+      "type": "Main component",
+      "structure": [
+        "SafeAreaProvider wrapper",
+        "Container View with safe area top padding",
+        "Section title text",
+        "Content wrap with flexbox wrap layout",
+        "Mapped Checkbox components"
+      ],
+      "safe_area": "useSafeAreaInsets() for top padding",
+      "calculation": "top + 24 (safe area + 24px extra padding)"
+    },
+    "Checkbox": {
+      "type": "Functional component with React.FC",
+      "props": {
+        "label": "string (required) - checkbox label text",
+        "checked": "boolean (required) - checkbox state",
+        "onPress": "() => void (required) - callback when pressed",
+        "activeColor": "string (optional) - color when checked, default '#EF8E52' orange",
+        "inactiveColor": "string (optional) - color when unchecked, default '#B3B1B4' gray"
+      },
+      "color_processing": {
+        "fadedActiveColor": "Color(activeColor).alpha(0.1).rgb().toString()",
+        "fadedInactiveColor": "Color(inactiveColor).alpha(0.1).rgb().toString()",
+        "purpose": "Creates semi-transparent variants for backgrounds and borders"
+      },
+      "layout": [
+        "Animated.View (container with layout animation)",
+        "Animated.Text (label with color animation)",
+        "Conditional Animated.View (icon wrapper)",
+        "AntDesign check-circle icon"
+      ]
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "app_background": "#0C0A0C (very dark gray, almost black)",
+      "active_color": "#EF8E52 (warm orange)",
+      "inactive_color": "#B3B1B4 (medium gray)",
+      "faded_active": "rgba(239, 142, 82, 0.1) (10% orange)",
+      "faded_inactive": "rgba(179, 177, 180, 0.1) (10% gray)",
+      "title_text": "white"
+    },
+    "typography": {
+      "section_title": {
+        "color": "white",
+        "fontFamily": "SF-Pro-Rounded-Bold",
+        "fontSize": 24,
+        "text": "What are your favorite cuisines?"
+      },
+      "checkbox_label": {
+        "fontFamily": "SF-Pro-Rounded-Bold",
+        "fontSize": 18,
+        "color": "dynamic (orange when checked, gray when unchecked)"
+      }
+    },
+    "spacing_and_layout": {
+      "container_padding": {
+        "top": "safeTop + 24",
+        "left": 12
+      },
+      "content_wrap": {
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "gap": 12,
+        "marginTop": 24
+      },
+      "checkbox": {
+        "paddingLeft": 24,
+        "paddingVertical": 12,
+        "paddingRight": "24 (unchecked) or 14 (checked)",
+        "borderRadius": 36,
+        "borderWidth": 1.5
+      },
+      "icon_margin": {
+        "marginLeft": 10
+      }
+    },
+    "shape_design": {
+      "borderRadius": 36,
+      "borderCurve": "continuous",
+      "effect": "Pill-shaped buttons with iOS-style squircle corners",
+      "benefit": "Modern, Apple-like aesthetic"
+    },
+    "icon_design": {
+      "name": "check-circle (AntDesign)",
+      "size": 20,
+      "color": "dynamic (matches activeColor)",
+      "style": "Filled circle with checkmark"
+    },
+    "layout_pattern": {
+      "type": "Flexbox wrap",
+      "behavior": "Checkboxes flow horizontally and wrap to new lines",
+      "benefit": "Responsive layout adapts to different screen sizes",
+      "gap": "12px between items (horizontal and vertical)"
+    }
+  },
+  "interaction_patterns": {
+    "touch_interaction": {
+      "gesture": "onTouchEnd",
+      "target": "Checkbox container",
+      "callback": "onPress",
+      "action": "toggleCuisine(cuisine.id)",
+      "effect": "Toggles checkbox state, triggers all animations"
+    },
+    "visual_feedback": {
+      "immediate": "onTouchEnd fires (no press delay)",
+      "animations": [
+        "Check icon fades in/out (150ms)",
+        "Layout expands/contracts (spring animation)",
+        "Colors transition (useAnimatedStyle)",
+        "Padding adjusts (useAnimatedStyle)"
+      ],
+      "coordination": "All animations start simultaneously"
+    },
+    "multi_selection": {
+      "pattern": "Multiple checkboxes can be selected independently",
+      "state": "Each checkbox maintains its own selected state",
+      "benefit": "Standard multi-select checkbox behavior"
+    }
+  },
+  "data_structure": {
+    "constants": {
+      "Cuisines": {
+        "type": "Array<{id: number, name: string, selected: boolean}>",
+        "length": 20,
+        "generation": "new Array(20).fill('Italian').map((cuisine, i) => ({id: i, name: cuisine, selected: false}))",
+        "data": "20 'Italian' items (demo/placeholder data)",
+        "note": "Humorous placeholder - all items are 'Italian'"
+      }
+    },
+    "cuisine_object": {
+      "id": "number (0-19)",
+      "name": "string ('Italian')",
+      "selected": "boolean (initially false)"
+    }
+  },
+  "layout_and_positioning": {
+    "safe_area": {
+      "hook": "useSafeAreaInsets()",
+      "usage": "top inset for container paddingTop",
+      "calculation": "safeTop + 24",
+      "purpose": "Prevents content from being hidden under notch/status bar"
+    },
+    "container_layout": {
+      "flex": 1,
+      "backgroundColor": "#0C0A0C",
+      "paddingTop": "dynamic (safe area)",
+      "paddingLeft": 12
+    },
+    "content_wrap_layout": {
+      "flexDirection": "row",
+      "flexWrap": "wrap",
+      "gap": 12,
+      "marginTop": 24,
+      "behavior": "Creates responsive grid-like layout"
+    },
+    "checkbox_layout": {
+      "alignItems": "center",
+      "borderCurve": "continuous",
+      "borderRadius": 36,
+      "borderWidth": 1,
+      "flexDirection": "row",
+      "justifyContent": "center",
+      "intrinsicSizing": "content",
+      "dynamic_width": "Based on label text length + padding + optional icon"
+    }
+  },
+  "performance_optimizations": {
+    "useCallback": {
+      "function": "toggleCuisine",
+      "dependencies": [
+        "setCuisines"
+      ],
+      "benefit": "Prevents unnecessary re-renders of Checkbox components"
+    },
+    "color_calculation": {
+      "pattern": "Calculated once per render in component body",
+      "variables": [
+        "fadedActiveColor",
+        "fadedInactiveColor"
+      ],
+      "benefit": "Color library calculations happen before render",
+      "potential_optimization": "Could be memoized with useMemo if colors are dynamic props"
+    },
+    "layout_animations": {
+      "optimization": "Reanimated layout animations run on UI thread",
+      "benefit": "Smooth 60fps animations without JS thread bottleneck",
+      "native_driver": "Implicitly uses native driver for layout animations"
+    },
+    "conditional_rendering": {
+      "pattern": "Icon only rendered when checked",
+      "benefit": "Reduces render tree size for unchecked items",
+      "effect": "Minimal, but good practice"
+    },
+    "dependency_arrays": {
+      "useAnimatedStyle": "Explicit dependency arrays prevent unnecessary recalculations",
+      "dependencies": [
+        "checked",
+        "fadedActiveColor",
+        "fadedInactiveColor"
+      ],
+      "benefit": "Styles only recalculate when dependencies change"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "Multi-select forms (preferences, settings)",
+      "Filter selections (search, e-commerce)",
+      "Survey/questionnaire interfaces",
+      "Preference collection screens",
+      "Tag selection interfaces",
+      "Category selection menus"
+    ],
+    "real_world_examples": [
+      "Food delivery app cuisine preferences",
+      "Dating app interest selection",
+      "E-commerce filter checkboxes",
+      "App settings with multiple toggles",
+      "Onboarding preference screens",
+      "Newsletter subscription options"
+    ],
+    "customization_potential": [
+      "Change colors to match brand",
+      "Adjust animation timing/spring config",
+      "Different icons for different contexts",
+      "Custom fonts and sizes",
+      "Alternative shapes (rounded squares, etc.)",
+      "Different color schemes for light/dark mode"
+    ]
+  },
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "CheckboxProps interface with optional props",
+        "React.FC<CheckboxProps> for component"
+      ],
+      "type_safety": "All props and state properly typed"
+    },
+    "component_organization": {
+      "pattern": "Container/Presentational separation",
+      "App": "Container with state management",
+      "Checkbox": "Presentational component with props",
+      "benefit": "Clear separation of concerns, reusable Checkbox"
+    },
+    "custom_hooks": {
+      "useCuisines": "Encapsulates state logic",
+      "benefit": "Reusable, testable, clean separation",
+      "pattern": "Standard custom hook pattern"
+    },
+    "constants": {
+      "file": "constants.ts",
+      "data": "Mock cuisine data",
+      "benefit": "Data separated from logic"
+    },
+    "styling": {
+      "pattern": "StyleSheet.create()",
+      "organization": "Static styles in StyleSheet, dynamic in useAnimatedStyle",
+      "benefit": "Performance optimization, clear separation"
+    },
+    "naming_conventions": {
+      "components": "PascalCase (Checkbox, App)",
+      "hooks": "camelCase with 'use' prefix (useCuisines)",
+      "constants": "PascalCase (Cuisines, BestCuisine)",
+      "variables": "camelCase",
+      "reanimated_styles": "'r' prefix (rContainerStyle, rTextStyle)"
+    },
+    "best_practices": [
+      "Explicit prop types with optional defaults",
+      "useCallback for stable function references",
+      "Immutable state updates",
+      "Dependency arrays in hooks",
+      "Separation of concerns (files, components, hooks)",
+      "Safe area handling"
+    ]
+  },
+  "known_limitations": {
+    "color_library_dependency": {
+      "issue": "Requires 'color' library for alpha manipulation",
+      "alternative": "Could use rgba() strings directly",
+      "benefit_of_library": "Cleaner syntax, type-safe color manipulation",
+      "bundle_size": "Adds ~3KB to bundle"
+    },
+    "hardcoded_colors": {
+      "issue": "Default colors are hardcoded in component",
+      "enhancement": "Could support theme context or system props",
+      "current_design": "Props allow customization per instance"
+    },
+    "no_press_feedback": {
+      "issue": "No scale or opacity change during press",
+      "enhancement": "Could add PressableScale or Pressable with opacity",
+      "current_design": "Immediate state change provides feedback"
+    },
+    "fixed_icon": {
+      "issue": "Only supports check-circle icon from AntDesign",
+      "enhancement": "Could accept custom icon component as prop",
+      "current_design": "Consistent icon for predictable UI"
+    },
+    "mock_data": {
+      "issue": "All cuisines are 'Italian' in demo",
+      "impact": "Demo-only limitation, real data would vary",
+      "purpose": "Placeholder for demonstration"
+    },
+    "font_dependency": {
+      "issue": "Requires 'SF-Pro-Rounded-Bold' font",
+      "fallback": "Would fall back to system font if not loaded",
+      "note": "SF Pro is iOS system font, may need loading on Android"
+    }
+  },
+  "potential_improvements": {
+    "interaction_enhancements": [
+      "Press scale animation (PressableScale)",
+      "Haptic feedback on toggle",
+      "Long press for additional actions",
+      "Swipe to toggle",
+      "Double tap to toggle all similar items"
+    ],
+    "visual_enhancements": [
+      "Checkmark animation (path drawing)",
+      "Ripple effect on press (Android-style)",
+      "Particle effects on selection",
+      "Shimmer effect for new items",
+      "Border pulse animation",
+      "Icon bounce effect"
+    ],
+    "functionality": [
+      "Select all / deselect all functionality",
+      "Group selection (category-based)",
+      "Search/filter checkboxes",
+      "Checkbox groups with headers",
+      "Required minimum selection",
+      "Maximum selection limit",
+      "Disabled state with visual indication"
+    ],
+    "customization": [
+      "Theme context support",
+      "Custom icon prop",
+      "Custom animation timing props",
+      "Size variants (small, medium, large)",
+      "Shape variants (rounded, square, pill)",
+      "Color scheme props (not just active/inactive)"
+    ],
+    "accessibility": [
+      "Accessibility labels and hints",
+      "Screen reader support",
+      "Keyboard navigation",
+      "Focus indicators",
+      "Reduced motion support",
+      "High contrast mode support",
+      "Role and state announcements"
+    ],
+    "state_management": [
+      "Persist selections to AsyncStorage",
+      "Undo/redo functionality",
+      "Selection history",
+      "Analytics tracking",
+      "Optimistic updates with rollback"
+    ]
+  },
+  "key_insights": {
+    "color_library_power": "Color library simplifies alpha manipulation and color transformations",
+    "layout_animations_ease": "Reanimated layout animations handle complex size changes automatically",
+    "conditional_rendering_trigger": "Conditional rendering triggers layout animations naturally",
+    "spring_physics_polish": "Spring physics (springify) makes animations feel natural and premium",
+    "padding_compensation": "Dynamic padding adjustment maintains visual balance with icon",
+    "bezier_precision": "Custom bezier easing creates snappy, intentional feel",
+    "continuous_curve_aesthetic": "borderCurve: 'continuous' adds iOS-like polish",
+    "wrap_layout_responsiveness": "Flexbox wrap creates responsive layout without complex logic"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic checkbox component creation",
+      "useState for form state",
+      "Array mapping for lists",
+      "Conditional rendering",
+      "Props and event handlers",
+      "Safe area insets"
+    ],
+    "for_intermediate": [
+      "useAnimatedStyle for style animations",
+      "Layout animations (LinearTransition, FadeIn, FadeOut)",
+      "Custom hooks for state management",
+      "Color manipulation with Color library",
+      "Immutable state updates with map",
+      "useCallback optimization",
+      "Flexbox wrap layouts"
+    ],
+    "for_advanced": [
+      "Spring physics configuration (mass, damping, stiffness)",
+      "Custom bezier easing curves",
+      "Coordinating multiple animations",
+      "Performance optimization strategies",
+      "Dependency array management",
+      "Component API design (optional props with defaults)",
+      "Reanimated style dependency patterns"
+    ]
+  },
+  "related_patterns": {
+    "similar_components": [
+      "Toggle switches with animations",
+      "Radio button groups with transitions",
+      "Chip selection components",
+      "Tag inputs with animations",
+      "Segmented controls",
+      "Filter pills"
+    ],
+    "interaction_patterns": [
+      "Multi-select lists",
+      "Tag selection interfaces",
+      "Filter panels",
+      "Preference screens",
+      "Shopping cart add-ons",
+      "Feature toggles"
+    ],
+    "animation_patterns": [
+      "Layout transitions on content change",
+      "Color fade transitions",
+      "Icon fade in/out",
+      "Spring physics for natural motion",
+      "Coordinated multi-property animations"
+    ]
+  },
+  "testing_considerations": {
+    "unit_tests": [
+      "useCuisines hook returns correct initial state",
+      "toggleCuisine updates correct item",
+      "Checkbox receives and displays correct props",
+      "Color calculations produce expected rgba strings"
+    ],
+    "integration_tests": [
+      "Clicking checkbox toggles state",
+      "Check icon appears when checked",
+      "Colors change on state change",
+      "Multiple checkboxes work independently",
+      "Safe area padding applied correctly"
+    ],
+    "visual_tests": [
+      "Layout transition is smooth",
+      "Icon fades in/out correctly",
+      "Colors transition smoothly",
+      "Padding adjustment is seamless",
+      "No layout jumps or flickers",
+      "Wrap layout works on different screen sizes"
+    ],
+    "animation_tests": [
+      "Spring animation completes without jank",
+      "Fade animations have correct timing",
+      "Bezier easing produces expected curve",
+      "Multiple rapid toggles don't break",
+      "Animations run at 60fps"
+    ],
+    "edge_cases": [
+      "Very long label text",
+      "Empty label string",
+      "Rapid repeated toggling",
+      "Many checkboxes (performance)",
+      "Very narrow screen width",
+      "Custom colors (invalid color strings)",
+      "Missing font fallback"
+    ],
+    "accessibility_tests": [
+      "Screen reader announces checkbox state",
+      "Focus visible on keyboard navigation",
+      "Sufficient color contrast",
+      "Touch target size adequate (48x48 minimum)",
+      "Reduced motion respected"
+    ]
+  },
+  "accessibility_considerations": {
+    "current_state": {
+      "touch_target": "Adequate (padded container)",
+      "color_contrast": "Good for active state, may need testing for inactive",
+      "screen_reader": "Limited support, no explicit labels",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No detection or adaptation"
+    },
+    "recommendations": [
+      "Add accessible={true} and accessibilityRole='checkbox'",
+      "Add accessibilityState={{checked: checked}}",
+      "Add accessibilityLabel prop for custom labels",
+      "Add accessibilityHint for context",
+      "Implement keyboard navigation support",
+      "Detect and respect prefers-reduced-motion",
+      "Ensure minimum 48x48dp touch target",
+      "Test color contrast ratios (WCAG AA minimum)",
+      "Add focus ring for keyboard navigation"
+    ]
+  },
+  "comparison_to_alternatives": {
+    "vs_native_checkbox": {
+      "native": "Platform-specific checkbox component",
+      "this": "Custom animated checkbox",
+      "benefits": "Full design control, smooth animations, consistent cross-platform",
+      "tradeoffs": "More code, accessibility needs manual implementation"
+    },
+    "vs_switch_component": {
+      "switch": "Toggle between two states (on/off)",
+      "this": "Checkbox for multi-select scenarios",
+      "similarity": "Both represent boolean state",
+      "difference": "Checkboxes allow multiple selections, switches are typically singular"
+    },
+    "vs_radio_buttons": {
+      "radio": "Single selection from multiple options",
+      "this": "Multiple selections allowed",
+      "use_case_difference": "Radio for exclusive choice, checkbox for inclusive choice"
+    }
+  },
+  "platform_considerations": {
+    "ios": {
+      "features": "All features fully supported",
+      "performance": "Excellent",
+      "font": "SF-Pro-Rounded-Bold is system font",
+      "border_curve": "borderCurve: 'continuous' is iOS-specific feature"
+    },
+    "android": {
+      "features": "All features fully supported",
+      "performance": "Excellent",
+      "font": "SF-Pro-Rounded-Bold needs to be bundled/loaded",
+      "border_curve": "borderCurve: 'continuous' falls back to regular borderRadius"
+    },
+    "web": {
+      "compatibility": "Works with React Native Web",
+      "considerations": [
+        "Reanimated layout animations supported",
+        "Font loading may need web-specific handling",
+        "borderCurve not applicable",
+        "Performance should be good"
+      ]
+    }
+  },
+  "bundle_size_impact": {
+    "code_size": "~200 lines total (component: 85, hook: 23, constants: 7, main: 62)",
+    "dependencies": {
+      "color": "~3KB (if not already in project)",
+      "reanimated": "Likely already in project",
+      "safe-area-context": "Likely already in project",
+      "@expo/vector-icons": "Likely already in project"
+    },
+    "runtime_memory": "Minimal - simple state, no heavy computations",
+    "estimated_total": "< 5KB additional (excluding shared dependencies)"
+  },
+  "tags": [
+    "checkbox",
+    "form",
+    "multi-select",
+    "layout-animations",
+    "spring-animation",
+    "fade",
+    "color-transitions",
+    "reanimated",
+    "interactive",
+    "selection",
+    "color-library",
+    "flex-wrap",
+    "safe-area",
+    "preferences",
+    "filter"
+  ],
+  "content_hash": "0cc46856890f6877cd20b10e62bf905f2ce6fd856b5ebccd7cdeab296c99824d",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.301Z",
+  "last_validated": "2025-10-12T09:19:28.301Z"
+}

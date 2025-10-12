@@ -1,0 +1,732 @@
+{
+  "animation_name": "Wheel Picker",
+  "animation_slug": "wheel-picker",
+  "description": "A highly customizable draggable slider with visual line indicators and an animated rolling digit counter. Features smooth pan gesture interaction, dynamic spacing adjustments, intelligent line rendering with Skia, and snap-to-line functionality. Includes an expandable mode that increases line spacing and a sophisticated digit animation system with blur effects during transitions.",
+  "main_features": [
+    "Draggable slider with precise line indicators using Skia rendering",
+    "Animated rolling digit counter with vertical translation",
+    "Dynamic line spacing with smooth animated transitions",
+    "Snap-to-line functionality with configurable snap intervals",
+    "Intelligent line visibility culling for performance",
+    "Big and small line variants with different heights",
+    "Boundary gradient overlays for visual polish",
+    "Expand/collapse mode with animated spacing changes",
+    "Digit blur effect during value transitions (iOS only)",
+    "Leading zero hiding with opacity and translation animations",
+    "Scale animation feedback on digit changes",
+    "Progress-based value calculation with customizable multipliers"
+  ],
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Main component orchestrating slider, counter, and expand button"
+    },
+    "components": {
+      "animated-count/animated-count.tsx": "Container managing array of animated digits",
+      "animated-count/animated-digit.tsx": "Individual digit with rolling animation, blur, and visibility logic",
+      "draggable-slider/index.tsx": "Core slider with pan gesture, Skia rendering, and snap functionality",
+      "draggable-slider/boundary-gradient/index.tsx": "Edge gradient component for visual fade effect"
+    },
+    "hooks": {},
+    "utils": {
+      "draggable-slider/utils/get-lines-path.ts": "Generates Skia paths for line rendering with culling optimization",
+      "draggable-slider/utils/snap-point.ts": "Calculates snap target based on velocity and available points",
+      "draggable-slider/utils/unwrap-reanimated-value.ts": "Type-safe utility to unwrap SharedValue or plain values"
+    },
+    "assets": {},
+    "types": {},
+    "constants": {
+      "draggable-slider/constants.ts": "Screen width dimension constant"
+    }
+  },
+  "core_technologies": [
+    "react-native-reanimated",
+    "react-native-gesture-handler",
+    "@shopify/react-native-skia",
+    "react-native-worklets",
+    "expo-blur",
+    "expo-linear-gradient",
+    "color",
+    "pressto",
+    "@expo/vector-icons"
+  ],
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "useAnimatedReaction"
+      ],
+      "functions": [
+        "withSpring",
+        "withTiming",
+        "interpolate",
+        "clamp",
+        "cancelAnimation",
+        "isSharedValue"
+      ],
+      "critical_feature": "Gesture-driven animations entirely on UI thread with Skia integration",
+      "performance_reason": "All slider calculations and digit animations run without bridge crossing"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onEnd"
+      ],
+      "usage": "Pan gesture for slider dragging with velocity-aware snapping"
+    },
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Path",
+        "Rect",
+        "LinearGradient"
+      ],
+      "skia_api": [
+        "Skia.Path.Make()",
+        "rrect",
+        "rect"
+      ],
+      "usage": "High-performance line rendering with path generation and boundary gradients",
+      "benefit": "60fps rendering of dynamic line positions with culling optimization"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "functions": [
+        "scheduleOnRN"
+      ],
+      "usage": "Bridge from UI thread worklet to JS thread for resetIsChanging callback",
+      "critical_for": "Scheduling blur reset after digit animations complete"
+    },
+    "expo-blur": {
+      "version": "~15.0.7",
+      "component": "BlurView",
+      "usage": "Motion blur effect on digits during transitions (iOS only)",
+      "intensity": "Dynamic 0-17 based on isChanging progress"
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "component": "LinearGradient",
+      "usage": "Top and bottom gradients masking digit edges, boundary gradients on slider"
+    },
+    "color": {
+      "version": "^4.2.3",
+      "methods": [
+        "Color().isDark()",
+        "Color().isLight()"
+      ],
+      "usage": "Determine gradient colors based on line color brightness"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "component": "PressableScale",
+      "usage": "Expand/collapse button with scale press animation"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "icons_used": [
+        "MaterialCommunityIcons.arrow-expand",
+        "MaterialCommunityIcons.arrow-collapse"
+      ],
+      "usage": "Toggle button icons for expand/collapse states"
+    }
+  },
+  "animation_techniques": [
+    {
+      "name": "Draggable Slider with Skia",
+      "pattern": "Pan gesture + Skia path generation + snap points",
+      "implementation": "Gesture updates scrollOffset, Skia renders lines based on offset",
+      "rendering": "Lines rendered as rounded rectangles in Skia path",
+      "culling": "Only renders lines within visible screen bounds for performance",
+      "snap_logic": "snapPoint() calculates closest snap position using velocity and spacing array"
+    },
+    {
+      "name": "Dynamic Line Spacing",
+      "pattern": "Animated SharedValue driving line positions",
+      "implementation": "spacePerLine transitions with withTiming on expand/collapse",
+      "reactivity": "useAnimatedReaction watches spacing changes and re-snaps",
+      "effect": "Lines smoothly spread apart or compress while maintaining snap alignment"
+    },
+    {
+      "name": "Rolling Digit Animation",
+      "pattern": "Vertical column of 0-9 digits with translateY animation",
+      "implementation": "translateY: withSpring(-height * digit.value)",
+      "spring_config": "{ mass: 0.25 } for quick, responsive motion",
+      "trick": "All 10 digits pre-rendered, translation selects visible one",
+      "overflow": "hidden to mask non-visible digits"
+    },
+    {
+      "name": "Digit Blur During Transition",
+      "platform": "iOS only (Platform.OS === 'ios')",
+      "pattern": "BlurView with dynamic intensity based on isChanging state",
+      "calculation": "isChangingProgress * 17 for blur intensity",
+      "trigger": "useAnimatedReaction detects digit value changes",
+      "reset": "scheduleOnRN callback after 200ms timeout",
+      "effect": "Motion blur enhances perception of rolling digit speed"
+    },
+    {
+      "name": "Digit Scale Feedback",
+      "pattern": "Horizontal scale animation during digit changes",
+      "implementation": "scaleX: withSpring(isChanging ? 0.7 : 1)",
+      "timing": "Synchronized with blur effect",
+      "effect": "Squeeze animation adds physicality to digit rolling"
+    },
+    {
+      "name": "Leading Zero Hiding",
+      "calculation": "invisibleDigitsAmount = maxDigits - count.value.toString().length",
+      "visibility_logic": "isVisible = digit !== 0 || index < maxDigits - invisibleDigitsAmount",
+      "opacity_animation": "withTiming(isVisible ? 1 : 0)",
+      "translation_animation": "withTiming((-width * invisibleDigitsAmount) / 2)",
+      "effect": "Leading zeros fade out while remaining digits slide left to center"
+    },
+    {
+      "name": "Boundary Gradients",
+      "pattern": "Skia LinearGradient overlays on slider edges",
+      "colors": "Adapts to line color (dark/light detection)",
+      "gradient": "[mainColor, transparent, transparent, transparent, mainColor]",
+      "effect": "Lines fade at screen edges for polished appearance"
+    },
+    {
+      "name": "Snap-to-Line Behavior",
+      "algorithm": "snapPoint from react-native-redash",
+      "calculation": "point = value + 0.2 * velocity, then find nearest spacing",
+      "velocity_factor": "0.2 multiplier balances momentum vs. accuracy",
+      "animation": "Dual animations: scrollOffset (spring, rebound) and clampedScrollOffset (timing, immediate)"
+    },
+    {
+      "name": "Progress Calculation",
+      "pattern": "useAnimatedReaction monitors clampedScrollOffset",
+      "interpolation": "interpolate(offset, [ScreenWidth/2, -progressWidth + ScreenWidth/2], [0, 1])",
+      "value_derivation": "Math.ceil(progress * LinesAmount * multiplier)",
+      "callback": "onProgressChange called from worklet to update parent state"
+    },
+    {
+      "name": "Line Height Differentiation",
+      "pattern": "Conditional height based on line index",
+      "big_lines": "maxLineHeight when i % bigLineIndexOffset === 0",
+      "small_lines": "minLineHeight for all other lines",
+      "offset_centering": "(maxLineHeight - lineHeight) / 2",
+      "visual_hierarchy": "Creates ruler-like appearance with major/minor marks"
+    }
+  ],
+  "reanimated_patterns": [
+    {
+      "pattern": "SharedValue State Management",
+      "main_component_values": [
+        "progress: tracks slider position for digit display",
+        "animatedSpacePerLine: reactive spacing that changes on expand/collapse"
+      ],
+      "slider_values": [
+        "scrollOffset: animated position with spring rebound effect",
+        "clampedScrollOffset: immediate position for progress calculation",
+        "scrollContext: stores gesture start position"
+      ],
+      "digit_values": [
+        "isChanging: tracks if digit is currently transitioning"
+      ]
+    },
+    {
+      "pattern": "DerivedValue Chains",
+      "animatedNumber": "Derived from progress: Math.ceil(progress.value * LinesAmount * multiplier)",
+      "spacePerLine": "Unwraps SharedValue or plain number for consistent access",
+      "progressWidth": "Calculated from linesAmount * spacePerLine",
+      "spacings": "Array of snap points calculated from linesArray and spacePerLine",
+      "digit": "Extracted from count using getDigitByIndex worklet",
+      "invisibleDigitsAmount": "Derived from count length vs. maxDigits",
+      "isVisible": "Calculated from digit value and position",
+      "opacity": "Derived from isVisible with timing animation",
+      "isChangingProgress": "Animated 0-1 for blur intensity",
+      "blurIntensity": "isChangingProgress * 17"
+    },
+    {
+      "pattern": "DerivedValue for Skia Paths",
+      "bigLinesPath": "useDerivedValue(() => getLinesPath({ type: 'bigLines', ... }))",
+      "smallLinesPath": "useDerivedValue(() => getLinesPath({ type: 'smallLines', ... }))",
+      "benefit": "Skia paths regenerate automatically when scrollOffset or spacing changes",
+      "worklet": true
+    },
+    {
+      "pattern": "useAnimatedReaction for Side Effects",
+      "progress_tracking": {
+        "watches": "clampedScrollOffset.value",
+        "callback": "Interpolates to progress and calls onProgressChange",
+        "purpose": "React to slider position and notify parent component"
+      },
+      "spacing_adaptation": {
+        "watches": "spacePerLine.value",
+        "callback": "Re-snaps to nearest point when spacing changes",
+        "purpose": "Maintain snap alignment during expand/collapse"
+      },
+      "digit_change_detection": {
+        "watches": "digit.value",
+        "callback": "Sets isChanging flag and schedules reset via scheduleOnRN",
+        "purpose": "Trigger blur/scale effects on digit transitions"
+      }
+    },
+    {
+      "pattern": "Worklet Functions",
+      "functions": [
+        "getDigitByIndex: Extract digit at position from padded number string",
+        "isBigLine: Determine if line index should be big line",
+        "getLinesPath: Generate Skia path with rendering culling",
+        "snapPoint: Calculate nearest snap target with velocity",
+        "unwrapReanimatedValue: Type-safe SharedValue unwrapping",
+        "isSharedValue: Runtime type guard"
+      ],
+      "all_marked": "'worklet' directive for UI thread execution"
+    },
+    {
+      "pattern": "Gesture Integration",
+      "lifecycle": {
+        "onBegin": "Store context, cancel existing animations",
+        "onUpdate": "Update scrollOffset with clamping, sync clampedScrollOffset",
+        "onEnd": "Animate to snap points with spring (scrollOffset) and timing (clampedScrollOffset)"
+      },
+      "dual_offset_pattern": "scrollOffset has rebound, clampedScrollOffset is immediate for accurate progress"
+    },
+    {
+      "pattern": "AnimatedStyle Computations",
+      "rStyle": "Digit translateY and scaleX based on digit value and isChanging",
+      "rContainerStyle": "Digit container opacity and translateX for centering",
+      "rIndicatorStyle": "Indicator line backgroundColor from SharedValue",
+      "benefit": "All style calculations on UI thread"
+    }
+  ],
+  "performance_optimizations": [
+    {
+      "name": "Line Rendering Culling",
+      "pattern": "Skip rendering lines outside visible screen bounds",
+      "calculation": "baseScrollView < offsetX - ScreenWidth/2 || baseScrollView > offsetX + ScreenWidth/2",
+      "benefit": "Renders only ~30 lines instead of all 50, significant CPU savings",
+      "critical": true
+    },
+    {
+      "name": "Separate Big/Small Line Paths",
+      "reason": "Different colors/opacities require separate paths",
+      "trade_off": "Two path generations vs. single path with multiple colors",
+      "note": "Author comment: 'I'm not sure if this can be optimized further'"
+    },
+    {
+      "name": "Memo Components",
+      "AnimatedDigit": "memo() prevents re-render when sibling digits change",
+      "AnimatedCount": "memo() prevents re-render on parent state changes",
+      "BoundaryGradient": "memo() with memoized colors array"
+    },
+    {
+      "name": "useMemo Optimizations",
+      "flattenedTextStyle": "Flattened once in AnimatedDigit",
+      "colors_array": "Memoized gradient colors in BoundaryGradient",
+      "linesArray": "Memoized array generation based on linesAmount and snapEach"
+    },
+    {
+      "name": "Skia Path Caching",
+      "pattern": "useDerivedValue caches path until dependencies change",
+      "dependencies": "scrollOffset, spacePerLine, linesAmount",
+      "benefit": "Path only regenerates when actually needed"
+    },
+    {
+      "name": "Worklet Math",
+      "pattern": "All calculations in worklets (digit extraction, path generation, snapping)",
+      "benefit": "Zero bridge crossing during animations",
+      "runs_on": "UI thread exclusively"
+    },
+    {
+      "name": "Dual Scroll Offset Strategy",
+      "scrollOffset": "Spring animation with overshoot/rebound",
+      "clampedScrollOffset": "Immediate timing for progress calculation",
+      "benefit": "Visual rebound without affecting progress accuracy"
+    },
+    {
+      "name": "Platform-Specific Blur",
+      "condition": "Platform.OS === 'ios'",
+      "benefit": "Avoids rendering blur component on Android",
+      "reason": "BlurView performance varies by platform"
+    },
+    {
+      "name": "Conditional Line Type Rendering",
+      "pattern": "Early continue in loop for filtered line types",
+      "benefit": "Reduces path operations by ~90% (only big or small lines)"
+    }
+  ],
+  "use_cases": [
+    "Measurement tools (ruler, scale, gauge)",
+    "Fine-tuning controls (audio levels, brightness, temperature)",
+    "Value pickers with precise feedback",
+    "Timeline scrubbers with frame counts",
+    "Zoom level selectors",
+    "Sensitivity adjustments in settings",
+    "Filter strength controls (photo/video editing)",
+    "Volume or balance controls",
+    "Quantitative input with visual feedback",
+    "Percentage selectors with precision",
+    "Gaming sensitivity sliders",
+    "Recording level meters",
+    "Scientific instrument simulations",
+    "Educational math tools",
+    "Custom numeric steppers"
+  ],
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with comprehensive prop types",
+      "Excellent inline documentation explaining design decisions",
+      "Reusable DraggableSlider component with extensive customization props",
+      "Clean separation: core slider vs. digit counter vs. main demo",
+      "Proper worklet annotations on all UI thread functions",
+      "Type-safe utility functions (isSharedValue, unwrapReanimatedValue)",
+      "Performance-conscious with culling and memoization",
+      "Platform-aware code (iOS blur conditional)",
+      "Consistent naming conventions",
+      "Well-structured file organization",
+      "Author comments explaining evolution and improvements",
+      "Generic utility functions reusable across animations",
+      "Default prop values with clear intent",
+      "Skia integration best practices"
+    ],
+    "areas_for_improvement": [
+      "Could extract magic numbers to named constants (200ms timeout, 17 blur intensity, 0.2 velocity factor)",
+      "LinesAmount and multiplier could be props instead of constants",
+      "isChanging reset logic uses setTimeout (comment acknowledges: 'We can improve by far this logic')",
+      "Padding interpolation in AnimatedDigit is [0, 0] (unused)",
+      "No accessibility labels for screen readers",
+      "Custom font 'SF-Pro-Rounded-Bold' hardcoded in AnimatedDigit",
+      "Could add JSDoc for exported components and utilities",
+      "Color constants ('#c6c6c6') could be extracted to theme constants",
+      "No error handling for edge cases (negative progress, NaN values)"
+    ]
+  },
+  "known_limitations": [
+    {
+      "name": "Fixed Maximum Digits",
+      "issue": "maxDigits (10) must be known in advance",
+      "workaround": "Set to maximum expected value",
+      "trade_off": "Pre-render empty digits vs. dynamic rendering",
+      "inherited_from": "AnimatedCount component design"
+    },
+    {
+      "name": "Blur Reset Timing",
+      "issue": "setTimeout for resetting isChanging is imprecise",
+      "value": "200ms hardcoded",
+      "author_note": "We can improve by far this logic. But honestly, it's good enough for me :)",
+      "improvement": "Could use animation callback or worklet-based timing"
+    },
+    {
+      "name": "iOS-Only Blur Effect",
+      "limitation": "BlurView only rendered on iOS",
+      "reason": "Platform-specific BlurView implementation differences",
+      "impact": "Android users see scale animation but not blur"
+    },
+    {
+      "name": "Custom Font Requirement",
+      "dependency": "Requires 'SF-Pro-Rounded-Bold' font loaded",
+      "fallback": "Would fall back to system font if missing",
+      "impact": "Affects visual consistency"
+    },
+    {
+      "name": "Multiplier Not Exposed",
+      "issue": "Progress multiplier hardcoded to 1 in main component",
+      "author_comment": "At the beginning I was planning to add it in the demo but the final video was too long for Twitter :)",
+      "limitation": "Can't adjust value range without code modification"
+    },
+    {
+      "name": "No Decimal Support",
+      "implementation": "Math.ceil() rounds to integers",
+      "limitation": "Can't display fractional values",
+      "use_case_impact": "Not suitable for precise decimal measurements"
+    },
+    {
+      "name": "Snap Interval Constraints",
+      "limitation": "snapEach must divide evenly into linesAmount",
+      "impact": "Some configurations may have alignment issues"
+    },
+    {
+      "name": "No Accessibility Support",
+      "missing": [
+        "Screen reader labels",
+        "Keyboard navigation",
+        "Reduced motion support",
+        "Semantic roles"
+      ],
+      "impact": "Not accessible to users with disabilities"
+    },
+    {
+      "name": "Fixed Indicator Color Animation",
+      "issue": "indicatorColor prop exists but not used in demo",
+      "limitation": "Can't demonstrate dynamic indicator color changes"
+    }
+  ],
+  "potential_improvements": [
+    "Replace setTimeout with animation completion callbacks",
+    "Extract magic numbers to configurable props or constants",
+    "Add decimal place support with fractional digit components",
+    "Make LinesAmount and multiplier configurable props",
+    "Add haptic feedback on snap points",
+    "Vertical slider orientation variant",
+    "Configurable snap point array (not just uniform spacing)",
+    "Min/max value labels on slider",
+    "Value input field integration (two-way binding)",
+    "Logarithmic spacing option for non-linear scales",
+    "Touch-and-hold to scrub faster",
+    "Double-tap to reset to center/default",
+    "Animated value preview tooltip during drag",
+    "Custom line rendering shapes (triangles, circles)",
+    "Theme customization API",
+    "Persistence: remember last selected value",
+    "Accessibility: VoiceOver/TalkBack support",
+    "Keyboard navigation (arrow keys for increment/decrement)",
+    "Reduced motion mode (instant transitions)",
+    "Android-compatible blur alternative (motion blur shader?)",
+    "Configurable blur intensity and duration",
+    "Event callbacks (onDragStart, onDragEnd, onSnap, onValueChange)",
+    "Multi-slider support (multiple indicators on same ruler)",
+    "Range selection mode (two indicators)",
+    "Tick mark labels at intervals",
+    "Dynamic tick mark generation based on zoom level"
+  ],
+  "key_insights": [
+    "Skia rendering enables performant custom UI that would be expensive with native views",
+    "Line culling is critical: rendering only visible lines keeps 60fps with many elements",
+    "Dual scroll offset pattern separates visual rebound from accurate progress tracking",
+    "Blur effect significantly enhances perception of motion without complex animation",
+    "Type-safe worklet utilities (unwrapReanimatedValue) enable flexible API design",
+    "Snap point algorithm from react-native-redash balances velocity and accuracy elegantly",
+    "Motion blur + scale creates compelling physicality for digit rolling",
+    "Separate big/small line paths necessary for different visual styles",
+    "Leading zero logic requires coordinated opacity + translation + visibility checks",
+    "Spacing as SharedValue enables smooth expand/collapse without recreation",
+    "useAnimatedReaction essential for reactive snapping when spacing changes",
+    "Platform-specific optimizations (iOS blur) improve experience without breaking cross-platform",
+    "Author's iterative approach: improved version of Prequel Slider fixing bugs and adding customization"
+  ],
+  "learning_opportunities": [
+    {
+      "level": "Beginner",
+      "topics": [
+        "Basic pan gesture handling",
+        "SharedValue fundamentals",
+        "Simple withSpring and withTiming animations",
+        "Conditional rendering with Platform.OS",
+        "Component composition basics",
+        "useWindowDimensions for responsive design",
+        "Constants extraction patterns"
+      ]
+    },
+    {
+      "level": "Intermediate",
+      "topics": [
+        "Skia Canvas and Path rendering",
+        "useDerivedValue for computed values",
+        "useAnimatedReaction for side effects",
+        "Gesture lifecycle (onBegin, onUpdate, onEnd)",
+        "Snap point algorithms with velocity",
+        "Worklet function patterns",
+        "Type guards in worklets (isSharedValue)",
+        "Multi-animation coordination (blur + scale + translation)",
+        "Performance culling techniques",
+        "LinearGradient with Skia",
+        "Platform-specific code organization",
+        "Memoization strategies (memo, useMemo)"
+      ]
+    },
+    {
+      "level": "Advanced",
+      "topics": [
+        "Skia path generation optimization with culling",
+        "Complex derived value chains",
+        "Dual animation strategy (visual vs. data)",
+        "Type-safe SharedValue unwrapping utilities",
+        "Generic worklet functions with type safety",
+        "Performance profiling: render count vs. path operations",
+        "Coordinate space transformations (screen to slider)",
+        "scheduleOnRN for thread bridging",
+        "Motion blur implementation patterns",
+        "Reusable animation primitives design",
+        "API design with flexible SharedValue | plain value props",
+        "Geometric algorithms in worklets (distance, culling bounds)",
+        "Animation choreography (timing relationships)",
+        "Legacy code improvement patterns (author's evolution notes)"
+      ]
+    }
+  ],
+  "related_patterns": {
+    "similar_animations": [
+      "Prequel Slider (predecessor, referenced in comments)",
+      "iOS UIPickerView wheel behavior",
+      "Ruler widgets in design apps (Figma, Sketch)",
+      "Audio DAW timeline scrubbers",
+      "Video editing frame scrubbers",
+      "Scientific instrument gauges",
+      "Measuring tape animations",
+      "Speedometer/tachometer displays"
+    ],
+    "component_relationships": [
+      "Uses same AnimatedCount component as Airbnb Slider",
+      "DraggableSlider is standalone reusable component",
+      "BoundaryGradient pattern reusable for other scrollable UI"
+    ],
+    "inspiration": [
+      "Physical rulers and measuring tools",
+      "Prequel app slider interface",
+      "Audio mixing console faders",
+      "Analog gauge interfaces",
+      "Scientific measurement tools"
+    ]
+  },
+  "testing_considerations": {
+    "visual_tests": [
+      "Lines render smoothly during drag",
+      "Big lines appear at correct intervals (every 20th by default)",
+      "Boundary gradients fade correctly",
+      "Digits roll smoothly without jank",
+      "Blur effect visible on iOS during digit changes",
+      "Scale animation synchronized with blur",
+      "Leading zeros hide/show correctly",
+      "Expand/collapse transitions are smooth",
+      "Indicator line stays centered",
+      "Lines maintain proper spacing during expand/collapse"
+    ],
+    "interaction_tests": [
+      "Pan gesture updates slider position",
+      "Snapping occurs at correct intervals",
+      "Velocity affects snap target selection",
+      "Progress updates counter accurately",
+      "Expand button toggles spacing",
+      "Rapid dragging doesn't break state",
+      "Gesture context prevents position jumps",
+      "Spacing change re-snaps to nearest line"
+    ],
+    "edge_cases": [
+      "Value 0 (leading zeros behavior)",
+      "Maximum value (all digits visible)",
+      "Negative progress values (< 0 check exists)",
+      "Very fast dragging with high velocity",
+      "Expand/collapse during active drag",
+      "snapEach values that don't divide evenly",
+      "Very small or very large linesAmount",
+      "Spacing changes during animation"
+    ],
+    "performance_tests": [
+      "60fps maintained during drag",
+      "No frame drops on expand/collapse",
+      "Culling works correctly (profile path operations)",
+      "Memory stable across many interactions",
+      "Digit animations don't impact slider smoothness",
+      "Multiple simultaneous animations perform well"
+    ],
+    "cross_platform": [
+      "Gesture behavior consistent iOS/Android",
+      "Skia rendering identical across platforms",
+      "Blur effect gracefully absent on Android",
+      "Spring animations feel consistent",
+      "Font fallback works if SF-Pro-Rounded-Bold missing"
+    ]
+  },
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No support",
+      "keyboard_navigation": "No support",
+      "reduced_motion": "Not respected",
+      "labels": "No accessibility labels",
+      "semantic_roles": "Not defined"
+    },
+    "recommendations": [
+      "Add accessibilityRole='adjustable' to slider container",
+      "Add accessibilityValue with current number",
+      "Add accessibilityLabel 'Wheel picker slider'",
+      "Add accessibilityHint 'Drag to adjust value'",
+      "Support accessibilityIncrement/Decrement actions",
+      "Announce value changes to screen reader",
+      "Respect prefers-reduced-motion (disable blur, use instant transitions)",
+      "Add keyboard support: arrow keys to increment/decrement by snapEach",
+      "Ensure touch target size for indicator area",
+      "Add high contrast mode support (ensure line visibility)",
+      "Provide alternative text input method for precise values"
+    ]
+  },
+  "historical_context": {
+    "evolution": "Improved version of Prequel Slider demo from Patreon",
+    "original_post": "https://www.patreon.com/posts/image-editor-and-100916590",
+    "improvements_made": [
+      "Fixed bugs with big lines rendering",
+      "Fully customizable spacing (was fixed before)",
+      "Progress decoupled from spring rebound effect",
+      "Independent scrollOffset and clampedScrollOffset"
+    ],
+    "author_notes": [
+      "Twitter video length constraint influenced feature inclusion (multiplier demo cut)",
+      "isChanging reset logic acknowledged as improvable but acceptable",
+      "AnimatedCount component evolved across multiple demos"
+    ],
+    "AnimatedCount_lineage": [
+      "Started with LayoutAnimation API (https://www.patreon.com/posts/animated-text-84712135)",
+      "Optimized for slider in Airbnb demo (https://www.patreon.com/posts/airbnb-animated-90962925)",
+      "Continued improvement planned: easier comma handling"
+    ]
+  },
+  "comparison_to_alternatives": {
+    "vs_native_slider": {
+      "pros": [
+        "Custom visual design (lines, ruler appearance)",
+        "Integrated counter display",
+        "Configurable snap behavior",
+        "Visual line indicators",
+        "Expand/collapse functionality"
+      ],
+      "cons": [
+        "More complex code",
+        "Missing native accessibility",
+        "No native haptics"
+      ]
+    },
+    "vs_react_native_picker": {
+      "this_approach": "Horizontal linear slider with numeric feedback",
+      "picker_approach": "Vertical wheel with discrete options",
+      "benefit": "More precise for numeric ranges, better for continuous values",
+      "use_case": "Different interaction metaphors for different contexts"
+    }
+  },
+  "tags": [
+    "slider",
+    "wheel-picker",
+    "draggable-slider",
+    "animated-counter",
+    "rolling-digits",
+    "pan-gesture",
+    "skia",
+    "line-rendering",
+    "snap-to-line",
+    "blur-effect",
+    "reanimated",
+    "gesture-handler",
+    "worklets",
+    "performance-culling",
+    "dynamic-spacing",
+    "ruler-ui",
+    "measurement-tool",
+    "precision-input",
+    "skia-graphics",
+    "motion-blur",
+    "expand-collapse",
+    "digit-animation",
+    "boundary-gradient",
+    "velocity-aware"
+  ],
+  "content_hash": "0e75398f437d302931523a020778f12e2f165a29e106344f58458abf9b1cd074",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.498Z",
+  "last_validated": "2025-10-12T09:19:28.498Z"
+}

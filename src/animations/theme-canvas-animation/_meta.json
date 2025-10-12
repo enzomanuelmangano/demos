@@ -1,0 +1,631 @@
+{
+  "animation_name": "Theme Canvas Animation",
+  "animation_slug": "theme-canvas-animation",
+  "description": "An interactive theme selector built entirely with Skia Canvas, featuring smooth circular reveal transitions between color palettes. Users tap selectable squares arranged in a geometric pattern to switch themes, triggering an expanding circle animation that reveals the new theme's background and text colors. The animation uses clip paths and withTiming for polished morphing transitions.",
+  "main_features": [
+    "Skia Canvas-based UI (no React Native View components)",
+    "Circular reveal transition between themes using clip paths",
+    "6 predefined color palettes with background and text colors",
+    "Interactive selectable squares with press feedback",
+    "Geometric grid arrangement of theme selectors",
+    "Dynamic text color interpolation matching theme",
+    "Smooth expanding circle animation with clip masking",
+    "Touch interaction via react-native-skia-gesture",
+    "Responsive positioning based on window dimensions",
+    "Spring-based scale animation on square press",
+    "Dual-layer rendering for seamless theme transitions",
+    "Border color animation on selected square"
+  ],
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Main ThemeCanvasAnimation component wrapping Touchable.Canvas with ThemeScreen"
+    },
+    "components": {
+      "selectable-square/index.tsx": "SelectableSquare component with touch handling and SelectableSquareContainer wrapper for coordinate mapping"
+    },
+    "hooks": {},
+    "utils": {},
+    "assets": {
+      "fonts/outfit.ttf": "Custom Outfit font for rendering 'THEME' text (referenced via require)"
+    },
+    "types": {
+      "index.tsx": [
+        "SharedValue (imported type from Reanimated)"
+      ],
+      "selectable-square/index.tsx": [
+        "SelectableSquareProps",
+        "SelectableSquareContainerProps",
+        "FC (React functional component type)"
+      ]
+    },
+    "constants": {
+      "index.tsx": [
+        "SQUARE_SIZE (35)",
+        "APP_TEXT ('THEME')",
+        "colors (6 theme palettes with background and text colors)"
+      ]
+    }
+  },
+  "core_technologies": [
+    "@shopify/react-native-skia (Canvas rendering)",
+    "react-native-reanimated (animations)",
+    "react-native-skia-gesture (touch interactions)",
+    "react-native-worklets (scheduleOnRN for JS thread scheduling)"
+  ],
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "withTiming"
+      ],
+      "types": [
+        "SharedValue"
+      ],
+      "critical_feature": "Drives circle radius animation for reveal transition and tracks theme selection state"
+    },
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Group",
+        "Rect",
+        "Text",
+        "RoundedRect"
+      ],
+      "hooks": [
+        "useFont"
+      ],
+      "functions": [
+        "Skia.Path.Make()",
+        "path.addCircle()"
+      ],
+      "critical_feature": "Entire UI rendered on Skia Canvas, including clip path for circular reveal"
+    },
+    "react-native-skia-gesture": {
+      "version": "0.4.5-beta.1",
+      "components": [
+        "Touchable.Canvas",
+        "Touchable.RoundedRect"
+      ],
+      "hooks": [
+        "useGestureHandler"
+      ],
+      "critical_feature": "Touch event handling on Skia components (onStart, onTap callbacks)"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "functions": [
+        "scheduleOnRN"
+      ],
+      "usage": "Schedule onSelect callback on React Native (JS) thread from worklet context"
+    },
+    "react-native": {
+      "version": "0.81.4",
+      "hooks": [
+        "useWindowDimensions",
+        "useCallback"
+      ]
+    },
+    "react": {
+      "version": "19.1.0",
+      "hooks": [
+        "useCallback"
+      ],
+      "types": [
+        "FC"
+      ]
+    }
+  },
+  "animation_techniques": [
+    "Circular reveal transition via expanding clip path",
+    "Dual-layer background rendering for seamless transitions",
+    "Dynamic clip path creation with Skia.Path.Make() and addCircle()",
+    "Radius animation from 0 to canvas height for full reveal",
+    "Color interpolation via derived values (background and text colors)",
+    "withTiming completion callback to update previous theme state",
+    "Scale animation on square press (0.9 scale factor)",
+    "Spring animation for press feedback",
+    "Coordinate-based circle center positioning",
+    "Border color animation on selected square",
+    "Dynamic text positioning based on font metrics",
+    "Group clipping for layered reveal effect"
+  ],
+  "reanimated_patterns": [
+    "useSharedValue for selectedIndex (current theme)",
+    "useSharedValue for previousSelectedIndex (previous theme for transition)",
+    "useSharedValue for radius (circle expansion animation)",
+    "useDerivedValue for coordinates based on window dimensions",
+    "useDerivedValue for clip path generation",
+    "useDerivedValue for color selection based on index",
+    "useDerivedValue for text positioning",
+    "withTiming with completion callback pattern",
+    "Resetting radius to 0 in completion callback",
+    "Callback-based state updates (isFinished parameter)",
+    "worklet directive for color calculations",
+    "Conditional early return to prevent redundant animations"
+  ],
+  "performance_optimizations": [
+    "Skia Canvas rendering (GPU-accelerated)",
+    "All animations run on UI thread via worklets",
+    "useDerivedValue for automatic dependency tracking",
+    "useCallback to prevent unnecessary re-renders",
+    "Early return on same square press (avoids redundant animations)",
+    "Minimal React Native View overhead (entire UI is Skia)",
+    "Font loaded once via useFont hook",
+    "Efficient clip path recreation only when dependencies change",
+    "SharedValue-based state management (no React state updates during animation)"
+  ],
+  "use_cases": [
+    "App-wide theme switcher with visual feedback",
+    "Settings screen theme selector",
+    "Design system color palette preview",
+    "Color scheme demonstration",
+    "Interactive theme customization UI",
+    "Onboarding theme selection",
+    "Creative portfolio theme switcher",
+    "Educational tool for teaching Skia and clip paths",
+    "Brand color palette selector",
+    "Accessibility theme options (light/dark/high-contrast)",
+    "Game UI theme selection",
+    "E-commerce product color picker with preview"
+  ],
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit type annotations",
+      "Clean separation of SelectableSquare and SelectableSquareContainer",
+      "Reusable SelectableSquare component with props interface",
+      "Clear constant definitions (SQUARE_SIZE, APP_TEXT, colors)",
+      "Proper worklet directives ('worklet') in gesture handlers",
+      "BackgroundComponent extracted with useCallback for reusability",
+      "Dependency arrays properly specified in useCallback",
+      "Type-safe SharedValue usage",
+      "Optional borderColor prop with default value",
+      "Coordinate mapping abstraction in SelectableSquareContainer",
+      "Clean import organization",
+      "FC type usage for functional components"
+    ],
+    "areas_for_improvement": [
+      "Hard-coded colors array (could be extracted to separate config file)",
+      "SQUARE_SIZE and animation duration (500ms) are magic numbers",
+      "No PropTypes or runtime validation",
+      "Limited inline documentation/comments explaining the algorithm",
+      "No accessibility considerations (screen readers can't parse Skia Canvas)",
+      "Font path is hard-coded with require() and relative path",
+      "No error handling for font loading failure",
+      "Colors array has no type definition (could use const assertion)",
+      "No visual feedback for disabled state or loading",
+      "Grid layout logic could be extracted to separate utility function"
+    ]
+  },
+  "known_limitations": [
+    "Fixed 6-theme limit (hardcoded colors array)",
+    "Square arrangement is hardcoded (specific offset pattern)",
+    "Animation duration (500ms) is not configurable",
+    "SQUARE_SIZE fixed at 35px (not responsive to screen size)",
+    "No accessibility support (Skia Canvas not accessible to screen readers)",
+    "Requires custom font (outfit.ttf) in assets folder",
+    "No keyboard navigation support",
+    "Theme colors must include both 'background' and 'text' properties",
+    "Circular reveal always expands from selected square position",
+    "Cannot customize reveal animation type (always circular)",
+    "No haptic feedback on theme selection",
+    "Grid layout doesn't adapt to different numbers of themes",
+    "Text content is hardcoded ('THEME')",
+    "Font size (40) is hardcoded, not responsive",
+    "No prefers-reduced-motion support"
+  ],
+  "potential_improvements": [
+    "Make colors configurable via props",
+    "Extract grid layout calculation to utility function",
+    "Support dynamic number of themes (not just 6)",
+    "Add configurable animation duration and easing",
+    "Make SQUARE_SIZE responsive (percentage of screen width)",
+    "Add different reveal animations (square, diamond, wave)",
+    "Implement haptic feedback via expo-haptics",
+    "Add sound effects on theme change",
+    "Support custom fonts via props",
+    "Add theme names/labels below squares",
+    "Implement theme preview on hover/long-press",
+    "Add undo/redo functionality",
+    "Support custom text content via props",
+    "Add animation direction control (expand/collapse)",
+    "Implement color picker integration",
+    "Add theme export/import functionality",
+    "Support gradient backgrounds (not just solid colors)",
+    "Add transition animation variants (fade, slide, morph)",
+    "Implement accessibility via announcements (AccessibilityInfo)",
+    "Add theme persistence (AsyncStorage)",
+    "Support custom icon/badge on selected theme",
+    "Add double-tap to preview theme without committing",
+    "Implement swipe gestures to cycle through themes",
+    "Add theme shuffle/random selection",
+    "Support dynamic theme generation from image"
+  ],
+  "key_insights": [
+    "Skia Canvas enables complex UI without React Native View overhead",
+    "Clip paths with dynamic circles create elegant reveal transitions",
+    "Dual-layer rendering pattern: previous theme + clipped current theme",
+    "withTiming completion callback perfect for multi-stage animations",
+    "Expanding circle to canvas height ensures full coverage regardless of position",
+    "useDerivedValue for coordinates enables responsive repositioning",
+    "scheduleOnRN bridges worklet context back to JS thread for callbacks",
+    "Geometric offset pattern creates balanced grid layout",
+    "Font metrics (measureText) enable precise text centering",
+    "Border color change provides visual feedback for selected state",
+    "Spring animations on scale create natural press feedback",
+    "Touchable.Canvas wrapper enables gesture handling on Skia components",
+    "useGestureHandler pattern separates gesture logic from rendering",
+    "Early return pattern prevents animation conflicts on redundant taps",
+    "Radius reset in callback ensures clean state for next animation"
+  ],
+  "learning_opportunities": {
+    "for_beginners": [
+      "Skia Canvas basics (Group, Rect, Text, RoundedRect)",
+      "useFont hook for custom fonts",
+      "useSharedValue for animation state",
+      "withTiming for simple animations",
+      "useCallback for component optimization",
+      "Basic color palette management",
+      "Array mapping for component generation"
+    ],
+    "for_intermediate": [
+      "Skia Path API (Skia.Path.Make, addCircle)",
+      "Clip path animations for reveal effects",
+      "useDerivedValue for computed coordinates",
+      "react-native-skia-gesture integration",
+      "useGestureHandler pattern (onStart, onTap)",
+      "withTiming completion callbacks",
+      "scheduleOnRN for cross-thread communication",
+      "Font metrics for dynamic text positioning",
+      "Dual-layer rendering patterns",
+      "Spring animations with withSpring"
+    ],
+    "for_advanced": [
+      "Complex Skia Canvas architectures",
+      "Multi-stage animation orchestration",
+      "Dynamic clip path generation algorithms",
+      "Performance optimization with Skia",
+      "Custom gesture handler implementation",
+      "Worklet context management",
+      "Building theme systems with Skia",
+      "Coordinate system transformations",
+      "Advanced Skia rendering techniques",
+      "Creating reusable Skia component libraries"
+    ]
+  },
+  "skia_patterns": {
+    "canvas_structure": {
+      "root": "Touchable.Canvas (enables gesture handling)",
+      "scene_container": "Group (root container for all Skia elements)",
+      "background_layers": [
+        "Previous theme background (Rect + Text)",
+        "Current theme background with clip (Group with clip prop)"
+      ],
+      "interactive_elements": "SelectableSquare components (Touchable.RoundedRect + RoundedRect for border)"
+    },
+    "clip_path_technique": {
+      "pattern": "useDerivedValue generating dynamic Skia Path",
+      "path_creation": "Skia.Path.Make() creates empty path",
+      "shape_addition": "path.addCircle(x, y, radius) adds circular clip region",
+      "application": "Group clip={clipPath} prop applies clipping to children",
+      "effect": "Only pixels inside circle are visible",
+      "animation": "Radius grows from 0 to canvas height"
+    },
+    "text_rendering": {
+      "font_loading": "useFont(require('path'), size)",
+      "positioning": {
+        "x": "Center - measureText(text).width / 2",
+        "y": "Center - 65 (above squares)"
+      },
+      "color": "Derived from selected theme",
+      "dual_rendering": "Rendered in both previous and current theme layers"
+    },
+    "touchable_components": {
+      "canvas_wrapper": "Touchable.Canvas enables touch on entire canvas",
+      "interactive_shapes": "Touchable.RoundedRect for individual squares",
+      "gesture_handler": "useGestureHandler with onStart and onTap",
+      "press_feedback": "Scale transform via withSpring(0.9) on onStart"
+    },
+    "coordinate_system": {
+      "origin": "Top-left (0, 0) of canvas",
+      "responsive": "useDerivedValue recalculates on dimension changes",
+      "centering": "canvasWidth/2, canvasHeight/2 as base",
+      "offset_pattern": [
+        "{ offsetX: -1, offsetY: 0 } (left)",
+        "{ offsetX: 0, offsetY: 0 } (center)",
+        "{ offsetX: 1, offsetY: 0 } (right)",
+        "{ offsetX: 0, offsetY: 1 } (bottom center)",
+        "{ offsetX: -1, offsetY: 1 } (bottom left)",
+        "{ offsetX: 1, offsetY: 1 } (bottom right)"
+      ],
+      "calculation": "cx = centerX + offsetX * SQUARE_SIZE * 2"
+    }
+  },
+  "gesture_handling": {
+    "library": "react-native-skia-gesture",
+    "pattern": "useGestureHandler hook",
+    "callbacks": {
+      "onStart": {
+        "purpose": "Immediate feedback on touch down",
+        "action": "scale.value = withSpring(0.9)",
+        "worklet": true,
+        "effect": "Square shrinks slightly"
+      },
+      "onTap": {
+        "purpose": "Handle completed tap gesture",
+        "actions": [
+          "scale.value = withSpring(1) (restore scale)",
+          "scheduleOnRN(onSelect) (call callback on JS thread)"
+        ],
+        "worklet": true,
+        "effect": "Square returns to normal size and triggers theme change"
+      }
+    },
+    "cross_thread_communication": {
+      "pattern": "scheduleOnRN wrapping callback",
+      "reason": "onSelect may update React state (needs JS thread)",
+      "benefit": "Worklet can safely call JS functions"
+    }
+  },
+  "color_palette_structure": {
+    "format": "Array of objects with background and text properties",
+    "palettes": [
+      {
+        "name": "Light Gray",
+        "background": "#F7FFF7",
+        "text": "#373737",
+        "theme": "Light mode with subtle green tint"
+      },
+      {
+        "name": "Turquoise",
+        "background": "#4ECDC4",
+        "text": "#2C2C2C",
+        "theme": "Vibrant cyan/turquoise"
+      },
+      {
+        "name": "Dark Teal",
+        "background": "#1A535C",
+        "text": "#E8E8E8",
+        "theme": "Deep teal with light text"
+      },
+      {
+        "name": "Coral",
+        "background": "#EE6C4D",
+        "text": "#D4D2D2",
+        "theme": "Warm coral/salmon"
+      },
+      {
+        "name": "Peach",
+        "background": "#F38D68",
+        "text": "#2C2C2C",
+        "theme": "Soft peach/orange"
+      },
+      {
+        "name": "Burgundy",
+        "background": "#902D41",
+        "text": "#DEDEDE",
+        "theme": "Deep burgundy/wine"
+      }
+    ],
+    "selection": "Via index into colors array",
+    "interpolation": "useDerivedValue selects color based on SharedValue index"
+  },
+  "animation_flow": {
+    "initialization": [
+      "selectedIndex = 0 (first theme)",
+      "previousSelectedIndex = 0",
+      "radius = 0 (no clip)"
+    ],
+    "on_square_tap": [
+      "1. Check if index === selectedIndex.value (early return if same)",
+      "2. Set radius.value = 0 (reset circle)",
+      "3. Set previousSelectedIndex.value = selectedIndex.value (store current)",
+      "4. Set selectedIndex.value = index (update to new theme)",
+      "5. Animate radius: withTiming(canvasHeight, { duration: 500 }, callback)",
+      "6. Circle expands, revealing new theme via clip path",
+      "7. On completion callback: previousSelectedIndex.value = index, radius.value = 0"
+    ],
+    "visual_sequence": [
+      "Previous theme visible (no clip)",
+      "User taps square",
+      "Small circle appears at square position with new theme",
+      "Circle expands over 500ms",
+      "New theme fully revealed",
+      "Radius resets to 0, previousSelectedIndex updated",
+      "Ready for next transition"
+    ],
+    "dual_layer_rendering": [
+      "Layer 1: Previous theme (full screen, no clip)",
+      "Layer 2: Current theme (clipped by expanding circle)",
+      "Effect: Seamless transition without flicker"
+    ]
+  },
+  "responsive_design": {
+    "window_dimensions": "useWindowDimensions() hook",
+    "coordinates_recalculation": "useDerivedValue updates on width/height change",
+    "text_positioning": {
+      "horizontal": "Recalculates center based on canvasWidth",
+      "vertical": "Recalculates center based on canvasHeight"
+    },
+    "circle_expansion_target": "canvasHeight (ensures full coverage)",
+    "grid_centering": "All squares positioned relative to canvas center",
+    "font_metrics": "measureText() for precise text centering"
+  },
+  "mathematical_algorithms": {
+    "circle_center_calculation": {
+      "formula": "x = canvasWidth/2 - SQUARE_SIZE/2 + offsetX * SQUARE_SIZE * 2",
+      "y_calculation": "y = canvasHeight/2 - SQUARE_SIZE/2 + offsetY * SQUARE_SIZE * 2",
+      "spacing": "SQUARE_SIZE * 2 between squares (35px square + 35px gap)",
+      "pattern": "Creates symmetric grid around center point"
+    },
+    "text_centering": {
+      "horizontal": "canvasWidth/2 - textWidth/2",
+      "vertical": "canvasHeight/2 - 65 (fixed offset above squares)",
+      "width_calculation": "font.measureText(APP_TEXT).width"
+    },
+    "circle_expansion": {
+      "start": "radius = 0 (invisible)",
+      "end": "radius = canvasHeight",
+      "reason": "canvasHeight > diagonal distance to any corner from center",
+      "duration": "500ms linear timing",
+      "ensures": "Complete coverage of canvas area"
+    },
+    "transform_origin": {
+      "square_rotation": "{ x: cx + size/2, y: cy + size/2 }",
+      "effect": "Scale animation pivots from square center"
+    }
+  },
+  "comparison_to_alternatives": {
+    "vs_react_native_view_based": {
+      "this_approach": "Skia Canvas rendering",
+      "traditional": "View/Text/Pressable components",
+      "performance": "Skia is GPU-accelerated, potentially better for complex animations",
+      "accessibility": "Skia has limitations, Views have better a11y support",
+      "flexibility": "Skia enables advanced effects (clip paths, custom shapes)",
+      "complexity": "Skia requires more specialized knowledge"
+    },
+    "vs_svg_masking": {
+      "this_approach": "Skia clip paths with dynamic circles",
+      "svg_alternative": "SVG clipPath and circle elements",
+      "performance": "Skia typically more performant on mobile",
+      "web_compatibility": "SVG better for web, Skia mobile-first",
+      "api_difference": "Skia imperative (path.addCircle), SVG declarative"
+    },
+    "vs_opacity_fade": {
+      "this_approach": "Circular reveal with clip path",
+      "simple_fade": "Opacity animation between themes",
+      "visual_impact": "Circular reveal more engaging and dynamic",
+      "complexity": "Clip path more complex to implement",
+      "performance": "Opacity slightly more performant, but both acceptable"
+    }
+  },
+  "platform_considerations": {
+    "ios": {
+      "compatibility": "Full Skia support",
+      "performance": "Excellent GPU rendering",
+      "font_loading": "Custom fonts work via require()"
+    },
+    "android": {
+      "compatibility": "Full Skia support",
+      "performance": "Excellent GPU rendering",
+      "font_loading": "Custom fonts work via require()"
+    },
+    "web": {
+      "compatibility": "Skia Web via CanvasKit",
+      "performance": "Good, may be heavier than DOM",
+      "considerations": "Larger bundle size with CanvasKit",
+      "gesture_handling": "May need mouse event adaptation"
+    }
+  },
+  "testing_considerations": {
+    "visual_tests": [
+      "Circle expands from correct square position",
+      "Full canvas coverage at animation end",
+      "Text color matches selected theme",
+      "Background color matches selected theme",
+      "Square borders highlight selected theme",
+      "No flicker during transition",
+      "Smooth animation at 60fps"
+    ],
+    "interaction_tests": [
+      "Tapping square triggers theme change",
+      "Scale feedback on press",
+      "Scale restores on tap complete",
+      "Same square tap doesn't restart animation",
+      "Rapid tapping doesn't break state",
+      "All 6 squares are tappable"
+    ],
+    "edge_cases": [
+      "Window resize during animation",
+      "Very small screen sizes",
+      "Very large screen sizes",
+      "Font loading failure",
+      "Rapid theme switching",
+      "Animation interruption by new tap"
+    ],
+    "performance_tests": [
+      "60fps during circle expansion",
+      "No frame drops on low-end devices",
+      "Memory usage stable over many theme changes",
+      "Skia Canvas rendering performance"
+    ]
+  },
+  "accessibility_considerations": {
+    "current_limitations": {
+      "screen_readers": "Skia Canvas content not accessible",
+      "semantic_structure": "No semantic HTML/accessibility tree",
+      "focus_management": "No keyboard focus support",
+      "announcements": "No screen reader announcements on theme change"
+    },
+    "recommendations": [
+      "Add hidden View overlay with accessibility labels",
+      "Use AccessibilityInfo to announce theme changes",
+      "Implement keyboard navigation via hidden buttons",
+      "Provide accessible alternative UI (React Native Views)",
+      "Add prefers-reduced-motion check (disable animation)",
+      "Ensure color contrast meets WCAG standards",
+      "Add haptic feedback for non-visual feedback"
+    ],
+    "workaround_pattern": {
+      "approach": "Render invisible touchable Views over Skia squares",
+      "benefit": "Screen readers can access invisible buttons",
+      "labels": "Describe theme colors and selection state",
+      "state": "accessibilityState={{ selected: index === selected }}"
+    }
+  },
+  "real_world_inspiration": {
+    "design_inspiration": [
+      "iOS Control Center theme selector",
+      "Material Design color palette picker",
+      "Framer motion reveal animations",
+      "App theme switchers with preview"
+    ],
+    "technical_patterns": [
+      "Circular reveal transitions (Android Material Design)",
+      "SVG clip-path animations",
+      "Canvas-based UI libraries (Fabric.js, Konva.js)",
+      "Game engine UI systems"
+    ]
+  },
+  "bundle_size_impact": {
+    "code_size": "~240 lines total (index.tsx + selectable-square/index.tsx)",
+    "dependencies": {
+      "likely_already_present": [
+        "@shopify/react-native-skia",
+        "react-native-reanimated",
+        "react-native-skia-gesture",
+        "react-native-worklets"
+      ],
+      "asset_size": "Custom font (outfit.ttf) - size varies"
+    },
+    "runtime_memory": "Minimal - 3 SharedValues + 1 font loaded",
+    "skia_overhead": "Skia Canvas already in project, no additional impact"
+  },
+  "tags": [
+    "skia",
+    "canvas",
+    "theme-selector",
+    "circular-reveal",
+    "clip-path",
+    "color-palette",
+    "reanimated",
+    "withTiming",
+    "gesture-handler",
+    "skia-gesture",
+    "touch-interaction",
+    "spring-animation",
+    "dual-layer-rendering",
+    "worklets",
+    "custom-font",
+    "responsive",
+    "gpu-accelerated",
+    "theme-switching",
+    "reveal-animation",
+    "interactive-canvas"
+  ],
+  "content_hash": "f21f71cbdc83bedeada6a01424d5b9ece606c4676d9f1522a244dec5d0998c86",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.478Z",
+  "last_validated": "2025-10-12T09:19:28.478Z"
+}

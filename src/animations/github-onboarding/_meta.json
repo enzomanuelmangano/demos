@@ -1,0 +1,762 @@
+{
+  "animation_name": "GitHub Colorful Onboarding",
+  "animation_slug": "github-onboarding",
+  "description": "A colorful onboarding carousel inspired by GitHub's mobile app, featuring paginated image slides with 3D flip animations, dynamic background gradients, and interactive pagination dots. Each slide displays cat-themed images with titles, smooth page transitions, and synchronized color changes.",
+  "main_features": [
+    "Horizontal paginated carousel with 4 slides",
+    "3D flip animation (rotateY) with scale effect on images",
+    "Dynamic Skia-based gradient background (interpolates between slide colors)",
+    "Animated opacity on titles (fade in/out based on scroll position)",
+    "Interactive pagination dots with opacity transitions",
+    "Smooth scroll-to-index on dot press",
+    "Synchronized color transitions across background, using color darkening",
+    "Cat-themed imagery with descriptive titles"
+  ],
+  "file_structure": {
+    "index.tsx": "Main entry point with data array and GestureHandlerRootView wrapper",
+    "components/colorful-onboarding/": {
+      "index.tsx": "Main carousel component with Skia Canvas background, FlatList, and scroll handling",
+      "page.tsx": "Individual onboarding page with 3D flip animation and title fade",
+      "pagination-dots/": {
+        "index.tsx": "Pagination container component managing multiple dots",
+        "pagination-dots.tsx": "Individual animated dot with press interaction"
+      }
+    },
+    "assets/": {
+      "01.jpg": "Cat image - Whiskered Explorer",
+      "02.jpg": "Cat image - Lazy Day Lounger",
+      "03.jpg": "Cat image - Curious Kitty Gaze",
+      "04.jpg": "Cat image - Sleek Feline in Repose"
+    }
+  },
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "images": "expo-image",
+    "color_manipulation": "color (npm package)"
+  },
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "usage": "Canvas background with animated gradient",
+      "components": [
+        "Canvas",
+        "Rect",
+        "LinearGradient"
+      ],
+      "utilities": [
+        "vec"
+      ],
+      "performance_reason": "GPU-accelerated gradient rendering that updates smoothly during scroll"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "usage": "Scroll animations, gradient interpolation, 3D transforms, opacity fades",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "useAnimatedScrollHandler",
+        "useAnimatedRef",
+        "interpolateColor",
+        "convertToRGBA"
+      ],
+      "critical_feature": "interpolateColor for smooth background color transitions"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "usage": "Required for GestureHandlerRootView wrapper",
+      "components": [
+        "GestureHandlerRootView"
+      ],
+      "note": "Provides gesture infrastructure for FlatList interactions"
+    },
+    "expo-image": {
+      "version": "~3.0.8",
+      "usage": "Optimized image rendering for cat photos",
+      "components": [
+        "Image"
+      ],
+      "benefit": "Better performance and loading states than default Image"
+    },
+    "color": {
+      "version": "^4.2.3",
+      "usage": "Color manipulation for darkening gradient colors",
+      "methods": [
+        "Color(hex).darken(0.8).hex()"
+      ],
+      "purpose": "Creates bottom gradient color by darkening base color by 80%"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "usage": "Pressable pagination dots with scale animation",
+      "components": [
+        "PressableScale"
+      ]
+    }
+  },
+  "animation_techniques": {
+    "background_gradient": {
+      "pattern": "Skia LinearGradient with color interpolation",
+      "implementation": "Rect with LinearGradient from top to bottom",
+      "color_calculation": [
+        "Base colors from data array (per slide)",
+        "Darkened colors using Color().darken(0.8)",
+        "interpolateColor based on scroll progress",
+        "convertToRGBA for Skia compatibility"
+      ],
+      "gradient_vector": "Vertical from (width/2, 0) to (width/2, height*2)",
+      "transitions": "Smooth color interpolation as user scrolls between slides"
+    },
+    "image_3d_flip": {
+      "pattern": "3D perspective transform with rotateY and scale",
+      "input_range": "[(index-1)*width, index*width, (index+1)*width]",
+      "rotateY": "interpolate → [π/4, 2π, π/4] radians",
+      "scale": "interpolate → [0.5, 1, 0.5]",
+      "effect": "Images flip and scale up when centered, flip and scale down when off-screen",
+      "styling": "White circular badge container with rounded Image"
+    },
+    "title_fade": {
+      "pattern": "Opacity interpolation with extrapolation clamping",
+      "input_range": "[(index-1)*width, index*width, (index+1)*width]",
+      "opacity": "interpolate → [-1, 1, -1] with CLAMP extrapolation",
+      "effect": "Title fades in when slide is centered, fades out when off-screen",
+      "note": "Negative opacity values are clamped to 0, positive to 1"
+    },
+    "pagination_dots": {
+      "pattern": "Opacity animation based on proximity to active index",
+      "threshold": 0.7,
+      "opacity_range": "[0.2, 0.6, 0.2] (disabled, enabled, disabled)",
+      "input_range": "[index-0.7, index, index+0.7]",
+      "extrapolation": "CLAMP on both sides",
+      "interaction": "PressableScale with automatic scale animation on press"
+    },
+    "scroll_to_index": {
+      "trigger": "Pagination dot press",
+      "method": "ref.current?.scrollToOffset({ offset: index * width, animated: true })",
+      "animation": "Native smooth scroll animation"
+    }
+  },
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "currentOffset",
+        "type": "SharedValue<number>",
+        "updates": "useAnimatedScrollHandler (onScroll event)",
+        "source": "contentOffset.x from FlatList scroll"
+      },
+      {
+        "name": "progress",
+        "type": "useDerivedValue",
+        "calculation": "currentOffset.value / width",
+        "purpose": "Normalized scroll progress (0-3 for 4 slides)",
+        "dependents": [
+          "gradientColors",
+          "pagination dots"
+        ]
+      },
+      {
+        "name": "gradientColors",
+        "type": "useDerivedValue",
+        "calculation": "interpolateColor + convertToRGBA",
+        "updates": "Whenever progress changes",
+        "returns": "[baseColor, darkenedColor] RGBA array"
+      }
+    ],
+    "useAnimatedScrollHandler": {
+      "event": "onScroll",
+      "extracted": "contentOffset.x",
+      "throttle": "scrollEventThrottle={16} (60fps)",
+      "updates": "currentOffset.value = x"
+    },
+    "useDerivedValue_patterns": [
+      {
+        "name": "progress",
+        "purpose": "Converts pixel offset to normalized progress",
+        "dependencies": "[width]"
+      },
+      {
+        "name": "gradientColors",
+        "purpose": "Computes interpolated RGBA colors for Skia",
+        "dependencies": "progress (implicitly via progress.value)",
+        "worklet": true
+      }
+    ],
+    "useAnimatedStyle_usage": [
+      {
+        "component": "OnboardingPage (badge)",
+        "transforms": [
+          "rotateY",
+          "scale"
+        ],
+        "dependencies": "currentOffset, inputRange"
+      },
+      {
+        "component": "OnboardingPage (title)",
+        "properties": [
+          "opacity"
+        ],
+        "dependencies": "currentOffset, inputRange"
+      },
+      {
+        "component": "PaginationDot",
+        "properties": [
+          "opacity"
+        ],
+        "dependencies": "progress, index"
+      }
+    ],
+    "useAnimatedRef": {
+      "component": "Animated.FlatList",
+      "methods": [
+        "scrollToOffset"
+      ],
+      "note": "Requires @ts-ignore due to FlatList type compatibility"
+    }
+  },
+  "color_system": {
+    "slide_colors": [
+      {
+        "slide": 0,
+        "title": "Lazy Day Lounger",
+        "color": "#265D9E"
+      },
+      {
+        "slide": 1,
+        "title": "Whiskered Explorer",
+        "color": "#4E8DC5"
+      },
+      {
+        "slide": 2,
+        "title": "Curious Kitty Gaze",
+        "color": "#7BB2E9"
+      },
+      {
+        "slide": 3,
+        "title": "Sleek Feline in Repose",
+        "color": "#A1CAE8"
+      }
+    ],
+    "gradient_generation": {
+      "base_color": "Slide's color value",
+      "darken_factor": 0.8,
+      "result": "LinearGradient from base to darkened color",
+      "example": "#265D9E → darken(0.8) → ~#0a1e33"
+    },
+    "interpolation": {
+      "indexes": "[0, 1, 2, 3]",
+      "colors": "Extracted from data array",
+      "function": "interpolateColor(progress.value, indexes, colors)",
+      "output": "RGBA color for current scroll position"
+    },
+    "ui_elements": {
+      "page_badge_bg": "white",
+      "page_title": "white, 40px, bold, uppercase",
+      "pagination_dots": "#D4D4D4 (light gray)",
+      "dot_opacity": "0.2 (disabled) to 0.6 (enabled)"
+    }
+  },
+  "layout_and_sizing": {
+    "flatlist": {
+      "orientation": "horizontal",
+      "paging": true,
+      "page_width": "useWindowDimensions().width",
+      "page_height": "useWindowDimensions().height",
+      "scroll_indicators": false
+    },
+    "canvas": {
+      "position": "absolute",
+      "size": "Full screen (width × height)",
+      "z_index": "Below FlatList (default)"
+    },
+    "page_badge": {
+      "width": "width * 0.6",
+      "aspect_ratio": 1,
+      "border_radius": "width * 0.3 (fully rounded)",
+      "background": "white",
+      "padding": 10,
+      "overflow": "hidden"
+    },
+    "page_image": {
+      "flex": 1,
+      "border_radius": 400,
+      "note": "High border radius for circular appearance"
+    },
+    "page_title": {
+      "margin_horizontal": 40,
+      "margin_top": 50,
+      "text_align": "center",
+      "letter_spacing": 1
+    },
+    "pagination_dots_container": {
+      "position": "absolute",
+      "bottom": 100,
+      "z_index": 10,
+      "flex_direction": "row",
+      "justify_content": "center"
+    },
+    "pagination_dot": {
+      "size": "7px (DOT_SIZE constant)",
+      "border_radius": "3.5px (DOT_SIZE / 2)",
+      "padding_horizontal": 5,
+      "hit_slop": 5
+    }
+  },
+  "performance_optimizations": {
+    "skia_canvas": {
+      "benefit": "GPU-accelerated gradient rendering",
+      "technique": "Single Canvas with animated LinearGradient",
+      "vs_alternative": "Much more performant than View with animated backgroundColor"
+    },
+    "useDerivedValue": {
+      "purpose": "Memoized computations that only update when dependencies change",
+      "used_for": [
+        "progress calculation",
+        "gradient color interpolation"
+      ],
+      "benefit": "Avoids unnecessary recalculations"
+    },
+    "useMemo_arrays": {
+      "indexes": "Computed once from data array",
+      "colors": "Extracted once from data array",
+      "darkenColors": "Computed once using Color().darken()",
+      "benefit": "Prevents recalculation on every render"
+    },
+    "flatlist_native_driver": {
+      "scroll_event_throttle": 16,
+      "paging_enabled": true,
+      "benefit": "Native paging animation, smooth 60fps scrolling"
+    },
+    "expo_image": {
+      "benefit": "Optimized image loading and caching",
+      "vs_standard": "Better performance than React Native Image"
+    },
+    "interpolateColor_performance": {
+      "runs_on": "UI thread (worklet)",
+      "benefit": "No JS bridge crossing for color calculations"
+    }
+  },
+  "react_patterns": {
+    "component_composition": {
+      "AppContainer": "Root wrapper with GestureHandlerRootView",
+      "App": "Data definition and ColorfulOnboarding rendering",
+      "ColorfulOnboarding": "Main orchestrator (Canvas + FlatList + Pagination)",
+      "OnboardingPage": "Individual slide component",
+      "PaginationDots": "Container for dot array",
+      "PaginationDot": "Individual animated dot with press handling"
+    },
+    "data_driven_rendering": {
+      "pattern": "Single data array drives all rendering",
+      "data_structure": "Array<{title: string, color: string, image: require(...)}>",
+      "benefits": "Easy to add/remove slides by modifying data array"
+    },
+    "prop_drilling": {
+      "ColorfulOnboarding → OnboardingPage": "image, title, index, currentOffset, width, height",
+      "ColorfulOnboarding → PaginationDots": "progress, count, onDotPress",
+      "PaginationDots → PaginationDot": "progress, index, count, onPress"
+    },
+    "callback_props": {
+      "onDotPress": "(index: number) => void",
+      "implementation": "Scrolls FlatList to clicked dot's page"
+    },
+    "typescript_usage": {
+      "types_defined": [
+        "ColorListItemType",
+        "ColorfulOnboardingProps",
+        "OnboardingPageProps",
+        "PaginationDotsProps",
+        "PaginationDotProps"
+      ],
+      "ReturnType_utility": "ReturnType<typeof require> for image types"
+    },
+    "fragment_usage": {
+      "location": "PaginationDots map",
+      "reason": "Avoids extra wrapper View, cleaner DOM"
+    }
+  },
+  "ui_ux_design": {
+    "onboarding_flow": {
+      "slide_count": 4,
+      "navigation": [
+        "Swipe left/right",
+        "Tap pagination dots"
+      ],
+      "feedback": "Immediate visual response (color change, 3D flip)"
+    },
+    "visual_hierarchy": {
+      "primary": "Image badge (60% width, centered)",
+      "secondary": "Title text (below badge)",
+      "tertiary": "Pagination dots (bottom, absolute)",
+      "background": "Gradient (fills entire screen)"
+    },
+    "color_progression": {
+      "theme": "Cool blues (gradient from dark to light)",
+      "slide_0": "#265D9E (dark blue)",
+      "slide_1": "#4E8DC5 (medium blue)",
+      "slide_2": "#7BB2E9 (light blue)",
+      "slide_3": "#A1CAE8 (very light blue)",
+      "visual_effect": "Progressively lighter as user advances through onboarding"
+    },
+    "animation_timing": {
+      "scroll_animation": "Native FlatList paging (smooth)",
+      "3d_flip": "Synchronized with scroll (no separate timing)",
+      "color_transition": "Continuous interpolation during scroll",
+      "dot_opacity": "Instant updates based on progress"
+    },
+    "typography": {
+      "title_size": 40,
+      "title_weight": "bold",
+      "title_transform": "uppercase",
+      "title_color": "white",
+      "letter_spacing": 1
+    },
+    "imagery": {
+      "theme": "Cat photos (cute, engaging)",
+      "treatment": "Circular badge with white border/padding",
+      "purpose": "Creates friendly, approachable onboarding experience"
+    }
+  },
+  "interaction_patterns": {
+    "horizontal_scroll": {
+      "gesture": "Swipe left/right on FlatList",
+      "behavior": "Snaps to nearest page (pagingEnabled)",
+      "response": [
+        "Background color interpolates",
+        "Current image scales up and flips to front",
+        "Previous/next images scale down and flip to side",
+        "Current title fades in",
+        "Previous/next titles fade out",
+        "Pagination dots update opacity"
+      ]
+    },
+    "dot_press": {
+      "component": "PressableScale",
+      "gesture": "Tap on pagination dot",
+      "animation": "Scale down/up (via pressto)",
+      "action": "scrollToOffset on FlatList",
+      "animated": true,
+      "hit_slop": 5,
+      "benefit": "Larger touch target for better usability"
+    }
+  },
+  "mathematical_patterns": {
+    "progress_calculation": {
+      "formula": "currentOffset / width",
+      "result": "0.0 = slide 0, 1.0 = slide 1, etc.",
+      "usage": "Drives all interpolations"
+    },
+    "color_interpolation": {
+      "function": "interpolateColor",
+      "input_range": "[0, 1, 2, 3]",
+      "output_range": "[color0, color1, color2, color3]",
+      "between_values": "Linear RGB interpolation"
+    },
+    "3d_rotation": {
+      "formula": "interpolate(offset, [prevPage, currPage, nextPage], [π/4, 2π, π/4])",
+      "π/4": "45° (flipped sideways)",
+      "2π": "360° (full rotation, facing front)",
+      "effect": "Appears to flip from side view to front view"
+    },
+    "scale_interpolation": {
+      "formula": "interpolate(offset, [prevPage, currPage, nextPage], [0.5, 1, 0.5])",
+      "0.5": "Half size (when off-screen)",
+      "1.0": "Full size (when centered)",
+      "effect": "Badge grows as it moves to center"
+    },
+    "opacity_fade": {
+      "formula": "interpolate(offset, [prevPage, currPage, nextPage], [-1, 1, -1], CLAMP)",
+      "negative_values": "Clamped to 0",
+      "positive_values": "Clamped to 1",
+      "effect": "Binary visible/invisible with smooth transition"
+    },
+    "dot_opacity": {
+      "formula": "interpolate(progress, [i-0.7, i, i+0.7], [0.2, 0.6, 0.2], CLAMP)",
+      "threshold": 0.7,
+      "range": "Dots within 0.7 units of active page have higher opacity",
+      "active": 0.6,
+      "inactive": 0.2
+    }
+  },
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit type definitions",
+      "Clean component separation (layout, animation, interaction)",
+      "Proper use of React hooks (useMemo for expensive computations)",
+      "Reanimated 3 best practices (worklets, useDerivedValue)",
+      "StyleSheet for static styles",
+      "Descriptive variable and function names",
+      "Consistent code formatting",
+      "Modular file structure (component-based folders)",
+      "No magic numbers (constants like DOT_SIZE, OPACITY_THRESHOLD)",
+      "Proper extrapolation handling (CLAMP)"
+    ],
+    "areas_for_improvement": [
+      "@ts-ignore comments for FlatList ref (could use proper typing)",
+      "Hardcoded data in index.tsx (could be external JSON)",
+      "No error handling for image loading",
+      "No accessibility labels (VoiceOver/TalkBack support)",
+      "Duplicate key prop in Fragment (line 37 and 42 in pagination-dots/index.tsx)",
+      "Magic number for bottom position (100) could be constant",
+      "No loading states for images"
+    ]
+  },
+  "known_limitations": {
+    "typescript_issues": {
+      "issue": "FlatList ref types require @ts-ignore",
+      "location": "colorful-onboarding/index.tsx:80, 107",
+      "impact": "Type safety bypassed for scrollToOffset method",
+      "workaround": "Using @ts-ignore comments"
+    },
+    "accessibility": {
+      "issue": "No screen reader support",
+      "missing": [
+        "accessibilityLabel",
+        "accessibilityHint",
+        "accessibilityRole"
+      ],
+      "impact": "Not usable for visually impaired users"
+    },
+    "image_loading": {
+      "issue": "No loading indicators or error states",
+      "impact": "Poor UX on slow networks"
+    },
+    "responsive_design": {
+      "issue": "Fixed typography and spacing values",
+      "impact": "May not scale well on tablets or very small devices"
+    },
+    "gesture_conflicts": {
+      "potential": "Could conflict with parent/sibling gesture handlers",
+      "mitigation": "GestureHandlerRootView wrapper helps but not guaranteed"
+    },
+    "duplicate_key": {
+      "issue": "PaginationDot has key prop twice in Fragment",
+      "location": "pagination-dots/index.tsx:36-42",
+      "impact": "Redundant, but React only uses outermost key"
+    }
+  },
+  "potential_improvements": {
+    "accessibility": [
+      "Add accessibilityLabel to images and titles",
+      "accessibilityRole='adjustable' for pagination",
+      "Announce page changes to screen readers",
+      "Support for reduced motion preferences"
+    ],
+    "features": [
+      "Auto-advance timer option",
+      "Skip button to bypass onboarding",
+      "Progress bar alternative to dots",
+      "Vertical scroll variant",
+      "Custom animation easing options",
+      "Parallax effect on background",
+      "Video support in addition to images"
+    ],
+    "code_improvements": [
+      "Remove @ts-ignore with proper FlatList typing",
+      "Extract constants (BOTTOM_PADDING, etc.)",
+      "Add image loading states",
+      "Error boundaries for image failures",
+      "Remove duplicate key in Fragment",
+      "PropTypes or Zod validation for data array"
+    ],
+    "performance": [
+      "Lazy load off-screen images",
+      "Image placeholder/blur-up",
+      "Optimize image sizes for mobile",
+      "Consider react-native-fast-image as alternative"
+    ],
+    "ux_enhancements": [
+      "Swipe progress indicator",
+      "Haptic feedback on page change",
+      "Sound effects option",
+      "Custom dot styles (lines, progress bar)",
+      "CTA button on last slide ('Get Started')"
+    ]
+  },
+  "key_insights": {
+    "skia_for_backgrounds": "Using Skia Canvas for background gradient is much more performant than View with backgroundColor animations",
+    "color_interpolation": "interpolateColor + convertToRGBA enables smooth color transitions in Skia",
+    "3d_transform_impact": "rotateY creates compelling depth effect with minimal code",
+    "useDerivedValue_efficiency": "Derived values automatically update and memoize, perfect for computed properties",
+    "progress_normalization": "Converting pixel offset to normalized progress (0-N) simplifies all interpolations",
+    "pressto_simplicity": "PressableScale eliminates boilerplate for common press animations",
+    "color_package_utility": "color package makes gradient generation trivial with darken() method",
+    "extrapolation_clamping": "CLAMP extrapolation prevents interpolation overshoot beyond defined ranges",
+    "ref_for_imperative": "useAnimatedRef enables imperative FlatList control (scrollToOffset)",
+    "data_driven_scalability": "Single data array makes adding/removing slides trivial"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "FlatList horizontal paging patterns",
+      "Basic Reanimated scroll handlers",
+      "React component composition",
+      "TypeScript prop typing",
+      "Skia Canvas basics",
+      "Color interpolation concepts"
+    ],
+    "for_intermediate": [
+      "Skia LinearGradient with animations",
+      "useDerivedValue for computed values",
+      "useAnimatedRef for imperative control",
+      "interpolateColor and convertToRGBA",
+      "3D transforms (rotateY) in React Native",
+      "Synchronized multi-property animations",
+      "Extrapolation strategies"
+    ],
+    "for_advanced": [
+      "Performance optimization with Skia vs Views",
+      "Color manipulation libraries integration",
+      "Complex interpolation input/output ranges",
+      "Reanimated 3 worklet patterns",
+      "Building reusable onboarding components",
+      "Advanced FlatList optimization techniques",
+      "Type-safe ref handling patterns"
+    ]
+  },
+  "use_cases": {
+    "primary": [
+      "App onboarding flows",
+      "Feature showcases",
+      "Product tours",
+      "Tutorial sequences"
+    ],
+    "secondary": [
+      "Image galleries with descriptions",
+      "Story viewers (Instagram-style)",
+      "Testimonial carousels",
+      "Portfolio showcases"
+    ],
+    "educational": [
+      "Teaching Reanimated scroll animations",
+      "Demonstrating Skia gradients",
+      "3D transform examples",
+      "Color interpolation tutorials"
+    ],
+    "reusable_components": {
+      "ColorfulOnboarding": "Can be extracted as npm package with custom data",
+      "PaginationDots": "Standalone pagination component",
+      "OnboardingPage": "Template for any paginated content"
+    }
+  },
+  "platform_considerations": {
+    "ios": {
+      "features": [
+        "All features fully supported"
+      ],
+      "performance": "Excellent (60fps smooth scrolling and animations)"
+    },
+    "android": {
+      "features": [
+        "All features fully supported"
+      ],
+      "performance": "Excellent (GPU acceleration works well)",
+      "note": "Test pagingEnabled behavior on various Android devices"
+    },
+    "web": {
+      "compatibility": "Should work with react-native-web and Skia web support",
+      "considerations": [
+        "Expo-image may need web-specific polyfills",
+        "Test gesture handling on web",
+        "Consider scroll wheel interactions"
+      ]
+    }
+  },
+  "testing_considerations": {
+    "visual_testing": [
+      "Verify gradient renders correctly on all slides",
+      "Check 3D flip animation smoothness",
+      "Confirm title fade transitions",
+      "Test pagination dot opacity changes",
+      "Verify image circular appearance",
+      "Check layout on various screen sizes"
+    ],
+    "interaction_testing": [
+      "Swipe left/right through all slides",
+      "Tap each pagination dot",
+      "Test rapid swiping",
+      "Test rapid dot tapping",
+      "Verify scroll snapping to pages",
+      "Test on physical devices (not just simulator)"
+    ],
+    "performance_testing": [
+      "Monitor FPS during scroll",
+      "Check memory usage (images can be large)",
+      "Test on low-end devices",
+      "Profile Skia rendering performance",
+      "Verify no memory leaks after unmounting"
+    ],
+    "edge_cases": [
+      "Single slide (should still work)",
+      "Empty data array (should handle gracefully)",
+      "Very long titles (should wrap or truncate)",
+      "Images that fail to load",
+      "Landscape orientation",
+      "Very small screens",
+      "Very large screens (tablets)"
+    ]
+  },
+  "bundle_size_impact": {
+    "code_size": "Small (~300 lines total)",
+    "dependencies": [
+      "Skia (likely already in project)",
+      "Reanimated (likely already in project)",
+      "color package (~10KB gzipped)",
+      "expo-image (likely already in project)",
+      "pressto (lightweight)"
+    ],
+    "assets": "4 JPG images (~886KB total)",
+    "optimization_opportunities": [
+      "Compress images further",
+      "Use WebP format",
+      "Lazy load images",
+      "Tree-shake color package if only using darken()"
+    ]
+  },
+  "comparison_to_alternatives": {
+    "vs_react_native_onboarding_swiper": {
+      "advantage": "Full animation control, Skia performance",
+      "disadvantage": "More code to write"
+    },
+    "vs_lottie_onboarding": {
+      "advantage": "Native components, easier to customize",
+      "disadvantage": "Less fluid/complex animations than Lottie"
+    },
+    "vs_simple_flatlist": {
+      "advantage": "Much more visually appealing, modern design",
+      "disadvantage": "More complex, requires Skia and Reanimated"
+    }
+  },
+  "inspiration": {
+    "source": "GitHub mobile app onboarding",
+    "design_elements": [
+      "Colorful gradient backgrounds",
+      "Circular image badges",
+      "Smooth page transitions",
+      "Modern, clean design"
+    ],
+    "adaptations": [
+      "Used cat images instead of GitHub branding",
+      "Added 3D flip animation (not in original)",
+      "Implemented with Skia (more performant than original)"
+    ]
+  },
+  "tags": [
+    "onboarding",
+    "carousel",
+    "skia",
+    "reanimated",
+    "3d-transform",
+    "gradient",
+    "pagination",
+    "color-interpolation",
+    "horizontal-scroll",
+    "flatlist",
+    "tutorial",
+    "showcase",
+    "github-inspired"
+  ],
+  "content_hash": "3d6389259c1de23bf6b39ff2d0287b26d3ef0d1131c59f21e78c3886136b4b92",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.360Z",
+  "last_validated": "2025-10-12T09:19:28.360Z"
+}

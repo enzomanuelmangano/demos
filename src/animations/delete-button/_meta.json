@@ -1,0 +1,935 @@
+{
+  "animation_name": "Delete Button",
+  "animation_slug": "delete-button",
+  "description": "An interactive delete confirmation button featuring gooey morphing animation with dual-state toggling. The button expands horizontally to reveal a separate confirm button with a close icon, utilizing Skia's color matrix and blur effects to create a liquid, gooey merge effect between the buttons. Features smooth spring animations, text transitions, SVG icons, and gesture-based interactions.",
+  "main_features": [
+    "Gooey morphing button animation with blur and color matrix effects",
+    "Dual-state toggle system (delete/confirm states)",
+    "Horizontal expansion revealing secondary confirm button",
+    "Smooth spring-based position and color animations",
+    "Text opacity transitions between 'Delete' and 'Confirm'",
+    "SVG close icon with animated opacity using custom paint layer",
+    "Separate tap gestures for delete and close buttons",
+    "Scale feedback on button press",
+    "Customizable button dimensions and text labels",
+    "Optional close-on-confirm behavior"
+  ],
+  "file_structure": {
+    "index.tsx": "Main entry point exporting DeleteButton component",
+    "src/index.tsx": "Demo app with DeleteButton example configuration",
+    "src/components/delete-button.tsx": "Core button component orchestrating all animations and gestures",
+    "src/components/constants.ts": "Constants for SVG path, fonts, and spring configuration",
+    "src/components/use-delete-button-animations.ts": "Main delete button animation logic and gesture handling",
+    "src/components/use-close-buttons-animations.ts": "Close button animation logic and gesture handling",
+    "src/components/use-text-animations.ts": "Text opacity and position animations",
+    "src/components/use-gooey-layer.tsx": "Gooey effect layer using blur and color matrix"
+  },
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-skia-gesture",
+    "threading": "react-native-worklets"
+  },
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "usage": "Canvas rendering with gooey effects and SVG support",
+      "components": [
+        "Group",
+        "ImageSVG",
+        "Text",
+        "Paint",
+        "Blur",
+        "ColorMatrix"
+      ],
+      "hooks": [
+        "matchFont",
+        "Skia"
+      ],
+      "utilities": [
+        "Skia.SVG.MakeFromString",
+        "Skia.Paint"
+      ],
+      "critical_feature": "Color matrix and blur effects for gooey morphing, custom paint layer for SVG opacity"
+    },
+    "react-native-skia-gesture": {
+      "version": "latest",
+      "usage": "Touchable components with gesture support in Skia canvas",
+      "components": [
+        "Touchable.Canvas",
+        "Touchable.RoundedRect",
+        "Touchable.Circle"
+      ],
+      "hooks": [
+        "useGestureHandler"
+      ],
+      "critical_feature": "Gesture handling within Skia canvas context"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "usage": "Animations, gesture state, derived values",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedReaction"
+      ],
+      "functions": [
+        "withSpring",
+        "withTiming"
+      ],
+      "critical_feature": "Smooth spring animations and derived value calculations for coordinated animations"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "imports": [
+        "scheduleOnRN"
+      ],
+      "usage": "Bridge worklet callbacks to JS thread for onConfirmDeletion callback"
+    }
+  },
+  "animation_techniques": {
+    "gooey_effect": {
+      "pattern": "Blur + Color matrix transformation",
+      "implementation": "Paint layer with Blur and ColorMatrix components",
+      "blur_radius": 10,
+      "color_matrix": [
+        "Identity for RGB channels: [1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0]",
+        "Alpha channel transformation: [0, 0, 0, 18, -10]"
+      ],
+      "alpha_formula": "newAlpha = oldAlpha * 18 - 10",
+      "effect": "Creates liquid merging effect between overlapping shapes",
+      "applied_to": "Main group containing both buttons",
+      "key_insight": "High alpha multiplier (18) with negative offset (-10) creates strong gooey merge"
+    },
+    "horizontal_expansion": {
+      "pattern": "X-position interpolation with spring",
+      "shared_value": "deleteButtonRectX",
+      "initial_state": "additionalWidth / 2 (centered with gap)",
+      "expanded_state": "0 (flush left)",
+      "spring_config": {
+        "mass": 1,
+        "damping": 200
+      },
+      "effect": "Delete button slides left, close button slides left to meet it",
+      "timing": "Synchronized spring animation creates smooth morphing"
+    },
+    "button_color_transition": {
+      "pattern": "Color interpolation with timing",
+      "animation": "withTiming(isToggled ? 'black' : 'red')",
+      "colors": {
+        "delete_state": "red",
+        "confirm_state": "black"
+      },
+      "effect": "Both buttons share same color, transition synchronized",
+      "purpose": "Visual feedback that state has changed"
+    },
+    "close_button_reveal": {
+      "pattern": "Opacity and position animation",
+      "opacity": "withTiming(isToggled ? 1 : 0)",
+      "position": "closeIconCircleX springs from width/2 + additionalWidth/2 to width + additionalWidth/2",
+      "effect": "Close button fades in and moves into position",
+      "timing": "Opacity timing creates fade-in, position spring creates slide"
+    },
+    "text_opacity_transitions": {
+      "delete_text": {
+        "opacity": "withTiming(isToggled ? 0 : 1)",
+        "effect": "Fades out when entering confirm state"
+      },
+      "confirm_text": {
+        "opacity": "withTiming(isToggled ? 1 : 0)",
+        "effect": "Fades in when entering confirm state"
+      },
+      "position": "Both texts follow deleteButtonRectX, staying centered on button"
+    },
+    "svg_icon_opacity": {
+      "pattern": "Custom paint layer with alpha manipulation",
+      "implementation": "useAnimatedReaction updating paint.setAlphaf",
+      "workaround": "Necessary because ImageSVG doesn't support opacity prop directly",
+      "reference": "https://github.com/Shopify/react-native-skia/issues/1709",
+      "calculation": "paint.value.setAlphaf(closeButtonOpacity.value)",
+      "applied_to": "Close icon (X) SVG",
+      "benefit": "Synchronized opacity with close button circle"
+    },
+    "button_scale_feedback": {
+      "delete_button": {
+        "scale_down": "withTiming(0.95) on touch down",
+        "scale_up": "withTiming(1) on finalize",
+        "origin": "{ x: width / 2, y: height / 2 }",
+        "effect": "Button shrinks slightly on press"
+      },
+      "close_button": {
+        "scale_down": "withTiming(0.95) on touch down",
+        "scale_up": "withTiming(1) on finalize",
+        "origin": "{ x: width + additionalWidth / 2, y: height / 2 }",
+        "effect": "Close button shrinks slightly on press"
+      }
+    },
+    "text_centering": {
+      "pattern": "Dynamic X position based on measured text width",
+      "formula": "deleteButtonRectX + width / 2 - textWidth / 2",
+      "measurement": "font.measureText(text).width",
+      "benefit": "Text remains perfectly centered as button moves",
+      "applied_to": "Both delete and confirm text labels"
+    }
+  },
+  "skia_rendering_patterns": {
+    "canvas_structure": {
+      "root": "Touchable.Canvas (main container)",
+      "group_hierarchy": [
+        "Group with gooey layer (delete + close buttons)",
+        "Group for delete text (no layer)",
+        "Group for confirm text (no layer)",
+        "Group for close icon with custom paint layer"
+      ],
+      "layering": "Groups render in order, later groups appear on top"
+    },
+    "touchable_components": {
+      "delete_button": {
+        "component": "Touchable.RoundedRect",
+        "props": {
+          "x": "deleteButtonRectX (animated)",
+          "y": 0,
+          "width": "width (fixed)",
+          "height": "height (fixed)",
+          "r": "20 (border radius)",
+          "color": "deleteButtonColor (animated)"
+        }
+      },
+      "close_button": {
+        "component": "Touchable.Circle",
+        "props": {
+          "cx": "closeIconCircleX (animated)",
+          "cy": "height / 2",
+          "r": "height / 2",
+          "color": "deleteButtonColor (animated)"
+        }
+      }
+    },
+    "text_rendering": {
+      "component": "Skia Text",
+      "font": "matchFont({ fontFamily, fontSize: 14, fontWeight: 'bold' })",
+      "fontFamily": {
+        "ios": "Helvetica",
+        "default": "serif"
+      },
+      "color": "white",
+      "vertical_position": "fontSize / 3 + height / 2 (optically centered)",
+      "horizontal_position": "Calculated to center based on measured width"
+    },
+    "svg_rendering": {
+      "component": "ImageSVG",
+      "source": "Skia.SVG.MakeFromString (close/X icon)",
+      "svg_content": "24x24 viewBox with two crossing paths",
+      "stroke": "white, 2px width",
+      "positioning": "Centered on close button circle",
+      "transform": "translateX: -width/2, translateY: -height/2 (for centering)",
+      "opacity": "Controlled via custom paint layer"
+    },
+    "gooey_layer_implementation": {
+      "component": "Paint with Blur and ColorMatrix children",
+      "memoized": "useMemo to prevent recreation",
+      "configurable": {
+        "blurRadius": "10 (default)",
+        "alphaMultiplier": "18 (default)",
+        "alphaOffset": "-10 (default)"
+      },
+      "effect": "Applied as 'layer' prop on Group",
+      "explanation": "Color matrix intensifies alpha channel, creating threshold effect that merges blurred shapes"
+    }
+  },
+  "gesture_handling": {
+    "delete_button_gesture": {
+      "handler": "useGestureHandler from react-native-skia-gesture",
+      "lifecycle": {
+        "onStart": "Set isButtonPressed.value = true",
+        "onTap": {
+          "condition": "if (isToggled.value)",
+          "action_true": "scheduleOnRN(onDelete) - triggers confirmation callback",
+          "action_false": "isToggled.value = true - enters confirm state"
+        }
+      },
+      "scale_feedback": "useDerivedValue(() => withTiming(isButtonPressed ? 0.95 : 1))",
+      "behavior": "First tap expands to confirm, second tap confirms action"
+    },
+    "close_button_gesture": {
+      "handler": "useGestureHandler from react-native-skia-gesture",
+      "lifecycle": {
+        "onStart": "Set isCloseButtonPressed.value = true",
+        "onTap": "isToggled.value = false - returns to delete state"
+      },
+      "scale_feedback": "useDerivedValue(() => withTiming(isCloseButtonPressed ? 0.95 : 1))",
+      "behavior": "Dismisses confirm state without triggering action"
+    },
+    "gesture_coordination": {
+      "pattern": "Independent gesture handlers for each button",
+      "state_sharing": "Both handlers read/write same isToggled SharedValue",
+      "press_isolation": "Separate pressed states for independent scale feedback",
+      "thread": "All gesture callbacks run on UI thread (worklet context)"
+    }
+  },
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "isToggled",
+        "type": "SharedValue<boolean>",
+        "initial": false,
+        "purpose": "Master toggle state between delete and confirm",
+        "updated_by": [
+          "Delete button tap (set to true)",
+          "Close button tap (set to false)",
+          "Confirm action (optionally set to false based on closeOnConfirm prop)"
+        ],
+        "drives": [
+          "deleteButtonRectX position",
+          "deleteButtonColor",
+          "closeIconCircleX position",
+          "closeButtonOpacity",
+          "deleteTextOpacity",
+          "confirmTextOpacity"
+        ]
+      },
+      {
+        "name": "isButtonPressed",
+        "type": "SharedValue<boolean>",
+        "scope": "Delete button",
+        "purpose": "Track press state for scale feedback",
+        "initial": false
+      },
+      {
+        "name": "isCloseButtonPressed",
+        "type": "SharedValue<boolean>",
+        "scope": "Close button",
+        "purpose": "Track press state for scale feedback",
+        "initial": false
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "deleteButtonRectX",
+        "calculation": "withSpring(isToggled ? 0 : additionalWidth / 2, SpringConfig)",
+        "purpose": "Delete button X position",
+        "used_by": "RoundedRect x prop, text centering calculations"
+      },
+      {
+        "name": "deleteButtonColor",
+        "calculation": "withTiming(isToggled ? 'black' : 'red')",
+        "purpose": "Both buttons' color",
+        "used_by": "RoundedRect and Circle color props"
+      },
+      {
+        "name": "closeIconCircleX",
+        "calculation": "withSpring(isToggled ? width + additionalWidth / 2 : width / 2 + additionalWidth / 2, SpringConfig)",
+        "purpose": "Close button X position",
+        "used_by": "Circle cx prop, ImageSVG x prop"
+      },
+      {
+        "name": "closeButtonOpacity",
+        "calculation": "withTiming(isToggled ? 1 : 0)",
+        "purpose": "Close button visibility",
+        "used_by": "Group opacity, custom paint alpha"
+      },
+      {
+        "name": "deleteTextX",
+        "calculation": "deleteButtonRectX + width / 2 - textWidth / 2",
+        "purpose": "Delete text X position (centered)",
+        "measurement": "font.measureText(initialText).width"
+      },
+      {
+        "name": "deleteTextOpacity",
+        "calculation": "withTiming(isToggled ? 0 : 1)",
+        "purpose": "Delete text visibility"
+      },
+      {
+        "name": "confirmTextX",
+        "calculation": "deleteButtonRectX + width / 2 - textWidth / 2",
+        "purpose": "Confirm text X position (centered)",
+        "measurement": "font.measureText(confirmText).width"
+      },
+      {
+        "name": "confirmTextOpacity",
+        "calculation": "withTiming(isToggled ? 1 : 0)",
+        "purpose": "Confirm text visibility"
+      },
+      {
+        "name": "buttonTransform",
+        "calculation": "[{ scale: scale.value }]",
+        "purpose": "Delete button scale feedback",
+        "applied_to": "Group wrapping delete button"
+      },
+      {
+        "name": "closeButtonTransform",
+        "calculation": "[{ scale: closeButtonScale.value }]",
+        "purpose": "Close button scale feedback",
+        "applied_to": "Group wrapping close button"
+      }
+    ],
+    "useAnimatedReaction": {
+      "usage": "Update custom paint alpha for SVG opacity",
+      "watch": "closeButtonOpacity.value",
+      "effect": "paint.value.setAlphaf(opacity)",
+      "purpose": "Workaround for ImageSVG lacking direct opacity support",
+      "benefit": "Synchronized SVG opacity without re-renders"
+    },
+    "spring_configuration": {
+      "constant": "SpringConfig",
+      "mass": 1,
+      "damping": 200,
+      "usage": [
+        "deleteButtonRectX animation",
+        "closeIconCircleX animation"
+      ],
+      "feel": "Heavily damped, smooth with minimal bounce"
+    }
+  },
+  "component_architecture": {
+    "delete_button": {
+      "type": "Main component",
+      "props": {
+        "onConfirmDeletion": {
+          "type": "() => void",
+          "required": true,
+          "description": "Callback triggered when deletion is confirmed"
+        },
+        "height": {
+          "type": "number",
+          "required": true,
+          "description": "Button height in pixels"
+        },
+        "width": {
+          "type": "number",
+          "required": true,
+          "description": "Main delete button width in pixels"
+        },
+        "additionalWidth": {
+          "type": "number",
+          "required": true,
+          "description": "Additional width for close button area"
+        },
+        "initialText": {
+          "type": "string",
+          "required": false,
+          "default": "Delete",
+          "description": "Text shown in delete state"
+        },
+        "confirmText": {
+          "type": "string",
+          "required": false,
+          "default": "Confirm",
+          "description": "Text shown in confirm state"
+        },
+        "closeOnConfirm": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Whether to return to delete state after confirmation"
+        }
+      }
+    },
+    "custom_hooks": {
+      "useDeleteButtonAnimations": {
+        "params": [
+          "additionalWidth",
+          "onDelete"
+        ],
+        "returns": [
+          "isToggled",
+          "deleteButtonRectX",
+          "deleteButtonColor",
+          "gestureHandler",
+          "buttonTransform"
+        ],
+        "responsibility": "Main button animation logic and tap handling"
+      },
+      "useCloseButtonAnimations": {
+        "params": [
+          "isToggled",
+          "width",
+          "additionalWidth"
+        ],
+        "returns": [
+          "closeIconCircleX",
+          "closeButtonOpacity",
+          "gestureHandlerClose",
+          "closeButtonTransform",
+          "paint"
+        ],
+        "responsibility": "Close button animation logic and tap handling"
+      },
+      "useTextAnimations": {
+        "params": [
+          "isToggled",
+          "deleteButtonRectX",
+          "width",
+          "font",
+          "initialText",
+          "confirmText"
+        ],
+        "returns": [
+          "deleteTextX",
+          "deleteTextOpacity",
+          "confirmTextX",
+          "confirmTextOpacity"
+        ],
+        "responsibility": "Text positioning and opacity animations"
+      },
+      "useGooeyLayer": {
+        "params": {
+          "blurRadius": "10 (optional)",
+          "alphaMultiplier": "18 (optional)",
+          "alphaOffset": "-10 (optional)"
+        },
+        "returns": "Paint layer JSX element",
+        "responsibility": "Create gooey effect layer configuration"
+      }
+    }
+  },
+  "layout_and_positioning": {
+    "canvas_dimensions": {
+      "width": "width + additionalWidth (total horizontal space)",
+      "height": "height (button height)",
+      "calculation": "Demo: 150 + 80 = 230px width, 50px height"
+    },
+    "delete_button_position": {
+      "initial": {
+        "x": "additionalWidth / 2 (40px in demo)",
+        "effect": "Centered with gap for close button"
+      },
+      "expanded": {
+        "x": "0 (flush left)",
+        "effect": "No gap, ready to merge with close button"
+      }
+    },
+    "close_button_position": {
+      "initial": {
+        "cx": "width / 2 + additionalWidth / 2 (115px in demo)",
+        "effect": "Hidden behind delete button"
+      },
+      "expanded": {
+        "cx": "width + additionalWidth / 2 (190px in demo)",
+        "effect": "Fully visible to right of delete button"
+      }
+    },
+    "text_positioning": {
+      "y": "fontStyle.fontSize / 3 + height / 2",
+      "calculation": "14 / 3 + 25 = 29.67px (optically centered)",
+      "x": "deleteButtonRectX + width / 2 - textWidth / 2 (dynamically centered)",
+      "tracking": "Text follows button position for perfect centering"
+    },
+    "icon_positioning": {
+      "base": "closeIconCircleX, height / 2",
+      "transform": [
+        "translateX: -CloseSvgPathWidth / 2",
+        "translateY: -CloseSvgPathHeight / 2"
+      ],
+      "origin": "{ x: width + additionalWidth / 2, y: height / 2 }",
+      "effect": "Icon centered on close button circle"
+    },
+    "transform_origins": {
+      "delete_button_group": "{ x: width / 2, y: height / 2 } (button center)",
+      "close_button_group": "{ x: width + additionalWidth / 2, y: height / 2 } (right side)",
+      "close_icon_group": "{ x: width + additionalWidth / 2, y: height / 2 } (matches button)",
+      "purpose": "Scale transformations happen around correct pivot points"
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "delete_state": {
+        "button": "red",
+        "text": "white"
+      },
+      "confirm_state": {
+        "button": "black",
+        "text": "white"
+      },
+      "icon": "white stroke"
+    },
+    "dimensions_demo": {
+      "button_width": "150px",
+      "button_height": "50px",
+      "additional_width": "80px",
+      "total_width": "230px",
+      "border_radius": "20px"
+    },
+    "typography": {
+      "font_family": {
+        "ios": "Helvetica",
+        "android": "serif"
+      },
+      "font_size": "14px",
+      "font_weight": "bold",
+      "color": "white"
+    },
+    "icon_design": {
+      "source": "Custom SVG (X/close icon)",
+      "viewBox": "24x24",
+      "paths": "Two diagonal lines forming X",
+      "stroke_width": "2px",
+      "stroke_color": "white",
+      "fill": "none",
+      "style": "Round linecap and linejoin"
+    },
+    "animation_aesthetics": {
+      "gooey_effect": {
+        "appearance": "Buttons appear to merge like liquid blobs",
+        "blur_amount": "10px creates soft edges",
+        "merge_zone": "Overlap area where buttons visually blend"
+      },
+      "color_transition": {
+        "direction": "Red (danger) to black (confirm)",
+        "timing": "Synchronized with button expansion",
+        "purpose": "Visual confirmation of state change"
+      }
+    }
+  },
+  "performance_optimizations": {
+    "memoization": {
+      "gooey_layer": {
+        "hook": "useMemo",
+        "dependencies": [
+          "alphaMultiplier",
+          "alphaOffset",
+          "blurRadius"
+        ],
+        "benefit": "Paint layer created once, not recreated on every render"
+      }
+    },
+    "skia_rendering": {
+      "pattern": "GPU-accelerated canvas rendering",
+      "benefit": "All shapes and effects rendered by GPU",
+      "performance": "Smooth 60fps even with blur and color matrix effects"
+    },
+    "worklet_calculations": {
+      "pattern": "All animation calculations in worklets",
+      "locations": [
+        "Gesture handlers",
+        "useDerivedValue callbacks",
+        "useAnimatedReaction"
+      ],
+      "benefit": "No JS thread blocking, UI thread execution"
+    },
+    "shared_state": {
+      "pattern": "Single isToggled value drives all animations",
+      "benefit": "Minimal state, maximum coordination",
+      "efficiency": "All animations derive from one source of truth"
+    },
+    "custom_paint_workaround": {
+      "issue": "ImageSVG doesn't support opacity prop directly",
+      "solution": "useSharedValue(Skia.Paint()) + useAnimatedReaction",
+      "benefit": "Animated SVG opacity without rebuilding SVG",
+      "reference": "https://github.com/Shopify/react-native-skia/issues/1709"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "Delete confirmation buttons in lists",
+      "Destructive action confirmations",
+      "Two-step confirmation workflows",
+      "Swipe-to-delete alternatives",
+      "Remove item interactions"
+    ],
+    "real_world_examples": [
+      "Email app delete message",
+      "Todo list item removal",
+      "Shopping cart item deletion",
+      "Contact deletion",
+      "File/folder removal",
+      "Account deletion flows"
+    ],
+    "educational": [
+      "Learning Skia gooey effects",
+      "Understanding color matrix transformations",
+      "Blur and alpha manipulation techniques",
+      "Custom paint layers for SVG opacity",
+      "Coordinated multi-element animations",
+      "Gesture handling in Skia canvas"
+    ]
+  },
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "DeleteButtonProps",
+        "UseDeleteButtonAnimationsParams",
+        "UseCloseButtonAnimationsParams",
+        "UseTextAnimationsParams",
+        "GooeyLayerParams"
+      ],
+      "type_imports": [
+        "SharedValue (react-native-reanimated)",
+        "SkFont (@shopify/react-native-skia)"
+      ]
+    },
+    "component_organization": {
+      "pattern": "Custom hooks for separation of concerns",
+      "benefits": [
+        "Each hook has single responsibility",
+        "Logic reusable and testable",
+        "Main component focused on composition"
+      ],
+      "structure": [
+        "Main component (composition)",
+        "Animation hooks (logic)",
+        "Constants file (configuration)"
+      ]
+    },
+    "constants": {
+      "CloseSvgPath": "Skia SVG string",
+      "fontStyle": "Font configuration object",
+      "font": "Matched font for rendering",
+      "SpringConfig": "{ mass: 1, damping: 200 }",
+      "benefit": "Centralized configuration, easy to modify"
+    },
+    "worklet_annotations": {
+      "explicit_directive": "'worklet' on all gesture handlers",
+      "automatic": "Reanimated hook callbacks automatically worklets",
+      "benefit": "Clear which code runs on UI thread"
+    }
+  },
+  "known_limitations": {
+    "fixed_button_shapes": {
+      "issue": "RoundedRect and Circle shapes hardcoded",
+      "limitation": "Can't easily change button shapes",
+      "enhancement": "Could support custom shapes via props"
+    },
+    "svg_opacity_workaround": {
+      "issue": "ImageSVG doesn't support opacity prop",
+      "workaround": "Custom paint layer with useAnimatedReaction",
+      "impact": "More complex than ideal, but works reliably",
+      "upstream": "https://github.com/Shopify/react-native-skia/issues/1709"
+    },
+    "color_string_limitation": {
+      "issue": "Colors specified as strings ('red', 'black')",
+      "limitation": "Can't use hex colors or RGBA directly in withTiming",
+      "workaround": "Use named colors or interpolateColor for hex"
+    },
+    "no_accessibility": {
+      "issue": "Skia Canvas doesn't have built-in accessibility",
+      "impact": "Screen readers can't interact with buttons",
+      "recommendation": "Consider hybrid approach with accessible wrapper"
+    },
+    "platform_font_differences": {
+      "issue": "Different default fonts on iOS vs Android",
+      "impact": "Text rendering may look different",
+      "mitigation": "Platform.select for font family"
+    }
+  },
+  "potential_improvements": {
+    "features": [
+      "Haptic feedback on state transitions",
+      "Swipe gesture to expand (in addition to tap)",
+      "Configurable gooey effect intensity",
+      "Multiple confirmation levels",
+      "Undo button after confirmation",
+      "Custom icons support",
+      "Gradient color transitions",
+      "Sound effects integration"
+    ],
+    "customization": [
+      "Configurable spring physics",
+      "Custom button shapes",
+      "Adjustable blur radius",
+      "Theme prop for color schemes",
+      "Icon size configuration",
+      "Border width customization",
+      "Shadow/elevation options"
+    ],
+    "accessibility": [
+      "Accessible wrapper overlay",
+      "Screen reader announcements",
+      "Keyboard navigation support",
+      "Focus indicators",
+      "Reduced motion alternative",
+      "High contrast mode support"
+    ],
+    "interaction": [
+      "Long press for instant confirm",
+      "Auto-dismiss after timeout",
+      "Swipe to dismiss confirm state",
+      "Drag-based progress indicator",
+      "Multi-touch protection"
+    ]
+  },
+  "key_insights": {
+    "gooey_magic": "Blur + color matrix with high alpha multiplier creates liquid merge effect",
+    "alpha_math": "Alpha transformation (alpha * 18 - 10) creates sharp threshold for blob merging",
+    "coordinated_animation": "Single isToggled SharedValue elegantly coordinates all UI changes",
+    "custom_paint_necessity": "SVG opacity requires custom paint layer workaround in current Skia version",
+    "spring_damping": "High damping (200) creates smooth, non-bouncy expansion",
+    "text_measurement": "font.measureText() enables perfect text centering during animation",
+    "separate_gestures": "Independent gesture handlers allow complex multi-button interactions",
+    "transform_origins": "Correct origin points essential for natural-feeling scale feedback",
+    "scheduleOnRN_usage": "Bridge to JS thread necessary for React callbacks from worklets"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic Skia Canvas rendering",
+      "Touchable components in Skia",
+      "SharedValue for animation state",
+      "Simple spring and timing animations",
+      "Component composition patterns"
+    ],
+    "for_intermediate": [
+      "Gooey effects with blur and color matrix",
+      "Custom hooks for animation logic",
+      "useDerivedValue for coordinated animations",
+      "Gesture handling with react-native-skia-gesture",
+      "SVG rendering in Skia",
+      "Text measurement and positioning",
+      "Platform-specific configurations"
+    ],
+    "for_advanced": [
+      "Color matrix transformations for visual effects",
+      "Custom paint layers for workarounds",
+      "useAnimatedReaction for side effects",
+      "Complex multi-element animation choreography",
+      "Performance optimization with Skia",
+      "Worklet thread management",
+      "Building reusable animation systems"
+    ]
+  },
+  "testing_considerations": {
+    "visual_regression": [
+      "Buttons merge smoothly with gooey effect",
+      "Colors transition without artifacts",
+      "Text remains centered during animation",
+      "Icon fades in/out smoothly",
+      "Scale feedback visible and natural"
+    ],
+    "interaction_testing": [
+      "First tap expands to confirm state",
+      "Second tap triggers onConfirmDeletion",
+      "Close button returns to delete state",
+      "Rapid taps handled correctly",
+      "Scale feedback on both buttons"
+    ],
+    "state_testing": [
+      "isToggled correctly tracks state",
+      "closeOnConfirm prop works as expected",
+      "Multiple instances maintain independent state",
+      "Animation completes before next interaction"
+    ],
+    "edge_cases": [
+      "Very small dimensions (< 50px)",
+      "Very large dimensions (> 500px)",
+      "Long text labels overflowing",
+      "Rapid state toggling",
+      "Extreme additionalWidth values"
+    ],
+    "performance_testing": [
+      "60fps maintained during animations",
+      "No frame drops with gooey effect",
+      "Memory stable across many interactions",
+      "Multiple instances don't impact performance"
+    ]
+  },
+  "comparison_to_alternatives": {
+    "vs_simple_modal": {
+      "delete_button": "Inline, immediate feedback, gooey animation",
+      "modal": "Separate screen, modal overlay, standard animations",
+      "trade_off": "This is more engaging but takes more screen space"
+    },
+    "vs_swipe_to_delete": {
+      "delete_button": "Explicit two-tap confirmation",
+      "swipe": "Gesture reveals delete button",
+      "trade_off": "This is more discoverable, swipe is more efficient"
+    },
+    "vs_alert_dialog": {
+      "delete_button": "Inline, contextual, animated",
+      "alert": "System native, interrupts flow",
+      "trade_off": "This is more delightful, alert is more standard"
+    }
+  },
+  "related_patterns": {
+    "gooey_effects": "Other animations using blur + color matrix",
+    "morph_buttons": "Buttons that change shape/state",
+    "confirmation_patterns": "Two-step confirmation UIs",
+    "liquid_animations": "Fluid, organic motion effects",
+    "skia_interactions": "Canvas-based gesture handling"
+  },
+  "mathematical_formulas": {
+    "gooey_alpha_transform": {
+      "formula": "newAlpha = clamp(oldAlpha * 18 - 10, 0, 1)",
+      "effect": "Alpha values below ~0.56 go to 0, above go to 1",
+      "threshold": "~0.56 (where 0.56 * 18 - 10 = 0)",
+      "result": "Sharp edges in blurred overlap create blob merge"
+    },
+    "text_centering": {
+      "formula": "x = buttonX + buttonWidth / 2 - textWidth / 2",
+      "vertical": "y = fontSize / 3 + height / 2",
+      "optical_adjustment": "fontSize / 3 offset for better visual centering"
+    },
+    "button_expansion": {
+      "initial_gap": "additionalWidth / 2 on each side",
+      "total_movement": "additionalWidth / 2 (from center to left edge)",
+      "close_button_movement": "additionalWidth / 2 (from hidden to visible)"
+    }
+  },
+  "bundle_size_impact": {
+    "code_size": "~350 lines total across all files",
+    "dependencies": "Skia, Reanimated, Skia-Gesture (likely in animation projects)",
+    "runtime_memory": "Low - few SharedValues, simple shapes",
+    "estimated_size": "~15KB (mostly constants and hooks)"
+  },
+  "platform_considerations": {
+    "ios": {
+      "features": "All features fully supported",
+      "performance": "Excellent GPU acceleration",
+      "font": "Uses Helvetica"
+    },
+    "android": {
+      "features": "All features fully supported",
+      "performance": "Excellent GPU acceleration",
+      "font": "Uses serif"
+    },
+    "web": {
+      "compatibility": "Skia CanvasKit backend should work",
+      "performance": "May be slightly slower than native",
+      "testing": "Requires verification"
+    }
+  },
+  "accessibility_considerations": {
+    "current_state": {
+      "accessible": false,
+      "issues": [
+        "Skia Canvas not accessible to screen readers",
+        "No keyboard navigation",
+        "No focus indicators",
+        "No reduced motion support"
+      ]
+    },
+    "recommendations": [
+      "Add accessible wrapper View with proper labels",
+      "Use accessibilityLabel to describe state",
+      "Add accessibilityHint for expected interaction",
+      "Consider hybrid approach: accessible buttons + Skia visual layer",
+      "Respect prefers-reduced-motion setting",
+      "Provide keyboard shortcuts",
+      "Add haptic feedback for non-visual confirmation"
+    ]
+  },
+  "tags": [
+    "delete-button",
+    "confirmation",
+    "gooey-effect",
+    "morphing",
+    "skia",
+    "blur-effect",
+    "color-matrix",
+    "spring-animation",
+    "gesture-handler",
+    "two-step-confirmation",
+    "liquid-animation",
+    "svg-icon",
+    "text-animation",
+    "toggle-state",
+    "interactive-button",
+    "destructive-action",
+    "canvas-rendering",
+    "worklets",
+    "reanimated"
+  ],
+  "content_hash": "0be1f214f0d647ffe2fdc21f142556399add792b1709347b2c3ccae29824cf97",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.316Z",
+  "last_validated": "2025-10-12T09:19:28.316Z"
+}

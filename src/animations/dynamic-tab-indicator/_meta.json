@@ -1,0 +1,861 @@
+{
+  "animation_name": "Dynamic Tab Indicator",
+  "animation_slug": "dynamic-tab-indicator",
+  "description": "A horizontal scrollable image gallery with a synchronized animated tab indicator. Features dynamic width interpolation, position tracking, and smooth transitions as users swipe between full-screen images. The tab indicator morphs width to match the active tab text and slides horizontally in perfect sync with the scroll position.",
+  "main_features": [
+    "Horizontal paging scroll with full-screen images",
+    "Animated tab indicator with dynamic width morphing",
+    "Synchronized scroll tracking between content and indicator",
+    "Tab text layout measurement for accurate indicator sizing",
+    "Touch-to-navigate tab selection",
+    "Smooth interpolation of indicator position and width",
+    "Safe area inset handling for notched devices",
+    "Paginated horizontal ScrollView with snap-to-page behavior",
+    "Semi-transparent floating tab bar",
+    "Real-time layout measurement on mount"
+  ],
+  "file_structure": {
+    "index.tsx": "Main container component exporting DynamicTabIndicator with data",
+    "components/dynamic-tab-indicator/index.tsx": "Core component managing scroll, layout, and indicator logic",
+    "components/dynamic-tab-indicator/section-tabs.tsx": "Tab bar component with indicator and layout measurement",
+    "constants/data.tsx": "Data array with image sources and titles (travel destinations)",
+    "assets/": {
+      "france.jpg": "Full-screen image for France section",
+      "italy.jpg": "Full-screen image for Italy section",
+      "iceland.jpg": "Full-screen image for Iceland section",
+      "norway.jpg": "Full-screen image for Norway section",
+      "japan.jpg": "Full-screen image for Japan section"
+    }
+  },
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "ui": "react-native (ScrollView, Image, TouchableOpacity)",
+    "layout": "react-native (useWindowDimensions)",
+    "safe_area": "react-native-safe-area-context"
+  },
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedScrollHandler",
+        "useAnimatedStyle"
+      ],
+      "functions": [
+        "interpolate"
+      ],
+      "components": [
+        "Animated.ScrollView",
+        "Animated.View"
+      ],
+      "extrapolation": [
+        "Extrapolation.CLAMP"
+      ],
+      "critical_feature": "useAnimatedScrollHandler for UI thread scroll tracking and interpolate for dynamic width/position animations"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
+      "usage": "Top and bottom padding for tab bar on notched devices"
+    },
+    "react-native": {
+      "components": [
+        "Image",
+        "TouchableOpacity",
+        "Text",
+        "View",
+        "StyleSheet"
+      ],
+      "hooks": [
+        "useWindowDimensions"
+      ],
+      "types": [
+        "LayoutRectangle"
+      ]
+    },
+    "react": {
+      "version": "19.1.0",
+      "hooks": [
+        "useState",
+        "useCallback",
+        "useMemo",
+        "useRef",
+        "memo"
+      ]
+    }
+  },
+  "animation_techniques": {
+    "scroll_tracking": {
+      "hook": "useAnimatedScrollHandler",
+      "shared_value_updated": "indicatorLayout (x and width properties)",
+      "trigger": "onScroll event",
+      "throttle": "scrollEventThrottle: 16 (60fps)",
+      "runs_on": "UI thread",
+      "benefit": "Smooth 60fps scroll tracking without JS thread involvement"
+    },
+    "indicator_width_morphing": {
+      "pattern": "interpolate with dynamic output range",
+      "input": "event.contentOffset.x",
+      "input_range": "data.map((_, index) => index * width) - [0, width, 2*width, ...]",
+      "output_range": "layouts[index]?.width ?? 0 - actual measured widths of tab text elements",
+      "extrapolation": "Extrapolation.CLAMP",
+      "effect": "Indicator width smoothly transitions to match active tab text width",
+      "dynamic": "Output range calculated from runtime layout measurements"
+    },
+    "indicator_position_tracking": {
+      "pattern": "interpolate with offset-adjusted output range",
+      "input": "event.contentOffset.x",
+      "input_range": "data.map((_, index) => index * width)",
+      "output_range": "(layout?.x ?? 0) + (index * width) / data.length - tab x position plus offset adjustment",
+      "extrapolation": "Extrapolation.CLAMP",
+      "effect": "Indicator slides horizontally to center under active tab",
+      "adjustment": "Adds proportional offset to account for tab spacing"
+    },
+    "layout_measurement": {
+      "component": "Text (tab title)",
+      "event": "onLayout",
+      "timing": "On component mount and layout changes",
+      "callback": "handleLayout(index, layout)",
+      "stored_in": "React state: layouts array",
+      "measured_properties": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "initial_indicator": "First tab layout stored separately in SharedValue for initial state"
+    },
+    "paging_scroll": {
+      "component": "Animated.ScrollView",
+      "props": {
+        "horizontal": true,
+        "pagingEnabled": true,
+        "scrollEventThrottle": 16
+      },
+      "effect": "Snaps to full-screen page boundaries",
+      "width_per_page": "useWindowDimensions().width"
+    }
+  },
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "indicatorLayout",
+        "type": "SharedValue<LayoutRectangle>",
+        "initial": "{ x: 0, y: 0, width: 0, height: 0 }",
+        "updates": [
+          "Initial: Set to first tab layout on mount",
+          "Scroll: Updated via interpolate in useAnimatedScrollHandler"
+        ],
+        "drives": "Indicator position and width animations"
+      }
+    ],
+    "react_state": [
+      {
+        "name": "layouts",
+        "type": "LayoutRectangle[]",
+        "initial": "[]",
+        "updates": "Each tab text onLayout callback",
+        "purpose": "Stores measured positions and widths of all tab text elements",
+        "used_for": "Building interpolation output ranges"
+      }
+    ],
+    "useAnimatedStyle_instances": [
+      {
+        "name": "rIndicatorLayoutStyle",
+        "target": "Animated.View (indicator bar)",
+        "properties": {
+          "position": "absolute",
+          "top": "indicatorLayout.value.y + height - 35 (below tab bar)",
+          "left": "indicatorLayout.value.x (horizontal position)",
+          "width": "indicatorLayout.value.width (dynamic width)",
+          "height": "2 (fixed 2px height)",
+          "backgroundColor": "black",
+          "zIndex": "10 (above content)",
+          "borderRadius": "5 (rounded ends)"
+        },
+        "dependencies": [
+          "indicatorLayout",
+          "height"
+        ]
+      }
+    ],
+    "useAnimatedScrollHandler": {
+      "events": {
+        "onScroll": [
+          "Read contentOffset.x",
+          "Interpolate x position from scroll position",
+          "Interpolate width from scroll position",
+          "Update indicatorLayout.value with new x and width"
+        ]
+      },
+      "validation": "Checks inputRange.length > 0 && xOutputRange.length > 0 before interpolating",
+      "worklet": true
+    },
+    "useMemo_optimization": [
+      {
+        "name": "interpolationRanges",
+        "calculation": {
+          "inputRange": "data.map((_, index) => index * width)",
+          "xOutputRange": "Tab x positions with proportional offset",
+          "widthOutputRange": "Tab measured widths"
+        },
+        "dependencies": [
+          "data",
+          "width",
+          "layouts"
+        ],
+        "purpose": "Recalculate interpolation ranges only when layout measurements or dimensions change",
+        "benefit": "Prevents recalculating ranges on every render"
+      },
+      {
+        "name": "sectionTitles",
+        "calculation": "data.map(item => item.title)",
+        "dependencies": [
+          "data"
+        ],
+        "purpose": "Extract titles array to pass to SectionTabs",
+        "benefit": "Avoids remapping on every render"
+      }
+    ],
+    "useCallback_optimization": [
+      {
+        "name": "updateLayout",
+        "dependencies": [],
+        "purpose": "Updates layouts array immutably when tab text layout measured",
+        "pattern": "Spreads previous layouts array and updates specific index"
+      },
+      {
+        "name": "updateInitialIndicator",
+        "dependencies": [
+          "indicatorLayout"
+        ],
+        "purpose": "Sets initial indicator position from first tab layout"
+      },
+      {
+        "name": "handleSelectSection",
+        "dependencies": [
+          "width"
+        ],
+        "purpose": "Scrolls to selected section when tab tapped",
+        "method": "scrollRef.current?.scrollTo({ x: index * width, animated: true })"
+      },
+      {
+        "name": "handleLayout (in SectionTabs)",
+        "dependencies": [
+          "onLayoutChange",
+          "onInitialLayout"
+        ],
+        "purpose": "Handles layout measurement and initial indicator setup",
+        "logic": "Calls onLayoutChange for all tabs, onInitialLayout only for index 0"
+      }
+    ],
+    "memo_usage": [
+      {
+        "component": "DynamicTabIndicator",
+        "purpose": "Prevent re-renders when parent re-renders with same data prop"
+      },
+      {
+        "component": "SectionTabs",
+        "purpose": "Prevent re-renders when parent re-renders with same props"
+      }
+    ]
+  },
+  "component_architecture": {
+    "DynamicTabIndicator": {
+      "type": "Main functional component with memo",
+      "props": {
+        "data": "Array<{ image: ReturnType<typeof require>, title: string }>"
+      },
+      "state": [
+        "layouts: LayoutRectangle[] (tab text measurements)",
+        "indicatorLayout: SharedValue<LayoutRectangle> (indicator position/size)"
+      ],
+      "refs": [
+        "scrollRef: Animated.ScrollView (for imperative scrollTo)"
+      ],
+      "structure": [
+        "SectionTabs (tab bar with indicator at top)",
+        "Animated.ScrollView (horizontal paging scroll with images)"
+      ],
+      "responsibilities": [
+        "Scroll tracking with useAnimatedScrollHandler",
+        "Layout measurement coordination",
+        "Interpolation range calculation",
+        "Indicator position/width updates",
+        "Imperative scroll on tab selection"
+      ]
+    },
+    "SectionTabs": {
+      "type": "Functional component with memo",
+      "props": {
+        "height": "number (container height)",
+        "width": "number (screen width)",
+        "data": "string[] (tab titles)",
+        "indicatorLayout": "SharedValue<LayoutRectangle>",
+        "onSelectSection": "Optional (index: number) => void",
+        "onLayoutChange": "(index: number, layout: LayoutRectangle) => void",
+        "onInitialLayout": "(layout: LayoutRectangle) => void"
+      },
+      "structure": [
+        "View (container with safe area insets)",
+        "Animated.View (animated indicator bar)",
+        "TouchableOpacity[] (tab buttons)",
+        "Text[] (tab titles with onLayout)"
+      ],
+      "responsibilities": [
+        "Render tab bar with titles",
+        "Measure tab text layouts via onLayout",
+        "Render animated indicator",
+        "Handle tab selection touches",
+        "Apply safe area insets"
+      ]
+    },
+    "DynamicTabIndicatorContainer": {
+      "type": "Simple container/wrapper component",
+      "purpose": "Exports main component with predefined data",
+      "pattern": "Container component pattern for demo/example usage"
+    }
+  },
+  "data_structure": {
+    "data_array": {
+      "type": "Array<{ image: ReturnType<typeof require>, title: string }>",
+      "length": 5,
+      "theme": "Travel destinations",
+      "items": [
+        "{ image: france.jpg, title: 'France' }",
+        "{ image: italy.jpg, title: 'Italy' }",
+        "{ image: iceland.jpg, title: 'Iceland' }",
+        "{ image: norway.jpg, title: 'Norway' }",
+        "{ image: japan.jpg, title: 'Japan' }"
+      ]
+    },
+    "LayoutRectangle": {
+      "type": "React Native type",
+      "properties": {
+        "x": "number (relative to parent)",
+        "y": "number (relative to parent)",
+        "width": "number",
+        "height": "number"
+      }
+    }
+  },
+  "layout_and_positioning": {
+    "dimensions": {
+      "INDICATOR_CONTAINER_HEIGHT": 120,
+      "indicator_bar_height": 2,
+      "indicator_border_radius": 5,
+      "indicator_position_from_bottom": 35,
+      "tab_padding_horizontal": 8
+    },
+    "screen_dimensions": {
+      "hook": "useWindowDimensions()",
+      "width": "Full screen width",
+      "height": "Full screen height",
+      "usage": [
+        "Image dimensions (full screen)",
+        "Scroll page width",
+        "Tab container width",
+        "Interpolation input range calculation"
+      ]
+    },
+    "safe_area": {
+      "hook": "useSafeAreaInsets()",
+      "top": "Applied to tab container paddingTop",
+      "bottom": "Applied to tab container paddingBottom",
+      "purpose": "Prevents tab bar overlap with notch/home indicator"
+    },
+    "tab_bar": {
+      "position": "absolute",
+      "top": 0,
+      "left": 0,
+      "width": "Full screen width",
+      "height": "INDICATOR_CONTAINER_HEIGHT (120)",
+      "z_index": 5,
+      "background": "rgba(255, 255, 255, 0.9) (semi-transparent white)",
+      "layout": "flexDirection: row (horizontal tabs)"
+    },
+    "tab_item": {
+      "width": "width / data.length (equal distribution)",
+      "flex": 1,
+      "alignment": "center (both axes)",
+      "padding": "8px horizontal"
+    },
+    "indicator_bar": {
+      "position": "absolute",
+      "z_index": 10,
+      "height": 2,
+      "dynamic_width": "Animated via interpolation",
+      "dynamic_position": "Animated via interpolation",
+      "color": "black",
+      "border_radius": 5
+    },
+    "scroll_view": {
+      "horizontal": true,
+      "paging_enabled": true,
+      "shows_indicator": false,
+      "remove_clipped_subviews": true
+    },
+    "images": {
+      "width": "Full screen width",
+      "height": "Full screen height",
+      "resize_mode": "cover (fills entire screen)"
+    }
+  },
+  "interaction_patterns": {
+    "swipe_to_navigate": {
+      "gesture": "Horizontal swipe on ScrollView",
+      "behavior": "Paging enabled (snaps to next/previous page)",
+      "effect": [
+        "Content scrolls to next/previous image",
+        "Indicator width morphs to match new active tab",
+        "Indicator position slides to new active tab"
+      ],
+      "synchronization": "All animations driven by single scroll position value"
+    },
+    "tap_to_navigate": {
+      "target": "TouchableOpacity tab button",
+      "callback": "onSelectSection(index)",
+      "action": "scrollRef.current?.scrollTo({ x: index * width, animated: true })",
+      "effect": [
+        "ScrollView smoothly scrolls to selected index",
+        "Scroll triggers same indicator animations as swipe",
+        "Animated: true for smooth transition (not instant jump)"
+      ],
+      "active_opacity": 0.7
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "tab_bar_background": "rgba(255, 255, 255, 0.9) (90% opaque white)",
+      "tab_text": "#000 (black)",
+      "indicator": "black",
+      "images": "Full-color travel destination photos"
+    },
+    "typography": {
+      "tab_text": {
+        "fontSize": 17,
+        "fontWeight": "bold",
+        "color": "black",
+        "textAlign": "center"
+      }
+    },
+    "spacing": {
+      "tab_container_height": 120,
+      "tab_padding_horizontal": 8,
+      "indicator_offset_from_bottom": 35,
+      "indicator_height": 2,
+      "indicator_border_radius": 5
+    },
+    "effects": {
+      "tab_bar_transparency": "Semi-transparent white backdrop allows slight content visibility underneath",
+      "indicator_smoothness": "Continuous smooth transitions, no stepped movements",
+      "paging_snap": "Satisfying snap-to-page feel on scroll release"
+    }
+  },
+  "performance_optimizations": {
+    "ui_thread_execution": {
+      "scroll_handling": "useAnimatedScrollHandler runs entirely on UI thread",
+      "interpolations": "All interpolations run on UI thread in scroll handler",
+      "benefit": "60fps scroll and indicator animations with no JS thread blocking"
+    },
+    "memo_components": {
+      "DynamicTabIndicator": "Prevents re-renders when parent changes",
+      "SectionTabs": "Prevents re-renders when parent changes",
+      "benefit": "Only re-renders when props actually change"
+    },
+    "useMemo_usage": {
+      "interpolationRanges": "Recalculates only when data, width, or layouts change",
+      "sectionTitles": "Recalculates only when data changes",
+      "benefit": "Prevents expensive array operations on every render"
+    },
+    "useCallback_usage": {
+      "updateLayout": "Stable function reference for layout callbacks",
+      "updateInitialIndicator": "Stable function reference",
+      "handleSelectSection": "Stable function reference for tab press handlers",
+      "handleLayout": "Stable function reference",
+      "benefit": "Prevents child component re-renders from function recreation"
+    },
+    "removeClippedSubviews": {
+      "enabled": true,
+      "benefit": "Removes off-screen images from view hierarchy for better memory usage"
+    },
+    "conditional_interpolation": {
+      "check": "if (inputRange.length > 0 && xOutputRange.length > 0)",
+      "purpose": "Prevents interpolation errors before layouts are measured",
+      "benefit": "Avoids crashes on initial render"
+    },
+    "ref_usage": {
+      "scrollRef": "useRef avoids recreating ref on every render",
+      "access": "scrollRef.current?.scrollTo (safe optional chaining)"
+    }
+  },
+  "mathematical_algorithms": {
+    "input_range_calculation": {
+      "formula": "data.map((_, index) => index * width)",
+      "example": "With 5 items and width 390: [0, 390, 780, 1170, 1560]",
+      "purpose": "Maps scroll position to page indices"
+    },
+    "x_output_range_calculation": {
+      "formula": "(layout?.x ?? 0) + (index * width) / data.length",
+      "components": [
+        "layout?.x: Measured x position of tab text",
+        "(index * width) / data.length: Proportional offset based on tab index"
+      ],
+      "purpose": "Accounts for tab spacing and centers indicator under text",
+      "example": "For tab 2 (Iceland) at x=200, width=390, 5 items: 200 + (2*390)/5 = 200 + 156 = 356"
+    },
+    "width_output_range_calculation": {
+      "formula": "layouts[index]?.width ?? 0",
+      "fallback": "0 if layout not yet measured",
+      "purpose": "Uses actual measured text width for accurate indicator sizing"
+    },
+    "interpolation": {
+      "function": "interpolate(input, inputRange, outputRange, Extrapolation.CLAMP)",
+      "type": "Linear interpolation",
+      "extrapolation": "CLAMP prevents values from exceeding range boundaries",
+      "runs_on": "UI thread (worklet)"
+    },
+    "tab_width_distribution": {
+      "formula": "width / data.length",
+      "example": "With 5 tabs and width 390: 390/5 = 78px per tab",
+      "ensures": "Equal width distribution across all tabs"
+    },
+    "indicator_top_position": {
+      "formula": "indicatorLayout.value.y + height - 35",
+      "components": [
+        "indicatorLayout.value.y: Measured y position of tab text",
+        "height: Tab container height (120)",
+        "35: Offset from bottom"
+      ],
+      "purpose": "Positions indicator bar below tab text with consistent spacing"
+    }
+  },
+  "technical_challenges_and_solutions": {
+    "layout_measurement_timing": {
+      "challenge": "Tab text widths not known until after render and layout",
+      "solution": "Use onLayout callback on Text components to measure actual dimensions",
+      "pattern": "Store measurements in React state (layouts array)",
+      "benefit": "Indicator width accurately matches text width, not hardcoded"
+    },
+    "initial_indicator_state": {
+      "challenge": "Indicator needs valid position/width before first scroll",
+      "solution": "handleLayout checks if index === 0 and calls onInitialLayout",
+      "implementation": "First tab layout stored in indicatorLayout SharedValue on mount",
+      "benefit": "Indicator visible and correctly positioned on initial render"
+    },
+    "synchronizing_react_state_with_worklet": {
+      "challenge": "Layout measurements (React state) needed in worklet (useAnimatedScrollHandler)",
+      "solution": "Use useMemo to compute interpolationRanges from layouts, access in worklet via closure",
+      "key_insight": "interpolationRanges captured in scroll handler closure, updates when dependencies change",
+      "benefit": "Worklet can access layout data without bridging"
+    },
+    "proportional_x_offset": {
+      "challenge": "Tab x positions alone don't center indicator properly with equal-width tabs",
+      "solution": "Add proportional offset: (index * width) / data.length",
+      "reasoning": "Compensates for equal-width tab distribution vs variable text width",
+      "benefit": "Indicator centered under text regardless of text width"
+    },
+    "preventing_interpolation_errors": {
+      "challenge": "interpolate crashes if ranges are empty on initial render",
+      "solution": "Conditional check: if (inputRange.length > 0 && xOutputRange.length > 0)",
+      "benefit": "Graceful handling during initial layout phase"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "Image galleries with tab navigation",
+      "Onboarding flows with progress indicator",
+      "Product photo carousels with category tabs",
+      "Tutorial/walkthrough screens with step indicators",
+      "Portfolio showcases with section navigation"
+    ],
+    "secondary": [
+      "Tab bars with dynamic content widths",
+      "Segmented controls with custom indicator animations",
+      "Multi-step forms with progress tracking",
+      "Carousel components with synchronized navigation"
+    ],
+    "real_world_examples": [
+      "Instagram story viewer with indicator dots",
+      "Airbnb property photo gallery with room type tabs",
+      "App Store app screenshots with category tabs",
+      "Travel apps destination galleries",
+      "E-commerce product photo viewers"
+    ]
+  },
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "DynamicTabIndicatorProps",
+        "SectionTabsProps",
+        "LayoutRectangle (imported from react-native)"
+      ],
+      "generics": "ReturnType<typeof require> for image typing",
+      "strict_null_checks": "Uses optional chaining and nullish coalescing"
+    },
+    "component_architecture": {
+      "pattern": "Container/Presentational separation",
+      "main_component": "DynamicTabIndicator (logic and state)",
+      "presentational": "SectionTabs (UI rendering)",
+      "container": "DynamicTabIndicatorContainer (data injection)"
+    },
+    "separation_of_concerns": {
+      "data": "Separated into constants/data.tsx",
+      "components": "Organized in components directory",
+      "clear_responsibilities": "Each component has single, clear purpose"
+    },
+    "best_practices": [
+      "memo for performance optimization",
+      "useCallback for stable function references",
+      "useMemo for expensive calculations",
+      "Optional chaining for safe ref access",
+      "Nullish coalescing for fallback values",
+      "Descriptive variable names",
+      "Proper TypeScript typing"
+    ],
+    "documentation": {
+      "inline_comments": "Minimal - code is largely self-documenting",
+      "type_safety": "Types provide documentation",
+      "naming_conventions": "Clear, descriptive names"
+    }
+  },
+  "known_limitations": {
+    "layout_measurement_delay": {
+      "issue": "Brief delay between mount and layout measurements",
+      "effect": "Indicator may not be visible or positioned correctly on first frame",
+      "mitigation": "updateInitialIndicator sets initial state from first tab",
+      "user_impact": "Usually imperceptible"
+    },
+    "equal_width_tabs": {
+      "implementation": "Tabs have equal width (width / data.length)",
+      "limitation": "Long titles may truncate or wrap",
+      "alternative": "Could use ScrollView for tabs with dynamic widths"
+    },
+    "fixed_indicator_style": {
+      "issue": "Indicator color, height, and border radius are hardcoded",
+      "enhancement": "Could be made configurable via props"
+    },
+    "no_active_tab_highlight": {
+      "limitation": "No visual distinction of active tab text (no color change)",
+      "enhancement": "Could interpolate text color or opacity based on scroll position"
+    },
+    "accessibility": {
+      "missing": "No accessibility labels or hints",
+      "screen_reader": "May not announce current section or total count",
+      "keyboard_navigation": "No keyboard navigation support"
+    },
+    "memory_considerations": {
+      "removeClippedSubviews": "Enabled, but all images still loaded in memory",
+      "limitation": "May struggle with many large images",
+      "alternative": "Could implement virtualization for large datasets"
+    }
+  },
+  "potential_improvements": {
+    "visual_enhancements": [
+      "Active tab text color change based on scroll position",
+      "Text opacity interpolation for inactive tabs",
+      "Indicator color customization via props",
+      "Gradient or shadow effects on indicator",
+      "Animated transition between tab text styles",
+      "Parallax effect on images during scroll"
+    ],
+    "interaction_enhancements": [
+      "Haptic feedback on page change",
+      "Double tap to zoom image",
+      "Long press for additional actions",
+      "Swipe up/down gestures for additional navigation",
+      "Pinch to zoom on images"
+    ],
+    "functionality": [
+      "Dynamic tab widths based on text length",
+      "Horizontal scroll for tabs when many sections",
+      "Configurable indicator styles via props",
+      "Support for custom indicator components",
+      "Lazy loading for images",
+      "Preloading adjacent images",
+      "Custom interpolation easing functions"
+    ],
+    "accessibility": [
+      "Accessibility labels for tabs and images",
+      "Screen reader announcements on section change",
+      "Keyboard navigation support",
+      "VoiceOver/TalkBack optimizations",
+      "Reduced motion preference support",
+      "High contrast mode support"
+    ],
+    "customization": [
+      "Configurable indicator position (top/bottom)",
+      "Custom indicator component prop",
+      "Configurable tab bar height",
+      "Theme/color scheme props",
+      "Custom animation timing/easing",
+      "Vertical orientation support"
+    ],
+    "performance": [
+      "Image virtualization for large datasets",
+      "Progressive image loading",
+      "Image caching strategy",
+      "Optimize layout measurement triggering",
+      "useNativeDriver for transforms where possible"
+    ]
+  },
+  "key_insights": {
+    "dynamic_interpolation_ranges": "Output ranges built from runtime measurements enable accurate indicator sizing without hardcoding",
+    "shared_value_for_layout": "Storing entire LayoutRectangle in SharedValue allows multiple animated properties from single source",
+    "closure_capture_pattern": "useMemo creates interpolationRanges that are captured in useAnimatedScrollHandler closure",
+    "proportional_offset_necessity": "Equal-width tabs require offset calculation to center indicator under variable-width text",
+    "initial_state_importance": "Setting initial indicator state prevents flash of mispositioned indicator",
+    "ui_thread_benefit": "All animations run on UI thread for smooth 60fps experience",
+    "memo_for_performance": "memo prevents unnecessary re-renders in scroll-heavy component",
+    "conditional_interpolation_safety": "Checking array lengths before interpolation prevents crashes during layout phase"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "Horizontal ScrollView with paging",
+      "useWindowDimensions for responsive layouts",
+      "onLayout for measuring component dimensions",
+      "TouchableOpacity for interactive elements",
+      "Safe area insets handling"
+    ],
+    "for_intermediate": [
+      "useAnimatedScrollHandler for scroll tracking",
+      "interpolate for smooth transitions",
+      "SharedValue usage patterns",
+      "useAnimatedStyle for animated styling",
+      "Building interpolation ranges dynamically",
+      "useMemo and useCallback optimization",
+      "memo for component optimization"
+    ],
+    "for_advanced": [
+      "Synchronizing React state with Reanimated worklets via closures",
+      "Dynamic interpolation ranges from runtime measurements",
+      "Layout measurement timing and initial state handling",
+      "Proportional offset calculations for alignment",
+      "Conditional worklet logic for error prevention",
+      "Performance optimization in high-frequency animations",
+      "Combining multiple animated properties in single SharedValue"
+    ]
+  },
+  "comparison_to_similar_patterns": {
+    "vs_tab_bars": {
+      "traditional": "Fixed tabs with discrete transitions",
+      "this": "Continuous morphing indicator that tracks scroll position",
+      "difference": "This provides smoother, more fluid visual feedback"
+    },
+    "vs_page_indicators": {
+      "traditional": "Dots or bars that change discretely per page",
+      "this": "Single morphing indicator with continuous position/width changes",
+      "similarity": "Both show current position in paged content"
+    },
+    "vs_segmented_controls": {
+      "segmented": "Discrete selection with instant state changes",
+      "this": "Continuous tracking of scroll position with smooth transitions",
+      "difference": "This shows in-between states during swipe"
+    }
+  },
+  "testing_considerations": {
+    "unit_tests": [
+      "Interpolation range calculations are correct",
+      "updateLayout correctly updates layouts array at specific index",
+      "handleSelectSection calls scrollTo with correct parameters",
+      "Tab width calculation (width / data.length) is accurate"
+    ],
+    "integration_tests": [
+      "Scrolling updates indicator position smoothly",
+      "Tapping tab scrolls to correct section",
+      "Indicator width matches active tab text width",
+      "Initial indicator positioned at first tab",
+      "Layout measurements trigger properly"
+    ],
+    "visual_tests": [
+      "Indicator smoothly morphs width during scroll",
+      "Indicator position stays centered under active tab",
+      "No visual jumps or stuttering during scroll",
+      "Tab bar properly positioned with safe area insets",
+      "Images fill screen correctly on all device sizes"
+    ],
+    "edge_cases": [
+      "Single tab (data.length === 1)",
+      "Empty data array",
+      "Very long tab titles",
+      "Many tabs (10+)",
+      "Rapid tab tapping",
+      "Scroll during animated scrollTo",
+      "Different screen sizes and aspect ratios",
+      "Rapid scroll direction changes"
+    ],
+    "performance_tests": [
+      "Maintain 60fps during scroll",
+      "Memory usage with large images",
+      "Layout measurement overhead",
+      "Animation performance on low-end devices"
+    ]
+  },
+  "platform_considerations": {
+    "ios": {
+      "features": "All features fully supported",
+      "performance": "Excellent",
+      "safe_area": "Properly handled with useSafeAreaInsets",
+      "images": "Full-resolution support"
+    },
+    "android": {
+      "features": "All features fully supported",
+      "performance": "Excellent",
+      "safe_area": "Properly handled",
+      "images": "Full-resolution support"
+    },
+    "web": {
+      "compatibility": "Should work with React Native Web",
+      "considerations": [
+        "ScrollView scrolling behavior may differ slightly",
+        "Touch interactions work as expected",
+        "Image loading may need optimization",
+        "Safe area insets may need polyfill"
+      ]
+    }
+  },
+  "related_patterns": {
+    "animated_tab_bars": "Tab bars with animated indicators",
+    "carousel_indicators": "Dot or bar indicators for carousels",
+    "scroll_progress_bars": "Bars that show scroll progress",
+    "segmented_controls": "iOS-style segmented controls",
+    "page_indicators": "Indicators for paged content"
+  },
+  "real_world_inspiration": {
+    "instagram_stories": "Story viewer with progress indicators",
+    "snapchat": "Story navigation with progress bars",
+    "ios_tab_bars": "Tab bar with sliding indicator",
+    "material_tabs": "Material Design tab indicators"
+  },
+  "bundle_size_impact": {
+    "component_size": "Small (~145 lines total)",
+    "dependencies": "Reanimated and safe-area-context (likely already in project)",
+    "images": "5 JPG images (size depends on image quality)",
+    "runtime_overhead": "Minimal - simple interpolations",
+    "estimated_code_size": "~3KB (excluding images)"
+  },
+  "tags": [
+    "tab-indicator",
+    "animated-indicator",
+    "scroll-tracking",
+    "horizontal-scroll",
+    "paging",
+    "interpolation",
+    "layout-measurement",
+    "dynamic-width",
+    "morphing-indicator",
+    "image-gallery",
+    "reanimated",
+    "synchronized-animation",
+    "ui-thread",
+    "carousel",
+    "tab-navigation"
+  ],
+  "content_hash": "a1f122a043c13f5ca4a10c7acc0343c882853080c9e6ae92e649982b31f9a3a3",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.328Z",
+  "last_validated": "2025-10-12T09:19:28.328Z"
+}

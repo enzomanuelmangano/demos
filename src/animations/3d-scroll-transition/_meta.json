@@ -1,0 +1,501 @@
+{
+  "animation_name": "3D Scroll Transition",
+  "animation_slug": "3d-scroll-transition",
+  "description": "A performant 3D scrollable list with perspective transforms, dynamic blur effects, and gradient-masked text rendered via Skia. Items rotate in 3D space (rotateX) as they scroll, with blur and opacity interpolation for depth perception.",
+  "main_features": [
+    "3D perspective transforms on scroll",
+    "Dynamic blur effects (performance optimized)",
+    "Skia-rendered gradient text",
+    "Inverted FlatList for bottom-to-top scrolling",
+    "Snap-to-interval scrolling",
+    "Opacity fade for off-screen items",
+    "useAnimatedScrollHandler for native thread performance",
+    "windowSize optimization for smooth scrolling"
+  ],
+  "file_structure": {
+    "index.tsx": "Main ScrollTransition3D component with FlatList",
+    "components/blurred-list-item.tsx": "Individual list item with Skia rendering and 3D transforms"
+  },
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "list": "Animated.FlatList (inverted)"
+  },
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Group",
+        "Fill",
+        "Mask",
+        "Text",
+        "BlurMask",
+        "Paint"
+      ],
+      "effects": [
+        "Blur",
+        "SweepGradient"
+      ],
+      "hooks": [
+        "useFont"
+      ],
+      "utilities": [
+        "vec"
+      ],
+      "usage": "GPU-accelerated text rendering with gradients and blur effects"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedScrollHandler",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "interpolate"
+      ],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View"
+      ],
+      "critical_feature": "useAnimatedScrollHandler runs scroll handling on UI thread"
+    }
+  },
+  "animation_techniques": {
+    "3d_rotation": {
+      "transform": "rotateX",
+      "values": "[-π/2, -π/2, 0, -π/2, -π/2] rad",
+      "effect": "Items rotate from flat (horizontal) to upright when centered",
+      "perspective": 200,
+      "note": "Perspective must come before rotation in transform array"
+    },
+    "blur_interpolation": {
+      "input_range": "[size*(i-1), size*(i-1)+20, size*i, size*(i+1)-20, size*(i+1)]",
+      "output_range": "[0, 6, 0, 6, 0]",
+      "optimization": "Blur = 0 at center for performance (blur is expensive)",
+      "effect": "Items blur when away from center, sharp when centered"
+    },
+    "opacity_fade": {
+      "input_range": "Same as blur",
+      "output_range": "[0, 0.5, 1, 0.5, 0]",
+      "effect": "Items fade in/out as they approach/leave center"
+    },
+    "gradient_masking": {
+      "pattern": "SweepGradient inside Mask",
+      "mask": "Text shape",
+      "colors": [
+        "cyan",
+        "magenta",
+        "yellow",
+        "cyan"
+      ],
+      "effect": "Text filled with radial color sweep",
+      "center": "vec(windowWidth/2, size/2)"
+    },
+    "blur_glow": {
+      "component": "BlurMask",
+      "blur": 4,
+      "style": "solid",
+      "effect": "Soft glow around text edges"
+    }
+  },
+  "reanimated_patterns": {
+    "useAnimatedScrollHandler": {
+      "pattern": "Most efficient way to handle scroll in Reanimated",
+      "runs_on": "UI thread (native)",
+      "updates": "scrollY SharedValue",
+      "benefit": "No bridge crossing, 60fps scroll handling",
+      "worklet": true
+    },
+    "derived_values": [
+      {
+        "name": "blur",
+        "dependencies": [
+          "inputRange",
+          "scrollY"
+        ],
+        "calculation": "interpolate with Extrapolation.CLAMP",
+        "purpose": "Dynamic blur based on scroll position"
+      },
+      {
+        "name": "opacity",
+        "dependencies": [
+          "inputRange",
+          "scrollY"
+        ],
+        "calculation": "interpolate with Extrapolation.CLAMP",
+        "purpose": "Dynamic opacity fade"
+      }
+    ],
+    "animated_style": {
+      "name": "rItemStyle",
+      "properties": [
+        "opacity",
+        "transform: [perspective, rotateX]"
+      ],
+      "interpolation": "Direct interpolation in useAnimatedStyle",
+      "dependencies": [
+        "inputRange",
+        "scrollY"
+      ]
+    }
+  },
+  "performance_optimizations": {
+    "windowSize": {
+      "value": 2,
+      "effect": "Only renders 2x viewport worth of items",
+      "benefit": "Massive performance boost, prevents janky scrolling",
+      "comment": "Secret ingredient! 🤫"
+    },
+    "getItemLayout": {
+      "purpose": "Tells FlatList exact item dimensions ahead of time",
+      "benefit": "Eliminates layout measurement, enables instant scrolling",
+      "critical": true
+    },
+    "blur_at_zero": {
+      "strategy": "Blur = 0 when item at center",
+      "reason": "Blur is expensive, this saves GPU cycles",
+      "comment": "Explicitly noted in code for performance"
+    },
+    "useMemo": {
+      "contentContainerStyle": "Prevents style object recreation",
+      "inputRange": "Prevents array recreation per item",
+      "sweepGradient": "Prevents Gradient component recreation"
+    },
+    "useCallback": {
+      "getItemLayout": "Stable reference for FlatList optimization"
+    },
+    "memo": {
+      "ScrollTransition3D": "Prevents unnecessary re-renders of entire list"
+    },
+    "snapToInterval": {
+      "value": "itemSize",
+      "benefit": "Smooth snapping, predictable scroll positions"
+    },
+    "decelerationRate": {
+      "value": "fast",
+      "benefit": "Quick snapping to positions"
+    },
+    "inverted_flatlist": {
+      "benefit": "Natural bottom-to-top scrolling without layout gymnastics"
+    }
+  },
+  "skia_rendering": {
+    "canvas": {
+      "width": "windowWidth",
+      "height": "size (itemSize)",
+      "purpose": "Full-width canvas for each list item"
+    },
+    "group_layer": {
+      "component": "Group with layer prop",
+      "layer_paint": "Paint with Blur effect",
+      "purpose": "Applies blur to entire group efficiently",
+      "performance": "Better than blurring individual elements"
+    },
+    "mask_pattern": {
+      "outer": "Mask component",
+      "mask_shape": "Text component (white)",
+      "fill": "SweepGradient inside Fill",
+      "result": "Gradient only visible within text shape",
+      "technique": "Alpha masking"
+    },
+    "text_rendering": {
+      "font": "SF-Pro-Rounded-Bold.otf (size 175)",
+      "positioning": {
+        "x": "windowWidth/2 - font.measureText(text).width/2 (centered)",
+        "y": "size/2 + font.getSize()/4 (vertically centered)"
+      },
+      "measurement": "font.measureText() for precise centering"
+    },
+    "blur_mask": {
+      "blur": 4,
+      "style": "solid",
+      "applied_to": "Entire Group",
+      "effect": "Soft glow halo"
+    }
+  },
+  "mathematical_algorithms": {
+    "input_range_calculation": {
+      "formula": "[size*(i-1), size*(i-1)+20, size*i, size*(i+1)-20, size*(i+1)]",
+      "breakdown": {
+        "size*(i-1)": "Start of previous item",
+        "size*(i-1)+20": "20px into previous item (transition start)",
+        "size*i": "Start of current item (centered)",
+        "size*(i+1)-20": "20px before next item (transition end)",
+        "size*(i+1)": "Start of next item"
+      },
+      "purpose": "Creates smooth transition zone with easing near edges"
+    },
+    "rotation_angle": {
+      "min": "-π/2 rad (-90°)",
+      "max": "0 rad (0°)",
+      "at_center": "0 rad (upright)",
+      "off_screen": "-π/2 rad (horizontal, invisible from front)"
+    },
+    "perspective_math": {
+      "value": 200,
+      "effect": "Lower = more dramatic 3D effect",
+      "typical_range": "100-1000"
+    },
+    "text_centering": {
+      "horizontal": "windowWidth/2 - measuredWidth/2",
+      "vertical": "size/2 + fontSize/4",
+      "note": "fontSize/4 offset accounts for text baseline"
+    }
+  },
+  "data_structure": {
+    "NUMBERS_ARRAY": {
+      "generation": "new Array(100).fill(0).map((_, i) => i.toString()).reverse()",
+      "content": "['99', '98', '97', ..., '1', '0']",
+      "reversed": true,
+      "reason": "Inverted FlatList displays from bottom up, reversing makes 0 at bottom"
+    },
+    "item_size": {
+      "calculation": "windowWidth * 0.55",
+      "responsive": true,
+      "unit": "pixels"
+    }
+  },
+  "flatlist_configuration": {
+    "inverted": {
+      "value": true,
+      "effect": "List scrolls bottom-to-top",
+      "use_case": "Natural vertical scrolling with stacking effect"
+    },
+    "contentContainerStyle": {
+      "paddingVertical": "windowHeight/2 - itemSize/2",
+      "purpose": "Centers first/last item in viewport"
+    },
+    "windowSize": {
+      "value": 2,
+      "critical": "Secret ingredient for smooth performance"
+    },
+    "snapToInterval": {
+      "value": "itemSize",
+      "effect": "Items snap to center when scrolling stops"
+    },
+    "decelerationRate": {
+      "value": "fast",
+      "effect": "Stops scrolling quickly, snaps sooner"
+    },
+    "getItemLayout": {
+      "callback": "Returns {length, offset, index}",
+      "optimization": "Enables FlatList to calculate positions without measuring"
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "background": "#000 (black)",
+      "gradient": [
+        "cyan",
+        "magenta",
+        "yellow",
+        "cyan"
+      ],
+      "text_mask": "white (for mask)",
+      "aesthetic": "Dark with vibrant CMYK gradient"
+    },
+    "typography": {
+      "font": "SF-Pro-Rounded-Bold",
+      "size": 175,
+      "rendering": "Skia (GPU)",
+      "style": "Large, bold, rounded"
+    },
+    "depth_cues": [
+      "3D rotation (primary depth cue)",
+      "Opacity fade (atmospheric perspective)",
+      "Blur (defocus blur)",
+      "Scale (implicit from perspective)"
+    ],
+    "layout": {
+      "centered": "Items centered horizontally and vertically in viewport",
+      "spacing": "itemSize between items",
+      "scroll_direction": "Vertical (inverted)"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "Number pickers (e.g., iOS-style time picker)",
+      "Scrollable card decks",
+      "3D carousel effects",
+      "Date/time selectors"
+    ],
+    "secondary": [
+      "Product showcases",
+      "Media galleries with depth",
+      "Settings selectors",
+      "Tutorial/onboarding steps"
+    ],
+    "real_world_inspiration": [
+      "iOS time picker",
+      "Card flip animations",
+      "3D album covers"
+    ]
+  },
+  "code_quality": {
+    "typescript": "Full TypeScript with explicit types",
+    "type_definitions": [
+      "BlurredListItem props"
+    ],
+    "imports": {
+      "types": [
+        "SharedValue"
+      ],
+      "explicit": true
+    },
+    "constants": {
+      "NUMBERS_ARRAY": "Module-level constant",
+      "naming": "SCREAMING_SNAKE_CASE"
+    },
+    "documentation": {
+      "inline_comments": "Excellent - explains key optimizations",
+      "performance_notes": "Highlights windowSize and blur optimizations",
+      "worklet_annotations": true
+    },
+    "best_practices": [
+      "memo for performance",
+      "useMemo for expensive calculations",
+      "useCallback for stable references",
+      "getItemLayout for FlatList optimization",
+      "useAnimatedScrollHandler for native performance"
+    ]
+  },
+  "known_limitations": {
+    "font_hardcoding": {
+      "issue": "Hardcoded font path with require()",
+      "location": "blurred-list-item.tsx:30",
+      "todo": "TODO comment present",
+      "improvement": "Use font loading system"
+    },
+    "fixed_font_size": {
+      "issue": "Font size 175 is hardcoded",
+      "impact": "May not scale well on all screen sizes"
+    },
+    "gradient_colors": {
+      "issue": "Colors hardcoded (CMYK)",
+      "customization": "Could be props"
+    },
+    "item_content": {
+      "limitation": "Only supports text, not complex content",
+      "workaround": "Could extend to render arbitrary components"
+    },
+    "blur_performance": {
+      "platform": "Blur effects may be heavy on low-end devices",
+      "mitigation": "Already optimized with blur=0 at center"
+    }
+  },
+  "potential_improvements": {
+    "customization": [
+      "Configurable rotation angle",
+      "Adjustable perspective distance",
+      "Custom gradient colors",
+      "Font size/family props",
+      "Configurable blur intensity"
+    ],
+    "features": [
+      "Support for arbitrary content (not just text)",
+      "Horizontal scrolling variant",
+      "Multiple items visible at once",
+      "Shadow effects for more depth",
+      "Color theming support"
+    ],
+    "performance": [
+      "Memoize Skia components",
+      "Reduce blur radius on lower-end devices",
+      "Lazy font loading"
+    ]
+  },
+  "key_insights": {
+    "windowSize_critical": "windowSize={2} is the secret to smooth scrolling",
+    "blur_optimization": "Setting blur=0 at center saves massive GPU cycles",
+    "useAnimatedScrollHandler": "Essential for 60fps scroll performance",
+    "getItemLayout": "Required for smooth scrolling with consistent item sizes",
+    "skia_masking": "Mask + Fill + Gradient is powerful pattern for shaped fills",
+    "inverted_flatlist": "Inverted makes bottom-up scroll natural without complex layout",
+    "perspective_order": "Perspective must come BEFORE rotation in transform array",
+    "input_range_padding": "20px padding in input range creates smooth transition zones"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "FlatList basics and optimization",
+      "Scroll event handling",
+      "Transform animations",
+      "Interpolation concepts"
+    ],
+    "for_intermediate": [
+      "useAnimatedScrollHandler for performance",
+      "3D transforms (perspective + rotateX)",
+      "useDerivedValue for scroll-based animations",
+      "getItemLayout optimization",
+      "Skia Canvas basics"
+    ],
+    "for_advanced": [
+      "Skia Mask + Fill patterns",
+      "Performance optimization strategies",
+      "windowSize tuning",
+      "Blur optimization techniques",
+      "Complex interpolation with multiple breakpoints"
+    ]
+  },
+  "performance_metrics": {
+    "target_fps": 60,
+    "runs_on": "UI thread",
+    "expected_performance": "Smooth on mid-range devices",
+    "critical_optimizations": [
+      "windowSize",
+      "getItemLayout",
+      "blur=0 at center",
+      "useAnimatedScrollHandler"
+    ]
+  },
+  "accessibility_considerations": {
+    "current_state": "No accessibility considerations",
+    "recommendations": [
+      "Add accessibility labels to items",
+      "Support keyboard navigation",
+      "Announce current item for screen readers",
+      "Respect reduced motion preferences (disable 3D rotation)"
+    ]
+  },
+  "testing_considerations": {
+    "visual_tests": [
+      "Verify 3D rotation at different scroll positions",
+      "Check blur effects apply correctly",
+      "Confirm gradient renders properly",
+      "Test on various screen sizes"
+    ],
+    "performance_tests": [
+      "Monitor FPS during scrolling",
+      "Check memory usage with windowSize",
+      "Test on low-end devices"
+    ],
+    "interaction_tests": [
+      "Snap behavior works correctly",
+      "Scroll momentum feels natural",
+      "Items center properly in viewport"
+    ]
+  },
+  "related_patterns": {
+    "ios_time_picker": "Similar 3D rotation effect",
+    "coverflow": "3D rotation with horizontal scroll",
+    "wheel_picker": "Similar snapping scroll behavior",
+    "card_stack": "Perspective transforms on cards"
+  },
+  "tags": [
+    "3d-transforms",
+    "scroll-animation",
+    "skia",
+    "reanimated",
+    "flatlist",
+    "perspective",
+    "blur",
+    "gradient",
+    "performance",
+    "picker",
+    "carousel"
+  ],
+  "content_hash": "fef28b8e4134cd4c79ed15fbf0925ad8c03bf200345f014014dded32e9be717c",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.256Z",
+  "last_validated": "2025-10-12T09:19:28.257Z"
+}

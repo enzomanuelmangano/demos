@@ -1,0 +1,580 @@
+{
+  "animation_name": "Scrollable Bottom Sheet",
+  "animation_slug": "scrollable-bottom-sheet",
+  "description": "A horizontally scrollable bottom sheet with dynamic height adjustment and pan gestures. Features multi-page support with independent heights, smooth spring animations, animated backdrop, swipe-to-dismiss, and imperative API. Each page automatically adjusts the sheet height as users scroll horizontally through content.",
+  "main_features": [
+    "Horizontally scrollable multi-page bottom sheet",
+    "Dynamic height adjustment per page",
+    "Pan gesture for vertical dragging",
+    "Animated backdrop with tap-to-dismiss",
+    "Imperative API (scrollToY, scrollToX, close, isActive)",
+    "Spring animations for smooth motion",
+    "Swipe down to dismiss gesture",
+    "Automatic height interpolation during horizontal scroll",
+    "Dynamic border radius interpolation",
+    "Paging enabled horizontal scroll",
+    "Worklet-based scroll handling on UI thread"
+  ],
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Demo app showcasing three pages with different heights"
+    },
+    "components": {
+      "BottomSheetPage/index.tsx": "Individual page component with gradient button",
+      "BottomSheet/BottomSheet.tsx": "Core bottom sheet with pan gesture and backdrop",
+      "BottomSheet/ScrollableBottomSheet.tsx": "Main scrollable wrapper with dynamic height logic",
+      "BottomSheet/Backdrop/index.tsx": "Backdrop overlay component with animated opacity"
+    },
+    "hooks": {},
+    "utils": {},
+    "assets": {},
+    "types": {},
+    "constants": {}
+  },
+  "core_technologies": [
+    "react-native-reanimated",
+    "react-native-gesture-handler",
+    "react-native-worklets",
+    "pressto",
+    "expo-linear-gradient"
+  ],
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "components": [
+        "Animated.View",
+        "Animated.ScrollView"
+      ],
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useAnimatedProps",
+        "useAnimatedScrollHandler"
+      ],
+      "utilities": [
+        "withSpring",
+        "withTiming",
+        "interpolate",
+        "Extrapolation"
+      ],
+      "performance_reason": "Scroll handler and pan gesture run on UI thread for smooth 60fps animations",
+      "critical_feature": "useAnimatedScrollHandler for dynamic height interpolation during scroll"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Pan"
+      ],
+      "usage": "Pan gesture for vertical dragging with context pattern"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "imports": [
+        "scheduleOnRN"
+      ],
+      "usage": "Bridge worklet functions to RN thread for scrollToX with delay"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "component": "PressableScale",
+      "usage": "Interactive buttons with scale press animations"
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "component": "LinearGradient",
+      "usage": "Gradient backgrounds for buttons and pages"
+    }
+  },
+  "animation_techniques": [
+    {
+      "name": "Dynamic Height Interpolation",
+      "pattern": "interpolate scroll position to page heights",
+      "implementation": "interpolate(event.contentOffset.x, [0, width, width*2], [350, 500, 250])",
+      "trigger": "useAnimatedScrollHandler onScroll",
+      "benefit": "Seamless height transitions as user scrolls between pages",
+      "runs_on": "UI thread via worklet"
+    },
+    {
+      "name": "Pan Gesture Vertical Dragging",
+      "pattern": "Gesture.Pan() with context pattern",
+      "onStart": "Stores current translateY in context",
+      "onUpdate": "Updates translateY = translationY + context.y (only when translationY > 0)",
+      "onEnd": "Closes if dragged >100px, else snaps back to context position",
+      "constraint": "Prevents downward dragging when at MAX_TRANSLATE_Y"
+    },
+    {
+      "name": "Spring Animation",
+      "config": "{ damping: 25, stiffness: 180, mass: 0.9 }",
+      "usage": [
+        "Sheet open/close",
+        "Height adjustments",
+        "Snap back"
+      ],
+      "effect": "Natural, bouncy motion with controlled oscillation"
+    },
+    {
+      "name": "Backdrop Fade & Pointer Events",
+      "opacity_animation": "withTiming(isActive ? 1 : 0)",
+      "pointer_events": "useAnimatedProps to toggle 'auto'/'none'",
+      "benefit": "Backdrop blocks touches only when visible, prevents ghost touches"
+    },
+    {
+      "name": "Border Radius Interpolation",
+      "input_range": "[MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y]",
+      "output_range": "[25, 5]",
+      "extrapolation": "CLAMP",
+      "effect": "Border radius reduces from 25 to 5 as sheet fully opens"
+    },
+    {
+      "name": "Horizontal Paging Scroll",
+      "pattern": "Animated.ScrollView with pagingEnabled",
+      "handler": "useAnimatedScrollHandler for scroll events",
+      "scrollEventThrottle": 16,
+      "showsIndicator": false
+    },
+    {
+      "name": "Spacer View Pattern",
+      "implementation": "height: Math.max(SCREEN_HEIGHT + translateY, 0)",
+      "purpose": "Maintains sheet position at screen bottom",
+      "benefit": "Keeps content pinned to bottom during animations"
+    }
+  ],
+  "reanimated_patterns": [
+    {
+      "pattern": "SharedValue State Management",
+      "values": {
+        "translateY": "Vertical position of sheet (0 = closed, negative = open)",
+        "active": "Boolean tracking if sheet is open",
+        "context": "{ y: number } for gesture start position"
+      },
+      "scope": "ScrollableBottomSheet component",
+      "note": "Defined in ScrollableBottomSheet.tsx due to worklet scrollToY requirements"
+    },
+    {
+      "pattern": "Animated Scroll Handler",
+      "implementation": "useAnimatedScrollHandler with onScroll",
+      "worklet": true,
+      "logic": "Interpolates contentOffset.x to page heights, calls scrollToY(-interpolatedHeight)",
+      "guard": "Early return if !active.value to prevent closed-state updates"
+    },
+    {
+      "pattern": "useAnimatedStyle",
+      "instances": [
+        "rBottomSheetStyle: transform + borderRadius",
+        "rSpacerViewStyle: dynamic height",
+        "rChildrenStyle: opacity fade",
+        "rBackdropStyle: backdrop opacity",
+        "rBackdropProps: pointer events"
+      ]
+    },
+    {
+      "pattern": "Worklet Functions",
+      "functions": {
+        "scrollToY": "Animates vertical position, updates active state",
+        "close": "Wrapper calling scrollToY(0)"
+      },
+      "marked_with": "'worklet' directive",
+      "benefit": "Called from UI thread without bridge crossing"
+    },
+    {
+      "pattern": "scheduleOnRN Bridge",
+      "usage": "scheduleOnRN(scrollToX, 0, 500)",
+      "purpose": "Schedule horizontal scroll reset to x=0 after 500ms delay when closing",
+      "necessity": "Bridges from UI thread worklet to RN thread for scrollTo API"
+    },
+    {
+      "pattern": "useImperativeHandle",
+      "ref_type": "ScrollableBottomSheetRef",
+      "exposed_methods": {
+        "scrollToY": "(destination: number) => void",
+        "scrollToX": "(destination: number) => void",
+        "isActive": "() => boolean",
+        "close": "() => void"
+      },
+      "benefit": "Parent can control sheet programmatically"
+    }
+  ],
+  "component_patterns": {
+    "forwardRef_with_imperative_api": {
+      "component": "ScrollableBottomSheet",
+      "ref_type": "ScrollableBottomSheetRef",
+      "pattern": "forwardRef + useImperativeHandle",
+      "benefit": "External control while maintaining internal state"
+    },
+    "render_props_pages": {
+      "prop": "pages: { height: number; component: ReactNode }[]",
+      "pattern": "Array of page objects with height and component",
+      "usage": "Maps to ScrollView children",
+      "benefit": "Flexible content with individual height control"
+    },
+    "memo_optimization": {
+      "component": "Backdrop",
+      "reason": "Prevents re-renders when parent changes",
+      "benefit": "Only re-renders on isActive change"
+    },
+    "memoized_derived_arrays": {
+      "pagesHeight": "useMemo(() => pages.map(item => item.height))",
+      "pagesComponent": "useMemo(() => pages.map(item => item.component))",
+      "benefit": "Stable references for interpolation input ranges"
+    }
+  },
+  "gesture_handling": {
+    "pan_gesture_lifecycle": {
+      "onStart": "context.value = { y: translateY.value } - captures current position",
+      "onUpdate": "if (translationY > 0) translateY.value = translationY + context.y, clamped to MAX_TRANSLATE_Y",
+      "onEnd": "if (translationY > 100) scrollTo(0), else scrollTo(context.y)"
+    },
+    "drag_constraints": {
+      "upward": "No upward dragging allowed (translationY > 0 check)",
+      "downward": "Unlimited downward drag, clamped at MAX_TRANSLATE_Y",
+      "threshold": "100px triggers close on release"
+    },
+    "gesture_context_pattern": {
+      "implementation": "useSharedValue({ y: 0 })",
+      "purpose": "Stores gesture start position for relative dragging",
+      "benefit": "Prevents sheet from jumping to touch point"
+    }
+  },
+  "scroll_behavior": {
+    "horizontal_paging": {
+      "pagingEnabled": true,
+      "pageWidth": "windowWidth",
+      "effect": "Snaps to full pages on swipe"
+    },
+    "dynamic_height_sync": {
+      "trigger": "onScroll event during horizontal paging",
+      "calculation": "Interpolate contentOffset.x across page indices to page heights",
+      "animation": "scrollToY(-interpolatedHeight) with spring",
+      "smoothness": "Runs on UI thread, 60fps smooth"
+    },
+    "scroll_event_throttle": {
+      "value": 16,
+      "fps": "~60fps scroll updates",
+      "benefit": "Smooth height transitions during scroll"
+    }
+  },
+  "state_management": {
+    "shared_values": [
+      {
+        "name": "translateY",
+        "initial": "pages[0].height ?? 0",
+        "controls": "Vertical position of sheet",
+        "values": "0 (closed), negative (open to specific height)"
+      },
+      {
+        "name": "active",
+        "type": "boolean",
+        "usage": "Tracks if sheet is open",
+        "triggers": [
+          "Backdrop visibility",
+          "Scroll handler guard"
+        ]
+      },
+      {
+        "name": "context",
+        "type": "{ y: number }",
+        "scope": "BottomSheet",
+        "usage": "Stores pan gesture start position"
+      }
+    ],
+    "ref_values": {
+      "scrollViewRef": "useRef<Animated.ScrollView>(null)",
+      "usage": "Imperative scrollTo for horizontal navigation"
+    },
+    "memoized_values": {
+      "pages": "useMemo based on windowWidth",
+      "pagesHeight": "useMemo map of heights",
+      "pagesComponent": "useMemo map of components"
+    }
+  },
+  "ui_ux_patterns": {
+    "multi_page_bottom_sheet": {
+      "pattern": "Horizontal scroll with dynamic height per page",
+      "pages": 3,
+      "heights": "[350, 500, 250]",
+      "navigation": "Buttons trigger scrollToX(windowWidth * pageIndex)"
+    },
+    "backdrop_dismiss": {
+      "pattern": "Dark overlay dismisses on tap",
+      "color": "rgba(255,255,255,0.05)",
+      "interaction": "onTouchStart triggers scrollTo(0)"
+    },
+    "swipe_down_dismiss": {
+      "threshold": "100px vertical drag",
+      "feel": "Natural iOS-like gesture"
+    },
+    "seamless_height_transitions": {
+      "effect": "Sheet smoothly expands/contracts during horizontal scroll",
+      "implementation": "Real-time interpolation in scroll handler",
+      "animation": "Spring physics for natural feel"
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "background": "#000 (demo), #171717 (sheet)",
+      "backdrop": "rgba(255,255,255,0.05)",
+      "line_indicator": "grey",
+      "gradient": [
+        "#4E65FF",
+        "#92EFFD"
+      ]
+    },
+    "spacing": {
+      "line_margin": "15px vertical",
+      "line_width": "75px",
+      "line_height": "4px",
+      "button_padding": "varied per page"
+    },
+    "border_radius": {
+      "sheet": "5-25px (dynamic)",
+      "button": "25px, 40px"
+    },
+    "dimensions": {
+      "sheet_height": "SCREEN_HEIGHT (covers full screen)",
+      "page_heights": "[350, 500, 250]",
+      "button_size": "50px"
+    }
+  },
+  "performance_optimizations": [
+    {
+      "name": "UI Thread Scroll Handler",
+      "pattern": "useAnimatedScrollHandler on UI thread",
+      "benefit": "60fps smooth scroll without bridge crossing",
+      "critical": true
+    },
+    {
+      "name": "Worklet ScrollToY",
+      "pattern": "scrollToY marked as 'worklet'",
+      "benefit": "Called from scroll handler without threading issues",
+      "note": "Main reason translateY/active are in ScrollableBottomSheet.tsx"
+    },
+    {
+      "name": "Memoized Pages",
+      "pattern": "useMemo for pages array based on windowWidth",
+      "benefit": "Prevents recreation of page components on every render"
+    },
+    {
+      "name": "Memoized Interpolation Arrays",
+      "arrays": [
+        "pagesHeight",
+        "pagesComponent"
+      ],
+      "benefit": "Stable references for interpolate input/output ranges"
+    },
+    {
+      "name": "Backdrop Memo",
+      "pattern": "memo(Backdrop)",
+      "benefit": "Re-renders only when isActive changes"
+    },
+    {
+      "name": "useCallback",
+      "functions": [
+        "onPress",
+        "scrollToX",
+        "scrollToY",
+        "close"
+      ],
+      "benefit": "Stable function references"
+    },
+    {
+      "name": "Conditional Opacity Animation",
+      "pattern": "withTiming(active ? 1 : 0, { duration: 150 })",
+      "benefit": "Fast fade transitions, imperceptible to user"
+    }
+  ],
+  "use_cases": [
+    "Multi-step forms with variable content height",
+    "Onboarding flows with multiple screens",
+    "Product detail sheets with image galleries",
+    "Shopping cart with checkout steps",
+    "Settings menus with categorized sections",
+    "Photo/video galleries with different aspect ratios",
+    "Tutorial/walkthrough sheets",
+    "Filter panels with different option sets",
+    "Booking flows (date, time, details)",
+    "Multi-page confirmation dialogs",
+    "Swipeable content cards with varying info density"
+  ],
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit type definitions",
+      "Comprehensive type exports (ScrollableBottomSheetRef)",
+      "Excellent code comments explaining design decisions",
+      "forwardRef with proper generic typing",
+      "useImperativeHandle for clean external API",
+      "Worklet annotations for UI thread functions",
+      "Separation of concerns (BottomSheet vs ScrollableBottomSheet)",
+      "Memoization for performance",
+      "Clean prop interfaces",
+      "Proper gesture context pattern",
+      "Excellent inline documentation explaining architectural decisions"
+    ],
+    "areas_for_improvement": [
+      "Magic numbers could be extracted (100px threshold, 150ms duration, spring config)",
+      "Page heights hardcoded in demo (could be dynamic)",
+      "No TypeScript strict null checks on pages?.[0]?.height",
+      "Backdrop color hardcoded (could be prop)",
+      "Could add accessibility labels",
+      "scrollToX setTimeout pattern could be more robust",
+      "eslint-disable comment for 'any' type cast"
+    ],
+    "notable_comments": {
+      "architectural_explanation": "Lines 38-53 in ScrollableBottomSheet.tsx explain why translateY/active are defined there instead of BottomSheet.tsx",
+      "references": "Links to YouTube tutorials for foundational patterns",
+      "github_discussion": "Links to discussion about worklet ref limitations"
+    }
+  },
+  "known_limitations": [
+    {
+      "name": "Worklet Ref Constraint",
+      "issue": "translateY/active must be in ScrollableBottomSheet, not BottomSheet",
+      "reason": "scrollToY must be worklet for scroll handler, but ref.current?.scrollToY breaks UI thread",
+      "workaround": "Declared in parent component",
+      "reference": "https://github.com/software-mansion/react-native-reanimated/discussions/5199"
+    },
+    {
+      "name": "Fixed Gesture Threshold",
+      "value": "100px",
+      "issue": "Hardcoded dismiss threshold",
+      "enhancement": "Could be percentage-based or prop"
+    },
+    {
+      "name": "No Keyboard Avoidance",
+      "impact": "Sheet may be covered by keyboard on input focus",
+      "enhancement": "Could integrate KeyboardAvoidingView"
+    },
+    {
+      "name": "Single Close Snap Point",
+      "issue": "Only fully open or closed, no intermediate snap points",
+      "enhancement": "Could support multiple snap heights"
+    },
+    {
+      "name": "Hardcoded Backdrop Color",
+      "value": "rgba(255,255,255,0.05)",
+      "enhancement": "Could be prop for customization"
+    },
+    {
+      "name": "ScrollToX Delay Pattern",
+      "implementation": "setTimeout(() => scrollViewRef.current?.scrollTo())",
+      "issue": "Not ideal, could miss if component unmounts",
+      "reason": "Required to ensure scroll happens after sheet closes"
+    },
+    {
+      "name": "No Accessibility Support",
+      "missing": [
+        "Screen reader announcements",
+        "Focus management",
+        "Reduced motion support"
+      ]
+    }
+  ],
+  "potential_improvements": [
+    "Multiple snap points (quarter, half, full)",
+    "Keyboard avoidance integration",
+    "Configurable gesture thresholds (prop)",
+    "Backdrop customization (color, opacity props)",
+    "Drag handle indicator visual",
+    "Nested ScrollView support",
+    "Vertical scroll within pages",
+    "Page transition callbacks (onPageChange)",
+    "Haptic feedback on page snap",
+    "Animated page indicators/dots",
+    "Double-tap to toggle heights",
+    "Accessibility announcements",
+    "Focus trap when open",
+    "Keyboard dismiss (Esc key)",
+    "Reduce motion support",
+    "Persistent position storage",
+    "Custom spring config props",
+    "Safe area insets support",
+    "Portal/Modal integration",
+    "Stack multiple sheets"
+  ],
+  "key_insights": [
+    "Worklet constraints drive architectural decisions - can't use ref.current in UI thread worklets",
+    "scheduleOnRN bridges UI thread worklets back to RN thread for imperative APIs",
+    "Dynamic height interpolation during scroll creates seamless UX",
+    "Memoizing input/output arrays for interpolate is crucial for performance",
+    "Active state guard in scroll handler prevents closed-state animations",
+    "Gesture context pattern prevents jumping to touch point on drag start",
+    "useAnimatedProps for pointerEvents avoids ghost touches on backdrop",
+    "Spacer view pattern maintains bottom-pinned positioning during animations",
+    "Spring animation with custom config creates natural, predictable motion",
+    "Separating BottomSheet from ScrollableBottomSheet allows reusability",
+    "Render props pattern (pages array) provides maximum flexibility"
+  ],
+  "learning_opportunities": [
+    {
+      "level": "Beginner",
+      "topics": [
+        "Bottom sheet basics with pan gesture",
+        "Backdrop implementation",
+        "forwardRef pattern",
+        "useImperativeHandle for ref API",
+        "SharedValue fundamentals",
+        "Basic spring animations",
+        "Animated.ScrollView usage"
+      ]
+    },
+    {
+      "level": "Intermediate",
+      "topics": [
+        "useAnimatedScrollHandler worklet",
+        "Dynamic interpolation based on scroll position",
+        "Gesture context pattern for relative dragging",
+        "useAnimatedProps for pointer events",
+        "Worklet function annotations",
+        "scheduleOnRN for thread bridging",
+        "Memoization strategies",
+        "Multi-component state coordination"
+      ]
+    },
+    {
+      "level": "Advanced",
+      "topics": [
+        "Worklet architecture constraints and solutions",
+        "UI thread vs RN thread coordination",
+        "Complex gesture handling with constraints",
+        "Real-time interpolation during scroll",
+        "Performance optimization with worklets",
+        "Imperative API design for animated components",
+        "Understanding Reanimated threading model",
+        "Solving cross-thread ref limitations"
+      ]
+    }
+  ],
+  "related_patterns": {
+    "action_tray": "Similar bottom sheet with pan gesture and backdrop",
+    "bottom_sheet_modal": "Full-featured bottom sheet libraries",
+    "tabbed_bottom_sheet": "Bottom sheet with tab navigation",
+    "drawer_navigation": "Horizontal slide-in panels",
+    "carousel": "Horizontal scrolling with paging"
+  },
+  "tags": [
+    "bottom-sheet",
+    "scrollable",
+    "multi-page",
+    "dynamic-height",
+    "pan-gesture",
+    "horizontal-scroll",
+    "paging",
+    "draggable",
+    "backdrop",
+    "imperative-api",
+    "spring-animation",
+    "reanimated",
+    "gesture-handler",
+    "worklets",
+    "interpolation",
+    "ui-thread",
+    "scroll-handler"
+  ],
+  "content_hash": "9b3233351b4c0a87c101ff636ef21c8b3dd374c0297d7cbb4f0f29015777f21e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.422Z",
+  "last_validated": "2025-10-12T09:19:28.422Z"
+}

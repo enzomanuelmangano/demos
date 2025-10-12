@@ -1,0 +1,784 @@
+{
+  "animation_name": "Add to Cart",
+  "animation_slug": "add-to-cart",
+  "description": "An interactive e-commerce Add to Cart animation featuring morphing button transformation, bottom sheet slide-up, and backdrop fade. The button seamlessly expands from its list item position to a full-width confirm button at the bottom of the screen using layout measurement and position interpolation. Includes tap gesture feedback, badge counters, and smooth state transitions.",
+  "main_features": [
+    "Morphing button animation from list item to full-width confirm button",
+    "Dynamic position and size interpolation using measure() API",
+    "Bottom sheet slide-up with payment confirmation text",
+    "Backdrop fade-in with dynamic pointer events",
+    "Tap gesture with scale feedback on buttons",
+    "Badge counter showing item count per list item",
+    "Selective button visibility based on animation state",
+    "Text opacity fade-ins with staggered timing",
+    "Spring-based scale animations for press feedback"
+  ],
+  "file_structure": {
+    "index.tsx": "Main component orchestrating list, animations, and state management",
+    "components/list-item/index.tsx": "List item component with measure() for layout dimensions",
+    "components/list-item/pressable-scale.tsx": "Reusable pressable with spring scale animation",
+    "components/confirm-button/index.tsx": "Morphing button with position/size interpolation and tap gesture",
+    "components/backdrop/index.tsx": "Animated backdrop with opacity and pointer events",
+    "components/bottom-sheet/index.tsx": "Sliding bottom sheet with text fade-in animations"
+  },
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "worklets": "react-native-worklets (scheduleOnRN)",
+    "images": "expo-image",
+    "layout": "react-native-safe-area-context"
+  },
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useAnimatedRef",
+        "useAnimatedProps",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "measure",
+        "withTiming",
+        "withSpring",
+        "interpolate",
+        "cancelAnimation"
+      ],
+      "types": [
+        "MeasuredDimensions",
+        "SharedValue"
+      ],
+      "critical_feature": "measure() API for getting layout dimensions of components"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Tap()"
+      ],
+      "methods": [
+        "onTouchesDown",
+        "onTouchesUp",
+        "onFinalize",
+        "shouldCancelWhenOutside",
+        "maxDuration"
+      ],
+      "usage": "Tap gestures with scale feedback on buttons"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "functions": [
+        "scheduleOnRN"
+      ],
+      "purpose": "Bridge worklet callbacks to JS thread for setState updates",
+      "critical_for": "Calling React setState from worklet context"
+    },
+    "expo-image": {
+      "version": "~3.0.8",
+      "components": [
+        "Image"
+      ],
+      "features": [
+        "cachePolicy: 'memory-disk'"
+      ],
+      "usage": "Product images in list items with optimized caching"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
+      "usage": "Top padding for list to avoid notch/status bar"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": [
+        "Feather"
+      ],
+      "icon_used": "shopping-cart",
+      "usage": "Cart icon in button"
+    }
+  },
+  "animation_techniques": {
+    "button_morphing": {
+      "pattern": "Position and size interpolation",
+      "measurements": [
+        "Initial: measure() from list item button",
+        "Final: Calculated based on screen dimensions"
+      ],
+      "interpolated_properties": [
+        "top: from pageY to SCREEN_HEIGHT - 100",
+        "left: from pageX to SCREEN_WIDTH * 0.05",
+        "width: from measured width to SCREEN_WIDTH * 0.9",
+        "height: from measured height to 45"
+      ],
+      "timing": "withTiming(1, { duration: 350 })",
+      "key_insight": "Layout measurement enables seamless morphing from any position"
+    },
+    "backdrop_fade": {
+      "pattern": "Opacity interpolation",
+      "opacity": "Directly mirrors animationProgress.value (0 to 1)",
+      "pointer_events": "useAnimatedProps to toggle 'auto' vs 'none'",
+      "color": "rgba(0,0,0,0.75)",
+      "purpose": "Focus attention on confirm button, provide dismiss interaction"
+    },
+    "bottom_sheet_slide": {
+      "pattern": "TranslateY interpolation",
+      "initial_position": "BOTTOM_SHEET_HEIGHT (300) - fully hidden below screen",
+      "final_position": "BOTTOM_SHEET_OFFSET (100) - partially visible",
+      "interpolation": "interpolate(progress, [0, 1], [300, 100], Extrapolation.EXTEND)",
+      "extrapolation": "EXTEND allows smooth continuation if progress exceeds 1",
+      "constant": "BOTTOM_SHEET_HEIGHT = 200 + BOTTOM_SHEET_OFFSET (100)"
+    },
+    "text_fade_ins": {
+      "confirm_button_text": {
+        "opacity_range": "interpolate(progress, [0.5, 1], [0, 1])",
+        "timing": "Starts fading in at 50% animation progress",
+        "flex_animation": "interpolate(progress, [0, 1], [0, 4])",
+        "purpose": "Text appears only when button is wide enough"
+      },
+      "bottom_sheet_text": {
+        "opacity_range": "interpolate(progress, [0.2, 1], [0, 1])",
+        "timing": "Starts fading in at 20% animation progress",
+        "purpose": "Text readable as sheet slides up"
+      }
+    },
+    "scale_feedback": {
+      "confirm_button": {
+        "scale_down": "withTiming(0.95) on touch down",
+        "scale_up": "withTiming(1) on finalize",
+        "gesture": "Gesture.Tap() with maxDuration: 5000"
+      },
+      "pressable_scale": {
+        "scale_down": "withSpring(0.9, { overshootClamping: true }) on touch down",
+        "scale_up": "withSpring(1, { overshootClamping: true }) on finalize",
+        "spring_config": "overshootClamping prevents bounce"
+      }
+    },
+    "button_visibility_toggle": {
+      "pattern": "Opacity animation based on selection",
+      "condition": "selectedIndex.value === index",
+      "selected_item": "opacity: 0 (button hidden during animation)",
+      "unselected_items": "opacity: 1 (buttons remain visible)",
+      "purpose": "Hide source button during morph, show all others"
+    },
+    "badge_animation": {
+      "pattern": "Fade out during animation",
+      "formula": "(1 - animationProgress.value) ** 2",
+      "effect": "Exponential fade out (faster at end)",
+      "condition": "Only animated for selected item",
+      "purpose": "Badge disappears as button morphs"
+    }
+  },
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "animationProgress",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "range": "0 to 1",
+        "updates": "withTiming(1, { duration: 350 }) on tap, withTiming(0) on dismiss",
+        "cancellation": "cancelAnimation() called before new animation",
+        "scope": "Global animation progress driving all animations"
+      },
+      {
+        "name": "layoutData",
+        "type": "SharedValue<null | MeasuredDimensions>",
+        "initial": "null",
+        "updates": "Set to measure() result on tap, reset to null on dismiss completion",
+        "properties": [
+          "x",
+          "y",
+          "width",
+          "height",
+          "pageX",
+          "pageY"
+        ],
+        "purpose": "Store measured layout of tapped button for interpolation"
+      },
+      {
+        "name": "selectedIndex",
+        "type": "SharedValue<number | null>",
+        "initial": "null",
+        "updates": "Set to item index on tap, reset to null on dismiss completion",
+        "purpose": "Track which item is being animated for conditional styling"
+      },
+      {
+        "name": "scale",
+        "type": "SharedValue<number>",
+        "initial": 1,
+        "updates": "Animated on touch down/up",
+        "scope": "Local to each button component",
+        "instances": "Multiple - one per PressableScale and one in ConfirmButton"
+      }
+    ],
+    "measure_api": {
+      "hook": "useAnimatedRef<Animated.View>()",
+      "function": "measure(viewRef)",
+      "worklet_context": true,
+      "returns": "MeasuredDimensions | null",
+      "timing": "Called in 'worklet' onPress callback",
+      "critical_for": "Getting exact position and size of button to animate from",
+      "properties_used": [
+        "pageX",
+        "pageY",
+        "width",
+        "height"
+      ],
+      "note": "Must be called from worklet, returns null if view not laid out"
+    },
+    "scheduleOnRN": {
+      "purpose": "Bridge from worklet (UI thread) to JS thread",
+      "use_cases": [
+        "Calling onTap callback with measured layout",
+        "Calling onConfirm to update React state (setListItems)",
+        "Any setState or callback that modifies React state"
+      ],
+      "syntax": "scheduleOnRN(callback, ...args)",
+      "critical_for": "React state updates cannot happen directly in worklets",
+      "example": "scheduleOnRN(onTap, { item, index, layout })"
+    },
+    "useDerivedValue": {
+      "usage_count": 4,
+      "instances": [
+        "animatedTop - interpolate pageY to final top position",
+        "animatedWidth - interpolate measured width to 90% screen width",
+        "animatedHeight - interpolate measured height to 45px",
+        "animatedLeft - interpolate pageX to 5% screen width (centered)"
+      ],
+      "purpose": "Derived animations that depend on layoutData and animationProgress",
+      "benefit": "Automatically recalculate when dependencies change",
+      "dependencies": "Implicitly track layoutData.value and animationProgress.value"
+    },
+    "useAnimatedProps": {
+      "component": "Backdrop (Animated.View)",
+      "animated_prop": "pointerEvents",
+      "logic": "animationProgress.value ? 'auto' : 'none'",
+      "purpose": "Enable touch on backdrop only when visible",
+      "type_assertion": "as any (required for pointerEvents in useAnimatedProps)",
+      "benefit": "Non-visible backdrop doesn't block touches to list"
+    },
+    "callback_optimization": {
+      "useCallback_count": 3,
+      "callbacks": [
+        "onTap",
+        "onDismiss",
+        "onConfirm"
+      ],
+      "dependencies": "SharedValues (stable references)",
+      "purpose": "Prevent unnecessary re-renders of list items",
+      "critical_for": "Performance with 20 list items"
+    },
+    "useMemo_optimization": {
+      "confirmButtonChildren": {
+        "content": "<Feather name='shopping-cart' />",
+        "purpose": "Prevent recreating JSX element on every render",
+        "passed_to": "Both ListItem and ConfirmButton",
+        "benefit": "Same element instance, better reconciliation"
+      }
+    }
+  },
+  "gesture_handling": {
+    "tap_gesture_confirm_button": {
+      "type": "Gesture.Tap()",
+      "events": {
+        "onTouchesDown": "Scale to 0.95 with withTiming",
+        "onTouchesUp": "Call onConfirm via scheduleOnRN",
+        "onFinalize": "Scale back to 1 with withTiming"
+      },
+      "configuration": {
+        "shouldCancelWhenOutside": true,
+        "maxDuration": 5000
+      },
+      "purpose": "Visual feedback and confirmation callback"
+    },
+    "tap_gesture_pressable_scale": {
+      "type": "Gesture.Tap()",
+      "events": {
+        "onTouchesDown": "Scale to 0.9 with withSpring(overshootClamping: true)",
+        "onTouchesUp": "Call onPress (which triggers measure() and scheduleOnRN)",
+        "onFinalize": "Scale back to 1 with withSpring"
+      },
+      "configuration": {
+        "maxDuration": 5000,
+        "shouldCancelWhenOutside": true
+      },
+      "spring_config": "overshootClamping prevents bounce for crisp feedback"
+    },
+    "touch_event_backdrop": {
+      "type": "onTouchEnd",
+      "callback": "onPress (triggers dismiss)",
+      "purpose": "Tap backdrop to cancel and dismiss animation",
+      "pointer_events": "Animated via useAnimatedProps"
+    }
+  },
+  "state_management": {
+    "react_state": {
+      "listItems": {
+        "type": "Array<{id, title, imageUri, description, count}>",
+        "initial": "20 items with count: 0",
+        "updates": "onConfirm increments count for selected item",
+        "purpose": "Persistent cart state, badge display"
+      }
+    },
+    "animation_lifecycle": {
+      "on_tap": [
+        "1. cancelAnimation(animationProgress) - cancel any in-progress animation",
+        "2. animationProgress.value = 0 - reset to start",
+        "3. layoutData.value = measured layout - store button position/size",
+        "4. selectedIndex.value = index - mark item as selected",
+        "5. animationProgress.value = withTiming(1, 350ms) - animate to end"
+      ],
+      "on_dismiss": [
+        "1. animationProgress.value = withTiming(0, 350ms) - reverse animation",
+        "2. On completion callback: reset layoutData and selectedIndex to null"
+      ],
+      "on_confirm": [
+        "1. Get selectedIndex.value",
+        "2. Update React state (increment item.count) via scheduleOnRN",
+        "3. Call onDismiss to reverse animation"
+      ]
+    }
+  },
+  "performance_optimizations": {
+    "measure_efficiency": {
+      "pattern": "measure() called only on user interaction, not on every render",
+      "worklet_context": "Measurement happens on UI thread",
+      "benefit": "No bridge crossing for layout measurement"
+    },
+    "animation_cancellation": {
+      "pattern": "cancelAnimation(animationProgress) before starting new animation",
+      "purpose": "Prevent animation conflicts on rapid taps",
+      "benefit": "Smooth transitions even with rapid user input"
+    },
+    "memo_components": {
+      "components": [
+        "ListItem",
+        "PressableScale",
+        "ConfirmButton",
+        "Backdrop",
+        "BottomSheet"
+      ],
+      "wrapper": "memo()",
+      "purpose": "Prevent unnecessary re-renders",
+      "benefit": "Only re-render when props actually change"
+    },
+    "callback_stability": {
+      "pattern": "useCallback with SharedValue dependencies",
+      "benefit": "Stable function references prevent ListItem re-renders",
+      "critical_for": "List of 20 items, each with callbacks"
+    },
+    "conditional_rendering": {
+      "pattern": "layoutData.value checks prevent rendering when null",
+      "confirm_button": "Returns {height: 0, width: 0} if !layoutData.value",
+      "purpose": "Don't render positioned button until measurement available"
+    },
+    "direct_shared_value_access": {
+      "pattern": "Reading SharedValues with .value in worklets",
+      "locations": [
+        "selectedIndex.value in onConfirm",
+        "animationProgress.value in useAnimatedStyle"
+      ],
+      "benefit": "Direct value access, no bridge crossing"
+    },
+    "image_caching": {
+      "component": "expo-image",
+      "cachePolicy": "memory-disk",
+      "benefit": "Images cached for smooth scrolling"
+    }
+  },
+  "layout_and_positioning": {
+    "absolute_positioning": {
+      "confirm_button": "position: 'absolute' with animated top/left",
+      "backdrop": "StyleSheet.absoluteFillObject",
+      "bottom_sheet": "position: 'absolute', bottom: 0, left: 0, right: 0"
+    },
+    "z_index_layering": {
+      "confirm_button": "zIndex: 10 (above backdrop)",
+      "badge": "zIndex: 100 (above button)",
+      "layering": "List < Backdrop < ConfirmButton < Badge"
+    },
+    "screen_dimensions": {
+      "hook": "useWindowDimensions()",
+      "usage": [
+        "SCREEN_WIDTH * 0.9 for confirm button width",
+        "SCREEN_WIDTH * 0.05 for horizontal padding (5% each side)",
+        "SCREEN_HEIGHT - 100 for confirm button bottom position"
+      ],
+      "purpose": "Responsive layout across different screen sizes"
+    },
+    "safe_area": {
+      "hook": "useSafeAreaInsets()",
+      "usage": "top inset for FlatList paddingTop",
+      "calculation": "top + 24 (safe area + 24px extra padding)",
+      "purpose": "Content doesn't overlap with notch/status bar"
+    },
+    "flatlist_configuration": {
+      "contentContainerStyle": {
+        "paddingBottom": 100,
+        "paddingTop": "top + 24"
+      },
+      "purpose": "Padding ensures content not hidden by bottom button or top notch"
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "background": "#fff (white)",
+      "button": "#000 (black)",
+      "button_text": "white",
+      "backdrop": "rgba(0,0,0,0.75) (75% opacity black)",
+      "badge": "#D12727 (red)",
+      "badge_text": "white",
+      "bottom_sheet": "white"
+    },
+    "typography": {
+      "confirm_button": {
+        "text": "ADD TO CART",
+        "style": "bold, uppercase, white",
+        "paddingHorizontal": 15
+      },
+      "list_item": {
+        "title": "fontWeight: 'bold', marginBottom: 5",
+        "description": "color: 'rgba(0,0,0,0.8)', numberOfLines: 2, maxWidth: '80%'"
+      },
+      "bottom_sheet": {
+        "title": "fontSize: 20, fontWeight: 'bold'",
+        "description": "marginTop: 10"
+      }
+    },
+    "spacing_and_sizing": {
+      "button": {
+        "initial": "height: 40, width: 40, borderRadius: 10",
+        "final": "height: 45, width: 90% screen, borderRadius: 10"
+      },
+      "list_item": {
+        "height": 85,
+        "width": "90% of screen",
+        "margin": 10,
+        "paddingLeft": 15,
+        "paddingRight": 20
+      },
+      "badge": {
+        "aspectRatio": 1,
+        "height": 15,
+        "borderRadius": 10,
+        "position": "top: -2.5, right: -2.5"
+      },
+      "image": {
+        "height": "65% of list item",
+        "aspectRatio": 1,
+        "borderRadius": 10
+      }
+    },
+    "shadows_and_elevation": {
+      "list_item": {
+        "ios": {
+          "shadowColor": "#000",
+          "shadowOffset": "{ width: 0, height: 5 }",
+          "shadowOpacity": 0.2,
+          "shadowRadius": 10
+        },
+        "android": {
+          "elevation": 5
+        }
+      }
+    },
+    "icon": {
+      "name": "shopping-cart",
+      "library": "Feather",
+      "size": 18,
+      "color": "white"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "E-commerce product lists",
+      "Shopping cart interactions",
+      "Add to favorites animations",
+      "Item selection with confirmation",
+      "Multi-step purchase flows"
+    ],
+    "educational": [
+      "Teaching measure() API",
+      "Demonstrating position/size interpolation",
+      "Showing worklet-to-JS thread communication",
+      "Layout measurement patterns",
+      "Gesture handler integration"
+    ],
+    "design_patterns": [
+      "Morphing UI elements",
+      "Modal confirmations",
+      "Bottom sheet presentations",
+      "Contextual actions with feedback",
+      "State-based UI visibility"
+    ]
+  },
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "generics": "ListItem<T extends {id, title, count, description, imageUri}>",
+      "type_imports": "type keyword for type-only imports",
+      "prop_types": "Explicit prop types for all components"
+    },
+    "component_architecture": {
+      "pattern": "Container/Presentational separation",
+      "main_component": "Orchestrates state and animations",
+      "sub_components": "Focused, reusable, single-responsibility",
+      "composition": "Clear prop drilling, no prop spreading except style"
+    },
+    "reusability": {
+      "pressable_scale": "Fully reusable pressable component",
+      "list_item": "Generic with type parameter",
+      "confirm_button": "Reusable morphing button",
+      "backdrop": "Reusable backdrop component"
+    },
+    "constants": {
+      "items": "Mock data with 20 items",
+      "BOTTOM_SHEET_OFFSET": 100,
+      "BOTTOM_SHEET_HEIGHT": "200 + BOTTOM_SHEET_OFFSET",
+      "animation_duration": "350ms (consistent across animations)"
+    },
+    "documentation": {
+      "inline_comments": "Minimal, code is largely self-documenting",
+      "type_safety": "Strong typing reduces need for comments",
+      "naming": "Descriptive variable and function names"
+    }
+  },
+  "known_limitations": {
+    "measurement_timing": {
+      "issue": "measure() returns null if view not yet laid out",
+      "mitigation": "Fallback to {x: 0, y: 0, width: 0, height: 0, pageX: 0, pageY: 0}",
+      "edge_case": "Tapping button before layout complete",
+      "impact": "Animation would start from (0,0) if this happens"
+    },
+    "animation_interruption": {
+      "handled": "cancelAnimation() prevents conflicts",
+      "limitation": "State updates (increment count) still happen even if animation interrupted",
+      "potential_improvement": "Could track animation completion state"
+    },
+    "backdrop_touch": {
+      "event": "onTouchEnd (not gesture handler)",
+      "limitation": "No advanced gesture handling (swipe, long press)",
+      "reason": "Simple dismiss doesn't need complex gesture"
+    },
+    "list_performance": {
+      "implementation": "FlatList with 20 items",
+      "limitation": "All items render, no virtualization optimization",
+      "scale": "Performance fine for ~20 items, may need optimization for hundreds"
+    },
+    "bottom_sheet_content": {
+      "implementation": "Fixed static text",
+      "limitation": "Doesn't show selected item details",
+      "improvement": "Could pass selected item data to bottom sheet"
+    },
+    "web_compatibility": {
+      "measure_api": "Works on iOS and Android, may have quirks on web",
+      "pointer_events": "Web has different pointer event model",
+      "testing_needed": "Animation may need web-specific adjustments"
+    }
+  },
+  "potential_improvements": {
+    "animation_enhancements": [
+      "Add color transition from black button to accent color",
+      "Particle effect when adding to cart",
+      "Ripple effect from button position",
+      "Cart icon animation (scale bounce)",
+      "Success checkmark animation after confirmation"
+    ],
+    "interaction_improvements": [
+      "Swipe down to dismiss bottom sheet",
+      "Long press for quick add (no confirmation)",
+      "Haptic feedback on tap and confirm",
+      "Double tap to add multiple items",
+      "Swipe left on item to quick add"
+    ],
+    "ux_enhancements": [
+      "Show product details in bottom sheet",
+      "Display current total price",
+      "Quantity selector before confirming",
+      "Mini cart preview in bottom sheet",
+      "Undo button after adding"
+    ],
+    "state_management": [
+      "Persist cart state to AsyncStorage",
+      "Global cart state (Context/Redux/Zustand)",
+      "Optimistic updates with rollback",
+      "Track animation completion for analytics",
+      "Loading state during async cart operations"
+    ],
+    "accessibility": [
+      "VoiceOver/TalkBack announcements",
+      "Alternative non-animated mode",
+      "Keyboard navigation",
+      "Screen reader labels",
+      "Reduced motion preference support"
+    ],
+    "performance": [
+      "FlatList optimization (getItemLayout, keyExtractor)",
+      "Image progressive loading",
+      "Skeleton screens",
+      "useNativeDriver for transform animations",
+      "Memo list item comparisons"
+    ]
+  },
+  "key_insights": {
+    "measure_power": "measure() API enables position-aware animations without manual layout tracking",
+    "worklet_bridging": "scheduleOnRN is essential for React state updates from worklet context",
+    "animation_coordination": "Single animationProgress SharedValue drives all coordinated animations",
+    "layout_interpolation": "Smooth morphing achieved by interpolating position and size simultaneously",
+    "gesture_feedback": "Scale animations provide tactile feedback without haptics",
+    "pointer_events_animation": "useAnimatedProps enables animated pointer events for performance",
+    "component_isolation": "Each component handles its own animation logic based on shared progress",
+    "state_separation": "Clear boundary between animation state (SharedValues) and data state (useState)"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic list rendering with FlatList",
+      "useState for data management",
+      "useCallback for optimized callbacks",
+      "Component composition patterns",
+      "Safe area handling"
+    ],
+    "for_intermediate": [
+      "measure() API for layout measurements",
+      "useAnimatedRef for accessing component references",
+      "Position and size interpolation",
+      "Gesture.Tap() with react-native-gesture-handler",
+      "Coordinated animations with single progress value",
+      "useAnimatedProps for dynamic properties",
+      "useDerivedValue for computed animations"
+    ],
+    "for_advanced": [
+      "Worklet-to-JS thread communication with scheduleOnRN",
+      "Morphing UI element animations",
+      "Complex animation choreography",
+      "Performance optimization with memo and useCallback",
+      "Conditional animation logic with SharedValue comparisons",
+      "Layout measurement timing and edge cases",
+      "Gesture handler configuration (shouldCancelWhenOutside, maxDuration)"
+    ]
+  },
+  "related_patterns": {
+    "similar_animations": [
+      "Material Design FAB transformations",
+      "iOS App Store card expansions",
+      "Sheet modal presentations",
+      "Hero transitions between screens",
+      "Accordion expand/collapse"
+    ],
+    "interaction_patterns": [
+      "Bottom sheet confirmations",
+      "Modal dialogs from context",
+      "Action sheets",
+      "Contextual menus",
+      "Progressive disclosure"
+    ],
+    "e_commerce_patterns": [
+      "Quick buy buttons",
+      "Add to wishlist animations",
+      "Cart badge updates",
+      "Product detail expansions",
+      "Checkout flows"
+    ]
+  },
+  "testing_considerations": {
+    "visual_regression": [
+      "Button morphing smooth from any list position",
+      "Bottom sheet slides correctly",
+      "Backdrop opacity transitions smoothly",
+      "Text fades in at correct timing",
+      "Badge appears/disappears correctly"
+    ],
+    "interaction_testing": [
+      "Tap button triggers animation",
+      "Tap backdrop dismisses",
+      "Tap confirm increments count",
+      "Rapid taps don't break animation",
+      "Scale feedback visible on tap"
+    ],
+    "state_testing": [
+      "Count increments correctly",
+      "Badge shows correct count",
+      "Multiple items can be added independently",
+      "Animation state resets properly"
+    ],
+    "edge_cases": [
+      "Tap before layout measured",
+      "Tap during animation",
+      "Dismiss during animation",
+      "Multiple rapid taps",
+      "Screen rotation during animation"
+    ],
+    "performance_testing": [
+      "Smooth 60fps during animation",
+      "No frame drops on low-end devices",
+      "Memory stable across multiple interactions",
+      "List scrolling smooth during animation"
+    ]
+  },
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "Limited support, no labels on buttons",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No prefers-reduced-motion support",
+      "color_contrast": "Good contrast (black on white)"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to buttons ('Add Item {title} to cart')",
+      "Add accessibilityHint ('Double tap to add to cart')",
+      "Announce count changes to screen reader",
+      "Support prefers-reduced-motion (instant transition)",
+      "Add accessible dismiss button in bottom sheet",
+      "Keyboard shortcuts for power users",
+      "High contrast mode support"
+    ]
+  },
+  "comparison_to_similar_animations": {
+    "vs_shared_element_transitions": {
+      "similarity": "Element moves from one position to another",
+      "difference": "This uses interpolation, not shared element API"
+    },
+    "vs_modal_presentations": {
+      "similarity": "Bottom sheet and backdrop pattern",
+      "difference": "Morphing button adds context and continuity"
+    },
+    "vs_hero_animations": {
+      "similarity": "Smooth transition maintaining visual continuity",
+      "difference": "Changes size/shape, not just position"
+    }
+  },
+  "bundle_size_impact": {
+    "code_size": "~400 lines total (main + components)",
+    "dependencies": "All dependencies likely already in e-commerce project",
+    "runtime_memory": "Minimal - few SharedValues, no large arrays",
+    "estimated_memory": "< 100KB"
+  },
+  "tags": [
+    "e-commerce",
+    "add-to-cart",
+    "button-morphing",
+    "measure-api",
+    "position-interpolation",
+    "bottom-sheet",
+    "gesture-handler",
+    "tap-gesture",
+    "scale-animation",
+    "backdrop",
+    "worklets",
+    "scheduleOnRN",
+    "layout-measurement",
+    "reanimated",
+    "shopping-cart",
+    "confirmation",
+    "badge-counter",
+    "flatlist",
+    "interactive"
+  ],
+  "content_hash": "e137685461fe83f629db7a18ac7531398b6bac1bbc71a081ca10d1f1b2fd650e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.262Z",
+  "last_validated": "2025-10-12T09:19:28.262Z"
+}

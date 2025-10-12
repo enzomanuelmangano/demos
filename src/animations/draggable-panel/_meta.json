@@ -1,0 +1,402 @@
+{
+  "animation_name": "Draggable Panel",
+  "animation_slug": "draggable-panel",
+  "description": "A draggable floating control panel that snaps to screen corners with smooth spring animations. Features collapsible/expandable states with animated transitions between them. Users can select different spring animation presets (Elegant, Springy, Super Springy) to customize the panel's movement behavior.",
+  "main_features": [
+    "Draggable floating panel with pan gesture controls",
+    "Automatic corner snapping with intelligent positioning",
+    "Collapsible/expandable states with smooth transitions",
+    "Three spring animation presets (Elegant, Springy, Super Springy)",
+    "Dynamic spring configuration switching",
+    "Velocity-aware gesture animations",
+    "Animated border radius transitions",
+    "Color interpolation for selection states",
+    "Visual spring indicators with unique styles per preset",
+    "Responsive to screen dimensions"
+  ],
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Main export wrapper with GestureHandlerRootView"
+    },
+    "components": {
+      "index.ts": "Component barrel exports",
+      "spring-animation-panel/": {
+        "index.tsx": "Demo implementation with spring preset selection",
+        "panel-content.tsx": "Expanded panel UI with spring type selector",
+        "collapsed-button.tsx": "Collapsed state button component"
+      },
+      "draggable-panel/": {
+        "index.ts": "Draggable panel barrel export",
+        "draggable-control-panel.tsx": "Core reusable draggable panel component"
+      }
+    },
+    "hooks": {},
+    "utils": {
+      "spring-animation-panel/utils/spring-configs.ts": "Spring animation configuration presets",
+      "draggable-panel/utils/animation-helpers.ts": "Corner snapping logic and position utilities"
+    },
+    "assets": {},
+    "types": {},
+    "constants": {}
+  },
+  "core_technologies": [
+    "react-native-reanimated",
+    "react-native-gesture-handler",
+    "pressto",
+    "@expo/vector-icons"
+  ],
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
+      "layout_animations": [
+        "FadeIn",
+        "FadeOut",
+        "LinearTransition"
+      ],
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle"
+      ],
+      "utilities": [
+        "withSpring",
+        "withTiming",
+        "interpolate",
+        "interpolateColor",
+        "Easing"
+      ],
+      "performance_reason": "Pan gesture integration with spring animations and layout transitions on UI thread",
+      "critical_feature": "Dynamic spring configuration with velocity integration"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": [
+        "GestureHandlerRootView",
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Pan"
+      ],
+      "usage": "Pan gesture for dragging panel across screen with onBegin, onChange, onEnd callbacks"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "component": "PressableScale",
+      "usage": "Interactive buttons with scale press animations for spring presets and collapse/close buttons"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "usage": "Settings and close icons",
+      "icons_used": [
+        "Ionicons.settings-sharp",
+        "Ionicons.close"
+      ]
+    }
+  },
+  "animation_techniques": [
+    {
+      "name": "Pan Gesture Dragging",
+      "pattern": "Gesture.Pan() with position tracking",
+      "implementation": "onBegin stores position, onChange updates with translation, onEnd snaps to corner",
+      "smooth_tracking": "Position updates on every frame during drag",
+      "relative_positioning": "Uses startX/Y context to prevent jump to touch point"
+    },
+    {
+      "name": "Corner Snapping",
+      "algorithm": "Euclidean distance to find nearest corner",
+      "corners": [
+        "Top-left",
+        "Top-right",
+        "Bottom-left",
+        "Bottom-right"
+      ],
+      "distance_formula": "sqrt((panelCenterX - cornerCenterX)² + (panelCenterY - cornerCenterY)²)",
+      "animation": "withSpring to closest corner position with gesture velocity"
+    },
+    {
+      "name": "Velocity Integration",
+      "pattern": "Gesture velocity passed to spring animation",
+      "implementation": "withSpring(position, { ...springConfig, velocity: event.velocityX/Y })",
+      "benefit": "Natural continuation of swipe momentum"
+    },
+    {
+      "name": "Collapse/Expand Transition",
+      "dimensions_change": "64x64 (circular) to 280x150 (rectangular)",
+      "border_radius_animation": "interpolate from 32 to 16 with progress",
+      "content_fade": "FadeIn/FadeOut with conditional rendering",
+      "layout_transition": "LinearTransition.springify() for smooth size changes"
+    },
+    {
+      "name": "Spring Preset Selection",
+      "visual_indicators": "Dots with opacity/scale variations per preset",
+      "color_interpolation": "interpolateColor for border, background, text",
+      "animation_timing": "withTiming(200ms) for selection state"
+    }
+  ],
+  "reanimated_patterns": [
+    {
+      "pattern": "SharedValue State Management",
+      "values": [
+        "translateX",
+        "translateY",
+        "isDraggingPanel",
+        "startX",
+        "startY"
+      ],
+      "purpose": "Track panel position and drag state on UI thread"
+    },
+    {
+      "pattern": "DerivedValue for Dynamic Config",
+      "implementation": "useDerivedValue(() => springAnimationConfigs[springType])",
+      "benefit": "Reactive spring configuration based on selected preset"
+    },
+    {
+      "pattern": "Animated Style Interpolations",
+      "instances": [
+        "panelStyle",
+        "rContentPanelStyle",
+        "animatedStyle",
+        "animatedTextStyle"
+      ],
+      "properties": [
+        "transform",
+        "borderRadius",
+        "padding",
+        "borderColor",
+        "backgroundColor",
+        "color"
+      ]
+    },
+    {
+      "pattern": "Worklet Functions",
+      "functions": [
+        "snapToCorner",
+        "isSharedValue",
+        "unwrapAnimatedValue"
+      ],
+      "marked_with": "'worklet' directive",
+      "runs_on": "UI thread"
+    },
+    {
+      "pattern": "Layout Animations",
+      "entering": "FadeIn.duration(150/180)",
+      "exiting": "FadeOut.duration(100)",
+      "layout": "LinearTransition.springify().mass(0.3).damping(20).stiffness(250)"
+    }
+  ],
+  "performance_optimizations": [
+    {
+      "name": "Gesture Memoization",
+      "pattern": "useMemo for Gesture.Pan()",
+      "benefit": "Avoids recreating gesture handler on every render",
+      "critical": true
+    },
+    {
+      "name": "Callback Memoization",
+      "pattern": "useCallback for all callbacks",
+      "functions": [
+        "toggleCollapse",
+        "selectSpringType",
+        "snapWithDimensions",
+        "collapsedChildren",
+        "expandedChildren"
+      ],
+      "benefit": "Stable references prevent child re-renders"
+    },
+    {
+      "name": "Worklet Optimization",
+      "pattern": "All animation logic on UI thread",
+      "benefit": "No bridge crossing during animations"
+    },
+    {
+      "name": "Conditional Rendering with Keys",
+      "pattern": "Key-based conditional for collapsed/expanded states",
+      "benefit": "React unmounts/mounts correct content with smooth FadeIn/Out"
+    },
+    {
+      "name": "Layout Animation Efficiency",
+      "pattern": "LinearTransition for automatic layout changes",
+      "benefit": "No manual position calculations needed"
+    }
+  ],
+  "use_cases": [
+    "Floating control panels",
+    "Draggable debug tools",
+    "Movable settings menus",
+    "Picture-in-picture controls",
+    "Floating action buttons with extended menus",
+    "Accessibility tools overlays",
+    "In-app timers and calculators",
+    "Developer tools panels",
+    "Chat head-style interfaces",
+    "Video/audio player controls",
+    "Game HUD elements"
+  ],
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with comprehensive types",
+      "Excellent separation of concerns (core vs demo)",
+      "Reusable core component with render props pattern",
+      "Well-organized file structure with utils separation",
+      "Proper worklet annotations for UI thread functions",
+      "Type guards for runtime safety (isSharedValue)",
+      "Generic type parameters for flexibility",
+      "Comprehensive prop types and union types",
+      "Memoization for performance",
+      "Clean utility functions with single responsibility",
+      "Consistent naming conventions",
+      "Custom hooks for positioning logic"
+    ],
+    "areas_for_improvement": [
+      "Could add JSDoc comments for public API",
+      "Padding interpolation is currently [0, 0] (no actual interpolation)",
+      "Could extract magic numbers to constants (margins: 30/80/100, durations: 180/200)",
+      "Could add accessibility labels for screen readers",
+      "Visual indicator styles could be more configurable",
+      "isDraggingPanel SharedValue is unused (could drive visual feedback)",
+      "Color constants in PanelContent could be extracted to shared constants"
+    ]
+  },
+  "known_limitations": [
+    {
+      "name": "Fixed Screen Margins",
+      "issue": "Screen margins hardcoded in snapToCorner (30, 80, 100)",
+      "impact": "Not customizable without modifying code",
+      "improvement": "Could be props on DraggableControlPanel"
+    },
+    {
+      "name": "No Bounds Clamping During Drag",
+      "issue": "Panel can be dragged outside screen temporarily",
+      "mitigation": "Snaps back to corner on release",
+      "enhancement": "Could add boundary clamping during drag"
+    },
+    {
+      "name": "Unused isDraggingPanel State",
+      "issue": "isDraggingPanel SharedValue created but not used",
+      "potential": "Could drive visual feedback (scale, opacity, shadow)"
+    },
+    {
+      "name": "Single Panel Assumption",
+      "limitation": "Designed for single panel instance",
+      "consideration": "Multiple panels would need collision detection and z-index management"
+    },
+    {
+      "name": "No Accessibility Support",
+      "missing": [
+        "Screen reader labels",
+        "Keyboard navigation",
+        "Reduced motion support"
+      ],
+      "impact": "Not accessible to users with disabilities"
+    },
+    {
+      "name": "Custom Font Dependency",
+      "dependency": "Requires 'Honk-Regular' font loaded",
+      "fallback": "Would fall back to system font if missing"
+    }
+  ],
+  "potential_improvements": [
+    "Double-tap to toggle collapse/expand",
+    "Long-press for additional actions",
+    "Haptic feedback on snap",
+    "Blur backdrop effect when expanded",
+    "Visual drag affordance indicator",
+    "Corner highlight preview during drag",
+    "Minimize to edge (partial visibility)",
+    "Magnetic edges (not just corners)",
+    "Custom snap positions array",
+    "Persistent position (save to storage)",
+    "Resize handles on corners",
+    "Pin/unpin toggle to prevent dragging",
+    "Auto-hide after inactivity",
+    "Multi-panel support with collision detection",
+    "Screen reader accessibility labels",
+    "Keyboard navigation (arrow keys)",
+    "Respect prefers-reduced-motion",
+    "Configurable margins props",
+    "Theme customization props",
+    "Event callbacks (onDragStart, onDragEnd, onSnap)"
+  ],
+  "key_insights": [
+    "Render props pattern makes core component infinitely flexible",
+    "AnimatedSpringConfig union type allows plain or reactive configs",
+    "Type guards with 'worklet' directive enable safe UI thread operations",
+    "Passing gesture velocity to spring creates natural momentum",
+    "Core logic separate from demo makes component easy to extract and reuse",
+    "4-corner snapping is simple but effective for most use cases",
+    "Different spring configs dramatically change feel without code changes",
+    "Visual indicators (dots with opacity/scale) intuitively show spring character",
+    "Gesture context pattern (startX/Y) prevents panel from jumping to touch point",
+    "Layout transitions handle size animations without manual measuring"
+  ],
+  "learning_opportunities": [
+    {
+      "level": "Beginner",
+      "topics": [
+        "Pan gesture basics with onBegin, onChange, onEnd",
+        "SharedValue state management",
+        "withSpring animations",
+        "Conditional rendering with animations",
+        "useWindowDimensions for responsive design",
+        "Absolute positioning",
+        "Component composition"
+      ]
+    },
+    {
+      "level": "Intermediate",
+      "topics": [
+        "Render props pattern for inversion of control",
+        "Layout animations with collapse/expand",
+        "Velocity-aware spring animations",
+        "Color interpolation techniques",
+        "useDerivedValue for reactive computations",
+        "Type guards in worklets",
+        "useCallback and useMemo optimization",
+        "FadeIn/FadeOut animations",
+        "Gesture context pattern"
+      ]
+    },
+    {
+      "level": "Advanced",
+      "topics": [
+        "Generic worklet functions with type safety",
+        "Complex gesture state management",
+        "Performance optimization with memoization",
+        "Flexible API design with union types",
+        "Geometric algorithms (Euclidean distance)",
+        "Building reusable animation primitives",
+        "Dimension-aware positioning calculations",
+        "Type-safe animated value unwrapping"
+      ]
+    }
+  ],
+  "tags": [
+    "draggable",
+    "pan-gesture",
+    "floating-panel",
+    "corner-snapping",
+    "spring-animations",
+    "collapsible",
+    "gesture-handler",
+    "reanimated",
+    "layout-animations",
+    "render-props",
+    "reusable-component",
+    "interactive",
+    "control-panel",
+    "velocity-aware",
+    "color-interpolation",
+    "worklets",
+    "performance",
+    "movable-ui"
+  ],
+  "content_hash": "7a8dbd5a5c148a9bf7c4c6f03f9a0ad5e24b01ece7de93523b4928f9d1ccfdd5",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.322Z",
+  "last_validated": "2025-10-12T09:19:28.322Z"
+}

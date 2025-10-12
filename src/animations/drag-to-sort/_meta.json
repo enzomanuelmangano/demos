@@ -1,0 +1,860 @@
+{
+  "animation_name": "Drag to Sort",
+  "animation_slug": "drag-to-sort",
+  "description": "An interactive drag-to-sort list component with long-press activation, smooth position interpolation, and real-time reordering. Features haptic feedback, dynamic border radius animations, scroll edge detection for auto-scrolling, and z-index management for proper layering during drag operations. Implements a custom sortable list with background item placeholders and gesture-driven position updates.",
+  "main_features": [
+    "Long-press activation for drag operations (500ms)",
+    "Real-time position interpolation during drag",
+    "Automatic list reordering based on vertical position",
+    "Edge-case scroll detection with auto-scroll",
+    "Haptic feedback on drag start",
+    "Dynamic border radius animation during drag",
+    "Z-index management for proper item layering",
+    "Background placeholder items for visual feedback",
+    "Gesture-driven translateX for horizontal feedback",
+    "Shadow opacity animation during active drag",
+    "Position-based item index calculation",
+    "Safe area support for proper spacing"
+  ],
+  "file_structure": {
+    "index.tsx": "Demo app with habit tracker list and gradient overlay",
+    "constants.ts": "Mock data with habit items (title, subtitle, icons, colors)",
+    "components/SortableList/index.tsx": "Main sortable container with scroll handling",
+    "components/SortableList/SortableItem.tsx": "Individual draggable item with gesture logic",
+    "components/SortableList/types.ts": "Type definitions for positions map",
+    "components/ListItem/index.tsx": "Presentational list item with habit data display",
+    "utils/haptics.ts": "Haptic feedback utility function"
+  },
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "haptics": "expo-haptics",
+    "gradient": "expo-linear-gradient",
+    "layout": "react-native-safe-area-context"
+  },
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useAnimatedRef",
+        "useAnimatedScrollHandler",
+        "useAnimatedReaction",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withTiming",
+        "scrollTo"
+      ],
+      "critical_feature": "useAnimatedRef for measuring and scrollTo for programmatic scroll control"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "activateAfterLongPress(500)",
+        "onStart",
+        "onUpdate",
+        "onFinalize"
+      ],
+      "usage": "Pan gesture with long-press activation for drag-to-sort"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "functions": [
+        "scheduleOnRN"
+      ],
+      "purpose": "Bridge worklet callbacks to JS thread for onDragEnd callback",
+      "critical_for": "Calling onDragEnd callback with final positions"
+    },
+    "expo-haptics": {
+      "version": "latest",
+      "functions": [
+        "impactAsync"
+      ],
+      "feedback_style": "ImpactFeedbackStyle.Light",
+      "usage": "Haptic feedback on drag start for tactile confirmation"
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "component": "LinearGradient",
+      "usage": "Top gradient overlay for depth and polish"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hook": "useSafeAreaInsets",
+      "usage": "Top padding for list to avoid notch/status bar"
+    }
+  },
+  "animation_techniques": {
+    "position_interpolation": {
+      "pattern": "Dynamic position calculation based on sorted heights",
+      "data_structure": "positions: Record<Index, PositionValue>",
+      "algorithm": [
+        "1. Store each item's current Y position in positions map",
+        "2. Sort all positions by Y value",
+        "3. Find item's index in sorted array",
+        "4. Multiply index by itemHeight for target position"
+      ],
+      "timing": "withTiming(nextPosition, { duration: 200 })",
+      "purpose": "Smooth reordering without manual position tracking"
+    },
+    "drag_translation": {
+      "translateY": "contextY + translationY + scrollContentOffsetY",
+      "translateX": "Gesture translationX (horizontal wiggle during drag)",
+      "context_pattern": "Store initial position in context on drag start",
+      "scroll_compensation": "Add scrollContentOffsetY to handle scroll during drag",
+      "effect": "Item follows finger precisely, accounting for list scroll"
+    },
+    "border_radius_animation": {
+      "active_item": "withTiming(20, { duration: 200 })",
+      "inactive_item": "withTiming(5, { duration: 200 })",
+      "list_item_sync": "Separate animation in ListItem component (5 → 10)",
+      "trigger": "isGestureActive derived value",
+      "purpose": "Visual feedback showing which item is being dragged"
+    },
+    "shadow_animation": {
+      "active": "shadowOpacity: withTiming(0.3)",
+      "inactive": "shadowOpacity: withTiming(0)",
+      "shadow_config": {
+        "color": "black",
+        "offset": "{ width: 0, height: 0 }",
+        "radius": 10
+      },
+      "effect": "Elevation feedback during drag"
+    },
+    "z_index_management": {
+      "active_item": "zIndex: 100 (top layer)",
+      "last_active": "zIndex: 50 (elevated until animation completes)",
+      "inactive": "zIndex: 0 (normal layer)",
+      "purpose": "Prevent flickering during drag/release transitions",
+      "pattern": "wasLastActiveIndex flag maintains elevation post-drag"
+    },
+    "auto_scroll": {
+      "upper_bound": "1.5 * itemHeight from top",
+      "lower_bound": "scrollContentOffsetY + containerHeight",
+      "scroll_speed": "itemHeight * 0.1 (proportional to item size)",
+      "direction_up": "Drag near top triggers upward scroll",
+      "direction_down": "Drag near bottom triggers downward scroll",
+      "implementation": "scrollTo in onUpdate callback",
+      "effect": "Seamless scrolling while dragging beyond visible area"
+    },
+    "horizontal_wiggle": {
+      "pattern": "translateX tracks gesture translationX",
+      "reset": "withTiming(0) on finalize",
+      "purpose": "Natural feel, shows item is detached from list",
+      "typical_value": "±20px during drag"
+    }
+  },
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "positions",
+        "type": "SharedValue<Positions>",
+        "structure": "Record<Index, PositionValue>",
+        "initial": "{ 0: 0, 1: itemHeight, 2: itemHeight*2, ... }",
+        "updates": "Continuously during drag and on finalize",
+        "scope": "Global to all items",
+        "purpose": "Track current Y position of each item"
+      },
+      {
+        "name": "animatedIndex",
+        "type": "SharedValue<number | null>",
+        "initial": "null",
+        "updates": "Set to index on drag start, null on finalize",
+        "scope": "Global to all items",
+        "purpose": "Track which item is currently being dragged"
+      },
+      {
+        "name": "scrollContentOffsetY",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "onScroll handler",
+        "scope": "Global to all items",
+        "purpose": "Track scroll position for drag offset calculation"
+      },
+      {
+        "name": "currentActiveIndex",
+        "type": "SharedValue<number | null>",
+        "initial": "null",
+        "scope": "App component",
+        "purpose": "Pass to ListItem for border radius sync animation"
+      },
+      {
+        "name": "contextY",
+        "type": "SharedValue<number>",
+        "scope": "Local to each SortableItem",
+        "purpose": "Store initial position relative to scroll on drag start"
+      },
+      {
+        "name": "translateX",
+        "type": "SharedValue<number>",
+        "scope": "Local to each SortableItem",
+        "purpose": "Track horizontal translation during drag"
+      },
+      {
+        "name": "wasLastActiveIndex",
+        "type": "SharedValue<boolean>",
+        "scope": "Local to each SortableItem",
+        "purpose": "Maintain elevated z-index until animation completes"
+      }
+    ],
+    "useDerivedValue": {
+      "usage_count": 2,
+      "instances": [
+        {
+          "name": "isGestureActive",
+          "calculation": "animatedIndex.value === index",
+          "dependencies": [
+            "animatedIndex.value",
+            "index"
+          ],
+          "purpose": "Determine if this specific item is being dragged"
+        },
+        {
+          "name": "top",
+          "calculation": "If active: positions[index], else: withTiming(getPosition(index))",
+          "dependencies": [
+            "itemHeight",
+            "index",
+            "positions.value"
+          ],
+          "purpose": "Compute animated top position for item"
+        }
+      ]
+    },
+    "useAnimatedReaction": {
+      "usage_count": 2,
+      "instances": [
+        {
+          "location": "SortableList",
+          "tracking": "animatedIndex.value",
+          "action": "scheduleOnRN(onAnimatedIndexChange, currentIndex)",
+          "purpose": "Notify parent component when active index changes"
+        },
+        {
+          "location": "SortableItem",
+          "tracking": "animatedIndex.value",
+          "action": "wasLastActiveIndex.value = currentActiveIndex === index",
+          "purpose": "Track if this item was last active for z-index management"
+        }
+      ]
+    },
+    "useAnimatedScrollHandler": {
+      "event": "onScroll",
+      "action": "scrollContentOffsetY.value = y",
+      "purpose": "Track scroll offset for drag position calculation"
+    },
+    "useCallback": {
+      "usage_count": 3,
+      "callbacks": [
+        {
+          "name": "getPosition",
+          "directive": "'worklet'",
+          "purpose": "Calculate target position based on sorted positions",
+          "dependencies": [
+            "itemHeight",
+            "positions"
+          ]
+        },
+        {
+          "name": "scrollLogic",
+          "directive": "'worklet'",
+          "purpose": "Handle edge-case auto-scrolling during drag",
+          "dependencies": [
+            "containerHeight",
+            "itemHeight",
+            "scrollContentOffsetY.value",
+            "scrollViewRef"
+          ]
+        },
+        {
+          "name": "onDragEnd",
+          "scope": "App component",
+          "purpose": "Process final positions and extract new order",
+          "dependencies": "[]"
+        }
+      ]
+    }
+  },
+  "gesture_handling": {
+    "pan_gesture_lifecycle": {
+      "activation": "activateAfterLongPress(500ms)",
+      "onStart": {
+        "actions": [
+          "Store prevPositions for change detection",
+          "Set animatedIndex to current index",
+          "Calculate contextY (position - scrollOffset)",
+          "Store translationX",
+          "Trigger haptic feedback"
+        ],
+        "purpose": "Initialize drag state and provide tactile feedback"
+      },
+      "onUpdate": {
+        "actions": [
+          "Update translateX for horizontal wiggle",
+          "Calculate translateY from context + translation",
+          "Update positions[index] with scroll compensation",
+          "Trigger scrollLogic for auto-scroll",
+          "Clone positions object to trigger reactivity"
+        ],
+        "purpose": "Track finger position and update item location"
+      },
+      "onFinalize": {
+        "actions": [
+          "Animate translateX to 0 with withTiming",
+          "On animation finish: check if positions changed",
+          "If changed: call onDragEnd via scheduleOnRN",
+          "Set wasLastActiveIndex to true",
+          "Reset animatedIndex to null"
+        ],
+        "purpose": "Clean up drag state and trigger callback"
+      }
+    },
+    "scroll_edge_detection": {
+      "upper_threshold": "1.5 * itemHeight",
+      "lower_threshold": "scrollContentOffsetY + containerHeight",
+      "scroll_speed": "itemHeight * 0.1",
+      "direction_logic": "If absoluteY <= lowerBound: scroll up, else: scroll down",
+      "clamping": "Math.max(nextPosition, 0) prevents negative scroll",
+      "smooth_scrolling": "scrollTo(..., false) for immediate updates"
+    },
+    "long_press_activation": {
+      "duration": "500ms",
+      "pattern": "activateAfterLongPress(500)",
+      "benefit": "Prevents accidental drags while scrolling",
+      "ux": "User must hold to activate drag mode"
+    }
+  },
+  "state_management": {
+    "positions_map": {
+      "structure": "Record<Index, PositionValue>",
+      "example": "{ 0: 0, 1: 88, 2: 176, 3: 264, ... }",
+      "updates": [
+        "Active item: Direct Y position during drag",
+        "Inactive items: Calculated from sorted positions"
+      ],
+      "reactivity": "Object.assign({}, positions.value) triggers updates",
+      "purpose": "Single source of truth for all item positions"
+    },
+    "change_detection": {
+      "pattern": "Store prevPositions on drag start",
+      "comparison": "Object.entries(prevPositions.value).some(([key, value]) => positions.value[+key] !== value)",
+      "purpose": "Only call onDragEnd if positions actually changed",
+      "benefit": "Prevents unnecessary callbacks for cancelled drags"
+    },
+    "active_index_tracking": {
+      "global": "animatedIndex (which item is dragging)",
+      "local": "isGestureActive (is this specific item active)",
+      "parent": "currentActiveIndex (passed to ListItem for sync)",
+      "coordination": "useAnimatedReaction bridges worklet to JS"
+    },
+    "drag_lifecycle": {
+      "before_drag": "All items at calculated positions, no active index",
+      "during_drag": "Active item tracks finger, others reorder around it",
+      "after_drag": "All items animate to final positions, z-index maintained"
+    }
+  },
+  "component_patterns": {
+    "sortable_list": {
+      "type": "Generic container component",
+      "generics": "<T>",
+      "props": {
+        "data": "T[] - Array of items to render",
+        "renderItem": "({ item: T, index: number }) => ReactNode",
+        "listItemHeight": "number - Fixed height per item",
+        "onAnimatedIndexChange": "(index: number | null) => void - Active index callback",
+        "onDragEnd": "(positions: Positions) => void - Drag completion callback",
+        "backgroundItem": "ReactNode - Background placeholder element"
+      },
+      "pattern": "Maps data to SortableItem wrappers with renderItem callback",
+      "scroll_config": {
+        "component": "Animated.ScrollView",
+        "contentHeight": "listItemHeight * data.length",
+        "paddingBottom": "listItemHeight * data.length + listItemHeight * 2 (extra scroll space)"
+      }
+    },
+    "sortable_item": {
+      "type": "Wrapper for draggable items",
+      "responsibility": "Gesture handling, position calculation, z-index management",
+      "children": "User-provided renderItem content",
+      "layout": [
+        "Background item (static position, z-index: -50)",
+        "Draggable item (animated position, variable z-index)"
+      ],
+      "position": "position: absolute with animated top",
+      "gesture": "Pan gesture with long-press activation"
+    },
+    "list_item": {
+      "type": "Presentational component",
+      "content": [
+        "Icon with colored background",
+        "Title and subtitle text",
+        "Status indicators (5 squares with active/inactive states)"
+      ],
+      "animation": "Border radius synced with activeIndex",
+      "styling": "Flexible, accepts style prop from parent"
+    },
+    "background_item": {
+      "purpose": "Visual placeholder showing final drop position",
+      "position": "position: absolute, z-index: -50",
+      "styling": "Rounded corners, semi-transparent background",
+      "location": "Rendered per item, static at index * itemHeight"
+    }
+  },
+  "position_calculation_algorithm": {
+    "getPosition_function": {
+      "step_1": "Get current position: itemPosition = positions.value[itemIndex]",
+      "step_2": "Get all positions: Object.values(positions.value)",
+      "step_3": "Sort positions: sort((a, b) => a - b)",
+      "step_4": "Find index: indexOf(itemPosition)",
+      "step_5": "Calculate target: indexInOrderedPositions * itemHeight",
+      "example": {
+        "positions": "{ 0: 176, 1: 88, 2: 0, 3: 264 }",
+        "sorted": "[0, 88, 176, 264]",
+        "item_2": "indexOf(0) = 0, target = 0 * 88 = 0",
+        "item_1": "indexOf(88) = 1, target = 1 * 88 = 88",
+        "item_0": "indexOf(176) = 2, target = 2 * 88 = 176"
+      },
+      "benefit": "Automatic reordering without manual index swapping"
+    },
+    "order_extraction": {
+      "pattern": "Convert positions to order on drag end",
+      "step_1": "Convert to array: Object.entries(data).map(([index, height]) => [parseInt(index), height])",
+      "step_2": "Sort by height: heightArray.sort((a, b) => a[1] - b[1])",
+      "step_3": "Extract indices: heightArray.map(([index]) => index)",
+      "example": {
+        "positions": "{ 0: 176, 1: 88, 2: 0 }",
+        "sorted_array": "[[2, 0], [1, 88], [0, 176]]",
+        "new_order": "[2, 1, 0]"
+      }
+    }
+  },
+  "scroll_compensation_pattern": {
+    "problem": "Dragging while scrolling causes position desync",
+    "solution": "Store initial scroll offset, compensate in calculations",
+    "implementation": {
+      "onStart": "contextY.value = positions.value[index] - scrollContentOffsetY.value",
+      "onUpdate": "positions.value[index] = translateY + scrollContentOffsetY.value",
+      "effect": "Item position remains accurate relative to content"
+    },
+    "key_insight": "Context stores position relative to content, not viewport",
+    "without_compensation": "Item would drift as user scrolls during drag",
+    "with_compensation": "Item stays locked to content position"
+  },
+  "layout_and_positioning": {
+    "item_dimensions": {
+      "height": "80px",
+      "padding": "6px (top/bottom)",
+      "total_item_height": "88px (HEIGHT + PADDING * 2)",
+      "max_border_radius": "10px"
+    },
+    "list_dimensions": {
+      "item_count": 9,
+      "content_height": "88px * 9 = 792px",
+      "extra_padding": "88px * 2 (allows scrolling past last item)"
+    },
+    "absolute_positioning": {
+      "all_items": "position: absolute, left: 0, right: 0",
+      "initial_top": "index * itemHeight",
+      "animated_top": "positions[index] or calculated from sorted positions"
+    },
+    "z_index_layering": {
+      "background": "z-index: -50",
+      "normal_items": "z-index: 0",
+      "previous_active": "z-index: 50",
+      "active_item": "z-index: 100"
+    },
+    "safe_area": {
+      "padding_top": "safeTop (from useSafeAreaInsets)",
+      "gradient_height": "safeTop * 3",
+      "purpose": "Content doesn't overlap with notch/status bar"
+    }
+  },
+  "visual_design": {
+    "color_scheme": {
+      "background": "Default React Native background",
+      "list_items": "white",
+      "background_placeholder": "rgba(0,0,0,0.1)",
+      "gradient_overlay": [
+        "rgba(255,255,255,1)",
+        "rgba(255,255,255,0.05)",
+        "rgba(255,255,255,0.025)"
+      ],
+      "item_colors": [
+        "Meditation: rgba(238, 130, 238, 0.2) - violet",
+        "Coding: rgba(0, 0, 255, 0.2) - blue",
+        "Workout: rgba(0, 105, 0, 0.2) - green",
+        "Reading: rgba(255, 0, 0, 0.2) - red",
+        "Sleep: rgba(0, 200, 210, 0.2) - cyan",
+        "Eat healthy: rgba(255, 150, 0, 0.2) - orange",
+        "Drink water: rgba(0, 100, 0, 0.2) - dark green",
+        "Walk: rgba(0, 0, 100, 0.2) - dark blue",
+        "Piano: rgba(0, 0, 200, 0.2) - medium blue"
+      ]
+    },
+    "typography": {
+      "title": "fontSize: 16, fontWeight: bold, marginBottom: 5",
+      "subtitle": "fontSize: 14, color: gray"
+    },
+    "spacing": {
+      "list_padding": "6px between items",
+      "list_item_padding": "10px horizontal",
+      "icon_margin": "12px left",
+      "background_margin": "6px"
+    },
+    "item_content": {
+      "icon": {
+        "size": "55% of item height",
+        "aspect_ratio": 1,
+        "border_radius": 100,
+        "contains": "Emoji text icon"
+      },
+      "status_indicators": {
+        "count": 5,
+        "size": "25x25",
+        "border_radius": 10,
+        "states": [
+          "active: opacity 1, scale 1",
+          "inactive: opacity 0.6, scale 0.3"
+        ]
+      }
+    },
+    "gradient_overlay": {
+      "position": "Fixed at top",
+      "height": "safeTop * 3",
+      "colors": "White to transparent",
+      "pointer_events": "none (doesn't block touch)",
+      "z_index": 50,
+      "purpose": "Fade content into status bar area"
+    }
+  },
+  "performance_optimizations": {
+    "worklet_functions": {
+      "getPosition": "Runs on UI thread for instant calculation",
+      "scrollLogic": "Runs on UI thread for smooth auto-scroll",
+      "gesture_callbacks": "All run on UI thread (no bridge crossing)",
+      "benefit": "60fps drag performance even on low-end devices"
+    },
+    "object_assign_pattern": {
+      "pattern": "positions.value = Object.assign({}, positions.value)",
+      "purpose": "Trigger reactivity by creating new object reference",
+      "frequency": "Every onUpdate call during drag",
+      "consideration": "Necessary for reactive updates, minimal overhead"
+    },
+    "useCallback_optimization": {
+      "renderItem": "Stable function reference prevents re-renders",
+      "worklet_callbacks": "Defined with useCallback for stability",
+      "dependencies": "Carefully managed to prevent recreations"
+    },
+    "useMemo_optimization": {
+      "initial_positions": "Calculated once on mount",
+      "benefit": "Prevents recalculation on every render"
+    },
+    "component_count": {
+      "items": 9,
+      "animated_components_per_item": 2,
+      "total": "~18 animated components",
+      "performance": "Excellent on all devices"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "Reorderable todo lists",
+      "Priority task management",
+      "Playlist reordering",
+      "Habit tracker reordering",
+      "Customizable dashboard widgets",
+      "Email inbox organization"
+    ],
+    "secondary": [
+      "Photo gallery reordering",
+      "Navigation menu customization",
+      "Form field reordering",
+      "Timeline event sorting",
+      "Layer order management (design tools)"
+    ],
+    "real_world_examples": [
+      "iOS Shortcuts app",
+      "Trello card reordering",
+      "Spotify playlist editing",
+      "Apple Reminders list sorting",
+      "Google Keep note reordering"
+    ]
+  },
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "Positions: Record<Index, PositionValue>",
+        "ItemInfo: { title, subtitle, activeValues, color, squareColor, textIcon }",
+        "SortableListProps<T>",
+        "SortableListItemProps"
+      ],
+      "type_imports": "Proper separation with 'type' keyword"
+    },
+    "component_architecture": {
+      "pattern": "Separation of concerns",
+      "SortableList": "Container and orchestration",
+      "SortableItem": "Gesture handling and positioning",
+      "ListItem": "Presentation and styling",
+      "benefit": "Clean, testable, reusable"
+    },
+    "generics": {
+      "usage": "SortableList<T> accepts any data type",
+      "pattern": "renderItem receives typed item",
+      "benefit": "Type-safe reusable component"
+    },
+    "constants": {
+      "ITEMS": "Mock habit tracker data",
+      "PADDING": 6,
+      "HEIGHT": 80,
+      "ITEM_HEIGHT": 88,
+      "MAX_BORDER_RADIUS": 10,
+      "LINEAR_GRADIENT_COLORS": "Array of gradient stops"
+    },
+    "documentation": {
+      "inline_comments": "Clear explanations of complex logic",
+      "algorithm_documentation": "getPosition function well-documented",
+      "edge_case_notes": "Scroll compensation explained",
+      "example_usage": "onDragEnd shows order extraction"
+    }
+  },
+  "known_limitations": {
+    "fixed_item_height": {
+      "issue": "All items must have same height",
+      "reason": "Position calculation assumes uniform heights",
+      "impact": "Cannot support variable-height items",
+      "enhancement": "Could support if heights stored in data"
+    },
+    "vertical_only": {
+      "issue": "Only supports vertical drag-to-sort",
+      "limitation": "No horizontal or grid reordering",
+      "enhancement": "Could extend to support 2D grid"
+    },
+    "no_snap_points": {
+      "issue": "Items reorder continuously during drag",
+      "alternative": "Could add snap zones or thresholds",
+      "current_ux": "Very responsive, immediate feedback"
+    },
+    "scroll_view_only": {
+      "issue": "Uses ScrollView, not FlatList",
+      "impact": "All items render immediately (no virtualization)",
+      "scale_limit": "Works well for ~50 items, may struggle with hundreds",
+      "reason": "FlatList z-index issues with absolute positioning"
+    },
+    "ios_focused": {
+      "haptics": "expo-haptics works best on iOS",
+      "android": "Limited haptic feedback on some devices",
+      "web": "No haptic support"
+    }
+  },
+  "potential_improvements": {
+    "features": [
+      "Horizontal drag-to-sort",
+      "Grid-based drag-to-sort (2D)",
+      "Variable height item support",
+      "Drag handles (not whole item)",
+      "Multi-select drag (move multiple items)",
+      "Snap-to-grid option",
+      "Undo/redo for reordering",
+      "Animated item insertion/removal"
+    ],
+    "interaction": [
+      "Haptic feedback on position change (not just start)",
+      "Sound effects",
+      "Visual feedback for drop zones",
+      "Drag preview customization",
+      "Cancel drag with edge swipe",
+      "Double-tap to move to top/bottom"
+    ],
+    "customization": [
+      "Configurable long-press duration",
+      "Adjustable scroll speed",
+      "Custom drag animations",
+      "Theming support",
+      "Custom background items",
+      "Animation timing configuration"
+    ],
+    "accessibility": [
+      "Keyboard reordering (up/down arrows)",
+      "VoiceOver/TalkBack support",
+      "Reduce motion support",
+      "Screen reader announcements",
+      "Focus management",
+      "Alternative reorder UI for accessibility"
+    ],
+    "performance": [
+      "FlatList support with workarounds",
+      "Lazy loading for large lists",
+      "Virtualization for 100+ items",
+      "Debounced position updates",
+      "Optimized change detection"
+    ]
+  },
+  "key_insights": {
+    "position_map_pattern": "Single positions map eliminates manual index swapping",
+    "scroll_compensation": "Critical to store initial scroll offset for drag accuracy",
+    "z_index_choreography": "wasLastActiveIndex flag prevents flickering during transitions",
+    "object_assign_reactivity": "Cloning object triggers Reanimated reactivity",
+    "worklet_scroll_control": "scrollTo in worklet enables smooth auto-scroll",
+    "long_press_ux": "500ms activation prevents accidental drags while scrolling",
+    "getPosition_algorithm": "Sorting positions enables automatic reordering logic",
+    "change_detection": "Comparing prev/current prevents unnecessary callbacks",
+    "haptic_feedback": "Tactile confirmation essential for drag start",
+    "border_radius_sync": "Coordinated animations across components add polish"
+  },
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic pan gesture handling",
+      "Long-press activation pattern",
+      "SharedValue basics",
+      "Simple position animations",
+      "Haptic feedback integration"
+    ],
+    "for_intermediate": [
+      "Position-based reordering algorithm",
+      "Scroll compensation techniques",
+      "useAnimatedRef with scrollTo",
+      "Z-index management patterns",
+      "useAnimatedReaction for cross-component sync",
+      "Gesture lifecycle (onStart/onUpdate/onFinalize)",
+      "Object.assign for reactivity"
+    ],
+    "for_advanced": [
+      "Complex position calculation algorithms",
+      "Edge-case auto-scroll implementation",
+      "Multi-component animation choreography",
+      "Worklet optimization strategies",
+      "Change detection patterns",
+      "Generic reusable drag-to-sort component design",
+      "Performance optimization for smooth drag"
+    ]
+  },
+  "testing_considerations": {
+    "visual_tests": [
+      "Items reorder smoothly during drag",
+      "Z-index correct during drag/release",
+      "Border radius animates correctly",
+      "Shadow appears during drag",
+      "Background items visible and positioned correctly",
+      "Gradient overlay renders at top"
+    ],
+    "interaction_tests": [
+      "Long-press activates drag (500ms)",
+      "Short tap doesn't activate drag",
+      "Items reorder in real-time",
+      "Auto-scroll triggers at edges",
+      "Drag works while list is scrolling",
+      "Cancel drag doesn't call onDragEnd",
+      "Successful drag calls onDragEnd with correct order"
+    ],
+    "edge_cases": [
+      "Drag first item to last position",
+      "Drag last item to first position",
+      "Rapid drag without release",
+      "Drag while scrolling",
+      "Drag to scroll boundary",
+      "Cancel drag mid-way",
+      "Drag single item in list"
+    ],
+    "performance_tests": [
+      "Smooth 60fps during drag",
+      "No frame drops during auto-scroll",
+      "Memory stable across multiple drags",
+      "Position updates don't cause lag",
+      "Test with 50+ items"
+    ],
+    "platform_tests": [
+      "iOS haptics work",
+      "Android haptics work (if supported)",
+      "Gradient renders correctly",
+      "Scroll behavior consistent",
+      "Touch handling responsive"
+    ]
+  },
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility support",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No support",
+      "haptics_only": "Visual and haptic feedback only"
+    },
+    "recommendations": [
+      "Add accessibilityRole='button' to items",
+      "Add accessibilityLabel with position info",
+      "Implement keyboard reordering (up/down arrows + modifier)",
+      "Announce position changes to screen reader",
+      "Add 'Reorder' button for assistive tech users",
+      "Support prefers-reduced-motion (instant transitions)",
+      "Add visible move up/down buttons for accessibility",
+      "Ensure sufficient touch target sizes (44x44)",
+      "High contrast mode support"
+    ]
+  },
+  "comparison_to_similar_patterns": {
+    "vs_react_native_draggable_flatlist": {
+      "similarity": "Both enable drag-to-reorder",
+      "difference": "This uses ScrollView + absolute positioning",
+      "tradeoff": "Simpler but less scalable than FlatList virtualization"
+    },
+    "vs_react_dnd": {
+      "similarity": "Drag-and-drop reordering",
+      "difference": "This is mobile-native with gestures and haptics",
+      "advantage": "Better mobile UX with long-press and touch feedback"
+    },
+    "vs_sortable_js": {
+      "similarity": "Position-based sorting",
+      "difference": "This uses Reanimated for native performance",
+      "advantage": "60fps animations on mobile devices"
+    }
+  },
+  "related_patterns": {
+    "drag_and_drop": "More complex multi-list drag patterns",
+    "swipe_actions": "Swipe-to-delete/archive patterns",
+    "pull_to_refresh": "Similar gesture handling",
+    "infinite_scroll": "Scroll edge detection",
+    "nested_scrolling": "ScrollView coordination patterns"
+  },
+  "real_world_inspiration": {
+    "ios_shortcuts": "Long-press drag reordering pattern",
+    "trello": "Card reordering within lists",
+    "spotify": "Playlist song reordering",
+    "apple_reminders": "Task reordering with haptics",
+    "google_keep": "Note reordering in lists"
+  },
+  "bundle_size_impact": {
+    "code_size": "~600 lines total (components + demo)",
+    "dependencies": "Reanimated, gesture-handler, haptics, linear-gradient (likely in project)",
+    "runtime_memory": "Minimal - few SharedValues, one positions map",
+    "estimated_size": "< 20KB"
+  },
+  "tags": [
+    "drag-to-sort",
+    "reorderable-list",
+    "pan-gesture",
+    "long-press",
+    "haptic-feedback",
+    "auto-scroll",
+    "position-interpolation",
+    "z-index-management",
+    "reanimated",
+    "gesture-handler",
+    "habit-tracker",
+    "sortable",
+    "draggable",
+    "list-reordering",
+    "worklets",
+    "scroll-compensation"
+  ],
+  "content_hash": "589dc26d38be731754f0b2e314640e3ac811e1c9cb6b516f4a920f46a2f03175",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.319Z",
+  "last_validated": "2025-10-12T09:19:28.319Z"
+}

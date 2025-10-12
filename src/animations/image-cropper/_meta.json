@@ -1,0 +1,844 @@
+{
+  "animation_name": "Image Cropper",
+  "animation_slug": "image-cropper",
+  "description": "An interactive image cropping component built with Skia Canvas that allows users to select and crop portions of an image. Features a draggable grid with resizable corners, animated expand/collapse controls, and real-time crop preview. Uses FitBox for scaling the cropped region and displays a full-screen modal with the final cropped result.",
+  "main_features": [
+    "Interactive crop grid with drag-to-move functionality",
+    "Four corner handles for independent resizing",
+    "Min/max constraints prevent over-cropping",
+    "Animated expand/collapse transitions (withTiming)",
+    "Darkened overlay outside crop area with clipping",
+    "Real-time grid visualization (rule of thirds)",
+    "FitBox scaling for crop preview",
+    "Full-screen modal for displaying cropped image",
+    "Asynchronous image loading with loading state",
+    "Ref-based imperative API for expand/collapse/getGridRect",
+    "Clamped dragging to keep grid within bounds",
+    "Generic component supporting any SkImage"
+  ],
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Main demo screen with image loading, crop controls, and modal display"
+    },
+    "screens": {
+      "image-cropper.tsx": "Screen implementation with navigation support (unused in demo)",
+      "detail-image.tsx": "Detail screen showing cropped image using FitBox (unused in demo)"
+    },
+    "components": {
+      "image-cropper/index.tsx": "Core ImageCropper component with ref API",
+      "image-cropper/grid/index.tsx": "Grid overlay with drag handles and visual grid lines",
+      "image-cropper/grid/useCornerGestures.ts": "Custom hook for four corner resize gestures",
+      "border-button/index.tsx": "Simple styled button component for controls"
+    },
+    "hooks": {
+      "useCornerGestures.ts": "Generates gesture handlers for top-left, top-right, bottom-left, bottom-right corners"
+    },
+    "utils": {},
+    "assets": {},
+    "types": {
+      "navigation.ts": "TypeScript types for React Navigation stack (unused in demo)"
+    },
+    "constants": {}
+  },
+  "core_technologies": [
+    "@shopify/react-native-skia",
+    "react-native-reanimated",
+    "react-native-skia-gesture"
+  ],
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Image",
+        "Group",
+        "Rect",
+        "Path",
+        "FitBox"
+      ],
+      "hooks": [
+        "useImage"
+      ],
+      "utilities": [
+        "rect",
+        "clamp",
+        "Skia.Path.Make"
+      ],
+      "critical_feature": "Canvas rendering with clipping and FitBox for efficient crop display",
+      "performance_reason": "GPU-accelerated image rendering and clipping operations",
+      "usage": "Renders image with overlay grid, uses FitBox to scale cropped region to full screen"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "withTiming"
+      ],
+      "utilities": [
+        "clamp (via Skia)"
+      ],
+      "critical_feature": "Animated grid position and dimensions with smooth timing transitions",
+      "performance_reason": "All crop interactions run on UI thread without bridge crossing"
+    },
+    "react-native-skia-gesture": {
+      "version": "0.4.5-beta.1",
+      "components": [
+        "Touchable.Canvas",
+        "Touchable.Path",
+        "Touchable.Circle"
+      ],
+      "hooks": [
+        "useGestureHandler"
+      ],
+      "gestures": [
+        "Pan gesture via useGestureHandler"
+      ],
+      "usage": "Enables direct Skia element interactions for dragging grid and resizing corners",
+      "critical_feature": "Gesture integration directly on Skia elements without View wrappers"
+    },
+    "react-native": {
+      "version": "0.81.4",
+      "components": [
+        "Modal",
+        "View",
+        "Text",
+        "TouchableOpacity"
+      ],
+      "hooks": [
+        "useWindowDimensions",
+        "useRef",
+        "useState",
+        "useCallback"
+      ],
+      "usage": "UI structure, modal display, and dimension calculations"
+    }
+  },
+  "animation_techniques": [
+    {
+      "name": "Grid Dragging",
+      "pattern": "Pan gesture with clamped translation",
+      "implementation": "useGestureHandler with onStart (context save) and onActive (position update)",
+      "constraints": "clamp prevents grid from exiting image boundaries",
+      "formula": "x.value = clamp(translationX, -ctx.x, maxWidth - gridWidth - ctx.x) + ctx.x",
+      "smooth_tracking": "Direct SharedValue updates provide frame-by-frame position changes"
+    },
+    {
+      "name": "Corner Resizing",
+      "pattern": "Four independent drag handlers with directional logic",
+      "implementation": "createCornerHandler with isNegativeX/Y flags",
+      "top_left": "Updates x, y, width, height (all constraints active)",
+      "top_right": "Updates y, width, height (x fixed)",
+      "bottom_left": "Updates x, width, height (y fixed)",
+      "bottom_right": "Updates width, height only (x, y fixed)",
+      "constraints": "Min/max width/height prevent too small or too large grids",
+      "clamping": "Position clamps ensure grid stays within image after resize"
+    },
+    {
+      "name": "Expand/Collapse Animation",
+      "expand_behavior": "Animates grid to full image size (0, 0, fullWidth, fullHeight)",
+      "collapse_behavior": "Animates grid to minimum size (minWidth, minHeight)",
+      "animation": "withTiming({ duration: 250ms })",
+      "simultaneous": "All four values (x, y, width, height) animate together",
+      "benefit": "Provides quick reset to default states"
+    },
+    {
+      "name": "Crop Preview with FitBox",
+      "pattern": "FitBox transforms cropped region to fill destination rect",
+      "source_rect": "Grid rect (x, y, width, height) defining crop area",
+      "destination_rect": "Full canvas rect (0, 0, canvasWidth, canvasHeight)",
+      "group_clip": "Group with clip={croppedRect} isolates cropped portion",
+      "benefit": "Automatically scales and centers cropped region without manual calculations"
+    },
+    {
+      "name": "Overlay Darkening",
+      "pattern": "Inverted clipping with semi-transparent rect",
+      "implementation": "Group with clip={gridPath} and invertClip={true}",
+      "overlay": "Rect with rgba(0,0,0,0.4) covering full canvas",
+      "result": "Everything outside grid is darkened, crop area remains clear",
+      "visual_clarity": "Highlights the selected crop region"
+    },
+    {
+      "name": "Grid Lines Visualization",
+      "pattern": "Rule of thirds grid with manual path construction",
+      "lines": "Two horizontal and two vertical lines dividing grid into 9 sections",
+      "path_building": "Skia.Path.Make() with moveTo/lineTo for each line",
+      "styling": "White stroke, 2.5px width",
+      "purpose": "Visual composition guide following photography rule of thirds"
+    }
+  ],
+  "reanimated_patterns": [
+    {
+      "pattern": "SharedValue for Position and Dimensions",
+      "values": [
+        "x",
+        "y",
+        "gridWidth",
+        "gridHeight"
+      ],
+      "initial_values": {
+        "x": 0,
+        "y": 0,
+        "gridWidth": "width / 3 (minWidth)",
+        "gridHeight": "height / 3 (minHeight)"
+      },
+      "purpose": "Track grid state on UI thread for smooth 60fps updates"
+    },
+    {
+      "pattern": "DerivedValue for Dependent Calculations",
+      "imageRect": "useDerivedValue(() => rect(0, 0, width, height))",
+      "path": "useDerivedValue(() => area path from x, y, width, height)",
+      "grid": "useDerivedValue(() => grid lines path)",
+      "corner_positions": "topRightX, bottomLeftY, bottomRightX, bottomRightY",
+      "benefit": "Automatically recalculates when dependencies change"
+    },
+    {
+      "pattern": "Context Pattern for Gesture State",
+      "ctx": "useSharedValue({ x: 0, y: 0 })",
+      "onStart": "Captures current position before drag",
+      "onActive": "Uses ctx.value as reference point for calculations",
+      "benefit": "Prevents grid from jumping to touch point on drag start"
+    },
+    {
+      "pattern": "Gesture Context for Corner Resize",
+      "ctx": "useSharedValue({ x, y, width, height })",
+      "updateContext": "Worklet function to refresh context on gesture start",
+      "usage": "All four corner handlers share context update logic",
+      "benefit": "Consistent resize behavior across all corners"
+    },
+    {
+      "pattern": "useImperativeHandle for Ref API",
+      "exposed_methods": [
+        "expand",
+        "collapse",
+        "getGridRect"
+      ],
+      "expand": "Animates to full size with withTiming",
+      "collapse": "Animates to minimum size with withTiming",
+      "getGridRect": "Returns current rect(x, y, width, height) for cropping",
+      "worklet_annotation": "Methods marked 'worklet' for UI thread execution",
+      "usage": "Parent components control crop via ref.current methods"
+    }
+  ],
+  "performance_optimizations": [
+    {
+      "name": "useMemo for Image Ratio",
+      "pattern": "useMemo(() => image.height() / image.width(), [image])",
+      "benefit": "Avoids recalculating aspect ratio on every render",
+      "critical": "Used for canvas height calculation"
+    },
+    {
+      "name": "useCallback for Handlers",
+      "functions": [
+        "handleCrop",
+        "handleBack"
+      ],
+      "dependencies": [
+        "image"
+      ],
+      "benefit": "Stable function references prevent unnecessary re-renders"
+    },
+    {
+      "name": "Worklet-based Gesture Handlers",
+      "pattern": "All gesture logic marked with 'worklet'",
+      "runs_on": "UI thread",
+      "benefit": "No JS bridge crossing during drag or resize operations"
+    },
+    {
+      "name": "Skia Canvas Rendering",
+      "pattern": "GPU-accelerated image and path rendering",
+      "clipping_performance": "Hardware-accelerated clipping for overlay",
+      "benefit": "Smooth 60fps even with complex paths and image transformations"
+    },
+    {
+      "name": "Direct Skia Gesture Integration",
+      "pattern": "Touchable.Canvas, Touchable.Path, Touchable.Circle",
+      "benefit": "No View wrapper overhead, gestures directly on GPU-rendered elements",
+      "critical": "Enables complex interactions without performance penalty"
+    },
+    {
+      "name": "Conditional Image Loading",
+      "pattern": "Early return with loading state if image is null",
+      "benefit": "Prevents unnecessary component rendering before image loads"
+    },
+    {
+      "name": "Efficient Path Regeneration",
+      "pattern": "useDerivedValue only recalculates paths when position/size changes",
+      "benefit": "Path objects reused when values haven't changed"
+    }
+  ],
+  "use_cases": [
+    "Photo editing apps with crop functionality",
+    "Profile picture uploading with crop preview",
+    "Document scanning apps (crop scanned area)",
+    "Meme generators (crop source images)",
+    "Social media post creation tools",
+    "E-commerce product photo editing",
+    "Real estate listing photo adjustments",
+    "ID/passport photo cropping",
+    "Screenshot annotation tools",
+    "Image gallery with inline cropping",
+    "Video thumbnail selection",
+    "Wallpaper customization apps",
+    "Avatar/icon creation tools"
+  ],
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with comprehensive type definitions",
+      "Excellent separation of concerns (core component vs demo)",
+      "Reusable ImageCropper component with generic SkImage support",
+      "Clean hook extraction (useCornerGestures)",
+      "Proper worklet annotations for UI thread functions",
+      "useImperativeHandle for clean parent-child API",
+      "Consistent use of clamp for boundary constraints",
+      "Well-organized file structure with logical component hierarchy",
+      "Comprehensive gesture handling with context patterns",
+      "DerivedValue for dependent calculations",
+      "useMemo and useCallback for performance",
+      "Clear variable naming (topRightX, bottomLeftY, etc.)",
+      "Inline comments explaining complex logic",
+      "Generic createCornerHandler reduces code duplication"
+    ],
+    "areas_for_improvement": [
+      "Magic numbers could be extracted to constants (250ms duration, 2.5px stroke, 8px dot radius)",
+      "Grid component doesn't export its prop types",
+      "No error handling for invalid image dimensions",
+      "Unused navigation types and screens in demo (dead code)",
+      "TODO comment in useCornerGestures suggests uncertainty ('how come this works?')",
+      "No JSDoc comments for public APIs",
+      "Could add prop for custom grid colors/styles",
+      "FancyBorderButton could be more generic/styled",
+      "No accessibility labels for interactive elements",
+      "Loading state shows empty view instead of spinner/indicator"
+    ]
+  },
+  "known_limitations": [
+    {
+      "name": "Fixed Minimum Crop Size",
+      "issue": "Min width/height hardcoded to 1/3 of image dimensions",
+      "limitation": "Cannot configure minimum crop size",
+      "improvement": "Could be props: minCropWidthRatio, minCropHeightRatio"
+    },
+    {
+      "name": "No Aspect Ratio Lock",
+      "issue": "Corner handles allow free-form resizing",
+      "limitation": "Cannot maintain specific aspect ratios (1:1, 16:9, etc.)",
+      "use_case": "Important for Instagram posts, video thumbnails, profile pictures"
+    },
+    {
+      "name": "No Rotation Support",
+      "missing": "Cannot rotate image before cropping",
+      "impact": "Users must pre-rotate images externally",
+      "enhancement": "Add rotation controls and transform matrix"
+    },
+    {
+      "name": "No Zoom/Pan on Image",
+      "limitation": "Image size is fixed, cannot zoom in/out",
+      "workaround": "Users must crop from original scale only",
+      "improvement": "Add pinch-to-zoom and pan gestures on image"
+    },
+    {
+      "name": "No Undo/Redo",
+      "issue": "Cannot undo crop adjustments",
+      "impact": "Users must manually readjust if they make mistake",
+      "enhancement": "History stack for crop states"
+    },
+    {
+      "name": "Single Image Only",
+      "limitation": "Designed for one image at a time",
+      "consideration": "Batch cropping would need different architecture"
+    },
+    {
+      "name": "No Crop Presets",
+      "missing": "No quick buttons for common aspect ratios",
+      "examples": "Square (1:1), Portrait (4:5), Landscape (16:9), Story (9:16)",
+      "improvement": "Add preset buttons that auto-adjust grid"
+    },
+    {
+      "name": "No Accessibility Support",
+      "missing": [
+        "Screen reader labels",
+        "Keyboard navigation",
+        "Voice control"
+      ],
+      "impact": "Not accessible to users with disabilities",
+      "priority": "High for production apps"
+    },
+    {
+      "name": "Loading State UI Missing",
+      "issue": "Empty view shown instead of spinner during image load",
+      "ux_impact": "Users don't know if app is loading or broken"
+    },
+    {
+      "name": "Demo Has Dead Code",
+      "issue": "navigation.ts and screen files unused in index.tsx",
+      "impact": "Confusion about which files are part of actual implementation",
+      "cleanup": "Remove unused navigation code or use it properly"
+    }
+  ],
+  "potential_improvements": [
+    "Add aspect ratio lock (1:1, 4:3, 16:9, custom)",
+    "Implement image rotation (90° increments)",
+    "Add pinch-to-zoom gesture on image",
+    "Implement undo/redo history stack",
+    "Quick preset buttons for common crops",
+    "Configurable min/max crop sizes as props",
+    "Custom grid styles (color, width, pattern)",
+    "Multiple grid overlays (rule of thirds, golden ratio, diagonal)",
+    "Crop preview thumbnail during drag",
+    "Haptic feedback on corner snap or boundary hit",
+    "Export cropped image to file system",
+    "Copy cropped image to clipboard",
+    "Compare before/after views",
+    "Freeform selection (not just rectangles)",
+    "Edge detection assistance",
+    "Auto-crop suggestions using ML",
+    "Grid magnetism (snap to edges/center)",
+    "Double-tap to reset crop",
+    "Keyboard shortcuts for fine adjustments",
+    "Touch-and-hold for precision mode (slower dragging)",
+    "Real-time crop dimensions display (px or aspect ratio)",
+    "Save/load crop presets",
+    "Batch processing multiple images",
+    "Theme customization (colors, styles)",
+    "Animation speed customization",
+    "Accessibility: screen reader support",
+    "Accessibility: keyboard navigation",
+    "Accessibility: reduced motion support",
+    "Performance: lazy image loading for large files",
+    "Performance: progressive image loading",
+    "Loading spinner with progress indicator",
+    "Error handling for failed image loads",
+    "Error handling for invalid dimensions"
+  ],
+  "key_insights": [
+    "FitBox eliminates manual calculations for crop preview scaling",
+    "Inverted clipping with Group creates perfect overlay without manual masking",
+    "Skia-gesture integration allows gesture handling without View overhead",
+    "Context pattern in gestures prevents UI jumps when dragging starts",
+    "useImperativeHandle provides clean imperative API for animations",
+    "createCornerHandler pattern reduces duplication for four similar gestures",
+    "Rule of thirds grid built manually gives complete control over appearance",
+    "Clamping at gesture level (not just animation) provides immediate boundary feedback",
+    "DerivedValue for paths ensures automatic updates without manual coordination",
+    "Generic SkImage support makes component reusable beyond demo",
+    "Separate min/max dimensions prevent unusable tiny or oversized crops",
+    "Modal + Canvas combination allows full-screen crop preview",
+    "useImage hook handles async loading seamlessly",
+    "Worklet-based ref methods enable parent control from UI thread"
+  ],
+  "learning_opportunities": [
+    {
+      "level": "Beginner",
+      "topics": [
+        "Basic Skia Canvas usage",
+        "useImage hook for async image loading",
+        "useSharedValue for animation state",
+        "withTiming for simple animations",
+        "useRef and useImperativeHandle patterns",
+        "Modal component basics",
+        "useWindowDimensions for responsive sizing",
+        "Conditional rendering based on loading state"
+      ]
+    },
+    {
+      "level": "Intermediate",
+      "topics": [
+        "Skia Path construction and manipulation",
+        "Group clipping and invertClip technique",
+        "FitBox for source-to-destination transformations",
+        "useGestureHandler for drag interactions",
+        "Context pattern in gesture handlers",
+        "useDerivedValue for dependent calculations",
+        "clamp utility for boundary constraints",
+        "Creating reusable gesture hooks",
+        "Coordinating multiple SharedValues",
+        "Image aspect ratio calculations"
+      ]
+    },
+    {
+      "level": "Advanced",
+      "topics": [
+        "Building generic animation components with refs",
+        "Complex multi-constraint gesture systems",
+        "Optimizing Skia rendering performance",
+        "Directional resize logic with corner handlers",
+        "Generic gesture handler factories",
+        "UI thread image manipulation",
+        "Imperative animation APIs with worklets",
+        "Canvas coordinate systems and transformations",
+        "Architectural patterns for reusable UI components",
+        "Performance profiling for gesture-heavy UIs"
+      ]
+    }
+  ],
+  "gesture_handling_deep_dive": {
+    "grid_dragging": {
+      "gesture_type": "Pan",
+      "lifecycle": {
+        "onStart": "Save current x, y to context",
+        "onActive": "Update position with clamped translation",
+        "onEnd": "None (position held at final value)"
+      },
+      "constraints": {
+        "x_min": 0,
+        "x_max": "maxWidth - gridWidth",
+        "y_min": 0,
+        "y_max": "maxHeight - gridHeight"
+      },
+      "formula_explanation": {
+        "clamp_min": "-ctx.value.x ensures grid can't go negative (left edge at 0)",
+        "clamp_max": "maxWidth - gridWidth - ctx.value.x ensures right edge stays in bounds",
+        "ctx_addition": "ctx.value.x converts relative translation to absolute position"
+      }
+    },
+    "corner_resizing": {
+      "shared_logic": "createCornerHandler factory function",
+      "parameters": {
+        "isNegativeX": "True if dragging left decreases width (top-left, bottom-left)",
+        "isNegativeY": "True if dragging up decreases height (top-left, top-right)",
+        "updateX": "True if x position should change (top-left, bottom-left)",
+        "updateY": "True if y position should change (top-left, top-right)"
+      },
+      "dimension_calculation": {
+        "pattern": "calculateNewDimensions worklet",
+        "width_formula": "clamp((isNegativeX ? -translationX : translationX) + ctx.width, minWidth, maxWidth - x)",
+        "height_formula": "clamp((isNegativeY ? -translationY : translationY) + ctx.height, minHeight, maxHeight - y)",
+        "negative_handling": "Inverts translation for left/top corners so dragging left/up increases size correctly"
+      },
+      "position_update": {
+        "condition": "Only if updateX or updateY is true",
+        "x_formula": "clamp(translationX + ctx.x, 0, maxWidth - newWidth)",
+        "y_formula": "clamp(translationY + ctx.y, 0, maxHeight - newHeight)",
+        "ensures": "Opposite corner stays fixed while dragged corner moves"
+      }
+    },
+    "corner_mapping": {
+      "topLeft": "isNegativeX: true, isNegativeY: true, updateX: true, updateY: true",
+      "topRight": "isNegativeX: false, isNegativeY: true, updateX: false, updateY: true",
+      "bottomLeft": "isNegativeX: true, isNegativeY: false, updateX: true, updateY: false",
+      "bottomRight": "isNegativeX: false, isNegativeY: false, updateX: false, updateY: false"
+    },
+    "touchable_components": {
+      "Touchable.Canvas": "Container canvas that receives gestures",
+      "Touchable.Path": "Grid rectangle receives drag gesture",
+      "Touchable.Circle": "Four corner dots receive resize gestures",
+      "benefit": "Direct Skia element interaction without React Native View layer"
+    }
+  },
+  "skia_techniques_deep_dive": {
+    "canvas_structure": {
+      "layer_1": "Image component (base image layer)",
+      "layer_2": "Grid component (overlay with interaction)",
+      "rendering_order": "Bottom to top (image drawn first, grid on top)"
+    },
+    "grid_rendering": {
+      "white_grid_lines": "Path component with stroke style",
+      "darkened_overlay": "Rect with inverted Group clip",
+      "transparent_interaction_area": "Touchable.Path for dragging",
+      "white_corner_dots": "Four Touchable.Circle components",
+      "z_order": "Grid lines → overlay → interaction path → corner dots"
+    },
+    "path_construction": {
+      "pattern": "Skia.Path.Make() creates empty path",
+      "moveTo": "Positions path cursor without drawing",
+      "lineTo": "Draws line from cursor to new position",
+      "grid_lines": "8 separate line segments (moveTo → lineTo pairs)",
+      "optimization": "Single path object contains all grid lines"
+    },
+    "clipping_technique": {
+      "Group": "Container that applies clipping to children",
+      "clip_prop": "Path defining clip region (grid rect)",
+      "invertClip": "When true, clips everything INSIDE path instead of outside",
+      "use_case": "Draw overlay everywhere except crop area",
+      "children": "Semi-transparent Rect covering entire canvas",
+      "result": "Perfect crop highlight without manual mask calculations"
+    },
+    "fitbox_transformation": {
+      "purpose": "Scale and position source rect to fit destination rect",
+      "src": "Grid rect (crop region in image coordinates)",
+      "dst": "Full canvas rect (target display area)",
+      "fit_mode": "Implicit 'contain' behavior",
+      "children": "Group with clip and Image",
+      "workflow": "Crop region extracted → FitBox scales to full canvas → clipping hides outside crop",
+      "benefit": "No manual matrix calculations needed"
+    },
+    "rect_utility": {
+      "function": "rect(x, y, width, height)",
+      "type": "SkRect",
+      "usage": "Defining regions for Image, Rect, clip, and FitBox",
+      "derived_rects": "imageRect, gridRect (from path), fullRect (for preview)",
+      "immutability": "New rect objects created for each state change"
+    }
+  },
+  "mathematical_formulas": {
+    "image_aspect_ratio": {
+      "formula": "imageRatio = image.height() / image.width()",
+      "example": "1920x1080 → 1080/1920 = 0.5625",
+      "usage": "Calculate canvas height from width to maintain aspect ratio",
+      "canvas_height": "width * imageRatio"
+    },
+    "minimum_dimensions": {
+      "minWidth": "width / 3",
+      "minHeight": "height / 3",
+      "reasoning": "Ensures crop is at least 33% of image in each dimension",
+      "prevents": "Unusably small crops (< 100px on most screens)"
+    },
+    "corner_positions": {
+      "topRightX": "gridWidth + x",
+      "bottomLeftY": "gridHeight + y",
+      "bottomRightX": "gridWidth + x",
+      "bottomRightY": "gridHeight + y",
+      "note": "Derived from top-left (x, y) and dimensions"
+    },
+    "grid_line_positions": {
+      "horizontal_1": "y + height / 3",
+      "horizontal_2": "y + (height / 3) * 2",
+      "vertical_1": "x + width / 3",
+      "vertical_2": "x + (width / 3) * 2",
+      "purpose": "Rule of thirds composition guide"
+    },
+    "clamping_formula": {
+      "general": "clamp(value, min, max) = Math.max(min, Math.min(max, value))",
+      "x_position": "clamp(translationX, -ctx.x, maxWidth - gridWidth - ctx.x) + ctx.x",
+      "width_resize": "clamp(newWidth, minWidth, maxWidth - x)",
+      "ensures": "Values always within valid bounds"
+    }
+  },
+  "component_api_reference": {
+    "ImageCropper": {
+      "props": {
+        "image": {
+          "type": "ImageProps['image']",
+          "required": true,
+          "description": "SkImage object from useImage hook"
+        },
+        "width": {
+          "type": "number",
+          "required": true,
+          "description": "Canvas width in pixels"
+        },
+        "style": {
+          "type": "StyleProp<ViewStyle>",
+          "required": false,
+          "description": "Additional styles for canvas container"
+        }
+      },
+      "ref_methods": {
+        "expand": {
+          "signature": "() => void",
+          "behavior": "Animates grid to full image size",
+          "duration": "250ms withTiming"
+        },
+        "collapse": {
+          "signature": "() => void",
+          "behavior": "Animates grid to minimum size (1/3 image dimensions)",
+          "duration": "250ms withTiming"
+        },
+        "getGridRect": {
+          "signature": "() => SkRect",
+          "returns": "rect(x, y, gridWidth, gridHeight)",
+          "usage": "Get current crop region for export/preview"
+        }
+      }
+    },
+    "Grid": {
+      "props": {
+        "x": "SharedValue<number> - Grid x position",
+        "y": "SharedValue<number> - Grid y position",
+        "width": "SharedValue<number> - Grid width",
+        "height": "SharedValue<number> - Grid height",
+        "maxWidth": "number - Image width (boundary)",
+        "maxHeight": "number - Image height (boundary)",
+        "minWidth": "number - Minimum crop width",
+        "minHeight": "number - Minimum crop height",
+        "dotRadius": "number (optional, default: 8) - Corner handle size"
+      },
+      "internal": true,
+      "responsibility": "Render grid overlay, handle drag and resize gestures"
+    },
+    "FancyBorderButton": {
+      "props": {
+        "onPress": "() => void",
+        "title": "string"
+      },
+      "styling": "White border, transparent background, white text with letter spacing"
+    }
+  },
+  "demo_implementation": {
+    "image_source": "Unsplash image (1920x1080 nature photo)",
+    "canvas_width": "Screen width (useWindowDimensions)",
+    "canvas_height": "width * imageRatio (maintains aspect ratio)",
+    "background": "Black (#000)",
+    "controls": [
+      {
+        "label": "Expand",
+        "action": "cropperRef.current?.expand()",
+        "behavior": "Animates grid to full image size"
+      },
+      {
+        "label": "Collapse",
+        "action": "cropperRef.current?.collapse()",
+        "behavior": "Animates grid to minimum size"
+      },
+      {
+        "label": "Crop",
+        "action": "handleCrop()",
+        "behavior": "Gets grid rect, shows modal with cropped image"
+      }
+    ],
+    "modal_display": {
+      "trigger": "Crop button press",
+      "content": "FitBox with cropped image scaled to full screen",
+      "close_button": "Back button (bottom-right)",
+      "animation_type": "slide",
+      "presentation_style": "fullScreen"
+    }
+  },
+  "comparison_to_alternatives": {
+    "vs_react_native_image_crop_picker": {
+      "image_cropper": "In-app custom UI, full control over styling and behavior",
+      "image_crop_picker": "Native platform pickers, less customizable",
+      "trade_off": "Custom UI vs native integration"
+    },
+    "vs_expo_image_manipulator": {
+      "image_cropper": "Real-time interactive cropping with visual feedback",
+      "image_manipulator": "Imperative API, no built-in UI",
+      "use_together": "ImageCropper for UI, manipulator for file export"
+    },
+    "vs_view_based_cropper": {
+      "skia_version": "GPU-accelerated, smooth even on low-end devices",
+      "view_version": "May lag with complex overlays and animations",
+      "benefit": "Skia provides better performance and visual quality"
+    },
+    "vs_web_crop_tools": {
+      "native_app": "Works offline, better performance, native feel",
+      "web_tools": "No installation, accessible anywhere",
+      "trade_off": "Convenience vs performance"
+    }
+  },
+  "related_patterns": {
+    "image_editing": "Filters, adjustments, stickers, text overlays",
+    "drawing_canvas": "Freehand drawing with Skia paths",
+    "shape_selection": "Lasso, magic wand, polygon selection tools",
+    "transformation_handles": "Resize, rotate, skew handles for objects",
+    "masking_tools": "Layer masks, alpha channel editing",
+    "comparison_sliders": "Before/after image comparisons"
+  },
+  "accessibility_considerations": {
+    "current_state": {
+      "accessible": false,
+      "issues": [
+        "No screen reader labels for interactive elements",
+        "Corner handles too small for users with motor impairments",
+        "No keyboard navigation support",
+        "No voice control integration",
+        "No reduced motion support",
+        "Low contrast corner dots may be hard to see"
+      ]
+    },
+    "recommendations": [
+      "Add accessibilityLabel='Image crop area' to grid",
+      "Add accessibilityLabel='Resize corner' to each corner handle",
+      "Add accessibilityRole='adjustable' for grid",
+      "Implement accessibilityActions for keyboard control",
+      "Increase corner dot size option for accessibility",
+      "Add high contrast mode with thicker, more visible lines",
+      "Respect AccessibilityInfo.isReduceMotionEnabled()",
+      "Provide alternative keyboard-based crop adjustment",
+      "Add haptic feedback for boundary hits and snapping",
+      "Consider voice commands for crop adjustments",
+      "Test with VoiceOver (iOS) and TalkBack (Android)"
+    ]
+  },
+  "testing_considerations": {
+    "visual_tests": [
+      "Grid renders correctly on load",
+      "Corner handles positioned at correct locations",
+      "Grid lines follow rule of thirds",
+      "Overlay darkens area outside grid",
+      "Image maintains aspect ratio",
+      "Crop preview scales correctly in modal"
+    ],
+    "interaction_tests": [
+      "Dragging grid moves smoothly",
+      "Grid cannot be dragged outside image bounds",
+      "Each corner handle resizes independently",
+      "Minimum size constraint prevents tiny crops",
+      "Maximum size constraint respected",
+      "Expand button animates grid to full size",
+      "Collapse button animates grid to minimum",
+      "Crop button shows modal with correct crop",
+      "Back button closes modal and resets state"
+    ],
+    "performance_tests": [
+      "60fps maintained during drag operations",
+      "No frame drops during resize operations",
+      "Smooth animation for expand/collapse",
+      "Large images load without freezing UI",
+      "Modal transition is smooth"
+    ],
+    "edge_cases": [
+      "Very small images (< 100px)",
+      "Very large images (> 4000px)",
+      "Extreme aspect ratios (ultra-wide, ultra-tall)",
+      "Square images",
+      "Image load failures (broken URLs)",
+      "Rapid expand/collapse button presses",
+      "Dragging corner to opposite corner",
+      "Network disconnections during image load"
+    ]
+  },
+  "bundle_size_impact": {
+    "code_size": "~400 lines total (component + grid + hook)",
+    "dependencies": "Skia, Reanimated, Skia-Gesture (likely already in project)",
+    "runtime_memory": "Low - single image, minimal state",
+    "estimated_memory": "~5MB for typical 1920x1080 image + UI overhead",
+    "image_memory": "Dependent on source image size"
+  },
+  "platform_considerations": {
+    "ios": {
+      "features": "All features fully supported",
+      "performance": "Excellent GPU acceleration with Metal backend",
+      "gestures": "Native touch handling, very responsive"
+    },
+    "android": {
+      "features": "All features fully supported",
+      "performance": "Excellent GPU acceleration with Vulkan/OpenGL",
+      "gestures": "Native touch handling, very responsive",
+      "note": "Test on low-end devices for performance"
+    },
+    "web": {
+      "compatibility": "Skia has CanvasKit backend for web",
+      "performance": "Good, slightly slower than native",
+      "gestures": "Mouse and touch events work well",
+      "note": "Requires react-native-web configuration"
+    }
+  },
+  "tags": [
+    "image-cropping",
+    "skia",
+    "canvas",
+    "gesture-handling",
+    "drag-and-drop",
+    "resize-handles",
+    "reanimated",
+    "fitbox",
+    "clipping",
+    "interactive",
+    "photo-editing",
+    "ui-thread",
+    "worklets",
+    "imperative-api",
+    "modal",
+    "rule-of-thirds",
+    "image-manipulation",
+    "gpu-rendering",
+    "touch-interaction",
+    "boundary-clamping"
+  ],
+  "content_hash": "94fb49eafe7b2616aad608025206bbf2687cd8bd17736f2fb48963445c684559",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.370Z",
+  "last_validated": "2025-10-12T09:19:28.370Z"
+}
