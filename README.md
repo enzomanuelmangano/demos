@@ -17,8 +17,7 @@ Demos 2023 - Rewind: [Twitter Post](https://x.com/reactiive_/status/174031452450
 This project is a work in progress (almost by definition). Here are the current priorities:
 
 - [x] Remove deprecated APIs: runOnJS and runOnUI should now be imported from react-native-worklets
-- [ ] Fix navigation setup: the project started with React Navigation, but we’re migrating to Expo Router. The repo currently feels like a mix of both.
-- [ ] Drawer Navigation: currently the navigation is quite unintuitive and needs to be improved.
+- [x] Drawer Navigation: currently the navigation is quite unintuitive and needs to be improved.
 - [ ] Ensure consistent haptics support (use [pressto](https://github.com/enzomanuelmangano/pressto) whenever possible)
 - [ ] Optimize performance in Shaders demos
 - [ ] Feedback screen on Shake Detection

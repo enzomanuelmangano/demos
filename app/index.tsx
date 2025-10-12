@@ -2,7 +2,6 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useCallback, useRef } from 'react';
 
-import { useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
 
@@ -26,7 +25,6 @@ const baseDrawerOptions = {
 };
 
 export default function HomeScreen() {
-  const navigation = useNavigation();
   const { width: windowWidth } = useWindowDimensions();
 
   const staggeredTextRef = useRef<StaggeredTextRef>(null);
@@ -50,10 +48,7 @@ export default function HomeScreen() {
           swipeMinDistance: 40,
           headerLeft: () => (
             <View style={{ paddingLeft: 16 }}>
-              <AnimatedHamburgerIcon
-                tintColor="white"
-                onPress={() => (navigation as any).toggleDrawer()}
-              />
+              <AnimatedHamburgerIcon />
             </View>
           ),
         }}
