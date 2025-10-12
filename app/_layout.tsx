@@ -1,10 +1,11 @@
-import { Dimensions, StatusBar, StyleSheet } from 'react-native';
+import { Dimensions, StatusBar, StyleSheet, View } from 'react-native';
 
-import { Suspense } from 'react';
+import { Suspense, useCallback } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
 import { Drawer } from 'expo-router/drawer';
+import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
@@ -12,29 +13,42 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { DrawerContent } from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 
+SplashScreen.preventAutoHideAsync();
+
+SplashScreen.setOptions({
+  duration: 500,
+  fade: true,
+});
+
 export default function RootLayout() {
   // Check for OTA updates
   useOta();
+
+  const onLayoutRootView = useCallback(() => {
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <Suspense>
       <StatusBar barStyle="default" animated />
       <KeyboardProvider>
-        <PressablesConfig globalHandlers={globalPressableHandlers}>
-          <GestureHandlerRootView style={styles.fill}>
+        <GestureHandlerRootView style={styles.fill}>
+          <PressablesConfig globalHandlers={globalPressableHandlers}>
             <FontsProvider>
-              <Drawer
-                drawerContent={DrawerContent}
-                screenOptions={drawerScreenOptions}>
-                <Drawer.Screen name="index" options={homeOptions} />
-                <Drawer.Screen
-                  name="animations/[slug]"
-                  options={animationOptions}
-                />
-              </Drawer>
+              <View style={styles.fill} onLayout={onLayoutRootView}>
+                <Drawer
+                  drawerContent={DrawerContent}
+                  screenOptions={drawerScreenOptions}>
+                  <Drawer.Screen name="index" options={homeOptions} />
+                  <Drawer.Screen
+                    name="animations/[slug]"
+                    options={animationOptions}
+                  />
+                </Drawer>
+              </View>
             </FontsProvider>
-          </GestureHandlerRootView>
-        </PressablesConfig>
+          </PressablesConfig>
+        </GestureHandlerRootView>
       </KeyboardProvider>
     </Suspense>
   );

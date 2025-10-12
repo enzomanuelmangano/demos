@@ -8,7 +8,6 @@ import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
-  useDerivedValue,
 } from 'react-native-reanimated';
 
 const ICON_HEIGHT = 14;
@@ -26,11 +25,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
   containerStyle: containerStyleProp,
 }) => {
   const navigation = useNavigation();
-  const drawerProgress = useDrawerProgress();
-
-  const progress = useDerivedValue(() => {
-    return drawerProgress.value;
-  }, []);
+  const progress = useDrawerProgress();
 
   const topBarStyle = useAnimatedStyle(() => {
     const rotateInterpolation = interpolate(
