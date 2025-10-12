@@ -67,8 +67,8 @@ export const AppsList = () => {
 
   return (
     <Animated.View style={[rStyle, { flex: 1, backgroundColor: '#fafafa' }]}>
-      <Animated.ScrollView
-        contentContainerStyle={[
+      <Animated.View
+        style={[
           styles.gridContainer,
           {
             paddingTop: safeTop + 4,
@@ -76,8 +76,7 @@ export const AppsList = () => {
             paddingBottom: 300,
           },
         ]}
-        layout={LinearTransition}
-        showsVerticalScrollIndicator={false}>
+        layout={LinearTransition}>
         {itemRows.map((row, rowIndex) => (
           <Animated.View
             key={rowIndex}
@@ -104,7 +103,7 @@ export const AppsList = () => {
             ))}
           </Animated.View>
         ))}
-      </Animated.ScrollView>
+      </Animated.View>
     </Animated.View>
   );
 };

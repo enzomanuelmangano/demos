@@ -6,11 +6,13 @@
  * a beautiful UI with animations and visual feedback.
  */
 
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import { useCallback, useRef, useState } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableScale } from 'pressto';
 import { PIConfetti } from 'react-native-fast-confetti';
 import Animated, {
   FadeIn,
@@ -27,6 +29,32 @@ import { COLORS, ELEVATION } from './theme';
 
 import type { PIConfettiMethods } from 'react-native-fast-confetti';
 
+/**
+ * Plays an intense haptic celebration sequence
+ */
+const playCelebrationHaptics = async () => {
+  // Rapid-fire light taps
+  for (let i = 0; i < 3; i++) {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  // Escalating medium taps
+  for (let i = 0; i < 3; i++) {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await new Promise(resolve => setTimeout(resolve, 80));
+  }
+
+  // Heavy impact finale
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  await new Promise(resolve => setTimeout(resolve, 100));
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Notification success for the grand finale
+  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+};
+
 const Transition = LinearTransition;
 
 // Generate initial board with medium difficulty
@@ -40,6 +68,11 @@ export const Sudoku = () => {
   const [board, setBoard] = useState(INITIAL_BOARD);
   const sudokuRef = useRef<SudokuBoardRef>(null);
   const confettiRef = useRef<PIConfettiMethods>(null);
+
+  const handleSudokuComplete = useCallback(() => {
+    confettiRef.current?.restart();
+    playCelebrationHaptics();
+  }, []);
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -68,12 +101,11 @@ export const Sudoku = () => {
       const solved = sudokuRef.current?.solve();
       if (solved) {
         setTimeout(() => {
-          confettiRef.current?.restart();
           onSolved?.();
         }, 100);
       }
     },
-    [sudokuRef, confettiRef],
+    [sudokuRef],
   );
 
   const onGeniusLongPress = useCallback(() => {
@@ -105,9 +137,9 @@ export const Sudoku = () => {
             key="header"
             entering={FadeIn.duration(1000)}
             layout={Transition}>
-            <Pressable onLongPress={onGeniusLongPress}>
+            <PressableScale onPress={onGeniusLongPress}>
               <Text style={styles.title}>Sudoku</Text>
-            </Pressable>
+            </PressableScale>
             <Text style={styles.subtitle}>Challenge your mind</Text>
             {hasStarted && (
               <Animated.View
@@ -134,7 +166,12 @@ export const Sudoku = () => {
                 exiting={FadeOut.duration(200)}
                 key="sudoku"
                 style={styles.boardWrapper}>
-                <SudokuBoard ref={sudokuRef} initialBoard={board} delay={600} />
+                <SudokuBoard
+                  ref={sudokuRef}
+                  initialBoard={board}
+                  delay={600}
+                  onComplete={handleSudokuComplete}
+                />
               </Animated.View>
             ) : (
               <View style={styles.startContainer}>

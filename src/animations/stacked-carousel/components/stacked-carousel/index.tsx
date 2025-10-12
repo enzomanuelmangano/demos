@@ -163,7 +163,7 @@ export const StackedCarousel = <T,>({
   useAnimatedReaction(
     () => Math.round(currentPageIndex.value),
     (curr, prev) => {
-      if (curr !== prev) {
+      if (curr !== prev && prev !== null) {
         scheduleOnRN(Haptics.selectionAsync);
       }
     },

@@ -17,6 +17,7 @@ export function Playground() {
   const hasReachedMaxIntensity = useSharedValue(false);
 
   const panGesture = Gesture.Pan()
+    .failOffsetX(10)
     .onUpdate(event => {
       // Apply friction to make dragging feel more natural
       const dampedTranslation =

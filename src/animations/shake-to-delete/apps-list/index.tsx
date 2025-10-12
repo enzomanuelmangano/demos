@@ -47,8 +47,8 @@ export const AppsList = () => {
 
   return (
     <Pressable onPress={stopShaking}>
-      <Animated.ScrollView
-        contentContainerStyle={[
+      <Animated.View
+        style={[
           styles.gridContainer,
           styles.rowWrapper,
           {
@@ -57,8 +57,7 @@ export const AppsList = () => {
             paddingBottom: 300,
           },
         ]}
-        layout={LinearTransition}
-        showsVerticalScrollIndicator={false}>
+        layout={LinearTransition}>
         {items.map(item => (
           <AppItem
             key={item.id}
@@ -79,7 +78,7 @@ export const AppsList = () => {
             }}
           />
         ))}
-      </Animated.ScrollView>
+      </Animated.View>
     </Pressable>
   );
 };

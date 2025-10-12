@@ -7,6 +7,7 @@ import { StyleSheet } from 'react-native';
 
 import { type FC, memo, type ReactNode } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -16,6 +17,7 @@ import Animated, {
   withDecay,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { HolographicCard } from '../holographic-card';
 
@@ -43,6 +45,7 @@ export const Ticket: FC<TicketProps> = memo(
     // Pan gesture handler for continuous rotation
     const panGesture = Gesture.Pan()
       .minDistance(10)
+      .hitSlop({ top: 50, bottom: 50, left: 50, right: 50 })
       .onStart(() => {
         contextX.value = translateX.value;
       })
@@ -62,17 +65,20 @@ export const Ticket: FC<TicketProps> = memo(
       return translateX.value % 360;
     });
 
-    // Tap gesture handler for snapping to nearest complete rotation
+    // Tap gesture handler for flipping the ticket
     const tapGesture = Gesture.Tap()
       .maxDistance(10)
+      .hitSlop({ top: 50, bottom: 50, left: 50, right: 50 })
       .onStart(() => {
         cancelAnimation(translateX);
       })
       .onEnd(() => {
         cancelAnimation(translateX);
-        // Snap to nearest complete rotation
-        const normalizedRotation = Math.round(translateX.value / 360) * 360;
-        translateX.value = withTiming(normalizedRotation, {
+        scheduleOnRN(Haptics.selectionAsync);
+        // Normalize to nearest 180-degree increment and flip to opposite side
+        const normalizedRotation = Math.round(translateX.value / 180) * 180;
+        const targetRotation = normalizedRotation + 180;
+        translateX.value = withTiming(targetRotation, {
           duration: 500,
         });
       });
