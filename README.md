@@ -40,9 +40,7 @@ bun android # for Android
 ```
 src/
 ├── animations/   # Where the magic happens
-├── navigation/   # Getting around the app
-├── components/   # Building blocks
-└── utils/        # Helper functions
+└── navigation/   # app navigation utils and hooks
 ```
 
 ## Sponsors

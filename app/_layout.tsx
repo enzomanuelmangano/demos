@@ -9,8 +9,8 @@ import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
-import { useOta } from '../src/hooks/use-ota';
 import { CustomDrawerContent } from '../src/navigation/components/custom-drawer-content';
+import { useOta } from '../src/navigation/hooks/use-ota';
 
 export default function RootLayout() {
   // Check for OTA updates
