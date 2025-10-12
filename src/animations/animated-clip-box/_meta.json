@@ -2,7 +2,6 @@
   "animation_name": "Animated Clip Box",
   "animation_slug": "animated-clip-box",
   "description": "An interactive clip-box button with expanding circular reveal animation. Features touch-based circle expansion with spring physics, dynamic color interpolation, and text color transitions. The circle expands from a small initial radius to fill the entire button area, creating a clip-mask reveal effect with smooth color transitions.",
-
   "main_features": [
     "Touch-triggered circle expansion animation",
     "Spring-based circular reveal with configurable physics",
@@ -14,19 +13,16 @@
     "Separate touch handlers for expand and collapse",
     "Independent button instances with isolated state"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo component with two ClipBoxButton instances",
     "components/clip-box-button/index.tsx": "Core button component with touch handlers and animation logic",
     "components/clip-box-button/expanded-circle.tsx": "Expanding circle component with dual-layer circle rendering"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "icons": "@expo/vector-icons",
     "pattern": "Shared value-driven spring animations"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -39,17 +35,20 @@
         "withSpring",
         "interpolateColor"
       ],
-      "types": ["SharedValue"],
+      "types": [
+        "SharedValue"
+      ],
       "critical_feature": "interpolateColor for smooth color transitions and spring animations for organic motion"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["AntDesign"],
+      "components": [
+        "AntDesign"
+      ],
       "icon_used": "twitter",
       "usage": "Icon displayed in center of expanding circle"
     }
   },
-
   "animation_techniques": {
     "circle_expansion": {
       "pattern": "Radius-driven expansion with spring physics",
@@ -85,7 +84,11 @@
       "note": "Progress reaches 1.0 when radius is 1/3 of box width, not at full expansion"
     },
     "main_circle_animation": {
-      "animated_properties": ["height", "left", "top"],
+      "animated_properties": [
+        "height",
+        "left",
+        "top"
+      ],
       "height": "r.value * 2 (diameter)",
       "left": "circleCenter - r.value / 2 - circleMargin / 2",
       "top": "circleCenter - r.value / 2 - circleMargin / 2",
@@ -114,7 +117,6 @@
       "effect": "Creates clean reveal effect without circle extending beyond button"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -131,7 +133,10 @@
       "instance": "progress",
       "purpose": "Normalize radius to 0-1 progress value",
       "benefit": "Automatic recalculation when r.value changes",
-      "dependencies": ["r.value", "boxWidth"],
+      "dependencies": [
+        "r.value",
+        "boxWidth"
+      ],
       "includes_clamp": "Custom clamp worklet function for bounds enforcement"
     },
     "useAnimatedStyle": {
@@ -139,20 +144,34 @@
       "instances": [
         {
           "name": "rMainCircleStyle",
-          "animated_properties": ["height", "left", "top"],
-          "dependencies": ["r.value"],
+          "animated_properties": [
+            "height",
+            "left",
+            "top"
+          ],
+          "dependencies": [
+            "r.value"
+          ],
           "purpose": "Main expanding circle dimensions and position"
         },
         {
           "name": "rSecondaryCircleStyle",
-          "animated_properties": ["backgroundColor"],
-          "dependencies": ["r.value"],
+          "animated_properties": [
+            "backgroundColor"
+          ],
+          "dependencies": [
+            "r.value"
+          ],
           "purpose": "Color transition for icon circle"
         },
         {
           "name": "rStyle",
-          "animated_properties": ["color"],
-          "dependencies": ["progress.value"],
+          "animated_properties": [
+            "color"
+          ],
+          "dependencies": [
+            "progress.value"
+          ],
           "purpose": "Text color transition"
         }
       ]
@@ -180,13 +199,21 @@
         {
           "trigger": "onTouchStart",
           "target": "boxWidth",
-          "config": { "damping": 20, "mass": 1, "stiffness": 80 },
+          "config": {
+            "damping": 20,
+            "mass": 1,
+            "stiffness": 80
+          },
           "effect": "Slower, bouncier expansion"
         },
         {
           "trigger": "onTouchEnd",
           "target": 30,
-          "config": { "damping": 25, "mass": 1.2, "stiffness": 120 },
+          "config": {
+            "damping": 25,
+            "mass": 1.2,
+            "stiffness": 120
+          },
           "effect": "Faster, tighter collapse"
         }
       ],
@@ -202,7 +229,6 @@
       }
     }
   },
-
   "component_architecture": {
     "clip_box_button": {
       "type": "Reusable component",
@@ -305,7 +331,6 @@
       ]
     }
   },
-
   "touch_interaction": {
     "touch_handlers": {
       "onTouchStart": {
@@ -329,7 +354,6 @@
       "action_title_view": "auto (via TouchableOpacity)"
     }
   },
-
   "layout_and_positioning": {
     "dimension_calculations": {
       "boxWidth": {
@@ -375,7 +399,6 @@
       "effect": "Circles remain circular during expansion"
     }
   },
-
   "visual_design": {
     "color_schemes": {
       "default": {
@@ -443,7 +466,6 @@
       "position": "Center of icon circle"
     }
   },
-
   "mathematical_relationships": {
     "progress_calculation": {
       "formula": "progress = clamp(r / (boxWidth / 3), 0, 1)",
@@ -460,7 +482,6 @@
       "benefit": "Responsive spacing across different button widths"
     }
   },
-
   "performance_considerations": {
     "animation_efficiency": {
       "worklet_functions": "Custom clamp runs on UI thread",
@@ -482,7 +503,6 @@
       "overhead": "Low - simple radius and color animations"
     }
   },
-
   "use_cases": {
     "primary": [
       "Interactive demo cards",
@@ -511,7 +531,6 @@
       "High-frequency interactions (performance concern)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -547,7 +566,6 @@
       "Proper use of StyleSheet.flatten"
     ]
   },
-
   "known_limitations": {
     "width_dependency": {
       "issue": "Requires width in style prop",
@@ -582,7 +600,6 @@
       "likely_intentional": "Creates desired visual effect"
     }
   },
-
   "potential_improvements": {
     "animation_enhancements": [
       "Ripple effect emanating from touch point",
@@ -625,7 +642,6 @@
       "Animation throttling option"
     ]
   },
-
   "key_insights": {
     "asymmetric_springs": "Different spring configs for expand vs collapse creates more natural interaction feel",
     "progress_timing": "Progress reaches 1.0 before full expansion for better text readability timing",
@@ -636,7 +652,6 @@
     "absolute_positioning": "Absolute circles with overflow hidden creates clean clip-box effect",
     "width_extraction": "StyleSheet.flatten enables accessing width from style prop for calculations"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic touch event handling (onTouchStart/End)",
@@ -662,7 +677,6 @@
       "Creating reusable animated components"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Circle expands smoothly from initial to full size",
@@ -698,7 +712,6 @@
       "Color interpolation consistency"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_ripple_effect": {
       "similarity": "Circle expands from point",
@@ -716,7 +729,6 @@
       "complexity": "This has dual circles and color interpolation"
     }
   },
-
   "related_patterns": {
     "circular_reveal": "Similar circular reveal animations",
     "clip_path_animations": "CSS-style clip path animations",
@@ -724,21 +736,18 @@
     "morph_button": "Button shape morphing",
     "hero_animation": "Element transformation between states"
   },
-
   "real_world_inspiration": {
     "material_design": "Ripple effect concept",
     "ios_animations": "Smooth spring-based interactions",
     "web_hover_effects": "Circular reveal on hover",
     "game_ui": "Action button feedback patterns"
   },
-
   "bundle_size_impact": {
     "code_size": "~88 lines (button) + ~88 lines (circle) = ~176 lines",
     "dependencies": "Reanimated likely already in project, AntDesign for icons",
     "runtime_memory": "Minimal - one SharedValue per button, small style objects",
     "estimated_size": "< 5KB"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -761,7 +770,6 @@
       "screen_reader": "Wrap in accessible View with proper labels"
     }
   },
-
   "tags": [
     "clip-box",
     "circular-reveal",
@@ -777,5 +785,9 @@
     "touch-events",
     "button-animation",
     "reveal-effect"
-  ]
+  ],
+  "content_hash": "2b671953698b968831b059a4063edc06c4fcfe21818fd667a64880ef559f8a31",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.271Z",
+  "last_validated": "2025-10-12T09:19:28.271Z"
 }

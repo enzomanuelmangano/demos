@@ -2,7 +2,6 @@
   "animation_name": "Time Machine",
   "animation_slug": "time-machine",
   "description": "An advanced iOS-inspired time machine interface featuring a custom GLSL shader-based starfield background with grayscale particles and twinkling effects, pan gesture-controlled transitions, horizontal carousel navigation with history states, and an integrated drag-to-sort task list system. Implements a multi-state history management pattern where each list reorder creates a new timeline snapshot, enabling users to travel between different list configurations with fluid animations and blur transitions.",
-
   "main_features": [
     "Custom GLSL shader starfield background with 3D particle tunnel effect",
     "Pan gesture-controlled time machine activation (pull down to open)",
@@ -18,7 +17,6 @@
     "Background animation pause/resume based on time machine state",
     "Auto-cleanup of old history states after selection"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main export file exposing App component as TimeMachine"
@@ -63,7 +61,6 @@
       "constants.ts": "Unused habit tracker constants (legacy from drag-to-sort demo)"
     }
   },
-
   "core_technologies": [
     "react-native-reanimated (animations and gestures)",
     "react-native-gesture-handler (pan gestures)",
@@ -74,7 +71,6 @@
     "expo-haptics (tactile feedback)",
     "GLSL shaders (custom starfield effect)"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -106,8 +102,12 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
       "methods": [
         "activeOffsetY([-10, 10])",
         "failOffsetX([-20, 20])",
@@ -138,7 +138,9 @@
         "useAtomValue",
         "useSetAtom"
       ],
-      "functions": ["atom"],
+      "functions": [
+        "atom"
+      ],
       "pattern": "Atomic state management for history, active key, and time machine state",
       "atoms": [
         "HistoryAtom: atom<HistoryItem[]>",
@@ -148,18 +150,24 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "purpose": "Bridge worklet execution to React Native thread for atom updates",
       "critical_for": "Updating Jotai atoms from gesture handlers"
     },
     "react-native-redash": {
       "version": "^18.1.4",
-      "functions": ["withPause"],
+      "functions": [
+        "withPause"
+      ],
       "usage": "Pause/resume shader animation based on time machine state"
     },
     "expo-haptics": {
       "version": "~15.0.7",
-      "functions": ["impactAsync"],
+      "functions": [
+        "impactAsync"
+      ],
       "feedback_style": "ImpactFeedbackStyle.Light",
       "usage": "Haptic feedback on drag start in sortable list"
     },
@@ -169,7 +177,6 @@
       "usage": "Safe area handling in drag-to-sort component"
     }
   },
-
   "animation_techniques": [
     "Custom GLSL shader with time-based uniforms for starfield animation",
     "Grayscale color palette with multiple brightness levels for particles",
@@ -186,7 +193,6 @@
     "Position-based drag-to-sort with auto-reordering",
     "History state auto-cleanup with 1-second delay after selection"
   ],
-
   "reanimated_patterns": [
     "useSharedValue for progress driver and scroll offset tracking",
     "useDerivedValue with withSpring for smooth progress transitions",
@@ -202,40 +208,41 @@
     "useDerivedValue for activeIndex calculation from scroll offset",
     "Custom spring config (mass: 0.2, damping: 15, stiffness: 300)"
   ],
-
-  "performance_optimizations": [
-    "GPU-accelerated shader rendering via Skia",
-    "Worklet-based gesture handling on UI thread",
-    "React.memo on OptimizedPriorityListView with key comparison",
-    "React.memo on TimeMachineListItem for render optimization",
-    "useDerivedValue for computed values to prevent recalculation",
-    "useCallback for stable function references",
-    "useMemo for contentContainerStyle in scroll view",
-    "Shader animation runs on UI thread (no JS bridge)",
-    "Blur effect applied as shader post-processing (no layout)",
-    "Single progress SharedValue drives all animations",
-    "Position-based sorting avoids O(n²) complexity",
-    "Scroll offset tracked via native driver",
-    "Conditional rendering based on isTimeMachineActive (commented out)"
-  ],
-
+  "performance_optimizations": {
+    "worklet_usage": {
+      "gesture_handlers": "All run on UI thread",
+      "scroll_callbacks": "onScroll with 'worklet' directive",
+      "derived_calculations": "activeIndex, progress, itemOpacity",
+      "benefit": "60fps even during complex gestures"
+    },
+    "memo_patterns": {
+      "TimeMachineListItem": "memo with default comparison",
+      "OptimizedPriorityListView": "memo with custom comparator (target.key)",
+      "benefit": "Prevents unnecessary re-renders of history items"
+    },
+    "shader_optimization": {
+      "layers": "Only 3 layers (not excessive)",
+      "particle_count": "121 segments (manageable)",
+      "random_functions": "Fast hash-based PRNG",
+      "pause_when_closed": "withPause stops animation when not visible"
+    }
+  },
   "use_cases": [
-    "Version control UI for document editing apps",
-    "Undo/redo timeline with visual history",
-    "Task list history browser",
-    "Time-travel debugging interface",
-    "Email draft revisions viewer",
-    "Design file version explorer",
-    "Code commit history visualizer",
-    "Recipe variation explorer",
-    "Workout routine version tracker",
-    "Budget scenario comparison tool",
+    "Task management with version history",
+    "Recipe variations explorer",
     "Travel itinerary alternatives",
-    "Shopping list history manager",
-    "Creative apps with experimental states",
-    "Game save state browser"
+    "Budget scenario planner",
+    "Design mockup versions",
+    "Code refactoring comparisons",
+    "Email draft revisions",
+    "Shopping list variations",
+    "Workout routine versions",
+    "Meal plan alternatives",
+    "Study schedule variations",
+    "Project timeline scenarios",
+    "Creative brainstorming states",
+    "Decision-making tool with alternatives"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type annotations",
@@ -271,7 +278,6 @@
       "Limited documentation for shader uniforms"
     ]
   },
-
   "known_limitations": [
     "Shader requires GPU support (won't work on all Android devices)",
     "Background animation is resource-intensive (may drain battery)",
@@ -289,7 +295,6 @@
     "Performance degrades with many history items (30+)",
     "useAnimatedReaction triggers on every progress change (could be optimized)"
   ],
-
   "potential_improvements": [
     "Add configurable gesture thresholds via props",
     "Add spring config customization",
@@ -317,7 +322,6 @@
     "Add shader fallback for devices without GPU",
     "Add accessibility labels and hints"
   ],
-
   "key_insights": [
     "Shader pause pattern: withPause + useAnimatedReaction enables dynamic start/stop of animations",
     "History snapshot pattern: Each action creates new state, enabling timeline navigation",
@@ -335,13 +339,11 @@
     "Positions map sorting: position-based sorting enables automatic reordering",
     "Memo key comparison: comparing target.key prevents unnecessary re-renders"
   ],
-
   "learning_opportunities": [
     "For beginners: Jotai atom basics, useSharedValue fundamentals, pan gesture handling, horizontal ScrollView with snap, basic shader uniforms, spring animations, opacity transitions",
     "For intermediate: Custom GLSL shaders in React Native Skia, withPause animation control, useAnimatedReaction for worklet-to-JS bridge, scheduleOnRN usage, gesture threshold logic, carousel parallax effects, position-based drag-to-sort, history state management patterns",
     "For advanced: Complex shader programming with 3D math, multi-component animation choreography, gesture-driven state machines, performance optimization with worklets, atomic state management architecture, blur post-processing techniques, particle system simulation, timeline navigation UX patterns, memory management for unbounded state"
   ],
-
   "shader_implementation": {
     "origin": {
       "author": "P_Malin",
@@ -388,7 +390,6 @@
       "optimization": "Efficient distance calculation with clamping"
     }
   },
-
   "gesture_handling": {
     "pan_gesture_lifecycle": {
       "activation": {
@@ -397,7 +398,9 @@
         "purpose": "Distinguish vertical pull from horizontal scroll"
       },
       "onBegin": {
-        "actions": ["Store prevPosition = timeMachineProgress.value"],
+        "actions": [
+          "Store prevPosition = timeMachineProgress.value"
+        ],
         "purpose": "Enable relative dragging from current state"
       },
       "onUpdate": {
@@ -445,7 +448,6 @@
       }
     }
   },
-
   "state_management": {
     "jotai_atoms": {
       "HistoryAtom": {
@@ -490,7 +492,6 @@
       "activeIndex": "useDerivedValue: Math.round(scrollOffset / itemWidth)"
     }
   },
-
   "carousel_implementation": {
     "time_machine_list": {
       "component": "Animated.ScrollView",
@@ -531,7 +532,6 @@
       }
     }
   },
-
   "integrated_drag_to_sort": {
     "implementation": "Reused from standalone drag-to-sort animation",
     "integration_point": "priority-list-view.tsx renders SortableList",
@@ -556,7 +556,6 @@
       "renderItem": "Custom render function for todo items"
     }
   },
-
   "layout_and_positioning": {
     "screen_layout": {
       "background": "Full screen Skia canvas with shader",
@@ -577,7 +576,6 @@
       "list_padding": "WindowWidth - StoryListItemWidth"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "Black (#000) with grayscale shader particles",
@@ -599,44 +597,6 @@
       "opacity": "progress^3 for non-active items"
     }
   },
-
-  "performance_optimizations": {
-    "worklet_usage": {
-      "gesture_handlers": "All run on UI thread",
-      "scroll_callbacks": "onScroll with 'worklet' directive",
-      "derived_calculations": "activeIndex, progress, itemOpacity",
-      "benefit": "60fps even during complex gestures"
-    },
-    "memo_patterns": {
-      "TimeMachineListItem": "memo with default comparison",
-      "OptimizedPriorityListView": "memo with custom comparator (target.key)",
-      "benefit": "Prevents unnecessary re-renders of history items"
-    },
-    "shader_optimization": {
-      "layers": "Only 3 layers (not excessive)",
-      "particle_count": "121 segments (manageable)",
-      "random_functions": "Fast hash-based PRNG",
-      "pause_when_closed": "withPause stops animation when not visible"
-    }
-  },
-
-  "use_cases": [
-    "Task management with version history",
-    "Recipe variations explorer",
-    "Travel itinerary alternatives",
-    "Budget scenario planner",
-    "Design mockup versions",
-    "Code refactoring comparisons",
-    "Email draft revisions",
-    "Shopping list variations",
-    "Workout routine versions",
-    "Meal plan alternatives",
-    "Study schedule variations",
-    "Project timeline scenarios",
-    "Creative brainstorming states",
-    "Decision-making tool with alternatives"
-  ],
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support",
@@ -658,7 +618,6 @@
       "Add option to disable shader entirely"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_git_time_machine": {
       "similarity": "Both show history timeline",
@@ -676,7 +635,6 @@
       "advantage": "Better mobile UX with haptics and animations"
     }
   },
-
   "related_patterns": {
     "carousel": "Horizontal scroll with snap-to-interval",
     "drawer": "Pull-down gesture to reveal",
@@ -684,7 +642,6 @@
     "version_control": "State snapshot management",
     "undo_redo": "State history navigation"
   },
-
   "tags": [
     "time-machine",
     "history-navigation",
@@ -710,5 +667,9 @@
     "gesture-driven",
     "reanimated",
     "gesture-handler"
-  ]
+  ],
+  "content_hash": "e9b88adb1091b7b3d9cd2849cb59c3c31a6545644013978f61b1343dc524d4d8",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.484Z",
+  "last_validated": "2025-10-12T09:19:28.484Z"
 }

@@ -2,7 +2,6 @@
   "animation_name": "Everybody Can Cook",
   "animation_slug": "everybody-can-cook",
   "description": "A character-by-character staggered text animation component featuring 3D flip effects and spring physics. Each character independently animates with a cascading delay, creating a wave-like reveal effect where characters flip from bottom to top with rotation and fade transitions. Supports bidirectional animation with optional reverse capability.",
-
   "main_features": [
     "Character-level staggered animation",
     "3D flip effect per character (rotateX transform)",
@@ -17,7 +16,6 @@
     "Customizable typography and styling",
     "Perspective transform for 3D depth"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Demo app with two StaggeredText components animated in sequence"
@@ -45,14 +43,12 @@
       ]
     }
   },
-
   "core_technologies": [
     "react-native-reanimated (animations)",
     "React forwardRef pattern",
     "React useImperativeHandle",
     "3D transforms (perspective, rotateX)"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -97,7 +93,6 @@
       ]
     }
   },
-
   "animation_techniques": [
     "3D flip effect with dual character rendering",
     "Staggered delay progression (index * 40ms + componentDelay)",
@@ -108,7 +103,6 @@
     "Character-level text splitting for independent animations",
     "Bidirectional animation support with enableReverse flag"
   ],
-
   "reanimated_patterns": [
     "useSharedValue for animation progress driver",
     "useDerivedValue for per-character delayed progress",
@@ -119,7 +113,6 @@
     "worklet directive for derived value calculations",
     "Conditional animation logic based on enableReverse flag"
   ],
-
   "performance_optimizations": [
     "GPU-accelerated opacity and transform animations",
     "UI thread execution via Reanimated worklets",
@@ -130,7 +123,6 @@
     "No unnecessary re-renders",
     "Efficient dual-layer rendering technique"
   ],
-
   "use_cases": [
     "Hero text animations in splash screens",
     "Title reveals and brand name animations",
@@ -145,7 +137,6 @@
     "Brand introduction sequences",
     "Educational demonstrations of 3D transforms"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type annotations",
@@ -174,7 +165,6 @@
       "setTimeout in animate() method is a workaround (could be improved)"
     ]
   },
-
   "known_limitations": [
     "text.split('') breaks multi-byte characters (emoji, combining diacritics)",
     "40ms per-character delay is hardcoded, not configurable",
@@ -189,7 +179,6 @@
     "No onAnimationComplete callback",
     "No progress tracking (can't get current animation progress)"
   ],
-
   "potential_improvements": [
     "Add configurable per-character delay prop (instead of hardcoded 40ms)",
     "Add custom spring config props (duration, dampingRatio, stiffness)",
@@ -216,7 +205,6 @@
     "Add configurable fontHeight calculation",
     "Make spring config configurable via props"
   ],
-
   "key_insights": [
     "Dual character technique: Two characters with opposite rotations create seamless flip illusion",
     "Staggered derived values: useDerivedValue in map loop creates independent per-character timing",
@@ -233,13 +221,11 @@
     "Spring physics tuning: High dampingRatio (2.8) creates fast settling with no oscillation",
     "Worklet execution: All animation calculations run on UI thread for 60fps performance"
   ],
-
   "learning_opportunities": [
     "For beginners: forwardRef usage, useImperativeHandle pattern, text splitting with split(''), useSharedValue basics, opacity fade animations, array.map for component rendering",
     "For intermediate: 3D transforms (perspective, rotateX), useDerivedValue in loops, withDelay + withSpring composition, staggered animation patterns, dual-layer rendering technique, spring physics tuning (dampingRatio), animated style interpolation",
     "For advanced: Complex 3D animation coordination, imperative animation APIs, worklet optimization patterns, building reusable animation components, performance optimization for many animated elements, custom animation timing systems, bidirectional animation logic"
   ],
-
   "tags": [
     "text-animation",
     "staggered-animation",
@@ -261,5 +247,9 @@
     "withDelay",
     "withSpring",
     "bidirectional-animation"
-  ]
+  ],
+  "content_hash": "3c3fccb0ba3062e6f8d6b76ff198a11545e8dfb83222c3dc3f2fc52a09cebe5a",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.332Z",
+  "last_validated": "2025-10-12T09:19:28.332Z"
 }

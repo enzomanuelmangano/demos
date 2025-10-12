@@ -2,7 +2,6 @@
   "animation_name": "Selectable Grid List",
   "animation_slug": "selectable-grid-list",
   "description": "An advanced image grid selection component featuring gesture-based multi-selection with pan and tap gestures. Users can tap individual items, drag to select ranges, or swipe across the grid to batch-select items. The component supports auto-scrolling when dragging near edges, provides real-time selection feedback with animated borders and checkmarks, and includes a floating action button that displays the selected count. Built with React Native Gesture Handler and Reanimated for smooth 60fps performance on both UI and JS threads.",
-
   "main_features": [
     "4-column responsive grid layout with dynamic item sizing",
     "Tap gesture for single item selection/deselection",
@@ -17,7 +16,6 @@
     "Image loading with expo-image (memory-disk caching)",
     "Optimized FlatList with performance settings"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main container component with grid configuration and floating button"
@@ -43,7 +41,6 @@
       "GridConfig": "Grid configuration (itemsPerRow: 4, internalPadding: 4)"
     }
   },
-
   "core_technologies": {
     "gestures": "react-native-gesture-handler",
     "animations": "react-native-reanimated",
@@ -53,13 +50,19 @@
     "list_rendering": "Animated.FlatList",
     "interactions": "pressto"
   },
-
   "packages_and_versions": {
     "react-native-gesture-handler": {
       "version": "~2.28.0",
       "usage": "Pan and tap gesture detection for grid selection",
-      "components": ["GestureDetector", "Gesture"],
-      "gestures": ["Gesture.Pan()", "Gesture.Tap()", "Gesture.Exclusive()"],
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Gesture.Pan()",
+        "Gesture.Tap()",
+        "Gesture.Exclusive()"
+      ],
       "critical_feature": "Exclusive gesture composition for pan vs tap disambiguation",
       "performance_reason": "Native gesture handling with worklet support"
     },
@@ -75,8 +78,15 @@
         "withSpring",
         "withTiming"
       ],
-      "components": ["Animated.View", "Animated.FlatList", "Animated.Image"],
-      "utilities": ["scrollTo", "scheduleOnRN"],
+      "components": [
+        "Animated.View",
+        "Animated.FlatList",
+        "Animated.Image"
+      ],
+      "utilities": [
+        "scrollTo",
+        "scheduleOnRN"
+      ],
       "critical_feature": "UI thread gesture handling with worklets and auto-scroll during pan"
     },
     "expo-image": {
@@ -104,13 +114,21 @@
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["AntDesign", "MaterialIcons"],
-      "icons_used": ["check (AntDesign)", "clear (MaterialIcons)"],
+      "components": [
+        "AntDesign",
+        "MaterialIcons"
+      ],
+      "icons_used": [
+        "check (AntDesign)",
+        "clear (MaterialIcons)"
+      ],
       "usage": "Badge checkmark and reset button icon"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Top padding for notched devices"
     },
     "react-native-worklets": {
@@ -120,7 +138,6 @@
       "critical_feature": "Bridge-free communication between UI and JS threads"
     }
   },
-
   "animation_techniques": {
     "selection_border_animation": {
       "pattern": "Animated border width and color based on active state",
@@ -155,7 +172,6 @@
       "benefit": "Border and image corners stay aligned during animation"
     }
   },
-
   "gesture_patterns": {
     "pan_gesture_selection": {
       "gesture": "Gesture.Pan()",
@@ -208,7 +224,6 @@
       "critical": "Enables correct item selection when list is scrolled"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -263,7 +278,10 @@
       {
         "name": "totalActiveIndexes",
         "calculation": "Array.from(new Set([...currentActiveIndexes, ...pendingIndexes]))",
-        "dependencies": ["currentActiveIndexes", "pendingIndexes"],
+        "dependencies": [
+          "currentActiveIndexes",
+          "pendingIndexes"
+        ],
         "purpose": "Combined view of all selected items (committed + pending)",
         "used_by": "renderItem for visual feedback"
       },
@@ -271,19 +289,26 @@
         "name": "isActive",
         "scope": "SelectableListItem",
         "calculation": "activeIndexes.value.includes(index)",
-        "dependencies": ["activeIndexes", "index"],
+        "dependencies": [
+          "activeIndexes",
+          "index"
+        ],
         "purpose": "Per-item active state for animations"
       },
       {
         "name": "activeBorderWidth",
         "calculation": "withTiming(isActive.value ? 4 : 0)",
-        "dependencies": ["isActive"],
+        "dependencies": [
+          "isActive"
+        ],
         "purpose": "Animated border width"
       },
       {
         "name": "internalBorderRadius",
         "calculation": "externalBorderRadius + activeBorderWidth.value",
-        "dependencies": ["activeBorderWidth"],
+        "dependencies": [
+          "activeBorderWidth"
+        ],
         "purpose": "Dynamic border radius"
       },
       {
@@ -307,22 +332,39 @@
       {
         "name": "rImageStyle",
         "scope": "SelectableListItem",
-        "properties": ["borderRadius", "borderWidth", "borderColor"],
-        "dependencies": ["internalBorderRadius", "activeBorderWidth", "isActive"],
+        "properties": [
+          "borderRadius",
+          "borderWidth",
+          "borderColor"
+        ],
+        "dependencies": [
+          "internalBorderRadius",
+          "activeBorderWidth",
+          "isActive"
+        ],
         "usage": "Animated image border"
       },
       {
         "name": "rBadgeStyle",
         "scope": "SelectableListItem",
-        "properties": ["opacity", "transform: [{ scale }]"],
-        "dependencies": ["isActive"],
+        "properties": [
+          "opacity",
+          "transform: [{ scale }]"
+        ],
+        "dependencies": [
+          "isActive"
+        ],
         "usage": "Animated checkmark badge"
       },
       {
         "name": "rFloatingButtonStyle",
         "scope": "container component",
-        "properties": ["transform: [{ translateY }]"],
-        "dependencies": ["selectedIndexesAmount"],
+        "properties": [
+          "transform: [{ translateY }]"
+        ],
+        "dependencies": [
+          "selectedIndexesAmount"
+        ],
         "usage": "Floating button visibility"
       }
     ],
@@ -333,14 +375,16 @@
       "critical": "Required for auto-scroll during pan gesture"
     }
   },
-
   "gesture_handler_integration": {
     "worklet_functions": {
       "calculateGridItemPosition": {
         "directive": "'worklet'",
         "purpose": "Calculate grid index from x/y coordinates",
         "runs_on": "UI thread",
-        "parameters": ["x", "y"],
+        "parameters": [
+          "x",
+          "y"
+        ],
         "returns": "number (grid index)"
       },
       "toggleIndex": {
@@ -367,7 +411,6 @@
       }
     }
   },
-
   "data_structures_and_algorithms": {
     "set_based_selection": {
       "pattern": "Parallel arrays and Sets",
@@ -396,7 +439,6 @@
       "benefit": "Prevents redundant onSelectionChange callbacks"
     }
   },
-
   "performance_optimizations": {
     "flatlist_optimizations": {
       "removeClippedSubviews": true,
@@ -423,11 +465,15 @@
     "useMemo_for_source": {
       "scope": "SelectableListItem",
       "value": "{ uri: `https://picsum.photos/200/200?key=${index}` }",
-      "dependencies": ["index"],
+      "dependencies": [
+        "index"
+      ],
       "benefit": "Stable image source prevents unnecessary reloads"
     },
     "useCallback_for_renderItem": {
-      "dependencies": ["itemSize"],
+      "dependencies": [
+        "itemSize"
+      ],
       "benefit": "Stable function reference prevents FlatList re-renders"
     },
     "set_data_structures": {
@@ -437,7 +483,12 @@
     },
     "ui_thread_execution": {
       "pattern": "All gesture calculations run as worklets",
-      "functions": ["calculateGridItemPosition", "toggleIndex", "sameElements", "generateNumbersInRange"],
+      "functions": [
+        "calculateGridItemPosition",
+        "toggleIndex",
+        "sameElements",
+        "generateNumbersInRange"
+      ],
       "benefit": "No JS bridge crossing during gestures",
       "result": "60fps gesture handling"
     },
@@ -447,7 +498,6 @@
       "benefit": "Non-blocking communication between threads"
     }
   },
-
   "component_architecture": {
     "SelectableGridListContainer": {
       "type": "Demo container component",
@@ -483,7 +533,9 @@
         "Notify parent of selection changes"
       ],
       "imperative_handle": {
-        "methods": ["reset()"],
+        "methods": [
+          "reset()"
+        ],
         "purpose": "Allow parent to clear selections"
       },
       "props": {
@@ -512,7 +564,6 @@
       }
     }
   },
-
   "layout_calculations": {
     "responsive_grid": {
       "itemSize": "screenWidth / itemsPerRow",
@@ -534,7 +585,6 @@
       "purpose": "Smooth border radius animation"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "primary": "#55D5FF (cyan)",
@@ -570,7 +620,6 @@
       "images": "Cover fit with rounded corners"
     }
   },
-
   "use_cases": {
     "primary": [
       "Photo gallery multi-select for deletion/sharing",
@@ -601,7 +650,6 @@
       "Floating action buttons"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with generic types",
@@ -644,7 +692,6 @@
       "algorithm_explanations": "Utils have descriptive comments"
     }
   },
-
   "known_limitations": {
     "edge_case_handling": {
       "issue": "No bounds checking for calculated indexes",
@@ -685,7 +732,6 @@
       "impact": "Accidental resets lose user work"
     }
   },
-
   "potential_improvements": {
     "gesture_enhancements": [
       "Long press to enter selection mode",
@@ -749,7 +795,6 @@
       "Network error states for images"
     ]
   },
-
   "key_insights": {
     "exclusive_gesture_critical": "Gesture.Exclusive with maxDelta constraints perfectly disambiguates tap vs pan",
     "pending_state_pattern": "Separating pending and committed selections enables clean gesture flow",
@@ -762,7 +807,6 @@
     "image_recycling": "expo-image with recyclingKey and caching crucial for smooth FlatList scrolling",
     "derived_total": "useDerivedValue for totalActiveIndexes provides clean reactive combination of pending + committed"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic FlatList rendering",
@@ -795,7 +839,6 @@
       "Memory-efficient list rendering strategies"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_drag_to_sort": {
       "similarity": "Both use pan gestures on grid items",
@@ -810,7 +853,6 @@
       "difference": "iOS uses native selection manager, this uses custom implementation"
     }
   },
-
   "testing_considerations": {
     "gesture_testing": [
       "Tap selects/deselects item",
@@ -856,7 +898,6 @@
       "List scroll during selection"
     ]
   },
-
   "state_management": {
     "selection_state": {
       "committed": "currentActiveIndexes + currentActiveIndexesSet",
@@ -878,7 +919,6 @@
       "gridListRef": "useImperativeHandle for reset method"
     }
   },
-
   "accessibility_considerations": {
     "current_state": "No accessibility features implemented",
     "recommendations": [
@@ -895,7 +935,6 @@
       "Test with screen readers"
     ]
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -915,7 +954,6 @@
       "considerations": "Mouse events vs touch events, no auto-scroll fallback"
     }
   },
-
   "tags": [
     "grid-list",
     "multi-select",
@@ -935,5 +973,9 @@
     "generic-component",
     "imperative-handle",
     "set-data-structure"
-  ]
+  ],
+  "content_hash": "e09d49e997ab6fee1270b75ded3cae59f718d833c21976fd3a24e64e126437ab",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.423Z",
+  "last_validated": "2025-10-12T09:19:28.424Z"
 }

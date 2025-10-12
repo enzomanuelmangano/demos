@@ -241,7 +241,7 @@
       "front": {
         "memo": true,
         "content": "Name, verified badge, avatar",
-        "gradient": ["#FF6B6B", "#FF8E53", "#FF6B6B"] (coral to orange)",
+        "gradient": ["#FF6B6B", "#FF8E53", "#FF6B6B"],
         "layout": "Name at top, avatar at bottom-right"
       },
       "back": {
@@ -283,10 +283,10 @@
     },
     "color_scheme": {
       "app_background": "#FFFFFF (white)",
-      "card_front_gradient": ["#FF6B6B", "#FF8E53", "#FF6B6B"] (coral/orange)",
+      "card_front_gradient": ["#FF6B6B", "#FF8E53", "#FF6B6B"],
       "card_back_background": "white",
-      "avatar_gradient": ["#4A5568", "#2D3748"] (dark gray)",
-      "verification_badge": ["#FF6B6B", "#FF5252"] (red)",
+      "avatar_gradient": ["#4A5568", "#2D3748"],
+      "verification_badge": ["#FF6B6B", "#FF5252"],
       "text_primary": "#1A1D29 (dark)",
       "text_secondary": "#6B7280 (gray)",
       "text_on_gradient": "white"
@@ -517,7 +517,13 @@
     },
     "component_composition": {
       "pattern": "Small, focused components",
-      "examples": ["ProfileAvatar", "CardFront", "CardBack", "MainPage", "SecondPage"],
+      "examples": [
+        "ProfileAvatar",
+        "CardFront",
+        "CardBack",
+        "MainPage",
+        "SecondPage"
+      ],
       "benefit": "Easier to optimize, test, and maintain"
     },
     "props_drilling": {

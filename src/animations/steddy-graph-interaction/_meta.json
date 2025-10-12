@@ -2,7 +2,6 @@
   "animation_name": "Steddy Graph Interaction",
   "animation_slug": "steddy-graph-interaction",
   "description": "An interactive data visualization component featuring an animated line graph with Skia rendering and a custom segmented control. The graph smoothly transitions between three scoring difficulty levels (Light, Standard, Pro) using spring animations. Features include rounded path effects, dashed reference lines, and smooth data interpolation with React Native Skia for high-performance rendering.",
-
   "main_features": [
     "Animated line graph with smooth data transitions",
     "Three-way segmented control with sliding indicator",
@@ -15,7 +14,6 @@
     "Custom font rendering for score text",
     "Pressto integration for pressable scale effects"
   ],
-
   "file_structure": {
     "index.tsx": "Main component with scoring difficulty state management and layout",
     "components/graph/index.tsx": "Skia-powered line graph with animated path rendering",
@@ -23,14 +21,12 @@
     "constants/graph-scores.ts": "Three datasets for different difficulty levels (Light, Standard, Pro)",
     "constants/palette.ts": "Color palette constants for consistent theming"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "interactions": "pressto"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -40,7 +36,9 @@
       "functions": [
         "withSpring"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "useDerivedValue with withSpring for smooth data transitions on shared value changes"
     },
     "@shopify/react-native-skia": {
@@ -66,16 +64,19 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureHandlerRootView"],
+      "components": [
+        "GestureHandlerRootView"
+      ],
       "usage": "Root wrapper for gesture interactions in segmented control"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Scale animation effect on segmented control button press"
     }
   },
-
   "animation_techniques": {
     "graph_data_transition": {
       "pattern": "Spring animation on raw score arrays",
@@ -135,13 +136,14 @@
       "purpose": "Display reference score value"
     }
   },
-
   "reanimated_patterns": {
     "useDerivedValue_instances": [
       {
         "name": "rRawScores",
         "calculation": "withSpring(scores)",
-        "dependencies": ["scores"],
+        "dependencies": [
+          "scores"
+        ],
         "purpose": "Apply spring animation to score array changes",
         "return_type": "number[] (animated)",
         "key_insight": "withSpring can animate entire arrays element-wise"
@@ -149,7 +151,9 @@
       {
         "name": "rScores",
         "calculation": "rRawScores.value.map(score => score / refactoredMax)",
-        "dependencies": ["rRawScores"],
+        "dependencies": [
+          "rRawScores"
+        ],
         "purpose": "Normalize animated scores for 0-1 range",
         "return_type": "number[] (normalized)",
         "optimization": "Normalization happens after spring animation"
@@ -157,7 +161,11 @@
       {
         "name": "rGraphPath",
         "calculation": "Generate Skia path from normalized scores",
-        "dependencies": ["padding", "rScores", "scores"],
+        "dependencies": [
+          "padding",
+          "rScores",
+          "scores"
+        ],
         "purpose": "Create animated path for graph line",
         "return_type": "SkPath",
         "recalculation": "Every frame during spring animation",
@@ -171,7 +179,9 @@
         "padding": "interpolate(selectedCellIndex, [0, data.length-1], [internalPadding, -internalPadding])",
         "left": "withTiming(cellBackgroundWidth * selectedCellIndex + padding)"
       },
-      "animated_properties": ["left"],
+      "animated_properties": [
+        "left"
+      ],
       "purpose": "Animate indicator sliding between segments"
     },
     "skia_animation_integration": {
@@ -182,7 +192,6 @@
       "key_insight": "Reanimated SharedValues work seamlessly with Skia animated props"
     }
   },
-
   "component_architecture": {
     "steddy_graph_interaction": {
       "type": "Main container component",
@@ -292,7 +301,6 @@
       }
     }
   },
-
   "mathematical_algorithms": {
     "score_normalization": {
       "formula": "normalizedScore = score / (maxValue + 10)",
@@ -333,7 +341,6 @@
       "consistency": "Uses same coordinate system as graph points"
     }
   },
-
   "performance_optimizations": {
     "memo_wrapper": {
       "component": "Graph",
@@ -344,14 +351,19 @@
     "useMemo_scores": {
       "location": "Main component",
       "calculation": "ScoringMap[scoringDifficulty]",
-      "dependencies": ["scoringDifficulty"],
+      "dependencies": [
+        "scoringDifficulty"
+      ],
       "benefit": "Avoids creating new array reference on every render",
       "importance": "Prevents unnecessary Graph re-renders"
     },
     "useMemo_selectedIndex": {
       "location": "SegmentedControl",
       "calculation": "data.findIndex(item => item === selected)",
-      "dependencies": ["data", "selected"],
+      "dependencies": [
+        "data",
+        "selected"
+      ],
       "benefit": "Avoids recalculating index on every render",
       "frequency": "Only recalculates when selection changes"
     },
@@ -374,7 +386,6 @@
       "memory": "Minimal memory footprint"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "background": "#F1EEE8 (warm light beige)",
@@ -444,11 +455,14 @@
       }
     }
   },
-
   "data_structure": {
     "scoring_difficulty_type": {
       "type": "Union type",
-      "values": ["'Light'", "'Standard'", "'Pro'"],
+      "values": [
+        "'Light'",
+        "'Standard'",
+        "'Pro'"
+      ],
       "source": "(typeof ScoringDifficultyData)[number]",
       "usage": "Type-safe scoring difficulty selection"
     },
@@ -481,7 +495,6 @@
       "note": "Typo in constant name: 'STANRDARD' instead of 'STANDARD'"
     }
   },
-
   "layout_and_positioning": {
     "container_hierarchy": {
       "level_1": "GestureHandlerRootView (full screen)",
@@ -518,7 +531,6 @@
       }
     }
   },
-
   "use_cases": {
     "primary": [
       "Fitness tracking score visualization",
@@ -556,7 +568,6 @@
       "Graph interpolation techniques"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -612,7 +623,6 @@
       "Descriptive variable names"
     ]
   },
-
   "known_limitations": {
     "fixed_graph_dimensions": {
       "issue": "canvasHeight hardcoded to 200",
@@ -658,7 +668,6 @@
       "note": "Likely loaded globally in app setup"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Tap data points to show exact values",
@@ -722,7 +731,6 @@
       "Visual regression tests"
     ]
   },
-
   "key_insights": {
     "spring_on_arrays": "withSpring can animate entire arrays, applying spring to each element individually",
     "skia_reanimated_integration": "Reanimated derived values work seamlessly as Skia component props",
@@ -735,7 +743,6 @@
     "corner_path_effect": "CornerPathEffect provides hardware-accelerated rounded corners",
     "dash_path_effect": "DashPathEffect creates performant dashed lines without manual drawing"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas usage",
@@ -765,7 +772,6 @@
       "Custom Skia effects composition"
     ]
   },
-
   "real_world_inspiration": {
     "apple_health": "Health app score visualizations",
     "strava": "Activity performance graphs",
@@ -774,7 +780,6 @@
     "tesla": "Energy usage graphs in mobile app",
     "trading_apps": "Stock price charts with smooth animations"
   },
-
   "comparison_to_similar_animations": {
     "vs_recharts": {
       "similarity": "Both render line charts",
@@ -792,7 +797,6 @@
       "advantage": "Smoother animations with Reanimated integration"
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Graph renders correctly with all three datasets",
@@ -840,7 +844,6 @@
       "Shadow rendering differences"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility support",
@@ -867,7 +870,6 @@
       "keyboard": "Detect ArrowLeft/ArrowRight to cycle through difficulties"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines total (all components + constants)",
     "dependencies": {
@@ -883,7 +885,6 @@
     "runtime_memory": "Low - few SharedValues, efficient Skia rendering",
     "estimated_incremental_size": "< 15KB (excluding already-present dependencies)"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "animation_duration": "~500-800ms (spring-based, variable)",
@@ -893,7 +894,6 @@
     "render_frequency": "Every frame during spring animation (~60Hz)",
     "memory_footprint": "Minimal - single path object reused"
   },
-
   "tags": [
     "skia",
     "line-graph",
@@ -912,5 +912,9 @@
     "score-tracking",
     "pressto",
     "responsive-design"
-  ]
+  ],
+  "content_hash": "0ed2b209574375ce0324da250cc787951cc5820cca9ce9526ef4bbe1e4944ad7",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.459Z",
+  "last_validated": "2025-10-12T09:19:28.459Z"
 }

@@ -2,7 +2,6 @@
   "animation_name": "Interaction Appearance",
   "animation_slug": "interaction-appearance",
   "description": "A sophisticated theme switcher implementation demonstrating iOS-style transitions with coordinated blur, scale, and opacity animations. Features a floating action button that triggers simultaneous theme changes with smooth rescaling of content, animated blur overlays, and dynamic color palette transitions for a polished user experience.",
-
   "main_features": [
     "Dynamic theme switching (light/dark modes)",
     "Coordinated multi-component animations",
@@ -16,7 +15,6 @@
     "Safe area-aware positioning",
     "Gradient overlays with theme adaptation"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main export wrapper with providers (SafeAreaProvider, GestureHandlerRootView, ThemeProvider)"
@@ -45,7 +43,6 @@
       "src/theme/shared-value.ts": "Global shared value for tracking theme switching state"
     }
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "rendering": "@shopify/react-native-skia",
@@ -57,7 +54,6 @@
     "gestures": "react-native-gesture-handler",
     "color_utilities": "color"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -67,51 +63,82 @@
         "withTiming",
         "makeMutable"
       ],
-      "components": ["Animated.View", "Animated.createAnimatedComponent"],
-      "utilities": ["makeMutable"],
+      "components": [
+        "Animated.View",
+        "Animated.createAnimatedComponent"
+      ],
+      "utilities": [
+        "makeMutable"
+      ],
       "critical_feature": "Global shared state with makeMutable for cross-component coordination"
     },
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Image", "Group", "Blur", "Fill", "LinearGradient"],
-      "hooks": ["useImage"],
-      "utilities": ["rect", "rrect"],
+      "components": [
+        "Canvas",
+        "Image",
+        "Group",
+        "Blur",
+        "Fill",
+        "LinearGradient"
+      ],
+      "hooks": [
+        "useImage"
+      ],
+      "utilities": [
+        "rect",
+        "rrect"
+      ],
       "usage": "Movie poster rendering with blur effects and theme-aware opacity transitions"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "components": ["BlurView"],
+      "components": [
+        "BlurView"
+      ],
       "usage": "Full-screen blur overlay during theme transitions",
       "animated": "Wrapped with Animated.createAnimatedComponent"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Floating action button with scale press feedback"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Safe bottom positioning for floating button and image layout"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureHandlerRootView"],
+      "components": [
+        "GestureHandlerRootView"
+      ],
       "usage": "Gesture handling infrastructure"
     },
     "color": {
       "version": "^4.2.3",
       "usage": "Color manipulation for semi-transparent border colors",
-      "methods": ["alpha()", "rgb().string()"]
+      "methods": [
+        "alpha()",
+        "rgb().string()"
+      ]
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["MaterialIcons"],
-      "icons_used": ["sunny"],
+      "components": [
+        "MaterialIcons"
+      ],
+      "icons_used": [
+        "sunny"
+      ],
       "usage": "Theme toggle button icon"
     }
   },
-
   "animation_techniques": {
     "global_state_coordination": {
       "pattern": "makeMutable shared value for cross-component state",
@@ -193,14 +220,21 @@
     "gradient_theme_adaptation": {
       "component": "BottomLinearGradient",
       "pattern": "Conditional gradient colors based on theme",
-      "light_theme": ["rgba(255,255,255,0)", "rgba(255,255,255,0)", "background_color"],
-      "dark_theme": ["rgba(0,0,0,0)", "rgba(0,0,0,0)", "background_color"],
+      "light_theme": [
+        "rgba(255,255,255,0)",
+        "rgba(255,255,255,0)",
+        "background_color"
+      ],
+      "dark_theme": [
+        "rgba(0,0,0,0)",
+        "rgba(0,0,0,0)",
+        "background_color"
+      ],
       "direction": "Top to bottom",
       "height": 400,
       "note": "Different transparent colors for smooth blending on each theme"
     }
   },
-
   "reanimated_patterns": {
     "makeMutable_global_state": {
       "pattern": "Global mutable shared value for cross-component coordination",
@@ -226,7 +260,9 @@
     },
     "useAnimatedStyle_transform": {
       "pattern": "Transform-based animations",
-      "properties": ["scale"],
+      "properties": [
+        "scale"
+      ],
       "implementation": "useAnimatedStyle(() => ({ transform: [{ scale: withTiming(...) }] }))",
       "benefit": "GPU-accelerated transform animations"
     },
@@ -248,7 +284,6 @@
       "benefit": "All animations complete simultaneously for cohesive feel"
     }
   },
-
   "skia_integration": {
     "canvas_rendering": {
       "component": "MovieImage",
@@ -292,7 +327,6 @@
       "effect": "Fades blurred background image during theme changes"
     }
   },
-
   "theme_system": {
     "architecture": "React Context-based with global shared values",
     "provider": {
@@ -326,7 +360,19 @@
     },
     "spacing": {
       "scale": "none (0) to xxxl (64)",
-      "values": [0, 1, 2, 4, 8, 12, 16, 20, 32, 48, 64],
+      "values": [
+        0,
+        1,
+        2,
+        4,
+        8,
+        12,
+        16,
+        20,
+        32,
+        48,
+        64
+      ],
       "shared": "Same for both themes"
     },
     "hook": {
@@ -341,7 +387,6 @@
       "benefit": "Theme changes don't cause animation re-renders"
     }
   },
-
   "component_architecture": {
     "provider_hierarchy": [
       "SafeAreaProvider (outermost)",
@@ -368,7 +413,6 @@
       "BottomLinearGradient": "Content fade effect at bottom"
     }
   },
-
   "performance_optimizations": [
     "makeMutable for global state (no Context re-renders)",
     "useMemo for gradient colors based on theme",
@@ -381,7 +425,6 @@
     "pointerEvents='none' on overlay blur",
     "Skia GPU-accelerated rendering"
   ],
-
   "visual_design": {
     "floating_button": {
       "size": "64x64 (aspectRatio: 1)",
@@ -430,7 +473,6 @@
       "tint": "Default (system)"
     }
   },
-
   "interaction_flow": {
     "theme_switch_sequence": [
       "1. User presses floating button",
@@ -451,7 +493,6 @@
       "total_transition": "~700-1000ms"
     }
   },
-
   "use_cases": {
     "primary": [
       "Theme switching with visual feedback",
@@ -482,7 +523,6 @@
       "Apple Music theme adaptation"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with proper types",
@@ -507,7 +547,6 @@
       "BottomLinearGradient displayName missing"
     ]
   },
-
   "known_limitations": {
     "theme_persistence": {
       "issue": "Theme selection not persisted",
@@ -539,7 +578,6 @@
       "reason": "Likely gradient interpolation behavior"
     }
   },
-
   "potential_improvements": {
     "feature_enhancements": [
       "Multiple theme options (not just light/dark)",
@@ -583,7 +621,6 @@
       "Reduce blur calculations during animation"
     ]
   },
-
   "key_insights": {
     "makeMutable_power": "makeMutable enables perfect cross-component animation coordination without Context re-renders",
     "dual_state_pattern": "Separating UI state (Context) from animation state (SharedValue) optimizes performance",
@@ -595,7 +632,6 @@
     "blur_feedback": "Full-screen blur provides clear visual feedback during state transitions",
     "scale_depth": "Subtle scale-down (0.95) creates depth perception during transitions"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "React Context for theme management",
@@ -626,7 +662,6 @@
       "Worklet-safe state sharing"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Theme toggle function switches themes",
@@ -667,7 +702,6 @@
       "Missing safe area insets"
     ]
   },
-
   "accessibility_recommendations": {
     "current_state": "Limited accessibility implementation",
     "should_add": [
@@ -687,7 +721,6 @@
       "Smooth animations not too fast"
     ]
   },
-
   "platform_considerations": {
     "ios": {
       "features": [
@@ -718,7 +751,6 @@
       ]
     }
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~400 lines total)",
     "dependencies": [
@@ -731,7 +763,6 @@
     "runtime_memory": "Minimal (few SharedValues, single image)",
     "estimated_impact": "Skia is main addition if not already used (~2-3MB), otherwise < 10KB"
   },
-
   "related_patterns": {
     "theme_providers": "Standard React Context pattern for theming",
     "global_animation_state": "makeMutable for cross-component coordination",
@@ -739,14 +770,12 @@
     "press_choreography": "onPressIn/onPressOut for animation sequences",
     "dual_state_management": "Context for UI, SharedValue for animations"
   },
-
   "real_world_inspiration": {
     "ios_settings": "iOS Settings app appearance toggle",
     "instagram": "Instagram dark mode transition effect",
     "twitter": "Twitter theme switcher with smooth transitions",
     "apple_music": "Apple Music theme changes"
   },
-
   "tags": [
     "theme-switching",
     "dark-mode",
@@ -766,5 +795,9 @@
     "safe-area",
     "theme-provider",
     "state-management"
-  ]
+  ],
+  "content_hash": "32258d1d38b8920735076290b8f92efc58ed2388075fb95d5bfab77f4d0ab338",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.378Z",
+  "last_validated": "2025-10-12T09:19:28.378Z"
 }

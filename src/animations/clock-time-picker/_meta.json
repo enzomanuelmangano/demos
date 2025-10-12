@@ -2,7 +2,6 @@
   "animation_name": "Clock Time Picker",
   "animation_slug": "clock-time-picker",
   "description": "An elegant time picker interface combining an analog clock with a scrollable time range selector. Features a custom-drawn Skia clock with smooth hand movements, synchronized time selection via scrollable list, and timezone offset handling. The clock displays hours and minutes with precise hand positioning, while the time range component offers intuitive scrolling through 30-minute intervals with gradient overlays.",
-
   "main_features": [
     "Custom analog clock rendered with Skia graphics",
     "Smooth clock hand animations with real-time updates",
@@ -14,20 +13,17 @@
     "30-minute interval time slots",
     "Interpolated time values during scroll"
   ],
-
   "file_structure": {
     "index.tsx": "Main component orchestrating Clock and TimeRange components",
     "components/clock.tsx": "Custom analog clock component using Skia",
     "components/time-range.tsx": "Scrollable time selector with gradient overlays"
   },
-
   "core_technologies": {
     "graphics": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "date_formatting": "date-fns",
     "gradients": "expo-linear-gradient"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -68,7 +64,6 @@
       "usage": "Top and bottom gradient overlays on time range selector"
     }
   },
-
   "animation_techniques": {
     "clock_hand_rotation": {
       "pattern": "Angle-based rotation derived from timestamp",
@@ -122,7 +117,6 @@
       "effect": "Focus attention on center selection area"
     }
   },
-
   "skia_rendering_patterns": {
     "clock_face": {
       "component": "Circle",
@@ -169,7 +163,6 @@
       ]
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -194,28 +187,36 @@
         "name": "hourAngle",
         "scope": "Clock component",
         "calculation": "(convertMsToHours(date.value) * (Math.PI * 2)) / 12",
-        "dependencies": ["date"],
+        "dependencies": [
+          "date"
+        ],
         "purpose": "Hour hand rotation angle in radians"
       },
       {
         "name": "minuteAngle",
         "scope": "Clock component",
         "calculation": "(convertMsToMinutes(date.value) * (Math.PI * 2)) / 60",
-        "dependencies": ["date"],
+        "dependencies": [
+          "date"
+        ],
         "purpose": "Minute hand rotation angle in radians"
       },
       {
         "name": "hourHandPath",
         "scope": "Clock component",
         "calculation": "{ x: center + length * sin(angle), y: center - length * cos(angle) }",
-        "dependencies": ["hourAngle"],
+        "dependencies": [
+          "hourAngle"
+        ],
         "purpose": "Hour hand endpoint coordinates"
       },
       {
         "name": "minuteHandPath",
         "scope": "Clock component",
         "calculation": "{ x: center + length * sin(angle), y: center - length * cos(angle) }",
-        "dependencies": ["minuteAngle"],
+        "dependencies": [
+          "minuteAngle"
+        ],
         "purpose": "Minute hand endpoint coordinates"
       }
     ],
@@ -245,7 +246,6 @@
       "purpose": "Convert scroll position to time value and notify parent"
     }
   },
-
   "component_patterns": {
     "time_slot_generation": {
       "method": "new Array(20).fill(0).map()",
@@ -268,7 +268,9 @@
       "format": "'h:mm aaa' (e.g., '1:00 pm')",
       "transformation": ".toLowerCase()",
       "memoization": "Prevents reformatting on every render",
-      "dependencies": ["dates"]
+      "dependencies": [
+        "dates"
+      ]
     },
     "tick_mark_generation": {
       "pattern": "useMemo with geometric calculations",
@@ -277,7 +279,6 @@
       "optimization": "Memoized to prevent recalculation"
     }
   },
-
   "scroll_mechanics": {
     "flatlist_configuration": {
       "onScroll": "useAnimatedScrollHandler",
@@ -304,7 +305,6 @@
       "snap_behavior": "Snaps to exact item positions for precise selection"
     }
   },
-
   "mathematical_calculations": {
     "angle_to_coordinates": {
       "formula": {
@@ -334,7 +334,6 @@
       "timezone_offset": "offset_minutes * 60 * 1000"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "background": "#111 (dark gray)",
@@ -390,7 +389,6 @@
       "alternative": "Standard border radius on other platforms"
     }
   },
-
   "performance_optimizations": {
     "useMemo": [
       {
@@ -401,17 +399,25 @@
       {
         "location": "Clock - ticksPath JSX",
         "purpose": "Prevent tick mark re-rendering",
-        "dependencies": ["center", "tickLength", "ticks"]
+        "dependencies": [
+          "center",
+          "tickLength",
+          "ticks"
+        ]
       },
       {
         "location": "TimeRange - formattedDates",
         "purpose": "Prevent date reformatting",
-        "dependencies": ["dates"]
+        "dependencies": [
+          "dates"
+        ]
       },
       {
         "location": "TimeRange - datesMs",
         "purpose": "Prevent timestamp recalculation",
-        "dependencies": ["dates"]
+        "dependencies": [
+          "dates"
+        ]
       }
     ],
     "useCallback": [
@@ -439,7 +445,6 @@
       "optimization": "Worklet avoids bridge crossing"
     }
   },
-
   "use_cases": {
     "primary": [
       "Time selection interfaces",
@@ -465,7 +470,6 @@
       "Timezone handling patterns"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -501,7 +505,6 @@
       "Modular component structure"
     ]
   },
-
   "state_management": {
     "data_flow": {
       "initialization": "date SharedValue set to first time slot",
@@ -520,7 +523,6 @@
       "benefit": "Clock and list always synchronized"
     }
   },
-
   "skia_advantages": {
     "performance": "GPU-accelerated rendering on UI thread",
     "flexibility": "Full control over clock appearance",
@@ -529,7 +531,6 @@
     "effects": "Built-in shadow support for depth",
     "consistency": "Cross-platform visual consistency"
   },
-
   "known_limitations": {
     "timezone_handling": {
       "implementation": "Simple offset calculation",
@@ -561,7 +562,6 @@
       "improvement": "Could add fallback or make font configurable"
     }
   },
-
   "potential_improvements": {
     "features": [
       "AM/PM or 24-hour format toggle",
@@ -614,7 +614,6 @@
       "Meeting scheduler with participant timezones"
     ]
   },
-
   "key_insights": {
     "skia_power": "Skia enables precise, performant custom clock rendering without view hierarchy overhead",
     "derived_values_elegance": "Derived values chain naturally: date → angles → coordinates",
@@ -625,7 +624,6 @@
     "memoization_importance": "Memoizing geometric calculations prevents unnecessary recalculations",
     "gradient_ux": "Gradient overlays elegantly focus attention without complex masking"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia rendering (Canvas, Circle, Line)",
@@ -652,7 +650,6 @@
       "Graphics rendering optimization"
     ]
   },
-
   "related_patterns": {
     "similar_components": [
       "iOS UIDatePicker in time mode",
@@ -676,7 +673,6 @@
       "Duration pickers"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Clock hands point to correct times",
@@ -715,7 +711,6 @@
       "Border curve rendering (continuous on iOS)"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support currently",
@@ -736,7 +731,6 @@
       "High contrast mode support"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_pickers": {
       "advantages": [
@@ -762,14 +756,12 @@
       "benefit": "Clock provides visual context for selected time"
     }
   },
-
   "design_inspirations": {
     "analog_clocks": "Traditional wall clocks and watches",
     "digital_interfaces": "iOS Clock app time picker",
     "booking_systems": "Hotel and restaurant reservation interfaces",
     "calendar_apps": "Event time selection in calendar applications"
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines total across 3 files",
     "dependencies": {
@@ -781,7 +773,6 @@
     "runtime_memory": "Minimal - small render tree, few SharedValues",
     "estimated_impact": "< 5KB additional (dependencies already included)"
   },
-
   "tags": [
     "time-picker",
     "clock",
@@ -800,5 +791,9 @@
     "worklets",
     "ui-thread",
     "gpu-accelerated"
-  ]
+  ],
+  "content_hash": "df5c14985b350610d5f694701adaeec4e636d610c1b1caccc29963b1369eeeaa",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.307Z",
+  "last_validated": "2025-10-12T09:19:28.307Z"
 }

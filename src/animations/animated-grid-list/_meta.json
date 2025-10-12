@@ -2,7 +2,6 @@
   "animation_name": "Animated Grid List",
   "animation_slug": "animated-grid-list",
   "description": "An animated layout component that seamlessly transitions between grid and list layouts with scroll-based 3D perspective effects. Features a floating toggle button, smooth layout animations, and dynamic content rendering with fade transitions. Includes scroll direction detection with rotateX perspective transforms for an immersive visual experience.",
-
   "main_features": [
     "Seamless grid-to-list layout transition with LinearTransition",
     "Scroll-based 3D perspective rotation (rotateX)",
@@ -15,19 +14,16 @@
     "Perspective transform with smooth spring animations",
     "Safe area handling for proper spacing"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo component with grid/list toggle state",
     "components/animated-layout-list/index.tsx": "Core layout component with scroll detection and 3D transforms",
     "components/floating-button/index.tsx": "Toggle button with grid/list icon animation",
     "constants.ts": "Mock data with random quotes and images"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "layout": "react-native-safe-area-context"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -42,7 +38,9 @@
         "FadeIn",
         "FadeOut"
       ],
-      "functions": ["withTiming"],
+      "functions": [
+        "withTiming"
+      ],
       "components": [
         "Animated.View",
         "Animated.ScrollView",
@@ -53,11 +51,12 @@
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Top and bottom padding to avoid notch/home indicator"
     }
   },
-
   "animation_techniques": {
     "layout_transition": {
       "pattern": "Layout prop-driven morphing",
@@ -128,7 +127,6 @@
       "purpose": "Visual representation of current layout state"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -159,7 +157,10 @@
       "usage_count": 1,
       "instance": "rotation",
       "calculation": "Returns '20deg', '-20deg', or '0deg' based on isScrolling and direction",
-      "dependencies": ["isScrolling.value", "direction.value"],
+      "dependencies": [
+        "isScrolling.value",
+        "direction.value"
+      ],
       "purpose": "Compute rotation string from scroll state",
       "benefit": "Automatic recalculation when dependencies change"
     },
@@ -229,7 +230,6 @@
       "usage": "direction.value comparison in useDerivedValue"
     }
   },
-
   "component_architecture": {
     "animated_grid_list": {
       "type": "Main demo component",
@@ -302,7 +302,6 @@
       "rendering": "Animated mini grid/list icon representation"
     }
   },
-
   "layout_and_positioning": {
     "item_dimensions": {
       "grid_mode": {
@@ -379,7 +378,6 @@
       }
     }
   },
-
   "scroll_interaction": {
     "direction_detection": {
       "algorithm": "Compare current offset with stored lastOffset",
@@ -412,7 +410,6 @@
       "visual_result": "Items appear to tilt away from scroll direction"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#EEEEEE (light gray)",
@@ -474,7 +471,6 @@
       }
     }
   },
-
   "data_structure": {
     "mock_data": {
       "count": 10,
@@ -509,7 +505,6 @@
       ]
     }
   },
-
   "performance_optimizations": {
     "memoization": {
       "renderItem": "useCallback with empty deps (stable reference)",
@@ -535,7 +530,6 @@
       "benefit": "Images loaded once, reused across items"
     }
   },
-
   "use_cases": {
     "primary": [
       "Product galleries with view mode toggle",
@@ -565,7 +559,6 @@
       "E-commerce category pages"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -609,7 +602,6 @@
       "Safe area awareness"
     ]
   },
-
   "known_limitations": {
     "image_url": {
       "issue": "All items use same image URL",
@@ -638,7 +630,6 @@
       "overflow_visible": "May clip on web browsers"
     }
   },
-
   "potential_improvements": {
     "animation_enhancements": [
       "Staggered item animations on layout change",
@@ -691,7 +682,6 @@
       "Item selection state"
     ]
   },
-
   "key_insights": {
     "layout_prop_power": "Single layout prop drives entire UI transformation",
     "perspective_timing": "withTiming on rotation creates smooth perspective effect",
@@ -704,7 +694,6 @@
     "enum_type_safety": "Direction enum prevents magic numbers and type errors",
     "overflow_visible": "Essential for 3D transforms to render outside bounds"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic layout animations with LinearTransition",
@@ -732,7 +721,6 @@
       "Flexible renderItem patterns"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Grid to list transition smooth",
@@ -779,7 +767,6 @@
       "Image loading behavior"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -804,7 +791,6 @@
       "keyboard": "Add FocusManager for keyboard navigation between items"
     }
   },
-
   "comparison_to_similar_patterns": {
     "vs_flatlist_layouts": {
       "similarity": "Both support multiple layout modes",
@@ -822,7 +808,6 @@
       "unique": "Scroll-based perspective not common in web implementations"
     }
   },
-
   "related_patterns": {
     "layout_animations": [
       "Shared element transitions",
@@ -843,7 +828,6 @@
       "Sidebar expand/collapse"
     ]
   },
-
   "real_world_inspiration": {
     "ios_photos": "Grid/list toggle in Photos app",
     "spotify": "Playlist view modes",
@@ -851,14 +835,12 @@
     "file_explorers": "Icon view vs list view",
     "material_design": "List/grid transition patterns"
   },
-
   "bundle_size_impact": {
     "code_size": "~260 lines total (main + components + constants)",
     "dependencies": "Reanimated and safe-area-context likely already in project",
     "runtime_memory": "Minimal - few SharedValues, 10 items only",
     "estimated_size": "< 10KB"
   },
-
   "tags": [
     "layout-animation",
     "grid-list-toggle",
@@ -875,5 +857,9 @@
     "safe-area",
     "worklet",
     "animated-image"
-  ]
+  ],
+  "content_hash": "e7276882f5ceafdab84c37d48b116842af9e4704f89d3ab99c1b37b52182e23b",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.275Z",
+  "last_validated": "2025-10-12T09:19:28.275Z"
 }

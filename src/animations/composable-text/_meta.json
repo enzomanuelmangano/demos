@@ -2,7 +2,6 @@
   "animation_name": "Composable Text",
   "animation_slug": "composable-text",
   "description": "Character-by-character text animation component that smoothly transitions between different text strings. Each character independently animates in/out with spring physics and scale effects, while layout transitions smoothly rearrange characters.",
-
   "main_features": [
     "Character-level text animation",
     "Independent enter/exit animations per character",
@@ -14,30 +13,34 @@
     "Reusable composable component",
     "PressableScale integration"
   ],
-
   "file_structure": {
     "index.tsx": "Demo screen with toggle interaction",
     "composable-text.tsx": "Core reusable ComposableText component"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "interactions": "pressto",
     "pattern": "Layout animations"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View", "Animated.Text"],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
       "layout_animations": [
         "FadeIn",
         "FadeOut",
         "LinearTransition",
         "LayoutAnimationConfig"
       ],
-      "hooks": ["useAnimatedStyle"],
-      "utilities": ["withTiming"],
+      "hooks": [
+        "useAnimatedStyle"
+      ],
+      "utilities": [
+        "withTiming"
+      ],
       "critical_feature": "Layout animations for declarative character transitions"
     },
     "pressto": {
@@ -46,7 +49,6 @@
       "usage": "Button with scale press animation and layout transitions"
     }
   },
-
   "animation_techniques": {
     "character_splitting": {
       "pattern": "Split text string into individual characters",
@@ -58,7 +60,11 @@
       "type": "FadeIn",
       "duration": 200,
       "initial_values": {
-        "transform": [{ "scale": 0.5 }]
+        "transform": [
+          {
+            "scale": 0.5
+          }
+        ]
       },
       "spring_config": {
         "mass": 0.3,
@@ -77,7 +83,10 @@
     },
     "layout_transition": {
       "type": "LinearTransition",
-      "applied_to": ["Individual characters", "Container view"],
+      "applied_to": [
+        "Individual characters",
+        "Container view"
+      ],
       "spring_config": {
         "characters": {
           "mass": 0.3,
@@ -101,7 +110,6 @@
       "effect": "All characters change color simultaneously"
     }
   },
-
   "reanimated_layout_animations": {
     "pattern": "Declarative layout animations",
     "philosophy": "Define what should happen, Reanimated handles how",
@@ -120,7 +128,9 @@
       },
       "FadeOut": {
         "purpose": "Character exit",
-        "customizations": ["duration(200)"],
+        "customizations": [
+          "duration(200)"
+        ],
         "simplicity": "Simple fade, no scale effect on exit"
       },
       "LinearTransition": {
@@ -143,7 +153,6 @@
       "scope": "Wraps entire Animated.View"
     }
   },
-
   "key_generation_strategy": {
     "challenge": "React requires unique keys for list items",
     "problem": "Same character can appear multiple times (e.g., 'o' in 'look')",
@@ -158,14 +167,15 @@
     },
     "memoization": {
       "hook": "useMemo",
-      "dependencies": ["text"],
+      "dependencies": [
+        "text"
+      ],
       "benefit": "Recalculates keys only when text changes",
       "critical": true
     },
     "uniqueness_guarantee": "Each character instance has unique key based on position and previous occurrences",
     "animation_stability": "Stable keys prevent unnecessary re-animations"
   },
-
   "component_architecture": {
     "composable_text": {
       "type": "Reusable component",
@@ -206,7 +216,6 @@
       "interaction": "Toggle between variants on press"
     }
   },
-
   "react_patterns": {
     "memo": {
       "component": "ComposableText",
@@ -215,7 +224,9 @@
     },
     "useMemo": {
       "usage": "buildKeys calculation",
-      "dependencies": ["text"],
+      "dependencies": [
+        "text"
+      ],
       "prevents": "Recalculating keys on every render",
       "impact": "Medium - keys calculation is relatively cheap but runs for every character"
     },
@@ -225,7 +236,9 @@
     },
     "useAnimatedStyle": {
       "usage": "Color transition in demo",
-      "dependencies": ["text.color"],
+      "dependencies": [
+        "text.color"
+      ],
       "returns": "Animated style object with color property"
     },
     "displayName": {
@@ -234,7 +247,6 @@
       "best_practice": true
     }
   },
-
   "spring_physics_tuning": {
     "character_entering": {
       "mass": 0.3,
@@ -271,7 +283,6 @@
       "result": "Characters feel lighter and more playful, containers feel stable"
     }
   },
-
   "visual_design": {
     "demo_styling": {
       "background": "#0c0c0c (very dark gray)",
@@ -296,7 +307,6 @@
       "color_change": "Smooth timing transition"
     }
   },
-
   "performance_considerations": {
     "character_count_impact": {
       "description": "Performance scales with text length",
@@ -322,7 +332,6 @@
       "saves": "CPU cycles and provides instant first render"
     }
   },
-
   "use_cases": {
     "primary": [
       "Button labels that change dynamically",
@@ -351,7 +360,6 @@
       "Accessibility-critical text that needs instant updates"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_text_switch": {
       "traditional": "Replace entire text block",
@@ -369,7 +377,6 @@
       "visual_quality": "More sophisticated, professional feel"
     }
   },
-
   "customization_options": {
     "animation_timing": {
       "entering_duration": "Currently 200ms, adjustable",
@@ -396,7 +403,6 @@
       "effect": "Would animate all characters on initial mount"
     }
   },
-
   "potential_enhancements": {
     "additional_effects": [
       "Slide in from different directions",
@@ -423,7 +429,6 @@
       "Monospace alignment option"
     ]
   },
-
   "known_limitations": {
     "character_limit": {
       "issue": "Performance degrades with very long strings",
@@ -451,12 +456,17 @@
       "test": "Should test with screen readers"
     }
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
-    "type_definitions": ["ComposableTextProps"],
+    "type_definitions": [
+      "ComposableTextProps"
+    ],
     "imports": {
-      "types": ["StyleProp", "TextStyle", "ViewStyle"],
+      "types": [
+        "StyleProp",
+        "TextStyle",
+        "ViewStyle"
+      ],
       "component_types": true
     },
     "prop_types": {
@@ -482,7 +492,6 @@
       "Separated concerns (component vs demo)"
     ]
   },
-
   "key_insights": {
     "layout_animation_power": "Declarative layout animations are simpler than imperative approaches",
     "key_generation_importance": "Proper key generation is critical for smooth character transitions",
@@ -492,7 +501,6 @@
     "component_reusability": "Well-designed component works in any context",
     "independent_animations": "Each character animates independently but feels unified"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Layout animations basics (entering, exiting, layout)",
@@ -514,7 +522,6 @@
       "Building animation libraries"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Key generation produces unique keys",
@@ -549,14 +556,12 @@
       "Rapid toggling"
     ]
   },
-
   "bundle_size_impact": {
     "component_size": "Very small (~66 lines including demo)",
     "dependencies": "Reanimated and pressto (likely already in project)",
     "runtime_overhead": "Minimal - one component per character",
     "estimated_size": "< 2KB"
   },
-
   "accessibility_recommendations": {
     "current_state": "No accessibility considerations implemented",
     "should_add": [
@@ -571,7 +576,6 @@
       "focus": "Ensure proper focus behavior"
     }
   },
-
   "related_patterns": {
     "animated_text_input": "Similar character-level animations for input",
     "typing_animation": "Sequential character appearance",
@@ -579,14 +583,12 @@
     "text_scramble": "Random character replacement effect",
     "ticker_text": "Scrolling number/text animations"
   },
-
   "real_world_inspiration": {
     "ios_buttons": "iOS system buttons with state changes",
     "stripe_ui": "Stripe payment button states",
     "notion": "Notion button state transitions",
     "linear_app": "Linear's smooth UI transitions"
   },
-
   "tags": [
     "text-animation",
     "layout-animations",
@@ -599,5 +601,9 @@
     "composable",
     "reusable-component",
     "ui-transitions"
-  ]
+  ],
+  "content_hash": "e4137585b745738de87508d09424bbc8def7b673751f776c170577bd6d89a33b",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.310Z",
+  "last_validated": "2025-10-12T09:19:28.310Z"
 }

@@ -2,7 +2,6 @@
   "animation_name": "Telegram Theme Switch",
   "animation_slug": "telegram-theme-switch",
   "description": "A sophisticated theme switching animation inspired by Telegram's interface that creates a circular reveal transition between light and dark themes. The animation captures a snapshot of the current view using Skia's makeImageFromView, then renders an expanding circular clip path that reveals the new theme underneath. A Lottie animation of a sun/moon icon plays at the theme switch button position, synchronized with the circular reveal transition. Features React Context-based theme management, worklet-based gesture handling, and GPU-accelerated Skia rendering for smooth 60fps transitions.",
-
   "main_features": [
     "Circular reveal transition between light and dark themes",
     "View snapshot capture using Skia's makeImageFromView API",
@@ -20,7 +19,6 @@
     "Button opacity management during transition",
     "Safe area support for modern devices"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main component wrapper with theme providers, tab navigation, and screen rendering"
@@ -48,7 +46,6 @@
       "search/index.tsx": "Search screen containing the SwitchThemeButton component"
     }
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
@@ -59,14 +56,23 @@
     "colors": "color",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
       "usage": "View snapshot capture and circular clip path rendering",
-      "components": ["Canvas", "Group", "Image"],
-      "utilities": ["Skia", "makeImageFromView"],
-      "methods": ["Skia.Path.Make()", "addCircle()"],
+      "components": [
+        "Canvas",
+        "Group",
+        "Image"
+      ],
+      "utilities": [
+        "Skia",
+        "makeImageFromView"
+      ],
+      "methods": [
+        "Skia.Path.Make()",
+        "addCircle()"
+      ],
       "critical_feature": "makeImageFromView to capture UI snapshot before theme transition",
       "performance_reason": "GPU-accelerated image rendering with clip path for smooth circular reveal"
     },
@@ -82,13 +88,17 @@
         "withTiming",
         "measure"
       ],
-      "components": ["Reanimated.View"],
+      "components": [
+        "Reanimated.View"
+      ],
       "critical_feature": "useDerivedValue with withTiming for reactive circular reveal animation on UI thread"
     },
     "lottie-react-native": {
       "version": "~7.3.1",
       "usage": "Sun/moon icon transition animation synchronized with theme switch",
-      "components": ["LottieView"],
+      "components": [
+        "LottieView"
+      ],
       "integration": "Wrapped with Animated.createAnimatedComponent for progress control",
       "animation_file": "switch-theme.json (832 lines)",
       "color_filters": "Dynamic white color filter for icon outline",
@@ -97,38 +107,52 @@
     "react-native-gesture-handler": {
       "version": "~2.28.0",
       "usage": "Tap gesture detection on theme switch button",
-      "components": ["GestureDetector", "Gesture"],
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
       "pattern": "Gesture.Tap().onTouchesUp() for button interaction",
       "critical_feature": "onTouchesUp callback triggers view measurement and theme toggle"
     },
     "react-native-worklets": {
       "version": "0.5.1",
       "usage": "Schedule React Native work from UI thread worklet context",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "critical_feature": "Bridge between UI thread gesture handling and React state updates",
       "pattern": "scheduleOnRN(toggleTheme, { center, style }) to invoke async theme toggle"
     },
     "color": {
       "version": "^4.2.3",
       "usage": "Color manipulation for light/dark palette generation",
-      "methods": ["Color().lighten()", "Color().darken()", ".hex()"],
+      "methods": [
+        "Color().lighten()",
+        "Color().darken()",
+        ".hex()"
+      ],
       "pattern": "Color('#17202A').lighten(0.15).hex() for card backgrounds"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "components": ["SafeAreaProvider"],
-      "hooks": ["useSafeAreaInsets"],
+      "components": [
+        "SafeAreaProvider"
+      ],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Safe area wrapper for notched device support"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["MaterialIcons"],
+      "components": [
+        "MaterialIcons"
+      ],
       "usage": "Bottom tab bar icons (home, search, notifications, message)",
       "icon_size": "28px",
       "color": "Dynamic based on theme text color"
     }
   },
-
   "animation_techniques": {
     "view_snapshot_capture": {
       "pattern": "Capture current UI as Skia image before theme change",
@@ -222,7 +246,6 @@
       "effect": "Transparent overlay that only shows clipped snapshot during transition"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -292,7 +315,9 @@
       {
         "name": "clipPathRadiusScale",
         "calculation": "withTiming(theme === 'light' ? 1 : 0, { duration: 1000 })",
-        "dependencies": ["theme"],
+        "dependencies": [
+          "theme"
+        ],
         "type": "SharedValue<number>",
         "range": "0 to 1",
         "purpose": "Drives circular clip path radius expansion",
@@ -301,7 +326,10 @@
       {
         "name": "clipPath",
         "calculation": "Skia.Path with addCircle using interpolated radius",
-        "dependencies": ["center", "clipPathRadiusScale"],
+        "dependencies": [
+          "center",
+          "clipPathRadiusScale"
+        ],
         "type": "SkPath",
         "purpose": "Dynamic circular path for theme reveal",
         "radius": "interpolate(clipPathRadiusScale.value, [0, 0.9], [2, maxCircleRadius])"
@@ -354,7 +382,11 @@
         "name": "rContainerStyle",
         "scope": "SwitchThemeButton",
         "properties": {
-          "transform": [{ "scale": "withTiming(scale.value)" }]
+          "transform": [
+            {
+              "scale": "withTiming(scale.value)"
+            }
+          ]
         },
         "purpose": "Button scale animation (currently always 1)"
       },
@@ -399,7 +431,6 @@
       "bridge": "Connects UI thread gesture handling to async React operations"
     }
   },
-
   "performance_optimizations": {
     "animation_locking": {
       "pattern": "isAnimating SharedValue prevents concurrent transitions",
@@ -423,7 +454,9 @@
     },
     "useMemo_theme_colors": {
       "scope": "ThemeProvider",
-      "dependencies": ["theme"],
+      "dependencies": [
+        "theme"
+      ],
       "calculation": "colors = theme === 'dark' ? DarkPalette : LightPalette",
       "benefit": "Color object reference stable when theme unchanged"
     },
@@ -461,11 +494,12 @@
     },
     "useCallback_onTapIcon": {
       "scope": "BottomTabBar",
-      "dependencies": ["onTabPress"],
+      "dependencies": [
+        "onTabPress"
+      ],
       "benefit": "Stable function reference prevents child re-renders"
     }
   },
-
   "use_cases": {
     "primary": [
       "Light/dark theme switching with visual transition",
@@ -496,7 +530,6 @@
       "Scheduled theme changes (auto dark mode at sunset)"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Comprehensive TypeScript coverage with explicit types",
@@ -559,7 +592,6 @@
       "Could add JSDoc comments for exported functions"
     ]
   },
-
   "known_limitations": {
     "theme_options": {
       "issue": "Only supports light and dark themes",
@@ -625,7 +657,6 @@
       "improvement": "Context already supports multiple buttons via position parameter"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Haptic feedback on theme toggle",
@@ -717,7 +748,6 @@
       "TypeScript strict mode compliance"
     ]
   },
-
   "key_insights": {
     "snapshot_based_transitions": "makeImageFromView enables smooth visual transitions by preserving old UI state during theme change",
     "pythagorean_radius": "Maximum circle radius calculation using Pythagorean theorem ensures full screen coverage from any button position",
@@ -731,7 +761,6 @@
     "animation_locking": "isAnimating flag prevents race conditions from rapid button presses",
     "cleanup_memory": "Clearing snapshot after animation completion prevents memory leaks from retained images"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "React Context basics for theme management",
@@ -768,7 +797,6 @@
       "Skia Image API integration with Reanimated"
     ]
   },
-
   "tags": [
     "theme-switching",
     "circular-reveal",
@@ -790,5 +818,9 @@
     "measure-api",
     "bottom-navigation",
     "color-palette"
-  ]
+  ],
+  "content_hash": "1dbec5b6e37a66ee7251a06a91b988275cd52624011adb96b018f9157a8017b3",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.476Z",
+  "last_validated": "2025-10-12T09:19:28.476Z"
 }

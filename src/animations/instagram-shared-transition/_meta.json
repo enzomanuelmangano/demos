@@ -2,7 +2,6 @@
   "animation_name": "Instagram Shared Transition",
   "animation_slug": "instagram-shared-transition",
   "description": "An Instagram-inspired shared element transition animation that creates seamless navigation between screens by animating shared elements (like images and text) between views. This animation demonstrates how UI elements can maintain visual continuity during screen transitions, creating a premium and polished user experience similar to Instagram's native app.",
-
   "current_status": "UNDER_MAINTENANCE",
   "status_details": {
     "broken": true,
@@ -11,7 +10,6 @@
     "expected_resolution": "Waiting for official React Native New Architecture support for shared element transitions",
     "maintenance_status": "Temporarily disabled - fix coming soon"
   },
-
   "main_features": [
     "Shared element transitions between screens",
     "Image continuity during navigation",
@@ -24,11 +22,9 @@
     "Hero image animations",
     "Layout morphing between views"
   ],
-
   "file_structure": {
     "README.md": "Maintenance notice explaining current broken state and New Architecture incompatibility"
   },
-
   "intended_file_structure": {
     "index.tsx": "Main screen with grid or list of items (feed view)",
     "detail.tsx": "Detail screen showing expanded view of selected item",
@@ -41,20 +37,28 @@
     "types.ts": "TypeScript definitions for post data and navigation",
     "constants.ts": "Transition configuration and timing constants"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated (Shared Element Transitions)",
     "navigation": "expo-router or react-navigation",
     "images": "expo-image",
     "pattern": "Shared element transitions with hero animations"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View", "Animated.Image", "Animated.Text"],
-      "hooks": ["useSharedTransition", "useAnimatedStyle"],
-      "utilities": ["withTiming", "withSpring"],
+      "components": [
+        "Animated.View",
+        "Animated.Image",
+        "Animated.Text"
+      ],
+      "hooks": [
+        "useSharedTransition",
+        "useAnimatedStyle"
+      ],
+      "utilities": [
+        "withTiming",
+        "withSpring"
+      ],
       "critical_feature": "Shared Element Transitions API (currently incompatible with New Architecture)",
       "new_architecture_status": "Not yet fully supported",
       "breaking_change": "Shared transitions temporarily unavailable in New Architecture"
@@ -75,7 +79,6 @@
       "benefit": "Better performance for shared image transitions"
     }
   },
-
   "animation_techniques": {
     "shared_element_transition": {
       "concept": "Same element appears to move and morph between screens",
@@ -128,7 +131,6 @@
       "coordinate_space": "Absolute positioning during transition"
     }
   },
-
   "reanimated_shared_transitions": {
     "api_pattern": "Declarative shared element marking",
     "transition_id": {
@@ -163,7 +165,6 @@
       "workaround": "None available - feature requires architectural support"
     }
   },
-
   "instagram_design_patterns": {
     "feed_to_detail": {
       "trigger": "Tap on post in feed",
@@ -193,17 +194,23 @@
       "interruption": "Can be interrupted mid-animation"
     }
   },
-
   "component_architecture": {
     "feed_screen": {
       "type": "List or grid of posts",
-      "components": ["FlatList or ScrollView", "PostCard components"],
+      "components": [
+        "FlatList or ScrollView",
+        "PostCard components"
+      ],
       "shared_elements": "Each PostCard contains shared transition elements",
       "navigation": "onPress navigates to detail with post ID"
     },
     "detail_screen": {
       "type": "Full-screen post detail",
-      "components": ["PostDetail component", "Comments section", "Interactions"],
+      "components": [
+        "PostDetail component",
+        "Comments section",
+        "Interactions"
+      ],
       "shared_elements": "Matching transition IDs from feed",
       "layout": "Different from feed card layout"
     },
@@ -233,7 +240,6 @@
       ]
     }
   },
-
   "navigation_integration": {
     "expo_router": {
       "feed_route": "/feed or /home",
@@ -251,7 +257,6 @@
       "implementation": "Check navigation source to conditionally enable transition"
     }
   },
-
   "data_structure": {
     "Post": {
       "id": "string (unique identifier)",
@@ -275,7 +280,6 @@
       "uniqueness": "ID ensures each post has unique transition identifiers"
     }
   },
-
   "visual_design": {
     "instagram_aesthetic": {
       "background": "#FFFFFF (white) or #000000 (dark mode)",
@@ -304,7 +308,6 @@
       "fade": "Background screens fade during transition"
     }
   },
-
   "performance_considerations": {
     "image_preloading": {
       "necessity": "Critical for smooth transitions",
@@ -333,7 +336,6 @@
       "expo_image_benefit": "Automatic memory management"
     }
   },
-
   "gesture_integration": {
     "tap_to_navigate": {
       "component": "TouchableOpacity or Pressable",
@@ -353,7 +355,6 @@
       "enhancement": "Advanced gesture control"
     }
   },
-
   "use_cases": {
     "primary": [
       "Social media apps (Instagram, Pinterest)",
@@ -383,7 +384,6 @@
       "When New Architecture compatibility is required (current limitation)"
     ]
   },
-
   "code_quality": {
     "typescript": "Expected full TypeScript implementation",
     "type_definitions": [
@@ -414,7 +414,6 @@
       "implementation_notes": "Should disable transitions when reduced motion enabled"
     }
   },
-
   "known_limitations": {
     "new_architecture_incompatibility": {
       "issue": "Shared transitions not supported in React Native New Architecture",
@@ -449,7 +448,6 @@
       "solution": "Proper screen cleanup"
     }
   },
-
   "potential_improvements": {
     "when_architecture_fixed": [
       "Implement full Instagram-style feed and detail screens",
@@ -484,7 +482,6 @@
       "Screen reader optimizations"
     ]
   },
-
   "new_architecture_context": {
     "what_is_new_architecture": "React Native's modernized rendering system (Fabric renderer, TurboModules, Codegen)",
     "benefits": [
@@ -505,7 +502,6 @@
       "fallback_strategy": "Provide simple fade transitions as fallback"
     }
   },
-
   "alternative_approaches": {
     "simple_fade_transition": {
       "implementation": "Fade out source screen, fade in destination",
@@ -532,7 +528,6 @@
       "use_when": "Building web version of app"
     }
   },
-
   "key_insights": {
     "visual_continuity_importance": "Shared transitions create premium user experience by maintaining visual continuity",
     "instagram_pattern_recognition": "Users expect this interaction pattern from Instagram, making it instantly familiar",
@@ -542,7 +537,6 @@
     "gesture_coordination": "Coordinating gestures with transitions elevates user experience",
     "new_architecture_tradeoff": "New Architecture brings benefits but temporary feature regressions"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic navigation concepts",
@@ -571,7 +565,6 @@
       "Building resilient animation systems"
     ]
   },
-
   "testing_considerations": {
     "when_feature_restored": {
       "visual_tests": [
@@ -610,7 +603,6 @@
       ]
     }
   },
-
   "migration_roadmap": {
     "current_state": "Animation disabled, README with maintenance notice",
     "waiting_for": "React Native New Architecture shared transition support",
@@ -632,7 +624,6 @@
       "10. Remove maintenance notice"
     ]
   },
-
   "related_patterns": {
     "hero_animations": "Single element expanding to fill screen",
     "shared_element_transitions": "Core pattern used in this animation",
@@ -640,7 +631,6 @@
     "morph_transitions": "Element shape and size transitions",
     "cross_fade": "Simple alternative to shared transitions"
   },
-
   "real_world_inspiration": {
     "instagram": "Primary inspiration - feed to post detail transitions",
     "pinterest": "Grid to detail with image continuity",
@@ -648,14 +638,12 @@
     "google_photos": "Material Design shared element transitions",
     "apple_app_store": "App preview to detail transitions"
   },
-
   "documentation_references": {
     "react_native_new_architecture": "https://reactnative.dev/docs/the-new-architecture/landing-page",
     "reanimated_shared_transitions": "https://docs.swmansion.com/react-native-reanimated/docs/shared-element-transitions/overview",
     "expo_router_navigation": "https://docs.expo.dev/router/introduction/",
     "instagram_design_patterns": "Mobile design pattern libraries and Instagram UI studies"
   },
-
   "tags": [
     "shared-transitions",
     "hero-animation",
@@ -674,5 +662,9 @@
     "visual-continuity",
     "broken",
     "waiting-for-fix"
-  ]
+  ],
+  "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.374Z",
+  "last_validated": "2025-10-12T09:19:28.374Z"
 }

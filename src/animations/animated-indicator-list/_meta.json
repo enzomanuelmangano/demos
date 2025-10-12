@@ -2,7 +2,6 @@
   "animation_name": "Animated Indicator List",
   "animation_slug": "animated-indicator-list",
   "description": "A scrollable section list with an animated horizontal header indicator that smoothly transitions between sections. Features synchronized scroll tracking, dynamic header positioning, and a sliding indicator that follows the active section with smooth interpolations.",
-
   "main_features": [
     "Scrollable FlatList with headers and items",
     "Horizontal header navigation strip",
@@ -15,7 +14,6 @@
     "Synchronized scrolling between list and header",
     "Real-time layout measurement with Reanimated"
   ],
-
   "file_structure": {
     "index.tsx": "Main AnimatedIndicatorList component with FlatList and header",
     "components/SectionListItem.tsx": "Renders individual list items and headers",
@@ -28,13 +26,11 @@
     "hooks/useTimeout.ts": "Memory-safe timeout hook",
     "hooks/useMounted.ts": "Reanimated SharedValue-based mounted state"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "ui": "react-native (FlatList, SafeAreaView)",
     "safe_area": "react-native-safe-area-context"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -50,16 +46,20 @@
         "interpolate",
         "measure"
       ],
-      "components": ["Animated.View", "Animated.FlatList"],
+      "components": [
+        "Animated.View",
+        "Animated.FlatList"
+      ],
       "critical_feature": "useAnimatedScrollHandler for UI thread scroll handling and measure() for layout measurement on UI thread"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Safe area padding for top and bottom"
     }
   },
-
   "animation_techniques": {
     "scroll_tracking": {
       "hook": "useAnimatedScrollHandler",
@@ -91,7 +91,12 @@
       "method": "measure() from Reanimated",
       "timing": "After mount (with 100ms delay)",
       "worklet": true,
-      "measured_properties": ["x", "y", "width", "height"],
+      "measured_properties": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
       "storage": "useDerivedValue with Record<string, LayoutRectangle>",
       "challenge": "Arrays of useAnimatedRef not possible, solved with custom wrapper"
     },
@@ -104,7 +109,6 @@
       "memoization": "useMemo with [data, headerHeight, itemHeight]"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -127,7 +131,9 @@
         "name": "headersLayoutX",
         "type": "Record<string, LayoutRectangle>",
         "calculation": "Measures each header ref via ref.reanimatedMeasure()",
-        "dependencies": ["mounted.value"],
+        "dependencies": [
+          "mounted.value"
+        ],
         "worklet": true,
         "purpose": "Stores X positions and widths of header elements"
       },
@@ -149,7 +155,10 @@
           "height (fixed 3px)",
           "backgroundColor (black)"
         ],
-        "dependencies": ["contentOffsetY", "headersLayoutY"]
+        "dependencies": [
+          "contentOffsetY",
+          "headersLayoutY"
+        ]
       },
       {
         "name": "rHeaderListStyle",
@@ -158,7 +167,10 @@
           "transform: translateX (negative of interpolated value)"
         ],
         "effect": "Scrolls header row horizontally",
-        "dependencies": ["contentOffsetY", "headersLayoutY"]
+        "dependencies": [
+          "contentOffsetY",
+          "headersLayoutY"
+        ]
       }
     ],
     "useCallback_optimization": {
@@ -169,7 +181,6 @@
       }
     }
   },
-
   "custom_hooks": {
     "useConst": {
       "purpose": "Creates a constant value that never changes across re-renders",
@@ -224,7 +235,6 @@
       "interpolations": 2
     }
   },
-
   "component_architecture": {
     "AnimatedIndicatorList": {
       "type": "Main component",
@@ -262,7 +272,6 @@
       "imperative_handle": true
     }
   },
-
   "data_structure": {
     "data_array": {
       "type": "(ListItem | HeaderListItem)[]",
@@ -295,7 +304,6 @@
       "purpose": "Distinguishes headers from items"
     }
   },
-
   "layout_and_positioning": {
     "dimensions": {
       "HeaderHeight": 65,
@@ -331,7 +339,6 @@
       "alignment": "Left edge of container"
     }
   },
-
   "interaction_patterns": {
     "scroll_interaction": {
       "trigger": "User scrolls FlatList",
@@ -351,7 +358,6 @@
       "result": "Jumps to selected section"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#fff (white)",
@@ -389,7 +395,6 @@
       "indicator": "Positioned below headers"
     }
   },
-
   "technical_challenges_and_solutions": {
     "arrays_of_animated_refs": {
       "problem": "Cannot map() over useAnimatedRef hook (hooks can't be called in loops)",
@@ -427,7 +432,6 @@
       "location": "index.tsx line 76-79"
     }
   },
-
   "performance_optimizations": {
     "ui_thread_execution": {
       "scroll_handling": "useAnimatedScrollHandler runs on UI thread",
@@ -455,7 +459,6 @@
       "caching": "Stores measurements in headersLayoutX object"
     }
   },
-
   "use_cases": {
     "primary": [
       "Contact list with alphabetical section headers",
@@ -477,7 +480,6 @@
       "Instagram profile tabs with indicator"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -510,7 +512,6 @@
       "Worklet annotations"
     ]
   },
-
   "known_limitations": {
     "layout_measurement_delay": {
       "issue": "100ms delay before measurements are available",
@@ -539,7 +540,6 @@
       "keyboard_navigation": "No keyboard navigation support"
     }
   },
-
   "potential_improvements": {
     "visual_enhancements": [
       "Gradient fade at edges of header strip",
@@ -579,7 +579,6 @@
       "Indicator style variants"
     ]
   },
-
   "key_insights": {
     "dual_axis_coordination": "Synchronizing vertical scroll (list) with horizontal position (headers) requires careful interpolation setup",
     "measurement_on_ui_thread": "Reanimated's measure() enables layout calculations without bridge crossing",
@@ -590,7 +589,6 @@
     "reduce_for_positions": "Accumulator pattern with reduce elegantly calculates cumulative positions",
     "type_guards": "isHeader() function enables clean type narrowing and conditional rendering"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList with custom renderItem",
@@ -618,7 +616,6 @@
       "Handling timing-dependent layout measurements"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_sectioned_list": {
       "traditional": "SectionList with sticky headers",
@@ -636,7 +633,6 @@
       "similarity": "Both provide quick section navigation"
     }
   },
-
   "testing_considerations": {
     "unit_tests": [
       "isHeader() correctly identifies headers",
@@ -673,7 +669,6 @@
       "Animation performance on low-end devices"
     ]
   },
-
   "mathematical_algorithms": {
     "y_position_accumulation": {
       "pattern": "Reduce with accumulator",
@@ -704,7 +699,6 @@
       "note": "Could use item.title or item.header for stable keys"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features supported",
@@ -725,7 +719,6 @@
       ]
     }
   },
-
   "related_patterns": {
     "sticky_headers": "Headers stick to top while scrolling",
     "tab_indicators": "Animated indicators in tab bars",
@@ -733,14 +726,12 @@
     "parallax_headers": "Headers with parallax scroll effects",
     "collapsible_headers": "Headers that collapse on scroll"
   },
-
   "real_world_inspiration": {
     "ios_contacts": "Alphabet sidebar with section headers",
     "spotify": "Artist sections in playlists",
     "instagram": "Profile tabs with sliding indicator",
     "twitter": "Timeline with sticky headers"
   },
-
   "bundle_size_impact": {
     "component_size": "Medium (~600 lines total including hooks)",
     "dependencies": "Reanimated and safe-area-context (likely already in project)",
@@ -748,7 +739,6 @@
     "runtime_overhead": "Minimal - measurements cached",
     "estimated_size": "~8KB"
   },
-
   "tags": [
     "section-list",
     "animated-indicator",
@@ -765,5 +755,9 @@
     "forwardRef",
     "measure",
     "derived-values"
-  ]
+  ],
+  "content_hash": "69428424899a9585b084be0b7d6fdce9bf063380a2dcb96334ad663293fbf7bd",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.277Z",
+  "last_validated": "2025-10-12T09:19:28.277Z"
 }

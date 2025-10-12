@@ -2,7 +2,6 @@
   "animation_name": "Threads Holo Ticket",
   "animation_slug": "threads-holo-ticket",
   "description": "An interactive 3D flippable ticket component featuring a dynamic holographic effect created with Skia. The ticket can be rotated via pan and tap gestures, revealing a QR code on the back side. The holographic effect uses a sophisticated masking system with moving gradients that respond to rotation, creating an iridescent gold-and-blue shimmer effect reminiscent of holographic security features on physical tickets.",
-
   "main_features": [
     "3D flip animation with perspective transforms",
     "Interactive pan gesture for continuous rotation with momentum",
@@ -19,7 +18,6 @@
     "Dynamic blur mask that follows rotation angle",
     "Opacity-based holographic intensity varying with rotation"
   ],
-
   "file_structure": {
     "entries": {
       "src/index.tsx": "Main entry component rendering centered Ticket with dark background"
@@ -51,7 +49,6 @@
       ]
     }
   },
-
   "core_technologies": [
     "react-native-reanimated (animations and gestures)",
     "react-native-gesture-handler (pan and tap gestures)",
@@ -60,7 +57,6 @@
     "3D transforms (perspective, rotateY)",
     "React memo for performance optimization"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -151,7 +147,6 @@
       ]
     }
   },
-
   "animation_techniques": [
     "3D flip with perspective transform (perspective: 1000)",
     "RotateY transformation driven by pan gesture translation",
@@ -168,7 +163,6 @@
     "Blur mask with large radius (200px) for soft gradient falloff",
     "Inverted clipping for circular ticket perforations"
   ],
-
   "reanimated_patterns": [
     "useSharedValue for translateX (gesture translation tracker)",
     "useSharedValue for contextX (gesture context preservation)",
@@ -187,7 +181,6 @@
     "Gesture.Race for gesture arbitration (tap vs pan)",
     "interpolate with Extrapolation.CLAMP for safe value bounds"
   ],
-
   "performance_optimizations": [
     "GPU-accelerated 3D transforms (perspective, rotateY)",
     "Skia Canvas for high-performance graphics rendering",
@@ -204,7 +197,6 @@
     "Mask rendering only when opacity > 0",
     "Inverted clip for perforations instead of multiple components"
   ],
-
   "use_cases": [
     "Event tickets with holographic security features",
     "Digital membership cards with QR codes",
@@ -222,7 +214,6 @@
     "Portfolio pieces showcasing advanced animation skills",
     "Educational demonstrations of 3D transforms and Skia"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type annotations",
@@ -255,7 +246,6 @@
       "Could add propTypes or runtime validation for development"
     ]
   },
-
   "known_limitations": [
     "Rotation is continuous (no end boundary) - can rotate infinitely",
     "Only rotates around Y-axis (horizontal flip), no X-axis or Z-axis rotation",
@@ -277,7 +267,6 @@
     "Back side content is always mirrored (scaleX: -1)",
     "Performance may vary on low-end devices with Skia rendering"
   ],
-
   "potential_improvements": [
     "Add configurable ticket dimensions via props",
     "Make event details configurable (date, time, username, ticketNumber)",
@@ -310,7 +299,6 @@
     "Support custom masking shapes beyond circular",
     "Add shimmer animation independent of rotation"
   ],
-
   "key_insights": [
     "Race gesture pattern: Gesture.Race elegantly arbitrates between tap and pan without manual conflict resolution",
     "Context preservation: Storing contextX on gesture start enables additive pan gestures for continuous rotation",
@@ -332,13 +320,11 @@
     "Gradient positioning: 9-color gradient with specific position stops creates iridescent holographic shimmer",
     "QR code Skia integration: Using Skia-based QR code enables gradient fills impossible with standard libraries"
   ],
-
   "learning_opportunities": [
     "For beginners: Basic gesture handling, useSharedValue, 3D transforms (perspective, rotateY), opacity animations, conditional rendering with opacity, Platform.select for cross-platform styling",
     "For intermediate: Pan gesture with context preservation, withDecay for momentum physics, useDerivedValue for calculated values, Gesture.Race pattern, modulo arithmetic for continuous rotation, side visibility in 3D space, Skia Canvas basics, QR code generation and styling",
     "For advanced: Complex Skia masking systems, luminance-based mask modes, dynamic gradient positioning with trigonometry, multi-component gesture coordination, Performance optimization with useMemo for graphics, inverted clipping techniques, custom shape patterns with Path API, coordinating gesture velocity with decay physics, building reusable 3D flip components, holographic effect algorithms, Skia shader integration patterns"
   ],
-
   "tags": [
     "3d-flip",
     "holographic-effect",
@@ -370,5 +356,9 @@
     "qrcode-skia",
     "dual-sided",
     "withDecay"
-  ]
+  ],
+  "content_hash": "8b49fe1aa10f733a9c739bbf41bc6371149edf789dcd19e01ce033958982694d",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.480Z",
+  "last_validated": "2025-10-12T09:19:28.480Z"
 }

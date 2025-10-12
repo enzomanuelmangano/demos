@@ -2,7 +2,6 @@
   "animation_name": "Stacked List",
   "animation_slug": "stacked-list",
   "description": "A vertically scrolling list with stacked card effects where items dynamically scale, translate, and fade based on their position relative to the viewport. Features smooth scroll-based animations where cards appear to stack at the bottom of the screen, scaling down and reducing opacity as they approach, creating an immersive depth effect similar to card deck stacking.",
-
   "main_features": [
     "Scroll-based dynamic card stacking effect",
     "Position-aware opacity interpolation with extended extrapolation",
@@ -15,16 +14,13 @@
     "Continuous border curves for modern iOS-style appearance",
     "Scroll offset tracking with useScrollViewOffset hook"
   ],
-
   "file_structure": {
     "index.tsx": "Single-file implementation containing ListItem component and StackedList main component"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "layout": "react-native (Dimensions, Animated.FlatList)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -59,7 +55,6 @@
       "usage": "Dimensions.get('window') for screen measurements and FlatList for item rendering with absolute positioning"
     }
   },
-
   "animation_techniques": {
     "visible_amount_calculation": {
       "pattern": "useDerivedValue with interpolate and EXTEND extrapolation",
@@ -102,7 +97,6 @@
       "visual_result": "Items stack naturally with proper layering as they scroll"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -120,7 +114,11 @@
         {
           "name": "visibleAmount",
           "calculation": "interpolate distance from top to visible amount",
-          "dependencies": ["scrollOffset.value", "baseTranslateY", "BottomThreshold"],
+          "dependencies": [
+            "scrollOffset.value",
+            "baseTranslateY",
+            "BottomThreshold"
+          ],
           "purpose": "Calculate how much of item is visible in viewport",
           "benefit": "Central calculation used by all other animations",
           "extrapolation": "EXTEND - allows negative values for opacity fade-out"
@@ -128,14 +126,21 @@
         {
           "name": "realTranslateY",
           "calculation": "interpolate visibleAmount to Y position",
-          "dependencies": ["visibleAmount.value", "scrollOffset.value", "baseTranslateY"],
+          "dependencies": [
+            "visibleAmount.value",
+            "scrollOffset.value",
+            "baseTranslateY"
+          ],
           "purpose": "Calculate actual Y position for item transform",
           "benefit": "Smooth transition from stacked to natural position"
         },
         {
           "name": "scale",
           "calculation": "interpolate visibleAmount to scale value 0.6-1.0",
-          "dependencies": ["visibleAmount.value", "baseTranslateY"],
+          "dependencies": [
+            "visibleAmount.value",
+            "baseTranslateY"
+          ],
           "purpose": "Calculate scale factor for depth effect",
           "benefit": "Automatic recalculation when scroll position changes"
         }
@@ -167,11 +172,14 @@
         ]
       },
       "applied_to": "Each ListItem's Animated.View",
-      "dependencies": ["visibleAmount", "realTranslateY", "scale"],
+      "dependencies": [
+        "visibleAmount",
+        "realTranslateY",
+        "scale"
+      ],
       "runs_on": "UI thread"
     }
   },
-
   "component_architecture": {
     "stacked_list": {
       "type": "Main container component",
@@ -205,7 +213,6 @@
       "rendering": "Absolute positioned Animated.View with dynamic transforms"
     }
   },
-
   "mathematical_calculations": {
     "dimensions": {
       "ListItemHeight": 100,
@@ -232,7 +239,6 @@
       "reason": "Multiplier 1.5 ensures last item is visible at max opacity (0.7)"
     }
   },
-
   "layout_and_positioning": {
     "container": {
       "flex": 1,
@@ -262,7 +268,6 @@
       "overflow": "implicit (default clip)"
     }
   },
-
   "scroll_interaction": {
     "scroll_tracking": {
       "method": "useScrollViewOffset hook",
@@ -285,13 +290,13 @@
       },
       "in_natural_position": {
         "state": "Item at its index-based position",
-        "scale": 1.0,
+        "scale": 1,
         "opacity": 0.7,
         "translateY": "baseTranslateY (index * FullListItemHeight)"
       },
       "above_viewport": {
         "state": "Item scrolled past (with EXTEND extrapolation)",
-        "scale": 1.0,
+        "scale": 1,
         "opacity": "< 0.3 (continues decreasing)",
         "translateY": "baseTranslateY"
       }
@@ -303,7 +308,6 @@
       "comment": "Honestly, I didn't know how to name this constant :)"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#fff (white)",
@@ -327,7 +331,6 @@
       "visual_effect": "Cards appear to recede into background as they stack"
     }
   },
-
   "data_structure": {
     "items_array": {
       "generation": "new Array(50).fill(0)",
@@ -342,12 +345,15 @@
       "purpose": "Focus on animation mechanics without content distraction"
     }
   },
-
   "performance_optimizations": {
     "ui_thread_execution": {
       "technique": "All animations run on UI thread via Reanimated",
       "benefit": "No bridge crossing for 60fps smooth animations",
-      "critical_hooks": ["useScrollViewOffset", "useDerivedValue", "useAnimatedStyle"]
+      "critical_hooks": [
+        "useScrollViewOffset",
+        "useDerivedValue",
+        "useAnimatedStyle"
+      ]
     },
     "derived_value_optimization": {
       "pattern": "visibleAmount calculated once, used by multiple animations",
@@ -369,7 +375,6 @@
       "no_js_thread": "No JavaScript thread involved in animation frame updates"
     }
   },
-
   "use_cases": {
     "primary": [
       "Card stack interfaces",
@@ -400,17 +405,21 @@
       "Notification card stacks"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with type imports",
-      "type_definitions": ["ListItemProps"],
+      "type_definitions": [
+        "ListItemProps"
+      ],
       "type_imports": "SharedValue from react-native-reanimated",
       "explicit_types": "All props and refs explicitly typed"
     },
     "code_organization": {
       "pattern": "Single-file implementation",
-      "components": ["ListItem (child)", "StackedList (parent)"],
+      "components": [
+        "ListItem (child)",
+        "StackedList (parent)"
+      ],
       "separation": "Clear component hierarchy with prop drilling"
     },
     "constants": {
@@ -462,7 +471,6 @@
       "BottomThreshold calculation could be memoized"
     ]
   },
-
   "known_limitations": {
     "no_virtualization": {
       "issue": "All 50 items rendered simultaneously due to absolute positioning",
@@ -498,7 +506,6 @@
       "flexibility": "Not configurable without code changes"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Tap to expand card",
@@ -552,7 +559,6 @@
       "Semantic HTML/ARIA labels for web"
     ]
   },
-
   "key_insights": {
     "extrapolation_power": "Using EXTEND extrapolation on opacity allows smooth fade-out beyond visible range, unlike CLAMP",
     "cascade_pattern": "Single visibleAmount calculation efficiently drives multiple animation properties",
@@ -565,7 +571,6 @@
     "scroll_math": "Distance calculation (scrollOffset + threshold - baseY) is the core of position-aware animations",
     "educational_value": "Excellent teaching example for interpolation, extrapolation, and derived values"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic scroll-based animations",
@@ -597,7 +602,6 @@
       "Mathematical modeling of visual depth perception"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Cards stack properly at bottom",
@@ -645,7 +649,6 @@
       "Notch/safe area variations"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels or hints",
@@ -668,7 +671,6 @@
       "focus_management": "If cards become interactive, manage focus order"
     }
   },
-
   "comparison_to_similar_patterns": {
     "vs_standard_flatlist": {
       "similarity": "Both use FlatList for rendering",
@@ -691,7 +693,6 @@
       "interaction": "Tinder is swipe-to-dismiss, this is scroll-to-browse"
     }
   },
-
   "related_patterns": {
     "scroll_effects": [
       "Parallax scrolling",
@@ -712,7 +713,6 @@
       "Rotation on scroll"
     ]
   },
-
   "real_world_inspiration": {
     "ios_wallet": "Card stacking effect similar to Apple Wallet",
     "tinder": "Card stack concept (though different interaction)",
@@ -720,7 +720,6 @@
     "notion": "Page stack visualization in navigation",
     "paper_prototyping": "Physical card deck stacking metaphor"
   },
-
   "mathematical_deep_dive": {
     "core_equation": "distanceFromTop = scrollOffset + BottomThreshold - baseTranslateY",
     "explanation": {
@@ -755,7 +754,6 @@
       "why_clamp_for_scale": "Prevents items from scaling beyond 100% or below 60%"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~190 lines in single file",
     "dependencies": "Reanimated likely already in project",
@@ -763,7 +761,6 @@
     "estimated_size": "< 5KB",
     "performance_overhead": "Minimal - animations run on UI thread"
   },
-
   "tags": [
     "scroll-animation",
     "stacked-cards",
@@ -785,5 +782,9 @@
     "responsive-design",
     "educational",
     "mathematical"
-  ]
+  ],
+  "content_hash": "5546a7070a11e0e82b2ddc1b4b0c6d846baffbafef8d6bfc86c203dccf026bff",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.452Z",
+  "last_validated": "2025-10-12T09:19:28.452Z"
 }

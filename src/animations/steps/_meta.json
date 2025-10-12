@@ -2,7 +2,6 @@
   "animation_name": "Steps",
   "animation_slug": "steps",
   "description": "A multi-step progress indicator with animated dots and dynamic buttons. Features an animated progress bar that grows with spring animations, color-transitioning dots, dynamic button width animations with interpolation, and adaptive button labels. Perfect for onboarding flows, forms, and wizard-style interfaces.",
-
   "main_features": [
     "Animated progress bar with spring animation",
     "Color-transitioning dots based on step completion",
@@ -15,7 +14,6 @@
     "PressableScale interactions for buttons",
     "Continuous border curve for iOS-style UI"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo wrapper with GestureHandlerRootView",
     "src/index.tsx": "Core App component with step state management",
@@ -23,14 +21,12 @@
     "src/steps/dots/dot.tsx": "Individual dot with color animation",
     "src/steps/step-buttons/index.tsx": "Step navigation buttons with animations"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "interactions": "pressto",
     "threading": "react-native-worklets"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -43,18 +39,29 @@
         "withSpring",
         "withTiming"
       ],
-      "functions": ["withSpring", "withTiming", "interpolate"],
-      "components": ["Animated.View", "Animated.Text"],
+      "functions": [
+        "withSpring",
+        "withTiming",
+        "interpolate"
+      ],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
       "critical_feature": "useAnimatedReaction for syncing worklet and JS thread state"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureHandlerRootView"],
+      "components": [
+        "GestureHandlerRootView"
+      ],
       "usage": "Wrapper for gesture-based interactions"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet callbacks to JS thread for state updates"
     },
     "pressto": {
@@ -65,10 +72,11 @@
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "component": "AntDesign",
-      "icons_used": ["check-circle"]
+      "icons_used": [
+        "check-circle"
+      ]
     }
   },
-
   "animation_techniques": {
     "progress_bar_width": {
       "pattern": "Dynamic width calculation with spring animation",
@@ -118,7 +126,6 @@
       "benefit": "Enables conditional rendering based on shared value"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -159,13 +166,17 @@
         {
           "name": "backButtonProgress",
           "calculation": "withSpring(activeIndex.value > 0 ? 1 : 0, SPRING_CONFIG)",
-          "dependencies": ["activeIndex.value"],
+          "dependencies": [
+            "activeIndex.value"
+          ],
           "purpose": "Progress value for back button reveal animation"
         },
         {
           "name": "iconProgress",
           "calculation": "withSpring(activeIndex.value === 2 ? 1 : 0, SPRING_CONFIG)",
-          "dependencies": ["activeIndex.value"],
+          "dependencies": [
+            "activeIndex.value"
+          ],
           "purpose": "Progress value for check icon reveal animation"
         }
       ]
@@ -237,12 +248,13 @@
       "benefit": "Dots only re-render when props change"
     }
   },
-
   "component_architecture": {
     "steps": {
       "type": "Main wrapper component",
       "purpose": "Provides GestureHandlerRootView context",
-      "children": ["App"]
+      "children": [
+        "App"
+      ]
     },
     "app": {
       "type": "Container component",
@@ -259,7 +271,10 @@
           "initial": 0
         }
       },
-      "children": ["Dots", "StepButtons"],
+      "children": [
+        "Dots",
+        "StepButtons"
+      ],
       "layout": "Flex column, centered, bottom-aligned"
     },
     "dots": {
@@ -337,7 +352,6 @@
       "rendering": "Back button (conditional) + Continue button with icon"
     }
   },
-
   "layout_and_positioning": {
     "container": {
       "alignment": "center",
@@ -395,7 +409,6 @@
       "marginRight": "Animated (0 to 6px)"
     }
   },
-
   "calculation_formulas": {
     "progress_bar_width": {
       "formula": "(activeIndex + 1) * dotSize + activeIndex * dotSpacing + externalSpacing",
@@ -415,7 +428,6 @@
       "purpose": "25% of available button space"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#fff (white)",
@@ -459,10 +471,13 @@
       "effect": "Slightly overdamped for smooth, controlled motion"
     }
   },
-
   "step_flow": {
     "total_steps": 3,
-    "step_indices": [0, 1, 2],
+    "step_indices": [
+      0,
+      1,
+      2
+    ],
     "navigation": {
       "forward": "increaseActiveIndex() - cycles to 0 after step 2",
       "backward": "decreaseActiveIndex() - minimum 0",
@@ -495,7 +510,6 @@
       }
     }
   },
-
   "interaction_patterns": {
     "button_press": {
       "component": "PressableScale",
@@ -519,7 +533,6 @@
       "purpose": "Update button label when reaching final step"
     }
   },
-
   "performance_optimizations": {
     "memo": {
       "component": "Dots",
@@ -531,11 +544,17 @@
     },
     "derived_values": {
       "count": 2,
-      "instances": ["backButtonProgress", "iconProgress"],
+      "instances": [
+        "backButtonProgress",
+        "iconProgress"
+      ],
       "benefit": "Automatic recalculation, optimized dependency tracking"
     },
     "useCallback": {
-      "functions": ["increaseActiveIndex", "decreaseActiveIndex"],
+      "functions": [
+        "increaseActiveIndex",
+        "decreaseActiveIndex"
+      ],
       "benefit": "Stable references, prevents child re-renders"
     },
     "ui_thread_execution": {
@@ -547,7 +566,6 @@
       "overhead": "Very low, suitable for any device"
     }
   },
-
   "use_cases": {
     "primary": [
       "Onboarding flows",
@@ -578,7 +596,6 @@
       "Tutorial sequences (Duolingo)"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit types",
@@ -603,7 +620,11 @@
     ],
     "typescript_usage": {
       "coverage": "Full TypeScript",
-      "type_definitions": ["DotsProps", "DotProps", "StepButtonsProps"],
+      "type_definitions": [
+        "DotsProps",
+        "DotProps",
+        "StepButtonsProps"
+      ],
       "type_imports": "SharedValue from react-native-reanimated",
       "best_practices": "Type annotations on all props and components"
     },
@@ -629,7 +650,6 @@
       "Continuous border curve for iOS polish"
     ]
   },
-
   "known_limitations": {
     "hardcoded_step_count": {
       "issue": "Step count fixed at 3",
@@ -662,7 +682,6 @@
       "enhancement": "Fallback to system font or make configurable"
     }
   },
-
   "potential_improvements": {
     "customization": [
       "Configurable step count",
@@ -708,7 +727,6 @@
       "Loading states during transitions"
     ]
   },
-
   "key_insights": {
     "width_calculation_formula": "Mathematical formula for progress bar width accounts for dots and spacing perfectly",
     "animated_reaction_pattern": "useAnimatedReaction + scheduleOnRN enables worklet-to-React state syncing",
@@ -721,7 +739,6 @@
     "overflow_hidden_trick": "overflow: 'hidden' on button container enables width-based reveal",
     "memo_optimization": "Memoizing Dots prevents unnecessary re-renders from parent state changes"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic step-based navigation",
@@ -750,7 +767,6 @@
       "Coordinating multiple animated elements"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Progress bar grows correctly on each step",
@@ -796,7 +812,6 @@
       "Color contrast sufficient"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -824,7 +839,6 @@
       "progress_info": "accessibilityValue={{ now: activeIndex + 1, min: 1, max: 3 }}"
     }
   },
-
   "comparison_to_similar_patterns": {
     "vs_tab_indicators": {
       "similarity": "Both show current position in sequence",
@@ -842,7 +856,6 @@
       "advantage": "Progress bar provides stronger visual feedback"
     }
   },
-
   "related_patterns": {
     "progress_indicators": [
       "Linear progress bars",
@@ -863,21 +876,18 @@
       "Label changes"
     ]
   },
-
   "real_world_inspiration": {
     "ios_onboarding": "iOS app onboarding flows with dot indicators",
     "material_stepper": "Material Design stepper pattern",
     "form_wizards": "Multi-step form patterns across web/mobile",
     "checkout_flows": "E-commerce checkout progress indicators"
   },
-
   "bundle_size_impact": {
     "code_size": "~200 lines total (main + components)",
     "dependencies": "Reanimated, gesture-handler, pressto, vector-icons (likely already in project)",
     "runtime_memory": "Minimal - 3 SharedValues, 5 animated styles",
     "estimated_size": "< 8KB"
   },
-
   "tags": [
     "steps",
     "progress-indicator",
@@ -894,5 +904,9 @@
     "worklets",
     "step-navigation",
     "form-wizard"
-  ]
+  ],
+  "content_hash": "6ba1f4d52551fcccc694587f261a12366c2a3c3e4ee23b1e54283b31c95c776f",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.462Z",
+  "last_validated": "2025-10-12T09:19:28.462Z"
 }

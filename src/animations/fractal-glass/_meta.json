@@ -2,7 +2,6 @@
   "animation_name": "Fractal Glass",
   "animation_slug": "fractal-glass",
   "description": "An interactive glassmorphic effect featuring a draggable circle with fractalized gradient masking. The animation uses Skia's masking capabilities to create a frosted glass appearance with a grid of diagonal gradients that blur the circle's edges. Includes a theme toggle button with smooth color transitions between light and dark modes.",
-
   "main_features": [
     "Pan gesture-driven circle movement with smooth tracking",
     "Fractal gradient mask with configurable grid density",
@@ -15,19 +14,16 @@
     "Dynamic gradient generation based on grid parameters",
     "Dual-layer rendering: base circle and blurred masked circle"
   ],
-
   "file_structure": {
     "index.tsx": "Main FractalGlass component with gesture handling, theme state, canvas rendering, and floating theme toggle button",
     "components/fractal-glass-mask.tsx": "Reusable mask component that generates a grid of diagonal linear gradients for fractal glass effect"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "interactions": "pressto (PressableScale)"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -40,7 +36,10 @@
         "Rect",
         "LinearGradient"
       ],
-      "utilities": ["vec", "rect"],
+      "utilities": [
+        "vec",
+        "rect"
+      ],
       "usage": "GPU-accelerated rendering of masked circles with blur effects and gradient-based masking",
       "critical_features": [
         "Alpha masking mode for selective opacity",
@@ -55,28 +54,41 @@
         "useAnimatedStyle",
         "useDerivedValue"
       ],
-      "functions": ["withTiming"],
+      "functions": [
+        "withTiming"
+      ],
       "critical_feature": "Smooth theme transitions with withTiming and color interpolation for theme changes"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["Gesture", "GestureDetector"],
-      "gestures_used": ["Pan"],
+      "components": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "gestures_used": [
+        "Pan"
+      ],
       "usage": "Handles drag interaction for circle movement with begin/update lifecycle"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Animated theme toggle button with spring-based scale feedback"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["Octicons"],
-      "icons_used": ["sun", "moon"],
+      "components": [
+        "Octicons"
+      ],
+      "icons_used": [
+        "sun",
+        "moon"
+      ],
       "usage": "Theme toggle button icons"
     }
   },
-
   "animation_techniques": {
     "pan_gesture_tracking": {
       "pattern": "Pan gesture with begin/update handlers and previous value storage",
@@ -190,7 +202,6 @@
       }
     }
   },
-
   "component_architecture": {
     "fractal_glass": {
       "type": "Main demo component",
@@ -221,7 +232,9 @@
       },
       "derived_values": {
         "circleColor": {
-          "dependencies": ["theme"],
+          "dependencies": [
+            "theme"
+          ],
           "calculation": "withTiming(theme === 'light' ? 'orange' : '#78C0E0')",
           "usage": "Animated circle color for both instances"
         }
@@ -268,7 +281,6 @@
       "reusability": "Fully configurable via props, can be used for different mask sizes and densities"
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -311,7 +323,6 @@
       "centering": "Touch target centered on circle position"
     }
   },
-
   "theme_system": {
     "implementation": "React useState with manual toggle",
     "themes": {
@@ -346,7 +357,6 @@
       "style": "Circular (borderRadius: 29), white icon"
     }
   },
-
   "skia_rendering": {
     "canvas": {
       "style": "{ flex: 1 }",
@@ -383,7 +393,6 @@
       "current_implementation": "Uses mask within Circle for more sophisticated effect"
     }
   },
-
   "mathematical_relationships": {
     "grid_calculations": {
       "cell_width": "totalWidth / gradientsN = (windowWidth - 80) / 4",
@@ -410,7 +419,6 @@
       "height": "300px (fixed)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -447,20 +455,34 @@
       "instances": [
         {
           "name": "rBackgroundStyle",
-          "animated_properties": ["backgroundColor"],
-          "dependencies": ["theme"],
+          "animated_properties": [
+            "backgroundColor"
+          ],
+          "dependencies": [
+            "theme"
+          ],
           "purpose": "Animate background color on theme change"
         },
         {
           "name": "rFloatingBackgroundStyle",
-          "animated_properties": ["backgroundColor"],
-          "dependencies": ["circleColor.value"],
+          "animated_properties": [
+            "backgroundColor"
+          ],
+          "dependencies": [
+            "circleColor.value"
+          ],
           "purpose": "Animate button background color"
         },
         {
           "name": "rFakeCircleStyle",
-          "animated_properties": ["left", "top"],
-          "dependencies": ["cx.value", "cy.value"],
+          "animated_properties": [
+            "left",
+            "top"
+          ],
+          "dependencies": [
+            "cx.value",
+            "cy.value"
+          ],
           "purpose": "Position invisible touch target"
         }
       ]
@@ -469,7 +491,9 @@
       "usage_count": 1,
       "instance": {
         "name": "circleColor",
-        "dependencies": ["theme"],
+        "dependencies": [
+          "theme"
+        ],
         "calculation": "withTiming(theme === 'light' ? 'orange' : '#78C0E0')",
         "purpose": "Smooth color transition on theme change",
         "benefit": "Single source of truth for circle color used in multiple places"
@@ -493,7 +517,6 @@
       ]
     }
   },
-
   "visual_design": {
     "color_schemes": {
       "light_mode": {
@@ -538,7 +561,6 @@
       "interaction": "PressableScale with spring physics"
     }
   },
-
   "performance_optimizations": {
     "skia_rendering": {
       "benefit": "GPU-accelerated, handles complex masking and blur at 60fps",
@@ -568,7 +590,6 @@
       "z_index": "High (100) ensures touch events captured first"
     }
   },
-
   "use_cases": {
     "primary": [
       "Interactive glassmorphic effect demonstrations",
@@ -605,11 +626,13 @@
       "Accessibility-critical features (complex visual effect)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "type_definitions": ["Theme type alias", "FractalGlassMaskProps interface"],
+      "type_definitions": [
+        "Theme type alias",
+        "FractalGlassMaskProps interface"
+      ],
       "type_safety": "Explicit prop types, SharedValue typing, FC generic usage"
     },
     "component_structure": {
@@ -657,7 +680,6 @@
       "Add accessibility labels and hints"
     ]
   },
-
   "known_limitations": {
     "performance": {
       "issue": "16 gradients + masking + blur is computationally intensive",
@@ -703,7 +725,6 @@
       "impact": "Not accessible to users with disabilities"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Add boundary constraints to keep circle visible",
@@ -753,7 +774,6 @@
       "Alternative text descriptions"
     ]
   },
-
   "key_insights": {
     "fractal_masking_technique": "Grid of diagonal gradients creates more sophisticated mask than single gradient",
     "inverted_clipping_power": "Same circle rendered twice with invertClip creates seamless transition between effects",
@@ -765,7 +785,6 @@
     "dual_layer_rendering": "Two circles with different effects in different regions creates sophisticated interaction",
     "theme_system_simplicity": "Simple useState sufficient for theme with derived values handling animations"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic pan gesture handling with react-native-gesture-handler",
@@ -796,7 +815,6 @@
       "Theme system architecture with animations"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Gradient mask renders correctly (16 diagonal gradients)",
@@ -838,7 +856,6 @@
       "Safe area handling"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_simple_backdrop_blur": {
       "alternative": "Single BackdropFilter with blur",
@@ -859,7 +876,6 @@
       "tradeoffs": "Platform-specific (not web-standard)"
     }
   },
-
   "related_patterns": {
     "glassmorphism": "Frosted glass UI effects",
     "alpha_masking": "Opacity-based masking techniques",
@@ -867,14 +883,12 @@
     "theme_switching": "Dark/light mode implementations",
     "spotlight_effects": "Selective reveal animations"
   },
-
   "real_world_inspiration": {
     "ios_frosted_glass": "Apple's translucent UI overlays",
     "material_design_scrim": "Material backdrop effects",
     "glass_ui_trend": "Glassmorphism design trend (2020-2021)",
     "magnifier_tools": "iOS magnifier/loupe effects"
   },
-
   "bundle_size_impact": {
     "code_size": "~171 lines total (index: 122 lines, mask component: 49 lines)",
     "dependencies": {
@@ -886,7 +900,6 @@
     "runtime_memory": "Moderate - 4 SharedValues, 16 gradient objects, blur effect",
     "estimated_additional": "< 8KB (excluding shared dependencies)"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -914,7 +927,6 @@
       "keyboard": "Add keyboard controls for theme toggle"
     }
   },
-
   "tags": [
     "fractal-glass",
     "glassmorphism",
@@ -934,5 +946,9 @@
     "gpu-accelerated",
     "grid-pattern",
     "dual-layer-rendering"
-  ]
+  ],
+  "content_hash": "2188ed8e2b48a19d65782a9385b99221aff8cca70a628a3e0ca28b9ef09c2cff",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.355Z",
+  "last_validated": "2025-10-12T09:19:28.355Z"
 }

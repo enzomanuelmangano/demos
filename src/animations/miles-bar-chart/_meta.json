@@ -2,7 +2,6 @@
   "animation_name": "Miles Bar Chart",
   "animation_slug": "miles-bar-chart",
   "description": "An animated weekly activity bar chart with synchronized horizontal scrolling. Features smooth spring-animated bars that transition in height and color based on data values, coordinated with a horizontal FlatList displaying week labels. Uses derived values to synchronize chart data with scroll position, creating a cohesive data visualization experience.",
-
   "main_features": [
     "Synchronized scroll-driven data visualization",
     "Spring-animated bar height transitions",
@@ -15,7 +14,6 @@
     "Responsive bar width calculations",
     "Fast deceleration for snappy scrolling"
   ],
-
   "file_structure": {
     "index.tsx": "Entry point exporting MilesBarChart component",
     "src/index.tsx": "Main App component with FlatList and scroll synchronization",
@@ -23,14 +21,12 @@
     "src/components/weekly-chart/index.tsx": "WeeklyChart container managing 7 bar components",
     "src/components/weekly-chart/single-bar.tsx": "Individual Bar component with height and color animations"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "date_handling": "date-fns",
     "list": "Animated.FlatList",
     "pattern": "Scroll-driven data synchronization"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -45,7 +41,10 @@
         "interpolateColor",
         "withTiming"
       ],
-      "components": ["Animated.FlatList", "Animated.View"],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View"
+      ],
       "critical_feature": "useDerivedValue synchronizes chart data with scroll position"
     },
     "date-fns": {
@@ -57,7 +56,6 @@
       "usage": "Calculate weekly dates starting from 3 weeks ago, format display labels"
     }
   },
-
   "animation_techniques": {
     "bar_height_animation": {
       "type": "interpolate",
@@ -99,7 +97,6 @@
       "benefit": "Single source of truth for current week's data"
     }
   },
-
   "reanimated_patterns": {
     "useAnimatedRef": {
       "location": "src/index.tsx",
@@ -119,34 +116,47 @@
       {
         "name": "activeIndex",
         "calculation": "Math.floor((scrollOffset.value + windowWidth/2) / windowWidth)",
-        "dependencies": ["scrollOffset"],
+        "dependencies": [
+          "scrollOffset"
+        ],
         "purpose": "Calculate which week is centered in viewport",
         "reactivity": "Updates on every scroll frame"
       },
       {
         "name": "animatedData",
         "calculation": "data[activeIndex.value]",
-        "dependencies": ["activeIndex", "data"],
+        "dependencies": [
+          "activeIndex",
+          "data"
+        ],
         "purpose": "Select current week's data array",
         "type": "SharedValue<WeekData>"
       },
       {
         "name": "progress (per bar)",
         "calculation": "data.value[index].value",
-        "dependencies": ["data", "index"],
+        "dependencies": [
+          "data",
+          "index"
+        ],
         "purpose": "Extract individual bar's progress value"
       },
       {
         "name": "animatedProgress",
         "calculation": "withTiming(progress.value)",
-        "dependencies": ["progress"],
+        "dependencies": [
+          "progress"
+        ],
         "purpose": "Smooth transitions between progress values"
       }
     ],
     "animated_style": {
       "name": "rAnimatedStyle",
       "location": "single-bar.tsx",
-      "properties": ["height", "backgroundColor"],
+      "properties": [
+        "height",
+        "backgroundColor"
+      ],
       "interpolations": [
         "height: interpolate(progress, [0,1], [minHeight, maxHeight])",
         "backgroundColor: interpolateColor(progress, [0,1], [transparent, solid])"
@@ -154,7 +164,6 @@
       "updates": "When progress SharedValue changes"
     }
   },
-
   "data_structure": {
     "data_array": {
       "type": "Array<Array<DayInfo>>",
@@ -189,7 +198,6 @@
       "usage": "Drives bar height and color intensity"
     }
   },
-
   "component_architecture": {
     "app_component": {
       "location": "src/index.tsx",
@@ -243,7 +251,6 @@
       }
     }
   },
-
   "layout_calculations": {
     "bar_width_formula": {
       "calculation": "(width - internalPaddingHorizontal * 2 - gap * 6) / 7",
@@ -270,7 +277,6 @@
       "purpose": "Ensure all bars visible even at minimum value"
     }
   },
-
   "scroll_behavior": {
     "flatlist_config": {
       "horizontal": true,
@@ -297,7 +303,6 @@
       "benefit": "Easier to grab and scroll"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#392F40 (dark purple-gray)",
@@ -329,7 +334,6 @@
       "label_top_padding": "20px above week labels"
     }
   },
-
   "date_generation_logic": {
     "base_calculation": {
       "starting_point": "3 weeks ago (today - 21 days)",
@@ -355,19 +359,23 @@
       ]
     }
   },
-
   "performance_optimizations": {
     "useMemo": {
       "location": "WeeklyChart component",
       "calculation": "initialData = data.value",
-      "dependencies": ["data"],
+      "dependencies": [
+        "data"
+      ],
       "purpose": "Cache initial data array for map iteration",
       "benefit": "Prevents recalculating array on every render"
     },
     "useMemo_for_letter": {
       "location": "AnimatedWeeklyBar",
       "calculation": "data.value[index].day",
-      "dependencies": ["data", "index"],
+      "dependencies": [
+        "data",
+        "index"
+      ],
       "purpose": "Cache day letter (doesn't change for position)",
       "benefit": "Reduces unnecessary recalculations"
     },
@@ -388,7 +396,6 @@
       "reusability": "Same Bar component reused 7 times"
     }
   },
-
   "react_patterns": {
     "hooks_used": [
       "useWindowDimensions",
@@ -400,9 +407,16 @@
     ],
     "component_composition": {
       "pattern": "Container/Presentational separation",
-      "containers": ["App", "WeeklyChart"],
-      "presentational": ["Bar"],
-      "internal": ["AnimatedWeeklyBar"]
+      "containers": [
+        "App",
+        "WeeklyChart"
+      ],
+      "presentational": [
+        "Bar"
+      ],
+      "internal": [
+        "AnimatedWeeklyBar"
+      ]
     },
     "memoization_strategy": {
       "useMemo": "For static or rarely changing calculations",
@@ -410,7 +424,6 @@
       "no_memo": "Components not wrapped in React.memo (could be optimization)"
     }
   },
-
   "use_cases": {
     "primary": [
       "Fitness tracking (daily steps, distance, calories)",
@@ -436,7 +449,6 @@
       "Sleep tracking apps"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript coverage",
     "type_definitions": [
@@ -447,7 +459,10 @@
       "BarProps"
     ],
     "imports": {
-      "types": ["SharedValue", "FC"],
+      "types": [
+        "SharedValue",
+        "FC"
+      ],
       "organized": true,
       "explicit": true
     },
@@ -482,7 +497,6 @@
       "Week labels renderItem could be extracted to separate component"
     ]
   },
-
   "known_limitations": {
     "fixed_dimensions": {
       "issue": "Chart height hardcoded to 150px",
@@ -516,7 +530,6 @@
       "recommendation": "Add font loading check or use system font"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Tap bar to see exact value",
@@ -568,7 +581,6 @@
       "Reduce motion support"
     ]
   },
-
   "key_insights": {
     "scroll_sync_pattern": "useScrollViewOffset + useDerivedValue creates elegant scroll synchronization",
     "center_based_detection": "Adding windowWidth/2 to scroll offset detects centered item, not leftmost",
@@ -579,7 +591,6 @@
     "withTiming_wrapper": "Wrapping SharedValue with withTiming in useDerivedValue smooths transitions",
     "date_fns_utility": "date-fns simplifies complex date calculations and formatting"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList with horizontal scroll and snap",
@@ -605,7 +616,6 @@
       "Date-based data generation patterns"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Date generation produces correct week ranges",
@@ -642,7 +652,6 @@
       "Memory usage remains stable"
     ]
   },
-
   "mathematical_algorithms": {
     "active_index_formula": {
       "formula": "Math.floor((scrollOffset + windowWidth/2) / windowWidth)",
@@ -678,7 +687,6 @@
       }
     }
   },
-
   "animation_choreography": {
     "timing_coordination": {
       "scroll": "Native gesture-driven (no artificial timing)",
@@ -694,7 +702,6 @@
       "cascade": "Single scroll action triggers entire animation chain"
     }
   },
-
   "accessibility_considerations": {
     "current_state": "No accessibility implementation",
     "recommendations": [
@@ -712,7 +719,6 @@
       "individual_bars": "Could add labels like 'Monday: [value]'"
     }
   },
-
   "comparison_to_alternatives": {
     "vs_static_chart": {
       "static": "All weeks visible at once",
@@ -730,7 +736,6 @@
       "tradeoff": "More code but better performance and customization"
     }
   },
-
   "related_patterns": {
     "similar_animations": [
       "Carousel with data visualization",
@@ -745,7 +750,6 @@
       "Sparklines"
     ]
   },
-
   "bundle_size_impact": {
     "component_size": "Medium (~180 lines across 5 files)",
     "dependencies": {
@@ -755,7 +759,6 @@
     "optimization": "Could reduce date-fns usage or replace with native Date",
     "estimated_size": "~5KB component code + date-fns overhead"
   },
-
   "tags": [
     "bar-chart",
     "data-visualization",
@@ -771,5 +774,9 @@
     "synchronized-ui",
     "health-metrics",
     "activity-chart"
-  ]
+  ],
+  "content_hash": "59a04eb94e75196341a72a319594e91a174e4b4ce7a5aac968fcae6ee73505f9",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.389Z",
+  "last_validated": "2025-10-12T09:19:28.389Z"
 }

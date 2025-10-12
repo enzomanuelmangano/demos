@@ -2,7 +2,6 @@
   "animation_name": "Loading Button",
   "animation_slug": "loading-button",
   "description": "A sophisticated button component with animated status transitions supporting idle, loading, success, and error states. Features a Skia-rendered activity indicator with rotating arc animation, smooth color transitions, dynamic text updates, and animated width/height changes. The loading state displays a rotating arc indicator, while success and error states show filled circles with SVG icons (checkmark and lock). The button automatically adapts its size based on the presence of the indicator.",
-
   "main_features": [
     "Four distinct button states: idle, loading, success, error",
     "Animated Skia-based activity indicator with rotating arc",
@@ -19,27 +18,39 @@
     "Auto-reset functionality with timeout",
     "Prevents double-click during loading state"
   ],
-
   "file_structure": {
     "index.tsx": "Demo app with custom useMutation hook, state management, and LoadingButton implementation example with transaction checking scenario",
     "components/loading-button/index.tsx": "Main LoadingButton component with PressableScale wrapper, color management, and ActivityIndicator integration",
     "components/loading-button/activity-indicator.tsx": "Skia Canvas-based indicator with rotating arc for loading, filled circle with SVG icons for success/error states"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "interactions": "pressto",
     "color_manipulation": "color"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
       "usage": "Activity indicator rendering with Canvas, rotating arc, filled circles, and SVG icons",
-      "components": ["Canvas", "Group", "Circle", "Path", "ImageSVG"],
-      "utilities": ["Skia", "fitbox", "rect"],
-      "methods": ["Skia.Path.Make()", "Skia.SVG.MakeFromString()", "addArc()", "fitbox()"],
+      "components": [
+        "Canvas",
+        "Group",
+        "Circle",
+        "Path",
+        "ImageSVG"
+      ],
+      "utilities": [
+        "Skia",
+        "fitbox",
+        "rect"
+      ],
+      "methods": [
+        "Skia.Path.Make()",
+        "Skia.SVG.MakeFromString()",
+        "addArc()",
+        "fitbox()"
+      ],
       "critical_feature": "Path API for arc creation, SVG rendering for icons, Group for transforms and opacity",
       "performance_reason": "GPU-accelerated rendering for smooth rotation and opacity transitions"
     },
@@ -54,8 +65,15 @@
         "withRepeat",
         "cancelAnimation"
       ],
-      "components": ["Animated.View", "Animated.Text"],
-      "layout_animations": ["FadeIn", "FadeOut", "LinearTransition"],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
+      "layout_animations": [
+        "FadeIn",
+        "FadeOut",
+        "LinearTransition"
+      ],
       "critical_feature": "withRepeat for infinite rotation, useDerivedValue for reactive opacity, useEffect-triggered animations based on status"
     },
     "pressto": {
@@ -67,7 +85,10 @@
     "color": {
       "version": "^4.2.3",
       "usage": "Background color manipulation with lighten() method",
-      "methods": ["Color().lighten()", ".hex()"],
+      "methods": [
+        "Color().lighten()",
+        ".hex()"
+      ],
       "purpose": "Create light background colors from base colors (lighten by 0.6)"
     },
     "react-native-gesture-handler": {
@@ -76,7 +97,6 @@
       "usage": "Root wrapper for gesture handling required by pressto"
     }
   },
-
   "animation_techniques": {
     "rotating_arc_loading": {
       "pattern": "Infinite rotation animation with repeat",
@@ -139,7 +159,6 @@
       "applies_to": "Button width adjustment as content changes"
     }
   },
-
   "skia_patterns": {
     "canvas_rendering": {
       "component": "Canvas",
@@ -181,13 +200,18 @@
     },
     "useMemo_for_path": {
       "pattern": "useMemo for arc path and SVG icon",
-      "arc_path_deps": ["size", "strokeWidth"],
-      "svg_icon_deps": ["size", "status"],
+      "arc_path_deps": [
+        "size",
+        "strokeWidth"
+      ],
+      "svg_icon_deps": [
+        "size",
+        "status"
+      ],
       "benefit": "Expensive Skia path and SVG transforms only recalculated when necessary",
       "critical": "Prevents path allocation and fitbox calculation on every frame"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -204,21 +228,27 @@
         "name": "transform",
         "scope": "ActivityIndicator loading arc Group",
         "calculation": "[{ rotate: rotation.value }]",
-        "dependencies": ["rotation"],
+        "dependencies": [
+          "rotation"
+        ],
         "type": "Transform[]",
         "purpose": "Convert rotation value to transform array for Group"
       },
       {
         "name": "loadingOpacity",
         "calculation": "withTiming(status === 'loading' ? 1 : 0, { duration: 200 })",
-        "dependencies": ["status"],
+        "dependencies": [
+          "status"
+        ],
         "type": "number",
         "purpose": "Fade loading arc in/out based on status"
       },
       {
         "name": "iconOpacity",
         "calculation": "withTiming(status === 'success' || status === 'error' ? 1 : 0, { duration: 200 })",
-        "dependencies": ["status"],
+        "dependencies": [
+          "status"
+        ],
         "type": "number",
         "purpose": "Fade icon in/out based on status"
       }
@@ -227,10 +257,18 @@
       {
         "name": "containerStyle",
         "scope": "ActivityIndicator",
-        "properties": ["height", "width", "marginRight", "overflow"],
+        "properties": [
+          "height",
+          "width",
+          "marginRight",
+          "overflow"
+        ],
         "calculation": "withTiming transitions from 0 to size for width/height, 0 to 6 for marginRight",
         "duration": "300ms",
-        "dependencies": ["status", "size"],
+        "dependencies": [
+          "status",
+          "size"
+        ],
         "usage": "Animates indicator appearance/disappearance"
       }
     ],
@@ -238,12 +276,14 @@
       "pattern": "useEffect triggers/cancels animations based on status",
       "loading_start": "status === 'loading' → start rotation animation",
       "loading_end": "status !== 'loading' → cancelAnimation and reset to 0",
-      "dependencies": ["status", "rotation"],
+      "dependencies": [
+        "status",
+        "rotation"
+      ],
       "cleanup": "Cancel animation on unmount",
       "benefit": "Declarative animation control tied to state"
     }
   },
-
   "state_management_patterns": {
     "custom_mutation_hook": {
       "name": "useMutation",
@@ -276,7 +316,6 @@
       "press_handler": "handlePress wraps mutateAsync with timeout reset logic"
     }
   },
-
   "component_architecture": {
     "LoadingButton": {
       "type": "Functional component",
@@ -322,7 +361,6 @@
       "exported_as": "LoadingButton (demo component)"
     }
   },
-
   "visual_design": {
     "demo_styling": {
       "background": "#fff (white)",
@@ -368,7 +406,6 @@
       "opacity": "200ms fade for indicator group transitions"
     }
   },
-
   "svg_icon_details": {
     "success_icon": {
       "shape": "Checkmark (✓)",
@@ -391,23 +428,31 @@
       "method": "fitbox('contain', ...) for aspect-ratio-preserving scale"
     }
   },
-
   "performance_optimizations": {
     "useMemo_for_color": {
       "calculation": "activeColor from colorFromStatusMap",
-      "dependencies": ["colorFromStatusMap", "status"],
+      "dependencies": [
+        "colorFromStatusMap",
+        "status"
+      ],
       "benefit": "Color lookup and lighten calculation only when status changes",
       "prevents": "Color object creation on every render"
     },
     "useMemo_for_path": {
       "calculation": "Arc path construction",
-      "dependencies": ["size", "strokeWidth"],
+      "dependencies": [
+        "size",
+        "strokeWidth"
+      ],
       "benefit": "Expensive Skia path creation only when size changes",
       "critical": "Path allocation is expensive"
     },
     "useMemo_for_svg_icon": {
       "calculation": "SVG icon with fitbox transform",
-      "dependencies": ["size", "status"],
+      "dependencies": [
+        "size",
+        "status"
+      ],
       "benefit": "SVG transform only recalculated when size or status changes",
       "prevents": "Expensive fitbox calculation on every frame"
     },
@@ -432,7 +477,6 @@
       "visual_quality": "Clean appearance during grow/shrink"
     }
   },
-
   "use_cases": {
     "primary": [
       "Async action buttons (submit, save, send)",
@@ -464,7 +508,6 @@
       "Buttons with more than 4 states"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -518,7 +561,6 @@
       "api_design": "Simple, intuitive API (mutateAsync, reset, status)"
     }
   },
-
   "known_limitations": {
     "four_state_constraint": {
       "issue": "Component designed for exactly 4 states (idle, loading, success, error)",
@@ -556,7 +598,6 @@
       "improvement": "Could show disabled state or message"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Haptic feedback on state transitions",
@@ -615,7 +656,6 @@
       "Theme context integration"
     ]
   },
-
   "key_insights": {
     "status_driven_animation": "Single status prop elegantly drives all visual changes (color, text, indicator)",
     "size_animation_technique": "Animating width/height from 0 creates smooth indicator appearance without layout jumps",
@@ -628,7 +668,6 @@
     "guard_pattern": "isLoading guard prevents double-execution without complex state machines",
     "auto_reset_pattern": "Timeout-based auto-reset creates intuitive UX for transient states"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas usage",
@@ -664,7 +703,6 @@
       "Async operation state management"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_basic_activity_indicator": {
       "basic": "Simple spinning indicator, no state management",
@@ -687,7 +725,6 @@
       "benefit": "Simple, no dependencies, educational"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Button renders correctly in all 4 states",
@@ -738,7 +775,6 @@
       "Component unmount during loading"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "labels": "No accessibility labels",
@@ -759,7 +795,6 @@
       "Consider text alternatives for icons"
     ]
   },
-
   "related_patterns": {
     "loading_indicators": "Other loading animation implementations",
     "button_states": "Button components with state management",
@@ -767,7 +802,6 @@
     "status_indicators": "Components showing operation status",
     "mutation_patterns": "Async mutation state management"
   },
-
   "bundle_size_impact": {
     "code_size": "~280 lines total (all components + demo)",
     "dependencies": "Skia, Reanimated, pressto, color (likely already in project)",
@@ -776,7 +810,6 @@
     "gpu_memory": "Low - simple shapes, no textures",
     "performance": "Excellent - GPU-accelerated"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -794,7 +827,6 @@
       "note": "Requires react-native-web configuration"
     }
   },
-
   "tags": [
     "button",
     "loading",
@@ -814,5 +846,9 @@
     "mutation",
     "form",
     "submit-button"
-  ]
+  ],
+  "content_hash": "d99c5522835d0b9a08d185334eaa625f0828308e9f24c5b1f7620f6dfb13904b",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.386Z",
+  "last_validated": "2025-10-12T09:19:28.386Z"
 }

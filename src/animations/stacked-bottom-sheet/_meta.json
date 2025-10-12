@@ -2,7 +2,6 @@
   "animation_name": "Stacked Bottom Sheet",
   "animation_slug": "stacked-bottom-sheet",
   "description": "An advanced stacked bottom sheet manager that displays multiple overlapping sheets with depth effects. Features include intelligent ID management for stacking order, pan gesture dismissal, scale and shadow transitions for depth perception, and a context-based API for programmatic control. Sheets automatically reposition when others are dismissed, creating a card-stack effect similar to iOS's Safari tabs or notification center.",
-
   "main_features": [
     "Multiple stacked sheets with depth effects",
     "Intelligent ID-based stacking system",
@@ -20,7 +19,6 @@
     "Z-index management for proper layering",
     "Responsive width (90% of screen)"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main export with GestureHandlerRootView, SafeAreaProvider, and StackedSheetProvider wrapper"
@@ -49,7 +47,6 @@
       "src/screens/the-magic.tsx": "Demo screen component showing Spiral animation integration"
     }
   },
-
   "core_technologies": [
     "react-native-reanimated",
     "react-native-gesture-handler",
@@ -57,11 +54,12 @@
     "pressto",
     "react-native-safe-area-context"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "hooks": [
         "useSharedValue",
         "useAnimatedStyle"
@@ -80,12 +78,16 @@
         "GestureDetector",
         "Gesture"
       ],
-      "gestures": ["Pan"],
+      "gestures": [
+        "Pan"
+      ],
       "usage": "Pan gesture for swipe-to-dismiss on active sheet with enabled/disabled states"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet callbacks to JS thread for dismissing sheets from gesture handlers"
     },
     "pressto": {
@@ -99,7 +101,6 @@
       "usage": "Ensures proper rendering within safe areas across devices"
     }
   },
-
   "animation_techniques": [
     {
       "name": "Stacked Depth Effect",
@@ -157,17 +158,30 @@
       "effect": "Proper layering of overlapping sheets"
     }
   ],
-
   "reanimated_patterns": [
     {
       "pattern": "SharedValue State Management",
-      "values": ["bottom", "translateY", "isSwiping"],
+      "values": [
+        "bottom",
+        "translateY",
+        "isSwiping"
+      ],
       "purpose": "Track individual sheet position and gesture state on UI thread"
     },
     {
       "pattern": "Animated Style Interpolations",
-      "instances": ["rStackedSheetStyle", "rVisibleContainerStyle"],
-      "properties": ["bottom", "zIndex", "shadowRadius", "shadowOpacity", "transform (scale, translateY)", "opacity"]
+      "instances": [
+        "rStackedSheetStyle",
+        "rVisibleContainerStyle"
+      ],
+      "properties": [
+        "bottom",
+        "zIndex",
+        "shadowRadius",
+        "shadowOpacity",
+        "transform (scale, translateY)",
+        "opacity"
+      ]
     },
     {
       "pattern": "Worklet Dismissal Function",
@@ -195,11 +209,15 @@
     },
     {
       "pattern": "useCallback Optimization",
-      "functions": ["showStackedSheet", "onDismiss", "renderStackedSheet", "dismissItem"],
+      "functions": [
+        "showStackedSheet",
+        "onDismiss",
+        "renderStackedSheet",
+        "dismissItem"
+      ],
       "benefit": "Prevents unnecessary re-renders and gesture handler recreation"
     }
   ],
-
   "performance_optimizations": [
     {
       "name": "Ref-Based Sheet Memoization",
@@ -243,7 +261,6 @@
       "prevents": "Cascading re-renders throughout app"
     }
   ],
-
   "component_patterns": {
     "dual_context_architecture": {
       "public_context": {
@@ -284,7 +301,6 @@
       "critical": false
     }
   },
-
   "gesture_handling": {
     "pan_gesture_lifecycle": {
       "onBegin": "isSwiping.value = true",
@@ -309,7 +325,6 @@
       "prevents": "Gesture conflicts with buried sheets"
     }
   },
-
   "state_management": {
     "shared_values": [
       {
@@ -366,7 +381,6 @@
       }
     ]
   },
-
   "ui_ux_patterns": {
     "stacked_cards": {
       "positioning": "Absolute positioning with dynamic bottom values",
@@ -405,7 +419,6 @@
       "spring": "Natural bounce on entrance"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "sheet_background": "#FFFFFF (white)",
@@ -443,7 +456,6 @@
       "elevation": "2 (Android)"
     }
   },
-
   "use_cases": [
     "Multiple bottom sheets in sequence (e.g., filter > sub-filter > options)",
     "Notification stacks with dismissible cards",
@@ -459,7 +471,6 @@
     "Settings with nested configuration panels",
     "Social media with post detail and comment sheets"
   ],
-
   "code_quality": {
     "strengths": [
       "Excellent dual-context architecture preventing unnecessary re-renders",
@@ -489,7 +500,6 @@
       "No animation configuration props (spring config is fixed)"
     ]
   },
-
   "known_limitations": [
     {
       "name": "No Maximum Stack Depth",
@@ -524,7 +534,12 @@
     },
     {
       "name": "No Accessibility Support",
-      "missing": ["Screen reader announcements", "Focus management", "Keyboard navigation", "Reduced motion"],
+      "missing": [
+        "Screen reader announcements",
+        "Focus management",
+        "Keyboard navigation",
+        "Reduced motion"
+      ],
       "impact": "Not accessible to users with disabilities"
     },
     {
@@ -539,7 +554,6 @@
       "impact": "Minimal - optimization outweighs edge case"
     }
   ],
-
   "potential_improvements": [
     "Configurable scale factor, offset, and shadow values",
     "Maximum stack depth limit with auto-dismiss oldest",
@@ -570,7 +584,6 @@
     "RTL layout support",
     "Web platform support optimizations"
   ],
-
   "key_insights": [
     "Dual context architecture is crucial for preventing cascading re-renders",
     "ID reordering system maintains consistent stacking logic without complex state",
@@ -585,7 +598,6 @@
     "Dynamic bottom positioning algorithm elegantly handles varying sheet heights",
     "Context separation keeps public API simple while internal logic remains flexible"
   ],
-
   "learning_opportunities": [
     {
       "level": "Beginner",
@@ -631,7 +643,6 @@
       ]
     }
   ],
-
   "tags": [
     "stacked-sheets",
     "bottom-sheet",
@@ -655,5 +666,9 @@
     "id-management",
     "dynamic-positioning",
     "conditional-rendering"
-  ]
+  ],
+  "content_hash": "a6151d2784f66dd5e23334908487042c5dd01ee272c8492e1e06e0fb222d2746",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.449Z",
+  "last_validated": "2025-10-12T09:19:28.449Z"
 }

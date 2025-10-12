@@ -2,7 +2,6 @@
   "animation_name": "Circular Carousel",
   "animation_slug": "circular-carousel",
   "description": "A 3D circular carousel with interactive scrolling, featuring dynamic scale transformations, circular positioning via interpolation, and smooth spring animations. Items are positioned in a circular arc using translateY interpolation, with optional scale effects that can be toggled on/off. Demonstrates advanced interpolation techniques for creating circular list layouts.",
-
   "main_features": [
     "Circular list layout with arc positioning",
     "Dynamic scale transformation (toggleable)",
@@ -15,19 +14,16 @@
     "Throttled scroll events for performance",
     "Image-based carousel items with circular borders"
   ],
-
   "file_structure": {
     "index.tsx": "Main component with toggle switch and CircularList integration",
     "components/circular-list/index.tsx": "Animated FlatList wrapper with scroll handler",
     "components/circular-list/list-item.tsx": "Individual carousel item with 3D transforms and animations"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "images": "expo-image",
     "ui": "react-native (Switch, View, Text)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -39,8 +35,13 @@
         "interpolate",
         "withSpring"
       ],
-      "components": ["Animated.FlatList", "Animated.View"],
-      "enums": ["Extrapolation"],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View"
+      ],
+      "enums": [
+        "Extrapolation"
+      ],
       "critical_feature": "useDerivedValue for dynamic scale output range calculation"
     },
     "expo-image": {
@@ -50,12 +51,19 @@
       "benefit": "Better caching and loading performance than standard Image component"
     },
     "react-native": {
-      "components": ["Switch", "View", "Text", "Dimensions", "StyleSheet"],
-      "apis": ["Dimensions.get('window')"],
+      "components": [
+        "Switch",
+        "View",
+        "Text",
+        "Dimensions",
+        "StyleSheet"
+      ],
+      "apis": [
+        "Dimensions.get('window')"
+      ],
       "usage": "Core UI components and window dimensions for responsive sizing"
     }
   },
-
   "animation_techniques": {
     "circular_positioning": {
       "pattern": "translateY interpolation to create circular arc",
@@ -90,7 +98,6 @@
       "effect": "Items positioned to create circular appearance"
     }
   },
-
   "reanimated_patterns": {
     "useAnimatedScrollHandler": {
       "pattern": "Optimized scroll event handling on UI thread",
@@ -112,7 +119,9 @@
         "name": "scaleOutputRange",
         "type": "useDerivedValue<number[]>",
         "scope": "CircularListItem",
-        "dependencies": ["scaleEnabled"],
+        "dependencies": [
+          "scaleEnabled"
+        ],
         "calculation": "withSpring(scaleEnabled ? showScalingOutputRange : avoidScalingOutputRange)",
         "purpose": "Animated output range for scale interpolation",
         "unique_pattern": "Entire array animates with spring between two states"
@@ -121,7 +130,11 @@
         "name": "scale",
         "type": "useDerivedValue<number>",
         "scope": "CircularListItem",
-        "dependencies": ["contentOffset", "scaleOutputRange", "scaleEnabled"],
+        "dependencies": [
+          "contentOffset",
+          "scaleOutputRange",
+          "scaleEnabled"
+        ],
         "calculation": "interpolate(contentOffset, inputRange, scaleOutputRange.value, CLAMP)",
         "purpose": "Final scale value for transform"
       }
@@ -130,20 +143,27 @@
       {
         "name": "scaleOutputRange",
         "pattern": "useDerivedValue with animated array",
-        "dependencies": ["scaleEnabled"],
+        "dependencies": [
+          "scaleEnabled"
+        ],
         "innovation": "Entire output range array animates with spring",
         "benefit": "Smooth transition between scale curves, not just individual values"
       },
       {
         "name": "scale",
         "pattern": "useDerivedValue with interpolate",
-        "dependencies": ["scaleEnabled (via scaleOutputRange)"],
+        "dependencies": [
+          "scaleEnabled (via scaleOutputRange)"
+        ],
         "recalculates": "On scaleEnabled change and contentOffset change"
       }
     ],
     "useAnimatedStyle": {
       "name": "rStyle",
-      "properties": ["opacity", "transform: [translateX, translateY, scale]"],
+      "properties": [
+        "opacity",
+        "transform: [translateX, translateY, scale]"
+      ],
       "interpolations": [
         "translateY: interpolate(contentOffset, inputRange, translateOutputRange)",
         "opacity: interpolate(contentOffset, inputRange, opacityOutputRange, CLAMP)",
@@ -158,7 +178,6 @@
       "benefit": "Smooth transitions with easing zones"
     }
   },
-
   "component_patterns": {
     "toggle_switch": {
       "component": "Switch (React Native)",
@@ -185,11 +204,15 @@
     },
     "circular_list_item": {
       "pattern": "Animated.View with Image child",
-      "animations": ["opacity", "translateX", "translateY", "scale"],
+      "animations": [
+        "opacity",
+        "translateX",
+        "translateY",
+        "scale"
+      ],
       "styling": "Circular image with border and shadow"
     }
   },
-
   "mathematical_algorithms": {
     "circular_arc_formula": {
       "concept": "Simulate circular path using vertical translation",
@@ -228,7 +251,6 @@
       "benefit": "Adapts to different screen sizes"
     }
   },
-
   "interpolation_mastery": {
     "five_point_interpolation": {
       "points": 5,
@@ -248,7 +270,6 @@
       "prevents": "Scale/opacity going beyond defined limits"
     }
   },
-
   "visual_design": {
     "layout": {
       "container": "flex: 1, centered",
@@ -290,7 +311,6 @@
       "items": "Centered horizontally and vertically in carousel container"
     }
   },
-
   "data_structure": {
     "image_data": {
       "type": "string[] (Unsplash URLs)",
@@ -307,7 +327,6 @@
       "shared_between": "CircularList and CircularListItem"
     }
   },
-
   "performance_optimizations": {
     "scroll_throttle": {
       "value": 16,
@@ -333,10 +352,13 @@
     },
     "expo_image": {
       "benefit": "Better caching and memory management than RN Image",
-      "features": ["Automatic caching", "Loading placeholders", "Memory optimization"]
+      "features": [
+        "Automatic caching",
+        "Loading placeholders",
+        "Memory optimization"
+      ]
     }
   },
-
   "unique_innovations": {
     "animated_output_range": {
       "concept": "Entire interpolation output range array animates with spring",
@@ -353,7 +375,6 @@
       "result": "Visually circular appearance with linear transformations"
     }
   },
-
   "gesture_handling": {
     "scroll_gesture": {
       "type": "Native scroll (FlatList)",
@@ -369,7 +390,6 @@
       "effect": "Items snap to center position"
     }
   },
-
   "state_management": {
     "react_state": [
       {
@@ -399,7 +419,6 @@
       ]
     }
   },
-
   "use_cases": {
     "primary": [
       "Image carousels with emphasis on center item",
@@ -423,7 +442,6 @@
       "Circular layout without rotation"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -466,11 +484,14 @@
       "Performance-conscious defaults"
     ]
   },
-
   "known_limitations": {
     "image_urls": {
       "issue": "Uses external Unsplash URLs",
-      "concerns": ["Network dependency", "Loading time", "No offline support"],
+      "concerns": [
+        "Network dependency",
+        "Loading time",
+        "No offline support"
+      ],
       "improvement": "Use local assets or CDN with fallbacks"
     },
     "fixed_item_count": {
@@ -491,7 +512,6 @@
       "improvement": "Calculate based on visible items or make configurable"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Auto-scroll/auto-play capability",
@@ -532,7 +552,6 @@
       "Double-tap to expand"
     ]
   },
-
   "key_insights": {
     "animated_output_range_innovation": "Animating entire interpolation curve (not just values) creates smooth scale distribution morphing",
     "circular_via_translateY": "Circular arc achieved purely with vertical translation - simpler than true circular math",
@@ -543,7 +562,6 @@
     "expo_image_advantage": "expo-image provides better performance than standard RN Image",
     "scroll_throttle_balance": "16ms throttle (60fps) balances smoothness and performance"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList horizontal scrolling",
@@ -569,7 +587,6 @@
       "Simulating complex paths with simple transformations"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_flatlist_with_rotation": {
       "this_approach": "translateY interpolation only",
@@ -590,7 +607,6 @@
       "benefit": "Educational and flexible"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features supported",
@@ -605,10 +621,13 @@
     },
     "web": {
       "compatibility": "Should work with react-native-web",
-      "considerations": ["Test scroll behavior", "Shadow rendering", "Image loading"]
+      "considerations": [
+        "Test scroll behavior",
+        "Shadow rendering",
+        "Image loading"
+      ]
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify circular arc appearance at all scroll positions",
@@ -638,7 +657,6 @@
       "Image loading failures"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Apple Cover Flow",
@@ -654,7 +672,6 @@
       "Card deck animations"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~150 lines total (small footprint)",
     "dependencies": "All dependencies common in React Native projects",
@@ -662,7 +679,6 @@
     "image_impact": "Depends on image count and size",
     "estimated_impact": "< 20KB minified (excluding images)"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "Limited support",
@@ -679,7 +695,6 @@
       "Add focus indicators for keyboard navigation"
     ]
   },
-
   "inspirations_and_references": {
     "video_tutorials": [
       {
@@ -700,7 +715,6 @@
       "Scroll-based interpolations"
     ]
   },
-
   "tags": [
     "carousel",
     "circular-layout",
@@ -719,5 +733,9 @@
     "snap-scroll",
     "opacity-fade",
     "toggle-effect"
-  ]
+  ],
+  "content_hash": "bc8c879e11e15cdd9e5f29739f77f2e8487f9320ad91c11f667a9980635f6d96",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.302Z",
+  "last_validated": "2025-10-12T09:19:28.302Z"
 }

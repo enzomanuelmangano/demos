@@ -2,7 +2,6 @@
   "animation_name": "Delete Button",
   "animation_slug": "delete-button",
   "description": "An interactive delete confirmation button featuring gooey morphing animation with dual-state toggling. The button expands horizontally to reveal a separate confirm button with a close icon, utilizing Skia's color matrix and blur effects to create a liquid, gooey merge effect between the buttons. Features smooth spring animations, text transitions, SVG icons, and gesture-based interactions.",
-
   "main_features": [
     "Gooey morphing button animation with blur and color matrix effects",
     "Dual-state toggle system (delete/confirm states)",
@@ -15,7 +14,6 @@
     "Customizable button dimensions and text labels",
     "Optional close-on-confirm behavior"
   ],
-
   "file_structure": {
     "index.tsx": "Main entry point exporting DeleteButton component",
     "src/index.tsx": "Demo app with DeleteButton example configuration",
@@ -26,14 +24,12 @@
     "src/components/use-text-animations.ts": "Text opacity and position animations",
     "src/components/use-gooey-layer.tsx": "Gooey effect layer using blur and color matrix"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-skia-gesture",
     "threading": "react-native-worklets"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -46,8 +42,14 @@
         "Blur",
         "ColorMatrix"
       ],
-      "hooks": ["matchFont", "Skia"],
-      "utilities": ["Skia.SVG.MakeFromString", "Skia.Paint"],
+      "hooks": [
+        "matchFont",
+        "Skia"
+      ],
+      "utilities": [
+        "Skia.SVG.MakeFromString",
+        "Skia.Paint"
+      ],
       "critical_feature": "Color matrix and blur effects for gooey morphing, custom paint layer for SVG opacity"
     },
     "react-native-skia-gesture": {
@@ -58,7 +60,9 @@
         "Touchable.RoundedRect",
         "Touchable.Circle"
       ],
-      "hooks": ["useGestureHandler"],
+      "hooks": [
+        "useGestureHandler"
+      ],
       "critical_feature": "Gesture handling within Skia canvas context"
     },
     "react-native-reanimated": {
@@ -77,11 +81,12 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet callbacks to JS thread for onConfirmDeletion callback"
     }
   },
-
   "animation_techniques": {
     "gooey_effect": {
       "pattern": "Blur + Color matrix transformation",
@@ -167,7 +172,6 @@
       "applied_to": "Both delete and confirm text labels"
     }
   },
-
   "skia_rendering_patterns": {
     "canvas_structure": {
       "root": "Touchable.Canvas (main container)",
@@ -233,7 +237,6 @@
       "explanation": "Color matrix intensifies alpha channel, creating threshold effect that merges blurred shapes"
     }
   },
-
   "gesture_handling": {
     "delete_button_gesture": {
       "handler": "useGestureHandler from react-native-skia-gesture",
@@ -264,7 +267,6 @@
       "thread": "All gesture callbacks run on UI thread (worklet context)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -379,7 +381,6 @@
       "feel": "Heavily damped, smooth with minimal bounce"
     }
   },
-
   "component_architecture": {
     "delete_button": {
       "type": "Main component",
@@ -426,7 +427,10 @@
     },
     "custom_hooks": {
       "useDeleteButtonAnimations": {
-        "params": ["additionalWidth", "onDelete"],
+        "params": [
+          "additionalWidth",
+          "onDelete"
+        ],
         "returns": [
           "isToggled",
           "deleteButtonRectX",
@@ -437,7 +441,11 @@
         "responsibility": "Main button animation logic and tap handling"
       },
       "useCloseButtonAnimations": {
-        "params": ["isToggled", "width", "additionalWidth"],
+        "params": [
+          "isToggled",
+          "width",
+          "additionalWidth"
+        ],
         "returns": [
           "closeIconCircleX",
           "closeButtonOpacity",
@@ -475,7 +483,6 @@
       }
     }
   },
-
   "layout_and_positioning": {
     "canvas_dimensions": {
       "width": "width + additionalWidth (total horizontal space)",
@@ -524,7 +531,6 @@
       "purpose": "Scale transformations happen around correct pivot points"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "delete_state": {
@@ -575,12 +581,15 @@
       }
     }
   },
-
   "performance_optimizations": {
     "memoization": {
       "gooey_layer": {
         "hook": "useMemo",
-        "dependencies": ["alphaMultiplier", "alphaOffset", "blurRadius"],
+        "dependencies": [
+          "alphaMultiplier",
+          "alphaOffset",
+          "blurRadius"
+        ],
         "benefit": "Paint layer created once, not recreated on every render"
       }
     },
@@ -610,7 +619,6 @@
       "reference": "https://github.com/Shopify/react-native-skia/issues/1709"
     }
   },
-
   "use_cases": {
     "primary": [
       "Delete confirmation buttons in lists",
@@ -636,7 +644,6 @@
       "Gesture handling in Skia canvas"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -678,7 +685,6 @@
       "benefit": "Clear which code runs on UI thread"
     }
   },
-
   "known_limitations": {
     "fixed_button_shapes": {
       "issue": "RoundedRect and Circle shapes hardcoded",
@@ -707,7 +713,6 @@
       "mitigation": "Platform.select for font family"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Haptic feedback on state transitions",
@@ -744,7 +749,6 @@
       "Multi-touch protection"
     ]
   },
-
   "key_insights": {
     "gooey_magic": "Blur + color matrix with high alpha multiplier creates liquid merge effect",
     "alpha_math": "Alpha transformation (alpha * 18 - 10) creates sharp threshold for blob merging",
@@ -756,7 +760,6 @@
     "transform_origins": "Correct origin points essential for natural-feeling scale feedback",
     "scheduleOnRN_usage": "Bridge to JS thread necessary for React callbacks from worklets"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas rendering",
@@ -784,7 +787,6 @@
       "Building reusable animation systems"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Buttons merge smoothly with gooey effect",
@@ -820,7 +822,6 @@
       "Multiple instances don't impact performance"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_simple_modal": {
       "delete_button": "Inline, immediate feedback, gooey animation",
@@ -838,7 +839,6 @@
       "trade_off": "This is more delightful, alert is more standard"
     }
   },
-
   "related_patterns": {
     "gooey_effects": "Other animations using blur + color matrix",
     "morph_buttons": "Buttons that change shape/state",
@@ -846,7 +846,6 @@
     "liquid_animations": "Fluid, organic motion effects",
     "skia_interactions": "Canvas-based gesture handling"
   },
-
   "mathematical_formulas": {
     "gooey_alpha_transform": {
       "formula": "newAlpha = clamp(oldAlpha * 18 - 10, 0, 1)",
@@ -865,14 +864,12 @@
       "close_button_movement": "additionalWidth / 2 (from hidden to visible)"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~350 lines total across all files",
     "dependencies": "Skia, Reanimated, Skia-Gesture (likely in animation projects)",
     "runtime_memory": "Low - few SharedValues, simple shapes",
     "estimated_size": "~15KB (mostly constants and hooks)"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -890,7 +887,6 @@
       "testing": "Requires verification"
     }
   },
-
   "accessibility_considerations": {
     "current_state": {
       "accessible": false,
@@ -911,7 +907,6 @@
       "Add haptic feedback for non-visual confirmation"
     ]
   },
-
   "tags": [
     "delete-button",
     "confirmation",
@@ -932,5 +927,9 @@
     "canvas-rendering",
     "worklets",
     "reanimated"
-  ]
+  ],
+  "content_hash": "0be1f214f0d647ffe2fdc21f142556399add792b1709347b2c3ccae29824cf97",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.316Z",
+  "last_validated": "2025-10-12T09:19:28.316Z"
 }

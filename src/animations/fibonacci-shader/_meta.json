@@ -2,7 +2,6 @@
   "animation_name": "Fibonacci Shader",
   "animation_slug": "fibonacci-shader",
   "description": "A mesmerizing GPU-accelerated shader animation inspired by Fibonacci patterns and golden ratio spirals. Features a custom GLSL shader running in React Native Skia that renders parametric 3D-projected circular patterns with dynamic color gradients. Includes an interactive slider to control the number of circles (5-350) and a randomize button for the magical multiplier parameter, creating infinite variations of organic, flowing visual patterns.",
-
   "main_features": [
     "Custom GLSL shader with dynamic parameter injection",
     "Interactive circle count control (5-350 circles)",
@@ -15,12 +14,10 @@
     "GPU-accelerated rendering via React Native Skia",
     "Real-time shader recompilation on parameter changes"
   ],
-
   "file_structure": {
     "index.tsx": "Main component with shader logic, RuntimeEffect compilation, and UI layout",
     "components/animated-slider/index.tsx": "Custom gesture-based slider with pan handling and progress interpolation"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "shaders": "GLSL (OpenGL Shading Language) via Skia.RuntimeEffect",
@@ -28,12 +25,20 @@
     "gestures": "react-native-gesture-handler",
     "interactions": "pressto (PressableScale)"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Rect", "Shader", "Mask", "Circle", "Blur"],
-      "runtime": ["Skia.RuntimeEffect"],
+      "components": [
+        "Canvas",
+        "Rect",
+        "Shader",
+        "Mask",
+        "Circle",
+        "Blur"
+      ],
+      "runtime": [
+        "Skia.RuntimeEffect"
+      ],
       "usage": "GPU-accelerated shader rendering with RuntimeEffect API",
       "critical_feature": "RuntimeEffect.Make() for dynamic GLSL shader compilation",
       "performance_benefit": "Native GPU shader execution for complex visual effects"
@@ -58,19 +63,28 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
       "usage": "Slider interaction with pan gesture",
-      "methods": ["onBegin", "onUpdate", "onFinalize"]
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ]
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Floating button with scale feedback",
       "benefit": "Zero-config press animations"
     }
   },
-
   "shader_architecture": {
     "language": "GLSL (OpenGL Shading Language)",
     "shader_type": "Fragment shader (pixel shader)",
@@ -116,11 +130,10 @@
       "phase_offset": "vec4(0, 2, 4, 0) - RGB color separation"
     }
   },
-
   "animation_techniques": {
     "time_animation": {
       "shared_value": "iTime",
-      "initial": 0.0,
+      "initial": 0,
       "animation": "withRepeat(withTiming(15, {duration: 20000, easing: Easing.linear}), -1, true)",
       "pattern": "Infinite ping-pong (forward and reverse)",
       "duration": "40 seconds total (20s forward + 20s reverse)",
@@ -151,13 +164,12 @@
       "visual_feedback": "Scale animation on press"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
         "name": "N",
         "type": "SharedValue<number>",
-        "initial": 5.0,
+        "initial": 5,
         "range": "5-350",
         "updates": "Slider onUpdate callback",
         "purpose": "Number of circles in shader",
@@ -174,7 +186,7 @@
       {
         "name": "iTime",
         "type": "SharedValue<number>",
-        "initial": 0.0,
+        "initial": 0,
         "range": "0-15",
         "updates": "withRepeat animation on mount",
         "purpose": "Time parameter driving shader animation"
@@ -199,7 +211,11 @@
       {
         "name": "dynamicSource",
         "calculation": "Skia.RuntimeEffect.Make(shader_string_template)",
-        "dependencies": ["N.value", "magicalMul.value", "iTime.value"],
+        "dependencies": [
+          "N.value",
+          "magicalMul.value",
+          "iTime.value"
+        ],
         "returns": "RuntimeEffect",
         "worklet": true,
         "purpose": "Recompile shader with updated parameters",
@@ -224,7 +240,6 @@
       "cleanup": "None (animation runs for component lifetime)"
     }
   },
-
   "skia_rendering_patterns": {
     "canvas_setup": {
       "size": "SCREEN_WIDTH x SCREEN_WIDTH (square canvas)",
@@ -261,7 +276,6 @@
       "performance": "GPU-native shader execution"
     }
   },
-
   "component_architecture": {
     "main_component": {
       "responsibilities": [
@@ -298,7 +312,6 @@
       "floating_button": "position: absolute, bottom: 120, right: 60"
     }
   },
-
   "gesture_handling": {
     "slider_pan_gesture": {
       "type": "Gesture.Pan()",
@@ -333,7 +346,6 @@
       "style": "Circular button, dark gray background"
     }
   },
-
   "performance_optimizations": {
     "gpu_acceleration": {
       "technique": "GLSL shader executed natively on GPU",
@@ -367,7 +379,6 @@
       "alternative_considered": "Uniform parameters (but can't use in const loops)"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#000000 (black)",
@@ -412,7 +423,6 @@
       "interactivity": "Immediate visual feedback"
     }
   },
-
   "mathematical_insights": {
     "semicircle_projection": {
       "formula": "sqrt(1.0 - a * a)",
@@ -453,7 +463,6 @@
       "effect": "Prevents oversaturation with many circles"
     }
   },
-
   "use_cases": {
     "primary": [
       "Generative art showcase",
@@ -479,7 +488,6 @@
       "Dynamic app themes"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit types",
@@ -504,7 +512,6 @@
       "Hard-coded canvas position (marginTop: 100) not responsive"
     ]
   },
-
   "known_limitations": {
     "shader_compilation_pattern": {
       "issue": "Entire shader recompiled on parameter change",
@@ -544,7 +551,6 @@
       "note": "GLSL dialects vary by platform"
     }
   },
-
   "potential_improvements": {
     "shader_enhancements": [
       "Extract magic numbers (75.0, 2.0) as parameters",
@@ -605,7 +611,6 @@
       "Multiple layers of shaders"
     ]
   },
-
   "key_insights": {
     "runtime_shader_compilation": "Skia.RuntimeEffect enables dynamic GLSL shader creation at runtime - powerful but requires careful performance consideration",
     "const_loop_workaround": "Dynamic shader source generation is necessary workaround for GLSL const loop requirements",
@@ -618,7 +623,6 @@
     "perspective_math": "Division by depth (p.y + 2.0) simulates 3D perspective in 2D shader",
     "interaction_immediacy": "Direct parameter control creates satisfying, immediate visual feedback"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Introduction to shaders and GPU programming",
@@ -656,7 +660,6 @@
       "Inverse distance field techniques"
     ]
   },
-
   "related_concepts": {
     "generative_art": [
       "Fibonacci spirals and golden ratio",
@@ -687,7 +690,6 @@
       "Procedural motion"
     ]
   },
-
   "inspiration_and_credits": {
     "primary_inspiration": {
       "creator": "XorDev",
@@ -702,7 +704,6 @@
       "note": "Not direct Fibonacci implementation, but inspired by similar mathematical beauty"
     }
   },
-
   "testing_considerations": {
     "visual_testing": [
       "Shader renders correctly on mount",
@@ -748,7 +749,6 @@
       "Component unmount during shader compilation"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support - no accessibility labels",
@@ -775,7 +775,6 @@
       "severity": "Medium - organic motion less jarring than quick cuts"
     }
   },
-
   "comparison_to_alternatives": {
     "vs_react_components": {
       "this_approach": "Single shader renders all circles",
@@ -797,7 +796,6 @@
       "cons": "Requires GPU capability, platform-specific shader dialects"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines (main ~170, slider ~165)",
     "shader_source": "~20 lines of GLSL (embedded as string)",
@@ -805,7 +803,6 @@
     "runtime_memory": "Minimal - few SharedValues, shader compiled to GPU code",
     "estimated_impact": "< 20KB minified (excluding dependencies)"
   },
-
   "tags": [
     "shader",
     "glsl",
@@ -829,5 +826,9 @@
     "parametric",
     "animation",
     "xordev"
-  ]
+  ],
+  "content_hash": "eca6db27da3cc554c2ffa87c2b11ba1dfbf865ba19c9d8723b0ca5d6d39a3ce0",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.342Z",
+  "last_validated": "2025-10-12T09:19:28.342Z"
 }

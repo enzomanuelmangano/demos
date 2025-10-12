@@ -2,7 +2,6 @@
   "animation_name": "Floating Modal",
   "animation_slug": "floating-modal",
   "description": "An interactive floating action button that smoothly expands into a full modal dialog. The modal features gesture-based interaction with pan-to-dismiss functionality, scale-based closing threshold, and dynamic backdrop opacity. The button rotates from '+' to '×' during expansion, creating a polished morphing effect. Perfect for add/create actions with detailed form content.",
-
   "main_features": [
     "Floating action button (FAB) to modal morphing",
     "Smooth size, position, and border radius interpolation",
@@ -17,7 +16,6 @@
     "Modal content visibility controlled by progress state",
     "Persistent content rendering (no unmounting)"
   ],
-
   "file_structure": {
     "index.tsx": "Export wrapper - re-exports FloatingModalContainer as FloatingModal",
     "components/FloatingModal/index.tsx": "Main FloatingModal component with gesture handling and animation logic",
@@ -26,14 +24,12 @@
     "components/FloatingModal/AnimatedBackdrop/index.tsx": "Backdrop overlay with opacity and pointer events animation",
     "components/FloatingModal/Modal/index.tsx": "Modal content component with title, content area, and action buttons"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "icons": "@expo/vector-icons (AntDesign)",
     "pattern": "FAB-to-modal morphing with gesture dismissal"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -48,28 +44,44 @@
         "withSpring",
         "interpolate"
       ],
-      "components": ["Animated.View"],
-      "enums": ["Extrapolation"],
+      "components": [
+        "Animated.View"
+      ],
+      "enums": [
+        "Extrapolation"
+      ],
       "critical_feature": "useDerivedValue for scale calculation and modal visibility state"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
-      "callbacks": ["onUpdate", "onFinalize"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "callbacks": [
+        "onUpdate",
+        "onFinalize"
+      ],
       "usage": "Pan gesture for dragging modal to dismiss with scale-based threshold"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["AntDesign"],
-      "icons_used": ["plus (rotates to become ×)"]
+      "components": [
+        "AntDesign"
+      ],
+      "icons_used": [
+        "plus (rotates to become ×)"
+      ]
     },
     "react-native": {
-      "hooks": ["useWindowDimensions"],
+      "hooks": [
+        "useWindowDimensions"
+      ],
       "usage": "Dynamic screen size calculations for responsive positioning"
     }
   },
-
   "animation_techniques": {
     "fab_to_modal_morphing": {
       "trigger": "isOpened.value toggle",
@@ -151,7 +163,6 @@
       "benefit": "No bounce past original position"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -183,14 +194,20 @@
         "name": "progress",
         "calculation": "withTiming(isOpened.value ? 1 : 0)",
         "type": "Animated progress (0 to 1)",
-        "dependencies": ["isOpened"],
+        "dependencies": [
+          "isOpened"
+        ],
         "purpose": "Primary animation driver for all expansion interpolations"
       },
       {
         "name": "scale",
         "calculation": "1 - (Math.sqrt(translateX² + translateY²) / maxDistance)",
         "type": "Dynamic scale based on drag distance",
-        "dependencies": ["translateX", "translateY", "maxDistance"],
+        "dependencies": [
+          "translateX",
+          "translateY",
+          "maxDistance"
+        ],
         "purpose": "Visual feedback for drag-to-dismiss gesture",
         "used_in": "Modal transform scale"
       },
@@ -198,15 +215,23 @@
         "name": "isModalVisible",
         "calculation": "progress.value === 1",
         "type": "Boolean derived value",
-        "dependencies": ["progress"],
+        "dependencies": [
+          "progress"
+        ],
         "purpose": "Controls backdrop and modal content visibility/interactivity",
-        "passed_to": ["AnimatedBackdrop", "ModalContent"]
+        "passed_to": [
+          "AnimatedBackdrop",
+          "ModalContent"
+        ]
       },
       {
         "name": "maxDistance",
         "calculation": "Math.sqrt(screenWidth² + screenHeight²)",
         "type": "Constant (screen diagonal)",
-        "dependencies": ["screenWidth", "screenHeight"],
+        "dependencies": [
+          "screenWidth",
+          "screenHeight"
+        ],
         "purpose": "Normalizes drag distance for scale calculation"
       }
     ],
@@ -222,26 +247,37 @@
           "borderRadius (circle to rounded rect)",
           "transform: [scale, translateX, translateY]"
         ],
-        "dependencies": ["progress", "scale", "translateX", "translateY"],
+        "dependencies": [
+          "progress",
+          "scale",
+          "translateX",
+          "translateY"
+        ],
         "complexity": "High - 6 animated properties plus 3 transforms"
       },
       {
         "name": "rIconStyle (AddCloseIcon)",
         "target": "Plus/close icon",
-        "properties": ["transform: [rotate]"],
+        "properties": [
+          "transform: [rotate]"
+        ],
         "rotation": "0° to 45° (π/4 radians)",
         "effect": "+ morphs into ×"
       },
       {
         "name": "rAnimatedStyle (AnimatedBackdrop)",
         "target": "Backdrop overlay",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "pattern": "withTiming(isVisible ? 1 : 0)"
       },
       {
         "name": "rAnimatedStyle (ModalContent)",
         "target": "Modal content wrapper",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "pattern": "withTiming(isVisible ? 1 : 0, { duration: 100 })",
         "fast_fade": "100ms duration for quick appear/disappear"
       }
@@ -265,7 +301,6 @@
       }
     ]
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -305,7 +340,6 @@
       "reset_behavior": "Springs back if threshold not met"
     }
   },
-
   "component_architecture": {
     "FloatingModalContainer": {
       "type": "Export wrapper component",
@@ -375,7 +409,6 @@
       }
     }
   },
-
   "interaction_patterns": {
     "open_modal": {
       "trigger": "Press floating button (when closed)",
@@ -410,11 +443,12 @@
     },
     "content_interaction": {
       "available_when": "isModalVisible.value === true (progress === 1)",
-      "buttons": ["Done button (no action defined in demo)"],
+      "buttons": [
+        "Done button (no action defined in demo)"
+      ],
       "pointer_events": "Disabled when modal not fully open"
     }
   },
-
   "mathematical_algorithms": {
     "pythagorean_distance": {
       "formula": "distance = √(translateX² + translateY²)",
@@ -445,12 +479,16 @@
       "dynamic": "Updates as size interpolates during animation"
     }
   },
-
   "performance_optimizations": {
     "memo_components": {
       "pattern": "All components wrapped in memo()",
       "benefit": "Prevents unnecessary re-renders",
-      "components": ["FloatingModal", "AddCloseIcon", "AnimatedBackdrop", "ModalContent"]
+      "components": [
+        "FloatingModal",
+        "AddCloseIcon",
+        "AnimatedBackdrop",
+        "ModalContent"
+      ]
     },
     "worklet_execution": {
       "pattern": "All gestures and animations run on UI thread",
@@ -463,14 +501,22 @@
       ]
     },
     "useDerivedValue_efficiency": {
-      "instances": ["progress", "scale", "isModalVisible", "maxDistance"],
+      "instances": [
+        "progress",
+        "scale",
+        "isModalVisible",
+        "maxDistance"
+      ],
       "benefit": "Efficient derived calculations on UI thread",
       "optimization": "Automatic dependency tracking and memoization"
     },
     "pointer_events_optimization": {
       "pattern": "Animated pointerEvents to disable interaction when hidden",
       "benefit": "Prevents unnecessary touch event handling",
-      "applied_to": ["AnimatedBackdrop", "ModalContent"]
+      "applied_to": [
+        "AnimatedBackdrop",
+        "ModalContent"
+      ]
     },
     "no_conditional_render": {
       "pattern": "ModalContent always mounted, visibility via opacity",
@@ -480,7 +526,12 @@
     "extrapolation_clamping": {
       "pattern": "Extrapolation.CLAMP on all interpolations",
       "benefit": "Prevents over-animation beyond defined ranges",
-      "applied_to": ["size", "position", "borderRadius", "rotation"]
+      "applied_to": [
+        "size",
+        "position",
+        "borderRadius",
+        "rotation"
+      ]
     },
     "spring_config_optimization": {
       "overshootClamping": true,
@@ -488,7 +539,6 @@
       "applied_to": "translateX/Y reset on gesture end"
     }
   },
-
   "visual_design": {
     "floating_button": {
       "size": "64px × 64px",
@@ -547,7 +597,6 @@
       }
     }
   },
-
   "layout_and_positioning": {
     "positioning_strategy": {
       "button": "Absolute positioning (bottom-right)",
@@ -579,7 +628,6 @@
       "icon": "AddCloseIcon (absolute top-left)"
     }
   },
-
   "use_cases": {
     "primary": [
       "Create/add actions (floating action button pattern)",
@@ -610,11 +658,16 @@
       "Social media post creation"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "type_imports": ["type FC", "type SharedValue", "type ReactNode", "type StyleProp", "type ViewStyle"],
+      "type_imports": [
+        "type FC",
+        "type SharedValue",
+        "type ReactNode",
+        "type StyleProp",
+        "type ViewStyle"
+      ],
       "prop_interfaces": [
         "AddCloseIconProps",
         "AnimatedBackdropProps",
@@ -663,7 +716,6 @@
       "Memoized components"
     ]
   },
-
   "known_limitations": {
     "fixed_button_size": {
       "issue": "FLOATING_BUTTON_SIZE hardcoded to 64px",
@@ -709,7 +761,6 @@
       "reduced_motion": "No support for prefers-reduced-motion"
     }
   },
-
   "potential_improvements": {
     "customization": [
       "Configurable button size and position",
@@ -765,7 +816,6 @@
       "Default export variants"
     ]
   },
-
   "key_insights": {
     "pythagorean_scale": "Using √(x² + y²) for drag distance creates natural radial scaling",
     "diagonal_normalization": "Dividing by screen diagonal makes scale device-independent",
@@ -778,7 +828,6 @@
     "size_position_coupling": "Size and position must interpolate together for smooth centering",
     "extrapolation_clamping": "Prevents unexpected behavior if progress goes beyond [0, 1]"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic modal pattern",
@@ -810,7 +859,6 @@
       "Complex interpolation with screen dimensions"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Material Design FAB expansion",
@@ -835,7 +883,6 @@
       "Contextual actions"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Button expands smoothly to modal",
@@ -895,7 +942,6 @@
       "Reduced motion respected"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "labels": "No accessibility labels on any elements",
@@ -927,7 +973,6 @@
       "modal_closed": "Announce: 'Modal closed' + return focus to button"
     }
   },
-
   "real_world_inspiration": {
     "material_design": "Material Design FAB expansion pattern",
     "gmail": "Gmail compose button (mobile app)",
@@ -936,7 +981,6 @@
     "ios_mail": "iOS Mail compose button behavior",
     "notion": "Notion mobile quick capture"
   },
-
   "comparison_to_similar_animations": {
     "vs_bottom_sheet": {
       "similarity": "Both expand from compact state, both support drag-to-dismiss",
@@ -955,7 +999,6 @@
       "difference": "This uses FAB pattern, alert drawer is inline expandable button"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~350 lines total (all components combined)",
     "file_count": 6,
@@ -968,7 +1011,6 @@
     "runtime_memory": "Minimal - 3 SharedValues, 4 derived values, 4 animated styles",
     "estimated_memory": "< 100KB including component tree"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread (worklets)",
@@ -978,7 +1020,6 @@
     "worst_case_scenario": "Scale calculation during aggressive dragging",
     "optimization_level": "High - memoized components, UI thread execution"
   },
-
   "tags": [
     "floating-action-button",
     "fab",
@@ -999,5 +1040,9 @@
     "spring-animation",
     "center-positioning",
     "material-design"
-  ]
+  ],
+  "content_hash": "d85db5721c3d8f54b0a4973c1af34f4a3f4ad02f3859f42d00fda89eb5a6ca9f",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.347Z",
+  "last_validated": "2025-10-12T09:19:28.347Z"
 }

@@ -2,7 +2,6 @@
   "animation_name": "Duration Slider",
   "animation_slug": "duration-slider",
   "description": "An interactive circular duration slider with a neumorphic design that allows users to select time values between a minimum and maximum. Features a draggable picker on a circular path, animated donut progress indicator, background dots for visual reference, and real-time value display using Skia fonts.",
-
   "main_features": [
     "Circular slider with 360-degree interaction",
     "Draggable picker with touch gesture support",
@@ -14,7 +13,6 @@
     "Callback support for value changes",
     "GPU-accelerated Skia rendering"
   ],
-
   "file_structure": {
     "index.tsx": "Main export wrapper",
     "src/index.tsx": "App component with slider configuration",
@@ -25,7 +23,6 @@
       "background-dots.tsx": "12 static reference dots around the circle"
     }
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
@@ -33,7 +30,6 @@
     "threading": "react-native-worklets",
     "fonts": "Skia font rendering"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -48,9 +44,22 @@
         "BlurMask",
         "Shadow"
       ],
-      "hooks": ["useFont", "usePathValue"],
-      "utilities": ["Skia", "vec", "interpolate", "Extrapolate"],
-      "types": ["SkFont", "SkPath", "AnimatedProp", "SkPaint"],
+      "hooks": [
+        "useFont",
+        "usePathValue"
+      ],
+      "utilities": [
+        "Skia",
+        "vec",
+        "interpolate",
+        "Extrapolate"
+      ],
+      "types": [
+        "SkFont",
+        "SkPath",
+        "AnimatedProp",
+        "SkPaint"
+      ],
       "performance_benefit": "GPU-accelerated rendering with zero bridge crossing for UI updates"
     },
     "react-native-reanimated": {
@@ -69,18 +78,25 @@
     },
     "react-native-skia-gesture": {
       "version": "0.4.5-beta.1",
-      "components": ["Touchable", "Touchable.Canvas", "Touchable.Path"],
-      "hooks": ["useGestureHandler"],
+      "components": [
+        "Touchable",
+        "Touchable.Canvas",
+        "Touchable.Path"
+      ],
+      "hooks": [
+        "useGestureHandler"
+      ],
       "usage": "Touch gesture handling directly on Skia elements",
       "benefit": "No need to bridge gestures through React Native GestureHandler"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet (UI thread) callbacks to JS thread for onValueChange callback"
     }
   },
-
   "animation_techniques": {
     "circular_dragging": {
       "pattern": "Touch position to polar coordinate conversion",
@@ -122,7 +138,6 @@
       "picker_glow": "BlurMask with blur: 20 for picker outer circle"
     }
   },
-
   "mathematical_algorithms": {
     "cartesian_to_polar": {
       "function": "Math.atan2(y, x)",
@@ -162,7 +177,6 @@
       "ensures": "Proper spacing from canvas edges"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -184,35 +198,48 @@
         "type": "SharedValue<number>",
         "derived": true,
         "calculation": "Angle converted to 0-1 range",
-        "dependencies": ["translateX", "translateY"]
+        "dependencies": [
+          "translateX",
+          "translateY"
+        ]
       },
       {
         "name": "theta",
         "type": "SharedValue<number>",
         "derived": true,
         "calculation": "Math.atan2(y - cy, x - cx) normalized",
-        "dependencies": ["translateX", "translateY"]
+        "dependencies": [
+          "translateX",
+          "translateY"
+        ]
       },
       {
         "name": "animatedValue",
         "type": "SharedValue<number>",
         "derived": true,
         "calculation": "progress mapped to minVal-maxVal range",
-        "dependencies": ["progress"]
+        "dependencies": [
+          "progress"
+        ]
       },
       {
         "name": "currentTextValue",
         "type": "SharedValue<string>",
         "derived": true,
         "calculation": "animatedValue.toString()",
-        "dependencies": ["animatedValue"]
+        "dependencies": [
+          "animatedValue"
+        ]
       },
       {
         "name": "textPositionX",
         "type": "SharedValue<number>",
         "derived": true,
         "calculation": "Centered based on text width measurement",
-        "dependencies": ["currentTextValue", "font"]
+        "dependencies": [
+          "currentTextValue",
+          "font"
+        ]
       }
     ],
     "useDerivedValue_chain": {
@@ -238,10 +265,13 @@
       "pattern": "useDerivedValue with Skia.Path.Make()",
       "rebuilds_when": "Dependencies change (theta, coordinates)",
       "worklet": true,
-      "components": ["pickerPath", "internalPickerPath", "circlePath (useMemo)"]
+      "components": [
+        "pickerPath",
+        "internalPickerPath",
+        "circlePath (useMemo)"
+      ]
     }
   },
-
   "gesture_handling": {
     "library": "react-native-skia-gesture",
     "pattern": "useGestureHandler hook",
@@ -261,7 +291,6 @@
     "spread_gesture": "{...gesture} spread onto Touchable.Path",
     "canvas_type": "Touchable.Canvas for gesture-enabled Skia canvas"
   },
-
   "component_architecture": {
     "circular_slider": {
       "role": "Orchestrator component",
@@ -321,7 +350,6 @@
       "optimization": "useMemo to prevent recalculation"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#fff (white)",
@@ -329,8 +357,14 @@
       "base_circle_2": "#f7f7f7 (very light gray)",
       "inner_circle": "#FFFFFF (white)",
       "inner_circle_shadow": "#222222 with 0.5 opacity",
-      "progress_gradient": ["#dc3f69 (pink-red)", "#f2384d (bright red)"],
-      "picker_gradient": ["#dc3f69", "#f2384d"],
+      "progress_gradient": [
+        "#dc3f69 (pink-red)",
+        "#f2384d (bright red)"
+      ],
+      "picker_gradient": [
+        "#dc3f69",
+        "#f2384d"
+      ],
       "picker_inner": "#FFFFFF (white)",
       "dots": "#656565 (gray)",
       "text": "#111 (near black)"
@@ -372,7 +406,6 @@
       "purpose": "Ensures picker and blurred donut don't extend beyond circle bounds"
     }
   },
-
   "performance_optimizations": {
     "skia_rendering": {
       "benefit": "GPU-accelerated, all rendering on UI thread",
@@ -382,12 +415,22 @@
     "useMemo_usage": {
       "circlePath": {
         "purpose": "Create clip path once",
-        "dependencies": ["cx", "cy", "radius", "strokeWidth"],
+        "dependencies": [
+          "cx",
+          "cy",
+          "radius",
+          "strokeWidth"
+        ],
         "benefit": "Prevents path recreation on every frame"
       },
       "dotsPath": {
         "purpose": "Generate 12 dot circles once",
-        "dependencies": ["cx", "cy", "initialAngleRad", "radius"],
+        "dependencies": [
+          "cx",
+          "cy",
+          "initialAngleRad",
+          "radius"
+        ],
         "benefit": "Static reference markers don't recalculate"
       }
     },
@@ -412,7 +455,6 @@
       "immediate_feedback": "SharedValue updates happen synchronously"
     }
   },
-
   "skia_specific_techniques": {
     "touchable_canvas": {
       "component": "Touchable.Canvas",
@@ -439,7 +481,10 @@
         "usage": "Picker and donut progress",
         "center": "vec(cx, cy)",
         "radius": "radius + strokeWidth",
-        "colors": ["#dc3f69", "#f2384d"]
+        "colors": [
+          "#dc3f69",
+          "#f2384d"
+        ]
       }
     },
     "blur_mask_usage": {
@@ -449,16 +494,27 @@
     },
     "shadow_component": {
       "usage": "Shadow on picker inner circle and base circles",
-      "props": ["dx", "dy", "blur", "color", "inner"],
+      "props": [
+        "dx",
+        "dy",
+        "blur",
+        "color",
+        "inner"
+      ],
       "inner_shadow": "Creates depth with inner: true"
     },
     "text_rendering": {
       "component": "Text",
-      "props": ["text (SharedValue)", "color", "x (SharedValue)", "y", "font"],
+      "props": [
+        "text (SharedValue)",
+        "color",
+        "x (SharedValue)",
+        "y",
+        "font"
+      ],
       "dynamic_positioning": "x updates based on text width"
     }
   },
-
   "react_patterns": {
     "memo": {
       "components": "Not used",
@@ -487,7 +543,6 @@
       ]
     }
   },
-
   "use_cases": {
     "primary": [
       "Time duration selection (timers, alarms)",
@@ -526,7 +581,6 @@
       "Accessibility-critical interfaces (no keyboard/screen reader support)"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit prop types",
@@ -566,7 +620,6 @@
       "formula_explanations": "Mathematical formulas explained"
     }
   },
-
   "known_limitations": {
     "precision": {
       "issue": "Circular slider less precise than linear for many values",
@@ -602,7 +655,6 @@
       "enhancement": "Could add visual/haptic snapping to discrete values"
     }
   },
-
   "potential_improvements": {
     "accessibility": [
       "Add keyboard navigation (arrow keys)",
@@ -650,7 +702,6 @@
       "Vibration on value milestones"
     ]
   },
-
   "key_insights": {
     "skia_gesture_integration": "react-native-skia-gesture enables touch directly on Skia elements without bridging",
     "derived_value_chain": "Efficient dependency graph automatically propagates changes from touch to display",
@@ -662,7 +713,6 @@
     "gradient_on_path": "RadialGradient applied to Path creates smooth color transitions",
     "component_composition": "Breaking into small components (Picker, Donut, Dots) creates maintainable architecture"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas rendering",
@@ -688,7 +738,6 @@
       "Mathematical UI calculations"
     ]
   },
-
   "mathematical_concepts": {
     "trigonometry": [
       "sin/cos for polar to Cartesian conversion",
@@ -710,7 +759,6 @@
       "Distance calculations"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_linear_slider": {
       "advantage": "More compact, visually interesting",
@@ -725,7 +773,6 @@
       "disadvantage": "Takes more screen space"
     }
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Angle normalization function",
@@ -758,7 +805,6 @@
       "Multi-touch attempts"
     ]
   },
-
   "platform_considerations": {
     "ios": {
       "compatibility": "Full support",
@@ -777,7 +823,6 @@
       "considerations": "Mouse events vs touch events"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~300 lines total)",
     "dependencies": [
@@ -789,14 +834,12 @@
     "assets": "SF-Pro-Rounded-Bold.otf font file",
     "estimated_impact": "~50KB with font, negligible without (if font shared)"
   },
-
   "real_world_inspiration": {
     "apple_timers": "iOS Timer app circular picker",
     "nest_thermostat": "Circular temperature control",
     "music_apps": "Volume/seek circular controls",
     "fitness_apps": "Goal setting circular sliders"
   },
-
   "tags": [
     "circular-slider",
     "skia",
@@ -813,5 +856,9 @@
     "skia-gesture",
     "polar-coordinates",
     "trigonometry"
-  ]
+  ],
+  "content_hash": "6dd798bd688fdc6ebd8614ba8116666b2aa3ae2db7b746dc60f951625e0ede82",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.323Z",
+  "last_validated": "2025-10-12T09:19:28.323Z"
 }

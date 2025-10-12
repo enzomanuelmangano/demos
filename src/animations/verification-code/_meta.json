@@ -2,7 +2,6 @@
   "animation_name": "Verification Code",
   "animation_slug": "verification-code",
   "description": "An elegant verification code input interface with animated digit boxes, flip animations, and shake error feedback. Features individual digit containers with dynamic border colors (green for correct, red for wrong), smooth flip-in/flip-out transitions when entering/deleting digits, keyboard integration with an invisible TextInput pattern, and keyboard-aware positioning. The implementation uses a clever invisible TextInput to handle all keyboard interactions while displaying custom-styled digit boxes.",
-
   "main_features": [
     "Configurable digit-length verification codes (based on correctCode length)",
     "Animated digit boxes with flip-in entrance and flip-out exit",
@@ -17,7 +16,6 @@
     "Reused shake hook from email-demo (cross-animation pattern sharing)",
     "FocusEffect integration for automatic keyboard display"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Demo wrapper component with default correctCode (31415)"
@@ -39,13 +37,11 @@
     },
     "constants": {}
   },
-
   "core_technologies": [
     "react-native-reanimated",
     "react-native-keyboard-controller",
     "expo-router"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -71,18 +67,23 @@
     },
     "react-native-keyboard-controller": {
       "version": "1.18.5",
-      "hooks": ["useReanimatedKeyboardAnimation"],
+      "hooks": [
+        "useReanimatedKeyboardAnimation"
+      ],
       "usage": "Keyboard height tracking for layout adjustment",
-      "properties": ["height"],
+      "properties": [
+        "height"
+      ],
       "benefit": "Smooth keyboard-aware positioning without flickering"
     },
     "expo-router": {
       "version": "~6.0.10",
-      "hooks": ["useFocusEffect"],
+      "hooks": [
+        "useFocusEffect"
+      ],
       "usage": "Auto-focus TextInput when screen mounts, blur on unmount"
     }
   },
-
   "animation_techniques": {
     "flip_animations": {
       "entering": {
@@ -145,14 +146,17 @@
       "layering": "Wraps FlipInXDown/FlipOutXDown for combined effect"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
         "name": "verificationStatus",
         "type": "SharedValue<StatusType>",
         "initial": "inProgress",
-        "values": ["inProgress", "correct", "wrong"],
+        "values": [
+          "inProgress",
+          "correct",
+          "wrong"
+        ],
         "scope": "VerificationCodeScreen",
         "passed_to": "VerificationCode component",
         "consumers": "All AnimatedCodeNumber instances",
@@ -203,7 +207,9 @@
     "worklet_functions": {
       "getColorByStatus": {
         "directive": "'worklet'",
-        "parameters": ["vStatus: StatusType"],
+        "parameters": [
+          "vStatus: StatusType"
+        ],
         "returns": "color string",
         "logic": "Priority-based color selection (highlighted > correct > wrong > default)",
         "memoization": "useCallback with [highlighted] dependency",
@@ -223,7 +229,6 @@
       }
     }
   },
-
   "component_architecture": {
     "verification_code_animation": {
       "type": "Entry point wrapper",
@@ -366,7 +371,6 @@
       "comment": "// Not sure if this is smart or dumb 😅 (developer's honest note)"
     }
   },
-
   "validation_flow": {
     "input_parsing": {
       "step_1": "TextInput receives text input",
@@ -414,7 +418,6 @@
       ]
     }
   },
-
   "keyboard_integration": {
     "keyboard_controller": {
       "hook": "useReanimatedKeyboardAnimation()",
@@ -441,7 +444,6 @@
       "autoFocus": true
     }
   },
-
   "color_system": {
     "status_colors": {
       "default": {
@@ -474,7 +476,6 @@
       "example": "Even if code is wrong, next empty box still shows white"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "black",
@@ -514,7 +515,6 @@
       "container_padding_horizontal": 10
     }
   },
-
   "performance_optimizations": [
     "SharedValue for status avoids React re-renders for color changes",
     "useCallback for all handler functions (resetCode, onWrongCodeWrapper, onCorrectCodeWrapper)",
@@ -527,7 +527,6 @@
     "Layout animations run on UI thread via Reanimated",
     "Minimal state (only code array in React state, rest in shared values)"
   ],
-
   "use_cases": [
     "SMS verification code entry (2FA)",
     "OTP (One-Time Password) input",
@@ -542,7 +541,6 @@
     "Authentication flows",
     "Secure payment verification"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit types",
@@ -572,7 +570,6 @@
       "No unit tests"
     ]
   },
-
   "known_limitations": [
     "Relies on FiraCode-Regular font being available",
     "No validation for non-numeric input (assumes number-pad enforces this)",
@@ -587,7 +584,6 @@
     "Code resets on both correct and wrong (can't stay in success state)",
     "No reduced motion support"
   ],
-
   "potential_improvements": [
     "Add haptic feedback on wrong/correct entry (expo-haptics)",
     "Configurable reset delay via props",
@@ -612,7 +608,6 @@
     "Error message display",
     "Success checkmark animation"
   ],
-
   "key_insights": [
     "Invisible TextInput pattern elegantly solves keyboard integration without compromising UI customization",
     "SharedValue for status enables color transitions without React re-renders",
@@ -627,7 +622,6 @@
     "maxCodeLength derived from correctCode.toString().length enables dynamic lengths",
     "index === code.length elegantly identifies next input position"
   ],
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic useState for array management",
@@ -663,7 +657,6 @@
       "Building reusable secure input components"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "OTP input fields",
@@ -680,7 +673,6 @@
       "consideration": "Could be extracted to shared hooks directory"
     }
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -699,7 +691,6 @@
       "Announce when code reset"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_single_textinput": {
       "traditional": "Single TextInput with maxLength",
@@ -717,7 +708,6 @@
       "benefit": "Full control over animations and styling"
     }
   },
-
   "testing_considerations": [
     "Test correct code validation with various lengths",
     "Test incorrect code triggers shake and red borders",
@@ -736,7 +726,6 @@
     "Performance: rapid input doesn't break state",
     "Animation: shake doesn't accumulate with multiple wrongs"
   ],
-
   "invisible_textinput_pattern": {
     "description": "A pattern where a hidden TextInput captures keyboard events while custom UI displays the input",
     "implementation": {
@@ -770,7 +759,6 @@
       "gesture_handler": "Custom keyboard with gesture-handler - heavy implementation"
     }
   },
-
   "bezier_curve_design": {
     "entering_animation": {
       "curve": "Easing.bezier(0, 0.75, 0.5, 0.9)",
@@ -792,7 +780,6 @@
       "attention_to_detail": "Developer comment: 'Every detail matters :)'"
     }
   },
-
   "cross_animation_patterns": {
     "shared_hooks": {
       "useAnimatedShake": {
@@ -812,7 +799,6 @@
       }
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines total across all files",
     "dependencies": "Reanimated, keyboard-controller, expo-router (likely already in project)",
@@ -820,7 +806,6 @@
     "font_dependency": "FiraCode-Regular font required",
     "estimated_total": "< 10KB excluding dependencies"
   },
-
   "tags": [
     "verification-code",
     "otp-input",
@@ -840,5 +825,9 @@
     "keyboard-aware",
     "focus-effect",
     "monospace-font"
-  ]
+  ],
+  "content_hash": "93a1239c3469c9cb19b913a5fe620854951e33bb06ec066348dc58022f785ff6",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.492Z",
+  "last_validated": "2025-10-12T09:19:28.492Z"
 }

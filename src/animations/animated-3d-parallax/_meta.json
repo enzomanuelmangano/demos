@@ -2,7 +2,6 @@
   "animation_name": "Animated 3D Parallax",
   "animation_slug": "animated-3d-parallax",
   "description": "An interactive 3D card with parallax effect that responds to pan gestures. The card rotates in 3D space based on touch position, with a delayed parallax effect on the inner content creating depth perception. Features smooth spring animations and dynamic perspective transforms.",
-
   "main_features": [
     "Pan gesture tracking for interactive 3D rotation",
     "Real-time 3D perspective transforms (rotateX, rotateY)",
@@ -14,19 +13,16 @@
     "Automatic return to center on gesture end",
     "Dynamic shadow effects on card"
   ],
-
   "file_structure": {
     "index.tsx": "Main Animated3DParallax component with gesture handling",
     "hooks/use-3d-rotation-style.ts": "Reusable custom hook for 3D rotation calculations",
     "assets/logo.png": "Logo image displayed on card content"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "pattern": "3D transforms with parallax effect"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -39,22 +35,36 @@
         "withSpring",
         "interpolate"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "useDerivedValue for smooth spring animations on derived values"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
-      "callbacks": ["onBegin", "onUpdate", "onFinalize"],
-      "configuration": ["shouldCancelWhenOutside"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "callbacks": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ],
+      "configuration": [
+        "shouldCancelWhenOutside"
+      ],
       "usage": "Continuous tracking of touch position for 3D rotation"
     }
   },
-
   "animation_techniques": {
     "3d_rotation": {
-      "axes": ["rotateX", "rotateY"],
+      "axes": [
+        "rotateX",
+        "rotateY"
+      ],
       "rotation_x": {
         "input": "Touch Y position",
         "mapping": "y.value [0, maxSize] → [maxRotation, -maxRotation]",
@@ -74,7 +84,11 @@
         "effect": "Creates 3D depth perception"
       },
       "transform_order": {
-        "order": ["perspective", "rotateX", "rotateY"],
+        "order": [
+          "perspective",
+          "rotateX",
+          "rotateY"
+        ],
         "critical": "Perspective must come first for proper 3D effect"
       }
     },
@@ -123,7 +137,6 @@
       "purpose": "Creates depth separation between card and content"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -148,7 +161,9 @@
         "name": "touchCardX",
         "calculation": "withSpring(touchX.value)",
         "spring_config": "Default spring",
-        "dependencies": ["touchX"],
+        "dependencies": [
+          "touchX"
+        ],
         "purpose": "Smooth animated X position for card rotation",
         "passed_to": "use3DRotationStyle hook for card"
       },
@@ -156,7 +171,9 @@
         "name": "touchCardY",
         "calculation": "withSpring(touchY.value)",
         "spring_config": "Default spring",
-        "dependencies": ["touchY"],
+        "dependencies": [
+          "touchY"
+        ],
         "purpose": "Smooth animated Y position for card rotation",
         "passed_to": "use3DRotationStyle hook for card"
       },
@@ -168,7 +185,9 @@
           "damping": 10,
           "mass": 1
         },
-        "dependencies": ["touchX"],
+        "dependencies": [
+          "touchX"
+        ],
         "purpose": "Delayed animated X position for content parallax",
         "passed_to": "use3DRotationStyle hook for content"
       },
@@ -180,7 +199,9 @@
           "damping": 10,
           "mass": 1
         },
-        "dependencies": ["touchY"],
+        "dependencies": [
+          "touchY"
+        ],
         "purpose": "Delayed animated Y position for content parallax",
         "passed_to": "use3DRotationStyle hook for content"
       }
@@ -207,19 +228,26 @@
     "useAnimatedStyle": {
       "instances": 2,
       "card_style": {
-        "transforms": ["perspective: 500", "rotateX", "rotateY"],
+        "transforms": [
+          "perspective: 500",
+          "rotateX",
+          "rotateY"
+        ],
         "source": "use3DRotationStyle hook",
         "applied_to": "Card container"
       },
       "content_style": {
-        "transforms": ["perspective: 500", "rotateX", "rotateY"],
+        "transforms": [
+          "perspective: 500",
+          "rotateX",
+          "rotateY"
+        ],
         "source": "use3DRotationStyle hook (with delayed values)",
         "applied_to": "Content container",
         "additional": "transformOrigin: ['50%', '50%', 100]"
       }
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -233,13 +261,19 @@
       "callbacks": {
         "onBegin": {
           "purpose": "Catch interaction from first touch",
-          "updates": ["touchX.value = x", "touchY.value = y"],
+          "updates": [
+            "touchX.value = x",
+            "touchY.value = y"
+          ],
           "rationale": "Immediate response before continuous updates",
           "benefit": "No delay on initial touch"
         },
         "onUpdate": {
           "purpose": "Continuous touch position tracking",
-          "updates": ["touchX.value = x", "touchY.value = y"],
+          "updates": [
+            "touchX.value = x",
+            "touchY.value = y"
+          ],
           "frequency": "Every frame during pan",
           "worklet": true
         },
@@ -261,7 +295,6 @@
       }
     }
   },
-
   "mathematical_algorithms": {
     "rotation_interpolation": {
       "rotateX_formula": "interpolate(y, [0, maxSize], [maxRotation, -maxRotation])",
@@ -293,7 +326,6 @@
       "overshoot": "Lower damping = more bounce"
     }
   },
-
   "performance_optimizations": {
     "worklet_execution": {
       "pattern": "All gesture callbacks and animations run on UI thread",
@@ -327,7 +359,6 @@
       "potential": "Can be used in other 3D animations"
     }
   },
-
   "visual_design": {
     "card_styling": {
       "size": "300x300px (square)",
@@ -370,7 +401,6 @@
       "aesthetic": "Professional, minimal, modern"
     }
   },
-
   "layout_and_positioning": {
     "container_hierarchy": {
       "level_1": "Container (full screen, centered)",
@@ -396,7 +426,6 @@
       "constant": "MAX_CARD_ROTATE_DEG = 18"
     }
   },
-
   "use_cases": {
     "primary": [
       "Interactive product cards",
@@ -427,12 +456,15 @@
       "Floating card effects"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "type_imports": ["type SharedValue"],
-      "prop_types": ["Use3DRotationStyleParams"],
+      "type_imports": [
+        "type SharedValue"
+      ],
+      "prop_types": [
+        "Use3DRotationStyleParams"
+      ],
       "generics": false,
       "type_safety": "Strong typing throughout"
     },
@@ -475,7 +507,6 @@
       "types": "Explicit type imports"
     }
   },
-
   "known_limitations": {
     "fixed_card_size": {
       "issue": "CARD_SIZE hardcoded to 300",
@@ -507,7 +538,6 @@
       "testing_needed": "Should test on web platform"
     }
   },
-
   "potential_improvements": {
     "customization": [
       "Make card size responsive (% of screen)",
@@ -543,7 +573,6 @@
       "Focus indicators"
     ]
   },
-
   "key_insights": {
     "perspective_first": "Perspective transform must come before rotation transforms",
     "coordinate_mapping": "x maps to rotateY, y maps to rotateX (inverted axes)",
@@ -555,7 +584,6 @@
     "center_reset": "Returning to center creates satisfying spring back effect",
     "transform_origin_depth": "transformOrigin z-value creates spatial separation"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic 3D transforms (rotateX, rotateY, perspective)",
@@ -581,7 +609,6 @@
       "Complex transform combinations"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Apple Card 3D effect",
@@ -605,7 +632,6 @@
       "Spatial UI interactions"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Card rotates correctly based on touch position",
@@ -642,7 +668,6 @@
       "Different screen sizes"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -664,7 +689,6 @@
       "screen_reader": "Describe current rotation state"
     }
   },
-
   "real_world_inspiration": {
     "apple_card": "Apple Card app 3D tilt effect",
     "tiltjs": "Tilt.js library for web parallax",
@@ -672,7 +696,6 @@
     "credit_card_forms": "Interactive credit card previews",
     "product_showcases": "E-commerce 3D product viewers"
   },
-
   "comparison_to_similar_animations": {
     "vs_3d_scroll_transition": {
       "similarity": "Both use 3D perspective transforms",
@@ -687,7 +710,6 @@
       "difference": "This is continuous rotation, card flip is discrete state change"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~150 lines total (component + hook)",
     "dependencies": "Reanimated and gesture handler (likely already in project)",
@@ -695,7 +717,6 @@
     "runtime_memory": "Minimal - 4 SharedValues, 2 derived values",
     "estimated_memory": "< 50KB"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread (worklets)",
@@ -703,7 +724,6 @@
     "gesture_update_frequency": "Every frame",
     "animation_complexity": "Low - simple interpolations and springs"
   },
-
   "tags": [
     "3d-transforms",
     "parallax",
@@ -719,5 +739,9 @@
     "custom-hook",
     "rotation",
     "interpolation"
-  ]
+  ],
+  "content_hash": "cd41027451b593633bf6248ae21984a2bad3c45b9cb30f3d86e32ce7febf536c",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.270Z",
+  "last_validated": "2025-10-12T09:19:28.270Z"
 }

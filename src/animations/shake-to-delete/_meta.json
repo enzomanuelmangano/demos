@@ -2,7 +2,6 @@
   "animation_name": "Shake to Delete",
   "animation_slug": "shake-to-delete",
   "description": "An iOS-inspired app deletion interface that mimics the Home Screen edit mode behavior. Features long-press activation, continuous shaking animations with unique parameters per item, and delete buttons that appear with smooth fade-in. Uses deterministic pseudo-random number generation to create varied but consistent wobble animations for each app tile, with metallic gradient backgrounds and a responsive grid layout.",
-
   "main_features": [
     "Long-press activation for edit mode (iOS-style)",
     "Continuous shaking animation with unique parameters per item",
@@ -17,7 +16,6 @@
     "TouchableOpacity areas with extended hit slop for delete buttons",
     "Safe area aware layout with dynamic padding"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main demo component with LinearGradient background"
@@ -36,14 +34,12 @@
       "apps-list/constants.ts": "Metallic and vibrant gradient color data (24 metallic gradients used)"
     }
   },
-
   "core_technologies": [
     "react-native-reanimated",
     "react-native-safe-area-context",
     "expo-linear-gradient",
     "@expo/vector-icons"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -71,7 +67,9 @@
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Top padding for grid to avoid notch and status bar"
     },
     "expo-linear-gradient": {
@@ -81,11 +79,12 @@
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "icons_used": ["Ionicons.remove"],
+      "icons_used": [
+        "Ionicons.remove"
+      ],
       "usage": "Delete button icon (minus symbol)"
     }
   },
-
   "animation_techniques": {
     "shake_animation": {
       "pattern": "Continuous sequence with deterministic random parameters",
@@ -143,7 +142,6 @@
       "effect": "Items smoothly move to fill empty spaces"
     }
   },
-
   "reanimated_patterns": {
     "shared_mutable_state": {
       "pattern": "Module-level makeMutable for global state",
@@ -188,7 +186,9 @@
         "wrapped in withRepeat(-1, true)"
       ],
       "sequence_when_stopped": "withTiming(0, 150ms)",
-      "dependencies": ["isShaking"],
+      "dependencies": [
+        "isShaking"
+      ],
       "cleanup": "cancelAnimation(progress) to prevent memory leaks",
       "purpose": "Reactive animation that responds to global shake state"
     },
@@ -258,7 +258,6 @@
       "implementation": "if (progress) cancelAnimation(progress) in useDerivedValue"
     }
   },
-
   "component_architecture": {
     "shake_to_delete_animation": {
       "type": "Root container component",
@@ -290,7 +289,9 @@
         "columns": 4,
         "formula": "itemSize = (availableWidth - spacing * (columns - 1)) / columns - 2",
         "memoized": true,
-        "dependencies": ["screenWidth"]
+        "dependencies": [
+          "screenWidth"
+        ]
       },
       "interactions": {
         "onPress_wrapper": "stopShaking() - tap outside items to exit edit mode",
@@ -304,7 +305,10 @@
         "item": {
           "type": "AppData",
           "required": true,
-          "fields": ["id", "colors"]
+          "fields": [
+            "id",
+            "colors"
+          ]
         },
         "onLongPress": {
           "type": "() => void",
@@ -338,7 +342,6 @@
       }
     }
   },
-
   "data_structure": {
     "apps_data_raw": {
       "vibrant_gradients": {
@@ -373,7 +376,6 @@
       "result": "{ readonly id: number; readonly colors: readonly string[] }"
     }
   },
-
   "animation_config": {
     "base_parameters": {
       "amplitude": {
@@ -422,7 +424,6 @@
       "stop_timing": "150ms smooth return to neutral position"
     }
   },
-
   "layout_and_positioning": {
     "grid_configuration": {
       "columns": 4,
@@ -501,7 +502,6 @@
       "purpose": "Avoid status bar and notch on iOS/Android"
     }
   },
-
   "performance_optimizations": [
     "Shared mutable state avoids React re-renders for animation updates",
     "makeMutable runs on UI thread without bridge crossing",
@@ -516,7 +516,6 @@
     "Pointer events control prevents unnecessary touch handling when button hidden",
     "setTimeout for deletion allows exit animation to complete visibly"
   ],
-
   "interaction_patterns": {
     "enter_edit_mode": {
       "trigger": "Long press on any app item",
@@ -545,7 +544,6 @@
       "timing_reason": "Delay ensures fade animation is visible before removal"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "Linear gradient #000000 to #121212 (dark)",
@@ -579,7 +577,6 @@
       "color_count_per_gradient": 3
     }
   },
-
   "use_cases": [
     "iOS-style home screen app management",
     "Grid-based item deletion interfaces",
@@ -597,7 +594,6 @@
     "Prototyping app launchers",
     "Custom home screen implementations"
   ],
-
   "code_quality": {
     "strengths": [
       "Comprehensive TypeScript with explicit types",
@@ -624,7 +620,6 @@
       "Could add accessibility labels for screen readers"
     ]
   },
-
   "typescript_patterns": {
     "type_definitions": [
       "AppData - extracted from array element type",
@@ -651,7 +646,6 @@
       "benefit": "Clearer distinction between runtime and compile-time imports"
     }
   },
-
   "known_limitations": [
     "No virtualization - all 24 items render immediately (fine for small lists)",
     "No persistence - deleted items return on component remount",
@@ -669,7 +663,6 @@
     "No loading states or error handling",
     "ScrollView instead of FlatList limits scalability to hundreds of items"
   ],
-
   "potential_improvements": [
     "Add haptic feedback (Expo Haptics) on long press and delete",
     "Implement delete confirmation dialog or undo toast",
@@ -695,7 +688,6 @@
     "Add item edit mode (rename, change colors)",
     "Support nested folders or categories"
   ],
-
   "key_insights": [
     "makeMutable at module scope creates shared state without Context API overhead",
     "Deterministic random generation ensures consistent animations per item across re-renders",
@@ -713,7 +705,6 @@
     "withRepeat(-1, true) creates infinite reversing animation",
     "Safe area insets prevent content from hiding under notch/status bar"
   ],
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Reanimated animations (withTiming, withRepeat, withSequence)",
@@ -749,7 +740,6 @@
       "Memory management in animation systems"
     ]
   },
-
   "mathematical_concepts": {
     "linear_congruential_generator": {
       "formula": "X(n+1) = (a * X(n) + c) mod m",
@@ -774,7 +764,6 @@
       "purpose": "Convert animation progress to pixel/degree values"
     }
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels or hints",
@@ -795,7 +784,6 @@
       "Add confirmation for deletion with screen reader announcement"
     ]
   },
-
   "platform_considerations": {
     "ios": {
       "inspiration": "Native iOS home screen edit mode",
@@ -819,7 +807,6 @@
       ]
     }
   },
-
   "comparison_to_similar_patterns": {
     "vs_ios_home_screen": {
       "similarities": [
@@ -846,7 +833,6 @@
       "disadvantages": "No multi-select support, requires edit mode entry"
     }
   },
-
   "testing_considerations": [
     "Test deterministic random generation produces consistent values per ID",
     "Verify all items shake when any item long-pressed",
@@ -864,7 +850,6 @@
     "Verify animation cancellation works correctly",
     "Test edge case: delete all items"
   ],
-
   "related_patterns": [
     "iOS Home Screen (primary inspiration)",
     "Swipe-to-delete lists",
@@ -877,7 +862,6 @@
     "Multi-select interfaces",
     "Trash/recycle bin patterns"
   ],
-
   "bundle_size_impact": {
     "code_size": "~385 lines total (all files combined)",
     "dependencies": "Reanimated, safe-area-context, linear-gradient, vector-icons (likely already in project)",
@@ -885,7 +869,6 @@
     "gradient_data": "~2KB (24 gradient arrays)",
     "estimated_total": "< 15KB"
   },
-
   "tags": [
     "shake-animation",
     "delete-interaction",
@@ -910,5 +893,9 @@
     "continuous-animation",
     "ui-thread-animation",
     "home-screen-pattern"
-  ]
+  ],
+  "content_hash": "035684f02f9e06f52e8da2d24e5dc60b41d7e174c6c8549b39967ec1bf004db2",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.428Z",
+  "last_validated": "2025-10-12T09:19:28.428Z"
 }

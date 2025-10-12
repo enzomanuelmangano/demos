@@ -2,7 +2,6 @@
   "animation_name": "Blur Circles",
   "animation_slug": "blur-circles",
   "description": "Two independently moving circles rendered with Skia, featuring smooth organic motion driven by Perlin noise, dynamic blur effects, and gradient fills. One circle displays a vibrant sweep gradient while the other creates a glassmorphic effect with inner blur masking.",
-
   "main_features": [
     "Perlin noise-based organic circular motion",
     "Dual circle animation with different frequencies and amplitudes",
@@ -15,20 +14,17 @@
     "GPU-accelerated Skia rendering",
     "Custom hook for noise-based vector calculation"
   ],
-
   "file_structure": {
     "index.tsx": "Main BlurCircles component with canvas rendering and animation logic",
     "constants.ts": "Configuration constants including noise functions, dimensions, and animation parameters",
     "hooks/use-vec.ts": "Custom hook for calculating noise-based x,y coordinates over time"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "noise": "simplex-noise",
     "threading": "react-native-worklets"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -39,8 +35,14 @@
         "Blur",
         "BlurMask"
       ],
-      "effects": ["SweepGradient"],
-      "utilities": ["vec", "rect", "rrect"],
+      "effects": [
+        "SweepGradient"
+      ],
+      "utilities": [
+        "vec",
+        "rect",
+        "rrect"
+      ],
       "usage": "GPU-accelerated rendering of animated circles with blur effects and gradients",
       "performance_reason": "Native-level performance, 60fps smooth animations with complex effects"
     },
@@ -66,11 +68,12 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge UI thread noise calculations to JS thread for vector updates"
     }
   },
-
   "animation_techniques": {
     "perlin_noise_motion": {
       "pattern": "2D Perlin noise for organic movement",
@@ -96,7 +99,12 @@
     "gradient_circle": {
       "type": "SweepGradient",
       "center": "vec(50, 128)",
-      "colors": ["cyan", "magenta", "yellow", "cyan"],
+      "colors": [
+        "cyan",
+        "magenta",
+        "yellow",
+        "cyan"
+      ],
       "applied_to": "Colored circle",
       "effect": "Radial color sweep creating vibrant, dynamic appearance",
       "memoization": true,
@@ -145,7 +153,6 @@
       "visual_result": "Glass circle moves more dramatically while colored circle is more subtle"
     }
   },
-
   "custom_hooks": {
     "useVec": {
       "purpose": "Calculate x,y coordinates from noise function over time",
@@ -174,7 +181,6 @@
       "optimization": "Separate noise calculation from coordinate derivation for cleaner separation"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -195,14 +201,19 @@
     "useDerivedValue": [
       {
         "name": "clipCircle",
-        "dependencies": ["cx2", "cy2"],
+        "dependencies": [
+          "cx2",
+          "cy2"
+        ],
         "calculation": "rrect around glass circle position",
         "purpose": "Dynamic clip path following glass circle movement",
         "type": "SkRRect"
       },
       {
         "name": "cx, cy (in useVec)",
-        "dependencies": ["vecNoise"],
+        "dependencies": [
+          "vecNoise"
+        ],
         "calculation": "vecNoise.value + screen center",
         "purpose": "Final circle center coordinates"
       }
@@ -211,7 +222,9 @@
       "watches": "clock.value",
       "prepareFunction": "Returns current clock value",
       "reactionFunction": "Calculates noise values and updates vecNoise on JS thread",
-      "dependencies": ["updateVecNoise"],
+      "dependencies": [
+        "updateVecNoise"
+      ],
       "purpose": "Bridge clock changes to noise calculations",
       "pattern": "Watch UI thread value, update JS thread calculation"
     },
@@ -224,11 +237,12 @@
     "useEffect": {
       "trigger": "Component mount",
       "action": "Starts clock animation with withRepeat",
-      "dependencies": ["clock"],
+      "dependencies": [
+        "clock"
+      ],
       "cleanup": "None (animation runs indefinitely)"
     }
   },
-
   "skia_rendering": {
     "canvas": {
       "style": "{ flex: 1, backgroundColor: 'white' }",
@@ -288,7 +302,6 @@
       }
     }
   },
-
   "mathematical_algorithms": {
     "perlin_noise": {
       "algorithm": "Simplex/Perlin noise in 2D",
@@ -330,7 +343,6 @@
       "dynamic": "Recalculated on every frame as circle moves"
     }
   },
-
   "configuration": {
     "dimension_constants": {
       "SCREEN_WIDTH": "Dimensions.get('window').width",
@@ -374,11 +386,15 @@
       "animation_reverse": true
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "white",
-      "gradient_colors": ["cyan", "magenta", "yellow", "cyan"],
+      "gradient_colors": [
+        "cyan",
+        "magenta",
+        "yellow",
+        "cyan"
+      ],
       "glass_circle_fill": "rgba(0,0,0,0.08)",
       "glass_circle_stroke": "rgba(255,255,255,0.25)",
       "aesthetic": "Vibrant CMYK gradient with subtle glassmorphic overlay"
@@ -413,7 +429,6 @@
       "visual_result": "Sophisticated depth and layering effect"
     }
   },
-
   "performance_optimizations": {
     "skia_rendering": {
       "benefit": "GPU-accelerated rendering, handles 60fps easily",
@@ -440,11 +455,12 @@
       "performance": "Minimal overhead, native rendering"
     }
   },
-
   "react_patterns": {
     "useEffect": {
       "usage": "Start clock animation on mount",
-      "dependencies": ["clock"],
+      "dependencies": [
+        "clock"
+      ],
       "cleanup": "None needed (animation should run indefinitely)"
     },
     "useMemo": {
@@ -459,11 +475,16 @@
     },
     "useCallback": {
       "usage": "updateVecNoise function in useVec",
-      "dependencies": ["clock", "frequency", "amplitude", "noise", "vecNoise"],
+      "dependencies": [
+        "clock",
+        "frequency",
+        "amplitude",
+        "noise",
+        "vecNoise"
+      ],
       "purpose": "Stable reference for scheduleOnRN callback"
     }
   },
-
   "use_cases": {
     "primary": [
       "Loading screens with organic motion",
@@ -493,10 +514,12 @@
       "Abstract art backgrounds"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
-    "type_definitions": ["UseVecParams", "SharedValue imported type"],
+    "type_definitions": [
+      "UseVecParams",
+      "SharedValue imported type"
+    ],
     "imports": {
       "selective": "Named imports for all dependencies",
       "organized": "Grouped by package (React, Skia, Reanimated, etc.)"
@@ -525,7 +548,6 @@
       "Type safety throughout"
     ]
   },
-
   "known_limitations": {
     "performance_on_low_end": {
       "issue": "Multiple blur effects can be expensive on very low-end devices",
@@ -548,7 +570,6 @@
       "current_scope": "Designed as ambient animation"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Touch to influence circle motion",
@@ -583,7 +604,6 @@
       "Trail/motion blur effects"
     ]
   },
-
   "key_insights": {
     "noise_for_organic_motion": "Perlin noise is ideal for natural-looking circular motion",
     "dual_frequency_depth": "Different frequencies and amplitudes create visual depth and interest",
@@ -594,7 +614,6 @@
     "threading_strategy": "Noise on JS thread, coordinates on UI thread balances performance",
     "skia_performance": "Complex visual effects achievable at 60fps with Skia"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Skia Canvas basics",
@@ -620,7 +639,6 @@
       "Performance optimization strategies"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Circles move smoothly without jank",
@@ -650,7 +668,6 @@
       "Different Skia backend behaviors"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_animated_view": {
       "alternative": "Animated.View with transform animations",
@@ -671,7 +688,6 @@
       "tradeoffs": "Platform-specific (not web-standard)"
     }
   },
-
   "related_patterns": {
     "perlin_noise_animations": "Other animations using noise functions",
     "skia_blur_effects": "Different blur effect techniques",
@@ -679,7 +695,6 @@
     "glassmorphism": "Frosted glass UI effects",
     "gradient_animations": "Animated gradient fills"
   },
-
   "bundle_size_impact": {
     "code_size": "~120 lines total (main: 100, hook: 66, constants: 18)",
     "dependencies": {
@@ -690,7 +705,6 @@
     "runtime_memory": "Minimal - few SharedValues, Skia objects",
     "estimated_total": "< 5KB additional (excluding shared dependencies)"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "decorative": "Purely decorative animation",
@@ -709,7 +723,6 @@
       "focus": "Should not interfere with focus management"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All effects supported",
@@ -727,7 +740,6 @@
       "testing": "Should be tested separately"
     }
   },
-
   "tags": [
     "skia",
     "blur",
@@ -744,5 +756,9 @@
     "clipping",
     "noise-animation",
     "smooth-motion"
-  ]
+  ],
+  "content_hash": "7d2241d91a566badd468672dbb357e9b671361f6429738a3cfb5324566fd2a48",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.289Z",
+  "last_validated": "2025-10-12T09:19:28.289Z"
 }

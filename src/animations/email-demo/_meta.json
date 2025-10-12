@@ -2,7 +2,6 @@
   "animation_name": "Email Demo",
   "animation_slug": "email-demo",
   "description": "An interactive email inbox list with swipe-to-delete animation featuring smooth list item shifting, dynamic highlighting, and shake feedback. Items shift upward to fill deleted positions with spring-based translateY animations, background color transitions, and shadow effects. Includes restore/delete floating action buttons with shake animations to indicate invalid operations.",
-
   "main_features": [
     "Swipe-up list item shifting animation",
     "Dynamic item highlighting with background color fade",
@@ -16,7 +15,6 @@
     "Reusable animated shake hook",
     "List item elevation and shadow transitions"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo component with floating action buttons and list container",
     "components/interactive-list/index.tsx": "Custom list wrapper handling animation logic per item",
@@ -24,7 +22,6 @@
     "hooks/use-animated-shake.ts": "Reusable custom hook for shake animation effect",
     "constants.ts": "Mock email data with 10 items (imageUrl, title, subtitle)"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "interactions": "pressto",
@@ -33,7 +30,6 @@
     "safe_area": "react-native-safe-area-context",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -47,7 +43,9 @@
         "withTiming",
         "cancelAnimation"
       ],
-      "types": ["SharedValue"],
+      "types": [
+        "SharedValue"
+      ],
       "critical_feature": "useAnimatedStyle for dynamic translateY, opacity, background, and shadow animations"
     },
     "pressto": {
@@ -57,30 +55,44 @@
     },
     "expo-image": {
       "version": "~3.0.8",
-      "components": ["Image"],
-      "props": ["contentFit", "source"],
+      "components": [
+        "Image"
+      ],
+      "props": [
+        "contentFit",
+        "source"
+      ],
       "usage": "Avatar images in list items with optimized loading"
     },
     "expo-linear-gradient": {
       "version": "~14.0.1",
       "component": "LinearGradient",
       "usage": "Top and bottom gradients for fade effect at screen edges",
-      "colors": ["rgba(248,250,252,1) to rgba(248,250,252,0)", "rgba(248,250,252,0) to rgba(248,250,252,1)"]
+      "colors": [
+        "rgba(248,250,252,1) to rgba(248,250,252,0)",
+        "rgba(248,250,252,0) to rgba(248,250,252,1)"
+      ]
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Top and bottom padding to avoid notch/status bar and bottom safe area"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["MaterialIcons"],
-      "icons_used": ["restore", "delete"],
+      "components": [
+        "MaterialIcons"
+      ],
+      "icons_used": [
+        "restore",
+        "delete"
+      ],
       "size": 24,
       "usage": "Icons for floating action buttons"
     }
   },
-
   "animation_techniques": {
     "list_item_shifting": {
       "pattern": "TranslateY interpolation based on erased count",
@@ -155,7 +167,10 @@
     },
     "gradient_overlays": {
       "top_gradient": {
-        "colors": ["rgba(248,250,252,1)", "rgba(248,250,252,0)"],
+        "colors": [
+          "rgba(248,250,252,1)",
+          "rgba(248,250,252,0)"
+        ],
         "start": "[0, 0]",
         "end": "[0, 1]",
         "height": "safeTop * 1.5",
@@ -163,7 +178,10 @@
         "purpose": "Fades content near status bar/notch"
       },
       "bottom_gradient": {
-        "colors": ["rgba(248,250,252,0)", "rgba(248,250,252,1)"],
+        "colors": [
+          "rgba(248,250,252,0)",
+          "rgba(248,250,252,1)"
+        ],
         "start": "[0, 0]",
         "end": "[0, 1]",
         "height": 150,
@@ -173,7 +191,6 @@
       "pointer_events": "none (allows interaction through gradients)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -209,7 +226,11 @@
           "shadowOffset.height (lifts shadow for active item)",
           "elevation (Android elevation for active item)"
         ],
-        "dependencies": ["index", "amountToShift", "itemHeight"],
+        "dependencies": [
+          "index",
+          "amountToShift",
+          "itemHeight"
+        ],
         "complexity": "High - coordinates 8 animated properties based on item position"
       },
       {
@@ -218,7 +239,9 @@
         "animated_properties": [
           "transform: [{ translateX }] (horizontal shake)"
         ],
-        "dependencies": ["shakeTranslateX"],
+        "dependencies": [
+          "shakeTranslateX"
+        ],
         "purpose": "Returns animated style object for shake effect"
       }
     ],
@@ -247,18 +270,23 @@
     },
     "useCallback_optimization": {
       "onDelete": {
-        "dependencies": ["erasedItems", "shakeDelete"],
+        "dependencies": [
+          "erasedItems",
+          "shakeDelete"
+        ],
         "logic": "Increment erasedItems if not all deleted, else shake delete button",
         "benefit": "Stable reference prevents unnecessary re-renders"
       },
       "onRestore": {
-        "dependencies": ["erasedItems", "shakeRestore"],
+        "dependencies": [
+          "erasedItems",
+          "shakeRestore"
+        ],
         "logic": "Decrement erasedItems if any erased, else shake restore button",
         "benefit": "Stable reference prevents unnecessary re-renders"
       }
     }
   },
-
   "custom_hooks": {
     "useAnimatedShake": {
       "file": "hooks/use-animated-shake.ts",
@@ -277,7 +305,6 @@
       "note": "Mentioned as 'EXTREMELY useful (and reusable)' in code comments"
     }
   },
-
   "component_architecture": {
     "EmailDemo": {
       "type": "Main component",
@@ -296,7 +323,10 @@
         "useSafeAreaInsets() for top and bottom padding",
         "useAnimatedShake() twice for button shake animations"
       ],
-      "callbacks": ["onDelete", "onRestore"]
+      "callbacks": [
+        "onDelete",
+        "onRestore"
+      ]
     },
     "InteractiveList": {
       "type": "Generic list wrapper component",
@@ -336,7 +366,6 @@
       "styling": "White background, border, shadow, rounded corners"
     }
   },
-
   "state_management": {
     "erased_items_tracking": {
       "storage": "erasedItems SharedValue",
@@ -373,7 +402,6 @@
       "performance": "Critical for smooth 60fps animations without JS thread bottleneck"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#f8fafc (very light blue-gray)",
@@ -495,7 +523,6 @@
       }
     }
   },
-
   "interaction_patterns": {
     "delete_action": {
       "trigger": "Press delete (red) button",
@@ -523,7 +550,10 @@
     },
     "pressable_scale": {
       "component": "PressableScale from pressto",
-      "applied_to": ["Restore button", "Delete button"],
+      "applied_to": [
+        "Restore button",
+        "Delete button"
+      ],
       "effect": "Scale press animation for tactile feedback",
       "benefit": "Natural, iOS-like press interaction"
     },
@@ -533,7 +563,6 @@
       "purpose": "Demo focuses on list animation, not item selection"
     }
   },
-
   "data_structure": {
     "INITIAL_ITEMS": {
       "type": "Array of objects",
@@ -563,7 +592,6 @@
       "total_item_space": "ITEM_HEIGHT + ITEM_MARGIN (110px)"
     }
   },
-
   "performance_optimizations": {
     "shared_value_over_state": {
       "pattern": "erasedItems is SharedValue instead of useState",
@@ -572,8 +600,15 @@
       "fps": "Maintains 60fps even with complex multi-property animations"
     },
     "useCallback": {
-      "functions": ["onDelete", "onRestore"],
-      "dependencies": ["erasedItems", "shakeDelete", "shakeRestore"],
+      "functions": [
+        "onDelete",
+        "onRestore"
+      ],
+      "dependencies": [
+        "erasedItems",
+        "shakeDelete",
+        "shakeRestore"
+      ],
       "benefit": "Stable function references prevent unnecessary re-renders",
       "critical_for": "Performance with list of 10 items"
     },
@@ -599,7 +634,6 @@
       "smooth": "Consistent 60fps even with 8 animated properties per item"
     }
   },
-
   "use_cases": {
     "primary": [
       "Email inbox interfaces",
@@ -630,7 +664,6 @@
       "Gradient overlay techniques"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -674,7 +707,6 @@
       "Clear naming conventions"
     ]
   },
-
   "known_limitations": {
     "fixed_erase_direction": {
       "limitation": "Items only erase from top of list",
@@ -707,7 +739,6 @@
       "reduced_motion": "No prefers-reduced-motion support"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Swipe-to-delete gesture on individual items",
@@ -747,7 +778,6 @@
       "High contrast mode support"
     ]
   },
-
   "key_insights": {
     "shared_value_power": "Using SharedValue instead of state avoids re-renders and enables smooth multi-item animations",
     "index_based_animation": "Animating based on index comparison (index >= shiftedAmount) creates clean show/hide logic",
@@ -758,7 +788,6 @@
     "gradient_overlay": "Pointer events none on gradients allows interaction through visual effects",
     "validation_feedback": "Shake animations provide clear, non-intrusive feedback for invalid operations"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic FlatList usage",
@@ -785,7 +814,6 @@
       "Animation lifecycle management"
     ]
   },
-
   "comparison_to_similar_animations": {
     "vs_swipe_to_delete": {
       "traditional": "Swipe individual items to delete them",
@@ -803,7 +831,6 @@
       "benefit": "More natural for vertical lists, shows consequence of action"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Items shift smoothly upward",
@@ -841,7 +868,6 @@
       "Restore undoes delete correctly"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "labels": "No accessibility labels on buttons or list items",
@@ -861,7 +887,6 @@
       "High contrast mode support"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Email inbox swipe-to-delete",
@@ -885,7 +910,6 @@
       "Multi-property coordination"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~320 lines total (index: 192, interactive-list: 116, list-item: 81, hook: 40, constants: 63)",
     "dependencies": {
@@ -896,7 +920,6 @@
     "runtime_memory": "Minimal - small dataset, efficient SharedValues",
     "estimated_impact": "< 10KB additional"
   },
-
   "tags": [
     "email-list",
     "inbox-animation",
@@ -913,5 +936,9 @@
     "generic-components",
     "item-highlighting",
     "opacity-fade"
-  ]
+  ],
+  "content_hash": "bab08c68a0c962dd8210a1868af47f0cfebc1d47c7a477757b9f70b101897cb8",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.329Z",
+  "last_validated": "2025-10-12T09:19:28.329Z"
 }

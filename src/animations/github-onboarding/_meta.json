@@ -2,7 +2,6 @@
   "animation_name": "GitHub Colorful Onboarding",
   "animation_slug": "github-onboarding",
   "description": "A colorful onboarding carousel inspired by GitHub's mobile app, featuring paginated image slides with 3D flip animations, dynamic background gradients, and interactive pagination dots. Each slide displays cat-themed images with titles, smooth page transitions, and synchronized color changes.",
-
   "main_features": [
     "Horizontal paginated carousel with 4 slides",
     "3D flip animation (rotateY) with scale effect on images",
@@ -13,7 +12,6 @@
     "Synchronized color transitions across background, using color darkening",
     "Cat-themed imagery with descriptive titles"
   ],
-
   "file_structure": {
     "index.tsx": "Main entry point with data array and GestureHandlerRootView wrapper",
     "components/colorful-onboarding/": {
@@ -31,7 +29,6 @@
       "04.jpg": "Cat image - Sleek Feline in Repose"
     }
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
@@ -39,13 +36,18 @@
     "images": "expo-image",
     "color_manipulation": "color (npm package)"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
       "usage": "Canvas background with animated gradient",
-      "components": ["Canvas", "Rect", "LinearGradient"],
-      "utilities": ["vec"],
+      "components": [
+        "Canvas",
+        "Rect",
+        "LinearGradient"
+      ],
+      "utilities": [
+        "vec"
+      ],
       "performance_reason": "GPU-accelerated gradient rendering that updates smoothly during scroll"
     },
     "react-native-reanimated": {
@@ -65,28 +67,35 @@
     "react-native-gesture-handler": {
       "version": "~2.28.0",
       "usage": "Required for GestureHandlerRootView wrapper",
-      "components": ["GestureHandlerRootView"],
+      "components": [
+        "GestureHandlerRootView"
+      ],
       "note": "Provides gesture infrastructure for FlatList interactions"
     },
     "expo-image": {
       "version": "~3.0.8",
       "usage": "Optimized image rendering for cat photos",
-      "components": ["Image"],
+      "components": [
+        "Image"
+      ],
       "benefit": "Better performance and loading states than default Image"
     },
     "color": {
       "version": "^4.2.3",
       "usage": "Color manipulation for darkening gradient colors",
-      "methods": ["Color(hex).darken(0.8).hex()"],
+      "methods": [
+        "Color(hex).darken(0.8).hex()"
+      ],
       "purpose": "Creates bottom gradient color by darkening base color by 80%"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
       "usage": "Pressable pagination dots with scale animation",
-      "components": ["PressableScale"]
+      "components": [
+        "PressableScale"
+      ]
     }
   },
-
   "animation_techniques": {
     "background_gradient": {
       "pattern": "Skia LinearGradient with color interpolation",
@@ -129,7 +138,6 @@
       "animation": "Native smooth scroll animation"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -143,7 +151,10 @@
         "type": "useDerivedValue",
         "calculation": "currentOffset.value / width",
         "purpose": "Normalized scroll progress (0-3 for 4 slides)",
-        "dependents": ["gradientColors", "pagination dots"]
+        "dependents": [
+          "gradientColors",
+          "pagination dots"
+        ]
       },
       {
         "name": "gradientColors",
@@ -175,33 +186,57 @@
     "useAnimatedStyle_usage": [
       {
         "component": "OnboardingPage (badge)",
-        "transforms": ["rotateY", "scale"],
+        "transforms": [
+          "rotateY",
+          "scale"
+        ],
         "dependencies": "currentOffset, inputRange"
       },
       {
         "component": "OnboardingPage (title)",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "dependencies": "currentOffset, inputRange"
       },
       {
         "component": "PaginationDot",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "dependencies": "progress, index"
       }
     ],
     "useAnimatedRef": {
       "component": "Animated.FlatList",
-      "methods": ["scrollToOffset"],
+      "methods": [
+        "scrollToOffset"
+      ],
       "note": "Requires @ts-ignore due to FlatList type compatibility"
     }
   },
-
   "color_system": {
     "slide_colors": [
-      { "slide": 0, "title": "Lazy Day Lounger", "color": "#265D9E" },
-      { "slide": 1, "title": "Whiskered Explorer", "color": "#4E8DC5" },
-      { "slide": 2, "title": "Curious Kitty Gaze", "color": "#7BB2E9" },
-      { "slide": 3, "title": "Sleek Feline in Repose", "color": "#A1CAE8" }
+      {
+        "slide": 0,
+        "title": "Lazy Day Lounger",
+        "color": "#265D9E"
+      },
+      {
+        "slide": 1,
+        "title": "Whiskered Explorer",
+        "color": "#4E8DC5"
+      },
+      {
+        "slide": 2,
+        "title": "Curious Kitty Gaze",
+        "color": "#7BB2E9"
+      },
+      {
+        "slide": 3,
+        "title": "Sleek Feline in Repose",
+        "color": "#A1CAE8"
+      }
     ],
     "gradient_generation": {
       "base_color": "Slide's color value",
@@ -222,7 +257,6 @@
       "dot_opacity": "0.2 (disabled) to 0.6 (enabled)"
     }
   },
-
   "layout_and_sizing": {
     "flatlist": {
       "orientation": "horizontal",
@@ -269,7 +303,6 @@
       "hit_slop": 5
     }
   },
-
   "performance_optimizations": {
     "skia_canvas": {
       "benefit": "GPU-accelerated gradient rendering",
@@ -278,7 +311,10 @@
     },
     "useDerivedValue": {
       "purpose": "Memoized computations that only update when dependencies change",
-      "used_for": ["progress calculation", "gradient color interpolation"],
+      "used_for": [
+        "progress calculation",
+        "gradient color interpolation"
+      ],
       "benefit": "Avoids unnecessary recalculations"
     },
     "useMemo_arrays": {
@@ -301,7 +337,6 @@
       "benefit": "No JS bridge crossing for color calculations"
     }
   },
-
   "react_patterns": {
     "component_composition": {
       "AppContainer": "Root wrapper with GestureHandlerRootView",
@@ -340,11 +375,13 @@
       "reason": "Avoids extra wrapper View, cleaner DOM"
     }
   },
-
   "ui_ux_design": {
     "onboarding_flow": {
       "slide_count": 4,
-      "navigation": ["Swipe left/right", "Tap pagination dots"],
+      "navigation": [
+        "Swipe left/right",
+        "Tap pagination dots"
+      ],
       "feedback": "Immediate visual response (color change, 3D flip)"
     },
     "visual_hierarchy": {
@@ -380,7 +417,6 @@
       "purpose": "Creates friendly, approachable onboarding experience"
     }
   },
-
   "interaction_patterns": {
     "horizontal_scroll": {
       "gesture": "Swipe left/right on FlatList",
@@ -404,7 +440,6 @@
       "benefit": "Larger touch target for better usability"
     }
   },
-
   "mathematical_patterns": {
     "progress_calculation": {
       "formula": "currentOffset / width",
@@ -443,7 +478,6 @@
       "inactive": 0.2
     }
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type definitions",
@@ -467,7 +501,6 @@
       "No loading states for images"
     ]
   },
-
   "known_limitations": {
     "typescript_issues": {
       "issue": "FlatList ref types require @ts-ignore",
@@ -477,7 +510,11 @@
     },
     "accessibility": {
       "issue": "No screen reader support",
-      "missing": ["accessibilityLabel", "accessibilityHint", "accessibilityRole"],
+      "missing": [
+        "accessibilityLabel",
+        "accessibilityHint",
+        "accessibilityRole"
+      ],
       "impact": "Not usable for visually impaired users"
     },
     "image_loading": {
@@ -498,7 +535,6 @@
       "impact": "Redundant, but React only uses outermost key"
     }
   },
-
   "potential_improvements": {
     "accessibility": [
       "Add accessibilityLabel to images and titles",
@@ -537,7 +573,6 @@
       "CTA button on last slide ('Get Started')"
     ]
   },
-
   "key_insights": {
     "skia_for_backgrounds": "Using Skia Canvas for background gradient is much more performant than View with backgroundColor animations",
     "color_interpolation": "interpolateColor + convertToRGBA enables smooth color transitions in Skia",
@@ -550,7 +585,6 @@
     "ref_for_imperative": "useAnimatedRef enables imperative FlatList control (scrollToOffset)",
     "data_driven_scalability": "Single data array makes adding/removing slides trivial"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList horizontal paging patterns",
@@ -579,7 +613,6 @@
       "Type-safe ref handling patterns"
     ]
   },
-
   "use_cases": {
     "primary": [
       "App onboarding flows",
@@ -605,14 +638,17 @@
       "OnboardingPage": "Template for any paginated content"
     }
   },
-
   "platform_considerations": {
     "ios": {
-      "features": ["All features fully supported"],
+      "features": [
+        "All features fully supported"
+      ],
       "performance": "Excellent (60fps smooth scrolling and animations)"
     },
     "android": {
-      "features": ["All features fully supported"],
+      "features": [
+        "All features fully supported"
+      ],
       "performance": "Excellent (GPU acceleration works well)",
       "note": "Test pagingEnabled behavior on various Android devices"
     },
@@ -625,7 +661,6 @@
       ]
     }
   },
-
   "testing_considerations": {
     "visual_testing": [
       "Verify gradient renders correctly on all slides",
@@ -660,7 +695,6 @@
       "Very large screens (tablets)"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~300 lines total)",
     "dependencies": [
@@ -678,7 +712,6 @@
       "Tree-shake color package if only using darken()"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_react_native_onboarding_swiper": {
       "advantage": "Full animation control, Skia performance",
@@ -693,7 +726,6 @@
       "disadvantage": "More complex, requires Skia and Reanimated"
     }
   },
-
   "inspiration": {
     "source": "GitHub mobile app onboarding",
     "design_elements": [
@@ -708,7 +740,6 @@
       "Implemented with Skia (more performant than original)"
     ]
   },
-
   "tags": [
     "onboarding",
     "carousel",
@@ -723,5 +754,9 @@
     "tutorial",
     "showcase",
     "github-inspired"
-  ]
+  ],
+  "content_hash": "3d6389259c1de23bf6b39ff2d0287b26d3ef0d1131c59f21e78c3886136b4b92",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.360Z",
+  "last_validated": "2025-10-12T09:19:28.360Z"
 }

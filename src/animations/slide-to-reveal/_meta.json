@@ -2,7 +2,6 @@
   "animation_name": "Slide to Reveal",
   "animation_slug": "slide-to-reveal",
   "description": "An interactive secret code reveal component that uses layered masking techniques to create a blurred glassmorphic effect. Users slide their finger across the surface to reveal hidden numeric code beneath a blur mask, with characters scaling dynamically based on touch proximity. Demonstrates advanced Skia masking patterns combining alpha and luminance masks for depth effects.",
-
   "main_features": [
     "Interactive touch-based reveal mechanism",
     "Dual-layer masking system (alpha + luminance)",
@@ -15,20 +14,17 @@
     "Touch position tracking with pan gesture",
     "Smooth opacity transitions on mask activation"
   ],
-
   "file_structure": {
     "index.tsx": "Demo wrapper with GestureHandlerRootView setup",
     "components/slide-to-reveal.tsx": "Main interactive component with dual masking system",
     "components/text-code.tsx": "Character renderer with proximity-based scaling"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "effects": "Skia masks and blur effects"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -41,9 +37,16 @@
         "RoundedRect",
         "Text"
       ],
-      "effects": ["BlurMask"],
-      "hooks": ["useFont"],
-      "types": ["SkFont", "TextProps"],
+      "effects": [
+        "BlurMask"
+      ],
+      "hooks": [
+        "useFont"
+      ],
+      "types": [
+        "SkFont",
+        "TextProps"
+      ],
       "critical_features": [
         "Dual masking system (alpha + luminance)",
         "BlurMask for glassmorphic effects",
@@ -61,19 +64,29 @@
         "withTiming",
         "interpolate"
       ],
-      "enums": ["Extrapolation"],
+      "enums": [
+        "Extrapolation"
+      ],
       "critical_feature": "Real-time distance calculations and transform interpolations on UI thread"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
       "usage": "Pan gesture for sliding reveal interaction",
-      "components": ["GestureHandlerRootView", "GestureDetector"],
-      "apis": ["Gesture.Pan()"],
-      "events": ["onBegin", "onUpdate", "onFinalize"],
+      "components": [
+        "GestureHandlerRootView",
+        "GestureDetector"
+      ],
+      "apis": [
+        "Gesture.Pan()"
+      ],
+      "events": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ],
       "critical_feature": "Continuous touch position tracking for reveal effect"
     }
   },
-
   "masking_architecture": {
     "dual_mask_system": {
       "purpose": "Create depth effect with blurred background and sharp foreground",
@@ -132,10 +145,12 @@
       "inactive": 0,
       "active": 1,
       "timing": "Default timing transition",
-      "triggers": ["Gesture onBegin (activate)", "Gesture onFinalize (deactivate)"]
+      "triggers": [
+        "Gesture onBegin (activate)",
+        "Gesture onFinalize (deactivate)"
+      ]
     }
   },
-
   "animation_techniques": {
     "touch_position_tracking": {
       "pattern": "Pan gesture with SharedValue position storage",
@@ -192,7 +207,6 @@
       "effect": "Prevents flashing unstyled text before font loads"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -220,35 +234,48 @@
     "derived_values": [
       {
         "name": "maskOpacity",
-        "dependencies": ["isMaskActive"],
+        "dependencies": [
+          "isMaskActive"
+        ],
         "calculation": "withTiming(isMaskActive.value ? 1 : 0)",
         "purpose": "Smooth fade in/out of mask circles",
         "type": "Timing animation"
       },
       {
         "name": "highlightedPoint",
-        "dependencies": ["isMaskActive", "x", "y"],
+        "dependencies": [
+          "isMaskActive",
+          "x",
+          "y"
+        ],
         "calculation": "isMaskActive ? { x: x.value, y: y.value } : null",
         "purpose": "Pass touch position to character scaling logic",
         "optimization": "Returns null when inactive to reset distances"
       },
       {
         "name": "rContentOpacity",
-        "dependencies": ["font"],
+        "dependencies": [
+          "font"
+        ],
         "calculation": "withTiming(font === null ? 0 : 1)",
         "purpose": "Fade in content after font loads",
         "type": "Timing animation"
       },
       {
         "name": "distance (per character)",
-        "dependencies": ["highlightedPoint", "character position"],
+        "dependencies": [
+          "highlightedPoint",
+          "character position"
+        ],
         "calculation": "highlightedPoint === null ? withTiming(80) : sqrt(dx² + dy²)",
         "purpose": "Calculate proximity of each character to touch point",
         "optimization": "Animates to 80 when inactive (all chars scale to 0.5)"
       },
       {
         "name": "transform (per character)",
-        "dependencies": ["distance"],
+        "dependencies": [
+          "distance"
+        ],
         "calculation": "interpolate(distance, [0, 80], [1, 0.5], CLAMP)",
         "purpose": "Convert distance to scale transform",
         "type": "Interpolation with clamping"
@@ -260,7 +287,6 @@
       "Distance and transform calculations"
     ]
   },
-
   "component_architecture": {
     "slide_to_reveal": {
       "file": "components/slide-to-reveal.tsx",
@@ -349,7 +375,6 @@
       "demo_code": "112358 (first 6 Fibonacci numbers)"
     }
   },
-
   "gesture_handling": {
     "gesture_type": "Gesture.Pan()",
     "lifecycle": {
@@ -370,7 +395,9 @@
         "frequency": "Every frame during pan"
       },
       "onFinalize": {
-        "actions": ["Set isMaskActive.value = false"],
+        "actions": [
+          "Set isMaskActive.value = false"
+        ],
         "effect": "Deactivates masks, hides reveal circle",
         "triggers": "Fade out animations"
       }
@@ -378,7 +405,6 @@
     "coordinate_system": "Canvas-relative (0,0 = top-left of Canvas)",
     "worklet_compatible": true
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#0F0F0F (very dark gray)",
@@ -405,7 +431,7 @@
       "dual_layer": "Sharp foreground over blurred background"
     },
     "character_scaling": {
-      "max_scale": 1.0,
+      "max_scale": 1,
       "min_scale": 0.5,
       "transition_distance": "0-80 pixels",
       "inactive_scale": 0.5,
@@ -419,7 +445,6 @@
       "result": "Three-dimensional glassmorphic effect"
     }
   },
-
   "mathematical_algorithms": {
     "euclidean_distance": {
       "formula": "distance = sqrt((x - touchX)² + (y - touchY)²)",
@@ -453,7 +478,6 @@
       "effect": "Characters scale from visual center, not baseline"
     }
   },
-
   "performance_optimizations": {
     "skia_rendering": {
       "benefit": "GPU-accelerated masking and blur effects",
@@ -493,7 +517,6 @@
       "trade_off": "More draw calls, but negligible with GPU rendering"
     }
   },
-
   "unique_innovations": {
     "dual_masking_pattern": {
       "concept": "Layer sharp content over blurred content using different mask types",
@@ -528,7 +551,6 @@
       "educational": "Great for understanding mask composition"
     }
   },
-
   "skia_specific_techniques": {
     "mask_modes": {
       "alpha": {
@@ -585,7 +607,6 @@
       "performance": "Gesture handling on UI thread"
     }
   },
-
   "use_cases": {
     "primary": [
       "Secret code reveal interfaces",
@@ -616,7 +637,6 @@
       "Authentication (confirm code before submission)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -668,7 +688,6 @@
       "Educational comments for complex logic"
     ]
   },
-
   "known_limitations": {
     "font_dependency": {
       "issue": "Requires SF-Compact-Rounded-Medium.otf font file",
@@ -707,7 +726,6 @@
       "benefit": "Improved tactile experience"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Multi-touch support (multiple reveal circles)",
@@ -751,7 +769,6 @@
       "Alternative reveal method (button press)"
     ]
   },
-
   "key_insights": {
     "dual_masking_power": "Combining alpha and luminance masks creates layered depth effects impossible with single mask",
     "inverted_mask_technique": "Large reveal + small cutout creates inverse masking for background layers",
@@ -762,7 +779,6 @@
     "character_granularity": "Individual character rendering enables independent animations without layout shifts",
     "transform_origin_importance": "Proper origin calculation crucial for natural-looking scale animations"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Skia Canvas basics",
@@ -789,7 +805,6 @@
       "Creating reusable interactive components"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Code formatting (double spacing)",
@@ -832,7 +847,6 @@
       "Different font sizes"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_simple_opacity_fade": {
       "this_approach": "Dual-layer masking with blur and proximity scaling",
@@ -850,7 +864,6 @@
       "benefit": "User feels in control, more engaging experience"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "Full support for all features",
@@ -875,7 +888,6 @@
       "note": "Not primary target but should work"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~175 lines total for components)",
     "dependencies": "Skia, Reanimated, Gesture Handler (likely already in project)",
@@ -883,7 +895,6 @@
     "runtime_overhead": "Minimal - few SharedValues, memoized masks",
     "estimated_total": "< 5KB code + font asset"
   },
-
   "accessibility_recommendations": {
     "current_state": "No accessibility features implemented",
     "should_add": [
@@ -901,7 +912,6 @@
       "alternative_reveal": "Add button to toggle full reveal for accessibility"
     }
   },
-
   "related_patterns": {
     "scratch_off_cards": "Similar reveal mechanic with different visual style",
     "spotlight_reveal": "Focused area reveal, but usually without blur",
@@ -909,7 +919,6 @@
     "magnetic_buttons": "Proximity-based button animations",
     "secret_messages": "Hidden content revealed through interaction"
   },
-
   "real_world_inspiration": {
     "security_apps": "Banking apps that hide/show account numbers",
     "gaming": "Scratch-off lottery tickets and mystery reveals",
@@ -917,7 +926,6 @@
     "ios_design": "iOS password visibility patterns",
     "material_design": "Google's focus and reveal patterns"
   },
-
   "tags": [
     "skia",
     "masking",
@@ -938,5 +946,9 @@
     "luminance-mask",
     "character-animation",
     "scaling-transform"
-  ]
+  ],
+  "content_hash": "14e7cfa07b88cadcedc463030c6b39488f45c637d2ba2c5d2ecd5ade746164d9",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.437Z",
+  "last_validated": "2025-10-12T09:19:28.437Z"
 }

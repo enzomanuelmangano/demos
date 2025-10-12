@@ -2,7 +2,6 @@
   "animation_name": "Staggered Card Number",
   "animation_slug": "staggered-card-number",
   "description": "An elegant credit card number visibility toggle animation with staggered reveal/hide transitions. Each digit independently animates between its numeric value and a dot placeholder using synchronized vertical slide animations with blur effects. The animation creates a wave-like cascade effect by applying progressive delays to each digit, enhanced with platform-specific blur during transitions for a polished, banking-app quality interaction.",
-
   "main_features": [
     "Staggered digit-by-digit reveal/hide animations with progressive delays",
     "Vertical slide transitions between numbers and dots",
@@ -15,14 +14,12 @@
     "Memoized components for optimal performance",
     "Elegant card UI with subtle shadows and rounded corners"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo screen with centered CardInfo component",
     "components/card-info/index.tsx": "Container managing card number state, toggle logic, and digit layout",
     "components/card-info/hideable-number.tsx": "Individual digit component with staggered slide/blur animation",
     "components/touchables/touchable-feedback.tsx": "Reusable pressable with scale and opacity feedback animations"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -31,7 +28,6 @@
     "threading": "react-native-worklets",
     "pattern": "Staggered delays + Transform animations + Blur effects"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -48,38 +44,56 @@
         "interpolate",
         "Animated.createAnimatedComponent"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "Staggered delays combined with spring animations and blur intensity control"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "Gesture"],
-      "gestures": ["Tap with custom duration and lifecycle hooks"],
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Tap with custom duration and lifecycle hooks"
+      ],
       "usage": "Touch feedback for toggle button and pressable components"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "components": ["BlurView"],
+      "components": [
+        "BlurView"
+      ],
       "usage": "Animated blur effect during digit transitions (iOS only)",
       "animated": "AnimatedBlurView created via createAnimatedComponent",
       "properties": "Animated intensity prop (0 to 25)"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "icon_sets": ["Feather", "Octicons"],
+      "icon_sets": [
+        "Feather",
+        "Octicons"
+      ],
       "icons_used": {
-        "Feather": ["eye", "eye-off"],
-        "Octicons": ["dot-fill"]
+        "Feather": [
+          "eye",
+          "eye-off"
+        ],
+        "Octicons": [
+          "dot-fill"
+        ]
       },
       "usage": "Visibility toggle button and dot placeholders for hidden digits"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge UI thread gesture callbacks to JS thread for state updates"
     }
   },
-
   "animation_techniques": {
     "staggered_delay_pattern": {
       "pattern": "Progressive delay based on digit index",
@@ -162,13 +176,14 @@
       }
     }
   },
-
   "reanimated_patterns": {
     "useDerivedValue_for_state": {
       "location": "CardInfo component",
       "computation": "Calculate array of hidden digit indexes based on toggle state",
       "logic": "toggled ? [0,1,2,3,4,5,6,7,8,9,10,11] : []",
-      "dependencies": ["toggled"],
+      "dependencies": [
+        "toggled"
+      ],
       "output": "SharedValue<number[]>",
       "benefit": "Reactive array that triggers animations when toggle state changes"
     },
@@ -176,7 +191,10 @@
       "location": "HideableNumber component",
       "computation": "Check if current digit index is in hiddenIndexes array",
       "formula": "hiddenIndexes.value.includes(index)",
-      "dependencies": ["hiddenIndexes", "index"],
+      "dependencies": [
+        "hiddenIndexes",
+        "index"
+      ],
       "output": "SharedValue<boolean>",
       "reactivity": "Re-evaluates when hiddenIndexes changes"
     },
@@ -185,7 +203,10 @@
       "implementation": "withDelay(index * 25, withSpring(isHidden.value ? 1 : 0, { mass: 0.75 }))",
       "delay_calculation": "index * HideableNumberHeight (25ms per digit)",
       "spring_target": "0 (visible) or 1 (hidden)",
-      "dependencies": ["isHidden", "index"],
+      "dependencies": [
+        "isHidden",
+        "index"
+      ],
       "effect": "Each digit animates independently with progressive delay"
     },
     "position_interpolations": {
@@ -210,7 +231,9 @@
         "opacity": "(1 - animationProgress.value) ** 3",
         "transform": "[{ translateY: textPositionY.value }]"
       },
-      "dependencies": ["animationProgress"],
+      "dependencies": [
+        "animationProgress"
+      ],
       "applied_to": "Animated.View components"
     },
     "useAnimatedProps_for_blur": {
@@ -236,7 +259,6 @@
       "drives": "Scale and opacity animations"
     }
   },
-
   "component_architecture": {
     "staggered_card_number": {
       "type": "Root demo component",
@@ -373,7 +395,6 @@
       }
     }
   },
-
   "digit_grouping_logic": {
     "pattern": "Visual spacing after every 4th digit",
     "implementation": {
@@ -393,7 +414,6 @@
       "format_when_hidden": "•••• •••• •••• 0011"
     }
   },
-
   "stagger_timing_breakdown": {
     "delay_formula": "index * 25ms",
     "digit_timings": {
@@ -416,10 +436,13 @@
     "total_animation": "~800-1000ms (cascade + spring settle)",
     "visual_effect": "Left-to-right wave of digits transforming"
   },
-
   "performance_optimizations": {
     "memo_usage": {
-      "components": ["CardInfo", "HideableNumber", "TouchableFeedback"],
+      "components": [
+        "CardInfo",
+        "HideableNumber",
+        "TouchableFeedback"
+      ],
       "benefit": "Prevents re-renders when sibling components update",
       "critical_for": "16 HideableNumber instances rendering independently"
     },
@@ -456,7 +479,6 @@
       "benefit": "Clips layers outside bounds, no rendering of hidden parts"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#eaeaea (light gray)",
@@ -464,7 +486,10 @@
       "shadow": {
         "color": "#000",
         "opacity": 0.05,
-        "offset": { "width": 0, "height": 2 },
+        "offset": {
+          "width": 0,
+          "height": 2
+        },
         "radius": 20
       },
       "text_color": "black",
@@ -513,7 +538,6 @@
       "effect": "Floating card appearance"
     }
   },
-
   "use_cases": {
     "primary": [
       "Credit/debit card displays in payment apps",
@@ -549,7 +573,6 @@
       "Revolut card details screen"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type definitions",
@@ -576,7 +599,6 @@
       "No haptic feedback on toggle (could use expo-haptics)"
     ]
   },
-
   "known_limitations": {
     "platform_specific": {
       "blur_effect": {
@@ -615,7 +637,6 @@
       "semantic_markup": "Missing role/label attributes"
     }
   },
-
   "potential_improvements": {
     "animation_enhancements": [
       "Reverse stagger direction (right-to-left option)",
@@ -667,7 +688,6 @@
       "Visual regression tests"
     ]
   },
-
   "key_insights": {
     "stagger_creates_elegance": "Progressive 25ms delays transform simple hide/show into elegant wave animation",
     "dual_layer_seamlessness": "Opposing translateY directions on dot and text layers create seamless swap illusion",
@@ -681,7 +701,6 @@
     "spring_mass_tuning": "0.75 mass creates lighter, snappier feel appropriate for UI feedback",
     "scheduleOnRN_bridge": "Essential for safely calling JS callbacks from UI thread gestures"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic state management with useState",
@@ -716,7 +735,6 @@
       "Absolute positioning for layered animations"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Card number parsing produces correct digit array",
@@ -766,7 +784,6 @@
       "Touch target size adequate"
     ]
   },
-
   "animation_choreography": {
     "timing_coordination": {
       "stagger_phase": "0-300ms (delays spread across 12 digits)",
@@ -787,7 +804,6 @@
       "same_timing": "Uses same delays and springs"
     }
   },
-
   "mathematical_patterns": {
     "linear_delay_sequence": {
       "formula": "d(i) = i × 25ms",
@@ -814,7 +830,6 @@
       "creates": "Visual groups of 4 digits"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": [
@@ -840,7 +855,6 @@
       "fallback": "System font (may break alignment)"
     }
   },
-
   "security_considerations": {
     "pci_compliance_note": {
       "warning": "This is a UI demonstration only",
@@ -861,7 +875,6 @@
       "clipboard": "If copying, clear clipboard after timeout"
     }
   },
-
   "bundle_size_impact": {
     "component_size": "Small (~300 lines total across 4 files)",
     "dependencies": [
@@ -874,7 +887,6 @@
     "custom_fonts": "FiraCode-Regular (~70KB if not already included)",
     "estimated_impact": "< 5KB additional (excluding already-used dependencies)"
   },
-
   "real_world_inspiration": {
     "banking_apps": [
       "Apple Card in Wallet",
@@ -896,7 +908,6 @@
       "Banking industry standards (show last 4)"
     ]
   },
-
   "tags": [
     "credit-card",
     "privacy",
@@ -916,5 +927,9 @@
     "expo-blur",
     "gesture-handler",
     "security-ui"
-  ]
+  ],
+  "content_hash": "8dc9282e8cf765922411f57c28c20fd07d4802abac573dce6f457c3e624aad79",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.457Z",
+  "last_validated": "2025-10-12T09:19:28.457Z"
 }

@@ -2,7 +2,6 @@
   "animation_name": "Particles Button",
   "animation_slug": "particles-button",
   "description": "An interactive circular button component featuring a dynamic particle blast effect. When pressed, the button triggers an expanding circular blast of particles using Skia's Atlas API for high-performance rendering, while smoothly transitioning between icon states with rotation and opacity animations.",
-
   "main_features": [
     "High-performance particle blast effect using Skia Atlas API",
     "20 particles animated simultaneously with spring physics",
@@ -15,31 +14,36 @@
     "GPU-accelerated rendering with worklets",
     "Seeded random number generation for consistent particle patterns"
   ],
-
   "file_structure": {
     "index.tsx": "Demo screen with centered button and configuration",
     "components/circular-button.tsx": "Main CircularButton component with gesture handling and icon transitions",
     "components/blast-effect/index.tsx": "BlastCircleEffect component using Skia Atlas for particle rendering"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "pressto (PressableScale)",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
       "usage": "Canvas rendering with Atlas API for efficient particle rendering",
-      "components": ["Canvas", "Atlas", "Circle", "Group"],
+      "components": [
+        "Canvas",
+        "Atlas",
+        "Circle",
+        "Group"
+      ],
       "hooks": [
         "useRSXformBuffer",
         "useTexture",
         "useDerivedValue"
       ],
-      "utilities": ["rect", "interpolate"],
+      "utilities": [
+        "rect",
+        "interpolate"
+      ],
       "critical_feature": "Atlas component for rendering 20 particles with single draw call",
       "performance_reason": "GPU-accelerated particle batching, optimal for many identical circles with different transforms"
     },
@@ -54,23 +58,30 @@
         "withDelay",
         "cancelAnimation"
       ],
-      "utilities": ["interpolate", "Extrapolation"],
+      "utilities": [
+        "interpolate",
+        "Extrapolation"
+      ],
       "critical_feature": "withSpring for organic particle motion and icon transitions"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Press feedback with scale animation on button tap",
       "benefit": "Built-in scale animation without manual gesture implementation"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "usage": "AntDesign (plus icon) and FontAwesome6 (check icon)",
-      "icons_used": ["AntDesign.plus-circle", "FontAwesome6.check"],
+      "icons_used": [
+        "AntDesign.plus-circle",
+        "FontAwesome6.check"
+      ],
       "customizable": "Can be replaced with custom icon components"
     }
   },
-
   "animation_techniques": {
     "particle_blast_effect": {
       "pattern": "Radial particle expansion using Atlas API",
@@ -147,7 +158,6 @@
       "benefit": "Prevents animation conflicts from rapid tapping"
     }
   },
-
   "atlas_api_deep_dive": {
     "texture_generation": {
       "pattern": "useTexture with Skia Group of Circles",
@@ -199,7 +209,6 @@
       "centering": "BlastContainer positioned to center blast on button"
     }
   },
-
   "particle_physics": {
     "spring_configuration": {
       "BlastEffectConfig": {
@@ -227,7 +236,6 @@
       "applied_per_particle": "Each particle moves from center to perimeter"
     }
   },
-
   "button_component_architecture": {
     "circular_button_props": {
       "blastRadius": {
@@ -297,7 +305,6 @@
       "resets": "Cancels previous animation, resets baseRandomness and progress"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -339,32 +346,44 @@
       {
         "name": "sprites",
         "calculation": "Array of rect() for each particle",
-        "dependencies": ["count"],
+        "dependencies": [
+          "count"
+        ],
         "purpose": "Define source rectangles from texture"
       },
       {
         "name": "progressRadius",
         "calculation": "interpolate(progress, [0, 1], [0, blastRadius])",
-        "dependencies": ["progress"],
+        "dependencies": [
+          "progress"
+        ],
         "purpose": "Convert 0-1 progress to pixel radius for expansion"
       },
       {
         "name": "opacity",
         "calculation": "interpolate(progress, [0.8, 1], [1, 0]) ** 2",
-        "dependencies": ["progress"],
+        "dependencies": [
+          "progress"
+        ],
         "purpose": "Non-linear fade-out at animation end"
       }
     ],
     "animated_styles": [
       {
         "name": "rBaseIconStyle",
-        "properties": ["opacity", "transform: [{ rotate }]"],
+        "properties": [
+          "opacity",
+          "transform: [{ rotate }]"
+        ],
         "component": "Base icon (plus)",
         "timing": "Animates in first half (progress 0 → 0.5)"
       },
       {
         "name": "rActiveIconStyle",
-        "properties": ["opacity", "transform: [{ rotate }]"],
+        "properties": [
+          "opacity",
+          "transform: [{ rotate }]"
+        ],
         "component": "Active icon (check)",
         "timing": "Animates across full duration (progress 0 → 1)"
       }
@@ -373,7 +392,9 @@
       {
         "name": "seededRandom",
         "directive": "'worklet'",
-        "parameters": ["seed: number"],
+        "parameters": [
+          "seed: number"
+        ],
         "returns": "number (0 to 1)",
         "purpose": "Deterministic pseudo-random for particle distribution",
         "runs_on": "UI thread"
@@ -386,7 +407,6 @@
       }
     ]
   },
-
   "performance_optimizations": {
     "atlas_batching": {
       "benefit": "20 particles rendered in single draw call",
@@ -407,27 +427,40 @@
     "useMemo_optimizations": [
       {
         "name": "boxStyle",
-        "dependencies": ["size"],
+        "dependencies": [
+          "size"
+        ],
         "prevents": "Recreating style object every render"
       },
       {
         "name": "blastSize",
-        "dependencies": ["size"],
+        "dependencies": [
+          "size"
+        ],
         "calculated_once": "size * 5"
       },
       {
         "name": "baseIcon",
-        "dependencies": ["baseIconProp", "size"],
+        "dependencies": [
+          "baseIconProp",
+          "size"
+        ],
         "prevents": "Recreating icon element every render"
       },
       {
         "name": "activeIcon",
-        "dependencies": ["activeIconProp", "size"],
+        "dependencies": [
+          "activeIconProp",
+          "size"
+        ],
         "prevents": "Recreating icon element every render"
       },
       {
         "name": "blastCenterStyle",
-        "dependencies": ["blastSize", "size"],
+        "dependencies": [
+          "blastSize",
+          "size"
+        ],
         "prevents": "Recalculating centering transform every render"
       }
     ],
@@ -443,12 +476,17 @@
     },
     "useCallback_memoization": {
       "function": "onPressHandler",
-      "dependencies": ["autoReset", "blastEffectRef", "onPress", "progress", "isAnimating"],
+      "dependencies": [
+        "autoReset",
+        "blastEffectRef",
+        "onPress",
+        "progress",
+        "isAnimating"
+      ],
       "prevents": "Function recreation on every render",
       "benefit": "Stable reference for PressableScale prop"
     }
   },
-
   "visual_design": {
     "demo_styling": {
       "background": "#111 (near black)",
@@ -489,7 +527,6 @@
       "icon_layers": "Absolute positioned, stacked with z-index via render order"
     }
   },
-
   "mathematical_algorithms": {
     "circular_distribution": {
       "base_formula": "angle = (i / count) * Math.PI * 2",
@@ -534,7 +571,6 @@
       "example": "At 0.9 progress: linear=0.5, squared=0.25 (more transparent)"
     }
   },
-
   "use_cases": {
     "primary": [
       "Like/favorite buttons",
@@ -568,7 +604,6 @@
       "Seeded randomization techniques"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Comprehensive TypeScript typing (CircularButtonProps, BlastEffectRefType)",
@@ -591,7 +626,6 @@
       "Could benefit from more inline comments explaining math"
     ]
   },
-
   "known_limitations": {
     "icon_requirement": {
       "issue": "Icons must be ReactNode components",
@@ -629,7 +663,6 @@
       "potential_issue": "May be too large for very large buttons"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Configurable particle count",
@@ -678,7 +711,6 @@
       "Better error messages"
     ]
   },
-
   "key_insights": {
     "atlas_efficiency": "Atlas API enables smooth particle animation that would be impossible with View components",
     "spring_feel": "Spring physics create natural, organic motion rather than mechanical linear timing",
@@ -691,7 +723,6 @@
     "worklet_necessity": "All particle math in worklets essential for 60fps with 20+ particles",
     "icon_crossfade": "Overlapping opacity + rotation animations create smooth state transition"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas and Atlas concepts",
@@ -722,7 +753,6 @@
       "Imperative animation control architectures"
     ]
   },
-
   "related_concepts": {
     "particle_systems": [
       "Explosion effects",
@@ -755,7 +785,6 @@
       "Crossfade transitions"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Particles render correctly in circular pattern",
@@ -797,7 +826,6 @@
       "Icon rotation angles correct"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "accessible": false,
@@ -824,7 +852,6 @@
       "Consider audio feedback alternative to visual animation"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_lottie_animation": {
       "particles_button": "Real-time, interactive, customizable blast pattern",
@@ -847,7 +874,6 @@
       "performance": "Skia better for many particles, SVG better for complex shapes"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~500 lines total (button + blast effect + demo)",
     "component_size": "~350 lines (button + blast)",
@@ -856,7 +882,6 @@
     "estimated_memory": "< 50KB total (texture + buffers + SharedValues)",
     "texture_memory": "Minimal - 20 small circles in single texture row"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -875,7 +900,6 @@
       "note": "Requires react-native-web and CanvasKit configuration"
     }
   },
-
   "tags": [
     "particles",
     "blast-effect",
@@ -897,5 +921,9 @@
     "polar-coordinates",
     "pressto",
     "confirmation"
-  ]
+  ],
+  "content_hash": "c0fe33c08dfa22329531143d3446b10e5067139ad3760625c5e129474b490770",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.400Z",
+  "last_validated": "2025-10-12T09:19:28.400Z"
 }

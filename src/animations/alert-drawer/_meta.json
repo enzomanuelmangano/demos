@@ -2,7 +2,6 @@
   "animation_name": "Alert Drawer",
   "animation_slug": "alert-drawer",
   "description": "An expandable alert drawer component that smoothly morphs from a compact button into a full alert card with detailed content. Features dynamic border radius interpolation, white background fade-in, nested padding animations, and delayed content opacity for a polished, professional appearance. Perfect for confirmation dialogs and critical user decisions.",
-
   "main_features": [
     "Button-to-card morphing animation",
     "Dynamic border radius interpolation with padding calculation",
@@ -15,21 +14,18 @@
     "Dual button layout (primary action + cancel)",
     "Icon integration with alert styling"
   ],
-
   "file_structure": {
     "index.tsx": "Export wrapper - re-exports App as AlertDrawer",
     "src/index.tsx": "Demo app with AlertDrawer implementation",
     "src/components/alert-drawer/index.tsx": "Main AlertDrawer component with animation logic",
     "src/components/alert-drawer/styles.ts": "Styles and dimension constants"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "interactions": "pressto",
     "threading": "react-native-worklets",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -43,7 +39,9 @@
         "interpolate",
         "interpolateColor"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "useDerivedValue for complex derived calculations and interpolations"
     },
     "pressto": {
@@ -53,16 +51,23 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge onConfirm callback from worklet to JS thread"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["Ionicons", "FontAwesome"],
-      "icons_used": ["alert-circle-outline", "close"]
+      "components": [
+        "Ionicons",
+        "FontAwesome"
+      ],
+      "icons_used": [
+        "alert-circle-outline",
+        "close"
+      ]
     }
   },
-
   "animation_techniques": {
     "expansion_morphing": {
       "trigger": "toggleExpansion callback",
@@ -139,7 +144,6 @@
       "effect": "Button rises and repositions within expanded card"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -200,20 +204,23 @@
       {
         "name": "rCardContentStyle",
         "target": "Card content wrapper",
-        "properties": ["opacity (delayed fade-in)"],
+        "properties": [
+          "opacity (delayed fade-in)"
+        ],
         "value": "delayedProgress.value",
         "effect": "Content fades in after expansion starts"
       }
     ],
     "useCallback_optimization": {
       "toggleExpansion": {
-        "dependencies": ["isExpanded"],
+        "dependencies": [
+          "isExpanded"
+        ],
         "purpose": "Toggle expanded state",
         "usage": "Close button, cancel button callbacks"
       }
     }
   },
-
   "component_architecture": {
     "AlertDrawer": {
       "type": "Main functional component",
@@ -264,7 +271,6 @@
       "visibility": "Controlled by rCardContentStyle opacity"
     }
   },
-
   "interaction_patterns": {
     "button_press_collapsed": {
       "state": "isExpanded = false",
@@ -293,12 +299,15 @@
       "styling": "Gray background (#dfdfdf), black text"
     },
     "pressable_scale": {
-      "components": ["Primary button", "Close button", "Cancel button"],
+      "components": [
+        "Primary button",
+        "Close button",
+        "Cancel button"
+      ],
       "effect": "Scale press animation for tactile feedback",
       "library": "pressto"
     }
   },
-
   "state_management": {
     "expansion_state": {
       "storage": "isExpanded.value (SharedValue<boolean>)",
@@ -322,7 +331,6 @@
       ]
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "primary_action": "#f0212b (red)",
@@ -403,10 +411,14 @@
       "property": "borderCurve: 'continuous'",
       "platform": "iOS",
       "effect": "Squircle border radius (Apple-style smooth corners)",
-      "applied_to": ["Button", "Card", "Close button", "Cancel button"]
+      "applied_to": [
+        "Button",
+        "Card",
+        "Close button",
+        "Cancel button"
+      ]
     }
   },
-
   "layout_and_positioning": {
     "container": {
       "flexDirection": "column",
@@ -432,7 +444,6 @@
       "scaling": "Adapts to different screen sizes"
     }
   },
-
   "performance_optimizations": {
     "useCallback": {
       "toggleExpansion": "Memoized callback prevents unnecessary re-renders",
@@ -440,7 +451,11 @@
     },
     "useDerivedValue": {
       "purpose": "Efficient derived calculations on UI thread",
-      "instances": ["progress", "delayedProgress", "padding"],
+      "instances": [
+        "progress",
+        "delayedProgress",
+        "padding"
+      ],
       "benefit": "No JS thread communication for derived values"
     },
     "worklet_optimization": {
@@ -452,7 +467,6 @@
       "reason": "Avoids remounting, smoother animations"
     }
   },
-
   "use_cases": {
     "primary": [
       "Confirmation dialogs for destructive actions",
@@ -475,7 +489,6 @@
       "Modal alternatives"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -503,7 +516,6 @@
       "Clean file structure"
     ]
   },
-
   "known_limitations": {
     "button_text_visibility": {
       "issue": "Button label always visible, even when card expanded",
@@ -530,7 +542,6 @@
       "comparison": "Unlike modal patterns with backdrop"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Backdrop overlay to dismiss on tap outside",
@@ -568,7 +579,6 @@
       "Nested form support"
     ]
   },
-
   "key_insights": {
     "derived_value_power": "useDerivedValue enables complex cascading calculations (padding → borderRadius)",
     "delayed_progress_technique": "Quadratic easing (progress²) creates elegant delayed fade",
@@ -579,7 +589,6 @@
     "z_index_layering": "Button above card (z-index: -1) allows button to remain interactive",
     "pressable_scale": "Small scale animations add polish to all interactions"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic expansion animations",
@@ -604,7 +613,6 @@
       "Coordinated button positioning within morphing container"
     ]
   },
-
   "comparison_to_similar_animations": {
     "vs_bottom_sheet": {
       "similarity": "Expands from collapsed state to show content",
@@ -623,7 +631,6 @@
       "difference": "Focuses on alert pattern, not navigation"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Smooth expansion from button to card",
@@ -659,7 +666,6 @@
       "State persists across re-renders"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "labels": "No accessibility labels",
@@ -677,7 +683,6 @@
       "Add accessible description for alert content"
     ]
   },
-
   "related_patterns": {
     "morphing_buttons": "Buttons that transform into other UI elements",
     "progressive_disclosure": "Revealing information gradually",
@@ -685,7 +690,6 @@
     "confirmation_dialogs": "Two-step confirmation patterns",
     "floating_action_buttons": "FAB expansion patterns"
   },
-
   "tags": [
     "alert",
     "drawer",
@@ -701,5 +705,9 @@
     "progressive-disclosure",
     "warning-dialog",
     "delayed-content"
-  ]
+  ],
+  "content_hash": "d697e0aee3a53418919a24ddb9144de959481e4f06369fa7296c574ea0d4c0e0",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.268Z",
+  "last_validated": "2025-10-12T09:19:28.268Z"
 }

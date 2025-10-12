@@ -2,7 +2,6 @@
   "animation_name": "Coverflow Carousel",
   "animation_slug": "coverflow-carousel",
   "description": "A horizontal carousel component with Apple-inspired coverflow effect featuring 3D perspective transforms, dynamic scaling, translation, and opacity interpolation. Items scale and rotate in 3D space as they move through the carousel, with the center item at full size and surrounding items progressively smaller and translated.",
-
   "main_features": [
     "Apple-style coverflow carousel with 3D transforms",
     "Horizontal scrolling with snap-to-item behavior",
@@ -16,20 +15,17 @@
     "Optimized image rendering with expo-image caching",
     "Seven-point interpolation for smooth transitions"
   ],
-
   "file_structure": {
     "index.tsx": "Main CoverflowCarousel component with demo setup and styling",
     "components/coverflow-carousel/index.tsx": "Core CoverFlowCarousel component with FlatList and scroll handling",
     "components/coverflow-carousel/carousel-item.tsx": "Individual carousel item with interpolation logic and 3D transforms",
     "constants.ts": "Image URLs array for demo content"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "images": "expo-image",
     "list": "Animated.FlatList"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -39,23 +35,40 @@
         "useAnimatedStyle",
         "interpolate"
       ],
-      "components": ["Animated.FlatList", "Animated.View"],
-      "utilities": ["Extrapolation"],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View"
+      ],
+      "utilities": [
+        "Extrapolation"
+      ],
       "critical_feature": "useScrollViewOffset for tracking scroll position without bridge crossing"
     },
     "expo-image": {
       "version": "~3.0.8",
-      "components": ["Image"],
-      "features": ["cachePolicy: 'memory-disk'", "contentFit: 'cover'"],
+      "components": [
+        "Image"
+      ],
+      "features": [
+        "cachePolicy: 'memory-disk'",
+        "contentFit: 'cover'"
+      ],
       "usage": "Optimized image rendering with memory and disk caching"
     },
     "react-native": {
-      "hooks": ["useWindowDimensions", "useCallback"],
-      "components": ["View", "StyleSheet"],
-      "utilities": ["Dimensions"]
+      "hooks": [
+        "useWindowDimensions",
+        "useCallback"
+      ],
+      "components": [
+        "View",
+        "StyleSheet"
+      ],
+      "utilities": [
+        "Dimensions"
+      ]
     }
   },
-
   "animation_techniques": {
     "scale_interpolation": {
       "scaleX": {
@@ -118,7 +131,6 @@
       "key_insight": "Wide interpolation range ensures smooth transitions between states"
     }
   },
-
   "reanimated_patterns": {
     "scroll_tracking": {
       "hook": "useScrollViewOffset(animatedRef)",
@@ -138,7 +150,10 @@
         "opacity interpolation",
         "width calculation (itemWidth * scaleX)"
       ],
-      "dependencies": ["scrollOffset", "inputRange"],
+      "dependencies": [
+        "scrollOffset",
+        "inputRange"
+      ],
       "transform_array": [
         "{ translateX }",
         "{ scaleY }"
@@ -157,12 +172,21 @@
         "(index + 3) * itemWidth"
       ],
       "purpose": "Map scroll position to item-specific animation states",
-      "dependencies": ["index", "itemWidth"],
+      "dependencies": [
+        "index",
+        "itemWidth"
+      ],
       "recalculation": "Computed once per item, stable across renders"
     },
     "interpolate_usage": {
       "instances": 5,
-      "properties": ["scaleX", "scaleY", "translateX", "borderRadius", "opacity"],
+      "properties": [
+        "scaleX",
+        "scaleY",
+        "translateX",
+        "borderRadius",
+        "opacity"
+      ],
       "common_config": {
         "extrapolation": "Extrapolation.CLAMP (where specified)",
         "input_source": "scrollOffset.value",
@@ -171,14 +195,15 @@
     },
     "useCallback": {
       "renderItem": {
-        "dependencies": ["scrollOffset"],
+        "dependencies": [
+          "scrollOffset"
+        ],
         "purpose": "Stable renderItem function for FlatList optimization",
         "pattern": "Wraps CarouselItem component creation",
         "benefit": "Prevents FlatList re-renders when scrollOffset changes"
       }
     }
   },
-
   "flatlist_configuration": {
     "horizontal": {
       "value": true,
@@ -213,7 +238,6 @@
       "depends_on": "useWindowDimensions()"
     }
   },
-
   "component_patterns": {
     "item_dimensions": {
       "width": "160px (ItemWidth constant)",
@@ -231,17 +255,23 @@
       "wrapped_in": "useCallback",
       "parameters": "{ item, index }",
       "returns": "CarouselItem component",
-      "props_passed": ["image", "index", "scrollOffset", "itemWidth"],
+      "props_passed": [
+        "image",
+        "index",
+        "scrollOffset",
+        "itemWidth"
+      ],
       "key": "Implicit from FlatList (item index)"
     },
     "responsive_layout": {
       "hook": "useWindowDimensions()",
-      "calculated_values": ["paddingHorizontal"],
+      "calculated_values": [
+        "paddingHorizontal"
+      ],
       "benefit": "Works on all screen sizes",
       "adaptation": "Dynamic padding based on screen width"
     }
   },
-
   "mathematical_algorithms": {
     "interpolation_math": {
       "function": "interpolate(value, inputRange, outputRange, extrapolation?)",
@@ -276,7 +306,6 @@
       "rounding": "Math.round() for consistent pixel values"
     }
   },
-
   "performance_optimizations": {
     "useScrollViewOffset": {
       "benefit": "Scroll tracking on UI thread, no bridge crossing",
@@ -286,7 +315,9 @@
     },
     "useCallback_renderItem": {
       "benefit": "Prevents FlatList re-render on scrollOffset change",
-      "dependencies": ["scrollOffset"],
+      "dependencies": [
+        "scrollOffset"
+      ],
       "stable_reference": "FlatList doesn't re-render when scrollOffset updates",
       "critical": "Important for smooth scrolling performance"
     },
@@ -320,7 +351,6 @@
       "performance": "Values capped at min/max, no extrapolation math"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#fff (white)",
@@ -361,7 +391,6 @@
       "benefit": "Premium, native-like appearance"
     }
   },
-
   "layout_and_positioning": {
     "container_hierarchy": {
       "level_1": "Main container (flex: 1, centered, white background)",
@@ -381,7 +410,6 @@
       "item_centering": "Transform and scale keep items visually centered"
     }
   },
-
   "use_cases": {
     "primary": [
       "Image galleries with coverflow effect",
@@ -412,7 +440,6 @@
       "Google Photos albums"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -420,7 +447,9 @@
         "CoverFlowCarouselProps",
         "CarouselItemProps"
       ],
-      "type_imports": ["SharedValue"],
+      "type_imports": [
+        "SharedValue"
+      ],
       "prop_validation": "Explicit prop types for all components"
     },
     "component_architecture": {
@@ -454,7 +483,6 @@
       "Extrapolation.CLAMP for safety"
     ]
   },
-
   "known_limitations": {
     "fixed_item_width": {
       "issue": "ItemWidth hardcoded to 160px",
@@ -486,7 +514,6 @@
       "improvement": "Could use Animated.FlatList type"
     }
   },
-
   "potential_improvements": {
     "customization": [
       "Configurable item width (responsive or prop)",
@@ -528,7 +555,6 @@
       "Alternative list view mode"
     ]
   },
-
   "key_insights": {
     "seven_point_interpolation": "Seven interpolation points create smooth, professional coverflow effect",
     "scaleX_as_width": "Applying scaleX as width property provides better control than transform scale",
@@ -540,7 +566,6 @@
     "continuous_curves": "borderCurve: 'continuous' adds Apple-like premium feel",
     "snap_precision": "snapToInterval matching ItemWidth ensures perfect alignment"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Animated.FlatList basics",
@@ -567,7 +592,6 @@
       "Extrapolation control"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Apple Music coverflow",
@@ -591,7 +615,6 @@
       "Opacity-based focus"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Cards scale smoothly during scroll",
@@ -631,7 +654,6 @@
       "Various iOS/Android versions"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "Limited support, no labels",
@@ -649,7 +671,6 @@
       "Ensure sufficient touch target size (current: 160x120px is good)"
     ]
   },
-
   "comparison_to_similar_animations": {
     "vs_flat_carousel": {
       "this_approach": "3D coverflow with scale and translation",
@@ -668,7 +689,6 @@
       "shared_pattern": "useScrollViewOffset for performance"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~210 lines total (main: 30, carousel: 57, item: 100, constants: 13)",
     "dependencies": "Reanimated and expo-image likely already in project",
@@ -676,7 +696,6 @@
     "runtime_memory": "Minimal - one scrollOffset SharedValue, FlatList optimization",
     "estimated_impact": "< 10KB"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread (useScrollViewOffset worklet)",
@@ -691,7 +710,6 @@
       "Extrapolation.CLAMP"
     ]
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features supported",
@@ -711,7 +729,6 @@
       "shadows": "CSS box-shadow"
     }
   },
-
   "tags": [
     "carousel",
     "coverflow",
@@ -731,5 +748,9 @@
     "focus-effect",
     "depth-effect",
     "smooth-scrolling"
-  ]
+  ],
+  "content_hash": "180cca2ef0111f6ba8142b34e54f76df258a216c008bbe405e7174a0a1f50927",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.311Z",
+  "last_validated": "2025-10-12T09:19:28.311Z"
 }

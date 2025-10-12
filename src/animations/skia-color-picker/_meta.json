@@ -2,7 +2,6 @@
   "animation_name": "Skia Color Picker",
   "animation_slug": "skia-color-picker",
   "description": "An interactive color picker built with React Native Skia featuring a custom radial gradient shader, HSV color space conversion, and gesture-based color selection. The picker uses a pin-drop shape that follows user gestures within a circular gradient, computing real-time RGBA values based on position. Demonstrates advanced Skia shader programming, worklet-based calculations, and seamless integration of Reanimated with Skia rendering.",
-
   "main_features": [
     "Custom GLSL shader for radial gradient color wheel",
     "Real-time HSV to RGB color conversion",
@@ -19,7 +18,6 @@
     "Shadow and stroke effects on picker",
     "Responsive canvas sizing based on window dimensions"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main entry component with ColorPicker integration and window dimensions"
@@ -43,7 +41,6 @@
       "components/color-picker/shader.ts": "GLSL shader implementing radial gradient with HSV color space conversion"
     }
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
@@ -51,7 +48,6 @@
     "threading": "react-native-worklets",
     "ui": "react-native (View, StyleSheet, useWindowDimensions)"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -118,7 +114,6 @@
       "usage": "Core UI framework and responsive sizing via window dimensions"
     }
   },
-
   "animation_techniques": {
     "gesture_tracking": {
       "pattern": "Gesture.Pan() with onBegin and onUpdate",
@@ -154,7 +149,10 @@
         "5. Return rgba string with full opacity"
       ],
       "worklet": true,
-      "dependencies": ["pickerX", "pickerY"],
+      "dependencies": [
+        "pickerX",
+        "pickerY"
+      ],
       "runs_on": "UI thread"
     },
     "reactive_updates": {
@@ -165,7 +163,6 @@
       "benefit": "Parent component receives color updates without bridge overhead"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -189,7 +186,11 @@
       {
         "name": "pickerTransform",
         "pattern": "useDerivedValue computing transform array",
-        "dependencies": ["pickerX", "pickerY", "pickerBounds"],
+        "dependencies": [
+          "pickerX",
+          "pickerY",
+          "pickerBounds"
+        ],
         "calculation": "translateX and translateY based on picker position and bounds",
         "purpose": "Real-time transform for picker position",
         "recalculates": "On every position change",
@@ -198,7 +199,12 @@
       {
         "name": "rgba",
         "pattern": "useDerivedValue with complex color calculation",
-        "dependencies": ["pickerX", "pickerY", "center", "maxColorPickerSize"],
+        "dependencies": [
+          "pickerX",
+          "pickerY",
+          "center",
+          "maxColorPickerSize"
+        ],
         "calculation": "Multi-step: dx/dy → hue/saturation → HSV → RGB → rgba string",
         "worklet_functions": [
           "getHueFromPosition",
@@ -230,7 +236,6 @@
       "benefit": "All color calculations run on UI thread for 60fps performance"
     }
   },
-
   "shader_programming": {
     "radial_gradient_shader": {
       "language": "GLSL (OpenGL Shading Language)",
@@ -291,7 +296,6 @@
       "conditional": "Only rendered if blur prop provided"
     }
   },
-
   "mathematical_algorithms": {
     "cartesian_to_polar": {
       "purpose": "Convert (x, y) position to hue angle",
@@ -346,7 +350,6 @@
       "credit": "ChatGPT implementation (per source comment)"
     }
   },
-
   "component_architecture": {
     "ColorPicker": {
       "type": "Functional component with props",
@@ -364,7 +367,10 @@
     "canvas_layers": {
       "layer_1_optional_blur": {
         "condition": "if blur prop provided",
-        "components": ["Circle with SweepGradient", "BlurMask"],
+        "components": [
+          "Circle with SweepGradient",
+          "BlurMask"
+        ],
         "purpose": "Soft background glow effect"
       },
       "layer_2_color_wheel": {
@@ -390,7 +396,6 @@
       ]
     }
   },
-
   "performance_optimizations": {
     "gpu_rendering": {
       "technique": "Skia canvas with GPU-accelerated shaders",
@@ -430,7 +435,6 @@
       "efficiency": "Minimal memory footprint"
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -458,7 +462,6 @@
       "improvement": "Could add onBegin to support tap selection"
     }
   },
-
   "visual_design": {
     "picker_shape": {
       "default": "Location pin / map marker shape",
@@ -498,7 +501,6 @@
       "justification": "center"
     }
   },
-
   "use_cases": {
     "primary": [
       "Color selection interfaces",
@@ -527,7 +529,6 @@
       "Color space conversions"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Extensive inline documentation explaining algorithms",
@@ -572,7 +573,6 @@
       "code_readability": "Highly readable with descriptive names and comments"
     }
   },
-
   "known_limitations": {
     "brightness_control": {
       "issue": "Value (brightness) fixed at 100%",
@@ -605,7 +605,6 @@
       "improvement": "Add eyedropper tool integration"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Brightness/Value slider for full HSV control",
@@ -654,7 +653,6 @@
       "Border and shadow customization"
     ]
   },
-
   "key_insights": {
     "shader_power": "Custom GLSL shaders enable pixel-perfect color wheels rendered entirely on GPU",
     "worklet_efficiency": "All color calculations on UI thread via worklets eliminates bridge bottleneck",
@@ -667,7 +665,6 @@
     "skia_performance": "Skia canvas rendering achieves 60fps for complex gradients on mobile",
     "svg_path_flexibility": "Any SVG path can become picker shape (pins, circles, crosshairs, etc.)"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Understanding HSV color space",
@@ -696,7 +693,6 @@
       "Efficient color space algorithms"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_color_picker": {
       "this_approach": "Custom Skia-based implementation",
@@ -723,7 +719,6 @@
       "cons": "Harder to select specific brand colors precisely"
     }
   },
-
   "technical_deep_dives": {
     "why_quadratic_saturation": {
       "formula": "(distance / radius)² * 100",
@@ -750,7 +745,6 @@
       "scalability": "Shader performance independent of canvas size (up to point)"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -769,7 +763,6 @@
       "considerations": "Test shader compilation, may need WebGL fallbacks"
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify color wheel renders correctly",
@@ -807,7 +800,6 @@
       "Edge colors are fully saturated"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~400 lines total including shader",
     "shader_size": "~1.5KB (GLSL shader string)",
@@ -815,7 +807,6 @@
     "runtime_memory": "Minimal - 2 SharedValues, shader compiled once",
     "estimated_impact": "~15KB minified (code only, excluding deps)"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support",
@@ -834,7 +825,6 @@
       "Support voice input for color values"
     ]
   },
-
   "related_patterns": {
     "similar_components": [
       "Brightness/value slider",
@@ -856,7 +846,6 @@
       "Polar coordinate effects"
     ]
   },
-
   "inspirations_and_references": {
     "color_theory": [
       "HSV color space (1978, Alvy Ray Smith)",
@@ -873,7 +862,6 @@
       "ChatGPT for HSV to RGB conversion algorithm (per source comment)"
     ]
   },
-
   "tags": [
     "color-picker",
     "skia",
@@ -895,5 +883,9 @@
     "real-time",
     "ui-thread",
     "scheduleOnRN"
-  ]
+  ],
+  "content_hash": "a008c2ed4abbe1f4e32b60d0d49c2a18d110ddd9e8fb85bb2b886bb8f6aaa774",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.435Z",
+  "last_validated": "2025-10-12T09:19:28.435Z"
 }

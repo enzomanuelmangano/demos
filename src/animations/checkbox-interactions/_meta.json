@@ -2,7 +2,6 @@
   "animation_name": "Checkbox Interactions",
   "animation_slug": "checkbox-interactions",
   "description": "An interactive checkbox list with smooth layout animations, dynamic color transitions, and icon fade effects. Features pill-shaped checkboxes that expand to show check icons when selected, with spring-based layout transitions and color fade effects using the Color library for alpha manipulation.",
-
   "main_features": [
     "Pill-shaped checkbox buttons with rounded corners",
     "Check icon with fade-in/fade-out animations",
@@ -15,21 +14,18 @@
     "Safe area handling for notch/status bar",
     "Continuous border curve (iOS squircle style)"
   ],
-
   "file_structure": {
     "index.tsx": "Main App component with layout and state orchestration",
     "components/checkbox.tsx": "Checkbox component with animations and layout transitions",
     "hooks/use-cuisines.ts": "Custom hook managing checkbox state (toggle functionality)",
     "constants.ts": "Mock data array with cuisine items"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "colors": "color",
     "safe_area": "react-native-safe-area-context",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -56,18 +52,21 @@
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Top padding for container to avoid notch/status bar overlap"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["AntDesign"],
+      "components": [
+        "AntDesign"
+      ],
       "icon_used": "check-circle",
       "size": 20,
       "usage": "Check icon displayed when checkbox is selected"
     }
   },
-
   "animation_techniques": {
     "layout_transitions": {
       "animation": "LinearTransition.springify()",
@@ -132,7 +131,6 @@
       "effect": "Icon position animates smoothly during layout changes"
     }
   },
-
   "reanimated_patterns": {
     "useAnimatedStyle_instances": [
       {
@@ -144,7 +142,11 @@
           "borderWidth (1.5px constant)",
           "backgroundColor (faded active color or transparent)"
         ],
-        "dependencies": ["checked", "fadedActiveColor", "fadedInactiveColor"],
+        "dependencies": [
+          "checked",
+          "fadedActiveColor",
+          "fadedInactiveColor"
+        ],
         "pattern": "Conditional ternary expressions based on checked boolean"
       },
       {
@@ -153,7 +155,9 @@
         "animated_properties": [
           "color (activeColor or inactiveColor)"
         ],
-        "dependencies": ["checked"],
+        "dependencies": [
+          "checked"
+        ],
         "effect": "Text color transitions between orange and gray"
       }
     ],
@@ -182,7 +186,6 @@
       "element": "Check icon wrapper view"
     }
   },
-
   "state_management": {
     "custom_hook": {
       "name": "useCuisines",
@@ -207,7 +210,9 @@
     },
     "useCallback_optimization": {
       "function": "toggleCuisine",
-      "dependencies": ["setCuisines"],
+      "dependencies": [
+        "setCuisines"
+      ],
       "benefit": "Stable function reference prevents unnecessary re-renders",
       "usage": "Passed to each Checkbox onPress"
     },
@@ -217,7 +222,6 @@
       "effect": "Only updates the clicked checkbox, preserves others"
     }
   },
-
   "component_architecture": {
     "App": {
       "type": "Main component",
@@ -253,7 +257,6 @@
       ]
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "app_background": "#0C0A0C (very dark gray, almost black)",
@@ -317,7 +320,6 @@
       "gap": "12px between items (horizontal and vertical)"
     }
   },
-
   "interaction_patterns": {
     "touch_interaction": {
       "gesture": "onTouchEnd",
@@ -342,7 +344,6 @@
       "benefit": "Standard multi-select checkbox behavior"
     }
   },
-
   "data_structure": {
     "constants": {
       "Cuisines": {
@@ -359,7 +360,6 @@
       "selected": "boolean (initially false)"
     }
   },
-
   "layout_and_positioning": {
     "safe_area": {
       "hook": "useSafeAreaInsets()",
@@ -391,16 +391,20 @@
       "dynamic_width": "Based on label text length + padding + optional icon"
     }
   },
-
   "performance_optimizations": {
     "useCallback": {
       "function": "toggleCuisine",
-      "dependencies": ["setCuisines"],
+      "dependencies": [
+        "setCuisines"
+      ],
       "benefit": "Prevents unnecessary re-renders of Checkbox components"
     },
     "color_calculation": {
       "pattern": "Calculated once per render in component body",
-      "variables": ["fadedActiveColor", "fadedInactiveColor"],
+      "variables": [
+        "fadedActiveColor",
+        "fadedInactiveColor"
+      ],
       "benefit": "Color library calculations happen before render",
       "potential_optimization": "Could be memoized with useMemo if colors are dynamic props"
     },
@@ -416,11 +420,14 @@
     },
     "dependency_arrays": {
       "useAnimatedStyle": "Explicit dependency arrays prevent unnecessary recalculations",
-      "dependencies": ["checked", "fadedActiveColor", "fadedInactiveColor"],
+      "dependencies": [
+        "checked",
+        "fadedActiveColor",
+        "fadedInactiveColor"
+      ],
       "benefit": "Styles only recalculate when dependencies change"
     }
   },
-
   "use_cases": {
     "primary": [
       "Multi-select forms (preferences, settings)",
@@ -447,7 +454,6 @@
       "Different color schemes for light/dark mode"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -494,7 +500,6 @@
       "Safe area handling"
     ]
   },
-
   "known_limitations": {
     "color_library_dependency": {
       "issue": "Requires 'color' library for alpha manipulation",
@@ -528,7 +533,6 @@
       "note": "SF Pro is iOS system font, may need loading on Android"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Press scale animation (PressableScale)",
@@ -579,7 +583,6 @@
       "Optimistic updates with rollback"
     ]
   },
-
   "key_insights": {
     "color_library_power": "Color library simplifies alpha manipulation and color transformations",
     "layout_animations_ease": "Reanimated layout animations handle complex size changes automatically",
@@ -590,7 +593,6 @@
     "continuous_curve_aesthetic": "borderCurve: 'continuous' adds iOS-like polish",
     "wrap_layout_responsiveness": "Flexbox wrap creates responsive layout without complex logic"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic checkbox component creation",
@@ -619,7 +621,6 @@
       "Reanimated style dependency patterns"
     ]
   },
-
   "related_patterns": {
     "similar_components": [
       "Toggle switches with animations",
@@ -645,7 +646,6 @@
       "Coordinated multi-property animations"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "useCuisines hook returns correct initial state",
@@ -692,7 +692,6 @@
       "Reduced motion respected"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "touch_target": "Adequate (padded container)",
@@ -713,7 +712,6 @@
       "Add focus ring for keyboard navigation"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_checkbox": {
       "native": "Platform-specific checkbox component",
@@ -733,7 +731,6 @@
       "use_case_difference": "Radio for exclusive choice, checkbox for inclusive choice"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -757,7 +754,6 @@
       ]
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~200 lines total (component: 85, hook: 23, constants: 7, main: 62)",
     "dependencies": {
@@ -769,7 +765,6 @@
     "runtime_memory": "Minimal - simple state, no heavy computations",
     "estimated_total": "< 5KB additional (excluding shared dependencies)"
   },
-
   "tags": [
     "checkbox",
     "form",
@@ -786,5 +781,9 @@
     "safe-area",
     "preferences",
     "filter"
-  ]
+  ],
+  "content_hash": "0cc46856890f6877cd20b10e62bf905f2ce6fd856b5ebccd7cdeab296c99824d",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.301Z",
+  "last_validated": "2025-10-12T09:19:28.301Z"
 }

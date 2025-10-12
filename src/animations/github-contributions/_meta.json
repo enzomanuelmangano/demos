@@ -2,7 +2,6 @@
   "animation_name": "GitHub Contributions",
   "animation_slug": "github-contributions",
   "description": "An animated GitHub-style contribution calendar that displays activity data in a grid layout with staggered wave animations. Features dynamic color schemes, diagonal animation patterns, smooth scale and color interpolations, and imperative API controls. Includes date utilities for week-based calendar generation and supports responsive sizing.",
-
   "main_features": [
     "GitHub-style contribution heatmap calendar",
     "Staggered diagonal wave animation (bottom-left to top-right)",
@@ -17,7 +16,6 @@
     "Week-based layout with proper date alignment",
     "Empty squares for dates outside data range"
   ],
-
   "file_structure": {
     "index.tsx": "Demo component with contribution data generation and touch interaction",
     "contribution-calendar/index.tsx": "Main calendar component with grid layout and animation coordination",
@@ -28,12 +26,10 @@
     "config/defaults.tsx": "Color scheme configurations and default values",
     "contribution-data.tsx": "Random contribution data generator"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "date_handling": "date-fns"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -63,12 +59,17 @@
       "usage": "Date range calculation, week alignment, day label generation, and date formatting"
     },
     "react-native": {
-      "hooks": ["useWindowDimensions"],
-      "components": ["View", "Text", "StyleSheet"],
+      "hooks": [
+        "useWindowDimensions"
+      ],
+      "components": [
+        "View",
+        "Text",
+        "StyleSheet"
+      ],
       "usage": "Layout, styling, and responsive sizing"
     }
   },
-
   "animation_techniques": {
     "staggered_wave_pattern": {
       "direction": "Bottom-left to top-right diagonal",
@@ -128,7 +129,6 @@
       "coordination": "Parent controls all child square animations via refs"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -152,7 +152,11 @@
         "transform": "scale interpolation with squeeze effect",
         "backgroundColor": "Color interpolation from level0 to contribution level color"
       },
-      "dependencies": ["progress.value", "level", "colorScheme"],
+      "dependencies": [
+        "progress.value",
+        "level",
+        "colorScheme"
+      ],
       "applied_to": "Animated.View representing contribution square"
     },
     "useImperativeHandle": {
@@ -161,13 +165,20 @@
         {
           "component": "GitHubContributionCalendar",
           "ref_type": "CalendarAnimationControls",
-          "exposed_methods": ["startAnimation", "resetAnimation", "toggleAnimation"],
+          "exposed_methods": [
+            "startAnimation",
+            "resetAnimation",
+            "toggleAnimation"
+          ],
           "dependencies": "[startAnimation, resetAnimation, toggleAnimation]"
         },
         {
           "component": "ContributionSquare",
           "ref_type": "SquareAnimationControls",
-          "exposed_methods": ["startAnimation", "resetAnimation"],
+          "exposed_methods": [
+            "startAnimation",
+            "resetAnimation"
+          ],
           "dependencies": "[startAnimation, resetAnimation]"
         }
       ]
@@ -194,7 +205,6 @@
       "benefit": "Clean state management for animation restarts"
     }
   },
-
   "component_patterns": {
     "forwardRef_cascade": {
       "pattern": "Parent ref forwards to array of child refs",
@@ -278,7 +288,6 @@
       }
     ]
   },
-
   "date_utilities": {
     "generateDayLabels": {
       "output": "['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']",
@@ -310,7 +319,6 @@
       "library": "date-fns format() function"
     }
   },
-
   "data_generation": {
     "generateContributionData": {
       "parameters": "{ days: number, endDate?: Date }",
@@ -339,7 +347,6 @@
       "4": "Very high contributions (darkest color)"
     }
   },
-
   "color_schemes": {
     "github": {
       "level0": "rgba(235, 237, 240, 1) - Light grey",
@@ -369,7 +376,6 @@
       "rgba_format": "Full RGBA with alpha 1 (opaque)"
     }
   },
-
   "layout_and_positioning": {
     "calendar_container": {
       "backgroundColor": "#ffffff (white)",
@@ -423,7 +429,6 @@
       "behavior": "Larger screens show more weeks of data"
     }
   },
-
   "interaction_patterns": {
     "touch_interaction": {
       "event": "onTouchStart on app container",
@@ -440,7 +445,6 @@
       "on_tap_2": "toggleAnimation → resetAnimation → random fade back to gray"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "app_background": "#f7f7f7 (light gray)",
@@ -471,7 +475,6 @@
       "calendar": "Subtle shadow for depth (0.05 opacity)"
     }
   },
-
   "performance_optimizations": {
     "useMemo": [
       "contributionData (regenerates only on screen width change)",
@@ -492,7 +495,10 @@
       "benefit": "No re-renders when triggering animations"
     },
     "forwardRef": {
-      "components": ["GitHubContributionCalendar", "ContributionSquare"],
+      "components": [
+        "GitHubContributionCalendar",
+        "ContributionSquare"
+      ],
       "benefit": "Exposes imperative API without prop drilling"
     },
     "worklet_optimization": {
@@ -509,7 +515,6 @@
       "overhead": "Low - simple scale + color interpolation per square"
     }
   },
-
   "use_cases": {
     "primary": [
       "GitHub-style contribution calendars",
@@ -543,7 +548,6 @@
       "Duolingo streak calendar"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -591,7 +595,6 @@
       "Const assertions for color schemes"
     ]
   },
-
   "known_limitations": {
     "random_data_only": {
       "issue": "Only generates random contribution data",
@@ -626,7 +629,6 @@
       "reason": "Delay calculation done inline in component"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Real data integration from API",
@@ -679,7 +681,6 @@
       "Use animation-utils functions instead of inline calculations"
     ]
   },
-
   "key_insights": {
     "diagonal_wave_formula": "45 × (weekIndex + (6 - dayIndex)) creates perfect diagonal stagger",
     "progress_drives_both": "Single progress SharedValue controls both scale and color (efficient)",
@@ -694,7 +695,6 @@
     "responsive_sizing_pattern": "width × 0.9 / 3 = days provides reasonable calendar size",
     "imperative_toggle_pattern": "Toggle state tracked in SharedValue, not React state"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Reanimated spring animations",
@@ -723,7 +723,6 @@
       "Spring configuration tuning"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Calendar renders with correct number of weeks",
@@ -775,7 +774,6 @@
       "Smooth on low-end devices"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -795,7 +793,6 @@
       "Respect color blindness considerations (patterns/textures in addition to color)"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_github_actual": {
       "similarities": [
@@ -817,7 +814,6 @@
       "unique": "Diagonal wave animation pattern"
     }
   },
-
   "related_patterns": {
     "calendar_visualizations": [
       "Month calendar grid",
@@ -835,13 +831,11 @@
       "Tile flip animations"
     ]
   },
-
   "real_world_inspiration": {
     "github_contributions": "Direct inspiration - GitHub's contribution graph",
     "gitlab_activity": "Similar activity calendar",
     "habitica": "Habit tracking calendar with color intensity"
   },
-
   "bundle_size_impact": {
     "code_size": "~400 lines total (components + utilities + config)",
     "dependencies": "Reanimated (likely already in project), date-fns (35KB gzipped)",
@@ -849,7 +843,6 @@
     "runtime_memory": "Moderate - 1 SharedValue per square (~112 squares × 1 = ~112 SharedValues)",
     "estimated_size": "< 15KB (excluding already-present dependencies)"
   },
-
   "tags": [
     "github-contributions",
     "contribution-calendar",
@@ -869,5 +862,9 @@
     "week-layout",
     "responsive-calendar",
     "data-visualization"
-  ]
+  ],
+  "content_hash": "0253db455de6089a960cbc357b4d0985d50321d6ffd3b2745b9e2dbe30845061",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.359Z",
+  "last_validated": "2025-10-12T09:19:28.359Z"
 }

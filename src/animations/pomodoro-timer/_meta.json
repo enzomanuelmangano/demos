@@ -2,7 +2,6 @@
   "animation_name": "Pomodoro Timer",
   "animation_slug": "pomodoro-timer",
   "description": "An interactive circular timer with draggable tick marks and animated rolling digit display. Features a radial tick-mark interface with pan gesture control, countdown timer functionality with interval management, and a sophisticated digit rolling animation with blur effects and intelligent zero-hiding. Includes haptic feedback, spring-based animations, and seamless timer state management.",
-
   "main_features": [
     "Circular draggable slider with radial tick-mark visualization",
     "Mathematical transformation from linear translation to circular radians",
@@ -19,7 +18,6 @@
     "Timer state management preventing interaction during countdown",
     "Responsive layout adapting to window dimensions"
   ],
-
   "file_structure": {
     "index.tsx": "Root wrapper providing GestureHandlerRootView context",
     "src/index.tsx": "Main app component orchestrating timer, slider, and controls",
@@ -32,7 +30,6 @@
     "src/hooks/useToggle.ts": "Simple boolean toggle hook for timer enable/disable state",
     "src/utils/haptics.ts": "Haptic feedback utility with platform-specific logic"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated ~4.1.1",
     "gestures": "react-native-gesture-handler ~2.28.0",
@@ -42,7 +39,6 @@
     "gradients": "expo-linear-gradient ~15.0.7",
     "interactions": "pressto 0.3.5-beta.1 (PressableScale for button)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -59,52 +55,78 @@
         "withDecay",
         "cancelAnimation"
       ],
-      "components": ["Animated.View", "Animated.createAnimatedComponent"],
+      "components": [
+        "Animated.View",
+        "Animated.createAnimatedComponent"
+      ],
       "critical_feature": "useDerivedValue for digit extraction and radian conversion"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "GestureHandlerRootView"],
-      "gestures": ["Gesture.Pan()"],
-      "methods": ["onBegin", "onUpdate", "onFinalize"],
+      "components": [
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ],
       "usage": "Pan gesture for circular slider dragging with decay animation"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "purpose": "Bridge worklet callbacks to JS thread for onProgressChange",
       "critical_for": "Calling haptic feedback and updating animated number from UI thread"
     },
     "expo-haptics": {
       "version": "~15.0.7",
-      "functions": ["Haptics.selectionAsync"],
+      "functions": [
+        "Haptics.selectionAsync"
+      ],
       "usage": "Light haptic feedback on slider progress change",
       "platform_note": "iOS only - Android disabled due to 'weird' haptics"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "components": ["BlurView"],
+      "components": [
+        "BlurView"
+      ],
       "usage": "Dynamic blur effect on digit changes (iOS only)",
       "animation": "Blur intensity 0-17 based on isChanging state"
     },
     "expo-linear-gradient": {
       "version": "~15.0.7",
-      "components": ["LinearGradient"],
+      "components": [
+        "LinearGradient"
+      ],
       "usage": "Top and bottom gradient overlays on digit container for smooth fade"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Animated button for timer start/stop with scale feedback"
     },
     "@expo/vector-icons": {
       "version": "Latest",
-      "components": ["MaterialCommunityIcons"],
-      "icons_used": ["timer", "stop"],
+      "components": [
+        "MaterialCommunityIcons"
+      ],
+      "icons_used": [
+        "timer",
+        "stop"
+      ],
       "usage": "Timer control button icons"
     }
   },
-
   "animation_techniques": {
     "circular_slider_transformation": {
       "pattern": "Linear translation mapped to circular radians via interpolation",
@@ -188,7 +210,6 @@
       "important_note": "Author recommends react-native-background-timer for production"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -234,7 +255,10 @@
         "name": "digit",
         "scope": "AnimatedDigit",
         "calculation": "getDigitByIndex({digitIndex: index, count: count.value, maxDigits})",
-        "dependencies": ["count", "index"],
+        "dependencies": [
+          "count",
+          "index"
+        ],
         "purpose": "Extract specific digit from count value",
         "worklet": true
       },
@@ -242,14 +266,21 @@
         "name": "invisibleDigitsAmount",
         "scope": "AnimatedDigit",
         "calculation": "maxDigits - count.value.toString().length",
-        "dependencies": ["count", "maxDigits"],
+        "dependencies": [
+          "count",
+          "maxDigits"
+        ],
         "purpose": "Calculate number of leading zeros"
       },
       {
         "name": "isVisible",
         "scope": "AnimatedDigit",
         "logic": "digit !== 0 || index < maxDigits - invisibleDigitsAmount",
-        "dependencies": ["digit", "invisibleDigitsAmount", "index"],
+        "dependencies": [
+          "digit",
+          "invisibleDigitsAmount",
+          "index"
+        ],
         "purpose": "Determine if digit should be visible (hide leading zeros)"
       },
       {
@@ -262,7 +293,10 @@
         "name": "progressRadiants",
         "scope": "CircularDraggableSlider",
         "calculation": "interpolate(-progress.value, [0, listWidth], [offset, 2*PI+offset])",
-        "dependencies": ["progress", "listWidth"],
+        "dependencies": [
+          "progress",
+          "listWidth"
+        ],
         "purpose": "Convert linear progress to circular radians for tick positioning"
       },
       {
@@ -318,7 +352,6 @@
       }
     ]
   },
-
   "performance_optimizations": {
     "memo_components": {
       "AnimatedDigit": "Prevents re-render when sibling digits change",
@@ -334,7 +367,11 @@
       "pattern": "All calculations in worklets (getDigitByIndex, trigonometry)",
       "benefit": "No bridge crossing for digit extraction or positioning",
       "runs_on": "UI thread",
-      "examples": ["digit extraction", "radian conversion", "tick positioning"]
+      "examples": [
+        "digit extraction",
+        "radian conversion",
+        "tick positioning"
+      ]
     },
     "gesture_performance": {
       "pan_gesture": "Runs entirely on UI thread",
@@ -355,7 +392,11 @@
     "ref_based_timer_control": {
       "pattern": "useImperativeHandle exposes timer functions",
       "benefit": "No prop drilling, direct timer control",
-      "methods": ["runTimer", "stopTimer", "resetTimer"]
+      "methods": [
+        "runTimer",
+        "stopTimer",
+        "resetTimer"
+      ]
     },
     "haptic_debouncing": {
       "pattern": "Called on every progress change from worklet",
@@ -363,7 +404,6 @@
       "note": "Could benefit from throttling for very fast drags"
     }
   },
-
   "use_cases": {
     "primary": [
       "Pomodoro timer applications",
@@ -391,11 +431,12 @@
       "Ref-based component APIs"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "type_files": ["types.ts for DraggableSliderProps"],
+      "type_files": [
+        "types.ts for DraggableSliderProps"
+      ],
       "type_imports": "type keyword for type-only imports",
       "ref_types": "CircularDraggableSliderRefType for imperative handle"
     },
@@ -458,7 +499,6 @@
       "Timer completion callback could be more robust"
     ]
   },
-
   "known_limitations": {
     "timer_interval_limitation": {
       "issue": "Uses standard setInterval, may pause in background",
@@ -506,7 +546,6 @@
       ]
     }
   },
-
   "potential_improvements": {
     "features": [
       "Pause/resume functionality (currently only start/stop)",
@@ -565,7 +604,6 @@
       "Persist timer state across app restarts"
     ]
   },
-
   "key_insights": {
     "circular_transformation_math": "Treating circle circumference as a straight line (2πr) enables intuitive linear-to-circular mapping via interpolation",
     "trigonometric_positioning": "Tick lines positioned with cos/sin for x/y and atan2 for rotation - fundamental pattern for circular UIs",
@@ -578,7 +616,6 @@
     "timer_interval_trade_off": "setInterval sufficient for Expo Go, but production needs background-safe alternative",
     "platform_specific_features": "Graceful degradation (haptics iOS-only, blur iOS-only) maintains cross-platform functionality"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic timer implementation with setInterval",
@@ -609,7 +646,6 @@
       "Timer state management edge cases"
     ]
   },
-
   "tags": [
     "timer",
     "pomodoro",
@@ -635,5 +671,9 @@
     "gradient-overlay",
     "ios-blur",
     "timer-management"
-  ]
+  ],
+  "content_hash": "f45187c8277dc644f5959d58b417c22b4db2821c02b3f84a8161de622da01b1e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.404Z",
+  "last_validated": "2025-10-12T09:19:28.404Z"
 }

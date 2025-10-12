@@ -2,7 +2,6 @@
   "animation_name": "Split Button",
   "animation_slug": "split-button",
   "description": "An elegant split button interaction that transforms from a single action button into two separate options. Features smooth spring-based animations, dual icon/text states, coordinated layout transitions, and sophisticated opacity fading. The button splits horizontally revealing a left option while the right button morphs its content, creating an intuitive two-choice interface.",
-
   "main_features": [
     "Single-to-dual button split animation",
     "Smooth spring physics for natural motion",
@@ -17,30 +16,33 @@
     "Customizable icons and labels",
     "Configurable button width and spacing"
   ],
-
   "file_structure": {
     "index.tsx": "Container component with GestureHandlerRootView wrapper and icon configuration",
     "components/split-button/index.tsx": "Core SplitButton component with animation logic and state management",
     "constants.ts": "Color constants for consistent theming"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "press_feedback": "pressto (PressableScale)",
     "pattern": "Spring-based translation with timing-based opacity and padding"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "hooks": [
         "useAnimatedStyle",
         "withSpring",
         "withTiming"
       ],
-      "layout_animations": ["FadeIn", "FadeOut", "LinearTransition"],
+      "layout_animations": [
+        "FadeIn",
+        "FadeOut",
+        "LinearTransition"
+      ],
       "critical_feature": "Coordinated spring and timing animations for smooth state transitions"
     },
     "react-native-gesture-handler": {
@@ -59,10 +61,12 @@
       "version": "^15.0.2",
       "component": "AntDesign",
       "usage": "Icon rendering for button states",
-      "icons_used": ["apple", "google"]
+      "icons_used": [
+        "apple",
+        "google"
+      ]
     }
   },
-
   "animation_techniques": {
     "horizontal_split": {
       "property": "translateX",
@@ -114,7 +118,6 @@
       "library": "pressto"
     }
   },
-
   "reanimated_patterns": {
     "state_driven_animations": {
       "pattern": "useState triggers useAnimatedStyle recalculations",
@@ -125,23 +128,39 @@
       "instances": [
         {
           "name": "rRightStyle",
-          "properties": ["transform: [translateX]"],
+          "properties": [
+            "transform: [translateX]"
+          ],
           "animation": "withSpring",
-          "dependencies": ["activated"],
+          "dependencies": [
+            "activated"
+          ],
           "target": "Right button"
         },
         {
           "name": "rLeftStyle",
-          "properties": ["opacity", "transform: [translateX]"],
-          "animations": ["withTiming (opacity)", "withSpring (translateX)"],
-          "dependencies": ["activated"],
+          "properties": [
+            "opacity",
+            "transform: [translateX]"
+          ],
+          "animations": [
+            "withTiming (opacity)",
+            "withSpring (translateX)"
+          ],
+          "dependencies": [
+            "activated"
+          ],
           "target": "Left button"
         },
         {
           "name": "rAnimatedChipStyle",
-          "properties": ["paddingHorizontal"],
+          "properties": [
+            "paddingHorizontal"
+          ],
           "animation": "withTiming",
-          "dependencies": ["activated"],
+          "dependencies": [
+            "activated"
+          ],
           "target": "Both button content containers"
         }
       ]
@@ -177,7 +196,6 @@
       "layout_animations": "entering/exiting trigger when mounting/unmounting"
     }
   },
-
   "component_architecture": {
     "split_button": {
       "type": "Reusable component",
@@ -255,7 +273,6 @@
       }
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "almostBlack": "#181817 (left icon color)",
@@ -273,7 +290,10 @@
         "borderColor": "#D9D6D1",
         "backgroundColor": "#F1EEE8",
         "shadow": {
-          "offset": { "width": 0, "height": 1 },
+          "offset": {
+            "width": 0,
+            "height": 1
+          },
           "opacity": 0.1,
           "radius": 5
         }
@@ -316,7 +336,6 @@
       "stacking": "Right button always on top in z-order"
     }
   },
-
   "interaction_pattern": {
     "initial_state": {
       "appearance": "Single button showing label text",
@@ -339,7 +358,9 @@
     },
     "left_button_press": {
       "trigger": "Tap on left button (active state)",
-      "callbacks": ["onLeft?.()"],
+      "callbacks": [
+        "onLeft?.()"
+      ],
       "action": "setActive(false)",
       "animation_sequence": [
         "1. Both buttons translate back to center",
@@ -352,13 +373,14 @@
     },
     "right_button_press_active": {
       "trigger": "Tap on right button (active state)",
-      "callbacks": ["onRight?.()"],
+      "callbacks": [
+        "onRight?.()"
+      ],
       "action": "setActive(false)",
       "animation_sequence": "Same as left button press",
       "result": "Returns to single button state"
     }
   },
-
   "mathematical_algorithms": {
     "offset_calculation": {
       "formula": "offset = buttonWidth / 2 + maxSpacing",
@@ -404,7 +426,6 @@
       "purpose": "Accommodates icon size and improves balance"
     }
   },
-
   "use_cases": {
     "primary": [
       "Social login options (Google vs Apple)",
@@ -431,7 +452,6 @@
       "Action confirmation"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -490,7 +510,6 @@
       "Could add disabled state handling"
     ]
   },
-
   "performance_optimizations": {
     "memo_component": {
       "usage": "memo() wraps SplitButton",
@@ -529,7 +548,6 @@
       "caching": "Styles created once, reused"
     }
   },
-
   "known_limitations": {
     "no_gesture_control": {
       "limitation": "Only tap to activate/deactivate",
@@ -566,7 +584,6 @@
       "enhancement": "Could add direction prop"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Add drag gesture to control split progress",
@@ -616,7 +633,6 @@
       "Success/error state animations"
     ]
   },
-
   "key_insights": {
     "symmetrical_motion": "Equal and opposite translateX creates balanced, intuitive split effect",
     "mixed_animation_types": "Combining spring (translateX) and timing (opacity) creates natural yet controlled motion",
@@ -629,7 +645,6 @@
     "z_index_layering": "Higher z-index on right button maintains visual hierarchy during animation",
     "press_to_reveal": "Progressive disclosure pattern reduces cognitive load by showing options on demand"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "useState for component state",
@@ -664,7 +679,6 @@
       "Z-index and layering strategies"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Button splits correctly on activation",
@@ -711,7 +725,6 @@
       "Reduced motion support (if implemented)"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": "No accessibility features implemented",
     "missing_features": [
@@ -746,7 +759,6 @@
       }
     }
   },
-
   "related_patterns": {
     "expandable_fab": "Floating action button that expands to reveal options",
     "segmented_control": "Multiple options side by side (but no reveal animation)",
@@ -754,14 +766,12 @@
     "radio_buttons": "Multiple choice selection (static layout)",
     "toggle_switch": "Binary choice (different visual metaphor)"
   },
-
   "real_world_inspiration": {
     "social_logins": "Choose between Google, Apple, Facebook authentication",
     "ios_action_buttons": "Confirm/cancel patterns in iOS",
     "material_design": "Extended FAB patterns",
     "payment_selectors": "Card vs digital wallet choices"
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~200 lines total)",
     "dependencies": "Reanimated, Gesture Handler, pressto (likely already in project)",
@@ -769,7 +779,6 @@
     "runtime_memory": "Minimal - few SharedValues, basic styles",
     "estimated_size": "< 10KB excluding dependencies"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features work perfectly",
@@ -787,7 +796,6 @@
       "note": "Gesture handler may have minor differences"
     }
   },
-
   "configuration": {
     "adjustable_parameters": {
       "button_width": {
@@ -815,7 +823,6 @@
       }
     }
   },
-
   "comparison_to_alternatives": {
     "vs_static_dual_buttons": {
       "static": "Both buttons always visible",
@@ -836,7 +843,6 @@
       "use_when": "Two equal-weight options"
     }
   },
-
   "tags": [
     "split-button",
     "progressive-disclosure",
@@ -854,5 +860,9 @@
     "authentication",
     "button-morph",
     "state-transition"
-  ]
+  ],
+  "content_hash": "802d773a1d855fd7e2bf7b91a5d75b4b3304bde12bb43bd01b51b88030b3aaf0",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.446Z",
+  "last_validated": "2025-10-12T09:19:28.446Z"
 }

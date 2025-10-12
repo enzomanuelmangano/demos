@@ -35,16 +35,8 @@
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useAnimatedStyle",
-        "useDerivedValue"
-      ],
-      "functions": [
-        "withDecay",
-        "withTiming",
-        "cancelAnimation"
-      ],
+      "hooks": ["useSharedValue", "useAnimatedStyle", "useDerivedValue"],
+      "functions": ["withDecay", "withTiming", "cancelAnimation"],
       "components": ["Animated.View"],
       "critical_feature": "withDecay for momentum scrolling and useDerivedValue for active index calculation"
     },
@@ -366,7 +358,7 @@
         },
         "pagingEnabled": {
           "type": "boolean",
-          "default": undefined,
+          "default": false,
           "usage": "Toggle between free scroll and snap-to-item"
         },
         "storyItemDimensions": {
@@ -541,10 +533,7 @@
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
       "generics": "StoryList<T>, StoryListItem<T>, StoryListProps<T>",
-      "type_definitions": [
-        "StoryListProps<T>",
-        "StoryListItemProps<T>"
-      ],
+      "type_definitions": ["StoryListProps<T>", "StoryListItemProps<T>"],
       "type_imports": "type keyword for type-only imports",
       "type_safety": "Strong typing throughout"
     },

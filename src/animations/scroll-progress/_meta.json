@@ -2,7 +2,6 @@
   "animation_name": "Scroll Progress",
   "animation_slug": "scroll-progress",
   "description": "An intelligent scroll progress indicator with reading time estimation that displays a collapsible bottom bar showing scroll percentage, reading time, and a reset button. Features state-based UI transitions that adapt based on scroll position (initial, expanded, end) with smooth animations and automatic scroll-to-top functionality.",
-
   "main_features": [
     "Dynamic scroll progress tracking with percentage display",
     "Automatic reading time calculation based on content",
@@ -15,7 +14,6 @@
     "Smooth spring and timing animations for all transitions",
     "ScrollView content measurement and layout tracking"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main ScrollProgress component with section rendering"
@@ -40,13 +38,11 @@
       "constants.ts": "Section data with titles and descriptions (chess openings content)"
     }
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "text_rendering": "react-native-redash (ReText)",
     "layout": "react-native-safe-area-context"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -58,29 +54,43 @@
         "useAnimatedReaction",
         "interpolate"
       ],
-      "components": ["Animated.ScrollView", "Animated.View"],
-      "functions": ["withTiming", "withSpring", "Extrapolation"],
+      "components": [
+        "Animated.ScrollView",
+        "Animated.View"
+      ],
+      "functions": [
+        "withTiming",
+        "withSpring",
+        "Extrapolation"
+      ],
       "critical_feature": "useAnimatedScrollHandler for native thread scroll handling"
     },
     "react-native-redash": {
       "version": "^18.1.4",
-      "components": ["ReText"],
+      "components": [
+        "ReText"
+      ],
       "usage": "Animated text component for real-time percentage display without re-renders",
       "benefit": "Updates text on UI thread without bridging to JS thread"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Safe area padding for top and bottom insets"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["AntDesign"],
-      "icons_used": ["arrow-up"],
+      "components": [
+        "AntDesign"
+      ],
+      "icons_used": [
+        "arrow-up"
+      ],
       "usage": "Up arrow icon for scroll-to-top button"
     }
   },
-
   "animation_techniques": {
     "scroll_progress_tracking": {
       "pattern": "useAnimatedScrollHandler with derived progress value",
@@ -145,7 +155,6 @@
       "effect": "Clean reset animation without flickering progress"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -183,7 +192,11 @@
       {
         "name": "scrollableHeight",
         "calculation": "scrollHeight - viewHeight + paddingBottom",
-        "dependencies": ["scrollHeight", "viewHeight", "paddingBottom"],
+        "dependencies": [
+          "scrollHeight",
+          "viewHeight",
+          "paddingBottom"
+        ],
         "purpose": "Calculate total scrollable distance"
       },
       {
@@ -195,7 +208,9 @@
       {
         "name": "isExpanded",
         "calculation": "state === BottomProgressState.EXPANDED",
-        "dependencies": ["state"],
+        "dependencies": [
+          "state"
+        ],
         "purpose": "Boolean flag for expanded state"
       },
       {
@@ -207,8 +222,13 @@
     "useAnimatedScrollHandler": {
       "pattern": "Standard onScroll handler pattern",
       "runs_on": "UI thread (native)",
-      "event_properties": ["contentOffset.y"],
-      "updates": ["currentScroll", "progress (conditionally)"],
+      "event_properties": [
+        "contentOffset.y"
+      ],
+      "updates": [
+        "currentScroll",
+        "progress (conditionally)"
+      ],
       "conditional_logic": "Skip progress update if isResetting.value is true",
       "benefit": "60fps scroll handling without bridge crossing"
     },
@@ -221,30 +241,42 @@
     },
     "animated_styles": {
       "rAnimatedStyle (BottomProgress)": {
-        "properties": ["width"],
+        "properties": [
+          "width"
+        ],
         "animation": "withTiming",
         "interpolation": "Conditional based on isExpanded"
       },
       "rAnimatedStyle (ProgressBarArea)": {
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "animation": "withTiming",
         "trigger": "isVisible derived value"
       },
       "rProgressBarAnimatedStyle": {
-        "properties": ["width"],
+        "properties": [
+          "width"
+        ],
         "interpolation": "interpolate(progress, [0, 1], [0, 100])",
         "unit": "percentage string"
       },
       "rCollapsedAreaStyle": {
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "logic": "Visible when INITIAL or END state"
       },
       "rMinContainerStyle": {
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "logic": "Visible when INITIAL state"
       },
       "rUpArrowContainerStyle": {
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "logic": "Visible when END state"
       }
     },
@@ -257,7 +289,6 @@
       }
     }
   },
-
   "performance_optimizations": {
     "memo_components": {
       "SectionContentList": "Prevents re-render when parent state changes",
@@ -271,14 +302,18 @@
         "name": "paddingBottom",
         "location": "SectionContentList",
         "calculation": "StyleSheet.flatten to extract paddingBottom from contentContainerStyle",
-        "dependencies": ["contentContainerStyle"],
+        "dependencies": [
+          "contentContainerStyle"
+        ],
         "purpose": "Prevent recalculation on every render"
       },
       {
         "name": "readingTime",
         "location": "SectionContentList",
         "calculation": "Sum of getReadingTime for all sections",
-        "dependencies": ["sections"],
+        "dependencies": [
+          "sections"
+        ],
         "purpose": "Calculate reading time once on mount"
       }
     ],
@@ -286,13 +321,17 @@
       {
         "name": "onLayout",
         "location": "SectionContentList",
-        "dependencies": ["scrollHeight"],
+        "dependencies": [
+          "scrollHeight"
+        ],
         "purpose": "Stable reference for layout callback"
       },
       {
         "name": "onReset",
         "location": "SectionContentList",
-        "dependencies": ["isResetting"],
+        "dependencies": [
+          "isResetting"
+        ],
         "purpose": "Stable reference for reset button callback"
       },
       {
@@ -304,7 +343,10 @@
       {
         "name": "onPressArrow",
         "location": "CollapsedArea",
-        "dependencies": ["onReset", "state.value"],
+        "dependencies": [
+          "onReset",
+          "state.value"
+        ],
         "purpose": "Stable touch handler with state checking"
       }
     ],
@@ -315,7 +357,10 @@
     },
     "layout_measurement": {
       "pattern": "onLayout callbacks for dynamic height calculation",
-      "measurements": ["viewHeight", "scrollHeight"],
+      "measurements": [
+        "viewHeight",
+        "scrollHeight"
+      ],
       "benefit": "Responsive to different content sizes without hardcoding"
     },
     "conditional_scroll_handling": {
@@ -329,7 +374,6 @@
       "alternative": "Regular Text would require setState and re-render on every scroll"
     }
   },
-
   "state_management": {
     "animation_flow": {
       "scroll_interaction": [
@@ -371,7 +415,6 @@
       }
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#111 (dark black)",
@@ -466,7 +509,6 @@
       "scroll_reset": "Animated scrollTo with native spring"
     }
   },
-
   "mathematical_algorithms": {
     "progress_calculation": {
       "formula": "progress = clamp(scrollY / scrollableHeight, 0, 1)",
@@ -514,7 +556,6 @@
       "example": "clamp(1.5, 0, 1) → 1"
     }
   },
-
   "layout_and_positioning": {
     "absolute_positioning": {
       "bottom_progress": {
@@ -547,7 +588,6 @@
       "purpose": "Clip progress bar fill animation within rounded container"
     }
   },
-
   "use_cases": {
     "primary": [
       "Article readers with progress tracking",
@@ -573,7 +613,6 @@
       "Mobile news apps"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type definitions",
@@ -602,7 +641,6 @@
       "Reading time calculation could be more sophisticated (images, code blocks)"
     ]
   },
-
   "typescript_quality": {
     "type_definitions": [
       "Section type",
@@ -620,7 +658,6 @@
       "Missing prop types for style props in some components"
     ]
   },
-
   "known_limitations": {
     "touch_target_size": {
       "issue": "Up arrow icon (24x24) may be too small for comfortable tapping",
@@ -635,7 +672,11 @@
       "improvement": "Use Pressable for better accessibility and feedback"
     },
     "fixed_dimensions": {
-      "values": ["70px collapsed width", "200px expanded width", "bottom: 50"],
+      "values": [
+        "70px collapsed width",
+        "200px expanded width",
+        "bottom: 50"
+      ],
       "limitation": "May not scale well on all screen sizes",
       "improvement": "Calculate based on screen dimensions or typography"
     },
@@ -670,7 +711,6 @@
       "potential": "Could extend to support scroll to percentage"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Chapter/section markers on progress bar",
@@ -721,7 +761,6 @@
       "Adjustable text size from progress bar"
     ]
   },
-
   "key_insights": {
     "state_machine_pattern": "Using enum-based state (INITIAL, EXPANDED, END) provides clear, maintainable state logic",
     "reset_flag_critical": "isResetting flag prevents progress flickering during programmatic scrolling",
@@ -734,7 +773,6 @@
     "memo_cascade": "Memoizing entire component tree prevents unnecessary re-renders during scroll",
     "width_animation_feel": "500ms timing for width gives substantial, intentional feel to expansion"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic scroll event handling",
@@ -765,7 +803,6 @@
       "Reading time estimation algorithms"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": "Minimal accessibility support",
     "missing_features": [
@@ -788,7 +825,6 @@
       "Ensure color contrast meets WCAG AA standards"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify progress bar appears at bottom initially showing reading time",
@@ -833,7 +869,6 @@
       "Verify percentage rounding at edge values"
     ]
   },
-
   "related_patterns": {
     "similar_components": [
       "Medium reading progress indicator",
@@ -856,7 +891,6 @@
       "Onboarding flow states"
     ]
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread for scroll handling",
@@ -875,7 +909,6 @@
       "Unnecessary component re-renders"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_scrollbar": {
       "pros": [
@@ -904,7 +937,6 @@
       "drawback": "More complex state management"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~450 lines total",
     "dependencies": "All dependencies common in React Native projects",
@@ -912,7 +944,6 @@
     "runtime_memory": "Minimal - few SharedValues, small component tree",
     "estimated_impact": "< 30KB minified"
   },
-
   "tags": [
     "scroll-progress",
     "reading-progress",
@@ -931,5 +962,9 @@
     "useAnimatedScrollHandler",
     "opacity-transitions",
     "width-animation"
-  ]
+  ],
+  "content_hash": "0a640b4ab6d2dc0276737e6cbff0758d8e26b1ad4aa284df6afe882dd727c7ee",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.420Z",
+  "last_validated": "2025-10-12T09:19:28.420Z"
 }

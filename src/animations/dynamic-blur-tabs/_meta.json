@@ -2,7 +2,6 @@
   "animation_name": "Dynamic Blur Tabs",
   "animation_slug": "dynamic-blur-tabs",
   "description": "A modern iOS-style bottom tab bar with dynamic blur effects, smooth morphing animations, and scroll-based state transitions. The tab bar intelligently adapts its shape, size, and padding based on scroll position, transforming from a compact floating pill to a full-width bar with safe area insets.",
-
   "main_features": [
     "Dynamic blur background with iOS system material",
     "Morphing tab bar shape (pill to full-width)",
@@ -15,7 +14,6 @@
     "React Navigation integration",
     "Platform-specific blur fallbacks (Android)"
   ],
-
   "file_structure": {
     "index.tsx": "Main export wrapper",
     "src/index.tsx": "Root app component with Bottom Tab Navigator setup",
@@ -31,7 +29,6 @@
     "src/components/pressable-scale.tsx": "Reusable pressable with scale animation",
     "src/hooks/use-bottom-bar-height.ts": "Custom hook for calculating safe bottom bar height"
   },
-
   "core_technologies": {
     "navigation": "@react-navigation/bottom-tabs",
     "animations": "react-native-reanimated",
@@ -41,20 +38,31 @@
     "threading": "react-native-worklets",
     "safe_area": "react-native-safe-area-context"
   },
-
   "packages_and_versions": {
     "@react-navigation/bottom-tabs": {
       "version": "^7.4.0",
       "usage": "Bottom tab navigation structure and routing",
-      "components": ["createBottomTabNavigator"],
-      "types": ["BottomTabBarProps"],
-      "features": ["Custom tabBar renderer", "freezeOnBlur for performance"]
+      "components": [
+        "createBottomTabNavigator"
+      ],
+      "types": [
+        "BottomTabBarProps"
+      ],
+      "features": [
+        "Custom tabBar renderer",
+        "freezeOnBlur for performance"
+      ]
     },
     "@react-navigation/native": {
       "version": "^7.1.8",
       "usage": "Navigation actions and state management",
-      "utilities": ["StackActions"],
-      "features": ["Route state inspection", "Navigation dispatch"]
+      "utilities": [
+        "StackActions"
+      ],
+      "features": [
+        "Route state inspection",
+        "Navigation dispatch"
+      ]
     },
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -68,48 +76,76 @@
         "withTiming",
         "makeMutable"
       ],
-      "utilities": ["interpolate", "Animated.createAnimatedComponent"],
-      "components": ["Animated.View", "Animated.FlatList"],
+      "utilities": [
+        "interpolate",
+        "Animated.createAnimatedComponent"
+      ],
+      "components": [
+        "Animated.View",
+        "Animated.FlatList"
+      ],
       "critical_feature": "Smooth spring-based morphing animations and scroll event handling"
     },
     "expo-blur": {
       "version": "~15.0.7",
       "usage": "iOS-style blur background for tab bar",
-      "components": ["BlurView"],
-      "tints": ["systemMaterialDark"],
+      "components": [
+        "BlurView"
+      ],
+      "tints": [
+        "systemMaterialDark"
+      ],
       "platform_support": "iOS (native blur), Android (fallback with backgroundColor)"
     },
     "expo-linear-gradient": {
       "version": "~15.0.7",
       "usage": "Gradient overlay for visual depth above tab bar",
-      "components": ["LinearGradient"],
+      "components": [
+        "LinearGradient"
+      ],
       "effect": "Creates fade-to-black gradient for scrollable content"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
       "usage": "Tap gesture detection for tab items",
-      "components": ["GestureDetector", "Gesture"],
-      "gestures": ["Tap with custom duration"]
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Tap with custom duration"
+      ]
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge UI thread gestures to JS thread for navigation callbacks"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
       "usage": "Safe area insets for notches, home indicators, etc.",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "critical": "Ensures proper spacing on devices with notches/dynamic island"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "usage": "Material Icons for tab bar icons",
-      "components": ["MaterialIcons"],
-      "icons_used": ["home", "search", "favorite", "person", "settings"]
+      "components": [
+        "MaterialIcons"
+      ],
+      "icons_used": [
+        "home",
+        "search",
+        "favorite",
+        "person",
+        "settings"
+      ]
     }
   },
-
   "animation_techniques": {
     "morphing_tab_bar": {
       "pattern": "Interpolation-based shape morphing",
@@ -190,7 +226,6 @@
       "effect": "Adds horizontal padding when expanded for better icon spacing"
     }
   },
-
   "reanimated_patterns": {
     "global_shared_state": {
       "pattern": "makeMutable for cross-component state",
@@ -205,7 +240,9 @@
     "derived_spring_progress": {
       "pattern": "useDerivedValue with withSpring",
       "implementation": "useDerivedValue(() => withSpring(IsTabBarActive.value ? 1 : 0))",
-      "dependencies": ["IsTabBarActive.value"],
+      "dependencies": [
+        "IsTabBarActive.value"
+      ],
       "output": "progress (0 to 1)",
       "spring_config": "Default spring settings",
       "purpose": "Single animated value drives all interpolations"
@@ -235,7 +272,9 @@
       "hook": "useDerivedValue",
       "computation": "focusedIndex.value === index",
       "returns": "boolean (isFocused)",
-      "dependencies": ["index"],
+      "dependencies": [
+        "index"
+      ],
       "use_case": "Per-tab focus state calculation"
     },
     "animated_component_creation": {
@@ -245,11 +284,16 @@
       "enables": "Animated style props on BlurView"
     }
   },
-
   "navigation_integration": {
     "navigator_type": "Bottom Tab Navigator",
     "screen_count": 5,
-    "screens": ["home", "search", "favorite", "person", "settings"],
+    "screens": [
+      "home",
+      "search",
+      "favorite",
+      "person",
+      "settings"
+    ],
     "initial_route": "home",
     "custom_tab_bar": {
       "pattern": "Custom tabBar renderer via tabBar prop",
@@ -275,7 +319,6 @@
       "purpose": "Demo focuses on tab bar, only home screen implemented"
     }
   },
-
   "layout_calculations": {
     "bottom_bar_height": {
       "constant": "BOTTOM_BAR_HEIGHT = 70",
@@ -309,7 +352,6 @@
       "currently_used": "Exported but not actively used in current implementation"
     }
   },
-
   "gradient_demo_screen": {
     "component": "ScrollableGradients",
     "purpose": "Demo screen that drives tab bar state",
@@ -331,7 +373,12 @@
       "harmony": "Analogous harmony (+30°, +60° hue shifts)"
     },
     "gradient_direction": {
-      "positions": ["top", "bottom", "left", "right"],
+      "positions": [
+        "top",
+        "bottom",
+        "left",
+        "right"
+      ],
       "selection": "Random start and end (ensuring they differ)",
       "variety": "Creates diverse gradient directions"
     },
@@ -342,7 +389,6 @@
       "throttle": 16
     }
   },
-
   "performance_optimizations": {
     "memo_components": {
       "TabBarItem": "Prevents re-renders when sibling tabs update",
@@ -385,7 +431,6 @@
       "benefit": "Avoids unnecessary navigation operations"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "black",
@@ -418,7 +463,6 @@
     "blur_intensity": 70,
     "overflow": "hidden (clips content to rounded corners)"
   },
-
   "state_management": {
     "global_state": {
       "IsTabBarActive": {
@@ -456,11 +500,13 @@
     },
     "navigation_state": {
       "source": "React Navigation Bottom Tab state",
-      "properties_used": ["state.index", "state.routes"],
+      "properties_used": [
+        "state.index",
+        "state.routes"
+      ],
       "access_pattern": "Via BottomTabBarProps"
     }
   },
-
   "gesture_handling": {
     "tab_press_gesture": {
       "type": "Gesture.Tap()",
@@ -476,11 +522,12 @@
     "scroll_gesture": {
       "component": "Animated.FlatList",
       "handler": "useAnimatedScrollHandler",
-      "events": ["onScroll"],
+      "events": [
+        "onScroll"
+      ],
       "no_explicit_gesture": "FlatList handles scroll gestures internally"
     }
   },
-
   "type_safety": {
     "typescript_usage": "Full TypeScript throughout",
     "type_definitions": [
@@ -505,7 +552,6 @@
       "alternative": "Could use type assertion with better typing"
     }
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with comprehensive types",
@@ -528,7 +574,6 @@
       "Gradient demo screen could be in a separate demo file"
     ]
   },
-
   "known_limitations": {
     "android_blur": {
       "issue": "No native blur on Android",
@@ -544,7 +589,13 @@
     },
     "fixed_icon_set": {
       "limitation": "Icons are hardcoded Material Icons",
-      "screens": ["home", "search", "favorite", "person", "settings"],
+      "screens": [
+        "home",
+        "search",
+        "favorite",
+        "person",
+        "settings"
+      ],
       "customization": "Would need to modify ScreenNamesArray and icon rendering"
     },
     "spring_config": {
@@ -559,7 +610,6 @@
       "improvement": "Could add threshold zone (e.g., <= 10)"
     }
   },
-
   "potential_improvements": {
     "animation_enhancements": [
       "Custom spring configurations for different feels",
@@ -599,7 +649,6 @@
       "Configurable morphing parameters"
     ]
   },
-
   "key_insights": {
     "makeMutable_for_global_state": "makeMutable enables worklet-safe global state without Context or props",
     "single_progress_value": "One animated progress value drives all coordinated animations efficiently",
@@ -611,7 +660,6 @@
     "safe_area_awareness": "Dynamic safe area calculations ensure proper spacing on all devices",
     "continuous_curves": "borderCurve: 'continuous' creates superior iOS-style rounded corners"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "React Navigation Bottom Tabs setup",
@@ -641,7 +689,6 @@
       "Gradient-based visual effects"
     ]
   },
-
   "use_cases": {
     "primary": [
       "Modern mobile app navigation",
@@ -681,7 +728,6 @@
       "iOS Photos app"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": "Limited accessibility implementation",
     "missing_features": [
@@ -706,7 +752,6 @@
       "High contrast icons on blur background"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "Screen name array generation",
@@ -753,7 +798,6 @@
       "Android vs iOS rendering differences"
     ]
   },
-
   "platform_considerations": {
     "ios": {
       "features": [
@@ -781,7 +825,6 @@
       "considerations": "Navigation may need web-specific handling"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~500 lines total)",
     "dependencies": [
@@ -794,7 +837,6 @@
     "runtime_memory": "Minimal (few SharedValues, one FlatList)",
     "estimated_impact": "< 50KB additional"
   },
-
   "tags": [
     "navigation",
     "bottom-tabs",
@@ -811,5 +853,9 @@
     "gesture-handler",
     "dynamic-ui",
     "worklets"
-  ]
+  ],
+  "content_hash": "d9b553211d1779e12257a29787777cc29daa635d0523a75f9d0afa6ac5726a1f",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.326Z",
+  "last_validated": "2025-10-12T09:19:28.326Z"
 }

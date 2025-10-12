@@ -2,7 +2,6 @@
   "animation_name": "QR Code Generator",
   "animation_slug": "qrcode",
   "description": "An interactive QR code generator with real-time text input, dynamic Skia-based rendering, and customizable visual effects. Features a gradient-colored QR code with discrete path effects for a stylized appearance. Users can type any text to generate a scannable QR code, and adjust the deviation parameter via a custom slider to control the path distortion effect. The component demonstrates advanced Skia rendering techniques, including LinearGradient and DiscretePathEffect applied to QR code paths.",
-
   "main_features": [
     "Real-time QR code generation from text input",
     "Linear gradient coloring (red to yellow spectrum)",
@@ -17,13 +16,11 @@
     "Two slider implementations: custom gesture-based and native SwiftUI",
     "Animated slider picker with scale and border radius transitions"
   ],
-
   "file_structure": {
     "index.tsx": "Main QRCodeGenerator component with TextInput, QRCode display, and Slider control",
     "components/slider/index.tsx": "Custom gesture-based slider implementation using Pan gesture and Reanimated",
     "components/slider/index.liquid.tsx": "Alternative native SwiftUI-based slider using @expo/ui"
   },
-
   "core_technologies": {
     "qr_code": "react-native-qrcode-skia",
     "graphics": "@shopify/react-native-skia",
@@ -32,7 +29,6 @@
     "ui": "react-native",
     "native_ui": "@expo/ui/swift-ui (for liquid slider variant)"
   },
-
   "packages_and_versions": {
     "react-native-qrcode-skia": {
       "version": "^0.3.1",
@@ -71,7 +67,9 @@
         "interpolate",
         "withTiming"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "Slider picker animations and gesture-based value updates on UI thread"
     },
     "react-native-gesture-handler": {
@@ -95,7 +93,9 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "usage": "Scheduling onUpdate callback on React Native thread from worklet",
       "critical_feature": "Bridging UI thread animations to React Native callbacks"
     },
@@ -107,15 +107,22 @@
         "useWindowDimensions",
         "StyleSheet"
       ],
-      "hooks": ["useState", "useCallback", "useMemo"],
+      "hooks": [
+        "useState",
+        "useCallback",
+        "useMemo"
+      ],
       "usage": "Core UI components and responsive sizing"
     }
   },
-
   "animation_techniques": {
     "slider_picker_animation": {
       "pattern": "Multi-property timing animations on gesture begin/end",
-      "properties": ["scale", "borderRadius", "borderWidth"],
+      "properties": [
+        "scale",
+        "borderRadius",
+        "borderWidth"
+      ],
       "on_begin": {
         "scale": "withTiming(1) - expand to full size",
         "borderRadius": "withTiming(pickerSize / 2) - full circle",
@@ -155,7 +162,6 @@
       "benefit": "Efficient one-way data flow from animation to React state"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -218,7 +224,10 @@
         "name": "clampedTranslateX",
         "scope": "Slider component",
         "calculation": "clamp(translateX.value, 0, sliderWidth)",
-        "dependencies": ["translateX", "sliderWidth"],
+        "dependencies": [
+          "translateX",
+          "sliderWidth"
+        ],
         "purpose": "Enforce slider bounds",
         "benefit": "Prevents picker from going outside track"
       },
@@ -277,7 +286,6 @@
       }
     ]
   },
-
   "skia_rendering": {
     "qr_code_structure": [
       {
@@ -298,7 +306,12 @@
       "component": "LinearGradient",
       "start": "vec(0, 0) - top-left corner",
       "end": "vec(windowWidth, windowWidth) - bottom-right corner",
-      "colors": ["#FF0000", "#FF4D00", "#FF9900", "#FFCC00"],
+      "colors": [
+        "#FF0000",
+        "#FF4D00",
+        "#FF9900",
+        "#FFCC00"
+      ],
       "color_description": "Red → Red-Orange → Orange → Yellow spectrum",
       "effect": "Diagonal gradient across QR code",
       "benefit": "Eye-catching colorful appearance while maintaining scannability"
@@ -313,7 +326,6 @@
       "note": "Too high deviation may affect scannability"
     }
   },
-
   "component_architecture": {
     "QRCodeGenerator": {
       "type": "Main functional component",
@@ -402,7 +414,6 @@
       "limitation": "iOS-specific (@expo/ui/swift-ui)"
     }
   },
-
   "visual_design": {
     "layout": {
       "container": {
@@ -438,7 +449,12 @@
       "slider_track": "gray",
       "slider_progress": "white",
       "slider_picker": "white with border",
-      "qr_gradient": ["#FF0000", "#FF4D00", "#FF9900", "#FFCC00"]
+      "qr_gradient": [
+        "#FF0000",
+        "#FF4D00",
+        "#FF9900",
+        "#FFCC00"
+      ]
     },
     "typography": {
       "text_input": {
@@ -487,7 +503,6 @@
       "benefit": "Adapts to all screen sizes"
     }
   },
-
   "interaction_patterns": {
     "text_input": {
       "trigger": "User types in TextInput",
@@ -517,7 +532,6 @@
       "benefit": "Native slider behavior and accessibility"
     }
   },
-
   "state_management": {
     "react_state": [
       {
@@ -554,7 +568,6 @@
       ]
     }
   },
-
   "performance_optimizations": {
     "skia_rendering": {
       "pattern": "QR code generated on UI thread via Skia",
@@ -567,12 +580,19 @@
     },
     "useMemo": {
       "flattenedStyle": "Memoized style flattening in Slider",
-      "dependencies": ["style"],
+      "dependencies": [
+        "style"
+      ],
       "benefit": "Avoid re-flattening on every render"
     },
     "useCallback": {
       "onSliderValueChange": "Stable reference for slider callback (liquid variant)",
-      "dependencies": ["onUpdate", "minValue", "maxValue", "sliderProgress"],
+      "dependencies": [
+        "onUpdate",
+        "minValue",
+        "maxValue",
+        "sliderProgress"
+      ],
       "benefit": "Prevent unnecessary re-renders"
     },
     "shared_value_updates": {
@@ -589,7 +609,6 @@
       "benefit": "Efficient responsive layout"
     }
   },
-
   "qr_code_configuration": {
     "default_value": "reactiive.io",
     "fallback_pattern": "qrText ? qrText : 'reactiive.io'",
@@ -623,7 +642,6 @@
       "effect": "Higher values = more distortion"
     }
   },
-
   "use_cases": {
     "primary": [
       "Custom QR code generator apps",
@@ -656,7 +674,6 @@
       "Logo embedding in QR code center"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -712,7 +729,6 @@
       "Hardcoded slider range (0-6) could be configurable"
     ]
   },
-
   "known_limitations": {
     "platform_specific": {
       "liquid_slider": "iOS-only (@expo/ui/swift-ui dependency)",
@@ -747,7 +763,6 @@
       "improvement": "Make configurable based on use case"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Save QR code as image (PNG/SVG)",
@@ -805,7 +820,6 @@
       "Example templates and presets"
     ]
   },
-
   "key_insights": {
     "skia_qr_benefits": "Skia-based QR code rendering enables GPU-accelerated visual effects while maintaining scannability",
     "discrete_path_effect": "DiscretePathEffect creates stylized appearance by segmenting paths - balance between style and scannability",
@@ -818,7 +832,6 @@
     "responsive_qr": "Dynamic sizing based on window dimensions ensures QR code is prominent on all screen sizes",
     "fallback_pattern": "Fallback QR value ensures component always displays something meaningful"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic QR code generation",
@@ -849,7 +862,6 @@
       "Error correction level trade-offs"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_qrcode_library": {
       "alternative": "react-native-qrcode-svg",
@@ -873,7 +885,6 @@
       "benefit": "Better mobile UX, offline capable, native feel"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -899,7 +910,6 @@
       ]
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "QR code renders correctly with various text inputs",
@@ -951,7 +961,6 @@
       "Test error correction effectiveness"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "text_input": "Some support via native TextInput accessibility",
@@ -978,7 +987,6 @@
       "recommendation": "Use native variant when accessibility is priority"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines total (main: ~100, sliders: ~200)",
     "dependencies": {
@@ -995,7 +1003,6 @@
       "Minimal JavaScript bundle impact"
     ]
   },
-
   "inspirations_and_references": {
     "design_pattern": "Utility app with real-time feedback",
     "slider_reference": {
@@ -1007,7 +1014,6 @@
     "qr_styling": "Modern gradient aesthetic popular in design systems",
     "interaction_pattern": "Real-time parameter adjustment via slider"
   },
-
   "tags": [
     "qr-code",
     "generator",
@@ -1028,5 +1034,9 @@
     "swiftui",
     "utility",
     "stylized-qr"
-  ]
+  ],
+  "content_hash": "e2f6bc87f294301e6d8849f25bfcc51575a7489658562ef1d56abde001f8eba6",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.411Z",
+  "last_validated": "2025-10-12T09:19:28.411Z"
 }

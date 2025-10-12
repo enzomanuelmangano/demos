@@ -2,7 +2,6 @@
   "animation_name": "Action Tray",
   "animation_slug": "action-tray",
   "description": "A draggable bottom sheet / action tray component with pan gestures, animated backdrop, dynamic content height, and imperative API. Features smooth spring animations, swipe-to-dismiss, and multi-step wizard capability.",
-
   "main_features": [
     "Draggable bottom sheet with pan gesture",
     "Animated backdrop (tap to dismiss)",
@@ -15,21 +14,18 @@
     "Continuous border curve",
     "Layout animations for content transitions"
   ],
-
   "file_structure": {
     "index.tsx": "Demo app with multi-step wizard",
     "components/ActionTray/index.tsx": "Core ActionTray component",
     "components/ActionTray/Backdrop/index.tsx": "Backdrop overlay component",
     "constants/palette.ts": "Color palette constants"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "interactions": "pressto",
     "threading": "react-native-worklets"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -42,18 +38,28 @@
         "withSpring",
         "withTiming"
       ],
-      "layout_animations": ["LinearTransition", "FadeIn", "FadeOut"],
+      "layout_animations": [
+        "LinearTransition",
+        "FadeIn",
+        "FadeOut"
+      ],
       "critical_feature": "useAnimatedProps for dynamic pointerEvents"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
       "usage": "Pan gesture for dragging tray"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet callbacks to JS thread for onClose"
     },
     "pressto": {
@@ -64,10 +70,12 @@
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "component": "MaterialCommunityIcons",
-      "icons_used": ["plus", "close-thick"]
+      "icons_used": [
+        "plus",
+        "close-thick"
+      ]
     }
   },
-
   "animation_techniques": {
     "pan_gesture": {
       "gesture": "Gesture.Pan()",
@@ -77,7 +85,10 @@
       "constraint": "Prevents upward dragging beyond -50px"
     },
     "spring_animation": {
-      "usage": ["Tray open/close", "Content height changes"],
+      "usage": [
+        "Tray open/close",
+        "Content height changes"
+      ],
       "config": "Default spring",
       "effect": "Natural, bouncy motion"
     },
@@ -108,7 +119,6 @@
       "effect": "Content cross-fades between wizard steps"
     }
   },
-
   "component_patterns": {
     "forwardRef_imperative_api": {
       "ref_type": "ActionTrayRef",
@@ -132,7 +142,6 @@
       "pattern": "Pan gesture context for relative dragging"
     }
   },
-
   "gesture_handling": {
     "pan_gesture_lifecycle": {
       "onStart": "context.value = { y: translateY.value }",
@@ -150,7 +159,6 @@
       "threshold": "100px drag distance"
     }
   },
-
   "state_management": {
     "shared_values": [
       {
@@ -191,7 +199,6 @@
       }
     ]
   },
-
   "ui_ux_patterns": {
     "bottom_sheet": {
       "positioning": "position: absolute, bottom: 30",
@@ -222,7 +229,6 @@
       "effect": "Squircle border (Apple-style rounded corners)"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "primary": "#4290F6 (blue)",
@@ -248,7 +254,6 @@
       "style": "continuous (iOS squircle)"
     }
   },
-
   "performance_optimizations": {
     "memo": {
       "Backdrop": "Prevents re-renders when parent changes",
@@ -267,7 +272,11 @@
     ],
     "worklet_optimization": {
       "pattern": "Worklet functions for UI thread execution",
-      "functions": ["scrollTo", "close", "open"],
+      "functions": [
+        "scrollTo",
+        "close",
+        "open"
+      ],
       "benefit": "No bridge crossing for animations"
     },
     "useAnimatedProps": {
@@ -276,7 +285,6 @@
       "critical": "Prevents touch events when backdrop invisible"
     }
   },
-
   "use_cases": {
     "primary": [
       "Bottom sheets",
@@ -293,10 +301,13 @@
       "Confirmation dialogs"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
-    "type_definitions": ["ActionTrayProps", "ActionTrayRef", "BackdropProps"],
+    "type_definitions": [
+      "ActionTrayProps",
+      "ActionTrayRef",
+      "BackdropProps"
+    ],
     "forwardRef": "Proper forwardRef usage with generic types",
     "imperative_handle": "useImperativeHandle for ref API",
     "worklet_annotations": "Explicit 'worklet' directives",
@@ -307,7 +318,6 @@
       "Backdrop pointer events management"
     ]
   },
-
   "known_limitations": {
     "no_keyboard_avoidance": {
       "issue": "Doesn't adjust for keyboard",
@@ -326,7 +336,6 @@
       "enhancement": "Could be prop"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Multiple snap points (half-open, full-open)",
@@ -349,7 +358,6 @@
       "Positioning options (top/bottom)"
     ]
   },
-
   "key_insights": {
     "useAnimatedProps_critical": "useAnimatedProps for pointerEvents prevents unwanted touch events",
     "worklet_imperative_api": "Imperative API methods can be worklets for UI thread execution",
@@ -359,7 +367,6 @@
     "dynamic_border_radius": "Border radius interpolation adds polish",
     "continuous_curve": "borderCurve: 'continuous' for Apple-style UI"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Bottom sheet basics",
@@ -381,14 +388,12 @@
       "Dynamic interpolation patterns"
     ]
   },
-
   "related_patterns": {
     "bottom_sheet": "Similar iOS-style bottom sheets",
     "modal": "Full-screen modals with backdrop",
     "drawer": "Side drawer navigation",
     "popup_menu": "Contextual action menus"
   },
-
   "tags": [
     "bottom-sheet",
     "action-tray",
@@ -401,5 +406,9 @@
     "gesture-handler",
     "imperative-api",
     "spring-animation"
-  ]
+  ],
+  "content_hash": "7f90db9560ebc9b093fb042bd8d69c48228323c393caccfb38d0fd4ec44b480e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.260Z",
+  "last_validated": "2025-10-12T09:19:28.260Z"
 }

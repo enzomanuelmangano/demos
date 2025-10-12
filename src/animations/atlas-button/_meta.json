@@ -2,7 +2,6 @@
   "animation_name": "Atlas Button",
   "animation_slug": "atlas-button",
   "description": "An interactive button component featuring animated pixel/grid squares that dynamically respond to user interaction. Utilizes Skia's Atlas API for high-performance rendering of hundreds of animated squares that scale outward from the center when pressed, revealing an icon and label with smooth position and opacity transitions.",
-
   "main_features": [
     "High-performance grid animation using Skia Atlas API",
     "Hundreds of squares animated simultaneously (50x vertical grid)",
@@ -15,33 +14,39 @@
     "Float32Array color format for GPU optimization",
     "Worklet-based rendering for 60fps performance"
   ],
-
   "file_structure": {
     "index.tsx": "Demo screen with example configuration and color palette",
     "atlas-button/index.tsx": "Main AtlasButton component with gesture handling and UI",
     "atlas-button/animated-squares.tsx": "AnimatedSquares component using Skia Atlas API",
     "assets/header_logo.svg": "React Native logo SVG used in demo"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "threading": "react-native-worklets"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
       "usage": "Canvas rendering with Atlas API for efficient sprite rendering",
-      "components": ["Canvas", "Atlas", "Fill", "Group", "ImageSVG"],
+      "components": [
+        "Canvas",
+        "Atlas",
+        "Fill",
+        "Group",
+        "ImageSVG"
+      ],
       "hooks": [
         "useRSXformBuffer",
         "useRectBuffer",
         "useTexture",
         "useSVG"
       ],
-      "utilities": ["fitbox", "rect"],
+      "utilities": [
+        "fitbox",
+        "rect"
+      ],
       "critical_feature": "Atlas component for rendering hundreds of sprites with single draw call",
       "performance_reason": "GPU-accelerated sprite batching, optimal for many identical shapes with different transforms"
     },
@@ -55,23 +60,37 @@
         "withTiming",
         "interpolate"
       ],
-      "utilities": ["Easing", "Extrapolation"],
+      "utilities": [
+        "Easing",
+        "Extrapolation"
+      ],
       "critical_feature": "useDerivedValue for worklet-based calculations driving Atlas transforms"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "Gesture"],
-      "gestures": ["Gesture.Tap()"],
-      "methods": ["onTouchesDown", "onTouchesUp", "onFinalize", "maxDuration"],
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Gesture.Tap()"
+      ],
+      "methods": [
+        "onTouchesDown",
+        "onTouchesUp",
+        "onFinalize",
+        "maxDuration"
+      ],
       "usage": "Tap gesture with press/release state management"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge onPress callback from UI thread to JS thread"
     }
   },
-
   "animation_techniques": {
     "atlas_rendering": {
       "pattern": "Skia Atlas API for sprite batching",
@@ -136,7 +155,6 @@
       "benefit": "SVG automatically scaled to fit canvas while preserving aspect ratio"
     }
   },
-
   "atlas_api_deep_dive": {
     "atlas_component": {
       "purpose": "Efficiently render many identical sprites with different transforms",
@@ -183,7 +201,6 @@
       "pre_generated": "Colors randomly selected once, stored in staticColors array"
     }
   },
-
   "grid_calculation": {
     "horizontal_squares": {
       "configurable": "horizontalSquaresAmount prop (default 50)",
@@ -212,7 +229,6 @@
       "purpose": "Maximum distance from center for scale interpolation"
     }
   },
-
   "color_system": {
     "color_format": {
       "type": "Float32Array",
@@ -262,7 +278,6 @@
       "benefit": "Colors don't change during animation, stable appearance"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -289,22 +304,28 @@
     "animated_styles": [
       {
         "name": "rStyle",
-        "properties": ["transform: [{ scale }]"],
+        "properties": [
+          "transform: [{ scale }]"
+        ],
         "usage": "Button container scale feedback"
       },
       {
         "name": "textStyle",
-        "properties": ["opacity", "top"],
+        "properties": [
+          "opacity",
+          "top"
+        ],
         "usage": "Label reveal animation"
       },
       {
         "name": "iconStyle",
-        "properties": ["top"],
+        "properties": [
+          "top"
+        ],
         "usage": "Icon upward movement"
       }
     ]
   },
-
   "performance_optimizations": {
     "atlas_batching": {
       "benefit": "2000 squares rendered in single draw call",
@@ -319,22 +340,32 @@
     "useMemo_optimizations": [
       {
         "name": "staticColors",
-        "dependencies": ["SquaresAmount", "_colors"],
+        "dependencies": [
+          "SquaresAmount",
+          "_colors"
+        ],
         "prevents": "Regenerating 2000 random colors every render"
       },
       {
         "name": "randomValues",
-        "dependencies": ["SquaresAmount"],
+        "dependencies": [
+          "SquaresAmount"
+        ],
         "prevents": "Regenerating 2000 random thresholds every render"
       },
       {
         "name": "iconCanvasSize",
-        "dependencies": ["iconSize"],
+        "dependencies": [
+          "iconSize"
+        ],
         "prevents": "Recreating size object every render"
       },
       {
         "name": "iconTransform",
-        "dependencies": ["iconSize", "imageSvg"],
+        "dependencies": [
+          "iconSize",
+          "imageSvg"
+        ],
         "prevents": "Recalculating fitbox transform every render"
       }
     ],
@@ -349,7 +380,6 @@
       "benefit": "Minimal texture memory usage"
     }
   },
-
   "gesture_handling": {
     "tap_gesture": {
       "type": "Gesture.Tap()",
@@ -370,7 +400,6 @@
       "demo_callback": "console.log('Button pressed')"
     }
   },
-
   "component_architecture": {
     "atlas_button": {
       "type": "Reusable component",
@@ -435,7 +464,6 @@
       "responsibility": "Render animated grid using Atlas API"
     }
   },
-
   "visual_design": {
     "demo_styling": {
       "background": "#000 (black)",
@@ -458,7 +486,6 @@
       "opacity": "80% for colored squares"
     }
   },
-
   "mathematical_algorithms": {
     "distance_calculation": {
       "formula": "Math.sqrt((tx - width/2)^2 + (ty - height/2)^2)",
@@ -486,7 +513,6 @@
       "example": "Square 75 in 50-wide grid: x = 25 * 5, y = 1 * 5 = (125, 5)"
     }
   },
-
   "use_cases": {
     "primary": [
       "Hero buttons with visual flair",
@@ -510,14 +536,24 @@
       "Radial distance calculations"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
-    "type_definitions": ["AtlasButtonProps", "AnimatedSquaresProps"],
+    "type_definitions": [
+      "AtlasButtonProps",
+      "AnimatedSquaresProps"
+    ],
     "imports": {
-      "skia_types": ["DataSourceParam"],
-      "reanimated_types": ["SharedValue"],
-      "react_types": ["FC", "StyleProp", "TextStyle"]
+      "skia_types": [
+        "DataSourceParam"
+      ],
+      "reanimated_types": [
+        "SharedValue"
+      ],
+      "react_types": [
+        "FC",
+        "StyleProp",
+        "TextStyle"
+      ]
     },
     "component_patterns": {
       "functional_components": "Uses FC type for both components",
@@ -535,13 +571,11 @@
       "example_usage": "Comprehensive demo with all features"
     }
   },
-
   "inspiration": {
     "source": "https://x.com/i/status/1734891084826952094",
     "platform": "Twitter/X",
     "note": "Original inspiration from social media post"
   },
-
   "known_limitations": {
     "fixed_square_grid": {
       "issue": "Grid density calculated from horizontalSquaresAmount",
@@ -569,7 +603,6 @@
       "recommendation": "Add accessibilityLabel and accessibilityHint"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Support for raster images (PNG/JPG) via different rendering",
@@ -601,7 +634,6 @@
       "Cached texture generation"
     ]
   },
-
   "key_insights": {
     "atlas_efficiency": "Atlas API enables rendering thousands of sprites that would be impossible with View components",
     "worklet_power": "All square calculations in worklets = 60fps even with 2000 squares",
@@ -611,7 +643,6 @@
     "texture_reuse": "Single white texture + colors array = minimal memory",
     "useMemo_critical": "Pre-generating random values prevents animation jitter"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas usage",
@@ -636,7 +667,6 @@
       "Color probability weighting patterns"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Squares render correctly in grid pattern",
@@ -666,7 +696,6 @@
       "Zero or negative dimensions"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_view_based_grid": {
       "atlas_button": "2000 squares in one draw call",
@@ -684,7 +713,6 @@
       "benefit": "Atlas is more declarative and performant"
     }
   },
-
   "related_patterns": {
     "particle_systems": "Similar sprite rendering for particles",
     "tile_maps": "Atlas used for game tile rendering",
@@ -692,7 +720,6 @@
     "pixelation_effects": "Grid-based visual effects",
     "loading_animations": "Animated grid loaders"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "accessible": false,
@@ -713,7 +740,6 @@
       "Test with VoiceOver and TalkBack"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~250 lines total (main + animated squares)",
     "dependencies": "Skia and Reanimated (likely already in project)",
@@ -721,7 +747,6 @@
     "estimated_memory": "~100KB for 2000 squares (buffers + colors)",
     "texture_memory": "Minimal - single white texture"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -737,7 +762,6 @@
       "note": "Requires react-native-web configuration"
     }
   },
-
   "tags": [
     "atlas",
     "skia",
@@ -756,5 +780,9 @@
     "radial-animation",
     "distance-based",
     "batching"
-  ]
+  ],
+  "content_hash": "3626aba252f026ea343c550d034428bd289aa3c0a7ed70fbb401070805b2ec2a",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.279Z",
+  "last_validated": "2025-10-12T09:19:28.279Z"
 }

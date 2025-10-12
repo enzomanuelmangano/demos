@@ -2,7 +2,6 @@
   "animation_name": "Blurred Bottom Bar",
   "animation_slug": "blurred-bottom-bar",
   "description": "A glassmorphic bottom tab bar navigation component featuring blur effects, smooth tab transitions with opacity animations, and floating pill-shaped design. Integrates with React Navigation's bottom tabs to create an iOS-style translucent navigation bar with gradient background and platform-optimized blur intensity.",
-
   "main_features": [
     "Glassmorphic blur effect with platform-specific intensity",
     "Floating pill-shaped tab bar with rounded corners",
@@ -15,7 +14,6 @@
     "Continuous border curve (iOS squircle)",
     "Multiple screen navigation with freezeOnBlur optimization"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo app with bottom tab navigator and image screens",
     "components/bottom-tab-bar.tsx": "Custom tab bar component with blur and gradient effects",
@@ -25,7 +23,6 @@
     "assets/02.jpg": "Demo image for Explore screen",
     "assets/03.jpg": "Demo image for Camera screen"
   },
-
   "core_technologies": {
     "navigation": "@react-navigation/bottom-tabs",
     "animations": "react-native-reanimated",
@@ -35,17 +32,22 @@
     "layout": "react-native-safe-area-context",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "@react-navigation/bottom-tabs": {
       "version": "^7.4.0",
-      "components": ["createBottomTabNavigator"],
-      "types": ["BottomTabBarProps"],
+      "components": [
+        "createBottomTabNavigator"
+      ],
+      "types": [
+        "BottomTabBarProps"
+      ],
       "usage": "Core bottom tab navigation structure"
     },
     "@react-navigation/native": {
       "version": "^7.1.8",
-      "imports": ["StackActions"],
+      "imports": [
+        "StackActions"
+      ],
       "usage": "Navigation actions for popping stacks"
     },
     "react-native-reanimated": {
@@ -56,25 +58,37 @@
         "useDerivedValue",
         "withTiming"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "useSharedValue for tracking focused tab index and opacity animations"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "components": ["BlurView"],
-      "props": ["intensity"],
+      "components": [
+        "BlurView"
+      ],
+      "props": [
+        "intensity"
+      ],
       "usage": "iOS/Android blur effect with platform-specific intensity (20 for Android, 40 for iOS)",
       "effect": "Translucent glassmorphic background"
     },
     "expo-linear-gradient": {
       "version": "~15.0.7",
-      "components": ["LinearGradient"],
+      "components": [
+        "LinearGradient"
+      ],
       "usage": "Gradient overlay above content, below tab bar",
-      "colors": ["transparent → rgba(0,0,0,0.1) → rgba(0,0,0,0.5) → rgba(0,0,0,0.8)"]
+      "colors": [
+        "transparent → rgba(0,0,0,0.1) → rgba(0,0,0,0.5) → rgba(0,0,0,0.8)"
+      ]
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Dynamic bottom padding for notched devices (iPhone home indicator)"
     },
     "pressto": {
@@ -84,12 +98,18 @@
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["MaterialIcons"],
-      "icons_used": ["home", "explore", "camera-alt", "settings"],
+      "components": [
+        "MaterialIcons"
+      ],
+      "icons_used": [
+        "home",
+        "explore",
+        "camera-alt",
+        "settings"
+      ],
       "usage": "Tab bar icons with 25px size, white color"
     }
   },
-
   "animation_techniques": {
     "tab_opacity_transition": {
       "pattern": "Opacity interpolation based on focused state",
@@ -125,7 +145,6 @@
       "pointer_events": "none (doesn't block touches)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -141,7 +160,10 @@
       {
         "name": "isFocused",
         "calculation": "focusedIndex.value === index",
-        "dependencies": ["focusedIndex", "index"],
+        "dependencies": [
+          "focusedIndex",
+          "index"
+        ],
         "type": "boolean",
         "purpose": "Per-tab focus state for opacity calculation",
         "scope": "Each TabBarItem"
@@ -151,14 +173,19 @@
       {
         "name": "rStyle",
         "target": "TabBarItem container",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "interpolation": "withTiming(isFocused ? 1 : 0.3)",
         "effect": "Smooth opacity transition on tab change"
       }
     ],
     "useCallback_optimization": {
       "onTapIcon": {
-        "dependencies": ["currentIndex", "navigation"],
+        "dependencies": [
+          "currentIndex",
+          "navigation"
+        ],
         "purpose": "Handle tab press with navigation and stack popping",
         "memoization": "Prevents TabBarItem re-renders"
       },
@@ -174,11 +201,15 @@
       }
     }
   },
-
   "navigation_patterns": {
     "bottom_tab_navigator": {
       "library": "@react-navigation/bottom-tabs",
-      "screens": ["Home", "Explore", "Camera", "Settings"],
+      "screens": [
+        "Home",
+        "Explore",
+        "Camera",
+        "Settings"
+      ],
       "initialRouteName": "Home",
       "custom_tab_bar": true,
       "screen_options": {
@@ -218,7 +249,6 @@
       }
     }
   },
-
   "component_architecture": {
     "App": {
       "type": "Main component (exported as BlurredBottomBar)",
@@ -280,7 +310,6 @@
       "purpose": "Demo screens showing full-screen images"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "tab_bar_background": "rgba(255,255,255,0.05) - Very subtle white tint",
@@ -336,7 +365,6 @@
       "positioning": "Absolute positioning for tab bar and gradient"
     }
   },
-
   "platform_considerations": {
     "blur_intensity_differences": {
       "ios_value": 40,
@@ -361,7 +389,6 @@
       "potential": "Could add iOS shadow or Android elevation for depth"
     }
   },
-
   "performance_optimizations": {
     "memo_components": {
       "TabBarItem": "memo() prevents re-renders when other tabs pressed",
@@ -395,7 +422,6 @@
       "optimization": "O(1) lookup instead of O(n) find"
     }
   },
-
   "layout_and_positioning": {
     "absolute_positioning": {
       "tab_bar": "position: absolute, bottom: safeBottom + 15",
@@ -414,7 +440,6 @@
       "no_explicit_z_index": "Relies on render order"
     }
   },
-
   "use_cases": {
     "primary": [
       "Bottom tab navigation for mobile apps",
@@ -437,7 +462,6 @@
       "Smooth tab transitions"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -473,7 +497,6 @@
       "Clean component composition"
     ]
   },
-
   "known_limitations": {
     "small_device_constant": {
       "issue": "IS_SMALL_DEVICE constant defined but not used",
@@ -506,7 +529,6 @@
       "improvement": "Could use expo-haptics for tactile feedback"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Haptic feedback on tab press (expo-haptics)",
@@ -551,7 +573,6 @@
       "Optimize blur performance on low-end devices"
     ]
   },
-
   "key_insights": {
     "platform_blur_differences": "iOS and Android require different blur intensity values for similar visual effect",
     "shared_value_for_animations": "Using SharedValue for focusedIndex enables UI thread animations without re-renders",
@@ -562,7 +583,6 @@
     "continuous_border_curve": "borderCurve: 'continuous' provides Apple-style squircle on iOS",
     "freeze_on_blur": "freezeOnBlur: true is important performance optimization for inactive screens"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "React Navigation bottom tabs setup",
@@ -590,7 +610,6 @@
       "React Navigation customization patterns"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_default_react_navigation_tab_bar": {
       "similarity": "Uses same BottomTabBarProps interface",
@@ -609,7 +628,6 @@
       "difference": "Multiple tabs vs single action button"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Tab bar renders with correct blur effect",
@@ -651,7 +669,6 @@
       "Low-end device performance with blur"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "labels": "No accessibility labels on tab items",
@@ -672,7 +689,6 @@
       "Add focus indicators for keyboard users"
     ]
   },
-
   "related_patterns": {
     "glassmorphism_ui": "Blur-based translucent UI elements",
     "floating_navigation": "Navigation elements that float above content",
@@ -680,7 +696,6 @@
     "pill_navigation": "Pill-shaped navigation elements",
     "bottom_sheet": "Bottom-positioned UI elements with blur"
   },
-
   "state_management": {
     "navigation_state": {
       "managed_by": "React Navigation",
@@ -698,7 +713,6 @@
       "benefit": "Performance optimization"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines total (all components)",
     "dependencies": "expo-blur, expo-linear-gradient (likely already in project)",
@@ -706,7 +720,6 @@
     "runtime_memory": "Minimal - few SharedValues, no large data structures",
     "blur_performance": "Blur effects can be GPU-intensive on low-end devices"
   },
-
   "tags": [
     "bottom-navigation",
     "tab-bar",
@@ -724,5 +737,9 @@
     "navigation",
     "mobile-ui",
     "tab-transition"
-  ]
+  ],
+  "content_hash": "6e2b38a18a1c0e3af28adb3720bdf5c8e9c31231bd590bd22c95bd403ac18247",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.291Z",
+  "last_validated": "2025-10-12T09:19:28.291Z"
 }

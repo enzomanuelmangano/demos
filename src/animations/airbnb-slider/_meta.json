@@ -2,7 +2,6 @@
   "animation_name": "Airbnb Slider",
   "animation_slug": "airbnb-slider",
   "description": "An animated price slider with rolling digit counter inspired by Airbnb's UI. Features smooth slider interaction, dynamic digit animations using vertical translation, intelligent zero-hiding logic, and adaptive currency symbol positioning. Includes both custom gesture-based and native iOS slider implementations.",
-
   "main_features": [
     "Custom animated slider with pan gesture handling",
     "Rolling digit counter with vertical translation animation",
@@ -14,7 +13,6 @@
     "Smooth spring-based scale feedback on slider interaction",
     "Digit-by-digit animation using measure-based positioning"
   ],
-
   "file_structure": {
     "index.tsx": "Main component orchestrating slider and animated count display",
     "components/animated-count.tsx": "Container managing multiple AnimatedDigit components",
@@ -23,14 +21,12 @@
     "components/animated-slider/index.liquid.tsx": "iOS-native slider using Expo SwiftUI integration",
     "constants.ts": "Color palette definitions"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "worklets": "react-native-worklets (scheduleOnRN)",
     "native_ui": "@expo/ui/swift-ui (iOS slider variant)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -51,25 +47,37 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
-      "methods": ["onBegin", "onUpdate", "onFinalize"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ],
       "usage": "Pan gesture for slider dragging"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "purpose": "Bridge worklet callbacks to JS thread for onUpdate callback",
       "critical_for": "Calling user-provided onUpdate callback from UI thread"
     },
     "@expo/ui/swift-ui": {
       "version": "Latest",
-      "components": ["Host", "Slider"],
+      "components": [
+        "Host",
+        "Slider"
+      ],
       "usage": "iOS-native slider alternative with SwiftUI integration",
       "note": "Used in index.liquid.tsx variant"
     }
   },
-
   "animation_techniques": {
     "digit_rolling": {
       "pattern": "Vertical translation with stacked digits (0-9)",
@@ -121,7 +129,6 @@
       "positioning": "top: -pickerSize / 2 + sliderHeight / 2 (vertically centered)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -160,7 +167,10 @@
         "name": "digit",
         "scope": "AnimatedDigit",
         "calculation": "getDigitByIndex(index, count.value, maxDigits)",
-        "dependencies": ["count", "index"],
+        "dependencies": [
+          "count",
+          "index"
+        ],
         "purpose": "Extract specific digit from count value",
         "worklet": true
       },
@@ -168,14 +178,21 @@
         "name": "invisibleDigitsAmount",
         "scope": "AnimatedDigit",
         "calculation": "maxDigits - count.value.toString().length",
-        "dependencies": ["count", "maxDigits"],
+        "dependencies": [
+          "count",
+          "maxDigits"
+        ],
         "purpose": "Calculate number of leading zeros"
       },
       {
         "name": "isVisible",
         "scope": "AnimatedDigit",
         "logic": "digit !== 0 || index < maxDigits - invisibleDigitsAmount",
-        "dependencies": ["digit", "invisibleDigitsAmount", "index"],
+        "dependencies": [
+          "digit",
+          "invisibleDigitsAmount",
+          "index"
+        ],
         "purpose": "Determine if digit should be visible"
       },
       {
@@ -220,7 +237,6 @@
       "critical": "onUpdate may contain setState or other JS-thread operations"
     }
   },
-
   "component_patterns": {
     "digit_container_pattern": {
       "structure": "Container (overflow hidden) > Column of 10 Text elements",
@@ -235,7 +251,10 @@
       "purpose": "Natural digit ordering (least to most significant)"
     },
     "memo_optimization": {
-      "components": ["AnimatedDigit", "AnimatedCount"],
+      "components": [
+        "AnimatedDigit",
+        "AnimatedCount"
+      ],
       "benefit": "Prevent re-renders when sibling digits change",
       "critical": "Each digit only re-renders when its value changes"
     },
@@ -252,7 +271,6 @@
       "benefit": "Native feel on iOS, custom control for cross-platform"
     }
   },
-
   "gesture_handling": {
     "pan_gesture_lifecycle": {
       "onBegin": [
@@ -279,7 +297,6 @@
       "pattern": "Separate clamped value from raw translateX"
     }
   },
-
   "state_management": {
     "animation_flow": {
       "slider_interaction": [
@@ -306,7 +323,6 @@
       ]
     }
   },
-
   "performance_optimizations": {
     "memo_components": {
       "AnimatedDigit": "Prevents re-render when sibling digits change",
@@ -339,7 +355,6 @@
       "all_digits_share": "Same count SharedValue, but each calculates own digit"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "primary": "#27303F (dark blue-gray)",
@@ -394,7 +409,6 @@
       "currency_position": "absolute, dynamically translated"
     }
   },
-
   "mathematical_algorithms": {
     "digit_extraction": {
       "algorithm": "Pad with leading zeros, split to array, index from right",
@@ -421,7 +435,6 @@
       "benefit": "Picker stays within track"
     }
   },
-
   "layout_and_positioning": {
     "absolute_positioning": {
       "currency_symbol": "position: 'absolute' with animated translateX",
@@ -445,7 +458,6 @@
       "effect": "Picker centered on its position, vertically centered on track"
     }
   },
-
   "use_cases": {
     "primary": [
       "Price selectors (e-commerce, booking apps)",
@@ -469,11 +481,14 @@
       "Leading zero hiding techniques"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "prop_types": ["SliderProps", "AnimatedDigitProps", "AnimatedCountProps"],
+      "prop_types": [
+        "SliderProps",
+        "AnimatedDigitProps",
+        "AnimatedCountProps"
+      ],
       "type_imports": "type keyword for type-only imports",
       "defaults": "Default props with destructuring"
     },
@@ -512,7 +527,6 @@
       "Separate files for components"
     ]
   },
-
   "known_limitations": {
     "fixed_max_digits": {
       "issue": "maxDigits must be known in advance",
@@ -542,7 +556,6 @@
       "keyboard_navigation": "Not supported"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Decimal place support for prices (e.g., $24.99)",
@@ -582,7 +595,6 @@
       "Value input field alternative"
     ]
   },
-
   "key_insights": {
     "digit_stacking_trick": "Render all 10 digits vertically, translate to show correct one - eliminates conditional rendering",
     "zero_hiding_complexity": "Leading zero hiding requires coordinated opacity + translation + position awareness",
@@ -594,7 +606,6 @@
     "worklet_functions": "Custom worklet functions (getDigitByIndex, clamp) keep all math on UI thread",
     "dual_implementation": "Providing both custom and native implementations shows platform-awareness"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic slider interaction",
@@ -622,7 +633,6 @@
       "Animation choreography (opacity + translation timing)"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "iOS time picker (rolling digits)",
@@ -645,7 +655,6 @@
       "Airport departure boards"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Digit rolling smooth across all positions (0-9)",
@@ -683,7 +692,6 @@
       "Check spring animation feel"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support",
@@ -704,7 +712,6 @@
       "High contrast mode support"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_slider": {
       "pros": [
@@ -727,7 +734,6 @@
       "cost": "Complexity, performance consideration"
     }
   },
-
   "historical_context": {
     "evolution": "Originally used LayoutAnimation (see AnimatedCount comments lines 27-35)",
     "problem": "LayoutAnimation couldn't keep up with frequent slider updates",
@@ -736,14 +742,12 @@
     "trade_off": "Need to know maxDigits in advance",
     "lesson": "LayoutAnimation great for infrequent UI changes, Reanimated for high-frequency"
   },
-
   "bundle_size_impact": {
     "code_size": "~400 lines total (main + components)",
     "dependencies": "All dependencies common in React Native projects",
     "runtime_memory": "Minimal - few SharedValues, small render tree",
     "estimated_impact": "< 50KB minified"
   },
-
   "tags": [
     "slider",
     "price-selector",
@@ -761,5 +765,9 @@
     "currency-display",
     "swiftui-integration",
     "ios-native"
-  ]
+  ],
+  "content_hash": "9a22d86ab2795950df90a4dba08b236e7442e16f684ce3bdc42fdbd2439aaed3",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.265Z",
+  "last_validated": "2025-10-12T09:19:28.265Z"
 }

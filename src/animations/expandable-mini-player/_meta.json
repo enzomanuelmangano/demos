@@ -2,7 +2,6 @@
   "animation_name": "Expandable Mini Player",
   "animation_slug": "expandable-mini-player",
   "description": "A Spotify-like expandable mini music player that transitions from a compact mini-player bar at the bottom of the screen to a full-screen player view. Features smooth gesture-based interactions, interpolated animations for size, position, and color, and seamless integration with React Navigation bottom tabs.",
-
   "main_features": [
     "Mini player expands to full-screen on tap",
     "Pan gesture to collapse back to mini player",
@@ -16,7 +15,6 @@
     "Integration with React Navigation bottom tabs",
     "Progress-based threshold for snap points"
   ],
-
   "file_structure": {
     "index.ts": "Main export wrapper",
     "src/navigation/index.tsx": "Navigation wrapper with React Navigation bottom tabs",
@@ -51,7 +49,6 @@
     },
     "src/animations/easings.ts": "Custom easing functions (Bezier curves)"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -60,11 +57,13 @@
     "safe_area": "react-native-safe-area-context",
     "icons": "react-native-svg"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View", "Animated.Text"],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
       "hooks": [
         "useSharedValue",
         "useAnimatedStyle"
@@ -80,39 +79,60 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "Gesture"],
-      "gestures": ["Tap", "Pan", "Simultaneous"],
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Tap",
+        "Pan",
+        "Simultaneous"
+      ],
       "usage": "Tap to expand, pan to collapse with gesture-based progress control"
     },
     "@react-navigation/bottom-tabs": {
       "version": "^7.4.0",
       "usage": "Bottom tab navigation with custom tab bar renderer",
-      "components": ["createBottomTabNavigator"],
-      "types": ["BottomTabBarProps"]
+      "components": [
+        "createBottomTabNavigator"
+      ],
+      "types": [
+        "BottomTabBarProps"
+      ]
     },
     "@react-navigation/native": {
       "version": "^7.1.8",
-      "hooks": ["useNavigation"],
+      "hooks": [
+        "useNavigation"
+      ],
       "usage": "Navigation hook for tab switching"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Safe area handling for notch and status bar"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Tab items with scale press animation"
     },
     "react-native-svg": {
       "version": "15.12.1",
-      "components": ["Svg", "Path"],
+      "components": [
+        "Svg",
+        "Path"
+      ],
       "usage": "Icon rendering with SVG",
-      "types": ["SvgProps"]
+      "types": [
+        "SvgProps"
+      ]
     }
   },
-
   "animation_techniques": {
     "sheet_expansion": {
       "pattern": "Progress-based interpolation",
@@ -185,7 +205,6 @@
       "effect": "Screen content scales down and moves up as player expands"
     }
   },
-
   "gesture_handling": {
     "tap_gesture": {
       "trigger": "Tap on mini player",
@@ -212,7 +231,6 @@
       "coordination": "Tap only works when collapsed, pan only when expanded"
     }
   },
-
   "reanimated_patterns": {
     "global_shared_value": {
       "name": "ExpandedSheetMutableProgress",
@@ -251,7 +269,6 @@
       "tab_opacity": "withTiming(isActive ? 0.8 : 0.2, { easing: inOut })"
     }
   },
-
   "performance_optimizations": {
     "mutable_shared_value": {
       "benefit": "makeMutable allows direct value updates without re-renders",
@@ -270,7 +287,11 @@
     },
     "static_constants": {
       "benefit": "Height values defined as constants, not recalculated",
-      "examples": ["TabBarHeight", "MiniPlayerHeight", "ImageHeight"]
+      "examples": [
+        "TabBarHeight",
+        "MiniPlayerHeight",
+        "ImageHeight"
+      ]
     },
     "svg_icons": {
       "benefit": "SVG rendering more performant than image assets",
@@ -282,7 +303,6 @@
       "fallback": "Gracefully degrades on Android"
     }
   },
-
   "react_patterns": {
     "useCallback": {
       "tabBar": "Memoizes tab bar renderer function",
@@ -299,7 +319,10 @@
     },
     "useSafeAreaInsets": {
       "usage": "Gets safe area insets for notch/status bar",
-      "applied_to": ["Knob positioning", "Screen padding"]
+      "applied_to": [
+        "Knob positioning",
+        "Screen padding"
+      ]
     },
     "custom_tab_bar": {
       "pattern": "Custom tabBar renderer via React Navigation",
@@ -314,12 +337,16 @@
       "Screen": "Background screen with parallax"
     }
   },
-
   "navigation_integration": {
     "pattern": "React Navigation with custom bottom tabs",
     "navigator": "createBottomTabNavigator",
     "custom_renderer": true,
-    "tab_screens": ["home", "search", "edit", "settings"],
+    "tab_screens": [
+      "home",
+      "search",
+      "edit",
+      "settings"
+    ],
     "screen_options": {
       "headerShown": false
     },
@@ -332,7 +359,6 @@
       "benefit": "Sheet overlays entire UI including tabs when expanded"
     }
   },
-
   "ui_ux_design": {
     "color_palette": {
       "background": "#0D0D0D (very dark gray)",
@@ -381,7 +407,6 @@
       "layering": "Sheet above tabs above screen content"
     }
   },
-
   "constants_and_configuration": {
     "BaseTabs": {
       "type": "const array",
@@ -411,7 +436,6 @@
       "reference": "https://www.easing.dev/in-out-base"
     }
   },
-
   "mathematical_algorithms": {
     "progress_from_pan": {
       "formula": "interpolate(translationY, [0, windowHeight], [1, 0])",
@@ -426,7 +450,11 @@
     },
     "multi_point_interpolation": {
       "usage": "borderRadius and borderColor",
-      "points": [0, 0.9, 1],
+      "points": [
+        0,
+        0.9,
+        1
+      ],
       "benefit": "Allows different curves for different parts of animation"
     },
     "base_offset_calculation": {
@@ -440,7 +468,6 @@
       "pattern": "Dynamic icon loading via string keys"
     }
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -482,7 +509,6 @@
       "Conditional gesture handling"
     ]
   },
-
   "strengths": [
     "Smooth, fluid animations with natural feel",
     "Excellent gesture handling with tap and pan",
@@ -495,7 +521,6 @@
     "Parallax effect on background adds depth",
     "Responsive to safe area insets"
   ],
-
   "areas_for_improvement": [
     "No animation for tab bar hiding (could fade out when expanded)",
     "Tab items don't respond to player expansion state",
@@ -508,7 +533,6 @@
     "No error boundaries for component failures",
     "Limited documentation in code comments"
   ],
-
   "known_limitations": {
     "static_content": {
       "issue": "Music content is hard-coded in component",
@@ -538,7 +562,6 @@
       "fallback": "Falls back to standard border radius on Android"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Add play/pause button and functionality",
@@ -593,7 +616,6 @@
       "Profile gesture handler performance"
     ]
   },
-
   "key_insights": {
     "global_state_pattern": "makeMutable creates a global shared value that elegantly coordinates animations across multiple components without prop drilling",
     "gesture_coordination": "Simultaneous gestures allow tap and pan to coexist with conditional logic determining which is active",
@@ -606,7 +628,6 @@
     "continuous_border_curve": "iOS-specific borderCurve creates premium feel on Apple devices",
     "scale_feedback": "Subtle scale animation (0.98x) provides tactile feedback without being distracting"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Reanimated animations with interpolate",
@@ -633,7 +654,6 @@
       "Platform-specific styling (borderCurve)"
     ]
   },
-
   "use_cases": {
     "primary": [
       "Music player applications",
@@ -664,15 +684,20 @@
       "Parallax background effects"
     ]
   },
-
   "platform_considerations": {
     "ios": {
-      "features": ["All features fully supported", "borderCurve: continuous for premium corners"],
+      "features": [
+        "All features fully supported",
+        "borderCurve: continuous for premium corners"
+      ],
       "performance": "Excellent",
       "safe_area": "Properly handles notch and Dynamic Island"
     },
     "android": {
-      "features": ["All core features supported", "borderCurve falls back to standard radius"],
+      "features": [
+        "All core features supported",
+        "borderCurve falls back to standard radius"
+      ],
       "performance": "Excellent",
       "safe_area": "Properly handles various screen configurations"
     },
@@ -682,7 +707,6 @@
       "performance": "Good with modern browsers"
     }
   },
-
   "inspiration": {
     "primary_reference": "Spotify mobile app",
     "similar_patterns": [
@@ -693,7 +717,6 @@
       "Discord voice channel widget"
     ]
   },
-
   "testing_considerations": {
     "gesture_tests": [
       "Tap expands to full screen",
@@ -726,7 +749,6 @@
       "Very long title text"
     ]
   },
-
   "bundle_size_impact": {
     "component_size": "Medium (~350 lines total)",
     "dependencies": [
@@ -738,7 +760,6 @@
     "runtime_overhead": "Low - efficient animations on UI thread",
     "estimated_size": "~5-8KB (excluding dependencies)"
   },
-
   "tags": [
     "music-player",
     "expandable-sheet",
@@ -756,5 +777,9 @@
     "global-shared-value",
     "snap-animation",
     "progress-based-animation"
-  ]
+  ],
+  "content_hash": "4c53f5d467e4c5023677605d2bbe3a661a9a5d62a14a56e018d1e4188bb9e44e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.338Z",
+  "last_validated": "2025-10-12T09:19:28.338Z"
 }

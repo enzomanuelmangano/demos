@@ -2,7 +2,6 @@
   "animation_name": "Twodos Slide",
   "animation_slug": "twodos-slide",
   "description": "An elegant slide-to-unlock interaction featuring animated rotating squares with a friction-based slider. The animation combines a dual-layered square system with Skia-rendered squircle paths that progressively reveal as the user drags. Features haptic feedback at completion, spring physics with friction effect, and counter-rotating squares that scale dynamically during interaction.",
-
   "main_features": [
     "Friction-based drag slider with dynamic resistance",
     "Dual rotating square system (counter-rotation)",
@@ -17,7 +16,6 @@
     "Worklet-based gesture handling for 60fps performance",
     "Debounced haptic feedback to prevent over-triggering"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main component orchestrating AnimatedSquares and FrictionSlider with progress synchronization"
@@ -64,7 +62,6 @@
       ]
     }
   },
-
   "core_technologies": [
     "react-native-reanimated (animations, gestures)",
     "react-native-gesture-handler (pan gesture)",
@@ -73,7 +70,6 @@
     "react-native-worklets (UI thread scheduling)",
     "lodash.debounce (haptic throttling)"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -174,7 +170,6 @@
       ]
     }
   },
-
   "animation_techniques": [
     "Friction-based drag with interpolated resistance",
     "Dual spring animations (clamped and unclamped)",
@@ -188,7 +183,6 @@
     "Dynamic friction calculation based on translation distance",
     "Debounced callback execution from worklet context"
   ],
-
   "reanimated_patterns": [
     "useSharedValue for translateX state tracking",
     "contextX SharedValue for gesture continuity",
@@ -204,7 +198,6 @@
     "worklet directive for convertTranslationToProgress",
     "scheduleOnRN for cross-thread debounced function calls"
   ],
-
   "performance_optimizations": [
     "UI thread gesture handling via worklets",
     "GPU-accelerated transform and opacity animations",
@@ -220,7 +213,6 @@
     "Spring physics calculated on UI thread",
     "worklet directive ensures zero JS thread involvement during drag"
   ],
-
   "use_cases": [
     "Slide-to-unlock interactions",
     "Confirmation gestures for critical actions",
@@ -238,7 +230,6 @@
     "Emergency action confirmation",
     "Game level unlock mechanics"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type annotations",
@@ -273,7 +264,6 @@
       "StyleSheet.absoluteFill used but could be constants.styles pattern"
     ]
   },
-
   "known_limitations": [
     "Dimensions.get('window').width at module level doesn't respond to screen rotation",
     "Haptic feedback only on iOS/Android (web silently fails)",
@@ -292,7 +282,6 @@
     "No support for RTL layouts",
     "Commented-out Burnt toast feature incomplete"
   ],
-
   "potential_improvements": [
     "Add configurable friction parameters (min, max, threshold) as props",
     "Add custom spring config props (mass, damping, stiffness)",
@@ -321,7 +310,6 @@
     "Make square size responsive to screen size",
     "Add drag velocity threshold for quick unlock"
   ],
-
   "key_insights": [
     "Dual progress tracking: Separate clamped and real progress enables path animation without overshoot while allowing rotation to rebound",
     "Friction effect math: Interpolating multiplier (not translation) creates natural drag resistance as user pulls further",
@@ -338,13 +326,11 @@
     "useAnimatedReaction pattern: Cleaner than inline callbacks, centralizes side effects triggered by animation values",
     "cancelAnimation importance: Prevents competing springs when user interrupts reset animation"
   ],
-
   "learning_opportunities": [
     "For beginners: Pan gesture basics, useSharedValue, useAnimatedStyle, basic transform arrays, spring animations, progress normalization, debounce pattern, haptic feedback integration",
     "For intermediate: Friction effect implementation, dual SharedValue patterns, useAnimatedReaction for callbacks, Skia path rendering, squircle mathematics, gesture context tracking, overshoot clamping, interpolation with extrapolation modes, worklet directives, scheduleOnRN cross-thread calls",
     "For advanced: Complex gesture physics, multi-transform coordination (translate-rotate-translate), dual animation systems (clamped vs unclamped), performance optimization patterns, Skia path construction from mathematical formulas, gesture continuity patterns, spring physics tuning, UI thread optimization, building reusable gesture components with callbacks"
   ],
-
   "tags": [
     "slide-to-unlock",
     "friction-slider",
@@ -371,5 +357,9 @@
     "todo-app",
     "confirmation-gesture",
     "unlock-interaction"
-  ]
+  ],
+  "content_hash": "07548282f1860d7831da1d0d87c7d7bffd6949170b18e0ddbf29e806c8b31221",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.491Z",
+  "last_validated": "2025-10-12T09:19:28.491Z"
 }

@@ -2,7 +2,6 @@
   "animation_name": "Family Number Input",
   "animation_slug": "family-number-input",
   "description": "An interactive number input with animated digit display featuring dynamic scaling, comma formatting, and a numeric keypad. Numbers animate with fade-in effects and slide-out transitions while scaling down based on digit count. Features a grid-based button layout with press/long-press gestures for number entry, backspace, and reset functionality.",
-
   "main_features": [
     "Animated number display with independent digit animations",
     "Dynamic scaling based on total digit count (up to 11 digits)",
@@ -16,7 +15,6 @@
     "Absolute positioning with smooth position interpolation",
     "Custom font support (SF Pro Rounded Bold)"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main export wrapper component with TODO comment about refactoring with Layout Animations"
@@ -36,18 +34,19 @@
     "types": {},
     "constants": {}
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "pattern": "SharedValue-based entering animations + Layout animations for exiting",
     "technique": "Absolute positioning with dynamic translateX and scale interpolation"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View", "Animated.Text"],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
       "hooks": [
         "useSharedValue",
         "useAnimatedStyle",
@@ -59,13 +58,21 @@
         "FadeOut",
         "SlideOutDown"
       ],
-      "utilities": ["Easing"],
+      "utilities": [
+        "Easing"
+      ],
       "critical_feature": "Manual entering animations with SharedValues, automatic exiting with Layout animations"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Tap()", "Gesture.LongPress()", "Gesture.Simultaneous()"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Tap()",
+        "Gesture.LongPress()",
+        "Gesture.Simultaneous()"
+      ],
       "usage": "Tap for number input, long press for reset"
     },
     "expo-linear-gradient": {
@@ -75,7 +82,9 @@
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Ensures content respects device safe areas (notch, home indicator)"
     },
     "@expo/vector-icons": {
@@ -90,7 +99,6 @@
       "usage": "Bridges worklet callbacks to React Native thread for state updates"
     }
   },
-
   "animation_techniques": {
     "entering_animation": {
       "approach": "Manual control with SharedValues",
@@ -152,7 +160,6 @@
       "simultaneous": "Runs simultaneously with tap gesture"
     }
   },
-
   "reanimated_patterns": {
     "useSharedValue": {
       "bottom": {
@@ -176,7 +183,10 @@
     "useDerivedValue": {
       "scaledItemWidth": {
         "calculation": "itemWidth * (scale + scaleWidthOffset)",
-        "dependencies": ["itemWidth", "scale"],
+        "dependencies": [
+          "itemWidth",
+          "scale"
+        ],
         "purpose": "Compute width accounting for scale factor",
         "usage": "Position calculations for digit placement"
       }
@@ -184,17 +194,29 @@
     "useAnimatedStyle": {
       "digit_position_and_appearance": {
         "location": "individual-number.tsx (rStyle)",
-        "properties": ["bottom", "opacity", "left", "transform"],
+        "properties": [
+          "bottom",
+          "opacity",
+          "left",
+          "transform"
+        ],
         "calculations": {
           "left": "withTiming((index - totalNumbersLength/2) * scaledItemWidth + rightSpace, {duration: 200})",
           "transform": "withTiming(scale)"
         },
-        "dependencies": ["index", "itemWidth", "totalNumbersLength"],
+        "dependencies": [
+          "index",
+          "itemWidth",
+          "totalNumbersLength"
+        ],
         "reactivity": "Re-calculates when digit count or scale changes"
       },
       "button_press": {
         "location": "input-button.tsx (rStyle)",
-        "properties": ["backgroundColor", "transform"],
+        "properties": [
+          "backgroundColor",
+          "transform"
+        ],
         "interpolations": {
           "opacity": "interpolate(progress, [0,1], [0, 0.1]).toFixed(2)",
           "scale": "interpolate(progress, [0,1], [1, 0.9])"
@@ -217,7 +239,10 @@
     },
     "withTiming": {
       "entrance_animations": {
-        "usage": ["bottom.value = withTiming(0)", "opacity.value = withTiming(1)"],
+        "usage": [
+          "bottom.value = withTiming(0)",
+          "opacity.value = withTiming(1)"
+        ],
         "trigger": "useEffect on component mount",
         "config": "Default timing"
       },
@@ -232,7 +257,6 @@
       }
     }
   },
-
   "component_architecture": {
     "FamilyNumberInput": {
       "type": "Root wrapper component",
@@ -248,7 +272,11 @@
           "updates": "Via onUpdate, onBackspace, reset callbacks"
         }
       },
-      "hooks": ["useState", "useCallback", "useSafeAreaInsets"],
+      "hooks": [
+        "useState",
+        "useCallback",
+        "useSafeAreaInsets"
+      ],
       "layout": {
         "top_section": "AnimatedNumber display (centered, flex: 1)",
         "bottom_section": "ButtonsGrid (flex: 1)",
@@ -362,7 +390,6 @@
       "threading": "Uses scheduleOnRN to call callbacks on RN thread"
     }
   },
-
   "number_formatting_logic": {
     "digit_splitting": {
       "process": "value.toString().split('')",
@@ -394,7 +421,6 @@
       "coordinated": "Both scale and COMMA_SPACE reduce proportionally"
     }
   },
-
   "input_logic": {
     "number_append": {
       "operation": "+`${input}${label}`",
@@ -417,7 +443,6 @@
     },
     "initial_value": "0 (displayed as single digit)"
   },
-
   "gesture_patterns": {
     "simultaneous_gestures": {
       "pattern": "Gesture.Simultaneous(tapGesture, longTapGesture)",
@@ -436,7 +461,6 @@
       "allows": "Long press detection while tap is active"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#000 (black)",
@@ -489,7 +513,6 @@
       }
     }
   },
-
   "react_patterns": {
     "memo": {
       "ButtonsGrid": "Prevents re-render when parent updates",
@@ -508,10 +531,12 @@
     },
     "useEffect": {
       "entrance_animation": "Triggers animation after component mount",
-      "dependencies": ["bottom", "opacity"]
+      "dependencies": [
+        "bottom",
+        "opacity"
+      ]
     }
   },
-
   "key_generation_strategy": {
     "approach": "Hybrid: index + value",
     "implementation": "key={index + item.toString()}",
@@ -534,7 +559,6 @@
     },
     "benefit": "Prevents key conflicts while maintaining position stability"
   },
-
   "performance_optimizations": [
     "useMemo for digit and comma array calculations",
     "useCallback for buildIndividualNumber function",
@@ -545,7 +569,6 @@
     "scheduleOnRN only when needed for React state updates",
     "Pre-calculated constants (ITEM_WIDTH, ITEM_HEIGHT) outside render"
   ],
-
   "use_cases": {
     "primary": [
       "Numeric input fields",
@@ -580,7 +603,6 @@
       "Layout animation patterns"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type annotations",
@@ -607,7 +629,6 @@
       "No support for decimal numbers despite financial use case"
     ]
   },
-
   "known_limitations": {
     "integer_only": {
       "limitation": "Only supports whole numbers",
@@ -649,7 +670,6 @@
       "hardcoded": "Comma every 3 digits from right"
     }
   },
-
   "potential_improvements": [
     "Refactor to use Layout Animations for entering as suggested in TODO",
     "Simplify triple-nested Animated.View structure",
@@ -672,7 +692,6 @@
     "Support different color themes",
     "Add sound effects option"
   ],
-
   "key_insights": {
     "manual_vs_layout_animations": "Developer chose manual SharedValue control for entering to have precise control, despite Layout animations being simpler",
     "triple_nesting_pattern": "Three nested Animated.Views with different layout animations creates complex layered effects",
@@ -685,7 +704,6 @@
     "gradient_overlay": "Subtle gradient creates depth and separates display from input areas",
     "math_based_input": "Using Math.floor(input/10) for backspace is elegant integer manipulation"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic useState for number state",
@@ -717,7 +735,6 @@
       "Creating reusable animation patterns"
     ]
   },
-
   "tags": [
     "number-input",
     "numeric-keypad",
@@ -736,5 +753,9 @@
     "backspace",
     "family",
     "input-feedback"
-  ]
+  ],
+  "content_hash": "b0b6b3cccceb0f69fb1be393889d5bc748479c1bce3f45f812af1ab73cccca01",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.340Z",
+  "last_validated": "2025-10-12T09:19:28.340Z"
 }

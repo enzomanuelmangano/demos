@@ -2,7 +2,6 @@
   "animation_name": "Clerk Toast",
   "animation_slug": "clerk-toast",
   "description": "A sophisticated stacked toast notification system inspired by Emil Kowalski and Clerk's toast UI. Features automatic stacking with 3D layered effect, swipe-to-dismiss gestures, animated backdrop with gradient blur, and smooth spring animations. Toast messages appear from below and automatically stack on top of each other with dynamic positioning, shadows, and opacity effects. Includes a reusable toast manager with Context API for easy integration throughout the app.",
-
   "main_features": [
     "Stacked toast notifications with 3D layered effect",
     "Swipe-to-dismiss gesture on any toast",
@@ -19,7 +18,6 @@
     "Trailing content support (custom actions/buttons)",
     "Linear gradient backgrounds for toast content"
   ],
-
   "file_structure": {
     "index.tsx": "Main export wrapper with providers (SafeAreaProvider, GestureHandlerRootView, StackedToastProvider)",
     "src/index.tsx": "Demo app with scrollable list triggering toasts",
@@ -39,7 +37,6 @@
       }
     }
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -51,7 +48,6 @@
     "icons": "@expo/vector-icons",
     "layout": "react-native-safe-area-context"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -63,33 +59,53 @@
         "withSpring",
         "withTiming"
       ],
-      "components": ["Animated.View"],
-      "animations": ["FadeOutLeft"],
+      "components": [
+        "Animated.View"
+      ],
+      "animations": [
+        "FadeOutLeft"
+      ],
       "critical_feature": "Spring animations for smooth toast entrance and exit, shared value for gesture state"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "GestureHandlerRootView"],
-      "gestures": ["Gesture.Pan()"],
-      "events": ["onBegin", "onUpdate", "onEnd", "onFinalize"],
+      "components": [
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "events": [
+        "onBegin",
+        "onUpdate",
+        "onEnd",
+        "onFinalize"
+      ],
       "usage": "Pan gesture for swipe-to-dismiss on each toast"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet callbacks to JS thread for onDismiss state updates",
       "critical_for": "Calling React setState from gesture handlers"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "components": ["BlurView"],
+      "components": [
+        "BlurView"
+      ],
       "usage": "iOS backdrop blur effect with 'systemChromeMaterialLight' tint",
       "platform": "iOS only",
       "intensity": 80
     },
     "expo-linear-gradient": {
       "version": "~15.0.7",
-      "components": ["LinearGradient"],
+      "components": [
+        "LinearGradient"
+      ],
       "usage": [
         "Toast content background gradient (['#2C2E35', '#26252D'])",
         "Backdrop gradient mask (fade from transparent to opaque)",
@@ -98,28 +114,35 @@
     },
     "@react-native-masked-view/masked-view": {
       "version": "0.3.2",
-      "components": ["MaskedView"],
+      "components": [
+        "MaskedView"
+      ],
       "usage": "iOS backdrop to create gradient-masked blur effect",
       "platform": "iOS only"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "usage": "Demo list items with scale press animation"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["Octicons"],
+      "components": [
+        "Octicons"
+      ],
       "usage": "Toast icons (archive, star, rocket, etc.) and close button",
       "icon_count": 13
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "components": ["SafeAreaProvider"],
+      "components": [
+        "SafeAreaProvider"
+      ],
       "usage": "Ensures toasts respect device safe areas"
     }
   },
-
   "animation_techniques": {
     "toast_entrance": {
       "pattern": "Spring animation from below",
@@ -187,20 +210,24 @@
       "effect": "Backdrop expands upward as more toasts appear"
     }
   },
-
   "state_management": {
     "context_architecture": {
       "pattern": "Dual context pattern for optimization",
       "public_context": {
         "name": "StackedToastContext",
-        "methods": ["showStackedToast", "clearAllStackedToasts"],
+        "methods": [
+          "showStackedToast",
+          "clearAllStackedToasts"
+        ],
         "purpose": "Public API for showing/clearing toasts",
         "consumers": "useToast hook, any component needing to show toasts",
         "benefit": "Components don't re-render when internal state changes"
       },
       "internal_context": {
         "name": "InternalStackedToastContext",
-        "data": ["stackedToasts array"],
+        "data": [
+          "stackedToasts array"
+        ],
         "purpose": "Internal state for toast positioning and rendering",
         "consumers": "Individual StackedToast components, Backdrop, hooks",
         "benefit": "Efficient updates to toast positions without affecting public API consumers"
@@ -275,7 +302,6 @@
       }
     ]
   },
-
   "component_architecture": {
     "StackedToastProvider": {
       "type": "Context provider and orchestrator",
@@ -325,7 +351,9 @@
     },
     "useToast": {
       "type": "Custom hook for styled toasts",
-      "returns": { "showToast": "(params) => void" },
+      "returns": {
+        "showToast": "(params) => void"
+      },
       "params": {
         "title": "string (required)",
         "iconName": "OcticonsIconName (optional)",
@@ -337,7 +365,10 @@
     "useInternalStackedToast": {
       "type": "Hook for positioning logic",
       "params": "key: string",
-      "returns": { "id": "number", "bottomHeight": "number" },
+      "returns": {
+        "id": "number",
+        "bottomHeight": "number"
+      },
       "logic": {
         "id": "Find toast id from stackedToasts array by key",
         "bottomHeight": "Math.min(id, MAX_VISIBLE_TOASTS - 1) * (TOAST_HEIGHT + 15)"
@@ -345,7 +376,6 @@
       "purpose": "Encapsulate positioning calculation for each toast"
     }
   },
-
   "reanimated_patterns": {
     "useAnimatedStyle_instances": [
       {
@@ -361,17 +391,23 @@
       {
         "name": "rStackedToastTranslationStyle",
         "target": "Toast swipe translation",
-        "properties": ["transform: [{ translateX }]"]
+        "properties": [
+          "transform: [{ translateX }]"
+        ]
       },
       {
         "name": "rVisibleContainerStyle",
         "target": "Toast content visibility",
-        "properties": ["opacity (based on stack position)"]
+        "properties": [
+          "opacity (based on stack position)"
+        ]
       },
       {
         "name": "rAnimatedStyle (Backdrop)",
         "target": "Backdrop vertical position",
-        "properties": ["top (animated slide up)"]
+        "properties": [
+          "top (animated slide up)"
+        ]
       }
     ],
     "worklet_functions": [
@@ -403,7 +439,10 @@
       },
       "shadow_animation": {
         "duration": "Default withTiming",
-        "properties": ["shadowRadius", "shadowOpacity"]
+        "properties": [
+          "shadowRadius",
+          "shadowOpacity"
+        ]
       },
       "opacity_animation": {
         "duration": "Default withTiming",
@@ -415,7 +454,6 @@
       }
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -442,15 +480,26 @@
       "false": "translateX.value = withSpring(0) - snap back"
     }
   },
-
   "visual_design": {
     "color_scheme": {
-      "toast_gradient": ["#2C2E35", "#26252D"],
-      "gradient_locations": [0, 0.9],
+      "toast_gradient": [
+        "#2C2E35",
+        "#26252D"
+      ],
+      "gradient_locations": [
+        0,
+        0.9
+      ],
       "text_color": "#fff (white)",
       "icon_color": "#fff (white)",
-      "backdrop_gradient": ["rgba(255,255,255,0.0)", "rgba(255,255,255,1)"],
-      "backdrop_gradient_locations": [0, 0.55],
+      "backdrop_gradient": [
+        "rgba(255,255,255,0.0)",
+        "rgba(255,255,255,1)"
+      ],
+      "backdrop_gradient_locations": [
+        0,
+        0.55
+      ],
       "backdrop_opacity_android": "0.5 at end",
       "demo_background": "#fefefe (off-white)",
       "demo_list_item": "black"
@@ -496,23 +545,31 @@
       "platform": "iOS",
       "radius": "35px",
       "effect": "Squircle border (Apple-style smooth corners)",
-      "applied_to": ["Toast container", "Demo list items"]
+      "applied_to": [
+        "Toast container",
+        "Demo list items"
+      ]
     },
     "backdrop_effects": {
       "ios": {
         "blur_intensity": 80,
         "blur_tint": "systemChromeMaterialLight",
         "mask_type": "LinearGradient (transparent to opaque)",
-        "mask_locations": [0, 0.55]
+        "mask_locations": [
+          0,
+          0.55
+        ]
       },
       "android": {
         "type": "LinearGradient only",
         "no_blur": true,
-        "colors": ["rgba(255,255,255,0.0)", "rgba(255,255,255,0.5)"]
+        "colors": [
+          "rgba(255,255,255,0.0)",
+          "rgba(255,255,255,0.5)"
+        ]
       }
     }
   },
-
   "layout_and_positioning": {
     "toast_positioning": {
       "position": "absolute",
@@ -545,7 +602,6 @@
       "stack_calculation": "Dynamic based on toast count and screen height"
     }
   },
-
   "performance_optimizations": {
     "toast_memoization": {
       "pattern": "Ref-based memoization in renderStackedToast",
@@ -622,7 +678,6 @@
       "benefit": "60fps animations without JS thread bottleneck"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "backdrop": "MaskedView + BlurView (systemChromeMaterialLight, intensity 80)",
@@ -646,7 +701,6 @@
       "testing": "Not explicitly tested"
     }
   },
-
   "use_cases": {
     "primary": [
       "Toast notifications system",
@@ -671,7 +725,6 @@
       "swipe_interactions": "iOS-style swipe-to-dismiss"
     }
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -707,7 +760,6 @@
       "Barrel exports for clean API"
     ]
   },
-
   "known_limitations": {
     "initial_position_logic": {
       "issue": "Author notes it's 'not an elegant way' to handle first toast",
@@ -750,7 +802,6 @@
       "reduced_motion": "No prefers-reduced-motion support"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Auto-dismiss with configurable timeout",
@@ -808,7 +859,6 @@
       "Playground/demo app"
     ]
   },
-
   "key_insights": {
     "dual_context_pattern": "Separating public API from internal state prevents unnecessary re-renders in consumer components",
     "id_management": "Auto-incrementing IDs with rebalancing enables consistent positioning without manual tracking",
@@ -821,7 +871,6 @@
     "scheduleOnRN_necessity": "Essential for bridging worklet gestures to React state updates",
     "z_index_calculation": "100 - stackedToastId ensures top toast always renders above others"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Context API for global state",
@@ -852,7 +901,6 @@
       "Toast system architecture patterns"
     ]
   },
-
   "comparison_to_similar_implementations": {
     "vs_react_toastify": {
       "similarity": "Toast notification system",
@@ -871,7 +919,6 @@
       "difference": "In-app toasts vs system notifications"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Toast entrance animation smoothness",
@@ -913,7 +960,6 @@
       "Safe area respected on notched devices"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility support",
@@ -934,14 +980,12 @@
       "Add keyboard shortcuts (Esc, Ctrl+D to dismiss)"
     ]
   },
-
   "inspirations_and_credits": {
     "primary_inspiration": "Emil Kowalski",
     "design_reference": "Clerk authentication service toast UI",
     "author_note": "Strongly inspired by Emil Kowalski (mentioned in demo toast messages)",
     "demo_message_credit": "Demo includes message 'Strongly inspired by Emil Kowalski'"
   },
-
   "tags": [
     "toast",
     "notifications",
@@ -961,5 +1005,9 @@
     "worklets",
     "performance-optimized",
     "dual-context"
-  ]
+  ],
+  "content_hash": "da492104de55523a8bfdfa514bfd4e01e9c5a1db44b16d4217dbb9615447de4b",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.305Z",
+  "last_validated": "2025-10-12T09:19:28.305Z"
 }

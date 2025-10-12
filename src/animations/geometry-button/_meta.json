@@ -2,7 +2,6 @@
   "animation_name": "Geometry Button",
   "animation_slug": "geometry-button",
   "description": "An animated button with a mesmerizing geometric burst effect created using Skia Canvas. When pressed, multiple circles expand outward from the center in a radial pattern while stroke width decreases, creating an explosive visual effect. Features smooth timing animations, scale transitions, and mathematically calculated circular patterns rendered on GPU.",
-
   "main_features": [
     "Tap gesture with long max duration for hold interactions",
     "GPU-accelerated Skia Canvas rendering",
@@ -17,12 +16,10 @@
     "Path-based shape rendering with transforms",
     "Matrix transformations for circle positioning"
   ],
-
   "file_structure": {
     "index.tsx": "Demo wrapper component with button configuration",
     "geometry-button.tsx": "Main GeometryButton component with Skia Canvas and gesture handling"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia (Canvas API)",
     "animations": "react-native-reanimated",
@@ -30,7 +27,6 @@
     "threading": "react-native-worklets",
     "graphics": "Skia Path API with Matrix transformations"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -47,10 +43,20 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Tap()"],
-      "configuration": ["maxDuration"],
-      "callbacks": ["onBegin", "onTouchesUp", "onFinalize"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Tap()"
+      ],
+      "configuration": [
+        "maxDuration"
+      ],
+      "callbacks": [
+        "onBegin",
+        "onTouchesUp",
+        "onFinalize"
+      ],
       "usage": "Tap gesture with extended duration for hold interactions"
     },
     "@shopify/react-native-skia": {
@@ -71,11 +77,12 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet gesture callbacks to JS thread for onPress"
     }
   },
-
   "animation_techniques": {
     "radial_burst_pattern": {
       "algorithm": "Polar coordinate system",
@@ -134,7 +141,6 @@
       "effect": "Circles radiate from visual center"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -150,21 +156,31 @@
       {
         "name": "progress",
         "calculation": "withTiming(isActive.value ? 1 : 0, { duration: 500 })",
-        "dependencies": ["isActive"],
+        "dependencies": [
+          "isActive"
+        ],
         "purpose": "Smooth 0-1 animation progress value",
-        "used_by": ["animatedCircles", "strokeWidth"]
+        "used_by": [
+          "animatedCircles",
+          "strokeWidth"
+        ]
       },
       {
         "name": "strokeWidth",
         "calculation": "interpolate(progress.value, [0, 0.5, 1], [3, 0.6, 0.2])",
-        "dependencies": ["progress"],
+        "dependencies": [
+          "progress"
+        ],
         "purpose": "Dynamic stroke width based on animation progress",
         "range": "3px → 0.2px"
       },
       {
         "name": "animatedCircles",
         "type": "Skia.Path",
-        "dependencies": ["progress.value", "size"],
+        "dependencies": [
+          "progress.value",
+          "size"
+        ],
         "calculation": "Generate path with N circles positioned via polar coordinates",
         "purpose": "Create animated geometric pattern",
         "performance": "Recalculated every frame during animation",
@@ -173,7 +189,9 @@
       {
         "name": "center",
         "calculation": "[{ translateX: canvasSize/2 }, { translateY: canvasSize/2 }]",
-        "dependencies": ["canvasSize"],
+        "dependencies": [
+          "canvasSize"
+        ],
         "purpose": "Center transformation for Group component",
         "note": "Contains commented experimental 3D transforms"
       }
@@ -192,12 +210,15 @@
       "performance": "Recalculates only when dependencies change"
     }
   },
-
   "skia_rendering_techniques": {
     "path_creation": {
       "api": "Skia.Path.Make()",
       "pattern": "Imperative path building",
-      "methods": ["addPath", "addRRect", "transform"]
+      "methods": [
+        "addPath",
+        "addRRect",
+        "transform"
+      ]
     },
     "rounded_rectangles": {
       "function": "rrect(rect(-radius, -radius, size, size), radius, radius)",
@@ -226,7 +247,6 @@
       "border_radius": "size (makes canvas circular)"
     }
   },
-
   "gesture_handling": {
     "tap_gesture": {
       "type": "Gesture.Tap()",
@@ -261,7 +281,6 @@
       "safety": "Ensures callback runs on correct thread"
     }
   },
-
   "mathematical_algorithms": {
     "polar_to_cartesian_conversion": {
       "formula": "x = r * cos(θ), y = r * sin(θ)",
@@ -287,7 +306,6 @@
       "visual_effect": "Dramatic fade effect"
     }
   },
-
   "performance_optimizations": {
     "memo": {
       "component": "GeometryButton wrapped in memo",
@@ -297,7 +315,10 @@
     "useMemo": {
       "baseStyle": {
         "memoized": "Canvas style object",
-        "dependencies": ["canvasSize", "size"],
+        "dependencies": [
+          "canvasSize",
+          "size"
+        ],
         "benefit": "Avoid recreating style object"
       }
     },
@@ -322,7 +343,6 @@
       "dependency_tracking": "Automatic via useDerivedValue"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "background": "#000 (black)",
@@ -348,7 +368,6 @@
       "feel": "Explosive, energetic, satisfying"
     }
   },
-
   "component_architecture": {
     "props_interface": {
       "onPress": "() => void (optional callback)",
@@ -372,7 +391,6 @@
       "pattern": "Gesture handling → Animation wrapper → GPU rendering"
     }
   },
-
   "use_cases": {
     "primary": [
       "Animated call-to-action buttons",
@@ -403,7 +421,6 @@
       "E-commerce checkout confirmation"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit types",
@@ -431,7 +448,6 @@
       "why_choices": "Explains rounded rect vs circle decision"
     }
   },
-
   "known_limitations": {
     "gesture_duration": {
       "issue": "maxDuration set to 20000ms is unusual",
@@ -463,7 +479,6 @@
       "stability": "May be experimental/unstable"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Animation duration prop",
@@ -502,7 +517,6 @@
       "circle_count": "Increase to 110 for denser 3D effect"
     }
   },
-
   "key_insights": {
     "polar_coordinates_power": "Polar coordinates perfect for radial patterns",
     "single_path_optimization": "Combining paths into one dramatically improves performance",
@@ -515,7 +529,6 @@
     "gesture_max_duration": "Long maxDuration allows hold-to-animate patterns",
     "matrix_transforms_performance": "Matrix transforms are GPU-accelerated and efficient"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Skia Canvas basics",
@@ -543,7 +556,6 @@
       "Custom easing curve design"
     ]
   },
-
   "experimental_features": {
     "3d_transforms_commented": {
       "perspective": "Set to 100",
@@ -557,7 +569,6 @@
       "visual_result": "Circles appear to burst in 3D space"
     }
   },
-
   "related_patterns": {
     "similar_animations": [
       "iOS shortcuts sparkle effect",
@@ -581,7 +592,6 @@
       "Parametric curves"
     ]
   },
-
   "tags": [
     "skia",
     "canvas",
@@ -600,5 +610,9 @@
     "mathematical",
     "explosive-effect",
     "performance-optimized"
-  ]
+  ],
+  "content_hash": "6875c94f97f07d15873b62090f02fcd70e6779c5541e0fd6be657b8f2097404b",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.357Z",
+  "last_validated": "2025-10-12T09:19:28.357Z"
 }

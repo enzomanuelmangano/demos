@@ -2,7 +2,6 @@
   "animation_name": "Metaball",
   "animation_slug": "metaball",
   "description": "Interactive metaball effect using Skia path simplification to create fluid organic blending between two draggable circles. Features smooth spring animations, color matrix-based blur threshold effects, and sweep gradient fills to achieve the classic metaball liquid fusion appearance where shapes merge and separate based on proximity.",
-
   "main_features": [
     "Dual draggable circles with independent gesture control",
     "Real-time path simplification for organic shape blending",
@@ -15,18 +14,15 @@
     "Worklet-based gesture handlers on UI thread",
     "Dynamic path recalculation on every frame"
   ],
-
   "file_structure": {
     "index.tsx": "Main Metaball component with canvas, gesture handlers, and path simplification logic"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-skia-gesture",
     "pattern": "Path simplification with color matrix filtering"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -38,8 +34,13 @@
         "Blur",
         "ColorMatrix"
       ],
-      "effects": ["SweepGradient"],
-      "utilities": ["Skia", "vec"],
+      "effects": [
+        "SweepGradient"
+      ],
+      "utilities": [
+        "Skia",
+        "vec"
+      ],
       "path_methods": [
         "Skia.Path.Make()",
         "addCircle()",
@@ -54,7 +55,9 @@
         "useSharedValue",
         "useDerivedValue"
       ],
-      "functions": ["withSpring"],
+      "functions": [
+        "withSpring"
+      ],
       "critical_feature": "useDerivedValue recalculates path on every frame as circles move"
     },
     "react-native-skia-gesture": {
@@ -71,7 +74,6 @@
       "benefit": "Seamless gesture integration with Skia rendering, no bridge overhead"
     }
   },
-
   "animation_techniques": {
     "metaball_effect": {
       "pattern": "Path simplification + blur + color matrix threshold",
@@ -118,7 +120,11 @@
     "sweep_gradient": {
       "type": "SweepGradient",
       "center": "vec(0, 0)",
-      "colors": ["cyan", "blue", "cyan"],
+      "colors": [
+        "cyan",
+        "blue",
+        "cyan"
+      ],
       "applied_to": "Path (the merged metaball shape)",
       "effect": "Creates radial color sweep with cyan-blue gradient",
       "start_and_end": "Cyan at both ends creates seamless circular sweep"
@@ -152,7 +158,6 @@
       "worklet_directive": "'worklet' on all gesture callbacks for UI thread execution"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -194,7 +199,12 @@
     "useDerivedValue": {
       "usage_count": 1,
       "instance": "path",
-      "dependencies": ["firstCx", "firstCy", "secondCx", "secondCy"],
+      "dependencies": [
+        "firstCx",
+        "firstCy",
+        "secondCx",
+        "secondCy"
+      ],
       "purpose": "Recalculate merged path on every frame when circles move",
       "calculation": [
         "Create new path",
@@ -240,7 +250,6 @@
       "spread_pattern": "Gesture object spread onto Touchable.Circle component"
     }
   },
-
   "skia_rendering": {
     "canvas": {
       "component": "Touchable.Canvas",
@@ -320,7 +329,6 @@
       "benefit": "Separates gesture handling from visual rendering"
     }
   },
-
   "mathematical_concepts": {
     "path_simplification_algorithm": {
       "type": "Computational geometry",
@@ -358,11 +366,14 @@
       "bounds": "None - circles can be dragged anywhere on screen"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#0A0A0A (near black)",
-      "metaball_gradient": ["cyan", "blue", "cyan"],
+      "metaball_gradient": [
+        "cyan",
+        "blue",
+        "cyan"
+      ],
       "aesthetic": "Vibrant neon metaballs on dark background",
       "contrast": "High contrast for dramatic effect"
     },
@@ -376,7 +387,9 @@
     "gradient_details": {
       "type": "Sweep (radial)",
       "center": "vec(0, 0) - top-left origin",
-      "colors": ["cyan → blue → cyan"],
+      "colors": [
+        "cyan → blue → cyan"
+      ],
       "effect": "Creates color variation across metaball surface",
       "rotation": "Sweeps 360 degrees around origin"
     },
@@ -388,7 +401,6 @@
       "feel": "Liquid, organic, elastic"
     }
   },
-
   "interaction_patterns": {
     "gesture_mechanics": {
       "first_circle": {
@@ -424,7 +436,6 @@
       "benefit": "Smooth dragging relative to initial position, handles gesture reset correctly"
     }
   },
-
   "performance_considerations": {
     "skia_rendering": {
       "benefit": "GPU-accelerated, 60fps metaball rendering",
@@ -455,7 +466,6 @@
       "overhead": "Minimal - SharedValues are lightweight"
     }
   },
-
   "react_patterns": {
     "hooks_used": [
       "useWindowDimensions - Get screen dimensions",
@@ -476,7 +486,6 @@
       "benefit": "Prevents recreation on every render"
     }
   },
-
   "use_cases": {
     "primary": [
       "Interactive metaball demos",
@@ -512,7 +521,6 @@
       "Professional business apps"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript",
@@ -546,7 +554,6 @@
       "extraction": "Could extract Paint and gradient to separate components"
     }
   },
-
   "known_limitations": {
     "fixed_radius": {
       "issue": "Circle radius is hardcoded constant",
@@ -583,7 +590,6 @@
       "impact": "Not accessible to users with disabilities"
     }
   },
-
   "potential_improvements": {
     "feature_enhancements": [
       "Add more than two circles",
@@ -625,7 +631,6 @@
       "Level-of-detail based on device capability"
     ]
   },
-
   "key_insights": {
     "path_simplification_magic": "Skia's simplify() method is the secret to metaball blending - it automatically merges overlapping circles",
     "color_matrix_threshold": "Blur + color matrix threshold is the classic technique for sharp metaball boundaries",
@@ -636,7 +641,6 @@
     "layer_compositing": "Group with layer prop is essential for applying effects to merged shape",
     "skia_power": "Complex visual effect achievable with relatively simple code thanks to Skia"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Skia Canvas basics",
@@ -662,7 +666,6 @@
       "Worklet-based gesture optimization"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_svg_metaballs": {
       "alternative": "SVG with filter effects",
@@ -683,7 +686,6 @@
       "tradeoffs": "Less flexibility, can't do complex distance field operations"
     }
   },
-
   "related_patterns": {
     "metaball_rendering": "Classic computer graphics technique",
     "path_simplification": "Computational geometry operations",
@@ -691,7 +693,6 @@
     "blob_animations": "Organic shape morphing",
     "gesture_physics": "Touch-based physics interactions"
   },
-
   "algorithm_background": {
     "metaballs_history": {
       "invented": "Jim Blinn, 1982",
@@ -711,7 +712,6 @@
       "result": "Visually similar effect with much simpler code"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~134 lines total",
     "dependencies": {
@@ -722,7 +722,6 @@
     "runtime_memory": "Minimal - 5 SharedValues, one path object",
     "estimated_size": "< 3KB (excluding shared dependencies)"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "interaction": "Gesture-only, no alternative input",
@@ -742,7 +741,6 @@
       "description": "Add accessibility label describing metaball effect"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All effects fully supported",
@@ -760,7 +758,6 @@
       "testing": "Should test on range of device capabilities"
     }
   },
-
   "tags": [
     "metaball",
     "skia",
@@ -777,5 +774,9 @@
     "reanimated",
     "skia-gesture",
     "fluid-animation"
-  ]
+  ],
+  "content_hash": "336f97769f70d05577fe2294d143a41987bc3373c962ba87803fda290fce68a7",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.387Z",
+  "last_validated": "2025-10-12T09:19:28.387Z"
 }

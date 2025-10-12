@@ -2,7 +2,6 @@
   "animation_name": "Wheel Picker",
   "animation_slug": "wheel-picker",
   "description": "A highly customizable draggable slider with visual line indicators and an animated rolling digit counter. Features smooth pan gesture interaction, dynamic spacing adjustments, intelligent line rendering with Skia, and snap-to-line functionality. Includes an expandable mode that increases line spacing and a sophisticated digit animation system with blur effects during transitions.",
-
   "main_features": [
     "Draggable slider with precise line indicators using Skia rendering",
     "Animated rolling digit counter with vertical translation",
@@ -17,7 +16,6 @@
     "Scale animation feedback on digit changes",
     "Progress-based value calculation with customizable multipliers"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main component orchestrating slider, counter, and expand button"
@@ -40,7 +38,6 @@
       "draggable-slider/constants.ts": "Screen width dimension constant"
     }
   },
-
   "core_technologies": [
     "react-native-reanimated",
     "react-native-gesture-handler",
@@ -52,11 +49,13 @@
     "pressto",
     "@expo/vector-icons"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View", "Animated.Text"],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
       "hooks": [
         "useSharedValue",
         "useDerivedValue",
@@ -76,21 +75,41 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "Gesture"],
-      "gestures": ["Gesture.Pan()"],
-      "methods": ["onBegin", "onUpdate", "onEnd"],
+      "components": [
+        "GestureDetector",
+        "Gesture"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onEnd"
+      ],
       "usage": "Pan gesture for slider dragging with velocity-aware snapping"
     },
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Path", "Rect", "LinearGradient"],
-      "skia_api": ["Skia.Path.Make()", "rrect", "rect"],
+      "components": [
+        "Canvas",
+        "Path",
+        "Rect",
+        "LinearGradient"
+      ],
+      "skia_api": [
+        "Skia.Path.Make()",
+        "rrect",
+        "rect"
+      ],
       "usage": "High-performance line rendering with path generation and boundary gradients",
       "benefit": "60fps rendering of dynamic line positions with culling optimization"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge from UI thread worklet to JS thread for resetIsChanging callback",
       "critical_for": "Scheduling blur reset after digit animations complete"
     },
@@ -107,7 +126,10 @@
     },
     "color": {
       "version": "^4.2.3",
-      "methods": ["Color().isDark()", "Color().isLight()"],
+      "methods": [
+        "Color().isDark()",
+        "Color().isLight()"
+      ],
       "usage": "Determine gradient colors based on line color brightness"
     },
     "pressto": {
@@ -117,11 +139,13 @@
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "icons_used": ["MaterialCommunityIcons.arrow-expand", "MaterialCommunityIcons.arrow-collapse"],
+      "icons_used": [
+        "MaterialCommunityIcons.arrow-expand",
+        "MaterialCommunityIcons.arrow-collapse"
+      ],
       "usage": "Toggle button icons for expand/collapse states"
     }
   },
-
   "animation_techniques": [
     {
       "name": "Draggable Slider with Skia",
@@ -200,7 +224,6 @@
       "visual_hierarchy": "Creates ruler-like appearance with major/minor marks"
     }
   ],
-
   "reanimated_patterns": [
     {
       "pattern": "SharedValue State Management",
@@ -284,7 +307,6 @@
       "benefit": "All style calculations on UI thread"
     }
   ],
-
   "performance_optimizations": [
     {
       "name": "Line Rendering Culling",
@@ -341,7 +363,6 @@
       "benefit": "Reduces path operations by ~90% (only big or small lines)"
     }
   ],
-
   "use_cases": [
     "Measurement tools (ruler, scale, gauge)",
     "Fine-tuning controls (audio levels, brightness, temperature)",
@@ -359,7 +380,6 @@
     "Educational math tools",
     "Custom numeric steppers"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with comprehensive prop types",
@@ -389,7 +409,6 @@
       "No error handling for edge cases (negative progress, NaN values)"
     ]
   },
-
   "known_limitations": [
     {
       "name": "Fixed Maximum Digits",
@@ -436,7 +455,12 @@
     },
     {
       "name": "No Accessibility Support",
-      "missing": ["Screen reader labels", "Keyboard navigation", "Reduced motion support", "Semantic roles"],
+      "missing": [
+        "Screen reader labels",
+        "Keyboard navigation",
+        "Reduced motion support",
+        "Semantic roles"
+      ],
       "impact": "Not accessible to users with disabilities"
     },
     {
@@ -445,7 +469,6 @@
       "limitation": "Can't demonstrate dynamic indicator color changes"
     }
   ],
-
   "potential_improvements": [
     "Replace setTimeout with animation completion callbacks",
     "Extract magic numbers to configurable props or constants",
@@ -474,7 +497,6 @@
     "Tick mark labels at intervals",
     "Dynamic tick mark generation based on zoom level"
   ],
-
   "key_insights": [
     "Skia rendering enables performant custom UI that would be expensive with native views",
     "Line culling is critical: rendering only visible lines keeps 60fps with many elements",
@@ -490,7 +512,6 @@
     "Platform-specific optimizations (iOS blur) improve experience without breaking cross-platform",
     "Author's iterative approach: improved version of Prequel Slider fixing bugs and adding customization"
   ],
-
   "learning_opportunities": [
     {
       "level": "Beginner",
@@ -541,7 +562,6 @@
       ]
     }
   ],
-
   "related_patterns": {
     "similar_animations": [
       "Prequel Slider (predecessor, referenced in comments)",
@@ -566,7 +586,6 @@
       "Scientific measurement tools"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Lines render smoothly during drag",
@@ -616,7 +635,6 @@
       "Font fallback works if SF-Pro-Rounded-Bold missing"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support",
@@ -639,7 +657,6 @@
       "Provide alternative text input method for precise values"
     ]
   },
-
   "historical_context": {
     "evolution": "Improved version of Prequel Slider demo from Patreon",
     "original_post": "https://www.patreon.com/posts/image-editor-and-100916590",
@@ -660,7 +677,6 @@
       "Continued improvement planned: easier comma handling"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_slider": {
       "pros": [
@@ -683,7 +699,6 @@
       "use_case": "Different interaction metaphors for different contexts"
     }
   },
-
   "tags": [
     "slider",
     "wheel-picker",
@@ -709,5 +724,9 @@
     "digit-animation",
     "boundary-gradient",
     "velocity-aware"
-  ]
+  ],
+  "content_hash": "0e75398f437d302931523a020778f12e2f165a29e106344f58458abf9b1cd074",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.498Z",
+  "last_validated": "2025-10-12T09:19:28.498Z"
 }

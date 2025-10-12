@@ -2,7 +2,6 @@
   "animation_name": "Infinite Carousel",
   "animation_slug": "infinite-carousel",
   "description": "An advanced infinite circular carousel implementation built from scratch using PanGestureHandler instead of FlatList. Features true infinite scrolling without data duplication, custom snap points, configurable interpolation, smooth spring animations, and dynamic background gradients synchronized with the active item. Demonstrates complex gesture handling, modular arithmetic for circular positioning, and advanced Reanimated patterns for creating performant custom scroll views.",
-
   "main_features": [
     "True infinite circular carousel without data duplication",
     "Custom gesture-based scrolling with PanGestureHandler",
@@ -20,7 +19,6 @@
     "Calculator-style card design with theme colors",
     "Zero re-renders during scrolling (all animations on UI thread)"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main entry component orchestrating carousel, background gradient, and active index tracking"
@@ -45,7 +43,6 @@
     },
     "assets": {}
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -53,7 +50,6 @@
     "gradients": "expo-linear-gradient",
     "ui": "react-native (View, StyleSheet, Dimensions)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -68,9 +64,15 @@
         "withTiming",
         "cancelAnimation"
       ],
-      "components": ["Animated.View"],
-      "enums": ["Extrapolation"],
-      "types": ["SharedValue"],
+      "components": [
+        "Animated.View"
+      ],
+      "enums": [
+        "Extrapolation"
+      ],
+      "types": [
+        "SharedValue"
+      ],
       "critical_features": [
         "useAnimatedReaction for tracking active index changes",
         "Modular arithmetic for infinite circular positioning",
@@ -80,16 +82,31 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "apis": ["Gesture.Pan()"],
-      "methods": ["onBegin", "onUpdate", "onEnd"],
+      "components": [
+        "GestureDetector"
+      ],
+      "apis": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onEnd"
+      ],
       "usage": "Custom scroll implementation replacing FlatList for greater control",
       "benefit": "Full control over gesture behavior, snapping, and scroll physics"
     },
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Rect", "SweepGradient", "Blur"],
-      "functions": ["vec"],
+      "components": [
+        "Canvas",
+        "Rect",
+        "SweepGradient",
+        "Blur"
+      ],
+      "functions": [
+        "vec"
+      ],
       "usage": "Animated gradient background with multiple layered effects",
       "benefit": "Hardware-accelerated graphics with smooth color transitions"
     },
@@ -100,12 +117,17 @@
       "colors": "['#343f3dff', '#242d2bff']"
     },
     "react-native": {
-      "components": ["View", "StyleSheet", "Dimensions"],
-      "apis": ["Dimensions.get('window')"],
+      "components": [
+        "View",
+        "StyleSheet",
+        "Dimensions"
+      ],
+      "apis": [
+        "Dimensions.get('window')"
+      ],
       "usage": "Core UI structure and responsive sizing"
     }
   },
-
   "animation_techniques": {
     "infinite_circular_logic": {
       "concept": "Modular arithmetic to create infinite scrolling without data duplication",
@@ -167,7 +189,6 @@
       "note": "Optional - can be removed for specific use cases"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -252,13 +273,18 @@
     ],
     "useAnimatedStyle": {
       "carousel_item": {
-        "properties": ["transform: [translateX]", "zIndex"],
+        "properties": [
+          "transform: [translateX]",
+          "zIndex"
+        ],
         "translateX": "derivedTranslate.value",
         "zIndex": "Math.floor(Math.abs(progress.value * 100))",
         "purpose": "Position items and control layering"
       },
       "list_item_card": {
-        "properties": ["transform: [perspective, translateX, scale, rotateY]"],
+        "properties": [
+          "transform: [perspective, translateX, scale, rotateY]"
+        ],
         "perspective": 500,
         "translateX": "-progress.value * 8",
         "scale": "1 - Math.abs(progress.value) * 0.025",
@@ -278,7 +304,10 @@
     "animation_functions": [
       {
         "name": "withSpring",
-        "usage": ["Snap animation", "scrollToIndex method"],
+        "usage": [
+          "Snap animation",
+          "scrollToIndex method"
+        ],
         "config": "{ mass: 0.25 }",
         "benefit": "Natural, bouncy scroll-to animations"
       },
@@ -301,7 +330,6 @@
       }
     ]
   },
-
   "mathematical_algorithms": {
     "modular_arithmetic_infinite_scroll": {
       "concept": "Use modulo operation to create circular position from linear scroll",
@@ -361,12 +389,13 @@
       "usage": "Passed to renderItem for custom animations"
     }
   },
-
   "component_architecture": {
     "forwardRef_pattern": {
       "component": "BaseInfiniteCircularCarousel → InfiniteCircularCarousel",
       "ref_type": "InfiniteCircularCarouselRef",
-      "methods": ["scrollToIndex(index, animated)"],
+      "methods": [
+        "scrollToIndex(index, animated)"
+      ],
       "benefit": "Imperative control from parent components",
       "generic_support": "Full TypeScript generic support for data type"
     },
@@ -390,11 +419,13 @@
       "separation": "Clear separation of concerns and reusability"
     }
   },
-
   "custom_hooks": {
     "useInterpolateConfig": {
       "purpose": "Merge default and custom interpolation configurations",
-      "params": ["listItemWidth", "interpolateConfig (optional)"],
+      "params": [
+        "listItemWidth",
+        "interpolateConfig (optional)"
+      ],
       "defaults": {
         "inputRange": "[(i-1)*width, i*width, (i+1)*width]",
         "outputRange": "[0, 1, 0]",
@@ -404,7 +435,6 @@
       "benefit": "Allows users to customize progress calculation per item"
     }
   },
-
   "visual_design": {
     "calculator_theme": {
       "inspiration": "AcuteCalc calculator app",
@@ -447,11 +477,14 @@
       "centered_offset": "(listViewPort - listItemWidth) / 2"
     }
   },
-
   "data_structure": {
     "theme_data": {
       "type": "ThemeDataType[]",
-      "fields": ["primary: string", "secondary: string", "title: string"],
+      "fields": [
+        "primary: string",
+        "secondary: string",
+        "title: string"
+      ],
       "count": 12,
       "examples": [
         "{ primary: '#CB832E', secondary: '#7B6746', title: 'Classic' }",
@@ -467,7 +500,6 @@
       "ListItemSize": "WindowWidth / 4.8"
     }
   },
-
   "performance_optimizations": {
     "zero_re_renders": {
       "pattern": "All animations use SharedValues",
@@ -475,7 +507,13 @@
       "proof": "No useState for scroll position"
     },
     "ui_thread_execution": {
-      "worklets": ["onUpdate", "onEnd", "inputRange", "outputRange", "onActiveIndexChanged"],
+      "worklets": [
+        "onUpdate",
+        "onEnd",
+        "inputRange",
+        "outputRange",
+        "onActiveIndexChanged"
+      ],
       "benefit": "All calculations on UI thread, no bridge crossing",
       "result": "60fps scrolling on most devices"
     },
@@ -490,17 +528,27 @@
     },
     "useMemo_for_snap_intervals": {
       "value": "snapIntervals calculated once, memoized",
-      "dependencies": ["data", "listItemWidth"],
+      "dependencies": [
+        "data",
+        "listItemWidth"
+      ],
       "benefit": "Avoid recalculating snap points on every gesture"
     },
     "useCallback_for_functions": {
-      "functions": ["findClosestIndexPosition", "scrollToIndex"],
+      "functions": [
+        "findClosestIndexPosition",
+        "scrollToIndex"
+      ],
       "benefit": "Stable references prevent unnecessary recalculations"
     },
     "derivedValue_efficiency": {
       "pattern": "Derived values automatically track dependencies",
       "benefit": "Only recalculate when dependencies change",
-      "examples": ["progress", "derivedTranslate", "backgroundPrimaryColor"]
+      "examples": [
+        "progress",
+        "derivedTranslate",
+        "backgroundPrimaryColor"
+      ]
     },
     "skia_rendering": {
       "benefit": "Hardware-accelerated gradient rendering",
@@ -508,7 +556,6 @@
       "features": "GPU-accelerated blur and gradient effects"
     }
   },
-
   "unique_innovations": {
     "custom_scroll_from_scratch": {
       "concept": "Rebuild ScrollView/FlatList behavior with PanGestureHandler",
@@ -558,11 +605,14 @@
       "benefit": "Natural, bouncy navigation to any item"
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
-      "lifecycle": ["onBegin", "onUpdate", "onEnd"],
+      "lifecycle": [
+        "onBegin",
+        "onUpdate",
+        "onEnd"
+      ],
       "runs_on": "UI thread (worklet)",
       "tracking": "translateX SharedValue"
     },
@@ -597,7 +647,6 @@
       "benefit": "Fast swipes snap to next item, slow drags snap to nearest"
     }
   },
-
   "state_management": {
     "react_state": [],
     "shared_values": [
@@ -633,7 +682,6 @@
       ]
     }
   },
-
   "use_cases": {
     "primary": [
       "Theme or color scheme pickers",
@@ -674,7 +722,6 @@
       "Educational purposes to understand scroll internals"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with generic type support",
@@ -739,7 +786,6 @@
       "ref_typing": "Proper Ref<InfiniteCircularCarouselRef> typing"
     }
   },
-
   "known_limitations": {
     "circular_positioning_edge_cases": {
       "issue": "Edge item positioning logic not perfect for all scenarios",
@@ -783,7 +829,6 @@
       "impact": "useMemo prevents most recalculation, but could be more efficient"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Auto-scroll/auto-play with configurable interval",
@@ -854,7 +899,6 @@
       "Storybook integration examples"
     ]
   },
-
   "key_insights": {
     "custom_scroll_control": "Rebuilding ScrollView with PanGestureHandler provides complete control over behavior, despite complexity",
     "modular_arithmetic_magic": "Modulo operation (%) enables infinite scrolling without any data duplication - memory efficient for any dataset size",
@@ -869,7 +913,6 @@
     "forwardRef_flexibility": "Imperative API via ref enables programmatic control while maintaining declarative component interface",
     "author_transparency": "Honest comments about limitations and challenges make this excellent learning material"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic gesture handling with react-native-gesture-handler",
@@ -921,7 +964,6 @@
       "Animation cancellation strategies"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_react_native_reanimated_carousel": {
       "this_approach": "Custom implementation with PanGestureHandler",
@@ -953,7 +995,6 @@
       "tradeoff": "More complex positioning logic"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -980,7 +1021,6 @@
       ]
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify infinite scrolling in both directions",
@@ -1030,7 +1070,6 @@
       "Test custom extrapolation types"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Circular Carousel (FlatList-based variant in this repo)",
@@ -1057,7 +1096,6 @@
       "Zero re-render architectures"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~600 lines total (moderate footprint)",
     "dependencies": {
@@ -1075,7 +1113,6 @@
       "Tree-shaking compatible"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support - custom gestures not accessible",
@@ -1102,7 +1139,6 @@
       "visual_focus": "3D transforms may confuse screen readers"
     }
   },
-
   "inspirations_and_references": {
     "apps": [
       {
@@ -1126,7 +1162,6 @@
       "Modular arithmetic in UI"
     ]
   },
-
   "tags": [
     "carousel",
     "infinite-scroll",
@@ -1154,5 +1189,9 @@
     "educational",
     "advanced",
     "custom-scroll-view"
-  ]
+  ],
+  "content_hash": "addb511c43845da66ed478155a03df1db961d81d66f3361d58eab41f5251722d",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.373Z",
+  "last_validated": "2025-10-12T09:19:28.373Z"
 }

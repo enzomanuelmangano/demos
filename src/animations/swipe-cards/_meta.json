@@ -2,7 +2,6 @@
   "animation_name": "Swipe Cards",
   "animation_slug": "swipe-cards",
   "description": "A Tinder-style swipeable card stack with gesture-based interactions, programmatic swipe controls, and smooth animations. Features pan gesture handling with rotation, scale transformations for card depth, imperative controls via refs, and reset functionality with staggered animations. Cards disappear off-screen when swiped left or right with callbacks for interaction tracking.",
-
   "main_features": [
     "Tinder-style card stack with swipe interactions",
     "Pan gesture with horizontal and vertical translation",
@@ -18,7 +17,6 @@
     "Like/dislike counter tracking with useRef",
     "FadeIn/FadeOut transitions on reset"
   ],
-
   "file_structure": {
     "index.tsx": "Main component with card stack, control buttons, and reset logic",
     "components/Card/index.tsx": "SwipeableCard component with gesture handling and imperative methods",
@@ -26,7 +24,6 @@
     "hooks/use-swipe-controls.ts": "Custom hook managing card refs, swipe actions, and reset logic",
     "assets/": "9 image files (01.jpg through 09.jpg) for card content"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -35,7 +32,6 @@
     "pressable": "pressto (PressableScale)",
     "icons": "@expo/vector-icons (AntDesign)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -55,21 +51,36 @@
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Pan()"],
-      "methods": ["onBegin", "onUpdate", "onFinalize"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ],
       "usage": "Pan gesture for card swiping with translation tracking"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "purpose": "Bridge worklet callbacks to JS thread for swipe callbacks",
       "critical_for": "Calling onSwipeRight/onSwipeLeft from UI thread"
     },
     "expo-image": {
       "version": "~3.0.8",
       "component": "Image",
-      "props_used": ["source", "style", "contentFit", "cachePolicy"],
+      "props_used": [
+        "source",
+        "style",
+        "contentFit",
+        "cachePolicy"
+      ],
       "cache_policy": "memory-disk for optimized image loading",
       "usage": "Display card images with efficient caching"
     },
@@ -77,16 +88,22 @@
       "version": "0.3.5-beta.1",
       "component": "PressableScale",
       "usage": "Interactive buttons with scale feedback",
-      "props_used": ["style", "onPress"]
+      "props_used": [
+        "style",
+        "onPress"
+      ]
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "icon_set": "AntDesign",
-      "icons_used": ["close", "reload", "heart"],
+      "icons_used": [
+        "close",
+        "reload",
+        "heart"
+      ],
       "usage": "Control button icons for swipe actions"
     }
   },
-
   "animation_techniques": {
     "card_rotation": {
       "pattern": "Interpolate horizontal translation to rotation",
@@ -139,7 +156,6 @@
       "absolute_positioning": "All cards position: absolute for stacking"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -184,7 +200,10 @@
       "instance": {
         "name": "rotate",
         "calculation": "interpolate(translateX, inputRange, [-Math.PI/20, 0, Math.PI/20], CLAMP)",
-        "dependencies": ["translateX.value", "inputRange"],
+        "dependencies": [
+          "translateX.value",
+          "inputRange"
+        ],
         "purpose": "Convert horizontal translation to rotation angle",
         "worklet": true
       }
@@ -204,7 +223,11 @@
     },
     "useImperativeHandle": {
       "location": "SwipeableCard",
-      "exposed_methods": ["swipeRight", "swipeLeft", "reset"],
+      "exposed_methods": [
+        "swipeRight",
+        "swipeLeft",
+        "reset"
+      ],
       "purpose": "Allow parent to trigger swipe/reset programmatically",
       "ref_type": "SwipeableCardRefType"
     },
@@ -256,7 +279,6 @@
       "purpose": "Prevent animation conflicts during reset"
     }
   },
-
   "gesture_handling": {
     "pan_gesture_lifecycle": {
       "onBegin": {
@@ -309,7 +331,6 @@
       "critical": "swipeRight/swipeLeft call callbacks that may update JS state"
     }
   },
-
   "imperative_controls": {
     "ref_management": {
       "pattern": "createRef<SwipeableCardRefType>() for each card",
@@ -335,7 +356,6 @@
       "effect": "Cards animate back one by one"
     }
   },
-
   "state_management": {
     "active_index_flow": {
       "steps": [
@@ -368,7 +388,6 @@
       ]
     }
   },
-
   "component_patterns": {
     "forwardRef_usage": {
       "pattern": "forwardRef<{}, SwipeableCardProps>",
@@ -408,7 +427,6 @@
       "derived_values": "maxCardTranslation = width * 1.5, inputRange = [-width/3, 0, width/3]"
     }
   },
-
   "layout_and_positioning": {
     "card_dimensions": {
       "height": "75% of container",
@@ -458,7 +476,6 @@
       "benefit": "Works on all device sizes"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#242831 (dark blue-gray)",
@@ -487,7 +504,6 @@
       "effect": "3D stack appearance without 3D transforms"
     }
   },
-
   "performance_optimizations": {
     "worklet_functions": {
       "swipeRight": "Runs on UI thread",
@@ -526,7 +542,6 @@
       "benefit": "Inactive cards don't process gesture events"
     }
   },
-
   "use_cases": {
     "primary": [
       "Dating apps (Tinder, Bumble)",
@@ -553,7 +568,6 @@
       "useImperativeHandle pattern"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -593,7 +607,6 @@
       "useEffect": "Cleanup function for timeouts"
     }
   },
-
   "known_limitations": {
     "fixed_card_count": {
       "issue": "All cards rendered upfront, no virtualization",
@@ -633,7 +646,6 @@
       "improvement": "Use proper type in forwardRef"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Undo last swipe",
@@ -696,7 +708,6 @@
       "Match notifications"
     ]
   },
-
   "key_insights": {
     "rotation_interpolation": "Interpolating translation to rotation creates natural swipe feel",
     "stack_depth_illusion": "Scale + vertical translation creates 3D depth without 3D transforms",
@@ -711,7 +722,6 @@
     "cancelAnimation_pattern": "Essential before reset to prevent animation conflicts",
     "opacity_optimization": "Setting opacity 0 for far cards improves rendering performance"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic pan gesture handling",
@@ -742,7 +752,6 @@
       "Complex state synchronization across components"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Cards stack properly with correct z-index",
@@ -786,7 +795,6 @@
       "Test various screen sizes"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No support",
@@ -807,7 +815,6 @@
       "High contrast mode support"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_components": {
       "pros": [
@@ -832,7 +839,6 @@
       }
     }
   },
-
   "related_patterns": {
     "similar_animations": [
       "Tinder swipe cards",
@@ -855,7 +861,6 @@
       "Rewind (photo browsing)"
     ]
   },
-
   "real_world_inspiration": {
     "tinder": "Original swipe card interaction pattern",
     "bumble": "Swipe-based dating with like/pass actions",
@@ -863,7 +868,6 @@
     "zillow": "Real estate browsing with swipes",
     "pinterest": "Image discovery with swipe interactions"
   },
-
   "bundle_size_impact": {
     "code_size": "~350 lines total (components + hook)",
     "images": "~9MB (462KB - 1.95MB per image)",
@@ -871,7 +875,6 @@
     "runtime_memory": "Moderate - 9 images loaded in memory",
     "estimated_impact": "~9MB (mostly images, could be optimized)"
   },
-
   "tags": [
     "swipe-cards",
     "tinder-style",
@@ -891,5 +894,9 @@
     "swipe-threshold",
     "staggered-animation",
     "like-dislike"
-  ]
+  ],
+  "content_hash": "9d91e462bf6218d00270c880dc9d09c0f6191f70c70fed7d95e64cd388379df0",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.469Z",
+  "last_validated": "2025-10-12T09:19:28.469Z"
 }

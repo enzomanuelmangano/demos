@@ -2,7 +2,6 @@
   "animation_name": "Card Shader Reflections",
   "animation_slug": "card-shader-reflections",
   "description": "A premium credit card carousel featuring physically-based metallic shader reflections rendered with Skia. Four distinct card types (Silver, Gold, Platinum, Metal) each with unique material properties including reflectivity, roughness, and color responses. Cards rotate in 3D space with dynamic lighting, environment mapping, Fresnel reflections, and procedural metallic grain textures.",
-
   "main_features": [
     "Physically-based rendering (PBR) shader for realistic metal materials",
     "Four distinct card types with unique material properties",
@@ -19,7 +18,6 @@
     "Opacity fade for off-center cards",
     "Animated title display with rotation transform"
   ],
-
   "file_structure": {
     "index.tsx": "Main export wrapper",
     "src/index.tsx": "Root component rendering CardCarousel",
@@ -40,19 +38,23 @@
       }
     }
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "shaders": "GLSL (via Skia RuntimeEffect)"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Fill", "Shader"],
-      "utilities": ["Skia.RuntimeEffect.Make"],
+      "components": [
+        "Canvas",
+        "Fill",
+        "Shader"
+      ],
+      "utilities": [
+        "Skia.RuntimeEffect.Make"
+      ],
       "usage": "GPU-accelerated shader rendering for metallic card effects",
       "critical_feature": "RuntimeEffect for custom GLSL shader execution"
     },
@@ -64,17 +66,23 @@
         "useAnimatedStyle",
         "useDerivedValue"
       ],
-      "functions": ["interpolate"],
-      "components": ["Animated.View", "Animated.FlatList"],
+      "functions": [
+        "interpolate"
+      ],
+      "components": [
+        "Animated.View",
+        "Animated.FlatList"
+      ],
       "critical_feature": "Scroll-driven animations with shared values passed to shaders"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureHandlerRootView"],
+      "components": [
+        "GestureHandlerRootView"
+      ],
       "usage": "Gesture handling infrastructure for scrollable carousel"
     }
   },
-
   "shader_implementation": {
     "shader_type": "GLSL fragment shader (Skia RuntimeEffect)",
     "shader_language": "OpenGL ES Shading Language",
@@ -100,46 +108,92 @@
       }
     }
   },
-
   "material_properties": {
     "silver": {
-      "reflectivity": [0.92, 0.92, 0.92],
-      "edge_tint": [0.94, 0.94, 0.94],
-      "base_color": [0.15, 0.15, 0.15],
+      "reflectivity": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "edge_tint": [
+        0.94,
+        0.94,
+        0.94
+      ],
+      "base_color": [
+        0.15,
+        0.15,
+        0.15
+      ],
       "roughness": 0.32,
       "normal_strength": 0.2,
       "micro_detail": 1.6,
       "characteristics": "Pure monochromatic, higher roughness for matte finish, enhanced micro-detail for brushed look"
     },
     "gold": {
-      "reflectivity": [0.92, 0.88, 0.78],
-      "edge_tint": [0.9, 0.87, 0.82],
-      "base_color": [0.16, 0.14, 0.11],
+      "reflectivity": [
+        0.92,
+        0.88,
+        0.78
+      ],
+      "edge_tint": [
+        0.9,
+        0.87,
+        0.82
+      ],
+      "base_color": [
+        0.16,
+        0.14,
+        0.11
+      ],
       "roughness": 0.32,
       "normal_strength": 0.13,
-      "micro_detail": 1.0,
+      "micro_detail": 1,
       "characteristics": "Warm yellow tone, reduced green and blue channels, lower normal strength for smoother appearance"
     },
     "platinum": {
-      "reflectivity": [0.99, 0.98, 0.97],
-      "edge_tint": [1.0, 0.99, 0.98],
-      "base_color": [0.25, 0.24, 0.23],
+      "reflectivity": [
+        0.99,
+        0.98,
+        0.97
+      ],
+      "edge_tint": [
+        1,
+        0.99,
+        0.98
+      ],
+      "base_color": [
+        0.25,
+        0.24,
+        0.23
+      ],
       "roughness": 0.3,
       "normal_strength": 0.14,
-      "micro_detail": 1.0,
+      "micro_detail": 1,
       "characteristics": "Highest reflectivity, subtle warm tint, lower roughness for premium finish"
     },
     "metal": {
-      "reflectivity": [0.96, 0.96, 0.96],
-      "edge_tint": [0.98, 0.98, 0.98],
-      "base_color": [0.18, 0.18, 0.18],
+      "reflectivity": [
+        0.96,
+        0.96,
+        0.96
+      ],
+      "edge_tint": [
+        0.98,
+        0.98,
+        0.98
+      ],
+      "base_color": [
+        0.18,
+        0.18,
+        0.18
+      ],
       "roughness": 0.32,
       "normal_strength": 0.16,
       "micro_detail": 1.4,
       "characteristics": "Neutral gray tone, higher normal strength for pronounced texture"
     }
   },
-
   "shader_techniques": {
     "fresnel_conductor": {
       "pattern": "Physically-based Fresnel equation for conductive materials (metals)",
@@ -150,7 +204,11 @@
         "Compute s-polarized and p-polarized reflection coefficients",
         "Average rs and rp for unpolarized light"
       ],
-      "inputs": ["cosTheta (view angle)", "reflectivity (vec3)", "edgeTint (vec3)"],
+      "inputs": [
+        "cosTheta (view angle)",
+        "reflectivity (vec3)",
+        "edgeTint (vec3)"
+      ],
       "output": "vec3 Fresnel reflection intensity per RGB channel",
       "purpose": "Accurate edge-brightening effect seen on metals at grazing angles"
     },
@@ -255,12 +313,15 @@
       "purpose": "Add organic color variation during animation"
     }
   },
-
   "mathematical_algorithms": {
     "hash_function": {
       "purpose": "Generate pseudo-random values for noise",
       "algorithm": "3D hash based on prime numbers",
-      "primes": [443.897, 441.423, 437.195],
+      "primes": [
+        443.897,
+        441.423,
+        437.195
+      ],
       "formula": "fract((p3.x + p3.y) * p3.z) after dot product mixing",
       "quality": "High-quality hash for smooth noise"
     },
@@ -310,7 +371,6 @@
       "purpose": "Focus attention on center card, fade others"
     }
   },
-
   "animation_techniques": {
     "scroll_driven_rotation": {
       "pattern": "Scroll position drives 3D card rotation",
@@ -318,7 +378,12 @@
       "interpolation": "scrollX mapped to rotateY [-180°, 0°, 180°]",
       "perspective": 1200,
       "base_rotation": "18° base tilt for perspective effect",
-      "transform_order": ["rotate: '18deg'", "perspective: 1200", "translateY", "rotateY"],
+      "transform_order": [
+        "rotate: '18deg'",
+        "perspective: 1200",
+        "translateY",
+        "rotateY"
+      ],
       "critical": "Perspective must come after base rotation but before rotateY"
     },
     "shader_animation": {
@@ -350,7 +415,6 @@
       "ux": "Clear card boundaries, predictable scrolling"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -366,7 +430,9 @@
         "type": "SharedValue<number> (radians)",
         "calculation": "interpolate(scrollX, [...], [-π, 0, π])",
         "usage": "Passed as uniform to shader for rotation effects",
-        "dependencies": ["scrollX"]
+        "dependencies": [
+          "scrollX"
+        ]
       }
     ],
     "useAnimatedScrollHandler": {
@@ -378,13 +444,20 @@
     },
     "useDerivedValue": {
       "uniforms": {
-        "dependencies": ["rotation", "width", "height", "cardType"],
+        "dependencies": [
+          "rotation",
+          "width",
+          "height",
+          "cardType"
+        ],
         "recalculation": "Every time rotation.value changes",
         "structure": "{rotate, resolution: [w, h], cardType}",
         "purpose": "Bundle shader uniforms efficiently"
       },
       "rotation": {
-        "dependencies": ["scrollX"],
+        "dependencies": [
+          "scrollX"
+        ],
         "calculation": "interpolate to radians",
         "purpose": "Convert scroll position to shader rotation input"
       }
@@ -392,8 +465,15 @@
     "useAnimatedStyle": {
       "instances": 3,
       "card_transform": {
-        "properties": ["rotateY", "translateY", "opacity", "perspective"],
-        "dependencies": ["scrollX"],
+        "properties": [
+          "rotateY",
+          "translateY",
+          "opacity",
+          "perspective"
+        ],
+        "dependencies": [
+          "scrollX"
+        ],
         "calculations": "Multiple interpolations based on card index"
       },
       "chip_opacity": {
@@ -406,7 +486,6 @@
       }
     }
   },
-
   "component_architecture": {
     "card_carousel": {
       "type": "Container component",
@@ -429,14 +508,27 @@
         "CardCanvas with shader rendering",
         "View.cardContent with chip and title"
       ],
-      "animations": ["rotateY", "translateY", "opacity"],
-      "props": ["item", "index", "scrollX"]
+      "animations": [
+        "rotateY",
+        "translateY",
+        "opacity"
+      ],
+      "props": [
+        "item",
+        "index",
+        "scrollX"
+      ]
     },
     "card_canvas": {
       "type": "Skia Canvas wrapper",
       "rendering": "Canvas with Fill and Shader",
       "sizing": "absoluteFillObject + width/height",
-      "props": ["rotation", "cardType", "width", "height"],
+      "props": [
+        "rotation",
+        "cardType",
+        "width",
+        "height"
+      ],
       "optimization": "useDerivedValue for uniforms"
     },
     "card_chip": {
@@ -447,7 +539,6 @@
       "realistic_details": "Small/large contact alternation"
     }
   },
-
   "performance_optimizations": {
     "gpu_shader_rendering": {
       "benefit": "All metallic effects computed on GPU in parallel",
@@ -481,7 +572,6 @@
       "material_generation": "generateMaterialConstants() runs once at module load"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "background": "#111 (near black)",
@@ -545,18 +635,17 @@
       "z_index": "101 to ensure cards are above other content"
     }
   },
-
   "shader_constants": {
     "base_light_position": "vec3(-3.0, -0.8, 2.5)",
     "pi": "3.14159265359",
     "noise_frequencies": {
-      "fine_grain": 1600.0,
-      "medium_grain": 800.0,
-      "rough_grain": 400.0,
-      "directional_grain": 1000.0
+      "fine_grain": 1600,
+      "medium_grain": 800,
+      "rough_grain": 400,
+      "directional_grain": 1000
     },
     "specular_powers": {
-      "base": 16.0,
+      "base": 16,
       "max_dynamic_range": "156.0 + speed * 100.0"
     },
     "fresnel_exponents": {
@@ -564,15 +653,20 @@
       "speed_modifier": "1.5 * speedFactor"
     },
     "rim_light_exponents": {
-      "base": 3.0,
+      "base": 3,
       "speed_modifier": "2.0 * speedFactor"
     },
     "environment_light_positions": {
-      "light1": [0.3, 0.4],
-      "light2": [0.7, 0.6]
+      "light1": [
+        0.3,
+        0.4
+      ],
+      "light2": [
+        0.7,
+        0.6
+      ]
     }
   },
-
   "use_cases": {
     "primary": [
       "Premium credit card selection interfaces",
@@ -603,12 +697,17 @@
       "Metallic finish recreation"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "interfaces": ["CardData", "CardProps", "CardUniforms"],
-      "enums": ["CardType with numeric values"],
+      "interfaces": [
+        "CardData",
+        "CardProps",
+        "CardUniforms"
+      ],
+      "enums": [
+        "CardType with numeric values"
+      ],
       "type_imports": "type keyword for type-only imports",
       "generics": "FC<Props> for functional components"
     },
@@ -642,7 +741,6 @@
       "Centralized constants"
     ]
   },
-
   "known_limitations": {
     "shader_complexity": {
       "issue": "Complex shader may impact battery on extended use",
@@ -675,7 +773,6 @@
       "complexity": "Manual translation adjustments needed"
     }
   },
-
   "potential_improvements": {
     "shader_enhancements": [
       "Real HDR environment map texture",
@@ -726,7 +823,6 @@
       "Focus indicators"
     ]
   },
-
   "key_insights": {
     "pbr_in_mobile_ui": "Physically-based rendering can create premium UI experiences on mobile",
     "shader_as_ui_element": "GLSL shaders aren't just for games - powerful for high-end UI",
@@ -737,7 +833,6 @@
     "procedural_detail": "Noise-based detail adds realism without texture loading overhead",
     "uniform_efficiency": "SharedValue integration with Skia uniforms enables reactive shader parameters"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList carousel basics",
@@ -766,7 +861,6 @@
       "GPU-accelerated UI rendering"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "All 4 card types render correctly",
@@ -808,7 +902,6 @@
       "Performance parity iOS vs Android"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "visual_only": "Purely visual showcase",
@@ -831,7 +924,6 @@
       "keyboard_navigation": "Arrow keys to navigate cards on web"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All shader effects supported",
@@ -852,7 +944,6 @@
       "fallback": "Could provide CSS-based alternative"
     }
   },
-
   "comparison_to_alternatives": {
     "vs_static_images": {
       "alternative": "Pre-rendered card images",
@@ -873,7 +964,6 @@
       "tradeoffs": "Requires shader knowledge, no preview in design tools"
     }
   },
-
   "related_patterns": {
     "similar_animations": [
       "Apple Card interface in Wallet app",
@@ -897,7 +987,6 @@
       "Snap-to-position carousels"
     ]
   },
-
   "real_world_inspiration": {
     "apple_card": "Apple Card app metallic appearance and interactions",
     "luxury_brands": "Premium credit card designs from luxury brands",
@@ -905,7 +994,6 @@
     "game_ui": "AAA game UI with realistic material rendering",
     "automotive_ui": "Luxury car infotainment systems"
   },
-
   "bundle_size_impact": {
     "shader_code": "~442 lines, minifies well as string",
     "component_code": "~350 lines total across all files",
@@ -917,7 +1005,6 @@
     "assets": "None - all procedural",
     "estimated_additional": "< 15KB (assuming dependencies present)"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "shader_execution": "GPU parallel per-pixel",
@@ -928,7 +1015,6 @@
     "gpu_impact": "High - complex shader per pixel",
     "battery_impact": "Moderate during active scrolling, low when static"
   },
-
   "configuration": {
     "card_types": {
       "silver": {
@@ -969,7 +1055,6 @@
       "throttle": "8ms"
     }
   },
-
   "tags": [
     "skia",
     "shader",
@@ -993,5 +1078,9 @@
     "procedural-textures",
     "perlin-noise",
     "normal-mapping"
-  ]
+  ],
+  "content_hash": "23afe9048dc4423e8006705294ddbb615f0cd959820fa3218e5fdb1f56c560f3",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.298Z",
+  "last_validated": "2025-10-12T09:19:28.298Z"
 }

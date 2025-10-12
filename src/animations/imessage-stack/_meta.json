@@ -2,7 +2,6 @@
   "animation_name": "iMessage Stack",
   "animation_slug": "imessage-stack",
   "description": "A sophisticated card stack animation inspired by iMessage photo stacks, featuring horizontal scrolling with aggressive interpolations creating 3D rotation, perspective effects, and card swapping. Uses a single ScrollView with paging to drive complex multi-dimensional transformations on stacked cards.",
-
   "main_features": [
     "Horizontal scrollable card stack with paging",
     "3D perspective rotation (rotateY)",
@@ -13,18 +12,15 @@
     "Single ScrollView drives all card animations",
     "Pastel color palette with 10 cards"
   ],
-
   "file_structure": {
     "index.tsx": "Main component with ScrollView setup and card data",
     "card.tsx": "Individual card component with complex transformation logic"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "ui": "react-native",
     "scrolling": "Animated.ScrollView with paging"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -51,7 +47,6 @@
       ]
     }
   },
-
   "animation_techniques": {
     "scroll_driven_animation": {
       "pattern": "Single ScrollView offset drives all card transformations",
@@ -131,7 +126,6 @@
       "importance": "Order matters - transformations compound"
     }
   },
-
   "architectural_patterns": {
     "clever_scrollview_trick": {
       "problem": "How to scroll through cards without custom gesture handling",
@@ -170,7 +164,6 @@
       "movement": "Transformations create apparent position changes"
     }
   },
-
   "reanimated_patterns": {
     "useScrollViewOffset": {
       "purpose": "Tracks horizontal scroll position in real-time",
@@ -201,7 +194,6 @@
       "reason": "scrollOffset is SharedValue, changes don't require recreation"
     }
   },
-
   "mathematical_foundation": {
     "card_dimensions": {
       "CARD_WIDTH": "WindowWidth / 3",
@@ -236,7 +228,6 @@
       "purpose": "Creates dramatic card swapping visual"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#000 (black)",
@@ -279,7 +270,6 @@
       "layering": "Z-index ensures proper occlusion"
     }
   },
-
   "performance_optimizations": {
     "single_scrollview": {
       "benefit": "One native scroll component vs multiple gesture detectors",
@@ -308,7 +298,6 @@
       "memory": "Minimal footprint"
     }
   },
-
   "interaction_design": {
     "gesture": "Horizontal swipe/drag",
     "paging": "Snaps to nearest card",
@@ -324,7 +313,6 @@
       "implementation": "paddingHorizontal: CARD_WIDTH in contentContainerStyle"
     }
   },
-
   "inspiration": {
     "source": "iMessage photo stack/image viewer",
     "ios_pattern": "Familiar to iOS users",
@@ -334,7 +322,6 @@
       "App Store card transitions"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "TypeScript with SharedValue type annotations",
@@ -355,7 +342,6 @@
       "Could add visual diagram comment explaining coordinate system"
     ]
   },
-
   "configuration": {
     "adjustable_parameters": {
       "CARD_WIDTH": {
@@ -399,7 +385,6 @@
       }
     }
   },
-
   "use_cases": {
     "primary": [
       "Photo gallery/viewer",
@@ -426,7 +411,6 @@
       "Educational content"
     ]
   },
-
   "known_limitations": {
     "card_count": {
       "issue": "Fixed array of cards, not dynamic data",
@@ -451,7 +435,6 @@
       "fallback": "Android uses standard border-radius"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Tap card to expand to fullscreen",
@@ -485,7 +468,6 @@
       "Virtualization for 100+ cards"
     ]
   },
-
   "key_insights": {
     "scrollview_trick": "Invisible spacer Views + absolutely positioned cards with inverse translation = leverages native ScrollView while maintaining full control",
     "single_driver": "One scrollOffset SharedValue drives complex multi-dimensional transforms across all cards",
@@ -496,7 +478,6 @@
     "no_gestures_needed": "ScrollView handles all gesture detection, no custom PanGestureHandler required",
     "scalability": "Architecture supports infinite cards without performance degradation"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "useScrollViewOffset basics",
@@ -527,7 +508,6 @@
       "Clamped extrapolation"
     ]
   },
-
   "related_patterns": {
     "similar_animations": [
       "Coverflow carousel",
@@ -543,7 +523,6 @@
       "Tab bar animations from scroll"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Snapshot test at each scroll position",
@@ -571,14 +550,12 @@
       "Continuous border curve on iOS vs Android"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "Very small (~130 lines total)",
     "dependencies": "Only Reanimated (likely already in project)",
     "runtime_memory": "Minimal - 10 static components + shared values",
     "estimated_memory": "< 100KB"
   },
-
   "tags": [
     "scroll-animation",
     "reanimated",
@@ -592,5 +569,9 @@
     "carousel",
     "gallery",
     "ios-inspired"
-  ]
+  ],
+  "content_hash": "a7dd96df71065492f524c37497d36396b918da68a136fd3d533f7932e7fca96f",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.370Z",
+  "last_validated": "2025-10-12T09:19:28.370Z"
 }

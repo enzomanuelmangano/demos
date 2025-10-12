@@ -2,7 +2,6 @@
   "animation_name": "Prequel Slider",
   "animation_slug": "prequel-slider",
   "description": "A sophisticated photo editing-style interface featuring a custom draggable slider with visual line indicators, dynamic color interpolation, circular progress display, and real-time GLSL shader effects. Inspired by photo editing apps like Prequel, this animation combines a horizontal draggable slider with snap points, GPU-accelerated butterfly wave shader transitions, and synchronized UI feedback including a donut circular progress indicator with color animation.",
-
   "main_features": [
     "Custom draggable slider with line-based visual indicators (50 lines)",
     "Snap-to-interval gesture handling with spring physics",
@@ -17,7 +16,6 @@
     "Real-time uniform updates for shader progress",
     "Worklet-based progress callbacks for UI thread performance"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Export wrapper with SafeAreaProvider and GestureHandlerRootView setup",
@@ -43,14 +41,12 @@
       "components/draggable-slider/constants.ts": "ScreenWidth constant from Dimensions API"
     }
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "shaders": "GLSL (OpenGL Shading Language)"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -133,7 +129,6 @@
       "usage": "Core React Native primitives and layout"
     }
   },
-
   "animation_techniques": {
     "draggable_slider_lines": {
       "pattern": "Skia Path-based line rendering with dynamic positioning",
@@ -217,7 +212,9 @@
       },
       "onEnd": {
         "animation": "withSpring to nearest snap point",
-        "spring_config": { "mass": 0.45 },
+        "spring_config": {
+          "mass": 0.45
+        },
         "velocity": "event.velocityX used for snap calculation",
         "alternative": "withDecay (commented out) for continuous scroll"
       }
@@ -225,7 +222,13 @@
     "boundary_gradient": {
       "component": "BoundaryGradient with LinearGradient",
       "pattern": "Fade to background color at edges",
-      "colors": ["mainColor", "transparent", "transparent", "transparent", "mainColor"],
+      "colors": [
+        "mainColor",
+        "transparent",
+        "transparent",
+        "transparent",
+        "mainColor"
+      ],
       "positions": "5 stops with transparency in middle 60%",
       "direction": "Horizontal (start: {x:0, y:0}, end: {x:width, y:0})",
       "purpose": "Creates fade-out effect preventing hard cutoff at slider edges",
@@ -247,7 +250,6 @@
       "purpose": "Fixed center indicator showing current selection point"
     }
   },
-
   "shader_techniques": {
     "butterfly_wave_scrawler": {
       "source": "https://gl-transitions.com/editor/ButterflyWaveScrawler",
@@ -269,7 +271,7 @@
         "red_channel": "getFromColor(p + realProgress * disp * (1.0 - colorSeparation))",
         "green_channel": "getFromColor(p + realProgress * disp)",
         "blue_channel": "getFromColor(p + realProgress * disp * (1.0 + colorSeparation))",
-        "value": 3.0,
+        "value": 3,
         "effect": "Chromatic aberration-like distortion"
       },
       "transition_mixing": {
@@ -314,12 +316,14 @@
         "progress": "progress.value (0 to 1)",
         "resolution": "[width, height]"
       },
-      "dependencies": ["width", "height"],
+      "dependencies": [
+        "width",
+        "height"
+      ],
       "update_frequency": "Every frame when progress changes",
       "thread": "UI thread via Reanimated worklet"
     }
   },
-
   "donut_circular_progress": {
     "rendering": "Skia Path with Circle added via addCircle",
     "dimensions": {
@@ -357,7 +361,6 @@
       "binding": "Direct SharedValue reference (no intermediate state)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -367,7 +370,11 @@
         "range": "0 to 1",
         "updates": "Via onProgressChange callback from DraggableSlider",
         "scope": "App component",
-        "consumers": ["ImageEditor", "DonutCircularProgress", "color interpolation"]
+        "consumers": [
+          "ImageEditor",
+          "DonutCircularProgress",
+          "color interpolation"
+        ]
       },
       {
         "name": "scrollContext",
@@ -393,13 +400,19 @@
           "name": "color",
           "calculation": "interpolateColor(progressPercentage.value, [0,1], ['#6d9bf1', 'orange'])",
           "purpose": "Dynamic color based on progress",
-          "consumers": ["DonutCircularProgress", "DraggableSlider indicator"]
+          "consumers": [
+            "DonutCircularProgress",
+            "DraggableSlider indicator"
+          ]
         },
         {
           "name": "uniforms",
           "calculation": "{progress: progress.value, resolution: [width, height]}",
           "purpose": "Package shader uniforms",
-          "dependencies": ["width", "height"]
+          "dependencies": [
+            "width",
+            "height"
+          ]
         },
         {
           "name": "bigLinesPath",
@@ -431,7 +444,9 @@
     "withSpring": {
       "usage": "Snap animation for scrollOffset",
       "target": "snapPoint(scrollOffset.value, velocityX, spacings)",
-      "config": { "mass": 0.45 },
+      "config": {
+        "mass": 0.45
+      },
       "timing": "Triggered on gesture end",
       "feel": "Light, snappy spring with low mass"
     },
@@ -455,7 +470,6 @@
       "purpose": "Prevent scrolling beyond slider edges"
     }
   },
-
   "performance_optimizations": {
     "viewport_culling": {
       "pattern": "Skip rendering lines outside visible screen width",
@@ -466,29 +480,45 @@
     "useMemo": {
       "spacings_array": {
         "calculation": "Pre-compute all snap points",
-        "dependencies": ["linesAmount", "snapEach", "spacePerLine"],
+        "dependencies": [
+          "linesAmount",
+          "snapEach",
+          "spacePerLine"
+        ],
         "benefit": "Avoid recalculating array on every gesture event"
       },
       "donut_path": {
         "calculation": "Skia.Path with circle",
-        "dependencies": ["radius", "size"],
+        "dependencies": [
+          "radius",
+          "size"
+        ],
         "benefit": "Path object created once, reused every frame"
       },
       "shader_source": {
         "calculation": "transition(glEffect) - compiles GLSL",
-        "dependencies": ["glEffect"],
+        "dependencies": [
+          "glEffect"
+        ],
         "benefit": "Expensive shader compilation happens once"
       },
       "boundary_colors": {
         "calculation": "Array of gradient colors",
-        "dependencies": ["mainColor"],
+        "dependencies": [
+          "mainColor"
+        ],
         "benefit": "Prevents array recreation on every render"
       }
     },
     "useDerivedValue_over_useMemo": {
       "pattern": "Reactive calculations use useDerivedValue instead of useMemo",
       "benefit": "Runs on UI thread, updates automatically",
-      "examples": ["color", "uniforms", "bigLinesPath", "smallLinesPath"]
+      "examples": [
+        "color",
+        "uniforms",
+        "bigLinesPath",
+        "smallLinesPath"
+      ]
     },
     "worklet_annotations": {
       "locations": [
@@ -518,7 +548,6 @@
       "vs_alternative": "50 individual animated Views would be significantly slower"
     }
   },
-
   "use_cases": {
     "primary": [
       "Photo editing apps (brightness, contrast, saturation sliders)",
@@ -558,7 +587,6 @@
       "Web-only applications (Skia WASM overhead)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -639,7 +667,6 @@
       "Type for shader transition could be more specific"
     ]
   },
-
   "known_limitations": {
     "shader_usage": {
       "current_implementation": "Both ImageShaders use same image",
@@ -699,7 +726,6 @@
       "impact": "Minimal with viewport culling, acceptable for 50 lines"
     }
   },
-
   "potential_improvements": {
     "configuration": [
       "Make line count, spacing, heights configurable via props",
@@ -758,7 +784,6 @@
       "Unit tests for utility functions"
     ]
   },
-
   "key_insights": {
     "viewport_culling_importance": "Rendering only visible lines (10-15 instead of 50) is crucial optimization for smooth performance",
     "snap_point_physics": "react-native-redash snapPoint algorithm with velocity consideration creates natural feel",
@@ -771,7 +796,6 @@
     "dual_image_shader": "Two ImageShader children enable transition effects, currently underutilized in demo",
     "educational_comments": "Author's personal notes and references make code highly educational"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia rendering (Canvas, Path, Circle)",
@@ -804,7 +828,6 @@
       "Butterfly polar functions in shaders"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_native_slider": {
       "native": "Platform-specific, basic thumb and track",
@@ -825,7 +848,6 @@
       "aesthetic": "More artistic than practical"
     }
   },
-
   "real_world_inspiration": {
     "prequel_app": "iOS photo editing app with similar slider aesthetics",
     "vsco": "Line-based slider controls for filters",
@@ -833,7 +855,6 @@
     "instagram_filters": "Intensity sliders with real-time preview",
     "photo_editing_apps": "Common pattern in creative tools"
   },
-
   "technical_challenges_and_solutions": {
     "viewport_culling": {
       "challenge": "Rendering 50+ lines every frame causes performance issues",
@@ -869,7 +890,6 @@
       "optimization": "Viewport culling reduces path complexity"
     }
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "expected_performance": "Smooth on mid-range devices",
@@ -894,7 +914,6 @@
       "path_separation": "Minor cost but acceptable trade-off"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -914,7 +933,6 @@
       "gestures": "Mouse events work but less natural than touch"
     }
   },
-
   "bundle_size_impact": {
     "component_code": "~700 lines total across all files",
     "dependencies": [
@@ -927,7 +945,6 @@
     "assets": "Demo image (recommend local asset)",
     "estimated_addition": "~5KB code + dependencies if not present"
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify line rendering at different scroll positions",
@@ -961,7 +978,6 @@
       "Check memory usage over time"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": "No accessibility support",
     "recommendations": [
@@ -977,7 +993,6 @@
     ],
     "implementation_effort": "Medium - requires wrapper with accessibility props and alternative interaction methods"
   },
-
   "related_patterns": {
     "photo_editing_sliders": "Filter intensity and adjustment controls",
     "timeline_scrubbers": "Video/audio timeline navigation",
@@ -985,7 +1000,6 @@
     "shader_previews": "Real-time GPU effect visualization",
     "snap_point_sliders": "Discrete value selection with physics"
   },
-
   "tags": [
     "slider",
     "photo-editing",
@@ -1007,5 +1021,9 @@
     "prequel",
     "creative-tools",
     "reanimated"
-  ]
+  ],
+  "content_hash": "451226716de56bca314dc38cb3888e2e80ff5681267543f5c91f25804e214f23",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.410Z",
+  "last_validated": "2025-10-12T09:19:28.410Z"
 }

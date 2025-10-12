@@ -2,7 +2,6 @@
   "animation_name": "Popup Handler",
   "animation_slug": "popup-handler",
   "description": "A sophisticated context menu system featuring a blurred backdrop popup with draggable trigger button. The implementation uses long-press gestures to show contextual menus, synchronous UI thread measurements for precise positioning, and automatic alignment detection. The popup includes a custom blur provider with animated backdrop, smart positioning that adapts to screen edges, and smooth scale/fade animations for menu appearance.",
-
   "main_features": [
     "Long-press gesture detection to trigger context menu",
     "Blurred backdrop with dark tint during popup display",
@@ -19,7 +18,6 @@
     "Worklet-based scheduling for JS-thread callbacks",
     "Exclusive gesture handling (long-press vs tap)"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo with draggable button and popup trigger example",
     "BlurredPopup/index.tsx": "Re-exports BlurredPopupProvider and TouchablePopupHandler",
@@ -27,7 +25,6 @@
     "BlurredPopup/BlurredPopupProvider.tsx": "Main provider component managing popup state, blur, and rendering",
     "BlurredPopup/TouchablePopupHandler.tsx": "Wrapper component for elements that trigger popups via long-press"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -36,7 +33,6 @@
     "state_management": "React Context API",
     "icons": "@expo/vector-icons"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -51,43 +47,66 @@
         "withTiming",
         "measure"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "measure() for synchronous UI thread measurements and useAnimatedReaction for JS callback scheduling",
       "usage": "Pan gesture animations, blur opacity, menu scale/fade, and precise position calculations"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "GestureHandlerRootView"],
-      "gestures": ["Gesture.Pan", "Gesture.LongPress", "Gesture.Tap", "Gesture.Exclusive"],
+      "components": [
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "gestures": [
+        "Gesture.Pan",
+        "Gesture.LongPress",
+        "Gesture.Tap",
+        "Gesture.Exclusive"
+      ],
       "usage": "Draggable button with pan gesture and exclusive long-press/tap handling",
       "critical_feature": "Gesture.Exclusive for preventing gesture conflicts"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "components": ["BlurView"],
-      "props": ["intensity", "tint", "style"],
+      "components": [
+        "BlurView"
+      ],
+      "props": [
+        "intensity",
+        "tint",
+        "style"
+      ],
       "usage": "Dark blurred backdrop behind popup menu (configurable intensity)",
       "critical_feature": "Dark tint blur effect at 5-20 intensity (default 10)"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "usage": "Schedule JS-thread callbacks from UI thread worklets",
       "critical_feature": "Bridge between UI thread measure() and JS context callbacks"
     },
     "expo-image": {
       "version": "~3.0.8",
-      "components": ["Image"],
+      "components": [
+        "Image"
+      ],
       "usage": "Background image in demo (Unsplash photo)"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["FontAwesome"],
-      "icons_used": ["location-arrow"],
+      "components": [
+        "FontAwesome"
+      ],
+      "icons_used": [
+        "location-arrow"
+      ],
       "usage": "Directional arrow icons in menu options (rotated per alignment)"
     }
   },
-
   "animation_techniques": {
     "blur_opacity_animation": {
       "pattern": "withTiming blur opacity from 0 to 1",
@@ -108,7 +127,11 @@
     },
     "draggable_button": {
       "pattern": "Pan gesture with context-based position tracking",
-      "shared_values": ["translateX", "translateY", "context { x, y }"],
+      "shared_values": [
+        "translateX",
+        "translateY",
+        "context { x, y }"
+      ],
       "onBegin": "Save current position to context",
       "onUpdate": "translateX/Y = event.translation + context value",
       "transform": "transform: [{ translateX }, { translateY }]",
@@ -132,7 +155,6 @@
       "critical": "Prevents memory leaks and stale state"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -188,14 +210,18 @@
       {
         "name": "menuOpacity",
         "calculation": "withTiming(menuVisible.value ? 1 : 0, { duration: 200 })",
-        "dependencies": ["menuVisible"],
+        "dependencies": [
+          "menuVisible"
+        ],
         "type": "number (0-1)",
         "purpose": "Animated opacity for menu appearance"
       },
       {
         "name": "menuScale",
         "calculation": "withTiming(menuVisible.value ? 1 : 0.95, { duration: 200 })",
-        "dependencies": ["menuVisible"],
+        "dependencies": [
+          "menuVisible"
+        ],
         "type": "number",
         "purpose": "Animated scale for menu pop effect"
       }
@@ -204,21 +230,28 @@
       {
         "name": "rBlurViewStyle",
         "scope": "BlurredPopupProvider",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "calculation": "opacity: blurOpacity.value",
         "usage": "Fade blur backdrop in/out"
       },
       {
         "name": "rMenuPopupStyle",
         "scope": "BlurredPopupProvider",
-        "properties": ["opacity", "transform"],
+        "properties": [
+          "opacity",
+          "transform"
+        ],
         "calculation": "opacity: menuOpacity.value, scale: menuScale.value",
         "usage": "Scale and fade menu popup"
       },
       {
         "name": "rStyle",
         "scope": "PopupHandler demo",
-        "properties": ["transform"],
+        "properties": [
+          "transform"
+        ],
         "calculation": "translateX: translateX.value, translateY: translateY.value",
         "usage": "Position draggable button"
       }
@@ -227,7 +260,9 @@
       {
         "name": "menuAnimatedProps",
         "scope": "BlurredPopupProvider",
-        "properties": ["pointerEvents"],
+        "properties": [
+          "pointerEvents"
+        ],
         "calculation": "hasParams ? 'auto' : 'none'",
         "purpose": "Disable touch events when popup not visible",
         "critical": "Prevents phantom touch targets"
@@ -243,7 +278,6 @@
       "benefit": "No async measurement lag, instant popup positioning"
     }
   },
-
   "gesture_patterns": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -282,7 +316,6 @@
       "priority": "Long-press takes precedence when duration met"
     }
   },
-
   "context_architecture": {
     "BlurredPopupContext": {
       "type": "React.createContext<BlurredContextType>",
@@ -335,7 +368,6 @@
       ]
     }
   },
-
   "positioning_algorithm": {
     "alignment_detection": {
       "step_1": "Get trigger dimensions (pageX, pageY, width, height)",
@@ -366,7 +398,6 @@
       "right_alignment": "Menu aligns right edge with trigger (uses 'right' CSS property)"
     }
   },
-
   "menu_rendering": {
     "list_items": {
       "component": "TouchableOpacity",
@@ -395,7 +426,6 @@
       "blur_view": "zIndex: 100 when visible, -10 when hidden"
     }
   },
-
   "worklet_scheduling": {
     "pattern": "scheduleOnRN for UI thread → JS thread communication",
     "use_case_1": {
@@ -415,7 +445,6 @@
     },
     "critical_pattern": "Always wrap React state updates with scheduleOnRN when called from worklets"
   },
-
   "demo_implementation": {
     "draggable_button": {
       "size": "64px (aspect ratio 1:1)",
@@ -427,7 +456,12 @@
     },
     "menu_options": {
       "count": 4,
-      "labels": ["Top Left", "Top Right", "Bottom Left", "Bottom Right"],
+      "labels": [
+        "Top Left",
+        "Top Right",
+        "Bottom Left",
+        "Bottom Right"
+      ],
       "icons": "FontAwesome location-arrow with rotation per direction",
       "rotations": {
         "top-right": "0deg",
@@ -447,7 +481,6 @@
       "timing": "Delayed 800ms to allow menu dismissal animation"
     }
   },
-
   "performance_optimizations": {
     "synchronous_measurement": {
       "pattern": "measure(viewRef) on UI thread",
@@ -484,7 +517,6 @@
       "note": "Still renders View to maintain zIndex priorities"
     }
   },
-
   "type_definitions": {
     "PopupAlignment": "'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'",
     "PopupOptionType": {
@@ -509,7 +541,6 @@
       "options": "PopupOptionType[] (required)"
     }
   },
-
   "visual_design": {
     "demo": {
       "background": "#111 (very dark gray)",
@@ -537,7 +568,6 @@
       "z_index": "-30 (behind menu)"
     }
   },
-
   "use_cases": {
     "primary": [
       "Context menus for list items",
@@ -564,7 +594,6 @@
       "Frequently used actions (prefer visible buttons)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -618,7 +647,6 @@
       "styles": "StyleSheet.create for all styles"
     }
   },
-
   "known_limitations": {
     "haptic_feedback": {
       "issue": "Haptic feedback code commented out",
@@ -660,7 +688,6 @@
       "improvement": "Would need popup stack for nested menus"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Haptic feedback on long-press start",
@@ -727,7 +754,6 @@
       "Create example variants in demo"
     ]
   },
-
   "key_insights": {
     "synchronous_measurement": "measure() on UI thread eliminates async lag for perfect popup positioning",
     "exclusive_gestures": "Gesture.Exclusive cleanly separates tap from long-press without conflicts",
@@ -738,7 +764,6 @@
     "alignment_detection": "Smart edge detection ensures menus always fully visible on screen",
     "separate_scale_opacity": "Independent scale and opacity animations create polished pop effect"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "React Context API basics",
@@ -767,7 +792,6 @@
       "Creating animation wrapper abstractions"
     ]
   },
-
   "performance_considerations": {
     "blur_cost": {
       "description": "BlurView can be expensive on lower-end devices",
@@ -792,7 +816,6 @@
       "critical": "Runs on UI thread, no bridge crossing"
     }
   },
-
   "comparison_to_alternatives": {
     "vs_react_native_menu": {
       "similarity": "Both provide context menus",
@@ -815,7 +838,6 @@
       "ux": "This better for spatial context"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Menu renders with correct position for all alignments",
@@ -863,7 +885,6 @@
       "Rapid long-press triggering"
     ]
   },
-
   "accessibility_recommendations": {
     "current_state": {
       "labels": "No accessibility labels",
@@ -885,7 +906,6 @@
       "Screen reader instructions for long-press"
     ]
   },
-
   "related_patterns": {
     "context_menus": "Similar contextual menu systems",
     "long_press_interactions": "Other long-press triggered actions",
@@ -894,14 +914,12 @@
     "gesture_based_ui": "Gesture-driven interactions",
     "draggable_elements": "Pan gesture drag patterns"
   },
-
   "bundle_size_impact": {
     "code_size": "~500 lines total (all components)",
     "dependencies": "Reanimated, Gesture Handler, expo-blur (likely in project)",
     "runtime_memory": "Moderate - BlurView, animated values, menu state",
     "performance": "Good - UI thread animations, efficient gestures"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -922,7 +940,6 @@
       "limitations": "Long-press may conflict with context menu"
     }
   },
-
   "tags": [
     "context-menu",
     "popup",
@@ -941,5 +958,9 @@
     "touch-interaction",
     "scale-animation",
     "fade-animation"
-  ]
+  ],
+  "content_hash": "5cf58072b16b5b50d4eba0b85cebc863a5084c113a7990c230195da9f438a9a9",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.405Z",
+  "last_validated": "2025-10-12T09:19:28.405Z"
 }

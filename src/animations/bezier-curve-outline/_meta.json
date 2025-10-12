@@ -2,7 +2,6 @@
   "animation_name": "Bezier Curve Outline",
   "animation_slug": "bezier-curve-outline",
   "description": "An interactive visualization demonstrating cubic Bezier curve animation with path-following mechanics. Features a draggable chess-themed square that animates along a customizable Bezier curve path, with interactive control points and smooth blur effects. Includes an outline mode toggle to visualize and manipulate the underlying curve geometry.",
-
   "main_features": [
     "Interactive cubic Bezier curve with draggable control points",
     "Path-following animation along custom curves",
@@ -15,7 +14,6 @@
     "SVG path generation and conversion",
     "Touch-based control point manipulation"
   ],
-
   "file_structure": {
     "index.tsx": "Main export wrapper",
     "src/index.tsx": "Main app component orchestrating animation state",
@@ -40,23 +38,35 @@
     "src/global-animation-state.ts": "Shared mutable state (unused)",
     "assets/pawn.svg": "Chess pawn icon"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "gestures": "react-native-skia-gesture",
     "threading": "react-native-worklets",
-    "ui_effects": ["expo-blur", "expo-image"],
+    "ui_effects": [
+      "expo-blur",
+      "expo-image"
+    ],
     "interactions": "pressto"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
       "usage": "Bezier curve rendering, path visualization, control points",
-      "components": ["Canvas", "Path", "Circle", "Group"],
-      "utilities": ["Skia", "ContourMeasureIter"],
-      "types": ["SkPath", "SkContourMeasure"],
+      "components": [
+        "Canvas",
+        "Path",
+        "Circle",
+        "Group"
+      ],
+      "utilities": [
+        "Skia",
+        "ContourMeasureIter"
+      ],
+      "types": [
+        "SkPath",
+        "SkContourMeasure"
+      ],
       "critical_features": [
         "Path.Make() for path creation",
         "Path.MakeFromSVGString() for path conversion",
@@ -79,41 +89,61 @@
         "cancelAnimation",
         "makeMutable"
       ],
-      "utilities": ["interpolate", "interpolateColor", "Easing"],
+      "utilities": [
+        "interpolate",
+        "interpolateColor",
+        "Easing"
+      ],
       "critical_feature": "useDerivedValue for real-time path recalculation"
     },
     "react-native-skia-gesture": {
       "version": "0.4.5-beta.1",
       "usage": "Draggable control points on Skia canvas",
-      "components": ["Touchable.Canvas", "Touchable.Circle"],
-      "events": ["onStart", "onActive"],
+      "components": [
+        "Touchable.Canvas",
+        "Touchable.Circle"
+      ],
+      "events": [
+        "onStart",
+        "onActive"
+      ],
       "critical_feature": "Touch interaction directly on Skia elements"
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge UI thread path calculations to JS thread for state updates"
     },
     "expo-blur": {
       "version": "~15.0.7",
-      "usage": ["Animation blur effect", "Button press blur effect"],
-      "components": ["BlurView"],
+      "usage": [
+        "Animation blur effect",
+        "Button press blur effect"
+      ],
+      "components": [
+        "BlurView"
+      ],
       "wrapped_as": "AnimatedBlurView (Animated.createAnimatedComponent)"
     },
     "expo-image": {
       "version": "~3.0.8",
       "usage": "Display SVG pawn icon",
-      "components": ["Image"],
+      "components": [
+        "Image"
+      ],
       "supports": "SVG rendering"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
       "usage": "Outline Mode button and animated square pressable",
-      "components": ["PressableScale"],
+      "components": [
+        "PressableScale"
+      ],
       "animation": "Automatic scale animation on press"
     }
   },
-
   "bezier_curve_mathematics": {
     "curve_type": "Cubic Bezier curve",
     "equation": "B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃, where t ∈ [0,1]",
@@ -144,7 +174,6 @@
       "interpolation_strategy": "Sample every 1px along path for smooth animation"
     }
   },
-
   "animation_techniques": {
     "path_following_animation": {
       "pattern": "Interpolate along pre-sampled path points",
@@ -193,7 +222,6 @@
       }
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -275,7 +303,6 @@
       "PathGeometry methods"
     ]
   },
-
   "component_architecture": {
     "app_component": {
       "file": "src/index.tsx",
@@ -354,7 +381,9 @@
     },
     "chessboard_layout": {
       "file": "src/components/animated-square/chessboard-layout.tsx",
-      "responsibilities": ["Render 8x8 alternating squares"],
+      "responsibilities": [
+        "Render 8x8 alternating squares"
+      ],
       "props": {
         "blackColor": "#AD8969",
         "whiteColor": "#ECD9B9"
@@ -368,7 +397,6 @@
       "purpose": "Enable animated intensity prop on BlurView"
     }
   },
-
   "custom_hooks": {
     "useAnimateThroughPath": {
       "file": "src/hooks/useAnimateThroughPath/index.tsx",
@@ -411,12 +439,14 @@
       "benefit": "Enables independent x/y subscriptions"
     }
   },
-
   "path_geometry_class": {
     "file": "src/hooks/useAnimateThroughPath/utils/geometry.ts",
     "purpose": "Measure and sample points along a Skia path",
     "constructor": {
-      "parameters": ["path: SkPath", "resScale: number = 1"],
+      "parameters": [
+        "path: SkPath",
+        "resScale: number = 1"
+      ],
       "initialization": [
         "Create ContourMeasureIter from path",
         "Get first contour",
@@ -430,7 +460,9 @@
         "description": "Total length of path in pixels"
       },
       "getPointAtLength": {
-        "parameters": ["length: number"],
+        "parameters": [
+          "length: number"
+        ],
         "returns": "Point (x, y)",
         "description": "Get position at specific distance along path",
         "implementation": "contour.getPosTan(length)[0]"
@@ -442,7 +474,6 @@
     },
     "worklet_compatible": true
   },
-
   "interaction_patterns": {
     "outline_mode_toggle": {
       "trigger": "Press 'Outline Mode' button",
@@ -458,7 +489,10 @@
     },
     "control_point_dragging": {
       "component": "Touchable.Circle",
-      "events": ["onStart", "onActive"],
+      "events": [
+        "onStart",
+        "onActive"
+      ],
       "action": "controlPoint.value = { x: event.x, y: event.y }",
       "worklet": true,
       "updates": [
@@ -483,7 +517,6 @@
       "visual_effect": "Full-screen blur overlay appears while pressed"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "main_background": "#efefef (light gray)",
@@ -535,7 +568,6 @@
       }
     }
   },
-
   "performance_optimizations": {
     "skia_rendering": {
       "benefit": "GPU-accelerated path and control point rendering",
@@ -554,7 +586,10 @@
     },
     "worklet_path_calculations": {
       "benefit": "Path geometry calculations run on UI thread",
-      "functions": ["getPathPoints", "PathGeometry methods"],
+      "functions": [
+        "getPathPoints",
+        "PathGeometry methods"
+      ],
       "avoids": "Bridge crossing for intensive calculations"
     },
     "scheduled_updates": {
@@ -567,7 +602,6 @@
       "benefit": "Prevents animation conflicts and ensures smooth transitions"
     }
   },
-
   "mathematical_insights": {
     "cubic_bezier_properties": {
       "control_points": 4,
@@ -596,7 +630,6 @@
       "reason": "Center square on path point (convert center point to top-left)"
     }
   },
-
   "initial_configuration": {
     "control_points": {
       "first": {
@@ -634,7 +667,6 @@
       "square_animation_peak": 40
     }
   },
-
   "use_cases": {
     "primary": [
       "Bezier curve visualization and education",
@@ -678,7 +710,6 @@
       "Interactive data visualizations"
     ]
   },
-
   "known_limitations": {
     "global_animation_state": {
       "issue": "SharedBezierPathSvgString in global-animation-state.ts is unused",
@@ -711,7 +742,6 @@
       "enhancement": "Could make icon prop-configurable"
     }
   },
-
   "potential_improvements": {
     "path_editing": [
       "Multi-segment Bezier paths",
@@ -748,7 +778,6 @@
       "Lazy path point calculation"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -787,7 +816,6 @@
       "barrel_exports": "Clean index.tsx exports"
     }
   },
-
   "key_insights": {
     "path_following_pattern": "Pre-sample path points for smooth interpolation-based animation",
     "skia_gesture_integration": "react-native-skia-gesture enables touch on Canvas elements",
@@ -798,7 +826,6 @@
     "blur_as_feedback": "Blur effects communicate state transitions and focus",
     "spring_transitions": "Spring animations create organic mode switching"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Bezier curve basics",
@@ -824,7 +851,6 @@
       "Real-time path calculations"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "PathGeometry.getTotalLength() accuracy",
@@ -864,7 +890,6 @@
       "Memory usage with long paths"
     ]
   },
-
   "related_concepts": {
     "mathematical": [
       "Parametric curves",
@@ -895,7 +920,6 @@
       "Robot motion planning"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_linear_interpolation": {
       "bezier": "Smooth curves with control over shape",
@@ -918,7 +942,6 @@
       "benefit": "Real-time curve editing and custom paths"
     }
   },
-
   "accessibility_considerations": {
     "current_state": "No accessibility features implemented",
     "recommendations": [
@@ -934,7 +957,6 @@
       "visual_only_feedback": "No audio or haptic feedback"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "Medium (~400 lines total)",
     "dependencies": [
@@ -944,10 +966,11 @@
       "expo-blur (common)",
       "pressto (common)"
     ],
-    "new_dependencies": ["react-native-skia-gesture"],
+    "new_dependencies": [
+      "react-native-skia-gesture"
+    ],
     "estimated_size": "~15-20KB (mostly PathGeometry logic)"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "Full support for all features",
@@ -968,7 +991,6 @@
       "note": "Not officially tested for this animation"
     }
   },
-
   "tags": [
     "bezier-curve",
     "path-animation",
@@ -987,5 +1009,9 @@
     "path-geometry",
     "educational",
     "graphics"
-  ]
+  ],
+  "content_hash": "acba0abdc15d4f2119d188cae522f499d2d59a28d228003f6ec090b619909557",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.287Z",
+  "last_validated": "2025-10-12T09:19:28.288Z"
 }

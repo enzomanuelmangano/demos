@@ -2,7 +2,6 @@
   "animation_name": "Draggable Panel",
   "animation_slug": "draggable-panel",
   "description": "A draggable floating control panel that snaps to screen corners with smooth spring animations. Features collapsible/expandable states with animated transitions between them. Users can select different spring animation presets (Elegant, Springy, Super Springy) to customize the panel's movement behavior.",
-
   "main_features": [
     "Draggable floating panel with pan gesture controls",
     "Automatic corner snapping with intelligent positioning",
@@ -15,7 +14,6 @@
     "Visual spring indicators with unique styles per preset",
     "Responsive to screen dimensions"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main export wrapper with GestureHandlerRootView"
@@ -41,18 +39,19 @@
     "types": {},
     "constants": {}
   },
-
   "core_technologies": [
     "react-native-reanimated",
     "react-native-gesture-handler",
     "pressto",
     "@expo/vector-icons"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View", "Animated.Text"],
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
       "layout_animations": [
         "FadeIn",
         "FadeOut",
@@ -80,7 +79,9 @@
         "GestureDetector",
         "Gesture"
       ],
-      "gestures": ["Pan"],
+      "gestures": [
+        "Pan"
+      ],
       "usage": "Pan gesture for dragging panel across screen with onBegin, onChange, onEnd callbacks"
     },
     "pressto": {
@@ -91,10 +92,12 @@
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "usage": "Settings and close icons",
-      "icons_used": ["Ionicons.settings-sharp", "Ionicons.close"]
+      "icons_used": [
+        "Ionicons.settings-sharp",
+        "Ionicons.close"
+      ]
     }
   },
-
   "animation_techniques": [
     {
       "name": "Pan Gesture Dragging",
@@ -106,7 +109,12 @@
     {
       "name": "Corner Snapping",
       "algorithm": "Euclidean distance to find nearest corner",
-      "corners": ["Top-left", "Top-right", "Bottom-left", "Bottom-right"],
+      "corners": [
+        "Top-left",
+        "Top-right",
+        "Bottom-left",
+        "Bottom-right"
+      ],
       "distance_formula": "sqrt((panelCenterX - cornerCenterX)² + (panelCenterY - cornerCenterY)²)",
       "animation": "withSpring to closest corner position with gesture velocity"
     },
@@ -130,11 +138,16 @@
       "animation_timing": "withTiming(200ms) for selection state"
     }
   ],
-
   "reanimated_patterns": [
     {
       "pattern": "SharedValue State Management",
-      "values": ["translateX", "translateY", "isDraggingPanel", "startX", "startY"],
+      "values": [
+        "translateX",
+        "translateY",
+        "isDraggingPanel",
+        "startX",
+        "startY"
+      ],
       "purpose": "Track panel position and drag state on UI thread"
     },
     {
@@ -144,12 +157,28 @@
     },
     {
       "pattern": "Animated Style Interpolations",
-      "instances": ["panelStyle", "rContentPanelStyle", "animatedStyle", "animatedTextStyle"],
-      "properties": ["transform", "borderRadius", "padding", "borderColor", "backgroundColor", "color"]
+      "instances": [
+        "panelStyle",
+        "rContentPanelStyle",
+        "animatedStyle",
+        "animatedTextStyle"
+      ],
+      "properties": [
+        "transform",
+        "borderRadius",
+        "padding",
+        "borderColor",
+        "backgroundColor",
+        "color"
+      ]
     },
     {
       "pattern": "Worklet Functions",
-      "functions": ["snapToCorner", "isSharedValue", "unwrapAnimatedValue"],
+      "functions": [
+        "snapToCorner",
+        "isSharedValue",
+        "unwrapAnimatedValue"
+      ],
       "marked_with": "'worklet' directive",
       "runs_on": "UI thread"
     },
@@ -160,7 +189,6 @@
       "layout": "LinearTransition.springify().mass(0.3).damping(20).stiffness(250)"
     }
   ],
-
   "performance_optimizations": [
     {
       "name": "Gesture Memoization",
@@ -171,7 +199,13 @@
     {
       "name": "Callback Memoization",
       "pattern": "useCallback for all callbacks",
-      "functions": ["toggleCollapse", "selectSpringType", "snapWithDimensions", "collapsedChildren", "expandedChildren"],
+      "functions": [
+        "toggleCollapse",
+        "selectSpringType",
+        "snapWithDimensions",
+        "collapsedChildren",
+        "expandedChildren"
+      ],
       "benefit": "Stable references prevent child re-renders"
     },
     {
@@ -190,7 +224,6 @@
       "benefit": "No manual position calculations needed"
     }
   ],
-
   "use_cases": [
     "Floating control panels",
     "Draggable debug tools",
@@ -204,7 +237,6 @@
     "Video/audio player controls",
     "Game HUD elements"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with comprehensive types",
@@ -230,7 +262,6 @@
       "Color constants in PanelContent could be extracted to shared constants"
     ]
   },
-
   "known_limitations": [
     {
       "name": "Fixed Screen Margins",
@@ -256,7 +287,11 @@
     },
     {
       "name": "No Accessibility Support",
-      "missing": ["Screen reader labels", "Keyboard navigation", "Reduced motion support"],
+      "missing": [
+        "Screen reader labels",
+        "Keyboard navigation",
+        "Reduced motion support"
+      ],
       "impact": "Not accessible to users with disabilities"
     },
     {
@@ -265,7 +300,6 @@
       "fallback": "Would fall back to system font if missing"
     }
   ],
-
   "potential_improvements": [
     "Double-tap to toggle collapse/expand",
     "Long-press for additional actions",
@@ -288,7 +322,6 @@
     "Theme customization props",
     "Event callbacks (onDragStart, onDragEnd, onSnap)"
   ],
-
   "key_insights": [
     "Render props pattern makes core component infinitely flexible",
     "AnimatedSpringConfig union type allows plain or reactive configs",
@@ -301,7 +334,6 @@
     "Gesture context pattern (startX/Y) prevents panel from jumping to touch point",
     "Layout transitions handle size animations without manual measuring"
   ],
-
   "learning_opportunities": [
     {
       "level": "Beginner",
@@ -343,7 +375,6 @@
       ]
     }
   ],
-
   "tags": [
     "draggable",
     "pan-gesture",
@@ -363,5 +394,9 @@
     "worklets",
     "performance",
     "movable-ui"
-  ]
+  ],
+  "content_hash": "7a8dbd5a5c148a9bf7c4c6f03f9a0ad5e24b01ece7de93523b4928f9d1ccfdd5",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.322Z",
+  "last_validated": "2025-10-12T09:19:28.322Z"
 }

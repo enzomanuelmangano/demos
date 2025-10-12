@@ -2,7 +2,6 @@
   "animation_name": "Image Cropper",
   "animation_slug": "image-cropper",
   "description": "An interactive image cropping component built with Skia Canvas that allows users to select and crop portions of an image. Features a draggable grid with resizable corners, animated expand/collapse controls, and real-time crop preview. Uses FitBox for scaling the cropped region and displays a full-screen modal with the final cropped result.",
-
   "main_features": [
     "Interactive crop grid with drag-to-move functionality",
     "Four corner handles for independent resizing",
@@ -17,7 +16,6 @@
     "Clamped dragging to keep grid within bounds",
     "Generic component supporting any SkImage"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main demo screen with image loading, crop controls, and modal display"
@@ -42,19 +40,30 @@
     },
     "constants": {}
   },
-
   "core_technologies": [
     "@shopify/react-native-skia",
     "react-native-reanimated",
     "react-native-skia-gesture"
   ],
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Image", "Group", "Rect", "Path", "FitBox"],
-      "hooks": ["useImage"],
-      "utilities": ["rect", "clamp", "Skia.Path.Make"],
+      "components": [
+        "Canvas",
+        "Image",
+        "Group",
+        "Rect",
+        "Path",
+        "FitBox"
+      ],
+      "hooks": [
+        "useImage"
+      ],
+      "utilities": [
+        "rect",
+        "clamp",
+        "Skia.Path.Make"
+      ],
       "critical_feature": "Canvas rendering with clipping and FitBox for efficient crop display",
       "performance_reason": "GPU-accelerated image rendering and clipping operations",
       "usage": "Renders image with overlay grid, uses FitBox to scale cropped region to full screen"
@@ -66,26 +75,45 @@
         "useDerivedValue",
         "withTiming"
       ],
-      "utilities": ["clamp (via Skia)"],
+      "utilities": [
+        "clamp (via Skia)"
+      ],
       "critical_feature": "Animated grid position and dimensions with smooth timing transitions",
       "performance_reason": "All crop interactions run on UI thread without bridge crossing"
     },
     "react-native-skia-gesture": {
       "version": "0.4.5-beta.1",
-      "components": ["Touchable.Canvas", "Touchable.Path", "Touchable.Circle"],
-      "hooks": ["useGestureHandler"],
-      "gestures": ["Pan gesture via useGestureHandler"],
+      "components": [
+        "Touchable.Canvas",
+        "Touchable.Path",
+        "Touchable.Circle"
+      ],
+      "hooks": [
+        "useGestureHandler"
+      ],
+      "gestures": [
+        "Pan gesture via useGestureHandler"
+      ],
       "usage": "Enables direct Skia element interactions for dragging grid and resizing corners",
       "critical_feature": "Gesture integration directly on Skia elements without View wrappers"
     },
     "react-native": {
       "version": "0.81.4",
-      "components": ["Modal", "View", "Text", "TouchableOpacity"],
-      "hooks": ["useWindowDimensions", "useRef", "useState", "useCallback"],
+      "components": [
+        "Modal",
+        "View",
+        "Text",
+        "TouchableOpacity"
+      ],
+      "hooks": [
+        "useWindowDimensions",
+        "useRef",
+        "useState",
+        "useCallback"
+      ],
       "usage": "UI structure, modal display, and dimension calculations"
     }
   },
-
   "animation_techniques": [
     {
       "name": "Grid Dragging",
@@ -139,11 +167,15 @@
       "purpose": "Visual composition guide following photography rule of thirds"
     }
   ],
-
   "reanimated_patterns": [
     {
       "pattern": "SharedValue for Position and Dimensions",
-      "values": ["x", "y", "gridWidth", "gridHeight"],
+      "values": [
+        "x",
+        "y",
+        "gridWidth",
+        "gridHeight"
+      ],
       "initial_values": {
         "x": 0,
         "y": 0,
@@ -176,7 +208,11 @@
     },
     {
       "pattern": "useImperativeHandle for Ref API",
-      "exposed_methods": ["expand", "collapse", "getGridRect"],
+      "exposed_methods": [
+        "expand",
+        "collapse",
+        "getGridRect"
+      ],
       "expand": "Animates to full size with withTiming",
       "collapse": "Animates to minimum size with withTiming",
       "getGridRect": "Returns current rect(x, y, width, height) for cropping",
@@ -184,7 +220,6 @@
       "usage": "Parent components control crop via ref.current methods"
     }
   ],
-
   "performance_optimizations": [
     {
       "name": "useMemo for Image Ratio",
@@ -194,8 +229,13 @@
     },
     {
       "name": "useCallback for Handlers",
-      "functions": ["handleCrop", "handleBack"],
-      "dependencies": ["image"],
+      "functions": [
+        "handleCrop",
+        "handleBack"
+      ],
+      "dependencies": [
+        "image"
+      ],
       "benefit": "Stable function references prevent unnecessary re-renders"
     },
     {
@@ -227,7 +267,6 @@
       "benefit": "Path objects reused when values haven't changed"
     }
   ],
-
   "use_cases": [
     "Photo editing apps with crop functionality",
     "Profile picture uploading with crop preview",
@@ -243,7 +282,6 @@
     "Wallpaper customization apps",
     "Avatar/icon creation tools"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with comprehensive type definitions",
@@ -274,7 +312,6 @@
       "Loading state shows empty view instead of spinner/indicator"
     ]
   },
-
   "known_limitations": [
     {
       "name": "Fixed Minimum Crop Size",
@@ -319,7 +356,11 @@
     },
     {
       "name": "No Accessibility Support",
-      "missing": ["Screen reader labels", "Keyboard navigation", "Voice control"],
+      "missing": [
+        "Screen reader labels",
+        "Keyboard navigation",
+        "Voice control"
+      ],
       "impact": "Not accessible to users with disabilities",
       "priority": "High for production apps"
     },
@@ -335,7 +376,6 @@
       "cleanup": "Remove unused navigation code or use it properly"
     }
   ],
-
   "potential_improvements": [
     "Add aspect ratio lock (1:1, 4:3, 16:9, custom)",
     "Implement image rotation (90° increments)",
@@ -371,7 +411,6 @@
     "Error handling for failed image loads",
     "Error handling for invalid dimensions"
   ],
-
   "key_insights": [
     "FitBox eliminates manual calculations for crop preview scaling",
     "Inverted clipping with Group creates perfect overlay without manual masking",
@@ -388,7 +427,6 @@
     "useImage hook handles async loading seamlessly",
     "Worklet-based ref methods enable parent control from UI thread"
   ],
-
   "learning_opportunities": [
     {
       "level": "Beginner",
@@ -434,7 +472,6 @@
       ]
     }
   ],
-
   "gesture_handling_deep_dive": {
     "grid_dragging": {
       "gesture_type": "Pan",
@@ -489,7 +526,6 @@
       "benefit": "Direct Skia element interaction without React Native View layer"
     }
   },
-
   "skia_techniques_deep_dive": {
     "canvas_structure": {
       "layer_1": "Image component (base image layer)",
@@ -535,7 +571,6 @@
       "immutability": "New rect objects created for each state change"
     }
   },
-
   "mathematical_formulas": {
     "image_aspect_ratio": {
       "formula": "imageRatio = image.height() / image.width()",
@@ -570,7 +605,6 @@
       "ensures": "Values always within valid bounds"
     }
   },
-
   "component_api_reference": {
     "ImageCropper": {
       "props": {
@@ -631,7 +665,6 @@
       "styling": "White border, transparent background, white text with letter spacing"
     }
   },
-
   "demo_implementation": {
     "image_source": "Unsplash image (1920x1080 nature photo)",
     "canvas_width": "Screen width (useWindowDimensions)",
@@ -662,7 +695,6 @@
       "presentation_style": "fullScreen"
     }
   },
-
   "comparison_to_alternatives": {
     "vs_react_native_image_crop_picker": {
       "image_cropper": "In-app custom UI, full control over styling and behavior",
@@ -685,7 +717,6 @@
       "trade_off": "Convenience vs performance"
     }
   },
-
   "related_patterns": {
     "image_editing": "Filters, adjustments, stickers, text overlays",
     "drawing_canvas": "Freehand drawing with Skia paths",
@@ -694,7 +725,6 @@
     "masking_tools": "Layer masks, alpha channel editing",
     "comparison_sliders": "Before/after image comparisons"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "accessible": false,
@@ -721,7 +751,6 @@
       "Test with VoiceOver (iOS) and TalkBack (Android)"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Grid renders correctly on load",
@@ -760,7 +789,6 @@
       "Network disconnections during image load"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~400 lines total (component + grid + hook)",
     "dependencies": "Skia, Reanimated, Skia-Gesture (likely already in project)",
@@ -768,7 +796,6 @@
     "estimated_memory": "~5MB for typical 1920x1080 image + UI overhead",
     "image_memory": "Dependent on source image size"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -788,7 +815,6 @@
       "note": "Requires react-native-web configuration"
     }
   },
-
   "tags": [
     "image-cropping",
     "skia",
@@ -810,5 +836,9 @@
     "gpu-rendering",
     "touch-interaction",
     "boundary-clamping"
-  ]
+  ],
+  "content_hash": "94fb49eafe7b2616aad608025206bbf2687cd8bd17736f2fb48963445c684559",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.370Z",
+  "last_validated": "2025-10-12T09:19:28.370Z"
 }

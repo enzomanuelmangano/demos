@@ -2,7 +2,6 @@
   "animation_name": "Shared Transition",
   "animation_slug": "shared-transition",
   "description": "A native stack navigation implementation showcasing shared element transitions between screens. Features a masonry grid layout on the home screen with dynamic image heights, and smooth fade transitions to a detail screen. Utilizes React Navigation's native stack navigator with fade animations and expo-image for optimized image rendering with memory-disk caching. Demonstrates hero tag implementation (currently disabled) for future shared element transitions between screens.",
-
   "main_features": [
     "React Navigation native stack implementation",
     "Masonry grid layout with 2 columns using @react-native-seoul/masonry-list",
@@ -15,7 +14,6 @@
     "Animated text with FadeIn/FadeOut on details screen",
     "Responsive image sizing based on screen dimensions"
   ],
-
   "file_structure": {
     "index.tsx": "Main navigation component with native stack navigator setup",
     "screens/home/index.tsx": "Home screen with masonry grid layout of images",
@@ -26,47 +24,66 @@
     "typings/index.ts": "TypeScript type definitions for navigation params and props",
     "assets/images/": "Local image assets (10 JPG files, ~300-470KB each)"
   },
-
   "core_technologies": {
     "navigation": "@react-navigation/native-stack",
     "animations": "react-native-reanimated",
     "images": "expo-image",
     "layout": "@react-native-seoul/masonry-list"
   },
-
   "packages_and_versions": {
     "react-navigation/native-stack": {
       "version": "^7.3.16",
-      "components": ["createNativeStackNavigator", "Stack.Navigator", "Stack.Screen"],
-      "hooks": ["useNavigation"],
+      "components": [
+        "createNativeStackNavigator",
+        "Stack.Navigator",
+        "Stack.Screen"
+      ],
+      "hooks": [
+        "useNavigation"
+      ],
       "critical_feature": "Native stack navigation with configurable transitions"
     },
     "react-navigation/native": {
       "version": "^7.1.8",
-      "hooks": ["useNavigation"],
-      "types": ["NativeStackScreenProps"],
+      "hooks": [
+        "useNavigation"
+      ],
+      "types": [
+        "NativeStackScreenProps"
+      ],
       "usage": "Navigation state management and hooks"
     },
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.Text", "Animated.createAnimatedComponent"],
-      "layout_animations": ["FadeIn", "FadeOut"],
+      "components": [
+        "Animated.Text",
+        "Animated.createAnimatedComponent"
+      ],
+      "layout_animations": [
+        "FadeIn",
+        "FadeOut"
+      ],
       "usage": "Text animations on details screen and AnimatedImage component creation"
     },
     "expo-image": {
       "version": "~3.0.8",
       "component": "Image",
-      "features": ["cachePolicy: 'memory-disk'"],
+      "features": [
+        "cachePolicy: 'memory-disk'"
+      ],
       "usage": "Optimized image rendering with memory and disk caching for all grid and detail images"
     },
     "@react-native-seoul/masonry-list": {
       "version": "^1.4.2",
       "component": "MasonryList",
-      "features": ["numColumns", "renderItem", "contentContainerStyle"],
+      "features": [
+        "numColumns",
+        "renderItem",
+        "contentContainerStyle"
+      ],
       "usage": "Pinterest-style masonry grid layout with dynamic item heights"
     }
   },
-
   "animation_techniques": {
     "screen_transition": {
       "pattern": "Native stack fade transition",
@@ -110,7 +127,6 @@
       "cycling": "Repeats every 3 items for visual variety"
     }
   },
-
   "reanimated_patterns": {
     "animated_component_creation": {
       "pattern": "Animated.createAnimatedComponent(Image)",
@@ -122,14 +138,23 @@
     "layout_animations": {
       "FadeIn": {
         "instances": 2,
-        "locations": ["Title text", "Paragraph text"],
-        "delays": ["400ms", "600ms"],
+        "locations": [
+          "Title text",
+          "Paragraph text"
+        ],
+        "delays": [
+          "400ms",
+          "600ms"
+        ],
         "pattern": "FadeIn.delay(ms)",
         "effect": "Sequential text appearance on details screen"
       },
       "FadeOut": {
         "instances": 2,
-        "locations": ["Title text", "Paragraph text"],
+        "locations": [
+          "Title text",
+          "Paragraph text"
+        ],
         "pattern": "exiting={FadeOut}",
         "effect": "Fade out when navigating away from details screen"
       }
@@ -138,12 +163,16 @@
       "AnimatedImage": {
         "created_from": "Animated.createAnimatedComponent(Image)",
         "file": "components/animated-image.tsx",
-        "props_supported": ["sharedTransitionTag (future)", "cachePolicy", "source", "style"],
+        "props_supported": [
+          "sharedTransitionTag (future)",
+          "cachePolicy",
+          "source",
+          "style"
+        ],
         "benefit": "Single reusable component for all images with animation support"
       }
     }
   },
-
   "navigation_architecture": {
     "stack_configuration": {
       "navigator": "createNativeStackNavigator<RootStackParamsList>()",
@@ -193,7 +222,6 @@
       "benefit": "Type-safe screen name references, no string literals"
     }
   },
-
   "component_architecture": {
     "shared_transitions": {
       "type": "Main navigation wrapper",
@@ -242,7 +270,6 @@
       ]
     }
   },
-
   "layout_and_positioning": {
     "masonry_grid": {
       "numColumns": 2,
@@ -287,7 +314,6 @@
       }
     }
   },
-
   "visual_design": {
     "home_screen": {
       "layout": "Masonry grid (2 columns)",
@@ -317,7 +343,6 @@
       "performance": "No network requests, fast image loading"
     }
   },
-
   "data_structure": {
     "images_array": {
       "type": "require() references",
@@ -347,13 +372,16 @@
         "heroTag": {
           "type": "string",
           "pattern": "'heroTag' + index",
-          "examples": ["heroTag0", "heroTag1", "heroTag2"],
+          "examples": [
+            "heroTag0",
+            "heroTag1",
+            "heroTag2"
+          ],
           "purpose": "Unique identifier for shared element transitions (future)"
         }
       }
     }
   },
-
   "performance_optimizations": {
     "memo_components": {
       "SharedTransitions": "Main component memoized",
@@ -384,7 +412,6 @@
       "improvement": "Could type as ImageSourcePropType or ReturnType<typeof require>"
     }
   },
-
   "interaction_pattern": {
     "home_screen_tap": {
       "trigger": "TouchableOpacity onPress",
@@ -408,7 +435,6 @@
       }
     }
   },
-
   "use_cases": {
     "primary": [
       "Image galleries with detail views",
@@ -439,7 +465,6 @@
       "Etsy (products grid → product details)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -450,7 +475,9 @@
         "MainStackNavigationProp",
         "DetailsRouteProp"
       ],
-      "enums": ["ScreenNames (const enum)"],
+      "enums": [
+        "ScreenNames (const enum)"
+      ],
       "generics": "Navigation types use generics for type safety",
       "any_usage": "One instance on source type (with :) comment)"
     },
@@ -495,7 +522,6 @@
       "Could extract image dimension calculations to constants"
     ]
   },
-
   "known_limitations": {
     "shared_transitions_disabled": {
       "issue": "sharedTransitionTag prop commented out",
@@ -535,7 +561,6 @@
       "improvement": "Could add staggered FadeIn for grid items"
     }
   },
-
   "potential_improvements": {
     "shared_element_transitions": [
       "Enable sharedTransitionTag when Reanimated supports it",
@@ -599,7 +624,6 @@
       "User-friendly error messages"
     ]
   },
-
   "key_insights": {
     "native_stack_benefits": "Using native stack provides better performance than JS-based stacks",
     "masonry_library": "Using dedicated masonry library is simpler than custom FlexBox implementation",
@@ -612,7 +636,6 @@
     "component_separation": "Separate AnimatedImage component allows easy future enhancement",
     "fade_transition_choice": "Fade is universal transition that works well without shared elements"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "React Navigation basics (stack navigator)",
@@ -642,7 +665,6 @@
       "Migration strategies (disabled features with TODOs)"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Masonry grid renders with correct column count",
@@ -688,7 +710,6 @@
       "Text rendering and animations"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "images": "No alt text or accessibility labels",
@@ -720,7 +741,6 @@
       "focus_management": "useFocusEffect to manage focus on screen enter"
     }
   },
-
   "comparison_to_similar_patterns": {
     "vs_shared_element_transition": {
       "current": "Fade transition between screens",
@@ -744,7 +764,6 @@
       "advantage": "Masonry creates more interesting visual layout"
     }
   },
-
   "related_patterns": {
     "navigation_patterns": [
       "Stack navigation",
@@ -768,7 +787,6 @@
       "Screen transitions"
     ]
   },
-
   "real_world_inspiration": {
     "pinterest": "Masonry grid layout with detail views",
     "instagram": "Profile grid → post detail navigation",
@@ -776,7 +794,6 @@
     "google_photos": "Grid view → full screen photo with info",
     "airbnb": "Listing cards → listing details"
   },
-
   "bundle_size_impact": {
     "code_size": "~150 lines total (index: 28, home: 76, details: 73, components: 4, constants: 20, types: 24)",
     "image_assets": "~3MB (10 JPG files in bundle)",
@@ -785,7 +802,6 @@
     "optimization_potential": "Images could be optimized/compressed, or moved to remote CDN",
     "estimated_code_impact": "< 10KB (code only, excluding images)"
   },
-
   "platform_considerations": {
     "ios": {
       "navigation": "Native UINavigationController",
@@ -808,7 +824,6 @@
       "note": "Masonry library may need web-specific testing"
     }
   },
-
   "migration_notes": {
     "shared_transition_readiness": {
       "status": "Code ready, feature disabled",
@@ -827,7 +842,6 @@
       "timeline": "TODO comment suggests waiting for future version"
     }
   },
-
   "tags": [
     "navigation",
     "stack-navigator",
@@ -847,5 +861,9 @@
     "screen-transition",
     "native-stack",
     "typescript"
-  ]
+  ],
+  "content_hash": "996af433e67fd9fa006de4985e61f434be020233c1d277e2bb0f105e3f4952ee",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.431Z",
+  "last_validated": "2025-10-12T09:19:28.431Z"
 }

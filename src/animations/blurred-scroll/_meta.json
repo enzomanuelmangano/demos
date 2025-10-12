@@ -2,7 +2,6 @@
   "animation_name": "Blurred Scroll",
   "animation_slug": "blurred-scroll",
   "description": "A performant scrollable list featuring dynamic blur effects and 3D transforms rendered via Skia. Items blur and rotate when scrolling away from the center viewport, with smooth scaling animations and gradient-filled rounded rectangles.",
-
   "main_features": [
     "Dynamic blur effects based on scroll position",
     "3D rotation transforms (rotateX)",
@@ -15,18 +14,15 @@
     "LinearTransition layout animations",
     "FadeIn entrance animation"
   ],
-
   "file_structure": {
     "index.tsx": "Main BlurredScroll component with FlatList",
     "components/BlurredItem.tsx": "Individual list item with Skia rendering and blur effects"
   },
-
   "core_technologies": {
     "rendering": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "list": "Animated.FlatList"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -37,7 +33,11 @@
         "LinearGradient",
         "BlurMask"
       ],
-      "utilities": ["interpolate", "Extrapolate", "vec"],
+      "utilities": [
+        "interpolate",
+        "Extrapolate",
+        "vec"
+      ],
       "usage": "GPU-accelerated rendering with blur effects and gradients"
     },
     "react-native-reanimated": {
@@ -49,12 +49,17 @@
         "useAnimatedStyle",
         "interpolate"
       ],
-      "components": ["Animated.FlatList", "Animated.View"],
-      "layout_animations": ["FadeIn", "LinearTransition"],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View"
+      ],
+      "layout_animations": [
+        "FadeIn",
+        "LinearTransition"
+      ],
       "critical_feature": "useAnimatedScrollHandler runs scroll handling on UI thread"
     }
   },
-
   "animation_techniques": {
     "blur_interpolation": {
       "input_range": "[(i-1)*height, i*height, (i+1)*height, (i+2)*height]",
@@ -81,7 +86,10 @@
       "component": "LinearGradient",
       "start": "{ x: 0, y: 0 }",
       "end": "{ x: width, y: height }",
-      "colors": ["#9459F4", "#3411E4"],
+      "colors": [
+        "#9459F4",
+        "#3411E4"
+      ],
       "effect": "Purple-to-blue diagonal gradient on cards",
       "aesthetic": "Vibrant, modern gradient"
     },
@@ -91,7 +99,6 @@
       "effect": "Smooth entrance and layout changes"
     }
   },
-
   "reanimated_patterns": {
     "useAnimatedScrollHandler": {
       "pattern": "Most efficient way to handle scroll in Reanimated",
@@ -113,25 +120,35 @@
     "derived_values": [
       {
         "name": "blur (in BlurredItem)",
-        "dependencies": ["contentOffsetY", "inputRange"],
+        "dependencies": [
+          "contentOffsetY",
+          "inputRange"
+        ],
         "calculation": "useDerivedValue(() => interpolate(contentOffsetY.value, inputRange, blurOutputRange, Extrapolate.CLAMP))",
         "purpose": "Dynamic blur based on scroll position"
       },
       {
         "name": "transformGroup (in BlurredItem)",
-        "dependencies": ["contentOffsetY", "inputRange"],
+        "dependencies": [
+          "contentOffsetY",
+          "inputRange"
+        ],
         "calculation": "useDerivedValue(() => [{ scale: interpolate(...) }])",
         "purpose": "Dynamic scale transformation"
       }
     ],
     "animated_style": {
       "name": "rContainerStyle",
-      "properties": ["transform: [{ rotate }]"],
+      "properties": [
+        "transform: [{ rotate }]"
+      ],
       "interpolation": "rotateX interpolation in useAnimatedStyle",
-      "dependencies": ["inputRange", "contentOffsetY"]
+      "dependencies": [
+        "inputRange",
+        "contentOffsetY"
+      ]
     }
   },
-
   "skia_rendering": {
     "canvas": {
       "width": "windowWidth",
@@ -158,7 +175,10 @@
       "component": "LinearGradient",
       "start": "{ x: 0, y: 0 } (top-left)",
       "end": "{ x: width, y: height } (bottom-right)",
-      "colors": ["#9459F4 (purple)", "#3411E4 (blue)"],
+      "colors": [
+        "#9459F4 (purple)",
+        "#3411E4 (blue)"
+      ],
       "effect": "Diagonal gradient across card"
     },
     "blur_mask": {
@@ -169,7 +189,6 @@
       "effect": "Dynamic blur applied to entire Group"
     }
   },
-
   "mathematical_algorithms": {
     "input_range_calculation": {
       "formula": "[(index-1)*height, index*height, (index+1)*height, (index+2)*height]",
@@ -196,8 +215,8 @@
     },
     "scale_range": {
       "min": 0.8,
-      "max": 1.0,
-      "at_center": 1.0,
+      "max": 1,
+      "at_center": 1,
       "away_from_center": 0.8,
       "effect": "20% size reduction when not centered"
     },
@@ -207,7 +226,6 @@
       "responsive": true
     }
   },
-
   "flatlist_configuration": {
     "layout": {
       "component": "Animated.FlatList",
@@ -235,7 +253,6 @@
       "items": "Array of indices [0, 1, 2, ..., 9]"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#000 (black)",
@@ -262,7 +279,6 @@
       "Gradient (visual interest)"
     ]
   },
-
   "performance_optimizations": {
     "getItemLayout": {
       "purpose": "Pre-calculates item positions",
@@ -274,7 +290,10 @@
       "fps": "60fps scroll performance"
     },
     "useDerivedValue": {
-      "usage": ["blur calculation", "transform calculation"],
+      "usage": [
+        "blur calculation",
+        "transform calculation"
+      ],
       "benefit": "Recalculates only when dependencies change",
       "runs_on": "UI thread"
     },
@@ -294,7 +313,6 @@
       "performance": "Avoids unnecessary calculations"
     }
   },
-
   "component_props": {
     "BlurredItem": {
       "index": {
@@ -331,7 +349,6 @@
       }
     }
   },
-
   "use_cases": {
     "primary": [
       "Image galleries with depth effect",
@@ -354,7 +371,6 @@
       "Pinterest board grids"
     ]
   },
-
   "customization_options": {
     "padding": {
       "horizontal": "Configurable via horizontalPadding prop",
@@ -362,7 +378,10 @@
       "default": "120px each"
     },
     "gradient_colors": {
-      "current": ["#9459F4", "#3411E4"],
+      "current": [
+        "#9459F4",
+        "#3411E4"
+      ],
       "customizable": "Edit colors in BlurredItem component",
       "enhancement": "Could be exposed as props"
     },
@@ -392,12 +411,15 @@
       "range": "0-50px typical"
     }
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
-    "type_definitions": ["BlurredItemProps"],
+    "type_definitions": [
+      "BlurredItemProps"
+    ],
     "imports": {
-      "types": ["SharedValue"],
+      "types": [
+        "SharedValue"
+      ],
       "explicit": true
     },
     "constants": {
@@ -415,7 +437,6 @@
       "animated_styles": "rContainerStyle (r prefix for reanimated)"
     }
   },
-
   "known_limitations": {
     "fixed_item_count": {
       "issue": "Hardcoded to 10 items",
@@ -443,7 +464,6 @@
       "consideration": "Test on target devices"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Support for custom content (images, text, components)",
@@ -475,7 +495,6 @@
       "Keyboard navigation"
     ]
   },
-
   "key_insights": {
     "useAnimatedScrollHandler_critical": "Essential for 60fps scroll performance on UI thread",
     "blur_optimization": "Minimal blur at center saves GPU cycles while maintaining visual effect",
@@ -486,7 +505,6 @@
     "extrapolate_clamp": "Prevents interpolation values from exceeding intended ranges",
     "input_range_strategy": "Four-point input range creates smooth transition zones"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList basics",
@@ -512,7 +530,6 @@
       "Worklet-based scroll handling"
     ]
   },
-
   "comparison_to_similar_animations": {
     "vs_3d_scroll_transition": {
       "similarity": "Both use 3D rotation and scroll-based effects",
@@ -530,7 +547,6 @@
       "effect": "Creates focus/defocus effect vs depth layers"
     }
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread",
@@ -544,7 +560,6 @@
     ],
     "device_considerations": "May need blur reduction on budget devices"
   },
-
   "accessibility_considerations": {
     "current_state": "No accessibility considerations implemented",
     "recommendations": [
@@ -556,12 +571,17 @@
       "Provide non-visual focus indicators"
     ],
     "reduced_motion": {
-      "should_disable": ["Blur effects", "Rotation", "Scale animations"],
-      "should_keep": ["Basic scroll functionality"],
+      "should_disable": [
+        "Blur effects",
+        "Rotation",
+        "Scale animations"
+      ],
+      "should_keep": [
+        "Basic scroll functionality"
+      ],
       "implementation": "Check AccessibilityInfo.isReduceMotionEnabled"
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify blur effects apply correctly at different scroll positions",
@@ -592,7 +612,6 @@
       "Various device sizes"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~115 lines total)",
     "dependencies": "Skia and Reanimated (likely already in project)",
@@ -600,7 +619,6 @@
     "estimated_memory": "< 5MB (depends on screen size)",
     "optimization": "Could use windowSize for FlatList to reduce memory"
   },
-
   "tags": [
     "blur-effects",
     "scroll-animation",
@@ -615,5 +633,9 @@
     "depth-effect",
     "focus-effect",
     "carousel"
-  ]
+  ],
+  "content_hash": "f518b532e1f72536426beaa26d3c9c826ace157076251ac3cef237105cdf87ce",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.292Z",
+  "last_validated": "2025-10-12T09:19:28.292Z"
 }

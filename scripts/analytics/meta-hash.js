@@ -7,16 +7,16 @@
  * It helps detect when animation code changes but metadata is stale.
  *
  * Usage:
- *   node scripts/meta-hash.js generate [animation-slug]  # Generate/update hashes
- *   node scripts/meta-hash.js validate [animation-slug]  # Check for stale metadata
- *   node scripts/meta-hash.js list                       # List all animations with status
+ *   node scripts/analytics/meta-hash.js generate [animation-slug]  # Generate/update hashes
+ *   node scripts/analytics/meta-hash.js validate [animation-slug]  # Check for stale metadata
+ *   node scripts/analytics/meta-hash.js list                       # List all animations with status
  */
 
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const ANIMATIONS_DIR = path.join(__dirname, '..', 'src', 'animations');
+const ANIMATIONS_DIR = path.join(__dirname, '..', '..', 'src', 'animations');
 const HASH_ALGORITHM = 'sha256';
 
 // ANSI colors for terminal output
@@ -479,4 +479,3 @@ module.exports = {
   validateHash,
   generateHash,
 };
-

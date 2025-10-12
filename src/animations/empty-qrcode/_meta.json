@@ -2,7 +2,6 @@
   "animation_name": "Empty QR Code",
   "animation_slug": "empty-qrcode",
   "description": "An interactive QR code component that transforms between a colorful animated logo placeholder and a functional QR code. Features rotating letter animations with radial gradients, smooth spring-based scale and rotation transitions, and a pressable toggle interaction. The component cycles through 'YOUR LOGO' letters with vibrant color transitions, then reveals a scannable QR code on press.",
-
   "main_features": [
     "Toggle between logo animation and QR code display",
     "Cycling letter animation with time interval (650ms per letter)",
@@ -17,21 +16,18 @@
     "Pressable interaction with PressableScale component",
     "Ref-based imperative API for external control"
   ],
-
   "file_structure": {
     "index.tsx": "Main EmptyQRCode component with PressableScale wrapper and toggle interaction",
     "components/qrcode-share/index.tsx": "QRCodeShare component managing animations, rendering canvas with gradients and QR code",
     "components/qrcode-share/hooks/use-active-qrcode.ts": "Custom hook for QR code visibility state and transform animations",
     "components/qrcode-share/hooks/use-active-letter.ts": "Custom hook managing letter cycling animation and color transitions"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "graphics": "@shopify/react-native-skia",
     "qr_code": "react-native-qrcode-skia",
     "interactions": "pressto"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -44,7 +40,9 @@
         "withSpring",
         "withTiming"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "Spring animations for smooth scale/rotation and timing for opacity transitions"
     },
     "@shopify/react-native-skia": {
@@ -56,7 +54,9 @@
         "Text",
         "vec"
       ],
-      "hooks": ["useFont"],
+      "hooks": [
+        "useFont"
+      ],
       "usage": "Rendering radial gradients, text, and visual effects on UI thread",
       "benefit": "High-performance canvas rendering with GPU acceleration"
     },
@@ -78,13 +78,21 @@
       "usage": "Wrapper providing press scale animation and toggle functionality"
     }
   },
-
   "animation_techniques": {
     "letter_cycling": {
       "pattern": "Interval-based letter index increment with modulo",
       "implementation": "setInterval(() => activeLetterIndex.value = (activeLetterIndex.value + 1) % Math.min(letters.length, colors.length), 650)",
       "interval": "650ms per letter",
-      "default_letters": ["Y", "O", "U", "R", "L", "O", "G", "O"],
+      "default_letters": [
+        "Y",
+        "O",
+        "U",
+        "R",
+        "L",
+        "O",
+        "G",
+        "O"
+      ],
       "synchronization": "Letter and color arrays synchronized via shared index",
       "cleanup": "clearInterval on component unmount",
       "effect": "Letters cycle continuously creating animated logo effect"
@@ -95,14 +103,38 @@
       "radius": "qrCodeSize / 2",
       "colors": "useDerivedValue(() => colors[activeLetterIndex.value])",
       "default_colors": [
-        ["#22AAA1", "#4CE0D2"],
-        ["#E55934", "#FA7921"],
-        ["#F2C94C", "#F2C94C"],
-        ["#3C40C6", "#575FCF"],
-        ["#2F80ED", "#56CCF2"],
-        ["#F7A072", "#FFD56D"],
-        ["#3C40C6", "#575FCF"],
-        ["#2F80ED", "#56CCF2"]
+        [
+          "#22AAA1",
+          "#4CE0D2"
+        ],
+        [
+          "#E55934",
+          "#FA7921"
+        ],
+        [
+          "#F2C94C",
+          "#F2C94C"
+        ],
+        [
+          "#3C40C6",
+          "#575FCF"
+        ],
+        [
+          "#2F80ED",
+          "#56CCF2"
+        ],
+        [
+          "#F7A072",
+          "#FFD56D"
+        ],
+        [
+          "#3C40C6",
+          "#575FCF"
+        ],
+        [
+          "#2F80ED",
+          "#56CCF2"
+        ]
       ],
       "effect": "Smooth color transitions as letters change"
     },
@@ -137,10 +169,13 @@
       "purpose": "Center text horizontally within QR code container",
       "fallback": "-100px if font not loaded",
       "y_position": "fontSize / 3 + qrCodeSize / 2 (vertical centering with baseline adjustment)",
-      "dependencies": ["font", "activeLetter", "qrCodeSize"]
+      "dependencies": [
+        "font",
+        "activeLetter",
+        "qrCodeSize"
+      ]
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -149,7 +184,11 @@
         "initial": false,
         "scope": "useActiveQRCode hook",
         "updates": "toggleQRCodeVisibility callback",
-        "drives": ["scale animation", "rotation animation", "opacity animation"]
+        "drives": [
+          "scale animation",
+          "rotation animation",
+          "opacity animation"
+        ]
       },
       {
         "name": "activeLetterIndex",
@@ -157,7 +196,10 @@
         "initial": 0,
         "scope": "useActiveLetterAnimation hook",
         "updates": "setInterval every 650ms",
-        "drives": ["activeLetter derived value", "activeColors derived value"]
+        "drives": [
+          "activeLetter derived value",
+          "activeColors derived value"
+        ]
       }
     ],
     "derived_values": [
@@ -165,7 +207,9 @@
         "name": "activeLetter",
         "scope": "useActiveLetterAnimation hook",
         "calculation": "letters[activeLetterIndex.value]",
-        "dependencies": ["letters"],
+        "dependencies": [
+          "letters"
+        ],
         "purpose": "Current letter to display",
         "output_type": "string"
       },
@@ -173,7 +217,9 @@
         "name": "activeColors",
         "scope": "useActiveLetterAnimation hook",
         "calculation": "colors[activeLetterIndex.value]",
-        "dependencies": ["colors"],
+        "dependencies": [
+          "colors"
+        ],
         "purpose": "Current color pair for gradient",
         "output_type": "[string, string]"
       },
@@ -181,7 +227,10 @@
         "name": "letterX",
         "scope": "QRCodeShare component",
         "calculation": "font ? -font.measureText(activeLetter.value).width / 2 + qrCodeSize / 2 : -100",
-        "dependencies": ["font", "qrCodeSize"],
+        "dependencies": [
+          "font",
+          "qrCodeSize"
+        ],
         "purpose": "Horizontal position for centered text rendering"
       }
     ],
@@ -231,7 +280,6 @@
       }
     ]
   },
-
   "skia_rendering": {
     "canvas_structure": [
       {
@@ -280,7 +328,6 @@
       "background": "#111 (dark for contrast with white QR code)"
     }
   },
-
   "component_architecture": {
     "EmptyQRCode": {
       "type": "Main demo component",
@@ -327,7 +374,6 @@
       "implementation": "useImperativeHandle exposes toggle method"
     }
   },
-
   "visual_design": {
     "layout": {
       "container": "Centered vertically in screen",
@@ -350,42 +396,66 @@
     "gradient_colors": [
       {
         "index": 0,
-        "colors": ["#22AAA1", "#4CE0D2"],
+        "colors": [
+          "#22AAA1",
+          "#4CE0D2"
+        ],
         "description": "Teal to cyan"
       },
       {
         "index": 1,
-        "colors": ["#E55934", "#FA7921"],
+        "colors": [
+          "#E55934",
+          "#FA7921"
+        ],
         "description": "Red-orange to bright orange"
       },
       {
         "index": 2,
-        "colors": ["#F2C94C", "#F2C94C"],
+        "colors": [
+          "#F2C94C",
+          "#F2C94C"
+        ],
         "description": "Yellow (solid, no gradient)"
       },
       {
         "index": 3,
-        "colors": ["#3C40C6", "#575FCF"],
+        "colors": [
+          "#3C40C6",
+          "#575FCF"
+        ],
         "description": "Deep blue to light purple-blue"
       },
       {
         "index": 4,
-        "colors": ["#2F80ED", "#56CCF2"],
+        "colors": [
+          "#2F80ED",
+          "#56CCF2"
+        ],
         "description": "Blue to light cyan"
       },
       {
         "index": 5,
-        "colors": ["#F7A072", "#FFD56D"],
+        "colors": [
+          "#F7A072",
+          "#FFD56D"
+        ],
         "description": "Coral to yellow"
       },
       {
         "index": 6,
-        "colors": ["#3C40C6", "#575FCF"],
+        "colors": [
+          "#3C40C6",
+          "#575FCF"
+        ],
         "description": "Deep blue to light purple-blue (repeat)"
       },
       {
         "index": 7,
-        "colors": ["#2F80ED", "#56CCF2"],
+        "colors": [
+          "#2F80ED",
+          "#56CCF2"
+        ],
         "description": "Blue to light cyan (repeat)"
       }
     ],
@@ -402,7 +472,6 @@
       "border_radius": "50px (continuous curve on iOS)"
     }
   },
-
   "interaction_patterns": {
     "toggle_interaction": {
       "trigger": "Press on PressableScale container",
@@ -429,19 +498,25 @@
       "accessibility": "Provides visual feedback for interaction"
     }
   },
-
   "state_management": {
     "animation_state": {
       "showQRCode": {
         "type": "SharedValue<boolean>",
         "initial": false,
-        "controls": ["Scale", "Rotation", "Logo opacity"],
+        "controls": [
+          "Scale",
+          "Rotation",
+          "Logo opacity"
+        ],
         "toggle_method": "toggleQRCodeVisibility callback"
       },
       "activeLetterIndex": {
         "type": "SharedValue<number>",
         "initial": 0,
-        "controls": ["Letter display", "Gradient colors"],
+        "controls": [
+          "Letter display",
+          "Gradient colors"
+        ],
         "update_mechanism": "setInterval with 650ms interval"
       }
     },
@@ -453,7 +528,6 @@
       }
     }
   },
-
   "performance_optimizations": {
     "memo_usage": {
       "EmptyQRCode": "memo() prevents re-renders when parent updates",
@@ -480,7 +554,6 @@
       "fallback": "letterX returns -100 (off-screen) if font not ready"
     }
   },
-
   "qr_code_configuration": {
     "default_url": "https://reactiive.io/demos",
     "error_correction_level": {
@@ -503,7 +576,6 @@
       "purpose": "Provide padding/safe zone around QR code"
     }
   },
-
   "use_cases": {
     "primary": [
       "Empty state for profile QR codes (replace with user QR when available)",
@@ -529,7 +601,6 @@
       "Custom fonts for brand consistency"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -571,7 +642,6 @@
       "Skia for high-performance rendering"
     ]
   },
-
   "known_limitations": {
     "font_dependency": {
       "issue": "Requires SF-Pro-Rounded-Bold.otf font file",
@@ -605,7 +675,6 @@
       "improvement": "Could add prop validation or error handling"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Auto-toggle after N seconds of display",
@@ -656,7 +725,6 @@
       "Performance benchmarks"
     ]
   },
-
   "key_insights": {
     "skia_performance": "Skia Canvas enables GPU-accelerated rendering of gradients and text on UI thread",
     "letter_cycling_simplicity": "Modulo-based index cycling creates infinite loop without complex state",
@@ -669,7 +737,6 @@
     "error_correction": "High error correction level (H) ensures QR code remains functional with partial damage",
     "layer_stacking": "Absolute positioned Canvas overlay creates seamless transition between states"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia Canvas usage",
@@ -700,7 +767,6 @@
       "Cleanup patterns for intervals in custom hooks"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_static_qr_code": {
       "static": "Plain QR code display",
@@ -718,7 +784,6 @@
       "benefit": "Cleaner UI, reveals only when needed, adds element of surprise"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -741,7 +806,6 @@
       ]
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Letter cycling animation smoothness",
@@ -785,7 +849,6 @@
       "Multiple instances on screen"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -804,7 +867,6 @@
       "Provide text alternative for QR code URL"
     ]
   },
-
   "bundle_size_impact": {
     "code_size": "~230 lines total (main: 35, QRCodeShare: 127, hooks: ~45)",
     "dependencies": {
@@ -816,14 +878,12 @@
     "runtime_memory": "Minimal - few SharedValues, single Canvas, small letter array",
     "estimated_impact": "< 10KB code (excluding shared dependencies and font)"
   },
-
   "inspirations_and_references": {
     "design_pattern": "Common empty state pattern with branded placeholder",
     "animation_style": "Modern iOS-style spring animations",
     "qr_integration": "Practical blend of branding and utility",
     "gradient_animations": "Similar to loading skeletons and splash screens"
   },
-
   "tags": [
     "qr-code",
     "skia",
@@ -843,5 +903,9 @@
     "text-measurement",
     "error-correction",
     "interactive-qr"
-  ]
+  ],
+  "content_hash": "4b7115f8e0575313a825a28a6493869ae98302447ba8073c73714707dc444deb",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.331Z",
+  "last_validated": "2025-10-12T09:19:28.331Z"
 }

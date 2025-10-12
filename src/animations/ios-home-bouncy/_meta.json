@@ -2,7 +2,6 @@
   "animation_name": "iOS Home Bouncy",
   "animation_slug": "ios-home-bouncy",
   "description": "A sophisticated recreation of iOS home screen's bouncy app icon animation with interactive spring customization. Features a radial scale animation that emanates from the screen center, with icons scaling up dramatically then settling back. Includes a pull-to-dismiss modal with real-time spring parameter controls (mass, damping, stiffness) for both opening and closing animations. Uses complex transform matrices with center-based scaling for authentic iOS-style physics.",
-
   "main_features": [
     "iOS-inspired radial bouncy animation for app grid",
     "Center-based scale transformation with distance interpolation",
@@ -20,7 +19,6 @@
     "Distance-based scale interpolation from screen center",
     "Diagonal distance calculation for normalization"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main application wrapper with modal state management"
@@ -51,7 +49,6 @@
       "animations/bouncy.ts": "Core animation logic with shared values and spring configs"
     }
   },
-
   "core_technologies": [
     "react-native-reanimated",
     "react-native-gesture-handler",
@@ -60,7 +57,6 @@
     "expo-blur",
     "react-native-redash"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -146,7 +142,6 @@
       "critical_feature": "UI thread text rendering for smooth value display"
     }
   },
-
   "animation_techniques": [
     {
       "name": "Center-based scale transformation",
@@ -283,7 +278,6 @@
       "purpose": "Visual feedback for tab selection"
     }
   ],
-
   "reanimated_patterns": [
     {
       "type": "makeMutable",
@@ -322,11 +316,10 @@
       "mutable": true
     },
     {
-      "type": "useSharedValue",
+      "type": "MeasuredDimensions | null",
       "name": "dimensions",
       "scope": "BouncyView component",
       "initial_value": "null",
-      "type": "MeasuredDimensions | null",
       "purpose": "Store measured element position and size for transform calculations",
       "updated_via": "measure(aRef) on UI thread"
     },
@@ -335,7 +328,10 @@
       "name": "rStyle",
       "scope": "BouncyView component",
       "calculation": "Five-step transform matrix for center-based scaling",
-      "dependencies": ["dimensions", "BouncyProgressShared"],
+      "dependencies": [
+        "dimensions",
+        "BouncyProgressShared"
+      ],
       "purpose": "Apply animated scale transformation to each app icon",
       "complexity": "High - complex multi-step transform with distance calculation"
     },
@@ -351,7 +347,11 @@
       "name": "translateX (slider)",
       "scope": "SpringConfigSlider component",
       "calculation": "Convert value to slider position: ((value - min) / (max - min)) * (width - thumbSize)",
-      "dependencies": ["valueSharedValue", "minimumValue", "maximumValue"],
+      "dependencies": [
+        "valueSharedValue",
+        "minimumValue",
+        "maximumValue"
+      ],
       "purpose": "Calculate thumb position from current value"
     },
     {
@@ -382,7 +382,9 @@
       "name": "containerStyle (modal)",
       "scope": "PullToDismissGesture component",
       "calculation": "Opacity fade and translateY based on pull distance",
-      "dependencies": ["translateY"],
+      "dependencies": [
+        "translateY"
+      ],
       "purpose": "Fade and translate modal during pull gesture"
     },
     {
@@ -390,7 +392,9 @@
       "name": "indicatorPosition",
       "scope": "TabSelector component",
       "calculation": "withSpring(selectedIndex, { mass: 0.8, damping: 20, stiffness: 200 })",
-      "dependencies": ["selectedIndex"],
+      "dependencies": [
+        "selectedIndex"
+      ],
       "purpose": "Smooth spring animation for tab indicator"
     },
     {
@@ -407,7 +411,9 @@
       "name": "itemRows",
       "scope": "AppsList component",
       "calculation": "Group items into rows of NUM_COLUMNS (4)",
-      "dependencies": ["items"],
+      "dependencies": [
+        "items"
+      ],
       "benefit": "Avoid recalculating row grouping on every render"
     },
     {
@@ -419,7 +425,6 @@
       "computed_once": true
     }
   ],
-
   "performance_optimizations": [
     "All animations run on UI thread via Reanimated worklets",
     "useLayoutEffect + scheduleOnUI for synchronous dimension measurement",
@@ -437,7 +442,6 @@
     "Clamped gesture values prevent unnecessary calculations",
     "Step-based slider values reduce update frequency"
   ],
-
   "use_cases": [
     "iOS home screen animation recreation",
     "App launchers with spring physics",
@@ -455,7 +459,6 @@
     "Launcher replacements",
     "Animation workshops and tutorials"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript coverage with explicit interfaces",
@@ -489,7 +492,6 @@
       "Missing screen reader announcements for parameter changes"
     ]
   },
-
   "known_limitations": [
     "makeMutable usage may become deprecated - author notes Context API as better approach",
     "Requires SF-Pro-Rounded-Bold font - needs expo-font loading or fallback",
@@ -507,7 +509,6 @@
     "No input validation for extreme spring parameter values",
     "Distance calculation doesn't account for scroll position"
   ],
-
   "potential_improvements": [
     "Migrate to Context API instead of makeMutable for better React patterns",
     "Add haptic feedback on animation trigger and modal interactions",
@@ -537,7 +538,6 @@
     "Add undo/redo for parameter changes",
     "Implement A/B testing mode for comparing animations"
   ],
-
   "key_insights": [
     "Center-based scaling requires five-step transform matrix: translate to origin, scale, translate back creates natural radial effect",
     "Diagonal distance normalization (mainDiagonal/2) ensures consistent animation regardless of screen aspect ratio",
@@ -556,7 +556,6 @@
     "High initial scale (12) during phase 0→1 creates dramatic 'explosion' effect before settling",
     "zIndex calculation based on distance from center row (itemRows.length/2) creates proper stacking"
   ],
-
   "learning_opportunities": [
     {
       "level": "beginner",
@@ -609,7 +608,6 @@
       ]
     }
   ],
-
   "tags": [
     "ios-animation",
     "spring-physics",
@@ -636,5 +634,9 @@
     "keyframe-animation",
     "tab-switching",
     "distance-based"
-  ]
+  ],
+  "content_hash": "a5b88338f8a5bb329795ac1b271dfef60105bc25eb7c7967e7201f4aef79c9d1",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.380Z",
+  "last_validated": "2025-10-12T09:19:28.380Z"
 }

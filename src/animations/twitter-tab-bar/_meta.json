@@ -2,7 +2,6 @@
   "animation_name": "Twitter Tab Bar",
   "animation_slug": "twitter-tab-bar",
   "description": "A Twitter-inspired animated bottom navigation bar featuring smooth hide/show transitions based on scroll direction, a floating action button with morphing icons, and dynamic opacity animations on tab items. The tab bar slides down when scrolling down and reappears when scrolling up, with a context-driven floating button that transitions between edit and message icons with rotation and scale animations. Includes theme support with dark palette and proper safe area insets handling.",
-
   "main_features": [
     "Scroll-direction-aware bottom bar visibility (hide on scroll down, show on scroll up)",
     "Animated floating action button with icon morphing (edit ↔ message)",
@@ -17,7 +16,6 @@
     "Material icons integration",
     "Shared value-based tab bar visibility control"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo container with ThemeProvider and screen routing",
     "components/bottom-tab-bar/index.tsx": "Core tab bar with slide animations, icon rendering, and floating button integration",
@@ -28,7 +26,6 @@
     "constants/screens.ts": "Screen names configuration (Home, Search, Notifications, Message)",
     "constants/palette.ts": "Color palette definitions (DarkPalette, LightPalette) using color manipulation"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
@@ -37,7 +34,6 @@
     "layout": "react-native-safe-area-context",
     "color_utils": "color"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -51,31 +47,44 @@
         "withSpring",
         "makeMutable"
       ],
-      "components": ["Animated.View", "Animated.FlatList"],
+      "components": [
+        "Animated.View",
+        "Animated.FlatList"
+      ],
       "critical_feature": "SharedValue-based visibility control synchronized across components via context"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
       "usage": "Tap gesture handling for floating action button",
-      "components": ["GestureDetector"],
-      "gestures": ["Gesture.Tap()"],
+      "components": [
+        "GestureDetector"
+      ],
+      "gestures": [
+        "Gesture.Tap()"
+      ],
       "critical_feature": "Long-duration tap (maxDuration: 10000) for press-and-hold feedback"
     },
     "react-native-worklets": {
       "version": "0.5.1",
       "usage": "Bridging worklet execution to React Native thread for callbacks",
-      "functions": ["scheduleOnRN"],
+      "functions": [
+        "scheduleOnRN"
+      ],
       "critical_feature": "scheduleOnRN enables calling React callbacks from worklet context"
     },
     "react-native-safe-area-context": {
       "version": "~5.6.0",
-      "hooks": ["useSafeAreaInsets"],
+      "hooks": [
+        "useSafeAreaInsets"
+      ],
       "usage": "Dynamic bottom positioning and padding for notched devices",
       "position_calculation": "bottom: safeBottom, paddingBottom: safeBottom / 2"
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
-      "components": ["MaterialIcons"],
+      "components": [
+        "MaterialIcons"
+      ],
       "icons_used": [
         "home (lowercase)",
         "search (lowercase)",
@@ -89,11 +98,14 @@
     "color": {
       "version": "^4.2.3",
       "usage": "Color manipulation for palette generation",
-      "methods": ["Color().lighten()", "Color().darken()", ".hex()"],
+      "methods": [
+        "Color().lighten()",
+        "Color().darken()",
+        ".hex()"
+      ],
       "critical_feature": "Dynamic color generation from base colors (lightening/darkening)"
     }
   },
-
   "animation_techniques": {
     "scroll_direction_detection": {
       "pattern": "Compare current and previous scroll offset to determine direction",
@@ -165,7 +177,6 @@
       "effect": "Floating button icon changes to message when Message tab active, edit otherwise"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -219,7 +230,10 @@
         "name": "isFocused",
         "scope": "TabBarItem",
         "calculation": "focusedIndex.value === index",
-        "dependencies": ["focusedIndex", "index"],
+        "dependencies": [
+          "focusedIndex",
+          "index"
+        ],
         "type": "boolean",
         "purpose": "Per-icon focus state for opacity calculation",
         "benefit": "Reactive focus state without manual updates"
@@ -229,29 +243,39 @@
       {
         "name": "rContainerStyle",
         "scope": "BottomTabBar container",
-        "properties": ["transform: [{ translateY }]"],
+        "properties": [
+          "transform: [{ translateY }]"
+        ],
         "calculation": "withTiming(isActive.value ? 0 : BOTTOM_BAR_HEIGHT + safeBottom, { duration: 300 })",
-        "dependencies": ["safeBottom"],
+        "dependencies": [
+          "safeBottom"
+        ],
         "usage": "Slides tab bar up/down based on scroll direction"
       },
       {
         "name": "rFloatingActionStyle",
         "scope": "Floating action button container",
-        "properties": ["transform: [{ scale }]"],
+        "properties": [
+          "transform: [{ scale }]"
+        ],
         "calculation": "withSpring(isActive.value ? 1 : 0, { overshootClamping: true })",
         "usage": "Scales button in/out with tab bar visibility"
       },
       {
         "name": "rStyle",
         "scope": "TabBarItem icon wrapper",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "calculation": "withTiming(isFocused.value ? 1 : 0.3)",
         "usage": "Fades icons based on focus state"
       },
       {
         "name": "rFloatingIconStyle",
         "scope": "Floating button icon container",
-        "properties": ["transform: [{ rotate }, { scale }]"],
+        "properties": [
+          "transform: [{ rotate }, { scale }]"
+        ],
         "calculations": [
           "rotate: interpolate(floatingProgress, [0, 1], [0, 2π]) as '${rotate}rad'",
           "scale: interpolate(floatingProgress, [0, 0.5, 1], [1, 1.2, 1])"
@@ -261,21 +285,27 @@
       {
         "name": "rMessageIconStyle",
         "scope": "Message icon in floating button",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "calculation": "floatingProgress.value <= 0.5 ? 0 : 1",
         "usage": "Shows message icon when progress > 0.5"
       },
       {
         "name": "rEditIconStyle",
         "scope": "Edit icon in floating button",
-        "properties": ["opacity"],
+        "properties": [
+          "opacity"
+        ],
         "calculation": "floatingProgress.value > 0.5 ? 0 : 1",
         "usage": "Shows edit icon when progress <= 0.5"
       },
       {
         "name": "rHighlightedStyle",
         "scope": "Floating button press feedback",
-        "properties": ["transform: [{ scale }]"],
+        "properties": [
+          "transform: [{ scale }]"
+        ],
         "calculation": "withTiming(highlighted.value ? 0.8 : 1)",
         "usage": "Shrinks button on press for tactile feedback"
       }
@@ -304,12 +334,15 @@
       {
         "name": "onTapIcon",
         "scope": "BottomTabBar",
-        "dependencies": ["floatingProgress", "isActive", "onTabPress"],
+        "dependencies": [
+          "floatingProgress",
+          "isActive",
+          "onTabPress"
+        ],
         "purpose": "Stable callback for tab icon press handling"
       }
     ]
   },
-
   "component_architecture": {
     "TwitterTabBar": {
       "type": "Main exported component",
@@ -372,7 +405,9 @@
         "iconName": "string",
         "textColor": "string"
       },
-      "derived_values": ["isFocused (boolean)"],
+      "derived_values": [
+        "isFocused (boolean)"
+      ],
       "structure": [
         "Animated.View (with opacity animation)",
         "TouchableOpacity (pressable area)",
@@ -387,8 +422,12 @@
         "style": "StyleProp<ViewStyle>",
         "onSelect": "Optional (option: 'message' | 'default') => void"
       },
-      "shared_values": ["highlighted (boolean)"],
-      "gestures": ["Tap with maxDuration: 10000"],
+      "shared_values": [
+        "highlighted (boolean)"
+      ],
+      "gestures": [
+        "Tap with maxDuration: 10000"
+      ],
       "structure": [
         "GestureDetector (gesture wrapper)",
         "Animated.View (rotation + highlight scale)",
@@ -404,7 +443,9 @@
     },
     "ActiveTabBarContextProvider": {
       "type": "Context provider component",
-      "props": { "children": "ReactNode" },
+      "props": {
+        "children": "ReactNode"
+      },
       "context_value": "{ isActive: SharedValue<boolean> }",
       "creation": "useSharedValue(true)",
       "memoization": "useMemo",
@@ -412,7 +453,9 @@
     },
     "ThemeProvider": {
       "type": "Context provider component",
-      "props": { "children": "ReactNode" },
+      "props": {
+        "children": "ReactNode"
+      },
       "context_value": "{ colors: ThemeColors }",
       "theme": "DarkPalette (hardcoded)",
       "memoization": "useMemo",
@@ -424,7 +467,9 @@
         "useActiveTabBarContext() → isActive",
         "useTheme() → colors"
       ],
-      "shared_values": ["prevContentOffsetY (number)"],
+      "shared_values": [
+        "prevContentOffsetY (number)"
+      ],
       "scroll_handler": "useAnimatedScrollHandler",
       "structure": [
         "View (container)",
@@ -438,7 +483,6 @@
       ]
     }
   },
-
   "theme_system": {
     "provider": "ThemeProvider",
     "hook": "useTheme()",
@@ -454,7 +498,6 @@
     "light_theme": "LightPalette defined but not used",
     "extensibility": "Could be extended to support theme switching"
   },
-
   "responsive_design": {
     "device_detection": {
       "SCREEN_HEIGHT": "Dimensions.get('window').height",
@@ -473,7 +516,6 @@
       "calculation": "translateY offset includes full safe area: BOTTOM_BAR_HEIGHT + safeBottom"
     }
   },
-
   "gesture_handling": {
     "tap_gesture": {
       "type": "Gesture.Tap()",
@@ -493,7 +535,6 @@
       "benefit": "Simple touch handling without gesture detector overhead"
     }
   },
-
   "scroll_handling": {
     "scroll_handler": {
       "hook": "useAnimatedScrollHandler",
@@ -517,7 +558,6 @@
       "content_padding": "paddingBottom: BOTTOM_BAR_HEIGHT (prevents last item being hidden)"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "tab_bar_background": "Color('#17202A').lighten(0.15).hex() (dark card color)",
@@ -558,16 +598,25 @@
       "tab_item_layout": "alignItems: center, justifyContent: center"
     }
   },
-
   "constants_and_configuration": {
     "ScreenNames": {
       "type": "Object with const assertion",
-      "values": { "Home": "Home", "Search": "Search", "Notifications": "Notifications", "Message": "Message" },
+      "values": {
+        "Home": "Home",
+        "Search": "Search",
+        "Notifications": "Notifications",
+        "Message": "Message"
+      },
       "derived_from": "ScreenNamesArray.reduce()"
     },
     "ScreenNamesArray": {
       "type": "const array",
-      "values": ["Home", "Search", "Notifications", "Message"],
+      "values": [
+        "Home",
+        "Search",
+        "Notifications",
+        "Message"
+      ],
       "purpose": "Ordered list for tab index calculations"
     },
     "screensMap": {
@@ -576,7 +625,6 @@
       "calculation": "Object.keys(ScreenNames).reduce((acc, key, index) => ({ ...acc, [index]: key }))"
     }
   },
-
   "performance_optimizations": {
     "ui_thread_animations": {
       "scroll_handler": "useAnimatedScrollHandler runs entirely on UI thread",
@@ -605,7 +653,6 @@
       "benefit": "Prevents scale overshoot, cleaner animation"
     }
   },
-
   "use_cases": {
     "primary": [
       "Twitter-style bottom navigation with auto-hide",
@@ -634,7 +681,6 @@
       "Minimal dark theme navigation"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -689,7 +735,6 @@
       "Add prop types for customization"
     ]
   },
-
   "known_limitations": {
     "hardcoded_styles": {
       "issue": "Colors, dimensions, and styles mostly hardcoded",
@@ -732,7 +777,6 @@
       "improvement": "Could fix type definitions or use proper type assertion"
     }
   },
-
   "potential_improvements": {
     "interaction_enhancements": [
       "Haptic feedback on tab press and floating button tap",
@@ -788,7 +832,6 @@
       "Create reusable animated icon component"
     ]
   },
-
   "key_insights": {
     "scroll_direction_detection": "Math.max prevents negative overscroll from affecting direction detection",
     "shared_value_context": "SharedValue in Context enables synchronized animations across components without re-renders",
@@ -801,7 +844,6 @@
     "responsive_threshold": "700px height threshold targets iPhone SE and similar small devices",
     "context_memoization": "useMemo for context values prevents unnecessary re-renders of consumers"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic bottom navigation implementation",
@@ -831,7 +873,6 @@
       "Creating reusable animated contexts"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_floating_bottom_bar": {
       "similarity": "Both use custom bottom navigation bars",
@@ -850,7 +891,6 @@
       "difference": "This focuses on hide/show behavior, dynamic-tab-indicator on morphing width"
     }
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Tab bar renders with correct dimensions on different devices",
@@ -891,7 +931,6 @@
       "Devices with large safe area insets"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "labels": "No accessibility labels on tabs or floating button",
@@ -915,7 +954,6 @@
       "Test with VoiceOver and TalkBack"
     ]
   },
-
   "related_patterns": {
     "scroll_aware_ui": "UI elements that respond to scroll behavior",
     "floating_action_buttons": "Contextual floating buttons",
@@ -923,7 +961,6 @@
     "bottom_navigation": "Bottom tab bar patterns",
     "context_based_animations": "Animations driven by shared context state"
   },
-
   "state_management": {
     "react_state": {
       "activeTab": "string - Current screen name (React state)",
@@ -943,7 +980,6 @@
       "benefit": "Clear separation of concerns, optimal performance"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~400 lines total across all components",
     "dependencies": "Reanimated, Gesture Handler, Worklets (likely already in project)",
@@ -951,7 +987,6 @@
     "runtime_memory": "Minimal - few SharedValues, no heavy computations",
     "performance": "Excellent - UI thread animations with no bridge crossing"
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -972,7 +1007,6 @@
       ]
     }
   },
-
   "tags": [
     "bottom-navigation",
     "tab-bar",
@@ -995,5 +1029,9 @@
     "opacity-animation",
     "scale-animation",
     "rotation-animation"
-  ]
+  ],
+  "content_hash": "fe12b4affe22bc385c9a7fefdc3e79cb5384ce34a749fbaa27b53ba28556226d",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.489Z",
+  "last_validated": "2025-10-12T09:19:28.489Z"
 }

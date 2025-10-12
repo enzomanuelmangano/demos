@@ -2,7 +2,6 @@
   "animation_name": "Stacked Carousel",
   "animation_slug": "stacked-carousel",
   "description": "A horizontal paging carousel with 3D stacked card effects featuring perspective transforms, dynamic scale interpolation, organic fade animations, and rotateX perspective. Cards scale up dramatically (1.5x) as they exit, fade upward with negative opacity values, and rotate with 3D perspective for an immersive depth effect. Features invisible scroll overlay for gesture handling and animated pagination dots with spring physics.",
-
   "main_features": [
     "3D perspective transforms with rotateX animation",
     "Dramatic scale animation (0.7 to 1.5x)",
@@ -17,19 +16,16 @@
     "Z-index ordering based on card position",
     "Configurable card dimensions and stack offset"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo component with StackedCarousel integration and sample data",
     "components/stacked-carousel/index.tsx": "Core StackedCarousel component with AnimatedCard sub-component, scroll handling, and layout logic",
     "components/paginator/index.tsx": "Animated paginator component with spring-based dot animations and visible dots window"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "list": "Animated.FlatList",
     "layout": "react-native (absolute positioning)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -42,20 +38,36 @@
         "withSpring",
         "withTiming"
       ],
-      "components": ["Animated.FlatList", "Animated.View"],
-      "utilities": ["Extrapolation"],
-      "enums": ["Easing"],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View"
+      ],
+      "utilities": [
+        "Extrapolation"
+      ],
+      "enums": [
+        "Easing"
+      ],
       "critical_feature": "useAnimatedScrollHandler for scroll tracking and interpolate with EXTEND extrapolation for negative opacity values"
     },
     "react-native": {
       "version": "0.81.4",
-      "hooks": ["useWindowDimensions", "useCallback", "useMemo", "memo"],
-      "components": ["View", "StyleSheet"],
-      "apis": ["useWindowDimensions().width"],
+      "hooks": [
+        "useWindowDimensions",
+        "useCallback",
+        "useMemo",
+        "memo"
+      ],
+      "components": [
+        "View",
+        "StyleSheet"
+      ],
+      "apis": [
+        "useWindowDimensions().width"
+      ],
       "usage": "Screen dimensions for responsive sizing and paging calculations"
     }
   },
-
   "animation_techniques": {
     "scale_animation": {
       "pattern": "Five-point interpolation with dramatic exit scale",
@@ -110,7 +122,6 @@
       "benefit": "Lower index cards always render on top of higher index cards"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -176,21 +187,30 @@
         {
           "name": "currentPageIndex",
           "calculation": "scrollX.value / screenWidth",
-          "dependencies": ["scrollX"],
+          "dependencies": [
+            "scrollX"
+          ],
           "purpose": "Track current page for paginator",
           "usage": "Passed to Paginator component"
         },
         {
           "name": "visibleDotsIndices (in Paginator)",
           "calculation": "Calculate start/end indices for visible dots window",
-          "dependencies": ["currentPageIndex", "visibleDots", "pagesAmount"],
+          "dependencies": [
+            "currentPageIndex",
+            "visibleDots",
+            "pagesAmount"
+          ],
           "purpose": "Determine which paginator dots to show",
           "returns": "{ start, end, currentIndex }"
         },
         {
           "name": "visibility (in AnimatedDot)",
           "calculation": "Calculate opacity based on active/visible state",
-          "dependencies": ["currentPageIndex", "isVisible"],
+          "dependencies": [
+            "currentPageIndex",
+            "isVisible"
+          ],
           "purpose": "Animate dot visibility with timing animation",
           "animation": "withTiming(opacity, 500ms, linear)"
         }
@@ -211,7 +231,6 @@
       "benefit": "Wide interpolation range ensures no abrupt animation changes"
     }
   },
-
   "component_architecture": {
     "stacked_carousel": {
       "type": "Main container component with generic type support",
@@ -280,7 +299,6 @@
       ]
     }
   },
-
   "scroll_interaction": {
     "invisible_overlay_pattern": {
       "component": "Animated.FlatList",
@@ -314,7 +332,6 @@
       "separation": "Complete separation of visual and interaction layers"
     }
   },
-
   "paginator_implementation": {
     "visible_dots_window": {
       "concept": "Show only subset of dots, scroll container to keep active centered",
@@ -345,7 +362,11 @@
       "visibility": {
         "calculation": "isActive ? 1 : isVisible ? 0.75 : 0",
         "animation": "withTiming(opacity, 500ms, linear)",
-        "states": ["Active (1.0)", "Visible (0.75)", "Hidden (0.0)"]
+        "states": [
+          "Active (1.0)",
+          "Visible (0.75)",
+          "Hidden (0.0)"
+        ]
       },
       "scale": {
         "calculation": "currentPageIndex === index ? 1 : 0.75",
@@ -359,7 +380,6 @@
       "derived_calculations": "useDerivedValue for all animation calculations"
     }
   },
-
   "layout_and_positioning": {
     "container_structure": {
       "main_container": {
@@ -400,7 +420,6 @@
       "purpose": "Cover card area for gesture capture"
     }
   },
-
   "mathematical_algorithms": {
     "interpolation_math": {
       "function": "interpolate(scrollX, inputRange, outputRange, extrapolation?)",
@@ -461,7 +480,6 @@
       "purpose": "Keep active dot centered in paginator"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "container": "#eeeeee (light gray)",
@@ -490,12 +508,15 @@
       "benefit": "Premium, native-like appearance on iOS"
     }
   },
-
   "performance_optimizations": {
     "ui_thread_execution": {
       "pattern": "All animations run on UI thread via Reanimated",
       "benefit": "No bridge crossing, 60fps smooth animations",
-      "hooks": ["useAnimatedScrollHandler", "useDerivedValue", "useAnimatedStyle"]
+      "hooks": [
+        "useAnimatedScrollHandler",
+        "useDerivedValue",
+        "useAnimatedStyle"
+      ]
     },
     "scroll_throttling": {
       "value": 16,
@@ -503,8 +524,13 @@
       "balance": "Smooth animations without overwhelming UI thread"
     },
     "memoization": {
-      "components": ["Paginator (memo)", "AnimatedDot (memo)"],
-      "values": ["dots array (useMemo)"],
+      "components": [
+        "Paginator (memo)",
+        "AnimatedDot (memo)"
+      ],
+      "values": [
+        "dots array (useMemo)"
+      ],
       "benefit": "Prevent unnecessary re-renders and array recreations"
     },
     "flatlist_optimization": {
@@ -523,7 +549,6 @@
       "benefit": "Single calculation for multiple paginator dot animations"
     }
   },
-
   "use_cases": {
     "primary": [
       "Full-screen image/media carousels",
@@ -552,7 +577,6 @@
       "Premium app showcases"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with generic type support",
@@ -610,7 +634,6 @@
       "Could add error boundaries for renderCard failures"
     ]
   },
-
   "known_limitations": {
     "no_virtualization": {
       "issue": "All cards rendered simultaneously due to absolute positioning",
@@ -649,7 +672,6 @@
       "platform": "Android-specific consideration"
     }
   },
-
   "potential_improvements": {
     "customization": [
       "Configurable animation curves (scale, translateY, opacity ranges)",
@@ -701,7 +723,6 @@
       "Long-press actions"
     ]
   },
-
   "key_insights": {
     "invisible_overlay_pattern": "Separating gesture handling from visual rendering provides clean architecture",
     "dramatic_exit_scale": "1.5x scale on exit creates unique organic fade effect unlike typical carousels",
@@ -714,7 +735,6 @@
     "perspective_depth": "Combining rotateX, scale, translateY, and opacity creates rich 3D depth perception",
     "generic_type_pattern": "Generic StackedCarousel<T> makes component truly reusable with any data"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic scroll-based animations",
@@ -749,7 +769,6 @@
       "Generic type constraints and patterns"
     ]
   },
-
   "comparison_to_similar_animations": {
     "vs_coverflow_carousel": {
       "similarity": "Both use horizontal scrolling with scale and transforms",
@@ -775,7 +794,6 @@
       "shared_pattern": "Absolute positioning for stacking effects"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -799,7 +817,6 @@
       "transforms": "CSS transforms should handle 3D perspective"
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Cards scale correctly through all scroll positions",
@@ -855,7 +872,6 @@
       "Async content in cards"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "Limited support, no labels",
@@ -880,7 +896,6 @@
       "keyboard": "For web, add keyboard event handlers for arrow keys"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~470 lines total (index: 63, carousel: 245, paginator: 198)",
     "dependencies": "Reanimated likely already in project",
@@ -888,7 +903,6 @@
     "estimated_impact": "< 15KB minified",
     "no_external_deps": "No additional packages beyond core RN and Reanimated"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread (useAnimatedScrollHandler worklet)",
@@ -904,7 +918,6 @@
       "Extrapolation.CLAMP/EXTEND"
     ]
   },
-
   "tags": [
     "carousel",
     "stacked-cards",
@@ -929,5 +942,9 @@
     "depth-effect",
     "dramatic-exit",
     "negative-opacity"
-  ]
+  ],
+  "content_hash": "25e4b6873bb91fcc8aa34bf18da31140a305bb0d4729d74db8b6405a5a313c0a",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.450Z",
+  "last_validated": "2025-10-12T09:19:28.450Z"
 }

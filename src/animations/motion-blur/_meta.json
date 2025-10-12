@@ -2,7 +2,6 @@
   "animation_name": "Motion Blur List",
   "animation_slug": "motion-blur",
   "description": "A dynamic list with motion blur effects that smoothly animates items in and out. Features a stacked card layout with blur transitions, spring animations, and dynamic shadow effects. Items enter with a keyframe animation and blur out as they exit the visible area, creating an elegant depth effect.",
-
   "main_features": [
     "Stacked card layout with limited visible items",
     "Progressive blur effect on items leaving visible area",
@@ -13,7 +12,6 @@
     "Automatic list repositioning as items are added",
     "Random item generation with emojis and crypto-style data"
   ],
-
   "file_structure": {
     "index.tsx": "Main export wrapper",
     "src/index.tsx": "Main app component with state management and add button",
@@ -27,14 +25,12 @@
       "generate-random-item.ts": "Utility for generating random item data (emoji, amount, address)"
     }
   },
-
   "core_technologies": {
     "rendering": "react-native (View, StyleSheet)",
     "animations": "react-native-reanimated",
     "blur_effects": "expo-blur",
     "interactions": "pressto"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -46,29 +42,41 @@
         "withSpring",
         "withTiming"
       ],
-      "components": ["Animated.View", "Animated.createAnimatedComponent"],
-      "animations": ["Keyframe", "FadeOut"],
+      "components": [
+        "Animated.View",
+        "Animated.createAnimatedComponent"
+      ],
+      "animations": [
+        "Keyframe",
+        "FadeOut"
+      ],
       "critical_feature": "Keyframe for complex entrance animations"
     },
     "expo-blur": {
       "version": "~15.0.7",
       "usage": "BlurView overlay for motion blur effect",
-      "components": ["BlurView", "AnimatedBlurView (created)"],
+      "components": [
+        "BlurView",
+        "AnimatedBlurView (created)"
+      ],
       "tint": "extraLight",
       "dynamic_intensity": "Animated from 50 to 0"
     },
     "pressto": {
       "version": "0.3.5-beta.1",
       "usage": "Add button with scale press animation",
-      "components": ["PressableScale"]
+      "components": [
+        "PressableScale"
+      ]
     },
     "@expo/vector-icons": {
       "version": "^15.0.2",
       "usage": "Plus icon for add button",
-      "components": ["Entypo"]
+      "components": [
+        "Entypo"
+      ]
     }
   },
-
   "animation_techniques": {
     "entrance_animation": {
       "type": "Keyframe",
@@ -135,7 +143,6 @@
       "effect": "Last item has lighter shadow for visual hierarchy"
     }
   },
-
   "layout_system": {
     "constants": {
       "LIST_ITEM_HEIGHT": 90,
@@ -164,7 +171,6 @@
       "scroll": "None (fixed visible items)"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -194,20 +200,33 @@
         "Update progress (fade animation)",
         "Update blurIntensity (blur animation)"
       ],
-      "dependencies": ["isOffVisibleArea", "progress", "blurIntensity"],
+      "dependencies": [
+        "isOffVisibleArea",
+        "progress",
+        "blurIntensity"
+      ],
       "timing": "Different durations for blur in/out (150ms vs 500ms)"
     },
     "animated_styles": [
       {
         "name": "containerStyle",
-        "properties": ["top"],
+        "properties": [
+          "top"
+        ],
         "calculation": "withSpring(calculateTop(...))",
-        "dependencies": ["top"],
+        "dependencies": [
+          "top"
+        ],
         "effect": "Smooth repositioning"
       },
       {
         "name": "contentStyle",
-        "properties": ["shadowColor", "shadowOffset", "shadowOpacity", "shadowRadius"],
+        "properties": [
+          "shadowColor",
+          "shadowOffset",
+          "shadowOpacity",
+          "shadowRadius"
+        ],
         "calculation": "interpolate(isLastItemProgress.value, [0, 1], [...])",
         "effect": "Dynamic shadow for last item"
       }
@@ -230,7 +249,6 @@
       }
     }
   },
-
   "blur_implementation": {
     "component": "AnimatedBlurView (Animated.createAnimatedComponent(BlurView))",
     "position": "StyleSheet.absoluteFillObject (covers entire item)",
@@ -244,7 +262,6 @@
     "purpose": "Creates motion blur effect as items transition out",
     "performance": "Native blur view, GPU-accelerated"
   },
-
   "data_management": {
     "state": {
       "items": "useState<Item[]>",
@@ -277,7 +294,6 @@
       ]
     }
   },
-
   "ui_ux_design": {
     "layout": {
       "container": "Full screen with centered flex layout",
@@ -351,7 +367,6 @@
       }
     }
   },
-
   "performance_optimizations": {
     "conditional_rendering": {
       "technique": "Early return null for off-screen items",
@@ -360,7 +375,11 @@
     },
     "useCallback": {
       "usage": "renderItemWithBlur function",
-      "dependencies": ["data.length", "maxVisibleItems", "renderItem"],
+      "dependencies": [
+        "data.length",
+        "maxVisibleItems",
+        "renderItem"
+      ],
       "benefit": "Prevents unnecessary re-renders of list items"
     },
     "animated_component_creation": {
@@ -385,7 +404,6 @@
       "default_config": "Uses Reanimated default spring (good balance)"
     }
   },
-
   "component_architecture": {
     "component_hierarchy": [
       "App (src/index.tsx)",
@@ -428,7 +446,6 @@
       }
     }
   },
-
   "mathematical_calculations": {
     "position_calculation": {
       "function": "calculateTop",
@@ -455,7 +472,6 @@
       "formula": "output = outputMin + (inputValue - inputMin) * (outputMax - outputMin) / (inputMax - inputMin)"
     }
   },
-
   "interaction_patterns": {
     "add_item": {
       "trigger": "Press add button",
@@ -477,7 +493,6 @@
       "performance": "Old items removed from render tree"
     }
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -534,7 +549,6 @@
       "Could extract magic numbers (blur values, timing) to constants"
     ]
   },
-
   "configuration": {
     "adjustable_parameters": {
       "maxVisibleItems": {
@@ -576,7 +590,6 @@
       }
     }
   },
-
   "use_cases": {
     "primary": [
       "Transaction history lists",
@@ -607,7 +620,6 @@
       "behavior": "Configurable visible items and animations"
     }
   },
-
   "known_limitations": {
     "no_manual_scroll": {
       "issue": "Cannot manually scroll through items",
@@ -641,7 +653,6 @@
       "enhancement": "Could accept width prop"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Swipe to delete items",
@@ -685,7 +696,6 @@
       "Lazy load item content"
     ]
   },
-
   "key_insights": {
     "blur_progression": "Asymmetric timing (fast out, slow in) creates better UX than symmetric timing",
     "shadow_hierarchy": "Dynamic shadows help establish visual hierarchy, lighter shadows for top items",
@@ -696,7 +706,6 @@
     "separation": "Separating list logic from item content makes component highly reusable",
     "animation_coordination": "Multiple coordinated animations (blur + opacity + position) create rich effects"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Reanimated animations (withSpring, withTiming)",
@@ -722,7 +731,6 @@
       "Mathematical position calculations"
     ]
   },
-
   "related_concepts": {
     "ui_patterns": [
       "Stacked cards (like Tinder)",
@@ -746,7 +754,6 @@
       "Container/Presentational split"
     ]
   },
-
   "testing_considerations": {
     "visual_testing": [
       "Verify blur effect transitions smoothly",
@@ -787,26 +794,34 @@
       "Item with very long text"
     ]
   },
-
   "platform_considerations": {
     "ios": {
-      "features": ["Full BlurView support", "Continuous border curves", "All animations"],
+      "features": [
+        "Full BlurView support",
+        "Continuous border curves",
+        "All animations"
+      ],
       "performance": "Excellent",
       "specific_props": "borderCurve: 'continuous'"
     },
     "android": {
-      "features": ["All core features", "Elevation shadows"],
+      "features": [
+        "All core features",
+        "Elevation shadows"
+      ],
       "blur_support": "May use different blur implementation",
       "performance": "Excellent",
       "specific_props": "elevation: 5"
     },
     "web": {
       "compatibility": "Should work with react-native-web",
-      "limitations": ["BlurView may not render perfectly", "No continuous curves"],
+      "limitations": [
+        "BlurView may not render perfectly",
+        "No continuous curves"
+      ],
       "fallback": "Could use CSS blur filter"
     }
   },
-
   "accessibility_considerations": {
     "current_state": "No explicit accessibility features",
     "needed_improvements": [
@@ -823,7 +838,6 @@
       "recommendation": "Detect prefers-reduced-motion and simplify/disable animations"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "Small (~200 lines total)",
     "dependencies": [
@@ -835,7 +849,6 @@
     "runtime_memory": "Minimal (only visible items rendered)",
     "estimated_impact": "< 50KB additional"
   },
-
   "tags": [
     "list",
     "blur",
@@ -851,5 +864,9 @@
     "transaction-list",
     "pressto",
     "dynamic-shadows"
-  ]
+  ],
+  "content_hash": "2959d8d1d201efc44a462cc15af4b7837cacbe3b5b2a18a153cbff9165db1f9e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.394Z",
+  "last_validated": "2025-10-12T09:19:28.394Z"
 }

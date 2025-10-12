@@ -2,7 +2,6 @@
   "animation_name": "Paper Folding",
   "animation_slug": "paper-folding",
   "description": "A realistic 3D paper folding animation that simulates unfolding and refolding of a paper divided into three sections. Features advanced 3D transforms with perspective, sequential rotation of three fold segments, dynamic shadow effects using Skia inner shadows, and color interpolation to create realistic depth perception. The paper unfolds from a compact folded state to a flat extended state with smooth timing-based animations.",
-
   "main_features": [
     "Realistic 3D paper folding effect with three segments",
     "Sequential fold animations with proper transform origin",
@@ -15,19 +14,16 @@
     "Blurred gradient background using Skia",
     "Transform composition with translateY and rotateX"
   ],
-
   "file_structure": {
     "index.tsx": "Main PaperFolding component with interaction handling and layout",
     "components/index.tsx": "Paper component with three-fold rendering and animation logic",
     "background-gradient.tsx": "BackgroundGradient component with Skia SweepGradient and blur"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "graphics": "@shopify/react-native-skia",
     "pattern": "3D paper folding simulation with sequential transforms"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -41,7 +37,9 @@
       "functions": [
         "withTiming"
       ],
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "interpolateColor for realistic fold shading, perspective transforms for 3D rotation"
     },
     "@shopify/react-native-skia": {
@@ -53,12 +51,13 @@
         "SweepGradient",
         "Blur"
       ],
-      "utilities": ["vec"],
+      "utilities": [
+        "vec"
+      ],
       "usage": "High-performance shadows and gradient effects",
       "benefit": "Inner shadows for realistic fold depth that aren't possible with standard React Native shadows"
     }
   },
-
   "animation_techniques": {
     "sequential_folding": {
       "pattern": "Three independent fold sections with cascading transforms",
@@ -146,7 +145,6 @@
       "key_technique": "Inner shadows only possible with Skia, not React Native shadows"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -169,7 +167,10 @@
       {
         "name": "rectColor (fold_2 and fold_3)",
         "calculation": "interpolateColor(progress.value, [0, 1], ['#b1b1b1', '#ffffff'])",
-        "dependencies": ["progress", "fold index"],
+        "dependencies": [
+          "progress",
+          "fold index"
+        ],
         "purpose": "Animate shadow color for realistic fold shading"
       }
     ],
@@ -192,7 +193,10 @@
       {
         "name": "rCardStyle",
         "purpose": "Animate fold positions and rotations",
-        "dependencies": ["progress", "fold index"],
+        "dependencies": [
+          "progress",
+          "fold index"
+        ],
         "transforms": {
           "all_folds": "translateY (shared vertical positioning)",
           "fold_2": "translateY offsets + rotateX",
@@ -210,7 +214,6 @@
       "developer_note": "Rules are made to be broken 😅"
     }
   },
-
   "mathematical_algorithms": {
     "fold_height_calculation": {
       "formula": "foldHeight = height / 3",
@@ -252,17 +255,22 @@
       "effect": "Simulates light gradient on paper surface"
     }
   },
-
   "performance_optimizations": {
     "worklet_execution": {
       "pattern": "All animations run on UI thread",
-      "worklet_functions": ["useAnimatedStyle callbacks", "useDerivedValue callbacks"],
+      "worklet_functions": [
+        "useAnimatedStyle callbacks",
+        "useDerivedValue callbacks"
+      ],
       "benefit": "60fps smooth animations without bridge crossing"
     },
     "skia_canvas": {
       "pattern": "Hardware-accelerated rendering for shadows and gradients",
       "benefit": "Better performance than standard React Native shadows",
-      "components": ["Canvas for paper rectangles", "Canvas for background"]
+      "components": [
+        "Canvas for paper rectangles",
+        "Canvas for background"
+      ]
     },
     "minimal_shared_values": {
       "count": 1,
@@ -280,7 +288,6 @@
       "todo_note": "Developer questions why this is needed (@@TODO comment)"
     }
   },
-
   "visual_design": {
     "paper_styling": {
       "width": 250,
@@ -301,7 +308,12 @@
     },
     "background": {
       "type": "Blurred sweep gradient",
-      "colors": ["#eaeaea", "#e9ebec", "#dddddd", "#e0e0e0"],
+      "colors": [
+        "#eaeaea",
+        "#e9ebec",
+        "#dddddd",
+        "#e0e0e0"
+      ],
       "base_color": "#ededed",
       "blur": 50,
       "effect": "Soft, subtle gradient background",
@@ -317,11 +329,16 @@
       "paper_white": "#ffffff",
       "shadow_gray": "#b1b1b1",
       "light_shadow": "#efefef",
-      "background_grays": ["#eaeaea", "#e9ebec", "#dddddd", "#e0e0e0", "#ededed"],
+      "background_grays": [
+        "#eaeaea",
+        "#e9ebec",
+        "#dddddd",
+        "#e0e0e0",
+        "#ededed"
+      ],
       "theme": "Monochromatic paper theme"
     }
   },
-
   "interaction_patterns": {
     "touch_interaction": {
       "event": "onTouchEnd",
@@ -340,7 +357,6 @@
       "limitation": "No gesture tracking, pan, or swipe"
     }
   },
-
   "use_cases": {
     "primary": [
       "Onboarding screens with paper-fold reveal effect",
@@ -370,11 +386,12 @@
       "Realistic material simulations"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
-      "type_imports": ["type SharedValue"],
+      "type_imports": [
+        "type SharedValue"
+      ],
       "prop_types": {
         "PaperProps": "height, width, progress"
       },
@@ -420,7 +437,6 @@
       "Magic numbers (perspective: 1000000) could be constants"
     ]
   },
-
   "known_limitations": {
     "fixed_dimensions": {
       "issue": "PaperWidth and PaperHeight are hardcoded",
@@ -452,7 +468,6 @@
       "compatibility": "May need adjustments for older React Native versions"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Drag-to-fold gesture interaction",
@@ -499,7 +514,6 @@
       "Focus indicators for keyboard navigation"
     ]
   },
-
   "key_insights": {
     "transform_composition": "Complex fold effect achieved by composing simple transforms (translateY + rotateX)",
     "manual_pivot_points": "Transform origin simulated by translate-rotate-translate pattern",
@@ -511,7 +525,6 @@
     "perspective_for_depth": "Large perspective value (1000000) creates subtle but important depth perception",
     "hooks_in_loop_tradeoff": "Developer consciously breaks hook rules for cleaner code (documented decision)"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic 3D transforms (rotateX)",
@@ -538,7 +551,6 @@
       "Trade-offs in hook rules vs code clarity"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_page_flip_animation": {
       "similarity": "Both simulate paper/page interactions",
@@ -555,7 +567,6 @@
       "difference": "Paper folding has continuous rotation, card stack has discrete states"
     }
   },
-
   "platform_considerations": {
     "ios": {
       "features": "All features fully supported",
@@ -584,7 +595,6 @@
       "compatibility": "Designed for Fabric renderer"
     }
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Verify all three folds render correctly",
@@ -630,7 +640,6 @@
       "Check Skia rendering consistency"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility support",
@@ -653,7 +662,6 @@
       "keyboard": "Add button with space/enter key support"
     }
   },
-
   "real_world_inspiration": {
     "origami": "Japanese paper folding art",
     "paper_prototyping": "Design process with folded paper mockups",
@@ -661,7 +669,6 @@
     "maps": "Folded map interfaces",
     "e_readers": "Page fold effects in reading apps"
   },
-
   "skia_techniques": {
     "canvas_rendering": {
       "component": "Canvas",
@@ -700,7 +707,6 @@
       "integration": "Seamless Reanimated + Skia integration"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~150 lines total (very small)",
     "dependencies": "Reanimated and Skia (likely already in project)",
@@ -708,7 +714,6 @@
     "runtime_memory": "Minimal - 1 SharedValue, 3 derived values per fold",
     "estimated_impact": "< 15KB minified"
   },
-
   "performance_metrics": {
     "target_fps": 60,
     "runs_on": "UI thread (worklets)",
@@ -717,7 +722,6 @@
     "complexity": "Medium - 3D transforms with interpolation",
     "skia_overhead": "Minimal - static rectangles with shadows"
   },
-
   "tags": [
     "3d-transforms",
     "paper-folding",
@@ -738,5 +742,9 @@
     "sweep-gradient",
     "blur-effect",
     "new-architecture"
-  ]
+  ],
+  "content_hash": "0522d3e92323d8540f8b6c0b25a17c1d88fcea99d4ac884a0b0ba8d4606f753b",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.399Z",
+  "last_validated": "2025-10-12T09:19:28.399Z"
 }

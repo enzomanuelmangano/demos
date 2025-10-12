@@ -21,7 +21,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ANIMATIONS_DIR = path.join(__dirname, '..', 'src', 'animations');
+const ANIMATIONS_DIR = path.join(__dirname, '..', '..', 'src', 'animations');
 
 // ANSI colors for terminal output
 const colors = {

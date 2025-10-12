@@ -2,7 +2,6 @@
   "animation_name": "Record Button",
   "animation_slug": "record-button",
   "description": "A scroll-triggered animated button that reveals with custom Skia path animations. Features dual-line path drawing synchronized with scroll progress, dynamic text color transitions, activation feedback with haptics, and snap-to-scroll behavior. The button smoothly morphs from invisible to a fully outlined 'Record' button with rounded corners as the user scrolls up.",
-
   "main_features": [
     "Scroll-based path animation reveal",
     "Custom Skia path drawing with mirrored symmetry",
@@ -15,14 +14,12 @@
     "Smart snapping behavior based on scroll threshold",
     "Custom rounded rectangle reveal on full activation"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo component with inverted FlatList and scroll logic",
     "components/record-button/index.tsx": "Core RecordButton component with Skia canvas and animations",
     "components/record-button/create-skia-line.ts": "Utility for generating custom Skia path with rounded corners",
     "utils/haptics.ts": "Haptic feedback wrapper using expo-haptics"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "graphics": "@shopify/react-native-skia",
@@ -30,7 +27,6 @@
     "haptics": "expo-haptics",
     "threading": "react-native-worklets"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -47,13 +43,24 @@
         "withTiming",
         "interpolate"
       ],
-      "components": ["Animated.FlatList", "Animated.View", "Animated.Text"],
+      "components": [
+        "Animated.FlatList",
+        "Animated.View",
+        "Animated.Text"
+      ],
       "critical_feature": "useScrollViewOffset for tracking scroll position and useDerivedValue for progress calculation"
     },
     "@shopify/react-native-skia": {
       "version": "2.2.12",
-      "components": ["Canvas", "Path", "RoundedRect"],
-      "utilities": ["Skia.Path.Make()", "Skia.Matrix()"],
+      "components": [
+        "Canvas",
+        "Path",
+        "RoundedRect"
+      ],
+      "utilities": [
+        "Skia.Path.Make()",
+        "Skia.Matrix()"
+      ],
       "methods": [
         "moveTo",
         "lineTo",
@@ -65,7 +72,9 @@
     },
     "react-native-worklets": {
       "version": "0.5.1",
-      "imports": ["scheduleOnRN"],
+      "imports": [
+        "scheduleOnRN"
+      ],
       "usage": "Bridge worklet to JS thread for haptic feedback"
     },
     "pressto": {
@@ -75,12 +84,15 @@
     },
     "expo-haptics": {
       "version": "~15.0.7",
-      "imports": ["ImpactFeedbackStyle"],
-      "functions": ["impactAsync"],
+      "imports": [
+        "ImpactFeedbackStyle"
+      ],
+      "functions": [
+        "impactAsync"
+      ],
       "usage": "Haptic feedback on button activation"
     }
   },
-
   "animation_techniques": {
     "scroll_driven_animation": {
       "hook": "useScrollViewOffset",
@@ -147,7 +159,6 @@
       "effect": "Text fades in as paths draw, then changes to white on activation"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -172,19 +183,25 @@
           "name": "progress",
           "calculation": "interpolate(scrollOffset.value, [WindowHeight * 0.08, WindowHeight * 0.2], [0, 1], CLAMP)",
           "purpose": "Normalize scroll offset to 0-1 range for animations",
-          "dependencies": ["scrollOffset.value"]
+          "dependencies": [
+            "scrollOffset.value"
+          ]
         },
         {
           "name": "activated",
           "calculation": "progress.value > 0.98",
           "purpose": "Boolean state for button activation",
-          "dependencies": ["progress.value"]
+          "dependencies": [
+            "progress.value"
+          ]
         },
         {
           "name": "internalRoundedRectOpacity",
           "calculation": "withTiming(activated.value ? 1 : 0)",
           "purpose": "Smooth opacity transition for filled background",
-          "dependencies": ["activated.value"]
+          "dependencies": [
+            "activated.value"
+          ]
         }
       ]
     },
@@ -194,21 +211,29 @@
         {
           "name": "rMainPageStyle",
           "location": "Main screen (HomeScreen)",
-          "animated_properties": ["borderRadius"],
+          "animated_properties": [
+            "borderRadius"
+          ],
           "interpolation": "scrollOffset 0->0.1 maps to borderRadius 0->35",
           "effect": "Screen corners round on scroll start"
         },
         {
           "name": "rContainerStyle",
           "location": "RecordButton component",
-          "animated_properties": ["transform.scale"],
+          "animated_properties": [
+            "transform.scale"
+          ],
           "animation": "withSpring scale 1 -> 1.1 on activation",
           "effect": "Button scales up when fully activated"
         },
         {
           "name": "rTextStyle",
           "location": "RecordButton text",
-          "animated_properties": ["color", "opacity", "fontWeight"],
+          "animated_properties": [
+            "color",
+            "opacity",
+            "fontWeight"
+          ],
           "effect": "Text fades in with progress, changes to white/bold on activation"
         }
       ]
@@ -222,7 +247,9 @@
     },
     "useAnimatedRef": {
       "usage": "FlatList ref for programmatic scrolling",
-      "methods_used": ["scrollToIndex"],
+      "methods_used": [
+        "scrollToIndex"
+      ],
       "pattern": "Allows calling FlatList methods from both JS and worklet contexts"
     },
     "worklet_callbacks": {
@@ -231,7 +258,6 @@
       "note": "Called directly from Animated.FlatList, run on UI thread"
     }
   },
-
   "skia_patterns": {
     "path_creation": {
       "function": "getRightLinePath",
@@ -291,7 +317,6 @@
       "effect": "Filled background appears on activation"
     }
   },
-
   "scroll_interaction_patterns": {
     "inverted_flatlist": {
       "prop": "inverted={true}",
@@ -320,7 +345,6 @@
       "effect": "Returns to home screen, resetting animation"
     }
   },
-
   "component_architecture": {
     "RecordButton_demo": {
       "type": "Demo container with scroll interaction",
@@ -366,7 +390,6 @@
       "usage": "Called via scheduleOnRN from useAnimatedReaction"
     }
   },
-
   "layout_and_positioning": {
     "demo_layout": {
       "container": "FlatList with two full-screen items",
@@ -395,7 +418,6 @@
       "z_index": "Above canvas and background"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "button_color": "#ed4e3c (red/coral)",
@@ -435,7 +457,6 @@
       "effect": "Apple-style squircle corners"
     }
   },
-
   "performance_optimizations": {
     "useMemo": {
       "rightLinePath": "Path created once, only recalculates on dimension changes",
@@ -465,7 +486,6 @@
       "minimal_redraw": "Only 'end' prop changes, path itself is static"
     }
   },
-
   "use_cases": {
     "primary": [
       "Scroll-to-reveal UI elements",
@@ -495,7 +515,6 @@
       "Navigation-heavy apps (unconventional scroll pattern)"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
@@ -550,11 +569,13 @@
       "Worklet-optimized scroll callbacks"
     ]
   },
-
   "known_limitations": {
     "typescript_any_casts": {
       "issue": "useAnimatedRef and useScrollViewOffset require 'as any' casts",
-      "locations": ["scrollRef as any", "scrollOffset hook"],
+      "locations": [
+        "scrollRef as any",
+        "scrollOffset hook"
+      ],
       "reason": "Reanimated type definitions don't fully support FlatList",
       "impact": "Loss of type safety at ref boundaries"
     },
@@ -581,7 +602,6 @@
       "potential": "Could use Gesture.Pan() for finer control"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Configurable progress input ranges as props",
@@ -626,7 +646,6 @@
       "Optimize re-renders with React.memo"
     ]
   },
-
   "key_insights": {
     "inverted_flatlist_pattern": "Inverted FlatList creates unique upward scroll reveal effect",
     "scroll_offset_hook": "useScrollViewOffset is powerful for scroll-driven animations",
@@ -640,7 +659,6 @@
     "reanimated_flatlist": "Animated.FlatList with worklet callbacks enables complex scroll interactions",
     "shared_value_in_callbacks": "Shared values in useCallback dependencies can be excluded with pragma"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "FlatList basics and inverted prop",
@@ -669,7 +687,6 @@
       "Building reusable scroll-animated components"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Paths draw smoothly from 0 to 1 progress",
@@ -709,7 +726,6 @@
       "Skia rendering consistency"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_progress_bar": {
       "similarity": "Both use progress value to drive visual",
@@ -727,7 +743,6 @@
       "complexity": "This is more advanced with snap and activation logic"
     }
   },
-
   "related_patterns": {
     "path_animation": "SVG/Skia path drawing animations",
     "scroll_parallax": "Scroll-driven visual effects",
@@ -735,7 +750,6 @@
     "progress_indicator": "Visual progress feedback",
     "reveal_animation": "Progressive disclosure patterns"
   },
-
   "real_world_inspiration": {
     "instagram_stories": "Inverted vertical scrolling pattern",
     "tiktok_feed": "Snap-to-screen vertical scroll",
@@ -743,7 +757,6 @@
     "apple_design": "Continuous border curve, smooth animations",
     "material_design": "Haptic feedback on state changes"
   },
-
   "bundle_size_impact": {
     "code_size": "~149 lines (index) + ~168 lines (button) + ~47 lines (path) + ~6 lines (haptics) = ~370 lines",
     "dependencies": {
@@ -755,7 +768,6 @@
     "runtime_memory": "Minimal - few shared values, memoized paths",
     "estimated_size": "< 10KB (excluding deps)"
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels on button",
@@ -779,7 +791,6 @@
       "announcements": "Use AccessibilityInfo.announceForAccessibility on activation"
     }
   },
-
   "tags": [
     "scroll-animation",
     "skia-paths",
@@ -796,5 +807,9 @@
     "activation-state",
     "border-curve",
     "pressto"
-  ]
+  ],
+  "content_hash": "0cc232619fa16d11e3a96254b47da6f1ee47e29f18131b7c743d12fd17ca6b2e",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.416Z",
+  "last_validated": "2025-10-12T09:19:28.416Z"
 }

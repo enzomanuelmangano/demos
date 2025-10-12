@@ -2,7 +2,6 @@
   "animation_name": "Verification Code Face",
   "animation_slug": "verification-code-face",
   "description": "An interactive verification code input animation featuring an animated face icon that responds to user input. The face progressively rotates in 3D space as digits are entered, with eyes that scale and move, and eyebrows/mouth that morph between happy, sad, and neutral expressions using Skia path interpolation. Includes shake animation on wrong code entry and smooth keyboard avoidance with react-native-keyboard-controller.",
-
   "main_features": [
     "Interactive animated face icon with 3D perspective rotation",
     "Dynamic facial expression changes (happy, sad, neutral) via Skia path morphing",
@@ -20,7 +19,6 @@
     "Gap interpolation between face elements based on progress",
     "Skia Canvas-based rendering for face elements"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Main entry point rendering VerificationCodeScreen with correctCode prop (1234)"
@@ -82,7 +80,6 @@
       ]
     }
   },
-
   "core_technologies": [
     "react-native-reanimated (animations and shared values)",
     "react-native-keyboard-controller (keyboard animation handling)",
@@ -93,7 +90,6 @@
     "TextInput with invisible styling",
     "useFocusEffect from expo-router"
   ],
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
@@ -178,7 +174,6 @@
       ]
     }
   },
-
   "animation_techniques": [
     "3D perspective rotation with rotateY based on input progress",
     "Path morphing using Skia path interpolation for facial expressions",
@@ -194,7 +189,6 @@
     "Custom cubic bezier curves for flip animations (0,0.75,0.5,0.9)",
     "Stateful animation control via SharedValue<StatusType>"
   ],
-
   "reanimated_patterns": [
     "useSharedValue for status tracking ('inProgress' | 'correct' | 'wrong')",
     "useDerivedValue for computed progress percentage (currentCodeLength / maxCodeLength)",
@@ -210,7 +204,6 @@
     "Multiple useAnimatedStyle hooks for different transform layers",
     "Shared value derived values for synchronized animations"
   ],
-
   "performance_optimizations": [
     "GPU-accelerated transforms (translateX, translateY, rotateX, rotateY, scale)",
     "UI thread execution via Reanimated worklets",
@@ -225,7 +218,6 @@
     "Minimal JavaScript thread involvement during animations",
     "Efficient array rendering with key prop optimization"
   ],
-
   "use_cases": [
     "Two-factor authentication (2FA) code verification screens",
     "PIN code entry for app lock or secure features",
@@ -243,7 +235,6 @@
     "Gamified authentication experiences",
     "Premium feature unlock verification"
   ],
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with explicit type annotations throughout",
@@ -279,7 +270,6 @@
       "Could benefit from React.memo on AnimatedCodeNumber"
     ]
   },
-
   "known_limitations": [
     "Only supports numeric codes (keyboard type is 'number-pad')",
     "Fixed 4-digit code length based on correctCode prop",
@@ -299,7 +289,6 @@
     "No support for different face styles or customization",
     "Gap interpolation values (7 to 3) hardcoded"
   ],
-
   "potential_improvements": [
     "Add configurable reset timeout prop (instead of hardcoded 1000ms)",
     "Support alphanumeric codes with flexible keyboard types",
@@ -329,7 +318,6 @@
     "Platform-specific shadow implementations",
     "Add success/error message display integration"
   ],
-
   "key_insights": [
     "Invisible TextInput pattern: Positions TextInput off-screen to leverage native keyboard while custom UI handles display",
     "Skia path interpolation: Smooth facial expression morphing achieved by interpolating between SVG path definitions",
@@ -347,13 +335,11 @@
     "Stateful reset pattern: setTimeout with shared value reset and imperative ref call orchestrates multi-component reset",
     "Canvas optimization: Skia Canvas renders eyebrows and mouth with minimal overhead compared to React Native Views"
   ],
-
   "learning_opportunities": [
     "For beginners: Invisible TextInput pattern, forwardRef usage, useSharedValue for state, basic transforms, useState with arrays, array rendering with map, useCallback for event handlers, useFocusEffect for screen lifecycle",
     "For intermediate: react-native-keyboard-controller integration, 3D transforms (perspective, rotateX, rotateY), Skia Canvas basics, path rendering, custom hooks (useAnimatedShake), useImperativeHandle pattern, status-based animations, entering/exiting animation builders, useDerivedValue for computed values, interpolate function usage",
     "For advanced: Skia path interpolation with usePathInterpolation, multi-component animation orchestration, complex 3D rotation coordination, cubic bezier easing customization, UI thread worklet optimization, building production-ready verification flows, imperative animation APIs, keyboard avoidance strategies, SVG path generation and manipulation, state machine patterns with SharedValue, performance optimization with Skia, coordinating multiple animation systems (Reanimated + Skia)"
   ],
-
   "tags": [
     "verification-code",
     "otp-input",
@@ -383,5 +369,9 @@
     "progressive-animation",
     "form-input",
     "security-ui"
-  ]
+  ],
+  "content_hash": "55d4636cdedc915af118359188364ab90e6f62f233357b8b821f6320e2b6a036",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.495Z",
+  "last_validated": "2025-10-12T09:19:28.495Z"
 }

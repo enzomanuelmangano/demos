@@ -2,7 +2,6 @@
   "animation_name": "Fourier Visualizer",
   "animation_slug": "fourier-visualizer",
   "description": "An interactive drawing visualizer that transforms hand-drawn paths into animated Fourier series representations using epicycles. Users draw shapes on canvas, and the animation decomposes the drawing into rotating circles (epicycles) using Fast Fourier Transform (FFT), then reconstructs the original path through the combined motion of these circles. Demonstrates mathematical concepts of Fourier analysis in a visually engaging way.",
-
   "main_features": [
     "Interactive touch-based drawing on canvas",
     "Fast Fourier Transform (FFT) computation of drawn paths",
@@ -16,7 +15,6 @@
     "Pan gesture detection for drawing input",
     "Worklet-based FFT computation for performance"
   ],
-
   "file_structure": {
     "index.tsx": "Main app component with drawing canvas and gesture handling",
     "components/fourier-visualizer/index.tsx": "Core Fourier visualization component using epicycles",
@@ -26,7 +24,6 @@
     "utils/geometry.ts": "PathGeometry class for measuring and sampling paths",
     "utils/types.ts": "TypeScript type definitions for Point and Complex numbers"
   },
-
   "core_technologies": {
     "graphics": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
@@ -35,7 +32,6 @@
     "worklets": "react-native-worklets",
     "interactions": "pressto"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -132,7 +128,6 @@
       "usage": "Clear icon in reset button"
     }
   },
-
   "animation_techniques": {
     "fourier_decomposition": {
       "mathematical_concept": "Any periodic function can be represented as sum of sine/cosine waves",
@@ -211,7 +206,6 @@
       "interaction": "Stops animation and clears canvas"
     }
   },
-
   "mathematical_algorithms": {
     "fft_implementation": {
       "library": "fft.js",
@@ -263,7 +257,6 @@
       "visual_effect": "Creates chain of rotating circles"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -326,10 +319,16 @@
     "derived_values": [
       {
         "name": "drawPath",
-        "dependencies": ["epicyclePositions", "baseEpicycles"],
+        "dependencies": [
+          "epicyclePositions",
+          "baseEpicycles"
+        ],
         "scope": "FourierVisualizer",
         "calculation": "Builds path connecting epicycle centers and updates circles",
-        "also_updates": ["resultPath", "circlesPath"],
+        "also_updates": [
+          "resultPath",
+          "circlesPath"
+        ],
         "performance": "Recalculates only when positions change"
       }
     ],
@@ -374,7 +373,6 @@
       }
     ]
   },
-
   "performance_optimizations": {
     "fft_computation": {
       "algorithm": "O(N log N) Fast Fourier Transform",
@@ -419,7 +417,6 @@
       "fast_refresh_workaround": "Manual ref type definition to avoid Hermes errors"
     }
   },
-
   "component_architecture": {
     "main_app": {
       "file": "index.tsx",
@@ -463,7 +460,6 @@
       "types.ts": "Type definitions shared across modules"
     }
   },
-
   "visual_design": {
     "color_palette": {
       "background": "#D4D4D4 (light gray)",
@@ -498,7 +494,6 @@
       "z_index": "Button above canvas via absolute positioning"
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -537,7 +532,6 @@
       }
     }
   },
-
   "worklet_patterns": {
     "draw_function": {
       "marked_worklet": true,
@@ -560,7 +554,6 @@
       "use_case": "Callback after animation completion, clearing visualizer"
     }
   },
-
   "use_cases": {
     "primary": [
       "Mathematical education tool for Fourier series",
@@ -590,7 +583,6 @@
       "Complex animation coordination"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Comprehensive inline documentation with detailed comments",
@@ -630,7 +622,6 @@
       "index.tsx": "Helpful comments on key decisions"
     }
   },
-
   "known_limitations": {
     "fft_computation_cost": {
       "issue": "Very complex drawings with many points could cause frame drops",
@@ -673,7 +664,6 @@
       "improvement": "Could implement epicycle recycling or limits"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Adjustable animation speed/duration",
@@ -723,7 +713,6 @@
       "Interactive FFT parameter tuning"
     ]
   },
-
   "key_insights": {
     "fft_power": "FFT algorithm makes real-time Fourier decomposition feasible on mobile",
     "visual_mathematics": "Complex mathematical concepts become intuitive through visualization",
@@ -735,7 +724,6 @@
     "cumulative_positions": "Chaining epicycles creates emergent complexity from simple rotations",
     "thread_orchestration": "Careful thread management between UI and RN threads maintains responsiveness"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Introduction to Fourier series",
@@ -772,7 +760,6 @@
       "Discrete vs continuous transforms"
     ]
   },
-
   "related_patterns": {
     "similar_visualizations": [
       "Lissajous curves",
@@ -796,7 +783,6 @@
       "Animation curve editors"
     ]
   },
-
   "real_world_inspiration": {
     "educational_tools": [
       "3Blue1Brown Fourier series videos",
@@ -817,7 +803,6 @@
       "Quantum mechanics (wave function analysis)"
     ]
   },
-
   "testing_considerations": {
     "unit_tests": [
       "FFT computation correctness",
@@ -857,7 +842,6 @@
       "Animation smoothness"
     ]
   },
-
   "accessibility_recommendations": {
     "current_state": {
       "screen_readers": "No support",
@@ -876,7 +860,6 @@
       "Voice commands for control"
     ]
   },
-
   "mathematical_accuracy": {
     "fft_precision": {
       "algorithm": "Standard FFT implementation (fft.js)",
@@ -895,7 +878,6 @@
       "quantitative": "Could measure error metrics but not currently implemented"
     }
   },
-
   "bundle_size_impact": {
     "code_size": "~500 lines across all files",
     "dependencies": {
@@ -910,7 +892,6 @@
     },
     "estimated_total": "~10KB code + 4KB fft.js = ~14KB additional"
   },
-
   "tags": [
     "fourier-series",
     "fft",
@@ -932,5 +913,9 @@
     "complex-numbers",
     "animation-reconstruction",
     "canvas-drawing"
-  ]
+  ],
+  "content_hash": "251769568f75920994366131e63a441dfe276e6da23c0229d2725f9f4e0b7cfc",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.354Z",
+  "last_validated": "2025-10-12T09:19:28.354Z"
 }

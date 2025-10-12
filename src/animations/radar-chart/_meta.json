@@ -2,7 +2,6 @@
   "animation_name": "Radar Chart",
   "animation_slug": "radar-chart",
   "description": "A fully animated radar/spider chart component built with React Native Skia. Features smooth transitions between data sets with interpolated polygons, customizable grid layers, and dynamic data point animations. Supports multiple data series with independent colors, animated value transitions, and configurable grid complexity.",
-
   "main_features": [
     "Animated radar/spider chart with polygon rendering",
     "Smooth data transitions with interpolation",
@@ -18,7 +17,6 @@
     "Worklet-optimized calculations",
     "Animation cancellation and interruption handling"
   ],
-
   "file_structure": {
     "entries": {
       "index.tsx": "Demo container with random data generation and shuffle interaction"
@@ -42,14 +40,12 @@
     "constants": {},
     "assets": {}
   },
-
   "core_technologies": {
     "graphics": "@shopify/react-native-skia",
     "animations": "react-native-reanimated",
     "color_manipulation": "color",
     "pattern": "Animated data visualization"
   },
-
   "packages_and_versions": {
     "@shopify/react-native-skia": {
       "version": "2.2.12",
@@ -106,7 +102,6 @@
       "usage": "Component state, memoization, and lifecycle management"
     }
   },
-
   "animation_techniques": {
     "data_transition_animation": {
       "pattern": "Interpolated transition between current and target data sets",
@@ -219,7 +214,6 @@
       "benefit": "Automatic harmonious color scheme generation"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -234,7 +228,9 @@
         "type": "DerivedValue<number>",
         "scope": "useCanvasLayout hook",
         "calculation": "size.value.width / 2",
-        "dependencies": ["size"],
+        "dependencies": [
+          "size"
+        ],
         "purpose": "Horizontal center coordinate for all positioning"
       },
       {
@@ -242,7 +238,9 @@
         "type": "DerivedValue<number>",
         "scope": "useCanvasLayout hook",
         "calculation": "size.value.height / 2",
-        "dependencies": ["size"],
+        "dependencies": [
+          "size"
+        ],
         "purpose": "Vertical center coordinate for all positioning"
       },
       {
@@ -250,7 +248,11 @@
         "type": "DerivedValue<number>",
         "scope": "RadarChart component",
         "calculation": "Math.min(centerX.value, centerY.value) * 0.82 - dotStrokeWidth / 2",
-        "dependencies": ["centerX", "centerY", "dotStrokeWidth"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "dotStrokeWidth"
+        ],
         "purpose": "Maximum radius for polygon, scaled to 82% with stroke adjustment"
       },
       {
@@ -284,42 +286,69 @@
         "name": "pathByIntensity",
         "scope": "RadarChart component",
         "calculation": "layerIntensities.map(intensity => getPolygonPath(Array(n).fill(intensity)))",
-        "dependencies": ["centerX", "centerY", "radius", "valuesLength", "layerIntensities"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "radius",
+          "valuesLength",
+          "layerIntensities"
+        ],
         "purpose": "Generate polygon paths for each grid layer"
       },
       {
         "name": "internalConnectedLinesFromCenter",
         "scope": "usePolygonGrid hook",
         "calculation": "Skia path with lines from center to each vertex",
-        "dependencies": ["centerX", "centerY", "radius", "n"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "radius",
+          "n"
+        ],
         "purpose": "Radial grid lines path"
       },
       {
         "name": "internalPaths",
         "scope": "RadarChart component",
         "calculation": "allValues.value.map(values => getPolygonPath(values))",
-        "dependencies": ["centerX", "centerY", "radius", "allValues"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "radius",
+          "allValues"
+        ],
         "purpose": "Data polygon paths for each series"
       },
       {
         "name": "internalPoints",
         "scope": "RadarChart component",
         "calculation": "Calculate {x, y} coordinates for all data points",
-        "dependencies": ["centerX", "centerY", "radius", "allValues"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "radius",
+          "allValues"
+        ],
         "purpose": "Data point positions for Points component"
       },
       {
         "name": "allValues",
         "scope": "useUnwrappedValues hook",
         "calculation": "Interpolate between currentData and targetData based on progress",
-        "dependencies": ["data", "progress"],
+        "dependencies": [
+          "data",
+          "progress"
+        ],
         "purpose": "Animated values array for all data series"
       },
       {
         "name": "transformOrigin",
         "scope": "RadarChart component",
         "calculation": "{ x: centerX.value, y: centerY.value }",
-        "dependencies": ["centerX", "centerY"],
+        "dependencies": [
+          "centerX",
+          "centerY"
+        ],
         "purpose": "Rotation origin for text labels"
       }
     ],
@@ -329,7 +358,11 @@
         "type": "useCallback",
         "signature": "(pathValues: number[]) => SkPath",
         "worklet": true,
-        "dependencies": ["centerX", "centerY", "radius"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "radius"
+        ],
         "purpose": "Memoized worklet to generate polygon paths",
         "calls": "getScaledPolygonPath utility function"
       }
@@ -337,19 +370,26 @@
     "memoization_strategies": {
       "layerIntensities": {
         "hook": "useMemo",
-        "dependencies": ["internalLayers"],
+        "dependencies": [
+          "internalLayers"
+        ],
         "purpose": "Avoid recalculating intensity array on every render",
         "calculation": "Array(internalLayers).fill(1).map((_, i) => 1 - i/internalLayers)"
       },
       "textSkills": {
         "hook": "useMemo",
-        "dependencies": ["data"],
+        "dependencies": [
+          "data"
+        ],
         "purpose": "Extract axis labels from first data item",
         "calculation": "Object.keys(dataArray[0]?.values ?? {})"
       },
       "valuesLength": {
         "hook": "useMemo",
-        "dependencies": ["data", "isSharedValue"],
+        "dependencies": [
+          "data",
+          "isSharedValue"
+        ],
         "purpose": "Calculate maximum number of axes across all data series",
         "calculation": "Math.max(...data.map(item => Object.keys(item.values).length))"
       }
@@ -361,7 +401,6 @@
       "location": "useUnwrappedValues hook"
     }
   },
-
   "component_architecture": {
     "radar_chart": {
       "type": "Generic component with TypeScript generics",
@@ -436,10 +475,19 @@
       "state": "useState with randomly generated data",
       "data_generation": {
         "function": "generateRandomDataChart",
-        "axes": ["Checkmate", "Deflection", "Endgame", "Fork", "Sacrifice"],
+        "axes": [
+          "Checkmate",
+          "Deflection",
+          "Endgame",
+          "Fork",
+          "Sacrifice"
+        ],
         "series_count": 2,
         "value_generation": "Math.random()",
-        "colors": ["rgba(255,255,0,0.2)", "rgba(0,255,255,0.3)"]
+        "colors": [
+          "rgba(255,255,0,0.2)",
+          "rgba(0,255,255,0.3)"
+        ]
       },
       "interaction": {
         "button": "Shuffle button to regenerate random data",
@@ -453,7 +501,6 @@
       }
     }
   },
-
   "mathematical_calculations": {
     "polar_to_cartesian_conversion": {
       "formula": {
@@ -486,7 +533,6 @@
       "granularity": "Per-value interpolation for smooth morphing"
     }
   },
-
   "performance_optimizations": {
     "worklet_annotations": {
       "functions": [
@@ -506,29 +552,42 @@
     "useMemo_optimizations": [
       {
         "location": "layerIntensities calculation",
-        "dependencies": ["internalLayers"],
+        "dependencies": [
+          "internalLayers"
+        ],
         "prevents": "Array recalculation on every render"
       },
       {
         "location": "textSkills extraction",
-        "dependencies": ["data"],
+        "dependencies": [
+          "data"
+        ],
         "prevents": "Object.keys recalculation on every render"
       },
       {
         "location": "valuesLength calculation",
-        "dependencies": ["data", "isSharedValue"],
+        "dependencies": [
+          "data",
+          "isSharedValue"
+        ],
         "prevents": "Max calculation on every render"
       },
       {
         "location": "Canvas layout calculations",
-        "dependencies": ["canvasStyle"],
+        "dependencies": [
+          "canvasStyle"
+        ],
         "prevents": "StyleSheet.flatten on every render"
       }
     ],
     "useCallback_optimizations": [
       {
         "location": "getPolygonPath",
-        "dependencies": ["centerX", "centerY", "radius"],
+        "dependencies": [
+          "centerX",
+          "centerY",
+          "radius"
+        ],
         "benefit": "Stable function reference for derived values",
         "worklet": true
       }
@@ -557,7 +616,6 @@
       "benefit": "Skip interpolation calculation when animation complete"
     }
   },
-
   "use_cases": {
     "primary": [
       "Data visualization for multi-dimensional metrics",
@@ -597,7 +655,6 @@
       "Exploring animation state management"
     ]
   },
-
   "code_quality": {
     "strengths": [
       "Full TypeScript with generic type parameters",
@@ -656,7 +713,6 @@
       "modularity": "Well-organized file structure"
     }
   },
-
   "known_limitations": {
     "eslint_rules_violation": {
       "issue": "useDerivedValue called inside map function",
@@ -711,7 +767,6 @@
       "issue": "Many derived values and path calculations"
     }
   },
-
   "potential_improvements": {
     "features": [
       "Interactive data points (tap to show value)",
@@ -804,7 +859,6 @@
       "Debug mode with value overlays"
     ]
   },
-
   "key_insights": {
     "animation_interruption": "Proper handling of animation interruptions prevents visual jumps and creates smooth transitions even when data changes rapidly",
     "generic_types": "TypeScript generics enable type-safe axis keys while maintaining component flexibility",
@@ -818,7 +872,6 @@
     "responsive_sizing": "Canvas sizing via style prop with aspectRatio enables flexible responsive layouts",
     "data_flexibility": "Supporting both SharedValue and regular arrays makes component usable in various contexts"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic Skia rendering with Canvas and Path",
@@ -850,7 +903,6 @@
       "Building data visualization libraries"
     ]
   },
-
   "comparison_to_alternatives": {
     "vs_victory_native": {
       "victory": "Full-featured charting library with many chart types",
@@ -878,7 +930,6 @@
       "trade_off": "SVG more familiar to web developers"
     }
   },
-
   "design_patterns": {
     "composition_pattern": {
       "hooks": "Three specialized hooks for different concerns",
@@ -903,7 +954,6 @@
       "flexibility": "Works with any set of string keys"
     }
   },
-
   "testing_considerations": {
     "unit_tests": [
       "getScaledPolygonPath produces correct coordinates",
@@ -959,7 +1009,6 @@
       "Derived value recalculation is optimized"
     ]
   },
-
   "accessibility_recommendations": {
     "current_state": "No accessibility support",
     "should_add": [
@@ -983,7 +1032,6 @@
       "sonification": "Consider audio cues for data values"
     }
   },
-
   "bundle_size_impact": {
     "component_size": "~400 lines across all files",
     "dependencies": {
@@ -995,7 +1043,6 @@
     "runtime_memory": "Minimal - few SharedValues, efficient path generation",
     "estimated_impact": "< 10KB additional (color library + component code)"
   },
-
   "tags": [
     "radar-chart",
     "spider-chart",
@@ -1017,5 +1064,9 @@
     "gpu-accelerated",
     "generic-types",
     "typescript"
-  ]
+  ],
+  "content_hash": "20a064b3551491c394611cae2a27debba1c43743ac897c206f3ca6501c8ad669",
+  "hash_algorithm": "sha256",
+  "hash_generated_at": "2025-10-12T09:19:28.414Z",
+  "last_validated": "2025-10-12T09:19:28.414Z"
 }
