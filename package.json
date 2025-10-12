@@ -19,7 +19,12 @@
     "generate-icons-set": "cd scripts/generate-app-icon && bun install && bun generate-icons",
     "eas-build-pre-install": "bun generate-icons-set --value=$(node scripts/utils/get-animations-count.js)",
     "clean": "rimraf node_modules ios android $TMPDIR/haste-map-* $TMPDIR/metro-cache .expo && bun pm cache clean && watchman watch-del-all",
-    "update-expo-packages": "expo install --fix"
+    "update-expo-packages": "expo install --fix",
+    "meta:generate": "node scripts/meta-hash.js generate",
+    "meta:validate": "node scripts/meta-hash.js validate",
+    "meta:list": "node scripts/meta-hash.js list",
+    "meta:help": "node scripts/meta-hash.js --help",
+    "meta:stats": "node scripts/meta-stats.js"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",

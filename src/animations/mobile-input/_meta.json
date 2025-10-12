@@ -1,0 +1,689 @@
+{
+  "animation_name": "Mobile Input",
+  "animation_slug": "mobile-input",
+  "description": "An interactive PIN lock screen with animated face feedback, featuring a numeric keypad, animated dots, shake error animations, and Skia-rendered face expressions. The face reacts to user input with eye opening, happy/sad mouth animations, and a colorful gradient circle stroke background with blur effects.",
+
+  "main_features": [
+    "PIN code input validation with configurable correct PIN",
+    "Animated face feedback (happy, sad, neutral expressions)",
+    "Skia-rendered face with interpolated mouth path animations",
+    "Eye opening/closing animations with dynamic radius changes",
+    "Shake animation on incorrect PIN entry",
+    "Animated dots indicating PIN entry progress",
+    "Tap gesture on numeric keypad buttons",
+    "Scale and opacity feedback on button press",
+    "Colorful gradient circle stroke background with animated blur",
+    "Backspace functionality to reset PIN",
+    "Callbacks for PIN events (onError, onClear, onCompleted)",
+    "Safe area insets support for proper layout",
+    "Worklet-based thread scheduling for callbacks"
+  ],
+
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Demo wrapper passing correctPin and callbacks to LockScreen"
+    },
+    "components": {
+      "lock-screen.tsx": "Main lock screen orchestrator managing PIN state and validation",
+      "components/ButtonsGrid/index.tsx": "Grid layout of numeric buttons (0-9 + backspace)",
+      "components/ButtonsGrid/InputButton.tsx": "Individual button with tap gesture and scale/opacity feedback",
+      "components/PinArea/index.tsx": "PIN display area with 'Enter PIN Mode' text and dots",
+      "components/PinArea/Dots/index.tsx": "Container for rendering array of dot indicators",
+      "components/PinArea/Dots/Dot.tsx": "Single animated dot with scale and opacity transitions",
+      "components/AnimatedFace/index.tsx": "Skia-rendered face with mouth and eye animations",
+      "components/CircleStroke/index.tsx": "Background gradient circle with animated blur effect"
+    },
+    "hooks": {
+      "hooks/use-animated-shake.ts": "Custom hook for shake animation with repeat timing"
+    },
+    "utils": {},
+    "assets": {},
+    "types": {
+      "AnimatedFaceRefType": "Imperative API for face animations (happy, sad, reset, openEyes, closeEyes)"
+    },
+    "constants": {}
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "graphics": "@shopify/react-native-skia",
+    "threading": "react-native-worklets",
+    "layout": "react-native-safe-area-context"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useAnimatedReaction",
+        "interpolate",
+        "withSpring",
+        "withTiming",
+        "withRepeat",
+        "withSequence",
+        "cancelAnimation"
+      ],
+      "critical_features": [
+        "useAnimatedReaction for PIN validation logic on UI thread",
+        "useDerivedValue for reactive state derivation"
+      ]
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureDetector"],
+      "gestures": ["Gesture.Tap()"],
+      "usage": "Tap gesture for button interactions with touch lifecycle"
+    },
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Group",
+        "Path",
+        "Circle",
+        "BlurMask",
+        "SweepGradient"
+      ],
+      "utilities": ["Skia.Path.MakeFromSVGString", "interpolate", "vec"],
+      "usage": "Rendering animated face and gradient background circle"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "imports": ["scheduleOnRN"],
+      "usage": "Bridge worklet callbacks to JS thread for React state updates and callbacks"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hooks": ["useSafeAreaInsets"],
+      "usage": "Proper padding for notch and home indicator areas"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["FontAwesome5"],
+      "icons_used": ["backspace"],
+      "usage": "Backspace icon in button grid"
+    }
+  },
+
+  "animation_techniques": {
+    "shake_animation": {
+      "hook": "useAnimatedShake",
+      "trigger": "Incorrect PIN entry",
+      "animation": "withRepeat(withTiming(10, duration: 100), 4, true)",
+      "easing": "Easing.bezier(0.36, 0.69, 0.49, 0.71)",
+      "effect": "Horizontal shake with 10px amplitude, 4 repetitions",
+      "applied_to": "PinArea container",
+      "cancellation": "cancelAnimation before new shake"
+    },
+    "dot_activation": {
+      "component": "Dot",
+      "scale_animation": "withSpring(isActive ? 1.4 : 1)",
+      "opacity_animation": "withTiming(isActive ? 1 : 0.4)",
+      "trigger": "When activeDots.value > index",
+      "effect": "Active dots scale up and become fully opaque"
+    },
+    "button_press_feedback": {
+      "component": "InputButton",
+      "onTouchesDown": "progress.value = withTiming(1)",
+      "onTouchesUp": "Executes onTap callback",
+      "onFinalize": "progress.value = withTiming(0)",
+      "scale_interpolation": "interpolate(progress, [0, 1], [1, 0.9])",
+      "opacity_interpolation": "interpolate(progress, [0, 1], [0, 0.1])",
+      "effect": "Button scales down and background fades in on press"
+    },
+    "face_mouth_animation": {
+      "component": "AnimatedFace",
+      "paths": ["happyMouth", "sadMouth"],
+      "progress": "mouthProgress.value (0 = sad, 0.5 = neutral, 1 = happy)",
+      "interpolation": "happyMouth.interpolate(sadMouth, mouthProgress.value)",
+      "animation": "withTiming(target, duration: 250)",
+      "effect": "Smooth morphing between sad and happy mouth shapes"
+    },
+    "face_eyes_animation": {
+      "component": "AnimatedFace",
+      "radius_animation": "interpolate(eyesProgress, [0, 1], [4, 6])",
+      "progress": "eyesProgress.value (0 = closed, 1 = open)",
+      "animation": "withTiming(target, duration: 250)",
+      "effect": "Eyes open/close by changing circle radius"
+    },
+    "circle_blur_animation": {
+      "component": "CircleStroke",
+      "sequence": "withSequence(withTiming(10, 4s), withTiming(45, 4s), withTiming(10, 4s))",
+      "effect": "Continuous blur pulsing from 10 to 45 and back",
+      "style": "BlurMask with 'solid' style"
+    },
+    "gradient_circle": {
+      "component": "CircleStroke",
+      "type": "SweepGradient",
+      "colors": ["yellow", "cyan", "cyan", "#3C91E6", "magenta", "orange", "yellow"],
+      "style": "stroke with strokeWidth: 25",
+      "effect": "Colorful circular gradient around face"
+    }
+  },
+
+  "reanimated_patterns": {
+    "useAnimatedReaction": {
+      "location": "lock-screen.tsx",
+      "watches": "pin.value (array of digits)",
+      "reactions": [
+        "If pin matches correctPin → scheduleOnRN(correct)",
+        "If pin length equals correctPin length but wrong → scheduleOnRN(wrong)",
+        "If pin length > 0 and not complete → scheduleOnRN(activate)",
+        "If pin length > correctPin length → ignore"
+      ],
+      "dependencies": ["activate", "reset", "wrong", "correct"],
+      "benefit": "PIN validation logic runs on UI thread, callbacks bridged to JS"
+    },
+    "useDerivedValue": {
+      "activeDots": {
+        "calculation": "pin.value.length",
+        "purpose": "Number of active dots for display",
+        "reactive": "Updates whenever pin array changes"
+      },
+      "face_transforms": {
+        "centerX": "size.width / 4 - path.getBounds().width / 2",
+        "centerY": "size.height / 4 + 30",
+        "origin": "Calculated from centerX, centerY, eyeRadius",
+        "purpose": "Dynamic positioning based on screen dimensions"
+      },
+      "circle_geometry": {
+        "cx": "size.width / 4",
+        "cy": "size.height / 4 + 20",
+        "r": "size.height / 7.5",
+        "purpose": "Responsive circle sizing based on viewport"
+      }
+    },
+    "useSharedValue": {
+      "pin": {
+        "type": "number[]",
+        "initial": "[]",
+        "mutations": "pin.value = [...pin.value, digit] or pin.value = []",
+        "usage": "Store entered PIN digits"
+      },
+      "shakeTranslateX": {
+        "type": "number",
+        "initial": 0,
+        "usage": "Horizontal shake offset"
+      },
+      "mouthProgress": {
+        "type": "number",
+        "initial": 0.5,
+        "range": "0 (sad) to 1 (happy)",
+        "usage": "Control mouth expression"
+      },
+      "eyesProgress": {
+        "type": "number",
+        "initial": 0,
+        "range": "0 (closed) to 1 (open)",
+        "usage": "Control eye state"
+      },
+      "blur": {
+        "type": "number",
+        "initial": 0,
+        "usage": "Animated blur intensity for circle"
+      }
+    },
+    "useAnimatedStyle": {
+      "shake_style": {
+        "transform": "[{ translateX: shakeTranslateX.value }]",
+        "applied_to": "PinArea container"
+      },
+      "button_style": {
+        "backgroundColor": "rgba(255,255,255,${opacity})",
+        "transform": "[{ scale }]"
+      }
+    }
+  },
+
+  "component_patterns": {
+    "forwardRef_imperative_api": {
+      "component": "AnimatedFace",
+      "ref_type": "AnimatedFaceRefType",
+      "exposed_methods": {
+        "happy": "() => void - Sets mouth to happy expression",
+        "sad": "() => void - Sets mouth to sad expression",
+        "reset": "() => void - Returns to neutral expression with closed eyes",
+        "openEyes": "() => void - Opens eyes",
+        "closeEyes": "() => void - Closes eyes"
+      },
+      "pattern": "useImperativeHandle with forwardRef",
+      "benefit": "Parent (LockScreen) can control face expressions imperatively"
+    },
+    "memo_optimization": {
+      "components": [
+        "ButtonsGrid",
+        "InputButton",
+        "PinArea",
+        "Dots",
+        "Dot",
+        "CircleStroke"
+      ],
+      "purpose": "Prevent unnecessary re-renders",
+      "benefit": "Performance optimization with many components"
+    },
+    "shared_value_mutations": {
+      "pattern": "Direct mutation of pin.value array",
+      "add_digit": "pin.value = [...pin.value, digit]",
+      "reset": "pin.value = []",
+      "benefit": "Triggers useAnimatedReaction without setState overhead"
+    },
+    "worklet_callbacks": {
+      "callbacks": ["correct", "wrong", "activate", "reset"],
+      "pattern": "useCallback wrapping scheduleOnRN calls",
+      "purpose": "Bridge UI thread animations to JS thread callbacks",
+      "benefit": "Call React callbacks from worklet context safely"
+    }
+  },
+
+  "gesture_handling": {
+    "tap_gesture_lifecycle": {
+      "gesture": "Gesture.Tap()",
+      "maxDuration": 10000,
+      "onTouchesDown": "Animate progress to 1 (pressed state)",
+      "onTouchesUp": "Execute onTap callback via scheduleOnRN",
+      "onFinalize": "Animate progress to 0 (released state)"
+    },
+    "button_feedback": {
+      "visual": "Scale down to 0.9, background opacity to 0.1",
+      "timing": "withTiming with default config",
+      "restoration": "Returns to normal on gesture finalize"
+    }
+  },
+
+  "state_management": {
+    "shared_values": [
+      {
+        "name": "pin",
+        "type": "number[]",
+        "purpose": "Store entered digits",
+        "mutations": "Direct value assignment triggers reactions"
+      },
+      {
+        "name": "activeDots",
+        "type": "SharedValue<number>",
+        "derived": "pin.value.length",
+        "usage": "Passed to Dots component for visual feedback"
+      },
+      {
+        "name": "mouthProgress",
+        "range": "0-1",
+        "controls": "Sad to happy mouth interpolation"
+      },
+      {
+        "name": "eyesProgress",
+        "range": "0-1",
+        "controls": "Closed to open eyes"
+      },
+      {
+        "name": "shakeTranslateX",
+        "controls": "Horizontal shake offset"
+      },
+      {
+        "name": "blur",
+        "controls": "Circle background blur intensity"
+      }
+    ],
+    "react_refs": [
+      {
+        "name": "animatedFaceRef",
+        "type": "AnimatedFaceRefType",
+        "usage": "Imperative control of face animations"
+      }
+    ],
+    "props": [
+      {
+        "name": "correctPin",
+        "type": "string",
+        "required": true,
+        "description": "The correct PIN to validate against"
+      },
+      {
+        "name": "onClear",
+        "type": "() => void",
+        "optional": true,
+        "description": "Called when PIN is cleared/reset"
+      },
+      {
+        "name": "onCompleted",
+        "type": "() => void",
+        "optional": true,
+        "description": "Called when correct PIN entered"
+      },
+      {
+        "name": "onError",
+        "type": "(wrongPin: string) => void",
+        "optional": true,
+        "description": "Called when incorrect PIN entered"
+      }
+    ]
+  },
+
+  "skia_patterns": {
+    "svg_path_interpolation": {
+      "technique": "Skia.Path.MakeFromSVGString",
+      "paths": {
+        "sadMouth": "M31.2226 8.20008C27.3898 4.95606 22.4321 3 17.0176 3C11.6909 3 6.8063 4.89309 3 8.04317",
+        "happyMouth": "M31.2226 2.99999C27.3898 6.24401 22.4321 8.20007 17.0176 8.20007C11.6909 8.20007 6.8063 6.30699 3 3.15691"
+      },
+      "interpolation": "happyMouth.interpolate(sadMouth, progress)",
+      "benefit": "Smooth morphing between mouth shapes"
+    },
+    "dynamic_path_animation": {
+      "path": "useDerivedValue(() => happyMouth.interpolate(sadMouth, mouthProgress))",
+      "reactivity": "Path updates when mouthProgress changes",
+      "rendering": "<Path path={path} color='white' style='stroke' />"
+    },
+    "circle_rendering": {
+      "eyes": "Two Circle components with dynamic radius",
+      "positioning": "cx calculated relative to path bounds",
+      "animation": "Radius interpolation for open/close effect"
+    },
+    "group_transforms": {
+      "origin": "Dynamic origin point for face positioning",
+      "transform": "[{ scale: 1.8 }, { translateX }, { translateY }]",
+      "benefit": "Unified transformations for entire face group"
+    },
+    "gradient_creation": {
+      "component": "SweepGradient",
+      "center": "vec(cx.value, cy.value)",
+      "colors": "7-color array for rainbow effect",
+      "application": "Applied as child of Circle component"
+    },
+    "blur_effect": {
+      "component": "BlurMask",
+      "blur_value": "Animated from 10 to 45 and back",
+      "style": "'solid'",
+      "effect": "Pulsing glow around gradient circle"
+    }
+  },
+
+  "ui_ux_patterns": {
+    "lock_screen_layout": {
+      "structure": "Face background (40% height) + PIN area and keypad (60% height)",
+      "background": "#1C274D (dark blue)",
+      "face_size": "200% width with aspect ratio 1, positioned absolutely",
+      "safe_areas": "Respects top and bottom insets"
+    },
+    "pin_feedback": {
+      "visual": "Dots scale and fade based on entry",
+      "error": "Shake animation on wrong PIN",
+      "success": "Happy face on correct PIN",
+      "interaction": "Immediate visual feedback on button press"
+    },
+    "keypad_grid": {
+      "layout": "3×4 grid (1-9, null, 0, backspace)",
+      "button_size": "30% width, 20% height",
+      "spacing": "7/3% margins for even distribution",
+      "style": "borderRadius: 20 for rounded buttons"
+    },
+    "emotional_feedback": {
+      "neutral": "Small closed eyes, neutral mouth (initial state)",
+      "active": "Eyes open when user starts entering PIN",
+      "correct": "Happy expression (smile, open eyes)",
+      "incorrect": "Sad expression (frown) + shake animation"
+    }
+  },
+
+  "visual_design": {
+    "color_palette": {
+      "background": "#1C274D (dark blue)",
+      "text": "white",
+      "dots": "white (opacity varies)",
+      "face": "white",
+      "button_hover": "rgba(255,255,255,0.1)",
+      "gradient": ["yellow", "cyan", "#3C91E6", "magenta", "orange"]
+    },
+    "typography": {
+      "pin_label": "15px, rgba(255,255,255,0.9)",
+      "numbers": "30px, white",
+      "alignment": "center"
+    },
+    "spacing": {
+      "pin_area_top": "20px",
+      "pin_area_bottom": "15px",
+      "dots_horizontal": "12px",
+      "dots_vertical": "20px (top), 25px (bottom)",
+      "button_margins": "7/3% (calculated for even grid)"
+    },
+    "dimensions": {
+      "dot_size": "8×8px",
+      "dot_border_radius": "4px",
+      "button_height": "20% of container",
+      "button_width": "30% of container",
+      "icon_size": "24px (backspace)"
+    },
+    "animations": {
+      "dot_scale": "1 → 1.4 (40% increase)",
+      "dot_opacity": "0.4 → 1",
+      "button_scale": "1 → 0.9",
+      "shake_amplitude": "10px",
+      "blur_range": "10 → 45 → 10"
+    }
+  },
+
+  "performance_optimizations": {
+    "memo": {
+      "all_components": "memo() wraps all functional components",
+      "benefit": "Prevents cascade re-renders from parent state changes"
+    },
+    "useCallback": {
+      "callbacks": ["correct", "wrong", "activate", "reset", "happy", "sad", "openEyes", "closeEyes"],
+      "dependencies": "Minimal and stable",
+      "benefit": "Stable callback references prevent re-renders"
+    },
+    "useDerivedValue": {
+      "usage": "All computed values derived from shared values",
+      "benefit": "Automatic reactivity without manual calculations",
+      "examples": ["activeDots", "face geometry", "circle dimensions"]
+    },
+    "worklet_optimization": {
+      "pattern": "useAnimatedReaction runs validation on UI thread",
+      "scheduleOnRN": "Only bridge to JS when callbacks needed",
+      "benefit": "Minimal bridge traffic, smooth animations"
+    },
+    "skia_performance": {
+      "canvas": "Single Canvas for face and circle",
+      "path_caching": "Paths created once, interpolated dynamically",
+      "gpu_acceleration": "Skia renders on GPU",
+      "benefit": "60fps animations with complex graphics"
+    },
+    "shared_value_mutations": {
+      "pattern": "Direct array mutations instead of setState",
+      "benefit": "No React re-render overhead for PIN state"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "PIN lock screens",
+      "Passcode entry interfaces",
+      "Secure authentication flows",
+      "Parental control locks",
+      "App security screens"
+    ],
+    "secondary": [
+      "2FA code entry",
+      "OTP verification",
+      "Safe/vault applications",
+      "Payment PIN entry",
+      "Access code interfaces"
+    ],
+    "real_world_examples": [
+      "iPhone lock screen",
+      "Banking app PIN entry",
+      "Password manager unlock",
+      "Parental control apps",
+      "Secure folder access",
+      "Payment apps (Venmo, PayPal PIN)"
+    ]
+  },
+
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit types throughout",
+      "Clean separation of concerns (components, hooks, logic)",
+      "Proper use of memo and useCallback for optimization",
+      "forwardRef and useImperativeHandle for clean API",
+      "Comprehensive worklet usage for thread safety",
+      "useAnimatedReaction for complex state validation",
+      "Skia integration for high-performance graphics",
+      "Custom hook extraction (useAnimatedShake)",
+      "Props interface with optional callbacks",
+      "Safe area handling for modern devices"
+    ],
+    "areas_for_improvement": [
+      "No accessibility labels for screen readers",
+      "Hardcoded strings ('Enter PIN Mode' not localized)",
+      "Magic numbers (10px shake, 250ms timing) could be constants",
+      "No haptic feedback on button press or errors",
+      "Missing error state for max attempts",
+      "No loading/disabled state for buttons",
+      "Console.log in demo (should use proper logging)",
+      "No unit tests or type tests"
+    ]
+  },
+
+  "known_limitations": {
+    "fixed_pin_length": {
+      "issue": "PIN length determined by correctPin prop",
+      "impact": "Can't easily support variable-length PINs",
+      "workaround": "Pass different correctPin lengths dynamically"
+    },
+    "no_max_attempts": {
+      "issue": "No built-in attempt limiting",
+      "impact": "Could allow unlimited PIN attempts",
+      "enhancement": "Add maxAttempts prop and lockout logic"
+    },
+    "hardcoded_strings": {
+      "issue": "'Enter PIN Mode' text is hardcoded",
+      "impact": "Not localizable for internationalization",
+      "enhancement": "Accept label props or use i18n"
+    },
+    "no_haptics": {
+      "issue": "No haptic feedback on interactions",
+      "impact": "Less tactile user experience",
+      "enhancement": "Add expo-haptics on button press and errors"
+    },
+    "fixed_styling": {
+      "issue": "Colors and sizes mostly hardcoded",
+      "impact": "Limited customization without code changes",
+      "enhancement": "Accept theme props or style overrides"
+    }
+  },
+
+  "potential_improvements": {
+    "features": [
+      "Biometric authentication option (Face ID, Touch ID)",
+      "Max attempts with lockout timer",
+      "Haptic feedback on press and errors",
+      "Sound effects for feedback",
+      "PIN visibility toggle",
+      "Custom PIN length support",
+      "PIN strength indicator",
+      "Forgot PIN flow",
+      "Multiple PIN profiles"
+    ],
+    "accessibility": [
+      "VoiceOver/TalkBack support with proper labels",
+      "Announce PIN entry progress",
+      "Alternative input methods",
+      "High contrast mode support",
+      "Larger touch targets option",
+      "Reduce motion support"
+    ],
+    "customization": [
+      "Themeable colors via props",
+      "Custom button layouts (e.g., shuffle)",
+      "Different face styles",
+      "Custom background gradients",
+      "Adjustable animation speeds",
+      "Optional components (face, gradient)",
+      "Custom error messages"
+    ],
+    "security": [
+      "Scrambled keypad option",
+      "Anti-shoulder-surfing features",
+      "Auto-clear on background",
+      "Secure storage integration",
+      "Brute force protection",
+      "Rate limiting"
+    ]
+  },
+
+  "key_insights": {
+    "useAnimatedReaction_validation": "Running PIN validation in useAnimatedReaction keeps logic on UI thread while bridging only needed callbacks",
+    "imperative_face_api": "forwardRef pattern allows parent to control face expressions without prop drilling",
+    "skia_path_interpolation": "SVG path interpolation creates smooth morphing between expressions",
+    "shared_value_array_mutations": "Direct mutations of shared value arrays work well for simple state without React overhead",
+    "scheduleOnRN_pattern": "Essential for bridging worklet callbacks to JS thread for React state and props callbacks",
+    "derived_geometry": "useDerivedValue for geometry calculations ensures responsive layout on all screens",
+    "tap_gesture_lifecycle": "maxDuration: 10000 allows long presses without gesture cancellation",
+    "memo_everywhere": "Aggressive memoization prevents re-render cascades in component tree",
+    "blur_sequence": "withSequence creates continuous pulsing effect without manual loop logic",
+    "position_calculations": "Dynamic positioning based on path.getBounds() ensures proper face centering"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic PIN input validation logic",
+      "Button press animations with gestures",
+      "useSharedValue for animation state",
+      "Conditional rendering based on state",
+      "Grid layout with flexbox"
+    ],
+    "for_intermediate": [
+      "useAnimatedReaction for complex logic",
+      "Custom hooks for reusable animations (useAnimatedShake)",
+      "forwardRef and useImperativeHandle patterns",
+      "scheduleOnRN for thread bridging",
+      "Skia Canvas basics",
+      "SVG path animations",
+      "useDerivedValue for reactive calculations",
+      "Tap gesture with lifecycle events"
+    ],
+    "for_advanced": [
+      "Skia path interpolation techniques",
+      "Complex worklet orchestration",
+      "Performance optimization with memo",
+      "Shared value direct mutations",
+      "Dynamic geometry calculations with useDerivedValue",
+      "Blur effects with animated parameters",
+      "Gradient creation in Skia",
+      "Multi-component animation coordination",
+      "Building reusable secure UI components"
+    ]
+  },
+
+  "related_patterns": {
+    "lock_screens": "Similar to iOS/Android lock screens",
+    "pin_entry": "ATM PIN pads, secure access codes",
+    "face_animations": "Emoji reactions, avatar expressions",
+    "feedback_animations": "Error shake, success bounce patterns",
+    "keypad_layouts": "Phone dialers, calculator layouts"
+  },
+
+  "tags": [
+    "lock-screen",
+    "pin-input",
+    "authentication",
+    "security",
+    "skia",
+    "animated-face",
+    "gesture-handler",
+    "reanimated",
+    "shake-animation",
+    "keypad",
+    "numeric-input",
+    "passcode",
+    "face-animation",
+    "path-interpolation",
+    "worklets",
+    "haptic-feedback",
+    "gradient",
+    "blur-effect"
+  ]
+}

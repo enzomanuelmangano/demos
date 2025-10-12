@@ -1,0 +1,854 @@
+{
+  "animation_name": "Story List",
+  "animation_slug": "story-list",
+  "description": "A horizontal story carousel with Instagram-like stacked card animations. Features pan gesture-based scrolling with momentum decay, dynamic scaling based on active index, and configurable paging. Items stack with a subtle left offset and scale effect, creating depth perception. Supports both free-scrolling and snap-to-item paging modes with smooth transitions.",
+
+  "main_features": [
+    "Horizontal pan gesture scrolling with momentum decay",
+    "Instagram-style stacked card layout with depth effect",
+    "Dynamic scale animation based on distance from active item",
+    "Configurable paging mode (free scroll or snap-to-item)",
+    "Smart clamping to prevent over-scrolling",
+    "Smooth snap points calculation for precise item positioning",
+    "Stacked z-index ordering with reverse layering",
+    "Active index tracking as float for smooth interpolation",
+    "Customizable visible items count and gap spacing",
+    "Generic component design for any data type",
+    "Gesture cancellation handling for smooth interruption"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main demo container with story data, dimensions calculation, and render configuration",
+    "components/story-list/index.tsx": "Core list component with pan gesture, scroll logic, and snap point handling",
+    "components/story-list/story-item.tsx": "Individual item with scale, translate, and left offset animations",
+    "helpers/index.ts": "Utility functions: clamp for bounds checking and findClosestSnapPoint for paging",
+    "assets": "Four sample images (PNG and JPG) for story demonstration"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "images": "expo-image",
+    "layout": "react-native (useWindowDimensions)"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withDecay",
+        "withTiming",
+        "cancelAnimation"
+      ],
+      "components": ["Animated.View"],
+      "critical_feature": "withDecay for momentum scrolling and useDerivedValue for active index calculation"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureDetector", "GestureHandlerRootView"],
+      "gestures": ["Gesture.Pan()"],
+      "methods": ["onBegin", "onUpdate", "onFinalize"],
+      "usage": "Pan gesture for horizontal scrolling with velocity tracking"
+    },
+    "expo-image": {
+      "version": "~3.0.8",
+      "components": ["Image"],
+      "props": ["contentFit: 'cover'", "cachePolicy: 'memory-disk'"],
+      "usage": "Story images with optimized caching"
+    },
+    "react-native": {
+      "hooks": ["useWindowDimensions", "useMemo"],
+      "components": ["View", "StyleSheet"],
+      "usage": "Layout calculations and responsive sizing"
+    }
+  },
+
+  "animation_techniques": {
+    "momentum_scrolling": {
+      "pattern": "Physics-based decay animation",
+      "trigger": "onFinalize with pagingEnabled=false",
+      "animation": "withDecay({ velocity: event.velocityX })",
+      "behavior": "Natural deceleration based on gesture velocity",
+      "key_insight": "withDecay automatically handles momentum physics without manual calculation"
+    },
+    "snap_to_item": {
+      "pattern": "Closest snap point detection with timing animation",
+      "trigger": "onFinalize with pagingEnabled=true",
+      "algorithm": "findClosestSnapPoint(translateX.value, storiesSnapPoints)",
+      "snap_points_calculation": "stories.map((_, index) => -storyItemDimensions.width * index)",
+      "animation": "withTiming(closestSnapPoint)",
+      "purpose": "Snap to nearest story for precise positioning"
+    },
+    "stacked_cards": {
+      "pattern": "Progressive left offset based on index distance",
+      "formula": "Math.min(index - activeIndex.value, visibleItems - 1) * gap",
+      "default_values": "visibleItems: 3, gap: 35",
+      "max_offset": "2 * 35 = 70px (for visibleItems=3)",
+      "visual_effect": "Cards stack with increasing left offset, maximum 3 visible",
+      "key_insight": "Min() caps offset at visibleItems-1 to prevent excessive spacing"
+    },
+    "scale_animation": {
+      "pattern": "Progressive scale reduction based on distance from active",
+      "formula": "1 - (index - activeIndex.value) * 0.1",
+      "examples": [
+        "Active item (distance=0): scale=1.0",
+        "Next item (distance=1): scale=0.9",
+        "Next item (distance=2): scale=0.8"
+      ],
+      "effect": "Creates depth perception, active item appears largest"
+    },
+    "selective_translation": {
+      "pattern": "Conditional translateX based on index position",
+      "condition": "index <= activeIndex.value",
+      "active_items": "translateX.value + index * itemWidth (moves with gesture)",
+      "inactive_items": "0 (remains in original position)",
+      "purpose": "Only translate swiped/active items, upcoming items stay in place"
+    },
+    "active_index_calculation": {
+      "pattern": "Float-based index for smooth interpolation",
+      "formula": "Math.abs(clampedTranslateX.value / storyItemDimensions.width)",
+      "type": "Float (not Math.floor), allows smooth transitions",
+      "range": "0 to stories.length - 1",
+      "purpose": "Smooth scale/position animations during scroll"
+    },
+    "clamping": {
+      "pattern": "Bounds checking with derived value",
+      "min_bound": "-storyItemDimensions.width * (stories.length - 1)",
+      "max_bound": "0",
+      "implementation": "useDerivedValue with clamp helper",
+      "purpose": "Prevent scrolling beyond first/last item"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "translateX",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "onUpdate: contextX + translationX, onFinalize: withDecay or withTiming",
+        "scope": "StoryList component",
+        "purpose": "Current horizontal translation of the list"
+      },
+      {
+        "name": "contextX",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "onBegin: set to clampedTranslateX.value",
+        "purpose": "Store translation at gesture start for relative updates"
+      },
+      {
+        "name": "clampedTranslateX",
+        "type": "SharedValue<number> (derived)",
+        "calculation": "clamp(translateX.value, -width * (length - 1), 0)",
+        "dependencies": "[width, stories]",
+        "purpose": "Bounded translation value preventing over-scroll"
+      },
+      {
+        "name": "activeIndex",
+        "type": "SharedValue<number> (derived)",
+        "calculation": "Math.abs(clampedTranslateX.value / storyItemDimensions.width)",
+        "float_value": true,
+        "dependencies": "[storyItemDimensions.width]",
+        "purpose": "Current active story index for scale/position calculations"
+      }
+    ],
+    "useDerivedValue": {
+      "usage_count": 2,
+      "instances": [
+        {
+          "name": "clampedTranslateX",
+          "calculation": "clamp(translateX.value, min, max)",
+          "dependencies": "[width, stories]",
+          "purpose": "Automatically clamp translation when bounds change"
+        },
+        {
+          "name": "activeIndex",
+          "calculation": "Math.abs(clampedTranslateX.value / itemWidth)",
+          "dependencies": "[storyItemDimensions.width]",
+          "purpose": "Calculate active index from translation"
+        }
+      ],
+      "benefit": "Automatic recalculation when dependencies change, no manual updates needed"
+    },
+    "useMemo": {
+      "usage_count": 2,
+      "instances": [
+        {
+          "name": "storyItemDimensions",
+          "value": "{ width: width * 0.7, height: width }",
+          "dependencies": "[width]",
+          "purpose": "Recalculate dimensions only when screen width changes"
+        },
+        {
+          "name": "storiesSnapPoints",
+          "value": "stories.map((_, index) => -itemWidth * index)",
+          "dependencies": "[stories, storyItemDimensions.width]",
+          "purpose": "Precompute snap points for paging mode"
+        }
+      ],
+      "benefit": "Performance optimization - avoid recalculation on every render"
+    },
+    "gesture_pattern": {
+      "gesture_type": "Gesture.Pan()",
+      "onBegin": {
+        "actions": [
+          "cancelAnimation(translateX) - prevent animation conflicts",
+          "contextX.value = clampedTranslateX.value - store current position"
+        ]
+      },
+      "onUpdate": {
+        "action": "translateX.value = contextX.value + event.translationX",
+        "purpose": "Update translation relative to gesture start position"
+      },
+      "onFinalize": {
+        "conditional_logic": true,
+        "if_pagingEnabled_false": "withDecay({ velocity: event.velocityX })",
+        "if_pagingEnabled_true": "withTiming(findClosestSnapPoint(...))",
+        "purpose": "Different scroll behaviors based on paging mode"
+      }
+    },
+    "useAnimatedStyle": {
+      "usage_count": 1,
+      "instance": "rStyle in StoryListItem",
+      "animated_properties": {
+        "left": "Dynamic offset based on index distance",
+        "transform": [
+          "{ scale: 1 - distance * 0.1 }",
+          "{ translateX: conditional based on index }"
+        ]
+      },
+      "dependencies": "[index]",
+      "purpose": "Apply scale, translate, and position animations to each item"
+    },
+    "memo_optimization": {
+      "component": "StoryListContainer",
+      "wrapper": "memo()",
+      "purpose": "Prevent re-renders when parent updates"
+    },
+    "cancelAnimation": {
+      "location": "Pan gesture onBegin",
+      "target": "translateX SharedValue",
+      "purpose": "Cancel ongoing decay/timing animations when user starts dragging",
+      "critical_for": "Prevents flickering and jumping when interrupting animations"
+    }
+  },
+
+  "gesture_handling": {
+    "pan_gesture": {
+      "type": "Gesture.Pan()",
+      "direction": "horizontal",
+      "events": {
+        "onBegin": {
+          "actions": [
+            "Cancel any ongoing animations",
+            "Store current clamped translation"
+          ],
+          "purpose": "Prepare for new gesture, prevent conflicts"
+        },
+        "onUpdate": {
+          "action": "Update translateX with gesture delta",
+          "formula": "contextX + translationX",
+          "runs_on": "UI thread (worklet)",
+          "purpose": "Smooth real-time translation during drag"
+        },
+        "onFinalize": {
+          "conditional": "Based on pagingEnabled prop",
+          "free_scroll": "Apply decay animation with velocity",
+          "paging": "Find closest snap point and animate with timing",
+          "purpose": "Natural ending based on scroll mode"
+        }
+      }
+    },
+    "velocity_tracking": {
+      "property": "event.velocityX",
+      "unit": "pixels per second",
+      "usage": "withDecay({ velocity: event.velocityX })",
+      "purpose": "Natural momentum based on gesture speed"
+    }
+  },
+
+  "helper_functions": {
+    "clamp": {
+      "signature": "(value: number, min: number, max: number) => number",
+      "worklet": true,
+      "purpose": "Constrain value within min/max bounds",
+      "usage": "Prevent translateX from exceeding scroll boundaries",
+      "implementation": "Math.min(Math.max(value, min), max)"
+    },
+    "findClosestSnapPoint": {
+      "signature": "(value: number, snapPoints: number[]) => number",
+      "worklet": true,
+      "algorithm": "Array.reduce with Math.abs distance comparison",
+      "purpose": "Find nearest snap point for paging mode",
+      "returns": "Snap point value closest to current position",
+      "implementation": "Reduce to find minimum absolute difference"
+    }
+  },
+
+  "layout_and_positioning": {
+    "container_layout": {
+      "background": "#2D3045 (dark blue-gray)",
+      "alignment": "center horizontally and vertically",
+      "wrapper": {
+        "height": "width (square aspect ratio)",
+        "aspectRatio": 1,
+        "paddingLeft": 25
+      }
+    },
+    "item_dimensions": {
+      "width": "screen width * 0.7 (70% of screen)",
+      "height": "screen width (square, since wrapper has aspectRatio: 1)",
+      "calculation": "useMemo recalculates on screen resize",
+      "borderRadius": 20,
+      "responsive": "Adapts to screen width changes"
+    },
+    "absolute_positioning": {
+      "pattern": "All items positioned absolutely",
+      "position": "absolute",
+      "top": 0,
+      "width": "screen width",
+      "height": "screen width",
+      "left": "Animated based on index",
+      "purpose": "Enable stacking and translation effects"
+    },
+    "z_index_layering": {
+      "formula": "stories.length - index",
+      "example": "8 items: first item z-index=8, last item z-index=1",
+      "effect": "First items appear on top, creating proper stacking order",
+      "critical_for": "Correct visual layering of cards"
+    },
+    "visible_items_config": {
+      "default": 3,
+      "configurable": true,
+      "affects": "Maximum left offset (visibleItems - 1) * gap",
+      "purpose": "Control how many cards are visible simultaneously"
+    },
+    "gap_spacing": {
+      "default": 35,
+      "configurable": true,
+      "usage": "Multiplied by index distance for left offset",
+      "effect": "Spacing between stacked cards"
+    }
+  },
+
+  "component_architecture": {
+    "story_list_gesture_container": {
+      "type": "Root wrapper component",
+      "wraps": "GestureHandlerRootView",
+      "purpose": "Enable gesture handlers (required by RNGH)",
+      "note": "In production, typically wraps entire app"
+    },
+    "story_list_container": {
+      "type": "Demo container component",
+      "memo": true,
+      "responsibilities": [
+        "Define story data array",
+        "Calculate responsive dimensions",
+        "Configure StoryList props",
+        "Provide renderItem implementation"
+      ],
+      "state": "None (uses useMemo for derived values)"
+    },
+    "story_list": {
+      "type": "Generic reusable component",
+      "generics": "<T>",
+      "props": {
+        "stories": {
+          "type": "T[]",
+          "required": true,
+          "usage": "Array of items to render"
+        },
+        "pagingEnabled": {
+          "type": "boolean",
+          "default": undefined,
+          "usage": "Toggle between free scroll and snap-to-item"
+        },
+        "storyItemDimensions": {
+          "type": "{ width: number; height: number }",
+          "required": true,
+          "usage": "Size of each story item"
+        },
+        "renderItem": {
+          "type": "(story: T, index: number) => ReactNode",
+          "required": true,
+          "usage": "Custom render function for each item"
+        },
+        "visibleItems": {
+          "type": "number",
+          "default": 3,
+          "usage": "Number of items visible at once"
+        },
+        "gap": {
+          "type": "number",
+          "default": 35,
+          "usage": "Spacing between stacked items"
+        }
+      },
+      "reusability": "Fully generic, works with any data type"
+    },
+    "story_list_item": {
+      "type": "Individual item component",
+      "generics": "<T>",
+      "props": {
+        "story": "Item data",
+        "index": "Item index",
+        "translateX": "Shared translation value",
+        "activeIndex": "Shared active index",
+        "itemWidth": "Width of item",
+        "renderItem": "Render callback",
+        "visibleItems": "Visible items count",
+        "gap": "Gap spacing",
+        "style": "Container styles"
+      },
+      "responsibilities": [
+        "Calculate item-specific animations",
+        "Apply scale, translate, and left offset",
+        "Render custom content via renderItem"
+      ]
+    }
+  },
+
+  "data_structure": {
+    "stories_array": {
+      "count": 8,
+      "type": "Array<{ image: ImageSource }>",
+      "images": [
+        "image_01.png (58KB)",
+        "image_02.jpg (258KB)",
+        "image_03.jpg (145KB)",
+        "image_04.jpg (161KB)",
+        "Repeated twice (8 total items)"
+      ],
+      "image_loading": "require() for local assets"
+    },
+    "story_type": {
+      "structure": "{ image: ImageSourcePropType }",
+      "extensible": "Can add title, author, timestamp, etc.",
+      "generic_design": "StoryList<T> works with any type"
+    }
+  },
+
+  "performance_optimizations": {
+    "gesture_on_ui_thread": {
+      "pattern": "Pan gesture runs on UI thread (worklet)",
+      "benefit": "No bridge crossing during scroll, 60fps smooth",
+      "critical_for": "Responsive gesture handling"
+    },
+    "memo_component": {
+      "component": "StoryListContainer",
+      "benefit": "Prevents unnecessary re-renders",
+      "dependencies": "None (only re-renders on props change)"
+    },
+    "useMemo_calculations": {
+      "calculations": [
+        "storyItemDimensions (dimensions based on screen width)",
+        "storiesSnapPoints (snap point array)"
+      ],
+      "benefit": "Avoid recalculating on every render",
+      "recalculates_only_when": "Dependencies change"
+    },
+    "worklet_helpers": {
+      "functions": ["clamp", "findClosestSnapPoint"],
+      "directive": "'worklet'",
+      "benefit": "Run on UI thread without JS thread communication",
+      "critical_for": "Smooth animations and calculations"
+    },
+    "image_caching": {
+      "component": "expo-image",
+      "cachePolicy": "memory-disk",
+      "benefit": "Images cached, no repeated downloads",
+      "critical_for": "Smooth scrolling without image flicker"
+    },
+    "no_flatlist_overhead": {
+      "pattern": "Simple map() rendering",
+      "tradeoff": "All items render upfront (not virtualized)",
+      "suitable_for": "Small lists (< 20 items)",
+      "benefit": "Simpler animation logic, all items always animated"
+    },
+    "cancelAnimation_efficiency": {
+      "pattern": "Cancel ongoing animations before starting new ones",
+      "benefit": "Prevents animation conflicts, smoother interruptions",
+      "location": "onBegin gesture handler"
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "background": "#2D3045 (dark blue-gray)",
+      "cards": "Image-based (no background color)",
+      "aesthetic": "Dark mode, focus on imagery"
+    },
+    "spacing_and_sizing": {
+      "card_width": "70% of screen width",
+      "card_height": "Equal to screen width (square container)",
+      "borderRadius": 20,
+      "container_padding": "25px left",
+      "gap_between_cards": "35px default (configurable)",
+      "visible_cards": "3 default (configurable)"
+    },
+    "image_styling": {
+      "contentFit": "cover (fill card, crop as needed)",
+      "borderRadius": 20,
+      "cachePolicy": "memory-disk",
+      "aspect_handling": "Covers entire card area"
+    },
+    "stacking_effect": {
+      "visual_description": "Cards stack behind each other with right-to-left offset",
+      "scale_effect": "Each card 10% smaller than previous",
+      "max_visible": "3 cards at a time",
+      "inspiration": "Instagram stories, Tinder card stack"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Instagram-style story viewers",
+      "Photo galleries with stacked navigation",
+      "Product carousels with depth effect",
+      "Onboarding card flows",
+      "Media browsing interfaces"
+    ],
+    "secondary": [
+      "Card-based navigation",
+      "Tutorial walkthroughs",
+      "Review/feedback card stacks",
+      "Dating app card swipes (with modifications)",
+      "News article previews"
+    ],
+    "educational": [
+      "Teaching pan gesture handling",
+      "Demonstrating momentum physics with withDecay",
+      "Showing snap point calculations",
+      "Illustrating depth with scale and offset",
+      "Worklet function patterns"
+    ],
+    "real_world_examples": [
+      "Instagram Stories horizontal scroll",
+      "Snapchat Stories",
+      "Tinder card stack (with swipe modifications)",
+      "Photo gallery apps",
+      "Music player album art browsing"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "generics": "StoryList<T>, StoryListItem<T>, StoryListProps<T>",
+      "type_definitions": [
+        "StoryListProps<T>",
+        "StoryListItemProps<T>"
+      ],
+      "type_imports": "type keyword for type-only imports",
+      "type_safety": "Strong typing throughout"
+    },
+    "component_structure": {
+      "pattern": "Clear separation of concerns",
+      "container": "Data and configuration",
+      "list": "Gesture and scroll logic",
+      "item": "Individual animation logic",
+      "helpers": "Pure utility functions"
+    },
+    "reusability": {
+      "story_list": "Fully generic with <T> parameter",
+      "story_list_item": "Generic item component",
+      "helpers": "Pure worklet functions, reusable anywhere",
+      "renderItem_pattern": "Flexible callback allows any content"
+    },
+    "documentation": {
+      "inline_comments": "Excellent - detailed explanations of logic",
+      "examples": "Provided in comments (e.g., left offset calculation)",
+      "key_concepts": "Well-explained (clamping, snap points, active index)",
+      "naming": "Descriptive and clear"
+    },
+    "best_practices": [
+      "Worklet directive on worklet functions",
+      "useMemo for expensive calculations",
+      "memo() for component optimization",
+      "cancelAnimation before new animations",
+      "Generic component design",
+      "Proper TypeScript types",
+      "Clean prop interfaces"
+    ]
+  },
+
+  "known_limitations": {
+    "no_virtualization": {
+      "issue": "All items render upfront, not virtualized",
+      "impact": "Not suitable for hundreds of items",
+      "scale": "Works well for < 20 items",
+      "alternative": "Would need FlatList with custom logic for large lists"
+    },
+    "duplicate_images": {
+      "issue": "Story array repeats same 4 images twice",
+      "impact": "Visual repetition in demo",
+      "purpose": "Demo purposes only, would use unique images in production"
+    },
+    "fixed_horizontal_only": {
+      "limitation": "Only supports horizontal scrolling",
+      "enhancement": "Could be extended for vertical orientation",
+      "current": "Hardcoded for horizontal pan"
+    },
+    "no_accessibility_labels": {
+      "issue": "Missing accessibility labels and hints",
+      "impact": "Screen readers can't describe content",
+      "recommended": "Add labels to images and container"
+    },
+    "gesture_handler_root_requirement": {
+      "limitation": "Requires GestureHandlerRootView wrapper",
+      "note": "Typically done at app level, shown in demo for completeness",
+      "impact": "Demo shows wrapper, may be redundant in real app"
+    },
+    "scale_calculation_simplicity": {
+      "formula": "Linear scale reduction (0.1 per item)",
+      "limitation": "Could have easing or custom curves",
+      "enhancement": "Could use interpolate with custom input/output ranges"
+    }
+  },
+
+  "potential_improvements": {
+    "animation_enhancements": [
+      "Add rotation effect during scroll",
+      "Opacity fade for distant items",
+      "Blur effect on background items",
+      "Parallax effect on images",
+      "Bounce effect when reaching bounds",
+      "3D rotation (rotateY) for card flip effect",
+      "Progress indicator showing active story"
+    ],
+    "interaction_improvements": [
+      "Tap to advance to next story",
+      "Double tap to like/save",
+      "Long press to pause auto-advance",
+      "Vertical swipe to exit story view",
+      "Pinch to zoom on story",
+      "Auto-advance with timer",
+      "Tap left/right sides to navigate"
+    ],
+    "layout_variations": [
+      "Vertical story list",
+      "Circular/curved layout path",
+      "3D carousel effect",
+      "Variable card sizes",
+      "Asymmetric stacking"
+    ],
+    "feature_additions": [
+      "Story progress bars",
+      "User avatars on cards",
+      "Story title/description overlay",
+      "View count indicators",
+      "Like/reaction animations",
+      "Share functionality",
+      "Story highlighting (new/unseen)"
+    ],
+    "performance": [
+      "FlatList with virtualization for large lists",
+      "Progressive image loading",
+      "Skeleton screens",
+      "Image preloading",
+      "Memory optimization for many items"
+    ],
+    "accessibility": [
+      "Screen reader support",
+      "Alternative navigation methods",
+      "Voice control compatibility",
+      "Keyboard navigation",
+      "Reduced motion mode",
+      "High contrast mode"
+    ],
+    "customization": [
+      "Configurable scale factor",
+      "Custom gap interpolation",
+      "Adjustable animation durations",
+      "Theme support",
+      "Custom snap behavior",
+      "Configurable visible items calculation"
+    ]
+  },
+
+  "key_insights": {
+    "withDecay_magic": "withDecay provides natural momentum without manual physics calculation",
+    "float_activeIndex": "Float activeIndex (not Math.floor) enables smooth scale/position interpolation",
+    "min_for_capping": "Math.min(distance, visibleItems-1) elegantly caps maximum offset",
+    "conditional_translation": "Selective translation (index <= activeIndex) keeps upcoming items stationary",
+    "cancelAnimation_critical": "cancelAnimation prevents flickering when interrupting ongoing animations",
+    "derived_value_power": "useDerivedValue automatically tracks dependencies and recalculates",
+    "snap_point_simplicity": "Snap points are simply negative multiples of item width",
+    "absolute_positioning": "Absolute positioning enables stacking and independent item animations",
+    "reverse_zIndex": "Reverse z-index (length - index) ensures first items appear on top",
+    "worklet_helpers": "Marking helpers as 'worklet' allows UI thread execution",
+    "context_pattern": "contextX pattern stores gesture start position for relative updates"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic pan gesture handling",
+      "useSharedValue for animation state",
+      "useMemo for performance",
+      "Component composition",
+      "Generic TypeScript patterns"
+    ],
+    "for_intermediate": [
+      "Pan gesture with onBegin, onUpdate, onFinalize",
+      "withDecay for momentum physics",
+      "Snap point calculation and animation",
+      "useDerivedValue for computed values",
+      "Clamping scroll boundaries",
+      "Conditional animation logic",
+      "useAnimatedStyle patterns",
+      "Z-index layering strategies"
+    ],
+    "for_advanced": [
+      "Creating reusable gesture components",
+      "Complex scroll physics (decay vs snap)",
+      "Worklet function optimization",
+      "Float-based index for smooth interpolation",
+      "cancelAnimation for gesture interruption",
+      "Generic component architecture",
+      "Performance optimization patterns",
+      "Absolute positioning with animations"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Cards stack correctly with proper offset",
+      "Scale decreases smoothly for distant items",
+      "Active card appears largest",
+      "Z-index layering correct",
+      "Smooth translation during pan",
+      "Proper clamping at boundaries"
+    ],
+    "interaction_testing": [
+      "Pan gesture responds immediately",
+      "Momentum scroll feels natural (pagingEnabled=false)",
+      "Snap to item works correctly (pagingEnabled=true)",
+      "Can interrupt animations smoothly",
+      "Proper boundary behavior",
+      "Velocity affects momentum correctly"
+    ],
+    "edge_cases": [
+      "Single story in array",
+      "Two stories (minimum for testing)",
+      "Many stories (20+)",
+      "Rapid pan gestures",
+      "Slow drag vs fast flick",
+      "Drag beyond boundaries",
+      "Screen rotation during scroll"
+    ],
+    "performance_testing": [
+      "Smooth 60fps during pan",
+      "No frame drops during decay",
+      "Consistent performance with 8 items",
+      "Memory stable across multiple scrolls",
+      "Image loading doesn't cause jank"
+    ],
+    "cross_platform": [
+      "iOS pan gesture behavior",
+      "Android pan gesture behavior",
+      "Web touch/mouse events",
+      "Image rendering consistency",
+      "Animation smoothness across devices"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No support",
+      "gesture_alternatives": "None"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to each story ('Story {index + 1} of {total}')",
+      "Add accessibilityRole='image' to items",
+      "Provide alternative navigation (buttons for prev/next)",
+      "Support keyboard left/right arrows",
+      "Announce story changes to screen readers",
+      "Add reduced motion mode (disable scale, just translate)",
+      "Provide story content descriptions",
+      "Support tab navigation between stories"
+    ]
+  },
+
+  "comparison_to_similar_patterns": {
+    "vs_instagram_stories": {
+      "similarity": "Horizontal scroll, stacked cards, similar visual style",
+      "difference": "Instagram has auto-advance, progress bars, tap navigation",
+      "enhancement_needed": "Add auto-advance timer, progress indicators"
+    },
+    "vs_tinder_cards": {
+      "similarity": "Stacked card effect with depth",
+      "difference": "Tinder uses vertical stack with swipe-to-dismiss",
+      "different_gesture": "Tinder uses rotateZ and opacity on swipe"
+    },
+    "vs_standard_carousel": {
+      "similarity": "Horizontal scrolling through items",
+      "difference": "Standard carousels don't have stacking/scale effects",
+      "unique_feature": "Depth perception via scale and offset"
+    }
+  },
+
+  "related_patterns": {
+    "scroll_animations": [
+      "Parallax scrolling",
+      "Infinite carousel",
+      "Snap carousel",
+      "Cover flow effect"
+    ],
+    "gesture_patterns": [
+      "Swipe to dismiss",
+      "Pan to reorder",
+      "Pinch to zoom",
+      "Long press menu"
+    ],
+    "stacking_effects": [
+      "Card deck animations",
+      "Z-axis perspective",
+      "3D carousel",
+      "Layered navigation"
+    ]
+  },
+
+  "real_world_inspiration": {
+    "instagram_stories": "Horizontal story browsing with auto-advance",
+    "snapchat_stories": "Similar horizontal scroll pattern",
+    "tinder_stack": "Card stacking with gesture interaction",
+    "apple_photos": "Stacked photo browsing",
+    "spotify_albums": "Album art carousel browsing"
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~300 lines total (components + helpers)",
+    "dependencies": "Reanimated, RNGH, expo-image likely already in project",
+    "assets": "~622KB (4 images, could be optimized)",
+    "runtime_memory": "Minimal - 4 SharedValues, 8 items rendered",
+    "estimated_code_size": "< 15KB"
+  },
+
+  "tags": [
+    "story-list",
+    "horizontal-scroll",
+    "pan-gesture",
+    "momentum-scroll",
+    "stacked-cards",
+    "instagram-stories",
+    "card-carousel",
+    "withDecay",
+    "snap-points",
+    "scale-animation",
+    "depth-effect",
+    "paging",
+    "reanimated",
+    "gesture-handler",
+    "worklet",
+    "clamping",
+    "photo-gallery"
+  ]
+}

@@ -1,0 +1,804 @@
+{
+  "animation_name": "Clock Time Picker",
+  "animation_slug": "clock-time-picker",
+  "description": "An elegant time picker interface combining an analog clock with a scrollable time range selector. Features a custom-drawn Skia clock with smooth hand movements, synchronized time selection via scrollable list, and timezone offset handling. The clock displays hours and minutes with precise hand positioning, while the time range component offers intuitive scrolling through 30-minute intervals with gradient overlays.",
+
+  "main_features": [
+    "Custom analog clock rendered with Skia graphics",
+    "Smooth clock hand animations with real-time updates",
+    "Scrollable time range selector with snap-to intervals",
+    "Synchronized clock and time list interaction",
+    "Timezone offset handling",
+    "Gradient overlays for visual focus",
+    "Custom tick marks and shadows on clock face",
+    "30-minute interval time slots",
+    "Interpolated time values during scroll"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main component orchestrating Clock and TimeRange components",
+    "components/clock.tsx": "Custom analog clock component using Skia",
+    "components/time-range.tsx": "Scrollable time selector with gradient overlays"
+  },
+
+  "core_technologies": {
+    "graphics": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "date_formatting": "date-fns",
+    "gradients": "expo-linear-gradient"
+  },
+
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Circle",
+        "Group",
+        "Line",
+        "Shadow"
+      ],
+      "usage": "Custom clock rendering with tick marks, hands, and shadows",
+      "critical_feature": "High-performance graphics rendering on UI thread"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedScrollHandler"
+      ],
+      "functions": [
+        "interpolate"
+      ],
+      "usage": "Clock hand rotation animations and scroll-based time interpolation"
+    },
+    "date-fns": {
+      "version": "^4.1.0",
+      "functions": [
+        "format"
+      ],
+      "usage": "Time formatting in 'h:mm aaa' format (e.g., '1:00 pm')"
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "components": [
+        "LinearGradient"
+      ],
+      "usage": "Top and bottom gradient overlays on time range selector"
+    }
+  },
+
+  "animation_techniques": {
+    "clock_hand_rotation": {
+      "pattern": "Angle-based rotation derived from timestamp",
+      "hour_hand": {
+        "calculation": "(hours * (Math.PI * 2)) / 12",
+        "length": "15% of clock size",
+        "width": 3,
+        "color": "#e6e6e6",
+        "update": "Derived from date.value via useDerivedValue"
+      },
+      "minute_hand": {
+        "calculation": "(minutes * (Math.PI * 2)) / 60",
+        "length": "32% of clock size",
+        "width": 2,
+        "color": "#d2d2d2",
+        "update": "Derived from date.value via useDerivedValue"
+      },
+      "positioning": {
+        "x": "center + length * Math.sin(angle)",
+        "y": "center - length * Math.cos(angle)"
+      },
+      "smoothness": "Continuous updates based on exact time value"
+    },
+    "time_interpolation": {
+      "pattern": "Scroll position interpolated to time value",
+      "implementation": "useAnimatedScrollHandler + interpolate",
+      "input_range": "datesMs.map((_, i) => i * ITEM_HEIGHT)",
+      "output_range": "datesMs (array of timestamps)",
+      "callback": "onDateChange called with interpolated timestamp",
+      "result": "Smooth time updates even between defined time slots"
+    },
+    "scroll_snapping": {
+      "type": "snapToOffsets",
+      "calculation": "datesMs.map((_, i) => i * ITEM_HEIGHT)",
+      "item_height": 30,
+      "alignment": "center",
+      "deceleration": "fast",
+      "effect": "Time slots snap to center position"
+    },
+    "gradient_overlays": {
+      "top_gradient": {
+        "colors": "['#11111100', '#111111']",
+        "direction": "top to bottom (0.5 to 1)",
+        "purpose": "Fade out top items"
+      },
+      "bottom_gradient": {
+        "colors": "['#111111', '#11111100']",
+        "direction": "bottom to top (0 to 0.5)",
+        "purpose": "Fade out bottom items"
+      },
+      "effect": "Focus attention on center selection area"
+    }
+  },
+
+  "skia_rendering_patterns": {
+    "clock_face": {
+      "component": "Circle",
+      "radius": "size / 2",
+      "color": "#1e1e1e",
+      "purpose": "Clock background"
+    },
+    "tick_marks": {
+      "count": 12,
+      "generation": "useMemo with angle calculation",
+      "angle_calculation": "(index * (Math.PI * 2)) / 12",
+      "rendering": "Line components",
+      "positioning": {
+        "start": "center + (center - tickLength) * sin/cos(angle)",
+        "end": "center + center * sin/cos(angle)"
+      },
+      "styling": {
+        "color": "#bfbfbf",
+        "strokeWidth": 1,
+        "length": "8% of clock size"
+      },
+      "transformation": "Group with scale(0.9) and rotation origin at center"
+    },
+    "clock_hands": {
+      "component": "Line",
+      "p1": "{ x: center, y: center }",
+      "p2": "Derived from angle calculations",
+      "strokeCap": "round",
+      "strokeJoin": "round",
+      "shadows": "Shadow with dx:0, dy:0, blur:10, color:#000000"
+    },
+    "center_dot": {
+      "component": "Circle",
+      "radius": 3,
+      "color": "#ffffff",
+      "shadow": "Shadow for depth effect",
+      "purpose": "Visual anchor and detail"
+    },
+    "grouping": {
+      "pattern": "Group components for shared transformations and shadows",
+      "usage": [
+        "Tick marks grouped with scale transform",
+        "Clock hands grouped with shared shadow"
+      ]
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "date",
+        "scope": "Main component",
+        "type": "SharedValue<number>",
+        "initial": "dates[0].getTime()",
+        "updates": "Updated via onDateChange callback from TimeRange",
+        "purpose": "Current selected timestamp driving clock display"
+      },
+      {
+        "name": "clockDate",
+        "scope": "Main component",
+        "type": "DerivedValue<number>",
+        "calculation": "date.value + TimezoneOffsetMs",
+        "worklet": true,
+        "purpose": "Timezone-adjusted timestamp for clock rendering"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "hourAngle",
+        "scope": "Clock component",
+        "calculation": "(convertMsToHours(date.value) * (Math.PI * 2)) / 12",
+        "dependencies": ["date"],
+        "purpose": "Hour hand rotation angle in radians"
+      },
+      {
+        "name": "minuteAngle",
+        "scope": "Clock component",
+        "calculation": "(convertMsToMinutes(date.value) * (Math.PI * 2)) / 60",
+        "dependencies": ["date"],
+        "purpose": "Minute hand rotation angle in radians"
+      },
+      {
+        "name": "hourHandPath",
+        "scope": "Clock component",
+        "calculation": "{ x: center + length * sin(angle), y: center - length * cos(angle) }",
+        "dependencies": ["hourAngle"],
+        "purpose": "Hour hand endpoint coordinates"
+      },
+      {
+        "name": "minuteHandPath",
+        "scope": "Clock component",
+        "calculation": "{ x: center + length * sin(angle), y: center - length * cos(angle) }",
+        "dependencies": ["minuteAngle"],
+        "purpose": "Minute hand endpoint coordinates"
+      }
+    ],
+    "worklet_functions": {
+      "convertMsToMinutes": {
+        "signature": "(ms: number) => number",
+        "calculation": "ms / 1000 / 60",
+        "worklet": true,
+        "purpose": "Convert milliseconds to minutes for minute hand"
+      },
+      "convertMsToHours": {
+        "signature": "(ms: number) => number",
+        "calculation": "ms / 1000 / 60 / 60",
+        "worklet": true,
+        "purpose": "Convert milliseconds to hours for hour hand"
+      }
+    },
+    "useAnimatedScrollHandler": {
+      "location": "TimeRange component",
+      "event": "onScroll",
+      "implementation": {
+        "access": "event.contentOffset.y",
+        "interpolation": "interpolate(contentOffset.y, inputRange, datesMs)",
+        "callback": "onDateChange?.(interpolatedDate)",
+        "worklet": true
+      },
+      "purpose": "Convert scroll position to time value and notify parent"
+    }
+  },
+
+  "component_patterns": {
+    "time_slot_generation": {
+      "method": "new Array(20).fill(0).map()",
+      "logic": {
+        "hour": "Math.floor(index / 2) + 13",
+        "minutes": "index % 2 === 0 ? 0 : 30",
+        "date": "new Date(2025, 0, 1, hour, minutes)"
+      },
+      "result": "20 time slots from 13:00 to 22:30 with 30-minute intervals",
+      "pattern": "Half-hour increments (index even = :00, odd = :30)"
+    },
+    "timezone_handling": {
+      "calculation": "-new Date().getTimezoneOffset() * 60000",
+      "purpose": "Convert timezone offset from minutes to milliseconds",
+      "usage": "Added to date value in useDerivedValue",
+      "note": "Simple implementation; production apps should use proper timezone library"
+    },
+    "formatted_dates": {
+      "generation": "useMemo(() => dates.map(date => format(date, 'h:mm aaa')))",
+      "format": "'h:mm aaa' (e.g., '1:00 pm')",
+      "transformation": ".toLowerCase()",
+      "memoization": "Prevents reformatting on every render",
+      "dependencies": ["dates"]
+    },
+    "tick_mark_generation": {
+      "pattern": "useMemo with geometric calculations",
+      "structure": "Array of 12 objects with angle property",
+      "rendering": "Mapped to Line components in JSX",
+      "optimization": "Memoized to prevent recalculation"
+    }
+  },
+
+  "scroll_mechanics": {
+    "flatlist_configuration": {
+      "onScroll": "useAnimatedScrollHandler",
+      "decelerationRate": "fast",
+      "snapToAlignment": "center",
+      "snapToOffsets": "Calculated snap points for each item",
+      "showsVerticalScrollIndicator": false,
+      "disableIntervalMomentum": true,
+      "contentContainerStyle": {
+        "paddingVertical": "TimeRangeHeight / 2 - ITEM_HEIGHT / 2",
+        "purpose": "Centers first and last items"
+      }
+    },
+    "item_rendering": {
+      "method": "useCallback for renderItem",
+      "dependencies": "[]",
+      "structure": "View wrapper with centered Text",
+      "optimization": "Callback memoization prevents unnecessary re-renders"
+    },
+    "scroll_physics": {
+      "item_height": 30,
+      "visible_height": "ITEM_HEIGHT * 4 = 120px",
+      "padding": "Calculated to center items",
+      "snap_behavior": "Snaps to exact item positions for precise selection"
+    }
+  },
+
+  "mathematical_calculations": {
+    "angle_to_coordinates": {
+      "formula": {
+        "x": "center + radius * Math.sin(angle)",
+        "y": "center - radius * Math.cos(angle)"
+      },
+      "note": "Negative y because screen coordinates increase downward",
+      "angle_zero": "12 o'clock position (top)",
+      "direction": "Clockwise rotation"
+    },
+    "time_to_angle": {
+      "hours": "(hours * 2π) / 12",
+      "minutes": "(minutes * 2π) / 60",
+      "full_circle": "2π radians = 360 degrees",
+      "hour_step": "π/6 radians = 30 degrees per hour",
+      "minute_step": "π/30 radians = 6 degrees per minute"
+    },
+    "scroll_to_time": {
+      "input": "contentOffset.y (scroll position in pixels)",
+      "mapping": "Index * ITEM_HEIGHT → Timestamp",
+      "interpolation": "Linear interpolation between defined time slots",
+      "result": "Smooth time values even between snap points"
+    },
+    "ms_conversions": {
+      "to_minutes": "ms / 1000 / 60",
+      "to_hours": "ms / 1000 / 60 / 60",
+      "timezone_offset": "offset_minutes * 60 * 1000"
+    }
+  },
+
+  "visual_design": {
+    "color_palette": {
+      "background": "#111 (dark gray)",
+      "container_background": "#111111",
+      "container_border": "#222222",
+      "clock_face": "#1e1e1e (dark gray)",
+      "tick_marks": "#bfbfbf (light gray)",
+      "hour_hand": "#e6e6e6 (light gray)",
+      "minute_hand": "#d2d2d2 (medium gray)",
+      "center_dot": "#ffffff (white)",
+      "time_text": "#d8d8d8 (light gray)",
+      "shadow": "#000000 (black)"
+    },
+    "typography": {
+      "time_text": {
+        "fontFamily": "Honk-Regular",
+        "fontSize": 20,
+        "color": "#d8d8d8",
+        "alignment": "center"
+      }
+    },
+    "layout": {
+      "container": {
+        "flexDirection": "row",
+        "gap": 32,
+        "padding": 32,
+        "borderRadius": 24,
+        "borderWidth": 1,
+        "borderCurve": "continuous",
+        "alignment": "centered"
+      },
+      "clock_size": 100,
+      "time_range_width": 100,
+      "time_range_height": 120
+    },
+    "shadows": {
+      "clock_hands": {
+        "dx": 0,
+        "dy": 0,
+        "blur": 10,
+        "color": "#000000"
+      },
+      "center_dot": {
+        "dx": 0,
+        "dy": 0,
+        "blur": 10,
+        "color": "#000000"
+      }
+    },
+    "border_styling": {
+      "borderCurve": "continuous",
+      "benefit": "iOS-style smooth corners (squircle)",
+      "alternative": "Standard border radius on other platforms"
+    }
+  },
+
+  "performance_optimizations": {
+    "useMemo": [
+      {
+        "location": "Clock - ticks array",
+        "purpose": "Prevent tick mark recalculation",
+        "dependencies": "[]"
+      },
+      {
+        "location": "Clock - ticksPath JSX",
+        "purpose": "Prevent tick mark re-rendering",
+        "dependencies": ["center", "tickLength", "ticks"]
+      },
+      {
+        "location": "TimeRange - formattedDates",
+        "purpose": "Prevent date reformatting",
+        "dependencies": ["dates"]
+      },
+      {
+        "location": "TimeRange - datesMs",
+        "purpose": "Prevent timestamp recalculation",
+        "dependencies": ["dates"]
+      }
+    ],
+    "useCallback": [
+      {
+        "location": "TimeRange - renderItem",
+        "purpose": "Stable function reference for FlatList",
+        "dependencies": "[]"
+      }
+    ],
+    "skia_performance": {
+      "rendering": "GPU-accelerated via Skia",
+      "thread": "UI thread (no bridge crossing)",
+      "updates": "Direct property updates without React reconciliation",
+      "benefit": "Smooth 60fps clock hand movement"
+    },
+    "derived_value_efficiency": {
+      "pattern": "Derived values recalculate only when dependencies change",
+      "clock_hands": "Update only when date changes",
+      "benefit": "Minimal recalculation overhead"
+    },
+    "scroll_performance": {
+      "handler": "useAnimatedScrollHandler runs on UI thread",
+      "interpolation": "Performed in worklet context",
+      "callback": "Called for every scroll frame",
+      "optimization": "Worklet avoids bridge crossing"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Time selection interfaces",
+      "Meeting schedulers",
+      "Booking systems",
+      "Alarm clock apps",
+      "Calendar event creation",
+      "Appointment pickers"
+    ],
+    "real_world_examples": [
+      "Restaurant reservation systems",
+      "Medical appointment booking",
+      "Hotel check-in/check-out time selection",
+      "Meeting room reservation",
+      "Transportation schedule selection",
+      "Task time tracking"
+    ],
+    "educational": [
+      "Teaching Skia graphics rendering",
+      "Demonstrating custom clock components",
+      "Showing scroll-based time selection",
+      "Combining multiple animation systems",
+      "Timezone handling patterns"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "prop_types": [
+        "ClockProps",
+        "TimePickerProps"
+      ],
+      "type_imports": "Proper type imports from Reanimated and Skia"
+    },
+    "documentation": {
+      "file_headers": "Comprehensive JSDoc-style comments",
+      "function_descriptions": "Clear purpose and parameter descriptions",
+      "examples": "Usage examples in component headers",
+      "inline_comments": "Detailed explanations of key logic"
+    },
+    "component_architecture": {
+      "main_component": "ClockTimePicker - Orchestrates state and layout",
+      "clock": "Self-contained Skia-based clock rendering",
+      "time_range": "Reusable scrollable time selector",
+      "separation": "Clear separation of concerns and responsibilities"
+    },
+    "constants": {
+      "ITEM_HEIGHT": 30,
+      "TimeRangeHeight": "ITEM_HEIGHT * 4",
+      "TimezoneOffsetMs": "Calculated at module level",
+      "dates": "Generated array of time slots"
+    },
+    "best_practices": [
+      "Component memoization where beneficial",
+      "Proper worklet annotations",
+      "Comprehensive documentation",
+      "Type safety throughout",
+      "Modular component structure"
+    ]
+  },
+
+  "state_management": {
+    "data_flow": {
+      "initialization": "date SharedValue set to first time slot",
+      "user_interaction": "User scrolls TimeRange list",
+      "scroll_handler": "onScroll interpolates scroll position to timestamp",
+      "callback": "onDateChange updates date SharedValue",
+      "clock_update": "clockDate derived value recalculates with timezone",
+      "hand_angles": "hourAngle and minuteAngle derived values update",
+      "hand_paths": "hourHandPath and minuteHandPath derived values update",
+      "rendering": "Skia re-renders clock hands with new positions"
+    },
+    "synchronization": {
+      "pattern": "Single source of truth (date SharedValue)",
+      "clock": "Reads from clockDate (derived from date)",
+      "time_range": "Updates date via callback",
+      "benefit": "Clock and list always synchronized"
+    }
+  },
+
+  "skia_advantages": {
+    "performance": "GPU-accelerated rendering on UI thread",
+    "flexibility": "Full control over clock appearance",
+    "smoothness": "No JavaScript bridge crossing for updates",
+    "precision": "Exact geometric calculations for clock elements",
+    "effects": "Built-in shadow support for depth",
+    "consistency": "Cross-platform visual consistency"
+  },
+
+  "known_limitations": {
+    "timezone_handling": {
+      "implementation": "Simple offset calculation",
+      "limitation": "Doesn't handle DST or complex timezone rules",
+      "recommendation": "Use date-fns-tz or similar for production",
+      "impact": "May show incorrect times during DST transitions"
+    },
+    "fixed_time_range": {
+      "limitation": "Hardcoded 13:00-22:30 range",
+      "improvement": "Could accept startTime, endTime, interval as props"
+    },
+    "fixed_intervals": {
+      "current": "30-minute intervals only",
+      "improvement": "Could support configurable intervals (15min, 1hr, etc.)"
+    },
+    "date_dependency": {
+      "issue": "Uses fixed date (2025-01-01)",
+      "impact": "Assumes dates don't matter, only time",
+      "improvement": "Could support full date-time selection"
+    },
+    "accessibility": {
+      "missing": "No accessibility labels or hints",
+      "improvement": "Add accessibilityLabel for clock and time items",
+      "screen_reader": "Should announce selected time"
+    },
+    "font_dependency": {
+      "requirement": "Honk-Regular font must be loaded",
+      "fallback": "No fallback font specified",
+      "improvement": "Could add fallback or make font configurable"
+    }
+  },
+
+  "potential_improvements": {
+    "features": [
+      "AM/PM or 24-hour format toggle",
+      "Configurable time ranges and intervals",
+      "Date selection in addition to time",
+      "Multiple time zone support",
+      "Start and end time selection (range picker)",
+      "Time duration calculator",
+      "Quick time presets (now, +15min, +30min, +1hr)"
+    ],
+    "visual_enhancements": [
+      "Animated transition between time slots",
+      "Highlight current time on clock",
+      "Color-coded time periods",
+      "Clock size customization",
+      "Different clock face styles (modern, classic, minimalist)",
+      "Second hand option",
+      "Digital time display alongside analog clock"
+    ],
+    "interaction_improvements": [
+      "Tap clock to set time directly",
+      "Drag clock hands to adjust time",
+      "Swipe gestures for quick time jumps",
+      "Keyboard input for precise time entry",
+      "Haptic feedback on time selection",
+      "Double tap to select current time"
+    ],
+    "customization": [
+      "Configurable color schemes",
+      "Theme support (light/dark)",
+      "Custom fonts",
+      "Adjustable clock size",
+      "Border and shadow customization",
+      "Time format customization"
+    ],
+    "accessibility": [
+      "VoiceOver/TalkBack support",
+      "Accessibility labels and hints",
+      "Keyboard navigation",
+      "Increased touch targets option",
+      "High contrast mode",
+      "Screen reader time announcements"
+    ],
+    "advanced_features": [
+      "Recurring time patterns",
+      "Business hours filtering",
+      "Timezone converter",
+      "World clock display",
+      "Time zones comparison",
+      "Meeting scheduler with participant timezones"
+    ]
+  },
+
+  "key_insights": {
+    "skia_power": "Skia enables precise, performant custom clock rendering without view hierarchy overhead",
+    "derived_values_elegance": "Derived values chain naturally: date → angles → coordinates",
+    "scroll_interpolation": "Interpolating scroll position to time creates smooth, continuous selection",
+    "worklet_efficiency": "All calculations in worklets keep animation smooth without bridge crossing",
+    "timezone_simplicity": "Simple timezone offset works for basic use cases but has limitations",
+    "component_composition": "Clean separation: Skia for graphics, Reanimated for animation, FlatList for interaction",
+    "memoization_importance": "Memoizing geometric calculations prevents unnecessary recalculations",
+    "gradient_ux": "Gradient overlays elegantly focus attention without complex masking"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic Skia rendering (Canvas, Circle, Line)",
+      "FlatList with scroll handling",
+      "Date formatting with date-fns",
+      "SharedValue basics",
+      "Component composition"
+    ],
+    "for_intermediate": [
+      "Custom Skia graphics components",
+      "useDerivedValue chains",
+      "useAnimatedScrollHandler",
+      "Geometric calculations for clock hands",
+      "Timezone handling basics",
+      "Gradient overlays for UX",
+      "Scroll snap mechanics"
+    ],
+    "for_advanced": [
+      "Skia performance optimization",
+      "Complex derived value dependencies",
+      "Worklet-based scroll interpolation",
+      "Custom time picker patterns",
+      "Combining multiple animation systems",
+      "Graphics rendering optimization"
+    ]
+  },
+
+  "related_patterns": {
+    "similar_components": [
+      "iOS UIDatePicker in time mode",
+      "Android TimePicker",
+      "Material Design time picker",
+      "Wheel picker components",
+      "Carousel time selectors"
+    ],
+    "clock_variants": [
+      "Digital clock displays",
+      "World clock displays",
+      "Stopwatch interfaces",
+      "Timer interfaces",
+      "Countdown clocks"
+    ],
+    "time_selection_patterns": [
+      "Stepper-based time input",
+      "Slider-based time selection",
+      "Inline time pickers",
+      "Calendar with time slots",
+      "Duration pickers"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_tests": [
+      "Clock hands point to correct times",
+      "Tick marks evenly spaced",
+      "Shadows render correctly",
+      "Time list scrolls smoothly",
+      "Gradients fade properly",
+      "Layout adapts to container size"
+    ],
+    "interaction_tests": [
+      "Scrolling updates clock display",
+      "Snap points work correctly",
+      "Clock updates in real-time during scroll",
+      "Timezone offset applied correctly",
+      "Selected time matches scroll position"
+    ],
+    "edge_cases": [
+      "Midnight (00:00) display",
+      "Noon (12:00) display",
+      "First and last time slots",
+      "Rapid scrolling",
+      "Different timezones",
+      "DST transitions"
+    ],
+    "performance_tests": [
+      "Smooth 60fps clock hand animation",
+      "No frame drops during scroll",
+      "Memory stable across extended use",
+      "Skia rendering performance",
+      "Worklet execution time"
+    ],
+    "cross_platform": [
+      "iOS appearance and behavior",
+      "Android appearance and behavior",
+      "Font rendering consistency",
+      "Border curve rendering (continuous on iOS)"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No support currently",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "Not respected",
+      "labels": "No accessibility labels"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to clock ('Clock showing selected time')",
+      "Add accessibilityValue to clock with current time",
+      "Add accessibilityLabel to time items",
+      "Add accessibilityHint for time list ('Scroll to select time')",
+      "Announce time changes to screen reader",
+      "Support keyboard arrows for time selection",
+      "Respect prefers-reduced-motion (instant updates)",
+      "Increase touch target sizes for time items",
+      "Add skip-to-time quick actions",
+      "High contrast mode support"
+    ]
+  },
+
+  "comparison_to_alternatives": {
+    "vs_native_pickers": {
+      "advantages": [
+        "Fully customizable appearance",
+        "Consistent cross-platform design",
+        "Analog clock visualization",
+        "Unique visual design"
+      ],
+      "disadvantages": [
+        "More code to maintain",
+        "No native accessibility",
+        "Requires Skia dependency"
+      ]
+    },
+    "vs_digital_only": {
+      "analog_clock": "Visual, intuitive time representation",
+      "digital_only": "More precise, less space",
+      "hybrid_approach": "Best of both worlds"
+    },
+    "vs_wheel_picker": {
+      "this_approach": "List with analog clock visual",
+      "wheel_picker": "Circular/cylindrical scroll",
+      "benefit": "Clock provides visual context for selected time"
+    }
+  },
+
+  "design_inspirations": {
+    "analog_clocks": "Traditional wall clocks and watches",
+    "digital_interfaces": "iOS Clock app time picker",
+    "booking_systems": "Hotel and restaurant reservation interfaces",
+    "calendar_apps": "Event time selection in calendar applications"
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~300 lines total across 3 files",
+    "dependencies": {
+      "skia": "Already in project (shared with other animations)",
+      "reanimated": "Already in project (core dependency)",
+      "date_fns": "Already in project (shared with other animations)",
+      "linear_gradient": "Already in project (shared with other animations)"
+    },
+    "runtime_memory": "Minimal - small render tree, few SharedValues",
+    "estimated_impact": "< 5KB additional (dependencies already included)"
+  },
+
+  "tags": [
+    "time-picker",
+    "clock",
+    "analog-clock",
+    "skia",
+    "scroll-picker",
+    "time-selection",
+    "reanimated",
+    "date-fns",
+    "gradient",
+    "timezone",
+    "scroll-snap",
+    "custom-graphics",
+    "flatlist",
+    "derived-values",
+    "worklets",
+    "ui-thread",
+    "gpu-accelerated"
+  ]
+}

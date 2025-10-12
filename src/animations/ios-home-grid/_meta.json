@@ -1,0 +1,1286 @@
+{
+  "animation_name": "iOS Home Grid",
+  "animation_slug": "ios-home-grid",
+  "description": "A sophisticated iOS-style app grid navigation featuring a custom shared element transition powered by React Native Reanimated. The animation replicates the iOS home screen app expansion effect with precise element measurement, morphing animations, and interactive gesture-based dismissal. The implementation uses a custom expansion provider with spring physics, scale transformations, and blur effects that create a seamless transition between grid view and detail screens.",
+
+  "main_features": [
+    "iOS-inspired app grid layout with 4 columns",
+    "Custom shared element transition without native modules",
+    "Precise element measurement and morphing animation",
+    "Spring-based expansion animation from grid item to full screen",
+    "Interactive pan gesture to dismiss with scale transformation",
+    "Progressive blur effect on home screen during transition",
+    "Dynamic border radius interpolation from rounded square to large radius",
+    "Synchronized opacity fade for grid items during transition",
+    "Swipe-down gesture dismissal with velocity threshold",
+    "Metallic gradient color scheme with 24 unique gradients",
+    "Responsive grid layout adapting to screen dimensions",
+    "Safe area inset support for modern devices",
+    "Debounced back navigation to prevent double-triggers",
+    "Context-based transition state management",
+    "Custom higher-order components for screen wrapping"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main entry point with React Navigation stack setup and ExpansionProvider",
+    "app-detail-screen.tsx": "Full-screen detail view with gradient background and close button",
+    "apps-list/index.tsx": "Grid layout component with responsive calculations and scale animation",
+    "apps-list/app-item.tsx": "Individual grid item with NavigationItem wrapper",
+    "apps-list/constants.ts": "Color gradient data (vibrant, metallic, dark theme variations)",
+    "navigation/expansion-provider.tsx": "Core animation logic with shared element transition orchestration",
+    "navigation/navigation-item.tsx": "Gesture handler for tap interactions and transition triggering",
+    "navigation/DetailScreenWrapper.tsx": "HOC providing pan gesture dismissal and scale animation",
+    "navigation/MainScreenWrapper.tsx": "HOC adding blur effect to home screen during transitions"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "navigation": "@react-navigation/native-stack",
+    "layout": "react-native-safe-area-context",
+    "blur": "expo-blur",
+    "gradients": "expo-linear-gradient",
+    "icons": "@expo/vector-icons",
+    "router": "expo-router",
+    "utilities": "lodash.debounce",
+    "worklets": "react-native-worklets"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "usage": "Shared element transition, spring physics, interpolation, and gesture animations",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useAnimatedRef",
+        "useAnimatedReaction"
+      ],
+      "functions": [
+        "withSpring",
+        "withTiming",
+        "withSequence",
+        "measure",
+        "interpolate",
+        "cancelAnimation",
+        "makeMutable"
+      ],
+      "components": ["Animated.View", "Animated.ScrollView"],
+      "transitions": ["LinearTransition", "FadeOut"],
+      "critical_feature": "measure() for element dimensions and position, enabling custom shared element transitions"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "usage": "Tap gestures for navigation items and pan gestures for dismissal",
+      "components": ["GestureDetector"],
+      "gestures": [
+        "Gesture.Tap() - Navigation item interactions",
+        "Gesture.Pan() - Swipe-down dismissal with velocity"
+      ],
+      "methods": ["onBegin", "onEnd", "onFinalize", "onChange"],
+      "critical_feature": "Pan gesture with velocity and translation tracking for interactive dismissal"
+    },
+    "@react-navigation/native-stack": {
+      "version": "^7.3.16",
+      "components": ["createNativeStackNavigator"],
+      "types": ["RootStackParamList", "NativeStackNavigationProp", "RouteProp"],
+      "usage": "Navigation structure with custom fade and none animations",
+      "screen_options": {
+        "headerShown": false,
+        "animation": "fade (Home) and none (AppDetail)"
+      }
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hooks": ["useSafeAreaInsets"],
+      "usage": "Safe area padding for content and close button positioning",
+      "insets_used": ["top (for back button and content padding)"]
+    },
+    "expo-blur": {
+      "version": "~15.0.7",
+      "components": ["BlurView", "Animated.createAnimatedComponent"],
+      "usage": "Progressive blur effect on home screen during expansion transition",
+      "props": {
+        "intensity": "Animated 0-50 based on spring progress",
+        "tint": "light"
+      },
+      "critical_feature": "AnimatedBlurView with dynamic intensity for smooth blur transition"
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "components": ["LinearGradient"],
+      "usage": "Metallic gradient backgrounds for app items and detail screen",
+      "configuration": {
+        "colors": "Array of 2-3 hex colors from constants",
+        "start": "{ x: 0, y: 0 }",
+        "end": "{ x: 1, y: 1 }"
+      }
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "functions": ["scheduleOnRN"],
+      "usage": "Schedule navigation callbacks on React Native thread from worklets",
+      "critical_feature": "Bridge between UI thread animations and JS navigation"
+    },
+    "lodash.debounce": {
+      "version": "^4.0.8",
+      "usage": "Debounce back navigation to prevent multiple rapid triggers",
+      "configuration": {
+        "wait": "1000ms",
+        "options": "{ leading: true, trailing: false }"
+      }
+    },
+    "expo-router": {
+      "version": "~6.0.10",
+      "hooks": ["useRouter"],
+      "usage": "Back navigation for dismissal",
+      "methods": ["navigation.back()"]
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["Ionicons"],
+      "icons_used": ["close (24px, dark gray)"],
+      "usage": "Close button in detail screen"
+    }
+  },
+
+  "animation_techniques": {
+    "shared_element_measurement": {
+      "pattern": "measure() API for precise element dimensions and position",
+      "hook": "useAnimatedRef() on NavigationItem",
+      "measurement": "measure(animatedRef) returns { width, height, x, y, pageX, pageY }",
+      "storage": "dimensionsSharedValue stores measurements",
+      "timing": "Measured on tap, before transition starts",
+      "key_insight": "pageX and pageY provide absolute screen coordinates for morphing"
+    },
+    "expansion_animation": {
+      "pattern": "Spring-based morphing from measured element to full screen",
+      "shared_values": {
+        "transitionProgress": "0 to 1 spring animation",
+        "dimensionsSharedValue": "Stores initial element measurements"
+      },
+      "spring_config": {
+        "mass": 0.1,
+        "damping": 24,
+        "stiffness": 25
+      },
+      "interpolations": [
+        "width: [measured_width → windowWidth * scale]",
+        "height: [measured_height → windowHeight * scale]",
+        "translateX: [pageX → (windowWidth * (1 - scale)) / 2]",
+        "translateY: [pageY → (windowHeight * (1 - scale)) / 2]",
+        "borderRadius: [16px → 50px]"
+      ],
+      "effect": "Element smoothly expands from grid position to full screen with spring physics"
+    },
+    "opacity_orchestration": {
+      "pattern": "Multi-stage opacity animation for visibility control",
+      "shared_value": "transitionOpacityProgress",
+      "stages": [
+        "1. withTiming(1, { duration: 100 }) - Fade in morphing overlay",
+        "2. onComplete → withTiming(0, { duration: 300 }) - Fade out after navigation",
+        "3. Grid items fade based on transitionId and timingProgress > 0.9"
+      ],
+      "purpose": "Seamless handoff from grid item to overlay to detail screen"
+    },
+    "icon_progress_animation": {
+      "pattern": "Independent spring animation for UI elements",
+      "shared_value": "springIconProgress (0 to 1)",
+      "spring_config": {
+        "mass": 2.5,
+        "damping": 18,
+        "stiffness": 135
+      },
+      "usage": "Home screen scale and translation during expansion",
+      "effect": "springProgress.value * 0.05 for scale, * 5 for translateY"
+    },
+    "pan_gesture_dismissal": {
+      "pattern": "Interactive scale transformation with velocity threshold",
+      "gesture": "Gesture.Pan()",
+      "calculations": {
+        "translationY": "Math.max(0, event.translationY) - Only downward swipes",
+        "frictionFactor": "0.3 - Resistance effect",
+        "resistanceY": "translationY * 0.3",
+        "scaleValue": "Math.max(0.7, Math.min(1, 1 - Math.pow(resistanceY / 400, 1.2)))"
+      },
+      "trigger_threshold": "translationY > 300px",
+      "velocity_threshold": "Math.abs(velocityY) < 300 to reset",
+      "effect": "Detail screen scales down with resistance as user swipes down"
+    },
+    "reverse_transition": {
+      "pattern": "Sequenced spring animations for back transition",
+      "trigger": "backTransition() from pan gesture or close button",
+      "animations": [
+        "1. transitionOpacityProgress: withSequence(withTiming(1, 0ms), withTiming(0, 700ms))",
+        "2. springIconProgress: withSpring(0) from 1",
+        "3. transitionProgress: withSpring(0) with looser spring (mass: 0.1, stiffness: 42, damping: 4)"
+      ],
+      "navigation": "Debounced navigation.back() called immediately",
+      "effect": "Element collapses back to grid position with smooth spring"
+    },
+    "blur_intensity_animation": {
+      "pattern": "useDerivedValue for reactive blur intensity",
+      "calculation": "springProgress.value * 50",
+      "range": "0 (no blur) to 50 (maximum blur)",
+      "component": "AnimatedBlurView",
+      "effect": "Home screen progressively blurs as detail expands"
+    },
+    "grid_scale_transformation": {
+      "pattern": "Subtle scale and translation on home screen during transition",
+      "animated_style": {
+        "scale": "1 - springProgress.value * 0.05",
+        "translateY": "springProgress.value * 5"
+      },
+      "effect": "Home screen slightly shrinks and moves down, enhancing depth perception"
+    },
+    "border_radius_morphing": {
+      "pattern": "Interpolated border radius for smooth shape transition",
+      "expansion": {
+        "start": "16px (grid item rounded square)",
+        "end": "50px (detail screen large radius)"
+      },
+      "dismissal": {
+        "calculation": "interpolate(scale.value, [1, 0.8], [50, 30])",
+        "effect": "Border radius decreases as user swipes down"
+      },
+      "style_prop": "borderCurve: 'continuous' for iOS-style smooth curves"
+    },
+    "item_opacity_fade": {
+      "pattern": "Conditional opacity based on transition state",
+      "logic": "If active.value (pressed) → 0.85, else if transitionId matches → timing based on progress > 0.9, else → 1",
+      "animation": "withTiming with bezier(0.19, 1, 0.22, 1) easing",
+      "purpose": "Grid item fades out during transition, preventing visual duplication"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "dimensionsSharedValue",
+        "type": "ReturnType<typeof measure> | null",
+        "scope": "ExpansionProvider",
+        "purpose": "Store measured element dimensions and position for morphing",
+        "lifecycle": "Set on startTransition, cleared on resetTransition"
+      },
+      {
+        "name": "transitionId",
+        "type": "string | null",
+        "scope": "ExpansionProvider",
+        "purpose": "Track which item is transitioning for opacity control",
+        "usage": "Matched in NavigationItem to determine if item should fade"
+      },
+      {
+        "name": "transitionScale",
+        "type": "number",
+        "initial": 1,
+        "scope": "ExpansionProvider",
+        "purpose": "Control detail screen scale during pan gesture dismissal",
+        "range": "0.7 to 1.0"
+      },
+      {
+        "name": "transitionProgress",
+        "type": "number",
+        "initial": 0,
+        "scope": "ExpansionProvider",
+        "animation": "withSpring(1) for expansion, withSpring(0) for collapse",
+        "purpose": "Main progress value for expansion/collapse interpolations"
+      },
+      {
+        "name": "springIconProgress",
+        "type": "number",
+        "initial": 0,
+        "scope": "ExpansionProvider",
+        "animation": "withSpring(1) with stiff config for UI elements",
+        "purpose": "Independent progress for home screen scale/translation effects"
+      },
+      {
+        "name": "transitionOpacityProgress",
+        "type": "number",
+        "initial": 0,
+        "scope": "ExpansionProvider",
+        "animations": "withTiming for orchestrated fade in/out",
+        "purpose": "Control overlay visibility during transition lifecycle"
+      },
+      {
+        "name": "componentConfig",
+        "type": "{ borderRadius: number, color: string } | null",
+        "scope": "ExpansionProvider",
+        "purpose": "Store item configuration for overlay styling",
+        "usage": "BorderRadius and color from NavigationItem config"
+      },
+      {
+        "name": "active",
+        "type": "boolean",
+        "initial": false,
+        "scope": "NavigationItem",
+        "purpose": "Track tap gesture state for press opacity",
+        "lifecycle": "true onBegin, false onFinalize/onEnd"
+      },
+      {
+        "name": "trigger",
+        "type": "boolean",
+        "initial": false,
+        "scope": "DetailScreenWrapper",
+        "purpose": "Flag for gesture dismissal threshold",
+        "condition": "Set true when translationY > 300"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "opacity (NavigationItem)",
+        "calculation": "Conditional based on active, transitionId, and timingProgress",
+        "dependencies": ["active", "transitionId", "timingProgress"],
+        "purpose": "Dynamic opacity for grid items during press and transition"
+      },
+      {
+        "name": "intensity (BlurView)",
+        "calculation": "springProgress.value * 50",
+        "dependencies": ["springProgress"],
+        "type": "number",
+        "purpose": "Reactive blur intensity for home screen"
+      }
+    ],
+    "animated_styles": [
+      {
+        "name": "rStyle (expansion overlay)",
+        "scope": "ExpansionProvider",
+        "properties": ["width", "height", "transform", "borderRadius", "backgroundColor", "opacity"],
+        "dependencies": ["dimensionsSharedValue", "transitionProgress", "componentConfig", "transitionOpacityProgress"],
+        "complexity": "High - Multiple interpolations for morphing effect"
+      },
+      {
+        "name": "rStyle (NavigationItem)",
+        "scope": "NavigationItem",
+        "properties": ["opacity"],
+        "dependencies": ["opacity derived value"],
+        "purpose": "Grid item fade during press and transition"
+      },
+      {
+        "name": "rStyle (AppsList)",
+        "scope": "AppsList",
+        "properties": ["transform: [scale, translateY]"],
+        "dependencies": ["springProgress"],
+        "purpose": "Home screen subtle scale and translation effect"
+      },
+      {
+        "name": "rStyle (DetailScreenWrapper)",
+        "scope": "DetailScreenWrapper",
+        "properties": ["borderRadius", "transform: [scale]"],
+        "dependencies": ["scale (transitionScale)"],
+        "purpose": "Detail screen scale and border radius during gesture"
+      }
+    ],
+    "useAnimatedReaction": {
+      "scope": "DetailScreenWrapper",
+      "watch": "trigger.value",
+      "reaction": "Call backTransition() when trigger becomes true",
+      "purpose": "Execute navigation after gesture threshold reached",
+      "pattern": "Separate trigger flag from animation state for clean logic"
+    },
+    "useCallback_optimizations": [
+      {
+        "name": "startTransition",
+        "dependencies": ["componentConfig", "dimensionsSharedValue", "springIconProgress", "transitionId", "transitionOpacityProgress", "transitionProgress", "transitionScale"],
+        "purpose": "Stable reference for transition initiation",
+        "worklet": true
+      },
+      {
+        "name": "backTransition",
+        "dependencies": ["debouncedBackNavigation", "springIconProgress", "transitionOpacityProgress", "transitionProgress"],
+        "purpose": "Stable reference for reverse transition",
+        "worklet": true
+      },
+      {
+        "name": "resetTransition",
+        "dependencies": ["dimensionsSharedValue"],
+        "purpose": "Stable reference for cleanup",
+        "worklet": true
+      },
+      {
+        "name": "onNavigateWrapper",
+        "scope": "NavigationItem",
+        "dependencies": ["onNavigate"],
+        "purpose": "Wrap navigation callback for scheduleOnRN"
+      }
+    ]
+  },
+
+  "gesture_patterns": {
+    "tap_gesture_navigation": {
+      "component": "NavigationItem",
+      "gesture": "Gesture.Tap()",
+      "lifecycle": {
+        "onBegin": "active.value = true (press feedback)",
+        "onFinalize": "active.value = false",
+        "onEnd": "active.value = false, startTransition with onComplete navigation"
+      },
+      "pattern": "Animation completes before navigation for smooth transition",
+      "key_insight": "scheduleOnRN bridges worklet animation to JS navigation"
+    },
+    "pan_gesture_dismissal": {
+      "component": "DetailScreenWrapper",
+      "gesture": "Gesture.Pan()",
+      "onChange": "Calculate scale based on translationY with friction resistance",
+      "onEnd": "Check trigger and velocity to decide reset or dismiss",
+      "friction_formula": "resistanceY = translationY * 0.3",
+      "scale_formula": "Math.max(0.7, Math.min(1, 1 - Math.pow(resistanceY / 400, 1.2)))",
+      "dismiss_conditions": "translationY > 300 AND velocityY >= 300",
+      "reset_conditions": "!trigger OR velocityY < 300",
+      "spring_reset": {
+        "mass": 0.3,
+        "stiffness": 46,
+        "damping": 2
+      },
+      "effect": "Rubber-band effect with exponential resistance"
+    }
+  },
+
+  "navigation_patterns": {
+    "stack_navigator": {
+      "library": "@react-navigation/native-stack",
+      "type": "createNativeStackNavigator<RootStackParamList>",
+      "screens": [
+        "Home: undefined - Grid list of apps",
+        "AppDetail: { item: AppData } - Full screen detail"
+      ],
+      "screen_options": {
+        "headerShown": false,
+        "animation": "fade (default), none (AppDetail)"
+      },
+      "reasoning": "'none' animation on AppDetail because custom transition handles visual effect"
+    },
+    "custom_navigation_context": {
+      "context": "ExpansionContext",
+      "hook": "useCustomNavigation()",
+      "exported_values": [
+        "startTransition - Initiate expansion",
+        "resetTransition - Clear state",
+        "backTransition - Initiate collapse and navigate back",
+        "timingProgress - Opacity progress",
+        "springProgress - Icon animation progress",
+        "transitionScale - Scale for gesture",
+        "transitionId - Active transition identifier"
+      ],
+      "pattern": "Context provides animation state to all components in tree"
+    },
+    "higher_order_components": {
+      "withMainScreenWrapper": {
+        "purpose": "Add blur effect to home screen",
+        "implementation": "HOC returning component wrapped in MainScreenWrapper",
+        "usage": "withMainScreenWrapper(AppsList)"
+      },
+      "withDetailScreenWrapper": {
+        "purpose": "Add pan gesture dismissal to detail screen",
+        "implementation": "HOC returning component wrapped in DetailScreenWrapper",
+        "usage": "withDetailScreenWrapper(AppDetailScreen)"
+      },
+      "benefit": "Clean separation of screen logic from animation wrappers"
+    },
+    "debounced_navigation": {
+      "pattern": "useMemo with debounce from lodash",
+      "configuration": "debounce(navigation.back, 1000, { leading: true, trailing: false })",
+      "purpose": "Prevent double-trigger of back navigation during animation",
+      "timing": "First call executes immediately, subsequent calls within 1s ignored"
+    },
+    "scheduleOnRN_bridge": {
+      "pattern": "scheduleOnRN() to call JS navigation from UI thread",
+      "usage": [
+        "onComplete callback in startTransition",
+        "onNavigateWrapper in NavigationItem"
+      ],
+      "reasoning": "React Navigation runs on JS thread, animations on UI thread",
+      "key_insight": "Worklet directive enables UI thread execution, scheduleOnRN bridges back to JS"
+    }
+  },
+
+  "component_architecture": {
+    "iOSHomeGrid": {
+      "type": "Main exported component",
+      "structure": "ExpansionProvider → Stack.Navigator → Screens",
+      "screens": {
+        "Home": "withMainScreenWrapper(AppsList)",
+        "AppDetail": "withDetailScreenWrapper(AppDetailScreen)"
+      },
+      "responsibility": "Navigation setup and animation provider integration"
+    },
+    "ExpansionProvider": {
+      "type": "Context provider with animated overlay",
+      "state_management": [
+        "dimensionsSharedValue - Element measurements",
+        "transitionId - Active item ID",
+        "transitionScale - Gesture scale",
+        "transitionProgress - Main animation progress",
+        "springIconProgress - UI element progress",
+        "transitionOpacityProgress - Overlay opacity",
+        "componentConfig - Item styling"
+      ],
+      "methods": {
+        "startTransition": "Measure element, animate expansion, call navigation",
+        "backTransition": "Animate collapse, navigate back (debounced)",
+        "resetTransition": "Clear measurements"
+      },
+      "rendered_element": "Animated.View with absolute positioning and morphing styles",
+      "responsibility": "Orchestrate entire shared element transition lifecycle"
+    },
+    "AppsList": {
+      "type": "Functional component",
+      "layout": "4-column responsive grid with ScrollView",
+      "calculations": {
+        "itemSize": "Math.floor((availableWidth - totalSpacing) / NUM_COLUMNS)",
+        "itemRows": "Chunk items into rows of 4"
+      },
+      "animations": {
+        "layout": "LinearTransition on rows",
+        "container": "Scale and translateY based on springProgress"
+      },
+      "responsibility": "Render grid layout with responsive sizing and press handling"
+    },
+    "AppItem": {
+      "type": "Functional component",
+      "structure": "Animated.View → NavigationItem → gradient",
+      "animations": {
+        "layout": "LinearTransition.duration(350)",
+        "exiting": "FadeOut"
+      },
+      "config_passed": {
+        "borderRadius": 16,
+        "color": "item.colors[1]"
+      },
+      "responsibility": "Individual grid item with gesture handling"
+    },
+    "NavigationItem": {
+      "type": "Functional component with gesture handling",
+      "props": {
+        "children": "ReactNode",
+        "style": "ViewStyle",
+        "onNavigate": "Callback",
+        "config": "{ borderRadius?, color? }"
+      },
+      "gesture": "Gesture.Tap() with press feedback",
+      "animation_logic": "Opacity based on press and transition state",
+      "measurement": "useAnimatedRef for measure() on tap",
+      "responsibility": "Gesture handling and transition triggering"
+    },
+    "AppDetailScreen": {
+      "type": "Functional component",
+      "props": "route: RouteProp<RootStackParamList, 'AppDetail'>",
+      "structure": [
+        "LinearGradient background (item.colors)",
+        "TouchableOpacity close button with safe area positioning"
+      ],
+      "close_handler": "navigation.backTransition()",
+      "responsibility": "Detail view content and close interaction"
+    },
+    "MainScreenWrapper": {
+      "type": "Functional component (wrapper)",
+      "structure": "View → AnimatedBlurView + children",
+      "blur_intensity": "useDerivedValue(() => springProgress.value * 50)",
+      "props": {
+        "tint": "light",
+        "pointerEvents": "none (blur is visual only)"
+      },
+      "responsibility": "Add progressive blur to home screen during transitions"
+    },
+    "DetailScreenWrapper": {
+      "type": "Functional component (wrapper)",
+      "gesture": "Gesture.Pan() for dismissal",
+      "structure": "GestureDetector → Animated.View (outer) → Animated.View (inner)",
+      "animations": {
+        "scale": "Pan gesture controlled",
+        "borderRadius": "Interpolated based on scale"
+      },
+      "trigger_logic": "useAnimatedReaction watches trigger, calls backTransition",
+      "responsibility": "Interactive dismissal gesture and scale animation"
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "primary_theme": "Metallic gradients",
+      "gradient_collections": {
+        "METALLIC_APPS_DATA_RAW": "24 metallic gradients (steel, chrome, titanium, etc.)",
+        "APPS_DATA_RAW": "59 vibrant color gradients",
+        "DARK_THEME_APPS_DATA_RAW": "24 dark theme gradients"
+      },
+      "active_collection": "METALLIC_APPS_DATA_RAW (default)",
+      "gradient_structure": "Array of 2-3 hex colors per app",
+      "gradient_direction": "Diagonal (start: {x:0, y:0}, end: {x:1, y:1})",
+      "background": "#fafafa for home screen",
+      "close_button": "White background (80% opacity) with dark gray icon"
+    },
+    "dimensions": {
+      "grid": {
+        "columns": 4,
+        "spacing": "8px between items",
+        "horizontal_padding": "SPACING * 2 = 16px",
+        "item_size": "Dynamic based on screen width",
+        "item_padding": "14px (8px + 6px)",
+        "aspect_ratio": "1:1 (square items)"
+      },
+      "grid_item": {
+        "borderRadius": "16px",
+        "borderCurve": "continuous (iOS style)"
+      },
+      "detail_screen": {
+        "initial_borderRadius": "50px",
+        "scaled_borderRadius": "30px at 0.8 scale",
+        "borderCurve": "continuous"
+      },
+      "close_button": {
+        "size": "44x44px",
+        "borderRadius": "22px (circular)",
+        "icon_size": "24px",
+        "position": "top: safeTop + 16, right: 16",
+        "hitSlop": "10px all sides"
+      }
+    },
+    "layout": {
+      "home_screen": "ScrollView with safe area padding (top + 4px, bottom: 300px)",
+      "grid_rows": "flexDirection: row, justifyContent: center (or flex-start for partial rows)",
+      "detail_screen": "Full screen with LinearGradient filling container",
+      "overlay": "Absolute positioned with dynamic dimensions and transform"
+    },
+    "shadows_and_elevation": {
+      "detail_wrapper": {
+        "shadowColor": "black",
+        "shadowOffset": "{ width: 0, height: 0 }",
+        "shadowOpacity": 0.3,
+        "shadowRadius": 30,
+        "elevation": 5,
+        "zIndex": 1000
+      },
+      "expansion_overlay": {
+        "shadowColor": "black",
+        "shadowOffset": "{ width: 0, height: 0 }",
+        "shadowOpacity": 0.2,
+        "shadowRadius": 20,
+        "elevation": 5,
+        "zIndex": 1000
+      },
+      "close_button": {
+        "shadowColor": "#000",
+        "shadowOffset": "{ width: 0, height: 0 }",
+        "shadowOpacity": 0.05,
+        "shadowRadius": 10,
+        "elevation": 3
+      }
+    }
+  },
+
+  "responsive_calculations": {
+    "screen_dimensions": {
+      "hook": "useWindowDimensions()",
+      "values": ["width (screenWidth)", "height (windowHeight)"],
+      "usage": "Grid sizing and expansion target dimensions"
+    },
+    "grid_item_sizing": {
+      "formula": "Math.floor((availableWidth - totalSpacing) / NUM_COLUMNS)",
+      "breakdown": {
+        "availableWidth": "screenWidth - horizontalPadding (16px)",
+        "totalSpacing": "SPACING * (NUM_COLUMNS - 1) = 8 * 3 = 24px",
+        "NUM_COLUMNS": 4,
+        "example": "On 390px screen: (374 - 24) / 4 = 87.5 → 87px"
+      },
+      "padding_per_item": "14px (SPACING + 6px)",
+      "margin_between": "8px (SPACING)"
+    },
+    "expansion_target": {
+      "width": "windowWidth * transitionScale.value",
+      "height": "windowHeight * transitionScale.value",
+      "centering": "Translated to center based on scale",
+      "formula": {
+        "translateX": "(windowWidth * (1 - transitionScale)) / 2",
+        "translateY": "(windowHeight * (1 - transitionScale)) / 2"
+      },
+      "purpose": "Element expands from measured position to centered full-screen"
+    },
+    "dismissal_scale_range": {
+      "max_scale": 1.0,
+      "min_scale": 0.7,
+      "resistance_curve": "1 - Math.pow(resistanceY / 400, 1.2)",
+      "effect": "Exponential resistance creates natural feel"
+    }
+  },
+
+  "performance_optimizations": {
+    "measure_api_efficiency": {
+      "pattern": "Single measure() call on tap, not continuous",
+      "benefit": "Precise dimensions without layout thrashing",
+      "timing": "Measured at interaction time, ensuring accuracy"
+    },
+    "useMemo_for_layout": {
+      "component": "AppsList",
+      "calculations": [
+        "layoutConfig (itemSize, spacing, padding) - depends on screenWidth",
+        "itemRows (chunked data) - static dependency"
+      ],
+      "benefit": "Grid layout only recalculated on screen size change"
+    },
+    "useMemo_for_debounce": {
+      "pattern": "useMemo(() => debounce(navigation.back, 1000, ...), [navigation.back])",
+      "benefit": "Stable debounced function reference across renders",
+      "prevents": "Creating new debounced functions and losing debounce state"
+    },
+    "useCallback_for_handlers": {
+      "functions": ["startTransition", "backTransition", "resetTransition", "onNavigateWrapper"],
+      "benefit": "Stable function references prevent unnecessary re-renders",
+      "critical": "Especially important for context values"
+    },
+    "context_value_memoization": {
+      "pattern": "useMemo for context value object",
+      "dependencies": ["startTransition", "backTransition", "resetTransition", "shared values"],
+      "benefit": "Prevents context consumers from re-rendering unnecessarily"
+    },
+    "worklet_optimization": {
+      "pattern": "'worklet' directive on callbacks and functions",
+      "locations": ["startTransition", "backTransition", "resetTransition", "onComplete"],
+      "benefit": "Entire animation runs on UI thread, no bridge crossing"
+    },
+    "shared_value_efficiency": {
+      "pattern": "Minimal shared values, focused on essential animation state",
+      "benefit": "Low memory footprint, fast UI thread updates"
+    },
+    "animated_component_separation": {
+      "pattern": "Separate components for different animated concerns",
+      "examples": [
+        "NavigationItem - Tap and opacity",
+        "MainScreenWrapper - Blur",
+        "DetailScreenWrapper - Pan and scale"
+      ],
+      "benefit": "Isolated animation updates, no cascading re-renders"
+    },
+    "cancelAnimation_usage": {
+      "pattern": "cancelAnimation before starting new animations",
+      "values": ["transitionOpacityProgress", "transitionProgress", "springIconProgress", "transitionScale"],
+      "benefit": "Clean state, prevents animation conflicts"
+    },
+    "LinearTransition_optimization": {
+      "usage": "Layout transitions on rows and items",
+      "duration": "350ms",
+      "benefit": "Smooth grid rearrangement if items change"
+    }
+  },
+
+  "layout_and_positioning": {
+    "absolute_overlay": {
+      "component": "ExpansionProvider overlay",
+      "style": {
+        "position": "absolute",
+        "elevation": 5,
+        "zIndex": 1000
+      },
+      "purpose": "Float above all content during transition",
+      "dynamic_properties": "Width, height, transform, borderRadius, backgroundColor, opacity"
+    },
+    "safe_area_integration": {
+      "home_screen_padding": "paddingTop: safeTop + 4",
+      "close_button_position": "top: safeTop + 16",
+      "purpose": "Avoid status bar and notch areas",
+      "devices": "Essential for iPhone notch, Dynamic Island, Android edge-to-edge"
+    },
+    "scroll_view_layout": {
+      "component": "Animated.ScrollView",
+      "content_style": {
+        "paddingTop": "safeTop + 4",
+        "paddingHorizontal": "layoutConfig.containerPadding (8px)",
+        "paddingBottom": "300px (scroll buffer)"
+      },
+      "showsVerticalScrollIndicator": false,
+      "layout": "LinearTransition"
+    },
+    "grid_centering": {
+      "full_rows": "justifyContent: center (4 items)",
+      "partial_rows": "justifyContent: flex-start (< 4 items)",
+      "benefit": "Consistent alignment regardless of item count"
+    },
+    "detail_screen_layering": {
+      "outer_container": "Elevation 5, shadow for depth",
+      "inner_container": "Flex 1 with animated scale and borderRadius",
+      "z_index": 1000,
+      "effect": "Detail screen floats above home screen with shadow"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "App launcher grids with detail expansion (iOS home screen style)",
+      "Gallery apps with full-screen image expansion",
+      "Card-based UIs transitioning to detail views",
+      "Product grids expanding to product detail screens",
+      "Media libraries with item expansion (music albums, playlists, etc.)",
+      "Dashboard widgets expanding to full-screen views"
+    ],
+    "real_world_examples": [
+      "iOS Home Screen app grid and app detail",
+      "Photo gallery with full-screen preview",
+      "E-commerce product grid to product detail",
+      "News app article cards to full article view",
+      "Music app album grid to album detail",
+      "File manager grid to file preview",
+      "Contact list to contact detail",
+      "Calendar events grid to event detail"
+    ],
+    "design_patterns": [
+      "Shared element transitions for continuity",
+      "Hero animations for focal point emphasis",
+      "Morphing transitions for shape changes",
+      "Spring physics for natural motion",
+      "Gesture-driven interactions for user control",
+      "Progressive blur for depth and focus",
+      "Scale transformations for space management"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with strict typing",
+      "type_definitions": [
+        "RootStackParamList interface for navigation",
+        "AppData type from constants",
+        "AnimatedRef type from Reanimated",
+        "NavigationItemProps, AppDetailScreenProps, AppItemProps",
+        "Config types for borderRadius and color"
+      ],
+      "type_imports": "type keyword for type-only imports",
+      "const_assertions": "'as const' for color data and spring configs",
+      "generics": "HOC functions use generic type parameters <T extends object>"
+    },
+    "component_separation": {
+      "navigation_logic": "expansion-provider.tsx",
+      "gesture_handling": "navigation-item.tsx",
+      "screen_wrappers": "DetailScreenWrapper.tsx, MainScreenWrapper.tsx",
+      "content_components": "app-detail-screen.tsx, apps-list/index.tsx, app-item.tsx",
+      "data": "constants.ts",
+      "benefit": "Clear separation of concerns, easy to maintain"
+    },
+    "constants_extraction": {
+      "colors": "APPS_DATA_RAW, METALLIC_APPS_DATA_RAW, DARK_THEME_APPS_DATA_RAW",
+      "layout": "SPACING, NUM_COLUMNS",
+      "spring_configs": "SpringIconProgressConfig, SpringConfig",
+      "benefit": "Easy customization, single source of truth"
+    },
+    "best_practices": [
+      "Worklet directives for UI thread functions",
+      "scheduleOnRN for thread bridging",
+      "useCallback and useMemo for performance",
+      "Context for shared state management",
+      "HOCs for wrapper composition",
+      "Debouncing for rate-limiting",
+      "cancelAnimation before new animations",
+      "Type-safe navigation and routes",
+      "Safe area awareness",
+      "Clean component interfaces"
+    ],
+    "inline_documentation": {
+      "jsdoc": "Comprehensive JSDoc comments on types and complex components",
+      "examples": [
+        "NavigationItem props documentation",
+        "AppDetailScreen component description",
+        "RootStackParamList documentation"
+      ],
+      "inline_comments": "Explaining complex calculations and animation orchestration"
+    },
+    "higher_order_components": {
+      "pattern": "withDetailScreenWrapper, withMainScreenWrapper",
+      "implementation": "Generic HOC functions returning wrapped components",
+      "benefit": "Reusable wrappers, composition over inheritance",
+      "type_safety": "Preserves prop types with generics"
+    }
+  },
+
+  "known_limitations": {
+    "navigation_library_dependency": {
+      "issue": "Relies on React Navigation's native stack",
+      "limitation": "Animation tied to navigation screen structure",
+      "improvement": "Could be abstracted to work with other navigation libraries"
+    },
+    "single_transition_at_a_time": {
+      "issue": "Only one transition can be active (transitionId is single value)",
+      "limitation": "Rapid navigation between items may have conflicts",
+      "mitigation": "Debounced navigation prevents most issues",
+      "improvement": "Queue system for transitions"
+    },
+    "fixed_grid_columns": {
+      "issue": "NUM_COLUMNS hardcoded to 4",
+      "limitation": "Not responsive to landscape or tablet layouts",
+      "current_code": "const NUM_COLUMNS = 4",
+      "improvement": "Calculate columns based on screen width and breakpoints"
+    },
+    "color_collection_switching": {
+      "issue": "Must change code to switch between color collections",
+      "limitation": "No UI or prop to select gradient theme",
+      "current_code": "export const APPS_DATA = METALLIC_APPS_DATA_RAW.map(...)",
+      "improvement": "Theme selector or prop for choosing gradient collection"
+    },
+    "measure_api_limitations": {
+      "issue": "measure() can return null if element not mounted/measured",
+      "handling": "Early returns if dimensions null",
+      "edge_case": "Rapid taps before layout complete may fail",
+      "improvement": "Loading state or measure retry logic"
+    },
+    "detail_screen_content": {
+      "issue": "Detail screen only shows gradient, no actual content",
+      "limitation": "Demo-only implementation",
+      "purpose": "Focus on transition animation, not screen content",
+      "improvement": "Accept content component as prop or children"
+    },
+    "accessibility": {
+      "missing": [
+        "Accessibility labels on grid items",
+        "Screen reader announcements for transitions",
+        "Keyboard navigation support",
+        "Reduced motion preference",
+        "Focus management after transitions"
+      ],
+      "impact": "Not usable with assistive technologies",
+      "improvement": "Full a11y implementation needed for production"
+    },
+    "gesture_conflict_potential": {
+      "issue": "Pan gesture on detail screen could conflict with nested scrollable content",
+      "limitation": "No simultaneousWithExternalGesture or waitFor configuration",
+      "improvement": "Gesture composition for complex detail screens"
+    },
+    "no_transition_cancellation": {
+      "issue": "Can't cancel in-progress transition",
+      "limitation": "User must wait for animation to complete",
+      "improvement": "Interrupt and reverse transition on second tap"
+    }
+  },
+
+  "potential_improvements": {
+    "interaction_enhancements": [
+      "Haptic feedback on tap and transition milestones",
+      "Pinch to zoom in detail screen",
+      "Swipe left/right to navigate between items in detail view",
+      "Long press for contextual menu on grid items",
+      "3D Touch / Force Touch for preview",
+      "Velocity-based transition speed",
+      "Overshoot animation on expansion complete",
+      "Rubber-band effect on edge boundaries"
+    ],
+    "visual_refinements": [
+      "App icons or images in grid items",
+      "Text labels (app names) with fade animation",
+      "Parallax effect on grid items based on scroll position",
+      "Shadow that grows during expansion",
+      "Glow or halo effect around expanding item",
+      "Particle effects on transition",
+      "More detail content (images, text, buttons)",
+      "Status bar color animation during transition",
+      "Corner radius animation on close button",
+      "Background dim on expansion (not just blur)"
+    ],
+    "customization_options": [
+      "Props for grid columns, spacing, colors",
+      "Theme selector for gradient collections",
+      "Custom transition spring configurations via props",
+      "Transition direction (expand from tap point vs. center)",
+      "Custom overlay component",
+      "Configurable gestures (disable pan dismissal, etc.)",
+      "Animation duration and easing props",
+      "Custom blur intensity and tint"
+    ],
+    "accessibility": [
+      "Accessibility labels for grid items",
+      "Screen reader announcements on transition",
+      "Keyboard navigation (arrow keys for grid, Enter to expand)",
+      "Focus management (return focus to grid item on back)",
+      "Reduced motion preference (instant transitions)",
+      "High contrast mode support",
+      "Voice control support",
+      "Semantic roles and states"
+    ],
+    "functionality": [
+      "Support for different content types in detail screen",
+      "Multiple transition styles (slide, fade, zoom, etc.)",
+      "Nested navigation in detail screen",
+      "Share/action buttons in detail screen",
+      "Grid item selection mode",
+      "Search and filter for grid items",
+      "Drag to reorder grid items",
+      "Add/remove items with animations",
+      "Pagination or infinite scroll",
+      "Swipe between details without returning to grid"
+    ],
+    "performance": [
+      "Virtualize grid for large item counts (FlashList)",
+      "Lazy load detail screen content",
+      "Image optimization and caching",
+      "Memoize grid items to prevent re-renders",
+      "Reduce animated style calculations",
+      "Use runOnUI for complex worklet logic",
+      "Optimize blur rendering (pre-render blur layers)",
+      "Reduce shadow and elevation overhead"
+    ],
+    "code_improvements": [
+      "Extract spring configs to separate file",
+      "Prop-driven configuration instead of constants",
+      "Unit tests for calculations and state management",
+      "Integration tests for gesture and navigation",
+      "Error boundaries for graceful failure",
+      "TypeScript strict mode compliance",
+      "More granular component extraction",
+      "Theme context for colors and dimensions",
+      "Storybook stories for each component",
+      "Better error handling for measure failures"
+    ],
+    "responsive_design": [
+      "Adaptive columns (2 for small, 4 for medium, 6 for large screens)",
+      "Tablet-specific layout with larger grids",
+      "Landscape orientation support",
+      "Responsive font sizes and paddings",
+      "Different transition animations for tablets",
+      "Split-screen support on tablets",
+      "Window resize handling"
+    ]
+  },
+
+  "key_insights": {
+    "measure_api_power": "Reanimated's measure() API enables custom shared element transitions without native modules, providing precise element dimensions and screen coordinates",
+    "spring_physics_feel": "Spring animations with proper mass, damping, and stiffness create natural, iOS-like motion that feels responsive and organic",
+    "worklet_performance": "Marking functions as 'worklet' and using scheduleOnRN enables complex animations entirely on UI thread while bridging to JS for navigation",
+    "gesture_dismissal_ux": "Pan gesture with velocity threshold and friction resistance creates intuitive, predictable dismissal that feels natural",
+    "blur_for_depth": "Progressive blur on home screen during transition creates sense of depth and focus, guiding user attention to expanding element",
+    "opacity_orchestration": "Multi-stage opacity animations (fade in overlay, fade out after navigation, fade item) create seamless visual handoff",
+    "absolute_overlay_technique": "Absolute positioned animated view morphing from measured element to full screen simulates shared element without platform-specific APIs",
+    "context_for_coordination": "Context pattern allows non-related components (grid item, detail screen, overlay) to coordinate complex transition state",
+    "hoc_composition": "Higher-order components for screen wrappers enable clean composition of animation logic without cluttering screen components",
+    "border_radius_morphing": "borderCurve: 'continuous' with animated borderRadius creates smooth iOS-style shape transitions",
+    "scale_centering_math": "Interpolating translateX/Y to (windowDimension * (1 - scale)) / 2 ensures element stays centered as it scales",
+    "debouncing_critical": "Debouncing navigation prevents double-triggers from rapid gestures or button presses during animations"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "React Navigation native stack setup",
+      "Basic Reanimated shared values and animated styles",
+      "Simple gesture handling with Gesture.Tap()",
+      "Safe area insets for modern devices",
+      "Grid layout with responsive calculations",
+      "Context API for state sharing",
+      "Higher-order component pattern",
+      "Basic spring animations"
+    ],
+    "for_intermediate": [
+      "measure() API for element dimensions and position",
+      "Complex animated style interpolations",
+      "Spring animation configurations (mass, damping, stiffness)",
+      "Pan gesture with velocity and translation tracking",
+      "useAnimatedReaction for reactive logic",
+      "Blur effects with animated intensity",
+      "Multi-stage animation sequencing (withSequence)",
+      "Worklet functions and scheduleOnRN",
+      "Debouncing techniques with lodash",
+      "Custom navigation context patterns",
+      "Layout transitions (LinearTransition)"
+    ],
+    "for_advanced": [
+      "Custom shared element transition implementation",
+      "Gesture-driven physics with friction and resistance",
+      "Complex animation orchestration with multiple shared values",
+      "UI thread optimization with worklets",
+      "Thread bridging between UI thread and JS thread",
+      "Advanced interpolation formulas for morphing",
+      "Animation state machine patterns",
+      "Context-based animation coordination across components",
+      "HOC patterns for animation composition",
+      "Performance optimization with useCallback and useMemo",
+      "Gesture conflict resolution",
+      "Dynamic blur rendering techniques",
+      "Exponential resistance curves for gestures"
+    ]
+  },
+
+  "comparison_to_similar_patterns": {
+    "vs_react_native_shared_element": {
+      "similarity": "Both create morphing transitions between screens",
+      "difference": "This uses pure JS/Reanimated with measure(), shared-element uses native modules"
+    },
+    "vs_magic_move": {
+      "similarity": "Both animate elements between screens",
+      "difference": "This is custom implementation with full control, MagicMove is library with predefined patterns"
+    },
+    "vs_simple_modal": {
+      "similarity": "Both show detail view over list",
+      "difference": "This has morphing transition from grid item, modal typically slides or fades in"
+    },
+    "vs_bottom_sheet": {
+      "similarity": "Both support pan gesture dismissal",
+      "difference": "This expands from specific grid item, bottom sheet enters from bottom edge"
+    }
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Grid renders with correct columns, spacing, and item sizes",
+      "Grid items have proper aspect ratio and gradients",
+      "Detail screen shows correct gradient and close button",
+      "Overlay renders during transition with correct dimensions",
+      "Blur effect visible on home screen during transition",
+      "Safe area padding applied correctly"
+    ],
+    "interaction_testing": [
+      "Tapping grid item triggers expansion",
+      "Close button dismisses detail screen",
+      "Pan gesture down dismisses detail screen",
+      "Expansion animation completes and navigates",
+      "Collapse animation completes and navigates back",
+      "Grid item opacity changes during transition",
+      "Debounced navigation prevents double-triggers"
+    ],
+    "animation_testing": [
+      "Expansion animation smooth with spring physics",
+      "Collapse animation smooth with spring physics",
+      "Grid item fades out during transition",
+      "Blur intensity increases during expansion",
+      "Scale transformation on pan gesture follows finger",
+      "Border radius morphs from 16px to 50px smoothly",
+      "Home screen scale and translateY subtle and smooth"
+    ],
+    "gesture_testing": [
+      "Tap gesture triggers on tap, not on pan",
+      "Pan gesture only responds to downward swipes",
+      "Velocity threshold correctly triggers dismissal",
+      "Low velocity resets scale with spring",
+      "High velocity (>300) dismisses detail screen",
+      "Friction resistance feels natural"
+    ],
+    "navigation_testing": [
+      "Navigation to detail screen after expansion completes",
+      "Navigation back after collapse completes",
+      "Route params passed correctly to detail screen",
+      "Back button navigation triggers reverse transition",
+      "Gesture dismissal triggers navigation back"
+    ],
+    "responsive_testing": [
+      "Grid item size adapts to screen width",
+      "Layout works on small devices (<375px)",
+      "Layout works on large devices (tablets >768px)",
+      "Expansion targets correct full-screen dimensions",
+      "Safe area insets respected on all devices",
+      "Orientation changes handled gracefully"
+    ],
+    "edge_cases": [
+      "Rapid taps on different grid items",
+      "Tapping during ongoing transition",
+      "Pan gesture during expansion animation",
+      "Very fast swipe down (high velocity)",
+      "Very slow swipe down (low velocity)",
+      "Changing orientation during transition",
+      "Measure returning null (unmounted element)",
+      "Empty color array or missing gradient data"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "labels": "No accessibility labels on grid items or buttons",
+      "roles": "No accessibility roles defined",
+      "announcements": "No screen reader announcements for transitions",
+      "keyboard": "No keyboard navigation support",
+      "reduced_motion": "No prefers-reduced-motion support",
+      "focus": "No focus management",
+      "gestures": "Swipe dismissal not accessible to screen reader users"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to grid items ('App {index}' or actual names)",
+      "Add accessibilityHint to grid items ('Double tap to open')",
+      "Add accessibilityRole='button' to grid items and close button",
+      "Add accessible close button alternative to swipe gesture",
+      "Announce screen transitions to screen readers",
+      "Implement keyboard navigation (Tab to navigate grid, Enter to open)",
+      "Return focus to grid item after closing detail",
+      "Support reduce motion (instant transitions instead of springs)",
+      "Add focus indicators for keyboard users",
+      "Ensure minimum touch target sizes (44x44pt) for grid items",
+      "Test with VoiceOver (iOS) and TalkBack (Android)",
+      "Add semantic navigation structure"
+    ]
+  },
+
+  "related_patterns": {
+    "shared_element_transitions": "Cross-screen element morphing animations",
+    "hero_animations": "Focal point expansion animations",
+    "gesture_driven_navigation": "Swipe-based screen dismissal",
+    "spring_physics_animations": "Natural motion with spring configs",
+    "blur_effects": "Progressive blur for depth and focus",
+    "grid_layouts": "Responsive multi-column layouts",
+    "custom_navigation_transitions": "Non-default navigation animations",
+    "context_state_management": "Cross-component state coordination"
+  },
+
+  "state_management": {
+    "navigation_state": {
+      "managed_by": "React Navigation",
+      "current_screen": "Stack navigator state",
+      "route_params": "AppData passed to AppDetail screen"
+    },
+    "animation_state": {
+      "expansion_provider": "All transition shared values",
+      "navigation_item": "active (press state)",
+      "detail_wrapper": "trigger (dismissal flag), scale"
+    },
+    "synchronization": {
+      "pattern": "Context → shared values → animations",
+      "flow": "Tap → measure → startTransition → expand animation → navigate → collapse animation → navigate back",
+      "coordination": "transitionId ensures correct item fades during transition"
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~700 lines total across all components",
+    "dependencies": "Reanimated, Gesture Handler, React Navigation, Expo modules (likely in project)",
+    "runtime_memory": "Moderate - multiple shared values, measurements, context",
+    "additional_libraries": "lodash.debounce (~2KB)",
+    "performance": "Excellent - worklet-based UI thread animations"
+  },
+
+  "platform_considerations": {
+    "ios": {
+      "features": "All features fully supported",
+      "performance": "Excellent, native-like feel",
+      "safe_area": "Home indicator and notch handled correctly",
+      "border_curve": "borderCurve: 'continuous' is iOS-specific feature"
+    },
+    "android": {
+      "features": "All features fully supported",
+      "performance": "Excellent with Reanimated UI thread",
+      "safe_area": "Gesture navigation handled correctly",
+      "border_curve": "borderCurve: 'continuous' may not have effect (iOS-specific)"
+    },
+    "web": {
+      "compatibility": "Limited - measure() may not work perfectly, gestures limited",
+      "performance": "Moderate, animations may be less smooth",
+      "note": "Reanimated web support improving but not feature-complete"
+    }
+  },
+
+  "tags": [
+    "shared-element-transition",
+    "hero-animation",
+    "grid-layout",
+    "spring-physics",
+    "gesture-driven",
+    "pan-gesture",
+    "tap-gesture",
+    "blur-effect",
+    "morphing-animation",
+    "measure-api",
+    "reanimated",
+    "gesture-handler",
+    "react-navigation",
+    "ios-style",
+    "expansion-animation",
+    "dismissal-gesture",
+    "worklets",
+    "context-state",
+    "safe-area",
+    "responsive-grid",
+    "metallic-gradients",
+    "border-radius-morphing",
+    "opacity-fade",
+    "scale-transformation",
+    "custom-navigation"
+  ]
+}

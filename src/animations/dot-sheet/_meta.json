@@ -1,0 +1,764 @@
+{
+  "animation_name": "Dot Sheet",
+  "animation_slug": "dot-sheet",
+  "description": "An elegant card input animation inspired by Dot, featuring smooth expansion from a centered rotated card to a full-screen text input. The animation includes dynamic position and size interpolation, rotation transforms, a stunning Skia-powered sweep gradient background with blur effects, and staggered text opacity transitions. Perfect for onboarding flows and focused input experiences.",
+
+  "main_features": [
+    "Card-to-fullscreen morphing animation",
+    "Rotation animation from -4deg to 0deg",
+    "Dynamic position, size, and border radius interpolation",
+    "Skia sweep gradient background with blur mask",
+    "Text input with focus-triggered expansion",
+    "Back button with opacity fade-in",
+    "TextInput font size and margin animations",
+    "Soft shadow effects on card",
+    "Backdrop gradient with vintage color palette",
+    "Safe area aware positioning"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main export wrapper with GestureHandlerRootView and SafeAreaProvider",
+    "src/index.tsx": "Main app component orchestrating layout and interactions",
+    "src/components/background-gradient.tsx": "Skia-powered sweep gradient with blur effect",
+    "src/components/card-input.tsx": "Animated card input with morphing behavior and forwardRef API"
+  },
+
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "interactions": "pressto",
+    "layout": "react-native-safe-area-context",
+    "icons": "@expo/vector-icons"
+  },
+
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": ["Canvas", "Fill", "SweepGradient", "Blur"],
+      "usage": "Background gradient rendering with sweep gradient and blur effects",
+      "performance_benefit": "GPU-accelerated gradient rendering with smooth blur mask"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "withTiming",
+        "interpolate"
+      ],
+      "components": ["Animated.View", "Animated.createAnimatedComponent(TextInput)"],
+      "critical_feature": "Smooth interpolation-based morphing from card to fullscreen input"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureHandlerRootView"],
+      "usage": "Wraps entire app for gesture support"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "components": ["PressableScale"],
+      "usage": "Bottom button with scale press animation"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "components": ["SafeAreaProvider"],
+      "hooks": ["useSafeAreaInsets"],
+      "usage": "Safe area aware positioning for card expansion and button placement"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["Ionicons"],
+      "icons_used": ["chevron-back-outline"],
+      "usage": "Back button icon with fade-in animation"
+    }
+  },
+
+  "animation_techniques": {
+    "card_morphing": {
+      "trigger": "TextInput focus/blur events",
+      "shared_value": "progress (0 to 1)",
+      "animation": "withTiming(1, { duration: 600 }) on focus, withTiming(0, { duration: 600 }) on blur",
+      "progress_range": "0 to 1",
+      "drives": "All position, size, rotation, and style interpolations"
+    },
+    "position_interpolation": {
+      "top": {
+        "pattern": "interpolate(progress, [0, 1], [initialTop, expandedTop])",
+        "from": "(height - initialCardHeight) / 2 + 35 (centered with offset)",
+        "to": "safeTop + potentialHeaderHeight (top of screen with safe area)",
+        "effect": "Card moves from center to top of screen"
+      },
+      "left": {
+        "pattern": "interpolate(progress, [0, 1], [initialLeft, expandedLeft])",
+        "from": "(width - initialCardWidth) / 2 (horizontally centered)",
+        "to": "1 (near left edge with 1px margin)",
+        "effect": "Card aligns to left edge"
+      }
+    },
+    "size_interpolation": {
+      "height": {
+        "pattern": "interpolate(progress, [0, 1], [initialCardHeight, expandedCardHeight])",
+        "from": "height / 2.8 (35.7% of screen height)",
+        "to": "height (full screen height)",
+        "effect": "Card expands vertically to fill screen"
+      },
+      "width": {
+        "pattern": "interpolate(progress, [0, 1], [initialCardWidth, expandedCardWidth])",
+        "from": "initialCardHeight * (3 / 4) (3:4 aspect ratio)",
+        "to": "width - 2 (nearly full screen width)",
+        "effect": "Card expands horizontally with small margin"
+      }
+    },
+    "rotation_animation": {
+      "pattern": "interpolate(progress, [0, 1], [initialRotate, expandedRotate])",
+      "from": "-4deg (tilted left for visual interest)",
+      "to": "0deg (perfectly aligned)",
+      "transform": "rotate: `${rotate}deg`",
+      "effect": "Card straightens as it expands, creating elegant transition"
+    },
+    "border_radius_animation": {
+      "pattern": "interpolate(progress, [0, 1], [initialBorderRadius, expandedBorderRadius])",
+      "from": "16px (moderately rounded corners)",
+      "to": "32px (more rounded corners when expanded)",
+      "effect": "Border radius increases with expansion for softer appearance"
+    },
+    "text_input_animations": {
+      "margin_top": {
+        "pattern": "interpolate(progress, [0, 1], [16, 24])",
+        "effect": "Top margin increases as card expands"
+      },
+      "font_size": {
+        "pattern": "interpolate(progress, [0, 1], [14, 24])",
+        "effect": "Text size grows as card expands for better readability"
+      }
+    },
+    "back_button_fade": {
+      "pattern": "opacity: progress.value",
+      "effect": "Back button fades in linearly with expansion progress",
+      "visibility": "Only visible when card is expanding or expanded"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "progress",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "range": "0 to 1",
+        "updates": [
+          "withTiming(1, { duration: 600 }) on TextInput focus",
+          "withTiming(0, { duration: 600 }) on TextInput blur"
+        ],
+        "scope": "Drives all card transformation animations"
+      }
+    ],
+    "useAnimatedStyle_instances": [
+      {
+        "name": "rCardStyle",
+        "target": "Card container (Animated.View)",
+        "properties": [
+          "top (vertical position)",
+          "left (horizontal position)",
+          "height (vertical size)",
+          "width (horizontal size)",
+          "borderRadius (corner curvature)",
+          "transform: [{ rotate }] (rotation angle)"
+        ],
+        "complexity": "High - coordinates 6 animated properties simultaneously"
+      },
+      {
+        "name": "rTextInputStyle",
+        "target": "TextInput",
+        "properties": [
+          "marginTop (vertical spacing)",
+          "fontSize (text size)"
+        ],
+        "purpose": "Text input scales and repositions as card expands"
+      },
+      {
+        "name": "rBackIconStyle",
+        "target": "Back button (PressableScale wrapper)",
+        "properties": ["opacity (fade-in)"],
+        "value": "progress.value (direct mapping)",
+        "effect": "Back button visible only when expanded"
+      }
+    ],
+    "focus_blur_pattern": {
+      "on_focus": {
+        "event": "TextInput onFocus callback",
+        "action": "progress.value = withTiming(1, { duration: 600 })",
+        "effect": "Expands card to fullscreen"
+      },
+      "on_blur": {
+        "event": "TextInput onBlur callback",
+        "action": "progress.value = withTiming(0, { duration: 600 })",
+        "effect": "Collapses card back to centered position"
+      }
+    },
+    "ref_forwarding": {
+      "pattern": "forwardRef + useImperativeHandle",
+      "exposed_methods": {
+        "focus": "() => void - Focuses the text input",
+        "blur": "() => void - Blurs the text input"
+      },
+      "usage": "Parent component can trigger focus/blur programmatically",
+      "ref_type": "CardInputRefType"
+    }
+  },
+
+  "skia_rendering": {
+    "background_gradient": {
+      "type": "SweepGradient",
+      "colors": [
+        "#cda2a8 (dusty rose)",
+        "#daacb2 (light pink)",
+        "#A9828D (mauve)",
+        "#d5b1b7 (soft pink)",
+        "#cfb5b9 (warm gray)",
+        "#eac5bd (peach)",
+        "#F0EEF1 (very light gray)",
+        "#F0EEF1 (repeated)",
+        "#FFFFFF (white)"
+      ],
+      "center": "{ x: width / 2, y: height / 2 }",
+      "pattern": "Radial sweep from center outward",
+      "color_palette": "Vintage/pastel aesthetic inspired by Dot app"
+    },
+    "blur_effect": {
+      "component": "Blur",
+      "blur_radius": 55,
+      "purpose": "Creates soft, dreamy background effect",
+      "technique": "Applied as child of Fill component",
+      "note": "Comment suggests checking effect without blur for comparison"
+    },
+    "canvas_setup": {
+      "component": "Canvas",
+      "dimensions": "{ width, height } from useWindowDimensions()",
+      "position": "Absolute positioned to cover entire screen",
+      "z_index": "Below all other UI elements (background layer)"
+    },
+    "performance": {
+      "rendering": "GPU-accelerated Skia rendering",
+      "overhead": "Minimal - single Canvas with Fill + SweepGradient + Blur",
+      "benefit": "Smooth gradient animation at 60fps"
+    }
+  },
+
+  "interaction_patterns": {
+    "card_tap_collapsed": {
+      "state": "progress = 0 (collapsed)",
+      "trigger": "onTouchEnd on Animated.View",
+      "condition": "if (progress.value === 0)",
+      "action": "animatedTextInput.current?.focus()",
+      "effect": "Tapping card when collapsed focuses input and expands card"
+    },
+    "text_input_focus": {
+      "trigger": "User taps TextInput or parent calls ref.current.focus()",
+      "action": "progress.value = withTiming(1, { duration: 600 })",
+      "effect": "Card expands to fullscreen with all coordinated animations"
+    },
+    "text_input_blur": {
+      "trigger": "Back button press or external blur call",
+      "action": "progress.value = withTiming(0, { duration: 600 })",
+      "effect": "Card collapses back to centered tilted position"
+    },
+    "back_button_press": {
+      "location": "Top-left of screen (safe area aware)",
+      "visible_when": "progress.value > 0",
+      "callback": "animatedTextInput.current?.blur()",
+      "effect": "Blurs input which triggers collapse animation"
+    },
+    "bottom_button_press": {
+      "component": "PressableScale",
+      "text": "Start your Journey",
+      "callback": "cardInputRef.current?.focus()",
+      "effect": "Programmatically focuses input to expand card",
+      "positioning": "bottom: safeBottom + 16 (safe area aware)"
+    }
+  },
+
+  "component_architecture": {
+    "App": {
+      "type": "Main app component",
+      "structure": [
+        "BackgroundGradient (Skia Canvas)",
+        "Title and subtitle text (centered flex container)",
+        "Spacer (flex: 1)",
+        "CardInput (ref forwarded)",
+        "PressableScale button (bottom CTA)"
+      ],
+      "layout": "Vertical stack with flexible spacing"
+    },
+    "BackgroundGradient": {
+      "type": "Functional component",
+      "props": {
+        "style": "StyleProp<ViewStyle> (optional)"
+      },
+      "returns": "Canvas with Fill + SweepGradient + Blur",
+      "positioning": "Absolute with passed style"
+    },
+    "CardInput": {
+      "type": "ForwardRef functional component",
+      "ref_type": "CardInputRefType",
+      "exposed_methods": ["focus", "blur"],
+      "internal_ref": "animatedTextInput (TextInput ref)",
+      "structure": [
+        "Back button (PressableScale with Ionicons)",
+        "Card container (Animated.View with rCardStyle)",
+        "TextInput (AnimatedTextInput with rTextInputStyle)"
+      ]
+    }
+  },
+
+  "layout_and_positioning": {
+    "card_dimensions": {
+      "collapsed": {
+        "height": "height / 2.8 (35.7% of screen)",
+        "width": "initialCardHeight * 0.75 (3:4 aspect ratio)",
+        "position": "Center of screen with +35px vertical offset",
+        "rotation": "-4deg"
+      },
+      "expanded": {
+        "height": "height (full screen)",
+        "width": "width - 2 (nearly full width)",
+        "position": "Top-left aligned with safe area",
+        "rotation": "0deg"
+      }
+    },
+    "responsive_calculations": {
+      "window_dimensions": "useWindowDimensions() hook",
+      "safe_area": "useSafeAreaInsets() for top and bottom",
+      "header_height": "52px (potentialHeaderHeight constant)",
+      "note": "TODO comment suggests useHeaderHeight hook for future"
+    },
+    "z_index_layering": {
+      "background": "Lowest (Canvas with absolute positioning)",
+      "title_subtitle": "Middle (centered flex container)",
+      "card": "High (zIndex: 1 explicitly set)",
+      "back_button": "Highest (absolute positioned, naturally stacks above)"
+    },
+    "safe_area_usage": {
+      "expanded_card_top": "safeTop + potentialHeaderHeight",
+      "back_button_top": "safeTop + (Platform.OS === 'android' ? 8 : 0)",
+      "bottom_button": "bottom: safeBottom + 16"
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "background_gradient": "Vintage pastel palette (rose, pink, mauve, peach, gray, white)",
+      "card_background": "#fff (white)",
+      "text_primary": "Default (black/gray)",
+      "text_secondary": "#6c6c6c (gray)",
+      "button_background": "rgba(55, 55, 55, 0.2) (semi-transparent dark)",
+      "button_text": "#fff (white)",
+      "back_icon": "#323232 (dark gray)",
+      "placeholder": "#b4b4b4 (light gray)"
+    },
+    "typography": {
+      "title": {
+        "text": "One more thing",
+        "family": "AddingtonCF-Light",
+        "size": 28,
+        "letterSpacing": -0.5
+      },
+      "subtitle": {
+        "text": "This animation is inspired by Dot and made with React Native.",
+        "family": "AddingtonCF-Light",
+        "size": 18,
+        "color": "#6c6c6c",
+        "letterSpacing": -0.5,
+        "maxWidth": "60%",
+        "textAlign": "center"
+      },
+      "text_input": {
+        "family": "AddingtonCF-Light",
+        "fontSize": "14 to 24 (animated)",
+        "placeholder": "You can find the animation at ...",
+        "textAlignVertical": "top"
+      },
+      "button": {
+        "text": "Start your Journey",
+        "color": "#fff",
+        "size": 16,
+        "weight": "700"
+      }
+    },
+    "shadows_and_effects": {
+      "card_shadow": {
+        "shadowColor": "#c1c1c1",
+        "shadowOffset": "{ width: 0, height: 0 }",
+        "shadowOpacity": 0.1,
+        "shadowRadius": 20,
+        "note": "Soft shadow for subtle depth"
+      },
+      "blur_effect": {
+        "component": "Skia Blur",
+        "radius": 55,
+        "style": "Applied to gradient background"
+      }
+    },
+    "border_and_radius": {
+      "card": {
+        "collapsed": "16px",
+        "expanded": "32px",
+        "borderCurve": "continuous (iOS squircle)"
+      },
+      "button": {
+        "borderRadius": 30,
+        "borderCurve": "continuous"
+      }
+    },
+    "spacing_and_sizing": {
+      "card_input_margin": {
+        "left": 16,
+        "right": 12,
+        "top": "16 to 24 (animated)"
+      },
+      "button": {
+        "width": "85% of screen",
+        "height": 52,
+        "bottom": "safeBottom + 16"
+      },
+      "back_button": {
+        "size": "32x32",
+        "icon_size": 24,
+        "left": 16
+      }
+    }
+  },
+
+  "mathematical_calculations": {
+    "aspect_ratio": {
+      "collapsed_card": "3:4 (portrait card ratio)",
+      "formula": "initialCardWidth = initialCardHeight * (3 / 4)"
+    },
+    "centering_formula": {
+      "horizontal": "(width - initialCardWidth) / 2",
+      "vertical": "(height - initialCardHeight) / 2 + 35",
+      "vertical_offset": "+35px for visual balance"
+    },
+    "position_offset": {
+      "left_expansion": "initialLeft to 1 (almost flush left)",
+      "top_expansion": "Center to safeTop + headerHeight"
+    },
+    "rotation_degrees": {
+      "collapsed": "-4deg (negative = counterclockwise)",
+      "expanded": "0deg (perfectly upright)"
+    }
+  },
+
+  "performance_optimizations": {
+    "useRef": {
+      "cardInputRef": "Ref to CardInput component for imperative control",
+      "animatedTextInput": "Internal ref to TextInput for focus/blur control"
+    },
+    "forwardRef_pattern": {
+      "benefit": "Parent can control input without prop drilling",
+      "exposed_api": "focus() and blur() methods"
+    },
+    "useImperativeHandle": {
+      "purpose": "Exposes controlled API to parent component",
+      "methods": ["focus: () => animatedTextInput.current?.focus()", "blur: () => animatedTextInput.current?.blur()"]
+    },
+    "animation_on_ui_thread": {
+      "pattern": "All interpolations run on UI thread via useAnimatedStyle",
+      "benefit": "Smooth 60fps animations without JS thread bottlenecks"
+    },
+    "skia_performance": {
+      "technique": "GPU-accelerated gradient and blur rendering",
+      "overhead": "Minimal - single Canvas with simple Fill + Gradient + Blur"
+    },
+    "conditional_interaction": {
+      "card_tap": "Only processes tap when progress.value === 0",
+      "optimization": "Avoids unnecessary focus calls during animation"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Onboarding flows with focused input",
+      "Search interfaces with expanded detail view",
+      "Note-taking apps with card-based entry",
+      "Form inputs requiring user attention",
+      "Message composition interfaces"
+    ],
+    "design_patterns": [
+      "Progressive disclosure (card to fullscreen)",
+      "Focused task interfaces",
+      "Contextual input expansion",
+      "Modal alternative with smooth transition"
+    ],
+    "real_world_inspiration": {
+      "app": "Dot (iOS app)",
+      "pattern": "Card-based input with elegant expansion",
+      "aesthetic": "Vintage/pastel color palette, soft shadows, smooth animations"
+    },
+    "educational": [
+      "Teaching interpolation-based morphing",
+      "Demonstrating rotation animations",
+      "Skia gradient and blur effects",
+      "forwardRef patterns in React Native",
+      "Focus/blur event handling"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": "Full TypeScript with explicit types",
+    "type_definitions": [
+      "CardInputRefType (exposed ref methods)",
+      "BackgroundGradientProps"
+    ],
+    "component_organization": {
+      "separation": "Clear separation between background, input, and demo components",
+      "reusability": "BackgroundGradient and CardInput are reusable",
+      "composition": "App component composes smaller focused components"
+    },
+    "constants": {
+      "GRADIENT_COLORS": "Array of 9 color stops for sweep gradient",
+      "potentialHeaderHeight": "52px TODO for useHeaderHeight hook"
+    },
+    "comments": {
+      "gradient_technique": "Explains SweepGradient + blur trick",
+      "blur_note": "Suggests checking effect without blur",
+      "interpolation_comment": "Explains interpolation magic and upcoming tutorial",
+      "header_height_todo": "TODO for useHeaderHeight hook implementation"
+    },
+    "platform_handling": {
+      "android_offset": "Platform.OS === 'android' ? 8 : 0 for back button positioning",
+      "border_curve": "Uses 'continuous' for iOS squircle effect"
+    },
+    "best_practices": [
+      "forwardRef for imperative control",
+      "useRef for component references",
+      "useImperativeHandle for controlled API",
+      "StyleSheet for static styles",
+      "useAnimatedStyle for dynamic styles",
+      "Type safety throughout"
+    ]
+  },
+
+  "known_limitations": {
+    "header_height": {
+      "issue": "potentialHeaderHeight is hardcoded to 52px",
+      "todo": "Author notes useHeaderHeight hook should be implemented",
+      "impact": "Card expansion may not account for dynamic header heights"
+    },
+    "text_input_config": {
+      "auto_correct": false,
+      "auto_capitalize": "none",
+      "multiline": true,
+      "note": "Fixed configuration, not customizable via props"
+    },
+    "gradient_customization": {
+      "issue": "GRADIENT_COLORS array is hardcoded",
+      "impact": "Cannot customize color palette without editing component",
+      "potential": "Could expose as prop for reusability"
+    },
+    "animation_interruption": {
+      "behavior": "New animation starts when focus/blur triggered during animation",
+      "handled": "withTiming handles this gracefully",
+      "smooth": "Transitions between states are smooth even when interrupted"
+    },
+    "accessibility": {
+      "missing": [
+        "No accessibility labels on back button",
+        "No screen reader announcements for state changes",
+        "No prefers-reduced-motion support"
+      ]
+    }
+  },
+
+  "potential_improvements": {
+    "customization": [
+      "Expose GRADIENT_COLORS as prop",
+      "Make animation duration configurable",
+      "Allow custom fonts via props",
+      "Configurable card dimensions and aspect ratio",
+      "Custom border radius values"
+    ],
+    "functionality": [
+      "Implement useHeaderHeight hook (as noted in TODO)",
+      "Keyboard dismiss on back button",
+      "Auto-focus on mount option",
+      "Submit button with keyboard handling",
+      "Character counter",
+      "Input validation feedback"
+    ],
+    "interaction_enhancements": [
+      "Swipe down gesture to dismiss",
+      "Keyboard shortcuts (Escape to dismiss)",
+      "Haptic feedback on expand/collapse",
+      "Double tap to quick focus",
+      "Pan gesture to dismiss when expanded"
+    ],
+    "animation_refinements": [
+      "Stagger text fade-in",
+      "Add scale animation on focus",
+      "Backdrop blur during expansion",
+      "Card shadow animation",
+      "Spring physics for more natural feel",
+      "Gradient color rotation animation"
+    ],
+    "accessibility": [
+      "Accessibility labels for all interactive elements",
+      "Screen reader announcements",
+      "Keyboard navigation support",
+      "Prefers-reduced-motion support (instant transition)",
+      "High contrast mode support"
+    ]
+  },
+
+  "key_insights": {
+    "interpolation_power": "Single progress value drives 8+ coordinated interpolations for seamless morphing",
+    "rotation_elegance": "Small rotation angle (-4deg) adds visual interest without distraction",
+    "aspect_ratio_importance": "3:4 aspect ratio for collapsed card creates portrait-friendly dimensions",
+    "focus_blur_pattern": "TextInput focus/blur events are perfect triggers for expansion animations",
+    "skia_gradient_technique": "SweepGradient + Blur creates beautiful soft background with minimal code",
+    "ref_forwarding_power": "forwardRef + useImperativeHandle enables clean parent-child communication",
+    "safe_area_awareness": "Critical for modern devices with notches and dynamic islands",
+    "platform_specific_adjustments": "Small Android offset (8px) shows attention to platform differences"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic interpolation animations",
+      "TextInput focus/blur events",
+      "useRef for component references",
+      "Safe area handling",
+      "Basic Skia Canvas usage"
+    ],
+    "for_intermediate": [
+      "forwardRef patterns in React Native",
+      "useImperativeHandle for custom APIs",
+      "Multiple coordinated interpolations",
+      "Rotation transforms",
+      "Skia SweepGradient and Blur",
+      "useAnimatedStyle for multiple properties",
+      "Platform-specific adjustments"
+    ],
+    "for_advanced": [
+      "Complex morphing animations with 6+ interpolated properties",
+      "Creating reusable animated input components",
+      "Skia rendering techniques (gradient + blur composition)",
+      "Building imperative APIs with forwardRef",
+      "Coordinating position, size, and rotation simultaneously",
+      "Safe area calculations for dynamic positioning"
+    ]
+  },
+
+  "comparison_to_similar_animations": {
+    "vs_modal_transition": {
+      "similarity": "Expands from small to fullscreen",
+      "difference": "Morphs in place with rotation, not sliding or fading in from edge"
+    },
+    "vs_bottom_sheet": {
+      "similarity": "Provides focused input experience",
+      "difference": "Expands from center with rotation, not from bottom edge"
+    },
+    "vs_shared_element": {
+      "similarity": "Element transforms between states",
+      "difference": "Uses interpolation, not React Navigation shared elements"
+    },
+    "vs_hero_animation": {
+      "similarity": "Seamless state transition with visual continuity",
+      "difference": "Single component morphing, not transitioning between screens"
+    }
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Card morphs smoothly from center to fullscreen",
+      "Rotation animates from -4deg to 0deg",
+      "Border radius transitions correctly",
+      "Text input scales appropriately",
+      "Back button fades in smoothly",
+      "No layout jumps or flickers"
+    ],
+    "interaction_testing": [
+      "Tap card when collapsed focuses input",
+      "TextInput focus expands card",
+      "Back button dismisses (blurs input)",
+      "Bottom button triggers expansion",
+      "Blur event collapses card",
+      "Scale animations work on buttons"
+    ],
+    "edge_cases": [
+      "Tap during animation",
+      "Rapid focus/blur cycles",
+      "Very long text input",
+      "Different screen sizes and aspect ratios",
+      "Landscape orientation",
+      "Devices with various safe area insets"
+    ],
+    "state_testing": [
+      "Progress value updates correctly (0 to 1)",
+      "Ref methods (focus/blur) work from parent",
+      "Animation state persists across re-renders",
+      "Multiple expand/collapse cycles"
+    ],
+    "performance_testing": [
+      "60fps during animation",
+      "No frame drops on low-end devices",
+      "Smooth Skia gradient rendering",
+      "Memory stable across interactions"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "text_input": "Standard TextInput, screen reader compatible",
+      "buttons": "No accessibility labels",
+      "state_changes": "No announcements",
+      "keyboard": "Standard keyboard support for TextInput",
+      "reduced_motion": "No support"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to back button ('Go back' or 'Close')",
+      "Add accessibilityHint to bottom button ('Opens text input')",
+      "Announce state changes ('Input expanded', 'Input collapsed')",
+      "Add accessibilityLabel to CardInput ('Text input for your message')",
+      "Support prefers-reduced-motion (instant transition)",
+      "Ensure focus management works with screen readers",
+      "Consider voiceover focus when expanded"
+    ]
+  },
+
+  "related_patterns": {
+    "morphing_animations": "UI elements that transform shape and size",
+    "focused_input": "Input interfaces that take over screen focus",
+    "card_expansion": "Card-based UI that expands to show details",
+    "progressive_disclosure": "Revealing information gradually",
+    "contextual_modals": "Modal-like experiences without traditional modal patterns"
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~200 lines total (main + components)",
+    "dependencies": "Skia, Reanimated, pressto (likely already in project)",
+    "runtime_memory": "Minimal - few SharedValues, single Canvas",
+    "assets": "AddingtonCF-Light font required",
+    "estimated_size": "< 50KB"
+  },
+
+  "tags": [
+    "card-expansion",
+    "input-animation",
+    "morphing",
+    "rotation-animation",
+    "skia",
+    "sweep-gradient",
+    "blur-effect",
+    "reanimated",
+    "interpolation",
+    "focus-blur",
+    "forwardRef",
+    "safe-area",
+    "dot-inspired",
+    "onboarding",
+    "vintage-aesthetic",
+    "pressto",
+    "imperative-handle"
+  ]
+}

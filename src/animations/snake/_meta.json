@@ -1,0 +1,609 @@
+{
+  "animation_name": "Snake Game",
+  "animation_slug": "snake",
+  "description": "A fully functional Snake game implementation with animated score counter, built using React Native Skia for rendering and Reanimated for animations. Features gesture controls, wrapping boundaries, and smooth animations.",
+
+  "main_features": [
+    "Classic Snake game with food collection",
+    "Gesture-based controls (fling gestures)",
+    "Animated score counter with digit scrolling",
+    "Skia-based rendering for performance",
+    "Game over blur effect",
+    "Wrapping boundaries (snake goes through walls)",
+    "Restart functionality"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main export wrapper",
+    "src/index.tsx": "Main app component combining game and UI",
+    "src/components/animated-count/": {
+      "animated-count.tsx": "Parent component managing digit layout",
+      "animated-digit.tsx": "Individual digit animation logic"
+    },
+    "src/snake-game/": {
+      "index.tsx": "React wrapper for Snake game with Skia rendering",
+      "snake-game.ts": "Game logic class (pure TypeScript)",
+      "use-const.ts": "Custom hook for constant values"
+    }
+  },
+
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "threading": "react-native-worklets",
+    "ui_effects": ["expo-blur", "expo-linear-gradient"],
+    "interactions": "pressto"
+  },
+
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "usage": "Canvas rendering for game board, snake, and food",
+      "components": ["Canvas", "Path", "RoundedRect", "BlurMask"],
+      "utilities": ["Skia", "rect", "rrect"],
+      "performance_reason": "GPU-accelerated rendering, 60fps game loop"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "usage": "Animations, game state management, frame callbacks",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "useAnimatedReaction",
+        "useFrameCallback",
+        "withSpring",
+        "withTiming"
+      ],
+      "critical_feature": "useFrameCallback for game loop (120ms tick)"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "usage": "Fling gestures for directional controls",
+      "components": ["GestureDetector", "Gesture"],
+      "types": ["Directions"],
+      "gestures": ["Fling (UP, DOWN, LEFT, RIGHT)"]
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "imports": ["scheduleOnRN"],
+      "usage": "Bridge UI thread (worklets) to JS thread for callbacks and state updates"
+    },
+    "expo-blur": {
+      "version": "~15.0.7",
+      "usage": ["Motion blur on digit changes (iOS)", "Game over blur effect"],
+      "components": ["BlurView", "AnimatedBlurView"]
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "usage": "Top/bottom fade gradients on digit scroller",
+      "components": ["LinearGradient"]
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "usage": "Restart button with scale press animation",
+      "components": ["PressableScale"]
+    }
+  },
+
+  "animation_techniques": {
+    "score_counter": {
+      "pattern": "Vertical digit scrolling",
+      "implementation": "Stack of 0-9 digits, translateY animation",
+      "animations": [
+        "translateY: withSpring(-height * digit.value, { mass: 0.25 })",
+        "scaleX: withSpring(isChanging.value ? 0.7 : 1)",
+        "opacity: withTiming(isVisible.value ? 1 : 0)",
+        "translateX: withTiming((-width * invisibleDigitsAmount.value) / 2)"
+      ],
+      "effects": [
+        "Motion blur on digit transition (iOS)",
+        "Squeeze effect (scaleX 0.7)",
+        "Leading zero suppression",
+        "Gradient fade overlays"
+      ],
+      "performance": "Handles 60fps+ updates, designed for slider interactions"
+    },
+    "game_rendering": {
+      "pattern": "Skia Path-based rendering",
+      "snake_rendering": "Multiple rounded rectangles combined into single Path",
+      "food_rendering": "Fully rounded rectangle (r = squareSize)",
+      "board_rendering": "Large rounded rectangle background",
+      "colors": {
+        "board": "#ebebec",
+        "snake": "#68DE45",
+        "food": "#e75b5b"
+      }
+    },
+    "game_over_effect": {
+      "pattern": "Blur mask animation",
+      "implementation": "withTiming(isGameOver ? 50 : 0, { duration: 1000 })",
+      "ui_response": "Restart button fades in (opacity + pointerEvents)",
+      "duration": "1000ms"
+    },
+    "restart_button": {
+      "pattern": "Pressable scale animation",
+      "library": "pressto",
+      "animation": "Automatic scale down/up on press"
+    }
+  },
+
+  "game_logic": {
+    "architecture": "OOP class-based game engine",
+    "class": "SnakeGame",
+    "paradigm": "Pure TypeScript, worklet-compatible",
+    "state": {
+      "snake": "Array of {x, y} coordinates",
+      "food": "Single {x, y} coordinate",
+      "direction": "Directions enum (UP, DOWN, LEFT, RIGHT)",
+      "isGameOver": "boolean",
+      "score": "number",
+      "boardWidth": "number",
+      "boardHeight": "number",
+      "squareSize": "number",
+      "wrappingEnabled": "boolean"
+    },
+    "methods": {
+      "move": "Advances snake one step in current direction",
+      "changeDirection": "Updates direction (prevents 180° turns)",
+      "generateFood": "Random position not on snake body",
+      "wrapCoordinates": "Teleports snake to opposite side",
+      "isWallCollision": "Checks boundary collision (when wrapping disabled)",
+      "isSnake": "Checks if coordinate overlaps snake body",
+      "getState": "Returns immutable game state snapshot",
+      "clear": "Resets game to initial state"
+    },
+    "collision_detection": {
+      "self_collision": "Checks if new head overlaps existing body segments",
+      "wall_collision": "Checks boundary (when wrapping disabled)",
+      "food_collision": "Exact coordinate match (x === food.x && y === food.y)"
+    },
+    "game_rules": {
+      "initial_snake_length": 2,
+      "initial_direction": "RIGHT",
+      "spawn_position": "Center of board",
+      "food_spawn": "Random position, not on snake",
+      "growth_mechanism": "Don't remove tail when food eaten",
+      "wrapping": "Enabled (snake goes through walls)",
+      "direction_reversal": "Prevented (no 180° turns)"
+    }
+  },
+
+  "reanimated_patterns": {
+    "game_loop": {
+      "hook": "useFrameCallback",
+      "tick_rate": "120ms (8.33 fps)",
+      "mechanism": "Checks timestamp delta, calls updateGame on JS thread via scheduleOnRN",
+      "stops_when": "gameState.value.isGameOver === true"
+    },
+    "state_management": {
+      "pattern": "SharedValue containing entire game state object",
+      "trigger": "gameState.value = snakeGame.getState()",
+      "reactivity": "useAnimatedReaction watches specific properties",
+      "immutability": "New object created each frame"
+    },
+    "derived_paths": {
+      "snake_path": {
+        "type": "useDerivedValue<SkPath>",
+        "construction": "Iterates snake array, creates rounded rectangles, combines into Path",
+        "dependencies": ["gameState.value.snake", "squareSize"]
+      },
+      "food_path": {
+        "type": "useDerivedValue<SkPath>",
+        "construction": "Single fully rounded rectangle",
+        "dependencies": ["gameState.value.food?.x", "gameState.value.food?.y", "squareSize"]
+      }
+    },
+    "reactions": [
+      {
+        "name": "Score watcher",
+        "watches": "gameState.value.score",
+        "action": "Calls onScoreChange callback on JS thread",
+        "comparison": "prevScore !== score"
+      },
+      {
+        "name": "Game over watcher",
+        "watches": "gameState.value.isGameOver",
+        "action": "Calls onGameOver callback on JS thread when true"
+      },
+      {
+        "name": "Digit change detector (in AnimatedDigit)",
+        "watches": "digit.value",
+        "action": "Sets isChanging to true, schedules reset after 200ms"
+      }
+    ],
+    "worklet_functions": [
+      "SnakeGame constructor",
+      "SnakeGame.move",
+      "SnakeGame.changeDirection",
+      "SnakeGame.generateFood",
+      "SnakeGame.isSnake",
+      "SnakeGame.wrapCoordinates",
+      "SnakeGame.getState",
+      "SnakeGame.clear",
+      "getDigitByIndex (in animated-digit)"
+    ]
+  },
+
+  "gesture_handling": {
+    "pattern": "Fling gesture simultaneous detection",
+    "implementation": "Gesture.Simultaneous(...createFlingGesture for each direction)",
+    "directions": ["LEFT", "UP", "RIGHT", "DOWN"],
+    "callback": "scheduleOnRN(changeDirectionWrapper, direction)",
+    "thread_bridge": "Gesture onStart (UI thread) → scheduleOnRN → changeDirection (JS thread)",
+    "validation": "Direction reversal prevented in changeDirection method"
+  },
+
+  "performance_optimizations": {
+    "skia_rendering": {
+      "benefit": "GPU-accelerated, handles 60fps easily",
+      "technique": "Single Canvas with Paths instead of many View components"
+    },
+    "path_reuse": {
+      "pattern": "useDerivedValue recalculates Paths only when dependencies change",
+      "benefit": "Avoids unnecessary path reconstruction"
+    },
+    "worklet_game_logic": {
+      "benefit": "Entire game engine runs on UI thread",
+      "caveat": "Callbacks scheduled to JS thread via scheduleOnRN"
+    },
+    "useConst_hook": {
+      "purpose": "Ensures SnakeGame instance created only once",
+      "implementation": "useRef with lazy initialization",
+      "benefit": "Prevents game state reset on re-renders"
+    },
+    "memo_components": {
+      "AnimatedCount": "Prevents re-renders when parent changes",
+      "AnimatedDigit": "Each digit independent, no cascade re-renders"
+    },
+    "useMemo": {
+      "flattenedTextStyle": "Flattens StyleSheet style once"
+    },
+    "imperativeHandle": {
+      "ref": "SnakeBoardRef",
+      "methods": ["restart"],
+      "benefit": "Parent can control game without prop drilling"
+    }
+  },
+
+  "react_patterns": {
+    "forwardRef": {
+      "component": "SnakeBoard",
+      "ref_type": "SnakeBoardRef",
+      "exposed_methods": ["restart"]
+    },
+    "useImperativeHandle": {
+      "usage": "Exposes restart method to parent",
+      "implementation": "Calls snakeGame.clear() and updates gameState"
+    },
+    "useConst": {
+      "custom_hook": true,
+      "purpose": "Alternative to useMemo with no dependencies",
+      "use_case": "Class instance that should never change"
+    },
+    "callback_props": {
+      "onScoreChange": "(score: number) => void",
+      "onGameOver": "() => void"
+    },
+    "callback_wrappers": {
+      "pattern": "useCallback wraps functions passed to scheduleOnRN",
+      "examples": [
+        "changeDirectionWrapper",
+        "updateGame",
+        "onGameOverWrapper",
+        "onScoreChangeWrapper"
+      ],
+      "reason": "Ensures stable function references for worklet scheduling"
+    }
+  },
+
+  "ui_ux_design": {
+    "layout": {
+      "board_container": "White rounded card with shadow",
+      "board_size": "Math.floor((windowWidth * 0.7) / 10) * 10",
+      "grid": "10x10 squares",
+      "score_display": "Above board, uses AnimatedCount"
+    },
+    "visual_hierarchy": {
+      "z_index_1": "Canvas (game board)",
+      "z_index_10": "Blur effects on digits",
+      "z_index_50": "Gradient overlays on digits",
+      "z_index_100": "Restart button overlay"
+    },
+    "feedback": {
+      "score_update": "Animated digit scroll with motion blur",
+      "game_over": "Blur entire board + show restart button",
+      "button_press": "Scale animation via PressableScale",
+      "direction_change": "Immediate visual response"
+    },
+    "color_scheme": {
+      "background": "#fff",
+      "board": "#ebebec",
+      "snake": "#68DE45 (green)",
+      "food": "#e75b5b (red)",
+      "score_text": "gray",
+      "button_bg": "black",
+      "button_text": "white"
+    },
+    "typography": {
+      "score_label": "18px, bold, gray",
+      "score_digits": "24px (default 50px), SF-Pro-Rounded-Bold",
+      "button_text": "16px, medium (500)"
+    },
+    "spacing_and_sizing": {
+      "board_padding": "10px",
+      "board_border_radius": "18px (continuous curve)",
+      "square_corner_radius": "squareSize / 2 (snake), squareSize (food)",
+      "button_padding": "10px vertical, 20px horizontal",
+      "button_border_radius": "10px (continuous curve)"
+    }
+  },
+
+  "mathematical_algorithms": {
+    "coordinate_system": {
+      "origin": "Top-left (0, 0)",
+      "units": "Pixels",
+      "grid_snapping": "Coordinates are multiples of squareSize"
+    },
+    "direction_vectors": {
+      "UP": "{x: 0, y: -squareSize}",
+      "DOWN": "{x: 0, y: +squareSize}",
+      "LEFT": "{x: -squareSize, y: 0}",
+      "RIGHT": "{x: +squareSize, y: 0}"
+    },
+    "wrapping_formula": {
+      "horizontal_left": "x < 0 → x = boardWidth - squareSize",
+      "horizontal_right": "x >= boardWidth → x = 0",
+      "vertical_top": "y < 0 → y = boardHeight - squareSize",
+      "vertical_bottom": "y >= boardHeight → y = 0"
+    },
+    "food_generation": {
+      "formula": "Math.floor(Math.random() * (boardWidth / squareSize)) * squareSize",
+      "constraint": "do-while loop ensures not on snake body",
+      "randomness": "Math.random()"
+    },
+    "digit_extraction": {
+      "algorithm": "String padding + array indexing",
+      "steps": [
+        "count.toString()",
+        ".padStart(maxDigits, '0')",
+        ".split('')",
+        "[maxDigits - 1 - digitIndex]",
+        "parseInt(..., 10)"
+      ]
+    },
+    "board_sizing": {
+      "formula": "Math.floor((windowWidth * 0.7) / 10) * 10",
+      "ensures": "Board size is multiple of 10 for clean 10x10 grid"
+    }
+  },
+
+  "configuration": {
+    "game_params": {
+      "n": {
+        "type": "number",
+        "default": 10,
+        "description": "Grid size (n x n)"
+      },
+      "boardSize": {
+        "type": "number",
+        "calculated": true,
+        "description": "Total board size in pixels"
+      },
+      "wrappingEnabled": {
+        "type": "boolean",
+        "default": true,
+        "description": "Allow snake to go through walls"
+      }
+    },
+    "counter_params": {
+      "maxDigits": {
+        "type": "number",
+        "default": 3,
+        "description": "Max score digits to display"
+      },
+      "fontSize": 24,
+      "textDigitHeight": 30,
+      "textDigitWidth": 19
+    },
+    "timing_constants": {
+      "game_tick": "120ms",
+      "blur_reset": "200ms",
+      "game_over_blur": "1000ms"
+    }
+  },
+
+  "platform_considerations": {
+    "ios": {
+      "features": ["BlurView on digit changes", "All core features"],
+      "performance": "Excellent"
+    },
+    "android": {
+      "features": ["All core features except digit motion blur"],
+      "performance": "Excellent",
+      "limitations": ["No BlurView on digit transitions"]
+    },
+    "web": {
+      "compatibility": "Should work (Skia has web support)",
+      "testing": "Not mentioned"
+    }
+  },
+
+  "code_quality": {
+    "typescript": "Full TypeScript with explicit types",
+    "type_definitions": [
+      "SnakeBoardProps",
+      "SnakeBoardRef",
+      "AnimatedCountProps",
+      "AnimatedDigitProps",
+      "Coordinate"
+    ],
+    "class_design": {
+      "encapsulation": "Private methods and properties in SnakeGame",
+      "public_api": ["move", "changeDirection", "getState", "clear"],
+      "immutability": "getState returns snapshot, not direct reference"
+    },
+    "naming_conventions": {
+      "components": "PascalCase",
+      "hooks": "camelCase with 'use' prefix",
+      "constants": "SCREAMING_SNAKE_CASE",
+      "private_methods": "camelCase (private keyword)"
+    },
+    "documentation": {
+      "inline_comments": "Extensive, especially in SnakeGame class",
+      "method_descriptions": "Comments above each public method",
+      "complex_logic": "Explained in comments (e.g., wrapping, collision detection)"
+    }
+  },
+
+  "known_limitations": {
+    "comma_formatting": {
+      "issue": "AnimatedCount can't display thousands separators",
+      "location": "animated-count.tsx:32",
+      "impact": "Scores above 999 don't have commas"
+    },
+    "fixed_digit_count": {
+      "issue": "maxDigits must be known ahead of time",
+      "workaround": "Over-allocate if unsure",
+      "impact": "Memory overhead for unused digits"
+    },
+    "font_hardcoding": {
+      "issue": "Hardcoded 'SF-Pro-Rounded-Bold' font",
+      "location": "animated-digit.tsx:235",
+      "impact": "Requires font in project assets"
+    },
+    "blur_timing": {
+      "issue": "Uses setTimeout instead of animation completion callback",
+      "location": "animated-digit.tsx:112-117",
+      "author_note": "We can improve by far this logic"
+    },
+    "game_speed": {
+      "issue": "Fixed 120ms tick rate, no difficulty progression",
+      "enhancement": "Could increase speed as score increases"
+    },
+    "touch_controls": {
+      "limitation": "Only fling gestures, no tap-based directional buttons",
+      "impact": "Less accessible on smaller screens"
+    }
+  },
+
+  "potential_improvements": {
+    "suggested_by_author": [
+      "Better comma handling for AnimatedCount",
+      "Improved blur timing logic"
+    ],
+    "additional_ideas": [
+      "Difficulty levels (faster speeds)",
+      "Progressive speed increase with score",
+      "Alternative control schemes (buttons, swipe)",
+      "High score persistence",
+      "Sound effects",
+      "Particle effects on food collection",
+      "Snake skin customization",
+      "Multiple food items",
+      "Obstacles/walls mode"
+    ]
+  },
+
+  "key_insights": {
+    "architecture": "Clean separation between game logic (SnakeGame class) and React/rendering (SnakeBoard component)",
+    "performance_strategy": "Worklet-based game engine + Skia rendering = smooth 60fps",
+    "animation_philosophy": "Use Reanimated for everything animated, minimize JS thread work",
+    "skia_advantage": "Single Canvas with Paths much more performant than many View components",
+    "threading_model": "Game logic on UI thread, callbacks bridged to JS thread via scheduleOnRN",
+    "reusability": "AnimatedCount is fully reusable (originally designed for sliders)",
+    "gesture_simplicity": "Fling gestures are intuitive and require minimal code"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Game loop implementation with useFrameCallback",
+      "Basic OOP with TypeScript classes",
+      "Gesture handling patterns",
+      "SharedValue state management"
+    ],
+    "for_intermediate": [
+      "Skia Path construction and rendering",
+      "Worklet threading model and scheduleOnRN",
+      "useAnimatedReaction for side effects",
+      "forwardRef + useImperativeHandle patterns"
+    ],
+    "for_advanced": [
+      "Performance optimization with Skia",
+      "Custom worklet-compatible classes",
+      "Complex derived values with Skia APIs",
+      "Thread coordination (UI vs JS thread)"
+    ]
+  },
+
+  "use_cases": {
+    "primary": "Educational example of game development with React Native",
+    "demonstrates": [
+      "Skia rendering capabilities",
+      "Reanimated game loops",
+      "Gesture-based controls",
+      "Worklet-based game logic",
+      "High-performance animations"
+    ],
+    "reusable_components": {
+      "AnimatedCount": [
+        "Score displays",
+        "Metric dashboards",
+        "Slider value indicators",
+        "Financial tickers",
+        "Countdown timers",
+        "Odometer effects"
+      ],
+      "SnakeGame": [
+        "Game tutorials",
+        "Algorithm demonstrations",
+        "Collision detection examples"
+      ]
+    }
+  },
+
+  "testing_considerations": {
+    "game_logic": {
+      "unit_testable": "SnakeGame class methods can be tested independently",
+      "test_cases": [
+        "Direction changes",
+        "Collision detection (wall, self, food)",
+        "Wrapping boundaries",
+        "Food generation",
+        "Score increments",
+        "Game over conditions"
+      ]
+    },
+    "ui_testing": {
+      "gesture_simulation": "Test fling gestures in all directions",
+      "visual_regression": "Snapshot testing for rendering",
+      "animation_testing": "Verify animations complete correctly"
+    },
+    "edge_cases": {
+      "rapid_direction_changes": "Ensure no 180° turns allowed",
+      "food_on_snake": "Verify food never spawns on snake body",
+      "wrapped_collision": "Self-collision after wrapping through wall",
+      "zero_score": "Initial state display",
+      "max_score": "Test with 3-digit limit (999)"
+    }
+  },
+
+  "patreon_references": [
+    "https://www.patreon.com/posts/animated-text-84712135",
+    "https://www.patreon.com/posts/airbnb-animated-90962925"
+  ],
+
+  "tags": [
+    "game",
+    "skia",
+    "reanimated",
+    "gestures",
+    "worklets",
+    "animated-counter",
+    "oop",
+    "canvas-rendering",
+    "performance",
+    "interactive"
+  ]
+}

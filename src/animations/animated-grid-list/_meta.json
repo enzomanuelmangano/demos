@@ -1,0 +1,879 @@
+{
+  "animation_name": "Animated Grid List",
+  "animation_slug": "animated-grid-list",
+  "description": "An animated layout component that seamlessly transitions between grid and list layouts with scroll-based 3D perspective effects. Features a floating toggle button, smooth layout animations, and dynamic content rendering with fade transitions. Includes scroll direction detection with rotateX perspective transforms for an immersive visual experience.",
+
+  "main_features": [
+    "Seamless grid-to-list layout transition with LinearTransition",
+    "Scroll-based 3D perspective rotation (rotateX)",
+    "Scroll direction detection (up/down)",
+    "Floating action button with animated layout states",
+    "Conditional content rendering based on layout mode",
+    "FadeIn/FadeOut animations for list-only content",
+    "Dynamic item sizing with aspect ratio control",
+    "Responsive grid/list item dimensions",
+    "Perspective transform with smooth spring animations",
+    "Safe area handling for proper spacing"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main demo component with grid/list toggle state",
+    "components/animated-layout-list/index.tsx": "Core layout component with scroll detection and 3D transforms",
+    "components/floating-button/index.tsx": "Toggle button with grid/list icon animation",
+    "constants.ts": "Mock data with random quotes and images"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "layout": "react-native-safe-area-context"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useAnimatedScrollHandler",
+        "useDerivedValue"
+      ],
+      "layout_animations": [
+        "LinearTransition",
+        "FadeIn",
+        "FadeOut"
+      ],
+      "functions": ["withTiming"],
+      "components": [
+        "Animated.View",
+        "Animated.ScrollView",
+        "Animated.Text",
+        "Animated.Image"
+      ],
+      "critical_feature": "LinearTransition for smooth layout morphing and scroll handlers for perspective effects"
+    },
+    "react-native-safe-area-context": {
+      "version": "~5.6.0",
+      "hooks": ["useSafeAreaInsets"],
+      "usage": "Top and bottom padding to avoid notch/home indicator"
+    }
+  },
+
+  "animation_techniques": {
+    "layout_transition": {
+      "pattern": "Layout prop-driven morphing",
+      "animation": "LinearTransition.duration(700)",
+      "trigger": "layout prop change ('grid' or 'list')",
+      "animated_properties": [
+        "width: 50% → 90% (grid to list)",
+        "height: 120px → 100px (grid to list)",
+        "aspectRatio: 1 → undefined (grid to list)",
+        "flexDirection: column → row (grid to list)"
+      ],
+      "duration": "700ms for smooth, noticeable transition",
+      "effect": "Items seamlessly morph between layouts"
+    },
+    "content_fade": {
+      "pattern": "Conditional rendering with enter/exit animations",
+      "entering": "FadeIn (default 300ms)",
+      "exiting": "FadeOut (default 300ms)",
+      "condition": "isExpanded === true (list mode)",
+      "elements": [
+        "Title text (bold, 1 line)",
+        "Subtitle text (gray, small, 1 line)"
+      ],
+      "purpose": "Text appears only when layout has space (list mode)"
+    },
+    "image_animation": {
+      "pattern": "LinearTransition on AnimatedImage",
+      "animated_properties": [
+        "width: 200px → 64px",
+        "aspectRatio: 1 (constant)",
+        "borderRadius: 0 → 32px (square to circle)",
+        "marginHorizontal: 0 → 16px"
+      ],
+      "effect": "Image scales down and becomes circular in list mode"
+    },
+    "scroll_perspective": {
+      "pattern": "3D rotateX based on scroll direction",
+      "detection": {
+        "onBeginDrag": "Store lastOffset.value = y",
+        "onScroll": "Compare y with lastOffset, set direction (Up: -1, Down: 1)",
+        "onEndDrag": "Reset if velocity is zero",
+        "onMomentumEnd": "Reset direction to None (0)"
+      },
+      "rotation": {
+        "scrolling_up": "rotateX: 20deg",
+        "scrolling_down": "rotateX: -20deg",
+        "not_scrolling": "rotateX: 0deg",
+        "animation": "withTiming(rotation.value)"
+      },
+      "perspective": 500,
+      "effect": "Cards tilt away from scroll direction, creating depth"
+    },
+    "button_morph": {
+      "pattern": "Layout-driven icon grid transformation",
+      "grid_mode": {
+        "items": 4,
+        "layout": "2x2 grid (flexDirection: row, flexWrap: wrap)",
+        "item_size": "aspectRatio: 1, height: 25%"
+      },
+      "list_mode": {
+        "items": 2,
+        "layout": "vertical stack (flexDirection: column)",
+        "item_size": "width: 70%, height: 20%"
+      },
+      "animation": "LinearTransition (synced with list)",
+      "entering": "FadeIn",
+      "exiting": "FadeOut",
+      "purpose": "Visual representation of current layout state"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "isScrolling",
+        "type": "SharedValue<boolean>",
+        "initial": false,
+        "updates": "true on scroll, false on scroll end",
+        "scope": "AnimatedLayoutList component",
+        "purpose": "Track active scrolling state"
+      },
+      {
+        "name": "direction",
+        "type": "SharedValue<Direction>",
+        "initial": "Direction.None (0)",
+        "values": "Direction.Up (-1), Direction.Down (1), Direction.None (0)",
+        "updates": "Based on scroll offset comparison",
+        "purpose": "Determine scroll direction for rotation"
+      },
+      {
+        "name": "lastOffset",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "onBeginDrag sets to current y offset",
+        "purpose": "Reference point for direction detection"
+      }
+    ],
+    "useDerivedValue": {
+      "usage_count": 1,
+      "instance": "rotation",
+      "calculation": "Returns '20deg', '-20deg', or '0deg' based on isScrolling and direction",
+      "dependencies": ["isScrolling.value", "direction.value"],
+      "purpose": "Compute rotation string from scroll state",
+      "benefit": "Automatic recalculation when dependencies change"
+    },
+    "useAnimatedScrollHandler": {
+      "events": {
+        "onBeginDrag": {
+          "action": "lastOffset.value = y",
+          "purpose": "Store scroll position at drag start"
+        },
+        "onScroll": {
+          "action": [
+            "isScrolling.value = true",
+            "direction.value = y > lastOffset.value ? Down : Up"
+          ],
+          "purpose": "Track scrolling state and direction"
+        },
+        "onEndDrag": {
+          "condition": "velocity?.y === 0 && velocity?.x === 0",
+          "action": "Call onScrollEnd()",
+          "purpose": "Reset if no momentum"
+        },
+        "onMomentumEnd": {
+          "action": "Call onScrollEnd()",
+          "purpose": "Reset when momentum completes"
+        }
+      },
+      "scrollEventThrottle": 16,
+      "purpose": "Fine-grained scroll tracking (every ~16ms, 60fps)"
+    },
+    "useAnimatedStyle": {
+      "usage_count": 1,
+      "instance": "rAnimatedStyle",
+      "animated_properties": {
+        "transform": [
+          "{ perspective: 500 }",
+          "{ rotateX: withTiming(rotation.value) }"
+        ]
+      },
+      "applied_to": "Each item's Animated.View wrapper",
+      "purpose": "Apply 3D perspective rotation to items"
+    },
+    "useCallback": {
+      "usage_count": 2,
+      "callbacks": [
+        {
+          "name": "renderItem",
+          "dependencies": "[]",
+          "purpose": "Stable render function preventing re-renders",
+          "memoized": "Item rendering logic with conditional content"
+        },
+        {
+          "name": "onScrollEnd",
+          "dependencies": "[direction, isScrolling]",
+          "directive": "'worklet'",
+          "purpose": "Reset scroll state on scroll completion"
+        }
+      ]
+    },
+    "enum_pattern": {
+      "name": "Direction",
+      "values": {
+        "Up": -1,
+        "Down": 1,
+        "None": 0
+      },
+      "purpose": "Type-safe scroll direction tracking",
+      "usage": "direction.value comparison in useDerivedValue"
+    }
+  },
+
+  "component_architecture": {
+    "animated_grid_list": {
+      "type": "Main demo component",
+      "state": {
+        "layout": {
+          "type": "'grid' | 'list'",
+          "initial": "'grid'",
+          "updates": "Toggle button press"
+        }
+      },
+      "memo": false,
+      "children": [
+        "AnimatedLayoutList (layout component)",
+        "FloatingButton (toggle button)"
+      ]
+    },
+    "animated_layout_list": {
+      "type": "Generic reusable component",
+      "generics": "<T>",
+      "props": {
+        "data": {
+          "type": "T[]",
+          "required": true,
+          "usage": "Array of items to render"
+        },
+        "renderItem": {
+          "type": "(item: T, index: number, isExpanded: boolean) => ReactElement",
+          "required": true,
+          "usage": "Render function with expansion state"
+        },
+        "layout": {
+          "type": "'grid' | 'list'",
+          "default": "'list'",
+          "usage": "Current layout mode"
+        },
+        "style": {
+          "type": "StyleProp<ViewStyle>",
+          "required": false,
+          "usage": "ScrollView container style"
+        },
+        "contentContainerStyle": {
+          "type": "StyleProp<ViewStyle>",
+          "required": false,
+          "usage": "ScrollView content container style"
+        }
+      },
+      "derived_state": {
+        "isExpanded": "layout === 'list'"
+      }
+    },
+    "floating_button": {
+      "type": "Presentational component",
+      "props": {
+        "layout": {
+          "type": "'grid' | 'list'",
+          "required": true,
+          "usage": "Current layout state for icon display"
+        },
+        "onPress": {
+          "type": "() => void",
+          "required": true,
+          "usage": "Toggle callback"
+        },
+        "style": {
+          "type": "StyleProp<ViewStyle>",
+          "required": false,
+          "usage": "Button container style"
+        }
+      },
+      "rendering": "Animated mini grid/list icon representation"
+    }
+  },
+
+  "layout_and_positioning": {
+    "item_dimensions": {
+      "grid_mode": {
+        "width": "~47.5% ((100 - 15) / 2)",
+        "calculation": "Full width (100%) - 15% spacing, divided by 2 columns",
+        "height": 120,
+        "aspectRatio": 1,
+        "marginLeft": "5%",
+        "marginBottom": 20
+      },
+      "list_mode": {
+        "width": "90%",
+        "height": 100,
+        "aspectRatio": "undefined (auto-sized)",
+        "marginLeft": "5%",
+        "marginBottom": 20
+      },
+      "transition": "LinearTransition.duration(700) animates between states"
+    },
+    "scroll_view_config": {
+      "style": {
+        "overflow": "visible (allows perspective transforms to show)"
+      },
+      "contentContainerStyle": {
+        "flexWrap": "wrap",
+        "flexDirection": "row (enables grid layout)"
+      },
+      "scrollEventThrottle": 16,
+      "purpose": "Enable wrapping grid with smooth scrolling"
+    },
+    "floating_button_position": {
+      "position": "absolute",
+      "bottom": 50,
+      "right": 16,
+      "height": 70,
+      "aspectRatio": 1,
+      "borderRadius": 35,
+      "zIndex": "Implicit (rendered last, appears on top)"
+    },
+    "safe_area": {
+      "hook": "useSafeAreaInsets()",
+      "paddingTop": "insets.top",
+      "paddingBottom": "insets.bottom",
+      "purpose": "Avoid notch, status bar, and home indicator"
+    },
+    "image_positioning": {
+      "grid_mode": {
+        "width": 200,
+        "aspectRatio": 1,
+        "borderRadius": 0,
+        "marginHorizontal": 0
+      },
+      "list_mode": {
+        "width": 64,
+        "aspectRatio": 1,
+        "borderRadius": 32,
+        "marginHorizontal": 16
+      }
+    },
+    "text_layout": {
+      "wrapper": "Animated.View with LinearTransition.duration(600)",
+      "entering": "FadeIn",
+      "exiting": "FadeOut",
+      "title": {
+        "marginBottom": 2,
+        "maxWidth": "80%",
+        "numberOfLines": 1
+      },
+      "subtitle": {
+        "fontSize": 12,
+        "maxWidth": 200,
+        "numberOfLines": 1,
+        "color": "#383838"
+      }
+    }
+  },
+
+  "scroll_interaction": {
+    "direction_detection": {
+      "algorithm": "Compare current offset with stored lastOffset",
+      "up_scroll": "y < lastOffset.value → direction = -1",
+      "down_scroll": "y > lastOffset.value → direction = 1",
+      "reset_conditions": [
+        "No velocity on drag end (immediate stop)",
+        "Momentum scroll complete"
+      ]
+    },
+    "scroll_end_detection": {
+      "onEndDrag_check": "velocity?.y === 0 && velocity?.x === 0",
+      "reason": "User stopped dragging without flicking",
+      "onMomentumEnd": "Always resets (scroll physics stopped)",
+      "state_reset": [
+        "isScrolling.value = false",
+        "direction.value = Direction.None"
+      ]
+    },
+    "rotation_timing": {
+      "start_scrolling": "Immediate (onScroll fires)",
+      "stop_scrolling": "Immediate (onEndDrag or onMomentumEnd)",
+      "animation": "withTiming (smooth interpolation to target rotation)",
+      "default_timing": "Uses default timing config (~300ms)"
+    },
+    "perspective_effect": {
+      "perspective_value": 500,
+      "effect": "Higher values = less dramatic perspective",
+      "rotation_range": "±20 degrees",
+      "visual_result": "Items appear to tilt away from scroll direction"
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "background": "#EEEEEE (light gray)",
+      "item_background": "#FFFFFF (white)",
+      "button_background": "white",
+      "button_icon": "#6283B1 (blue-gray)",
+      "subtitle_text": "#383838 (dark gray)"
+    },
+    "spacing_and_sizing": {
+      "item_common": {
+        "borderRadius": 10,
+        "marginBottom": 20,
+        "marginLeft": "5%",
+        "overflow": "hidden"
+      },
+      "button": {
+        "height": 70,
+        "aspectRatio": 1,
+        "borderRadius": 35,
+        "shadowOffset": "{ width: 0, height: 10 }",
+        "shadowOpacity": 0.25,
+        "shadowRadius": 20
+      },
+      "button_icon_items": {
+        "margin": 2,
+        "backgroundColor": "#6283B1",
+        "grid_borderRadius": 2,
+        "list_borderRadius": 4
+      }
+    },
+    "shadows_and_elevation": {
+      "button": {
+        "ios": {
+          "shadowColor": "implicit (black)",
+          "shadowOffset": "{ width: 0, height: 10 }",
+          "shadowOpacity": 0.25,
+          "shadowRadius": 20
+        },
+        "effect": "Floating shadow beneath button"
+      }
+    },
+    "content_styling": {
+      "image": {
+        "source": "https://picsum.photos/200/300",
+        "note": "Same URL, cached by React Native Image"
+      },
+      "title": {
+        "content": "Random inspirational quote",
+        "maxWidth": "80%",
+        "numberOfLines": 1,
+        "ellipsizeMode": "tail (default)"
+      },
+      "subtitle": {
+        "content": "Random inspirational quote (different from title)",
+        "fontSize": 12,
+        "color": "#383838",
+        "maxWidth": 200,
+        "numberOfLines": 1
+      }
+    }
+  },
+
+  "data_structure": {
+    "mock_data": {
+      "count": 10,
+      "generation": "new Array(10).fill(0).map((_, i) => ({...}))",
+      "fields": {
+        "id": {
+          "type": "number",
+          "value": "index (0-9)"
+        },
+        "title": {
+          "type": "string",
+          "value": "Random quote from quotes array"
+        },
+        "subtitle": {
+          "type": "string",
+          "value": "Random quote from quotes array (independent)"
+        },
+        "img": {
+          "type": "string",
+          "value": "https://picsum.photos/200/300 (constant URL)"
+        }
+      }
+    },
+    "quotes_source": {
+      "count": 13,
+      "type": "Inspirational quotes array",
+      "randomization": "Math.floor(Math.random() * quotes.length)",
+      "examples": [
+        "The greatest glory in living lies not in never falling, but in rising every time we fall.",
+        "The way to get started is to quit talking and begin doing.",
+        "Your time is limited, so don't waste it living someone else's life..."
+      ]
+    }
+  },
+
+  "performance_optimizations": {
+    "memoization": {
+      "renderItem": "useCallback with empty deps (stable reference)",
+      "benefit": "Prevents re-renders of all list items on parent updates"
+    },
+    "layout_animations": {
+      "engine": "Reanimated layout animations (UI thread)",
+      "benefit": "No bridge crossing for layout changes"
+    },
+    "scroll_handler": {
+      "implementation": "useAnimatedScrollHandler (worklet)",
+      "runs_on": "UI thread",
+      "benefit": "No bridge crossing during scroll"
+    },
+    "component_count": {
+      "items": 10,
+      "animated_components_per_item": 3,
+      "total": "~30 animated components",
+      "overhead": "Low for modern devices"
+    },
+    "image_optimization": {
+      "strategy": "React Native Image caching (same URL)",
+      "benefit": "Images loaded once, reused across items"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Product galleries with view mode toggle",
+      "Photo/media libraries",
+      "Content discovery interfaces",
+      "E-commerce product listings",
+      "Portfolio showcases"
+    ],
+    "secondary": [
+      "File managers with grid/list views",
+      "Music/video library apps",
+      "Social media feed variations",
+      "Dashboard card layouts",
+      "Settings panels with layout options"
+    ],
+    "educational": [
+      "Teaching layout animations",
+      "Demonstrating scroll-based effects",
+      "Showing 3D transforms in 2D lists",
+      "Layout transition patterns"
+    ],
+    "real_world_examples": [
+      "iOS Photos app (grid/list toggle)",
+      "Spotify playlist views",
+      "Pinterest boards",
+      "File explorer apps",
+      "E-commerce category pages"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "generics": "AnimatedLayoutListProps<T>",
+      "type_definitions": [
+        "AnimatedLayoutListProps<T>",
+        "Direction enum"
+      ],
+      "type_imports": "type keyword for type-only imports (ReactElement, StyleProp, ViewStyle)"
+    },
+    "component_structure": {
+      "pattern": "Composition with clear separation of concerns",
+      "main": "State management and coordination",
+      "list": "Scroll handling and layout logic",
+      "button": "UI representation",
+      "constants": "Data generation"
+    },
+    "reusability": {
+      "AnimatedLayoutList": "Fully generic and reusable",
+      "FloatingButton": "Reusable with prop configuration",
+      "renderItem": "Flexible callback pattern"
+    },
+    "constants": {
+      "Direction_enum": "Type-safe direction values",
+      "MAX_ROTATE_DEG": 20,
+      "MIN_ROTATE_DEG": -20,
+      "quotes": "Array of 13 inspirational quotes"
+    },
+    "naming_conventions": {
+      "components": "PascalCase",
+      "props": "camelCase",
+      "shared_values": "camelCase",
+      "animated_styles": "rAnimatedStyle prefix",
+      "constants": "UPPER_SNAKE_CASE for rotation values"
+    },
+    "best_practices": [
+      "Worklet directive on worklet functions",
+      "useCallback for stable references",
+      "Generic component design",
+      "Enum for type-safe values",
+      "Safe area awareness"
+    ]
+  },
+
+  "known_limitations": {
+    "image_url": {
+      "issue": "All items use same image URL",
+      "impact": "Visual monotony (all images identical)",
+      "enhancement": "Use unique URLs per item (e.g., https://picsum.photos/200/300?random={id})"
+    },
+    "scroll_performance": {
+      "limitation": "All 10 items render immediately (no virtualization)",
+      "scale": "Fine for ~10-20 items, may need FlatList for hundreds",
+      "reason": "Using ScrollView, not FlatList"
+    },
+    "rotation_reset": {
+      "behavior": "Rotation resets to 0 when scroll stops",
+      "alternative": "Could maintain slight rotation based on last direction"
+    },
+    "no_keyboard_navigation": {
+      "issue": "Touch-only interaction",
+      "impact": "Not accessible to keyboard users"
+    },
+    "fixed_rotation_values": {
+      "issue": "±20deg hardcoded",
+      "enhancement": "Could be configurable props"
+    },
+    "web_compatibility": {
+      "transforms": "3D transforms may have browser quirks",
+      "overflow_visible": "May clip on web browsers"
+    }
+  },
+
+  "potential_improvements": {
+    "animation_enhancements": [
+      "Staggered item animations on layout change",
+      "Scale animation on items during scroll",
+      "Parallax effect on images",
+      "Entrance animations for initial render",
+      "Exit animations when removing items"
+    ],
+    "interaction_improvements": [
+      "Pinch to zoom gesture",
+      "Swipe to change layout mode",
+      "Long press for item selection",
+      "Pull to refresh",
+      "Infinite scroll / pagination"
+    ],
+    "layout_variations": [
+      "3-column grid option",
+      "Masonry layout",
+      "Staggered grid",
+      "Compact list view",
+      "Card-based layout"
+    ],
+    "customization": [
+      "Configurable rotation angles",
+      "Custom perspective values",
+      "Adjustable animation durations",
+      "Theme support",
+      "Custom button icons"
+    ],
+    "performance": [
+      "Virtualization with FlatList for large datasets",
+      "Image lazy loading",
+      "Progressive image loading",
+      "Skeleton screens during load",
+      "Item recycling for memory efficiency"
+    ],
+    "accessibility": [
+      "VoiceOver/TalkBack support",
+      "Keyboard navigation",
+      "Reduce motion preference support",
+      "Screen reader announcements for layout changes",
+      "Focus management",
+      "ARIA labels for web"
+    ],
+    "data_handling": [
+      "Unique image URLs per item",
+      "Real data integration",
+      "Filtering and sorting",
+      "Search functionality",
+      "Item selection state"
+    ]
+  },
+
+  "key_insights": {
+    "layout_prop_power": "Single layout prop drives entire UI transformation",
+    "perspective_timing": "withTiming on rotation creates smooth perspective effect",
+    "scroll_direction_pattern": "Comparing offsets in onScroll enables direction detection",
+    "flexWrap_grid": "flexWrap: 'wrap' + flexDirection: 'row' creates responsive grid in ScrollView",
+    "conditional_rendering": "isExpanded prop to renderItem enables mode-specific content",
+    "worklet_scroll_handler": "useAnimatedScrollHandler runs on UI thread for smooth scroll effects",
+    "linear_transition_duration": "700ms provides noticeable but smooth morphing",
+    "fade_sync": "FadeIn/Out synced with layout transition via duration matching",
+    "enum_type_safety": "Direction enum prevents magic numbers and type errors",
+    "overflow_visible": "Essential for 3D transforms to render outside bounds"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic layout animations with LinearTransition",
+      "Toggling between layout modes",
+      "FadeIn/FadeOut animations",
+      "Safe area handling",
+      "Component composition patterns"
+    ],
+    "for_intermediate": [
+      "useAnimatedScrollHandler for scroll detection",
+      "3D transforms (perspective, rotateX)",
+      "useDerivedValue for computed values",
+      "Scroll direction detection algorithm",
+      "Generic component design with TypeScript",
+      "Conditional rendering with animation",
+      "useCallback for performance"
+    ],
+    "for_advanced": [
+      "Coordinating multiple animation types",
+      "Worklet functions for UI thread execution",
+      "Complex layout transitions",
+      "Scroll-based animation patterns",
+      "Performance optimization strategies",
+      "Enum patterns for type safety",
+      "Flexible renderItem patterns"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Grid to list transition smooth",
+      "List to grid transition smooth",
+      "Images morph correctly (square to circle)",
+      "Text fades in/out at correct timing",
+      "Button icon transitions correctly",
+      "Perspective rotation visible during scroll"
+    ],
+    "interaction_testing": [
+      "Button toggles layout mode",
+      "Scroll up rotates items correctly",
+      "Scroll down rotates items correctly",
+      "Scroll stop resets rotation",
+      "Multiple rapid toggles handled smoothly",
+      "Rapid scrolling doesn't break direction detection"
+    ],
+    "layout_testing": [
+      "Grid shows 2 columns",
+      "List shows single column",
+      "Items sized correctly in each mode",
+      "Safe area respected",
+      "Button positioned correctly"
+    ],
+    "edge_cases": [
+      "Empty data array",
+      "Single item in array",
+      "Very long titles (truncation)",
+      "Slow network (image loading)",
+      "Screen rotation during transition",
+      "Scroll during layout transition"
+    ],
+    "performance_testing": [
+      "Smooth 60fps during transitions",
+      "No frame drops during scroll",
+      "Memory stable across multiple toggles",
+      "Consistent performance on low-end devices"
+    ],
+    "cross_platform": [
+      "iOS perspective transforms",
+      "Android perspective transforms",
+      "Web 3D transform support",
+      "Shadow rendering consistency",
+      "Image loading behavior"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No support",
+      "color_contrast": "Good contrast (dark text on white cards)"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to button ('Toggle between grid and list view')",
+      "Add accessibilityHint ('Double tap to switch layout')",
+      "Add accessibilityRole='button' to floating button",
+      "Announce layout change to screen reader",
+      "Support prefers-reduced-motion (disable 3D effects)",
+      "Keyboard shortcuts for layout toggle",
+      "Focus indicators for keyboard users",
+      "Ensure text meets WCAG AA contrast standards",
+      "List items should have accessible labels"
+    ],
+    "implementation_suggestions": {
+      "reduced_motion": "Replace perspective rotation with opacity change when motion reduced",
+      "screen_reader": "Use AccessibilityInfo.announceForAccessibility on layout change",
+      "keyboard": "Add FocusManager for keyboard navigation between items"
+    }
+  },
+
+  "comparison_to_similar_patterns": {
+    "vs_flatlist_layouts": {
+      "similarity": "Both support multiple layout modes",
+      "difference": "This uses ScrollView + flexWrap, FlatList uses numColumns or custom layout",
+      "tradeoff": "This is simpler but less performant for large lists"
+    },
+    "vs_masonry_layouts": {
+      "similarity": "Grid-based layout",
+      "difference": "This has uniform item heights, masonry varies",
+      "advantage": "Simpler, more predictable transitions"
+    },
+    "vs_css_grid": {
+      "similarity": "Grid/list toggle pattern common in web",
+      "difference": "This uses React Native layout, adds 3D effects",
+      "unique": "Scroll-based perspective not common in web implementations"
+    }
+  },
+
+  "related_patterns": {
+    "layout_animations": [
+      "Shared element transitions",
+      "Hero animations",
+      "Morph transitions",
+      "Accordion expand/collapse"
+    ],
+    "scroll_effects": [
+      "Parallax scrolling",
+      "Sticky headers",
+      "Scroll-to-hide navigation",
+      "Pull to refresh"
+    ],
+    "view_toggles": [
+      "Tab bar switching",
+      "Segment control transitions",
+      "Filter panel toggles",
+      "Sidebar expand/collapse"
+    ]
+  },
+
+  "real_world_inspiration": {
+    "ios_photos": "Grid/list toggle in Photos app",
+    "spotify": "Playlist view modes",
+    "pinterest": "Grid layout variations",
+    "file_explorers": "Icon view vs list view",
+    "material_design": "List/grid transition patterns"
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~260 lines total (main + components + constants)",
+    "dependencies": "Reanimated and safe-area-context likely already in project",
+    "runtime_memory": "Minimal - few SharedValues, 10 items only",
+    "estimated_size": "< 10KB"
+  },
+
+  "tags": [
+    "layout-animation",
+    "grid-list-toggle",
+    "scroll-effects",
+    "3d-perspective",
+    "rotateX",
+    "linear-transition",
+    "fade-animation",
+    "scroll-direction",
+    "floating-button",
+    "reanimated",
+    "responsive-layout",
+    "morph-transition",
+    "safe-area",
+    "worklet",
+    "animated-image"
+  ]
+}

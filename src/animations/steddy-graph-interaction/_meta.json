@@ -1,0 +1,916 @@
+{
+  "animation_name": "Steddy Graph Interaction",
+  "animation_slug": "steddy-graph-interaction",
+  "description": "An interactive data visualization component featuring an animated line graph with Skia rendering and a custom segmented control. The graph smoothly transitions between three scoring difficulty levels (Light, Standard, Pro) using spring animations. Features include rounded path effects, dashed reference lines, and smooth data interpolation with React Native Skia for high-performance rendering.",
+
+  "main_features": [
+    "Animated line graph with smooth data transitions",
+    "Three-way segmented control with sliding indicator",
+    "Spring-based animation for graph data updates",
+    "Skia Canvas rendering for high performance",
+    "Rounded corner path effects on graph line",
+    "Dashed horizontal reference line with score label",
+    "Dynamic graph normalization and scaling",
+    "Responsive graph dimensions based on window size",
+    "Custom font rendering for score text",
+    "Pressto integration for pressable scale effects"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main component with scoring difficulty state management and layout",
+    "components/graph/index.tsx": "Skia-powered line graph with animated path rendering",
+    "components/segmented-control/index.tsx": "Custom segmented control with animated indicator",
+    "constants/graph-scores.ts": "Three datasets for different difficulty levels (Light, Standard, Pro)",
+    "constants/palette.ts": "Color palette constants for consistent theming"
+  },
+
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "interactions": "pressto"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withSpring"
+      ],
+      "components": ["Animated.View"],
+      "critical_feature": "useDerivedValue with withSpring for smooth data transitions on shared value changes"
+    },
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Path",
+        "Line",
+        "Text"
+      ],
+      "effects": [
+        "CornerPathEffect",
+        "DashPathEffect"
+      ],
+      "hooks": [
+        "useFont"
+      ],
+      "utilities": [
+        "Skia.Path.Make()",
+        "vec()"
+      ],
+      "critical_feature": "High-performance canvas rendering with animated path interpolation and custom font support"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureHandlerRootView"],
+      "usage": "Root wrapper for gesture interactions in segmented control"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "components": ["PressableScale"],
+      "usage": "Scale animation effect on segmented control button press"
+    }
+  },
+
+  "animation_techniques": {
+    "graph_data_transition": {
+      "pattern": "Spring animation on raw score arrays",
+      "implementation": "useDerivedValue with withSpring wrapping entire scores array",
+      "trigger": "scoringDifficulty state change",
+      "animation": "withSpring(scores) - applies spring to each value in array",
+      "spring_config": "Default spring (stiffness: 100, damping: 10, mass: 1)",
+      "duration": "Variable based on spring physics (~500-800ms typical)",
+      "effect": "Graph line smoothly interpolates between data points"
+    },
+    "path_generation": {
+      "pattern": "Derived animated path from normalized scores",
+      "steps": [
+        "1. Normalize scores: score / (maxValue + 10)",
+        "2. Calculate distance between points: canvasWidth / (length - 1)",
+        "3. Create Skia path with moveTo and lineTo",
+        "4. Apply CornerPathEffect for rounded corners"
+      ],
+      "coordinate_mapping": {
+        "x": "padding + distance * index",
+        "y": "canvasHeight * (1 - normalizedScore)",
+        "note": "(1 - score) inverts Y axis for bottom-up graph"
+      },
+      "corner_radius": 20,
+      "effect": "Smooth rounded line connecting data points"
+    },
+    "segmented_control_animation": {
+      "pattern": "Animated left position with interpolated padding",
+      "calculation": {
+        "base_position": "cellBackgroundWidth * selectedCellIndex",
+        "padding_interpolation": "interpolate(index, [0, length-1], [internalPadding, -internalPadding])",
+        "final_position": "basePosition + padding",
+        "purpose": "Padding adjustment prevents edge clipping of rounded indicator"
+      },
+      "animation": "withTiming for smooth sliding transition",
+      "duration": "Default timing (~300ms)",
+      "easing": "Default easing (bezier curve)",
+      "animated_property": "left position of indicator background"
+    },
+    "dashed_line_rendering": {
+      "pattern": "Static dashed line with DashPathEffect",
+      "y_calculation": "(1 - lineScore / refactoredMax) * canvasHeight",
+      "dash_intervals": "[4, 4] - 4px dash, 4px gap",
+      "stroke_width": 2,
+      "color": "rgba(0,0,0,0.1) - subtle gray",
+      "purpose": "Visual reference line for target score"
+    },
+    "text_rendering": {
+      "pattern": "Custom font rendering with Skia Text component",
+      "font": "SF-Compact-Rounded-Medium.otf at 18pt",
+      "positioning": {
+        "x": "width - 80 (right-aligned with padding)",
+        "y": "lineY + 40 (below reference line)"
+      },
+      "text": "'{lineScore} pts'",
+      "color": "rgba(0,0,0,0.5) - medium gray",
+      "purpose": "Display reference score value"
+    }
+  },
+
+  "reanimated_patterns": {
+    "useDerivedValue_instances": [
+      {
+        "name": "rRawScores",
+        "calculation": "withSpring(scores)",
+        "dependencies": ["scores"],
+        "purpose": "Apply spring animation to score array changes",
+        "return_type": "number[] (animated)",
+        "key_insight": "withSpring can animate entire arrays element-wise"
+      },
+      {
+        "name": "rScores",
+        "calculation": "rRawScores.value.map(score => score / refactoredMax)",
+        "dependencies": ["rRawScores"],
+        "purpose": "Normalize animated scores for 0-1 range",
+        "return_type": "number[] (normalized)",
+        "optimization": "Normalization happens after spring animation"
+      },
+      {
+        "name": "rGraphPath",
+        "calculation": "Generate Skia path from normalized scores",
+        "dependencies": ["padding", "rScores", "scores"],
+        "purpose": "Create animated path for graph line",
+        "return_type": "SkPath",
+        "recalculation": "Every frame during spring animation",
+        "performance": "Efficient - path generation is fast operation"
+      }
+    ],
+    "useAnimatedStyle_usage": {
+      "component": "SegmentedControl indicator background",
+      "instance": "rCellMessageStyle",
+      "calculation": {
+        "padding": "interpolate(selectedCellIndex, [0, data.length-1], [internalPadding, -internalPadding])",
+        "left": "withTiming(cellBackgroundWidth * selectedCellIndex + padding)"
+      },
+      "animated_properties": ["left"],
+      "purpose": "Animate indicator sliding between segments"
+    },
+    "skia_animation_integration": {
+      "pattern": "Derived values passed directly to Skia components",
+      "path_component": "<Path path={rGraphPath} />",
+      "benefit": "Skia re-renders automatically when derived value changes",
+      "performance": "UI thread rendering without bridge crossing",
+      "key_insight": "Reanimated SharedValues work seamlessly with Skia animated props"
+    }
+  },
+
+  "component_architecture": {
+    "steddy_graph_interaction": {
+      "type": "Main container component",
+      "wrapper": "GestureHandlerRootView (required for pressto)",
+      "state": {
+        "scoringDifficulty": {
+          "type": "'Light' | 'Standard' | 'Pro'",
+          "initial": "'Standard'",
+          "updates": "Via SegmentedControl onPress callback"
+        }
+      },
+      "computed_values": {
+        "scores": "useMemo(() => ScoringMap[scoringDifficulty], [scoringDifficulty])",
+        "windowWidth": "useWindowDimensions() hook"
+      },
+      "layout": "Centered column with background color from palette",
+      "children": [
+        "SegmentedControl (top)",
+        "Graph (bottom, marginTop: 20)"
+      ]
+    },
+    "graph_component": {
+      "type": "Pure functional component (memo wrapped)",
+      "props": {
+        "scores": {
+          "type": "number[]",
+          "required": true,
+          "description": "Array of data points to plot"
+        },
+        "canvasWidth": {
+          "type": "number",
+          "required": true,
+          "description": "Total canvas width including padding"
+        },
+        "canvasHeight": {
+          "type": "number",
+          "required": true,
+          "description": "Canvas height in pixels"
+        },
+        "padding": {
+          "type": "number",
+          "default": 0,
+          "description": "Horizontal padding on left and right"
+        },
+        "lineScore": {
+          "type": "number",
+          "default": -10,
+          "description": "Y value for reference dashed line"
+        },
+        "maxValue": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum value for normalization"
+        },
+        "style": {
+          "type": "StyleProp<ViewStyle>",
+          "optional": true,
+          "description": "Canvas container style"
+        }
+      },
+      "memo_optimization": "Prevents re-render on parent updates",
+      "font_loading": "useFont hook with local asset path",
+      "rendering": "Skia Canvas with Path, Line, and Text components"
+    },
+    "segmented_control": {
+      "type": "Generic functional component",
+      "generics": "<T extends string>",
+      "props": {
+        "data": {
+          "type": "readonly T[]",
+          "required": true,
+          "description": "Array of segment labels"
+        },
+        "onPress": {
+          "type": "(item: T) => void",
+          "required": true,
+          "description": "Callback when segment pressed"
+        },
+        "selected": {
+          "type": "T",
+          "required": true,
+          "description": "Currently selected item"
+        },
+        "width": {
+          "type": "number",
+          "required": true,
+          "description": "Total control width"
+        },
+        "height": {
+          "type": "number",
+          "required": true,
+          "description": "Control height"
+        }
+      },
+      "computed_values": {
+        "cellBackgroundWidth": "width / data.length",
+        "selectedCellIndex": "useMemo(() => data.findIndex(item => item === selected))"
+      },
+      "rendering": [
+        "Background container with border radius",
+        "PressableScale buttons for each segment",
+        "Animated indicator background (absolute positioned)"
+      ],
+      "z_index_strategy": {
+        "labels": "zIndex: 2 (above indicator)",
+        "indicator": "zIndex: 1 (below labels)"
+      }
+    }
+  },
+
+  "mathematical_algorithms": {
+    "score_normalization": {
+      "formula": "normalizedScore = score / (maxValue + 10)",
+      "max_refactoring": "refactoredMax = maxValue + 10 (110 by default)",
+      "purpose": "Add headroom above maximum value for better visualization",
+      "range": "[0, 1] for scores in [0, maxValue]",
+      "example": "score=70, maxValue=100 → normalized=0.636 → y=72.8px (at height=200)"
+    },
+    "y_coordinate_calculation": {
+      "formula": "y = canvasHeight * (1 - normalizedScore)",
+      "inversion": "(1 - score) flips coordinate system",
+      "reason": "Canvas origin at top-left, graph needs bottom-up",
+      "examples": {
+        "score_100": "normalized=0.909 → y=18.2px (near top)",
+        "score_70": "normalized=0.636 → y=72.8px (middle-high)",
+        "score_0": "normalized=0 → y=200px (bottom)"
+      }
+    },
+    "x_coordinate_calculation": {
+      "formula": "x = padding + distance * index",
+      "distance": "canvasWidth / (scores.length - 1)",
+      "purpose": "Evenly distribute points across available width",
+      "example": "27 points, width=300, padding=50 → distance=9.615px between points"
+    },
+    "indicator_padding_interpolation": {
+      "formula": "interpolate(index, [0, n-1], [internalPadding, -internalPadding])",
+      "purpose": "Adjust padding to prevent rounded indicator from clipping at edges",
+      "example_3_items": {
+        "index_0": "padding = +5px (extra space on left)",
+        "index_1": "padding = 0px (centered)",
+        "index_2": "padding = -5px (extra space on right)"
+      },
+      "visual_effect": "Indicator stays fully within container bounds"
+    },
+    "reference_line_calculation": {
+      "formula": "lineY = (1 - lineScore / refactoredMax) * canvasHeight",
+      "example": "lineScore=70, refactoredMax=110, height=200 → lineY=72.7px",
+      "consistency": "Uses same coordinate system as graph points"
+    }
+  },
+
+  "performance_optimizations": {
+    "memo_wrapper": {
+      "component": "Graph",
+      "pattern": "React.memo() wrapping functional component",
+      "benefit": "Prevents re-render when props haven't changed",
+      "critical": "Graph is expensive to render (Skia path generation)"
+    },
+    "useMemo_scores": {
+      "location": "Main component",
+      "calculation": "ScoringMap[scoringDifficulty]",
+      "dependencies": ["scoringDifficulty"],
+      "benefit": "Avoids creating new array reference on every render",
+      "importance": "Prevents unnecessary Graph re-renders"
+    },
+    "useMemo_selectedIndex": {
+      "location": "SegmentedControl",
+      "calculation": "data.findIndex(item => item === selected)",
+      "dependencies": ["data", "selected"],
+      "benefit": "Avoids recalculating index on every render",
+      "frequency": "Only recalculates when selection changes"
+    },
+    "skia_rendering": {
+      "pattern": "Native Skia rendering on UI thread",
+      "benefit": "No JavaScript bridge crossing for rendering",
+      "performance": "60fps+ animation even with complex paths",
+      "gpu_acceleration": "Skia uses GPU when available"
+    },
+    "derived_value_optimization": {
+      "pattern": "Chained useDerivedValue for multi-step calculations",
+      "benefit": "Automatic dependency tracking and memoization",
+      "efficiency": "Only recalculates when dependencies change",
+      "ui_thread": "All calculations happen on UI thread"
+    },
+    "path_reuse": {
+      "pattern": "Skia.Path.Make() reuses path object",
+      "modification": "moveTo and lineTo modify existing path",
+      "benefit": "No new path allocation each frame",
+      "memory": "Minimal memory footprint"
+    }
+  },
+
+  "visual_design": {
+    "color_palette": {
+      "background": "#F1EEE8 (warm light beige)",
+      "baseGray05": "#E5E2DC (subtle gray for borders)",
+      "baseGray80": "#30302E (dark text color)",
+      "primary": "#8A40FF (vibrant purple for graph line)",
+      "white": "#FFFFFF (segmented control indicator)",
+      "theme": "Light mode with warm neutral tones and vibrant accent"
+    },
+    "graph_styling": {
+      "line_color": "#8A40FF (purple)",
+      "line_width": 3,
+      "line_cap": "round",
+      "corner_radius": 20,
+      "effect": "Smooth, rounded line connecting data points",
+      "reference_line": {
+        "color": "rgba(0,0,0,0.1) (subtle)",
+        "width": 2,
+        "style": "dashed [4, 4]"
+      },
+      "score_text": {
+        "color": "rgba(0,0,0,0.5) (medium gray)",
+        "font": "SF-Compact-Rounded-Medium",
+        "size": 18
+      }
+    },
+    "segmented_control_styling": {
+      "background": "#E5E2DC (subtle gray)",
+      "border_radius": 18,
+      "border_width": 1,
+      "border_color": "#E5E2DC (matches background)",
+      "height": 56,
+      "internal_padding": 5,
+      "indicator": {
+        "background": "#F1EEE8 (white/beige)",
+        "border_radius": 12,
+        "border_width": 1,
+        "border_color": "#E5E2DC",
+        "shadow": {
+          "offset": "{ height: 1, width: 0 }",
+          "opacity": 0.1,
+          "radius": 2
+        }
+      },
+      "label": {
+        "color": "#30302E (dark gray)",
+        "font": "SF-Compact-Rounded-Medium",
+        "size": 17,
+        "alignment": "center"
+      }
+    },
+    "layout_spacing": {
+      "container_padding": "15px horizontal (derived from windowWidth - 30)",
+      "graph_margin_top": 20,
+      "graph_padding": 50,
+      "element_centering": "Items centered both horizontally and vertically"
+    },
+    "dimensions": {
+      "segmented_control": {
+        "width": "windowWidth - 30 (responsive)",
+        "height": 56
+      },
+      "graph_canvas": {
+        "width": "windowWidth (responsive)",
+        "height": 200,
+        "actual_drawing_width": "windowWidth - 100 (2 * padding)"
+      }
+    }
+  },
+
+  "data_structure": {
+    "scoring_difficulty_type": {
+      "type": "Union type",
+      "values": ["'Light'", "'Standard'", "'Pro'"],
+      "source": "(typeof ScoringDifficultyData)[number]",
+      "usage": "Type-safe scoring difficulty selection"
+    },
+    "scoring_map": {
+      "type": "Record<ScoringDifficultyType, number[]>",
+      "structure": {
+        "Light": "LIGHT_GRAPH_SCORES (27 points)",
+        "Standard": "STANRDARD_GRAPH_SCORES (27 points)",
+        "Pro": "PRO_GRAPH_SCORES (27 points)"
+      },
+      "purpose": "Map difficulty level to score dataset"
+    },
+    "graph_scores_arrays": {
+      "length": "27 points each",
+      "light": {
+        "range": "[43, 100]",
+        "pattern": "Higher scores, trends upward toward 100",
+        "average": "~83"
+      },
+      "standard": {
+        "range": "[35, 95]",
+        "pattern": "Medium difficulty, moderate variation",
+        "average": "~70"
+      },
+      "pro": {
+        "range": "[29, 80]",
+        "pattern": "Lower scores, more challenging",
+        "average": "~59"
+      },
+      "note": "Typo in constant name: 'STANRDARD' instead of 'STANDARD'"
+    }
+  },
+
+  "layout_and_positioning": {
+    "container_hierarchy": {
+      "level_1": "GestureHandlerRootView (full screen)",
+      "level_2": "Container View (centered, flex: 1)",
+      "level_3a": "SegmentedControl (top)",
+      "level_3b": "Graph Canvas (below, marginTop: 20)"
+    },
+    "graph_canvas_layout": {
+      "width": "windowWidth (full screen width)",
+      "height": 200,
+      "actual_width": "windowWidth - 100 (after padding)",
+      "padding": "50px on left and right",
+      "coordinate_system": {
+        "origin": "(0, 0) at top-left",
+        "x_range": "[0, windowWidth]",
+        "y_range": "[0, 200]",
+        "graph_x_range": "[50, windowWidth - 50]"
+      }
+    },
+    "segmented_control_layout": {
+      "width": "windowWidth - 30",
+      "height": 56,
+      "cells": 3,
+      "cell_width": "(windowWidth - 30) / 3",
+      "internal_padding": 5,
+      "indicator_width": "cellWidth - (internalPadding / cellCount)",
+      "indicator_height": "height - (internalPadding * 2) = 46"
+    },
+    "text_positioning": {
+      "score_label": {
+        "x": "width - 80 (80px from right edge)",
+        "y": "lineY + 40 (40px below reference line)",
+        "alignment": "Right-aligned with padding"
+      }
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Fitness tracking score visualization",
+      "Performance metrics dashboard",
+      "Health data trends (sleep scores, activity levels)",
+      "Game difficulty comparison charts",
+      "Progress tracking with multiple difficulty tiers"
+    ],
+    "secondary": [
+      "Educational assessment score trends",
+      "A/B testing results visualization",
+      "Multi-tier pricing comparison",
+      "Skill level progression charts",
+      "Quality metrics over time"
+    ],
+    "business_applications": [
+      "SaaS metrics by plan tier",
+      "Customer satisfaction scores by segment",
+      "Performance benchmarks across tiers",
+      "Feature adoption rates by plan",
+      "Support ticket resolution times"
+    ],
+    "health_and_fitness": [
+      "Workout intensity tracking",
+      "Recovery score monitoring",
+      "Nutrition score trends",
+      "Sleep quality metrics",
+      "Stress level tracking"
+    ],
+    "educational": [
+      "Teaching data visualization concepts",
+      "Demonstrating Skia rendering capabilities",
+      "Spring animation implementation patterns",
+      "Custom control components",
+      "Graph interpolation techniques"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "ScoringDifficultyType (union)",
+        "GraphProps interface",
+        "SegmentedControlProps<T extends string> (generic)"
+      ],
+      "type_imports": "StyleProp, ViewStyle, FC",
+      "generics": "SegmentedControl uses generic type parameter for flexibility",
+      "type_safety": "Strong typing throughout with no any types"
+    },
+    "component_patterns": {
+      "graph": "Memoized functional component with hooks",
+      "segmented_control": "Generic reusable component",
+      "main": "Container component with state management",
+      "separation": "Clear separation between presentation and data"
+    },
+    "constants_organization": {
+      "graph_scores": "Separate file for data arrays",
+      "palette": "Separate file for color constants",
+      "naming": "UPPER_SNAKE_CASE for exported constants",
+      "type_const": "as const assertion for type inference"
+    },
+    "hooks_usage": {
+      "reanimated": "useDerivedValue for computed animations",
+      "skia": "useFont for custom font loading",
+      "react": "useState, useMemo, useWindowDimensions",
+      "pattern": "Hooks at top of component, consistent ordering"
+    },
+    "imports": {
+      "organized": "React Native, React, third-party, local imports separated",
+      "minimal": "Only necessary imports included",
+      "type_imports": "Separate type imports where applicable"
+    },
+    "error_handling": {
+      "font_loading": "Null check before rendering Text component",
+      "pattern": "{font != null && <Text ... />}",
+      "benefit": "Prevents crash if font fails to load"
+    },
+    "styling": {
+      "pattern": "StyleSheet.create for optimized styles",
+      "inline_styles": "Dynamic styles inline (layout-dependent)",
+      "constants": "Colors from imported palette",
+      "consistency": "Consistent naming (styles, localStyles)"
+    },
+    "best_practices": [
+      "Memo wrapper on expensive components",
+      "useMemo for computed values",
+      "Type-safe component props",
+      "Null checks before optional rendering",
+      "Clear prop defaults",
+      "Descriptive variable names"
+    ]
+  },
+
+  "known_limitations": {
+    "fixed_graph_dimensions": {
+      "issue": "canvasHeight hardcoded to 200",
+      "impact": "Not responsive to screen height",
+      "improvement": "Could use percentage of screen height or aspectRatio"
+    },
+    "typo_in_constant": {
+      "issue": "STANRDARD_GRAPH_SCORES misspelled",
+      "location": "constants/graph-scores.ts",
+      "impact": "Minor - doesn't affect functionality but reduces code clarity",
+      "fix": "Rename to STANDARD_GRAPH_SCORES"
+    },
+    "hardcoded_font_path": {
+      "issue": "Font path uses relative path with multiple parent directories",
+      "path": "../../../../../assets/fonts/SF-Compact-Rounded-Medium.otf",
+      "fragility": "Breaks if file structure changes",
+      "improvement": "Use absolute import or require.resolve()"
+    },
+    "no_data_validation": {
+      "issue": "No validation of scores array",
+      "risk": "Empty array or invalid values could cause crashes",
+      "improvement": "Add prop validation or default empty state handling"
+    },
+    "fixed_point_count": {
+      "limitation": "All datasets have exactly 27 points",
+      "flexibility": "Component handles any array length, but data is fixed",
+      "improvement": "Document expected data format or add dynamic data generation"
+    },
+    "accessibility": {
+      "issue": "No accessibility labels or alternative text",
+      "impact": "Graph not accessible to screen reader users",
+      "improvement": "Add accessibilityLabel with data summary"
+    },
+    "no_loading_state": {
+      "issue": "No loading indicator while font loads",
+      "impact": "Score text may not appear immediately",
+      "improvement": "Add loading skeleton or placeholder"
+    },
+    "segmented_control_font": {
+      "issue": "Custom font specified but not loaded with useFont",
+      "font": "SF-Compact-Rounded-Medium",
+      "impact": "Falls back to system font if not globally loaded",
+      "note": "Likely loaded globally in app setup"
+    }
+  },
+
+  "potential_improvements": {
+    "interactivity": [
+      "Tap data points to show exact values",
+      "Pan gesture to scrub through timeline",
+      "Pinch to zoom on graph section",
+      "Long press for detailed tooltip",
+      "Crosshair on touch for precise reading"
+    ],
+    "visual_enhancements": [
+      "Gradient fill under graph line",
+      "Animated dots at data points",
+      "Vertical grid lines for time markers",
+      "Horizontal grid lines for value markers",
+      "X and Y axis labels",
+      "Legend for reference line meaning",
+      "Smooth entrance animation on mount"
+    ],
+    "data_features": [
+      "Date/time labels on X axis",
+      "Dynamic Y axis scaling based on data range",
+      "Multiple lines for comparison",
+      "Toggle between line and area chart",
+      "Data point highlighting",
+      "Min/max indicators"
+    ],
+    "customization": [
+      "Configurable colors via props",
+      "Adjustable line thickness",
+      "Custom corner radius",
+      "Configurable padding",
+      "Theme support (dark mode)",
+      "Custom font as prop"
+    ],
+    "animations": [
+      "Staggered point reveal on mount",
+      "Pulse animation on data point tap",
+      "Smooth entrance with path drawing animation",
+      "Haptic feedback on interaction",
+      "Micro-interactions on hover (web)"
+    ],
+    "performance": [
+      "Virtualization for very long datasets",
+      "Downsample data for smoother animation",
+      "Debounce rapid data updates",
+      "Optimize path generation for fewer points"
+    ],
+    "accessibility": [
+      "VoiceOver/TalkBack support with data summary",
+      "Sonification of data (audio representation)",
+      "High contrast mode support",
+      "Reduced motion mode (disable springs)",
+      "Keyboard navigation for data exploration",
+      "ARIA labels for web"
+    ],
+    "developer_experience": [
+      "Storybook component examples",
+      "JSDoc documentation for props",
+      "Error boundaries for crash protection",
+      "PropTypes or Zod validation",
+      "Unit tests for calculations",
+      "Visual regression tests"
+    ]
+  },
+
+  "key_insights": {
+    "spring_on_arrays": "withSpring can animate entire arrays, applying spring to each element individually",
+    "skia_reanimated_integration": "Reanimated derived values work seamlessly as Skia component props",
+    "coordinate_inversion": "(1 - normalizedScore) flips Y axis for natural bottom-up graph rendering",
+    "path_regeneration": "Regenerating entire path each frame is performant with Skia",
+    "padding_interpolation": "Edge padding interpolation prevents indicator clipping in segmented control",
+    "memo_importance": "React.memo critical for Skia components to prevent expensive re-renders",
+    "font_null_check": "Always check font != null before rendering Skia Text to prevent crashes",
+    "useMemo_for_lookups": "useMemo prevents array reference changes that would trigger child re-renders",
+    "corner_path_effect": "CornerPathEffect provides hardware-accelerated rounded corners",
+    "dash_path_effect": "DashPathEffect creates performant dashed lines without manual drawing"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic Skia Canvas usage",
+      "Simple path drawing with moveTo/lineTo",
+      "React Native state management",
+      "useWindowDimensions for responsiveness",
+      "Component composition patterns"
+    ],
+    "for_intermediate": [
+      "Reanimated useDerivedValue patterns",
+      "Spring animations on arrays",
+      "Skia path effects (Corner, Dash)",
+      "Custom font loading in Skia",
+      "Coordinate system transformations",
+      "Generic TypeScript components",
+      "React.memo optimization",
+      "Animated component prop patterns"
+    ],
+    "for_advanced": [
+      "Skia and Reanimated integration techniques",
+      "Performance optimization with memo and useMemo",
+      "Complex derived value chains",
+      "UI thread animation strategies",
+      "Path generation algorithms",
+      "Interpolation mathematics",
+      "Type-safe generic component design",
+      "Custom Skia effects composition"
+    ]
+  },
+
+  "real_world_inspiration": {
+    "apple_health": "Health app score visualizations",
+    "strava": "Activity performance graphs",
+    "whoop": "Recovery and strain scores",
+    "oura": "Sleep and readiness scores",
+    "tesla": "Energy usage graphs in mobile app",
+    "trading_apps": "Stock price charts with smooth animations"
+  },
+
+  "comparison_to_similar_animations": {
+    "vs_recharts": {
+      "similarity": "Both render line charts",
+      "difference": "This uses Skia for native performance vs SVG/Canvas",
+      "performance": "Skia significantly faster, especially for animations"
+    },
+    "vs_victory_native": {
+      "similarity": "React Native charting with animations",
+      "difference": "This is custom implementation vs library",
+      "customization": "More control over animation timing and behavior"
+    },
+    "vs_react_native_chart_kit": {
+      "similarity": "Line graph visualization",
+      "difference": "Skia rendering vs react-native-svg",
+      "advantage": "Smoother animations with Reanimated integration"
+    }
+  },
+
+  "testing_considerations": {
+    "visual_tests": [
+      "Graph renders correctly with all three datasets",
+      "Line smoothly transitions between datasets",
+      "Reference line positioned correctly",
+      "Score text displays at correct position",
+      "Segmented control indicator slides smoothly",
+      "No rendering glitches during animation"
+    ],
+    "interaction_tests": [
+      "Tapping Light updates graph to light scores",
+      "Tapping Standard updates graph to standard scores",
+      "Tapping Pro updates graph to pro scores",
+      "Current selection highlighted in segmented control",
+      "PressableScale provides visual feedback",
+      "Rapid taps handled gracefully"
+    ],
+    "data_validation": [
+      "Empty scores array (edge case)",
+      "Single data point",
+      "Very large values (>maxValue)",
+      "Negative values (invalid)",
+      "Non-numeric values (invalid)",
+      "Mismatched array lengths"
+    ],
+    "performance_tests": [
+      "Smooth 60fps during spring animation",
+      "No frame drops on transition",
+      "Memory stable across multiple transitions",
+      "Path generation doesn't block UI thread"
+    ],
+    "edge_cases": [
+      "Font fails to load",
+      "Very narrow screen width",
+      "Very wide screen (tablet)",
+      "Screen rotation during animation",
+      "Rapid difficulty switching",
+      "Invalid data in scores arrays"
+    ],
+    "cross_platform": [
+      "iOS Skia rendering correctness",
+      "Android Skia rendering correctness",
+      "Web Skia support (via CanvasKit)",
+      "Font rendering consistency",
+      "Shadow rendering differences"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility support",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No support for motion preferences",
+      "color_contrast": "Good contrast between text and background"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to Graph with data summary",
+      "Add accessibilityLabel to SegmentedControl buttons",
+      "Add accessibilityRole='button' to segments",
+      "Add accessibilityState={{ selected: true }} to active segment",
+      "Announce difficulty change to screen readers",
+      "Provide data sonification for visually impaired users",
+      "Support keyboard navigation (arrow keys to change difficulty)",
+      "Respect prefers-reduced-motion (disable spring animations)",
+      "Add ARIA labels for web platform",
+      "Ensure focus indicators visible for keyboard users"
+    ],
+    "implementation_suggestions": {
+      "reduced_motion": "Use withTiming instead of withSpring when motion reduced",
+      "screen_reader": "AccessibilityInfo.announceForAccessibility on difficulty change",
+      "data_summary": "Summarize min, max, average scores for screen readers",
+      "keyboard": "Detect ArrowLeft/ArrowRight to cycle through difficulties"
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~300 lines total (all components + constants)",
+    "dependencies": {
+      "skia": "Already included if using Skia elsewhere (~2-3MB)",
+      "reanimated": "Already included if using animations (~500KB)",
+      "pressto": "Small library (~10KB)",
+      "gesture_handler": "Already included for gestures"
+    },
+    "assets": {
+      "font": "SF-Compact-Rounded-Medium.otf (~50-100KB)",
+      "total_assets": "~50-100KB"
+    },
+    "runtime_memory": "Low - few SharedValues, efficient Skia rendering",
+    "estimated_incremental_size": "< 15KB (excluding already-present dependencies)"
+  },
+
+  "performance_metrics": {
+    "target_fps": 60,
+    "animation_duration": "~500-800ms (spring-based, variable)",
+    "runs_on": "UI thread (Reanimated worklets + Skia rendering)",
+    "expected_performance": "Smooth on all modern devices",
+    "path_calculation_cost": "Low - simple linear interpolation",
+    "render_frequency": "Every frame during spring animation (~60Hz)",
+    "memory_footprint": "Minimal - single path object reused"
+  },
+
+  "tags": [
+    "skia",
+    "line-graph",
+    "data-visualization",
+    "spring-animation",
+    "reanimated",
+    "segmented-control",
+    "chart",
+    "path-effects",
+    "corner-radius",
+    "dashed-line",
+    "custom-font",
+    "interactive",
+    "smooth-transition",
+    "health-metrics",
+    "score-tracking",
+    "pressto",
+    "responsive-design"
+  ]
+}

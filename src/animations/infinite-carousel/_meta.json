@@ -1,0 +1,1158 @@
+{
+  "animation_name": "Infinite Carousel",
+  "animation_slug": "infinite-carousel",
+  "description": "An advanced infinite circular carousel implementation built from scratch using PanGestureHandler instead of FlatList. Features true infinite scrolling without data duplication, custom snap points, configurable interpolation, smooth spring animations, and dynamic background gradients synchronized with the active item. Demonstrates complex gesture handling, modular arithmetic for circular positioning, and advanced Reanimated patterns for creating performant custom scroll views.",
+
+  "main_features": [
+    "True infinite circular carousel without data duplication",
+    "Custom gesture-based scrolling with PanGestureHandler",
+    "Configurable snap-to-interval behavior with velocity support",
+    "Decay animation when snap is disabled",
+    "Imperative scrollToIndex API via forwardRef",
+    "Dynamic background gradient synchronized with active item",
+    "Configurable interpolation with custom input/output ranges",
+    "3D perspective transforms with rotateY based on progress",
+    "Circular positioning using modular arithmetic",
+    "Active index change callbacks (worklet-compatible)",
+    "Centered layout with viewport offset calculations",
+    "Custom snap point algorithm with velocity consideration",
+    "React Native Skia animated gradient background",
+    "Calculator-style card design with theme colors",
+    "Zero re-renders during scrolling (all animations on UI thread)"
+  ],
+
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Main entry component orchestrating carousel, background gradient, and active index tracking"
+    },
+    "components": {
+      "infinite-circular-carousel/index.tsx": "Core carousel component with gesture handling, snap logic, and infinite scroll calculations",
+      "infinite-circular-carousel/carousel-item.tsx": "Individual carousel item with circular translation logic and progress-based animations",
+      "background-gradient/index.tsx": "Animated Skia gradient background with sweep gradients and blur effects",
+      "list-item-calc/index.tsx": "Calculator-themed card component with 3D transforms and theme-based coloring"
+    },
+    "hooks": {
+      "use-interpolate-config.ts": "Custom hook for managing default and custom interpolation configurations"
+    },
+    "utils": {
+      "snap-point.ts": "Snap point calculation algorithm considering velocity and gesture momentum"
+    },
+    "types": {
+      "types.ts": "TypeScript type definitions for carousel props and ref interface"
+    },
+    "constants": {
+      "constants.ts": "Theme data array with color schemes and window dimensions"
+    },
+    "assets": {}
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "graphics": "@shopify/react-native-skia",
+    "gradients": "expo-linear-gradient",
+    "ui": "react-native (View, StyleSheet, Dimensions)"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "useAnimatedReaction",
+        "interpolate",
+        "withSpring",
+        "withDecay",
+        "withTiming",
+        "cancelAnimation"
+      ],
+      "components": ["Animated.View"],
+      "enums": ["Extrapolation"],
+      "types": ["SharedValue"],
+      "critical_features": [
+        "useAnimatedReaction for tracking active index changes",
+        "Modular arithmetic for infinite circular positioning",
+        "cancelAnimation on gesture begin",
+        "withDecay for momentum scrolling"
+      ]
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureDetector"],
+      "apis": ["Gesture.Pan()"],
+      "methods": ["onBegin", "onUpdate", "onEnd"],
+      "usage": "Custom scroll implementation replacing FlatList for greater control",
+      "benefit": "Full control over gesture behavior, snapping, and scroll physics"
+    },
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": ["Canvas", "Rect", "SweepGradient", "Blur"],
+      "functions": ["vec"],
+      "usage": "Animated gradient background with multiple layered effects",
+      "benefit": "Hardware-accelerated graphics with smooth color transitions"
+    },
+    "expo-linear-gradient": {
+      "version": "~15.0.7",
+      "component": "LinearGradient",
+      "usage": "Card gradient backgrounds for calculator-style items",
+      "colors": "['#343f3dff', '#242d2bff']"
+    },
+    "react-native": {
+      "components": ["View", "StyleSheet", "Dimensions"],
+      "apis": ["Dimensions.get('window')"],
+      "usage": "Core UI structure and responsive sizing"
+    }
+  },
+
+  "animation_techniques": {
+    "infinite_circular_logic": {
+      "concept": "Modular arithmetic to create infinite scrolling without data duplication",
+      "initial_offset": "-listOffset * 500 (listItemWidth * dataLength * 500)",
+      "rationale": "Starting at large negative value simplifies circular logic from left to right",
+      "max_scrolls": "~500 full cycles before losing effect (practically infinite)",
+      "calculation": "translateX.value % listOffset for circular position",
+      "innovation": "Zero data duplication - same data items repositioned mathematically"
+    },
+    "circular_item_positioning": {
+      "pattern": "Derived translation with conditional list size offset",
+      "key_logic": "derivedTranslate adjusts based on index and scroll position",
+      "edge_handling": {
+        "initial_items": "index <= maxVisibleItems/2, add listSize when passed center",
+        "final_items": "index > dataLength - maxVisibleItems/2, subtract listSize when before center"
+      },
+      "effect": "Items seamlessly wrap around creating infinite circular effect",
+      "performance": "0 re-renders, pure SharedValue calculations on UI thread"
+    },
+    "snap_point_algorithm": {
+      "implementation": "Custom velocity-aware snap calculation",
+      "formula": "point = value + 0.2 * velocity",
+      "method": "Find closest snap interval to projected point",
+      "intervals": "Both positive and negative multiples of listItemWidth",
+      "benefit": "Natural feeling snaps that respect gesture momentum"
+    },
+    "3d_perspective_transforms": {
+      "perspective": 500,
+      "rotateY": "interpolate(progress, [-1, 1], [-30deg, 30deg])",
+      "translateX": "-progress * 8 (subtle horizontal shift)",
+      "scale": "1 - abs(progress) * 0.025 (slight size reduction at edges)",
+      "effect": "Cards rotate in 3D as they move away from center"
+    },
+    "dynamic_background_sync": {
+      "pattern": "withTiming color transition based on active index",
+      "source": "ThemeData[activeIndex.value].primary",
+      "duration": 500,
+      "integration": "Skia gradient receives animated SharedValue<string>",
+      "effect": "Background smoothly transitions colors as user scrolls"
+    },
+    "configurable_interpolation": {
+      "default_input": "[(i-1)*width, i*width, (i+1)*width]",
+      "default_output": "[0, 1, 0]",
+      "custom_example": "[(i-2)*width, (i-1)*width, i*width, (i+1)*width, (i+2)*width]",
+      "custom_output_example": "[-1, -1.5, 0, 1.5, 1]",
+      "extrapolation": "Configurable (default: CLAMP)",
+      "benefit": "Users can customize progress calculation for different effects"
+    },
+    "gesture_scroll_physics": {
+      "onBegin": "Cancel running animations, save context position",
+      "onUpdate": "translateX = contextX + translationX",
+      "onEnd_with_snap": "Calculate snap point, animate with spring",
+      "onEnd_without_snap": "Use withDecay for momentum scrolling",
+      "innovation": "Recreated ScrollView behavior with full customization"
+    },
+    "z_index_layering": {
+      "pattern": "Math.floor(Math.abs(progress.value * 100))",
+      "effect": "Center items appear on top, creating depth illusion",
+      "note": "Optional - can be removed for specific use cases"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "translateX",
+        "type": "SharedValue<number>",
+        "scope": "InfiniteCircularCarousel",
+        "initial": "-listOffset * 500",
+        "updates": "Pan gesture onUpdate",
+        "purpose": "Main scroll position tracking with large negative offset for infinite effect"
+      },
+      {
+        "name": "contextX",
+        "type": "SharedValue<number>",
+        "scope": "InfiniteCircularCarousel",
+        "initial": 0,
+        "updates": "Gesture onBegin",
+        "purpose": "Store translateX value at gesture start for relative translation calculation"
+      },
+      {
+        "name": "activeIndex",
+        "type": "SharedValue<number>",
+        "scope": "InfiniteCarousel",
+        "initial": 0,
+        "updates": "useAnimatedReaction callback",
+        "purpose": "Track currently centered item for background color sync"
+      },
+      {
+        "name": "backgroundPrimaryColor",
+        "type": "useDerivedValue<string>",
+        "scope": "InfiniteCarousel",
+        "calculation": "withTiming(ThemeData[activeIndex.value].primary, { duration: 500 })",
+        "purpose": "Animated color value for Skia gradient background"
+      },
+      {
+        "name": "derivedTranslate",
+        "type": "useDerivedValue<number>",
+        "scope": "CarouselItem",
+        "calculation": "Complex circular logic with conditional list size offsets",
+        "purpose": "Calculate item position accounting for infinite circular effect"
+      },
+      {
+        "name": "progress",
+        "type": "useDerivedValue<number>",
+        "scope": "CarouselItem",
+        "calculation": "interpolate(-derivedTranslate, inputRange, outputRange, extrapolation)",
+        "purpose": "Progress value (0 = center) for item animations in renderItem"
+      }
+    ],
+    "useAnimatedReaction": {
+      "pattern": "Track computed value changes and trigger callbacks",
+      "watched_value": "Math.abs(Math.round((translateX % listOffset) / listItemWidth)) % dataLength",
+      "callback": "onActiveIndexChanged(newIndex)",
+      "worklet": true,
+      "benefit": "Automatically notify parent of active index changes without re-renders"
+    },
+    "useDerivedValue_patterns": [
+      {
+        "name": "backgroundPrimaryColor",
+        "pattern": "Animated color transition based on index",
+        "animation": "withTiming for smooth color changes",
+        "benefit": "Background syncs with carousel without bridge crossing"
+      },
+      {
+        "name": "derivedTranslate",
+        "pattern": "Complex conditional logic for circular positioning",
+        "conditions": "Initial vs final items, before vs after center",
+        "benefit": "Seamless infinite scrolling with mathematical precision"
+      },
+      {
+        "name": "progress",
+        "pattern": "Interpolate derived translate with custom config",
+        "dependencies": "derivedTranslate, interpolateConfig",
+        "benefit": "Custom progress calculation for each item"
+      },
+      {
+        "name": "sweepGradientColors",
+        "pattern": "Array of colors with animated value",
+        "calculation": "[DEFAULT_WHITE, mainColor.value, mainColor.value]",
+        "usage": "Skia SweepGradient colors prop",
+        "benefit": "Real-time gradient color updates"
+      }
+    ],
+    "useAnimatedStyle": {
+      "carousel_item": {
+        "properties": ["transform: [translateX]", "zIndex"],
+        "translateX": "derivedTranslate.value",
+        "zIndex": "Math.floor(Math.abs(progress.value * 100))",
+        "purpose": "Position items and control layering"
+      },
+      "list_item_card": {
+        "properties": ["transform: [perspective, translateX, scale, rotateY]"],
+        "perspective": 500,
+        "translateX": "-progress.value * 8",
+        "scale": "1 - Math.abs(progress.value) * 0.025",
+        "rotateY": "interpolate(progress, [-1, 1], [-30deg, 30deg])",
+        "purpose": "3D card rotation and scaling effects"
+      }
+    },
+    "gesture_handlers": {
+      "Pan_gesture": {
+        "onBegin": "Cancel animations, store context",
+        "onUpdate": "Update translateX with relative translation",
+        "onEnd": "Snap to nearest point or decay animation",
+        "worklet": true,
+        "benefit": "60fps gesture tracking on UI thread"
+      }
+    },
+    "animation_functions": [
+      {
+        "name": "withSpring",
+        "usage": ["Snap animation", "scrollToIndex method"],
+        "config": "{ mass: 0.25 }",
+        "benefit": "Natural, bouncy scroll-to animations"
+      },
+      {
+        "name": "withDecay",
+        "usage": "Momentum scrolling when snap disabled",
+        "config": "{ velocity: event.velocityX }",
+        "benefit": "Natural deceleration physics"
+      },
+      {
+        "name": "withTiming",
+        "usage": "Background color transitions",
+        "config": "{ duration: 500 }",
+        "benefit": "Smooth color morphing"
+      },
+      {
+        "name": "cancelAnimation",
+        "usage": "Stop ongoing animations when gesture begins",
+        "benefit": "Immediate response to user input"
+      }
+    ]
+  },
+
+  "mathematical_algorithms": {
+    "modular_arithmetic_infinite_scroll": {
+      "concept": "Use modulo operation to create circular position from linear scroll",
+      "formula": "fixedTranslateX = translateX.value % listOffset",
+      "list_offset": "listItemWidth * data.length",
+      "base_translation": "translateX.value - fixedTranslateX",
+      "result": "Position within 0 to listOffset range regardless of actual scroll distance",
+      "innovation": "Enables infinite scrolling without data array manipulation"
+    },
+    "closest_index_position_algorithm": {
+      "purpose": "Find shortest path to scroll to specific index",
+      "destinations": [
+        "baseTranslation - index * listItemWidth",
+        "baseTranslation - index * listItemWidth + listOffset",
+        "baseTranslation - index * listItemWidth - listOffset"
+      ],
+      "selection": "Destination with minimum absolute distance from current position",
+      "benefit": "Always takes shortest circular path to target index"
+    },
+    "snap_point_calculation": {
+      "formula": "point = value + 0.2 * velocity",
+      "velocity_factor": "0.2 (adjusts momentum influence)",
+      "method": "Find snap interval with minimum distance to projected point",
+      "intervals": "All positive and negative multiples of listItemWidth",
+      "result": "Natural snap that respects gesture momentum"
+    },
+    "active_index_extraction": {
+      "formula": "Math.abs(Math.round((translateX % listOffset) / listItemWidth)) % dataLength",
+      "steps": [
+        "1. translateX % listOffset → position in circular range",
+        "2. Divide by listItemWidth → item index (decimal)",
+        "3. Math.round → nearest integer index",
+        "4. Math.abs → handle negative values",
+        "5. % dataLength → wrap to valid data index"
+      ],
+      "result": "Current centered item index (0 to dataLength-1)"
+    },
+    "circular_item_translation_logic": {
+      "concept": "Conditionally add/subtract listSize to keep items visible",
+      "initial_items": "Add listSize when scrolled past center (hasPassedCenter)",
+      "final_items": "Subtract listSize when approaching from left (!hasPassedCenter)",
+      "max_visible_items": "Math.round(listViewPort / listItemWidth)",
+      "threshold": "Math.abs(translation) > listSize / 2",
+      "result": "Items wrap around seamlessly creating infinite effect"
+    },
+    "centered_offset_calculation": {
+      "formula": "(listViewPort - listItemWidth) / 2",
+      "purpose": "Center the focused item in the viewport",
+      "condition": "Only applied when centered prop is true",
+      "effect": "Active item appears in middle of screen"
+    },
+    "progress_interpolation": {
+      "input": "-derivedTranslate.value",
+      "default_input_range": "[(i-1)*width, i*width, (i+1)*width]",
+      "default_output_range": "[0, 1, 0]",
+      "result": "progress = 0 when item is centered, increases as it moves away",
+      "usage": "Passed to renderItem for custom animations"
+    }
+  },
+
+  "component_architecture": {
+    "forwardRef_pattern": {
+      "component": "BaseInfiniteCircularCarousel → InfiniteCircularCarousel",
+      "ref_type": "InfiniteCircularCarouselRef",
+      "methods": ["scrollToIndex(index, animated)"],
+      "benefit": "Imperative control from parent components",
+      "generic_support": "Full TypeScript generic support for data type"
+    },
+    "render_prop_pattern": {
+      "prop": "renderItem",
+      "signature": "({ item, index, progress }) => ReactNode",
+      "progress_type": "SharedValue<number>",
+      "benefit": "Full customization of item appearance and animations"
+    },
+    "ref_usage": {
+      "parent": "useRef<InfiniteCircularCarouselRef>(null)",
+      "method_call": "ref.current?.scrollToIndex(index)",
+      "use_case": "Tap item to programmatically scroll to it"
+    },
+    "component_composition": {
+      "InfiniteCarousel": "Top-level orchestrator",
+      "BackgroundGradient": "Skia-based animated background",
+      "InfiniteCircularCarousel": "Core carousel logic and gesture handling",
+      "CarouselItem": "Individual item wrapper with circular positioning",
+      "ListItemCard": "Custom rendered item (calculator theme)",
+      "separation": "Clear separation of concerns and reusability"
+    }
+  },
+
+  "custom_hooks": {
+    "useInterpolateConfig": {
+      "purpose": "Merge default and custom interpolation configurations",
+      "params": ["listItemWidth", "interpolateConfig (optional)"],
+      "defaults": {
+        "inputRange": "[(i-1)*width, i*width, (i+1)*width]",
+        "outputRange": "[0, 1, 0]",
+        "extrapolationType": "Extrapolation.CLAMP"
+      },
+      "pattern": "useCallback for worklet functions, useMemo for final config",
+      "benefit": "Allows users to customize progress calculation per item"
+    }
+  },
+
+  "visual_design": {
+    "calculator_theme": {
+      "inspiration": "AcuteCalc calculator app",
+      "card_design": "Dark gradient with circular button grid",
+      "colors": "Theme-based (12 color schemes)",
+      "button_layout": "3x3 grid of circular buttons",
+      "button_colors": "First 2 white, every 3rd primary, rest secondary",
+      "aspect_ratio": "1:0.7 (taller than wide)"
+    },
+    "card_styling": {
+      "width": "ListItemSize * 1.2",
+      "height": "itemWidth / 0.7",
+      "border_radius": 15,
+      "border_curve": "continuous (iOS)",
+      "gradient": "LinearGradient ['#343f3dff', '#242d2bff']",
+      "buttons": "9 circular buttons with theme colors"
+    },
+    "background_gradient": {
+      "type": "Skia SweepGradient with blur",
+      "layers": [
+        "Base rect with main color (opacity 0.75)",
+        "SweepGradient with main color (blur: 30)",
+        "SweepGradient overlay white to gray (blur: 10, opacity: 0.3)"
+      ],
+      "center": "vec(WindowWidth/2, WindowHeight/2)",
+      "colors": "Animate with theme primary color",
+      "effect": "Radial color burst from screen center"
+    },
+    "layout": {
+      "container": "flex: 1, centered",
+      "carousel": "Horizontally scrollable items",
+      "background": "StyleSheet.absoluteFill with Canvas",
+      "viewport": "WindowWidth (full screen width)",
+      "item_size": "WindowWidth / 4.8"
+    },
+    "spacing": {
+      "list_item_size": "WindowWidth / 4.8",
+      "item_padding": "2.5 for button spacing",
+      "button_size": "itemWidth / 3.5",
+      "centered_offset": "(listViewPort - listItemWidth) / 2"
+    }
+  },
+
+  "data_structure": {
+    "theme_data": {
+      "type": "ThemeDataType[]",
+      "fields": ["primary: string", "secondary: string", "title: string"],
+      "count": 12,
+      "examples": [
+        "{ primary: '#CB832E', secondary: '#7B6746', title: 'Classic' }",
+        "{ primary: '#43972A', secondary: '#486A41', title: 'Green' }",
+        "{ primary: '#CA3E9D', secondary: '#7B5372', title: 'Pink' }"
+      ],
+      "usage": "Drive card colors and background gradients"
+    },
+    "constants": {
+      "WindowWidth": "Dimensions.get('window').width",
+      "WindowHeight": "Dimensions.get('window').height",
+      "DEFAULT_WHITE": "#CBCBCD",
+      "ListItemSize": "WindowWidth / 4.8"
+    }
+  },
+
+  "performance_optimizations": {
+    "zero_re_renders": {
+      "pattern": "All animations use SharedValues",
+      "benefit": "React never re-renders during scrolling",
+      "proof": "No useState for scroll position"
+    },
+    "ui_thread_execution": {
+      "worklets": ["onUpdate", "onEnd", "inputRange", "outputRange", "onActiveIndexChanged"],
+      "benefit": "All calculations on UI thread, no bridge crossing",
+      "result": "60fps scrolling on most devices"
+    },
+    "no_data_duplication": {
+      "traditional": "Duplicate data array [data, data, data] for infinite effect",
+      "this_approach": "Mathematical modulo for circular positioning",
+      "benefit": "Memory efficient, works with any data size"
+    },
+    "cancelAnimation_on_gesture": {
+      "pattern": "Cancel running animations when user touches screen",
+      "benefit": "Immediate response to user input, no animation conflict"
+    },
+    "useMemo_for_snap_intervals": {
+      "value": "snapIntervals calculated once, memoized",
+      "dependencies": ["data", "listItemWidth"],
+      "benefit": "Avoid recalculating snap points on every gesture"
+    },
+    "useCallback_for_functions": {
+      "functions": ["findClosestIndexPosition", "scrollToIndex"],
+      "benefit": "Stable references prevent unnecessary recalculations"
+    },
+    "derivedValue_efficiency": {
+      "pattern": "Derived values automatically track dependencies",
+      "benefit": "Only recalculate when dependencies change",
+      "examples": ["progress", "derivedTranslate", "backgroundPrimaryColor"]
+    },
+    "skia_rendering": {
+      "benefit": "Hardware-accelerated gradient rendering",
+      "performance": "Much faster than View-based gradients",
+      "features": "GPU-accelerated blur and gradient effects"
+    }
+  },
+
+  "unique_innovations": {
+    "custom_scroll_from_scratch": {
+      "concept": "Rebuild ScrollView/FlatList behavior with PanGestureHandler",
+      "reason": "Complete control over snap behavior and infinite logic",
+      "author_quote": "Before being scared by the code... I really lost a ton of time to make it work properly, but I think it was worth it",
+      "vs_library": "Rejected react-native-reanimated-carousel for more control",
+      "result": "Fully customizable carousel with perfect snapping"
+    },
+    "negative_offset_infinite_trick": {
+      "concept": "Start at -listOffset * 500 instead of 0",
+      "benefit": "Simplifies circular logic by avoiding positive/negative transitions",
+      "practical_limit": "~500 full cycles (practically infinite)",
+      "innovation": "Elegant solution to complex circular math"
+    },
+    "configurable_interpolation_system": {
+      "feature": "Users can provide custom input/output ranges",
+      "default": "Simple 3-point linear interpolation",
+      "example": "5-point custom range for complex progress curves",
+      "benefit": "Same carousel, infinite animation possibilities",
+      "code_location": "index.tsx lines 52-71"
+    },
+    "worklet_active_index_callback": {
+      "pattern": "onActiveIndexChanged marked as worklet",
+      "benefit": "Parent can update SharedValues directly without bridge",
+      "usage": "Background color sync without re-renders",
+      "innovation": "Callback runs on UI thread"
+    },
+    "mathematical_circular_positioning": {
+      "concept": "No data duplication, pure math for infinite effect",
+      "challenge": "Keep initial and final items visible at edges",
+      "solution": "Conditional list size offset based on index and scroll position",
+      "author_note": "This logic isn't perfect and needs to be adjusted 😅",
+      "workaround": "Can double data array if edge cases occur",
+      "principle": "0 re-renders, no performance hit for large datasets"
+    },
+    "decay_animation_option": {
+      "feature": "Disable snapping for free-form momentum scrolling",
+      "implementation": "withDecay({ velocity: event.velocityX })",
+      "author_quote": "That's not needed for our specific use-case, but I think it's really cool to have it 😎",
+      "benefit": "Demonstrates full scroll physics recreation"
+    },
+    "imperative_scroll_to_index": {
+      "feature": "forwardRef with scrollToIndex method",
+      "usage": "Tap any item to scroll to it programmatically",
+      "path_finding": "findClosestIndexPosition finds shortest circular route",
+      "animation": "Spring animation with mass: 0.25",
+      "benefit": "Natural, bouncy navigation to any item"
+    }
+  },
+
+  "gesture_handling": {
+    "pan_gesture": {
+      "type": "Gesture.Pan()",
+      "lifecycle": ["onBegin", "onUpdate", "onEnd"],
+      "runs_on": "UI thread (worklet)",
+      "tracking": "translateX SharedValue"
+    },
+    "onBegin_behavior": {
+      "actions": [
+        "cancelAnimation(translateX) - stop ongoing animations",
+        "contextX.value = translateX.value - save current position"
+      ],
+      "benefit": "Immediate gesture response, no animation conflict"
+    },
+    "onUpdate_behavior": {
+      "formula": "translateX.value = contextX.value + translationX",
+      "pattern": "Relative translation from gesture start",
+      "benefit": "Smooth tracking of finger movement"
+    },
+    "onEnd_behavior": {
+      "snap_enabled": {
+        "step1": "fixedTranslateX = translateX.value % listOffset",
+        "step2": "baseTranslation = translateX.value - fixedTranslateX",
+        "step3": "snapTo = snapPoint(fixedTranslateX, velocityX, snapIntervals)",
+        "step4": "translateX.value = withSpring(baseTranslation + snapTo)",
+        "result": "Snap to nearest item with spring animation"
+      },
+      "snap_disabled": {
+        "formula": "translateX.value = withDecay({ velocity: event.velocityX })",
+        "result": "Free momentum scrolling with natural deceleration"
+      }
+    },
+    "velocity_consideration": {
+      "pattern": "Snap point calculation includes velocity",
+      "formula": "point = value + 0.2 * velocity",
+      "benefit": "Fast swipes snap to next item, slow drags snap to nearest"
+    }
+  },
+
+  "state_management": {
+    "react_state": [],
+    "shared_values": [
+      {
+        "name": "translateX",
+        "scope": "Carousel",
+        "drives": "All scroll and animation logic"
+      },
+      {
+        "name": "contextX",
+        "scope": "Carousel",
+        "drives": "Relative gesture translation"
+      },
+      {
+        "name": "activeIndex",
+        "scope": "Parent",
+        "drives": "Background color changes"
+      }
+    ],
+    "data_flow": {
+      "steps": [
+        "1. User pans gesture horizontally",
+        "2. onUpdate updates translateX SharedValue",
+        "3. Each CarouselItem's derivedTranslate recalculates with modulo logic",
+        "4. progress interpolates from derivedTranslate",
+        "5. renderItem receives progress for custom animations",
+        "6. ListItemCard applies 3D transforms based on progress",
+        "7. useAnimatedReaction detects active index change",
+        "8. activeIndex.value updates (worklet callback)",
+        "9. backgroundPrimaryColor derives new color with withTiming",
+        "10. Skia gradient receives animated color",
+        "11. All animations run on UI thread simultaneously"
+      ]
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Theme or color scheme pickers",
+      "Product showcases with many variants",
+      "Calculator skin selectors",
+      "Large datasets requiring true infinite scrolling",
+      "Custom scroll behavior requirements",
+      "Educational demonstrations of gesture handling",
+      "Settings selectors with visual preview",
+      "Media carousels with unlimited items"
+    ],
+    "real_world_examples": [
+      "AcuteCalc theme selector (original inspiration)",
+      "E-commerce product variant selectors",
+      "Design system component galleries",
+      "Game character/skin selection screens",
+      "Photo filters with live preview",
+      "Font or typography pickers",
+      "Icon set browsers"
+    ],
+    "educational": [
+      "Teaching custom gesture handling",
+      "Demonstrating modular arithmetic in UI",
+      "Showing alternatives to FlatList/ScrollView",
+      "Advanced Reanimated patterns",
+      "Circular data structure visualization",
+      "Snap point algorithms",
+      "forwardRef with imperative APIs",
+      "Skia integration with Reanimated"
+    ],
+    "when_to_use_this_vs_flatlist": [
+      "Need complete control over snap behavior",
+      "Want true infinite scrolling without data duplication",
+      "Require custom gesture handling",
+      "Need velocity-aware snapping",
+      "Want decay animation option",
+      "Performance critical with large datasets",
+      "Educational purposes to understand scroll internals"
+    ]
+  },
+
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with generic type support",
+      "Extensive inline documentation and comments",
+      "Author provides honest context and reasoning",
+      "Clean separation of concerns (components, hooks, utils, types)",
+      "Worklet-compatible functions properly marked",
+      "Configurable and extensible architecture",
+      "forwardRef pattern for imperative control",
+      "Type-safe ref and props interfaces",
+      "Educational comments explaining complex logic",
+      "Performance-conscious patterns throughout",
+      "Modular file structure with logical organization",
+      "Custom hook for interpolation config management",
+      "Utility function for snap point calculation",
+      "Author acknowledges limitations and suggests workarounds",
+      "References to alternative libraries considered"
+    ],
+    "areas_for_improvement": [
+      "Circular positioning logic has edge cases (author acknowledges)",
+      "Magic number 500 for initial offset could be configurable",
+      "zIndex calculation could be optional/configurable",
+      "ListItemCard has hardcoded calculator design (not reusable)",
+      "Button coloring logic is complex and specific to calculator theme",
+      "Could extract more configuration into props",
+      "Test coverage not visible",
+      "Accessibility features not implemented",
+      "Error boundaries not included",
+      "No loading states for theme data"
+    ],
+    "documentation": {
+      "inline_comments": [
+        "Comprehensive explanation of infinite circular logic (lines 31-38)",
+        "Honest assessment: 'Before being scared by the code...' (line 31)",
+        "Explains why custom implementation over library (lines 35-38)",
+        "Details negative offset strategy (lines 62-69)",
+        "Acknowledges circular positioning limitations (lines 40-49)",
+        "Suggests workarounds for edge cases (line 43)",
+        "Explains gesture recreation (lines 149-151)",
+        "Comments on optional features (lines 163-166)",
+        "Clear worklet markers with 'worklet' directive"
+      ],
+      "author_transparency": [
+        "'I really lost a ton of time to make it work properly'",
+        "'This logic isn't perfect and needs to be adjusted 😅'",
+        "'But honestly, who's going to scroll that much? 😅'",
+        "'That's not needed for our specific use-case, but I think it's really cool to have it 😎'",
+        "'This code is really a mess 😅' (ListItemCard)",
+        "'I just played A LOT with the interpolation'"
+      ]
+    },
+    "typescript": {
+      "coverage": "Full TypeScript throughout",
+      "generics": "<T> for data type flexibility",
+      "type_definitions": [
+        "InfiniteCircularCarouselProps<T>",
+        "InfiniteCircularCarouselRef",
+        "CarouselItemProps<T>",
+        "ThemeDataType"
+      ],
+      "type_imports": "Uses 'type' keyword for type-only imports",
+      "ref_typing": "Proper Ref<InfiniteCircularCarouselRef> typing"
+    }
+  },
+
+  "known_limitations": {
+    "circular_positioning_edge_cases": {
+      "issue": "Edge item positioning logic not perfect for all scenarios",
+      "author_acknowledgment": "This logic isn't perfect and needs to be adjusted 😅",
+      "workaround": "Double the data array if edge cases occur",
+      "affects": "Initial and final items at carousel boundaries"
+    },
+    "500_scroll_limit": {
+      "issue": "After scrolling listOffset * 500, infinite effect breaks",
+      "practical_impact": "Minimal - would take hours of continuous scrolling",
+      "author_quote": "But honestly, who's going to scroll that much? 😅",
+      "solution": "Could reset translateX when approaching limit"
+    },
+    "no_vertical_support": {
+      "limitation": "Only horizontal scrolling implemented",
+      "improvement": "Could add vertical variant with similar logic"
+    },
+    "hardcoded_calculator_design": {
+      "issue": "ListItemCard tightly coupled to calculator theme",
+      "improvement": "Should be more generic or configurable",
+      "affects": "Reusability for non-calculator use cases"
+    },
+    "fixed_viewport_width": {
+      "limitation": "listViewPort defaults to WindowWidth",
+      "improvement": "Could be more flexible for partial-width carousels"
+    },
+    "no_accessibility": {
+      "missing": [
+        "Screen reader support",
+        "Keyboard navigation",
+        "Focus management",
+        "Reduced motion support"
+      ]
+    },
+    "no_imperative_reset": {
+      "limitation": "No method to reset to initial position or specific offset",
+      "available": "Only scrollToIndex by index"
+    },
+    "snap_interval_calculation": {
+      "issue": "Snap intervals recalculated on data/width change",
+      "impact": "useMemo prevents most recalculation, but could be more efficient"
+    }
+  },
+
+  "potential_improvements": {
+    "features": [
+      "Auto-scroll/auto-play with configurable interval",
+      "Pagination indicator",
+      "Loop mode with seamless transition",
+      "onItemPress callback with item data",
+      "Double-tap to select/expand",
+      "Long-press for context menu",
+      "Item remove/delete with swipe gesture",
+      "Dynamic item width support",
+      "Vertical carousel variant",
+      "Grid carousel (2D infinite scrolling)"
+    ],
+    "customization": [
+      "Generic renderItem without calculator coupling",
+      "Configurable initial offset (not hardcoded 500)",
+      "Custom snap point algorithm prop",
+      "Adjustable velocity factor for snapping",
+      "Configurable spring/decay animation configs",
+      "Optional zIndex calculation function prop",
+      "Custom progress calculation function",
+      "Theming system for default card designs"
+    ],
+    "performance": [
+      "Virtual rendering for very large datasets",
+      "Lazy loading of item content",
+      "Image preloading strategy",
+      "Memory optimization for background gradients",
+      "Optimize snap interval calculation",
+      "Add shouldComponentUpdate equivalent",
+      "Reduce useDerivedValue dependencies"
+    ],
+    "accessibility": [
+      "Screen reader announcements",
+      "Keyboard navigation (arrow keys)",
+      "Focus indicators",
+      "AccessibilityRole and Label props",
+      "Reduced motion support (disable animations)",
+      "Voice control integration",
+      "High contrast mode support"
+    ],
+    "ux_enhancements": [
+      "Loading states for async data",
+      "Error boundaries and error states",
+      "Empty state handling",
+      "Haptic feedback on snap",
+      "Sound effects (optional)",
+      "Touch feedback on items",
+      "Pull to refresh",
+      "Swipe to delete",
+      "Reorder mode"
+    ],
+    "edge_case_handling": [
+      "Fix circular positioning edge cases",
+      "Handle single item gracefully",
+      "Handle empty data array",
+      "Reset mechanism before hitting 500x limit",
+      "Handle rapid gesture interruptions",
+      "Handle layout changes during scroll"
+    ],
+    "developer_experience": [
+      "More example configurations",
+      "Playground/demo mode",
+      "Debug mode with visualizations",
+      "Performance monitoring hooks",
+      "TypeScript strict mode compatibility",
+      "Better error messages",
+      "Storybook integration examples"
+    ]
+  },
+
+  "key_insights": {
+    "custom_scroll_control": "Rebuilding ScrollView with PanGestureHandler provides complete control over behavior, despite complexity",
+    "modular_arithmetic_magic": "Modulo operation (%) enables infinite scrolling without any data duplication - memory efficient for any dataset size",
+    "negative_offset_simplification": "Starting at large negative value (-listOffset * 500) brilliantly simplifies circular logic",
+    "velocity_aware_snapping": "Including velocity in snap calculation (point = value + 0.2 * velocity) creates natural feeling gesture response",
+    "worklet_callbacks": "onActiveIndexChanged as worklet enables parent to react without re-renders or bridge crossing",
+    "configurable_interpolation_power": "Custom interpolation config allows same carousel to produce infinite animation variations",
+    "closest_path_algorithm": "findClosestIndexPosition ensures scrollToIndex always takes shortest circular route",
+    "gesture_state_management": "contextX pattern for relative gesture translation is essential for smooth pan handling",
+    "skia_performance": "Skia gradients significantly outperform View-based gradients for animated backgrounds",
+    "zero_react_renders": "Entire scroll animation system runs without single React re-render - pure SharedValue architecture",
+    "forwardRef_flexibility": "Imperative API via ref enables programmatic control while maintaining declarative component interface",
+    "author_transparency": "Honest comments about limitations and challenges make this excellent learning material"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic gesture handling with react-native-gesture-handler",
+      "SharedValue fundamentals",
+      "useAnimatedStyle basics",
+      "Transform animations (translateX, rotateY, scale)",
+      "forwardRef pattern for refs",
+      "TypeScript with React components"
+    ],
+    "for_intermediate": [
+      "Custom gesture implementations",
+      "useDerivedValue for computed values",
+      "Interpolation with custom ranges",
+      "Modular arithmetic in UI programming",
+      "useAnimatedReaction for side effects",
+      "Worklet functions and 'worklet' directive",
+      "cancelAnimation usage",
+      "withSpring and withDecay animations",
+      "Skia integration with Reanimated",
+      "Custom hooks with useMemo and useCallback"
+    ],
+    "for_advanced": [
+      "Implementing infinite circular scrolling mathematically",
+      "Creating custom scroll views from scratch",
+      "Complex gesture state management",
+      "Snap point algorithms with velocity",
+      "Circular data structure visualization",
+      "Optimizing for zero re-renders",
+      "Generic TypeScript component patterns",
+      "Configurable interpolation systems",
+      "Finding shortest circular paths algorithmically",
+      "Balancing flexibility vs. complexity in APIs",
+      "Performance optimization with memoization",
+      "UI thread computation strategies"
+    ],
+    "algorithm_concepts": [
+      "Modular arithmetic for circular logic",
+      "Distance minimization algorithms",
+      "Snap point calculation with momentum",
+      "Conditional positioning logic",
+      "Path finding in circular structures"
+    ],
+    "animation_principles": [
+      "Velocity-based physics",
+      "Spring animation dynamics",
+      "Decay animation physics",
+      "3D perspective transforms",
+      "Progress-based interpolation",
+      "Animation cancellation strategies"
+    ]
+  },
+
+  "comparison_to_alternatives": {
+    "vs_react_native_reanimated_carousel": {
+      "this_approach": "Custom implementation with PanGestureHandler",
+      "library": "Pre-built carousel with many features",
+      "pros": "Complete control over snapping, gesture behavior, infinite logic",
+      "cons": "Much more complex, more code to maintain",
+      "author_reasoning": "Wasn't really happy with the snapping effect, wanted more control",
+      "when_to_use": "Need specific behavior, learning purposes, performance critical"
+    },
+    "vs_flatlist_carousel": {
+      "this_approach": "Custom gesture handling",
+      "alternative": "Animated.FlatList with horizontal prop",
+      "pros": "Full gesture customization, true infinite scrolling, configurable snap behavior",
+      "cons": "More complex, no built-in features like onViewableItemsChanged",
+      "when_to_use": "Need infinite scrolling without data duplication, custom snap logic"
+    },
+    "vs_scrollview_with_paging": {
+      "this_approach": "Complete control over snap and scroll physics",
+      "alternative": "ScrollView with pagingEnabled",
+      "pros": "Custom snap intervals, velocity-aware snapping, configurable animations",
+      "cons": "More code, need to handle edge cases",
+      "when_to_use": "Standard paging doesn't meet requirements"
+    },
+    "vs_data_duplication_infinite": {
+      "this_approach": "Mathematical modulo for circular positioning",
+      "alternative": "[data, data, data] array duplication",
+      "innovation": "Zero memory overhead for infinite effect",
+      "benefit": "Scales to any data size without memory concern",
+      "tradeoff": "More complex positioning logic"
+    }
+  },
+
+  "platform_considerations": {
+    "ios": {
+      "features": "All features fully supported",
+      "performance": "Excellent with Metal rendering",
+      "gestures": "Native gesture handling performance",
+      "skia": "Hardware-accelerated with Metal backend",
+      "border_curve": "continuous borderCurve supported"
+    },
+    "android": {
+      "features": "All features fully supported",
+      "performance": "Excellent",
+      "gestures": "Native gesture handling",
+      "skia": "Hardware-accelerated",
+      "note": "borderCurve: 'continuous' ignored (iOS only)"
+    },
+    "web": {
+      "compatibility": "Should work with react-native-web",
+      "considerations": [
+        "Test gesture behavior with mouse vs touch",
+        "Skia web support (requires @shopify/react-native-skia web build)",
+        "Performance may vary",
+        "Test gradient rendering",
+        "Consider mouse wheel scrolling support"
+      ]
+    }
+  },
+
+  "testing_considerations": {
+    "visual_tests": [
+      "Verify infinite scrolling in both directions",
+      "Check item positioning at edges",
+      "Confirm 3D perspective transforms render correctly",
+      "Verify background gradient color transitions",
+      "Check theme color application",
+      "Test on different screen sizes",
+      "Verify calculator button layout"
+    ],
+    "interaction_tests": [
+      "Scroll smoothly without jank",
+      "Snap to correct positions",
+      "Fast swipe snaps to next item",
+      "Slow drag snaps to nearest",
+      "Tap item to scroll to it",
+      "Interrupt ongoing animation with gesture",
+      "Rapid gesture changes",
+      "Test decay mode (snap disabled)"
+    ],
+    "edge_cases": [
+      "Single item in data array",
+      "Two items (minimum for circular)",
+      "Empty data array",
+      "Very large data arrays (100+ items)",
+      "Rapid scrollToIndex calls",
+      "ScrollToIndex during gesture",
+      "Layout changes during scroll",
+      "First item positioning",
+      "Last item positioning",
+      "Scroll to same index as current"
+    ],
+    "performance_tests": [
+      "Monitor FPS during fast scrolling (target: 60fps)",
+      "Profile UI thread usage",
+      "Check memory usage with large datasets",
+      "Test with many simultaneous animations",
+      "Measure gesture response latency",
+      "Profile snap calculation performance"
+    ],
+    "configuration_tests": [
+      "Test with custom interpolation configs",
+      "Test with snap disabled",
+      "Test with centered=false",
+      "Test with different listItemWidths",
+      "Test with different listViewPorts",
+      "Test custom extrapolation types"
+    ]
+  },
+
+  "related_patterns": {
+    "similar_animations": [
+      "Circular Carousel (FlatList-based variant in this repo)",
+      "Apple Cover Flow",
+      "Netflix carousel",
+      "Tinder swipe cards",
+      "Wheel picker/slot machine",
+      "3D cube carousel"
+    ],
+    "gesture_patterns": [
+      "Custom ScrollView implementations",
+      "Swipeable cards",
+      "Draggable lists",
+      "Pan-based navigators",
+      "Pull to refresh",
+      "Swipe to delete"
+    ],
+    "reanimated_patterns": [
+      "Scroll-based animations",
+      "Gesture-driven UI",
+      "Imperative animations with ref",
+      "Configurable interpolation systems",
+      "Worklet callbacks",
+      "Zero re-render architectures"
+    ]
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~600 lines total (moderate footprint)",
+    "dependencies": {
+      "react-native-reanimated": "Required, likely already in project",
+      "react-native-gesture-handler": "Required, likely already in project",
+      "@shopify/react-native-skia": "Adds ~2-3MB to bundle (if not already present)",
+      "expo-linear-gradient": "Small impact (~50KB)"
+    },
+    "runtime_memory": "Minimal - few SharedValues, efficient rendering",
+    "estimated_impact": "~50KB minified code (excluding Skia if needed)",
+    "optimization_notes": [
+      "Skia is main bundle size factor",
+      "Could replace Skia gradient with simpler View-based gradient",
+      "Could lazy load calculator theme data",
+      "Tree-shaking compatible"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No support - custom gestures not accessible",
+      "keyboard_navigation": "Not supported",
+      "labels": "No accessibility labels",
+      "focus_management": "No focus handling",
+      "reduced_motion": "Not supported"
+    },
+    "recommendations": [
+      "Add accessibilityRole='adjustable' to carousel container",
+      "Implement accessibilityActions for increment/decrement",
+      "Add accessibilityLabel to each item",
+      "Announce active item on index change",
+      "Support keyboard left/right arrows",
+      "Add focus indicators",
+      "Respect AccessibilityInfo.reduceMotionEnabled",
+      "Provide alternative navigation method",
+      "Add accessibilityHint explaining gesture",
+      "Support voice control commands"
+    ],
+    "challenges": {
+      "custom_gestures": "PanGestureHandler not inherently accessible",
+      "infinite_nature": "Difficult to announce position in infinite list",
+      "visual_focus": "3D transforms may confuse screen readers"
+    }
+  },
+
+  "inspirations_and_references": {
+    "apps": [
+      {
+        "name": "AcuteCalc",
+        "inspiration": "Calculator theme picker design",
+        "elements": "Card design, color themes, button layout"
+      }
+    ],
+    "libraries_considered": [
+      {
+        "name": "react-native-reanimated-carousel",
+        "url": "https://github.com/dohooo/react-native-reanimated-carousel",
+        "decision": "Rejected for lack of control over snapping",
+        "learning": "Inspired custom implementation"
+      }
+    ],
+    "concepts": [
+      "Infinite circular data structures",
+      "Custom scroll view implementations",
+      "Velocity-aware gesture handling",
+      "Modular arithmetic in UI"
+    ]
+  },
+
+  "tags": [
+    "carousel",
+    "infinite-scroll",
+    "circular-carousel",
+    "custom-gesture",
+    "pan-gesture",
+    "from-scratch",
+    "3d-transforms",
+    "reanimated",
+    "gesture-handler",
+    "skia",
+    "animated-gradient",
+    "snap-to-point",
+    "velocity-aware",
+    "modular-arithmetic",
+    "zero-re-renders",
+    "worklet",
+    "imperative-api",
+    "forwardRef",
+    "configurable-interpolation",
+    "calculator-theme",
+    "decay-animation",
+    "spring-animation",
+    "no-data-duplication",
+    "educational",
+    "advanced",
+    "custom-scroll-view"
+  ]
+}

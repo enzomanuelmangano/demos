@@ -1,0 +1,781 @@
+{
+  "animation_name": "Animated Clip Box",
+  "animation_slug": "animated-clip-box",
+  "description": "An interactive clip-box button with expanding circular reveal animation. Features touch-based circle expansion with spring physics, dynamic color interpolation, and text color transitions. The circle expands from a small initial radius to fill the entire button area, creating a clip-mask reveal effect with smooth color transitions.",
+
+  "main_features": [
+    "Touch-triggered circle expansion animation",
+    "Spring-based circular reveal with configurable physics",
+    "Dynamic color interpolation between primary and highlight colors",
+    "Text color transition from black to white based on circle expansion",
+    "Configurable initial radius and color schemes",
+    "Dual-circle layered composition for depth",
+    "Overflow clipping for clean reveal effect",
+    "Separate touch handlers for expand and collapse",
+    "Independent button instances with isolated state"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main demo component with two ClipBoxButton instances",
+    "components/clip-box-button/index.tsx": "Core button component with touch handlers and animation logic",
+    "components/clip-box-button/expanded-circle.tsx": "Expanding circle component with dual-layer circle rendering"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "icons": "@expo/vector-icons",
+    "pattern": "Shared value-driven spring animations"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withSpring",
+        "interpolateColor"
+      ],
+      "types": ["SharedValue"],
+      "critical_feature": "interpolateColor for smooth color transitions and spring animations for organic motion"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["AntDesign"],
+      "icon_used": "twitter",
+      "usage": "Icon displayed in center of expanding circle"
+    }
+  },
+
+  "animation_techniques": {
+    "circle_expansion": {
+      "pattern": "Radius-driven expansion with spring physics",
+      "shared_value": "r (radius SharedValue)",
+      "initial_state": "initialRadius (default 35px)",
+      "expanded_state": "boxWidth (full button width)",
+      "animation_on_touch_start": {
+        "target": "boxWidth",
+        "spring_config": {
+          "damping": 20,
+          "mass": 1,
+          "stiffness": 80
+        },
+        "effect": "Slow, smooth expansion with subtle bounce"
+      },
+      "animation_on_touch_end": {
+        "target": 30,
+        "spring_config": {
+          "damping": 25,
+          "mass": 1.2,
+          "stiffness": 120
+        },
+        "effect": "Faster, tighter collapse with more damping"
+      },
+      "key_insight": "Different spring configs for expansion vs collapse creates asymmetric feel"
+    },
+    "progress_derivation": {
+      "pattern": "useDerivedValue with clamping",
+      "calculation": "clamp(r.value / (boxWidth / 3), 0, 1)",
+      "denominator": "boxWidth / 3 (controls when progress reaches 1.0)",
+      "range": "0 to 1",
+      "purpose": "Normalized progress value for interpolations",
+      "note": "Progress reaches 1.0 when radius is 1/3 of box width, not at full expansion"
+    },
+    "main_circle_animation": {
+      "animated_properties": ["height", "left", "top"],
+      "height": "r.value * 2 (diameter)",
+      "left": "circleCenter - r.value / 2 - circleMargin / 2",
+      "top": "circleCenter - r.value / 2 - circleMargin / 2",
+      "effect": "Circle expands from center point outward",
+      "positioning": "Absolute positioning with dynamic center calculation"
+    },
+    "secondary_circle_color": {
+      "pattern": "interpolateColor based on radius",
+      "input_range": "[initialR, maxRadius]",
+      "output_range": "[primaryColor, highlightColor]",
+      "effect": "Color gradually shifts from primary to highlight as circle expands",
+      "applied_to": "Smaller, fixed-size circle with icon",
+      "purpose": "Visual feedback of expansion progress"
+    },
+    "text_color_transition": {
+      "pattern": "interpolateColor based on progress",
+      "input_range": "[0, 1]",
+      "output_range": "['black', 'white']",
+      "applied_to": "Description text and action title",
+      "effect": "Text transitions from black to white as background expands",
+      "readability": "Ensures text remains readable against changing background"
+    },
+    "overflow_clipping": {
+      "implementation": "overflow: 'hidden' on wrapper View",
+      "purpose": "Clips circle expansion to button boundaries",
+      "effect": "Creates clean reveal effect without circle extending beyond button"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "r",
+        "type": "SharedValue<number>",
+        "initial": "initialRadius (default 35)",
+        "range": "30 to boxWidth",
+        "updates": "withSpring on touch events",
+        "scope": "Local to each ClipBoxButton instance"
+      }
+    ],
+    "useDerivedValue": {
+      "usage_count": 1,
+      "instance": "progress",
+      "purpose": "Normalize radius to 0-1 progress value",
+      "benefit": "Automatic recalculation when r.value changes",
+      "dependencies": ["r.value", "boxWidth"],
+      "includes_clamp": "Custom clamp worklet function for bounds enforcement"
+    },
+    "useAnimatedStyle": {
+      "usage_count": 3,
+      "instances": [
+        {
+          "name": "rMainCircleStyle",
+          "animated_properties": ["height", "left", "top"],
+          "dependencies": ["r.value"],
+          "purpose": "Main expanding circle dimensions and position"
+        },
+        {
+          "name": "rSecondaryCircleStyle",
+          "animated_properties": ["backgroundColor"],
+          "dependencies": ["r.value"],
+          "purpose": "Color transition for icon circle"
+        },
+        {
+          "name": "rStyle",
+          "animated_properties": ["color"],
+          "dependencies": ["progress.value"],
+          "purpose": "Text color transition"
+        }
+      ]
+    },
+    "interpolateColor": {
+      "usage_count": 2,
+      "instances": [
+        {
+          "location": "rSecondaryCircleStyle",
+          "input_range": "[initialR, maxRadius]",
+          "output_range": "[primaryColor, highlightColor]",
+          "purpose": "Circle background color transition"
+        },
+        {
+          "location": "rStyle",
+          "input_range": "[0, 1]",
+          "output_range": "['black', 'white']",
+          "purpose": "Text color transition for readability"
+        }
+      ]
+    },
+    "withSpring": {
+      "usage_count": 2,
+      "configurations": [
+        {
+          "trigger": "onTouchStart",
+          "target": "boxWidth",
+          "config": { "damping": 20, "mass": 1, "stiffness": 80 },
+          "effect": "Slower, bouncier expansion"
+        },
+        {
+          "trigger": "onTouchEnd",
+          "target": 30,
+          "config": { "damping": 25, "mass": 1.2, "stiffness": 120 },
+          "effect": "Faster, tighter collapse"
+        }
+      ],
+      "asymmetric_physics": "Different configs create distinct expansion vs collapse feel"
+    },
+    "worklet_functions": {
+      "clamp": {
+        "signature": "(value: number, lowerBound: number, upperBound: number) => number",
+        "directive": "'worklet'",
+        "purpose": "Clamp value between bounds",
+        "usage": "Clamp progress value to 0-1 range",
+        "implementation": "Math.min(Math.max(value, lowerBound), upperBound)"
+      }
+    }
+  },
+
+  "component_architecture": {
+    "clip_box_button": {
+      "type": "Reusable component",
+      "memo": false,
+      "props": {
+        "style": {
+          "type": "StyleProp<ViewStyle>",
+          "required": true,
+          "usage": "Button container style, width is extracted for calculations"
+        },
+        "initialRadius": {
+          "type": "number",
+          "required": false,
+          "default": 35,
+          "usage": "Starting radius of expanding circle"
+        },
+        "primaryColor": {
+          "type": "string",
+          "required": false,
+          "default": "#4BA2E4",
+          "usage": "Main circle color at start"
+        },
+        "highlightColor": {
+          "type": "string",
+          "required": false,
+          "default": "#83C5F1",
+          "usage": "Circle color when fully expanded"
+        },
+        "description": {
+          "type": "string",
+          "required": true,
+          "usage": "Main descriptive text content"
+        },
+        "actionTitle": {
+          "type": "string",
+          "required": true,
+          "usage": "Button action text (bottom)"
+        },
+        "onPress": {
+          "type": "() => void",
+          "required": false,
+          "usage": "Optional press handler for action title"
+        }
+      }
+    },
+    "expanded_circle": {
+      "type": "Presentational component",
+      "memo": false,
+      "props": {
+        "initialR": {
+          "type": "number",
+          "required": true,
+          "usage": "Initial radius for calculations"
+        },
+        "maxRadius": {
+          "type": "number",
+          "required": true,
+          "usage": "Maximum radius for color interpolation range"
+        },
+        "circleMargin": {
+          "type": "number",
+          "required": true,
+          "usage": "Margin around circle for positioning"
+        },
+        "r": {
+          "type": "SharedValue<number>",
+          "required": true,
+          "usage": "Animated radius value"
+        },
+        "primaryColor": {
+          "type": "string",
+          "required": true,
+          "usage": "Primary circle color"
+        },
+        "highlightColor": {
+          "type": "string",
+          "required": true,
+          "usage": "Highlight circle color"
+        }
+      },
+      "rendering": "Two circles - main expanding circle and fixed icon circle"
+    },
+    "demo_screen": {
+      "type": "Example implementation",
+      "instances": 2,
+      "configurations": [
+        {
+          "instance": 1,
+          "actionTitle": "Explore Demos",
+          "description": "Perfect for learning how React Native Reanimated works...",
+          "colors": "Default blue",
+          "marginBottom": 30
+        },
+        {
+          "instance": 2,
+          "actionTitle": "Learn More",
+          "description": "What if I tell you that this text is animated...",
+          "colors": "Custom orange (#ED7D3A, #E39264)"
+        }
+      ]
+    }
+  },
+
+  "touch_interaction": {
+    "touch_handlers": {
+      "onTouchStart": {
+        "trigger": "Finger touches button",
+        "animation": "r.value = withSpring(boxWidth, { damping: 20, mass: 1, stiffness: 80 })",
+        "effect": "Circle expands to fill button",
+        "timing": "Immediate on touch down"
+      },
+      "onTouchEnd": {
+        "trigger": "Finger lifts from button",
+        "animation": "r.value = withSpring(30, { damping: 25, mass: 1.2, stiffness: 120 })",
+        "effect": "Circle collapses back to small size",
+        "timing": "Immediate on touch up"
+      }
+    },
+    "interaction_pattern": "Press and hold for sustained expansion",
+    "touch_target": "View wrapper with absolute fill",
+    "pointer_events": {
+      "circle_view": "Default (captures touches)",
+      "description_view": "none (text not touchable)",
+      "action_title_view": "auto (via TouchableOpacity)"
+    }
+  },
+
+  "layout_and_positioning": {
+    "dimension_calculations": {
+      "boxWidth": {
+        "source": "StyleSheet.flatten(style ?? {}).width as number",
+        "usage": "Button width extracted from style prop"
+      },
+      "circleMargin": {
+        "calculation": "boxWidth * 0.12",
+        "purpose": "12% of width for circle margin"
+      },
+      "canvasAreaHeight": {
+        "calculation": "circleMargin * 2 + initialRadius",
+        "purpose": "Space reserved for circle at top"
+      },
+      "circleCenter": {
+        "calculation": "circleMargin + initialR / 2",
+        "purpose": "Center point for circle expansion"
+      },
+      "maxRadius": {
+        "value": "boxWidth / 2",
+        "note": "Not the effective max (circle expands to full boxWidth), but max for interpolation"
+      }
+    },
+    "positioning_strategy": {
+      "circles": "Absolute positioning with dynamic left/top based on radius",
+      "main_circle": "Expands from center, position recalculates with radius",
+      "icon_circle": "Fixed size (initialR * 2), static position",
+      "text_content": {
+        "description": "flex: 1 with marginTop: canvasAreaHeight",
+        "action_title": "margin: circleMargin / 2",
+        "layout": "Positioned below circle canvas area"
+      }
+    },
+    "z_index_layering": {
+      "layer_1": "Main expanding circle (background)",
+      "layer_2": "Icon circle (foreground)",
+      "layer_3": "Text content (above circles, pointerEvents: none for description)",
+      "clipping": "Parent View clips overflow"
+    },
+    "aspect_ratio": {
+      "circles": "aspectRatio: 1 (maintains perfect circle)",
+      "border_radius": 200,
+      "effect": "Circles remain circular during expansion"
+    }
+  },
+
+  "visual_design": {
+    "color_schemes": {
+      "default": {
+        "primary": "#4BA2E4 (blue)",
+        "highlight": "#83C5F1 (light blue)",
+        "usage": "First button instance"
+      },
+      "custom": {
+        "primary": "#ED7D3A (orange)",
+        "highlight": "#E39264 (light orange)",
+        "usage": "Second button instance"
+      },
+      "text": {
+        "initial": "black",
+        "expanded": "white",
+        "transition": "Smooth interpolation based on progress"
+      }
+    },
+    "spacing_and_sizing": {
+      "button": {
+        "width": "90% of screen width",
+        "height": 250,
+        "backgroundColor": "white",
+        "borderRadius": "Not specified (square corners)"
+      },
+      "circle": {
+        "initial_radius": 35,
+        "max_expansion": "boxWidth (full button width)",
+        "border_radius": 200,
+        "icon_size": 40
+      },
+      "margins": {
+        "circleMargin": "12% of button width",
+        "button_spacing": "30px between instances"
+      },
+      "text": {
+        "description": {
+          "fontSize": 15,
+          "marginHorizontal": "circleMargin / 2"
+        },
+        "actionTitle": {
+          "fontWeight": "bold",
+          "paddingVertical": 5,
+          "margin": "circleMargin / 2"
+        }
+      }
+    },
+    "shadows_and_elevation": {
+      "ios": {
+        "shadowColor": "black",
+        "shadowOffset": "{ width: 0, height: 0 }",
+        "shadowOpacity": 0.15,
+        "shadowRadius": 20
+      },
+      "android": {
+        "elevation": 5
+      },
+      "effect": "Soft shadow around button for depth"
+    },
+    "icon": {
+      "name": "twitter",
+      "library": "AntDesign",
+      "size": 40,
+      "color": "white",
+      "position": "Center of icon circle"
+    }
+  },
+
+  "mathematical_relationships": {
+    "progress_calculation": {
+      "formula": "progress = clamp(r / (boxWidth / 3), 0, 1)",
+      "key_point": "Progress reaches 1.0 at 1/3 box width, not full width",
+      "implication": "Text turns fully white before circle fills button",
+      "reasoning": "Creates better visual timing for readability"
+    },
+    "circle_diameter": {
+      "formula": "diameter = r * 2",
+      "positioning": "Center point minus radius for left/top"
+    },
+    "margin_scaling": {
+      "formula": "circleMargin = boxWidth * 0.12",
+      "benefit": "Responsive spacing across different button widths"
+    }
+  },
+
+  "performance_considerations": {
+    "animation_efficiency": {
+      "worklet_functions": "Custom clamp runs on UI thread",
+      "shared_values": "Minimal - only one per button instance",
+      "re_renders": "Text content re-renders on prop changes only"
+    },
+    "optimization_opportunities": {
+      "memo": "Could wrap ClipBoxButton in memo for list scenarios",
+      "callback_stability": "onPress could use useCallback if passed from parent",
+      "style_flattening": "StyleSheet.flatten called once on render"
+    },
+    "rendering_cost": {
+      "animated_components": 5,
+      "breakdown": [
+        "2 Animated.View (circles)",
+        "2 Animated.Text (description and action)",
+        "1 static icon"
+      ],
+      "overhead": "Low - simple radius and color animations"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Interactive demo cards",
+      "Feature highlight buttons",
+      "Call-to-action elements with visual feedback",
+      "Onboarding screens with interactive elements",
+      "Marketing landing page buttons"
+    ],
+    "secondary": [
+      "Social share buttons",
+      "Action buttons with rich visual feedback",
+      "Tutorial interaction elements",
+      "App store preview interactions",
+      "Portfolio project showcases"
+    ],
+    "real_world_examples": [
+      "Product feature cards",
+      "Subscription tier selection",
+      "Course enrollment buttons",
+      "Download/install prompts"
+    ],
+    "not_recommended_for": [
+      "Navigation buttons (too attention-grabbing)",
+      "Form submit buttons (prefer simpler feedback)",
+      "Critical actions requiring instant feedback",
+      "High-frequency interactions (performance concern)"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_imports": "type keyword for type-only imports (FC, StyleProp, ViewStyle, SharedValue)",
+      "prop_types": "Explicit interfaces for all component props",
+      "type_safety": "Width cast to number from style, SharedValue typing"
+    },
+    "component_structure": {
+      "separation": "Clear separation between container and presentation (ExpandedCircle)",
+      "reusability": "ClipBoxButton fully reusable with prop configuration",
+      "composition": "Clean parent-child relationship"
+    },
+    "constants_and_magic_numbers": {
+      "boxWidth": "Calculated from style prop",
+      "circleMargin": "Derived from boxWidth (12%)",
+      "spring_configs": "Explicit object configs, not magic values",
+      "border_radius": 200,
+      "icon_size": 40,
+      "documentation_opportunity": "Could extract spring configs as named constants"
+    },
+    "naming_conventions": {
+      "components": "PascalCase",
+      "props": "camelCase",
+      "shared_values": "lowercase single letter (r)",
+      "animated_styles": "rStyle prefix convention",
+      "clarity": "Descriptive names (circleCenter, canvasAreaHeight)"
+    },
+    "best_practices": [
+      "worklet directive on utility functions",
+      "Explicit spring configuration objects",
+      "Type-safe props with defaults",
+      "Clean separation of concerns",
+      "Proper use of StyleSheet.flatten"
+    ]
+  },
+
+  "known_limitations": {
+    "width_dependency": {
+      "issue": "Requires width in style prop",
+      "impact": "Won't work with flex-based widths",
+      "workaround": "Could use onLayout to measure width",
+      "current_approach": "Extracts width from style, no fallback"
+    },
+    "fixed_expansion_direction": {
+      "limitation": "Always expands from top-left area",
+      "enhancement": "Could support different expansion origins",
+      "current": "Circle positioned at circleMargin from left/top"
+    },
+    "touch_event_limitations": {
+      "handlers": "onTouchStart/onTouchEnd only",
+      "no_gesture_handler": "Could benefit from react-native-gesture-handler",
+      "cancellation": "No touch cancel handling",
+      "edge_case": "Touch ending outside view not handled"
+    },
+    "accessibility": {
+      "missing": [
+        "accessibilityLabel",
+        "accessibilityHint",
+        "accessibilityRole",
+        "Screen reader support",
+        "Reduce motion support"
+      ],
+      "impact": "Not accessible to users with disabilities"
+    },
+    "color_interpolation_range": {
+      "issue": "maxRadius is boxWidth/2, but circle expands to full boxWidth",
+      "effect": "Color reaches highlightColor before full expansion",
+      "likely_intentional": "Creates desired visual effect"
+    }
+  },
+
+  "potential_improvements": {
+    "animation_enhancements": [
+      "Ripple effect emanating from touch point",
+      "Multiple circles expanding at different rates",
+      "Rotation animation on icon",
+      "Particle effects on expansion",
+      "Glow effect around expanding circle"
+    ],
+    "interaction_improvements": [
+      "Gesture handler for better touch control",
+      "Haptic feedback on touch start/end",
+      "Long press for different action",
+      "Swipe gestures for additional actions",
+      "Double tap detection"
+    ],
+    "customization_options": [
+      "Expansion origin point (center, touch point, corners)",
+      "Multiple expansion shapes (square, triangle)",
+      "Configurable animation durations",
+      "Custom interpolation curves",
+      "Gradient color transitions"
+    ],
+    "accessibility": [
+      "Add accessibility labels and hints",
+      "Support for reduced motion",
+      "Keyboard navigation support",
+      "Screen reader announcements",
+      "Focus indicators"
+    ],
+    "responsive_design": [
+      "onLayout for dynamic width measurement",
+      "Responsive scaling based on device size",
+      "Portrait/landscape adaptations",
+      "Tablet-specific layouts"
+    ],
+    "performance": [
+      "Memo wrapper for list scenarios",
+      "useCallback for prop callbacks",
+      "Lazy loading for complex content",
+      "Animation throttling option"
+    ]
+  },
+
+  "key_insights": {
+    "asymmetric_springs": "Different spring configs for expand vs collapse creates more natural interaction feel",
+    "progress_timing": "Progress reaches 1.0 before full expansion for better text readability timing",
+    "dual_circle_layering": "Two circles with different animation properties creates depth and visual interest",
+    "overflow_clipping": "Essential for clean reveal effect within button boundaries",
+    "color_interpolation": "Simultaneous background and text color transitions maintain readability",
+    "margin_scaling": "Percentage-based margins ensure responsive layout across screen sizes",
+    "absolute_positioning": "Absolute circles with overflow hidden creates clean clip-box effect",
+    "width_extraction": "StyleSheet.flatten enables accessing width from style prop for calculations"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic touch event handling (onTouchStart/End)",
+      "useSharedValue for animation state",
+      "withSpring for physics-based animations",
+      "Component composition patterns",
+      "Prop-based configuration"
+    ],
+    "for_intermediate": [
+      "useDerivedValue for computed animation values",
+      "interpolateColor for smooth color transitions",
+      "Custom worklet functions (clamp)",
+      "Absolute positioning with dynamic calculations",
+      "StyleSheet.flatten for prop extraction",
+      "Overflow clipping techniques"
+    ],
+    "for_advanced": [
+      "Asymmetric spring physics tuning",
+      "Progress value normalization strategies",
+      "Multi-layer animation composition",
+      "Touch interaction timing optimization",
+      "Responsive dimension calculations",
+      "Creating reusable animated components"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Circle expands smoothly from initial to full size",
+      "Colors interpolate without banding",
+      "Text color transitions at correct timing",
+      "Circle remains centered during expansion",
+      "No overflow outside button boundaries"
+    ],
+    "interaction_testing": [
+      "Touch start triggers expansion",
+      "Touch end triggers collapse",
+      "Multiple rapid touches handled smoothly",
+      "Touch and hold sustains expansion",
+      "Action title TouchableOpacity responds"
+    ],
+    "edge_cases": [
+      "Very wide buttons (extreme aspect ratio)",
+      "Very narrow buttons (minimum width)",
+      "Rapid touch/release cycles",
+      "Interrupted animations",
+      "Missing width in style prop"
+    ],
+    "performance_testing": [
+      "Smooth 60fps during expansion/collapse",
+      "Multiple instances animate independently",
+      "No frame drops on low-end devices",
+      "Memory stable across interactions"
+    ],
+    "cross_platform": [
+      "Shadow rendering on iOS",
+      "Elevation rendering on Android",
+      "Touch event timing differences",
+      "Color interpolation consistency"
+    ]
+  },
+
+  "comparison_to_similar_patterns": {
+    "vs_ripple_effect": {
+      "similarity": "Circle expands from point",
+      "difference": "This clips to bounds and drives color changes, ripple often extends beyond",
+      "timing": "This uses spring, ripple often uses timing"
+    },
+    "vs_morph_button": {
+      "similarity": "Visual transformation on interaction",
+      "difference": "This reveals background, morph changes shape",
+      "state": "This is temporary (on touch), morph often toggles state"
+    },
+    "vs_fill_animation": {
+      "similarity": "Background fill effect",
+      "difference": "This uses circular reveal, fill often uses linear progression",
+      "complexity": "This has dual circles and color interpolation"
+    }
+  },
+
+  "related_patterns": {
+    "circular_reveal": "Similar circular reveal animations",
+    "clip_path_animations": "CSS-style clip path animations",
+    "ripple_effect": "Material Design ripple",
+    "morph_button": "Button shape morphing",
+    "hero_animation": "Element transformation between states"
+  },
+
+  "real_world_inspiration": {
+    "material_design": "Ripple effect concept",
+    "ios_animations": "Smooth spring-based interactions",
+    "web_hover_effects": "Circular reveal on hover",
+    "game_ui": "Action button feedback patterns"
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~88 lines (button) + ~88 lines (circle) = ~176 lines",
+    "dependencies": "Reanimated likely already in project, AntDesign for icons",
+    "runtime_memory": "Minimal - one SharedValue per button, small style objects",
+    "estimated_size": "< 5KB"
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No support",
+      "touch_target": "Good - full button is touchable area"
+    },
+    "recommendations": [
+      "Add accessibilityLabel combining actionTitle and description",
+      "Add accessibilityHint explaining the interaction",
+      "Set accessibilityRole to 'button'",
+      "Respect prefers-reduced-motion (disable or simplify animation)",
+      "Ensure color contrast meets WCAG standards",
+      "Add focus indicators for keyboard users",
+      "Announce state changes to screen readers"
+    ],
+    "implementation_suggestions": {
+      "reduced_motion": "Use withTiming instead of withSpring when motion reduced",
+      "color_contrast": "Verify text colors meet WCAG AA (4.5:1 ratio)",
+      "screen_reader": "Wrap in accessible View with proper labels"
+    }
+  },
+
+  "tags": [
+    "clip-box",
+    "circular-reveal",
+    "touch-animation",
+    "spring-physics",
+    "color-interpolation",
+    "reanimated",
+    "expanding-circle",
+    "interactive-button",
+    "visual-feedback",
+    "dual-layer",
+    "overflow-clipping",
+    "touch-events",
+    "button-animation",
+    "reveal-effect"
+  ]
+}

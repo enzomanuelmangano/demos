@@ -1,0 +1,1003 @@
+{
+  "animation_name": "Floating Modal",
+  "animation_slug": "floating-modal",
+  "description": "An interactive floating action button that smoothly expands into a full modal dialog. The modal features gesture-based interaction with pan-to-dismiss functionality, scale-based closing threshold, and dynamic backdrop opacity. The button rotates from '+' to '×' during expansion, creating a polished morphing effect. Perfect for add/create actions with detailed form content.",
+
+  "main_features": [
+    "Floating action button (FAB) to modal morphing",
+    "Smooth size, position, and border radius interpolation",
+    "Pan gesture for modal dismissal with scale feedback",
+    "Dynamic scale calculation based on drag distance",
+    "Rotating icon (+ to × transformation)",
+    "Animated backdrop with pointer events control",
+    "Modal content with delayed fade-in/fade-out",
+    "Distance-based closing threshold (scale < 0.95)",
+    "Spring animations for natural feel on gesture end",
+    "Position-based interpolation (bottom-right to center)",
+    "Modal content visibility controlled by progress state",
+    "Persistent content rendering (no unmounting)"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Export wrapper - re-exports FloatingModalContainer as FloatingModal",
+    "components/FloatingModal/index.tsx": "Main FloatingModal component with gesture handling and animation logic",
+    "components/FloatingModal/constants.ts": "Constants for floating button size",
+    "components/FloatingModal/AddCloseIcon/index.tsx": "Rotating + icon component with 45° rotation animation",
+    "components/FloatingModal/AnimatedBackdrop/index.tsx": "Backdrop overlay with opacity and pointer events animation",
+    "components/FloatingModal/Modal/index.tsx": "Modal content component with title, content area, and action buttons"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "icons": "@expo/vector-icons (AntDesign)",
+    "pattern": "FAB-to-modal morphing with gesture dismissal"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useAnimatedProps"
+      ],
+      "functions": [
+        "withTiming",
+        "withSpring",
+        "interpolate"
+      ],
+      "components": ["Animated.View"],
+      "enums": ["Extrapolation"],
+      "critical_feature": "useDerivedValue for scale calculation and modal visibility state"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureDetector"],
+      "gestures": ["Gesture.Pan()"],
+      "callbacks": ["onUpdate", "onFinalize"],
+      "usage": "Pan gesture for dragging modal to dismiss with scale-based threshold"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["AntDesign"],
+      "icons_used": ["plus (rotates to become ×)"]
+    },
+    "react-native": {
+      "hooks": ["useWindowDimensions"],
+      "usage": "Dynamic screen size calculations for responsive positioning"
+    }
+  },
+
+  "animation_techniques": {
+    "fab_to_modal_morphing": {
+      "trigger": "isOpened.value toggle",
+      "progress": "withTiming(isOpened ? 1 : 0)",
+      "duration": "Default timing (not specified, likely ~250-300ms)",
+      "drives": "All size, position, and border radius interpolations"
+    },
+    "size_interpolation": {
+      "pattern": "interpolate(progress, [0, 1], [FLOATING_BUTTON_SIZE, screenWidth * 0.9])",
+      "from": "FLOATING_BUTTON_SIZE (64px × 64px square)",
+      "to": "90% of screen width (square modal)",
+      "clamping": "Extrapolation.CLAMP",
+      "effect": "Button expands from small FAB to large modal",
+      "maintains": "Aspect ratio 1:1 (width === height)"
+    },
+    "position_interpolation": {
+      "right_distance": {
+        "pattern": "interpolate(progress, [0, 1], [FLOATING_BUTTON_SIZE / 2, screenWidth * 0.05])",
+        "from": "32px (half button size, tight to right edge)",
+        "to": "5% of screen width (centered horizontally)",
+        "effect": "Modal moves from right edge to center"
+      },
+      "bottom_distance": {
+        "pattern": "interpolate(progress, [0, 1], [FLOATING_BUTTON_SIZE / 2, screenHeight / 2 - size / 2])",
+        "from": "32px (half button size, near bottom)",
+        "to": "screenHeight / 2 - size / 2 (vertically centered)",
+        "calculation": "Centers modal vertically based on its current size",
+        "effect": "Modal moves from bottom to center of screen"
+      }
+    },
+    "border_radius_animation": {
+      "pattern": "interpolate(progress, [0, 1], [32, 15])",
+      "from": "32px (fully rounded circle for 64px button)",
+      "to": "15px (rounded rectangle for modal)",
+      "effect": "Smooth transition from circular FAB to rounded modal"
+    },
+    "icon_rotation": {
+      "pattern": "interpolate(progress, [0, 1], [0, Math.PI / 4])",
+      "from": "0 radians (+ icon upright)",
+      "to": "π/4 radians (45°, + becomes ×)",
+      "unit": "radians",
+      "visual_effect": "Plus sign rotates 45° to become close icon",
+      "clamping": "Extrapolation.CLAMP"
+    },
+    "backdrop_fade": {
+      "pattern": "withTiming(isVisible ? 1 : 0)",
+      "from": "opacity: 0 (transparent)",
+      "to": "opacity: 1 (visible)",
+      "color": "rgba(0,0,0,0.4) (40% black overlay)",
+      "coordination": "Synced with modal expansion"
+    },
+    "content_visibility": {
+      "control": "isModalVisible derived value (progress.value === 1)",
+      "fade_pattern": "withTiming(isVisible ? 1 : 0, { duration: 100 })",
+      "duration": "100ms (fast fade)",
+      "threshold": "Only visible when progress === 1",
+      "benefit": "Content appears after modal fully expanded"
+    },
+    "pan_gesture_scale": {
+      "calculation": {
+        "distance": "Math.sqrt(translateX.value² + translateY.value²)",
+        "normalized_distance": "distance / maxDistance",
+        "max_distance": "Math.sqrt(screenWidth² + screenHeight²) (diagonal)",
+        "scale_formula": "1 - normalizedDistance"
+      },
+      "range": {
+        "no_drag": "scale = 1 (full size)",
+        "max_drag": "scale → 0 (fully shrunk, theoretical)",
+        "practical": "scale typically 0.85-1.0 during normal drag"
+      },
+      "visual_feedback": "Modal shrinks as user drags further",
+      "closing_threshold": "scale < 0.95 (5% shrink triggers dismiss)"
+    },
+    "spring_reset": {
+      "trigger": "onFinalize gesture callback",
+      "target": "translateX/Y → 0",
+      "config": "{ overshootClamping: true }",
+      "effect": "Modal springs back to center if not dismissed",
+      "benefit": "No bounce past original position"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "isOpened",
+        "type": "SharedValue<boolean>",
+        "initial": false,
+        "updates": "Toggled by AddCloseIcon onPress and backdrop press",
+        "purpose": "Primary state controlling modal open/closed"
+      },
+      {
+        "name": "translateX",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "During pan gesture onUpdate",
+        "reset": "Springs back to 0 on gesture end",
+        "purpose": "Horizontal drag offset for scale calculation"
+      },
+      {
+        "name": "translateY",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "During pan gesture onUpdate",
+        "reset": "Springs back to 0 on gesture end",
+        "purpose": "Vertical drag offset for scale calculation"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "progress",
+        "calculation": "withTiming(isOpened.value ? 1 : 0)",
+        "type": "Animated progress (0 to 1)",
+        "dependencies": ["isOpened"],
+        "purpose": "Primary animation driver for all expansion interpolations"
+      },
+      {
+        "name": "scale",
+        "calculation": "1 - (Math.sqrt(translateX² + translateY²) / maxDistance)",
+        "type": "Dynamic scale based on drag distance",
+        "dependencies": ["translateX", "translateY", "maxDistance"],
+        "purpose": "Visual feedback for drag-to-dismiss gesture",
+        "used_in": "Modal transform scale"
+      },
+      {
+        "name": "isModalVisible",
+        "calculation": "progress.value === 1",
+        "type": "Boolean derived value",
+        "dependencies": ["progress"],
+        "purpose": "Controls backdrop and modal content visibility/interactivity",
+        "passed_to": ["AnimatedBackdrop", "ModalContent"]
+      },
+      {
+        "name": "maxDistance",
+        "calculation": "Math.sqrt(screenWidth² + screenHeight²)",
+        "type": "Constant (screen diagonal)",
+        "dependencies": ["screenWidth", "screenHeight"],
+        "purpose": "Normalizes drag distance for scale calculation"
+      }
+    ],
+    "useAnimatedStyle_instances": [
+      {
+        "name": "rOpenedModalStyle",
+        "target": "Floating modal container",
+        "properties": [
+          "width (expansion)",
+          "height (expansion)",
+          "right (horizontal positioning)",
+          "bottom (vertical positioning)",
+          "borderRadius (circle to rounded rect)",
+          "transform: [scale, translateX, translateY]"
+        ],
+        "dependencies": ["progress", "scale", "translateX", "translateY"],
+        "complexity": "High - 6 animated properties plus 3 transforms"
+      },
+      {
+        "name": "rIconStyle (AddCloseIcon)",
+        "target": "Plus/close icon",
+        "properties": ["transform: [rotate]"],
+        "rotation": "0° to 45° (π/4 radians)",
+        "effect": "+ morphs into ×"
+      },
+      {
+        "name": "rAnimatedStyle (AnimatedBackdrop)",
+        "target": "Backdrop overlay",
+        "properties": ["opacity"],
+        "pattern": "withTiming(isVisible ? 1 : 0)"
+      },
+      {
+        "name": "rAnimatedStyle (ModalContent)",
+        "target": "Modal content wrapper",
+        "properties": ["opacity"],
+        "pattern": "withTiming(isVisible ? 1 : 0, { duration: 100 })",
+        "fast_fade": "100ms duration for quick appear/disappear"
+      }
+    ],
+    "useAnimatedProps_instances": [
+      {
+        "name": "rAnimatedProps (AnimatedBackdrop)",
+        "target": "Backdrop",
+        "property": "pointerEvents",
+        "values": "isVisible ? 'auto' : 'none'",
+        "purpose": "Disable backdrop interaction when hidden",
+        "benefit": "No tap blocking when modal closed"
+      },
+      {
+        "name": "rAnimatedProps (ModalContent)",
+        "target": "Modal content",
+        "property": "pointerEvents",
+        "values": "isVisible ? 'auto' : 'none'",
+        "purpose": "Disable content interaction before fully opened",
+        "benefit": "Prevents touches during animation"
+      }
+    ]
+  },
+
+  "gesture_handling": {
+    "pan_gesture": {
+      "type": "Gesture.Pan()",
+      "guard": "Ignored if !isOpened.value",
+      "callbacks": {
+        "onUpdate": {
+          "purpose": "Track drag translation for scale calculation",
+          "updates": [
+            "translateX.value = translationX",
+            "translateY.value = translationY"
+          ],
+          "frequency": "Every frame during drag",
+          "worklet": true,
+          "guard": "Early return if modal closed"
+        },
+        "onFinalize": {
+          "purpose": "Determine dismiss or reset based on scale",
+          "logic": [
+            "1. Check if dragging down (translationY > 0)",
+            "2. Check if scale < 0.95 (threshold)",
+            "3. If both true: close modal (isOpened.value = false)",
+            "4. Spring translateX/Y back to 0"
+          ],
+          "spring_config": "{ overshootClamping: true }",
+          "threshold": "scale.value < 0.95 (5% shrink)",
+          "directional_check": "isDraggingDown (translationY > 0)",
+          "combined_condition": "isDraggingDown && scale < 0.95"
+        }
+      },
+      "no_onBegin": "Not needed - only onUpdate and onFinalize used"
+    },
+    "dismissal_mechanics": {
+      "method": "Drag-to-dismiss with scale threshold",
+      "threshold": "5% size reduction (scale < 0.95)",
+      "direction_requirement": "Must be dragging downward (Y > 0)",
+      "visual_feedback": "Modal shrinks proportionally to drag distance",
+      "reset_behavior": "Springs back if threshold not met"
+    }
+  },
+
+  "component_architecture": {
+    "FloatingModalContainer": {
+      "type": "Export wrapper component",
+      "purpose": "Container with background styling",
+      "styling": "rgba(0,0,0,0.1) background, flex: 1"
+    },
+    "FloatingModal": {
+      "type": "Main functional component (memo)",
+      "structure": [
+        "AnimatedBackdrop",
+        "GestureDetector wrapping modal",
+        "Animated.View (modal container with rOpenedModalStyle)",
+        "ModalContent (always mounted, visibility controlled)",
+        "AddCloseIcon (always visible, rotates)"
+      ],
+      "optimization": "memo() to prevent unnecessary re-renders"
+    },
+    "AddCloseIcon": {
+      "type": "Functional component (memo)",
+      "props": {
+        "progress": "SharedValue<number> - animation progress",
+        "onPress": "() => void - toggle modal state"
+      },
+      "features": [
+        "Positioned absolutely top-left within modal",
+        "Size: FLOATING_BUTTON_SIZE (64px)",
+        "Rotates based on progress (0° to 45°)",
+        "AntDesign 'plus' icon (size 28)"
+      ],
+      "interaction": "onTouchEnd toggles isOpened.value"
+    },
+    "AnimatedBackdrop": {
+      "type": "Functional component (memo)",
+      "props": {
+        "isVisible": "SharedValue<boolean> - visibility state",
+        "onBackdropPress": "() => void - dismiss callback"
+      },
+      "features": [
+        "StyleSheet.absoluteFillObject positioning",
+        "rgba(0,0,0,0.4) background",
+        "Animated opacity (0 to 1)",
+        "Animated pointerEvents (auto/none)"
+      ],
+      "interaction": "onTouchStart toggles modal",
+      "trick": "pointerEvents='none' when hidden prevents tap blocking"
+    },
+    "ModalContent": {
+      "type": "Functional component (memo)",
+      "props": {
+        "isVisible": "SharedValue<boolean> - controls visibility",
+        "children": "ReactNode (optional)",
+        "contentContainerStyle": "StyleProp<ViewStyle> (optional)"
+      },
+      "structure": [
+        "Title section: 'New' text (height: FLOATING_BUTTON_SIZE)",
+        "Content area: flex: 1 with children prop",
+        "Button container: 'Done' button (height: 80)"
+      ],
+      "visibility_control": [
+        "Opacity: animated 0/1 (100ms duration)",
+        "pointerEvents: 'auto'/'none'"
+      ],
+      "styling": {
+        "title": "20px bold",
+        "button": "black (#111), 12px border radius, white text",
+        "layout": "Vertically stacked with flex"
+      }
+    }
+  },
+
+  "interaction_patterns": {
+    "open_modal": {
+      "trigger": "Press floating button (when closed)",
+      "action": "isOpened.value = true",
+      "animation_sequence": [
+        "1. progress animates 0 → 1",
+        "2. Size expands from 64px to 90% screen width",
+        "3. Position moves from bottom-right to center",
+        "4. Border radius reduces from 32px to 15px",
+        "5. Icon rotates 45° (+ becomes ×)",
+        "6. Backdrop fades in",
+        "7. Content fades in when progress === 1"
+      ]
+    },
+    "close_modal_via_icon": {
+      "trigger": "Press × icon (rotated + icon)",
+      "action": "isOpened.value = false",
+      "reversal": "All animations reverse (progress 1 → 0)"
+    },
+    "close_modal_via_backdrop": {
+      "trigger": "Tap backdrop",
+      "action": "isOpened.value = !isOpened.value",
+      "same_as": "Icon press (toggles state)"
+    },
+    "drag_to_dismiss": {
+      "trigger": "Pan gesture when modal open",
+      "visual_feedback": "Modal scales down proportionally to drag distance",
+      "success_condition": "Drag down + scale < 0.95",
+      "success_action": "isOpened.value = false",
+      "failure_action": "Springs back to center (translateX/Y → 0)",
+      "prevents_abuse": "Only works when dragging downward"
+    },
+    "content_interaction": {
+      "available_when": "isModalVisible.value === true (progress === 1)",
+      "buttons": ["Done button (no action defined in demo)"],
+      "pointer_events": "Disabled when modal not fully open"
+    }
+  },
+
+  "mathematical_algorithms": {
+    "pythagorean_distance": {
+      "formula": "distance = √(translateX² + translateY²)",
+      "purpose": "Calculate total drag distance from center",
+      "usage": "Scale calculation for drag feedback"
+    },
+    "diagonal_normalization": {
+      "formula": "maxDistance = √(screenWidth² + screenHeight²)",
+      "result": "Maximum possible drag distance (corner to corner)",
+      "normalization": "normalizedDistance = distance / maxDistance (0 to 1)",
+      "benefit": "Makes scale calculation device-independent"
+    },
+    "inverse_scale": {
+      "formula": "scale = 1 - normalizedDistance",
+      "range": "1 (no drag) to 0 (max drag)",
+      "typical": "0.85-1.0 in practice",
+      "visual": "Modal appears to shrink away as user drags"
+    },
+    "threshold_detection": {
+      "formula": "scale < 0.95",
+      "percentage": "5% size reduction",
+      "combined": "isDraggingDown && scale < 0.95",
+      "result": "Boolean - triggers modal dismissal"
+    },
+    "center_offset_calculation": {
+      "horizontal": "screenWidth * 0.05 (5% from edge = centered)",
+      "vertical": "screenHeight / 2 - size / 2 (centers based on current size)",
+      "dynamic": "Updates as size interpolates during animation"
+    }
+  },
+
+  "performance_optimizations": {
+    "memo_components": {
+      "pattern": "All components wrapped in memo()",
+      "benefit": "Prevents unnecessary re-renders",
+      "components": ["FloatingModal", "AddCloseIcon", "AnimatedBackdrop", "ModalContent"]
+    },
+    "worklet_execution": {
+      "pattern": "All gestures and animations run on UI thread",
+      "benefit": "60fps smooth animations without JS thread blocking",
+      "worklet_functions": [
+        "onUpdate",
+        "onFinalize",
+        "useAnimatedStyle callbacks",
+        "useAnimatedProps callbacks"
+      ]
+    },
+    "useDerivedValue_efficiency": {
+      "instances": ["progress", "scale", "isModalVisible", "maxDistance"],
+      "benefit": "Efficient derived calculations on UI thread",
+      "optimization": "Automatic dependency tracking and memoization"
+    },
+    "pointer_events_optimization": {
+      "pattern": "Animated pointerEvents to disable interaction when hidden",
+      "benefit": "Prevents unnecessary touch event handling",
+      "applied_to": ["AnimatedBackdrop", "ModalContent"]
+    },
+    "no_conditional_render": {
+      "pattern": "ModalContent always mounted, visibility via opacity",
+      "benefit": "Avoids unmount/remount overhead, smoother animations",
+      "comment": "Developer note suggests LayoutAnimation as alternative"
+    },
+    "extrapolation_clamping": {
+      "pattern": "Extrapolation.CLAMP on all interpolations",
+      "benefit": "Prevents over-animation beyond defined ranges",
+      "applied_to": ["size", "position", "borderRadius", "rotation"]
+    },
+    "spring_config_optimization": {
+      "overshootClamping": true,
+      "benefit": "Prevents spring overshoot for crisp reset",
+      "applied_to": "translateX/Y reset on gesture end"
+    }
+  },
+
+  "visual_design": {
+    "floating_button": {
+      "size": "64px × 64px",
+      "position": "Bottom-right (32px from right, 32px from bottom)",
+      "shape": "Circle (borderRadius: 32px)",
+      "background": "white",
+      "icon": "AntDesign 'plus', size 28, black",
+      "shadow": {
+        "ios": {
+          "shadowColor": "black",
+          "shadowOffset": "{ width: 0, height: 12 }",
+          "shadowOpacity": 0.2,
+          "shadowRadius": 12
+        },
+        "android": {
+          "elevation": 4
+        }
+      }
+    },
+    "expanded_modal": {
+      "size": "90% screen width (square)",
+      "position": "Screen center (both axes)",
+      "shape": "Rounded rectangle (borderRadius: 15px)",
+      "background": "white",
+      "shadow": "Same as button",
+      "layout": [
+        "Header: 'New' title (64px height)",
+        "Content area: flex: 1",
+        "Footer: 'Done' button (80px height)"
+      ]
+    },
+    "backdrop": {
+      "color": "rgba(0,0,0,0.4)",
+      "opacity": "Animated 0 to 1",
+      "position": "StyleSheet.absoluteFillObject",
+      "z_index": "Behind modal (natural stacking)"
+    },
+    "color_palette": {
+      "primary_background": "white (#fff)",
+      "backdrop": "rgba(0,0,0,0.4)",
+      "button_background": "#111 (near black)",
+      "button_text": "white",
+      "title_text": "black (default)",
+      "icon": "black",
+      "container_background": "rgba(0,0,0,0.1) (light gray)"
+    },
+    "typography": {
+      "modal_title": {
+        "size": "20px",
+        "weight": "bold"
+      },
+      "button_text": {
+        "size": "20px",
+        "weight": "700",
+        "color": "white"
+      }
+    }
+  },
+
+  "layout_and_positioning": {
+    "positioning_strategy": {
+      "button": "Absolute positioning (bottom-right)",
+      "modal": "Absolute positioning (interpolated to center)",
+      "backdrop": "Absolute fill",
+      "icon": "Absolute positioning (top-left within modal)"
+    },
+    "responsive_sizing": {
+      "useWindowDimensions": true,
+      "width_responsive": "Button: 64px fixed, Modal: 90% screen width",
+      "height_responsive": "Equal to width (maintains 1:1 aspect ratio)",
+      "position_responsive": "Calculated based on screen dimensions"
+    },
+    "z_index_layering": {
+      "order": [
+        "1. Backdrop (bottom, via stacking context)",
+        "2. Modal container (middle)",
+        "3. Modal content (inside modal)",
+        "4. Icon (top-left within modal, always on top)"
+      ],
+      "interaction": "Icon always pressable, content only when visible"
+    },
+    "container_structure": {
+      "outer": "FloatingModalContainer (flex: 1, light gray background)",
+      "backdrop": "AnimatedBackdrop (absolute fill)",
+      "gesture_detector": "Wraps modal (enables pan gesture)",
+      "modal": "Animated.View with all transforms",
+      "content": "ModalContent (absolute fill within modal)",
+      "icon": "AddCloseIcon (absolute top-left)"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Create/add actions (floating action button pattern)",
+      "Quick compose/new item forms",
+      "Compact modal dialogs",
+      "In-place action expansion",
+      "Add to cart with details"
+    ],
+    "secondary": [
+      "Settings overlays",
+      "Quick filters",
+      "Note creation",
+      "Message composition",
+      "Photo upload with options"
+    ],
+    "interaction_patterns": [
+      "Drag-to-dismiss modals",
+      "FAB expansion patterns",
+      "Morphing UI elements",
+      "Gesture-based dismissal",
+      "Progressive disclosure from action button"
+    ],
+    "real_world_examples": [
+      "Google Inbox-style FAB expansion",
+      "Material Design FAB with speed dial",
+      "iOS Notes quick compose",
+      "Gmail compose button",
+      "Social media post creation"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_imports": ["type FC", "type SharedValue", "type ReactNode", "type StyleProp", "type ViewStyle"],
+      "prop_interfaces": [
+        "AddCloseIconProps",
+        "AnimatedBackdropProps",
+        "ModalProps"
+      ],
+      "type_safety": "Strong typing throughout",
+      "type_casting": "Manual 'any' cast for animatedProps (necessary workaround)"
+    },
+    "constants": {
+      "FLOATING_BUTTON_SIZE": 64,
+      "location": "Separate constants.ts file",
+      "usage": "Shared across multiple components",
+      "organization": "Clean separation of magic numbers"
+    },
+    "component_organization": {
+      "pattern": "Feature-based folder structure",
+      "structure": "components/FloatingModal/[subcomponents]",
+      "separation": "Each subcomponent in own file",
+      "clarity": "Clear responsibility separation"
+    },
+    "documentation": {
+      "inline_comments": [
+        "Explains isOpened as main animation driver",
+        "Details progress derived value purpose",
+        "Clarifies distance normalization math",
+        "Documents pan gesture logic",
+        "Notes conversion formula (FAB ↔ Modal)",
+        "Explains pointerEvents trick",
+        "Alternative implementation suggestion (LayoutAnimation)"
+      ],
+      "code_comments": "Detailed explanations of complex logic",
+      "educational_value": "High - well documented for learning"
+    },
+    "react_patterns": {
+      "memo_usage": "All components memoized for performance",
+      "hooks_organization": "Clean hook ordering and dependencies",
+      "component_composition": "Proper separation of concerns",
+      "prop_drilling": "Minimal - uses SharedValues for cross-component state"
+    },
+    "best_practices": [
+      "Explicit dependency arrays in useDerivedValue",
+      "Early returns in gesture callbacks for guard clauses",
+      "Clamped extrapolation prevents over-animation",
+      "Separated styles into StyleSheet.create",
+      "Type-safe prop interfaces",
+      "Memoized components"
+    ]
+  },
+
+  "known_limitations": {
+    "fixed_button_size": {
+      "issue": "FLOATING_BUTTON_SIZE hardcoded to 64px",
+      "impact": "Not customizable without modifying constant",
+      "improvement": "Could be a prop or theme value"
+    },
+    "fixed_modal_size": {
+      "issue": "Modal size fixed at 90% screen width (square)",
+      "limitation": "No variable heights or aspect ratios",
+      "improvement": "Could support size variants (small, medium, large)"
+    },
+    "drag_direction_restriction": {
+      "current": "Only downward drag triggers dismiss",
+      "limitation": "Can't drag left/right/up to dismiss",
+      "reasoning": "Intentional - downward is intuitive for dismissal",
+      "consideration": "Could support multi-directional dismiss"
+    },
+    "no_animation_config": {
+      "issue": "Timing duration not exposed as prop",
+      "spring_config": "Hardcoded overshootClamping: true",
+      "improvement": "Could accept animation config props"
+    },
+    "scale_threshold_hardcoded": {
+      "current": "scale < 0.95 hardcoded in logic",
+      "improvement": "Could be configurable threshold prop"
+    },
+    "backdrop_tap_only": {
+      "limitation": "Backdrop only responds to onTouchStart",
+      "consideration": "Could use Pressable for better touch handling"
+    },
+    "modal_content_limited": {
+      "current": "Fixed 'New' title and 'Done' button",
+      "children_prop": "Exists but only for content area",
+      "improvement": "Could accept header/footer customization"
+    },
+    "no_keyboard_dismiss": {
+      "missing": "No escape key or back button handling",
+      "platform": "Important for Android and web"
+    },
+    "accessibility": {
+      "missing": "No accessibility labels or announcements",
+      "screen_reader": "State changes not announced",
+      "reduced_motion": "No support for prefers-reduced-motion"
+    }
+  },
+
+  "potential_improvements": {
+    "customization": [
+      "Configurable button size and position",
+      "Custom modal dimensions (not just square)",
+      "Variable aspect ratios",
+      "Theme/color customization props",
+      "Animation duration and easing configs",
+      "Custom icons (not just AntDesign plus)",
+      "Configurable dismiss threshold"
+    ],
+    "features": [
+      "Multi-directional drag-to-dismiss",
+      "Snap points (partial expansion states)",
+      "Backdrop blur effect",
+      "Keyboard dismissal (Escape key, Android back)",
+      "Haptic feedback on open/close/threshold",
+      "Header and footer customization props",
+      "Multiple action buttons",
+      "Scrollable content support",
+      "Form integration helpers"
+    ],
+    "animations": [
+      "Staggered content appearance",
+      "Elastic/bounce spring option",
+      "Parallax effect on content during drag",
+      "Icon color change during rotation",
+      "Blur background during expansion",
+      "Scale up content on appear",
+      "Glow/shadow intensity during drag"
+    ],
+    "interactions": [
+      "Long press for alternate action",
+      "Swipe velocity-based dismissal",
+      "Double tap to quick close",
+      "Magnetic snap when near close threshold",
+      "Shake to dismiss gesture"
+    ],
+    "accessibility": [
+      "Screen reader announcements",
+      "Accessibility labels for all interactive elements",
+      "Keyboard navigation (Tab, Enter, Escape)",
+      "Focus trap when modal open",
+      "Prefers-reduced-motion support (instant transitions)",
+      "High contrast mode support"
+    ],
+    "developer_experience": [
+      "TypeScript generics for content props",
+      "Imperative API (ref-based open/close)",
+      "onOpenStart/onOpenEnd callbacks",
+      "onCloseStart/onCloseEnd callbacks",
+      "onDragUpdate callback with progress",
+      "Controlled mode (external state)",
+      "Default export variants"
+    ]
+  },
+
+  "key_insights": {
+    "pythagorean_scale": "Using √(x² + y²) for drag distance creates natural radial scaling",
+    "diagonal_normalization": "Dividing by screen diagonal makes scale device-independent",
+    "threshold_with_direction": "Combining scale threshold with downward direction prevents accidental dismissal",
+    "pointer_events_optimization": "Animated pointerEvents prevents ghost tap zones",
+    "no_unmount_strategy": "Keeping content mounted with opacity control avoids layout jumps",
+    "spring_overshoot_prevention": "overshootClamping: true ensures crisp return to center",
+    "progress_equals_one_pattern": "progress.value === 1 cleanly determines 'fully opened' state",
+    "icon_rotation_45": "45° rotation perfectly transforms + into × visually",
+    "size_position_coupling": "Size and position must interpolate together for smooth centering",
+    "extrapolation_clamping": "Prevents unexpected behavior if progress goes beyond [0, 1]"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic modal pattern",
+      "FAB (Floating Action Button) implementation",
+      "Size and position interpolation",
+      "Border radius animation",
+      "SharedValue basics",
+      "Icon rotation",
+      "Backdrop overlay"
+    ],
+    "for_intermediate": [
+      "Pan gesture handling",
+      "useDerivedValue for calculated values",
+      "Scale transform animations",
+      "Pointer events animation",
+      "Multi-property interpolation coordination",
+      "Spring animations with configs",
+      "useAnimatedProps pattern",
+      "Component composition with SharedValues"
+    ],
+    "for_advanced": [
+      "Pythagorean distance calculation for gestures",
+      "Normalized distance scaling",
+      "Threshold-based gesture detection",
+      "Coordinated multi-component animations",
+      "Performance optimization with memo and worklets",
+      "Guard clauses in gesture callbacks",
+      "Opacity-based visibility vs conditional rendering",
+      "Complex interpolation with screen dimensions"
+    ]
+  },
+
+  "related_patterns": {
+    "similar_animations": [
+      "Material Design FAB expansion",
+      "Bottom sheet with drag dismiss",
+      "iOS action sheet",
+      "Telegram message compose",
+      "Gmail compose button expansion"
+    ],
+    "interaction_patterns": [
+      "Drag-to-dismiss modals",
+      "Pull-to-refresh",
+      "Swipe-to-delete",
+      "Scale feedback on drag",
+      "Threshold-based gesture actions"
+    ],
+    "ui_patterns": [
+      "Floating action button (FAB)",
+      "Morphing buttons",
+      "Progressive disclosure",
+      "Modal dialogs",
+      "Speed dial menus",
+      "Contextual actions"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_tests": [
+      "Button expands smoothly to modal",
+      "Position transitions from bottom-right to center",
+      "Border radius reduces appropriately",
+      "Icon rotates exactly 45°",
+      "Backdrop fades in/out smoothly",
+      "Content appears only when fully opened",
+      "No visual glitches during expansion",
+      "Shadow remains consistent",
+      "Maintains aspect ratio during expansion"
+    ],
+    "interaction_tests": [
+      "Button opens modal on press",
+      "Icon closes modal when expanded",
+      "Backdrop closes modal on tap",
+      "Drag gesture scales modal",
+      "Drag down + scale < 0.95 dismisses modal",
+      "Insufficient drag springs back to center",
+      "Drag when closed does nothing",
+      "Modal content not interactive until fully open",
+      "Multiple open/close cycles work correctly"
+    ],
+    "gesture_tests": [
+      "Horizontal drag scales modal",
+      "Vertical drag scales modal",
+      "Diagonal drag scales correctly (pythagorean)",
+      "Upward drag doesn't trigger dismiss (even if scale < 0.95)",
+      "Downward drag with scale 0.96 doesn't dismiss",
+      "Downward drag with scale 0.94 dismisses",
+      "Quick flick doesn't break animation",
+      "Slow drag provides smooth feedback"
+    ],
+    "edge_cases": [
+      "Very small screen sizes",
+      "Very large screen sizes (tablets)",
+      "Landscape vs portrait orientation",
+      "Rapid open/close/open",
+      "Drag during expansion animation",
+      "Multiple simultaneous touches",
+      "Interrupted gestures",
+      "Device rotation while modal open"
+    ],
+    "performance_tests": [
+      "Maintains 60fps during expansion",
+      "No frame drops during gesture",
+      "Smooth spring return on release",
+      "No jank on scale calculation",
+      "Backdrop opacity smooth"
+    ],
+    "accessibility_tests": [
+      "Screen reader announces modal state",
+      "Focus moves to modal when opened",
+      "Escape key closes modal",
+      "Tab navigation within modal",
+      "Focus trap when open",
+      "Reduced motion respected"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "labels": "No accessibility labels on any elements",
+      "announcements": "No screen reader announcements",
+      "keyboard": "No keyboard navigation support",
+      "focus": "No focus management",
+      "reduced_motion": "No motion reduction support",
+      "roles": "No ARIA roles or semantic elements"
+    },
+    "critical_recommendations": [
+      "Add accessibilityLabel to button ('Add new item', 'Close')",
+      "Add accessibilityRole='button' to button and icon",
+      "Add accessibilityRole='dialog' to modal",
+      "Announce state changes ('Modal opened', 'Modal closed')",
+      "Implement keyboard dismissal (Escape key)",
+      "Add focus trap when modal open",
+      "Move focus to modal content when opened",
+      "Return focus to button when closed"
+    ],
+    "reduced_motion": {
+      "detect": "useReducedMotion hook or AccessibilityInfo",
+      "behavior": "Skip animations, instant transitions",
+      "implementation": "Conditional withTiming duration: reducedMotion ? 0 : 300"
+    },
+    "screen_reader": {
+      "button_closed": "Announce: 'Add new item, button, double tap to open'",
+      "button_open": "Announce: 'Close, button, double tap to close'",
+      "modal_opened": "Announce: 'Modal opened' + focus to content",
+      "modal_closed": "Announce: 'Modal closed' + return focus to button"
+    }
+  },
+
+  "real_world_inspiration": {
+    "material_design": "Material Design FAB expansion pattern",
+    "gmail": "Gmail compose button (mobile app)",
+    "telegram": "Telegram message compose FAB",
+    "google_inbox": "Inbox (discontinued) FAB expansion",
+    "ios_mail": "iOS Mail compose button behavior",
+    "notion": "Notion mobile quick capture"
+  },
+
+  "comparison_to_similar_animations": {
+    "vs_bottom_sheet": {
+      "similarity": "Both expand from compact state, both support drag-to-dismiss",
+      "difference": "This expands from fixed button position, bottom sheet slides from edge"
+    },
+    "vs_modal": {
+      "similarity": "Both show overlay content with backdrop",
+      "difference": "This morphs from button, traditional modal fades/slides in"
+    },
+    "vs_action_tray": {
+      "similarity": "Both provide action options from compact trigger",
+      "difference": "This shows single content area, action tray shows multiple actions"
+    },
+    "vs_alert_drawer": {
+      "similarity": "Both morph button to card",
+      "difference": "This uses FAB pattern, alert drawer is inline expandable button"
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~350 lines total (all components combined)",
+    "file_count": 6,
+    "dependencies": [
+      "Reanimated (likely already in project)",
+      "Gesture handler (likely already in project)",
+      "Vector icons (likely already in project)"
+    ],
+    "assets": "None",
+    "runtime_memory": "Minimal - 3 SharedValues, 4 derived values, 4 animated styles",
+    "estimated_memory": "< 100KB including component tree"
+  },
+
+  "performance_metrics": {
+    "target_fps": 60,
+    "runs_on": "UI thread (worklets)",
+    "expected_performance": "Smooth on all modern devices",
+    "gesture_update_frequency": "Every frame (~16ms intervals)",
+    "animation_complexity": "Medium - multiple interpolations and transforms",
+    "worst_case_scenario": "Scale calculation during aggressive dragging",
+    "optimization_level": "High - memoized components, UI thread execution"
+  },
+
+  "tags": [
+    "floating-action-button",
+    "fab",
+    "modal",
+    "morphing-animation",
+    "drag-to-dismiss",
+    "pan-gesture",
+    "reanimated",
+    "gesture-handler",
+    "scale-transform",
+    "backdrop",
+    "progressive-disclosure",
+    "interpolation",
+    "pythagorean-distance",
+    "threshold-detection",
+    "pointer-events",
+    "icon-rotation",
+    "spring-animation",
+    "center-positioning",
+    "material-design"
+  ]
+}

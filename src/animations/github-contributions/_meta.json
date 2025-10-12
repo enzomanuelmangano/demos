@@ -1,0 +1,873 @@
+{
+  "animation_name": "GitHub Contributions",
+  "animation_slug": "github-contributions",
+  "description": "An animated GitHub-style contribution calendar that displays activity data in a grid layout with staggered wave animations. Features dynamic color schemes, diagonal animation patterns, smooth scale and color interpolations, and imperative API controls. Includes date utilities for week-based calendar generation and supports responsive sizing.",
+
+  "main_features": [
+    "GitHub-style contribution heatmap calendar",
+    "Staggered diagonal wave animation (bottom-left to top-right)",
+    "Color interpolation from level0 to contribution level colors",
+    "Scale animation with squeeze effect (1 → 0.4 → 1)",
+    "Multiple color schemes (GitHub, Blue, Purple)",
+    "Imperative API for animation control (start, reset, toggle)",
+    "Date-based grid organization (weeks × days)",
+    "Responsive calendar sizing based on window width",
+    "Random contribution data generation",
+    "Day labels (Mon, Tue, Wed, etc.)",
+    "Week-based layout with proper date alignment",
+    "Empty squares for dates outside data range"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Demo component with contribution data generation and touch interaction",
+    "contribution-calendar/index.tsx": "Main calendar component with grid layout and animation coordination",
+    "contribution-calendar/contribution-square.tsx": "Individual square component with scale and color animation",
+    "contribution-calendar/types.tsx": "Type definitions for ContributionData, ContributionLevel, and animation controls",
+    "contribution-calendar/utils/date-utils.tsx": "Date manipulation utilities for calendar generation",
+    "contribution-calendar/utils/animation-utils.tsx": "Animation delay calculation utilities",
+    "config/defaults.tsx": "Color scheme configurations and default values",
+    "contribution-data.tsx": "Random contribution data generator"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "date_handling": "date-fns"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle"
+      ],
+      "functions": [
+        "withDelay",
+        "withSpring",
+        "cancelAnimation",
+        "interpolate",
+        "interpolateColor"
+      ],
+      "critical_feature": "Spring animations with custom config for bouncy contribution square reveals"
+    },
+    "date-fns": {
+      "version": "^4.1.0",
+      "functions": [
+        "addDays",
+        "subDays",
+        "format",
+        "startOfWeek",
+        "endOfWeek",
+        "eachDayOfInterval"
+      ],
+      "usage": "Date range calculation, week alignment, day label generation, and date formatting"
+    },
+    "react-native": {
+      "hooks": ["useWindowDimensions"],
+      "components": ["View", "Text", "StyleSheet"],
+      "usage": "Layout, styling, and responsive sizing"
+    }
+  },
+
+  "animation_techniques": {
+    "staggered_wave_pattern": {
+      "direction": "Bottom-left to top-right diagonal",
+      "delay_calculation": "45ms × (weekIndex + (6 - dayIndex))",
+      "explanation": {
+        "weekIndex": "Increases left to right (0 for first week)",
+        "dayIndex": "0 = Monday, 6 = Sunday",
+        "6_minus_dayIndex": "Inverts to start from Sunday (bottom)",
+        "formula": "Creates diagonal wave by combining horizontal and vertical progression"
+      },
+      "base_delay": "45ms between adjacent squares on diagonal",
+      "effect": "Squares animate in a smooth diagonal wave pattern"
+    },
+    "spring_animation": {
+      "config": {
+        "mass": 1.1,
+        "damping": 13,
+        "stiffness": 150,
+        "overshootClamping": false,
+        "restSpeedThreshold": 0.8
+      },
+      "note": "Comment suggests setting damping to 1 for fun (extreme bounce)",
+      "effect": "Natural, bouncy motion with slight overshoot"
+    },
+    "scale_animation": {
+      "keyframes": "progress: [0, 0.5, 1]",
+      "output": "scale: [1, 0.4, 1]",
+      "effect": "Square squeezes down to 40% then expands back to full size",
+      "interpolation": "interpolate with progress value",
+      "purpose": "Creates attention-grabbing pop effect"
+    },
+    "color_interpolation": {
+      "start_color": "colorScheme.level0 (always light gray)",
+      "end_color": "colorScheme.level{0-4} (based on contribution level)",
+      "interpolation": "interpolateColor(progress, [0, 1], [start, end], 'RGB')",
+      "effect": "Smooth color transition from gray to contribution level color",
+      "color_space": "RGB"
+    },
+    "reset_animation": {
+      "delay": "Math.random() × 500 (0-500ms random)",
+      "spring_config": {
+        "mass": 0.9,
+        "damping": 10,
+        "stiffness": 60
+      },
+      "progress": "Animates back to 0",
+      "effect": "Squares reset with random timing creating organic fade-out"
+    },
+    "imperative_animation_control": {
+      "pattern": "forwardRef with useImperativeHandle",
+      "exposed_methods": {
+        "startAnimation": "Triggers staggered wave animation",
+        "resetAnimation": "Returns squares to initial state with random delays",
+        "toggleAnimation": "Starts if stopped, resets if running"
+      },
+      "ref_forwarding": "Calendar → Square refs (array of SquareAnimationControls)",
+      "coordination": "Parent controls all child square animations via refs"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "progress",
+        "scope": "ContributionSquare component",
+        "initial": 0,
+        "range": "[0, 1]",
+        "usage": "Drives both scale and color interpolation"
+      },
+      {
+        "name": "isAnimating",
+        "scope": "GitHubContributionCalendar component",
+        "type": "boolean",
+        "usage": "Tracks animation state for toggle functionality"
+      }
+    ],
+    "useAnimatedStyle": {
+      "usage_count": 1,
+      "instance": "animatedStyle in ContributionSquare",
+      "animated_properties": {
+        "transform": "scale interpolation with squeeze effect",
+        "backgroundColor": "Color interpolation from level0 to contribution level color"
+      },
+      "dependencies": ["progress.value", "level", "colorScheme"],
+      "applied_to": "Animated.View representing contribution square"
+    },
+    "useImperativeHandle": {
+      "usage_count": 2,
+      "instances": [
+        {
+          "component": "GitHubContributionCalendar",
+          "ref_type": "CalendarAnimationControls",
+          "exposed_methods": ["startAnimation", "resetAnimation", "toggleAnimation"],
+          "dependencies": "[startAnimation, resetAnimation, toggleAnimation]"
+        },
+        {
+          "component": "ContributionSquare",
+          "ref_type": "SquareAnimationControls",
+          "exposed_methods": ["startAnimation", "resetAnimation"],
+          "dependencies": "[startAnimation, resetAnimation]"
+        }
+      ]
+    },
+    "ref_array_pattern": {
+      "usage": "squareRefs = useRef<(SquareAnimationControls | null)[]>([])",
+      "population": "squareRefs.current[squareIndex] = el in renderItem",
+      "iteration": "squareRefs.current.forEach(squareRef => squareRef?.method())",
+      "purpose": "Control all child animations from parent",
+      "benefit": "Centralized animation coordination"
+    },
+    "worklet_functions": {
+      "getColorForLevel": {
+        "directive": "'worklet'",
+        "parameters": "(level: number, colorScheme: ColorScheme)",
+        "returns": "Color string for given level",
+        "usage": "Called within useAnimatedStyle on UI thread",
+        "switch_case": "Handles levels 0-4, defaults to level0"
+      }
+    },
+    "cancelAnimation": {
+      "usage": "cancelAnimation(progress) before starting new animation",
+      "purpose": "Prevents animation conflicts when retriggering",
+      "benefit": "Clean state management for animation restarts"
+    }
+  },
+
+  "component_patterns": {
+    "forwardRef_cascade": {
+      "pattern": "Parent ref forwards to array of child refs",
+      "levels": [
+        "GitHubContributions → calendarRef (CalendarAnimationControls)",
+        "GitHubContributionCalendar → squareRefs[] (SquareAnimationControls[])"
+      ],
+      "benefit": "Multi-level imperative control hierarchy"
+    },
+    "index_mapping": {
+      "purpose": "Map grid position to flat array index",
+      "implementation": "squareIndexMap: Map<string, number>",
+      "key": "weekIndex-dayIndex",
+      "value": "Sequential square index (0, 1, 2, ...)",
+      "necessity": "Grid has empty squares, refs need sequential indexing",
+      "usage": "Ensures correct ref assignment for squares in data range"
+    },
+    "conditional_rendering": {
+      "empty_squares": "Rendered for dates outside data range",
+      "contribution_squares": "Rendered only for dates within [startDate, endDate]",
+      "key_strategy": "empty-{weekIndex}-{dayIndex} vs {weekIndex}-{dayIndex}",
+      "styling": "Empty squares have transparent background"
+    },
+    "useMemo_optimizations": [
+      {
+        "name": "contributionData",
+        "scope": "GitHubContributions",
+        "dependencies": "[calendarWidth]",
+        "calculation": "generateContributionData based on screen width",
+        "benefit": "Regenerates only when screen size changes"
+      },
+      {
+        "name": "startDate, endDate",
+        "scope": "GitHubContributionCalendar",
+        "dependencies": "[data]",
+        "calculation": "Extracts and sorts date keys",
+        "benefit": "Computed once per data change"
+      },
+      {
+        "name": "weeks",
+        "scope": "GitHubContributionCalendar",
+        "dependencies": "[startDate, endDate]",
+        "calculation": "Groups days into weeks with proper alignment",
+        "benefit": "Week grid computed once per date range change"
+      },
+      {
+        "name": "squareIndexMap",
+        "scope": "GitHubContributionCalendar",
+        "dependencies": "[weeks, startDate, endDate]",
+        "calculation": "Maps grid positions to array indices",
+        "benefit": "Index lookup computed once per grid change"
+      }
+    ],
+    "useCallback_pattern": [
+      {
+        "name": "startAnimation",
+        "dependencies": "[isAnimating]",
+        "action": "Sets isAnimating.value = true, calls startAnimation on all square refs"
+      },
+      {
+        "name": "resetAnimation",
+        "dependencies": "[isAnimating]",
+        "action": "Sets isAnimating.value = false, calls resetAnimation on all square refs"
+      },
+      {
+        "name": "toggleAnimation",
+        "dependencies": "[startAnimation, resetAnimation, isAnimating]",
+        "logic": "Checks isAnimating.value to decide start or reset"
+      },
+      {
+        "name": "startAnimation (square)",
+        "scope": "ContributionSquare",
+        "dependencies": "[weekIndex, dayIndex, progress]",
+        "calculation": "Computes delay, cancels existing animation, starts new spring"
+      },
+      {
+        "name": "resetAnimation (square)",
+        "scope": "ContributionSquare",
+        "dependencies": "[progress]",
+        "calculation": "Cancels existing animation, springs back to 0 with random delay"
+      }
+    ]
+  },
+
+  "date_utilities": {
+    "generateDayLabels": {
+      "output": "['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']",
+      "implementation": "Gets Monday of current week, generates 7 days, formats as 'EEE'",
+      "usage": "Static labels for left side of calendar"
+    },
+    "getDateRange": {
+      "parameters": "(endDate: Date, days: number)",
+      "calculation": "startDate = subDays(endDate, days - 1)",
+      "returns": "{ startDate, endDate }",
+      "usage": "Calculate date range for contribution data generation"
+    },
+    "groupDaysIntoWeeks": {
+      "parameters": "(days: Date[])",
+      "algorithm": "Reduce with weekIndex = Math.floor(index / 7)",
+      "returns": "Date[][] (array of week arrays)",
+      "usage": "Convert flat array of dates into week-based grid structure"
+    },
+    "week_alignment": {
+      "startOfWeek": "weekStartsOn: 1 (Monday)",
+      "endOfWeek": "weekStartsOn: 1 (Monday)",
+      "calendar_padding": "Expands to full weeks even if data doesn't start/end on Monday",
+      "eachDayOfInterval": "Fills all days between aligned start/end",
+      "purpose": "Ensures calendar grid is always complete weeks"
+    },
+    "date_formatting": {
+      "data_keys": "yyyy-MM-dd (e.g., '2024-01-15')",
+      "day_labels": "EEE (e.g., 'Mon', 'Tue')",
+      "library": "date-fns format() function"
+    }
+  },
+
+  "data_generation": {
+    "generateContributionData": {
+      "parameters": "{ days: number, endDate?: Date }",
+      "default_endDate": "new Date() (today)",
+      "algorithm": [
+        "Calculate startDate using getDateRange",
+        "Loop from 0 to days",
+        "addDays(startDate, i) for each date",
+        "format as yyyy-MM-dd",
+        "Assign random ContributionLevel (0-4)"
+      ],
+      "randomization": "Math.floor(Math.random() * 5)",
+      "output": "ContributionData object (Record<string, number>)"
+    },
+    "days_calculation": {
+      "formula": "Math.floor(calendarWidth / 3)",
+      "calendarWidth": "windowWidth × 0.9",
+      "example": "375px window → 337.5px calendar → ~112 days",
+      "purpose": "Responsive calendar size based on screen width"
+    },
+    "contribution_levels": {
+      "0": "No contributions (light gray)",
+      "1": "Low contributions (light color)",
+      "2": "Medium contributions (medium color)",
+      "3": "High contributions (dark color)",
+      "4": "Very high contributions (darkest color)"
+    }
+  },
+
+  "color_schemes": {
+    "github": {
+      "level0": "rgba(235, 237, 240, 1) - Light grey",
+      "level1": "rgba(155, 233, 168, 1) - Light green",
+      "level2": "rgba(64, 196, 99, 1) - Medium green",
+      "level3": "rgba(48, 161, 78, 1) - Dark green",
+      "level4": "rgba(33, 110, 57, 1) - Darkest green",
+      "inspiration": "GitHub's actual contribution graph colors"
+    },
+    "blue": {
+      "level0": "rgba(235, 237, 240, 1) - Light grey",
+      "level1": "rgba(174, 214, 241, 1) - Light blue",
+      "level2": "rgba(93, 173, 226, 1) - Medium blue",
+      "level3": "rgba(52, 144, 220, 1) - Dark blue",
+      "level4": "rgba(21, 101, 192, 1) - Darkest blue"
+    },
+    "purple": {
+      "level0": "rgba(235, 237, 240, 1) - Light grey",
+      "level1": "rgba(218, 191, 236, 1) - Light purple",
+      "level2": "rgba(187, 143, 206, 1) - Medium purple",
+      "level3": "rgba(156, 95, 176, 1) - Dark purple",
+      "level4": "rgba(125, 47, 146, 1) - Darkest purple"
+    },
+    "design_pattern": {
+      "level0_constant": "All schemes share same light gray for no contributions",
+      "progressive_intensity": "Colors get progressively darker from level1 to level4",
+      "rgba_format": "Full RGBA with alpha 1 (opaque)"
+    }
+  },
+
+  "layout_and_positioning": {
+    "calendar_container": {
+      "backgroundColor": "#ffffff (white)",
+      "borderRadius": 16,
+      "borderCurve": "continuous (iOS squircle)",
+      "padding": 16,
+      "boxShadow": "0px 0px 20px 0px rgba(0, 0, 0, 0.05)",
+      "effect": "Floating card appearance"
+    },
+    "calendar_grid": {
+      "flexDirection": "row",
+      "alignItems": "flex-start",
+      "structure": "Day labels (column) + week columns"
+    },
+    "day_labels": {
+      "width": 25,
+      "height": 14,
+      "fontSize": 11,
+      "color": "#656d76 (gray)",
+      "fontFamily": "regular",
+      "marginBottom": 3,
+      "marginRight": 8,
+      "position": "Left side of calendar"
+    },
+    "contribution_square": {
+      "width": 14,
+      "height": 14,
+      "borderRadius": 2,
+      "marginBottom": 3,
+      "marginRight": 3,
+      "spacing": "3px between squares vertically and horizontally"
+    },
+    "week_column": {
+      "flexDirection": "column (default)",
+      "marginRight": 3,
+      "contains": "7 squares (one per day)"
+    },
+    "empty_square": {
+      "backgroundColor": "transparent",
+      "same_size": "14×14px to maintain grid alignment"
+    },
+    "app_container": {
+      "flex": 1,
+      "backgroundColor": "#f7f7f7 (light gray)",
+      "justifyContent": "center",
+      "alignItems": "center"
+    },
+    "responsive_sizing": {
+      "calendarWidth": "windowWidth × 0.9 (90% of screen)",
+      "days": "calendarWidth / 3 (approximate)",
+      "behavior": "Larger screens show more weeks of data"
+    }
+  },
+
+  "interaction_patterns": {
+    "touch_interaction": {
+      "event": "onTouchStart on app container",
+      "handler": "handleToggleAnimation",
+      "action": "calendarRef.current?.toggleAnimation()",
+      "effect": "Tap anywhere to start/reset animation",
+      "simplicity": "No buttons needed, entire screen is interactive"
+    },
+    "animation_lifecycle": {
+      "initial_state": "All squares at progress = 0 (gray, full size)",
+      "on_tap_1": "toggleAnimation → startAnimation → staggered wave reveal",
+      "mid_animation": "Squares scale down and color up in diagonal pattern",
+      "final_state": "All squares at progress = 1 (colored, full size)",
+      "on_tap_2": "toggleAnimation → resetAnimation → random fade back to gray"
+    }
+  },
+
+  "visual_design": {
+    "color_palette": {
+      "app_background": "#f7f7f7 (light gray)",
+      "calendar_background": "#ffffff (white)",
+      "calendar_shadow": "rgba(0, 0, 0, 0.05)",
+      "day_label_text": "#656d76 (gray)",
+      "contribution_colors": "Varies by color scheme"
+    },
+    "typography": {
+      "day_labels": {
+        "fontSize": 11,
+        "fontFamily": "regular",
+        "color": "#656d76"
+      }
+    },
+    "spacing": {
+      "calendar_padding": 16,
+      "square_margin": 3,
+      "day_label_margin_right": 8,
+      "square_size": 14
+    },
+    "border_radius": {
+      "calendar": 16,
+      "squares": 2,
+      "curve": "continuous (iOS)"
+    },
+    "shadows": {
+      "calendar": "Subtle shadow for depth (0.05 opacity)"
+    }
+  },
+
+  "performance_optimizations": {
+    "useMemo": [
+      "contributionData (regenerates only on screen width change)",
+      "startDate/endDate extraction (computed once per data)",
+      "weeks array (computed once per date range)",
+      "squareIndexMap (computed once per grid structure)"
+    ],
+    "useCallback": [
+      "startAnimation (calendar level)",
+      "resetAnimation (calendar level)",
+      "toggleAnimation (calendar level)",
+      "startAnimation (square level)",
+      "resetAnimation (square level)",
+      "handleToggleAnimation (demo level)"
+    ],
+    "ref_strategy": {
+      "pattern": "useRef for imperative API instead of state propagation",
+      "benefit": "No re-renders when triggering animations"
+    },
+    "forwardRef": {
+      "components": ["GitHubContributionCalendar", "ContributionSquare"],
+      "benefit": "Exposes imperative API without prop drilling"
+    },
+    "worklet_optimization": {
+      "getColorForLevel": "Runs on UI thread for smooth color interpolation",
+      "benefit": "No bridge crossing during animation"
+    },
+    "cancelAnimation": {
+      "usage": "Prevents animation conflicts",
+      "benefit": "Clean animation state management"
+    },
+    "animated_components": {
+      "count": "~112 squares (based on 375px screen)",
+      "simultaneous": "All animated with staggered delays",
+      "overhead": "Low - simple scale + color interpolation per square"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "GitHub-style contribution calendars",
+      "Activity tracking visualizations",
+      "Habit tracking apps",
+      "Fitness/health activity calendars",
+      "Productivity dashboards"
+    ],
+    "secondary": [
+      "Social media post frequency visualization",
+      "Project commit history displays",
+      "Workout/exercise tracking calendars",
+      "Mood tracking apps",
+      "Reading/learning streak trackers",
+      "Sales activity dashboards"
+    ],
+    "educational": [
+      "Teaching staggered animation patterns",
+      "Demonstrating diagonal wave effects",
+      "Date manipulation with date-fns",
+      "Imperative animation control patterns",
+      "Color interpolation techniques",
+      "Spring animation configurations"
+    ],
+    "real_world_examples": [
+      "GitHub contribution graph",
+      "GitLab activity calendar",
+      "Bitbucket commit history",
+      "Habitica habit tracking",
+      "Strava training calendar",
+      "Duolingo streak calendar"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "ContributionData = Record<string, number>",
+        "ContributionLevel = 0 | 1 | 2 | 3 | 4",
+        "CalendarAnimationControls",
+        "SquareAnimationControls",
+        "ColorScheme",
+        "GitHubContributionCalendarProps"
+      ],
+      "generics": "forwardRef generic typing for ref types"
+    },
+    "component_structure": {
+      "separation": "Clear separation: demo, calendar, square, config, utils",
+      "reusability": "Calendar component is reusable with different data/colors",
+      "single_responsibility": "Each component has single, clear purpose"
+    },
+    "constants": {
+      "SpringConfig": "Centralized spring configuration object",
+      "COLOR_SCHEMES": "Multiple color schemes as const",
+      "DEFAULT_COLOR_SCHEME": "Fallback color scheme",
+      "dayLabels": "Generated once at module level"
+    },
+    "utility_functions": {
+      "date-utils": "Pure functions for date manipulation",
+      "animation-utils": "Pure functions for delay calculation (defined but not used in current implementation)",
+      "getColorForLevel": "Worklet function for color lookup"
+    },
+    "naming_conventions": {
+      "components": "PascalCase (ContributionSquare, GitHubContributionCalendar)",
+      "props": "camelCase (colorScheme, weekIndex)",
+      "shared_values": "camelCase (progress, isAnimating)",
+      "utilities": "camelCase (generateDayLabels, getDateRange)",
+      "constants": "UPPER_SNAKE_CASE (COLOR_SCHEMES, DEFAULT_COLOR_SCHEME)"
+    },
+    "best_practices": [
+      "forwardRef for imperative APIs",
+      "useImperativeHandle for ref exposure",
+      "useCallback for stable function references",
+      "useMemo for expensive computations",
+      "cancelAnimation before new animations",
+      "Worklet directive for UI thread functions",
+      "Type-safe contribution levels (literal union type)",
+      "Const assertions for color schemes"
+    ]
+  },
+
+  "known_limitations": {
+    "random_data_only": {
+      "issue": "Only generates random contribution data",
+      "enhancement": "Would need API integration for real data"
+    },
+    "fixed_delay_timing": {
+      "issue": "45ms base delay is hardcoded",
+      "enhancement": "Could be configurable prop"
+    },
+    "no_interactivity_per_square": {
+      "issue": "Cannot tap individual squares for details",
+      "enhancement": "Could add onPress to show contribution count/date"
+    },
+    "fixed_color_schemes": {
+      "issue": "Only 3 predefined color schemes",
+      "enhancement": "Could accept custom color scheme via props"
+    },
+    "no_month_labels": {
+      "issue": "No month labels above weeks",
+      "enhancement": "Could add month row similar to GitHub"
+    },
+    "animation_direction_fixed": {
+      "issue": "Always animates bottom-left to top-right",
+      "enhancement": "Could support different animation directions"
+    },
+    "responsive_days_calculation": {
+      "issue": "days = width / 3 is arbitrary",
+      "impact": "May not show optimal amount of data for all screen sizes"
+    },
+    "animation_utils_unused": {
+      "issue": "animation-utils.tsx defines functions but they're not used",
+      "reason": "Delay calculation done inline in component"
+    }
+  },
+
+  "potential_improvements": {
+    "features": [
+      "Real data integration from API",
+      "Month labels above weeks",
+      "Tooltip/modal on square press showing date and count",
+      "Year selector to view past years",
+      "Configurable animation directions",
+      "Multiple animation patterns (spiral, random, etc.)",
+      "Contribution count legend",
+      "Total contributions summary",
+      "Streak tracking",
+      "Export as image/share functionality"
+    ],
+    "customization": [
+      "Configurable base delay for animation speed",
+      "Custom color scheme via props",
+      "Adjustable square size",
+      "Configurable spring animation params",
+      "Different layout options (vertical, horizontal)",
+      "Adjustable spacing between squares"
+    ],
+    "data_enhancements": [
+      "Load real contribution data from API",
+      "Support different time ranges (week, month, year)",
+      "Multiple activity types/categories",
+      "Contribution goal tracking",
+      "Comparison with previous periods",
+      "Data export functionality"
+    ],
+    "interaction": [
+      "Individual square press handlers",
+      "Long press for detailed stats",
+      "Swipe to change time period",
+      "Pinch to zoom calendar",
+      "Double tap for different animation"
+    ],
+    "accessibility": [
+      "Screen reader support for contribution levels",
+      "Keyboard navigation between squares",
+      "Reduce motion preference support",
+      "High contrast mode",
+      "Accessible date announcements",
+      "Focus indicators"
+    ],
+    "performance": [
+      "Virtualization for very long date ranges",
+      "Optimize ref array management",
+      "Lazy loading for historical data",
+      "Memoize color lookup",
+      "Use animation-utils functions instead of inline calculations"
+    ]
+  },
+
+  "key_insights": {
+    "diagonal_wave_formula": "45 × (weekIndex + (6 - dayIndex)) creates perfect diagonal stagger",
+    "progress_drives_both": "Single progress SharedValue controls both scale and color (efficient)",
+    "squeeze_effect": "Scale keyframes [1, 0.4, 1] creates satisfying pop animation",
+    "random_reset_delays": "Random delays on reset create organic, non-uniform fade out",
+    "ref_array_coordination": "Array of imperative refs enables centralized animation control",
+    "week_alignment_necessity": "Must align to full weeks for proper grid layout",
+    "index_mapping_for_gaps": "squareIndexMap necessary because grid has empty squares",
+    "worklet_color_lookup": "getColorForLevel must be worklet to run on UI thread",
+    "cancelAnimation_critical": "Must cancel before new animation to prevent conflicts",
+    "color_interpolation_smooth": "interpolateColor in RGB provides smooth transition",
+    "responsive_sizing_pattern": "width × 0.9 / 3 = days provides reasonable calendar size",
+    "imperative_toggle_pattern": "Toggle state tracked in SharedValue, not React state"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic Reanimated spring animations",
+      "Color interpolation basics",
+      "Scale animation patterns",
+      "forwardRef pattern for imperative APIs",
+      "Date formatting with date-fns"
+    ],
+    "for_intermediate": [
+      "Staggered animation with delay calculation",
+      "useImperativeHandle for ref APIs",
+      "Ref array management",
+      "useAnimatedStyle for multiple properties",
+      "useMemo for performance optimization",
+      "Week-based calendar layout logic",
+      "Responsive sizing based on screen width"
+    ],
+    "for_advanced": [
+      "Coordinating animations across components via refs",
+      "Diagonal wave pattern mathematics",
+      "Worklet functions for UI thread execution",
+      "cancelAnimation for animation lifecycle management",
+      "Complex date manipulation and alignment",
+      "Index mapping for sparse grids",
+      "Multi-level imperative API design",
+      "Spring configuration tuning"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Calendar renders with correct number of weeks",
+      "Day labels display correctly",
+      "Squares aligned properly in grid",
+      "Empty squares render for dates outside range",
+      "Color scheme applies correctly",
+      "Animation flows diagonally bottom-left to top-right",
+      "Squares squeeze and expand smoothly",
+      "Colors transition smoothly during animation",
+      "Reset animation scatters with random delays"
+    ],
+    "interaction_testing": [
+      "Tap to start animation",
+      "Tap during animation to reset",
+      "Tap after animation to reset",
+      "Multiple rapid taps handled gracefully",
+      "Animation completes fully without interruption"
+    ],
+    "data_testing": [
+      "Various date ranges (days: 30, 90, 365)",
+      "Different end dates",
+      "All contribution levels (0-4) render correctly",
+      "Empty data object",
+      "Single day of data",
+      "Full year of data"
+    ],
+    "layout_testing": [
+      "Different screen sizes (small phone to tablet)",
+      "Responsive calendar width",
+      "Proper spacing between elements",
+      "Calendar centered on screen",
+      "Week columns aligned vertically"
+    ],
+    "edge_cases": [
+      "Data starting mid-week",
+      "Data ending mid-week",
+      "Leap year handling",
+      "Year boundary transitions",
+      "Very small screens (< 320px width)",
+      "Very large screens (tablets, iPads)",
+      "Screen rotation during animation"
+    ],
+    "performance_testing": [
+      "60fps during animation",
+      "Memory stable across multiple animations",
+      "Large date ranges (365+ days) perform well",
+      "No jank when triggering animation",
+      "Smooth on low-end devices"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Not implemented",
+      "reduced_motion": "No support",
+      "color_contrast": "Good contrast between levels"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to calendar describing purpose",
+      "Add accessibilityRole='grid' to calendar container",
+      "Individual squares should have labels: 'January 15, 2024, 3 contributions'",
+      "Announce animation start/stop to screen readers",
+      "Support prefers-reduced-motion (skip/simplify animation)",
+      "Keyboard navigation between squares",
+      "Focus indicators on squares",
+      "High contrast mode support",
+      "Respect color blindness considerations (patterns/textures in addition to color)"
+    ]
+  },
+
+  "comparison_to_similar_patterns": {
+    "vs_github_actual": {
+      "similarities": [
+        "Week-based grid layout",
+        "5-level contribution intensity",
+        "Green color scheme",
+        "Day labels on left"
+      ],
+      "differences": [
+        "GitHub shows 53 weeks, this is responsive",
+        "GitHub has month labels, this doesn't",
+        "GitHub has tooltips on hover, this has animation",
+        "GitHub shows real data, this generates random"
+      ]
+    },
+    "vs_heatmap_charts": {
+      "similarity": "Grid-based intensity visualization",
+      "difference": "This is time-based (calendar), heatmaps are categorical",
+      "unique": "Diagonal wave animation pattern"
+    }
+  },
+
+  "related_patterns": {
+    "calendar_visualizations": [
+      "Month calendar grid",
+      "Year calendar overview",
+      "Gantt chart timeline"
+    ],
+    "heatmaps": [
+      "Statistical heatmaps",
+      "Correlation matrices",
+      "Geographic heat maps"
+    ],
+    "staggered_animations": [
+      "List item entrance animations",
+      "Grid reveal animations",
+      "Tile flip animations"
+    ]
+  },
+
+  "real_world_inspiration": {
+    "github_contributions": "Direct inspiration - GitHub's contribution graph",
+    "gitlab_activity": "Similar activity calendar",
+    "habitica": "Habit tracking calendar with color intensity"
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~400 lines total (components + utilities + config)",
+    "dependencies": "Reanimated (likely already in project), date-fns (35KB gzipped)",
+    "date_fns_optimization": "Only imports specific functions (tree-shakeable)",
+    "runtime_memory": "Moderate - 1 SharedValue per square (~112 squares × 1 = ~112 SharedValues)",
+    "estimated_size": "< 15KB (excluding already-present dependencies)"
+  },
+
+  "tags": [
+    "github-contributions",
+    "contribution-calendar",
+    "heatmap",
+    "activity-tracking",
+    "calendar-grid",
+    "staggered-animation",
+    "diagonal-wave",
+    "scale-animation",
+    "color-interpolation",
+    "spring-animation",
+    "date-fns",
+    "reanimated",
+    "imperative-api",
+    "forwardRef",
+    "useImperativeHandle",
+    "week-layout",
+    "responsive-calendar",
+    "data-visualization"
+  ]
+}

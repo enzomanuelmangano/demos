@@ -1,0 +1,1347 @@
+{
+  "animation_name": "Stacked Modals",
+  "animation_slug": "stacked-modals",
+  "description": "A sophisticated modal management system that stacks multiple modals on top of each other with 3D-like depth effects. Each modal automatically scales down, translates upward, and reduces opacity based on its position in the stack. Features drag-to-dismiss backdrop interaction, sequential modal presentation, spring-based physics animations, and dynamic z-index layering. Perfect for multi-step workflows, nested confirmations, or progressive disclosure patterns.",
+
+  "main_features": [
+    "Multiple modals stacked with depth perspective",
+    "Dynamic z-index management based on modal position",
+    "Scale and translation transforms for 3D layering effect",
+    "Opacity reduction for inactive modals (content)",
+    "Shadow intensity variation based on stack position",
+    "Spring physics for smooth entrance and exit animations",
+    "Animated backdrop with tap-to-dismiss-all functionality",
+    "Individual modal dismissal by key",
+    "Dismiss all modals at once via backdrop",
+    "Context-based modal state management",
+    "Sequential modal presentation system",
+    "Delayed exit animations (staggered FadeOutDown)",
+    "Maximum visible modals limit (3 visible, others hidden)",
+    "Dynamic bottom positioning calculations",
+    "Custom animated pressable buttons with interpolateColor",
+    "Memoized modal rendering for performance",
+    "Two-context architecture (public API + internal state)"
+  ],
+
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Main demo screen with FAB trigger button and StackedModalProvider wrapper"
+    },
+    "hooks": {
+      "hook.tsx": "Demo hook (useDemoStackedModal) showing sequential modal chain pattern",
+      "hooks/use-modal.tsx": "High-level useModal hook that wraps stack functionality with custom UI"
+    },
+    "components": {
+      "stacked-modal-manager/stacked-modal-provider.tsx": "Provider component managing modal state and rendering logic",
+      "stacked-modal-manager/stacked-modal.tsx": "Individual modal component with transform and animation logic",
+      "stacked-modal-manager/backdrop/index.tsx": "Backdrop overlay with opacity animation and dismiss handler",
+      "stacked-modal-manager/context.ts": "Two context definitions (public API + internal state)",
+      "stacked-modal-manager/hooks.ts": "useStackedModal and useInternalStackedModal hooks",
+      "stacked-modal-manager/index.ts": "Barrel export file"
+    },
+    "constants": {
+      "stacked-modal-manager/constants.ts": "MODAL_HEIGHT (200), MAX_VISIBLE_MODALS (3)"
+    },
+    "assets": "None",
+    "types": {
+      "defined_in": "context.ts",
+      "types": [
+        "StackedModalType (id, key, children)",
+        "InternalStackedModalContextType",
+        "ShowModalParams (in use-modal.tsx)"
+      ]
+    }
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "interactions": "pressto (animated pressable buttons)",
+    "state_management": "React Context API (dual context pattern)",
+    "icons": "@expo/vector-icons (Octicons - mentioned in types)",
+    "pattern": "Stacked modals with 3D depth perspective and sequential presentation"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withSpring",
+        "withTiming",
+        "interpolateColor"
+      ],
+      "components": ["Animated.View"],
+      "layout_animations": ["FadeOutDown"],
+      "critical_feature": "withSpring for organic modal entrance/exit and UI thread animations"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "functions": ["createAnimatedPressable"],
+      "usage": "Custom animated buttons (HighlightedConfirmButton, DismissButton) with interpolateColor",
+      "pattern": "createAnimatedPressable(progress => worklet function returning styles)"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["Octicons"],
+      "usage": "Optional icon support in modal content (defined in types but not used in demo)"
+    },
+    "react": {
+      "version": "19.1.0",
+      "hooks": [
+        "useState",
+        "useCallback",
+        "useMemo",
+        "useRef",
+        "useContext",
+        "useEffect"
+      ],
+      "context": ["createContext"],
+      "types": ["FC", "ReactNode", "PropsWithChildren"]
+    },
+    "react-native": {
+      "hooks": ["useWindowDimensions"],
+      "components": ["View", "Text", "StyleSheet"],
+      "usage": "Window dimensions for dynamic positioning and centering calculations"
+    }
+  },
+
+  "animation_techniques": {
+    "modal_stacking_transform": {
+      "scale_reduction": {
+        "formula": "1 - stackedModalId * 0.05",
+        "range": "1.0 (front modal) to 0.85 (modal 3) to smaller",
+        "step": "5% reduction per stack level",
+        "example": "id=0: scale=1.0, id=1: scale=0.95, id=2: scale=0.90, id=3: scale=0.85",
+        "animation": "withCustomSpring (smooth spring transition)",
+        "visual_effect": "Creates depth perspective as modals recede into background"
+      },
+      "vertical_translation": {
+        "formula": "-stackedModalId * 5",
+        "range": "0px (front) to -15px (modal 3) to further",
+        "step": "5px upward per stack level",
+        "example": "id=0: translateY=0, id=1: translateY=-5, id=2: translateY=-10",
+        "animation": "withCustomSpring",
+        "visual_effect": "Modals shift upward creating layered card appearance"
+      },
+      "combined_transform": {
+        "pattern": "transform: [{ translateY }, { scale }]",
+        "coordination": "Both animate together for cohesive 3D effect",
+        "visual_result": "Modals appear to stack away from viewer with perspective"
+      }
+    },
+    "opacity_animations": {
+      "container_opacity": {
+        "formula": "stackedModalId < MAX_VISIBLE_MODALS ? 1 : 0",
+        "threshold": "MAX_VISIBLE_MODALS = 3",
+        "effect": "First 3 modals visible, rest completely hidden",
+        "animation": "withCustomSpring",
+        "purpose": "Performance optimization - hides off-screen modals"
+      },
+      "content_opacity": {
+        "formula": "isActiveStackedModalProgress.value ** 1.5",
+        "calculation": "(stackedModalId === 0 ? 1 : 0) ** 1.5",
+        "result": "id=0: opacity=1, id>0: opacity=0",
+        "power_curve": "1.5 exponent creates non-linear fade",
+        "animation": "withCustomSpring",
+        "effect": "Only front modal content fully visible, others dimmed"
+      },
+      "base_opacity": {
+        "pattern": "useSharedValue(0) animated to withCustomSpring(1)",
+        "trigger": "On mount via useEffect",
+        "purpose": "Fade-in entrance for each modal",
+        "combined_with": "derivedOpacity for final visibility"
+      },
+      "derived_opacity": {
+        "formula": "baseOpacity.value * derivedOpacity.value",
+        "combination": "Fade-in (baseOpacity) × visibility threshold (derivedOpacity)",
+        "result": "Smooth entrance that respects MAX_VISIBLE_MODALS limit"
+      }
+    },
+    "shadow_dynamics": {
+      "shadow_radius": {
+        "formula": "Math.max(10 - stackedModalId * 1, 2)",
+        "range": "10px (front) to 2px (back)",
+        "floor": "Minimum 2px to maintain subtle shadow",
+        "step": "1px reduction per stack level",
+        "animation": "withCustomSpring",
+        "effect": "Front modal has prominent shadow, back modals have subtle shadow"
+      },
+      "shadow_opacity": {
+        "formula": "stackedModalId > 3 ? 0.1 - stackedModalId * 0.01 : 0.08",
+        "default": "0.08 for first 4 modals (ids 0-3)",
+        "reduction": "After id=3, reduces by 0.01 per level",
+        "effect": "Maintains consistent shadow for visible modals, reduces for hidden ones"
+      }
+    },
+    "z_index_management": {
+      "formula": "100 - stackedModalId",
+      "range": "100 (front) to lower values (back)",
+      "example": "id=0: z=100, id=1: z=99, id=2: z=98",
+      "purpose": "Ensures proper stacking order even with transforms",
+      "coordination": "Works with visual transforms to reinforce layering"
+    },
+    "position_calculations": {
+      "bottom_offset_system": {
+        "initial_position": {
+          "formula": "(windowHeight - MODAL_HEIGHT) / 2 - bottomOffset",
+          "base_centered": "(windowHeight - 200) / 2",
+          "offset_adjustment": "-110px (initial offset below center)",
+          "purpose": "Start position for entrance animation"
+        },
+        "final_position": {
+          "formula": "initialBottomPosition + bottomOffset + bottomHeight",
+          "components": [
+            "initialBottomPosition: base calculation",
+            "bottomOffset: +110px (brings to center)",
+            "bottomHeight: dynamic stacking offset"
+          ],
+          "bottomHeight_calculation": "Math.min(id, MAX_VISIBLE_MODALS - 1) + 15 * id",
+          "example": "id=0: bottomHeight=15, id=1: bottomHeight=16, id=2: bottomHeight=17"
+        },
+        "animation": "useEffect triggers withCustomSpring when bottomHeight changes",
+        "note": "Complex system ensures proper vertical spacing in stack"
+      },
+      "horizontal_centering": {
+        "width": "windowWidth * 0.8 (80% of screen)",
+        "left": "windowWidth * 0.1 (10% from left = centered)",
+        "calculation": "10% margin left + 80% width + 10% margin right = 100%",
+        "responsive": "Adapts to all screen sizes"
+      }
+    },
+    "entrance_animation": {
+      "trigger": "Modal added to stackedModals array",
+      "sequence": [
+        "1. Modal renders with initial bottom position (below center)",
+        "2. baseOpacity animates 0 → 1 via useEffect",
+        "3. bottom.value animates to final position via withCustomSpring",
+        "4. Scale and translateY apply based on stackedModalId",
+        "5. Shadow radius and opacity animate to final values"
+      ],
+      "spring_config": {
+        "mass": 2.5,
+        "damping": 100,
+        "stiffness": 740,
+        "overshootClamping": false
+      },
+      "feel": "Quick, bouncy entrance with slight overshoot"
+    },
+    "exit_animation": {
+      "type": "FadeOutDown",
+      "delay_formula": "60 * stackedModalId (ms)",
+      "stagger": "60ms between each modal in stack",
+      "example": "id=0: 0ms delay, id=1: 60ms, id=2: 120ms, id=3: 180ms",
+      "effect": "Modals dismiss in sequence from front to back",
+      "visual": "Creates cascading dismissal effect"
+    },
+    "backdrop_animation": {
+      "opacity": {
+        "formula": "withTiming(stackedModals.length > 0 ? 1 : 0)",
+        "trigger": "When first modal added or last modal removed",
+        "color": "#0000006f (black with 43.5% opacity)",
+        "final_opacity": "0.435 (0x6f/0xff) when visible",
+        "effect": "Backdrop fades in/out based on modal presence"
+      },
+      "pointer_events": {
+        "formula": "stackedModals.length > 0 ? 'auto' : 'none'",
+        "synchronized": "Changes in same animation as opacity",
+        "benefit": "Prevents tap-through when backdrop hidden"
+      }
+    },
+    "spring_physics_tuning": {
+      "custom_spring_config": {
+        "mass": 2.5,
+        "damping": 100,
+        "stiffness": 740,
+        "overshootClamping": false
+      },
+      "characteristics": {
+        "mass": "High (2.5) - heavier, more momentum",
+        "damping": "High (100) - strong resistance to oscillation",
+        "stiffness": "Very high (740) - rapid response",
+        "overshoot": "Allowed - slight bounce past target"
+      },
+      "feel": "Snappy and responsive with minimal but noticeable bounce",
+      "purpose": "Professional, polished modal presentation"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "bottom",
+        "type": "SharedValue<number>",
+        "initial": "initialBottomPosition (centered - 110px)",
+        "updates": "Via useEffect when bottomHeight changes",
+        "purpose": "Controls vertical position of each modal",
+        "scope": "Per-modal (each StackedModal has its own)"
+      },
+      {
+        "name": "baseOpacity",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "Animates to 1 on mount via useEffect",
+        "purpose": "Fade-in entrance for each modal",
+        "scope": "Per-modal"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "derivedOpacity",
+        "calculation": "stackedModalId < MAX_VISIBLE_MODALS ? 1 : 0",
+        "dependencies": ["stackedModalId"],
+        "animation": "withCustomSpring",
+        "purpose": "Visibility threshold based on MAX_VISIBLE_MODALS",
+        "used_in": "rVisibleContainerStyle"
+      },
+      {
+        "name": "isActiveStackedModalProgress",
+        "calculation": "stackedModalId === 0 ? 1 : 0",
+        "dependencies": ["stackedModalId"],
+        "animation": "withCustomSpring",
+        "purpose": "Determines if modal is front-most (active)",
+        "used_in": "rContentStyle opacity calculation"
+      }
+    ],
+    "useAnimatedStyle_instances": [
+      {
+        "name": "rStackedModalStyle",
+        "target": "Modal container",
+        "properties": [
+          "bottom (vertical position)",
+          "zIndex (stacking order)",
+          "shadowRadius (depth cue)",
+          "shadowOpacity (depth cue)"
+        ],
+        "dependencies": ["stackedSheet", "stackedModalId"],
+        "complexity": "Medium - 4 animated properties"
+      },
+      {
+        "name": "rVisibleContainerStyle",
+        "target": "Modal visible wrapper (with border radius)",
+        "properties": [
+          "opacity (combined baseOpacity * derivedOpacity)",
+          "transform: [translateY, scale]"
+        ],
+        "dependencies": ["stackedModalId"],
+        "purpose": "3D layering effect and visibility control",
+        "complexity": "Medium - 3 animated properties (opacity + 2 transforms)"
+      },
+      {
+        "name": "rContentStyle",
+        "target": "Modal content wrapper",
+        "properties": ["opacity (power curve)"],
+        "calculation": "isActiveStackedModalProgress.value ** 1.5",
+        "dependencies": ["stackedModalId"],
+        "purpose": "Dims content of non-active modals",
+        "power_curve": "1.5 exponent for non-linear fade"
+      },
+      {
+        "name": "rAnimatedStyle (Backdrop)",
+        "target": "Backdrop overlay",
+        "properties": [
+          "backgroundColor",
+          "opacity",
+          "pointerEvents"
+        ],
+        "pattern": "withTiming(stackedModals.length > 0 ? 1 : 0)",
+        "dependencies": ["stackedModals.length"]
+      }
+    ],
+    "layout_animations": [
+      {
+        "name": "FadeOutDown",
+        "usage": "exiting={FadeOutDown.delay(60 * stackedModalId)}",
+        "delay": "Staggered by 60ms per stack level",
+        "effect": "Cascading dismissal from front to back",
+        "applied_to": "Each StackedModal component"
+      }
+    ],
+    "useEffect_animations": [
+      {
+        "trigger": "bottomHeight changes",
+        "action": "bottom.value = withCustomSpring(calculated position)",
+        "purpose": "Updates modal position when stack composition changes",
+        "note": "Developer comment: 'not an easy solution, but it seems to work fine'"
+      },
+      {
+        "trigger": "Component mount",
+        "action": "baseOpacity.value = withCustomSpring(1)",
+        "purpose": "Fade-in entrance for each modal"
+      }
+    ]
+  },
+
+  "context_architecture": {
+    "dual_context_pattern": {
+      "rationale": "Separates public API from internal state updates",
+      "benefits": [
+        "Public API consumers don't re-render on internal state changes",
+        "Internal components can access stack details without exposing to public",
+        "Optimizes performance by preventing unnecessary re-renders",
+        "Clear separation of concerns"
+      ],
+      "developer_comment": "Explained in context.ts with detailed reasoning"
+    },
+    "StackedModalContext": {
+      "type": "Public API context",
+      "purpose": "Exposes modal control functions to consumers",
+      "value": {
+        "showStackedModal": "(modal: Omit<StackedModalType, 'id'>) => void",
+        "clearAllStackedModals": "() => void",
+        "clearModal": "(key: string) => void"
+      },
+      "consumers": [
+        "useStackedModal hook (exposed to app)",
+        "useModal hook (high-level wrapper)",
+        "Backdrop component (for clearAllStackedModals)"
+      ],
+      "re_render_trigger": "Only when functions reference changes (never, due to useCallback)"
+    },
+    "InternalStackedModalContext": {
+      "type": "Internal state context",
+      "purpose": "Provides stack state to internal components",
+      "value": {
+        "stackedModals": "StackedModalType[] (array of all modals)"
+      },
+      "consumers": [
+        "useInternalStackedModal hook",
+        "Backdrop component (for length check)",
+        "Individual StackedModal components"
+      ],
+      "re_render_trigger": "Every time stackedModals array changes",
+      "usage_pattern": "Used for calculating position, id, and rendering decisions"
+    }
+  },
+
+  "state_management": {
+    "modal_state": {
+      "structure": "StackedModalType[] array",
+      "type": "StackedModalType = { id: number, key: string, children?: () => ReactNode }",
+      "id_system": {
+        "meaning": "Stack position (0 = front, higher = back)",
+        "assignment": "New modals get id=0, existing modals increment by 1",
+        "updates": "Recalculated on add/remove operations"
+      },
+      "key_system": {
+        "purpose": "Unique identifier for each modal (user-provided)",
+        "usage": "For targeted dismissal via clearModal(key)",
+        "uniqueness": "User's responsibility to provide unique keys"
+      }
+    },
+    "add_modal_logic": {
+      "function": "showStackedModal",
+      "algorithm": [
+        "1. Map over existing modals, increment each id by 1",
+        "2. Create new modal with id=0 and provided key/children",
+        "3. Append new modal to array (becomes last in array, first in display)",
+        "4. Set new array as state"
+      ],
+      "effect": "New modal appears at front, pushes others back",
+      "id_progression": "All existing modals shift back one position"
+    },
+    "remove_modal_logic": {
+      "clearModal": {
+        "function": "clearModal(key: string)",
+        "algorithm": [
+          "1. Filter out modal with matching key",
+          "2. Map over remaining modals with new sequential ids",
+          "3. Assign ids 0, 1, 2, ... based on array index"
+        ],
+        "effect": "Targeted removal, remaining modals recalculate positions"
+      },
+      "clearAllStackedModals": {
+        "function": "clearAllStackedModals()",
+        "action": "setStackedModals([])",
+        "effect": "Removes all modals instantly, triggers backdrop fade out",
+        "trigger": "Backdrop tap"
+      }
+    },
+    "sorting_and_rendering": {
+      "sorting": "sortedStackedModals = stackedModals.sort((a, b) => a.id - b.id)",
+      "purpose": "Ensures consistent rendering order (lowest id first)",
+      "memoization": "useMemo with [stackedModals] dependency",
+      "rendering": "sortedStackedModals.map() to create StackedModal components"
+    },
+    "modal_memoization": {
+      "pattern": "useRef<Record<string | number, ReactNode>>",
+      "cache": "stackedModalsMemoizedByKeys.current",
+      "key": "stackedSheet.key || stackedSheet.id",
+      "purpose": "Memoize modal components by key to prevent re-renders",
+      "note": "Improves performance for static modal content",
+      "limitation": "Memoized modals won't reflect content updates (trade-off)"
+    }
+  },
+
+  "hooks_architecture": {
+    "useStackedModal": {
+      "location": "stacked-modal-manager/hooks.ts",
+      "purpose": "Public API hook for modal control",
+      "returns": {
+        "showStackedModal": "Function to add modal",
+        "clearAllStackedModals": "Function to remove all",
+        "clearModal": "Function to remove by key"
+      },
+      "implementation": "useContext(StackedModalContext)",
+      "usage": "Import and use in any component within StackedModalProvider"
+    },
+    "useInternalStackedModal": {
+      "location": "stacked-modal-manager/hooks.ts",
+      "purpose": "Internal hook for modal position calculations",
+      "parameters": "key: string",
+      "returns": {
+        "id": "Stack position of this modal (default 0)",
+        "bottomHeight": "Calculated offset for bottom positioning"
+      },
+      "id_calculation": {
+        "pattern": "stackedModals.find(item => item.key === key)?.id",
+        "memoization": "useMemo with [key, stackedModals] dependencies",
+        "fallback": "Returns 0 if not found"
+      },
+      "bottomHeight_calculation": {
+        "formula": "Math.min(id ?? 0, MAX_VISIBLE_MODALS - 1) + 15 * (id ?? 0)",
+        "components": [
+          "Math.min(id, 2): Caps base offset at 2",
+          "15 * id: Linear spacing (15px per stack level)"
+        ],
+        "example": "id=0: 0+0=0, id=1: 1+15=16, id=2: 2+30=32, id=3: 2+45=47",
+        "memoization": "useMemo with [id] dependency"
+      },
+      "usage": "Called within StackedModal component to get position info"
+    },
+    "useModal": {
+      "location": "hooks/use-modal.tsx",
+      "purpose": "High-level hook wrapping stack functionality with custom UI",
+      "returns": {
+        "showModal": "Shows modal with standardized UI (title, message, buttons)",
+        "clearAllModals": "Alias for clearAllStackedModals",
+        "clearModal": "Pass-through for clearModal"
+      },
+      "showModal_signature": "({ key, title, message, trailing, onConfirm, onDismiss }: ShowModalParams) => void",
+      "custom_ui": [
+        "Title section with text",
+        "Optional message body",
+        "Optional trailing content",
+        "DismissButton and HighlightedConfirmButton",
+        "Standardized layout and styling"
+      ],
+      "button_components": [
+        {
+          "name": "HighlightedConfirmButton",
+          "pattern": "createAnimatedPressable with interpolateColor",
+          "colors": "['#50505000', '#bababa9b'] (transparent to gray)",
+          "style": "8px border radius, continuous curve"
+        },
+        {
+          "name": "DismissButton",
+          "pattern": "createAnimatedPressable with interpolateColor",
+          "colors": "['#d5534a00', '#e14f4482'] (transparent to red)",
+          "style": "8px border radius, continuous curve"
+        }
+      ],
+      "usage": "Provides opinionated modal UI, used by useDemoStackedModal"
+    },
+    "useDemoStackedModal": {
+      "location": "hook.tsx",
+      "purpose": "Demo hook showing sequential modal pattern",
+      "pattern": "showNextModal recursively calls itself with incremented index",
+      "features": [
+        "Array of modal configurations",
+        "Recursive showNextModal function",
+        "onConfirm triggers next modal",
+        "onDismiss triggers next modal",
+        "Last modal has custom onDismiss to clear itself"
+      ],
+      "modal_chain": "7 modals with progressive messaging",
+      "return": "{ onPress } function to start modal sequence",
+      "note": "Developer comment: 'This is more complicated than it needs to be'"
+    }
+  },
+
+  "component_architecture": {
+    "StackedModalProvider": {
+      "type": "Context provider and renderer",
+      "responsibilities": [
+        "Manages stackedModals state (useState)",
+        "Provides showStackedModal, clearAllStackedModals, clearModal functions",
+        "Renders sorted modal components",
+        "Memoizes modal rendering by key",
+        "Renders Backdrop component",
+        "Provides dual contexts (public + internal)"
+      ],
+      "memoization": {
+        "contexts": "useMemo for both context values",
+        "modals": "useRef for component memoization cache",
+        "sorting": "useMemo for sortedStackedModals",
+        "renderStackedModal": "useCallback for render function"
+      },
+      "children": "App content (wrapped components)",
+      "siblings": "Modals and Backdrop (rendered as siblings to children)"
+    },
+    "StackedModal": {
+      "type": "Individual modal component (FC, not memoized)",
+      "props": {
+        "index": "Array index (not used much)",
+        "stackedSheet": "StackedModalType with id, key, children"
+      },
+      "responsibilities": [
+        "Calculates own position using useInternalStackedModal",
+        "Manages bottom SharedValue for vertical position",
+        "Manages baseOpacity SharedValue for entrance",
+        "Applies scale, translateY, opacity, shadow animations",
+        "Renders modal content from stackedSheet.children()",
+        "Memoizes children rendering"
+      ],
+      "layout": [
+        "Outer Animated.View with rStackedModalStyle (position, shadow, z-index)",
+        "Inner Animated.View with rVisibleContainerStyle (scale, translateY, opacity)",
+        "Content Animated.View with rContentStyle (content opacity)",
+        "Children rendered if stackedModalId <= MAX_VISIBLE_MODALS * 1.5"
+      ],
+      "conditional_render": "Children only rendered if id <= 4.5 (performance optimization)",
+      "exiting": "FadeOutDown with 60ms * stackedModalId delay"
+    },
+    "Backdrop": {
+      "type": "Functional component",
+      "responsibilities": [
+        "Displays semi-transparent overlay",
+        "Animates opacity based on modal count",
+        "Handles tap to dismiss all modals",
+        "Manages pointer events (auto/none)"
+      ],
+      "positioning": "StyleSheet.absoluteFill",
+      "color": "#0000006f (rgba(0,0,0,0.435))",
+      "interaction": "onTouchEnd calls clearAllStackedModals",
+      "contexts": "Uses both InternalStackedModalContext (length) and StackedModalContext (clearAll)"
+    },
+    "StackedModals": {
+      "type": "Demo screen component",
+      "responsibilities": [
+        "Renders container with light background",
+        "Renders FAB button (bottom-right, black, 64px)",
+        "Uses useDemoStackedModal hook for onPress"
+      ],
+      "styling": {
+        "container": "#fefefe background, flex: 1",
+        "button": "black, 64px square, 32px border radius, continuous curve, absolute bottom-right"
+      }
+    },
+    "StackedModalsContainer": {
+      "type": "Wrapper component (exported as StackedModals)",
+      "pattern": "Wraps StackedModals with StackedModalProvider",
+      "purpose": "Ensures context is available to demo screen",
+      "export": "Exported as 'StackedModals' (replaces inner component name)"
+    }
+  },
+
+  "visual_design": {
+    "modal_appearance": {
+      "size": "80% screen width, 200px height (MODAL_HEIGHT constant)",
+      "position": "Horizontally centered (10% margin each side)",
+      "border_radius": "10px (inner content), 35px (container shadow)",
+      "background": "white",
+      "shadow": {
+        "color": "black",
+        "offset": "{ width: 0, height: 0 } (centered shadow)",
+        "radius": "Animated 10px (front) to 2px (back)",
+        "opacity": "Animated ~0.08 (varies by position)",
+        "elevation": 2
+      }
+    },
+    "stacking_visual": {
+      "front_modal": {
+        "scale": "1.0 (full size)",
+        "translateY": "0px",
+        "opacity": "1.0 (content fully visible)",
+        "shadow": "10px radius, 0.08 opacity",
+        "z_index": 100
+      },
+      "second_modal": {
+        "scale": "0.95 (5% smaller)",
+        "translateY": "-5px (slightly up)",
+        "opacity": "1.0 (container visible, content dimmed)",
+        "shadow": "9px radius",
+        "z_index": 99
+      },
+      "third_modal": {
+        "scale": "0.90 (10% smaller)",
+        "translateY": "-10px",
+        "opacity": "1.0 (container visible, content dimmed)",
+        "shadow": "8px radius",
+        "z_index": 98
+      },
+      "fourth_and_beyond": {
+        "scale": "Continues reducing",
+        "translateY": "Continues upward",
+        "opacity": "0 (completely hidden)",
+        "shadow": "Reduces below 8px",
+        "z_index": "Continues decreasing",
+        "rendered": "Content not rendered if id > 4.5 (performance)"
+      }
+    },
+    "modal_content_design": {
+      "layout": {
+        "header": "Title text, 18px bold, #333 color",
+        "message": "Body text, 14px, #666 color, 12px margin bottom",
+        "trailing": "Optional custom content section",
+        "buttons": "Row at bottom, right-aligned, 12px margin"
+      },
+      "button_styling": {
+        "dismiss": {
+          "background": "Animated transparent to #e14f4482 (red tint)",
+          "text": "Black (#141414), bold",
+          "padding": "8px vertical, 12px horizontal"
+        },
+        "confirm": {
+          "background": "Animated transparent to #bababa9b (gray)",
+          "text": "Black (#141414), bold",
+          "padding": "8px vertical, 12px horizontal"
+        },
+        "border_radius": "8px, continuous curve"
+      }
+    },
+    "backdrop_styling": {
+      "color": "#0000006f (rgba(0,0,0,0.435))",
+      "opacity": "Animated 0 to 1",
+      "position": "Covers entire screen (absoluteFill)",
+      "blur": "None (could be enhancement)"
+    },
+    "fab_button_design": {
+      "size": "64px × 64px (aspect ratio 1)",
+      "shape": "Rounded (32px border radius, continuous curve)",
+      "color": "Black",
+      "position": "Bottom-right (48px from bottom, 20px from right)",
+      "icon": "None in demo (just black square)",
+      "shadow": "None specified in demo"
+    },
+    "color_palette": {
+      "primary_background": "#fefefe (very light gray)",
+      "modal_background": "white (#ffffff)",
+      "backdrop": "rgba(0,0,0,0.435)",
+      "fab_button": "black",
+      "title_text": "#333 (dark gray)",
+      "body_text": "#666 (medium gray)",
+      "button_text": "#141414 (near black)",
+      "confirm_highlight": "#bababa9b (gray with alpha)",
+      "dismiss_highlight": "#e14f4482 (red with alpha)"
+    },
+    "typography": {
+      "modal_title": "18px, bold, #333",
+      "modal_message": "14px, normal, #666",
+      "button_text": "default size, bold, #141414"
+    }
+  },
+
+  "interaction_patterns": {
+    "open_modal_sequence": {
+      "trigger": "Press FAB button",
+      "action": "Calls showModal 7 times sequentially via showNextModal",
+      "flow": [
+        "1. User presses FAB",
+        "2. showNextModal(modals, 0) called",
+        "3. First modal appears (id=0, front position)",
+        "4. User presses Confirm or Dismiss",
+        "5. Callback triggers showNextModal(modals, 1)",
+        "6. Second modal appears (id=0), first becomes id=1 (pushes back)",
+        "7. Process repeats for all 7 modals",
+        "8. Last modal's onDismiss calls clearModal to dismiss itself"
+      ],
+      "visual_sequence": [
+        "Each new modal slides up from below center",
+        "Fades in with baseOpacity animation",
+        "Previous modals scale down, translate up, content dims",
+        "Stack depth visible (max 3 modals shown)",
+        "Backdrop remains visible throughout"
+      ]
+    },
+    "dismiss_individual_modal": {
+      "method": "clearModal(key)",
+      "availability": "Custom onDismiss callbacks (e.g., last modal in demo)",
+      "effect": [
+        "Modal fades out with FadeOutDown",
+        "Remaining modals recalculate ids",
+        "Modals shift forward in stack (scale up, translate down)",
+        "Content of new front modal becomes visible"
+      ],
+      "delay": "60ms * stackedModalId (staggered exit)",
+      "note": "Not commonly used in demo (only last modal)"
+    },
+    "dismiss_all_modals": {
+      "trigger": "Tap backdrop",
+      "action": "clearAllStackedModals() sets stackedModals to []",
+      "effect": [
+        "All modals trigger FadeOutDown exit",
+        "Staggered delays (0ms, 60ms, 120ms, ...)",
+        "Backdrop fades out",
+        "Clean slate for next interaction"
+      ],
+      "visual": "Cascading dismissal from front to back"
+    },
+    "modal_button_interactions": {
+      "confirm_button": {
+        "action": "onConfirm callback (shows next modal in demo)",
+        "visual_feedback": "Background interpolates to gray on press",
+        "pattern": "pressto createAnimatedPressable"
+      },
+      "dismiss_button": {
+        "action": "onDismiss callback (shows next modal in demo)",
+        "visual_feedback": "Background interpolates to red on press",
+        "pattern": "pressto createAnimatedPressable"
+      }
+    }
+  },
+
+  "performance_optimizations": {
+    "memoization_strategy": {
+      "component_memoization": {
+        "pattern": "useRef cache for rendered modal components",
+        "key": "stackedSheet.key || stackedSheet.id",
+        "benefit": "Prevents re-rendering modals that haven't changed",
+        "trade_off": "Memoized modals won't update if content changes",
+        "note": "Good for static modal content (most use cases)"
+      },
+      "context_memoization": {
+        "public_context": "useMemo for { showStackedModal, clearAllStackedModals, clearModal }",
+        "internal_context": "useMemo for { stackedModals }",
+        "benefit": "Prevents unnecessary context re-renders"
+      },
+      "children_memoization": {
+        "pattern": "useMemo(() => stackedSheet.children(), [stackedSheet])",
+        "location": "Inside StackedModal component",
+        "benefit": "Children function only called once per modal"
+      },
+      "sorting_memoization": {
+        "pattern": "useMemo for sortedStackedModals",
+        "dependencies": "[stackedModals]",
+        "benefit": "Sorting only recalculated when stack changes"
+      }
+    },
+    "conditional_rendering": {
+      "pattern": "stackedModalId <= MAX_VISIBLE_MODALS * 1.5 && memoizedChildren",
+      "threshold": "1.5 * 3 = 4.5 (only first ~5 modals render content)",
+      "benefit": "Saves render cycles for deeply stacked modals",
+      "coordination": "Works with opacity animation (hidden modals also don't render)"
+    },
+    "worklet_execution": {
+      "all_animations": "Run on UI thread via Reanimated worklets",
+      "benefit": "60fps animations without JS thread blocking",
+      "worklet_functions": [
+        "withCustomSpring",
+        "useAnimatedStyle callbacks",
+        "interpolateColor in createAnimatedPressable"
+      ]
+    },
+    "ui_thread_calculations": {
+      "derived_values": "All calculated on UI thread (useDerivedValue)",
+      "formulas": "Scale, translateY, opacity, shadow calculations",
+      "benefit": "No JS bridge crossing for animation frame calculations"
+    },
+    "useCallback_optimization": {
+      "functions": [
+        "showStackedModal",
+        "clearAllStackedModals",
+        "clearModal",
+        "renderStackedModal",
+        "showNextModal",
+        "onPress"
+      ],
+      "benefit": "Stable function references prevent re-renders",
+      "dependencies": "Minimal dependency arrays"
+    },
+    "dual_context_optimization": {
+      "pattern": "Separate public API from internal state",
+      "benefit": "Public API consumers don't re-render on stack changes",
+      "impact": "Significant - prevents re-renders in entire app tree",
+      "use_case": "Components showing modals don't re-render when stack updates"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Multi-step confirmation flows",
+      "Progressive disclosure workflows",
+      "Nested modal confirmations",
+      "Sequential onboarding steps",
+      "Stacked notifications or alerts",
+      "Decision trees with modal branches",
+      "Complex form wizards with review steps",
+      "Tutorial or guided tour with multiple prompts"
+    ],
+    "secondary": [
+      "Permission request chains",
+      "Settings with confirmation layers",
+      "Delete confirmations with undo option",
+      "Multi-stage approval processes",
+      "Stacked error messages",
+      "Contextual help overlays",
+      "Feature announcements (multiple features)",
+      "Survey or questionnaire flows"
+    ],
+    "interaction_patterns": [
+      "Confirm then confirm again (double confirmation)",
+      "Show details then confirm action",
+      "Review changes then apply",
+      "Select option then configure",
+      "Preview then commit",
+      "Warn then block or proceed"
+    ],
+    "real_world_examples": [
+      "iOS nested alerts (app wants to send notifications → system permission)",
+      "Delete account flow (confirm → enter password → final warning)",
+      "Payment confirmation (review → confirm → processing → success)",
+      "File operations (select → configure → confirm → progress)",
+      "Social media post (compose → add media → schedule → confirm)",
+      "Calendar event (create → set reminder → add participants → save)"
+    ],
+    "anti_patterns": [
+      "Too many sequential modals (user frustration)",
+      "Using for simple single confirmations (overkill)",
+      "Non-dismissible infinite chains (trap user)",
+      "Unclear progression (user doesn't know how many steps)"
+    ]
+  },
+
+  "code_quality": {
+    "strengths": [
+      "Well-documented context architecture with explanatory comments",
+      "Dual context pattern prevents unnecessary re-renders",
+      "Clean separation of concerns (provider, modal, backdrop, hooks)",
+      "TypeScript with explicit types throughout",
+      "Comprehensive memoization strategy",
+      "Custom spring config extracted for consistency",
+      "Conditional rendering optimization for performance",
+      "Complex positioning math clearly commented",
+      "Hooks follow React best practices (dependencies, useCallback, useMemo)",
+      "Developer notes explain non-obvious decisions",
+      "Reusable modal system (not demo-specific)"
+    ],
+    "areas_for_improvement": [
+      "Position calculation complexity (developer acknowledges 'not an easy solution')",
+      "Magic numbers in formulas (5, 15, 110) could be constants",
+      "Memoization cache never clears (potential memory leak with many unique keys)",
+      "No TypeScript for spring config (could be a type)",
+      "StackedModal not memoized (could benefit from React.memo)",
+      "No error handling for invalid keys or missing modals",
+      "Conditional children render threshold (4.5) is arbitrary",
+      "No customization props for colors, sizes, animations",
+      "useEffect dependency warning disabled (intentional but noted)",
+      "Power curve exponent (1.5) not explained or configurable"
+    ],
+    "typescript_coverage": {
+      "types_defined": [
+        "StackedModalType",
+        "InternalStackedModalContextType",
+        "StackedModalProps",
+        "ShowModalParams",
+        "OcticonsIconName (conditional type)"
+      ],
+      "prop_interfaces": "Explicit types for all component props",
+      "context_types": "Strongly typed context values",
+      "hook_return_types": "Implicit but type-safe",
+      "areas_missing_types": [
+        "Spring config (inline object)",
+        "Style objects (could use typed constants)"
+      ]
+    },
+    "documentation_quality": {
+      "inline_comments": [
+        "Extensive comments in context.ts explaining dual context pattern",
+        "Comment in StackedModal about positioning complexity",
+        "Comments explaining backdrop visual approach",
+        "Position calculation formulas documented"
+      ],
+      "code_comments": "Explaining 'why' not just 'what'",
+      "educational_value": "High - good learning resource",
+      "missing_docs": [
+        "No JSDoc for functions",
+        "No README or usage guide",
+        "Constants not documented"
+      ]
+    },
+    "react_patterns": {
+      "hooks_usage": "Excellent - proper dependencies and ordering",
+      "context_pattern": "Advanced dual context pattern",
+      "memoization": "Comprehensive (useMemo, useCallback, useRef)",
+      "component_composition": "Clean separation of concerns",
+      "state_updates": "Immutable patterns (map, filter, spread)",
+      "ref_usage": "Appropriate for memoization cache",
+      "conditional_rendering": "Used strategically for performance"
+    }
+  },
+
+  "known_limitations": {
+    "complexity_concerns": {
+      "issue": "Position calculation system is complex and hard to understand",
+      "developer_note": "'To be honest that's not an easy solution, but it seems to work fine'",
+      "impact": "Hard to modify or debug positioning logic",
+      "improvement": "Could be simplified or better abstracted"
+    },
+    "memoization_cache": {
+      "issue": "stackedModalsMemoizedByKeys never clears entries",
+      "potential_problem": "Memory leak if many unique keys used over time",
+      "scenario": "Long-running app with thousands of modal invocations",
+      "improvement": "Clear cache on unmount or implement LRU eviction"
+    },
+    "no_customization": {
+      "issue": "No props for customizing appearance or behavior",
+      "hardcoded": [
+        "Modal size (80% width, 200px height)",
+        "Colors (white modal, dark backdrop)",
+        "Spring config (mass, damping, stiffness)",
+        "Stack behavior (scale, translateY values)",
+        "Max visible modals (3)",
+        "Exit delays (60ms steps)"
+      ],
+      "improvement": "Expose customization props or theme system"
+    },
+    "useEffect_dependency_warning": {
+      "issue": "eslint-disable react-hooks/exhaustive-deps in StackedModal",
+      "reason": "bottomHeight not in dependencies (intentional, would cause loops)",
+      "risk": "Could cause stale closure bugs if logic changes",
+      "note": "Acknowledged by developer as necessary"
+    },
+    "arbitrary_thresholds": {
+      "issue": "Magic numbers not explained",
+      "examples": [
+        "MAX_VISIBLE_MODALS * 1.5 = 4.5 (why 1.5?)",
+        "Power curve 1.5 for content opacity (why 1.5?)",
+        "60ms exit delay (why 60?)",
+        "15px offset multiplier (why 15?)"
+      ],
+      "improvement": "Document rationale or make configurable"
+    },
+    "no_keyboard_support": {
+      "missing": "No Escape key or hardware back button handling",
+      "platform": "Important for Android (back button) and web (Escape)",
+      "accessibility": "Keyboard users can't dismiss modals"
+    },
+    "no_scroll_support": {
+      "limitation": "Modal content height fixed at 200px",
+      "issue": "Long content will overflow without scroll",
+      "workaround": "User must implement ScrollView in children",
+      "improvement": "Built-in ScrollView support"
+    },
+    "backdrop_interaction": {
+      "pattern": "Only onTouchEnd (not Pressable)",
+      "limitation": "No visual feedback on backdrop press",
+      "consideration": "Could use subtle feedback to show interactivity"
+    },
+    "z_index_limits": {
+      "pattern": "100 - stackedModalId",
+      "limit": "Max 100 modals before z-index goes to 0 or negative",
+      "practical": "Not a real concern (MAX_VISIBLE_MODALS = 3)",
+      "consideration": "Could handle more elegantly"
+    },
+    "no_animation_cancellation": {
+      "issue": "Can't interrupt ongoing animations",
+      "scenario": "User opens then immediately closes modals",
+      "behavior": "Animations complete before responding",
+      "improvement": "Animation state management for cancellation"
+    },
+    "accessibility_gaps": {
+      "missing": [
+        "No accessibility labels",
+        "No screen reader announcements",
+        "No focus management",
+        "No reduced motion support",
+        "No ARIA roles",
+        "No keyboard navigation"
+      ],
+      "impact": "Not usable by screen reader or keyboard users"
+    }
+  },
+
+  "potential_improvements": {
+    "customization_props": [
+      "Modal dimensions (width %, height)",
+      "Stack behavior config (scale factor, translateY factor)",
+      "Color theme (background, backdrop, buttons)",
+      "Spring config override",
+      "Max visible modals override",
+      "Exit delay timing",
+      "Border radius values",
+      "Shadow properties"
+    ],
+    "features": [
+      "Keyboard dismissal (Escape key)",
+      "Android back button handling",
+      "Scroll support for tall content",
+      "Modal header and footer customization",
+      "Backdrop blur effect (expo-blur)",
+      "Haptic feedback on open/close",
+      "onShow/onHide lifecycle callbacks",
+      "Animation completion callbacks",
+      "Modal priority system (bring to front)",
+      "Swap modal positions",
+      "Clear specific range of modals",
+      "Pause/resume modal queue"
+    ],
+    "animations": [
+      "Alternative entrance animations (slide, scale, fade)",
+      "Alternative exit animations (slide out, explode)",
+      "Parallax effect on stack (mouse/gyroscope)",
+      "Elastic spring option",
+      "Staggered content appearance within modal",
+      "Blur background (not just darken)",
+      "Modal flip animation (front/back)",
+      "Ripple effect on open",
+      "Particle effects on dismiss"
+    ],
+    "interactions": [
+      "Swipe-to-dismiss individual modals",
+      "Pinch-to-zoom stack",
+      "Tap modal to bring to front",
+      "Drag to reorder stack",
+      "Long press for modal options",
+      "Double tap backdrop to dismiss",
+      "Shake gesture to dismiss all"
+    ],
+    "developer_experience": [
+      "Imperative API (ref-based)",
+      "Promise-based modal resolution",
+      "TypeScript generics for modal data",
+      "Modal return values (for input modals)",
+      "Prebuilt modal templates",
+      "Debug mode with stack visualization",
+      "Performance monitoring tools",
+      "Migration guide from other modal libs",
+      "Storybook stories",
+      "Unit tests"
+    ],
+    "accessibility": [
+      "Full keyboard navigation",
+      "Screen reader announcements",
+      "Focus trap in front modal",
+      "Focus restoration on dismiss",
+      "ARIA roles and labels",
+      "Reduced motion support (instant transitions)",
+      "High contrast mode support",
+      "Configurable accessible labels",
+      "Semantic HTML on web"
+    ],
+    "performance": [
+      "Virtual scrolling for many stacked modals",
+      "LRU cache for memoization",
+      "Lazy loading modal content",
+      "Render optimization mode",
+      "Animation quality settings (low/med/high)",
+      "Batch modal operations",
+      "Configurable MAX_VISIBLE_MODALS"
+    ],
+    "documentation": [
+      "JSDoc for all functions",
+      "README with examples",
+      "API documentation",
+      "Migration guide",
+      "Performance best practices",
+      "Common patterns cookbook",
+      "TypeScript examples",
+      "Troubleshooting guide"
+    ]
+  },
+
+  "key_insights": {
+    "dual_context_optimization": "Separating public API from internal state prevents massive re-render cascades in consuming components",
+    "id_system_design": "Using id=0 for front modal and incrementing for back creates intuitive stack position system",
+    "power_curve_opacity": "Using exponent (** 1.5) for content opacity creates non-linear fade that feels more natural",
+    "combined_transforms": "Scale + translateY together create convincing 3D depth without actual 3D transforms",
+    "staggered_exit": "60ms delay per modal creates pleasing cascading dismissal effect",
+    "shadow_depth_cue": "Reducing shadow radius and opacity reinforces depth perception",
+    "bottom_position_complexity": "Dynamic bottom positioning system handles stack changes elegantly despite complexity",
+    "max_visible_optimization": "Limiting rendered modals to ~5 prevents performance issues with deep stacks",
+    "memoization_by_key": "Memoizing modals by key (not re-rendering static content) is significant optimization",
+    "spring_consistency": "Using same spring config across all animations creates cohesive feel",
+    "pointer_events_coordination": "Syncing pointerEvents with opacity prevents ghost tap zones",
+    "children_as_function": "Using () => ReactNode pattern allows lazy evaluation and memoization",
+    "z_index_reinforcement": "Explicit z-index management reinforces transform-based stacking",
+    "sort_before_render": "Sorting modals by id ensures consistent render order regardless of array order"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "React Context API basics",
+      "useState for array management",
+      "useEffect for side effects",
+      "Basic Reanimated animations (useSharedValue, useAnimatedStyle)",
+      "Transform animations (scale, translateY)",
+      "Opacity animations",
+      "Array operations (map, filter, sort)",
+      "Conditional rendering"
+    ],
+    "for_intermediate": [
+      "Multiple context pattern",
+      "useMemo and useCallback optimization",
+      "useRef for non-state storage",
+      "Complex state updates (increment ids)",
+      "Custom hooks design",
+      "Component composition patterns",
+      "Memoization strategies",
+      "Spring animation configuration",
+      "Layout animation (FadeOutDown)",
+      "useDerivedValue for calculated animations",
+      "Z-index management in stacked UIs"
+    ],
+    "for_advanced": [
+      "Dual context architecture for performance",
+      "Component memoization cache pattern",
+      "Dynamic position calculation systems",
+      "Coordinated multi-property animations",
+      "Staggered animation timing",
+      "Power curve opacity calculations",
+      "Performance optimization techniques",
+      "Complex useEffect dependency management",
+      "Worklet execution optimization",
+      "Modal system architecture design",
+      "createAnimatedPressable with interpolateColor",
+      "Building reusable animation libraries"
+    ]
+  },
+
+  "related_patterns": {
+    "similar_animations": [
+      "iOS notification stacking",
+      "Android notification shade layering",
+      "macOS window stacking",
+      "Card deck animations",
+      "Photo stack viewers",
+      "Browser tab stacking (Arc browser)",
+      "Stacked bottom sheets"
+    ],
+    "ui_patterns": [
+      "Modal dialogs",
+      "Overlay systems",
+      "Bottom sheets",
+      "Action sheets",
+      "Toasts and notifications",
+      "Alert systems",
+      "Popover menus"
+    ],
+    "interaction_patterns": [
+      "Progressive disclosure",
+      "Nested confirmations",
+      "Sequential workflows",
+      "Wizard flows",
+      "Onboarding sequences",
+      "Tutorial overlays"
+    ]
+  },
+
+  "testing_considerations": {
+    "unit_tests": [
+      "showStackedModal correctly adds modal with id=0",
+      "Existing modals increment ids when new modal added",
+      "clearModal removes correct modal by key",
+      "clearAllStackedModals empties array",
+      "sortedStackedModals sorts by id ascending",
+      "useInternalStackedModal calculates correct id",
+      "useInternalStackedModal calculates correct bottomHeight",
+      "bottomHeight formula works for all id values"
+    ],
+    "integration_tests": [
+      "Context provides correct values to consumers",
+      "useStackedModal hook returns working functions",
+      "useModal hook creates modals with correct UI",
+      "Sequential modal chain works correctly",
+      "Dismissing middle modal reorders stack",
+      "Backdrop tap dismisses all modals",
+      "Modal memoization works (doesn't re-render static content)"
+    ],
+    "visual_tests": [
+      "First modal appears at full scale, front position",
+      "Second modal scales to 0.95 and translates up 5px",
+      "Third modal scales to 0.90 and translates up 10px",
+      "Beyond 3rd modal, opacity goes to 0",
+      "Shadows reduce for back modals",
+      "Exit animations stagger correctly (60ms steps)",
+      "Backdrop fades in when first modal added",
+      "Backdrop fades out when last modal removed",
+      "Spring animations feel smooth and bouncy",
+      "No visual glitches during stack changes"
+    ],
+    "interaction_tests": [
+      "FAB button opens first modal",
+      "Confirm button triggers callback",
+      "Dismiss button triggers callback",
+      "Backdrop tap clears all modals",
+      "Rapid modal additions don't break stack",
+      "Clearing non-existent key doesn't error",
+      "Multiple confirm presses don't duplicate modals",
+      "Buttons provide visual feedback on press"
+    ],
+    "edge_cases": [
+      "0 modals in stack (empty state)",
+      "1 modal in stack",
+      "Exactly MAX_VISIBLE_MODALS (3) modals",
+      "More than MAX_VISIBLE_MODALS (hidden modals)",
+      "10+ modals (performance)",
+      "Very rapid modal additions/removals",
+      "Duplicate keys (undefined behavior - test fails gracefully)",
+      "Empty children function",
+      "null children",
+      "Very tall modal content (overflow)",
+      "Very wide screen (positioning)",
+      "Very narrow screen (positioning)",
+      "Orientation change with modals open"
+    ],
+    "performance_tests": [
+      "Maintains 60fps with 3 visible modals",
+      "Maintains 60fps with 10 total modals (7 hidden)",
+      "Modal addition/removal doesn't cause jank",
+      "Memoization prevents unnecessary re-renders",
+      "useCallback prevents function recreation",
+      "useMemo prevents recalculation",
+      "Component cache works (measure re-renders)",
+      "No memory leaks with many modal cycles"
+    ],
+    "accessibility_tests": [
+      "Screen reader announces modal opening (once implemented)",
+      "Focus moves to modal content (once implemented)",
+      "Escape key closes front modal (once implemented)",
+      "Tab navigation stays within front modal (once implemented)",
+      "Reduced motion disables animations (once implemented)",
+      "Keyboard navigation works (once implemented)"
+    ]
+  },
+
+  "real_world_inspiration": {
+    "ios_notifications": "iOS stacked notification cards on lock screen",
+    "macos_windows": "macOS window stacking and management",
+    "arc_browser": "Arc browser's stacked tab previews",
+    "android_notifications": "Android notification shade with stacked cards",
+    "photo_apps": "Photo stack viewers (e.g., Tinder card stack)",
+    "notion": "Notion's modal system for nested content",
+    "linear_app": "Linear's smooth modal presentation",
+    "figma": "Figma's stacked dialog system"
+  },
+
+  "tags": [
+    "stacked-modals",
+    "modal-system",
+    "context-api",
+    "reanimated",
+    "spring-animation",
+    "3d-effect",
+    "depth-perspective",
+    "z-index",
+    "scale-transform",
+    "translate-transform",
+    "backdrop",
+    "sequential-flow",
+    "multi-step",
+    "progressive-disclosure",
+    "staggered-animation",
+    "dual-context",
+    "performance-optimization",
+    "memoization",
+    "pressto",
+    "animated-pressable",
+    "interpolate-color",
+    "fade-out-down",
+    "confirmation-flow",
+    "nested-modals",
+    "ui-thread-animations"
+  ]
+}

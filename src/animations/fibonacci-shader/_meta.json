@@ -1,0 +1,833 @@
+{
+  "animation_name": "Fibonacci Shader",
+  "animation_slug": "fibonacci-shader",
+  "description": "A mesmerizing GPU-accelerated shader animation inspired by Fibonacci patterns and golden ratio spirals. Features a custom GLSL shader running in React Native Skia that renders parametric 3D-projected circular patterns with dynamic color gradients. Includes an interactive slider to control the number of circles (5-350) and a randomize button for the magical multiplier parameter, creating infinite variations of organic, flowing visual patterns.",
+
+  "main_features": [
+    "Custom GLSL shader with dynamic parameter injection",
+    "Interactive circle count control (5-350 circles)",
+    "Randomizable magical multiplier for pattern variation",
+    "Continuous time-based animation (20-second loop)",
+    "3D projection effect with perspective distortion",
+    "Dynamic color gradients using cosine color palette",
+    "Blurred circular mask for soft edges",
+    "Custom animated slider component with gesture handling",
+    "GPU-accelerated rendering via React Native Skia",
+    "Real-time shader recompilation on parameter changes"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main component with shader logic, RuntimeEffect compilation, and UI layout",
+    "components/animated-slider/index.tsx": "Custom gesture-based slider with pan handling and progress interpolation"
+  },
+
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "shaders": "GLSL (OpenGL Shading Language) via Skia.RuntimeEffect",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "interactions": "pressto (PressableScale)"
+  },
+
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": ["Canvas", "Rect", "Shader", "Mask", "Circle", "Blur"],
+      "runtime": ["Skia.RuntimeEffect"],
+      "usage": "GPU-accelerated shader rendering with RuntimeEffect API",
+      "critical_feature": "RuntimeEffect.Make() for dynamic GLSL shader compilation",
+      "performance_benefit": "Native GPU shader execution for complex visual effects"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "useAnimatedReaction"
+      ],
+      "functions": [
+        "withTiming",
+        "withRepeat",
+        "withSpring",
+        "interpolate",
+        "Extrapolation",
+        "Easing"
+      ],
+      "critical_feature": "useDerivedValue for dynamic shader source recompilation"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureDetector"],
+      "gestures": ["Gesture.Pan()"],
+      "usage": "Slider interaction with pan gesture",
+      "methods": ["onBegin", "onUpdate", "onFinalize"]
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "components": ["PressableScale"],
+      "usage": "Floating button with scale feedback",
+      "benefit": "Zero-config press animations"
+    }
+  },
+
+  "shader_architecture": {
+    "language": "GLSL (OpenGL Shading Language)",
+    "shader_type": "Fragment shader (pixel shader)",
+    "compilation": "Runtime compilation via Skia.RuntimeEffect.Make()",
+    "dynamic_parameters": {
+      "method": "String interpolation into shader source",
+      "reason": "N must be 'const float' for loop iteration (GLSL requirement)",
+      "limitation": "Uniform parameters can't be used as loop bounds",
+      "solution": "Recompile entire shader when N changes",
+      "note": "Author acknowledges this is unconventional (line 46)"
+    },
+    "shader_inspiration": {
+      "source": "XorDev on Twitter/X",
+      "url": "https://x.com/XorDev/status/1475524322785640455?s=20",
+      "credit": "Animation wouldn't exist without this shader code (line 48-49)"
+    },
+    "shader_constants": {
+      "iResolution": "vec2(CANVAS_SIZE, CANVAS_SIZE) - viewport dimensions",
+      "iTime": "float - animated time value (0-15 over 20 seconds)",
+      "N": "float - number of circles to render (5-350)",
+      "magicalMul": "float - multiplier affecting spiral pattern (randomized 0-100)"
+    },
+    "shader_algorithm": {
+      "output": "vec4 o (RGBA color output)",
+      "coordinates": "vec2 u (normalized screen coordinates -1 to 1)",
+      "loop": "for (float i = 0.0; i < N; i++)",
+      "per_iteration": [
+        "Calculate 'a' parameter: i / (N * 0.5) - 1.0 (range -1 to 1)",
+        "Calculate 'p' (position): cos(i * magicalMul + iTime + vec2(0, 11)) * sqrt(1 - a²)",
+        "Project 'c' (coordinates): u / resolution.y + vec2(p.x, a) / (p.y + 2.0)",
+        "Accumulate color: (cos(i + vec4(0, 2, 4, 0)) + 1) / dot(c, c) * (1 - p.y) / (N * 75.0)"
+      ],
+      "projection": "3D to 2D perspective projection via division by (p.y + 2.0)",
+      "color_generation": "Cosine-based palette with phase offsets (0, 2, 4 for RGB)",
+      "intensity": "Inverse distance field: 1 / dot(c, c)",
+      "normalization": "Divided by (N * 75.0) for brightness control"
+    },
+    "mathematical_foundation": {
+      "sqrt_term": "sqrt(1.0 - a * a) - semicircle equation (unit circle)",
+      "cosine_motion": "cos(i * magicalMul + iTime + offset) - oscillating position",
+      "perspective_division": "division by (p.y + 2.0) - z-depth simulation",
+      "inverse_distance": "1 / dot(c, c) - distance field for glow intensity",
+      "phase_offset": "vec4(0, 2, 4, 0) - RGB color separation"
+    }
+  },
+
+  "animation_techniques": {
+    "time_animation": {
+      "shared_value": "iTime",
+      "initial": 0.0,
+      "animation": "withRepeat(withTiming(15, {duration: 20000, easing: Easing.linear}), -1, true)",
+      "pattern": "Infinite ping-pong (forward and reverse)",
+      "duration": "40 seconds total (20s forward + 20s reverse)",
+      "range": "0 to 15",
+      "effect": "Continuous slow morphing of pattern"
+    },
+    "dynamic_shader_recompilation": {
+      "trigger": "N or magicalMul value changes",
+      "mechanism": "useDerivedValue returns new RuntimeEffect",
+      "dependencies": "[N, magicalMul, iTime]",
+      "pattern": "Entire shader source regenerated as string",
+      "worklet": true,
+      "performance_note": "Shader compilation is expensive but necessary for const loop bounds"
+    },
+    "slider_interaction": {
+      "component": "AnimatedSlider",
+      "gesture": "Pan gesture",
+      "range": "[5, 350]",
+      "callback": "onUpdate(value) updates N.value",
+      "worklet_callback": true,
+      "immediate_update": "Shader recompiles on every slider change"
+    },
+    "randomization": {
+      "button": "PressableScale with magic wand emoji",
+      "action": "magicalMul.value = Math.random() * 100",
+      "range": "0 to 100",
+      "effect": "Completely changes spiral/pattern structure",
+      "visual_feedback": "Scale animation on press"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "N",
+        "type": "SharedValue<number>",
+        "initial": 5.0,
+        "range": "5-350",
+        "updates": "Slider onUpdate callback",
+        "purpose": "Number of circles in shader",
+        "impact": "Performance scales linearly with N"
+      },
+      {
+        "name": "magicalMul",
+        "type": "SharedValue<number>",
+        "initial": 2.4,
+        "range": "0-100",
+        "updates": "Randomize button press",
+        "purpose": "Multiplier in shader affecting spiral tightness"
+      },
+      {
+        "name": "iTime",
+        "type": "SharedValue<number>",
+        "initial": 0.0,
+        "range": "0-15",
+        "updates": "withRepeat animation on mount",
+        "purpose": "Time parameter driving shader animation"
+      },
+      {
+        "name": "translateX",
+        "type": "SharedValue<number>",
+        "scope": "AnimatedSlider",
+        "purpose": "Slider picker position",
+        "gesture": "Pan gesture updates"
+      },
+      {
+        "name": "scale",
+        "type": "SharedValue<number>",
+        "scope": "AnimatedSlider",
+        "initial": 0.8,
+        "range": "0.8-1.0",
+        "purpose": "Picker scale feedback during interaction"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "dynamicSource",
+        "calculation": "Skia.RuntimeEffect.Make(shader_string_template)",
+        "dependencies": ["N.value", "magicalMul.value", "iTime.value"],
+        "returns": "RuntimeEffect",
+        "worklet": true,
+        "purpose": "Recompile shader with updated parameters",
+        "performance_impact": "Expensive - triggers shader compilation"
+      },
+      {
+        "name": "clampedTranslateX",
+        "scope": "AnimatedSlider",
+        "calculation": "clamp(translateX.value, 0, sliderWidth)",
+        "purpose": "Constrain slider within bounds"
+      }
+    ],
+    "useAnimatedReaction": {
+      "scope": "AnimatedSlider",
+      "watches": "clampedTranslateX.value",
+      "callback": "Interpolate to [minValue, maxValue] and call onUpdate",
+      "purpose": "React to slider position changes"
+    },
+    "useEffect": {
+      "setup": "Start iTime animation on mount",
+      "animation": "Infinite repeat with ping-pong",
+      "cleanup": "None (animation runs for component lifetime)"
+    }
+  },
+
+  "skia_rendering_patterns": {
+    "canvas_setup": {
+      "size": "SCREEN_WIDTH x SCREEN_WIDTH (square canvas)",
+      "backgroundColor": "Transparent (parent container is black)"
+    },
+    "mask_pattern": {
+      "component": "Mask",
+      "mode": "luminance",
+      "mask_element": "Circle with Blur",
+      "purpose": "Create soft, blurred edges on shader output",
+      "circle": {
+        "cx": "CANVAS_SIZE / 2",
+        "cy": "CANVAS_SIZE / 2",
+        "r": "CANVAS_SIZE / 2",
+        "color": "#FFF"
+      },
+      "blur": {
+        "blur": 10,
+        "effect": "Smooth circular vignette"
+      }
+    },
+    "shader_application": {
+      "target": "Rect (full canvas)",
+      "rect_dimensions": "0, 0, CANVAS_SIZE, CANVAS_SIZE",
+      "shader_component": "<Shader source={dynamicSource} />",
+      "child_pattern": "Shader as child of Rect",
+      "rendering": "Shader runs per-pixel on GPU"
+    },
+    "runtime_effect_api": {
+      "method": "Skia.RuntimeEffect.Make(glsl_string)",
+      "returns": "RuntimeEffect or null (null on compilation error)",
+      "non_null_assertion": "! operator used (line 70)",
+      "error_handling": "None (assumes shader always compiles)",
+      "performance": "GPU-native shader execution"
+    }
+  },
+
+  "component_architecture": {
+    "main_component": {
+      "responsibilities": [
+        "Manage shader parameters (N, magicalMul, iTime)",
+        "Compile shader via useDerivedValue",
+        "Setup continuous time animation",
+        "Render Canvas with shader",
+        "Render slider and randomize button"
+      ],
+      "layout": "Vertical: Canvas (top) + Slider (middle) + Button (floating)"
+    },
+    "animated_slider": {
+      "responsibilities": [
+        "Handle pan gesture",
+        "Manage slider position state",
+        "Interpolate position to value range",
+        "Provide scale feedback",
+        "Call onUpdate callback"
+      ],
+      "reusable": true,
+      "props": [
+        "sliderHeight",
+        "minValue",
+        "maxValue",
+        "onUpdate",
+        "color",
+        "style"
+      ]
+    },
+    "layout_structure": {
+      "container": "flex: 1, backgroundColor: 'black'",
+      "canvas_wrapper": "marginTop: 100, centered, SCREEN_WIDTH square",
+      "slider_section": "marginTop: 80, centered, width: SCREEN_WIDTH * 0.8",
+      "floating_button": "position: absolute, bottom: 120, right: 60"
+    }
+  },
+
+  "gesture_handling": {
+    "slider_pan_gesture": {
+      "type": "Gesture.Pan()",
+      "lifecycle": {
+        "onBegin": [
+          "scale.value = withTiming(1) - Visual feedback",
+          "contextX.value = clampedTranslateX.value - Store start position"
+        ],
+        "onUpdate": [
+          "translateX.value = contextX.value + event.translationX - Relative dragging"
+        ],
+        "onFinalize": [
+          "scale.value = withTiming(defaultScale) - Reset to 0.8"
+        ]
+      },
+      "context_pattern": {
+        "usage": "contextX stores gesture start position",
+        "purpose": "Enable relative dragging without jumps",
+        "benefit": "Smooth continuation from any touch point"
+      },
+      "clamping": {
+        "method": "clamp(value, 0, sliderWidth)",
+        "worklet": true,
+        "ensures": "Picker stays within slider bounds"
+      }
+    },
+    "button_press": {
+      "component": "PressableScale",
+      "visual_feedback": "Automatic scale animation",
+      "action": "Set magicalMul to random value",
+      "emoji": "Magic wand (U+1FA84)",
+      "style": "Circular button, dark gray background"
+    }
+  },
+
+  "performance_optimizations": {
+    "gpu_acceleration": {
+      "technique": "GLSL shader executed natively on GPU",
+      "benefit": "Complex per-pixel calculations at 60fps",
+      "capability": "Can render 350 circles with complex math per frame"
+    },
+    "worklet_execution": {
+      "useDerivedValue": "Runs on UI thread",
+      "shader_compilation": "Executed without JS thread bridge",
+      "gesture_handling": "All slider math on UI thread"
+    },
+    "time_animation": {
+      "type": "Linear timing with Easing.linear",
+      "duration": "20 seconds",
+      "repeat": "Infinite with reverse",
+      "performance": "Single shared value update, shader does rest"
+    },
+    "render_efficiency": {
+      "single_rect": "One Rect component renders entire shader",
+      "no_loops": "No React loop rendering N circles",
+      "shader_loop": "Loop happens in GPU shader, not CPU"
+    },
+    "slider_optimizations": {
+      "useMemo": "flattenedStyle cached",
+      "worklet_clamp": "Bounds checking on UI thread",
+      "interpolation": "Native interpolate function"
+    },
+    "potential_bottleneck": {
+      "shader_recompilation": "Expensive operation on N or magicalMul change",
+      "mitigation": "Only happens on user interaction, not continuous",
+      "alternative_considered": "Uniform parameters (but can't use in const loops)"
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "background": "#000000 (black)",
+      "shader_colors": "Dynamic - generated via cosine palette in shader",
+      "color_algorithm": "cos(i + vec4(0, 2, 4, 0)) + 1 - RGB phase offsets",
+      "effect": "Vibrant, psychedelic colors varying per circle",
+      "palette_type": "Procedural cosine-based gradient"
+    },
+    "composition": {
+      "canvas_position": "Top-centered, marginTop: 100",
+      "canvas_size": "SCREEN_WIDTH square",
+      "mask_shape": "Circular with soft edges (blur: 10)",
+      "centering": "justifyContent + alignItems: 'center'"
+    },
+    "ui_elements": {
+      "slider": {
+        "height": 40,
+        "width": "SCREEN_WIDTH * 0.8",
+        "color": "white",
+        "picker": "White circular handle",
+        "track": "rgba(255, 255, 255, 0.2)",
+        "progress": "white"
+      },
+      "button": {
+        "size": "64x64",
+        "borderRadius": 32,
+        "backgroundColor": "#232323 (dark gray)",
+        "content": "Magic wand emoji (32px)",
+        "position": "bottom: 120, right: 60"
+      }
+    },
+    "spacing": {
+      "canvas_top_margin": 100,
+      "slider_top_margin": 80,
+      "button_bottom": 120,
+      "button_right": 60
+    },
+    "aesthetic": {
+      "style": "Minimalist UI, complex shader output",
+      "contrast": "Simple controls, mesmerizing visuals",
+      "focus": "Shader animation is hero element",
+      "interactivity": "Immediate visual feedback"
+    }
+  },
+
+  "mathematical_insights": {
+    "semicircle_projection": {
+      "formula": "sqrt(1.0 - a * a)",
+      "derivation": "Unit circle equation: x² + y² = 1",
+      "effect": "Maps linear 'a' (-1 to 1) to semicircular arc",
+      "purpose": "Creates curved distribution of circles"
+    },
+    "perspective_projection": {
+      "formula": "u / resolution.y + vec2(p.x, a) / (p.y + 2.0)",
+      "division": "(p.y + 2.0) acts as z-depth",
+      "effect": "Creates 3D perspective illusion",
+      "constant": "2.0 offset prevents division by values near zero"
+    },
+    "distance_field": {
+      "formula": "1 / dot(c, c)",
+      "dot_product": "dot(c, c) = c.x² + c.y² (squared distance)",
+      "inversion": "1/distance² creates intensity falloff",
+      "result": "Bright center, fading edges (glow effect)"
+    },
+    "color_generation": {
+      "formula": "cos(i + vec4(0, 2, 4, 0)) + 1",
+      "phase_offsets": "0 for R, 2 for G, 4 for B",
+      "range": "[0, 2] after +1",
+      "normalization": "Divided by (N * 75.0)",
+      "effect": "Each circle has different color based on index"
+    },
+    "spiral_parameter": {
+      "formula": "i * magicalMul",
+      "effect": "Controls angular progression",
+      "larger_values": "Tighter spiral, more rotations",
+      "smaller_values": "Looser pattern, fewer rotations",
+      "randomization": "Creates infinite pattern variations"
+    },
+    "normalization_factor": {
+      "value": "N * 75.0",
+      "purpose": "Maintain consistent brightness regardless of N",
+      "tunable": "Comment suggests '75.0' is adjustable parameter",
+      "effect": "Prevents oversaturation with many circles"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Generative art showcase",
+      "Loading screens with parameter variation",
+      "Music visualizers (could sync N or time with audio)",
+      "Meditation/relaxation apps",
+      "Background animations for onboarding",
+      "Interactive art installations"
+    ],
+    "educational": [
+      "Teaching GLSL shader programming",
+      "Demonstrating Skia RuntimeEffect API",
+      "GPU programming introduction",
+      "Mathematical visualization (projection, distance fields)",
+      "Interactive parameter exploration",
+      "Shader optimization techniques"
+    ],
+    "experimental": [
+      "Shader-based effects library",
+      "Procedural texture generation",
+      "Real-time visual effects",
+      "Interactive wallpapers",
+      "Dynamic app themes"
+    ]
+  },
+
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit types",
+      "Excellent inline documentation explaining shader approach",
+      "Credits original shader author (XorDev)",
+      "Self-aware comments about unconventional approach",
+      "Clean component separation (slider is reusable)",
+      "Proper worklet annotations",
+      "Clear constant definitions (MAX_CIRCLES_AMOUNT, CANVAS_SIZE)",
+      "Sensible defaults (N=5, magicalMul=2.4)",
+      "Type-safe props for AnimatedSlider",
+      "useMemo optimization for slider styles"
+    ],
+    "areas_for_improvement": [
+      "No error handling for shader compilation failure",
+      "Non-null assertion (!) on RuntimeEffect could crash if shader invalid",
+      "Magic numbers in shader (75.0, 2.0) could be constants",
+      "No loading state during initial shader compilation",
+      "Could add comments explaining shader math in more detail",
+      "Slider component duplicated from other animations (could extract to shared)",
+      "No accessibility labels on interactive elements",
+      "Hard-coded canvas position (marginTop: 100) not responsive"
+    ]
+  },
+
+  "known_limitations": {
+    "shader_compilation_pattern": {
+      "issue": "Entire shader recompiled on parameter change",
+      "reason": "GLSL requires const values for loop bounds",
+      "impact": "Performance hit on slider drag",
+      "workaround": "None - shader language limitation",
+      "author_note": "Not sure about this approach (line 46)"
+    },
+    "const_loop_requirement": {
+      "constraint": "GLSL loops require compile-time constant bounds",
+      "consequence": "Can't use uniform parameter for N",
+      "solution": "Dynamic shader source generation",
+      "limitation": "This is a GLSL language rule, not a Skia issue"
+    },
+    "error_handling": {
+      "missing": "No handling if shader compilation fails",
+      "risk": "App could crash on invalid shader",
+      "non_null_assertion": "! operator assumes success",
+      "improvement": "Check for null and show fallback"
+    },
+    "performance_scaling": {
+      "max_circles": 350,
+      "scaling": "Linear with N (more circles = more shader work)",
+      "device_dependent": "Older devices may struggle at high N values",
+      "no_framerate_cap": "Could drop below 60fps with N=350 on older hardware"
+    },
+    "accessibility": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Not supported",
+      "motion_sensitivity": "No reduced-motion option",
+      "color_blindness": "Procedural colors may be hard to distinguish"
+    },
+    "platform_compatibility": {
+      "ios": "Supported",
+      "android": "Supported",
+      "web": "May have shader compatibility issues",
+      "note": "GLSL dialects vary by platform"
+    }
+  },
+
+  "potential_improvements": {
+    "shader_enhancements": [
+      "Extract magic numbers (75.0, 2.0) as parameters",
+      "Add more color palette options",
+      "Implement different pattern algorithms (not just spirals)",
+      "Add symmetry/kaleidoscope effects",
+      "Implement reaction-diffusion or other generative algorithms",
+      "Add noise functions for organic variation"
+    ],
+    "interactivity": [
+      "Two-finger rotation gesture to control time",
+      "Pinch to zoom effect",
+      "Touch to add temporary distortion",
+      "Multi-touch for multiple pattern centers",
+      "Gyroscope integration for tilt-based effects"
+    ],
+    "ui_improvements": [
+      "Add visual labels for slider (min/max values)",
+      "Show current N value",
+      "Preset buttons for interesting patterns",
+      "Save/load favorite configurations",
+      "Gallery of example patterns",
+      "Animation speed control slider"
+    ],
+    "performance": [
+      "Add loading state during shader compilation",
+      "Debounce shader recompilation during slider drag",
+      "Detect device capability and suggest max N",
+      "Add FPS counter for debugging",
+      "Implement LOD (level of detail) based on performance"
+    ],
+    "error_handling": [
+      "Catch shader compilation errors",
+      "Show fallback UI if shader fails",
+      "Validate parameter ranges",
+      "Add error boundary for shader crashes"
+    ],
+    "accessibility": [
+      "Add accessibility labels to all interactive elements",
+      "Implement reduced-motion mode (static or simpler shader)",
+      "Keyboard controls for slider",
+      "Screen reader descriptions",
+      "High contrast mode option"
+    ],
+    "code_improvements": [
+      "Extract slider to shared components directory",
+      "Add comprehensive TypeScript interfaces",
+      "Unit tests for parameter interpolation",
+      "Document shader math with diagrams",
+      "Add shader presets as constants"
+    ],
+    "creative_enhancements": [
+      "Audio reactivity (use FFT data to control parameters)",
+      "Record/export as video",
+      "Screenshot/share functionality",
+      "Animate between parameter presets",
+      "Particle trails following pattern",
+      "Multiple layers of shaders"
+    ]
+  },
+
+  "key_insights": {
+    "runtime_shader_compilation": "Skia.RuntimeEffect enables dynamic GLSL shader creation at runtime - powerful but requires careful performance consideration",
+    "const_loop_workaround": "Dynamic shader source generation is necessary workaround for GLSL const loop requirements",
+    "gpu_power": "Modern mobile GPUs can execute complex per-pixel mathematics at 60fps - shader renders 350+ circles with perspective projection",
+    "parameter_injection": "String interpolation into shader source allows dynamic parameterization despite uniform limitations",
+    "mask_for_polish": "Simple blur mask dramatically improves visual quality with soft edges",
+    "procedural_color": "Cosine-based color palettes create vibrant gradients without texture lookups",
+    "useDerivedValue_shader": "useDerivedValue perfect for shader recompilation - automatically tracks dependencies",
+    "distance_fields": "Inverse distance fields (1/r²) create natural-looking glow effects",
+    "perspective_math": "Division by depth (p.y + 2.0) simulates 3D perspective in 2D shader",
+    "interaction_immediacy": "Direct parameter control creates satisfying, immediate visual feedback"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Introduction to shaders and GPU programming",
+      "Basic Skia Canvas rendering",
+      "SharedValue and useSharedValue basics",
+      "Simple gesture handling with pan",
+      "Component composition patterns"
+    ],
+    "for_intermediate": [
+      "RuntimeEffect API for custom shaders",
+      "GLSL fragment shader syntax",
+      "useDerivedValue for complex calculations",
+      "Dynamic source code generation patterns",
+      "Gesture lifecycle (onBegin, onUpdate, onFinalize)",
+      "Skia Mask and Blur effects",
+      "String template literals for code generation"
+    ],
+    "for_advanced": [
+      "GLSL mathematical algorithms (projection, distance fields)",
+      "Shader compilation optimization strategies",
+      "Procedural color palette generation",
+      "Performance profiling GPU vs CPU workloads",
+      "3D to 2D projection mathematics",
+      "Cosine-based gradients and color theory",
+      "Fibonacci and golden ratio in generative art",
+      "Worklet execution model and threading"
+    ],
+    "shader_specific": [
+      "Fragment shader main() function structure",
+      "vec2, vec4 vector operations",
+      "GLSL built-in functions (cos, sqrt, dot)",
+      "Per-pixel color accumulation patterns",
+      "Loop-based rendering in shaders",
+      "Coordinate system transformations",
+      "Inverse distance field techniques"
+    ]
+  },
+
+  "related_concepts": {
+    "generative_art": [
+      "Fibonacci spirals and golden ratio",
+      "Parametric equations",
+      "Procedural generation",
+      "Algorithmic art",
+      "Interactive installations"
+    ],
+    "shader_programming": [
+      "GLSL (OpenGL Shading Language)",
+      "Fragment shaders vs vertex shaders",
+      "Per-pixel processing",
+      "GPU parallel execution",
+      "Shader toy / Shadertron patterns"
+    ],
+    "mathematical_visualization": [
+      "Parametric curves",
+      "3D projection to 2D",
+      "Distance fields",
+      "Phase space visualization",
+      "Trigonometric functions"
+    ],
+    "animation_patterns": [
+      "Time-based animation",
+      "Ping-pong loops",
+      "Parameter sweeps",
+      "Infinite animations",
+      "Procedural motion"
+    ]
+  },
+
+  "inspiration_and_credits": {
+    "primary_inspiration": {
+      "creator": "XorDev",
+      "platform": "Twitter/X",
+      "url": "https://x.com/XorDev/status/1475524322785640455?s=20",
+      "acknowledgment": "Author explicitly credits: 'without his code this animation wouldn't exist'"
+    },
+    "fibonacci_connection": {
+      "name": "Fibonacci Shader (animation name)",
+      "mathematical_relation": "Patterns evoke Fibonacci spirals and golden ratio aesthetics",
+      "visual_similarity": "Organic, flowing spirals found in nature",
+      "note": "Not direct Fibonacci implementation, but inspired by similar mathematical beauty"
+    }
+  },
+
+  "testing_considerations": {
+    "visual_testing": [
+      "Shader renders correctly on mount",
+      "Mask creates soft circular edges",
+      "Colors are vibrant and well-distributed",
+      "Animation loops smoothly (no jumps at 0/15)",
+      "Pattern changes on slider interaction",
+      "Randomize button creates visible changes"
+    ],
+    "interaction_testing": [
+      "Slider updates N value smoothly",
+      "Slider clamping works at boundaries",
+      "Randomize button triggers pattern change",
+      "Scale feedback visible on slider interaction",
+      "Multiple rapid interactions don't break state"
+    ],
+    "performance_testing": [
+      "FPS at N=5 (minimum)",
+      "FPS at N=350 (maximum)",
+      "Shader compilation time on parameter change",
+      "Memory usage stable over time",
+      "No memory leaks after many interactions",
+      "Test on low-end devices (shader-bound performance)"
+    ],
+    "shader_testing": [
+      "Shader compiles successfully",
+      "No GLSL syntax errors",
+      "Parameters inject correctly into shader source",
+      "Edge cases: N=5, N=350, magicalMul=0, magicalMul=100",
+      "Time animation reaches 15 and reverses smoothly"
+    ],
+    "cross_platform": [
+      "iOS shader rendering",
+      "Android shader rendering",
+      "Web compatibility (if applicable)",
+      "GLSL dialect compatibility",
+      "Performance parity across platforms"
+    ],
+    "error_scenarios": [
+      "What happens if shader compilation fails?",
+      "Invalid parameter values",
+      "Rapid parameter changes",
+      "Component unmount during shader compilation"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No support - no accessibility labels",
+      "keyboard_navigation": "No support",
+      "reduced_motion": "Not respected - continuous animation",
+      "labels": "No descriptive labels on interactive elements",
+      "motion_intensity": "High - continuous morphing animation"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to slider container",
+      "Add accessibilityRole='adjustable' to slider",
+      "Add accessibilityValue for current N value",
+      "Add accessibilityLabel to randomize button",
+      "Add accessibilityHint explaining button purpose",
+      "Respect prefers-reduced-motion (pause time animation)",
+      "Add 'Pause animation' toggle for motion sensitivity",
+      "Add 'Low detail' mode (lower N value) for performance/accessibility",
+      "Provide static alternative for users who can't view animation",
+      "Add keyboard controls (arrows to adjust slider)"
+    ],
+    "motion_sensitivity": {
+      "risk": "Continuous morphing may trigger motion sickness",
+      "mitigation": "Pause option or reduced-motion mode",
+      "severity": "Medium - organic motion less jarring than quick cuts"
+    }
+  },
+
+  "comparison_to_alternatives": {
+    "vs_react_components": {
+      "this_approach": "Single shader renders all circles",
+      "alternative": "350 React components with individual animations",
+      "performance": "Shader approach orders of magnitude faster",
+      "complexity": "Shader requires GLSL knowledge",
+      "flexibility": "React components easier to modify individually"
+    },
+    "vs_skia_drawing_commands": {
+      "this_approach": "GLSL shader with custom math",
+      "alternative": "Skia drawing commands (Circle, Path) in loop",
+      "performance": "Shader better for complex per-pixel effects",
+      "use_case": "Shader for effects, drawing commands for simple shapes"
+    },
+    "vs_pre_rendered_animation": {
+      "this_approach": "Real-time shader with parameters",
+      "alternative": "Lottie or video file",
+      "pros": "Interactive, infinite variations, small file size",
+      "cons": "Requires GPU capability, platform-specific shader dialects"
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~300 lines (main ~170, slider ~165)",
+    "shader_source": "~20 lines of GLSL (embedded as string)",
+    "dependencies": "Skia and Reanimated (likely already in project)",
+    "runtime_memory": "Minimal - few SharedValues, shader compiled to GPU code",
+    "estimated_impact": "< 20KB minified (excluding dependencies)"
+  },
+
+  "tags": [
+    "shader",
+    "glsl",
+    "generative-art",
+    "fibonacci",
+    "golden-ratio",
+    "skia",
+    "runtime-effect",
+    "gpu-accelerated",
+    "reanimated",
+    "interactive",
+    "procedural",
+    "mathematical",
+    "spirals",
+    "distance-field",
+    "perspective-projection",
+    "gradient",
+    "blur",
+    "slider",
+    "gesture-handler",
+    "parametric",
+    "animation",
+    "xordev"
+  ]
+}

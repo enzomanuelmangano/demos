@@ -1,0 +1,939 @@
+{
+  "animation_name": "Cuberto Slider",
+  "animation_slug": "cuberto-slider",
+  "description": "An interactive slider with a dynamic balloon-shaped indicator that follows the picker with smooth spring animations. Features real-time percentage display inside a balloon that rotates to point at the picker position, creating a unique and playful UI element inspired by Cuberto's design style. Combines Skia rendering for custom shapes with gesture-driven interactions.",
+
+  "main_features": [
+    "Custom animated slider with pan gesture handling",
+    "Dynamic balloon indicator with SVG path rendering via Skia",
+    "Real-time rotation calculation based on picker position",
+    "Balloon follows slider with spring-delayed animation",
+    "Live percentage display inside balloon using ReText",
+    "Smooth spring animations for balloon rotation and position",
+    "Dynamic picker scaling and border radius on interaction",
+    "Progress bar width animation",
+    "Custom balloon SVG path with FitBox scaling",
+    "Gesture-based slider with context pattern for relative dragging"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main CubertoSlider component with GestureHandlerRootView wrapper",
+    "components/slider.tsx": "Core Slider component with gesture handling, balloon rendering, and animations"
+  },
+
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated",
+    "gestures": "react-native-gesture-handler",
+    "text_animation": "react-native-redash (ReText)"
+  },
+
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "FitBox",
+        "Path",
+        "Skia"
+      ],
+      "functions": [
+        "rect",
+        "Skia.Path.MakeFromSVGString"
+      ],
+      "usage": "GPU-accelerated balloon shape rendering from SVG path"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "interpolate"
+      ],
+      "functions": [
+        "withSpring",
+        "withTiming",
+        "Extrapolation"
+      ],
+      "components": ["Animated.View"],
+      "critical_feature": "useDerivedValue for balloon rotation and position calculations"
+    },
+    "react-native-gesture-handler": {
+      "version": "~2.28.0",
+      "components": ["GestureDetector"],
+      "gestures": ["Gesture.Pan()"],
+      "methods": ["onBegin", "onUpdate", "onFinalize"],
+      "usage": "Pan gesture for dragging slider picker"
+    },
+    "react-native-redash": {
+      "version": "^18.1.4",
+      "components": ["ReText"],
+      "usage": "UI thread text rendering for animated percentage display inside balloon",
+      "benefit": "Smooth percentage updates without JavaScript thread involvement"
+    }
+  },
+
+  "animation_techniques": {
+    "balloon_position_tracking": {
+      "pattern": "Spring-delayed position tracking",
+      "implementation": "withSpring(clampedTranslateX.value) in useDerivedValue",
+      "input": "clampedTranslateX (current picker position)",
+      "output": "balloonSliderX (delayed balloon position)",
+      "effect": "Balloon follows picker with smooth spring lag",
+      "spring_config": "Default spring (creates natural delay)"
+    },
+    "balloon_rotation": {
+      "pattern": "Dynamic rotation based on position delta",
+      "calculation": "-Math.PI / 2 + Math.atan2(balloonHeight + balloonBottom, balloonSliderX.value - clampedTranslateX.value)",
+      "math_explanation": {
+        "base_angle": "-π/2 (starts pointing up)",
+        "atan2_args": {
+          "y": "balloonHeight + balloonBottom (vertical distance from picker to balloon top)",
+          "x": "balloonSliderX - clampedTranslateX (horizontal lag distance)"
+        },
+        "purpose": "Calculate angle so balloon tip points at picker",
+        "effect": "Balloon rotates to always point at picker position"
+      },
+      "visual_result": "Balloon dynamically tilts to point at picker as it lags behind"
+    },
+    "picker_interaction_feedback": {
+      "properties": ["scale", "borderRadius", "borderWidth"],
+      "onBegin": [
+        "borderRadius: withTiming(pickerSize / 2) - becomes circular",
+        "borderWidth: withTiming(4) - thins border",
+        "scale: withTiming(1) - expands to full size"
+      ],
+      "onFinalize": [
+        "scale: withTiming(defaultScale) - returns to 70%",
+        "borderRadius: withTiming(pickerSize / 2.5) - returns to squircle",
+        "borderWidth: withTiming(pickerSize / 3) - returns to thick border"
+      ],
+      "timing_config": "Default withTiming",
+      "effect": "Picker morphs from thick-bordered squircle to thin-bordered circle on touch"
+    },
+    "progress_bar_animation": {
+      "pattern": "Width interpolation",
+      "animated_property": "width: clampedTranslateX.value",
+      "effect": "Progress bar fills from left to right as slider moves",
+      "updates": "Every frame during drag"
+    },
+    "percentage_display": {
+      "pattern": "ReText with useDerivedValue for UI thread rendering",
+      "calculation": "Math.floor(interpolate(clampedTranslateX, [0, sliderWidth], [minValue, maxValue], CLAMP))",
+      "interpolation": "Linear interpolation from slider position to value range",
+      "rounding": "Math.floor for integer display",
+      "display_format": "Plain number string (no % symbol)",
+      "animation": "Smooth number transitions via ReText on UI thread"
+    },
+    "clamping_behavior": {
+      "pattern": "Custom clamp worklet function",
+      "bounds": "[0, sliderWidth]",
+      "implementation": "Math.min(Math.max(value, lowerBound), upperBound)",
+      "applied_to": "translateX via useDerivedValue",
+      "effect": "Picker stays within slider bounds"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "translateX",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "range": "Unclamped (can exceed slider bounds during gesture)",
+        "updates": "Pan gesture onUpdate",
+        "purpose": "Raw horizontal position of picker"
+      },
+      {
+        "name": "contextX",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "purpose": "Stores gesture start position for relative dragging",
+        "usage": "Standard gesture context pattern"
+      },
+      {
+        "name": "scale",
+        "type": "SharedValue<number>",
+        "initial": "defaultScale (0.7)",
+        "range": "[0.7, 1]",
+        "updates": "onBegin (to 1), onFinalize (to 0.7)",
+        "purpose": "Picker scale feedback during interaction"
+      },
+      {
+        "name": "pickerBorderRadius",
+        "type": "SharedValue<number>",
+        "initial": "defaultPickerBorderRadius (pickerSize / 2.5)",
+        "range": "[pickerSize / 2.5, pickerSize / 2]",
+        "updates": "onBegin, onFinalize",
+        "purpose": "Dynamic border radius morphing (squircle to circle)"
+      },
+      {
+        "name": "pickerBorderWidth",
+        "type": "SharedValue<number>",
+        "initial": "defaultPickerBorderWidth (Math.floor(pickerSize / 3))",
+        "range": "[4, pickerSize / 3]",
+        "updates": "onBegin, onFinalize",
+        "purpose": "Dynamic border thickness"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "clampedTranslateX",
+        "calculation": "clamp(translateX.value, 0, sliderWidth)",
+        "dependencies": ["translateX", "sliderWidth"],
+        "purpose": "Constrained picker position within slider bounds",
+        "usage": "Used for all visual calculations (progress, percentage, balloon)"
+      },
+      {
+        "name": "balloonSliderX",
+        "calculation": "withSpring(clampedTranslateX.value)",
+        "dependencies": ["clampedTranslateX"],
+        "spring_config": "Default spring",
+        "purpose": "Delayed balloon position for spring follow effect",
+        "lag": "Creates visual lag behind picker"
+      },
+      {
+        "name": "balloonSliderRotate",
+        "calculation": "-Math.PI / 2 + Math.atan2(balloonHeight + balloonBottom, balloonSliderX.value - clampedTranslateX.value)",
+        "dependencies": ["balloonSliderX", "clampedTranslateX", "balloonHeight", "balloonBottom"],
+        "purpose": "Calculate rotation angle so balloon points at picker",
+        "output": "Angle in radians",
+        "effect": "Balloon tip always points toward picker position"
+      },
+      {
+        "name": "rBalloonText",
+        "calculation": "Math.floor(interpolate(clampedTranslateX, [0, sliderWidth], [minValue, maxValue], CLAMP))",
+        "dependencies": ["clampedTranslateX", "sliderWidth", "minValue", "maxValue"],
+        "type": "String",
+        "purpose": "Percentage value for ReText display",
+        "format": "Integer string"
+      }
+    ],
+    "worklet_functions": {
+      "clamp": {
+        "signature": "(value: number, lowerBound: number, upperBound: number) => number",
+        "worklet": true,
+        "logic": "Math.min(Math.max(value, lowerBound), upperBound)",
+        "purpose": "Constrain value within bounds on UI thread",
+        "usage": "Prevents picker from going beyond slider bounds"
+      }
+    },
+    "useAnimatedStyle_usage": [
+      {
+        "name": "rPickerStyle",
+        "properties": ["borderWidth", "borderRadius", "transform: [translateX, scale]"],
+        "purpose": "Picker morphing and positioning animations"
+      },
+      {
+        "name": "rProgressBarStyle",
+        "properties": ["width"],
+        "purpose": "Progress bar fill animation"
+      },
+      {
+        "name": "rBalloonProgressStyle",
+        "properties": ["transform: [translateX, rotate]"],
+        "purpose": "Balloon position and rotation animations"
+      }
+    ]
+  },
+
+  "gesture_handling": {
+    "pan_gesture_lifecycle": {
+      "onBegin": [
+        "pickerBorderRadius = withTiming(pickerSize / 2) - Circular",
+        "pickerBorderWidth = withTiming(4) - Thin border",
+        "scale = withTiming(1) - Full size",
+        "contextX = clampedTranslateX (store start position)"
+      ],
+      "onUpdate": [
+        "translateX = contextX + event.translationX - Relative dragging"
+      ],
+      "onFinalize": [
+        "scale = withTiming(defaultScale) - Return to 70%",
+        "pickerBorderRadius = withTiming(defaultPickerBorderRadius) - Return to squircle",
+        "pickerBorderWidth = withTiming(defaultPickerBorderWidth) - Return to thick border"
+      ]
+    },
+    "context_pattern": {
+      "usage": "contextX stores gesture start position",
+      "purpose": "Enable relative dragging (continue from where user touches)",
+      "pattern": "Standard gesture context pattern",
+      "benefit": "Smooth continuation of position, no jump to touch point"
+    },
+    "clamping_strategy": {
+      "method": "useDerivedValue with custom clamp function",
+      "bounds": "[0, sliderWidth]",
+      "benefit": "Picker stays within slider bounds while translateX can temporarily exceed",
+      "pattern": "Separate clamped value from raw translateX"
+    }
+  },
+
+  "skia_rendering": {
+    "balloon_svg_path": {
+      "source": "Skia.Path.MakeFromSVGString()",
+      "svg_data": "Custom balloon shape with tail pointing down",
+      "original_dimensions": "543x711",
+      "rendering": "GPU-accelerated via Skia Canvas"
+    },
+    "fitbox_scaling": {
+      "component": "FitBox",
+      "src": "rect(0, 0, 543, 711) - Original SVG dimensions",
+      "dst": "rect(0, 0, balloonWidth, balloonHeight) - Target dimensions",
+      "purpose": "Scale SVG path to desired size while maintaining aspect ratio",
+      "benefit": "Flexible sizing without recreating path"
+    },
+    "canvas_layer": {
+      "size": {
+        "width": "balloonWidth",
+        "height": "balloonHeight"
+      },
+      "positioning": {
+        "position": "absolute",
+        "bottom": "balloonBottom (pickerSize * 0.8)",
+        "left": "-balloonWidth / 2 (centered on translateX)"
+      },
+      "purpose": "Container for balloon shape rendering"
+    },
+    "path_rendering": {
+      "component": "Path",
+      "color": "props.color (default: PRIMARY_COLOR)",
+      "path": "BalloonPath (SVG path object)",
+      "rendering_method": "GPU via Skia"
+    }
+  },
+
+  "mathematical_algorithms": {
+    "balloon_rotation_calculation": {
+      "formula": "-π/2 + atan2(balloonHeight + balloonBottom, balloonSliderX - clampedTranslateX)",
+      "breakdown": {
+        "base_angle": "-π/2 rad (-90°) - pointing up by default",
+        "atan2_purpose": "Calculate angle between two points",
+        "vertical_component": "balloonHeight + balloonBottom (distance from picker to balloon top)",
+        "horizontal_component": "balloonSliderX - clampedTranslateX (lag distance)",
+        "result": "Angle in radians for rotation"
+      },
+      "examples": {
+        "no_lag": "balloonSliderX === clampedTranslateX → atan2(height, 0) → π/2 → final: 0 (pointing up)",
+        "left_lag": "balloonSliderX < clampedTranslateX → negative x → angle < π/2 → tilts right",
+        "right_lag": "balloonSliderX > clampedTranslateX → positive x → angle > π/2 → tilts left"
+      },
+      "visual_effect": "Balloon tip always points at picker, creating natural following behavior"
+    },
+    "value_interpolation": {
+      "formula": "interpolate(clampedTranslateX, [0, sliderWidth], [minValue, maxValue], CLAMP)",
+      "input_range": "[0, sliderWidth]",
+      "output_range": "[minValue, maxValue]",
+      "extrapolation": "CLAMP (ensures value stays within bounds)",
+      "rounding": "Math.floor for integer display",
+      "example": "clampedTranslateX=150, sliderWidth=300, [0,100] → 50"
+    },
+    "picker_centering": {
+      "horizontal_offset": "clampedTranslateX.value - pickerSize / 2",
+      "purpose": "Center picker on its translateX position",
+      "effect": "Picker center aligns with clampedTranslateX value"
+    },
+    "balloon_dimensions": {
+      "width": "pickerSize + 15",
+      "height": "balloonWidth * 1.4 (aspect ratio from SVG)",
+      "bottom_offset": "pickerSize * 0.8 (gap between picker and balloon)"
+    }
+  },
+
+  "component_patterns": {
+    "prop_based_customization": {
+      "pickerSize": {
+        "default": 50,
+        "affects": ["Picker dimensions", "Border radius", "Border width", "Balloon size", "Balloon offset"]
+      },
+      "sliderHeight": {
+        "default": 4,
+        "affects": ["Slider track height", "Progress bar height", "Picker vertical centering"]
+      },
+      "sliderWidth": {
+        "default": 300,
+        "affects": ["Slider track width", "Clamping bounds", "Value interpolation range"]
+      },
+      "minValue": {
+        "default": 0,
+        "affects": "Lower bound of value interpolation"
+      },
+      "maxValue": {
+        "default": 100,
+        "affects": "Upper bound of value interpolation"
+      },
+      "color": {
+        "default": "#6141B9 (purple)",
+        "affects": ["Progress bar", "Picker border", "Balloon fill"]
+      }
+    },
+    "calculated_values": {
+      "defaultPickerBorderRadius": "pickerSize / 2.5 (squircle shape)",
+      "defaultPickerBorderWidth": "Math.floor(pickerSize / 3) (thick border)",
+      "defaultScale": "0.7 (70% size when idle)",
+      "balloonWidth": "pickerSize + 15",
+      "balloonHeight": "balloonWidth * 1.4",
+      "balloonBottom": "pickerSize * 0.8"
+    },
+    "layout_strategy": {
+      "slider_container": "Relative positioning with defined dimensions",
+      "progress_bar": "Absolute positioned, fills from left",
+      "picker": "Absolute positioned with transform",
+      "balloon": "Absolute positioned above picker with transform"
+    }
+  },
+
+  "state_management": {
+    "initialization_flow": {
+      "steps": [
+        "1. Props destructured with defaults",
+        "2. Calculate derived constants (balloonWidth, defaultScale, etc.)",
+        "3. Initialize SharedValues (translateX, contextX, scale, borderRadius, borderWidth)",
+        "4. Create derived values (clampedTranslateX, balloonSliderX, balloonSliderRotate, rBalloonText)",
+        "5. Configure pan gesture with lifecycle callbacks",
+        "6. Create animated styles (rPickerStyle, rProgressBarStyle, rBalloonProgressStyle)",
+        "7. Render layout with layered absolute positioning"
+      ]
+    },
+    "interaction_flow": {
+      "user_touches_picker": [
+        "1. Gesture onBegin fires",
+        "2. Picker border radius animates to circular (withTiming)",
+        "3. Picker border width thins (withTiming)",
+        "4. Picker scale increases to 1 (withTiming)",
+        "5. contextX stores current clamped position",
+        "6. User begins dragging"
+      ],
+      "user_drags": [
+        "1. Gesture onUpdate fires continuously",
+        "2. translateX = contextX + translationX",
+        "3. clampedTranslateX recalculates (clamped version)",
+        "4. Progress bar width updates to clampedTranslateX",
+        "5. Picker translateX updates",
+        "6. balloonSliderX springs toward clampedTranslateX (with lag)",
+        "7. balloonSliderRotate recalculates based on lag",
+        "8. Balloon rotates to point at picker",
+        "9. rBalloonText recalculates interpolated value",
+        "10. ReText updates display (UI thread)"
+      ],
+      "user_releases": [
+        "1. Gesture onFinalize fires",
+        "2. Picker scale returns to 0.7 (withTiming)",
+        "3. Picker border radius returns to squircle (withTiming)",
+        "4. Picker border width returns to thick (withTiming)",
+        "5. Balloon continues springing to final position"
+      ]
+    }
+  },
+
+  "performance_optimizations": {
+    "worklet_calculations": {
+      "pattern": "All calculations in worklets (clamp, interpolate, atan2)",
+      "benefit": "No bridge crossing for math operations",
+      "runs_on": "UI thread"
+    },
+    "retext_usage": {
+      "pattern": "ReText for animated percentage display",
+      "benefit": "Text updates on UI thread without re-renders",
+      "performance": "60fps text updates during drag",
+      "alternative": "Could use Skia Text but ReText simpler for this use case"
+    },
+    "derived_value_efficiency": {
+      "pattern": "useDerivedValue automatically recalculates when dependencies change",
+      "benefit": "Optimal recalculation, no manual memoization needed",
+      "optimization": "Only recalculate what's necessary"
+    },
+    "gesture_performance": {
+      "pan_gesture": "Runs entirely on UI thread",
+      "no_bridge": "No JS thread involvement during drag",
+      "result": "Smooth 60fps interaction"
+    },
+    "skia_rendering": {
+      "pattern": "GPU-accelerated balloon rendering",
+      "benefit": "Efficient custom shape rendering",
+      "performance": "Better than SVG or multiple View components"
+    },
+    "spring_optimization": {
+      "pattern": "Spring only on balloon position, not picker",
+      "benefit": "Picker responds immediately, balloon creates visual interest",
+      "trade_off": "Two transform calculations but creates better UX"
+    }
+  },
+
+  "visual_design": {
+    "color_palette": {
+      "primary": "#6141B9 (purple)",
+      "background": "#FFFFFF (white)",
+      "track": "#E5E5E5 (light gray)",
+      "text": "white (on balloon)",
+      "customizable": true
+    },
+    "typography": {
+      "balloon_text": {
+        "fontSize": 20,
+        "fontWeight": "bold",
+        "color": "white",
+        "textAlign": "center",
+        "positioning": {
+          "position": "absolute",
+          "bottom": 10,
+          "fills_parent": "StyleSheet.absoluteFillObject"
+        }
+      }
+    },
+    "dimensions": {
+      "slider": {
+        "default_width": 300,
+        "default_height": 4,
+        "borderRadius": 5
+      },
+      "picker": {
+        "default_size": 50,
+        "aspectRatio": 1,
+        "default_borderRadius": "pickerSize / 2.5 (squircle)",
+        "active_borderRadius": "pickerSize / 2 (circle)",
+        "default_borderWidth": "Math.floor(pickerSize / 3) (~16px)",
+        "active_borderWidth": 4,
+        "backgroundColor": "white",
+        "borderColor": "props.color"
+      },
+      "balloon": {
+        "width": "pickerSize + 15 (65px)",
+        "height": "balloonWidth * 1.4 (91px)",
+        "bottom_offset": "pickerSize * 0.8 (40px above picker)"
+      }
+    },
+    "spacing": {
+      "balloon_to_picker_gap": "pickerSize * 0.8",
+      "balloon_text_bottom": 10
+    },
+    "shapes": {
+      "slider_track": "Rounded rectangle (borderRadius: 5)",
+      "picker": "Morphing from squircle to circle",
+      "balloon": "Custom SVG shape (teardrop/balloon with tail)"
+    }
+  },
+
+  "layout_and_positioning": {
+    "container_hierarchy": {
+      "level_1": "Main container (GestureHandlerRootView)",
+      "level_2": "App component (centered container)",
+      "level_3": "Slider component",
+      "level_4a": "Slider track (base layer)",
+      "level_4b": "Progress bar (absolute, width animated)",
+      "level_4c": "Balloon container (absolute, above picker)",
+      "level_4d": "Picker (absolute, gesture detector)"
+    },
+    "absolute_positioning": {
+      "progress_bar": {
+        "position": "absolute",
+        "bottom": 0,
+        "left": 0,
+        "top": 0,
+        "width": "animated"
+      },
+      "picker": {
+        "position": "absolute",
+        "left": 0,
+        "top": "-pickerSize / 2 + sliderHeight / 2 (vertically centered)",
+        "transform": "translateX and scale"
+      },
+      "balloon": {
+        "position": "absolute",
+        "bottom": "balloonBottom",
+        "left": "-balloonWidth / 2 (centered on translateX)",
+        "transform": "translateX and rotate"
+      }
+    },
+    "z_index_layering": {
+      "bottom": "Slider track",
+      "middle": "Progress bar",
+      "top_1": "Balloon (renders first in code, but visually above via absolute positioning)",
+      "top_2": "Picker (gesture detector on top)"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Value selectors with visual feedback",
+      "Settings sliders (volume, brightness, etc.)",
+      "Range pickers with live preview",
+      "Playful UI elements requiring value selection",
+      "Interactive controls with personality"
+    ],
+    "secondary": [
+      "Age selectors",
+      "Price range filters",
+      "Rating sliders",
+      "Quantity selectors",
+      "Progress indicators with interaction"
+    ],
+    "real_world_examples": [
+      "Game settings (difficulty, volume)",
+      "E-commerce filters (price, size)",
+      "Media controls (volume, playback speed)",
+      "Form inputs (age, quantity)",
+      "Educational apps (value selection)"
+    ],
+    "educational": [
+      "Teaching Skia rendering basics",
+      "Demonstrating atan2 for rotation calculations",
+      "Showing spring-delayed animations",
+      "Pan gesture context pattern",
+      "ReText for UI thread text updates"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": ["SliderProps with optional props"],
+      "prop_types": {
+        "pickerSize": "number (optional)",
+        "sliderWidth": "number (optional)",
+        "sliderHeight": "number (optional)",
+        "minValue": "number (optional)",
+        "maxValue": "number (optional)",
+        "color": "string (optional)"
+      },
+      "defaults": "All props have sensible defaults via destructuring"
+    },
+    "component_architecture": {
+      "main_component": "CubertoSlider - wrapper with GestureHandlerRootView",
+      "core_component": "Slider - reusable slider with all logic",
+      "separation": "Clean separation between demo wrapper and reusable component",
+      "reusability": "Slider component is fully reusable with props"
+    },
+    "constants": {
+      "PRIMARY_COLOR": "#6141B9 (module-level)",
+      "BalloonPath": "Pre-parsed Skia path object (module-level)",
+      "naming": "PascalCase for path, SCREAMING_SNAKE_CASE for color"
+    },
+    "documentation": {
+      "inline_comments": "Minimal - code is self-documenting",
+      "worklet_annotations": "Explicit 'worklet' directive on clamp function",
+      "type_annotations": "Comprehensive TypeScript types"
+    },
+    "best_practices": [
+      "memo on CubertoSlider for performance",
+      "Worklet annotation on helper functions",
+      "Type safety throughout",
+      "Separate files for components",
+      "Props with defaults for customization",
+      "Constants extracted to module level"
+    ]
+  },
+
+  "known_limitations": {
+    "svg_path_hardcoded": {
+      "issue": "Balloon SVG path is hardcoded",
+      "location": "BalloonPath constant",
+      "impact": "Can't easily customize balloon shape",
+      "improvement": "Could accept custom path as prop"
+    },
+    "aspect_ratio_fixed": {
+      "issue": "Balloon aspect ratio hardcoded (1.4:1)",
+      "impact": "Changing balloon width affects height proportionally",
+      "improvement": "Could separate width and height props"
+    },
+    "rotation_calculation_complexity": {
+      "issue": "atan2 rotation calculation may be complex for beginners",
+      "benefit": "Creates natural pointing behavior",
+      "documentation": "Could benefit from more comments explaining math"
+    },
+    "no_step_values": {
+      "limitation": "Slider is continuous, no discrete steps",
+      "improvement": "Could add snap points or step configuration"
+    },
+    "no_haptic_feedback": {
+      "missing": "No haptic feedback on value changes",
+      "improvement": "Could add haptics at value milestones"
+    },
+    "accessibility": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Not supported",
+      "announcements": "No value change announcements"
+    }
+  },
+
+  "potential_improvements": {
+    "features": [
+      "Step size configuration (discrete values)",
+      "Snap points for common values",
+      "Haptic feedback at milestones",
+      "Double-tap to reset",
+      "Custom balloon shapes via SVG prop",
+      "Multiple balloon styles (speech bubble, tooltip, etc.)",
+      "Min/max value markers on track",
+      "Value labels at track ends"
+    ],
+    "customization": [
+      "Configurable spring animations",
+      "Custom balloon SVG paths",
+      "Font customization for balloon text",
+      "Picker shape options (circle, square, custom)",
+      "Progress bar gradient support",
+      "Custom scale animation parameters",
+      "Border animation customization"
+    ],
+    "accessibility": [
+      "accessibilityRole='adjustable'",
+      "accessibilityValue with current value",
+      "accessibilityLabel describing purpose",
+      "Screen reader announcements on value change",
+      "Keyboard increment/decrement support",
+      "Reduced motion support (instant transitions)",
+      "High contrast mode support",
+      "Touch target size verification"
+    ],
+    "performance": [
+      "Memoize Skia path rendering",
+      "Optimize rotation calculations for very fast drags",
+      "Consider useNativeDriver exploration"
+    ],
+    "ux_enhancements": [
+      "Tap on track to jump to position",
+      "Show value units (%, $, etc.)",
+      "Formatter function for value display",
+      "Icon inside balloon instead of/with number",
+      "Multiple balloons for range slider variant",
+      "Color interpolation based on value"
+    ]
+  },
+
+  "key_insights": {
+    "atan2_for_rotation": "atan2 enables natural balloon pointing - calculates angle between two points",
+    "spring_delayed_tracking": "withSpring on derived value creates effortless follow effect",
+    "context_pattern_essential": "Gesture context pattern prevents picker jump on touch",
+    "separate_clamped_value": "Raw translateX can exceed bounds, clamped version used for display",
+    "morphing_picker_feedback": "Border radius + width + scale creates satisfying interaction",
+    "skia_for_custom_shapes": "Skia enables complex custom shapes efficiently",
+    "retext_performance": "ReText keeps text updates on UI thread for 60fps",
+    "fitbox_scaling": "FitBox makes SVG paths flexible without manual scaling math",
+    "lag_creates_personality": "Balloon lag adds playful character to interaction"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic slider implementation",
+      "Pan gesture handling",
+      "Shared values and animations",
+      "Progress bar animations",
+      "Props and prop types"
+    ],
+    "for_intermediate": [
+      "useDerivedValue for computed values",
+      "Gesture context pattern",
+      "withSpring for follow effects",
+      "Clamping strategies",
+      "ReText for UI thread text",
+      "Interpolate for value mapping",
+      "Multiple animated properties coordination"
+    ],
+    "for_advanced": [
+      "Skia Canvas and path rendering",
+      "FitBox for SVG scaling",
+      "atan2 for rotation calculations",
+      "Complex derived value chains",
+      "Spring-delayed animations",
+      "Custom shape rendering optimization",
+      "Morphing animations (border radius/width)",
+      "Mathematical angle calculations"
+    ]
+  },
+
+  "related_patterns": {
+    "similar_animations": [
+      "iOS time picker with indicator",
+      "Tooltip sliders",
+      "Balloon tooltips",
+      "Value pickers with preview",
+      "Custom range sliders"
+    ],
+    "slider_variants": [
+      "Airbnb slider (rolling digits)",
+      "Balance slider (dual-sided)",
+      "Range slider (two handles)",
+      "Circular slider",
+      "Vertical slider"
+    ],
+    "interaction_patterns": [
+      "Follow cursor/touch with lag",
+      "Rubber band effects",
+      "Spring-delayed indicators",
+      "Dynamic rotation based on position",
+      "Morphing UI elements"
+    ],
+    "inspiration": [
+      "Cuberto design agency style",
+      "Playful UI interactions",
+      "Creative slider designs",
+      "SVG-based custom shapes"
+    ]
+  },
+
+  "testing_considerations": {
+    "visual_tests": [
+      "Balloon follows picker smoothly",
+      "Balloon rotates to point at picker",
+      "Picker morphs from squircle to circle on touch",
+      "Progress bar width matches picker position",
+      "Text displays correct value",
+      "Colors apply correctly",
+      "Balloon renders without artifacts"
+    ],
+    "interaction_tests": [
+      "Drag slider updates value",
+      "Value interpolation correct across range",
+      "Picker stays within bounds",
+      "Gesture context works (no jump on touch)",
+      "Scale animation triggers correctly",
+      "Border animations smooth",
+      "Multiple rapid drags don't break state"
+    ],
+    "edge_cases": [
+      "Value at minimum (0)",
+      "Value at maximum (sliderWidth)",
+      "Rapid value changes",
+      "Touch at extreme edges",
+      "Very fast dragging",
+      "Drag beyond slider bounds",
+      "Multiple simultaneous touches"
+    ],
+    "mathematical_accuracy": [
+      "Balloon rotation calculation correct at all positions",
+      "Value interpolation accurate",
+      "Clamping works at boundaries",
+      "Percentage calculation correct"
+    ],
+    "performance_tests": [
+      "60fps during drag",
+      "No frame drops on balloon rotation",
+      "Skia rendering efficient",
+      "Memory stable across interactions",
+      "ReText renders without lag"
+    ],
+    "cross_platform": [
+      "Test on iOS and Android",
+      "Verify Skia rendering on both platforms",
+      "Check gesture handling consistency",
+      "Verify spring animation feel"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No support",
+      "keyboard_navigation": "No support",
+      "reduced_motion": "Not respected",
+      "labels": "No accessibility labels",
+      "announcements": "No value change announcements"
+    },
+    "recommendations": [
+      "Add accessibilityRole='adjustable' to slider",
+      "Add accessibilityValue with current value",
+      "Add accessibilityLabel 'Slider with value indicator'",
+      "Add accessibilityHint 'Drag to adjust value'",
+      "Support accessibilityIncrement/Decrement",
+      "Announce value changes to screen reader",
+      "Respect prefers-reduced-motion (instant transitions)",
+      "Add keyboard arrows support for increment/decrement",
+      "Ensure touch target size (picker 50x50 is good)",
+      "High contrast mode support",
+      "Consider hiding balloon for screen reader users (decorative)"
+    ]
+  },
+
+  "comparison_to_alternatives": {
+    "vs_standard_slider": {
+      "pros": [
+        "Unique visual feedback with balloon",
+        "Playful interaction",
+        "Clear value display",
+        "Custom styling flexibility"
+      ],
+      "cons": [
+        "More complex implementation",
+        "Requires Skia dependency",
+        "More visual elements to render"
+      ]
+    },
+    "vs_airbnb_slider": {
+      "similarity": "Both have custom value displays",
+      "difference": "Cuberto uses balloon with rotation, Airbnb uses rolling digits",
+      "use_case": "Cuberto more playful, Airbnb more sophisticated"
+    },
+    "vs_simple_value_text": {
+      "this_approach": "Animated balloon indicator with rotation",
+      "simple_approach": "Static text above slider",
+      "benefit": "Visual interest, perceived quality, user engagement",
+      "cost": "Complexity, Skia dependency, performance consideration"
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~220 lines total (main + slider component)",
+    "dependencies": "Skia, Reanimated, Gesture Handler, Redash (common in RN projects)",
+    "runtime_memory": "Minimal - few SharedValues, one pre-parsed SVG path",
+    "estimated_impact": "< 40KB minified (excluding common dependencies)"
+  },
+
+  "performance_metrics": {
+    "target_fps": 60,
+    "runs_on": "UI thread (worklets)",
+    "expected_performance": "Smooth on mid-range devices and above",
+    "critical_optimizations": [
+      "Worklet calculations",
+      "ReText for UI thread text",
+      "Skia GPU rendering",
+      "useDerivedValue for automatic optimization"
+    ]
+  },
+
+  "platform_considerations": {
+    "ios": {
+      "features": ["All features supported"],
+      "performance": "Excellent",
+      "gestures": "Native feel with spring animations",
+      "skia": "Full support"
+    },
+    "android": {
+      "features": ["All features supported"],
+      "performance": "Excellent",
+      "gestures": "Smooth pan gesture handling",
+      "skia": "Full support"
+    },
+    "web": {
+      "compatibility": "Should work with react-native-web and react-native-skia-web",
+      "gestures": "Pan gesture supported",
+      "skia": "Requires @shopify/react-native-skia web support",
+      "considerations": ["Test Skia rendering", "Mouse vs touch events", "Spring animation feel"]
+    }
+  },
+
+  "historical_context": {
+    "inspiration": "Cuberto design agency known for playful, creative UI interactions",
+    "design_philosophy": "Personality and delight in micro-interactions",
+    "technical_evolution": "Modern React Native enables these creative interactions efficiently"
+  },
+
+  "tags": [
+    "slider",
+    "value-selector",
+    "balloon-indicator",
+    "skia",
+    "reanimated",
+    "gesture-handler",
+    "pan-gesture",
+    "spring-animation",
+    "custom-shapes",
+    "svg-rendering",
+    "rotation",
+    "atan2",
+    "retext",
+    "playful",
+    "cuberto",
+    "interactive",
+    "morphing-animation"
+  ]
+}

@@ -1,0 +1,885 @@
+{
+  "animation_name": "Skia Bottom Sheet",
+  "animation_slug": "skia-bottom-sheet",
+  "description": "A high-performance draggable bottom sheet built entirely with Skia and React Native Skia Gesture, featuring a glassmorphic design with backdrop blur effects. The sheet can be dragged vertically with smooth spring physics, snaps to open/closed positions based on gesture velocity and position, and includes a visual handle indicator. Utilizes Skia's Path API for dynamic shape construction, BackdropBlur for depth effects, and worklet-based gesture handling for 60fps interactions.",
+
+  "main_features": [
+    "Draggable bottom sheet with pan gesture support",
+    "Dynamic Skia Path construction based on sheet position",
+    "BackdropBlur effect for glassmorphic appearance",
+    "BlurMask inner blur on sheet surface",
+    "Spring-based snap animations to open/closed states",
+    "Clamped translation to prevent over-dragging",
+    "Touch area restricted to sheet bounds via Path clipping",
+    "Visual handle indicator for drag affordance",
+    "Background image rendering with Skia Image component",
+    "Responsive sizing based on canvas dimensions",
+    "Snap threshold logic based on screen height",
+    "GPU-accelerated rendering throughout"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Main component with Skia Canvas setup and background image",
+    "components/bottom-sheet/index.tsx": "Core bottom sheet component with gesture handling and blur effects"
+  },
+
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "gestures": "react-native-skia-gesture",
+    "animations": "react-native-reanimated",
+    "image_loading": "@shopify/react-native-skia (useImage hook)",
+    "layout": "react-native (useWindowDimensions)"
+  },
+
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "usage": "GPU-accelerated Canvas rendering with blur effects and dynamic paths",
+      "components": ["Image", "BackdropBlur", "BlurMask", "RoundedRect"],
+      "hooks": ["useImage"],
+      "utilities": ["rect", "rrect", "Skia"],
+      "methods": ["Skia.Path.Make()", "addRRect()"],
+      "critical_feature": "BackdropBlur with path clipping for glassmorphic bottom sheet",
+      "performance_reason": "GPU-accelerated rendering, no View hierarchy overhead"
+    },
+    "react-native-skia-gesture": {
+      "version": "0.4.5-beta.1",
+      "components": ["Touchable.Canvas", "Touchable.Path"],
+      "hooks": ["useGestureHandler"],
+      "usage": "Pan gesture handling directly on Skia Path elements",
+      "critical_feature": "Enables drag gestures on Skia primitives without wrapping in Views",
+      "benefit": "Maintains pure Skia rendering while supporting complex interactions"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withSpring"
+      ],
+      "usage": "Smooth spring animations for sheet position and snap behavior",
+      "critical_feature": "useDerivedValue for reactive path and transform calculations on UI thread"
+    },
+    "react-native": {
+      "hooks": ["useWindowDimensions"],
+      "usage": "Screen height for snap threshold calculations"
+    }
+  },
+
+  "animation_techniques": {
+    "spring_based_dragging": {
+      "pattern": "Spring physics for natural sheet movement",
+      "shared_value": "translateY (sheet vertical offset)",
+      "initial_value": 0,
+      "config": "Default spring (natural bounce)",
+      "effect": "Sheet smoothly follows finger with spring damping",
+      "snap_behavior": {
+        "threshold": "height / 3",
+        "opened_position": "-height / 2",
+        "closed_position": "0",
+        "logic": "if currentTranslation > snapThreshold → open, else → close"
+      },
+      "key_insight": "Spring creates natural feeling when snapping to positions"
+    },
+    "clamped_translation": {
+      "pattern": "useDerivedValue with Math.max for bounds limiting",
+      "calculation": "Math.max(translateY.value, -(size.value.height - cardInitialOffset))",
+      "purpose": "Prevents sheet from being dragged beyond top of screen",
+      "min_value": "-(height - 150) (can go to top minus initial offset)",
+      "max_value": "0 (cannot drag down below initial position)",
+      "benefit": "Natural physical constraints, prevents visual glitches"
+    },
+    "dynamic_path_construction": {
+      "pattern": "Reactive Skia Path creation in useDerivedValue",
+      "worklet": true,
+      "steps": [
+        "1. Create new path with Skia.Path.Make()",
+        "2. Calculate current sheet y position",
+        "3. Add RoundedRect to path with current position",
+        "4. Return composed path"
+      ],
+      "reactive_dependencies": ["size", "clampedTranslateY", "cardInitialOffset"],
+      "effect": "Sheet path updates every frame during drag",
+      "rounded_rect": {
+        "x": 0,
+        "y": "size.height - cardInitialOffset + clampedTranslateY",
+        "width": "size.width",
+        "height": "size.height",
+        "radius": "cardRadius (30)"
+      },
+      "usage": "Path serves both as clip for BackdropBlur and touch target for gesture"
+    },
+    "backdrop_blur_effect": {
+      "component": "BackdropBlur",
+      "blur_amount": "blur (default: 10)",
+      "clip_path": "roundedRectPath",
+      "effect": "Blurs content behind the sheet (background image)",
+      "glassmorphic_design": "Combined with semi-transparent color creates frosted glass",
+      "purpose": "Visual depth and modern UI aesthetic",
+      "performance": "GPU-accelerated blur filter"
+    },
+    "inner_blur_mask": {
+      "component": "BlurMask",
+      "blur_amount": 5,
+      "style": "inner",
+      "applied_to": "Touchable.Path (sheet surface)",
+      "effect": "Subtle inner glow/shadow on sheet surface",
+      "purpose": "Enhances glassmorphic appearance and adds depth"
+    },
+    "handle_indicator": {
+      "component": "RoundedRect",
+      "dimensions": "100x5px",
+      "border_radius": 5,
+      "color": "white",
+      "position": "Centered horizontally, 10px below sheet top edge",
+      "calculation": {
+        "x": "size.width / 2 - SHEET_HANDLE_WIDTH / 2",
+        "y": "size.height - cardInitialOffset + clampedTranslateY + 10"
+      },
+      "purpose": "Visual affordance indicating sheet is draggable"
+    }
+  },
+
+  "skia_patterns": {
+    "path_construction": {
+      "api": "Skia.Path.Make()",
+      "methods": {
+        "addRRect": {
+          "usage": "rrect(rect(...), radiusX, radiusY)",
+          "coordinates": "rect(0, sheetY, width, height)",
+          "radius": "cardRadius (30)",
+          "purpose": "Rounded rectangle shape for bottom sheet"
+        }
+      },
+      "reactive": "Path recreated in useDerivedValue when position changes",
+      "dual_purpose": "Same path used for BackdropBlur clip and Touchable.Path gesture target"
+    },
+    "backdrop_blur": {
+      "component": "BackdropBlur",
+      "props": {
+        "clip": "roundedRectPath",
+        "blur": "blur amount (10)"
+      },
+      "mechanism": "Blurs all content below this layer within clipped region",
+      "ordering": "Must be rendered before the sheet surface",
+      "effect": "Background image appears blurred behind sheet"
+    },
+    "blur_mask": {
+      "component": "BlurMask",
+      "props": {
+        "blur": 5,
+        "style": "inner"
+      },
+      "parent": "Touchable.Path children",
+      "effect": "Inner shadow/glow on sheet surface",
+      "rendering": "Applied as child of the path it affects"
+    },
+    "canvas_structure": {
+      "component": "Touchable.Canvas",
+      "children_order": [
+        "1. Image (background with fit: cover)",
+        "2. BottomSheet component (contains BackdropBlur, handle, Touchable.Path)"
+      ],
+      "layering": "Render order determines z-index (later = on top)",
+      "touch_handling": "Touchable.Canvas enables gesture handling on Canvas children",
+      "sizing": "onSize callback tracks canvas dimensions"
+    },
+    "touchable_path": {
+      "component": "Touchable.Path",
+      "props": {
+        "path": "roundedRectPath",
+        "start": 0,
+        "end": 1,
+        "color": "color (default: rgba(0,0,0,0.2))",
+        "...panGesture": "Spread gesture handler"
+      },
+      "purpose": "Interactive surface for dragging the sheet",
+      "touch_area": "Restricted to rounded rectangle path bounds",
+      "worklet": "Gesture callbacks run on UI thread",
+      "children": "BlurMask for inner blur effect"
+    },
+    "image_rendering": {
+      "component": "Image",
+      "hook": "useImage(url)",
+      "props": {
+        "x": 0,
+        "y": 0,
+        "width": "imageWidth (derived from canvas size)",
+        "height": "imageHeight (derived from canvas size)",
+        "fit": "cover",
+        "image": "image object from useImage"
+      },
+      "url": "https://fastly.picsum.photos/id/476/2000/2000.jpg",
+      "purpose": "Background content to demonstrate blur effect",
+      "loading": "Conditional rendering when image is loaded"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "translateY",
+        "type": "SharedValue<number>",
+        "initial": 0,
+        "updates": "onActive (continuous during pan), onEnd (snap animation)",
+        "purpose": "Track sheet vertical offset from initial position",
+        "worklet": true
+      },
+      {
+        "name": "context",
+        "type": "SharedValue<{ y: number }>",
+        "initial": "{ y: 0 }",
+        "updates": "onStart (captures current position)",
+        "purpose": "Store gesture start position for relative dragging",
+        "pattern": "Standard gesture context pattern"
+      },
+      {
+        "name": "size",
+        "type": "SharedValue<{ width: number, height: number }>",
+        "initial": "{ width: 0, height: 0 }",
+        "updates": "onSize callback from Touchable.Canvas",
+        "purpose": "Track canvas dimensions for responsive calculations",
+        "scope": "CanvasContainer (passed as prop to BottomSheet)"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "clampedTranslateY",
+        "calculation": "Math.max(translateY.value, -(size.height - cardInitialOffset))",
+        "dependencies": ["translateY", "size"],
+        "purpose": "Prevent sheet from going beyond top of screen",
+        "min_value": "-(size.height - 150)",
+        "max_value": "Infinity (but gesture limits it)",
+        "worklet": true
+      },
+      {
+        "name": "roundedRectPath",
+        "calculation": "Skia path with addRRect at current sheet position",
+        "dependencies": ["size", "clampedTranslateY", "cardRadius"],
+        "purpose": "Dynamic path for BackdropBlur clip and touch target",
+        "reactive": "Recreates path every time sheet position changes",
+        "worklet": true,
+        "type": "SharedValue<SkPath>"
+      },
+      {
+        "name": "y",
+        "scope": "Handle indicator",
+        "calculation": "size.height - cardInitialOffset + clampedTranslateY + 10",
+        "dependencies": ["size", "clampedTranslateY"],
+        "purpose": "Vertical position of drag handle",
+        "padding": "10px below sheet top edge"
+      },
+      {
+        "name": "x",
+        "scope": "Handle indicator",
+        "calculation": "size.width / 2 - SHEET_HANDLE_WIDTH / 2",
+        "dependencies": ["size"],
+        "purpose": "Horizontal centering of drag handle"
+      },
+      {
+        "name": "imageWidth",
+        "calculation": "size.value.width",
+        "dependencies": ["size"],
+        "purpose": "Responsive image width matching canvas"
+      },
+      {
+        "name": "imageHeight",
+        "calculation": "size.value.height",
+        "dependencies": ["size"],
+        "purpose": "Responsive image height matching canvas"
+      }
+    ],
+    "memo_components": [
+      {
+        "component": "BottomSheet",
+        "benefit": "Prevents re-render when parent updates",
+        "dependencies": "Props (size, blur, cardRadius, cardInitialOffset, color)",
+        "critical_for": "Performance optimization, prevents unnecessary path recalculations"
+      }
+    ]
+  },
+
+  "gesture_handling": {
+    "pan_gesture": {
+      "hook": "useGestureHandler",
+      "pattern": "react-native-skia-gesture specific",
+      "callbacks": {
+        "onStart": {
+          "purpose": "Capture current sheet position",
+          "implementation": "context.value.y = clampedTranslateY.value",
+          "worklet": true,
+          "rationale": "Store starting position for relative gesture calculations"
+        },
+        "onActive": {
+          "purpose": "Update sheet position during drag",
+          "implementation": "translateY.value = event.translationY + context.value.y",
+          "worklet": true,
+          "frequency": "Every frame during pan",
+          "calculation": "Current translation + gesture start position"
+        },
+        "onEnd": {
+          "purpose": "Snap to open or closed position",
+          "logic": [
+            "1. Calculate currentTranslation = abs(translateY) + cardInitialOffset",
+            "2. Define snapThreshold = height / 3",
+            "3. If currentTranslation > snapThreshold → snap to open (-height/2)",
+            "4. Else → snap to closed (0)"
+          ],
+          "animation": "withSpring(targetPosition)",
+          "worklet": true,
+          "threshold_note": "Developer comment: 'Feel free to choose your own thresholds'"
+        }
+      },
+      "coordinate_system": {
+        "positive_y": "Downward (dragging down)",
+        "negative_y": "Upward (dragging up)",
+        "zero": "Initial sheet position (150px from bottom)"
+      }
+    },
+    "gesture_context_pattern": {
+      "pattern": "Store gesture start state in SharedValue object",
+      "context_object": "{ y: number }",
+      "onStart": "Capture current position",
+      "onActive": "Add gesture delta to start position",
+      "benefit": "Relative dragging from any position"
+    }
+  },
+
+  "mathematical_algorithms": {
+    "snap_threshold_logic": {
+      "threshold": "height / 3",
+      "open_position": "-height / 2",
+      "closed_position": "0",
+      "current_translation": "abs(translateY) + cardInitialOffset",
+      "examples": {
+        "mostly_closed": "Dragged up 100px → currentTranslation = 250 → if height=800, threshold=267 → close",
+        "mostly_open": "Dragged up 300px → currentTranslation = 450 → if height=800, threshold=267 → open"
+      },
+      "rationale": "One-third of screen height provides natural snap point"
+    },
+    "clamping_algorithm": {
+      "formula": "Math.max(translateY, -(height - cardInitialOffset))",
+      "min_bound": "-(height - 150)",
+      "max_bound": "Infinity (but gesture limits it in practice)",
+      "effect": "Can drag to top of screen but not beyond",
+      "example": "If height=800 → min translateY = -650"
+    },
+    "position_calculations": {
+      "sheet_y": "height - cardInitialOffset + clampedTranslateY",
+      "at_rest": "800 - 150 + 0 = 650 (150px from bottom)",
+      "fully_open": "800 - 150 + (-400) = 250 (opens to middle/top)",
+      "handle_y": "sheet_y + 10 (10px padding from top edge)"
+    }
+  },
+
+  "performance_optimizations": {
+    "gpu_acceleration": {
+      "pattern": "Full Skia Canvas rendering",
+      "benefit": "All rendering happens on GPU, no View hierarchy",
+      "vs_views": "Eliminates React Native bridge crossing for render updates",
+      "critical": "Path updates, blur effects, image rendering all GPU-side"
+    },
+    "worklet_execution": {
+      "pattern": "All gesture callbacks and derived values run on UI thread",
+      "worklet_functions": [
+        "onStart",
+        "onActive",
+        "onEnd",
+        "clampedTranslateY derivation",
+        "roundedRectPath derivation",
+        "position calculations"
+      ],
+      "benefit": "60fps animations without JS thread blocking"
+    },
+    "path_reactivity": {
+      "pattern": "Path only recreates when dependencies change",
+      "dependencies": ["size", "clampedTranslateY", "cardRadius"],
+      "optimization": "Path recreation is fast (GPU-side operation)",
+      "benefit": "Efficient dynamic shape updates"
+    },
+    "memo_optimization": {
+      "component": "BottomSheet wrapped in memo",
+      "benefit": "Only re-renders when props change",
+      "prevents": "Unnecessary re-renders from parent state updates",
+      "critical_for": "Smooth animations during drag"
+    },
+    "image_loading": {
+      "pattern": "useImage hook with conditional rendering",
+      "benefit": "Image loaded asynchronously, no blocking",
+      "rendering": "Only renders when image is loaded (if check)",
+      "performance": "Efficient Skia-native image handling"
+    },
+    "minimal_re-renders": {
+      "pattern": "No React state updates during animation",
+      "benefit": "JS thread remains free",
+      "all_animation": "Handled by SharedValues and worklets"
+    }
+  },
+
+  "visual_design": {
+    "glassmorphic_aesthetic": {
+      "backdrop_blur": "10px blur on background",
+      "surface_color": "rgba(0,0,0,0.2) (semi-transparent black)",
+      "inner_blur": "5px inner blur for depth",
+      "effect": "Frosted glass appearance",
+      "modern_ui": "iOS-style glassmorphism"
+    },
+    "dimensions": {
+      "card_radius": "30px (rounded corners)",
+      "card_initial_offset": "150px (distance from bottom when closed)",
+      "handle_width": "100px",
+      "handle_height": "5px",
+      "handle_radius": "5px",
+      "blur_amount": "10px (backdrop), 5px (inner)"
+    },
+    "colors": {
+      "sheet_surface": "rgba(0,0,0,0.2) (default, configurable)",
+      "handle": "white",
+      "background_image": "Picsum photo (demonstrates blur)"
+    },
+    "positioning": {
+      "sheet_closed": "150px from bottom",
+      "sheet_open": "height/2 from top",
+      "handle": "10px from sheet top edge, horizontally centered"
+    }
+  },
+
+  "component_architecture": {
+    "SkiaBottomSheet": {
+      "type": "Main exported component (CanvasContainer)",
+      "structure": "Touchable.Canvas with Image and BottomSheet",
+      "responsibilities": [
+        "Canvas setup and sizing",
+        "Background image loading and rendering",
+        "Size tracking via onSize callback",
+        "Rendering BottomSheet component"
+      ],
+      "size_management": "Tracks canvas size in SharedValue, passed to BottomSheet"
+    },
+    "BottomSheet": {
+      "type": "Memoized functional component",
+      "props": {
+        "size": "SharedValue<{ width, height }> - Canvas dimensions",
+        "blur": "number (optional, default: 10) - Backdrop blur amount",
+        "cardRadius": "number (optional, default: 30) - Corner radius",
+        "cardInitialOffset": "number (optional, default: 150) - Distance from bottom",
+        "color": "string (optional, default: rgba(0,0,0,0.2)) - Sheet color"
+      },
+      "structure": [
+        "BackdropBlur with path clip",
+        "RoundedRect handle indicator",
+        "Touchable.Path with BlurMask child"
+      ],
+      "constants": {
+        "DEFAULT_CARD_RADIUS": 30,
+        "DEFAULT_CARD_INITIAL_OFFSET": 150,
+        "DEFAULT_BLUR": 10,
+        "DEFAULT_CARD_COLOR": "rgba(0,0,0,0.2)",
+        "SHEET_HANDLE_WIDTH": 100
+      },
+      "memo": true,
+      "customization": "Props allow color, blur, radius, and offset customization"
+    }
+  },
+
+  "layout_and_positioning": {
+    "canvas_sizing": {
+      "pattern": "onSize callback tracks canvas dimensions",
+      "size_shared_value": "Updated automatically when canvas resizes",
+      "benefit": "Responsive to screen size changes and orientation"
+    },
+    "responsive_calculations": {
+      "sheet_width": "Always matches canvas width (size.value.width)",
+      "sheet_position": "Calculated relative to canvas height",
+      "image_sizing": "Matches canvas dimensions (fit: cover)",
+      "snap_threshold": "Based on actual screen height"
+    },
+    "coordinate_system": {
+      "origin": "Top-left (0, 0)",
+      "sheet_y_closed": "height - 150 (near bottom)",
+      "sheet_y_open": "height/2 or less (middle/top)",
+      "handle_offset": "+10px from sheet top"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Bottom sheets in mobile apps",
+      "Overlay panels with glassmorphic design",
+      "Draggable info panels",
+      "Filters and settings panels",
+      "Music player controls"
+    ],
+    "real_world_examples": [
+      "Apple Maps bottom sheet",
+      "Spotify Now Playing sheet",
+      "Google Maps place details",
+      "iOS Share Sheet alternatives",
+      "Settings and filter drawers"
+    ],
+    "design_patterns": [
+      "Glassmorphism UI",
+      "Backdrop blur effects",
+      "Draggable overlays",
+      "Snap-to-position interactions",
+      "Handle-based drag affordance"
+    ]
+  },
+
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit types",
+      "Comprehensive inline comments explaining logic",
+      "Well-organized constants with DEFAULT_ prefix",
+      "Memoized component for performance",
+      "Configurable via props (blur, color, radius, offset)",
+      "Clear separation of concerns (main component vs bottom sheet)",
+      "Worklet annotations for UI thread execution",
+      "Defensive programming (conditional image rendering)",
+      "Clean component exports with aliasing"
+    ],
+    "areas_for_improvement": [
+      "Could extract gesture logic to custom hook",
+      "Type definitions could be in separate file",
+      "No error handling for image loading failures",
+      "No loading state while image fetches",
+      "Hard-coded snap threshold (could be configurable)",
+      "No accessibility labels or hints"
+    ],
+    "typescript": {
+      "coverage": "Full TypeScript with explicit types",
+      "type_definitions": [
+        "BottomSheetProps interface",
+        "FC type annotation",
+        "SharedValue types"
+      ],
+      "type_imports": "type keyword for type-only imports",
+      "prop_defaults": "Destructured with default values"
+    },
+    "documentation": {
+      "inline_comments": [
+        "Explains default values and constants",
+        "Documents clamped translation logic",
+        "Explains rounded rect path dual purpose",
+        "Documents pan gesture callbacks",
+        "Explains snap threshold logic with note to customize",
+        "Documents handle positioning calculations"
+      ],
+      "clarity": "High - comprehensive comments throughout"
+    },
+    "constants_extraction": {
+      "default_values": "All defaults extracted as constants",
+      "naming": "DEFAULT_ prefix for clarity",
+      "sheet_handle_width": "Extracted as SHEET_HANDLE_WIDTH constant"
+    }
+  },
+
+  "known_limitations": {
+    "fixed_snap_positions": {
+      "issue": "Only two snap positions (open/closed)",
+      "limitation": "Cannot snap to intermediate positions",
+      "improvement": "Could support multiple snap points array"
+    },
+    "hard_coded_threshold": {
+      "issue": "Snap threshold fixed at height/3",
+      "limitation": "Not configurable without code changes",
+      "improvement": "Could be a prop or multiple thresholds"
+    },
+    "no_velocity_detection": {
+      "issue": "Snap logic only considers position, not velocity",
+      "limitation": "Fast swipes don't influence snap direction",
+      "improvement": "Could use gesture velocity for smarter snapping"
+    },
+    "image_loading": {
+      "issue": "No loading state or error handling",
+      "limitation": "User sees nothing while image loads or if it fails",
+      "improvement": "Add loading placeholder and error fallback"
+    },
+    "accessibility": {
+      "missing": "No accessibility labels or roles",
+      "screen_reader": "Sheet not announced to screen readers",
+      "keyboard": "No keyboard navigation support",
+      "improvements_needed": "Add accessibility props and alternative interactions"
+    },
+    "gesture_conflicts": {
+      "potential_issue": "May conflict with scroll views inside sheet",
+      "workaround_needed": "Would need gesture priority handling for scrollable content"
+    }
+  },
+
+  "potential_improvements": {
+    "interaction_enhancements": [
+      "Velocity-based snap direction",
+      "Multiple snap points (e.g., 1/4, 1/2, 3/4, full height)",
+      "Dismiss by dragging down below threshold",
+      "Tap backdrop to close",
+      "Swipe down to dismiss gesture",
+      "Haptic feedback on snap",
+      "Resistance when dragging beyond bounds"
+    ],
+    "visual_refinements": [
+      "Animated backdrop dim (darken when opening)",
+      "Shadow that grows with sheet height",
+      "Handle color change on active drag",
+      "Blur amount that changes with position",
+      "Custom header content above handle",
+      "Footer content at bottom of sheet",
+      "Background parallax effect"
+    ],
+    "customization_options": [
+      "Multiple snap positions via array prop",
+      "Custom snap threshold percentages",
+      "Configurable spring animations",
+      "Custom handle component",
+      "Children prop for sheet content",
+      "onSnapChange callback",
+      "onDragStart/onDragEnd callbacks",
+      "Controlled mode (controlled translateY)"
+    ],
+    "accessibility": [
+      "Accessibility labels for sheet and handle",
+      "Screen reader announcements on state change",
+      "Keyboard navigation (arrow keys, escape to close)",
+      "Reduce motion preference support",
+      "Focus management when opening/closing",
+      "Semantic role='dialog' equivalent"
+    ],
+    "functionality": [
+      "Scrollable content inside sheet",
+      "Nested scroll handling",
+      "Dismiss on backdrop tap",
+      "Lock open/closed via prop",
+      "Overlay backdrop with customizable opacity",
+      "Multiple sheets stacked",
+      "Sheet resize animation when content changes"
+    ],
+    "performance": [
+      "Image caching/memoization",
+      "Loading states and skeletons",
+      "Lazy loading sheet content",
+      "Optimize path creation (cache when size unchanged)"
+    ]
+  },
+
+  "key_insights": {
+    "dual_purpose_path": "Single path serves both as BackdropBlur clip and Touchable.Path gesture target - elegant code reuse",
+    "clamping_pattern": "Math.max in useDerivedValue provides clean bounds limiting without conditionals",
+    "snap_logic": "Position-based snapping with height/3 threshold creates intuitive feel",
+    "context_pattern": "Storing gesture start position enables relative dragging from any sheet state",
+    "backdrop_blur_clipping": "Path clipping enables blur only within sheet bounds, creating glassmorphic effect",
+    "worklet_performance": "All calculations on UI thread ensure 60fps smooth dragging",
+    "spring_snap": "withSpring on snap creates satisfying, natural settling animation",
+    "handle_affordance": "Visual handle indicator communicates draggable nature to users"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic Skia Canvas setup",
+      "useImage for loading images in Skia",
+      "Pan gesture handling basics",
+      "SharedValue for animation state",
+      "useWindowDimensions for screen size"
+    ],
+    "for_intermediate": [
+      "Skia Path API for dynamic shapes",
+      "BackdropBlur with path clipping",
+      "useDerivedValue for reactive calculations",
+      "Gesture context pattern (onStart storing state)",
+      "Math.max for value clamping",
+      "BlurMask inner style",
+      "Spring animations for snap behavior",
+      "Touchable.Path gesture handling"
+    ],
+    "for_advanced": [
+      "GPU-accelerated UI with pure Skia",
+      "Complex gesture state management",
+      "Snap threshold algorithms",
+      "Reactive path construction on UI thread",
+      "Glassmorphic design implementation",
+      "Performance optimization with memo and worklets",
+      "Dual-purpose path optimization (clip + touch target)"
+    ]
+  },
+
+  "comparison_to_similar_patterns": {
+    "vs_react_native_bottom_sheet": {
+      "similarity": "Both draggable bottom sheets with snap points",
+      "difference": "This is pure Skia (GPU-rendered) vs View-based, glassmorphic vs standard"
+    },
+    "vs_gorhom_bottom_sheet": {
+      "similarity": "Draggable sheets with spring animations",
+      "difference": "Skia rendering vs Reanimated Views, simpler but less features"
+    },
+    "vs_dot_sheet": {
+      "similarity": "Both custom bottom sheet implementations in this project",
+      "difference": "This uses glassmorphism and Skia, dot-sheet may have different visual style"
+    },
+    "vs_alert_drawer": {
+      "similarity": "Both drawer/sheet patterns",
+      "difference": "This is bottom sheet, alert drawer may be different orientation"
+    }
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Sheet renders at correct initial position (150px from bottom)",
+      "Backdrop blur applied correctly",
+      "Handle centered and visible",
+      "Rounded corners render properly",
+      "Inner blur visible on sheet surface",
+      "Background image loads and displays"
+    ],
+    "interaction_testing": [
+      "Drag up opens sheet",
+      "Drag down closes sheet",
+      "Sheet snaps to correct position based on threshold",
+      "Cannot drag beyond top of screen",
+      "Gesture context works (can drag from any position)",
+      "Spring animation smooth on snap"
+    ],
+    "gesture_testing": [
+      "Pan gesture recognized",
+      "onStart captures position correctly",
+      "onActive updates position continuously",
+      "onEnd triggers snap animation",
+      "Touch restricted to sheet path area"
+    ],
+    "animation_testing": [
+      "Spring animation smooth (no sudden jumps)",
+      "No stuttering during drag",
+      "Snap animation completes correctly",
+      "Clamping works at boundaries"
+    ],
+    "edge_cases": [
+      "Very fast drag gestures",
+      "Multiple rapid open/close cycles",
+      "Screen rotation during drag",
+      "Image load failure",
+      "Very small or large screens",
+      "Dragging exactly to threshold boundary"
+    ],
+    "platform_testing": [
+      "Skia rendering on iOS",
+      "Skia rendering on Android",
+      "Web compatibility (if applicable)",
+      "Different screen sizes and aspect ratios"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "labels": "No accessibility labels",
+      "roles": "No accessibility roles",
+      "announcements": "No screen reader announcements",
+      "keyboard": "No keyboard navigation",
+      "reduced_motion": "No prefers-reduced-motion support"
+    },
+    "recommendations": [
+      "Add accessibility label 'Bottom sheet, draggable'",
+      "Add accessibility hint 'Drag up to open, down to close'",
+      "Add role='drawer' or role='dialog' equivalent",
+      "Announce state changes ('Bottom sheet opened/closed')",
+      "Support keyboard navigation (arrow keys, escape to close)",
+      "Respect reduce motion (instant transitions instead of springs)",
+      "Add close button for non-gesture users",
+      "Ensure handle has minimum touch target size (44x44pt)"
+    ]
+  },
+
+  "real_world_inspiration": {
+    "apple_maps": "Draggable bottom sheet with snap points",
+    "ios_share_sheet": "System bottom sheet with blur effects",
+    "spotify": "Now Playing sheet with drag interaction",
+    "google_maps": "Place details sheet with multiple snap positions",
+    "ios_control_center": "Glassmorphic drag-down sheet"
+  },
+
+  "related_patterns": {
+    "glassmorphism": "Modern UI design trend with blur and transparency",
+    "bottom_sheets": "Other bottom sheet implementations",
+    "skia_ui_components": "UI components built with React Native Skia",
+    "gesture_interactions": "Gesture-driven UI patterns",
+    "backdrop_effects": "Background blur and filter effects"
+  },
+
+  "state_management": {
+    "gesture_state": {
+      "translateY": "Current vertical offset",
+      "context": "Gesture start position",
+      "updates": "Via gesture callbacks (onStart, onActive, onEnd)"
+    },
+    "derived_state": {
+      "clampedTranslateY": "Bounded translation value",
+      "roundedRectPath": "Dynamic path based on position",
+      "handle_position": "Calculated from sheet position"
+    },
+    "size_state": {
+      "size": "Canvas dimensions from onSize",
+      "reactive": "All calculations depend on size"
+    },
+    "image_state": {
+      "image": "Loaded via useImage hook",
+      "async": "Loads asynchronously, conditionally rendered"
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~160 lines total (both files)",
+    "dependencies": "Skia, Skia Gesture, Reanimated (likely already in project)",
+    "assets": "One remote image (loaded on demand)",
+    "runtime_memory": "Minimal - few SharedValues, one path, one image",
+    "gpu_memory": "Low - simple shapes, one image texture",
+    "performance": "Excellent - GPU-accelerated, minimal CPU usage"
+  },
+
+  "performance_metrics": {
+    "target_fps": 60,
+    "runs_on": "UI thread (worklets)",
+    "expected_performance": "Smooth on all modern devices",
+    "gesture_update_frequency": "Every frame during drag",
+    "animation_complexity": "Low - spring animation and path updates",
+    "blur_cost": "Moderate GPU cost, but cached per frame"
+  },
+
+  "platform_considerations": {
+    "ios": {
+      "skia_support": "Full Skia support, excellent performance",
+      "backdrop_blur": "Native-like glassmorphic effect",
+      "gestures": "Smooth pan gesture handling"
+    },
+    "android": {
+      "skia_support": "Full Skia support, excellent performance",
+      "backdrop_blur": "GPU-accelerated blur effects",
+      "gestures": "Smooth pan gesture handling"
+    },
+    "web": {
+      "compatibility": "Skia has CanvasKit backend for web",
+      "performance": "Good, may be slightly slower than native",
+      "gestures": "react-native-skia-gesture web support may need verification",
+      "blur_effects": "Should work with CanvasKit"
+    }
+  },
+
+  "tags": [
+    "bottom-sheet",
+    "skia",
+    "skia-gesture",
+    "glassmorphism",
+    "backdrop-blur",
+    "draggable",
+    "pan-gesture",
+    "spring-animation",
+    "gpu-rendering",
+    "path-api",
+    "blur-effects",
+    "reanimated",
+    "worklets",
+    "high-performance",
+    "canvas-rendering",
+    "snap-behavior",
+    "gesture-handling",
+    "interactive"
+  ]
+}

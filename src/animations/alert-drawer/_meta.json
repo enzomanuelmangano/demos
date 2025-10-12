@@ -1,0 +1,705 @@
+{
+  "animation_name": "Alert Drawer",
+  "animation_slug": "alert-drawer",
+  "description": "An expandable alert drawer component that smoothly morphs from a compact button into a full alert card with detailed content. Features dynamic border radius interpolation, white background fade-in, nested padding animations, and delayed content opacity for a polished, professional appearance. Perfect for confirmation dialogs and critical user decisions.",
+
+  "main_features": [
+    "Button-to-card morphing animation",
+    "Dynamic border radius interpolation with padding calculation",
+    "Background color fade from transparent to white",
+    "Width, height, and position interpolation",
+    "Delayed content fade-in with quadratic easing",
+    "Nested padding animations (including paddingTop offset)",
+    "Pressable scale interactions",
+    "Close button with dismiss functionality",
+    "Dual button layout (primary action + cancel)",
+    "Icon integration with alert styling"
+  ],
+
+  "file_structure": {
+    "index.tsx": "Export wrapper - re-exports App as AlertDrawer",
+    "src/index.tsx": "Demo app with AlertDrawer implementation",
+    "src/components/alert-drawer/index.tsx": "Main AlertDrawer component with animation logic",
+    "src/components/alert-drawer/styles.ts": "Styles and dimension constants"
+  },
+
+  "core_technologies": {
+    "animations": "react-native-reanimated",
+    "interactions": "pressto",
+    "threading": "react-native-worklets",
+    "icons": "@expo/vector-icons"
+  },
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withTiming",
+        "interpolate",
+        "interpolateColor"
+      ],
+      "components": ["Animated.View"],
+      "critical_feature": "useDerivedValue for complex derived calculations and interpolations"
+    },
+    "pressto": {
+      "version": "0.3.5-beta.1",
+      "component": "PressableScale",
+      "usage": "Main button, close button, and cancel button with scale press feedback"
+    },
+    "react-native-worklets": {
+      "version": "0.5.1",
+      "functions": ["scheduleOnRN"],
+      "usage": "Bridge onConfirm callback from worklet to JS thread"
+    },
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
+      "components": ["Ionicons", "FontAwesome"],
+      "icons_used": ["alert-circle-outline", "close"]
+    }
+  },
+
+  "animation_techniques": {
+    "expansion_morphing": {
+      "trigger": "toggleExpansion callback",
+      "shared_value": "isExpanded (boolean)",
+      "animation": "withTiming(isExpanded ? 1 : 0, { duration: 300 })",
+      "progress_range": "0 to 1",
+      "drives": "All interpolations and derived values"
+    },
+    "width_interpolation": {
+      "pattern": "interpolate(progress, [0, 1], [BUTTON_WIDTH, EXPANDED_CARD_WIDTH])",
+      "from": "BUTTON_WIDTH (82% of screen width)",
+      "to": "EXPANDED_CARD_WIDTH (90% of screen width)",
+      "effect": "Button expands horizontally to become card"
+    },
+    "height_interpolation": {
+      "pattern": "interpolate(progress, [0, 1], [BUTTON_HEIGHT, EXPANDED_CARD_HEIGHT])",
+      "from": "BUTTON_HEIGHT (50px)",
+      "to": "EXPANDED_CARD_HEIGHT (300px)",
+      "effect": "Button grows vertically to reveal content area"
+    },
+    "position_interpolation": {
+      "property": "left",
+      "pattern": "interpolate(progress, [0, 1], [(EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2, 0])",
+      "purpose": "Centers button when collapsed, aligns to edge when expanded",
+      "calculation": "Offset compensates for width difference"
+    },
+    "border_radius_animation": {
+      "pattern": "interpolate(progress, [0, 1], [50, 50 - padding])",
+      "initial": "50px (fully rounded pill shape)",
+      "final": "50 - padding (reduces as padding increases)",
+      "dynamic": "Tied to padding.value for coordinated effect",
+      "effect": "Border radius shrinks proportionally as card expands and gains padding"
+    },
+    "padding_calculation": {
+      "pattern": "interpolate(progress, [0, 1], [0, (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2])",
+      "formula": "(EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2",
+      "result": "~4% of screen width padding when expanded",
+      "purpose": "Creates inner margin for content, drives border radius adjustment",
+      "derived_value": true
+    },
+    "padding_top_offset": {
+      "pattern": "paddingTop: padding.value + delayedProgress.value * 10",
+      "components": [
+        "padding.value (base padding from interpolation)",
+        "delayedProgress.value * 10 (additional 10px offset)"
+      ],
+      "effect": "Top padding slightly higher than sides, pushes content down gracefully",
+      "visual_purpose": "Provides breathing room above icon and title"
+    },
+    "background_color_fade": {
+      "pattern": "interpolateColor(progress, [0, 1], ['#FFFFFF00', '#FFFFFF'])",
+      "from": "Transparent white (RGBA 255,255,255,0)",
+      "to": "Solid white (RGB 255,255,255)",
+      "effect": "White background fades in behind content as card expands",
+      "reveals": "Card structure becomes visible"
+    },
+    "delayed_content_fade": {
+      "derived_value": "delayedProgress = progress ** 2",
+      "easing": "Quadratic (x²)",
+      "effect": "Content opacity lags behind expansion",
+      "purpose": "Content waits until card has expanded sufficiently before appearing",
+      "visual_benefit": "Prevents content from being visible in cramped space"
+    },
+    "button_width_interpolation": {
+      "pattern": "interpolate(progress, [0, 1], [BUTTON_WIDTH, MIN_BUTTON_WIDTH])",
+      "from": "BUTTON_WIDTH (82% of screen, full button size)",
+      "to": "MIN_BUTTON_WIDTH (40% of screen, narrower confirm button)",
+      "effect": "Primary button shrinks to make room for cancel button",
+      "positioned": "bottom: padding.value (moves up with padding)"
+    },
+    "button_positioning": {
+      "bottom": "padding.value (lifts button as card expands)",
+      "right": "(EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2 (centers relative to original button position)",
+      "effect": "Button rises and repositions within expanded card"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "isExpanded",
+        "type": "boolean",
+        "initial": false,
+        "updates": "Toggled by toggleExpansion callback",
+        "drives": "All animations via progress derived value"
+      }
+    ],
+    "derived_values": [
+      {
+        "name": "progress",
+        "calculation": "withTiming(isExpanded.value ? 1 : 0, { duration: 300 })",
+        "type": "Animated progress (0 to 1)",
+        "purpose": "Primary animation driver for all interpolations"
+      },
+      {
+        "name": "delayedProgress",
+        "calculation": "progress.value ** 2",
+        "type": "Quadratic easing of progress",
+        "purpose": "Delayed fade-in for content (slower start, faster end)",
+        "effect": "Content appears after card has significantly expanded"
+      },
+      {
+        "name": "padding",
+        "calculation": "interpolate(progress, [0, 1], [0, (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2])",
+        "type": "Dynamic padding value",
+        "purpose": "Used for card padding and border radius calculation",
+        "cascading_effect": "Drives multiple style properties"
+      }
+    ],
+    "useAnimatedStyle_instances": [
+      {
+        "name": "rCardContainerStyle",
+        "target": "Card container",
+        "properties": [
+          "left (position adjustment)",
+          "width (expansion)",
+          "height (vertical growth)",
+          "borderRadius (dynamic based on padding)",
+          "padding (horizontal/vertical)",
+          "paddingTop (with extra offset)",
+          "backgroundColor (color fade-in)"
+        ],
+        "complexity": "High - coordinates 7 animated properties"
+      },
+      {
+        "name": "rButtonStyle",
+        "target": "Primary action button",
+        "properties": [
+          "bottom (lifts with padding)",
+          "width (narrows to make room for cancel)",
+          "right (repositions within card)"
+        ],
+        "purpose": "Button transforms within expanded card"
+      },
+      {
+        "name": "rCardContentStyle",
+        "target": "Card content wrapper",
+        "properties": ["opacity (delayed fade-in)"],
+        "value": "delayedProgress.value",
+        "effect": "Content fades in after expansion starts"
+      }
+    ],
+    "useCallback_optimization": {
+      "toggleExpansion": {
+        "dependencies": ["isExpanded"],
+        "purpose": "Toggle expanded state",
+        "usage": "Close button, cancel button callbacks"
+      }
+    }
+  },
+
+  "component_architecture": {
+    "AlertDrawer": {
+      "type": "Main functional component",
+      "props": {
+        "title": {
+          "type": "string",
+          "required": true,
+          "description": "Alert title text"
+        },
+        "description": {
+          "type": "string",
+          "required": true,
+          "description": "Detailed alert description"
+        },
+        "buttonLabel": {
+          "type": "string",
+          "required": true,
+          "description": "Primary action button text"
+        },
+        "onConfirm": {
+          "type": "() => void",
+          "required": false,
+          "description": "Callback for primary action confirmation"
+        }
+      },
+      "structure": [
+        "Container (Animated.View)",
+        "Primary action button (PressableScale + rButtonStyle)",
+        "Card container (Animated.View + rCardContainerStyle)",
+        "Card content wrapper (Animated.View + rCardContentStyle)",
+        "CardContent subcomponent"
+      ]
+    },
+    "CardContent": {
+      "type": "Functional subcomponent",
+      "props": {
+        "icon": "React.ReactNode",
+        "title": "string",
+        "description": "string",
+        "onClose": "() => void"
+      },
+      "structure": [
+        "Icon container with icon and close button",
+        "Text container with title and description",
+        "Cancel button"
+      ],
+      "purpose": "Renders expanded card content",
+      "visibility": "Controlled by rCardContentStyle opacity"
+    }
+  },
+
+  "interaction_patterns": {
+    "button_press_collapsed": {
+      "state": "isExpanded = false",
+      "action": "Press primary button",
+      "callback": "toggleExpansion()",
+      "effect": "Expands card to show alert details"
+    },
+    "button_press_expanded": {
+      "state": "isExpanded = true",
+      "action": "Press primary button",
+      "callback": "onConfirm() via scheduleOnRN",
+      "effect": "Executes confirmation action (card remains expanded)",
+      "note": "Does not toggle expansion, only confirms"
+    },
+    "close_button": {
+      "location": "Top-right of expanded card",
+      "icon": "FontAwesome 'close'",
+      "callback": "toggleExpansion()",
+      "effect": "Collapses card back to button"
+    },
+    "cancel_button": {
+      "location": "Bottom of expanded card",
+      "text": "Cancel",
+      "callback": "toggleExpansion()",
+      "effect": "Collapses card back to button",
+      "styling": "Gray background (#dfdfdf), black text"
+    },
+    "pressable_scale": {
+      "components": ["Primary button", "Close button", "Cancel button"],
+      "effect": "Scale press animation for tactile feedback",
+      "library": "pressto"
+    }
+  },
+
+  "state_management": {
+    "expansion_state": {
+      "storage": "isExpanded.value (SharedValue<boolean>)",
+      "toggling": "isExpanded.value = !isExpanded.value",
+      "trigger": "toggleExpansion callback"
+    },
+    "animation_lifecycle": {
+      "on_expand": [
+        "1. isExpanded.value = true",
+        "2. progress animates from 0 to 1 (300ms)",
+        "3. All interpolations update based on progress",
+        "4. delayedProgress lags behind (quadratic)",
+        "5. Content fades in as delayedProgress increases"
+      ],
+      "on_collapse": [
+        "1. isExpanded.value = false",
+        "2. progress animates from 1 to 0 (300ms)",
+        "3. All interpolations reverse",
+        "4. Content fades out quickly",
+        "5. Card morphs back to button"
+      ]
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "primary_action": "#f0212b (red)",
+      "primary_text": "white",
+      "card_background": "#FFFFFF (white)",
+      "close_button_background": "#F8F8FA (very light gray)",
+      "close_icon": "#A1A0A2 (medium gray)",
+      "cancel_button_background": "#dfdfdf (light gray)",
+      "cancel_button_text": "#111 (almost black)",
+      "description_text": "#999999 (gray)",
+      "icon_color": "#f0212b (red, matches primary action)",
+      "backdrop": "white (#fff) in demo"
+    },
+    "dimensions": {
+      "collapsed_button": {
+        "width": "82% of screen width",
+        "height": "50px",
+        "borderRadius": "50px (pill shape)"
+      },
+      "expanded_card": {
+        "width": "90% of screen width",
+        "height": "300px",
+        "borderRadius": "Dynamic (50px - padding)",
+        "padding": "Dynamic (~4% of screen width)",
+        "paddingTop": "padding + (delayedProgress * 10)"
+      },
+      "icon": {
+        "size": "48px",
+        "type": "alert-circle-outline"
+      },
+      "close_button": {
+        "width": "32px",
+        "height": "32px",
+        "borderRadius": "16px",
+        "icon_size": "14px"
+      },
+      "cancel_button": {
+        "width": "40% of screen width",
+        "height": "50px",
+        "borderRadius": "50px"
+      }
+    },
+    "typography": {
+      "button_label": {
+        "family": "Honk-Regular",
+        "size": "16px",
+        "weight": "bold",
+        "color": "white"
+      },
+      "title": {
+        "family": "Honk-Regular",
+        "size": "20px",
+        "weight": "bold",
+        "letterSpacing": "0.5"
+      },
+      "description": {
+        "family": "Honk-Regular",
+        "size": "15px",
+        "color": "#999999",
+        "letterSpacing": "0.5",
+        "marginTop": "8px"
+      }
+    },
+    "shadows": {
+      "card": {
+        "ios": {
+          "shadowColor": "black",
+          "shadowOffset": "{ width: 0, height: 2 }",
+          "shadowOpacity": 0.1,
+          "shadowRadius": 30
+        },
+        "android": {
+          "elevation": 4
+        }
+      }
+    },
+    "border_curve": {
+      "property": "borderCurve: 'continuous'",
+      "platform": "iOS",
+      "effect": "Squircle border radius (Apple-style smooth corners)",
+      "applied_to": ["Button", "Card", "Close button", "Cancel button"]
+    }
+  },
+
+  "layout_and_positioning": {
+    "container": {
+      "flexDirection": "column",
+      "width": "EXPANDED_CARD_WIDTH (90% screen)",
+      "height": "EXPANDED_CARD_HEIGHT (300px)",
+      "purpose": "Fixed container for absolute positioning"
+    },
+    "button_positioning": {
+      "position": "absolute",
+      "initial_alignment": "Center of container",
+      "z_index": "Above card (natural stacking)"
+    },
+    "card_positioning": {
+      "position": "absolute",
+      "bottom": 0,
+      "z_index": -1,
+      "purpose": "Sits behind button, expands upward and sideways"
+    },
+    "responsive_dimensions": {
+      "BUTTON_WIDTH": "windowWidth * 0.82",
+      "MIN_BUTTON_WIDTH": "windowWidth * 0.4",
+      "EXPANDED_CARD_WIDTH": "windowWidth * 0.9",
+      "scaling": "Adapts to different screen sizes"
+    }
+  },
+
+  "performance_optimizations": {
+    "useCallback": {
+      "toggleExpansion": "Memoized callback prevents unnecessary re-renders",
+      "dependencies": "[isExpanded]"
+    },
+    "useDerivedValue": {
+      "purpose": "Efficient derived calculations on UI thread",
+      "instances": ["progress", "delayedProgress", "padding"],
+      "benefit": "No JS thread communication for derived values"
+    },
+    "worklet_optimization": {
+      "pattern": "All animated style calculations run on UI thread",
+      "benefit": "60fps animations without JS thread bottlenecks"
+    },
+    "conditional_rendering": {
+      "card_content": "Hidden via opacity, not conditional render",
+      "reason": "Avoids remounting, smoother animations"
+    }
+  },
+
+  "use_cases": {
+    "primary": [
+      "Confirmation dialogs for destructive actions",
+      "Wallet/security warnings",
+      "Critical user decisions",
+      "Alert messages with detailed context",
+      "Two-step confirmations"
+    ],
+    "real_world_examples": [
+      "Delete account confirmation",
+      "Remove wallet warning (as shown in demo)",
+      "Payment confirmation alerts",
+      "Data loss warnings",
+      "Irreversible action confirmations"
+    ],
+    "design_patterns": [
+      "Progressive disclosure (button → detailed alert)",
+      "Contextual alerts (appear in-place)",
+      "Morphing UI elements",
+      "Modal alternatives"
+    ]
+  },
+
+  "code_quality": {
+    "typescript": "Full TypeScript with explicit types",
+    "type_definitions": [
+      "AlertDrawerProps",
+      "CardContentProps"
+    ],
+    "component_separation": {
+      "AlertDrawer": "Main component with animation logic",
+      "CardContent": "Presentational subcomponent",
+      "styles": "Separated into dedicated file"
+    },
+    "constants": {
+      "dimensions": "Extracted to constants (BUTTON_HEIGHT, BUTTON_WIDTH, etc.)",
+      "colors": "ALERT_COLOR constant for consistency"
+    },
+    "documentation": {
+      "inline_comments": "Key comments explaining CardContent and main component logic",
+      "code_clarity": "Self-documenting variable names and structure"
+    },
+    "best_practices": [
+      "Separation of concerns (component vs styles)",
+      "Type safety throughout",
+      "Reusable subcomponents",
+      "Memoized callbacks",
+      "Clean file structure"
+    ]
+  },
+
+  "known_limitations": {
+    "button_text_visibility": {
+      "issue": "Button label always visible, even when card expanded",
+      "current": "Label stays on button in both states",
+      "potential_improvement": "Could fade out button label when expanded"
+    },
+    "confirm_action": {
+      "behavior": "Pressing button when expanded calls onConfirm but doesn't auto-collapse",
+      "reason": "Allows multiple confirms or manual closing",
+      "consideration": "May want auto-collapse after confirm"
+    },
+    "accessibility": {
+      "missing": "No accessibility labels or roles",
+      "screen_reader": "May not announce state changes",
+      "reduced_motion": "No prefers-reduced-motion support"
+    },
+    "keyboard_navigation": {
+      "issue": "No keyboard navigation support",
+      "web_consideration": "Would need focus management for web"
+    },
+    "backdrop": {
+      "missing": "No backdrop overlay for dismissal",
+      "ux": "User can't tap outside to dismiss",
+      "comparison": "Unlike modal patterns with backdrop"
+    }
+  },
+
+  "potential_improvements": {
+    "interaction_enhancements": [
+      "Backdrop overlay to dismiss on tap outside",
+      "Swipe down gesture to dismiss",
+      "Auto-collapse after confirm",
+      "Haptic feedback on expand/collapse",
+      "Long press for quick confirm"
+    ],
+    "animation_refinements": [
+      "Button label fade out when expanded",
+      "Icon scale animation on expand",
+      "Staggered button appearance (primary then cancel)",
+      "Elastic spring for more playful feel",
+      "Blur background during expansion"
+    ],
+    "accessibility": [
+      "Screen reader announcements",
+      "Accessibility labels for buttons and content",
+      "Keyboard navigation support",
+      "Prefers-reduced-motion support",
+      "Focus trap when expanded"
+    ],
+    "customization": [
+      "Configurable colors via props",
+      "Adjustable animation duration",
+      "Custom spring configuration",
+      "Configurable button labels",
+      "Optional backdrop overlay"
+    ],
+    "functionality": [
+      "Multiple card sizes (small, medium, large)",
+      "Custom icon support via props",
+      "Footer actions area",
+      "Header close button customization",
+      "Nested form support"
+    ]
+  },
+
+  "key_insights": {
+    "derived_value_power": "useDerivedValue enables complex cascading calculations (padding → borderRadius)",
+    "delayed_progress_technique": "Quadratic easing (progress²) creates elegant delayed fade",
+    "coordinated_sizing": "Width and padding must work together for seamless expansion",
+    "button_repositioning": "Calculating button position based on width difference maintains visual continuity",
+    "border_radius_dynamics": "Linking borderRadius to padding creates organic, natural expansion",
+    "color_interpolation": "Transparent to solid white reveals card structure gradually",
+    "z_index_layering": "Button above card (z-index: -1) allows button to remain interactive",
+    "pressable_scale": "Small scale animations add polish to all interactions"
+  },
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic expansion animations",
+      "Width and height interpolation",
+      "Button press callbacks",
+      "Component composition"
+    ],
+    "for_intermediate": [
+      "useDerivedValue for calculated values",
+      "Multiple coordinated interpolations",
+      "Border radius animations",
+      "Background color interpolation",
+      "Opacity-based content reveal",
+      "Positioning with interpolated values"
+    ],
+    "for_advanced": [
+      "Cascading derived values (padding → borderRadius)",
+      "Quadratic easing for delayed effects",
+      "Complex multi-property animations",
+      "scheduleOnRN for worklet-to-JS bridging",
+      "Z-index layering strategies",
+      "Coordinated button positioning within morphing container"
+    ]
+  },
+
+  "comparison_to_similar_animations": {
+    "vs_bottom_sheet": {
+      "similarity": "Expands from collapsed state to show content",
+      "difference": "This morphs in-place, not sliding from edge"
+    },
+    "vs_modal": {
+      "similarity": "Shows alert content with action buttons",
+      "difference": "Morphs from button, no backdrop or screen takeover"
+    },
+    "vs_accordion": {
+      "similarity": "Expands vertically to reveal content",
+      "difference": "Also expands horizontally and changes shape"
+    },
+    "vs_fab_expansion": {
+      "similarity": "Button morphs into larger UI element",
+      "difference": "Focuses on alert pattern, not navigation"
+    }
+  },
+
+  "testing_considerations": {
+    "visual_regression": [
+      "Smooth expansion from button to card",
+      "Border radius reduces correctly",
+      "White background fades in smoothly",
+      "Content appears after expansion starts",
+      "Button repositions within card",
+      "No layout jumps or flickers"
+    ],
+    "interaction_testing": [
+      "Button expands on press when collapsed",
+      "onConfirm called when button pressed while expanded",
+      "Close button dismisses card",
+      "Cancel button dismisses card",
+      "Scale animations work on all buttons"
+    ],
+    "animation_timing": [
+      "300ms total duration",
+      "Content fades in smoothly with delay",
+      "All properties animate in sync",
+      "No premature content visibility"
+    ],
+    "edge_cases": [
+      "Very long title/description text",
+      "Missing onConfirm callback",
+      "Rapid toggle clicks",
+      "Different screen sizes",
+      "Landscape vs portrait orientation"
+    ],
+    "state_testing": [
+      "isExpanded toggles correctly",
+      "Multiple expand/collapse cycles",
+      "State persists across re-renders"
+    ]
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "labels": "No accessibility labels",
+      "announcements": "No screen reader announcements",
+      "keyboard": "No keyboard navigation",
+      "reduced_motion": "No motion reduction support"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to buttons ('Continue', 'Close', 'Cancel')",
+      "Add accessibilityHint for primary button ('Double tap to view details' or 'Double tap to confirm')",
+      "Announce state change to screen reader ('Alert expanded', 'Alert collapsed')",
+      "Add accessibilityRole ('button', 'alert')",
+      "Support keyboard navigation (Tab, Enter, Escape)",
+      "Respect prefers-reduced-motion (instant transition)",
+      "Add accessible description for alert content"
+    ]
+  },
+
+  "related_patterns": {
+    "morphing_buttons": "Buttons that transform into other UI elements",
+    "progressive_disclosure": "Revealing information gradually",
+    "contextual_alerts": "Alerts that appear in context",
+    "confirmation_dialogs": "Two-step confirmation patterns",
+    "floating_action_buttons": "FAB expansion patterns"
+  },
+
+  "tags": [
+    "alert",
+    "drawer",
+    "confirmation",
+    "morphing-animation",
+    "expansion",
+    "border-radius",
+    "interpolation",
+    "derived-value",
+    "pressable-scale",
+    "reanimated",
+    "button-to-card",
+    "progressive-disclosure",
+    "warning-dialog",
+    "delayed-content"
+  ]
+}

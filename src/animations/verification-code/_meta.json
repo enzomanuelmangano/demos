@@ -1,0 +1,844 @@
+{
+  "animation_name": "Verification Code",
+  "animation_slug": "verification-code",
+  "description": "An elegant verification code input interface with animated digit boxes, flip animations, and shake error feedback. Features individual digit containers with dynamic border colors (green for correct, red for wrong), smooth flip-in/flip-out transitions when entering/deleting digits, keyboard integration with an invisible TextInput pattern, and keyboard-aware positioning. The implementation uses a clever invisible TextInput to handle all keyboard interactions while displaying custom-styled digit boxes.",
+
+  "main_features": [
+    "Configurable digit-length verification codes (based on correctCode length)",
+    "Animated digit boxes with flip-in entrance and flip-out exit",
+    "Dynamic border color transitions (default gray, highlighted white, correct green, wrong red)",
+    "Shake animation on incorrect code entry",
+    "Keyboard-aware layout with automatic vertical positioning",
+    "Invisible TextInput pattern for native keyboard handling",
+    "Auto-validation when code length matches expected",
+    "Auto-reset after correct/incorrect code with 1-second delay",
+    "Highlighted next-digit indicator with white border",
+    "Custom bezier curve easing for flip animations",
+    "Reused shake hook from email-demo (cross-animation pattern sharing)",
+    "FocusEffect integration for automatic keyboard display"
+  ],
+
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Demo wrapper component with default correctCode (31415)"
+    },
+    "screens": {
+      "screens/verification-code/index.tsx": "Main screen orchestrating validation, keyboard handling, and status management"
+    },
+    "components": {
+      "components/verification-code/index.tsx": "Container rendering array of AnimatedCodeNumber boxes",
+      "components/verification-code/animated-code-number.tsx": "Individual digit box with status-based styling and flip animations"
+    },
+    "hooks": {
+      "components/verification-code/hooks/use-animated-shake.ts": "Local copy of shake animation hook (identical to email-demo version)"
+    },
+    "utils": {},
+    "assets": {},
+    "types": {
+      "StatusType": "'inProgress' | 'correct' | 'wrong' - SharedValue for validation state"
+    },
+    "constants": {}
+  },
+
+  "core_technologies": [
+    "react-native-reanimated",
+    "react-native-keyboard-controller",
+    "expo-router"
+  ],
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useAnimatedStyle",
+        "useSharedValue",
+        "withTiming",
+        "withRepeat",
+        "cancelAnimation"
+      ],
+      "layout_animations": [
+        "FadeIn",
+        "FadeOut",
+        "FlipInXDown",
+        "FlipOutXDown"
+      ],
+      "easing": "Easing.bezier",
+      "critical_features": [
+        "FlipInXDown/FlipOutXDown for digit entrance/exit",
+        "Custom bezier curves for flip animation feel",
+        "SharedValue for status management across components"
+      ]
+    },
+    "react-native-keyboard-controller": {
+      "version": "1.18.5",
+      "hooks": ["useReanimatedKeyboardAnimation"],
+      "usage": "Keyboard height tracking for layout adjustment",
+      "properties": ["height"],
+      "benefit": "Smooth keyboard-aware positioning without flickering"
+    },
+    "expo-router": {
+      "version": "~6.0.10",
+      "hooks": ["useFocusEffect"],
+      "usage": "Auto-focus TextInput when screen mounts, blur on unmount"
+    }
+  },
+
+  "animation_techniques": {
+    "flip_animations": {
+      "entering": {
+        "animation": "FlipInXDown.duration(500)",
+        "easing": "Easing.bezier(0, 0.75, 0.5, 0.9)",
+        "characteristic": "Starts slow, accelerates at the end",
+        "purpose": "Smooth appearance when digit entered",
+        "applied_to": "AnimatedCodeNumber Text component"
+      },
+      "exiting": {
+        "animation": "FlipOutXDown.duration(500)",
+        "easing": "Easing.bezier(0.6, 0.1, 0.4, 0.8)",
+        "characteristic": "Starts fast, decelerates at the end (opposite of entering)",
+        "purpose": "Smooth disappearance when digit deleted",
+        "applied_to": "AnimatedCodeNumber Text component"
+      },
+      "bezier_tuning": {
+        "entering_curve": "Cubic Bezier (0, 0.75, 0.5, 0.9)",
+        "exiting_curve": "Cubic Bezier (0.6, 0.1, 0.4, 0.8)",
+        "philosophy": "Opposite curves for entering/exiting creates visual harmony",
+        "reference": "Commented with cubic-bezier.com URLs for visualization"
+      }
+    },
+    "border_color_animation": {
+      "pattern": "Status-based color selection with withTiming transitions",
+      "function": "getColorByStatus worklet",
+      "priority_order": [
+        "1. highlighted (white) - highest priority",
+        "2. correct (green #22bb33)",
+        "3. wrong (red #bb2124)",
+        "4. default (gray #2E2B2E)"
+      ],
+      "animation": "withTiming(getColorByStatus(status.value))",
+      "smooth_transition": "Color changes animate smoothly via withTiming wrapper",
+      "reactive": "Updates automatically when status.value changes"
+    },
+    "shake_animation": {
+      "pattern": "Horizontal oscillation with bezier easing",
+      "trigger": "verificationStatus.value = 'wrong' + shake()",
+      "amplitude": 10,
+      "duration": 120,
+      "repetitions": 6,
+      "reverse": true,
+      "easing": "Easing.bezier(0.35, 0.7, 0.5, 0.7)",
+      "implementation": "withRepeat(withTiming(10, {...}), 6, true)",
+      "cleanup": "cancelAnimation before new shake to prevent overlap",
+      "applied_to": "Entire code container (all digit boxes shake together)"
+    },
+    "keyboard_avoidance": {
+      "pattern": "Vertical translation based on keyboard height",
+      "calculation": "translateY: keyboardHeight.value / 2",
+      "reactivity": "useAnimatedStyle automatically updates with keyboard animation",
+      "benefit": "Content moves up as keyboard appears, centered vertically",
+      "smooth": "Uses keyboard-controller's native animation values"
+    },
+    "fade_wrapper": {
+      "entering": "FadeIn.duration(250)",
+      "exiting": "FadeOut.duration(250)",
+      "purpose": "Smooth fade when digit container appears/disappears",
+      "layering": "Wraps FlipInXDown/FlipOutXDown for combined effect"
+    }
+  },
+
+  "reanimated_patterns": {
+    "shared_values": [
+      {
+        "name": "verificationStatus",
+        "type": "SharedValue<StatusType>",
+        "initial": "inProgress",
+        "values": ["inProgress", "correct", "wrong"],
+        "scope": "VerificationCodeScreen",
+        "passed_to": "VerificationCode component",
+        "consumers": "All AnimatedCodeNumber instances",
+        "mutations": [
+          "verificationStatus.value = 'correct' on correct code",
+          "verificationStatus.value = 'wrong' on wrong code",
+          "verificationStatus.value = 'inProgress' on reset or partial entry"
+        ]
+      },
+      {
+        "name": "keyboardHeight",
+        "type": "SharedValue<number>",
+        "source": "useReanimatedKeyboardAnimation().height",
+        "usage": "Drives keyboard avoidance animation",
+        "reactive": "Automatically updated by keyboard-controller"
+      },
+      {
+        "name": "shakeTranslateX",
+        "type": "SharedValue<number>",
+        "source": "useAnimatedShake hook",
+        "initial": 0,
+        "usage": "Horizontal shake offset"
+      }
+    ],
+    "useAnimatedStyle": {
+      "instances": [
+        {
+          "name": "rKeyboardAvoidingViewStyle",
+          "location": "VerificationCodeScreen",
+          "transform": "translateY: keyboardHeight.value / 2",
+          "purpose": "Move content up when keyboard appears"
+        },
+        {
+          "name": "rShakeStyle",
+          "location": "useAnimatedShake hook",
+          "transform": "translateX: shakeTranslateX.value",
+          "purpose": "Apply shake animation"
+        },
+        {
+          "name": "rBoxStyle",
+          "location": "AnimatedCodeNumber",
+          "property": "borderColor",
+          "calculation": "withTiming(getColorByStatus(status.value))",
+          "purpose": "Animate border color based on status"
+        }
+      ]
+    },
+    "worklet_functions": {
+      "getColorByStatus": {
+        "directive": "'worklet'",
+        "parameters": ["vStatus: StatusType"],
+        "returns": "color string",
+        "logic": "Priority-based color selection (highlighted > correct > wrong > default)",
+        "memoization": "useCallback with [highlighted] dependency",
+        "usage": "Called within useAnimatedStyle, runs on UI thread"
+      }
+    },
+    "layout_animations": {
+      "entering": {
+        "outer": "FadeIn.duration(250) on Animated.View",
+        "inner": "FlipInXDown.duration(500).easing(...) on Animated.Text",
+        "combined": "Both animations run simultaneously"
+      },
+      "exiting": {
+        "outer": "FadeOut.duration(250) on Animated.View",
+        "inner": "FlipOutXDown.duration(500).easing(...) on Animated.Text",
+        "combined": "Both animations run simultaneously"
+      }
+    }
+  },
+
+  "component_architecture": {
+    "verification_code_animation": {
+      "type": "Entry point wrapper",
+      "responsibility": "Provide default correctCode to demo",
+      "props_passed": {
+        "correctCode": 31415
+      }
+    },
+    "verification_code_screen": {
+      "type": "Orchestrator component",
+      "props": {
+        "correctCode": {
+          "type": "number",
+          "required": true,
+          "usage": "Expected correct code for validation"
+        },
+        "onCorrectCode": {
+          "type": "() => void",
+          "optional": true,
+          "usage": "Callback when correct code entered"
+        },
+        "onWrongCode": {
+          "type": "() => void",
+          "optional": true,
+          "usage": "Callback when wrong code entered"
+        }
+      },
+      "state": {
+        "code": {
+          "type": "number[]",
+          "initial": "[]",
+          "updates": "On TextInput onChange"
+        },
+        "verificationStatus": {
+          "type": "SharedValue<StatusType>",
+          "initial": "inProgress"
+        }
+      },
+      "refs": {
+        "invisibleTextInputRef": {
+          "type": "TextInput",
+          "purpose": "Control keyboard and capture input"
+        }
+      },
+      "hooks": [
+        "useState for code array",
+        "useSharedValue for verificationStatus",
+        "useReanimatedKeyboardAnimation for keyboard height",
+        "useAnimatedShake for shake effect",
+        "useFocusEffect for auto-focus management",
+        "useRef for TextInput control",
+        "useCallback for memoized handlers"
+      ],
+      "validation_logic": {
+        "correct": "newCode.join('') === correctCode.toString()",
+        "wrong": "newCode.length === maxCodeLength && not correct",
+        "partial": "newCode.length < maxCodeLength"
+      },
+      "reset_logic": {
+        "delay": "setTimeout 1000ms",
+        "actions": [
+          "verificationStatus.value = 'inProgress'",
+          "setCode([])",
+          "invisibleTextInputRef.current?.clear()"
+        ]
+      }
+    },
+    "verification_code": {
+      "type": "Container component",
+      "props": {
+        "code": {
+          "type": "number[]",
+          "description": "Array of entered digits"
+        },
+        "maxLength": {
+          "type": "number",
+          "default": 5,
+          "description": "Number of digit boxes to display"
+        },
+        "status": {
+          "type": "SharedValue<StatusType>",
+          "description": "Current validation status"
+        }
+      },
+      "rendering": "Maps maxLength to array of AnimatedCodeNumber components",
+      "layout": "Horizontal flex row with paddingHorizontal: 10",
+      "key_strategy": "index-based keys for stable positions"
+    },
+    "animated_code_number": {
+      "type": "Presentational component",
+      "props": {
+        "code": {
+          "type": "number | undefined",
+          "description": "The digit to display (undefined = empty)"
+        },
+        "highlighted": {
+          "type": "boolean",
+          "description": "Whether this is the next input position"
+        },
+        "status": {
+          "type": "SharedValue<StatusType>",
+          "description": "Validation status for color"
+        }
+      },
+      "conditional_rendering": "Only renders Text when code != null",
+      "animations": {
+        "container": "FadeIn/FadeOut wrapper",
+        "text": "FlipInXDown/FlipOutXDown with custom bezier"
+      },
+      "styling": {
+        "container": {
+          "borderWidth": 2,
+          "borderRadius": 20,
+          "borderCurve": "continuous",
+          "aspectRatio": 0.95,
+          "size": "flex: 1 with 90% height, 80% width"
+        },
+        "text": {
+          "fontFamily": "FiraCode-Regular",
+          "fontSize": 40,
+          "color": "#FFF"
+        }
+      }
+    },
+    "invisible_textinput_pattern": {
+      "technique": "Invisible TextInput for keyboard handling",
+      "rationale": "Triggers native keyboard and events, forwards to custom UI",
+      "implementation": {
+        "position": "absolute, bottom: -50 (off-screen)",
+        "autoFocus": true,
+        "keyboardType": "number-pad",
+        "onChangeText": "Parse digits, update state, validate"
+      },
+      "benefits": [
+        "Native keyboard behavior",
+        "All keyboard events handled automatically",
+        "Custom UI completely decoupled from input logic",
+        "Works with hardware keyboards"
+      ],
+      "comment": "// Not sure if this is smart or dumb 😅 (developer's honest note)"
+    }
+  },
+
+  "validation_flow": {
+    "input_parsing": {
+      "step_1": "TextInput receives text input",
+      "step_2": "Split into characters: text.split('')",
+      "step_3": "Parse to numbers: .map(item => +item)",
+      "step_4": "Validate length: if > maxCodeLength, return early"
+    },
+    "validation_checks": {
+      "check_1": {
+        "condition": "newCode.length > maxCodeLength",
+        "action": "Ignore input (return early)"
+      },
+      "check_2": {
+        "condition": "newCode.join('') === correctCode.toString()",
+        "action": "onCorrectCodeWrapper() - sets status correct, resets after 1s"
+      },
+      "check_3": {
+        "condition": "newCode.length === maxCodeLength (but wrong)",
+        "action": "onWrongCodeWrapper() - sets status wrong, shakes, resets after 1s"
+      },
+      "check_4": {
+        "condition": "newCode.length < maxCodeLength",
+        "action": "verificationStatus.value = 'inProgress'"
+      }
+    },
+    "timing_diagram": {
+      "correct_flow": [
+        "1. User enters last digit",
+        "2. Validation succeeds",
+        "3. verificationStatus.value = 'correct'",
+        "4. Borders turn green",
+        "5. onCorrectCode?.() callback",
+        "6. Wait 1000ms",
+        "7. Reset to initial state"
+      ],
+      "wrong_flow": [
+        "1. User enters last digit",
+        "2. Validation fails",
+        "3. verificationStatus.value = 'wrong'",
+        "4. Borders turn red",
+        "5. shake() triggers",
+        "6. onWrongCode?.() callback",
+        "7. Wait 1000ms",
+        "8. Reset to initial state"
+      ]
+    }
+  },
+
+  "keyboard_integration": {
+    "keyboard_controller": {
+      "hook": "useReanimatedKeyboardAnimation()",
+      "property": "height (SharedValue<number>)",
+      "native": true,
+      "benefit": "Smooth 60fps keyboard animation tracking"
+    },
+    "avoidance_strategy": {
+      "calculation": "translateY: keyboardHeight.value / 2",
+      "effect": "Content moves up by half keyboard height",
+      "rationale": "Centers content in remaining space above keyboard",
+      "reactive": "Automatically adjusts as keyboard animates"
+    },
+    "focus_management": {
+      "hook": "useFocusEffect",
+      "on_focus": "invisibleTextInputRef.current?.focus()",
+      "on_blur": "invisibleTextInputRef.current?.blur()",
+      "benefit": "Keyboard automatically appears when screen navigated to",
+      "cleanup": "Return function blurs input on unmount"
+    },
+    "keyboard_config": {
+      "keyboardType": "number-pad",
+      "keyboardAppearance": "default",
+      "autoFocus": true
+    }
+  },
+
+  "color_system": {
+    "status_colors": {
+      "default": {
+        "color": "#2E2B2E",
+        "hex": "Dark gray",
+        "when": "Empty digit box, not highlighted, inProgress status"
+      },
+      "highlighted": {
+        "color": "#FFFFFF",
+        "hex": "White",
+        "when": "Next input position (index === code.length)",
+        "priority": "Highest - overrides all other colors"
+      },
+      "correct": {
+        "color": "#22bb33",
+        "hex": "Green",
+        "when": "verificationStatus.value === 'correct'",
+        "priority": "Second - only overridden by highlighted"
+      },
+      "wrong": {
+        "color": "#bb2124",
+        "hex": "Red",
+        "when": "verificationStatus.value === 'wrong'",
+        "priority": "Third - overridden by highlighted and correct"
+      }
+    },
+    "priority_logic": {
+      "implementation": "if-else chain in getColorByStatus worklet",
+      "reasoning": "Highlighted must show which box is next, regardless of validation state",
+      "example": "Even if code is wrong, next empty box still shows white"
+    }
+  },
+
+  "visual_design": {
+    "color_scheme": {
+      "background": "black",
+      "text": "white (#FFF)",
+      "header": "white",
+      "borders": "Dynamic (gray/white/green/red)"
+    },
+    "typography": {
+      "header": {
+        "fontSize": 30,
+        "color": "white",
+        "marginBottom": 30,
+        "marginLeft": 18,
+        "content": "Enter Code"
+      },
+      "digit": {
+        "fontFamily": "FiraCode-Regular (monospace)",
+        "fontSize": 40,
+        "color": "#FFF"
+      }
+    },
+    "layout": {
+      "container": "Centered, flex: 1, black background",
+      "code_boxes": "Horizontal row, 10px horizontal padding",
+      "individual_box": {
+        "aspectRatio": 0.95,
+        "height": "90% of flex container",
+        "width": "80% of flex container",
+        "borderRadius": 20,
+        "borderCurve": "continuous (iOS smooth corners)",
+        "borderWidth": 2
+      }
+    },
+    "spacing": {
+      "header_margin_bottom": 30,
+      "header_margin_left": 18,
+      "container_padding_horizontal": 10
+    }
+  },
+
+  "performance_optimizations": [
+    "SharedValue for status avoids React re-renders for color changes",
+    "useCallback for all handler functions (resetCode, onWrongCodeWrapper, onCorrectCodeWrapper)",
+    "Worklet getColorByStatus runs on UI thread",
+    "useAnimatedStyle for all animated properties (no bridge crossing)",
+    "Keyboard-controller provides native animation values (no JS thread involvement)",
+    "cancelAnimation before shake prevents animation buildup",
+    "Direct TextInput manipulation (.clear(), .focus(), .blur()) instead of controlled component",
+    "Array rendering with stable index-based keys",
+    "Layout animations run on UI thread via Reanimated",
+    "Minimal state (only code array in React state, rest in shared values)"
+  ],
+
+  "use_cases": [
+    "SMS verification code entry (2FA)",
+    "OTP (One-Time Password) input",
+    "PIN code verification",
+    "Security code validation",
+    "Email verification codes",
+    "Two-factor authentication flows",
+    "Password reset code entry",
+    "Account verification screens",
+    "Login security layers",
+    "Banking app security codes",
+    "Authentication flows",
+    "Secure payment verification"
+  ],
+
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit types",
+      "Proper separation of concerns (screen, container, individual digit)",
+      "Reusable hook pattern (useAnimatedShake shared with email-demo)",
+      "Clean props interfaces with optional callbacks",
+      "useCallback for stable function references",
+      "Detailed inline comments explaining complex patterns",
+      "Honest developer notes about implementation choices",
+      "Custom bezier curves with reference URLs for visualization",
+      "Proper cleanup with useFocusEffect return function",
+      "Configurable code length (dynamic maxCodeLength)",
+      "Type safety with StatusType union",
+      "Worklet directive for UI thread optimization"
+    ],
+    "areas_for_improvement": [
+      "Magic numbers (1000ms delay, 10px shake) could be constants",
+      "No haptic feedback on correct/wrong entry",
+      "No accessibility labels for screen readers",
+      "Hardcoded font family (FiraCode-Regular) may not exist on all devices",
+      "No error handling if font missing",
+      "Could add sound effects for feedback",
+      "No loading/disabled state",
+      "Invisible TextInput pattern could be documented better",
+      "No max attempts limit",
+      "Could add progress indicator",
+      "No unit tests"
+    ]
+  },
+
+  "known_limitations": [
+    "Relies on FiraCode-Regular font being available",
+    "No validation for non-numeric input (assumes number-pad enforces this)",
+    "Fixed 1-second reset delay (not configurable)",
+    "No support for alphanumeric codes (only numbers)",
+    "No paste functionality",
+    "Can't edit individual digits (must clear and re-enter)",
+    "No backspace-specific animation (uses TextInput default)",
+    "Invisible TextInput positioned at bottom: -50 may be visible on some devices",
+    "No max attempts or lockout logic",
+    "No accessibility support (screen readers, VoiceOver)",
+    "Code resets on both correct and wrong (can't stay in success state)",
+    "No reduced motion support"
+  ],
+
+  "potential_improvements": [
+    "Add haptic feedback on wrong/correct entry (expo-haptics)",
+    "Configurable reset delay via props",
+    "Support alphanumeric codes with different keyboard type",
+    "Add paste support with Clipboard API",
+    "Individual digit editing with tap-to-focus",
+    "Custom backspace animation",
+    "Configurable animation speeds",
+    "Add success state that persists (don't auto-reset)",
+    "Max attempts with lockout timer",
+    "Accessibility labels and VoiceOver support",
+    "Loading state while verifying",
+    "Sound effects toggle",
+    "Custom color scheme via props",
+    "Theming support",
+    "Reduced motion mode",
+    "Auto-advance to next screen on success",
+    "Resend code functionality",
+    "Timer countdown for code expiry",
+    "Different box shapes (circular, square)",
+    "Custom fonts via props",
+    "Error message display",
+    "Success checkmark animation"
+  ],
+
+  "key_insights": [
+    "Invisible TextInput pattern elegantly solves keyboard integration without compromising UI customization",
+    "SharedValue for status enables color transitions without React re-renders",
+    "Opposite bezier curves for enter/exit create visual harmony",
+    "Priority-based color selection ensures highlighted state always visible",
+    "Keyboard height / 2 creates natural centering above keyboard",
+    "useFocusEffect ensures keyboard always ready when screen loads",
+    "1-second delay allows users to see success/error state before reset",
+    "cancelAnimation prevents shake animation buildup on rapid errors",
+    "Worklet getColorByStatus runs on UI thread for smooth color transitions",
+    "Reusing hooks across animations (useAnimatedShake) promotes consistency",
+    "maxCodeLength derived from correctCode.toString().length enables dynamic lengths",
+    "index === code.length elegantly identifies next input position"
+  ],
+
+  "learning_opportunities": {
+    "for_beginners": [
+      "Basic useState for array management",
+      "TextInput onChangeText handling",
+      "String to array conversion (split, map, parseInt)",
+      "Conditional rendering with code != null",
+      "Basic layout animations (FadeIn, FadeOut)",
+      "useRef for component references",
+      "Conditional styling based on state"
+    ],
+    "for_intermediate": [
+      "SharedValue for cross-component state",
+      "useAnimatedStyle with worklet functions",
+      "Custom bezier easing curves",
+      "FlipInXDown/FlipOutXDown layout animations",
+      "Keyboard-controller integration",
+      "useFocusEffect lifecycle management",
+      "useCallback optimization",
+      "Invisible input pattern for custom UI",
+      "Priority-based logic in worklets",
+      "withTiming for smooth transitions"
+    ],
+    "for_advanced": [
+      "Invisible TextInput pattern architecture",
+      "Cross-component animation state with SharedValue",
+      "Worklet optimization strategies",
+      "Keyboard avoidance calculations",
+      "Custom hook reusability patterns",
+      "Animation choreography (flip + fade combinations)",
+      "Bezier curve tuning for specific feels",
+      "Type-safe animation status systems",
+      "Performance optimization with minimal React state",
+      "Building reusable secure input components"
+    ]
+  },
+
+  "related_patterns": {
+    "similar_animations": [
+      "OTP input fields",
+      "PIN entry screens",
+      "Credit card CVV input",
+      "Password reveal animations",
+      "Form validation feedback",
+      "Security code entry"
+    ],
+    "code_sharing": {
+      "useAnimatedShake": "Shared with email-demo animation",
+      "pattern": "Identical hook in both animations",
+      "benefit": "Consistent shake behavior across app",
+      "consideration": "Could be extracted to shared hooks directory"
+    }
+  },
+
+  "accessibility_considerations": {
+    "current_state": {
+      "screen_readers": "No accessibility labels",
+      "keyboard_navigation": "Works via TextInput but no visual focus indication",
+      "reduced_motion": "No support",
+      "announcements": "No status announcements"
+    },
+    "recommendations": [
+      "Add accessibilityLabel to container describing purpose",
+      "Announce when digit entered ('Digit entered, X of Y')",
+      "Announce validation state ('Incorrect code' or 'Correct code')",
+      "Add accessibilityHint explaining interaction",
+      "Support reduced motion by disabling flip/shake animations",
+      "Add accessibilityRole='keypad' to container",
+      "Ensure TextInput has proper accessibility label",
+      "Announce when code reset"
+    ]
+  },
+
+  "comparison_to_alternatives": {
+    "vs_single_textinput": {
+      "traditional": "Single TextInput with maxLength",
+      "verification_code": "Multiple boxes with individual animations",
+      "benefit": "Better visual feedback, clearer progress indication"
+    },
+    "vs_separate_textinputs": {
+      "traditional": "Multiple TextInputs with focus management",
+      "verification_code": "Single invisible TextInput, custom UI",
+      "benefit": "Simpler logic, no focus juggling, native keyboard behavior"
+    },
+    "vs_react_otp_input": {
+      "library": "Dedicated OTP library",
+      "verification_code": "Custom implementation with animations",
+      "benefit": "Full control over animations and styling"
+    }
+  },
+
+  "testing_considerations": [
+    "Test correct code validation with various lengths",
+    "Test incorrect code triggers shake and red borders",
+    "Test partial code shows in-progress state",
+    "Test code longer than expected is ignored",
+    "Test reset after 1 second on correct code",
+    "Test reset after 1 second on wrong code",
+    "Test keyboard appears on screen focus",
+    "Test keyboard dismisses on screen blur",
+    "Test highlighted box is always at code.length index",
+    "Test border color priority (highlighted > correct > wrong > default)",
+    "Test callbacks fire correctly (onCorrectCode, onWrongCode)",
+    "Edge case: code of 0",
+    "Edge case: single digit code",
+    "Edge case: very long code (10+ digits)",
+    "Performance: rapid input doesn't break state",
+    "Animation: shake doesn't accumulate with multiple wrongs"
+  ],
+
+  "invisible_textinput_pattern": {
+    "description": "A pattern where a hidden TextInput captures keyboard events while custom UI displays the input",
+    "implementation": {
+      "position": "Positioned off-screen (bottom: -50)",
+      "styling": "Minimal styles to avoid visual presence",
+      "autoFocus": true,
+      "keyboardType": "number-pad",
+      "ref": "Store ref for programmatic control"
+    },
+    "event_handling": {
+      "onChangeText": "Parses input and updates custom UI state",
+      "value_management": "Uncontrolled - use ref.clear() instead of value prop"
+    },
+    "benefits": [
+      "Native keyboard behavior (appearance, animation, type)",
+      "All keyboard events handled automatically",
+      "Hardware keyboard support",
+      "Autocomplete/suggestions if applicable",
+      "Copy/paste support",
+      "System keyboard settings respected"
+    ],
+    "tradeoffs": [
+      "Slightly unconventional pattern",
+      "Hidden element may affect accessibility",
+      "Need to manage focus manually via ref",
+      "Potential confusion for future maintainers"
+    ],
+    "alternatives": {
+      "multiple_inputs": "Multiple TextInputs with focus management - complex",
+      "single_input": "Single visible TextInput - less visual control",
+      "gesture_handler": "Custom keyboard with gesture-handler - heavy implementation"
+    }
+  },
+
+  "bezier_curve_design": {
+    "entering_animation": {
+      "curve": "Easing.bezier(0, 0.75, 0.5, 0.9)",
+      "visualization_url": "https://cubic-bezier.com/#0,0.75,0.5,0.9",
+      "description": "Starts slow, accelerates at the end",
+      "feel": "Anticipation then quick reveal",
+      "purpose": "Creates excitement as digit appears"
+    },
+    "exiting_animation": {
+      "curve": "Easing.bezier(0.6, 0.1, 0.4, 0.8)",
+      "visualization_url": "https://cubic-bezier.com/#0.6,0.1,0.4,0.8",
+      "description": "Starts fast, decelerates at the end",
+      "feel": "Quick departure then gentle fade",
+      "purpose": "Opposite of entering for visual balance"
+    },
+    "philosophy": {
+      "principle": "Opposite curves for opposing actions",
+      "benefit": "Creates visual rhythm and expectation",
+      "attention_to_detail": "Developer comment: 'Every detail matters :)'"
+    }
+  },
+
+  "cross_animation_patterns": {
+    "shared_hooks": {
+      "useAnimatedShake": {
+        "locations": [
+          "email-demo/hooks/use-animated-shake.ts",
+          "verification-code/components/verification-code/hooks/use-animated-shake.ts"
+        ],
+        "pattern": "Identical implementation duplicated",
+        "parameters": {
+          "amplitude": 10,
+          "duration": 120,
+          "repetitions": 6,
+          "easing": "Easing.bezier(0.35, 0.7, 0.5, 0.7)"
+        },
+        "note": "Could be extracted to shared location",
+        "benefit": "Consistent shake behavior across app"
+      }
+    }
+  },
+
+  "bundle_size_impact": {
+    "code_size": "~300 lines total across all files",
+    "dependencies": "Reanimated, keyboard-controller, expo-router (likely already in project)",
+    "runtime_memory": "Minimal - small number of components, 3 shared values",
+    "font_dependency": "FiraCode-Regular font required",
+    "estimated_total": "< 10KB excluding dependencies"
+  },
+
+  "tags": [
+    "verification-code",
+    "otp-input",
+    "pin-entry",
+    "authentication",
+    "security",
+    "flip-animation",
+    "shake-animation",
+    "keyboard-controller",
+    "reanimated",
+    "layout-animations",
+    "bezier-curves",
+    "invisible-input-pattern",
+    "validation",
+    "2fa",
+    "code-entry",
+    "keyboard-aware",
+    "focus-effect",
+    "monospace-font"
+  ]
+}

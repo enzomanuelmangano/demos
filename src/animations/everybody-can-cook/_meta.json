@@ -1,0 +1,265 @@
+{
+  "animation_name": "Everybody Can Cook",
+  "animation_slug": "everybody-can-cook",
+  "description": "A character-by-character staggered text animation component featuring 3D flip effects and spring physics. Each character independently animates with a cascading delay, creating a wave-like reveal effect where characters flip from bottom to top with rotation and fade transitions. Supports bidirectional animation with optional reverse capability.",
+
+  "main_features": [
+    "Character-level staggered animation",
+    "3D flip effect per character (rotateX transform)",
+    "Cascading delay for wave-like progression",
+    "Independent animation control per text component via refs",
+    "Spring physics for natural, bouncy motion",
+    "Fade in/out with opacity transitions",
+    "Optional reverse animation support",
+    "Dual character rendering for flip effect (top and bottom)",
+    "Imperative API for animation control",
+    "Configurable delay between text components",
+    "Customizable typography and styling",
+    "Perspective transform for 3D depth"
+  ],
+
+  "file_structure": {
+    "entries": {
+      "index.tsx": "Demo app with two StaggeredText components animated in sequence"
+    },
+    "components": {
+      "staggered-text.tsx": "Container component managing character array and animation logic with forwardRef",
+      "staggered-digit.tsx": "Individual character component with 3D flip animation"
+    },
+    "hooks": {},
+    "utils": {},
+    "assets": {},
+    "types": {
+      "staggered-text.tsx": [
+        "StaggeredTextProps",
+        "StaggeredTextRef"
+      ],
+      "staggered-digit.tsx": [
+        "StaggeredDigitProps"
+      ]
+    },
+    "constants": {
+      "staggered-digit.tsx": [
+        "DefaultFontSize (50)",
+        "DefaultFontHeight (55)"
+      ]
+    }
+  },
+
+  "core_technologies": [
+    "react-native-reanimated (animations)",
+    "React forwardRef pattern",
+    "React useImperativeHandle",
+    "3D transforms (perspective, rotateX)"
+  ],
+
+  "packages_and_versions": {
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "components": [
+        "Animated.View",
+        "Animated.Text"
+      ],
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue",
+        "useAnimatedStyle",
+        "withDelay",
+        "withSpring",
+        "interpolate"
+      ],
+      "types": [
+        "SharedValue"
+      ],
+      "critical_feature": "useDerivedValue with withDelay for staggered character timing"
+    },
+    "react-native": {
+      "version": "0.78.18",
+      "components": [
+        "View",
+        "StyleSheet"
+      ],
+      "types": [
+        "StyleProp",
+        "TextStyle",
+        "ViewStyle"
+      ]
+    },
+    "react": {
+      "version": "19.1.0",
+      "hooks": [
+        "useRef",
+        "useImperativeHandle",
+        "forwardRef"
+      ],
+      "types": [
+        "ForwardedRef"
+      ]
+    }
+  },
+
+  "animation_techniques": [
+    "3D flip effect with dual character rendering",
+    "Staggered delay progression (index * 40ms + componentDelay)",
+    "Spring animation with high dampingRatio for snappy motion",
+    "Opacity crossfade between top and bottom characters",
+    "Perspective transform for 3D depth",
+    "TranslateY coordination for flip effect",
+    "Character-level text splitting for independent animations",
+    "Bidirectional animation support with enableReverse flag"
+  ],
+
+  "reanimated_patterns": [
+    "useSharedValue for animation progress driver",
+    "useDerivedValue for per-character delayed progress",
+    "withDelay wrapping withSpring for staggered timing",
+    "useAnimatedStyle for top character (downward flip)",
+    "useAnimatedStyle for bottom character (upward flip)",
+    "interpolate for rotation and translation calculations",
+    "worklet directive for derived value calculations",
+    "Conditional animation logic based on enableReverse flag"
+  ],
+
+  "performance_optimizations": [
+    "GPU-accelerated opacity and transform animations",
+    "UI thread execution via Reanimated worklets",
+    "No layout recalculations during animation",
+    "Optimized spring implementation by Reanimated",
+    "Single SharedValue drives all character animations",
+    "Independent derived values per character",
+    "No unnecessary re-renders",
+    "Efficient dual-layer rendering technique"
+  ],
+
+  "use_cases": [
+    "Hero text animations in splash screens",
+    "Title reveals and brand name animations",
+    "Section heading reveals with flair",
+    "Onboarding screen text effects",
+    "Logo text animations",
+    "Success messages and achievement unlocks",
+    "Score displays in games",
+    "Interactive text elements",
+    "Movie title reveals",
+    "Restaurant menu app headers",
+    "Brand introduction sequences",
+    "Educational demonstrations of 3D transforms"
+  ],
+
+  "code_quality": {
+    "strengths": [
+      "Full TypeScript with explicit type annotations",
+      "Comprehensive JSDoc documentation on StaggeredText component",
+      "Clear separation of concerns (container vs digit components)",
+      "Well-defined prop interfaces with descriptions",
+      "forwardRef and useImperativeHandle for clean API",
+      "Explicit type definitions for all props and refs",
+      "Proper worklet directives for UI thread execution",
+      "PascalCase for components and types",
+      "Constants defined with clear defaults",
+      "Inline comments explaining complex logic",
+      "Example usage in JSDoc",
+      "Clean imperative API design"
+    ],
+    "areas_for_improvement": [
+      "StaggeredDigit component could use React.memo for optimization",
+      "Text splitting could use useMemo to prevent recalculation",
+      "Text splitting uses split('') which breaks multi-byte characters (should use Array.from or [...text])",
+      "useDerivedValue called inside map loop (non-standard but functional)",
+      "No accessibility considerations (prefers-reduced-motion, screen readers)",
+      "ESLint disable comment for react-hooks/rules-of-hooks could be avoided with refactoring",
+      "Per-character delay (40ms) is hardcoded (could be prop)",
+      "Spring config is hardcoded (could be prop)",
+      "Font family hardcoded in demo (Honk-Regular requires custom font)",
+      "setTimeout in animate() method is a workaround (could be improved)"
+    ]
+  },
+
+  "known_limitations": [
+    "text.split('') breaks multi-byte characters (emoji, combining diacritics)",
+    "40ms per-character delay is hardcoded, not configurable",
+    "Spring config (duration: 350, dampingRatio: 2.8) is hardcoded",
+    "Demo uses custom font 'Honk-Regular' that requires font in project assets",
+    "Only rotates around X-axis (vertical flip), no horizontal or diagonal flips",
+    "No built-in layout transitions when text changes",
+    "No accessibility support (prefers-reduced-motion, screen readers)",
+    "No keyboard navigation support",
+    "Performance may degrade with very long text (100+ characters)",
+    "useDerivedValue in map loop violates rules-of-hooks (requires ESLint disable)",
+    "No onAnimationComplete callback",
+    "No progress tracking (can't get current animation progress)"
+  ],
+
+  "potential_improvements": [
+    "Add configurable per-character delay prop (instead of hardcoded 40ms)",
+    "Add custom spring config props (duration, dampingRatio, stiffness)",
+    "Add custom rotation angles prop (currently 0-90deg)",
+    "Add custom perspective value prop (currently 1000)",
+    "Support color transition during flip animation",
+    "Add different flip directions (horizontal, diagonal)",
+    "Add React.memo to StaggeredDigit component",
+    "Use useMemo for text splitting array",
+    "Use Array.from(text) or [...text] for proper unicode splitting",
+    "Add prefers-reduced-motion support via AccessibilityInfo",
+    "Add screen reader optimizations (accessibilityLabel)",
+    "Add onAnimationComplete callback",
+    "Add progress tracking via callback or ref method",
+    "Support word-by-word animation (not just characters)",
+    "Add gradient text color during animation",
+    "Add shadow effects during flip",
+    "Add animation variants (bounce, elastic, random order)",
+    "Add blur effect during transition",
+    "Add scale variation per character",
+    "Refactor useDerivedValue out of map loop",
+    "Replace setTimeout workaround in animate()",
+    "Add virtualization for very long text (100+ chars)",
+    "Add configurable fontHeight calculation",
+    "Make spring config configurable via props"
+  ],
+
+  "key_insights": [
+    "Dual character technique: Two characters with opposite rotations create seamless flip illusion",
+    "Staggered derived values: useDerivedValue in map loop creates independent per-character timing",
+    "useImperativeHandle power: Exposes clean animation API without prop drilling",
+    "Critically damped spring: dampingRatio > 1 prevents overshoot for snappy mechanical feel",
+    "withDelay composition: withDelay wrapping withSpring creates staggered spring animations",
+    "Single progress driver: One SharedValue drives all character animations with delays",
+    "Perspective requirement: perspective transform essential for 3D rotation visibility",
+    "setTimeout workaround: setTimeout in animate() ensures progress update triggers on next frame",
+    "enableReverse pattern: Conditional worklet logic enables optional bidirectional animation",
+    "Opacity crossfade: Sum of both characters' opacity always equals 1 for smooth transition",
+    "TranslateY coordination: Both characters move toward center during flip, meeting at progress = 0.5",
+    "Character splitting granularity: One component per character enables independent animation control",
+    "Spring physics tuning: High dampingRatio (2.8) creates fast settling with no oscillation",
+    "Worklet execution: All animation calculations run on UI thread for 60fps performance"
+  ],
+
+  "learning_opportunities": [
+    "For beginners: forwardRef usage, useImperativeHandle pattern, text splitting with split(''), useSharedValue basics, opacity fade animations, array.map for component rendering",
+    "For intermediate: 3D transforms (perspective, rotateX), useDerivedValue in loops, withDelay + withSpring composition, staggered animation patterns, dual-layer rendering technique, spring physics tuning (dampingRatio), animated style interpolation",
+    "For advanced: Complex 3D animation coordination, imperative animation APIs, worklet optimization patterns, building reusable animation components, performance optimization for many animated elements, custom animation timing systems, bidirectional animation logic"
+  ],
+
+  "tags": [
+    "text-animation",
+    "staggered-animation",
+    "3d-flip",
+    "character-animation",
+    "reveal-animation",
+    "reanimated",
+    "spring-physics",
+    "imperative-api",
+    "forwardRef",
+    "dual-layer-rendering",
+    "perspective-transform",
+    "cascade-effect",
+    "wave-animation",
+    "hero-text",
+    "rotateX",
+    "useImperativeHandle",
+    "useDerivedValue",
+    "withDelay",
+    "withSpring",
+    "bidirectional-animation"
+  ]
+}
