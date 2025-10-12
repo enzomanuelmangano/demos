@@ -2,7 +2,6 @@
   "animation_name": "Story List",
   "animation_slug": "story-list",
   "description": "A horizontal story carousel with Instagram-like stacked card animations. Features pan gesture-based scrolling with momentum decay, dynamic scaling based on active index, and configurable paging. Items stack with a subtle left offset and scale effect, creating depth perception. Supports both free-scrolling and snap-to-item paging modes with smooth transitions.",
-
   "main_features": [
     "Horizontal pan gesture scrolling with momentum decay",
     "Instagram-style stacked card layout with depth effect",
@@ -16,7 +15,6 @@
     "Generic component design for any data type",
     "Gesture cancellation handling for smooth interruption"
   ],
-
   "file_structure": {
     "index.tsx": "Main demo container with story data, dimensions calculation, and render configuration",
     "components/story-list/index.tsx": "Core list component with pan gesture, scroll logic, and snap point handling",
@@ -24,42 +22,69 @@
     "helpers/index.ts": "Utility functions: clamp for bounds checking and findClosestSnapPoint for paging",
     "assets": "Four sample images (PNG and JPG) for story demonstration"
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
     "gestures": "react-native-gesture-handler",
     "images": "expo-image",
     "layout": "react-native (useWindowDimensions)"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "hooks": ["useSharedValue", "useAnimatedStyle", "useDerivedValue"],
-      "functions": ["withDecay", "withTiming", "cancelAnimation"],
-      "components": ["Animated.View"],
+      "hooks": [
+        "useSharedValue",
+        "useAnimatedStyle",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withDecay",
+        "withTiming",
+        "cancelAnimation"
+      ],
+      "components": [
+        "Animated.View"
+      ],
       "critical_feature": "withDecay for momentum scrolling and useDerivedValue for active index calculation"
     },
     "react-native-gesture-handler": {
       "version": "~2.28.0",
-      "components": ["GestureDetector", "GestureHandlerRootView"],
-      "gestures": ["Gesture.Pan()"],
-      "methods": ["onBegin", "onUpdate", "onFinalize"],
+      "components": [
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "gestures": [
+        "Gesture.Pan()"
+      ],
+      "methods": [
+        "onBegin",
+        "onUpdate",
+        "onFinalize"
+      ],
       "usage": "Pan gesture for horizontal scrolling with velocity tracking"
     },
     "expo-image": {
       "version": "~3.0.8",
-      "components": ["Image"],
-      "props": ["contentFit: 'cover'", "cachePolicy: 'memory-disk'"],
+      "components": [
+        "Image"
+      ],
+      "props": [
+        "contentFit: 'cover'",
+        "cachePolicy: 'memory-disk'"
+      ],
       "usage": "Story images with optimized caching"
     },
     "react-native": {
-      "hooks": ["useWindowDimensions", "useMemo"],
-      "components": ["View", "StyleSheet"],
+      "hooks": [
+        "useWindowDimensions",
+        "useMemo"
+      ],
+      "components": [
+        "View",
+        "StyleSheet"
+      ],
       "usage": "Layout calculations and responsive sizing"
     }
   },
-
   "animation_techniques": {
     "momentum_scrolling": {
       "pattern": "Physics-based decay animation",
@@ -116,7 +141,6 @@
       "purpose": "Prevent scrolling beyond first/last item"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -230,7 +254,6 @@
       "critical_for": "Prevents flickering and jumping when interrupting animations"
     }
   },
-
   "gesture_handling": {
     "pan_gesture": {
       "type": "Gesture.Pan()",
@@ -264,7 +287,6 @@
       "purpose": "Natural momentum based on gesture speed"
     }
   },
-
   "helper_functions": {
     "clamp": {
       "signature": "(value: number, min: number, max: number) => number",
@@ -282,7 +304,6 @@
       "implementation": "Reduce to find minimum absolute difference"
     }
   },
-
   "layout_and_positioning": {
     "container_layout": {
       "background": "#2D3045 (dark blue-gray)",
@@ -328,7 +349,6 @@
       "effect": "Spacing between stacked cards"
     }
   },
-
   "component_architecture": {
     "story_list_gesture_container": {
       "type": "Root wrapper component",
@@ -405,7 +425,6 @@
       ]
     }
   },
-
   "data_structure": {
     "stories_array": {
       "count": 8,
@@ -425,7 +444,6 @@
       "generic_design": "StoryList<T> works with any type"
     }
   },
-
   "performance_optimizations": {
     "gesture_on_ui_thread": {
       "pattern": "Pan gesture runs on UI thread (worklet)",
@@ -446,7 +464,10 @@
       "recalculates_only_when": "Dependencies change"
     },
     "worklet_helpers": {
-      "functions": ["clamp", "findClosestSnapPoint"],
+      "functions": [
+        "clamp",
+        "findClosestSnapPoint"
+      ],
       "directive": "'worklet'",
       "benefit": "Run on UI thread without JS thread communication",
       "critical_for": "Smooth animations and calculations"
@@ -469,7 +490,6 @@
       "location": "onBegin gesture handler"
     }
   },
-
   "visual_design": {
     "color_scheme": {
       "background": "#2D3045 (dark blue-gray)",
@@ -497,7 +517,6 @@
       "inspiration": "Instagram stories, Tinder card stack"
     }
   },
-
   "use_cases": {
     "primary": [
       "Instagram-style story viewers",
@@ -528,12 +547,14 @@
       "Music player album art browsing"
     ]
   },
-
   "code_quality": {
     "typescript": {
       "coverage": "Full TypeScript with explicit types",
       "generics": "StoryList<T>, StoryListItem<T>, StoryListProps<T>",
-      "type_definitions": ["StoryListProps<T>", "StoryListItemProps<T>"],
+      "type_definitions": [
+        "StoryListProps<T>",
+        "StoryListItemProps<T>"
+      ],
       "type_imports": "type keyword for type-only imports",
       "type_safety": "Strong typing throughout"
     },
@@ -566,7 +587,6 @@
       "Clean prop interfaces"
     ]
   },
-
   "known_limitations": {
     "no_virtualization": {
       "issue": "All items render upfront, not virtualized",
@@ -600,7 +620,6 @@
       "enhancement": "Could use interpolate with custom input/output ranges"
     }
   },
-
   "potential_improvements": {
     "animation_enhancements": [
       "Add rotation effect during scroll",
@@ -660,7 +679,6 @@
       "Configurable visible items calculation"
     ]
   },
-
   "key_insights": {
     "withDecay_magic": "withDecay provides natural momentum without manual physics calculation",
     "float_activeIndex": "Float activeIndex (not Math.floor) enables smooth scale/position interpolation",
@@ -674,7 +692,6 @@
     "worklet_helpers": "Marking helpers as 'worklet' allows UI thread execution",
     "context_pattern": "contextX pattern stores gesture start position for relative updates"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "Basic pan gesture handling",
@@ -704,7 +721,6 @@
       "Absolute positioning with animations"
     ]
   },
-
   "testing_considerations": {
     "visual_regression": [
       "Cards stack correctly with proper offset",
@@ -746,7 +762,6 @@
       "Animation smoothness across devices"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": {
       "screen_readers": "No accessibility labels",
@@ -765,7 +780,6 @@
       "Support tab navigation between stories"
     ]
   },
-
   "comparison_to_similar_patterns": {
     "vs_instagram_stories": {
       "similarity": "Horizontal scroll, stacked cards, similar visual style",
@@ -783,7 +797,6 @@
       "unique_feature": "Depth perception via scale and offset"
     }
   },
-
   "related_patterns": {
     "scroll_animations": [
       "Parallax scrolling",
@@ -804,7 +817,6 @@
       "Layered navigation"
     ]
   },
-
   "real_world_inspiration": {
     "instagram_stories": "Horizontal story browsing with auto-advance",
     "snapchat_stories": "Similar horizontal scroll pattern",
@@ -812,7 +824,6 @@
     "apple_photos": "Stacked photo browsing",
     "spotify_albums": "Album art carousel browsing"
   },
-
   "bundle_size_impact": {
     "code_size": "~300 lines total (components + helpers)",
     "dependencies": "Reanimated, RNGH, expo-image likely already in project",
@@ -820,7 +831,6 @@
     "runtime_memory": "Minimal - 4 SharedValues, 8 items rendered",
     "estimated_code_size": "< 15KB"
   },
-
   "tags": [
     "story-list",
     "horizontal-scroll",
@@ -839,5 +849,7 @@
     "worklet",
     "clamping",
     "photo-gallery"
-  ]
+  ],
+  "content_hash": "800937deb874d964f8af110aa21f60551e9085d97d89ced829d5b314c4ea456e",
+  "hash_algorithm": "sha256"
 }

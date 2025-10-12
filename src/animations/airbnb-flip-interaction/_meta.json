@@ -2,7 +2,6 @@
   "animation_name": "Airbnb Flip Interaction",
   "animation_slug": "airbnb-flip-interaction",
   "description": "An elegant 3D card flip animation inspired by Airbnb's profile cards. Features smooth spring-based rotation with perspective transforms, coordinated page transitions below the card, and dynamic blur effects. The card flips horizontally to reveal profile statistics on the back, while descriptive content below transitions with keyframe animations and blur overlays.",
-
   "main_features": [
     "3D card flip animation with perspective transforms",
     "Horizontal and vertical flip orientation support",
@@ -16,7 +15,6 @@
     "Gradient backgrounds and metallic effects",
     "Touch interaction for card flipping"
   ],
-
   "file_structure": {
     "index.tsx": "Main app component with card and description sections",
     "constants.ts": "Spacing constants",
@@ -38,18 +36,21 @@
       }
     }
   },
-
   "core_technologies": {
     "animations": "react-native-reanimated",
-    "ui_effects": ["expo-blur", "expo-linear-gradient"],
+    "ui_effects": [
+      "expo-blur",
+      "expo-linear-gradient"
+    ],
     "layout": "react-native-safe-area-context",
     "pattern": "3D transforms with spring physics"
   },
-
   "packages_and_versions": {
     "react-native-reanimated": {
       "version": "~4.1.1",
-      "components": ["Animated.View"],
+      "components": [
+        "Animated.View"
+      ],
       "hooks": [
         "useDerivedValue",
         "useAnimatedStyle",
@@ -57,7 +58,9 @@
         "withSpring",
         "interpolate"
       ],
-      "layout_animations": ["Keyframe"],
+      "layout_animations": [
+        "Keyframe"
+      ],
       "critical_feature": "Custom Keyframe animations for page transitions and spring physics for card flip"
     },
     "expo-blur": {
@@ -81,7 +84,6 @@
       "usage": "Safe area padding for top and bottom"
     }
   },
-
   "animation_techniques": {
     "3d_flip_rotation": {
       "property": "rotateY",
@@ -146,7 +148,6 @@
       "transform_logic": "Applied to rotation container, swaps width/height for vertical"
     }
   },
-
   "reanimated_patterns": {
     "shared_values": [
       {
@@ -169,7 +170,9 @@
         "Blur intensity progress (in main App)"
       ],
       "pattern": "Wraps withSpring to create smooth transitions",
-      "dependencies": ["isFlipped"],
+      "dependencies": [
+        "isFlipped"
+      ],
       "benefit": "Automatic reactivity when state changes"
     },
     "useAnimatedStyle": {
@@ -178,14 +181,18 @@
         "backAnimatedStyle (rotateY, scale, backfaceVisibility, absolute positioning)",
         "containerAnimatedStyle (scale only)"
       ],
-      "dependencies": ["progress"],
+      "dependencies": [
+        "progress"
+      ],
       "pattern": "Interpolate progress.value to drive multiple transform properties"
     },
     "useAnimatedProps": {
       "component": "AnimatedBlurView",
       "property": "intensity",
       "interpolation": "5-point curve for wave effect",
-      "dependencies": ["progress"]
+      "dependencies": [
+        "progress"
+      ]
     },
     "spring_configs": {
       "card_flip": {
@@ -206,12 +213,14 @@
     "keyframe_animations": {
       "pattern": "new Keyframe({...}).duration(ms)",
       "timing_control": "Percentage keyframes (0, 60, 100)",
-      "properties": ["opacity", "transform: [translateY]"],
+      "properties": [
+        "opacity",
+        "transform: [translateY]"
+      ],
       "applied_to": "Animated.View with entering/exiting props",
       "key_prop": "Required for proper unmount/mount detection"
     }
   },
-
   "component_architecture": {
     "flip_card": {
       "type": "Reusable component",
@@ -241,7 +250,11 @@
       "front": {
         "memo": true,
         "content": "Name, verified badge, avatar",
-        "gradient": ["#FF6B6B", "#FF8E53", "#FF6B6B"],
+        "gradient": [
+          "#FF6B6B",
+          "#FF8E53",
+          "#FF6B6B"
+        ],
         "layout": "Name at top, avatar at bottom-right"
       },
       "back": {
@@ -268,14 +281,16 @@
       "styling": "Consistent section-based layout with title and body text"
     }
   },
-
   "visual_design": {
     "card_styling": {
       "aspect_ratio": 1.6,
       "border_radius": 20,
       "shadow": {
         "color": "#000",
-        "offset": { "width": 0, "height": 4 },
+        "offset": {
+          "width": 0,
+          "height": 4
+        },
         "opacity": 0.1,
         "radius": 12
       },
@@ -283,10 +298,20 @@
     },
     "color_scheme": {
       "app_background": "#FFFFFF (white)",
-      "card_front_gradient": ["#FF6B6B", "#FF8E53", "#FF6B6B"],
+      "card_front_gradient": [
+        "#FF6B6B",
+        "#FF8E53",
+        "#FF6B6B"
+      ],
       "card_back_background": "white",
-      "avatar_gradient": ["#4A5568", "#2D3748"],
-      "verification_badge": ["#FF6B6B", "#FF5252"],
+      "avatar_gradient": [
+        "#4A5568",
+        "#2D3748"
+      ],
+      "verification_badge": [
+        "#FF6B6B",
+        "#FF5252"
+      ],
       "text_primary": "#1A1D29 (dark)",
       "text_secondary": "#6B7280 (gray)",
       "text_on_gradient": "white"
@@ -354,7 +379,6 @@
       "description_section": "paddingHorizontal: 32, paddingBottom: 40, paddingTop: 0"
     }
   },
-
   "3d_transform_mechanics": {
     "perspective": {
       "value": 1000,
@@ -391,11 +415,14 @@
       "z_ordering": "Back renders after front in JSX, but hidden by backface culling"
     }
   },
-
   "gradient_techniques": {
     "card_front_gradient": {
       "type": "LinearGradient",
-      "colors": ["#FF6B6B", "#FF8E53", "#FF6B6B"],
+      "colors": [
+        "#FF6B6B",
+        "#FF8E53",
+        "#FF6B6B"
+      ],
       "locations": "[0, 0.5, 1]",
       "start": "{ x: 0, y: 0 }",
       "end": "{ x: 1, y: 1 }",
@@ -404,17 +431,29 @@
     },
     "avatar_gradient": {
       "type": "LinearGradient",
-      "colors": ["#4A5568", "#2D3748"],
+      "colors": [
+        "#4A5568",
+        "#2D3748"
+      ],
       "effect": "Dark gray gradient for default avatar background"
     },
     "verification_badge": {
       "type": "LinearGradient",
-      "colors": ["#FF6B6B", "#FF5252"],
+      "colors": [
+        "#FF6B6B",
+        "#FF5252"
+      ],
       "effect": "Bright red gradient with white checkmark"
     },
     "metallic_background": {
       "layers": 6,
-      "base_colors": ["#4B6DC2", "#3959AA", "#587AD0", "#2C4A94", "#4265B7"],
+      "base_colors": [
+        "#4B6DC2",
+        "#3959AA",
+        "#587AD0",
+        "#2C4A94",
+        "#4265B7"
+      ],
       "effects": [
         "Main shine (white overlay with transparency)",
         "Horizontal highlight (centered white band)",
@@ -426,7 +465,6 @@
       "use_case": "Credit card metallic appearance (not used in current demo)"
     }
   },
-
   "profile_data_structure": {
     "ProfileType": {
       "name": "string",
@@ -446,7 +484,9 @@
       "reviews": 1,
       "yearsOnAirbnb": 4,
       "birthDecade": "Born in the 90s",
-      "languages": ["Speaks Italian"],
+      "languages": [
+        "Speaks Italian"
+      ],
       "isIdentityVerified": true,
       "visitedPlaces": [
         {
@@ -458,7 +498,6 @@
       ]
     }
   },
-
   "interaction_pattern": {
     "trigger": "TouchableOpacity onPress",
     "activeOpacity": 0.8,
@@ -474,7 +513,6 @@
     "duration": "~500-700ms (spring dependent)",
     "feedback": "Visual card rotation + page content change + blur effect"
   },
-
   "performance_optimizations": {
     "memo_components": {
       "FlipCard": "Custom comparison prevents re-renders when props unchanged",
@@ -503,10 +541,12 @@
       "benefit": "Cleaner UI, minor performance benefit"
     }
   },
-
   "react_patterns": {
     "memo_with_comparison": {
-      "components": ["FlipCard", "ProfileAvatar"],
+      "components": [
+        "FlipCard",
+        "ProfileAvatar"
+      ],
       "pattern": "memo(Component, (prev, next) => comparison)",
       "benefit": "Fine-grained control over re-render conditions"
     },
@@ -537,7 +577,6 @@
       "requirement": "Required for layout animations to detect unmount/mount"
     }
   },
-
   "mathematical_algorithms": {
     "rotation_calculation": {
       "front": "rotateY = interpolate(progress, [0, 1], [0, 180])",
@@ -573,7 +612,6 @@
       "purpose": "Respects device notches and system UI"
     }
   },
-
   "use_cases": {
     "primary": [
       "Profile cards (Airbnb, social apps)",
@@ -595,7 +633,6 @@
       "iOS Passbook/Wallet cards"
     ]
   },
-
   "code_quality": {
     "typescript": "Full TypeScript with explicit types",
     "type_definitions": [
@@ -637,7 +674,6 @@
       "Safe area handling"
     ]
   },
-
   "configuration": {
     "adjustable_parameters": {
       "card_spring_config": {
@@ -686,7 +722,6 @@
       "badge": "Easily changed in ProfileAvatar component"
     }
   },
-
   "known_limitations": {
     "font_requirements": {
       "issue": "Requires SF-Pro-Rounded fonts (Heavy, Bold, regular)",
@@ -721,7 +756,6 @@
       "enhancement": "Could support X-axis (vertical) or diagonal flips"
     }
   },
-
   "potential_improvements": {
     "interactivity": [
       "Pan gesture to control flip progress",
@@ -770,7 +804,6 @@
       "Language badges"
     ]
   },
-
   "key_insights": {
     "backface_culling_essential": "backfaceVisibility: 'hidden' is critical for proper 3D flip effect",
     "absolute_positioning": "Back face must use absolute positioning to overlay front",
@@ -783,7 +816,6 @@
     "memo_patterns": "Custom comparison functions provide fine-grained re-render control",
     "responsive_sizing": "Proportional scaling ensures consistent appearance across devices"
   },
-
   "learning_opportunities": {
     "for_beginners": [
       "3D transforms basics (perspective, rotateY)",
@@ -812,7 +844,6 @@
       "Cross-component animation synchronization"
     ]
   },
-
   "testing_considerations": {
     "visual_tests": [
       "Card flips correctly in both directions",
@@ -851,7 +882,6 @@
       "Rapid orientation changes"
     ]
   },
-
   "accessibility_considerations": {
     "current_state": "Limited accessibility support",
     "missing_features": [
@@ -880,7 +910,6 @@
       }
     }
   },
-
   "related_patterns": {
     "3d_card_flip": "Classic 3D flip animation pattern",
     "ios_wallet_cards": "Similar card flip in Apple Wallet/Passbook",
@@ -888,7 +917,6 @@
     "credit_card_displays": "Payment apps showing card details",
     "profile_cards": "Social and professional networking apps"
   },
-
   "bundle_size_impact": {
     "code_size": "Medium (~500 lines across all files)",
     "dependencies": "Reanimated, Blur, LinearGradient (likely already in project)",
@@ -896,25 +924,32 @@
     "runtime_memory": "Low - a few SharedValues, styles, and gradients",
     "estimated_size": "< 50KB (excluding fonts)"
   },
-
   "platform_considerations": {
     "ios": {
-      "features": ["All features work perfectly", "Blur effects excellent"],
+      "features": [
+        "All features work perfectly",
+        "Blur effects excellent"
+      ],
       "performance": "Excellent",
       "recommendations": "Primary target platform"
     },
     "android": {
-      "features": ["All features work", "Blur effects may vary by device"],
+      "features": [
+        "All features work",
+        "Blur effects may vary by device"
+      ],
       "performance": "Good to excellent",
       "recommendations": "Test blur on low-end devices"
     },
     "web": {
-      "features": ["3D transforms work", "Blur may have limitations"],
+      "features": [
+        "3D transforms work",
+        "Blur may have limitations"
+      ],
       "performance": "Good in modern browsers",
       "recommendations": "Test cross-browser compatibility"
     }
   },
-
   "comparison_to_alternatives": {
     "vs_simple_fade": {
       "simple": "Fade out front, fade in back",
@@ -932,14 +967,12 @@
       "advantage": "More natural, mimics real-world card flip"
     }
   },
-
   "real_world_inspiration": {
     "airbnb": "Profile verification cards with flip interaction",
     "apple_wallet": "Card flip animations in Wallet/Passbook",
     "google_material": "Card flip patterns in Material Design",
     "banking_apps": "Credit card displays with flip to reveal details"
   },
-
   "tags": [
     "3d-transforms",
     "card-flip",
@@ -956,5 +989,7 @@
     "responsive-design",
     "backface-visibility",
     "interpolation"
-  ]
+  ],
+  "content_hash": "5fdd9afda48540811d3a9d46e7aeb1963cf20b841bb265581244f86cdac0bb7f",
+  "hash_algorithm": "sha256"
 }

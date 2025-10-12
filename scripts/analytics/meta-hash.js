@@ -133,8 +133,9 @@ function writeMetadata(animationPath, metadata, hash) {
     ...metadata,
     content_hash: hash,
     hash_algorithm: HASH_ALGORITHM,
-    hash_generated_at: new Date().toISOString(),
-    last_validated: new Date().toISOString(),
+    // No need for date fields
+    // hash_generated_at: new Date().toISOString(),
+    // last_validated: new Date().toISOString(),
   };
 
   // Write with pretty formatting
@@ -231,7 +232,8 @@ function validateHash(slug) {
     slug,
     storedHash: metadata.content_hash,
     currentHash,
-    generatedAt: metadata.hash_generated_at,
+    // No need for date fields
+    // generatedAt: metadata.hash_generated_at,
   };
 }
 
