@@ -1,4 +1,4 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useMemo } from 'react';
 
@@ -15,34 +15,31 @@ import {
   Skia,
   vec,
 } from '@shopify/react-native-skia';
-import { StatusBar } from 'expo-status-bar';
 import {
-  clamp,
   useDerivedValue,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 import type { SharedValue } from 'react-native-reanimated';
-
-const { width: WindowWidth, height: WindowHeight } = Dimensions.get('window');
 
 type BlurredCardProps = {
   blurredProgress: SharedValue<number>;
 };
 
 const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
   const clipPath = useMemo(() => {
     const skPath = Skia.Path.Make();
-    const x = WindowWidth / 2 - 150;
-    const y = WindowHeight / 2 - 100;
+    const x = windowWidth / 2 - 150;
+    const y = windowHeight / 2 - 100;
     const width = 300;
     const height = 200;
     const r = 20;
     skPath.addRRect(rrect(rect(x, y, width, height), r, r));
     return skPath;
-  }, []);
+  }, [windowWidth, windowHeight]);
 
   const blur = useDerivedValue(() => {
     return Math.max(5 * blurredProgress.value, 0);
@@ -64,123 +61,45 @@ const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
 };
 
 export const BlurCards = () => {
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
   const progress = useSharedValue(0);
-
-  // Create transforms outside of the map to avoid violating React's rules of hooks
-  const transform0 = useDerivedValue(() => {
-    return [
-      {
-        rotate: (-Math.PI / 2) * progress.value,
-      },
-      {
-        translateX: 25 * 0 * progress.value,
-      },
-      { perspective: 10000 },
-      {
-        rotateY: (Math.PI / 3) * progress.value,
-      },
-      {
-        rotate: (Math.PI / 4) * progress.value,
-      },
-    ];
-  });
-
-  const transform1 = useDerivedValue(() => {
-    return [
-      {
-        rotate: (-Math.PI / 2) * progress.value,
-      },
-      {
-        translateX: 25 * 1 * progress.value,
-      },
-      { perspective: 10000 },
-      {
-        rotateY: (Math.PI / 3) * progress.value,
-      },
-      {
-        rotate: (Math.PI / 4) * progress.value,
-      },
-    ];
-  });
-
-  const transform2 = useDerivedValue(() => {
-    return [
-      {
-        rotate: (-Math.PI / 2) * progress.value,
-      },
-      {
-        translateX: 25 * 2 * progress.value,
-      },
-      { perspective: 10000 },
-      {
-        rotateY: (Math.PI / 3) * progress.value,
-      },
-      {
-        rotate: (Math.PI / 4) * progress.value,
-      },
-    ];
-  });
-
-  const transform3 = useDerivedValue(() => {
-    return [
-      {
-        rotate: (-Math.PI / 2) * progress.value,
-      },
-      {
-        translateX: 25 * 3 * progress.value,
-      },
-      { perspective: 10000 },
-      {
-        rotateY: (Math.PI / 3) * progress.value,
-      },
-      {
-        rotate: (Math.PI / 4) * progress.value,
-      },
-    ];
-  });
-
-  const transform4 = useDerivedValue(() => {
-    return [
-      {
-        rotate: (-Math.PI / 2) * progress.value,
-      },
-      {
-        translateX: 25 * 4 * progress.value,
-      },
-      { perspective: 10000 },
-      {
-        rotateY: (Math.PI / 3) * progress.value,
-      },
-      {
-        rotate: (Math.PI / 4) * progress.value,
-      },
-    ];
-  });
-
-  const transforms = [
-    transform0,
-    transform1,
-    transform2,
-    transform3,
-    transform4,
-  ];
 
   return (
     <View style={styles.container}>
       <Canvas style={styles.canvas}>
-        <Rect x={0} y={0} width={WindowWidth} height={WindowHeight}>
+        <Rect x={0} y={0} width={windowWidth} height={windowHeight}>
           <RadialGradient
-            c={vec(WindowWidth / 2, WindowHeight / 2)}
-            r={Math.min(WindowWidth, WindowHeight) / 2}
+            c={vec(windowWidth / 2, windowHeight / 2)}
+            r={Math.min(windowWidth, windowHeight) / 2}
             colors={['violet', 'black']}
           />
           <Blur blur={100} />
         </Rect>
-        {transforms.map((transform, index) => {
+        {new Array(5).fill(0).map((_, index) => {
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          const transform = useDerivedValue(() => {
+            return [
+              {
+                rotate: (-Math.PI / 2) * progress.value,
+              },
+              {
+                translateX: 25 * index * progress.value,
+              },
+              { perspective: 10000 },
+              {
+                rotateY: (Math.PI / 3) * progress.value,
+              },
+              {
+                rotate: (Math.PI / 4) * progress.value,
+              },
+            ];
+          }, [index]);
+
           return (
             <Group
               key={index}
-              origin={vec(WindowWidth / 2, WindowHeight / 2)}
+              origin={vec(windowWidth / 2, windowHeight / 2)}
               transform={transform}>
               <BlurredCard blurredProgress={progress} />
             </Group>
