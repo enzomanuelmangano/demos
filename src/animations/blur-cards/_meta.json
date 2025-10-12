@@ -1,0 +1,141 @@
+{
+  "animation_name": "Blur Cards",
+  "animation_slug": "blur-cards",
+  "description": "An interactive card animation featuring 5 layered cards with glassmorphic blur effects. Cards toggle between collapsed and fanned-out states on tap, with smooth spring animations and 3D transforms. Features dynamic backdrop blur and radial gradient backgrounds rendered with Skia.",
+  "main_features": [
+    "Toggle-based touch interaction",
+    "Spring animations with custom damping",
+    "3D card transforms with perspective",
+    "Dynamic backdrop blur effects using Skia",
+    "Multiple layered cards with staggered transforms",
+    "Radial gradient background with blur",
+    "Glassmorphic card design with semi-transparent fills"
+  ],
+  "file_structure": {
+    "index.tsx": "Main BlurCards component with canvas rendering and touch interaction logic"
+  },
+  "core_technologies": {
+    "rendering": "@shopify/react-native-skia",
+    "animations": "react-native-reanimated"
+  },
+  "packages_and_versions": {
+    "@shopify/react-native-skia": {
+      "version": "2.2.12",
+      "components": [
+        "Canvas",
+        "Group",
+        "Path",
+        "Rect",
+        "BackdropBlur"
+      ],
+      "effects": [
+        "RadialGradient",
+        "Blur"
+      ],
+      "utilities": [
+        "vec",
+        "rect",
+        "rrect",
+        "Skia"
+      ],
+      "usage": "GPU-accelerated rendering of animated cards with blur effects and gradients",
+      "performance_reason": "Native-level performance for complex 3D transforms and blur effects"
+    },
+    "react-native-reanimated": {
+      "version": "~4.1.1",
+      "hooks": [
+        "useSharedValue",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withSpring",
+        "clamp"
+      ],
+      "critical_feature": "Smooth spring-based animations with 3D transforms"
+    }
+  },
+  "animation_techniques": {
+    "touch_interaction": {
+      "pattern": "onTouchEnd toggle handler",
+      "behavior": "Toggles between expanded (1) and collapsed (0) states",
+      "animation": "withSpring with duration 1500ms and dampingRatio 0.7",
+      "effect": "Cards toggle between fanned out and collapsed states on tap"
+    },
+    "3d_transforms": {
+      "transforms": [
+        "rotate: Rotates cards by -90 degrees * progress",
+        "translateX: Spreads cards horizontally by 25px * index * progress",
+        "perspective: 10000 for 3D depth",
+        "rotateY: Rotates cards in 3D space by 60 degrees * progress",
+        "rotate: Additional rotation by 45 degrees * progress"
+      ],
+      "origin": "Center of the screen",
+      "effect": "Creates dynamic 3D card deck effect"
+    },
+    "backdrop_blur": {
+      "blur_value": "Math.max(5 * progress, 0)",
+      "dynamic": true,
+      "optimization": "Uses Math.max to ensure non-negative blur values",
+      "effect": "Blur increases smoothly as cards transform"
+    },
+    "radial_gradient": {
+      "center": "Window center",
+      "radius": "Half of the smaller window dimension",
+      "colors": [
+        "violet",
+        "black"
+      ],
+      "blur": 100,
+      "effect": "Smooth gradient background with heavy blur"
+    },
+    "glassmorphic_cards": {
+      "fill": "rgba(255, 255, 255, 0.1)",
+      "stroke": "rgba(255, 255, 255, 0.2)",
+      "stroke_width": 2,
+      "backdrop_blur": "Dynamic based on progress",
+      "effect": "Semi-transparent frosted glass appearance"
+    }
+  },
+  "visual_design": {
+    "background": "Black with violet radial gradient",
+    "card_count": 5,
+    "card_dimensions": {
+      "width": 300,
+      "height": 200,
+      "border_radius": 20
+    },
+    "card_colors": {
+      "fill": "rgba(255, 255, 255, 0.1)",
+      "stroke": "rgba(255, 255, 255, 0.2)"
+    }
+  },
+  "use_cases": {
+    "primary": [
+      "Card deck interactions",
+      "Menu or options display",
+      "Interactive galleries",
+      "Onboarding card stacks",
+      "Feature showcases"
+    ],
+    "secondary": [
+      "Gaming interfaces",
+      "Photo galleries",
+      "Product showcases",
+      "Tutorial cards"
+    ]
+  },
+  "tags": [
+    "skia",
+    "blur",
+    "cards",
+    "3d-transform",
+    "glassmorphism",
+    "interactive",
+    "touch",
+    "backdrop-blur",
+    "gradient",
+    "reanimated"
+  ],
+  "content_hash": "1b614c95e355c2904cdd11f019996719c4d189ed49d190c2c42228d235f552bc",
+  "hash_algorithm": "sha256"
+}

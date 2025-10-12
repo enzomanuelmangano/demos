@@ -37,6 +37,7 @@ import { AtlasButton } from './atlas-button';
 import { AudioPlayer } from './audio-player';
 import { BalanceSlider } from './balance-slider';
 import { BezierCurveOutline } from './bezier-curve-outline';
+import { BlurCards } from './blur-cards';
 import { BlurCircles } from './blur-circles';
 import { BlurredBottomBar } from './blurred-bottom-bar';
 import { BlurredScroll } from './blurred-scroll';
@@ -240,6 +241,7 @@ export const AnimationRegistry = {
   'stacked-carousel': StackedCarousel,
   'airbnb-flip-interaction': AirbnbFlipInteraction,
   'liquid-glass-playground': Playground,
+  'blur-cards': BlurCards,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -892,6 +894,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Liquid Glass Playground',
     route: 'Playground',
     iconName: 'play',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'blur-cards': {
+    name: 'Blur Cards',
+    route: 'BlurCards',
+    iconName: 'cards-variant',
     iconFamily: 'MaterialCommunityIcons',
   },
 } as const;
