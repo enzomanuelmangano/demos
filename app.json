@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "scheme": "thank-you",
+    "scheme": "demos",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -26,14 +26,29 @@
       "entitlements": {
         "aps-environment": "development"
       },
-      "appleTeamId": "W3N4N47454"
+      "appleTeamId": "W3N4N47454",
+      "associatedDomains": ["applinks:app.reactiive.io"]
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.reactiive.app"
+      "package": "com.reactiive.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.reactiive.io",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
