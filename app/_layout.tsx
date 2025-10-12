@@ -10,6 +10,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { CustomDrawerContent } from '../src/components/custom-drawer-content';
 import { FontsProvider } from '../src/components/fonts-provider';
+import { useOta } from '../src/hooks/use-ota';
 
 const globalPressableHandlers = {
   onPress: () => {
@@ -35,6 +36,9 @@ const drawerScreenOptions = {
 } as const;
 
 export default function RootLayout() {
+  // Check for OTA updates
+  useOta();
+
   return (
     <Suspense>
       <StatusBar barStyle="default" animated />

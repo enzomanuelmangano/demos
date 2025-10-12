@@ -4,6 +4,9 @@
     "slug": "thank-you",
     "version": "1.0.0",
     "orientation": "portrait",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
@@ -14,6 +17,8 @@
       "backgroundColor": "#111111"
     },
     "updates": {
+      "url": "https://u.expo.dev/eb1bbf17-5fb9-4743-bccf-3fbcbc95176a",
+      "enabled": true,
       "fallbackToCacheTimeout": 0
     },
     "assetBundlePatterns": ["**/*"],
