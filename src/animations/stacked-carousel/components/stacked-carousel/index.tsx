@@ -1,14 +1,17 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import * as Haptics from 'expo-haptics';
 import Animated, {
   Extrapolation,
   interpolate,
   SharedValue,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Paginator } from '../paginator';
 
@@ -156,6 +159,15 @@ export const StackedCarousel = <T,>({
   const currentPageIndex = useDerivedValue(() => {
     return scrollX.value / screenWidth;
   });
+
+  useAnimatedReaction(
+    () => Math.round(currentPageIndex.value),
+    (curr, prev) => {
+      if (curr !== prev) {
+        scheduleOnRN(Haptics.selectionAsync);
+      }
+    },
+  );
 
   return (
     <View style={[styles.container, style]}>

@@ -15,6 +15,7 @@ import {
   Skia,
   vec,
 } from '@shopify/react-native-skia';
+import { PressableOpacity } from 'pressto';
 import {
   useDerivedValue,
   useSharedValue,
@@ -106,9 +107,9 @@ export const BlurCards = () => {
           );
         })}
       </Canvas>
-      <View
+      <PressableOpacity
         style={StyleSheet.absoluteFill}
-        onTouchEnd={() => {
+        onPress={() => {
           progress.value = withSpring(progress.value > 0.5 ? 0 : 1, {
             duration: 1500,
             dampingRatio: 0.7,
