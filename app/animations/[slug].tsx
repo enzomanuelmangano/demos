@@ -14,7 +14,7 @@ import {
   getAnimationComponent,
   getAnimationMetadata,
 } from '../../src/animations/registry';
-import { AnimatedHamburgerIcon } from '../../src/components/animated-hamburger-icon';
+import { AnimatedHamburgerIcon } from '../../src/navigation/components/animated-hamburger-icon';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -71,7 +71,7 @@ export default function AnimationScreen() {
           styles.menu,
           rHamburgerIconStyle,
           {
-            top: safeTop + 10,
+            top: safeTop,
           },
         ]}
       />

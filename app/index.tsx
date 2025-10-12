@@ -9,7 +9,7 @@ import {
   StaggeredText,
   StaggeredTextRef,
 } from '../src/animations/everybody-can-cook/components/staggered-text';
-import { AnimatedHamburgerIcon } from '../src/components/animated-hamburger-icon';
+import { AnimatedHamburgerIcon } from '../src/navigation/components/animated-hamburger-icon';
 
 const baseDrawerOptions = {
   headerShown: true,

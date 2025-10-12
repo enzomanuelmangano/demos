@@ -18,13 +18,13 @@ import { PressableScale, PressablesGroup } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
-import { createIcon } from '../animations/icon-factory';
+import { createIcon } from '../../animations/icon-factory';
 import {
   getAllAnimations,
   type AnimationComponent,
   type AnimationMetadataType,
-} from '../animations/registry';
-import { SearchFilterAtom } from '../navigation/states/filters';
+} from '../../animations/registry';
+import { SearchFilterAtom } from '../../navigation/states/filters';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
@@ -46,7 +46,6 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
   const { top, bottom } = useSafeAreaInsets();
   const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
 
-  // Convert registry to the format expected by your existing components
   const allAnimations = useMemo(() => {
     return getAllAnimations()
       .map((animation, index) => ({
@@ -57,10 +56,9 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
         alert: animation.metadata.alert,
         icon: () => createIcon(animation.metadata),
       }))
-      .reverse(); // Maintain your existing order
+      .reverse();
   }, []);
 
-  // Filter animations based on search
   const filteredAnimations: AnimationItem[] = useMemo(() => {
     if (!searchFilter.trim()) {
       return allAnimations;
