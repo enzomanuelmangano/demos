@@ -9,7 +9,7 @@ import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
-import { CustomDrawerContent } from '../src/navigation/components/custom-drawer-content';
+import { DrawerContent } from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 
 export default function RootLayout() {
@@ -24,7 +24,7 @@ export default function RootLayout() {
           <GestureHandlerRootView style={styles.fill}>
             <FontsProvider>
               <Drawer
-                drawerContent={CustomDrawerContent}
+                drawerContent={DrawerContent}
                 screenOptions={drawerScreenOptions}>
                 <Drawer.Screen name="index" options={homeOptions} />
                 <Drawer.Screen

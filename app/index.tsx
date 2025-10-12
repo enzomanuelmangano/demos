@@ -9,7 +9,7 @@ import {
   StaggeredText,
   StaggeredTextRef,
 } from '../src/animations/everybody-can-cook/components/staggered-text';
-import { AnimatedHamburgerIcon } from '../src/navigation/components/animated-hamburger-icon';
+import { AnimatedDrawerIcon } from '../src/navigation/components/animated-drawer-icon';
 
 const baseDrawerOptions = {
   headerShown: true,
@@ -48,7 +48,7 @@ export default function HomeScreen() {
           swipeMinDistance: 40,
           headerLeft: () => (
             <View style={{ paddingLeft: 16 }}>
-              <AnimatedHamburgerIcon />
+              <AnimatedDrawerIcon />
             </View>
           ),
         }}

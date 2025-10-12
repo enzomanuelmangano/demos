@@ -14,11 +14,11 @@ import {
   getAnimationComponent,
   getAnimationMetadata,
 } from '../../src/animations/registry';
-import { AnimatedHamburgerIcon } from '../../src/navigation/components/animated-hamburger-icon';
+import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
-const HamburgerMenuSize = 40;
+const DrawerIconSize = 40;
 
 export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -31,7 +31,7 @@ export default function AnimationScreen() {
 
   const { top: safeTop } = useSafeAreaInsets();
 
-  const rHamburgerIconStyle = useAnimatedStyle(() => {
+  const rDrawerIconStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(rDrawerProgress.value, [0, 0.5, 1], [0.5, 1, 0]),
     };
@@ -56,8 +56,6 @@ export default function AnimationScreen() {
     );
   }
 
-  // Render the component - use type assertion since components have different prop signatures
-  // Some expect dimensions, some expect no props, some expect other props
   return (
     <>
       <AnimationComponent {...(dimensions as any)} />
@@ -66,10 +64,10 @@ export default function AnimationScreen() {
         intensity={rBlurIntensity}
         style={styles.blurView}
       />
-      <AnimatedHamburgerIcon
+      <AnimatedDrawerIcon
         containerStyle={[
           styles.menu,
-          rHamburgerIconStyle,
+          rDrawerIconStyle,
           {
             top: safeTop,
           },
@@ -102,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     borderCurve: 'continuous',
     borderRadius: 10,
-    height: HamburgerMenuSize,
+    height: DrawerIconSize,
     justifyContent: 'center',
     left: 10,
     position: 'absolute',

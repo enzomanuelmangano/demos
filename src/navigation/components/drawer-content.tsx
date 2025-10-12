@@ -41,7 +41,7 @@ type AnimationItem = {
   metadata: AnimationMetadataType;
 };
 
-export function CustomDrawerContent(_props: DrawerContentComponentProps) {
+export function DrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
   const { top, bottom } = useSafeAreaInsets();
   const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);

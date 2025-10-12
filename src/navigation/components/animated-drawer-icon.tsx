@@ -11,18 +11,16 @@ import Animated, {
   useDerivedValue,
 } from 'react-native-reanimated';
 
-import type { SharedValue } from 'react-native-reanimated';
-
 const ICON_HEIGHT = 14;
 const LINE_HEIGHT = 1.5;
 
-type AnimatedHamburgerIconProps = {
+type AnimatedDrawerIconProps = {
   tintColor?: string;
   size?: number;
   containerStyle?: StyleProp<ViewStyle>;
 };
 
-export const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
+export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
   tintColor = '#fff',
   size = 18,
   containerStyle: containerStyleProp,
@@ -31,7 +29,7 @@ export const AnimatedHamburgerIcon: FC<AnimatedHamburgerIconProps> = ({
   const drawerProgress = useDrawerProgress();
 
   const progress = useDerivedValue(() => {
-    return (drawerProgress as SharedValue<number>).value;
+    return drawerProgress.value;
   }, []);
 
   const topBarStyle = useAnimatedStyle(() => {
