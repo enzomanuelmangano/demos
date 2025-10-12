@@ -92,6 +92,10 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
     [setSearchFilter],
   );
 
+  const contentContainerStyle = useMemo(() => {
+    return { paddingBottom: bottom, marginTop: 12 };
+  }, [bottom]);
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
@@ -119,7 +123,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
       <View style={styles.listContainer}>
         <PressablesGroup>
           <LegendList
-            recycleItems
+            recycleItems={false}
             waitForInitialLayout
             renderItem={renderItem}
             scrollEventThrottle={16}
@@ -127,7 +131,7 @@ export function CustomDrawerContent(_props: DrawerContentComponentProps) {
             keyExtractor={keyExtractor}
             estimatedItemSize={LIST_ITEM_HEIGHT}
             contentInsetAdjustmentBehavior="automatic"
-            contentContainerStyle={{ paddingBottom: bottom, marginTop: 12 }}
+            contentContainerStyle={contentContainerStyle}
           />
         </PressablesGroup>
         <LinearGradient
