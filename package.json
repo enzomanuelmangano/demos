@@ -24,7 +24,8 @@
     "meta:validate": "node scripts/analytics/meta-hash.js validate",
     "meta:list": "node scripts/analytics/meta-hash.js list",
     "meta:help": "node scripts/analytics/meta-hash.js --help",
-    "meta:stats": "node scripts/analytics/meta-stats.js"
+    "meta:stats": "node scripts/analytics/meta-stats.js",
+    "expo:ota": "eas update --channel production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
