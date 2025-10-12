@@ -1,7 +1,8 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { type FC, memo, useCallback } from 'react';
 
+import { PressableOpacity } from 'pressto';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -70,19 +71,20 @@ const SectionTabs: FC<SectionTabsProps> = memo(
         <Animated.View style={rIndicatorLayoutStyle} />
         {data.map((title, index) => {
           return (
-            <TouchableOpacity
+            <PressableOpacity
               key={index}
               onPress={() => onSelectSection?.(index)}
-              style={[styles.container, { width: width / data.length }]}
-              activeOpacity={0.7}>
+              style={[styles.container, { width: width / data.length }]}>
               <Text
                 onLayout={({ nativeEvent: { layout } }) => {
                   handleLayout(index, layout);
                 }}
-                style={styles.title}>
+                style={styles.title}
+                numberOfLines={1}
+                adjustsFontSizeToFit>
                 {title}
               </Text>
-            </TouchableOpacity>
+            </PressableOpacity>
           );
         })}
       </View>

@@ -4,6 +4,7 @@ import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
 import {
   interpolateColor,
   useDerivedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
@@ -22,8 +23,9 @@ type BottomTabIconProps = {
 
 const iconSize = 30;
 
-const TimingConfig = {
-  duration: 200,
+const DurationConfig = {
+  duration: 400,
+  dampingRatio: 1,
 };
 
 const BottomTabItem: FC<BottomTabIconProps> = memo(
@@ -33,14 +35,14 @@ const BottomTabItem: FC<BottomTabIconProps> = memo(
     const baseTranslateY = y + height / 2 - iconSize / 2 - 8;
 
     const translateY = useDerivedValue(() => {
-      return withTiming(
+      return withSpring(
         isActive ? baseTranslateY - 35 : baseTranslateY,
-        TimingConfig,
+        DurationConfig,
       );
     }, [baseTranslateY, isActive]);
 
     const iconColorProgress = useDerivedValue(() => {
-      return withTiming(isActive ? 1 : 0, TimingConfig);
+      return withTiming(isActive ? 1 : 0, DurationConfig);
     }, [isActive]);
 
     const iconColor = useDerivedValue(() => {

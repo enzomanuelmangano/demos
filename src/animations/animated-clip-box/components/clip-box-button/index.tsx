@@ -1,5 +1,6 @@
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
+import { PressableOpacity } from 'pressto';
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
@@ -55,15 +56,15 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
 
   return (
     <View style={style}>
-      <View
-        onTouchStart={() => {
+      <PressableOpacity
+        onPressIn={() => {
           r.value = withSpring(boxWidth, {
             damping: 20,
             mass: 1,
             stiffness: 80,
           });
         }}
-        onTouchEnd={() => {
+        onPressOut={() => {
           r.value = withSpring(30, {
             damping: 25,
             mass: 1.2,
@@ -84,7 +85,7 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
           // but the max radius that the animation will interpolate to
           maxRadius={boxWidth / 2}
         />
-      </View>
+      </PressableOpacity>
       <>
         <View
           style={{

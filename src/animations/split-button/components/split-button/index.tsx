@@ -75,7 +75,7 @@ const SplitButton: FC<SplitButtonProps> = memo(
     // Animated styles for the chip's horizontal padding
     const rAnimatedChipStyle = useAnimatedStyle(() => {
       return {
-        paddingHorizontal: withTiming(!activated ? 24 : 36, WithTimingConfig),
+        paddingHorizontal: withSpring(!activated ? 24 : 36, WithTimingConfig),
       };
     }, [activated]);
 
@@ -148,6 +148,7 @@ const styles = StyleSheet.create({
   },
   chip: {
     borderColor: colors.border,
+    borderCurve: 'continuous',
     borderRadius: 16,
     borderWidth: 1,
     height: 60,

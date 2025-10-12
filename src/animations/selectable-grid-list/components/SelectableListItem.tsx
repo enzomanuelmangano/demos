@@ -22,8 +22,6 @@ type SelectableListItemProps = {
   activeIndexes: SharedValue<number[]>;
 };
 
-const AnimatedImage = Animated.createAnimatedComponent(Image);
-
 const SelectableListItem: FC<SelectableListItemProps> = memo(
   ({
     internalPadding,
@@ -79,14 +77,16 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
           padding: internalPadding,
           borderRadius: externalBorderRadius,
         }}>
-        <AnimatedImage
-          source={source}
-          style={[{ flex: 1 }, rImageStyle]}
-          recyclingKey={index.toString()}
-          cachePolicy={'memory-disk'}
-          contentFit="cover"
-          transition={100}
-        />
+        <Animated.View style={[rImageStyle, { flex: 1, overflow: 'hidden' }]}>
+          <Image
+            source={source}
+            style={{ flex: 1 }}
+            recyclingKey={index.toString()}
+            cachePolicy={'memory-disk'}
+            contentFit="cover"
+            transition={100}
+          />
+        </Animated.View>
         <Animated.View
           style={[
             {

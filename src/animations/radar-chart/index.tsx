@@ -1,14 +1,9 @@
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useState } from 'react';
 
 import { useFont } from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
 
 import { RadarChart } from './components/radar-chart';
 
@@ -85,41 +80,40 @@ export const RadarChartContainer = () => {
         strokeColor="rgba(255,255,255,0.5)"
         style={{ width: width, aspectRatio: 1 }}
       />
-      <TouchableOpacity
+      <PressableScale
         onPress={() => {
           setData(generateRandomDataChart());
         }}
-        style={{
-          marginTop: 50,
-          height: 60,
-          width: '80%',
-          borderRadius: 20,
-          borderWidth: 1,
-          borderColor: 'white',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-        <Text
-          style={{
-            color: 'white',
-            fontSize: 20,
-            textTransform: 'uppercase',
-            fontWeight: '800',
-            letterSpacing: 2,
-          }}>
-          Shuffle
-        </Text>
-      </TouchableOpacity>
+        style={styles.button}>
+        <Text style={styles.title}>Shuffle</Text>
+      </PressableScale>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  button: {
+    alignItems: 'center',
+    borderColor: 'white',
+    borderRadius: 20,
+    borderWidth: 1,
+    height: 60,
+    justifyContent: 'center',
+    marginTop: 50,
+    width: '80%',
+  },
   container: {
     alignItems: 'center',
     backgroundColor: 'black',
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
+  },
+  title: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 });

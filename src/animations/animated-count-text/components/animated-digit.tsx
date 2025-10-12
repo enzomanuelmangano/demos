@@ -30,9 +30,8 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
         transform: [
           {
             translateY: withSpring(-height * digit, {
-              damping: 20,
-              stiffness: 300,
-              mass: 1,
+              duration: 1000,
+              dampingRatio: 0.9,
             }),
           },
         ],

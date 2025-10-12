@@ -1,8 +1,9 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useState } from 'react';
 
 import { Entypo } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 
 import { AnimatedCount } from './components/animated-count';
 
@@ -20,7 +21,7 @@ export const AnimatedCountText = () => {
     <View style={styles.container}>
       <AnimatedCount number={number} />
 
-      <TouchableOpacity
+      <PressableScale
         style={styles.floatingBottomButton}
         onPress={() => {
           const num = getRandomNumber(Math.floor(6 * Math.random() + 1));
@@ -28,7 +29,7 @@ export const AnimatedCountText = () => {
           setNumber(num);
         }}>
         <Entypo name="shuffle" size={24} color="black" />
-      </TouchableOpacity>
+      </PressableScale>
     </View>
   );
 };

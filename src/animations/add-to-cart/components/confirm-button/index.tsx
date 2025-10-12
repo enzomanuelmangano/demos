@@ -2,15 +2,12 @@ import { useWindowDimensions } from 'react-native';
 
 import { type FC, memo, type ReactNode } from 'react';
 
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
+import { PressableScale } from 'pressto';
+import {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
-  useSharedValue,
-  withTiming,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { MeasuredDimensions, SharedValue } from 'react-native-reanimated';
@@ -60,21 +57,6 @@ const ConfirmButton: FC<ConfirmButtonProps> = memo(
       );
     }, []);
 
-    const scale = useSharedValue(1);
-
-    const tapGesture = Gesture.Tap()
-      .onTouchesDown(() => {
-        scale.value = withTiming(0.95);
-      })
-      .onTouchesUp(() => {
-        if (onConfirm) scheduleOnRN(onConfirm);
-      })
-      .onFinalize(() => {
-        scale.value = withTiming(1);
-      });
-    tapGesture.shouldCancelWhenOutside(true);
-    tapGesture.maxDuration(5000);
-
     const rStyle = useAnimatedStyle(() => {
       if (!layoutData.value) {
         return {
@@ -89,23 +71,21 @@ const ConfirmButton: FC<ConfirmButtonProps> = memo(
         zIndex: 10,
         top: animatedTop.value,
         left: animatedLeft.value,
-        transform: [{ scale: scale.value }],
       };
     }, []);
 
     return (
-      <GestureDetector gesture={tapGesture}>
-        <Animated.View
-          style={[
-            style,
-            {
-              position: 'absolute',
-            },
-            rStyle,
-          ]}>
-          {children}
-        </Animated.View>
-      </GestureDetector>
+      <PressableScale
+        onPress={onConfirm}
+        style={[
+          style,
+          {
+            position: 'absolute',
+          },
+          rStyle,
+        ]}>
+        {children}
+      </PressableScale>
     );
   },
 );

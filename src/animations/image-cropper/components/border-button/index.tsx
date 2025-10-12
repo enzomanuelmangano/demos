@@ -1,4 +1,6 @@
-import { Text, TouchableOpacity } from 'react-native';
+import { Text } from 'react-native';
+
+import { PressableScale } from 'pressto';
 
 type FancyBorderButtonProps = {
   onPress: () => void;
@@ -10,7 +12,7 @@ const FancyBorderButton: React.FC<FancyBorderButtonProps> = ({
   title,
 }) => {
   return (
-    <TouchableOpacity
+    <PressableScale
       onPress={onPress}
       style={{
         borderWidth: 1,
@@ -25,7 +27,7 @@ const FancyBorderButton: React.FC<FancyBorderButtonProps> = ({
         }}>
         {title}
       </Text>
-    </TouchableOpacity>
+    </PressableScale>
   );
 };
 

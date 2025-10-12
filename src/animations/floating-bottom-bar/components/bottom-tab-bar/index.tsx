@@ -6,7 +6,7 @@ import { Feather, Ionicons, Octicons } from '@expo/vector-icons';
 import Animated, {
   useAnimatedStyle,
   useDerivedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,7 +19,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   const currentIndex = state.index;
   const selectedAnimatedIndex = useDerivedValue(() => {
-    return withTiming(currentIndex);
+    return withSpring(currentIndex);
   }, [currentIndex]);
 
   const { bottom } = useSafeAreaInsets();
@@ -84,7 +84,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
             <AnimatedOpacityView
               key={index}
               style={styles.iconContainer}
-              onTouchEnd={() => {
+              onPress={() => {
                 navigation.navigate(screenName);
               }}
               index={index}

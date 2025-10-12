@@ -3,7 +3,7 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useCallback, useRef } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
-import { PressableOpacity } from 'pressto';
+import { PressableGlass } from 'pressto/glass';
 import {
   SharedValue,
   useAnimatedStyle,
@@ -67,7 +67,18 @@ const SelectableGridListContainer = () => {
     [itemSize],
   );
 
-  const { top: safeTop } = useSafeAreaInsets();
+  const { top: safeTop, bottom: safeBottom } = useSafeAreaInsets();
+
+  const keyExtractor = useCallback(
+    (_item: any, index: number) => index.toString(),
+    [],
+  );
+  const onSelectionChange = useCallback(
+    (indexes: number[]) => {
+      selectedIndexesAmount.value = indexes.length;
+    },
+    [selectedIndexesAmount],
+  );
 
   return (
     <View
@@ -81,15 +92,14 @@ const SelectableGridListContainer = () => {
         gridListRef={gridListRef}
         numColumns={GridConfig.itemsPerRow}
         itemSize={itemSize}
-        onSelectionChange={indexes => {
-          // When the selection changes, we update the amount of selected items
-          // and the text that is displayed on the floating button
-          selectedIndexesAmount.value = indexes.length;
-        }}
+        onSelectionChange={onSelectionChange}
         renderItem={renderItem}
-        keyExtractor={(_, index) => index.toString()}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={{
+          paddingBottom: safeBottom + 10,
+        }}
       />
-      <PressableOpacity
+      <PressableGlass
         onPress={() => {
           gridListRef.current?.reset();
         }}
@@ -103,9 +113,11 @@ const SelectableGridListContainer = () => {
           text={selectedIndexesAmountText}
           style={{
             fontSize: 20,
+            width: 32,
+            textAlign: 'center',
           }}
         />
-      </PressableOpacity>
+      </PressableGlass>
     </View>
   );
 };
