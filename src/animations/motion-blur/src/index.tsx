@@ -1,31 +1,31 @@
 import { StyleSheet, View } from 'react-native';
 
-import { type FC, useState } from 'react';
+import { type FC, memo, useCallback, useState } from 'react';
 
 import { Entypo } from '@expo/vector-icons';
-import { PressableScale } from 'pressto';
+import { PressableGlass } from 'pressto/glass';
 
 import { BlurredList } from './components/blurred-list';
 import { ListItem } from './components/list-item';
 import { generateRandomItem, type Item } from './utils/generate-random-item';
 
-const AddButton: FC<{ onPress: () => void }> = ({ onPress }) => (
-  <PressableScale onPress={onPress} style={styles.addButton}>
+const AddButton: FC<{ onPress: () => void }> = memo(({ onPress }) => (
+  <PressableGlass onPress={onPress} style={styles.addButton}>
     <Entypo name="plus" size={40} color="white" />
-  </PressableScale>
-);
+  </PressableGlass>
+));
 
 const App = () => {
   const [items, setItems] = useState<Item[]>([]);
 
-  const addItem = () => {
+  const addItem = useCallback(() => {
     setItems(prevItems => [
       ...prevItems,
       {
         ...generateRandomItem(prevItems.length + 1),
       },
     ]);
-  };
+  }, []);
 
   return (
     <View style={styles.container}>

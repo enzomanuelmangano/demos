@@ -1,4 +1,5 @@
 import { Skia } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
 import {
   useAnimatedReaction,
   useDerivedValue,
@@ -7,8 +8,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
-
-import { SpringConfig } from './constants';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -30,7 +30,6 @@ export const useCloseButtonAnimations = ({
       isToggled.value
         ? width + additionalWidth / 2
         : width / 2 + additionalWidth / 2,
-      SpringConfig,
     );
   }, []);
 
@@ -47,6 +46,7 @@ export const useCloseButtonAnimations = ({
       'worklet';
       isCloseButtonPressed.value = false;
       isToggled.value = false;
+      scheduleOnRN(Haptics.selectionAsync);
     },
   });
 

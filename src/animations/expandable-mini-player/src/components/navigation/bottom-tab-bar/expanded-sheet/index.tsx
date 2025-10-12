@@ -1,5 +1,6 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -9,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { EasingsUtils } from '../../../../animations/easings';
 import { Palette } from '../../../../constants/palette';
@@ -36,6 +38,7 @@ export const ExpandedSheet = () => {
       if (progress.value >= progressThreshold) {
         return;
       }
+      scheduleOnRN(Haptics.selectionAsync);
 
       progress.value = withTiming(1, {
         duration: 450,

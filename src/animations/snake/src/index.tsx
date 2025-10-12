@@ -2,6 +2,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useRef } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { PressableScale } from 'pressto';
 import Animated, {
   useAnimatedStyle,
@@ -62,6 +63,9 @@ const App = () => {
             }}
             onGameOver={() => {
               isGameOver.value = true;
+            }}
+            onDirectionChange={() => {
+              Haptics.selectionAsync();
             }}
           />
           <Animated.View

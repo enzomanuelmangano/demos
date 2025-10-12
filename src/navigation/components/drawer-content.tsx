@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtom } from 'jotai';
 import { PressableScale, PressablesGroup } from 'pressto';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
@@ -127,9 +128,11 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
             scrollEventThrottle={16}
             data={filteredAnimations}
             keyExtractor={keyExtractor}
+            keyboardDismissMode="on-drag"
             estimatedItemSize={LIST_ITEM_HEIGHT}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={contentContainerStyle}
+            renderScrollComponent={() => <ScrollView />}
           />
         </PressablesGroup>
         <LinearGradient

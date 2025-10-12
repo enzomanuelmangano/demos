@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import {
   useDerivedValue,
   useSharedValue,
@@ -6,8 +7,6 @@ import {
 } from 'react-native-reanimated';
 import { useGestureHandler } from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
-
-import { SpringConfig } from './constants';
 
 type UseDeleteButtonAnimationsParams = {
   additionalWidth: number;
@@ -22,7 +21,7 @@ export const useDeleteButtonAnimations = ({
   const isButtonPressed = useSharedValue(false);
 
   const deleteButtonRectX = useDerivedValue(() => {
-    return withSpring(isToggled.value ? 0 : additionalWidth / 2, SpringConfig);
+    return withSpring(isToggled.value ? 0 : additionalWidth / 2);
   }, []);
 
   const deleteButtonColor = useDerivedValue(() => {
@@ -37,6 +36,7 @@ export const useDeleteButtonAnimations = ({
     onTap: () => {
       'worklet';
       isButtonPressed.value = false;
+      scheduleOnRN(Haptics.selectionAsync);
       if (isToggled.value) {
         return scheduleOnRN(onDelete);
       }
