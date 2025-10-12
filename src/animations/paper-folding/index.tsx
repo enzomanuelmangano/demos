@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import { useSharedValue, withTiming } from 'react-native-reanimated';
+import { PressableWithoutFeedback } from 'pressto';
+import { useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { BackgroundGradient } from './background-gradient';
 import { Paper } from './components';
@@ -16,11 +17,12 @@ export const PaperFolding = () => {
       <BackgroundGradient />
       <Paper width={PaperWidth} height={PaperHeight} progress={progress} />
       {/* @@TODO: wtf why is this needed? */}
-      <View
+      <PressableWithoutFeedback
         style={styles.canvasContainer}
-        onTouchEnd={() => {
-          progress.value = withTiming(progress.value > 0 ? 0 : 1, {
-            duration: 800,
+        onPress={() => {
+          progress.value = withSpring(progress.value > 0.5 ? 0 : 1, {
+            duration: 1000,
+            dampingRatio: 1.5,
           });
         }}
       />

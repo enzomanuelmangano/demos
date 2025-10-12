@@ -2,7 +2,6 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import { PressableGlass } from 'pressto/glass';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -100,7 +99,7 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
         </Animated.View>
       </Animated.View>
       <Animated.View style={styles.fill}>
-        <PressableGlass
+        <PressableScale
           onPress={onContinue}
           style={[styles.button, styles.continueButton]}>
           <View style={styles.labelContainer}>
@@ -111,7 +110,7 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
               {rightLabel}
             </Animated.Text>
           </View>
-        </PressableGlass>
+        </PressableScale>
       </Animated.View>
     </View>
   );

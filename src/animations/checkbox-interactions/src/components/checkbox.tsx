@@ -1,7 +1,8 @@
 import { StyleSheet } from 'react-native';
 
-import { AntDesign } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import Color from 'color';
+import { PressableScale } from 'pressto';
 import Animated, {
   Easing,
   FadeIn,
@@ -18,6 +19,13 @@ type CheckboxProps = {
   inactiveColor?: string;
 };
 
+const Layout = LinearTransition.springify().mass(1).damping(30).stiffness(250);
+const LayoutEntering = FadeIn.duration(150).easing(
+  Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
+);
+const LayoutExiting = FadeOut.duration(150).easing(
+  Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
+);
 export const Checkbox: React.FC<CheckboxProps> = ({
   label,
   checked,
@@ -44,25 +52,21 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   }, [checked]);
 
   return (
-    <Animated.View
-      layout={LinearTransition.springify().mass(1).damping(30).stiffness(250)}
-      onTouchEnd={onPress}
+    <PressableScale
+      layout={Layout}
+      onPress={onPress}
       style={[styles.container, rContainerStyle]}>
       <Animated.Text style={[styles.label, rTextStyle]}>{label}</Animated.Text>
       {checked && (
         <Animated.View
           style={{ marginLeft: 10 }}
-          layout={LinearTransition}
-          entering={FadeIn.duration(150).easing(
-            Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
-          )}
-          exiting={FadeOut.duration(150).easing(
-            Easing.bezier(0.895, 0.03, 0.685, 0.22).factory(),
-          )}>
-          <AntDesign name="check-circle" size={20} color={activeColor} />
+          layout={Layout}
+          entering={LayoutEntering}
+          exiting={LayoutExiting}>
+          <Ionicons name="checkmark-circle" size={20} color={activeColor} />
         </Animated.View>
       )}
-    </Animated.View>
+    </PressableScale>
   );
 };
 

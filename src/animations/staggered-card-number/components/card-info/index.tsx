@@ -3,14 +3,26 @@ import { StyleSheet, Text, View } from 'react-native';
 import { memo, useCallback, useState, type FC } from 'react';
 
 import { Feather } from '@expo/vector-icons';
-import { useDerivedValue } from 'react-native-reanimated';
+import { createAnimatedPressable } from 'pressto';
+import { interpolate, useDerivedValue } from 'react-native-reanimated';
 
 import { HideableNumber } from './hideable-number';
-import { TouchableFeedback } from '../touchables/touchable-feedback';
 
 type CardInfoProps = {
   cardNumber: number;
 };
+
+const TouchableFeedback = createAnimatedPressable(progress => {
+  'worklet';
+  const opacity = interpolate(progress, [0, 1], [0, 0.1]).toFixed(2);
+  const scale = interpolate(progress, [0, 1], [1, 0.9]);
+
+  return {
+    backgroundColor: `rgba(0,0,0,${opacity})`,
+    transform: [{ scale }],
+    borderRadius: 20,
+  };
+});
 
 export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
   const splittedNumber = cardNumber.toString().split('');
@@ -51,7 +63,7 @@ export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
         </View>
       </View>
       <View style={{ flex: 1 }} />
-      <TouchableFeedback onTap={onToggle} style={styles.button}>
+      <TouchableFeedback onPress={onToggle} style={styles.button}>
         <Feather name={toggled ? 'eye' : 'eye-off'} size={24} color="#38a27b" />
       </TouchableFeedback>
     </View>

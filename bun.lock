@@ -37,7 +37,7 @@
         "jotai": "^2.9.3",
         "lodash.debounce": "^4.0.8",
         "lottie-react-native": "~7.3.1",
-        "pressto": "0.3.5-beta.5",
+        "pressto": "0.3.5-beta.6",
         "qrcode": "^1.5.4",
         "react": "19.1.0",
         "react-dom": "19.1.0",
@@ -1516,7 +1516,7 @@
 
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 
-    "pressto": ["pressto@0.3.5-beta.5", "", { "peerDependencies": { "@callstack/liquid-glass": "*", "expo-glass-effect": "*", "react": "*", "react-native": "*", "react-native-gesture-handler": "*", "react-native-reanimated": "*", "react-native-worklets": "*" }, "optionalPeers": ["@callstack/liquid-glass", "expo-glass-effect"] }, "sha512-uzKNBH2+6LaaPKnDdFW5Sd+pcwW2w12KSIje9PY8jwCIq/X3l/+vYez4xnzjbOCNCg1knssu3pfxbtgajenFRg=="],
+    "pressto": ["pressto@0.3.5-beta.6", "", { "peerDependencies": { "@callstack/liquid-glass": "*", "expo-glass-effect": "*", "react": "*", "react-native": "*", "react-native-gesture-handler": "*", "react-native-reanimated": "*", "react-native-worklets": "*" }, "optionalPeers": ["@callstack/liquid-glass", "expo-glass-effect"] }, "sha512-3a5UmdgHUlxuji7VDWaHJhqCbZvrvZMY3xA0NhVLdhj50BRc0veBsOZbBxTJ0wjZ4sCOcEkbQ9x0Tjia9gNIDw=="],
 
     "prettier": ["prettier@3.6.2", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ=="],
 

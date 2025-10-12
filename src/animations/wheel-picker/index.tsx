@@ -3,12 +3,14 @@ import { StyleSheet, View } from 'react-native';
 import { useState } from 'react';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { PressableScale } from 'pressto';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedCount } from './components/animated-count/animated-count';
 import { DraggableSlider } from './components/draggable-slider';
@@ -23,6 +25,8 @@ export const WheelPicker = () => {
   }, [isExpanded]);
 
   const progress = useSharedValue(0);
+  const previousLineIndex = useSharedValue(-1);
+
   const animatedNumber = useDerivedValue(() => {
     // Play with the multiplier
     // At the beginning I was planning to add it in the demo
@@ -61,6 +65,15 @@ export const WheelPicker = () => {
           if (sliderProgress < 0) {
             return;
           }
+
+          const currentLineIndex = Math.floor(sliderProgress * LinesAmount);
+
+          // Only trigger haptics when crossing a line
+          if (currentLineIndex !== previousLineIndex.value) {
+            scheduleOnRN(Haptics.selectionAsync);
+            previousLineIndex.value = currentLineIndex;
+          }
+
           progress.value = sliderProgress;
         }}
       />

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 
 import { Blur, ColorMatrix, Group, Paint } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
 import Touchable from 'react-native-skia-gesture';
 
 import { ExclusionTabBox } from './exclusion-tab-box';
@@ -81,7 +82,10 @@ export function ExclusionTabs({
             tabs={tabs}
             index={index}
             activeIndex={activeTabIndex}
-            onPress={() => onTabChange(tab)}
+            onPress={() => {
+              Haptics.selectionAsync();
+              onTabChange(tab);
+            }}
             height={height}
             activeBackgroundColor={activeBackgroundColor}
             backgroundColor={backgroundColor}

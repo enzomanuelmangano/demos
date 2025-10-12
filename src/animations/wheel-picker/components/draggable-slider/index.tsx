@@ -98,7 +98,8 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
 
   useAnimatedReaction(
     () => clampedScrollOffset.value,
-    offset => {
+    (offset, prev) => {
+      if (prev === null) return;
       const progress = interpolate(
         offset,
         [ScreenWidth / 2, -progressWidth.value + ScreenWidth / 2],

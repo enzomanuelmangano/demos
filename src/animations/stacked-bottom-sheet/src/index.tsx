@@ -11,7 +11,7 @@ const App = () => {
   return (
     <View style={styles.container}>
       <PressableScale style={styles.button} onPress={onPress}>
-        <Text style={styles.textButton}>Show Action Tray</Text>
+        <Text style={styles.textButton}>Show stacked tray</Text>
       </PressableScale>
     </View>
   );

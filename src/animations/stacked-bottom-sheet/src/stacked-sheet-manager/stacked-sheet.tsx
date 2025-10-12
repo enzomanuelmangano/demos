@@ -58,11 +58,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
   // right bottom value.
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
-    bottom.value = withSpring(BaseSafeArea + bottomHeight, {
-      stiffness: 100,
-      mass: 1,
-      overshootClamping: false,
-    });
+    bottom.value = withSpring(BaseSafeArea + bottomHeight);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomHeight]);
@@ -75,9 +71,8 @@ const StackedSheet: FC<StackedSheetProps> = ({
     translateY.value = withSpring(
       stackedSheet.componentHeight + BaseSafeArea,
       {
-        stiffness: 100,
-        mass: 1,
-        overshootClamping: true,
+        duration: 250,
+        dampingRatio: 1,
       },
       isFinished => {
         if (isFinished) {
