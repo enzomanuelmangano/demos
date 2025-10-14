@@ -36,19 +36,13 @@ export const ELEVATION = {
   small: {
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.25)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 4,
+    boxShadow: '0 0 2px 0 rgba(0, 0, 0, 0.18)',
     elevation: 3,
   },
   medium: {
     borderWidth: 1,
     borderColor: 'rgba(148, 163, 184, 0.25)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.23,
-    shadowRadius: 6,
+    boxShadow: '0 0 3px 0 rgba(0, 0, 0, 0.23)',
     elevation: 5,
   },
 } as const;
