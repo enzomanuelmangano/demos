@@ -6,7 +6,7 @@ export const TABS_DATA: {
 }[] = [
   {
     label: 'Accounts',
-    icon: 'user',
+    icon: 'user-add',
   },
   {
     label: 'Home',

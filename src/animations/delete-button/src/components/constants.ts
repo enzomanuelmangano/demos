@@ -20,8 +20,3 @@ export const fontStyle = {
   fontWeight: 'bold',
 } as const;
 export const font = matchFont(fontStyle);
-
-export const SpringConfig = {
-  mass: 1,
-  damping: 200,
-} as const;

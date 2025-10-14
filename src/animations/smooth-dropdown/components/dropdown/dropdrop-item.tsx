@@ -4,13 +4,12 @@ import { type FC, memo, useCallback, ComponentProps } from 'react';
 
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import Color from 'color';
+import { PressableScale } from 'pressto';
 import Animated, {
   Extrapolation,
   interpolate,
   SharedValue,
   useAnimatedStyle,
-  useSharedValue,
-  withTiming,
 } from 'react-native-reanimated';
 
 type DropdownOptionType = {
@@ -44,16 +43,9 @@ const DropdownItem: FC<DropdownItemProps> = memo(
     label,
     iconName,
   }) => {
-    const tapGestureScale = useSharedValue(1);
-
-    const onTouchStart = useCallback(() => {
-      tapGestureScale.value = withTiming(0.95);
-    }, [tapGestureScale]);
-
-    const onTouchEnd = useCallback(() => {
-      tapGestureScale.value = withTiming(1);
+    const onPressWrapper = useCallback(() => {
       onPress && onPress({ label, isHeader, iconName });
-    }, [tapGestureScale, onPress, label, isHeader, iconName]);
+    }, [onPress, label, isHeader, iconName]);
 
     // Calculating the background color of the item based on its index
     // That's kind of a hacky way to do it, but it works :)
@@ -92,11 +84,11 @@ const DropdownItem: FC<DropdownItemProps> = memo(
         zIndex: optionsLength - index,
         transform: [
           {
-            scale: scale * tapGestureScale.value,
+            scale: scale,
           },
         ],
       };
-    }, [index, optionsLength]);
+    }, [index, optionsLength, progress]);
 
     const rContentStyle = useAnimatedStyle(() => {
       const opacity = interpolate(
@@ -128,9 +120,8 @@ const DropdownItem: FC<DropdownItemProps> = memo(
     }, []);
 
     return (
-      <Animated.View
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
+      <PressableScale
+        onPress={onPressWrapper}
         style={[styles.item, { height: itemHeight }, rItemStyle]}>
         <Animated.View style={[styles.content, rContentStyle]}>
           <View style={styles.iconBox}>
@@ -154,7 +145,7 @@ const DropdownItem: FC<DropdownItemProps> = memo(
             </Animated.View>
           </View>
         </Animated.View>
-      </Animated.View>
+      </PressableScale>
     );
   },
 );

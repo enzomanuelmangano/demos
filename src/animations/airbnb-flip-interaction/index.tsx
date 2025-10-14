@@ -1,8 +1,9 @@
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { useState } from 'react';
 
 import { BlurView } from 'expo-blur';
+import { PressableOpacity } from 'pressto';
 import Animated, {
   interpolate,
   Keyframe,
@@ -142,13 +143,13 @@ const App = () => {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Main Card Section */}
         <View style={styles.cardSection}>
-          <TouchableOpacity activeOpacity={0.8} onPress={toggleCard}>
+          <PressableOpacity onPress={toggleCard}>
             <FlipCard
               profile={sampleProfile}
               isFlipped={isFlipped}
               angle="horizontal"
             />
-          </TouchableOpacity>
+          </PressableOpacity>
         </View>
 
         {/* Description Section */}

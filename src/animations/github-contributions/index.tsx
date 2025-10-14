@@ -1,6 +1,8 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 
 import { useMemo, useRef } from 'react';
+
+import { PressableScale } from 'pressto';
 
 import { COLOR_SCHEMES } from './config/defaults';
 import { GitHubContributionCalendar } from './contribution-calendar';
@@ -23,13 +25,13 @@ export const GitHubContributions = () => {
   };
 
   return (
-    <View style={styles.appContainer} onTouchStart={handleToggleAnimation}>
+    <PressableScale style={styles.appContainer} onPress={handleToggleAnimation}>
       <GitHubContributionCalendar
         ref={calendarRef}
         data={contributionData}
         colorScheme={COLOR_SCHEMES.github}
       />
-    </View>
+    </PressableScale>
   );
 };
 

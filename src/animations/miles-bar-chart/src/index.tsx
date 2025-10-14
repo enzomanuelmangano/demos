@@ -1,10 +1,13 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import * as Haptics from 'expo-haptics';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedRef,
   useDerivedValue,
   useScrollViewOffset,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { WeeklyChart } from './components/weekly-chart';
 import { data, weekLabels } from './constants';
@@ -20,6 +23,14 @@ const App = () => {
     return Math.floor((scrollOffset.value + windowWidth / 2) / windowWidth);
   }, [scrollOffset]);
 
+  useAnimatedReaction(
+    () => activeIndex.value,
+    (curr, prev) => {
+      if (curr !== prev && prev !== null) {
+        scheduleOnRN(Haptics.selectionAsync);
+      }
+    },
+  );
   const animatedData = useDerivedValue(() => {
     return data[activeIndex.value];
   }, [activeIndex, data]);

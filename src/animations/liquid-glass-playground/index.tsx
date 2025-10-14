@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, withSpring } from 'react-native-reanimated';
 
+import { HAPTIC_CONFIG, handleProgressiveHaptics } from './haptics';
 import { Overlay } from './overlay';
 
 const image = {
@@ -12,13 +13,29 @@ const image = {
 
 export function Playground() {
   const translateY = useSharedValue(0);
+  const lastHapticPosition = useSharedValue(0);
+  const hasReachedMaxIntensity = useSharedValue(false);
 
   const panGesture = Gesture.Pan()
+    .failOffsetX(10)
     .onUpdate(event => {
-      const friction = 0.5;
-      translateY.value = event.translationY * friction;
+      // Apply friction to make dragging feel more natural
+      const dampedTranslation =
+        event.translationY * HAPTIC_CONFIG.DRAG_FRICTION;
+      translateY.value = dampedTranslation;
+
+      handleProgressiveHaptics(
+        dampedTranslation,
+        lastHapticPosition,
+        hasReachedMaxIntensity,
+      );
     })
     .onEnd(() => {
+      // Reset haptic tracking
+      lastHapticPosition.value = 0;
+      hasReachedMaxIntensity.value = false;
+
+      // Animate glass view back to original position
       translateY.value = withSpring(0, {
         duration: 600,
         dampingRatio: 1,
@@ -38,19 +55,16 @@ export function Playground() {
           <Overlay style={styles.glassView} />
         </Animated.View>
       </GestureDetector>
-      <Image
-        source={image}
-        contentFit="cover"
-        style={{
-          width: '100%',
-          height: '100%',
-        }}
-      />
+      <Image source={image} contentFit="cover" style={styles.backgroundImage} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    height: '100%',
+    width: '100%',
+  },
   container: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',

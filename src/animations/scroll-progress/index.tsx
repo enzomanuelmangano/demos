@@ -31,11 +31,7 @@ export function ScrollProgress() {
       <SectionContentList
         sections={sections}
         renderSection={renderSection}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 20,
-          paddingBottom: 100,
-        }}
+        contentContainerStyle={styles.contentContainer}
       />
     </View>
   );
@@ -45,6 +41,11 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#111',
     flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingTop: 20,
   },
   description: {
     color: '#999',

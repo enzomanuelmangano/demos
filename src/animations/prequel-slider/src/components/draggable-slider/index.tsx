@@ -92,7 +92,8 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   // Reactions to scroll offset changes
   useAnimatedReaction(
     () => scrollOffset.value,
-    offset => {
+    (offset, prev) => {
+      if (prev === null) return;
       // Interpolating progress based on scroll offset
       const progress = interpolate(
         offset,

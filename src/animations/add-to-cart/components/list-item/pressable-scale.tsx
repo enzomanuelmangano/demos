@@ -1,4 +1,6 @@
-import { type FC, memo } from 'react';
+import { StyleProp, ViewStyle } from 'react-native';
+
+import { type FC, memo, PropsWithChildren } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -7,11 +9,10 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import type { TouchableOpacityProps } from 'react-native';
-
-type PressableScaleProps = Omit<TouchableOpacityProps, 'activeOpacity'> & {
+type PressableScaleProps = PropsWithChildren<{
   onPress: () => void;
-};
+  style: StyleProp<ViewStyle>;
+}>;
 
 const PressableScale: FC<PressableScaleProps> = memo(
   ({ children, onPress, style, ...props }) => {

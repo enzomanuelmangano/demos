@@ -1,5 +1,6 @@
 import { type FC, type ReactNode, useCallback, useContext } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { measure, useAnimatedRef } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -10,28 +11,11 @@ import type { PopupOptionType } from './BlurredContext';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { MeasuredDimensions } from 'react-native-reanimated';
 
-// import HapticFeedback from 'react-native-haptic-feedback';
-
 type TouchablePopupHandlerProps = {
-  /**
-   * The content to be wrapped by the `TouchablePopupHandler` component.
-   */
   children?: ReactNode;
-  /**
-   * An alternative content to be displayed in the popup instead of the wrapped content.
-   */
   highlightedChildren?: ReactNode;
-  /**
-   * The style to be applied to the wrapped view.
-   */
   style?: StyleProp<ViewStyle>;
-  /**
-   * A callback function to be called when the wrapped view is pressed.
-   */
   onPress?: () => void;
-  /**
-   * An array of options for the popup menu.
-   */
   options: PopupOptionType[];
 };
 
@@ -64,44 +48,28 @@ const TouchablePopupHandler: FC<TouchablePopupHandlerProps> = ({
     [showPopup, highlightedChildren, children, options],
   );
 
-  const runLightFeedback = useCallback(() => {
-    // HapticFeedback.trigger('impactLight', { enableVibrateFallback: true });
-  }, []);
-
-  // Create a LongPress gesture that triggers the wrappedJsShowPopup function when started.
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(450)
-    .onStart(() => {
-      // Measure the node dimensions on the UI Thread, thanks to the useAnimatedRef hook
-      // The measure function is a Reanimated function that returns a MeasuredDimensions object
-      const dimensions = measure(viewRef); // Sync measure
-      // Since the showPopup function is not a Reanimated function, we need to wrap it with runOnJS
-      scheduleOnRN(
-        wrappedJsShowPopup,
-        dimensions ?? {
-          x: 0,
-          y: 0,
-          width: 0,
-          height: 0,
-          pageX: 0,
-          pageY: 0,
-        },
-      );
-      // run smooth feedback on long pr;ess
-      scheduleOnRN(runLightFeedback);
-    });
-
-  // Create a single tap gesture that triggers the onPress function when the user taps on the node.
-  const singleTapGesture = Gesture.Tap().onTouchesUp(() => {
-    // If the user taps on the node, we call the onPress function
+  const tapGesture = Gesture.Tap().onTouchesUp(() => {
+    // Measure the node dimensions on the UI Thread, thanks to the useAnimatedRef hook
+    // The measure function is a Reanimated function that returns a MeasuredDimensions object
+    const dimensions = measure(viewRef); // Sync measure
+    // Since the showPopup function is not a Reanimated function, we need to wrap it with runOnJS
+    scheduleOnRN(
+      wrappedJsShowPopup,
+      dimensions ?? {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        pageX: 0,
+        pageY: 0,
+      },
+    );
+    scheduleOnRN(Haptics.selectionAsync);
     if (onPress) scheduleOnRN(onPress);
   });
 
-  // To avoid conflicts between the two gestures, we use the Exclusive Gesture.
-  const gesture = Gesture.Exclusive(longPressGesture, singleTapGesture);
-
   return (
-    <GestureDetector gesture={gesture}>
+    <GestureDetector gesture={tapGesture}>
       <Animated.View ref={viewRef} style={style}>
         {children}
       </Animated.View>

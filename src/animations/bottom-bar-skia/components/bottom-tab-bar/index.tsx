@@ -12,6 +12,7 @@ import {
   rect,
   Skia,
 } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
 import { useDerivedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Touchable from 'react-native-skia-gesture';
@@ -119,6 +120,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
               onTap={() => {
                 'worklet';
                 scheduleOnRN(navigateTo, screenName);
+                scheduleOnRN(Haptics.selectionAsync);
               }}
               height={bottomTabBarHeight}
               width={screenWidth / tabBarScreens}

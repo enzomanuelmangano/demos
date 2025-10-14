@@ -24,7 +24,8 @@
     "meta:validate": "node scripts/analytics/meta-hash.js validate",
     "meta:list": "node scripts/analytics/meta-hash.js list",
     "meta:help": "node scripts/analytics/meta-hash.js --help",
-    "meta:stats": "node scripts/analytics/meta-stats.js"
+    "meta:stats": "node scripts/analytics/meta-stats.js",
+    "expo:ota": "eas update --channel production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
@@ -60,7 +61,7 @@
     "jotai": "^2.9.3",
     "lodash.debounce": "^4.0.8",
     "lottie-react-native": "~7.3.1",
-    "pressto": "0.3.5-beta.1",
+    "pressto": "0.3.5-beta.6",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",

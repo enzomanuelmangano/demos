@@ -1,19 +1,21 @@
-import { type FC } from 'react';
+import { ReactNode, type FC } from 'react';
 
-import Animated, {
+import { PressableScale } from 'pressto';
+import {
   type SharedValue,
   useAnimatedStyle,
   withTiming,
 } from 'react-native-reanimated';
 
-import type { ViewProps } from 'react-native';
+import type { StyleProp, ViewStyle } from 'react-native';
 
-const AnimatedOpacityView: FC<
-  ViewProps & {
-    activeIndex: SharedValue<number>;
-    index: number;
-  }
-> = ({ index, activeIndex, style, ...viewProps }) => {
+const AnimatedOpacityView: FC<{
+  activeIndex: SharedValue<number>;
+  index: number;
+  onPress: () => void;
+  style: StyleProp<ViewStyle>;
+  children?: ReactNode;
+}> = ({ index, activeIndex, style, onPress, ...viewProps }) => {
   const rStyle = useAnimatedStyle(() => {
     const opacity = withTiming(activeIndex.value === index ? 1 : 0.5);
 
@@ -22,7 +24,9 @@ const AnimatedOpacityView: FC<
     };
   }, [index]);
 
-  return <Animated.View style={[style, rStyle]} {...viewProps} />;
+  return (
+    <PressableScale onPress={onPress} style={[style, rStyle]} {...viewProps} />
+  );
 };
 
 export { AnimatedOpacityView };

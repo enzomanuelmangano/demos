@@ -29,6 +29,7 @@ export const Backdrop = () => {
       top: withTiming(top, {
         duration: 500,
       }),
+      pointerEvents: 'none',
     };
   }, [windowHeight, stackedToasts.length]);
 

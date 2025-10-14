@@ -13,6 +13,7 @@ import Animated, {
   scrollTo,
   useAnimatedReaction,
   useAnimatedRef,
+  useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -74,18 +75,22 @@ function SelectableGridList<T>({
     return Array.from(combined);
   }, []);
 
+  const totalItems = rest.data?.length ?? 0;
+
   const calculateGridItemPosition = useCallback(
     ({ x, y }: { x: number; y: number }) => {
       'worklet';
-      return calculateGridItemIndex({
+      const index = calculateGridItemIndex({
         x,
         y,
         itemWidth: itemSize,
         itemHeight: itemSize,
         itemsPerRow: itemsPerRow,
       });
+      // Clamp index to valid range [0, totalItems - 1]
+      return Math.max(0, Math.min(index, totalItems - 1));
     },
-    [itemSize, itemsPerRow],
+    [itemSize, itemsPerRow, totalItems],
   );
 
   const reset = useCallback(() => {
@@ -106,9 +111,9 @@ function SelectableGridList<T>({
     [reset],
   );
 
-  //  useAnimatedReaction is a kind of "useEffect" for reanimated values
-  //  It will run the callback function when the returned value from the first argument changes
-  //  The second argument is the callback function
+  // useAnimatedReaction is a kind of "useEffect" for reanimated values
+  // It will run the callback function when the returned value from the first argument changes
+  // The second argument is the callback function
   // In this case, we are using it to detect when the totalActiveIndexes changes
   // and then run the onSelectionChange callback.
   // I've used the "sameElements" function to compare the previous and current values of totalActiveIndexes
@@ -261,6 +266,12 @@ function SelectableGridList<T>({
     [itemSize],
   );
 
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      contentOffsetY.value = event.contentOffset.y;
+    },
+  });
+
   return (
     <GestureDetector gesture={gesture}>
       {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
@@ -274,10 +285,7 @@ function SelectableGridList<T>({
         maxToRenderPerBatch={10}
         updateCellsBatchingPeriod={50}
         initialNumToRender={20}
-        onScroll={event => {
-          contentOffsetY.value = event.nativeEvent.contentOffset.y;
-          return rest?.onScroll?.(event);
-        }}
+        onScroll={onScroll}
         renderItem={renderItem}
         getItemLayout={getItemLayout}
       />

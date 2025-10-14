@@ -8,6 +8,7 @@ import {
   rrect,
   Skia,
 } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -33,6 +34,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
       .maxDuration(20000)
       .onBegin(() => {
         isActive.value = true;
+        scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Heavy);
       })
       .onTouchesUp(() => {
         if (onPress) scheduleOnRN(onPress);

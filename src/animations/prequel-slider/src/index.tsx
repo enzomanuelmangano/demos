@@ -1,12 +1,14 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { useImage } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
 import {
   interpolateColor,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { DonutCircularProgress } from './components/donut-circular-progress';
 import { DraggableSlider } from './components/draggable-slider';
@@ -30,6 +32,7 @@ const DemoImageUrl =
 
 const App = () => {
   const progressPercentage = useSharedValue(0);
+  const previousLineIndex = useSharedValue(-1);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
@@ -96,6 +99,18 @@ const App = () => {
           scrollableAreaHeight={ScrollableAreHeight}
           onProgressChange={progress => {
             'worklet';
+
+            const currentLineIndex = Math.floor(progress * Lines);
+
+            // Only trigger haptics when crossing a line
+            if (
+              currentLineIndex !== previousLineIndex.value &&
+              currentLineIndex >= 0
+            ) {
+              scheduleOnRN(Haptics.selectionAsync);
+              previousLineIndex.value = currentLineIndex;
+            }
+
             // And then I bind the percentage to the progress of the transition
             // The progress is then passed both to the ImageEditor and the DonutCircularProgress
             progressPercentage.value = progress;

@@ -1,5 +1,6 @@
 import { type ReactNode, useCallback, useId } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   type AnimatedRef,
@@ -39,6 +40,7 @@ const NavigationItem = ({
   const id = useId();
   const { startTransition, timingProgress, transitionId } =
     useCustomNavigation();
+
   const onNavigateWrapper = useCallback(() => {
     if (onNavigate) {
       scheduleOnRN(onNavigate);
@@ -54,6 +56,7 @@ const NavigationItem = ({
     })
     .onEnd(() => {
       active.value = false;
+      scheduleOnRN(Haptics.selectionAsync);
       startTransition(ref as AnimatedRef<WrapperRef>, {
         id,
         borderRadius: config?.borderRadius,

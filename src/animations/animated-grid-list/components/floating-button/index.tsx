@@ -1,5 +1,6 @@
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet } from 'react-native';
 
+import { PressableScale } from 'pressto';
 import Animated, {
   FadeIn,
   FadeOut,
@@ -22,10 +23,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
   const isExpanded = layout === 'list';
 
   return (
-    <TouchableOpacity
-      style={[styles.container, style]}
-      onPress={onPress}
-      activeOpacity={0.9}>
+    <PressableScale style={[styles.container, style]} onPress={onPress}>
       <Animated.View
         layout={LinearTransition}
         style={{
@@ -56,7 +54,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
           );
         })}
       </Animated.View>
-    </TouchableOpacity>
+    </PressableScale>
   );
 };
 

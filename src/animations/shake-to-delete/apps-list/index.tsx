@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions, Pressable } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 
 import { useState, useMemo } from 'react';
 
@@ -46,41 +46,38 @@ export const AppsList = () => {
   }, [screenWidth]);
 
   return (
-    <Pressable onPress={stopShaking}>
-      <Animated.ScrollView
-        contentContainerStyle={[
-          styles.gridContainer,
-          styles.rowWrapper,
-          {
-            paddingTop: safeTop,
-            paddingHorizontal: layoutConfig.containerPadding,
-            paddingBottom: 300,
-          },
-        ]}
-        layout={LinearTransition}
-        showsVerticalScrollIndicator={false}>
-        {items.map(item => (
-          <AppItem
-            key={item.id}
-            item={item}
-            style={{
-              width: layoutConfig.itemSize,
-              marginRight: layoutConfig.spacing,
-              marginBottom: layoutConfig.spacing,
-              padding: SPACING + 6,
-            }}
-            onLongPress={toggleShaking}
-            onDelete={() => {
-              stopShaking();
-              setTimeout(() => {
-                // Just wait until the animation is finished
-                setItems(prev => prev.filter(i => i.id !== item.id));
-              }, 150);
-            }}
-          />
-        ))}
-      </Animated.ScrollView>
-    </Pressable>
+    <Animated.View
+      style={[
+        styles.gridContainer,
+        styles.rowWrapper,
+        {
+          paddingTop: safeTop,
+          paddingHorizontal: layoutConfig.containerPadding,
+          paddingBottom: 300,
+        },
+      ]}
+      layout={LinearTransition}>
+      {items.map(item => (
+        <AppItem
+          key={item.id}
+          item={item}
+          style={{
+            width: layoutConfig.itemSize,
+            marginRight: layoutConfig.spacing,
+            marginBottom: layoutConfig.spacing,
+            padding: SPACING + 6,
+          }}
+          onLongPress={toggleShaking}
+          onDelete={() => {
+            stopShaking();
+            setTimeout(() => {
+              // Just wait until the animation is finished
+              setItems(prev => prev.filter(i => i.id !== item.id));
+            }, 150);
+          }}
+        />
+      ))}
+    </Animated.View>
   );
 };
 

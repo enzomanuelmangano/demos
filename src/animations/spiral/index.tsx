@@ -13,6 +13,7 @@ import {
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
+import { PressableWithoutFeedback } from 'pressto';
 import {
   makeMutable,
   useAnimatedReaction,
@@ -116,8 +117,8 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
           <BlurMask blur={5} style="solid" />
         </Group>
       </Canvas>
-      <View
-        onTouchStart={() => {
+      <PressableWithoutFeedback
+        onPress={() => {
           angle.set(Math.PI * 2 * Math.random());
         }}
         style={StyleSheet.absoluteFill}

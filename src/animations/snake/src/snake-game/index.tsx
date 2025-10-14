@@ -31,6 +31,7 @@ export type SnakeBoardProps = {
   boardSize: number;
   onGameOver?: () => void;
   onScoreChange?: (score: number) => void;
+  onDirectionChange?: (direction: Directions) => void;
 };
 
 export type SnakeBoardRef = {
@@ -38,7 +39,7 @@ export type SnakeBoardRef = {
 };
 
 export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
-  ({ n, boardSize, onScoreChange, onGameOver }, ref) => {
+  ({ n, boardSize, onScoreChange, onGameOver, onDirectionChange }, ref) => {
     const rows = n;
     const columns = n;
     const squareSize = Math.floor(boardSize / n);
@@ -52,8 +53,9 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     const changeDirectionWrapper = useCallback(
       (direction: Directions) => {
         snakeGame.changeDirection(direction);
+        onDirectionChange?.(direction);
       },
-      [snakeGame],
+      [onDirectionChange, snakeGame],
     );
 
     useImperativeHandle(ref, () => ({

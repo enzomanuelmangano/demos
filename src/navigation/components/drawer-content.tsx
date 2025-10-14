@@ -127,9 +127,12 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
             scrollEventThrottle={16}
             data={filteredAnimations}
             keyExtractor={keyExtractor}
+            keyboardDismissMode="on-drag"
             estimatedItemSize={LIST_ITEM_HEIGHT}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={contentContainerStyle}
+            // @@TODO: unstable
+            // renderScrollComponent={props => <ScrollView {...props} />}
           />
         </PressablesGroup>
         <LinearGradient

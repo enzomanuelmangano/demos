@@ -679,6 +679,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'DotSheet',
     iconName: 'paperclip',
     iconFamily: 'MaterialCommunityIcons',
+    alert: true,
   },
   'coverflow-carousel': {
     name: 'Coverflow Carousel',

@@ -8,6 +8,7 @@ import {
   useMemo,
 } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import debounce from 'lodash.debounce';
 import Animated, {
@@ -152,6 +153,7 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
   );
   const backTransition = useCallback(() => {
     'worklet';
+    scheduleOnRN(Haptics.selectionAsync);
     scheduleOnRN(debouncedBackNavigation);
     transitionOpacityProgress.value = withSequence(
       withTiming(1, { duration: 0 }),

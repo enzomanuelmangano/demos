@@ -1,9 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Checkbox } from './components/checkbox';
 import { useCuisines } from './hooks/use-cuisines';
@@ -50,12 +47,4 @@ const styles = StyleSheet.create({
   },
 });
 
-const AppContainer = () => {
-  return (
-    <SafeAreaProvider>
-      <App />
-    </SafeAreaProvider>
-  );
-};
-
-export { AppContainer as App };
+export { App };

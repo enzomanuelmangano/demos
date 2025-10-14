@@ -36,7 +36,7 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(({ pin, onReset }) => {
           <InputButton
             key={index}
             style={styles.input}
-            onTap={() => {
+            onPress={() => {
               if (typeof label === 'number') {
                 pin.value = [...pin.value, label];
                 return;

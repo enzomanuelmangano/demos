@@ -1,5 +1,6 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
+import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useDerivedValue,
@@ -36,6 +37,15 @@ export const Animated3DParallax = () => {
       touchY.value = y;
     })
     .onFinalize(() => {
+      touchX.value = CARD_SIZE / 2;
+      touchY.value = CARD_SIZE / 2;
+    })
+    // @@TODO: on finalize should handle both afaik 🤔
+    .onTouchesUp(() => {
+      touchX.value = CARD_SIZE / 2;
+      touchY.value = CARD_SIZE / 2;
+    })
+    .onTouchesCancelled(() => {
       touchX.value = CARD_SIZE / 2;
       touchY.value = CARD_SIZE / 2;
     });
@@ -93,16 +103,16 @@ export const Animated3DParallax = () => {
               styles.cardContent,
               rContentStyle,
               {
-                transformOrigin: ['50%', '50%', 100],
+                transformOrigin: ['50%', '50%', 300],
               },
             ]}>
             <Image
               source={require('./assets/logo.png')}
+              contentFit="contain"
               style={{
                 height: 200,
                 aspectRatio: 1,
               }}
-              resizeMode="contain"
             />
           </Animated.View>
         </Animated.View>

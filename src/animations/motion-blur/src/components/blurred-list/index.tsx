@@ -5,7 +5,7 @@ import { type FC, type ReactNode, useCallback, useEffect } from 'react';
 import { BlurView } from 'expo-blur';
 import Animated, {
   Easing,
-  FadeOut,
+  FadeOutUp,
   interpolate,
   Keyframe,
   useAnimatedStyle,
@@ -111,8 +111,7 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   }
   return (
     <Animated.View
-      exiting={FadeOut.duration(180)}
-      entering={keyframe.duration(200)}
+      exiting={FadeOutUp.duration(400)}
       style={[styles.itemContainer, containerStyle]}>
       <Animated.View style={[styles.itemContent, contentStyle]}>
         {children}
@@ -133,13 +132,14 @@ export function BlurredList<T>({
 }: BlurredListProps<T>) {
   const renderItemWithBlur = useCallback(
     ({ item, index }: { item: T; index: number }) => (
-      <BlurredListItemContainer
-        key={index}
-        index={index}
-        currentListLength={data.length}
-        maxVisibleItems={maxVisibleItems}>
-        {renderItem({ item, index })}
-      </BlurredListItemContainer>
+      <Animated.View key={index} entering={keyframe.duration(200)}>
+        <BlurredListItemContainer
+          index={index}
+          currentListLength={data.length}
+          maxVisibleItems={maxVisibleItems}>
+          {renderItem({ item, index })}
+        </BlurredListItemContainer>
+      </Animated.View>
     ),
     [data.length, maxVisibleItems, renderItem],
   );

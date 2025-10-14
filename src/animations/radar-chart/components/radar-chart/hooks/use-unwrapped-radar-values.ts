@@ -4,8 +4,8 @@ import { Extrapolate, interpolate } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
-  withTiming,
   cancelAnimation,
+  withSpring,
 } from 'react-native-reanimated';
 
 import type { RadarChartProps, RadarDataType } from '../typings';
@@ -66,7 +66,7 @@ const useUnwrappedValues = <K extends string>({
 
     targetData.value = newData;
     progress.value = 0;
-    progress.value = withTiming(1, { duration: 150 });
+    progress.value = withSpring(1, { duration: 500, dampingRatio: 1 });
   }, [data, isSharedValue, targetData, progress, currentData]);
 
   const allValues = useDerivedValue(() => {

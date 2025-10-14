@@ -3,12 +3,14 @@ import { useWindowDimensions } from 'react-native';
 import { useCallback } from 'react';
 
 import { Group, Rect, Skia, Text, useFont } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
 import {
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { SelectableSquareContainer } from './selectable-square';
 
@@ -71,11 +73,13 @@ const ThemeScreen = () => {
       if (index === selectedIndex.value) return;
 
       radius.value = 0;
+      scheduleOnRN(Haptics.selectionAsync);
 
-      radius.value = withTiming(
+      radius.value = withSpring(
         canvasHeight,
         {
-          duration: 500,
+          duration: 1000,
+          dampingRatio: 1,
         },
         isFinished => {
           if (isFinished) {

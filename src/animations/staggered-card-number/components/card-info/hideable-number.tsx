@@ -43,7 +43,8 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
         withDelay(
           index * HideableNumberHeight,
           withSpring(isHidden.value ? 1 : 0, {
-            mass: 0.75,
+            duration: 700,
+            dampingRatio: 1,
           }),
         ),
       [isHidden, index],

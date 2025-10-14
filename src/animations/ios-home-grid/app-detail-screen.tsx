@@ -1,7 +1,8 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableOpacity } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCustomNavigation } from './navigation/expansion-provider';
@@ -48,13 +49,12 @@ export const AppDetailScreen: React.FC<AppDetailScreenProps> = ({ route }) => {
       />
 
       {/* Back button */}
-      <TouchableOpacity
+      <PressableOpacity
         onPress={handleGoBack}
         style={[styles.backButton, { top: safeTop + 16 }]}
-        activeOpacity={0.7}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="close" size={24} color="rgba(0, 0, 0, 0.7)" />
-      </TouchableOpacity>
+      </PressableOpacity>
     </View>
   );
 };

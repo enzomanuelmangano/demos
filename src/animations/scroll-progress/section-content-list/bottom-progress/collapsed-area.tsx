@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { type FC, memo, useCallback } from 'react';
 
 import { AntDesign } from '@expo/vector-icons';
+import { PressableOpacity } from 'pressto';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -73,9 +74,9 @@ const CollapsedArea: FC<CollapsedAreaProps> = memo(
         </Animated.View>
         <Animated.View
           style={[StyleSheet.absoluteFill, rUpArrowContainerStyle]}>
-          <View style={styles.fillCenter} onTouchEnd={onPressArrow}>
+          <PressableOpacity style={styles.fillCenter} onPress={onPressArrow}>
             <AntDesign name="arrow-up" size={24} color="#9E9E9E" />
-          </View>
+          </PressableOpacity>
         </Animated.View>
       </Animated.View>
     );

@@ -88,6 +88,9 @@ function App() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.text}>
+        The code looks so bad. I'll fix it soon 👀
+      </Text>
       <PressableScale
         style={[styles.button, rToggleButtonStyle]}
         onPress={toggleActionTray}>
@@ -119,7 +122,7 @@ function App() {
           {step === 0 && (
             <Animated.Text
               layout={LinearTransition.easing(Easing.linear).duration(250)}
-              exiting={FadeOut.delay(100)}
+              exiting={FadeOut}
               style={styles.contentText}>
               Content here
             </Animated.Text>
@@ -127,8 +130,8 @@ function App() {
           {step === 1 && (
             <Animated.View
               layout={LinearTransition.easing(Easing.linear).duration(250)}
-              entering={FadeIn.delay(100)}
-              exiting={FadeOut.delay(100)}
+              entering={FadeIn}
+              exiting={FadeOut}
               style={{ flex: 1 }}>
               <Text style={styles.contentText}>
                 You know what? I really don't know what to write here.{'\n\n'}I
@@ -141,8 +144,8 @@ function App() {
           {step === 2 && (
             <Animated.View
               layout={LinearTransition.easing(Easing.linear).duration(250)}
-              entering={FadeIn.delay(100)}
-              exiting={FadeOut.delay(100)}
+              entering={FadeIn}
+              exiting={FadeOut}
               style={{ flex: 1 }}>
               <Text style={styles.contentText}>
                 Waaait a second! Actually I have something to say.{'\n\n'}
@@ -237,6 +240,14 @@ const styles = StyleSheet.create({
   headingText: {
     fontSize: 20,
     fontWeight: '600',
+  },
+  text: {
+    color: Palette.text,
+    fontSize: 32,
+    fontWeight: '700',
+    marginHorizontal: 30,
+    marginTop: 15,
+    textAlign: 'center',
   },
 });
 

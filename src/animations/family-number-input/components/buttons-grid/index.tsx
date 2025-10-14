@@ -38,13 +38,13 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(
             <InputButton
               key={index}
               style={styles.input}
-              onLongTap={() => {
+              onLongPress={() => {
                 if (label === 'backspace') {
                   onReset?.();
                   return;
                 }
               }}
-              onTap={() => {
+              onPress={() => {
                 if (typeof label === 'number') {
                   const newValue = +`${input}${label}`;
                   if (newValue.toString().length > 11) {

@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { PressableScale } from 'pressto';
+import { PressableGlass } from 'pressto/glass';
 
 import { useDemoStackedModal } from './hook';
 import { StackedModalProvider } from './stacked-modal-manager';
@@ -10,7 +10,7 @@ const StackedModals = () => {
 
   return (
     <View style={styles.container}>
-      <PressableScale onPress={onPress} style={styles.button} />
+      <PressableGlass onPress={onPress} style={styles.button} />
     </View>
   );
 };

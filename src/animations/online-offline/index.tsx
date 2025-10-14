@@ -1,6 +1,8 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { useCallback, useState } from 'react';
+
+import { PressableScale } from 'pressto';
 
 import { OnlineToOffline } from './components/online-to-offline';
 
@@ -46,11 +48,17 @@ export const OnlineOffline = () => {
       const onlineCount = prevItems.filter(item => !item.isOffline).length;
       const offlineCount = prevItems.filter(item => item.isOffline).length;
 
-      if (onlineCount === 0 || offlineCount === 0) return prevItems;
+      // Determine direction: if all offline, must go online; if all online, must go offline
+      // Otherwise, random choice
+      const shouldMoveOnlineToOffline =
+        offlineCount === 0
+          ? true
+          : onlineCount === 0
+            ? false
+            : Math.random() > 0.5;
 
-      const moveOnlineToOffline = Math.random() > 0.5;
-
-      if (moveOnlineToOffline && onlineCount > 0) {
+      if (shouldMoveOnlineToOffline && onlineCount > 0) {
+        // Move an online item to offline
         const onlineIndices = prevItems
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => !item.isOffline)
@@ -67,7 +75,9 @@ export const OnlineOffline = () => {
         ];
 
         return newItems;
-      } else if (!moveOnlineToOffline && offlineCount > 0) {
+      }
+      if (offlineCount > 0) {
+        // Move an offline item to online
         const offlineIndices = prevItems
           .map((item, index) => ({ item, index }))
           .filter(({ item }) => item.isOffline)
@@ -104,7 +114,7 @@ export const OnlineOffline = () => {
   }, []);
 
   return (
-    <View style={styles.container} onTouchEnd={handleTouchEnd}>
+    <PressableScale style={styles.container} onPress={handleTouchEnd}>
       <OnlineToOffline
         offline={offlineItems.map(item => item.uri)}
         online={onlineItems.map(item => item.uri)}
@@ -114,7 +124,7 @@ export const OnlineOffline = () => {
         listColor="#EAEAEA"
         sectionGap={12}
       />
-    </View>
+    </PressableScale>
   );
 };
 
