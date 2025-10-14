@@ -1,7 +1,8 @@
 import { type FC, memo } from 'react';
 
 import { AntDesign } from '@expo/vector-icons';
-import Animated, {
+import { PressableScale } from 'pressto';
+import {
   Extrapolation,
   interpolate,
   type SharedValue,
@@ -34,8 +35,8 @@ const AddCloseIcon: FC<AddCloseIconProps> = memo(({ onPress, progress }) => {
   }, []);
 
   return (
-    <Animated.View
-      onTouchEnd={onPress}
+    <PressableScale
+      onPress={onPress}
       style={[
         {
           position: 'absolute',
@@ -49,7 +50,7 @@ const AddCloseIcon: FC<AddCloseIconProps> = memo(({ onPress, progress }) => {
         rIconStyle,
       ]}>
       <AntDesign name="plus" size={28} color="black" />
-    </Animated.View>
+    </PressableScale>
   );
 });
 

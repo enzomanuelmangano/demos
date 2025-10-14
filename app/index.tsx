@@ -4,6 +4,7 @@ import { useCallback, useRef } from 'react';
 
 import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
+import { PressableWithoutFeedback } from 'pressto';
 
 import {
   StaggeredText,
@@ -53,9 +54,9 @@ export default function HomeScreen() {
           ),
         }}
       />
-      <View
+      <PressableWithoutFeedback
         style={styles.container}
-        onTouchEnd={() => {
+        onPress={() => {
           staggeredTextRef.current?.toggleAnimate();
         }}>
         <StaggeredText
@@ -64,7 +65,7 @@ export default function HomeScreen() {
           enableReverse
           text="Swipe to explore."
         />
-      </View>
+      </PressableWithoutFeedback>
     </>
   );
 }
