@@ -122,6 +122,7 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
       [0, 1],
       ['#FFFFFF00', '#FFFFFF'],
     ),
+    borderCurve: 'continuous',
   }));
 
   const rButtonStyle = useAnimatedStyle(() => ({

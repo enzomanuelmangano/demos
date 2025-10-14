@@ -38,6 +38,7 @@ export const AppItem: React.FC<AppItemProps> = ({ item, onPress, style }) => {
         config={{
           borderRadius: 16,
           color: item.colors[1],
+          borderCurve: 'continuous',
         }}>
         <View style={styles.touchable}>
           {/* Gradient background */}

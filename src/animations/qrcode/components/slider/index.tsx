@@ -111,6 +111,7 @@ const Slider: FC<SliderProps> = ({
           scale: scale.value,
         },
       ],
+      borderCurve: 'continuous',
     };
   }, []);
 
@@ -128,6 +129,7 @@ const Slider: FC<SliderProps> = ({
         ...flattenedStyle,
         height: sliderHeight,
         width: sliderWidth,
+        borderCurve: 'continuous',
       }}>
       <Animated.View
         style={[

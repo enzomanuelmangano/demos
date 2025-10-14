@@ -63,6 +63,7 @@ const styles = StyleSheet.create({
   backButton: {
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderCurve: 'continuous',
     borderRadius: 22,
     elevation: 3,
     height: 44,

@@ -62,6 +62,7 @@ const BottomSheet: FC<BottomSheetProps> = ({
     return {
       borderRadius,
       transform: [{ translateY: translateY.value }],
+      borderCurve: 'continuous',
     };
   });
 
@@ -101,6 +102,7 @@ const BottomSheet: FC<BottomSheetProps> = ({
 const styles = StyleSheet.create({
   bottomSheetContainer: {
     backgroundColor: '#171717',
+    borderCurve: 'continuous',
     borderRadius: 25,
     height: SCREEN_HEIGHT,
     position: 'absolute',
@@ -111,6 +113,7 @@ const styles = StyleSheet.create({
   line: {
     alignSelf: 'center',
     backgroundColor: 'grey',
+    borderCurve: 'continuous',
     borderRadius: 2,
     height: 4,
     marginVertical: 15,

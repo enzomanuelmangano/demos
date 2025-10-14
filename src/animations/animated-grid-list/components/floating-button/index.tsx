@@ -49,6 +49,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
                 margin: 2,
                 backgroundColor: '#6283B1',
                 borderRadius: isExpanded ? 4 : 2,
+                borderCurve: 'continuous',
               }}
             />
           );
@@ -62,6 +63,7 @@ const styles = StyleSheet.create({
   container: {
     aspectRatio: 1,
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 35,
     bottom: 50,
     height: 70,

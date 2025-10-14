@@ -99,15 +99,9 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 25,
     borderWidth: 2,
+    boxShadow: '0 0 10px 0 rgba(0, 0, 0, 0.05)',
     height: '90%',
     justifyContent: 'center',
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
     width: '80%',
   },
   text: {

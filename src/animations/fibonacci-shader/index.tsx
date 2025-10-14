@@ -155,6 +155,7 @@ const styles = StyleSheet.create({
   floatingButton: {
     alignItems: 'center',
     backgroundColor: '#232323',
+    borderCurve: 'continuous',
     borderRadius: 32,
     bottom: 120,
     height: 64,

@@ -62,6 +62,7 @@ export function PaginationDot({
 const styles = StyleSheet.create({
   dot: {
     backgroundColor: '#D4D4D4',
+    borderCurve: 'continuous',
     borderRadius: DOT_SIZE / 2,
     height: DOT_SIZE,
     width: DOT_SIZE,

@@ -33,6 +33,7 @@ const styles = StyleSheet.create({
   pullIndicator: {
     alignSelf: 'center',
     backgroundColor: '#E5E7EB',
+    borderCurve: 'continuous',
     borderRadius: 2,
     height: 4,
     marginBottom: 20,

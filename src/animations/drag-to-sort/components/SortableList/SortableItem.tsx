@@ -216,6 +216,7 @@ const SortableItem: FC<SortableListItemProps> = ({
         duration: 200,
       }),
       shadowOpacity: withTiming(isGestureActive.value ? 0.3 : 0),
+      borderCurve: 'continuous',
     };
   }, []);
 

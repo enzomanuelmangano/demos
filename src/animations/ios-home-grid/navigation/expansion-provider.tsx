@@ -111,6 +111,7 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
       componentConfig.value = {
         borderRadius: borderRadius ?? 10,
         color: color ?? 'rgba(0, 0, 0, 1)',
+        borderCurve: 'continuous',
       };
       transitionId.value = id;
       dimensionsSharedValue.value = { width, height, x, y, pageX, pageY };

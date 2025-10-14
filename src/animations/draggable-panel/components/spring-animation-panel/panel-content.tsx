@@ -224,6 +224,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   springDot: {
+    borderCurve: 'continuous',
     borderRadius: 4,
     height: 8,
     width: 8,
@@ -238,6 +239,7 @@ const styles = StyleSheet.create({
   springOption: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
+    borderCurve: 'continuous',
     borderRadius: 10,
     flex: 1,
     paddingHorizontal: 8,

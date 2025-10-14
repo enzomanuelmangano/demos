@@ -21,6 +21,7 @@ const TouchableFeedback = createAnimatedPressable(progress => {
     backgroundColor: `rgba(0,0,0,${opacity})`,
     transform: [{ scale }],
     borderRadius: 20,
+    borderCurve: 'continuous',
   };
 });
 
@@ -74,12 +75,14 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 4,
     height: '100%',
     justifyContent: 'center',
   },
   container: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 20,
     flexDirection: 'row',
     height: 80,

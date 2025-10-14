@@ -48,6 +48,7 @@ const BottomSheetPage: FC<BottomSheetPageProps> = ({
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 40,
     height: 50,
     justifyContent: 'center',

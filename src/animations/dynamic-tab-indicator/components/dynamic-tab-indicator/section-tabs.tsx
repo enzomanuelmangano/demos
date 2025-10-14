@@ -43,6 +43,7 @@ const SectionTabs: FC<SectionTabsProps> = memo(
         backgroundColor: 'black',
         zIndex: 10,
         borderRadius: 5,
+        borderCurve: 'continuous',
       };
     }, [height]);
 

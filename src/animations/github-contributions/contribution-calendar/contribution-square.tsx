@@ -116,6 +116,7 @@ export const ContributionSquare = forwardRef<
 
 const styles = StyleSheet.create({
   square: {
+    borderCurve: 'continuous',
     borderRadius: 2,
     height: 14,
     marginBottom: 3,

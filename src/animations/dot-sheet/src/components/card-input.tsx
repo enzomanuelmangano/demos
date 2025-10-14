@@ -110,6 +110,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
           rotate: `${rotate}deg`,
         },
       ],
+      borderCurve: 'continuous',
     };
   }, []);
 

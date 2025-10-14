@@ -106,6 +106,7 @@ export const ExpandedSheet = () => {
           }),
         },
       ],
+      borderCurve: 'continuous',
     };
   });
 
@@ -157,6 +158,7 @@ const styles = StyleSheet.create({
   },
   knob: {
     backgroundColor: '#767676',
+    borderCurve: 'continuous',
     borderRadius: 24,
     height: 4,
     width: 48,

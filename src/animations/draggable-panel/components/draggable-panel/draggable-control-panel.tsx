@@ -197,6 +197,7 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
         [collapsedWidth / 2, 16],
       ),
       padding: interpolate(progress.get(), [0, 1], [0, 0]),
+      borderCurve: 'continuous',
     };
   });
 

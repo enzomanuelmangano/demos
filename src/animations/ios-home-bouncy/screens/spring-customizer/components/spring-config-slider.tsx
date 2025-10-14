@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
   thumb: {
     backgroundColor: '#FFFFFF',
     borderColor: '#F3F4F6',
+    borderCurve: 'continuous',
     borderRadius: THUMB_SIZE / 2,
     borderWidth: 2,
     elevation: 6,
@@ -143,6 +144,7 @@ const styles = StyleSheet.create({
   track: {
     backgroundColor: '#F9FAFB',
     borderColor: '#F3F4F6',
+    borderCurve: 'continuous',
     borderRadius: 4,
     borderWidth: 1,
     elevation: 1,

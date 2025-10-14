@@ -269,6 +269,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   firstItem: {
+    borderCurve: 'continuous',
     borderTopLeftRadius: 12,
     borderTopRightRadius: 12,
   },
@@ -276,6 +277,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 12,
     borderBottomRightRadius: 12,
     borderBottomWidth: 0,
+    borderCurve: 'continuous',
   },
   leadingContainer: {
     marginRight: 12,
@@ -288,6 +290,7 @@ const styles = StyleSheet.create({
     zIndex: -30,
   },
   popup: {
+    borderCurve: 'continuous',
     borderRadius: 12,
     elevation: 8,
     overflow: 'hidden',
@@ -307,7 +310,7 @@ const styles = StyleSheet.create({
   popupListItem: {
     alignItems: 'center',
     borderBottomColor: 'rgba(0,0,0,0.08)',
-    borderBottomWidth: 0.5,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     paddingHorizontal: 16,
   },

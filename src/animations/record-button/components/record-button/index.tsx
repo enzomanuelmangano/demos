@@ -48,6 +48,7 @@ export const RecordButton: FC<RecordButtonProps> = ({
       borderRadius,
       width,
       height,
+      borderCurve: 'continuous',
     });
   }, [borderRadius, height, strokeWidth, width]);
 

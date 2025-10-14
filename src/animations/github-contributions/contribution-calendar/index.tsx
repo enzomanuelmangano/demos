@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   square: {
+    borderCurve: 'continuous',
     borderRadius: 2,
     height: 14,
     marginBottom: 3,

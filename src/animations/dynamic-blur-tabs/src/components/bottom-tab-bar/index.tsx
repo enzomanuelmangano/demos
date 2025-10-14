@@ -106,6 +106,7 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
       height: height,
       borderRadius: borderRadius,
       borderWidth: borderWidth,
+      borderCurve: 'continuous',
     };
   });
 

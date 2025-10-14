@@ -15,6 +15,7 @@ module.exports = {
     'react-native',
     'deprecation',
     'prettier',
+    'refined',
   ],
   ignorePatterns: [
     'node_modules/',
@@ -44,6 +45,9 @@ module.exports = {
     'react-native/no-inline-styles': 'off',
     'react-native/no-color-literals': 'off',
     'react-native/no-unused-styles': 'warn',
+    'refined/border-radius-with-curve': 'error',
+    'refined/prefer-hairline-width': 'error',
+    'refined/prefer-box-shadow': 'error',
     'react-native/sort-styles': [
       'error',
       'asc',

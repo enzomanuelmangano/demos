@@ -119,6 +119,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 24,
     height: 48,
     justifyContent: 'center',
@@ -140,6 +141,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   listItem: {
+    borderCurve: 'continuous',
     borderRadius: 10,
     shadowColor: 'black',
     shadowOffset: {

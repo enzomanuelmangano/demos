@@ -168,6 +168,7 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 20,
     elevation: 5,
     height: 70,

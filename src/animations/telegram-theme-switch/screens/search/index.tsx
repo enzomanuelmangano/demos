@@ -15,6 +15,7 @@ const SearchScreen = () => {
             height: 80,
             borderRadius: 50,
             width: 80,
+            borderCurve: 'continuous',
           }}
         />
       </View>

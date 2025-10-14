@@ -83,6 +83,7 @@ const styles = StyleSheet.create({
   },
   content: {
     backgroundColor: '#f3f3f3',
+    borderCurve: 'continuous',
     borderRadius: 25,
     flex: 1,
     overflow: 'hidden',

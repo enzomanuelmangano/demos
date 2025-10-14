@@ -230,6 +230,7 @@ const SortableItem: FC<SortableListItemProps> = ({
         duration: 200,
         easing: Easing.out(Easing.ease),
       }),
+      borderCurve: 'continuous',
     };
   }, []);
 

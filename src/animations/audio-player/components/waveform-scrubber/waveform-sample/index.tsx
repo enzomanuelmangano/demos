@@ -92,6 +92,7 @@ const WaveformScrubberSample: FC<WaveformScrubberSampleProps> = memo(
 const styles = StyleSheet.create({
   sample: {
     backgroundColor: Palette.body,
+    borderCurve: 'continuous',
     borderRadius: 15,
     width: 3,
   },

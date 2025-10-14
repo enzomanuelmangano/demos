@@ -106,6 +106,7 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
       return {
         borderRadius,
         transform: [{ translateY: translateY.value }],
+        borderCurve: 'continuous',
       };
     });
 
@@ -140,6 +141,7 @@ const styles = StyleSheet.create({
   line: {
     alignSelf: 'center',
     backgroundColor: 'grey',
+    borderCurve: 'continuous',
     borderRadius: 2,
     height: 4,
     marginVertical: 15,

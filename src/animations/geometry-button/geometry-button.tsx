@@ -104,6 +104,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
         height: canvasSize,
         width: canvasSize,
         borderRadius: size,
+        borderCurve: 'continuous',
       };
     }, [canvasSize, size]);
 

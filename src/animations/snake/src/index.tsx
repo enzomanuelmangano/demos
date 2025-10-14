@@ -107,6 +107,7 @@ const styles = StyleSheet.create({
   boardContainer: {
     alignItems: 'center',
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 18,
     elevation: 5,
     justifyContent: 'center',

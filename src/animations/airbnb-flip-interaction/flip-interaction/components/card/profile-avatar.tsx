@@ -36,7 +36,12 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
     const avatarStyle = useMemo(
       () => [
         styles.avatar,
-        { width: size, height: size, borderRadius: size / 2 },
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderCurve: 'continuous',
+        },
       ],
       [size],
     );
@@ -55,6 +60,7 @@ export const ProfileAvatar: FC<ProfileAvatarProps> = memo(
           borderRadius: computedValues.badgeRadius,
           bottom: -2,
           right: -2,
+          borderCurve: 'continuous',
         },
       ],
       [computedValues.badgeSize, computedValues.badgeRadius],

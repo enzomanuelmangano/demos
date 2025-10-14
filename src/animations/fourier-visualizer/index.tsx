@@ -128,6 +128,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#111',
+    borderCurve: 'continuous',
     borderRadius: 32,
     bottom: 100,
     height: 64,

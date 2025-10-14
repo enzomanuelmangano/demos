@@ -106,12 +106,13 @@ const styles = StyleSheet.create({
   cell: {
     alignItems: 'center',
     borderColor: COLORS.border,
-    borderWidth: 0.5,
+    borderWidth: StyleSheet.hairlineWidth,
     height: CELL_SIZE,
     justifyContent: 'center',
     width: CELL_SIZE,
   },
   cellBackground: {
+    borderCurve: 'continuous',
     borderRadius: 100,
     bottom: 0,
     left: 0,

@@ -33,6 +33,7 @@ const Dot: FC<DotProps> = memo(({ index, activeDots }) => {
           marginHorizontal: 12,
           borderRadius: 4,
           backgroundColor: 'white',
+          borderCurve: 'continuous',
         },
         rStyle,
       ]}

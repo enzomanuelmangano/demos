@@ -21,6 +21,7 @@ export const Eye = ({ progress }: { progress: SharedValue<number> }) => {
       transform: [{ translateX }, { translateY }],
       width,
       height,
+      borderCurve: 'continuous',
       borderRadius: width / 2,
     };
   });
@@ -36,6 +37,7 @@ const styles = StyleSheet.create({
   eyeContainer: {
     alignItems: 'center',
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 20,
     justifyContent: 'center',

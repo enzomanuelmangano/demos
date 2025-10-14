@@ -81,6 +81,7 @@ export const getPathParamsForBorder = ({
     height,
     borderRadius,
     borderSmoothing,
+    borderCurve: 'continuous',
   };
 };
 
@@ -228,6 +229,7 @@ export const drawSquirclePath = ({
     borderRadius,
     width,
     height,
+    borderCurve: 'continuous',
   });
   drawTopRightBorderPath({
     path,

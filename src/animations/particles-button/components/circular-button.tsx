@@ -100,6 +100,7 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
       height: size,
       borderRadius: size / 2,
       backgroundColor: darkColor,
+      borderCurve: 'continuous',
     };
   }, [size]);
 

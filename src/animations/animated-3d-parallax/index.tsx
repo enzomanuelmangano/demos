@@ -125,6 +125,7 @@ const styles = StyleSheet.create({
   card: {
     alignItems: 'center',
     backgroundColor: '#1E2731',
+    borderCurve: 'continuous',
     borderRadius: 10,
     justifyContent: 'center',
   },
@@ -134,6 +135,7 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 5,
     flex: 1,
     justifyContent: 'center',

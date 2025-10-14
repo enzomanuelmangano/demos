@@ -120,7 +120,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
               bottom: 50,
               zIndex: 100,
               alignSelf: 'center',
-              borderWidth: 0.5,
+              borderWidth: StyleSheet.hairlineWidth,
               borderColor: 'rgba(255,255,255,0.1)',
             },
             bottomProgressStyle,

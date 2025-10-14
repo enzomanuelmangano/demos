@@ -18,6 +18,7 @@ const styles = StyleSheet.create({
   handle: {
     alignSelf: 'center',
     backgroundColor: 'rgba(0,0,0,0.08)',
+    borderCurve: 'continuous',
     borderRadius: 5,
     height: 2,
     position: 'absolute',

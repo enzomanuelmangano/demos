@@ -175,6 +175,7 @@ const styles = StyleSheet.create({
   dot: {
     alignItems: 'flex-start',
     backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderCurve: 'continuous',
     borderRadius: 9999,
     justifyContent: 'center',
   },

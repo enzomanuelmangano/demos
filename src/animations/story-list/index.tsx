@@ -66,6 +66,7 @@ const StoryListContainer = memo(() => {
                 style={[
                   {
                     borderRadius: 20,
+                    borderCurve: 'continuous',
                   },
                   storyItemDimensions,
                 ]}

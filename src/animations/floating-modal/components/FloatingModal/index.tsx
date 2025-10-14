@@ -123,6 +123,7 @@ const FloatingModal: FC = memo(() => {
           translateY: translateY.value,
         },
       ],
+      borderCurve: 'continuous',
     };
   }, [screenWidth, screenHeight]);
 

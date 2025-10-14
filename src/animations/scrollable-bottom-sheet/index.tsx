@@ -93,6 +93,7 @@ function App() {
 const styles = StyleSheet.create({
   button: {
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 25,
     height: 50,
     overflow: 'hidden',

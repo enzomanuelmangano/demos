@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
   floating: {
     alignItems: 'center',
     backgroundColor: Palette.primary,
+    borderCurve: 'continuous',
     borderRadius: 20,
     bottom: 20,
     flexDirection: 'row',

@@ -52,6 +52,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#F4F4F4',
+    borderCurve: 'continuous',
     borderRadius: 30,
     height: 60,
     justifyContent: 'center',

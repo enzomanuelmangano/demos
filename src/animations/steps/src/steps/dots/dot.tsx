@@ -34,6 +34,7 @@ export const Dot: React.FC<DotProps> = ({ index, activeIndex, dotSize }) => {
           width: dotSize,
           height: dotSize,
           borderRadius: dotSize / 2,
+          borderCurve: 'continuous',
         },
         rDotStyle,
       ]}

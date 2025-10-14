@@ -49,6 +49,7 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
         borderRadius: internalBorderRadius.value,
         borderWidth: activeBorderWidth.value,
         borderColor: isActive.value ? Palette.primary : Palette.background,
+        borderCurve: 'continuous',
       };
     }, [internalBorderRadius]);
 
@@ -76,6 +77,7 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
           height: containerHeight,
           padding: internalPadding,
           borderRadius: externalBorderRadius,
+          borderCurve: 'continuous',
         }}>
         <Animated.View style={[rImageStyle, { flex: 1, overflow: 'hidden' }]}>
           <Image
@@ -99,6 +101,7 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
               borderRadius: 12,
               justifyContent: 'center',
               alignItems: 'center',
+              borderCurve: 'continuous',
             },
             rBadgeStyle,
           ]}>

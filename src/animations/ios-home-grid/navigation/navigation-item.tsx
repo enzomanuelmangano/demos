@@ -65,6 +65,7 @@ const NavigationItem = ({
           'worklet';
           scheduleOnRN(onNavigateWrapper);
         },
+        borderCurve: 'continuous',
       });
     });
 

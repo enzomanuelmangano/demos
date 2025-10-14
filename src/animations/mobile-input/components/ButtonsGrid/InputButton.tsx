@@ -11,6 +11,7 @@ const InputButton = createAnimatedPressable(progress => {
     backgroundColor: `rgba(255,255,255,${opacity})`,
     transform: [{ scale }],
     borderRadius: 20,
+    borderCurve: 'continuous',
   };
 });
 

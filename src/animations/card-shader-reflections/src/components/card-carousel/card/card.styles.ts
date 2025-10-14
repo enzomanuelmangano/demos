@@ -4,6 +4,7 @@ import { CARD_WIDTH, CARD_HEIGHT, SPACING } from '../utils/constants';
 
 export const styles = StyleSheet.create({
   card: {
+    borderCurve: 'continuous',
     borderRadius: 20,
     flex: 1,
     overflow: 'hidden',

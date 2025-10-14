@@ -228,6 +228,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
             left: ScreenWidth / 2,
             borderRadius: 10,
             top: scrollableAreaHeight / 2 - indicatorLineHeight / 2,
+            borderCurve: 'continuous',
           },
           rIndicatorStyle,
         ]}

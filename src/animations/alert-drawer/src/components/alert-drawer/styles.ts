@@ -57,6 +57,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#F8F8FA',
+    borderCurve: 'continuous',
     borderRadius: 16,
     height: 32,
     justifyContent: 'center',

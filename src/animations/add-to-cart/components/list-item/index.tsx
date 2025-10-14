@@ -89,7 +89,12 @@ const ListItem = <
       <View style={{ flex: 1, flexDirection: 'row' }}>
         <Image
           cachePolicy={'memory-disk'}
-          style={{ height: '65%', aspectRatio: 1, borderRadius: 10 }}
+          style={{
+            height: '65%',
+            aspectRatio: 1,
+            borderRadius: 10,
+            borderCurve: 'continuous',
+          }}
           source={{
             uri: item.imageUri,
           }}
@@ -134,6 +139,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#D12727',
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 15,
     justifyContent: 'center',

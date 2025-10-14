@@ -88,6 +88,7 @@ const LiquidSlider: React.FC<SliderProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 5,
     justifyContent: 'center',
   },

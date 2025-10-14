@@ -5,8 +5,9 @@ import { CARD_WIDTH, SPACING } from '../utils/constants';
 export const styles = StyleSheet.create({
   chip: {
     borderColor: '#A8A8A8',
+    borderCurve: 'continuous',
     borderRadius: 4,
-    borderWidth: 0.5,
+    borderWidth: StyleSheet.hairlineWidth,
     height: '100%',
     overflow: 'hidden',
     padding: 2,
@@ -15,7 +16,7 @@ export const styles = StyleSheet.create({
   chipContact: {
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
     borderColor: 'rgba(255, 255, 255, 0.4)',
-    borderWidth: 0.5,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   chipContactLarge: {
     height: '100%',

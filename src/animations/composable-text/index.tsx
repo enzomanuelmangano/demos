@@ -67,6 +67,7 @@ const styles = StyleSheet.create({
   },
   textContainer: {
     backgroundColor: '#181818',
+    borderCurve: 'continuous',
     borderRadius: 32,
     padding: 16,
     paddingHorizontal: 22,

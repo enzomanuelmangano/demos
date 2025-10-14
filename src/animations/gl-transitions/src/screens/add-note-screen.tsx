@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 24,
     height: 48,
     justifyContent: 'center',
@@ -151,6 +152,7 @@ const styles = StyleSheet.create({
   },
   notesContainer: {
     backgroundColor: Palette.surface,
+    borderCurve: 'continuous',
     borderRadius: 8,
     marginTop: 16,
     minHeight: 200,

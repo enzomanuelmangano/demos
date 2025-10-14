@@ -80,6 +80,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     aspectRatio: 1,
     backgroundColor: '#3A3D45',
+    borderCurve: 'continuous',
     borderRadius: 40,
     elevation: 4,
     height: 80,

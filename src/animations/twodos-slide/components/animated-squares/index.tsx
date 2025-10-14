@@ -95,6 +95,7 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = ({
       borderRadius: 20,
       width: size - internalSquarePathPadding * 2 + strokeWidth,
       height: size - internalSquarePathPadding * 2 + strokeWidth,
+      borderCurve: 'continuous',
     });
 
     // 2. The second one is using the drawRRectWithLines function (basically it's all about different borders)

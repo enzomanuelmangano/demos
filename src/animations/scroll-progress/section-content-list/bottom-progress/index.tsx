@@ -63,6 +63,7 @@ const BottomProgress: FC<BottomProgressProps> = memo(
 
 const styles = StyleSheet.create({
   container: {
+    borderCurve: 'continuous',
     borderRadius: 40,
     height: 70,
     width: 200,

@@ -150,6 +150,7 @@ const styles = StyleSheet.create({
   floatingButton: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 32,
     elevation: 8,
     height: 64,
@@ -165,8 +166,9 @@ const styles = StyleSheet.create({
   listContainerItem: {
     backgroundColor: 'white',
     borderColor: 'rgba(229, 231, 235, 0.3)',
+    borderCurve: 'continuous',
     borderRadius: 20,
-    borderWidth: 0.5,
+    borderWidth: StyleSheet.hairlineWidth,
     elevation: 2,
     height: ITEM_HEIGHT,
     marginBottom: ITEM_MARGIN - 2,

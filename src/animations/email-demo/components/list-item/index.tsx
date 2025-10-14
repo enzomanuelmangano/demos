@@ -23,6 +23,7 @@ export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
               width: itemHeight * 0.45,
               height: itemHeight * 0.45,
               borderRadius: itemHeight * 0.225,
+              borderCurve: 'continuous',
             }}
           />
         </View>

@@ -47,6 +47,7 @@ const styles = StyleSheet.create({
   addButton: {
     alignItems: 'center',
     backgroundColor: 'black',
+    borderCurve: 'continuous',
     borderRadius: 32,
     height: 64,
     justifyContent: 'center',

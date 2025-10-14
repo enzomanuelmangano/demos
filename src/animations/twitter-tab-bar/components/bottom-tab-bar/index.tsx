@@ -112,6 +112,7 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
             aspectRatio: 1,
             backgroundColor: colors.primary,
             borderRadius: 32,
+            borderCurve: 'continuous',
           },
           rFloatingActionStyle,
         ]}

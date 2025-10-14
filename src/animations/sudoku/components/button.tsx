@@ -73,6 +73,7 @@ const SIZE_MAP = {
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 10,
     flexDirection: 'row',
     gap: 8,
@@ -81,6 +82,7 @@ const styles = StyleSheet.create({
   },
   container: {
     alignSelf: 'flex-start',
+    borderCurve: 'continuous',
     borderRadius: 10,
     overflow: 'hidden',
     ...Platform.select({

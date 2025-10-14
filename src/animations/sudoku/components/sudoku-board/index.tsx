@@ -163,6 +163,7 @@ export const styles = StyleSheet.create({
   board: {
     alignItems: 'center',
     borderColor: COLORS.primary,
+    borderCurve: 'continuous',
     borderRadius: 8,
     borderWidth: 2,
     elevation: 8,

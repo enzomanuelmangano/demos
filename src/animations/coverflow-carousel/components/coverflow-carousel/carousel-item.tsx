@@ -125,6 +125,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
           scaleY,
         },
       ],
+      borderCurve: 'continuous',
     };
   }, [inputRange]);
 

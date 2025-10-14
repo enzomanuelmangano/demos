@@ -54,6 +54,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
             alignItems: 'center',
             flexDirection: 'row',
             margin: 5,
+            borderCurve: 'continuous',
           },
           rAnimatedStyle,
         ]}>
@@ -73,6 +74,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
             backgroundColor: '#fff',
             borderRadius: 40,
             overflow: 'hidden',
+            borderCurve: 'continuous',
           }}>
           <Animated.View
             style={{
