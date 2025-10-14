@@ -1,7 +1,8 @@
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { type FC, memo, type ReactNode } from 'react';
 
+import { PressableScale } from 'pressto';
 import Animated, {
   type SharedValue,
   useAnimatedProps,
@@ -52,9 +53,9 @@ const ModalContent: FC<ModalProps> = memo(
 
         <View style={[{ flex: 1 }, contentContainerStyle]}>{children}</View>
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.button}>
+          <PressableScale style={styles.button}>
             <Text style={styles.buttonTitle}>Done</Text>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
       </Animated.View>
     );

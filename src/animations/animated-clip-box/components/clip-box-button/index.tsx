@@ -1,4 +1,4 @@
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { PressableOpacity } from 'pressto';
 import Animated, {
@@ -98,7 +98,7 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
             {description}
           </Animated.Text>
         </View>
-        <TouchableOpacity
+        <PressableOpacity
           style={{
             margin: circleMargin / 2,
           }}
@@ -107,7 +107,7 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
             style={[{ paddingVertical: 5, fontWeight: 'bold' }, rStyle]}>
             {actionTitle}
           </Animated.Text>
-        </TouchableOpacity>
+        </PressableOpacity>
       </>
     </View>
   );

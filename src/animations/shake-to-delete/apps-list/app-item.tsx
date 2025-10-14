@@ -1,7 +1,8 @@
-import { StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { PressableOpacity } from 'pressto';
 import Animated, {
   FadeOut,
   LinearTransition,
@@ -65,20 +66,16 @@ export const AppItem: React.FC<AppItemProps> = ({
       layout={LinearTransition.duration(350)}
       exiting={FadeOut}>
       {/* Main touchable area for the app item */}
-      <TouchableOpacity
-        activeOpacity={0.7}
-        style={styles.touchable}
-        onLongPress={onLongPress}>
+      <PressableOpacity style={styles.touchable} onLongPress={onLongPress}>
         {/* Delete button overlay */}
         <Animated.View
           style={[styles.deleteButtonContainer, rDeleteButtonContainerStyle]}>
-          <TouchableOpacity
+          <PressableOpacity
             onPress={onDelete}
-            activeOpacity={0.7}
             style={styles.deleteButton}
             hitSlop={DeleteButtonHitSlop}>
             <Ionicons name="remove" size={CloseIconButtonSize} color="black" />
-          </TouchableOpacity>
+          </PressableOpacity>
         </Animated.View>
 
         {/* Gradient background */}
@@ -88,7 +85,7 @@ export const AppItem: React.FC<AppItemProps> = ({
           end={{ x: 1, y: 1 }}
           style={styles.gradient}
         />
-      </TouchableOpacity>
+      </PressableOpacity>
     </Animated.View>
   );
 };

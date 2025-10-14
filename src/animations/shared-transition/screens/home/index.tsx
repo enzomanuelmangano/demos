@@ -1,9 +1,10 @@
-import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { memo } from 'react';
 
 import MasonryList from '@react-native-seoul/masonry-list';
 import { useNavigation } from '@react-navigation/native';
+import { PressableOpacity } from 'pressto';
 
 import { AnimatedImage } from '../../components/animated-image';
 import { dataSources } from '../../constants/images';
@@ -23,7 +24,7 @@ const HomeScreen = memo(() => {
         renderItem={({ item: source, i }) => {
           const heroTag = 'heroTag' + i;
           return (
-            <TouchableOpacity
+            <PressableOpacity
               onPress={() => {
                 navigation.navigate(ScreenNames.Details, {
                   source,
@@ -51,7 +52,7 @@ const HomeScreen = memo(() => {
                   ]}
                 />
               </View>
-            </TouchableOpacity>
+            </PressableOpacity>
           );
         }}
       />

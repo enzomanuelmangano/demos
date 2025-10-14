@@ -1,14 +1,9 @@
-import {
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { type FC, type ReactNode, useCallback, useMemo, useState } from 'react';
 
 import { BlurView } from 'expo-blur';
+import { PressableOpacity } from 'pressto';
 import Animated, {
   useAnimatedProps,
   useAnimatedReaction,
@@ -215,12 +210,11 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
             ) : (
               options?.map(({ leading, trailing, label, onPress }, index) => {
                 return (
-                  <TouchableOpacity
+                  <PressableOpacity
                     onPress={() => {
                       close();
                       onPress?.();
                     }}
-                    activeOpacity={0.6}
                     key={index}
                     style={[
                       {
@@ -242,7 +236,7 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
                     {trailing && (
                       <View style={styles.trailingContainer}>{trailing}</View>
                     )}
-                  </TouchableOpacity>
+                  </PressableOpacity>
                 );
               })
             )}

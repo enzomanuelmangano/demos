@@ -1,8 +1,9 @@
-import { Dimensions, StyleSheet, TouchableOpacity } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
 import { type FC, memo, type ReactNode, useCallback, useEffect } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
@@ -169,7 +170,7 @@ const TabBarItem: FC<TabBarItemProps> = memo(
 
     return (
       <Animated.View style={[localStyles.fill, rStyle]}>
-        <TouchableOpacity style={localStyles.fillCenter} onPress={onPress}>
+        <PressableScale style={localStyles.fillCenter} onPress={onPress}>
           <MaterialIcons
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
@@ -177,7 +178,7 @@ const TabBarItem: FC<TabBarItemProps> = memo(
             size={28}
             color={textColor}
           />
-        </TouchableOpacity>
+        </PressableScale>
       </Animated.View>
     );
   },
