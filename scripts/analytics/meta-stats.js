@@ -22,6 +22,7 @@ const fs = require('fs');
 const path = require('path');
 
 const ANIMATIONS_DIR = path.join(__dirname, '..', '..', 'src', 'animations');
+const META_DIR = path.join(__dirname, 'meta');
 
 // ANSI colors for terminal output
 const colors = {
@@ -53,10 +54,10 @@ function getAnimationDirectories() {
 }
 
 /**
- * Read and parse _meta.json
+ * Read and parse metadata from meta/{slug}.json
  */
-function readMetadata(animationPath) {
-  const metaPath = path.join(animationPath, '_meta.json');
+function readMetadata(slug) {
+  const metaPath = path.join(META_DIR, `${slug}.json`);
 
   if (!fs.existsSync(metaPath)) {
     return null;
@@ -322,7 +323,7 @@ function analyzeMetadata(options = {}) {
   let animationsWithPackage = 0;
 
   animations.forEach(animation => {
-    const metadata = readMetadata(animation.path);
+    const metadata = readMetadata(animation.slug);
 
     if (!metadata) {
       return;
@@ -384,7 +385,7 @@ function searchMetadata(searchTerm, options = {}) {
   let metadataCount = 0;
 
   animations.forEach(animation => {
-    const metadata = readMetadata(animation.path);
+    const metadata = readMetadata(animation.slug);
 
     if (!metadata) {
       return;
