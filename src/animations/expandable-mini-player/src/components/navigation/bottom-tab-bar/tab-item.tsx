@@ -8,9 +8,6 @@ import { Palette } from '../../../constants/palette';
 
 type TabItemProps = {
   icon: string;
-  screen: string;
-  opacity?: number;
-  isActive: boolean;
   onPress: () => void;
 };
 

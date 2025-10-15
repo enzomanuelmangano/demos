@@ -15,7 +15,6 @@ export function Navigation() {
   const tabBar = useCallback(
     (props: BottomTabBarProps) => (
       <TabBar
-        activeIndex={props.state.index}
         onTabPress={(routeName: string) => {
           props.navigation.navigate(routeName);
         }}

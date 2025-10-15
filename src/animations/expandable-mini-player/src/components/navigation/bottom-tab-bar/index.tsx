@@ -9,23 +9,20 @@ import { TabItem } from './tab-item';
 import { BaseTabs } from '../../../constants/tabs';
 
 type TabBarProps = {
-  activeIndex: number;
   onTabPress: (routeName: string) => void;
 };
 
-const TabBar = ({ activeIndex, onTabPress }: TabBarProps) => {
+const TabBar = ({ onTabPress }: TabBarProps) => {
   return (
     <View style={styles.container}>
       <ExpandedSheet />
       <PressablesGroup>
         <Animated.View style={styles.tabsContainer}>
-          {BaseTabs.map((screen, index) => {
+          {BaseTabs.map(screen => {
             return (
               <TabItem
                 key={screen.name}
                 icon={screen.icon}
-                screen={screen.name}
-                isActive={index === activeIndex}
                 onPress={() => onTabPress(screen.name)}
               />
             );
