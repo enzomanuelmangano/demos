@@ -13,7 +13,13 @@ const DefaultScreen = () => <Screen title="Demo" />;
 
 export function Navigation() {
   const tabBar = useCallback(
-    (props: BottomTabBarProps) => <TabBar activeIndex={props.state.index} />,
+    (props: BottomTabBarProps) => (
+      <TabBar
+        onTabPress={(routeName: string) => {
+          props.navigation.navigate(routeName);
+        }}
+      />
+    ),
     [],
   );
 

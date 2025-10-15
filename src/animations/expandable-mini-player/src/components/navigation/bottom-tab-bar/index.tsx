@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { PressablesGroup } from 'pressto';
 import Animated from 'react-native-reanimated';
 
 import { TabBarHeight } from './constants';
@@ -8,25 +9,26 @@ import { TabItem } from './tab-item';
 import { BaseTabs } from '../../../constants/tabs';
 
 type TabBarProps = {
-  activeIndex: number;
+  onTabPress: (routeName: string) => void;
 };
 
-const TabBar = ({ activeIndex }: TabBarProps) => {
+const TabBar = ({ onTabPress }: TabBarProps) => {
   return (
     <View style={styles.container}>
       <ExpandedSheet />
-      <Animated.View style={styles.tabsContainer}>
-        {BaseTabs.map((screen, index) => {
-          return (
-            <TabItem
-              key={screen.name}
-              icon={screen.icon}
-              screen={screen.name}
-              isActive={index === activeIndex}
-            />
-          );
-        })}
-      </Animated.View>
+      <PressablesGroup>
+        <Animated.View style={styles.tabsContainer}>
+          {BaseTabs.map(screen => {
+            return (
+              <TabItem
+                key={screen.name}
+                icon={screen.icon}
+                onPress={() => onTabPress(screen.name)}
+              />
+            );
+          })}
+        </Animated.View>
+      </PressablesGroup>
     </View>
   );
 };

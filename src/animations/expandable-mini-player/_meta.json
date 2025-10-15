@@ -35,13 +35,7 @@
     },
     "src/components/icons/": {
       "index.ts": "Icon exports",
-      "home.tsx": "Home icon SVG",
-      "search.tsx": "Search icon SVG",
-      "edit.tsx": "Edit icon SVG",
-      "settings.tsx": "Settings icon SVG",
-      "inbox.tsx": "Inbox icon SVG",
-      "menu.tsx": "Menu icon SVG",
-      "back-arrow.tsx": "Back arrow icon SVG"
+      "index.tsx": "Icon component exports using Ionicons"
     },
     "src/constants/": {
       "palette.ts": "Color palette constants",
@@ -55,7 +49,7 @@
     "navigation": "@react-navigation/bottom-tabs",
     "interactions": "pressto",
     "safe_area": "react-native-safe-area-context",
-    "icons": "react-native-svg"
+    "icons": "@expo/vector-icons"
   },
   "packages_and_versions": {
     "react-native-reanimated": {
@@ -121,15 +115,14 @@
       ],
       "usage": "Tab items with scale press animation"
     },
-    "react-native-svg": {
-      "version": "15.12.1",
+    "@expo/vector-icons": {
+      "version": "^15.0.2",
       "components": [
-        "Svg",
-        "Path"
+        "Ionicons"
       ],
-      "usage": "Icon rendering with SVG",
+      "usage": "Icon rendering with Ionicons",
       "types": [
-        "SvgProps"
+        "IconProps (Omit<ComponentProps<typeof Ionicons>, 'name'>)"
       ]
     }
   },
@@ -293,9 +286,9 @@
         "ImageHeight"
       ]
     },
-    "svg_icons": {
-      "benefit": "SVG rendering more performant than image assets",
-      "usage": "All navigation icons are SVG components"
+    "vector_icons": {
+      "benefit": "Vector icons from @expo/vector-icons provide consistent styling and performance",
+      "usage": "All navigation icons use Ionicons"
     },
     "borderCurve_continuous": {
       "property": "borderCurve: 'continuous'",
@@ -476,7 +469,7 @@
       "SheetContentProps",
       "ScreenProps",
       "BottomTabBarProps",
-      "SvgProps"
+      "IconProps"
     ],
     "imports": {
       "organized": true,
@@ -539,11 +532,10 @@
       "location": "expanded-sheet/index.tsx:136-138",
       "impact": "Not suitable for real music player without data props"
     },
-    "icon_loading_pattern": {
-      "issue": "Manual icon imports instead of svg-transformer",
-      "location": "components/icons/index.ts",
-      "author_note": "I don't really like this way of using icons",
-      "impact": "More boilerplate than necessary"
+    "icon_implementation": {
+      "solution": "Uses @expo/vector-icons Ionicons for consistent icon rendering",
+      "location": "components/icons/index.tsx",
+      "benefit": "No need for svg-transformer or custom SVG files"
     },
     "no_music_controls": {
       "issue": "Visual only, no play/pause or seek functionality",
@@ -605,7 +597,7 @@
       "Add prop types for music data",
       "Add error boundaries",
       "Add loading states",
-      "Implement svg-transformer for icons",
+      "Icons now use @expo/vector-icons (completed)",
       "Add unit tests for calculations",
       "Add integration tests for gestures"
     ],
