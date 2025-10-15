@@ -2,32 +2,32 @@ import type { ComponentProps } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 
-type IconProps = Omit<ComponentProps<typeof Ionicons>, 'name'>;
+type IconProps = Omit<ComponentProps<typeof Ionicons>, 'name' | 'size'>;
 
 export const Home = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="home" />
+  <Ionicons name="home" size={24} {...props} />
 );
 
 export const Inbox = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="mail" />
+  <Ionicons name="mail" size={24} {...props} />
 );
 
 export const Edit = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="create" />
+  <Ionicons name="create" size={24} {...props} />
 );
 
 export const Search = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="search" />
+  <Ionicons name="search" size={24} {...props} />
 );
 
 export const Settings = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="settings" />
+  <Ionicons name="settings" size={24} {...props} />
 );
 
 export const Menu = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="ellipsis-horizontal" />
+  <Ionicons name="ellipsis-horizontal" size={24} {...props} />
 );
 
 export const Backarrow = (props: IconProps) => (
-  <Ionicons {...props} size={24} name="arrow-back" />
+  <Ionicons name="arrow-back" size={24} {...props} />
 );

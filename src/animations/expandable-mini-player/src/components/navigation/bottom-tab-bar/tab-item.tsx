@@ -3,10 +3,9 @@ import { StyleSheet } from 'react-native';
 import { useCallback } from 'react';
 
 import { useNavigation } from '@react-navigation/native';
-import { PressableScale } from 'pressto';
-import { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { createAnimatedPressable } from 'pressto';
+import { interpolate, withTiming } from 'react-native-reanimated';
 
-import { EasingsUtils } from '../../../animations/easings';
 import * as Icons from '../../../components/icons';
 import { Palette } from '../../../constants/palette';
 
@@ -19,12 +18,20 @@ type TabItemProps = {
 
 const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
-export const TabItem = ({
-  icon,
-  screen,
-  opacity = 1,
-  isActive,
-}: TabItemProps) => {
+const PressableScaleWithOpacity = createAnimatedPressable(
+  (progress, { isSelected }) => {
+    return {
+      opacity: withTiming(isSelected ? 1 : 0.8),
+      transform: [
+        {
+          scale: interpolate(progress, [0, 1], [1, 0.97]),
+        },
+      ],
+    };
+  },
+);
+
+export const TabItem = ({ icon, screen }: TabItemProps) => {
   const navigation = useNavigation();
 
   const onPress = useCallback(() => {
@@ -34,18 +41,10 @@ export const TabItem = ({
   const capitalizedIcon = capitalize(icon);
   const Icon = Icons[capitalizedIcon as keyof typeof Icons];
 
-  const rStyle = useAnimatedStyle(() => {
-    return {
-      opacity: withTiming(isActive ? 0.8 * opacity : 0.2 * opacity, {
-        easing: EasingsUtils.inOut,
-      }),
-    };
-  }, [isActive, opacity]);
-
   return (
-    <PressableScale onPress={onPress} style={[styles.fillCenter, rStyle]}>
+    <PressableScaleWithOpacity onPress={onPress} style={styles.fillCenter}>
       <Icon color={Palette.icons} />
-    </PressableScale>
+    </PressableScaleWithOpacity>
   );
 };
 
