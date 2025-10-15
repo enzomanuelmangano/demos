@@ -1,8 +1,5 @@
 import { StyleSheet } from 'react-native';
 
-import { useCallback } from 'react';
-
-import { useNavigation } from '@react-navigation/native';
 import { createAnimatedPressable } from 'pressto';
 import { interpolate, withTiming } from 'react-native-reanimated';
 
@@ -14,14 +11,16 @@ type TabItemProps = {
   screen: string;
   opacity?: number;
   isActive: boolean;
+  onPress: () => void;
 };
 
 const capitalize = (str: string) => str.charAt(0).toUpperCase() + str.slice(1);
 
 const PressableScaleWithOpacity = createAnimatedPressable(
   (progress, { isSelected }) => {
+    'worklet';
     return {
-      opacity: withTiming(isSelected ? 1 : 0.8),
+      opacity: withTiming(isSelected ? 1 : 0.5),
       transform: [
         {
           scale: interpolate(progress, [0, 1], [1, 0.97]),
@@ -31,13 +30,7 @@ const PressableScaleWithOpacity = createAnimatedPressable(
   },
 );
 
-export const TabItem = ({ icon, screen }: TabItemProps) => {
-  const navigation = useNavigation();
-
-  const onPress = useCallback(() => {
-    navigation.navigate(screen as never);
-  }, [screen, navigation]);
-
+export const TabItem = ({ icon, onPress }: TabItemProps) => {
   const capitalizedIcon = capitalize(icon);
   const Icon = Icons[capitalizedIcon as keyof typeof Icons];
 
