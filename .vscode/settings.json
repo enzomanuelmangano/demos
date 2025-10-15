@@ -12,5 +12,18 @@
     "javascriptreact",
     "typescript",
     "typescriptreact"
-  ]
+  ],
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.expo": true,
+    "**/dist": true,
+    "**/web-build": true,
+    "**/ios": true,
+    "**/android": true,
+    "**/.yarn": true,
+    "**/build": true,
+    "**/scripts/analytics/meta": true,
+    "**/.git": true,
+    "**/.DS_Store": true
+  }
 }
