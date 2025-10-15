@@ -40,8 +40,8 @@ bun run meta:stats -- --json > stats.json
 
 ## Notes
 
-- Each `_meta.json` includes: description, features, technologies, packages, animation techniques, patterns, performance considerations, use cases, and more
-- Files are created at: `/src/animations/{animation-name}/_meta.json`
+- Each metadata file includes: description, features, technologies, packages, animation techniques, patterns, performance considerations, use cases, and more
+- Files are located at: `/scripts/analytics/meta/{animation-name}.json`
 - Content hashes (SHA-256) automatically track code changes
 - Statistics help identify common patterns and dependencies across the codebase
 

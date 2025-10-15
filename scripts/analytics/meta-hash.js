@@ -17,6 +17,7 @@ const path = require('path');
 const crypto = require('crypto');
 
 const ANIMATIONS_DIR = path.join(__dirname, '..', '..', 'src', 'animations');
+const META_DIR = path.join(__dirname, 'meta');
 const HASH_ALGORITHM = 'sha256';
 
 // ANSI colors for terminal output
@@ -51,17 +52,17 @@ function getAllFiles(dirPath, arrayOfFiles = []) {
 
 /**
  * Calculate hash for animation folder
- * Excludes _meta.json and non-code files
+ * Excludes metadata files and non-code files
  */
 function calculateAnimationHash(animationPath) {
   const files = getAllFiles(animationPath);
 
-  // Filter files to include only code files, exclude _meta.json
+  // Filter files to include only code files, exclude metadata
   const relevantFiles = files.filter(file => {
     const relativePath = path.relative(animationPath, file);
 
-    // Exclude _meta.json
-    if (relativePath === '_meta.json') return false;
+    // Exclude any metadata files (shouldn't exist here but just in case)
+    if (relativePath === '_meta.json' || relativePath.endsWith('.json') && relativePath.includes('meta')) return false;
 
     // Include common code file extensions
     const ext = path.extname(file);
@@ -102,10 +103,10 @@ function getAnimationDirectories() {
 }
 
 /**
- * Read and parse _meta.json
+ * Read and parse metadata from meta/{slug}.json
  */
-function readMetadata(animationPath) {
-  const metaPath = path.join(animationPath, '_meta.json');
+function readMetadata(slug) {
+  const metaPath = path.join(META_DIR, `${slug}.json`);
 
   if (!fs.existsSync(metaPath)) {
     return null;
@@ -123,10 +124,10 @@ function readMetadata(animationPath) {
 }
 
 /**
- * Write metadata with hash
+ * Write metadata with hash to meta/{slug}.json
  */
-function writeMetadata(animationPath, metadata, hash) {
-  const metaPath = path.join(animationPath, '_meta.json');
+function writeMetadata(slug, metadata, hash) {
+  const metaPath = path.join(META_DIR, `${slug}.json`);
 
   // Add hash fields
   const updatedMetadata = {
@@ -157,17 +158,17 @@ function generateHash(slug) {
     return false;
   }
 
-  const metadata = readMetadata(animationPath);
+  const metadata = readMetadata(slug);
 
   if (!metadata) {
     console.error(
-      `${colors.red}✗${colors.reset} No _meta.json found for: ${slug}`,
+      `${colors.red}✗${colors.reset} No metadata found for: ${slug}`,
     );
     return false;
   }
 
   const hash = calculateAnimationHash(animationPath);
-  writeMetadata(animationPath, metadata, hash);
+  writeMetadata(slug, metadata, hash);
 
   console.log(`${colors.green}✓${colors.reset} ${slug} - hash updated`);
   console.log(`  ${colors.gray}${hash}${colors.reset}`);
@@ -214,7 +215,7 @@ function validateHash(slug) {
     return { status: 'not_found', slug };
   }
 
-  const metadata = readMetadata(animationPath);
+  const metadata = readMetadata(slug);
 
   if (!metadata) {
     return { status: 'no_meta', slug };
@@ -398,11 +399,13 @@ ${colors.bright}Examples:${colors.reset}
   npm run meta:validate                    # Check all for staleness
   npm run meta:list                        # Show status of all
 
-${colors.bright}Hash Fields Added to _meta.json:${colors.reset}
+${colors.bright}Hash Fields Added to Metadata:${colors.reset}
   ${colors.gray}content_hash${colors.reset}        - SHA-256 hash of animation code
   ${colors.gray}hash_algorithm${colors.reset}      - Algorithm used (sha256)
   ${colors.gray}hash_generated_at${colors.reset}   - ISO timestamp of generation
   ${colors.gray}last_validated${colors.reset}      - ISO timestamp of last validation
+
+${colors.bright}Note:${colors.reset} Metadata files are stored in ${colors.cyan}scripts/analytics/meta/{animation-slug}.json${colors.reset}
     `);
     return;
   }
