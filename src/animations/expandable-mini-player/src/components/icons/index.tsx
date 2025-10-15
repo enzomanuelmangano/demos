@@ -1,6 +1,6 @@
-import type { ComponentProps } from 'react';
-
 import { Ionicons } from '@expo/vector-icons';
+
+import type { ComponentProps } from 'react';
 
 type IconProps = Omit<ComponentProps<typeof Ionicons>, 'name' | 'size'>;
 
