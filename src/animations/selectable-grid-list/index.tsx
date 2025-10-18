@@ -3,7 +3,9 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useCallback, useRef } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
-import { PressableGlass } from 'pressto/glass';
+// @@TODO: restore once available in pressto
+// import { PressableGlass } from 'pressto/glass';
+import { PressableScale } from 'pressto';
 import {
   SharedValue,
   useAnimatedStyle,
@@ -99,7 +101,7 @@ const SelectableGridListContainer = () => {
           paddingBottom: safeBottom + 10,
         }}
       />
-      <PressableGlass
+      <PressableScale
         onPress={() => {
           gridListRef.current?.reset();
         }}
@@ -117,7 +119,7 @@ const SelectableGridListContainer = () => {
             textAlign: 'center',
           }}
         />
-      </PressableGlass>
+      </PressableScale>
     </View>
   );
 };
