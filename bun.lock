@@ -37,7 +37,7 @@
         "jotai": "^2.9.3",
         "lodash.debounce": "^4.0.8",
         "lottie-react-native": "~7.3.1",
-        "pressto": "0.5.5-beta.1",
+        "pressto": "0.5.6-beta.1",
         "qrcode": "^1.5.4",
         "react": "19.1.0",
         "react-dom": "19.1.0",
@@ -1496,7 +1496,7 @@
 
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 
-    "pressto": ["pressto@0.5.5-beta.1", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-gesture-handler": "*", "react-native-reanimated": "*", "react-native-worklets": "*" } }, "sha512-Ssj4AYlCZydiXdnhAO/srCok5UUGRNyXQ3htuGXSWiqJSMRGIZgQBVZlMH/IfIkaeXbCuH6kn5h+hwsm2mA6LA=="],
+    "pressto": ["pressto@0.5.6-beta.1", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-gesture-handler": "*", "react-native-reanimated": "*", "react-native-worklets": "*" } }, "sha512-EeBlWfWXQcBhQNIAXtpFLoDRBmmG52lPq3ZaPQ2V20geGYRnkV0tjElotcavqI662r8WbP/BEuGVPNXUdTfS4g=="],
 
     "prettier": ["prettier@3.6.2", "", { "bin": { "prettier": "bin/prettier.cjs" } }, "sha512-I7AIg5boAr5R0FFtJ6rCfD+LFsWHp81dolrFD8S79U9tb8Az2nGrJncnMSnys+bpQJfRUzqs9hnA81OAA3hCuQ=="],
 
