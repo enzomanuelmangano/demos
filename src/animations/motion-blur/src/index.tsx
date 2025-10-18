@@ -3,16 +3,18 @@ import { StyleSheet, View } from 'react-native';
 import { type FC, memo, useCallback, useState } from 'react';
 
 import { Entypo } from '@expo/vector-icons';
-import { PressableGlass } from 'pressto/glass';
+// @@TODO: restore once available in pressto
+// import { PressableGlass } from 'pressto/glass';
+import { PressableScale } from 'pressto';
 
 import { BlurredList } from './components/blurred-list';
 import { ListItem } from './components/list-item';
 import { generateRandomItem, type Item } from './utils/generate-random-item';
 
 const AddButton: FC<{ onPress: () => void }> = memo(({ onPress }) => (
-  <PressableGlass onPress={onPress} style={styles.addButton}>
+  <PressableScale onPress={onPress} style={styles.addButton}>
     <Entypo name="plus" size={40} color="white" />
-  </PressableGlass>
+  </PressableScale>
 ));
 
 const App = () => {

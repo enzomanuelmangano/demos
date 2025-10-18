@@ -1,6 +1,8 @@
 import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { PressableGlass } from 'pressto/glass';
+// @@TODO: restore once available in pressto
+// import { PressableGlass } from 'pressto/glass';
+import { PressableScale } from 'pressto';
 
 import { useDemoStackedToast } from './hook';
 
@@ -14,10 +16,9 @@ const App = () => {
           paddingTop: 60,
         }}>
         {new Array(10).fill(null).map((_, index) => (
-          <PressableGlass
+          <PressableScale
             key={index}
             onPress={onPress}
-            glassEffectStyle="clear"
             style={styles.listItem}
           />
         ))}

@@ -4,7 +4,9 @@ import { useCallback, useMemo, type FC } from 'react';
 
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { useNavigation } from 'expo-router';
-import { PressableGlass } from 'pressto/glass';
+// @@TODO: restore once available in pressto
+// import { PressableGlass } from 'pressto/glass';
+import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -90,7 +92,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
   }, [navigation]);
 
   return (
-    <PressableGlass hitSlop={20} onPress={onPress} style={containerStyleProp}>
+    <PressableScale hitSlop={20} onPress={onPress} style={containerStyleProp}>
       <View style={containerStyle}>
         <Animated.View
           style={[
@@ -120,7 +122,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
           ]}
         />
       </View>
-    </PressableGlass>
+    </PressableScale>
   );
 };
 

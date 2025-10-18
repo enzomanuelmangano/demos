@@ -15,6 +15,7 @@ module.exports = {
     'react-native',
     'deprecation',
     'prettier',
+    'pressto',
   ],
   ignorePatterns: [
     'node_modules/',
@@ -29,6 +30,7 @@ module.exports = {
     'scripts/',
   ],
   rules: {
+    'pressto/require-worklet-directive': 'error',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     'import/no-useless-path-segments': 'off',
     'no-unused-vars': 'off',
