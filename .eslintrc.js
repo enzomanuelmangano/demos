@@ -34,15 +34,15 @@ module.exports = {
     // eslint-plugin-refined rules (enable one at a time as needed)
     'refined/border-radius-with-curve': 'warn',
     'refined/prefer-hairline-width': 'warn',
-    // 'refined/prefer-box-shadow': 'warn',
-    // 'refined/require-hitslop-small-touchables': 'warn',
+    'refined/prefer-box-shadow': 'warn',
+    'refined/require-hitslop-small-touchables': 'warn',
     'refined/spring-config-consistency': [
       'warn',
       {
         reanimatedVersion: 'v4',
       },
     ],
-    // 'refined/avoid-touchable-opacity': 'warn',
+    'refined/avoid-touchable-opacity': 'warn',
 
     'pressto/require-worklet-directive': 'error',
     '@typescript-eslint/explicit-module-boundary-types': 'off',

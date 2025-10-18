@@ -127,13 +127,7 @@ const CircularListItem: FC<{
 const styles = StyleSheet.create({
   container: {
     aspectRatio: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    boxShadow: '0px 10px 10px rgba(0, 0, 0, 0.2)',
     width: LIST_ITEM_WIDTH,
   },
   image: {

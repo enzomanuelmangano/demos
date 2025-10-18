@@ -64,14 +64,7 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 32,
     borderWidth: 1,
-    elevation: 6,
+    boxShadow: '0px 4px 16px rgba(209, 213, 219, 0.1)',
     padding: 24,
-    shadowColor: '#D1D5DB',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
   },
 });

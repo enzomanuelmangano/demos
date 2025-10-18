@@ -75,11 +75,7 @@ const OptimizedPriorityListView = memo(
 
 const styles = StyleSheet.create({
   container: {
-    elevation: 5,
-    shadowColor: '#00000088',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    boxShadow: '0px 0px 10px #00000088',
   },
   content: {
     backgroundColor: '#f3f3f3',

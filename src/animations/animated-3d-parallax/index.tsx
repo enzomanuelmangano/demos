@@ -141,14 +141,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cardShadow: {
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.15)',
   },
   container: {
     alignItems: 'center',

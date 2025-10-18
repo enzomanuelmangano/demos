@@ -259,12 +259,8 @@ export const useCustomNavigation = () => {
 
 const styles = StyleSheet.create({
   animatedView: {
-    elevation: 5,
+    boxShadow: '0px 0px 20px rgba(0, 0, 0, 0.2)',
     position: 'absolute',
-    shadowColor: 'black',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
     zIndex: 1000,
   },
 });

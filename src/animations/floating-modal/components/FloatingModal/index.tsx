@@ -167,15 +167,8 @@ const FloatingModal: FC = memo(() => {
 const styles = StyleSheet.create({
   floatingModal: {
     backgroundColor: 'white',
-    elevation: 4,
+    boxShadow: '0px 12px 12px rgba(0, 0, 0, 0.2)',
     position: 'absolute',
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
   },
 });
 

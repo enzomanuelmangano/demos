@@ -292,15 +292,8 @@ const styles = StyleSheet.create({
   popup: {
     borderCurve: 'continuous',
     borderRadius: 12,
-    elevation: 8,
+    boxShadow: '0px 8px 16px rgba(0, 0, 0, 0.25)',
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
     zIndex: 20,
   },
   popupBackground: {
