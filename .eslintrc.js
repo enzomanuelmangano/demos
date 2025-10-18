@@ -3,6 +3,7 @@ module.exports = {
   extends: [
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
+    'plugin:refined/recommended',
     'prettier',
   ],
   parser: '@typescript-eslint/parser',
@@ -16,6 +17,7 @@ module.exports = {
     'deprecation',
     'prettier',
     'pressto',
+    'refined',
   ],
   ignorePatterns: [
     'node_modules/',
