@@ -89,6 +89,7 @@ const App = () => {
               width: CircleRadius * 2,
               borderRadius: CircleRadius,
               zIndex: 100,
+              borderCurve: 'continuous',
             },
           ]}
         />
@@ -162,6 +163,7 @@ const styles = StyleSheet.create({
   },
   floatingContent: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 29,
     flex: 1,
     justifyContent: 'center',

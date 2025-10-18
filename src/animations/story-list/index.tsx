@@ -66,6 +66,9 @@ const StoryListContainer = memo(() => {
                 style={[
                   {
                     borderRadius: 20,
+                    // @@TODO: the image should support borderCurve
+                    // @ts-ignore
+                    borderCurve: 'continuous',
                   },
                   storyItemDimensions,
                 ]}

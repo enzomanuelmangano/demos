@@ -56,6 +56,7 @@
         "simplex-noise": "^4.0.3",
       },
       "devDependencies": {
+        "eslint-plugin-refined": "/Users/enzomanuelmangano/Desktop/Work/reactiive/research/eslint-style-guidelines",
         "@babel/core": "^7.24.0",
         "@expo/config-plugins": "~54.0.1",
         "@types/color": "^3.0.6",
@@ -76,7 +77,6 @@
         "eslint-plugin-react": "^7.37.5",
         "eslint-plugin-react-hooks": "^5.2.0",
         "eslint-plugin-react-native": "^5.0.0",
-        "eslint-plugin-refined": "file:../research/eslint-style-guidelines",
         "expo-color-space-plugin": "^0.0.4",
         "prettier": "^3.1.1",
         "rimraf": "^6.0.1",

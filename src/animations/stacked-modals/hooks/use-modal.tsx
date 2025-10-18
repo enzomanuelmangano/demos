@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: '#ffffff',
+    borderCurve: 'continuous',
     borderRadius: 12,
     flex: 1,
     padding: 16,

@@ -85,6 +85,7 @@ const styles = StyleSheet.create({
   icon: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 100,
     height: '55%',
     justifyContent: 'center',
@@ -106,6 +107,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   statusItem: {
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 25,
     width: 25,

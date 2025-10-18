@@ -56,6 +56,7 @@ const CollapsedArea: FC<CollapsedAreaProps> = memo(
             backgroundColor: '#2E2D2E',
             borderRadius: 40,
             margin: 5,
+            borderCurve: 'continuous',
           },
           rCollapsedAreaStyle,
         ]}>

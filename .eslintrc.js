@@ -3,7 +3,6 @@ module.exports = {
   extends: [
     'plugin:react/recommended',
     'plugin:react-hooks/recommended',
-    'plugin:refined/recommended',
     'prettier',
   ],
   parser: '@typescript-eslint/parser',
@@ -32,6 +31,14 @@ module.exports = {
     'scripts/',
   ],
   rules: {
+    // eslint-plugin-refined rules (enable one at a time as needed)
+    'refined/border-radius-with-curve': 'warn',
+    // 'refined/prefer-hairline-width': 'warn',
+    // 'refined/prefer-box-shadow': 'warn',
+    // 'refined/require-hitslop-small-touchables': 'warn',
+    // 'refined/spring-config-consistency': 'warn',
+    // 'refined/avoid-touchable-opacity': 'warn',
+
     'pressto/require-worklet-directive': 'error',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     'import/no-useless-path-segments': 'off',

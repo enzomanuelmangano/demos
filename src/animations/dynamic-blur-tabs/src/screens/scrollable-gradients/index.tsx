@@ -64,6 +64,7 @@ export const ScrollableGradients = () => {
           borderWidth: 1,
           borderColor: 'rgba(255, 255, 255, 0.2)',
           borderRadius: 4,
+          borderCurve: 'continuous',
         }}
       />
     </View>

@@ -22,7 +22,6 @@ const styles = StyleSheet.create({
   button: {
     aspectRatio: 1,
     backgroundColor: 'black',
-    borderCurve: 'continuous',
     borderRadius: 32,
     bottom: 48,
     height: 64,

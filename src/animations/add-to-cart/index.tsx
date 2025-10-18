@@ -175,6 +175,7 @@ const AddToCart = () => {
 const styles = StyleSheet.create({
   buyButton: {
     backgroundColor: '#000',
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 40,
     width: 40,
@@ -187,6 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 10,
     elevation: 5,
     flexDirection: 'row',

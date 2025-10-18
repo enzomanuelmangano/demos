@@ -151,6 +151,7 @@ const styles = StyleSheet.create({
   },
   notesContainer: {
     backgroundColor: Palette.surface,
+    borderCurve: 'continuous',
     borderRadius: 8,
     marginTop: 16,
     minHeight: 200,

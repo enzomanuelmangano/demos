@@ -165,6 +165,7 @@ const styles = StyleSheet.create({
   listContainerItem: {
     backgroundColor: 'white',
     borderColor: 'rgba(229, 231, 235, 0.3)',
+    borderCurve: 'continuous',
     borderRadius: 20,
     borderWidth: 0.5,
     elevation: 2,

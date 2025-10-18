@@ -138,6 +138,7 @@ const styles = StyleSheet.create({
   },
   image: {
     borderColor: '#fff',
+    borderCurve: 'continuous',
     borderRadius: 100,
     borderWidth: 2,
     flex: 1,

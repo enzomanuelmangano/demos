@@ -116,6 +116,7 @@ const CarouselItem: FC<CarouselItemProps> = memo(
                 flex: 1,
                 borderRadius: 5,
                 backgroundColor: item?.mainColor ?? 'transparent',
+                borderCurve: 'continuous',
               },
               item?.mainColor ? styles.shadow : {},
             ]}

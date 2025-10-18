@@ -38,6 +38,9 @@ export function AnimatedGridList() {
               aspectRatio: 1,
               borderRadius: isExpanded ? 32 : 0,
               marginHorizontal: isExpanded ? 16 : 0,
+              // @@TODO: the image should support borderCurve
+              // @ts-ignore
+              borderCurve: 'continuous',
             }}
           />
           {isExpanded && (

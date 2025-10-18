@@ -140,6 +140,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   listItem: {
+    borderCurve: 'continuous',
     borderRadius: 10,
     shadowColor: 'black',
     shadowOffset: {
