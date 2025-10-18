@@ -108,6 +108,7 @@ const styles = StyleSheet.create({
   backgroundItem: {
     backgroundColor: '#f8f8f8',
     borderColor: '#e0e0e0',
+    borderCurve: 'continuous',
     borderRadius: 8,
     borderWidth: 1,
     flex: 1,
@@ -133,6 +134,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#f7f7f7',
     borderColor: '#f0f0f0',
+    borderCurve: 'continuous',
     borderRadius: 8,
     borderWidth: 1,
     elevation: 5,
@@ -144,6 +146,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   listContainer: {
+    borderCurve: 'continuous',
     borderRadius: 12,
     height: LIST_ITEM_HEIGHT * 4,
     width: '100%',

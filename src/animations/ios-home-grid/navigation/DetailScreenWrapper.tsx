@@ -85,12 +85,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   outerContainer: {
-    elevation: 5,
+    boxShadow: '0px 0px 30px rgba(0, 0, 0, 0.3)',
     flex: 1,
-    shadowColor: 'black',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
     zIndex: 1000,
   },
 });

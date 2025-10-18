@@ -76,11 +76,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#a5a5a5',
     borderCurve: 'continuous',
     borderRadius: 20,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
+    boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.2)',
   },
   content: {
     borderCurve: 'continuous',

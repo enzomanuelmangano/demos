@@ -122,6 +122,7 @@ function AnimatedLayoutList<T>({
               marginBottom: 20,
               marginLeft: '5%',
               overflow: 'hidden',
+              borderCurve: 'continuous',
             },
             rAnimatedStyle,
           ]}>

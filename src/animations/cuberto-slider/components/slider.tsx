@@ -137,6 +137,7 @@ const Slider: React.FC<SliderProps> = ({
         width: sliderWidth,
         borderRadius: 5,
         backgroundColor: '#E5E5E5',
+        borderCurve: 'continuous',
       }}>
       <Animated.View
         style={[

@@ -99,6 +99,7 @@ const App = () => {
         style={{
           height: 40,
           borderRadius: 16,
+          borderCurve: 'continuous',
         }}
         colorFromStatusMap={{
           idle: '#47A1E6',

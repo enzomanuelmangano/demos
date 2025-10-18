@@ -66,6 +66,8 @@ export const PullToDismissGesture: FC<PullToDismissGestureProps> = ({
         translateY.set(
           withSpring(0, {
             mass: 0.4,
+            damping: 10,
+            stiffness: 100,
           }),
         );
       }

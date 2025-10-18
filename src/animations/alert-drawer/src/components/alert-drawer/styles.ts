@@ -38,12 +38,8 @@ export const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 50,
     bottom: 0,
-    elevation: 4,
+    boxShadow: '0px 2px 30px rgba(0, 0, 0, 0.1)',
     position: 'absolute',
-    shadowColor: 'black',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 30,
     zIndex: -1,
   },
   cardContent: {

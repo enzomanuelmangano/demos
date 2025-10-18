@@ -66,7 +66,11 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
         style={[
           styles.badge,
           rBadgeStyle,
-          { width: width * 0.6, borderRadius: width * 0.3 },
+          {
+            width: width * 0.6,
+            borderRadius: width * 0.3,
+            borderCurve: 'continuous',
+          },
         ]}>
         <Image source={image} style={styles.image} />
       </Animated.View>
@@ -87,6 +91,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   image: {
+    borderCurve: 'continuous',
     borderRadius: 400,
     flex: 1,
   },

@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     backgroundColor: '#000000',
+    borderCurve: 'continuous',
     borderRadius: 20,
     flexDirection: 'row',
     height: 65,

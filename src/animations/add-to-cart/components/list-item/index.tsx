@@ -89,7 +89,14 @@ const ListItem = <
       <View style={{ flex: 1, flexDirection: 'row' }}>
         <Image
           cachePolicy={'memory-disk'}
-          style={{ height: '65%', aspectRatio: 1, borderRadius: 10 }}
+          style={{
+            height: '65%',
+            aspectRatio: 1,
+            borderRadius: 10,
+            // @@TODO: the image should support borderCurve
+            // @ts-ignore
+            borderCurve: 'continuous',
+          }}
           source={{
             uri: item.imageUri,
           }}

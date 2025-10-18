@@ -187,14 +187,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#fff',
     borderCurve: 'continuous',
+    boxShadow: '0px 0px 20px rgba(193, 193, 193, 0.1)',
     position: 'absolute',
-    shadowColor: '#c1c1c1',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
     zIndex: 1,
   },
   input: {

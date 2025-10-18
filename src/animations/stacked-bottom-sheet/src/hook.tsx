@@ -76,6 +76,7 @@ export const useDemoStackedSheet = () => {
               borderWidth: 1,
               padding: 10,
               borderRadius: 10,
+              borderCurve: 'continuous',
             }}
             onPress={() => {
               // Create a spam StackedSheet with a random key to prevent duplicates

@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
     marginTop: 20 / 3,
   },
   image: {
+    borderCurve: 'continuous',
     borderRadius: 10,
     width: Dimensions.get('window').width / 2 - 10,
   },

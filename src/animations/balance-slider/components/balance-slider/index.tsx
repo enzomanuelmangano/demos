@@ -170,6 +170,7 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
               height: '80%',
               backgroundColor: 'white',
               borderRadius: 50,
+              borderCurve: 'continuous',
             }}
           />
         </Animated.View>
@@ -189,6 +190,7 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
 
 const styles = StyleSheet.create({
   box: {
+    borderCurve: 'continuous',
     borderRadius: 5,
     height: '100%',
   },

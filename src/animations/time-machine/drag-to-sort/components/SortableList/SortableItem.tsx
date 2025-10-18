@@ -271,15 +271,10 @@ const styles = StyleSheet.create({
     zIndex: -50,
   },
   item: {
+    boxShadow: '0px 0px 10px black',
     left: 0,
     position: 'absolute',
     right: 0,
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowRadius: 10,
   },
 });
 

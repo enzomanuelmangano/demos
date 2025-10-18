@@ -54,6 +54,7 @@ export const CardBack: FC<CardBackProps> = memo(({ profile }) => {
 const styles = StyleSheet.create({
   background: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: spacing.l + 4,
     height: '100%',
     justifyContent: 'center',
@@ -61,6 +62,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   container: {
+    borderCurve: 'continuous',
     borderRadius: spacing.l + 4,
     height: '100%',
     overflow: 'hidden',

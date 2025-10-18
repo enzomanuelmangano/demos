@@ -1,4 +1,3 @@
-// Importing necessary modules and components
 import { View } from 'react-native';
 
 import { useMemo } from 'react';
@@ -127,6 +126,8 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
         snapPoint(scrollOffset.value, event.velocityX, spacings),
         {
           mass: 0.45,
+          damping: 10,
+          stiffness: 100,
         },
       );
       // If you don't like snapping, you can use decay animation instead
@@ -228,6 +229,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
             left: ScreenWidth / 2,
             borderRadius: 10,
             top: scrollableAreaHeight / 2 - indicatorLineHeight / 2,
+            borderCurve: 'continuous',
           },
           rIndicatorStyle,
         ]}

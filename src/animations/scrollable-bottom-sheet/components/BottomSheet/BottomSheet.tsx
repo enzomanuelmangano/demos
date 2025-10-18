@@ -101,6 +101,7 @@ const BottomSheet: FC<BottomSheetProps> = ({
 const styles = StyleSheet.create({
   bottomSheetContainer: {
     backgroundColor: '#171717',
+    borderCurve: 'continuous',
     borderRadius: 25,
     height: SCREEN_HEIGHT,
     position: 'absolute',

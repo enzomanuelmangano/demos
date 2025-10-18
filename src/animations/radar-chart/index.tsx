@@ -95,6 +95,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     borderColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 20,
     borderWidth: 1,
     height: 60,

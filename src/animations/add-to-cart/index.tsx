@@ -175,6 +175,7 @@ const AddToCart = () => {
 const styles = StyleSheet.create({
   buyButton: {
     backgroundColor: '#000',
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 40,
     width: 40,
@@ -187,21 +188,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 10,
-    elevation: 5,
+    boxShadow: '0px 5px 10px rgba(0, 0, 0, 0.2)',
     flexDirection: 'row',
     height: 85,
     justifyContent: 'space-between',
     margin: 10,
     paddingLeft: 15,
     paddingRight: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 5,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
     width: '90%',
   },
 });

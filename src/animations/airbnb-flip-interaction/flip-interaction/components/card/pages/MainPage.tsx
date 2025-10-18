@@ -31,6 +31,7 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: 'transparent',
+    borderCurve: 'continuous',
     borderRadius: spacing.m,
     marginBottom: spacing.m,
     paddingVertical: spacing.s,

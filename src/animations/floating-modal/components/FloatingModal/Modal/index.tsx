@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     backgroundColor: '#111',
+    borderCurve: 'continuous',
     borderRadius: 12,
     flex: 1,
     justifyContent: 'center',

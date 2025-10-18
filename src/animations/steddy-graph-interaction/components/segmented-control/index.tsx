@@ -104,6 +104,7 @@ function SegmentedControl<T extends string>({
 const localStyles = StyleSheet.create({
   backgroundContainer: {
     borderColor: Palette.baseGray05,
+    borderCurve: 'continuous',
     borderRadius: 18,
     borderWidth: 1,
     flexDirection: 'row',
@@ -118,6 +119,7 @@ const localStyles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: Palette.background,
     borderColor: Palette.baseGray05,
+    borderCurve: 'continuous',
     borderRadius: 12,
     borderWidth: 1,
     position: 'absolute',

@@ -102,6 +102,7 @@ const styles = StyleSheet.create({
   sliderContainer: { marginLeft: 25, marginTop: 30 },
   textInput: {
     borderColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 10,
     borderWidth: 1,
     color: 'white',

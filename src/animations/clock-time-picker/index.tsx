@@ -79,11 +79,10 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 24,
     borderWidth: 1,
+    boxShadow: '0px 0px 0px #000000',
     flexDirection: 'row',
     gap: 32,
     justifyContent: 'center',
     padding: 32,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 0 },
   },
 });

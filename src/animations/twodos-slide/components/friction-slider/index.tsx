@@ -129,10 +129,14 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
       // And the translateX is used to keep track of the previous translation value
       translateX.value = withSpring(0, {
         mass: SpringMass,
+        damping: 10,
+        stiffness: 100,
       });
       progressTranslateX.value = withSpring(0, {
         mass: SpringMass,
         overshootClamping: true,
+        damping: 10,
+        stiffness: 100,
       });
     });
 

@@ -161,14 +161,8 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.15)',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 3.84,
   },
   image: {
     borderCurve: 'continuous',

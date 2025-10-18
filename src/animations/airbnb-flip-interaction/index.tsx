@@ -198,6 +198,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   descriptionContainer: {
+    borderCurve: 'continuous',
     borderRadius: spacing.m,
     overflow: 'hidden',
   },

@@ -76,6 +76,7 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
           height: containerHeight,
           padding: internalPadding,
           borderRadius: externalBorderRadius,
+          borderCurve: 'continuous',
         }}>
         <Animated.View style={[rImageStyle, { flex: 1, overflow: 'hidden' }]}>
           <Image

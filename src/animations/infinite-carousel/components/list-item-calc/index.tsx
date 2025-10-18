@@ -120,6 +120,7 @@ export const ListItemCard = ({
                   flex: 1,
                   borderRadius: 100,
                   backgroundColor: colorByIndex(i),
+                  borderCurve: 'continuous',
                 }}
               />
             </View>

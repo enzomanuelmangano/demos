@@ -116,6 +116,7 @@ const CarouselItem: FC<CarouselItemProps> = memo(
                 flex: 1,
                 borderRadius: 5,
                 backgroundColor: item?.mainColor ?? 'transparent',
+                borderCurve: 'continuous',
               },
               item?.mainColor ? styles.shadow : {},
             ]}
@@ -128,14 +129,7 @@ const CarouselItem: FC<CarouselItemProps> = memo(
 
 const styles = StyleSheet.create({
   shadow: {
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
+    boxShadow: '0px 0px 5px rgba(0, 0, 0, 0.25)',
   },
 });
 export { CarouselItem };

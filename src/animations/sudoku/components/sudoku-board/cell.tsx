@@ -112,6 +112,7 @@ const styles = StyleSheet.create({
     width: CELL_SIZE,
   },
   cellBackground: {
+    borderCurve: 'continuous',
     borderRadius: 100,
     bottom: 0,
     left: 0,

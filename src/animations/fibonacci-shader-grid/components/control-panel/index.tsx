@@ -89,9 +89,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
       x.value = withSpring(interpolatedX, {
         mass: 0.5,
+        damping: 10,
+        stiffness: 100,
       });
       y.value = withSpring(interpolatedY, {
         mass: 0.5,
+        damping: 10,
+        stiffness: 100,
       });
     })
     .onUpdate(event => {
@@ -190,6 +194,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(255,255,255,0.09)',
     borderColor: 'rgba(255,255,255,0.4)',
+    borderCurve: 'continuous',
     borderRadius: BUTTON_RADIUS,
     borderWidth: 2,
     flexDirection: 'row',
@@ -209,6 +214,7 @@ const styles = StyleSheet.create({
   pointer: {
     aspectRatio: 1,
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: BUTTON_RADIUS,
     height: BUTTON_RADIUS * 2,
     position: 'absolute',

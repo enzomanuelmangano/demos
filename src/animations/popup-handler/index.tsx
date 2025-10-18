@@ -170,6 +170,7 @@ const PopupHandler = () => {
                 flex: 1,
                 backgroundColor: 'white',
                 borderRadius: size / 2,
+                borderCurve: 'continuous',
               }}
             />
           </TouchablePopupHandler>

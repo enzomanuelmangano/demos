@@ -87,6 +87,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 5,
     height: 60,
     justifyContent: 'center',

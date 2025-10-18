@@ -86,6 +86,7 @@ export const ListItem = memo(
             height: itemSize,
             borderRadius: itemSize / 2,
             borderColor: listColor,
+            borderCurve: 'continuous',
           },
         ]}>
         {image && (

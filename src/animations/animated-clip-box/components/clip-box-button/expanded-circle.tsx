@@ -79,6 +79,7 @@ const ExpandedCircle: React.FC<ExpandedCircleProps> = ({
 const styles = StyleSheet.create({
   circle: {
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 200,
     position: 'absolute',
   },

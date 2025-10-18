@@ -148,6 +148,7 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
 
 const styles = StyleSheet.create({
   container: {
+    borderCurve: 'continuous',
     borderRadius: 35,
     elevation: 2,
     position: 'absolute',

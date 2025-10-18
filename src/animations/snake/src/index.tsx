@@ -107,14 +107,11 @@ const styles = StyleSheet.create({
   boardContainer: {
     alignItems: 'center',
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 18,
-    elevation: 5,
+    boxShadow: '0px 2px 10px rgba(92, 92, 92, 0.2)',
     justifyContent: 'center',
     padding: 10,
-    shadowColor: '#5c5c5c',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
   },
   container: {
     alignItems: 'center',

@@ -54,6 +54,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
             alignItems: 'center',
             flexDirection: 'row',
             margin: 5,
+            borderCurve: 'continuous',
           },
           rAnimatedStyle,
         ]}>

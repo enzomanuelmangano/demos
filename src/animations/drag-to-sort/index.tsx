@@ -113,6 +113,7 @@ const App = () => {
 const styles = StyleSheet.create({
   backgroundItem: {
     backgroundColor: 'rgba(0,0,0,0.1)',
+    borderCurve: 'continuous',
     borderRadius: MAX_BORDER_RADIUS,
     flex: 1,
     margin: PADDING,

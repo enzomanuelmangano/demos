@@ -120,6 +120,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
         ...flattenedStyle,
         height: sliderHeight,
         width: sliderWidth,
+        borderCurve: 'continuous',
       }}>
       <Animated.View
         style={[
