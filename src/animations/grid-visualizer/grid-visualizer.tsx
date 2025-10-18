@@ -163,7 +163,11 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
       for (let i = 0; i < SquaresAmount; i++) {
         const isActive = newActiveRects[i];
         progressValues[i].set(
-          withSpring(isActive ? delayValues[i].get() : 0, { mass: 2 }),
+          withSpring(isActive ? delayValues[i].get() : 0, {
+            mass: 2,
+            damping: 10,
+            stiffness: 100,
+          }),
         );
       }
     },

@@ -89,9 +89,13 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
       x.value = withSpring(interpolatedX, {
         mass: 0.5,
+        damping: 10,
+        stiffness: 100,
       });
       y.value = withSpring(interpolatedY, {
         mass: 0.5,
+        damping: 10,
+        stiffness: 100,
       });
     })
     .onUpdate(event => {

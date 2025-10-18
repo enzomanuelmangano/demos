@@ -127,6 +127,8 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
         snapPoint(scrollOffset.value, event.velocityX, spacings.value),
         {
           mass: 0.45,
+          damping: 10,
+          stiffness: 100,
         },
       );
       clampedScrollOffset.value = withTiming(
