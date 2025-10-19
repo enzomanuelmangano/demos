@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
@@ -19,6 +19,9 @@ import {
 } from '../../src/animations/registry';
 import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
 import { useOnShakeEffect } from '../../src/navigation/hooks/use-shake-gesture';
+import { useRetray } from '../../src/packages/retray';
+
+import type { Trays } from '../../src/trays';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -26,7 +29,6 @@ const DrawerIconSize = 40;
 
 export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
-  const router = useRouter();
   const dimensions = useWindowDimensions();
   const rDrawerProgress = useDrawerProgress();
 
@@ -43,14 +45,10 @@ export default function AnimationScreen() {
   });
 
   // Handle feedback trigger (dev menu in __DEV__, three-finger tap in production)
+  const { show } = useRetray<Trays>();
   const handleFeedback = useCallback(() => {
-    if (slug) {
-      router.push({
-        pathname: '/feedback',
-        params: { slug },
-      });
-    }
-  }, [router, slug]);
+    show('howCanWeHelp', { slug });
+  }, [show, slug]);
 
   useOnShakeEffect(handleFeedback);
 

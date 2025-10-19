@@ -11,6 +11,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { useOta } from '../src/navigation/hooks/use-ota';
+import { Retray, RetrayThemes } from '../src/packages/retray';
+import { trays } from '../src/trays';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -34,19 +36,23 @@ export default function RootLayout() {
         <GestureHandlerRootView style={styles.fill} onLayout={onLayoutRootView}>
           <PressablesConfig globalHandlers={globalPressableHandlers}>
             <FontsProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen
-                  name="(drawer)"
-                  options={{ headerShown: false }}
-                />
-                <Stack.Screen
-                  name="feedback"
-                  options={{
-                    presentation: 'modal',
-                    // animation: 'fade',
-                  }}
-                />
-              </Stack>
+              <Retray.Theme theme={RetrayThemes.light}>
+                <Retray.Navigator screens={trays}>
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen
+                      name="(drawer)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="feedback"
+                      options={{
+                        presentation: 'modal',
+                        // animation: 'fade',
+                      }}
+                    />
+                  </Stack>
+                </Retray.Navigator>
+              </Retray.Theme>
             </FontsProvider>
           </PressablesConfig>
         </GestureHandlerRootView>
