@@ -23,28 +23,28 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
   const Items: readonly HelpItem[] = [
     {
       title: 'Feedback',
-      description: 'Let us know how to improve\nby providing some feedback',
+      description: 'Let us know how to improve by providing some feedback',
       icon: 'chatbox-ellipses',
-      backgroundColor: '#5B9FED',
+      backgroundColor: '#4A90E2',
       type: 'feedback',
     },
     {
       title: 'Inspiration',
-      description: 'View the original inspiration\nfor this animation',
+      description: 'View the original inspiration for this animation',
       icon: 'bulb',
       backgroundColor: '#F5A623',
       type: 'inspiration',
     },
     {
       title: 'Show Unstable Animations',
-      description: 'Toggle visibility of unstable\nwork-in-progress demos',
+      description: 'Toggle visibility of unstable work-in-progress demos',
       icon: 'flask',
       backgroundColor: '#9B59B6',
       type: 'unstable',
     },
     {
       title: 'Sponsor',
-      description: 'Support the project and help\nkeep it running',
+      description: 'Support the project and help keep it running',
       icon: 'heart',
       backgroundColor: '#E74C3C',
       type: 'sponsor',
@@ -52,7 +52,7 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
   ] as const;
 
   const renderIcon = (item: HelpItem) => {
-    return <Ionicons name={item.icon} size={17} color="white" />;
+    return <Ionicons name={item.icon} size={22} color="white" />;
   };
 
   const { show, dismiss } = useRetray();
@@ -108,34 +108,33 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   description: {
-    color: '#888',
-    fontSize: 13,
-    lineHeight: 18,
+    color: '#8E8E93',
+    fontSize: 14,
+    lineHeight: 20,
   },
   iconContainer: {
     alignItems: 'center',
-    borderCurve: 'continuous',
-    borderRadius: 12,
-    height: 36,
+    borderRadius: 25,
+    height: 50,
     justifyContent: 'center',
-    marginRight: 14,
-    width: 36,
+    marginRight: 16,
+    width: 50,
   },
   item: {
-    backgroundColor: 'transparent',
-    borderBottomColor: '#f0f0f0',
-    borderBottomWidth: 1,
+    backgroundColor: '#3A3A3C',
+    borderCurve: 'continuous',
+    borderRadius: 16,
     flexDirection: 'row',
-    paddingVertical: 14,
+    padding: 18,
   },
   textContainer: {
     flex: 1,
-    gap: 2,
+    gap: 4,
     justifyContent: 'center',
   },
   title: {
-    color: '#000',
-    fontSize: 16,
-    fontWeight: '500',
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

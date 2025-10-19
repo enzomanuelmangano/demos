@@ -27,13 +27,13 @@ export type RetrayTheme = {
 
 export const defaultTheme = {
   colors: {
-    background: '#F9F9F9',
-    surface: '#F9F9F9',
+    background: '#2C2C2E',
+    surface: '#2C2C2E',
     primary: '#878787',
     muted: '#CCCCCC',
-    text: '#333333',
-    border: '#E5E5E5',
-    overlay: 'rgba(0, 0, 0, 0.5)',
+    text: '#FFFFFF',
+    border: '#3A3A3C',
+    overlay: 'rgba(0, 0, 0, 0.7)',
   },
   spacing: {
     xs: 4,
