@@ -55,7 +55,6 @@ const BASE_TRANSPARENTS_COLOR_GRADIENT = [
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
-// AnimatedDigit component
 const AnimatedDigit: FC<AnimatedDigitProps> = memo(
   ({
     height,
@@ -169,7 +168,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
     }, []);
 
     const blurIntensity = useDerivedValue<number | undefined>(() => {
-      return isChangingProgress.value * 17;
+      return isChangingProgress.value * 10;
     }, []);
 
     return (
@@ -191,6 +190,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
                 zIndex: 10,
               },
             ]}
+            tint={'light'}
             intensity={blurIntensity}
           />
         )}
