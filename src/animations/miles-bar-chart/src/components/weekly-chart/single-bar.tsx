@@ -5,7 +5,7 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useDerivedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import type { SharedValue } from 'react-native-reanimated';
@@ -26,7 +26,10 @@ export const Bar: React.FC<BarProps> = ({
   letter,
 }) => {
   const animatedProgress = useDerivedValue(() => {
-    return withTiming(progress.value);
+    return withSpring(progress.value, {
+      dampingRatio: 1,
+      duration: 500,
+    });
   }, [progress]);
 
   const rAnimatedStyle = useAnimatedStyle(() => {
