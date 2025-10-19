@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import Animated from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
 import { LayoutTransition } from './animations';
 
@@ -16,6 +16,8 @@ export const BackgroundSection = ({
 
   return (
     <Animated.View
+      entering={FadeIn}
+      exiting={FadeOut}
       layout={LayoutTransition}
       style={[
         styles.backgroundSection,
