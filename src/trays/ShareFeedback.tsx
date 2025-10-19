@@ -28,7 +28,7 @@ export const ShareFeedback = () => {
       <TextInput
         style={styles.input}
         placeholder="What's on your mind?"
-        placeholderTextColor="#aaa"
+        placeholderTextColor="#8E8E93"
         value={feedbackText}
         onChangeText={setFeedbackText}
         multiline
@@ -58,37 +58,42 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     alignItems: 'center',
-    backgroundColor: 'transparent',
+    backgroundColor: '#3A3A3C',
+    borderCurve: 'continuous',
+    borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   cancelButtonText: {
-    color: '#888',
-    fontSize: 15,
+    color: '#8E8E93',
+    fontSize: 16,
+    fontWeight: '600',
   },
   container: {
     flex: 1,
   },
   input: {
-    backgroundColor: 'transparent',
-    color: '#000',
-    fontSize: 15,
+    backgroundColor: '#3A3A3C',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    color: '#FFFFFF',
+    fontSize: 16,
     minHeight: 140,
-    padding: 0,
+    padding: 16,
   },
   submitButton: {
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#4A90E2',
     borderCurve: 'continuous',
-    borderRadius: 10,
+    borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
   submitButtonText: {
     color: '#fff',
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
