@@ -19,6 +19,7 @@ const FancyBorderButton: React.FC<FancyBorderButtonProps> = ({
         borderColor: 'white',
         padding: 16,
         borderRadius: 8,
+        borderCurve: 'continuous',
       }}>
       <Text
         style={{

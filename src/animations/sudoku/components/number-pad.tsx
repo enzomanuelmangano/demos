@@ -62,11 +62,15 @@ const NumberPadButton = memo<NumberPadButtonProps>(
     }, [isHighlighted]);
 
     const handlePressIn = useCallback(() => {
-      scale.value = withSpring(0.95, { mass: 0.3 });
+      scale.value = withSpring(0.95, {
+        mass: 0.3,
+        damping: 10,
+        stiffness: 100,
+      });
     }, [scale]);
 
     const handlePressOut = useCallback(() => {
-      scale.value = withSpring(1, { mass: 0.3 });
+      scale.value = withSpring(1, { mass: 0.3, damping: 10, stiffness: 100 });
     }, [scale]);
 
     const handlePress = useCallback(() => {

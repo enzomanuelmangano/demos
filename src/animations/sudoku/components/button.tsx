@@ -73,6 +73,7 @@ const SIZE_MAP = {
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
+    borderCurve: 'continuous',
     borderRadius: 10,
     flexDirection: 'row',
     gap: 8,
@@ -81,14 +82,12 @@ const styles = StyleSheet.create({
   },
   container: {
     alignSelf: 'flex-start',
+    borderCurve: 'continuous',
     borderRadius: 10,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
+        boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.08)',
       },
       android: {
         elevation: 2,

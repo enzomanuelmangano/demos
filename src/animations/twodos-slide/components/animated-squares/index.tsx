@@ -198,13 +198,7 @@ const styles = StyleSheet.create({
   base: {
     borderCurve: 'continuous',
     borderRadius: externalBorderRadius,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.1)',
     position: 'absolute',
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
   },
 });

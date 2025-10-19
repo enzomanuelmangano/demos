@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     backgroundColor: '#1a1a1a',
+    borderCurve: 'continuous',
     borderRadius: 12,
     borderWidth: 0,
     color: '#fff',

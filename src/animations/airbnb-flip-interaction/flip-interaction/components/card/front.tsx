@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   background: {
+    borderCurve: 'continuous',
     borderRadius: spacing.l + 4,
     bottom: 0,
     left: 0,
@@ -58,6 +59,7 @@ const styles = StyleSheet.create({
     top: 0,
   },
   container: {
+    borderCurve: 'continuous',
     borderRadius: spacing.l + 4,
     flex: 1,
     overflow: 'hidden',

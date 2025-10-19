@@ -72,6 +72,7 @@ const WaveformScrubber: React.FC<WaveformScrubberProps> = ({
 const styles = StyleSheet.create({
   samplesContainer: {
     backgroundColor: Palette.primary,
+    borderCurve: 'continuous',
     borderRadius: 15,
     flexDirection: 'row',
     height: 80,
@@ -81,6 +82,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     aspectRatio: 16 / 9,
     backgroundColor: Palette.primary,
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 35,
     justifyContent: 'center',

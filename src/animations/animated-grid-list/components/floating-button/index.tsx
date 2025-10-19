@@ -49,6 +49,7 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
                 margin: 2,
                 backgroundColor: '#6283B1',
                 borderRadius: isExpanded ? 4 : 2,
+                borderCurve: 'continuous',
               }}
             />
           );

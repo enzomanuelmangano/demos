@@ -169,6 +169,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 35,
     elevation: 2,
     position: 'absolute',

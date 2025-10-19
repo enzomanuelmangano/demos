@@ -145,17 +145,11 @@ export const FlipCard: FC<FlipCardProps> = memo(
 const styles = StyleSheet.create({
   card: {
     aspectRatio: 1.6,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
   },
   cardFace: {
+    borderCurve: 'continuous',
     borderRadius: spacing.l + 4,
+    boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.1)',
     height: '100%',
     overflow: 'hidden',
     width: '100%',

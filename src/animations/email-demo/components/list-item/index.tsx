@@ -23,6 +23,9 @@ export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
               width: itemHeight * 0.45,
               height: itemHeight * 0.45,
               borderRadius: itemHeight * 0.225,
+              // @@TODO: the image should support borderCurve
+              // @ts-ignore
+              borderCurve: 'continuous',
             }}
           />
         </View>
@@ -44,14 +47,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   avatarWrapper: {
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   container: {
     alignItems: 'center',

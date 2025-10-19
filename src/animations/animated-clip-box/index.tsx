@@ -26,12 +26,8 @@ export const AnimatedClipBox = () => {
 const styles = StyleSheet.create({
   button: {
     backgroundColor: 'white',
-    elevation: 5,
+    boxShadow: '0px 0px 20px rgba(0, 0, 0, 0.15)',
     height: 250,
-    shadowColor: 'black',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
     width: boxWidth,
   },
   container: {

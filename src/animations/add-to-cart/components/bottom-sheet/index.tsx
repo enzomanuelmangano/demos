@@ -64,6 +64,7 @@ const BottomSheet: FC<BottomSheetProps> = memo(({ animationProgress }) => {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 20,
     bottom: 0,
     height: BOTTOM_SHEET_HEIGHT,

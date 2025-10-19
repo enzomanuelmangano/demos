@@ -74,25 +74,21 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 4,
     height: '100%',
     justifyContent: 'center',
   },
   container: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 20,
+    boxShadow: '0px 2px 20px rgba(0, 0, 0, 0.05)',
     flexDirection: 'row',
     height: 80,
     paddingBottom: 10,
     paddingHorizontal: 25,
     paddingTop: 15,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 20,
     width: '90%',
   },
   numbers: {

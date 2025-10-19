@@ -81,16 +81,10 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     backgroundColor: '#3A3D45',
     borderRadius: 40,
-    elevation: 4,
+    boxShadow: '0px 4px 0px rgba(0, 0, 0, 0.1)',
     height: 80,
     justifyContent: 'center',
     marginHorizontal: 20,
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
   },
   buttonsContainer: {
     alignItems: 'center',

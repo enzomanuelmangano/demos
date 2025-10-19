@@ -1,4 +1,4 @@
-import { Dimensions, StyleSheet } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { type FC } from 'react';
 
@@ -119,7 +119,9 @@ const CircularListItem: FC<{
 
   return (
     <Animated.View style={[styles.container, rStyle]}>
-      <Image style={styles.image} source={{ uri: imageUri }} />
+      <View style={styles.imageContainer}>
+        <Image style={styles.image} source={{ uri: imageUri }} />
+      </View>
     </Animated.View>
   );
 };
@@ -127,22 +129,21 @@ const CircularListItem: FC<{
 const styles = StyleSheet.create({
   container: {
     aspectRatio: 1,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
     width: LIST_ITEM_WIDTH,
   },
   image: {
     borderColor: '#fff',
+    borderCurve: 'continuous',
     borderRadius: 100,
     borderWidth: 2,
     flex: 1,
+  },
+  imageContainer: {
+    borderCurve: 'continuous',
+    borderRadius: 100,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.1)',
+    flex: 1,
     margin: 8,
-    shadowRadius: 20,
   },
 });
 

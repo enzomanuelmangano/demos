@@ -4,7 +4,6 @@ import { type FC, type ReactNode, type RefObject, useCallback } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   scrollTo,
   type SharedValue,
   useAnimatedReaction,
@@ -218,18 +217,6 @@ const SortableItem: FC<SortableListItemProps> = ({
         },
       ],
       zIndex: zIndex,
-      borderRadius: withTiming(isGestureActive.value ? 5 : 0, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      }),
-      shadowRadius: withTiming(isGestureActive.value ? 30 : 0, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      }),
-      shadowOpacity: withTiming(isGestureActive.value ? 0.2 : 0, {
-        duration: 200,
-        easing: Easing.out(Easing.ease),
-      }),
     };
   }, []);
 
@@ -274,12 +261,6 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowRadius: 10,
   },
 });
 

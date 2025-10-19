@@ -112,6 +112,8 @@ const BaseInfiniteCircularCarousel = <T,>(
 
       translateX.value = withSpring(destination, {
         mass: 0.25,
+        damping: 10,
+        stiffness: 100,
       });
     },
     [findClosestIndexPosition, translateX, listItemWidth],

@@ -100,6 +100,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-native": "^5.0.0",
+    "eslint-plugin-refined": "^0.0.4",
     "expo-color-space-plugin": "^0.0.4",
     "prettier": "^3.1.1",
     "rimraf": "^6.0.1",

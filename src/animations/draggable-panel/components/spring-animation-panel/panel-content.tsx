@@ -238,6 +238,7 @@ const styles = StyleSheet.create({
   springOption: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
+    borderCurve: 'continuous',
     borderRadius: 10,
     flex: 1,
     paddingHorizontal: 8,

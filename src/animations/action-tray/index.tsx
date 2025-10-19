@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: Palette.primary,
+    borderCurve: 'continuous',
     borderRadius: 25,
     flex: 1,
     height: 55,

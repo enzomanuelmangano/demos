@@ -5,6 +5,7 @@ import { CARD_WIDTH, SPACING } from '../utils/constants';
 export const styles = StyleSheet.create({
   chip: {
     borderColor: '#A8A8A8',
+    borderCurve: 'continuous',
     borderRadius: 4,
     borderWidth: 0.5,
     height: '100%',

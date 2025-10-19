@@ -140,14 +140,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   listItem: {
+    borderCurve: 'continuous',
     borderRadius: 10,
-    shadowColor: 'black',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.05)',
   },
   listItemText: {
     fontSize: 16,

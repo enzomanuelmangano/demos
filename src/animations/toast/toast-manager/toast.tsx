@@ -168,17 +168,12 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: 'white',
+    borderCurve: 'continuous',
     borderRadius: 20,
-    elevation: 5,
+    boxShadow: '0px 0px 0px rgba(0, 0, 0, 0.2)',
     height: 70,
     paddingHorizontal: 25,
     position: 'absolute',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
-    shadowOpacity: 0.2,
   },
   rowCenter: {
     alignItems: 'center',

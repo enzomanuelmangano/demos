@@ -78,6 +78,7 @@ export const ListItem: FC<ListItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    boxShadow: '0px 0px 10px black',
     flex: 1,
     flexDirection: 'row',
     paddingHorizontal: 10,
@@ -85,6 +86,7 @@ const styles = StyleSheet.create({
   icon: {
     alignItems: 'center',
     aspectRatio: 1,
+    borderCurve: 'continuous',
     borderRadius: 100,
     height: '55%',
     justifyContent: 'center',
@@ -106,6 +108,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   statusItem: {
+    borderCurve: 'continuous',
     borderRadius: 10,
     height: 25,
     width: 25,
