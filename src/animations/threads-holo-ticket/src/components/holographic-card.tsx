@@ -1,8 +1,3 @@
-/**
- * A component that creates a holographic card effect using Skia for high-performance graphics.
- * The card displays a grid of circles with a dynamic holographic gradient that responds to rotation.
- */
-
 import { type FC, useMemo } from 'react';
 
 import {
@@ -19,6 +14,8 @@ import {
   Skia,
 } from '@shopify/react-native-skia';
 import { Extrapolation, useDerivedValue } from 'react-native-reanimated';
+
+import { useDeviceTilt } from '../hooks/use-device-tilt';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -37,32 +34,46 @@ interface HolographicCardProps {
   color?: string;
 }
 
-// const LogoSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-11.5 -10.23174 23 20.46348">
-//   <title>React Logo</title>
-//   <circle cx="0" cy="0" r="2.05" fill="currentColor"/>
-//   <g stroke="currentColor" stroke-width="1" fill="none">
-//     <ellipse rx="11" ry="4.2"/>
-//     <ellipse rx="11" ry="4.2" transform="rotate(60)"/>
-//     <ellipse rx="11" ry="4.2" transform="rotate(120)"/>
-//   </g>
-// </svg>`;
-// const LogoSvg = Skia.SVG.MakeFromString(LogoSvgString);
-
 export const HolographicCard: FC<HolographicCardProps> = ({
   width,
   height,
   rotateY,
   color = '#FFF',
 }) => {
-  // Calculate the center of the mask based on rotation
+  // Get smoothed device tilt values
+  const { pitch: smoothPitch, roll: smoothRoll } = useDeviceTilt();
+
+  // Calculate the center of the mask based on rotation AND device tilt
   const maskCenterX = useDerivedValue(() => {
     const normalizedRotation = rotateY.value % 360;
     const rotation =
       normalizedRotation < 0 ? normalizedRotation + 360 : normalizedRotation;
 
-    const v = width / 2 - Math.sin((rotation * Math.PI) / 180) * (width / 2);
+    // Base position from card rotation
+    const baseX =
+      width / 2 - Math.sin((rotation * Math.PI) / 180) * (width / 2);
 
-    return v;
+    // Add offset based on device pitch (tilting forward/backward)
+    const tiltOffsetX = interpolate(
+      smoothPitch.value,
+      [-Math.PI / 4, Math.PI / 4],
+      [-width / 3, width / 3],
+      Extrapolation.CLAMP,
+    );
+
+    return baseX + tiltOffsetX;
+  });
+
+  const maskCenterY = useDerivedValue(() => {
+    // Use device roll (tilting left/right) to shift Y position
+    const tiltOffsetY = interpolate(
+      smoothRoll.value,
+      [-Math.PI / 4, Math.PI / 4],
+      [-height / 3, height / 3],
+      Extrapolation.CLAMP,
+    );
+
+    return height / 2 + tiltOffsetY;
   });
 
   // Calculate mask opacity based on rotation angle
@@ -91,14 +102,14 @@ export const HolographicCard: FC<HolographicCardProps> = ({
         />
         <Circle
           cx={maskCenterX}
-          cy={height / 2}
+          cy={maskCenterY}
           r={height / 2.5}
           color={'rgba(0,0,0,1)'}>
           <BlurMask blur={200} style="normal" />
         </Circle>
       </Group>
     );
-  }, [maskOpacity, width, height, maskCenterX]);
+  }, [maskOpacity, width, height, maskCenterX, maskCenterY]);
 
   // Constants for the dot pattern
   const DotSize = 25;
@@ -131,6 +142,41 @@ export const HolographicCard: FC<HolographicCardProps> = ({
     return skPath;
   }, [LogoAmountVertical, LogoSize]);
 
+  // Gradient positions influenced by device tilt - subtle effect
+  const gradientStart = useDerivedValue(() => {
+    const x = interpolate(
+      smoothRoll.value,
+      [-Math.PI / 4, Math.PI / 4],
+      [width * 0.1, width * 0.25],
+      Extrapolation.CLAMP,
+    );
+    const y = interpolate(
+      smoothPitch.value,
+      [-Math.PI / 4, Math.PI / 4],
+      [height * 0.1, height * 0.25],
+      Extrapolation.CLAMP,
+    );
+
+    return { x, y };
+  });
+
+  const gradientEnd = useDerivedValue(() => {
+    const x = interpolate(
+      smoothRoll.value,
+      [-Math.PI / 4, Math.PI / 4],
+      [width * 0.9, width * 0.75],
+      Extrapolation.CLAMP,
+    );
+    const y = interpolate(
+      smoothPitch.value,
+      [-Math.PI / 4, Math.PI / 4],
+      [height * 0.9, height * 0.75],
+      Extrapolation.CLAMP,
+    );
+
+    return { x, y };
+  });
+
   return (
     <Canvas style={{ width, height, backgroundColor: 'transparent' }}>
       <Group clip={clipArea} invertClip>
@@ -147,22 +193,20 @@ export const HolographicCard: FC<HolographicCardProps> = ({
           {/* Holographic effect mask */}
           <Mask mask={mask} mode="luminance">
             <Path path={GridPath}>
-              {/* Holographic gradient colors */}
+              {/* Holographic gradient colors - responds to device tilt */}
               <LinearGradient
-                start={{ x: 0, y: 0 }}
-                end={{ x: width, y: height }}
+                start={gradientStart}
+                end={gradientEnd}
                 colors={[
-                  '#FFD700', // Bright gold
-                  '#1E90FF', // Dodger blue
-                  '#FFD700',
-                  '#4169E1', // Royal blue
-                  '#DAA520', // Golden rod
-                  '#000080', // Navy blue
-                  '#B8860B', // Dark golden rod
-                  '#1E90FF',
-                  '#FFD700',
+                  '#ECD9A8', // Rich champagne
+                  '#B89FCC', // Medium lavender
+                  '#E5C896', // Warm gold
+                  '#8FB3D5', // Soft blue
+                  '#E8CF9E', // Golden beige
+                  '#9B89C0', // Periwinkle
+                  '#EDD5A5', // Champagne gold
                 ]}
-                positions={[0, 0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9, 1]}
+                positions={[0, 0.17, 0.33, 0.5, 0.67, 0.83, 1]}
               />
             </Path>
           </Mask>

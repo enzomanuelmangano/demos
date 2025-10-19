@@ -15,7 +15,7 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withDecay,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -53,10 +53,11 @@ export const Ticket: FC<TicketProps> = memo(
         translateX.value = event.translationX + contextX.value;
       })
       .onEnd(event => {
-        // Apply decay animation when gesture ends
+        // Apply decay animation with better deceleration
         translateX.value = withDecay({
-          velocity: event.velocityX,
-          deceleration: 0.996,
+          velocity: event.velocityX * 0.7,
+          deceleration: 0.998,
+          clamp: [translateX.value - 1080, translateX.value + 1080],
         });
       });
 
@@ -78,7 +79,8 @@ export const Ticket: FC<TicketProps> = memo(
         // Normalize to nearest 180-degree increment and flip to opposite side
         const normalizedRotation = Math.round(translateX.value / 180) * 180;
         const targetRotation = normalizedRotation + 180;
-        translateX.value = withTiming(targetRotation, {
+        translateX.value = withSpring(targetRotation, {
+          dampingRatio: 1.5,
           duration: 500,
         });
       });
@@ -86,9 +88,9 @@ export const Ticket: FC<TicketProps> = memo(
     // Combine gestures with Race - only one gesture can win
     const gesture = Gesture.Race(tapGesture, panGesture);
 
-    // Animated style for the ticket's rotation
     const rTicketStyle = useAnimatedStyle(() => {
       const rotateYValue = `${rotateY.value}deg`;
+
       return {
         transform: [{ perspective: 1000 }, { rotateY: rotateYValue }],
       };
@@ -100,7 +102,6 @@ export const Ticket: FC<TicketProps> = memo(
       return absRotate < 90 || absRotate > 270;
     });
 
-    // Animated styles for front and back visibility
     const rFrontStyle = useAnimatedStyle(() => {
       return {
         opacity: isFront.value ? 1 : 0,

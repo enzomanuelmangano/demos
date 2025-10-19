@@ -1,13 +1,14 @@
 /**
  * Back side of the ticket component displaying a QR code.
  * Features a centered QR code with rounded corners and a gradient fill.
- * The QR code links to the reactiive.io demos page.
  */
 
 import { View } from 'react-native';
 
 import { LinearGradient } from '@shopify/react-native-skia';
 import QRCode from 'react-native-qrcode-skia';
+
+const QR_SIZE = 150;
 
 export const BackSide = () => {
   return (
@@ -20,18 +21,18 @@ export const BackSide = () => {
       {/* QR Code with gradient fill and rounded corners */}
       <QRCode
         value="https://reactiive.io/demos"
-        size={150}
+        size={QR_SIZE}
         shapeOptions={{
           shape: 'rounded', // Rounded corners for QR code modules
           eyePatternShape: 'rounded', // Rounded corners for finder patterns
           eyePatternGap: 0, // No gap between finder pattern elements
           gap: 0, // No gap between QR code modules
         }}>
-        {/* Gold to black gradient fill for QR code */}
+        {/* Premium gradient fill for QR code - static gradient */}
         <LinearGradient
           start={{ x: 0, y: 0 }}
-          end={{ x: 150, y: 150 }}
-          colors={['#DAA520', '#000000']}
+          end={{ x: QR_SIZE, y: QR_SIZE }}
+          colors={['#D4AF37', '#8B6914', '#4A3C1F']}
         />
       </QRCode>
     </View>
