@@ -25,34 +25,34 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
       title: 'Feedback',
       description: 'Let us know how to improve\nby providing some feedback',
       icon: 'chatbox-ellipses',
-      backgroundColor: '#000',
+      backgroundColor: '#5B9FED',
       type: 'feedback',
     },
     {
       title: 'Inspiration',
       description: 'View the original inspiration\nfor this animation',
       icon: 'bulb',
-      backgroundColor: '#000',
+      backgroundColor: '#F5A623',
       type: 'inspiration',
     },
     {
       title: 'Show Unstable Animations',
       description: 'Toggle visibility of unstable\nwork-in-progress demos',
       icon: 'flask',
-      backgroundColor: '#000',
+      backgroundColor: '#9B59B6',
       type: 'unstable',
     },
     {
       title: 'Sponsor',
       description: 'Support the project and help\nkeep it running',
       icon: 'heart',
-      backgroundColor: '#000',
+      backgroundColor: '#E74C3C',
       type: 'sponsor',
     },
   ] as const;
 
   const renderIcon = (item: HelpItem) => {
-    return <Ionicons name={item.icon} size={18} color="white" />;
+    return <Ionicons name={item.icon} size={17} color="white" />;
   };
 
   const { show, dismiss } = useRetray();
