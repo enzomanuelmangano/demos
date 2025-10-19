@@ -17,8 +17,6 @@ import { PIConfetti } from 'react-native-fast-confetti';
 import Animated, {
   FadeIn,
   FadeOut,
-  FadeOutDown,
-  FadeOutRight,
   LinearTransition,
 } from 'react-native-reanimated';
 
@@ -150,7 +148,7 @@ export const Sudoku = () => {
                   variant="secondary"
                   size="small"
                   onPress={handleReset}
-                  exiting={FadeOutDown.duration(200)}
+                  exiting={FadeOut.duration(200)}
                 />
               </Animated.View>
             )}
@@ -180,7 +178,7 @@ export const Sudoku = () => {
                   onPress={() => setHasStarted(true)}
                   size="large"
                   style={styles.startButton}
-                  exiting={FadeOutRight.duration(200)}
+                  exiting={FadeOut.duration(200)}
                 />
               </View>
             )}
