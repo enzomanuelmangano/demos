@@ -78,6 +78,7 @@ export const ListItem: FC<ListItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    boxShadow: '0px 0px 10px black',
     flex: 1,
     flexDirection: 'row',
     paddingHorizontal: 10,

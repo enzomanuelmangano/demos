@@ -120,7 +120,6 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
   },
   touchable: {
-    boxShadow: '0px 1px 4px rgba(184, 184, 184, 0.2)',
     flex: 1,
   },
 });

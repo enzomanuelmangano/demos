@@ -149,7 +149,10 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
       <Animated.View style={[rAnimatedImageStyle, styles.image]}>
         <Image
           source={{ uri: image }}
-          style={{ width: itemWidth, aspectRatio: 4 / 3 }}
+          style={{
+            width: itemWidth,
+            aspectRatio: 4 / 3,
+          }}
           contentFit="cover"
           cachePolicy={'memory-disk'}
         />
@@ -161,7 +164,6 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    boxShadow: '0px 2px 3.84px rgba(0, 0, 0, 0.15)',
     justifyContent: 'center',
   },
   image: {

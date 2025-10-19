@@ -3,8 +3,8 @@ import { useWindowDimensions } from 'react-native';
 import { useCallback } from 'react';
 
 import Animated, {
-  useAnimatedRef,
-  useScrollViewOffset,
+  useAnimatedScrollHandler,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { CarouselItem } from './carousel-item';
@@ -18,8 +18,14 @@ const ItemWidth = 160;
 export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
   images,
 }) => {
-  const animatedRef = useAnimatedRef<any>();
-  const scrollOffset = useScrollViewOffset(animatedRef);
+  // const animatedRef = useAnimatedRef<any>();
+  // const scrollOffset = useScrollViewOffset(animatedRef);
+  const scrollOffset = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: ({ contentOffset: { x } }) => {
+      scrollOffset.value = x;
+    },
+  });
 
   const { width: windowWidth } = useWindowDimensions();
 
@@ -39,12 +45,13 @@ export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
 
   return (
     <Animated.FlatList
-      ref={animatedRef}
+      scrollEventThrottle={16}
       horizontal
       pagingEnabled
       snapToInterval={ItemWidth}
       decelerationRate={'fast'}
       showsHorizontalScrollIndicator={false}
+      onScroll={onScroll}
       contentContainerStyle={{
         alignItems: 'center',
         paddingHorizontal,
