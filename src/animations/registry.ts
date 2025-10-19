@@ -686,6 +686,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'CoverflowCarousel',
     iconName: 'view-carousel',
     iconFamily: 'MaterialCommunityIcons',
+    alert: true,
   },
   'paper-folding': {
     name: 'Paper Folding',
