@@ -91,6 +91,7 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
             <AnimatedBlurView
               animatedProps={animatedDotBlur}
               style={StyleSheet.absoluteFill}
+              tint={'light'}
             />
           )}
         </Animated.View>

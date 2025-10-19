@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { useCallback, useState } from 'react';
 
 import { PressableScale } from 'pressto';
+import { LayoutAnimationConfig } from 'react-native-reanimated';
 
 import { OnlineToOffline } from './components/online-to-offline';
 
@@ -114,17 +115,19 @@ export const OnlineOffline = () => {
   }, []);
 
   return (
-    <PressableScale style={styles.container} onPress={handleTouchEnd}>
-      <OnlineToOffline
-        offline={offlineItems.map(item => item.uri)}
-        online={onlineItems.map(item => item.uri)}
-        itemSize={40}
-        gap={3.5}
-        listPadding={2}
-        listColor="#EAEAEA"
-        sectionGap={12}
-      />
-    </PressableScale>
+    <LayoutAnimationConfig skipEntering>
+      <PressableScale style={styles.container} onPress={handleTouchEnd}>
+        <OnlineToOffline
+          offline={offlineItems.map(item => item.uri)}
+          online={onlineItems.map(item => item.uri)}
+          itemSize={40}
+          gap={3.5}
+          listPadding={2}
+          listColor="#EAEAEA"
+          sectionGap={12}
+        />
+      </PressableScale>
+    </LayoutAnimationConfig>
   );
 };
 

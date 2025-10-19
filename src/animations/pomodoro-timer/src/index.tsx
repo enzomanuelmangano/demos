@@ -18,6 +18,7 @@ const LinesAmount = 200;
 
 const App = () => {
   const animatedNumber = useSharedValue(0);
+  const previousTick = useSharedValue(0);
   const [isTimerEnabled, toggleTimer] = useToggle(false);
 
   const circularSliderRef = useRef<CircularDraggableSliderRefType>(null);
@@ -63,10 +64,16 @@ const App = () => {
         }}
         onProgressChange={sliderProgress => {
           'worklet';
-          scheduleOnRN(hapticLight);
           if (sliderProgress < 0) {
             return;
           }
+
+          // Only trigger haptics when crossing a line (when tick value changes)
+          if (sliderProgress !== previousTick.value) {
+            scheduleOnRN(hapticLight);
+            previousTick.value = sliderProgress;
+          }
+
           // Bind the progress value to the animated number
           animatedNumber.value = sliderProgress;
         }}

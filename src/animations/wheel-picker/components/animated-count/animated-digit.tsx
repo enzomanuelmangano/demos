@@ -181,6 +181,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
                 zIndex: 10,
               },
             ]}
+            tint={'light'}
             intensity={blurIntensity}
           />
         )}

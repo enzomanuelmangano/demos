@@ -6,7 +6,7 @@ import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   useAnimatedStyle,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { Palette } from '../../constants/palette';
@@ -56,7 +56,7 @@ function SegmentedControl<T extends string>({
     // 4 -> -internalPadding / 2
 
     return {
-      left: withTiming(cellBackgroundWidth * selectedCellIndex + padding),
+      left: withSpring(cellBackgroundWidth * selectedCellIndex + padding),
     };
   }, [selectedCellIndex]);
 

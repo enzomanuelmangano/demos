@@ -6,7 +6,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 type TabProps = {
@@ -31,8 +31,9 @@ export const Tab = ({
   // Create an animated progress value that transitions between 0 and 1
   // based on whether the tab is active or not
   const progress = useDerivedValue(() => {
-    return withTiming(isActive ? 1 : 0, {
-      duration: 300, // Animation duration in milliseconds
+    return withSpring(isActive ? 1 : 0, {
+      dampingRatio: 1,
+      duration: 400,
     });
   }, [isActive]);
 

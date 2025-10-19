@@ -44,7 +44,7 @@ const App = () => {
             maxDigits={3}
             fontSize={24}
             textDigitHeight={30}
-            textDigitWidth={19}
+            textDigitWidth={21}
           />
         </View>
 

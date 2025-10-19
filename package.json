@@ -31,7 +31,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@expo/ui": "~0.2.0-beta.6",
     "@expo/vector-icons": "^15.0.2",
-    "@legendapp/list": "^2.0.12",
+    "@legendapp/list": "^2.0.13",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-seoul/masonry-list": "^1.4.2",
     "@react-navigation/bottom-tabs": "^7.4.0",

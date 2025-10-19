@@ -7,7 +7,6 @@ import { App } from './src';
 import { StackedSheetProvider } from './src/stacked-sheet-manager';
 
 export const StackedBottomSheet = () => {
-  // Render the AppContainer with GestureHandlerRootView and SafeAreaProvider
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={localStyles.fill}>
@@ -19,7 +18,6 @@ export const StackedBottomSheet = () => {
   );
 };
 
-// Styles for the AppContainer component
 const localStyles = StyleSheet.create({
   fill: { flex: 1 },
 });

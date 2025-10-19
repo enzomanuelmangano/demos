@@ -686,6 +686,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'CoverflowCarousel',
     iconName: 'view-carousel',
     iconFamily: 'MaterialCommunityIcons',
+    alert: true,
   },
   'paper-folding': {
     name: 'Paper Folding',
@@ -854,12 +855,14 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'TimeMachine',
     iconName: 'timelapse',
     iconFamily: 'MaterialCommunityIcons',
+    alert: true,
   },
   'ios-home-bouncy': {
     name: 'iOS Home Bouncy',
     route: 'IosHomeBouncy',
     iconName: 'home',
     iconFamily: 'MaterialCommunityIcons',
+    alert: true,
   },
   'online-offline': {
     name: 'Online Offline',

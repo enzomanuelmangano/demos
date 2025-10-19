@@ -46,7 +46,7 @@ export const BouncyView = ({ children }: BouncyViewProps) => {
       return {};
     }
 
-    const elementCenterX = dimensions.value.pageX + dimensions.value.width / 2;
+    const elementCenterX = dimensions.value.x + dimensions.value.width / 2;
     const elementCenterY = dimensions.value.pageY + dimensions.value.height / 2;
     const translateX = WindowWidth / 2 - elementCenterX;
     const translateY = WindowHeight / 2 - elementCenterY;
