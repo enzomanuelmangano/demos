@@ -48,7 +48,7 @@ export const FlipCard: FC<FlipCardProps> = memo(
     }, [isFlipped]);
     const frontAnimatedStyle = useAnimatedStyle(() => {
       const rotateY = interpolate(progress.value, [0, 1], [0, 180]);
-      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
+      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.95, 1]);
 
       return {
         transform: [
@@ -62,7 +62,7 @@ export const FlipCard: FC<FlipCardProps> = memo(
 
     const backAnimatedStyle = useAnimatedStyle(() => {
       const rotateY = interpolate(progress.value, [0, 1], [180, 360]);
-      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
+      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.95, 1]);
 
       return {
         transform: [
@@ -76,14 +76,6 @@ export const FlipCard: FC<FlipCardProps> = memo(
         left: 0,
         right: 0,
         bottom: 0,
-      };
-    }, [progress]);
-
-    const containerAnimatedStyle = useAnimatedStyle(() => {
-      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.98, 1]);
-
-      return {
-        transform: [{ scale }],
       };
     }, [progress]);
 
@@ -117,18 +109,16 @@ export const FlipCard: FC<FlipCardProps> = memo(
     return (
       <View style={styles.container}>
         <View style={[styles.rotationContainer, transformStyle]}>
-          <Animated.View style={containerAnimatedStyle}>
-            <View style={cardStyle}>
-              <View style={styles.flipContainer}>
-                <Animated.View style={[styles.cardFace, frontAnimatedStyle]}>
-                  <CardFront profile={profile} />
-                </Animated.View>
-                <Animated.View style={[styles.cardFace, backAnimatedStyle]}>
-                  <CardBack isFlipped={!isFlipped} profile={profile} />
-                </Animated.View>
-              </View>
+          <View style={cardStyle}>
+            <View style={styles.flipContainer}>
+              <Animated.View style={[styles.cardFace, frontAnimatedStyle]}>
+                <CardFront profile={profile} />
+              </Animated.View>
+              <Animated.View style={[styles.cardFace, backAnimatedStyle]}>
+                <CardBack isFlipped={!isFlipped} profile={profile} />
+              </Animated.View>
             </View>
-          </Animated.View>
+          </View>
         </View>
       </View>
     );
