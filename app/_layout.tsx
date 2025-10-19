@@ -1,16 +1,15 @@
-import { Dimensions, StatusBar, StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
 
 import { Suspense, useCallback } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
-import { Drawer } from 'expo-router/drawer';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
-import { DrawerContent } from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,20 +31,22 @@ export default function RootLayout() {
     <Suspense>
       <StatusBar barStyle="default" animated />
       <KeyboardProvider>
-        <GestureHandlerRootView style={styles.fill}>
+        <GestureHandlerRootView style={styles.fill} onLayout={onLayoutRootView}>
           <PressablesConfig globalHandlers={globalPressableHandlers}>
             <FontsProvider>
-              <View style={styles.fill} onLayout={onLayoutRootView}>
-                <Drawer
-                  drawerContent={DrawerContent}
-                  screenOptions={drawerScreenOptions}>
-                  <Drawer.Screen name="index" options={homeOptions} />
-                  <Drawer.Screen
-                    name="animations/[slug]"
-                    options={animationOptions}
-                  />
-                </Drawer>
-              </View>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen
+                  name="(drawer)"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="feedback"
+                  options={{
+                    presentation: 'modal',
+                    // animation: 'fade',
+                  }}
+                />
+              </Stack>
             </FontsProvider>
           </PressablesConfig>
         </GestureHandlerRootView>
@@ -80,33 +81,6 @@ const globalPressableHandlers = {
   onPress: () => {
     Haptics.selectionAsync();
   },
-};
-
-const drawerScreenOptions = {
-  headerShown: false,
-  drawerStyle: {
-    backgroundColor: '#000',
-    width: 270,
-  },
-  drawerActiveTintColor: '#fff',
-  drawerInactiveTintColor: '#666',
-  drawerLabelStyle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  overlayColor: 'rgba(0, 0, 0, 0.5)',
-  swipeEnabled: true,
-  swipeEdgeWidth: Dimensions.get('window').width * 0.35,
-} as const;
-
-const homeOptions = {
-  drawerLabel: 'Home',
-  title: 'Home',
-};
-
-const animationOptions = {
-  drawerLabel: 'Animation',
-  title: 'Animation',
 };
 
 const styles = StyleSheet.create({

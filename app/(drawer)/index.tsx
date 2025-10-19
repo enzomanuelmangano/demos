@@ -9,8 +9,8 @@ import { PressableWithoutFeedback } from 'pressto';
 import {
   StaggeredText,
   StaggeredTextRef,
-} from '../src/animations/everybody-can-cook/components/staggered-text';
-import { AnimatedDrawerIcon } from '../src/navigation/components/animated-drawer-icon';
+} from '../../src/animations/everybody-can-cook/components/staggered-text';
+import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
 
 const baseDrawerOptions = {
   headerShown: true,

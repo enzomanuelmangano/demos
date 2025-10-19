@@ -1,3 +1,5 @@
+import { DevSettings, Platform } from 'react-native';
+
 import { useEffect, useMemo } from 'react';
 
 import { Accelerometer } from 'expo-sensors';
@@ -8,7 +10,12 @@ export const useOnShakeEffect = (callback: () => void) => {
     () => debounce(callback, 2500, { leading: true, trailing: false }),
     [callback],
   );
+
   useEffect(() => {
+    if (__DEV__ && Platform.OS !== 'web') {
+      return DevSettings.addMenuItem('💬 Send Feedback', callback);
+    }
+
     let lastUpdate = 0;
     let lastX = 0;
     let lastY = 0;
@@ -38,5 +45,5 @@ export const useOnShakeEffect = (callback: () => void) => {
     return () => {
       subscription.remove();
     };
-  }, [debouncedCallback]);
+  }, [callback, debouncedCallback]);
 };
