@@ -3,12 +3,14 @@ import { StyleSheet, View } from 'react-native';
 import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import Animated, {
+  Easing,
   interpolate,
   interpolateColor,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 
 import { AnimatedBlurView } from './components/animated-blur-view';
@@ -48,7 +50,10 @@ const App = () => {
   });
 
   const animatedBlurIntensity = useDerivedValue<number | undefined>(() => {
-    return withSpring(blurIntensity.value);
+    return withTiming(blurIntensity.value, {
+      duration: 300,
+      easing: Easing.linear,
+    });
   }, []);
 
   const skiaPath = useSharedValue(Skia.Path.Make());
