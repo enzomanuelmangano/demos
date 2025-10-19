@@ -11,12 +11,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import type { ToastType } from './context';
+import { useInternalToast } from './hooks';
 
 // Define the props for the Toast component
 type ToastProps = {
   index: number;
-  toast: ToastType;
+  toastKey: string;
   onDismiss: (toastId: number) => void;
 };
 
@@ -27,11 +27,14 @@ const HideToastOffset = ToastOffset + ToastHeight;
 const BaseSafeArea = 50;
 
 // Define the Toast component
-const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
+const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
   // Get the width of the window using useWindowDimensions hook
   const { width: windowWidth } = useWindowDimensions();
 
-  const isActiveToast = toast.id === 0;
+  // Use the hook to get the current toast state by key
+  const toast = useInternalToast(toastKey);
+
+  const isActiveToast = toast?.id === 0;
 
   // Shared values for animation
   // That's the "initial" position of the toast
@@ -43,7 +46,7 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
       // Except for the first toast, that should be animated from the bottom
       // of the screen (so -HideToastOffset)
       -HideToastOffset
-    : BaseSafeArea + (toast.id - 1) * ToastOffset;
+    : BaseSafeArea + ((toast?.id ?? 0) - 1) * ToastOffset;
 
   const bottom = useSharedValue(initialBottomPosition);
 
@@ -52,22 +55,24 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
   // right bottom value.
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
+    if (!toast) return;
     bottom.value = withSpring(BaseSafeArea + toast.id * ToastOffset);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast.id]);
+  }, [toast?.id]);
 
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);
 
   const dismissItem = useCallback(() => {
     'worklet';
+    if (!toast) return;
     translateX.value = withTiming(-windowWidth, undefined, isFinished => {
       if (isFinished) {
         scheduleOnRN(onDismiss, toast.id);
       }
     });
-  }, [onDismiss, toast.id, translateX, windowWidth]);
+  }, [onDismiss, toast, translateX, windowWidth]);
 
   const gesture = Gesture.Pan()
     .enabled(isActiveToast)
@@ -90,16 +95,17 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
     });
 
   useEffect(() => {
-    if (!toast.autodismiss || !isActiveToast) return;
+    if (!toast?.autodismiss || !isActiveToast) return;
     const timeout = setTimeout(() => {
       dismissItem();
     }, 2500);
     return () => {
       clearTimeout(timeout);
     };
-  }, [dismissItem, isActiveToast, toast.autodismiss]);
+  }, [dismissItem, isActiveToast, toast?.autodismiss]);
 
   const rToastStyle = useAnimatedStyle(() => {
+    if (!toast) return {};
     const baseScale = 1 - toast.id * 0.05;
     const scale = isSwiping.value ? baseScale * 0.96 : baseScale;
 
@@ -115,13 +121,16 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
         },
       ],
     };
-  }, [toast]);
+  }, [toast?.id]);
 
   const rVisibleContainerStyle = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(toast.id <= 1 ? 1 : 0),
+      opacity: withTiming((toast?.id ?? 0) <= 1 ? 1 : 0),
     };
-  }, [toast.id]);
+  }, [toast?.id]);
+
+  // If toast is not found, don't render anything
+  if (!toast) return null;
 
   return (
     <GestureDetector gesture={gesture}>
@@ -131,7 +140,6 @@ const Toast: React.FC<ToastProps> = ({ toast, index, onDismiss }) => {
           {
             width: windowWidth * 0.9,
             left: windowWidth * 0.05,
-            shadowRadius: Math.max(10 - toast.id * 2, 5),
             zIndex: 100 - toast.id,
             borderCurve: 'continuous',
           },
@@ -170,7 +178,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderCurve: 'continuous',
     borderRadius: 20,
-    boxShadow: '0px 0px 0px rgba(0, 0, 0, 0.2)',
+    boxShadow: '0px 0px 2px rgba(0, 0, 0, 0.2)',
     height: 70,
     paddingHorizontal: 25,
     position: 'absolute',

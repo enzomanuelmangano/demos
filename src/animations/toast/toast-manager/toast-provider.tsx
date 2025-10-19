@@ -1,12 +1,17 @@
 import {
   useCallback,
   useMemo,
+  useRef,
   useState,
   type FC,
   type PropsWithChildren,
 } from 'react';
 
-import { ToastContext, type ToastType } from './context';
+import {
+  InternalToastContext,
+  ToastContext,
+  type ToastType,
+} from './context';
 import { Toast } from './toast';
 
 export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
@@ -22,13 +27,20 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
         return prev;
       }
 
+      // Generate a unique key if not provided
+      const key =
+        toast.key ||
+        (typeof toast.title === 'string'
+          ? `${toast.title}-${Date.now()}`
+          : `toast-${Date.now()}`);
+
       // Update the IDs and add the new toast to the list
       const updatedPrev = prev.map(item => ({
         ...item,
         leading: item.leading,
         id: item.id + 1,
       }));
-      return [...updatedPrev, { ...toast, id: 0 }];
+      return [...updatedPrev, { ...toast, key, id: 0 }];
     });
   }, []);
 
@@ -66,19 +78,41 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
     };
   }, [showToast]);
 
-  return (
-    <>
-      <ToastContext.Provider value={value}>{children}</ToastContext.Provider>
-      {sortedToasts.map((toast, index) => {
-        // Generate a unique key for each toast
-        const textKey =
-          typeof toast.title === 'string' ? toast.title : toast.id;
-        const key = toast.key || textKey;
+  // Memoize toast components by key to prevent re-creation
+  const toastsMemoizedByKeys = useRef<Record<string, React.ReactNode>>({});
 
-        return (
-          <Toast key={key} toast={toast} index={index} onDismiss={onDismiss} />
-        );
-      })}
-    </>
+  const renderToast = useCallback(
+    (toast: ToastType, index: number) => {
+      const key = toast.key || `toast-${toast.id}`;
+
+      if (toastsMemoizedByKeys.current[key]) {
+        return toastsMemoizedByKeys.current[key];
+      }
+
+      const toastNode = (
+        <Toast key={key} toastKey={key} index={index} onDismiss={onDismiss} />
+      );
+
+      toastsMemoizedByKeys.current[key] = toastNode;
+      return toastNode;
+    },
+    [onDismiss],
+  );
+
+  const internalToastValue = useMemo(() => {
+    return {
+      toasts,
+    };
+  }, [toasts]);
+
+  return (
+    <ToastContext.Provider value={value}>
+      <InternalToastContext.Provider value={internalToastValue}>
+        {children}
+        {sortedToasts.map((toast, index) => {
+          return renderToast(toast, index);
+        })}
+      </InternalToastContext.Provider>
+    </ToastContext.Provider>
   );
 };

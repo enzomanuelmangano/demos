@@ -21,3 +21,21 @@ export const ToastContext = createContext<{
 export const useToast = () => {
   return useContext(ToastContext);
 };
+
+// Why did I create two contexts?
+// The first one is for general use.
+// If you want to show a Toast:
+// 1. You don't need to know the internal details of the ToastProvider.
+// 2. You don't need to re-render the component when the internal state of the ToastProvider changes.
+
+// The second one is for internal use.
+// This is used to update the internal state of each Toast.
+// It is used to calculate the position of each Toast based on its ID.
+
+export type InternalToastContextType = {
+  toasts: ToastType[];
+};
+
+export const InternalToastContext = createContext<InternalToastContextType>({
+  toasts: [],
+});
