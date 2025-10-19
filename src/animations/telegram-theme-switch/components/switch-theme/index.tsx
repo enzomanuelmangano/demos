@@ -17,6 +17,7 @@ import Reanimated, {
   useSharedValue,
   withTiming,
   Easing,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { AnimatedLottieView } from '../animated-lottie-view';
@@ -33,7 +34,7 @@ type SwitchThemeProviderProps = {
   children?: React.ReactNode;
 };
 
-export const SWITCH_THEME_ANIMATION_DURATION = 1000;
+export const SWITCH_THEME_ANIMATION_DURATION = 600;
 
 const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   children,
@@ -54,8 +55,9 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   const skImage = useSharedValue<SkImage | null>(null);
 
   const clipPathRadiusScale = useDerivedValue(() => {
-    return withTiming(theme === 'light' ? 1 : 0, {
+    return withSpring(theme === 'light' ? 1 : 0, {
       duration: SWITCH_THEME_ANIMATION_DURATION,
+      dampingRatio: 1,
     });
   }, [theme]);
 
