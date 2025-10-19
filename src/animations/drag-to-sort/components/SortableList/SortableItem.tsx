@@ -215,7 +215,6 @@ const SortableItem: FC<SortableListItemProps> = ({
       borderRadius: withTiming(isGestureActive.value ? 20 : 0, {
         duration: 200,
       }),
-      shadowOpacity: withTiming(isGestureActive.value ? 0.3 : 0),
     };
   }, []);
 
@@ -257,7 +256,6 @@ const styles = StyleSheet.create({
     zIndex: -50,
   },
   item: {
-    boxShadow: '0px 0px 10px black',
     left: 0,
     position: 'absolute',
     right: 0,
