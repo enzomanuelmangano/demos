@@ -33,6 +33,8 @@ export type SwipeableCardRefType = {
   reset: () => void;
 };
 
+const SIGNED_NORMALIZED_INPUT_RANGE = [-1, 0, 1];
+
 const SwipeableCard = forwardRef<
   {
     //
@@ -78,18 +80,28 @@ const SwipeableCard = forwardRef<
     };
   }, [swipeLeft, swipeRight, reset]);
 
-  const inputRange = useMemo(() => {
+  const inputTranslationRange = useMemo(() => {
     return [-width / 3, 0, width / 3];
   }, [width]);
+
+  // Time (in seconds) needed for crossing to one extreme of the inputTranslationRange with a quick flick of a finger
+  const FLICK_DURATION = 0.1;
+  const inputVelocityRange = useMemo(() => {
+    return [
+      inputTranslationRange[0] / FLICK_DURATION,
+      0,
+      inputTranslationRange[2] / FLICK_DURATION,
+    ];
+  }, [inputTranslationRange]);
 
   const rotate = useDerivedValue(() => {
     return interpolate(
       translateX.value,
-      inputRange,
+      inputTranslationRange,
       [-Math.PI / 20, 0, Math.PI / 20],
       Extrapolation.CLAMP,
     );
-  }, [inputRange]);
+  }, [inputTranslationRange]);
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
@@ -100,9 +112,34 @@ const SwipeableCard = forwardRef<
       translateX.value = event.translationX;
       translateY.value = event.translationY;
 
-      nextActiveIndex.value = interpolate(
+      const normalizedTranslationX = interpolate(
         translateX.value,
-        inputRange,
+        inputTranslationRange,
+        SIGNED_NORMALIZED_INPUT_RANGE,
+        Extrapolation.EXTEND,
+      );
+
+      const normalizedVelocityX = interpolate(
+        event.velocityX,
+        inputVelocityRange,
+        SIGNED_NORMALIZED_INPUT_RANGE,
+        Extrapolation.EXTEND,
+      );
+
+      // Calculate decision boundary using unit circle formula (x² + y² = r² = 1).
+      // When normalizedTranslation² + normalizedVelocity² crosses 1, the swipe is triggered.
+      // This creates a circular decision boundary where both translation distance and velocity
+      // contribute equally to the swipe decision.  A quick flick (high velocity, low distance)
+      // and a slow drag (high distance, low velocity) are treated equivalently, while both
+      // contribute always. Math.sign() preserves swipe direction.
+      const signedNormalizedDecisionRadius =
+        Math.sign(translateX.value) *
+        (normalizedTranslationX * normalizedTranslationX +
+          normalizedVelocityX * normalizedVelocityX);
+
+      nextActiveIndex.value = interpolate(
+        signedNormalizedDecisionRadius,
+        SIGNED_NORMALIZED_INPUT_RANGE,
         [
           currentActiveIndex.value + 1,
           currentActiveIndex.value,
