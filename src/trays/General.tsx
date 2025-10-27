@@ -1,13 +1,14 @@
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Linking, Switch } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 
-import { useRetray } from '../packages/retray';
+import { ShowUnstableAnimationsAtom } from '../navigation/states/filters';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
 
-interface HelpItem {
+interface GeneralItem {
   title: string;
   description: string;
   icon: IoniconsIconName;
@@ -15,47 +16,50 @@ interface HelpItem {
   type: string;
 }
 
-interface HowCanWeHelpProps {
+interface GeneralProps {
   slug?: string;
 }
 
-export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
-  const Items: readonly HelpItem[] = [
+export const General = ({ slug }: GeneralProps) => {
+  const Items: readonly GeneralItem[] = [
     {
-      title: 'Feedback',
-      description: 'Let us know how to improve by providing some feedback',
-      icon: 'chatbox-ellipses',
-      backgroundColor: '#4A90E2',
-      type: 'feedback',
+      title: 'Show Unstable',
+      description: 'Show or hide work-in-progress demos',
+      icon: 'flask',
+      backgroundColor: '#FF9500',
+      type: 'unstable',
     },
     {
-      title: 'Inspiration',
-      description: 'View the original inspiration for this animation',
-      icon: 'bulb',
-      backgroundColor: '#F5A623',
-      type: 'inspiration',
+      title: 'Source Code',
+      description: 'View the code on GitHub',
+      icon: 'logo-github',
+      backgroundColor: '#24292e',
+      type: 'source',
     },
     {
-      title: 'General',
-      description: 'Settings, source code, and more',
-      icon: 'settings-outline',
-      backgroundColor: '#8E8E93',
-      type: 'general',
+      title: 'Sponsor',
+      description: 'Support the project and help keep it running',
+      icon: 'heart',
+      backgroundColor: '#E74C3C',
+      type: 'sponsor',
     },
   ] as const;
 
-  const { show } = useRetray();
+  const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
 
   const handleItemPress = (type: string) => {
     switch (type) {
-      case 'feedback':
-        show('shareFeedback');
+      case 'unstable':
+        setShowUnstable(!showUnstable);
         break;
-      case 'inspiration':
-        show('inspiration', { slug });
+      case 'source':
+        const sourceUrl = slug
+          ? `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
+          : 'https://github.com/enzomanuelmangano/demos/tree/main/src/animations';
+        Linking.openURL(sourceUrl);
         break;
-      case 'general':
-        show('general', { slug });
+      case 'sponsor':
+        Linking.openURL('https://github.com/sponsors/enzomanuelmangano');
         break;
     }
   };
@@ -80,6 +84,14 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
             <Text style={styles.title}>{item.title}</Text>
             <Text style={styles.description}>{item.description}</Text>
           </View>
+          {item.type === 'unstable' && (
+            <Switch
+              value={showUnstable}
+              onValueChange={setShowUnstable}
+              trackColor={{ false: '#3e3e3e', true: '#FF9500' }}
+              thumbColor="#ffffff"
+            />
+          )}
         </PressableScale>
       ))}
     </View>

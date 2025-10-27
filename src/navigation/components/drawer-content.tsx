@@ -24,7 +24,10 @@ import {
   type AnimationComponent,
   type AnimationMetadataType,
 } from '../../animations/registry';
-import { SearchFilterAtom } from '../../navigation/states/filters';
+import {
+  SearchFilterAtom,
+  ShowUnstableAnimationsAtom,
+} from '../../navigation/states/filters';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
@@ -45,6 +48,7 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
   const { top, bottom } = useSafeAreaInsets();
   const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
+  const [showUnstable] = useAtom(ShowUnstableAnimationsAtom);
 
   const allAnimations = useMemo(() => {
     return getAllAnimations()
@@ -60,13 +64,22 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
   }, []);
 
   const filteredAnimations: AnimationItem[] = useMemo(() => {
-    if (!searchFilter.trim()) {
-      return allAnimations;
+    let animations = allAnimations;
+
+    // Filter out unstable animations if the toggle is off
+    if (!showUnstable) {
+      animations = animations.filter(animation => !animation.alert);
     }
-    return allAnimations.filter(animation =>
-      animation.name.toLowerCase().includes(searchFilter.toLowerCase()),
-    );
-  }, [allAnimations, searchFilter]);
+
+    // Apply search filter
+    if (searchFilter.trim()) {
+      animations = animations.filter(animation =>
+        animation.name.toLowerCase().includes(searchFilter.toLowerCase()),
+      );
+    }
+
+    return animations;
+  }, [allAnimations, searchFilter, showUnstable]);
 
   const renderItem = useCallback(
     ({ item }: LegendListRenderItemProps<AnimationItem>) => {

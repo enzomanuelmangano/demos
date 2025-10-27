@@ -14,15 +14,15 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'airbnb-flip-interaction': {
     authorName: 'Airbnb',
-    link: null,
+    link: 'https://apps.apple.com/app/airbnb/id401626263',
   },
   'airbnb-slider': {
     authorName: 'Airbnb',
-    link: null,
+    link: 'https://apps.apple.com/app/airbnb/id401626263',
   },
   'alert-drawer': {
     authorName: 'Family',
-    link: null,
+    link: 'https://apps.apple.com/app/family/id1438638658',
   },
   'animated-3d-parallax': {
     authorName: null,
@@ -94,7 +94,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'clerk-toast': {
     authorName: 'Emil Kowalski',
-    link: null,
+    link: 'https://x.com/emilkowalski_',
   },
   'clock-time-picker': {
     authorName: '@proskuaaa',
@@ -114,7 +114,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'cuberto-slider': {
     authorName: 'Cuberto',
-    link: null,
+    link: 'https://cuberto.com',
   },
   'delete-button': {
     authorName: '@wickedmishra',
@@ -122,7 +122,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'dot-sheet': {
     authorName: 'Dot',
-    link: null,
+    link: 'https://apps.apple.com/app/new-dot/id1510139047',
   },
   'drag-to-sort': {
     authorName: '@andrew_cfg',
@@ -162,7 +162,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'expandable-mini-player': {
     authorName: 'Spotify',
-    link: null,
+    link: 'https://apps.apple.com/app/spotify/id324684580',
   },
   'family-number-input': {
     authorName: '@benjitaylor',
@@ -226,7 +226,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'imessage-stack': {
     authorName: 'Apple iMessage',
-    link: null,
+    link: 'https://www.apple.com/ios/messages/',
   },
   'infinite-carousel': {
     authorName: null,
@@ -238,11 +238,11 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'ios-home-bouncy': {
     authorName: 'Apple iOS',
-    link: null,
+    link: 'https://www.apple.com/ios/',
   },
   'ios-home-grid': {
     authorName: 'Apple iOS',
-    link: null,
+    link: 'https://www.apple.com/ios/',
   },
   'liquid-glass-playground': {
     authorName: '@betomoedano',
@@ -258,7 +258,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'miles-bar-chart': {
     authorName: '@MilesRunningApp',
-    link: null,
+    link: 'https://apps.apple.com/app/miles-rewards/id1070565563',
   },
   'mobile-input': {
     authorName: null,
@@ -290,7 +290,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'prequel-slider': {
     authorName: 'Prequel',
-    link: null,
+    link: 'https://apps.apple.com/app/prequel/id1455944529',
   },
   'qr-code-generator': {
     authorName: null,
@@ -302,7 +302,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'record-button': {
     authorName: '@uuuntitleddd',
-    link: null,
+    link: 'https://x.com/uuuntitleddd',
   },
   'scroll-progress': {
     authorName: '@jamesvclements',
@@ -322,7 +322,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'shake-to-delete': {
     authorName: 'Apple iOS',
-    link: null,
+    link: 'https://www.apple.com/ios/',
   },
   'shared-transitions': {
     authorName: '@tomekzaw_',
@@ -354,7 +354,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'split-button': {
     authorName: '@MilesRunningApp',
-    link: null,
+    link: 'https://apps.apple.com/app/miles-rewards/id1070565563',
   },
   'stacked-bottom-sheet': {
     authorName: null,
@@ -394,7 +394,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'swipe-cards': {
     authorName: 'Tinder',
-    link: null,
+    link: 'https://apps.apple.com/app/tinder/id547702041',
   },
   'tab-navigation': {
     authorName: '@60fpsdesign',
@@ -422,7 +422,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'twitter-tab-bar': {
     authorName: 'Twitter',
-    link: null,
+    link: 'https://apps.apple.com/app/x/id333903271',
   },
   'twodos-slide': {
     authorName: '@AdamWhitcroft',
