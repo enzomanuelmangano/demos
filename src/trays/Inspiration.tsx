@@ -45,17 +45,14 @@ export const Inspiration = ({ slug }: InspirationProps) => {
       {link && (
         <PressableScale
           style={styles.linkButton}
-          onPress={() => Linking.openURL(link)}
-        >
+          onPress={() => Linking.openURL(link)}>
           <Text style={styles.linkButtonText}>View Original</Text>
         </PressableScale>
       )}
 
       {!link && authorName && (
         <View style={styles.noLinkCard}>
-          <Text style={styles.noLinkText}>
-            No link available
-          </Text>
+          <Text style={styles.noLinkText}>No link available</Text>
         </View>
       )}
     </View>

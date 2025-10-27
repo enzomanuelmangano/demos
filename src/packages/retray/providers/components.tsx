@@ -4,6 +4,7 @@ import React, {
   useMemo,
   type PropsWithChildren,
 } from 'react';
+
 import {
   Header as DefaultHeader,
   Backdrop as DefaultBackdrop,
@@ -36,7 +37,7 @@ export const RetrayComponentsProvider: React.FC<
       Header: Header || defaultComponents.Header,
       Backdrop: Backdrop || defaultComponents.Backdrop,
     }),
-    [Header, Backdrop]
+    [Header, Backdrop],
   );
 
   return (

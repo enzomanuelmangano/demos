@@ -5,9 +5,11 @@ import React, {
   useRef,
   useCallback,
 } from 'react';
-import { useSharedValue } from 'react-native-reanimated';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useSharedValue } from 'react-native-reanimated';
+
+import { ActionTray } from '../components';
 import {
   RetrayContext,
   type RetrayScreen,
@@ -15,7 +17,6 @@ import {
   type RetrayActions,
   type RetrayContextProps,
 } from '../context';
-import { ActionTray } from '../components';
 import {
   RetrayComponentsContext,
   defaultComponents,
@@ -89,7 +90,7 @@ export const Provider = <
       dismiss,
       replaceScreen,
       navigateToScreen,
-    ]
+    ],
   );
 
   const handleGoBack = useCallback(() => {
@@ -106,7 +107,7 @@ export const Provider = <
       screenProps: screenProps as Record<keyof T, any>,
       isActive,
     }),
-    [currentScreen, screenHistory, screenProps, isActive]
+    [currentScreen, screenHistory, screenProps, isActive],
   );
 
   const actions = useMemo(
@@ -115,14 +116,14 @@ export const Provider = <
       dismiss,
       goBack: handleGoBack,
     }),
-    [show, dismiss, handleGoBack]
+    [show, dismiss, handleGoBack],
   );
 
   const meta = useMemo(
     () => ({
       trayRef,
     }),
-    [trayRef]
+    [trayRef],
   );
 
   const actionTrayProviderValue = useMemo(
@@ -132,7 +133,7 @@ export const Provider = <
         actions,
         meta,
       }) as RetrayContextProps<T>,
-    [state, actions, meta]
+    [state, actions, meta],
   );
 
   const currentComponent = useMemo(() => {
@@ -147,7 +148,7 @@ export const Provider = <
       Header: Header || defaultComponents.Header,
       Backdrop: Backdrop || defaultComponents.Backdrop,
     }),
-    [Header, Backdrop]
+    [Header, Backdrop],
   );
 
   return (

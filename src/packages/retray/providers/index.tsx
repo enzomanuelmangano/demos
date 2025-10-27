@@ -1,6 +1,6 @@
+import { type RetrayComponents } from './components';
 import { Provider } from './main';
 import { RetrayThemeProvider, type RetrayTheme } from './theme';
-import { type RetrayComponents } from './components';
 
 export const Retray = {
   Navigator: Provider,
