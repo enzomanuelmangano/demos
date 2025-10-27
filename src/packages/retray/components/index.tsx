@@ -11,6 +11,7 @@ import Animated, {
   LinearTransition,
   useAnimatedRef,
   measure,
+  useDerivedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
@@ -132,11 +133,13 @@ const ActionTray = React.forwardRef<any, ActionTrayProps>(
         }
       });
 
+    const adjustedTranslateY = useDerivedValue(() => {
+      return translateY.get() + keyboardTranslateY.get();
+    });
+
     const rTranslateStyle = useAnimatedStyle(() => {
       return {
-        transform: [
-          { translateY: translateY.get() + keyboardTranslateY.get() },
-        ],
+        transform: [{ translateY: adjustedTranslateY.get() }],
       };
     }, []);
 
