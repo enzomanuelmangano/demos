@@ -109,7 +109,10 @@ function App() {
         <View style={styles.headingContainer}>
           <Text style={styles.headingText}>{title}</Text>
           <View style={styles.fill} />
-          <PressableScale onPress={close} style={styles.closeButton}>
+          <PressableScale
+            onPress={close}
+            style={styles.closeButton}
+            hitSlop={8}>
             <MaterialCommunityIcons
               name="close-thick"
               size={15}

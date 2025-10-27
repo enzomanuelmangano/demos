@@ -7,11 +7,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 
-import {
-  InternalToastContext,
-  ToastContext,
-  type ToastType,
-} from './context';
+import { InternalToastContext, ToastContext, type ToastType } from './context';
 import { Toast } from './toast';
 
 export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {

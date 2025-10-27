@@ -143,7 +143,8 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
           },
           rBackIconStyle,
           styles.back,
-        ]}>
+        ]}
+        hitSlop={4}>
         <Ionicons name="chevron-back-outline" size={24} color="#323232" />
       </PressableScale>
       <Animated.View
