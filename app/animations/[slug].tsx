@@ -46,8 +46,9 @@ export default function AnimationScreen() {
 
   // Handle feedback trigger (dev menu in __DEV__, three-finger tap in production)
   const { show } = useRetray<Trays>();
+
   const handleFeedback = useCallback(() => {
-    show('howCanWeHelp', { slug });
+    show('help', { slug });
   }, [show, slug]);
 
   useOnShakeEffect(handleFeedback);

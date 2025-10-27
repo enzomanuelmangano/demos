@@ -1,15 +1,16 @@
-import { StatusBar, StyleSheet } from 'react-native';
+import { Dimensions, StatusBar, StyleSheet } from 'react-native';
 
 import { Suspense, useCallback } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
-import { Stack } from 'expo-router';
+import Drawer from 'expo-router/drawer';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { DrawerContent } from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { Retray, RetrayThemes } from '../src/packages/retray';
 import { trays } from '../src/trays';
@@ -20,6 +21,23 @@ SplashScreen.setOptions({
   duration: 500,
   fade: true,
 });
+
+const drawerOptions = {
+  headerShown: false,
+  drawerStyle: {
+    backgroundColor: '#000',
+    width: 270,
+  },
+  drawerActiveTintColor: '#fff',
+  drawerInactiveTintColor: '#666',
+  drawerLabelStyle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  overlayColor: 'rgba(0, 0, 0, 0.5)',
+  swipeEnabled: true,
+  swipeEdgeWidth: Dimensions.get('window').width * 0.35,
+} as const;
 
 export default function RootLayout() {
   // Check for OTA updates
@@ -38,19 +56,24 @@ export default function RootLayout() {
             <FontsProvider>
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>
-                  <Stack screenOptions={{ headerShown: false }}>
-                    <Stack.Screen
-                      name="(drawer)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="feedback"
+                  <Drawer
+                    drawerContent={DrawerContent}
+                    screenOptions={drawerOptions}>
+                    <Drawer.Screen
+                      name="index"
                       options={{
-                        presentation: 'modal',
-                        // animation: 'fade',
+                        drawerLabel: 'Home',
+                        title: 'Home',
                       }}
                     />
-                  </Stack>
+                    <Drawer.Screen
+                      name="animations/[slug]"
+                      options={{
+                        drawerLabel: 'Animation',
+                        title: 'Animation',
+                      }}
+                    />
+                  </Drawer>
                 </Retray.Navigator>
               </Retray.Theme>
             </FontsProvider>

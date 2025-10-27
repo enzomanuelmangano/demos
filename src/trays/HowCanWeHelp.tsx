@@ -3,6 +3,7 @@ import { View, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 
+import { AnimationInspirations } from '../animations/inspirations';
 import { useRetray } from '../packages/retray';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -20,7 +21,7 @@ interface HowCanWeHelpProps {
 }
 
 export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
-  const Items: readonly HelpItem[] = [
+  const AllItems: readonly HelpItem[] = [
     {
       title: 'Feedback',
       description: 'Let us know how to improve by providing some feedback',
@@ -45,6 +46,21 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
   ] as const;
 
   const { show } = useRetray();
+
+  // Check if inspiration data exists for the current slug
+  // Hide inspiration only if BOTH authorName and link are null
+  const hasInspiration =
+    slug &&
+    AnimationInspirations[slug] &&
+    !(
+      AnimationInspirations[slug].authorName === null &&
+      AnimationInspirations[slug].link === null
+    );
+
+  // Filter items to hide inspiration if no data is available
+  const Items = AllItems.filter(
+    item => item.type !== 'inspiration' || hasInspiration,
+  );
 
   const handleItemPress = (type: string) => {
     switch (type) {

@@ -9,8 +9,11 @@ import { PressableWithoutFeedback } from 'pressto';
 import {
   StaggeredText,
   StaggeredTextRef,
-} from '../../src/animations/everybody-can-cook/components/staggered-text';
-import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
+} from '../src/animations/everybody-can-cook/components/staggered-text';
+import { AnimatedDrawerIcon } from '../src/navigation/components/animated-drawer-icon';
+import { useOnShakeEffect } from '../src/navigation/hooks/use-shake-gesture';
+import { useRetray } from '../src/packages/retray';
+import { Trays } from '../src/trays';
 
 const baseDrawerOptions = {
   headerShown: true,
@@ -29,6 +32,13 @@ export default function HomeScreen() {
   const { width: windowWidth } = useWindowDimensions();
 
   const staggeredTextRef = useRef<StaggeredTextRef>(null);
+
+  const { show } = useRetray<Trays>();
+  const handleFeedback = useCallback(() => {
+    show('help');
+  }, [show]);
+
+  useOnShakeEffect(handleFeedback);
 
   useFocusEffect(
     useCallback(() => {

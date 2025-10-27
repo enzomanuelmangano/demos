@@ -245,8 +245,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://www.apple.com/ios/',
   },
   'liquid-glass-playground': {
-    authorName: '@betomoedano',
-    link: 'https://x.com/betomoedano/status/1969041583535267925',
+    authorName: null,
+    link: null,
   },
   'loading-button': {
     authorName: '@lochieaxon',
@@ -321,8 +321,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/osamaqarem/status/1587472972935315459',
   },
   'shake-to-delete': {
-    authorName: 'Apple iOS',
-    link: 'https://www.apple.com/ios/',
+    authorName: 'iOS Home',
+    link: null,
   },
   'shared-transitions': {
     authorName: '@tomekzaw_',
