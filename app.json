@@ -70,7 +70,18 @@
           "colorSpace": "displayP3"
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "reactNativeReleaseLevel": "experimental"
+          },
+          "ios": {
+            "reactNativeReleaseLevel": "experimental"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {

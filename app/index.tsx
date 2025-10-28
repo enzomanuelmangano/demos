@@ -2,9 +2,10 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useCallback, useRef } from 'react';
 
+import { DrawerActions, useNavigation } from '@react-navigation/native';
 import { useFocusEffect } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
-import { PressableWithoutFeedback } from 'pressto';
+import { PressableScale, PressableWithoutFeedback } from 'pressto';
 
 import {
   StaggeredText,
@@ -30,6 +31,7 @@ const baseDrawerOptions = {
 
 export default function HomeScreen() {
   const { width: windowWidth } = useWindowDimensions();
+  const navigation = useNavigation();
 
   const staggeredTextRef = useRef<StaggeredTextRef>(null);
 
@@ -37,6 +39,10 @@ export default function HomeScreen() {
   const handleFeedback = useCallback(() => {
     show('help');
   }, [show]);
+
+  const handleOpenDrawer = useCallback(() => {
+    navigation.dispatch(DrawerActions.openDrawer());
+  }, [navigation]);
 
   useOnShakeEffect(handleFeedback);
 
@@ -73,9 +79,14 @@ export default function HomeScreen() {
           ref={staggeredTextRef}
           textStyle={styles.title}
           enableReverse
-          text="Swipe to explore."
+          text="Shake me."
         />
       </PressableWithoutFeedback>
+      <PressableScale style={styles.floatingButton} onPress={handleOpenDrawer}>
+        <View style={styles.floatingButtonInner}>
+          <AnimatedDrawerIcon />
+        </View>
+      </PressableScale>
     </>
   );
 }
@@ -86,6 +97,22 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     flex: 1,
     justifyContent: 'center',
+  },
+  floatingButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderCurve: 'continuous',
+    borderRadius: 30,
+    bottom: 32,
+    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.3)',
+    elevation: 8,
+    position: 'absolute',
+    right: 32,
+  },
+  floatingButtonInner: {
+    alignItems: 'center',
+    height: 60,
+    justifyContent: 'center',
+    width: 60,
   },
   title: {
     color: 'white',
