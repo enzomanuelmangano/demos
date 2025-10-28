@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
 import Animated, {
-  useAnimatedRef,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
-  useScrollViewOffset,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { CARD_HEIGHT, CARD_WIDTH, Card } from './card';
@@ -44,8 +44,7 @@ const CARDS = [
 const VerticalListPadding = 25;
 
 export const IMessageStack = () => {
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollOffset = useScrollViewOffset(scrollRef);
+  const scrollOffset = useSharedValue(0);
 
   const rListViewStyle = useAnimatedStyle(() => {
     return {
@@ -56,6 +55,12 @@ export const IMessageStack = () => {
       ],
     };
   }, []);
+
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollOffset.value = event.contentOffset.x;
+    },
+  });
 
   return (
     <View style={styles.container}>
@@ -69,23 +74,15 @@ export const IMessageStack = () => {
          * This way we can leverage infinite potential cards with a single ScrollView.
          */}
         <Animated.ScrollView
-          ref={scrollRef}
           horizontal
           snapToInterval={CARD_WIDTH}
           disableIntervalMomentum
+          onScroll={onScroll}
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           decelerationRate="fast"
-          style={{
-            maxHeight: CARD_HEIGHT + VerticalListPadding * 2,
-            position: 'absolute',
-          }}
-          contentContainerStyle={{
-            justifyContent: 'center',
-            alignItems: 'center',
-            height: CARD_HEIGHT + VerticalListPadding * 2,
-            paddingHorizontal: CARD_WIDTH,
-          }}>
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollViewContentContainer}>
           {CARDS.map((_, i) => {
             return (
               <View
@@ -134,5 +131,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  scrollView: {
+    maxHeight: CARD_HEIGHT + VerticalListPadding * 2,
+    position: 'absolute',
+  },
+  scrollViewContentContainer: {
+    alignItems: 'center',
+    height: CARD_HEIGHT + VerticalListPadding * 2,
+    justifyContent: 'center',
+    paddingHorizontal: CARD_WIDTH,
   },
 });

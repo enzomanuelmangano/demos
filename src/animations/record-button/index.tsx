@@ -6,9 +6,9 @@ import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedRef,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
-  useScrollViewOffset,
   useSharedValue,
 } from 'react-native-reanimated';
 
@@ -29,8 +29,12 @@ export const RecordButton = () => {
   const scrollRef = useAnimatedRef<FlatList>();
 
   // Really nice hook from Reanimated to track the scroll offset
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const scrollOffset = useScrollViewOffset(scrollRef as any);
+  const scrollOffset = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollOffset.value = event.contentOffset.y;
+    },
+  });
 
   const onButtonPress = useCallback(() => {
     scrollRef.current?.scrollToIndex({ index: 0 });
@@ -125,8 +129,8 @@ export const RecordButton = () => {
       showsVerticalScrollIndicator={false}
       onScrollBeginDrag={onScrollBeginDrag}
       onScrollEndDrag={onScrollEndDrag}
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ref={scrollRef as any}
+      onScroll={onScroll}
+      ref={scrollRef}
       overScrollMode="never"
       decelerationRate={'fast'}
       snapToInterval={WindowHeight}

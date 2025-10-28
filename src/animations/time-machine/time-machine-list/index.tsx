@@ -4,7 +4,8 @@ import { useAtomValue } from 'jotai';
 import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
-  useScrollViewOffset,
+  useAnimatedScrollHandler,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { StoryListItem, StoryListItemWidth, WindowWidth } from './item';
@@ -17,7 +18,12 @@ type TimeMachineListProps = {
 
 export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
   const animatedRef = useAnimatedRef<Animated.ScrollView>();
-  const scrollOffset = useScrollViewOffset(animatedRef);
+  const scrollOffset = useSharedValue(0);
+  const onScrollHandler = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollOffset.value = event.contentOffset.y;
+    },
+  });
 
   const ListPadding = WindowWidth - StoryListItemWidth;
 
@@ -48,6 +54,7 @@ export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
       scrollEnabled={scrollEnabled}
       showsHorizontalScrollIndicator={false}
       scrollEventThrottle={8}
+      onScroll={onScrollHandler}
       contentContainerStyle={contentContainerStyle}>
       {data.map((item, index) => (
         <StoryListItem index={index} key={index} scrollOffset={scrollOffset}>

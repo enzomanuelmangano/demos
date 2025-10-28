@@ -1,11 +1,13 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { useCallback } from 'react';
+
 import * as Haptics from 'expo-haptics';
 import Animated, {
   useAnimatedReaction,
-  useAnimatedRef,
+  useAnimatedScrollHandler,
   useDerivedValue,
-  useScrollViewOffset,
+  useSharedValue,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -16,9 +18,12 @@ const App = () => {
   const { width: windowWidth } = useWindowDimensions();
 
   // These three hooks are used to synchronize the get the current active index of the scroll view
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const animatedRef = useAnimatedRef<any>();
-  const scrollOffset = useScrollViewOffset(animatedRef);
+  const scrollOffset = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollOffset.value = event.contentOffset.x;
+    },
+  });
   const activeIndex = useDerivedValue(() => {
     return Math.floor((scrollOffset.value + windowWidth / 2) / windowWidth);
   }, [scrollOffset]);
@@ -35,6 +40,24 @@ const App = () => {
     return data[activeIndex.value];
   }, [activeIndex, data]);
 
+  const renderItem = useCallback(
+    ({ index }: { index: number }) => {
+      return (
+        <View
+          key={index}
+          style={[
+            {
+              width: windowWidth,
+            },
+            styles.labelContainer,
+          ]}>
+          <Text style={styles.label}>{weekLabels[index]}</Text>
+        </View>
+      );
+    },
+    [windowWidth],
+  );
+
   return (
     <View style={styles.container}>
       <WeeklyChart width={windowWidth} height={150} data={animatedData} />
@@ -44,7 +67,7 @@ const App = () => {
           width: windowWidth,
         }}>
         <Animated.FlatList
-          ref={animatedRef}
+          onScroll={onScroll}
           horizontal
           snapToInterval={windowWidth}
           showsHorizontalScrollIndicator={false}
@@ -52,20 +75,7 @@ const App = () => {
           decelerationRate={'fast'}
           data={data}
           hitSlop={100}
-          renderItem={({ index }) => {
-            return (
-              <View
-                key={index}
-                style={[
-                  {
-                    width: windowWidth,
-                  },
-                  styles.labelContainer,
-                ]}>
-                <Text style={styles.label}>{weekLabels[index]}</Text>
-              </View>
-            );
-          }}
+          renderItem={renderItem}
         />
       </View>
     </View>
