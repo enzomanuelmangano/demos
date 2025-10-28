@@ -5,7 +5,6 @@ import { useCallback } from 'react';
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -44,7 +43,6 @@ export default function AnimationScreen() {
     };
   });
 
-  // Handle feedback trigger (dev menu in __DEV__, three-finger tap in production)
   const { show } = useRetray<Trays>();
 
   const handleFeedback = useCallback(() => {
@@ -52,14 +50,6 @@ export default function AnimationScreen() {
   }, [show, slug]);
 
   useOnShakeEffect(handleFeedback);
-
-  // Three-finger tap gesture for production
-  const threeFingerTap = Gesture.Tap()
-    .numberOfTaps(1)
-    .minPointers(3)
-    .onEnd(() => {
-      handleFeedback();
-    });
 
   if (!slug) {
     return (
@@ -80,7 +70,7 @@ export default function AnimationScreen() {
     );
   }
 
-  const content = (
+  return (
     <>
       <AnimationComponent {...(dimensions as any)} />
       <AnimatedBlurView
@@ -98,13 +88,6 @@ export default function AnimationScreen() {
         ]}
       />
     </>
-  );
-
-  // Wrap with gesture detector in production only
-  return __DEV__ ? (
-    content
-  ) : (
-    <GestureDetector gesture={threeFingerTap}>{content}</GestureDetector>
   );
 }
 
