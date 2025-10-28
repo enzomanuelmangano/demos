@@ -1,10 +1,10 @@
-import { Dimensions, StatusBar, StyleSheet, View } from 'react-native';
+import { Dimensions, StatusBar, StyleSheet } from 'react-native';
 
-import { Suspense, useCallback } from 'react';
+import { memo, Suspense, useCallback } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
-import { Drawer } from 'expo-router/drawer';
+import Drawer from 'expo-router/drawer';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -12,6 +12,9 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { DrawerContent } from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
+import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
+import { Retray, RetrayThemes } from '../src/packages/retray';
+import { trays } from '../src/trays';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -19,6 +22,30 @@ SplashScreen.setOptions({
   duration: 500,
   fade: true,
 });
+
+const drawerOptions = {
+  headerShown: false,
+  drawerStyle: {
+    backgroundColor: '#000',
+    width: 270,
+  },
+  drawerActiveTintColor: '#fff',
+  drawerInactiveTintColor: '#666',
+  drawerLabelStyle: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  overlayColor: 'rgba(0, 0, 0, 0.5)',
+  swipeEnabled: true,
+  swipeEdgeWidth: Dimensions.get('window').width * 0.35,
+} as const;
+
+const QuickActionsProvider = memo(
+  ({ children }: { children: React.ReactNode }) => {
+    useQuickActions();
+    return <>{children}</>;
+  },
+);
 
 export default function RootLayout() {
   // Check for OTA updates
@@ -32,20 +59,33 @@ export default function RootLayout() {
     <Suspense>
       <StatusBar barStyle="default" animated />
       <KeyboardProvider>
-        <GestureHandlerRootView style={styles.fill}>
+        <GestureHandlerRootView style={styles.fill} onLayout={onLayoutRootView}>
           <PressablesConfig globalHandlers={globalPressableHandlers}>
             <FontsProvider>
-              <View style={styles.fill} onLayout={onLayoutRootView}>
-                <Drawer
-                  drawerContent={DrawerContent}
-                  screenOptions={drawerScreenOptions}>
-                  <Drawer.Screen name="index" options={homeOptions} />
-                  <Drawer.Screen
-                    name="animations/[slug]"
-                    options={animationOptions}
-                  />
-                </Drawer>
-              </View>
+              <Retray.Theme theme={RetrayThemes.light}>
+                <Retray.Navigator screens={trays}>
+                  <QuickActionsProvider>
+                    <Drawer
+                      drawerContent={DrawerContent}
+                      screenOptions={drawerOptions}>
+                      <Drawer.Screen
+                        name="index"
+                        options={{
+                          drawerLabel: 'Home',
+                          title: 'Home',
+                        }}
+                      />
+                      <Drawer.Screen
+                        name="animations/[slug]"
+                        options={{
+                          drawerLabel: 'Animation',
+                          title: 'Animation',
+                        }}
+                      />
+                    </Drawer>
+                  </QuickActionsProvider>
+                </Retray.Navigator>
+              </Retray.Theme>
             </FontsProvider>
           </PressablesConfig>
         </GestureHandlerRootView>
@@ -80,33 +120,6 @@ const globalPressableHandlers = {
   onPress: () => {
     Haptics.selectionAsync();
   },
-};
-
-const drawerScreenOptions = {
-  headerShown: false,
-  drawerStyle: {
-    backgroundColor: '#000',
-    width: 270,
-  },
-  drawerActiveTintColor: '#fff',
-  drawerInactiveTintColor: '#666',
-  drawerLabelStyle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  overlayColor: 'rgba(0, 0, 0, 0.5)',
-  swipeEnabled: true,
-  swipeEdgeWidth: Dimensions.get('window').width * 0.35,
-} as const;
-
-const homeOptions = {
-  drawerLabel: 'Home',
-  title: 'Home',
-};
-
-const animationOptions = {
-  drawerLabel: 'Animation',
-  title: 'Animation',
 };
 
 const styles = StyleSheet.create({

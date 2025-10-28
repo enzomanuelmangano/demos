@@ -32,7 +32,10 @@
         "aps-environment": "development"
       },
       "appleTeamId": "W3N4N47454",
-      "associatedDomains": ["applinks:app.reactiive.io"]
+      "associatedDomains": ["applinks:app.reactiive.io"],
+      "infoPlist": {
+        "CADisableMinimumFrameDurationOnPhone": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -67,7 +70,35 @@
           "colorSpace": "displayP3"
         }
       ],
-      "expo-router"
+      "expo-router",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "reactNativeReleaseLevel": "experimental"
+          },
+          "ios": {
+            "reactNativeReleaseLevel": "experimental"
+          }
+        }
+      ],
+      [
+        "expo-quick-actions",
+        {
+          "iosActions": [
+            {
+              "id": "1",
+              "title": "Leave Feedback",
+              "subtitle": "Share your thoughts",
+              "icon": "symbol:heart.fill",
+              "params": {
+                "href": "/",
+                "action": "feedback"
+              }
+            }
+          ]
+        }
+      ]
     ],
     "extra": {
       "eas": {

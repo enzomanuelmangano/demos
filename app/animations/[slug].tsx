@@ -1,5 +1,7 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
+import { useCallback } from 'react';
+
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
@@ -15,6 +17,10 @@ import {
   getAnimationMetadata,
 } from '../../src/animations/registry';
 import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
+import { useOnShakeEffect } from '../../src/navigation/hooks/use-shake-gesture';
+import { useRetray } from '../../src/packages/retray';
+
+import type { Trays } from '../../src/trays';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
@@ -36,6 +42,14 @@ export default function AnimationScreen() {
       opacity: interpolate(rDrawerProgress.value, [0, 0.5, 1], [0.5, 1, 0]),
     };
   });
+
+  const { show } = useRetray<Trays>();
+
+  const handleFeedback = useCallback(() => {
+    show('help', { slug });
+  }, [show, slug]);
+
+  useOnShakeEffect(handleFeedback);
 
   if (!slug) {
     return (
