@@ -38,7 +38,7 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(({ pin, onReset }) => {
             style={styles.input}
             onPress={() => {
               if (typeof label === 'number') {
-                pin.value = [...pin.value, label];
+                pin.set([...pin.value, label]);
                 return;
               }
               if (label === 'backspace') {

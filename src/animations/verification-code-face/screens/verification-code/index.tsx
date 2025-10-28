@@ -137,7 +137,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
             onWrongCodeWrapper();
             return;
           }
-          verificationStatus.value = 'inProgress';
+          verificationStatus.set('inProgress');
         }}
         keyboardType="number-pad"
         autoFocus

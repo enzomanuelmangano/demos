@@ -64,20 +64,24 @@ const ScrollableBottomSheet = forwardRef<
     }, delay);
   }, []);
 
-  const scrollToY = useCallback((destination: number) => {
-    'worklet';
-    active.value = destination !== 0;
+  const scrollToY = useCallback(
+    (destination: number) => {
+      'worklet';
+      active.value = destination !== 0;
 
-    if (destination === 0) {
-      scheduleOnRN(scrollToX, 0, 500);
-    }
-    translateY.value = withSpring(destination, {
-      damping: 25,
-      stiffness: 180,
-      mass: 0.9,
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      if (destination === 0) {
+        scheduleOnRN(scrollToX, 0, 500);
+      }
+      translateY.set(
+        withSpring(destination, {
+          damping: 25,
+          stiffness: 180,
+          mass: 0.9,
+        }),
+      );
+    },
+    [active, scrollToX, translateY],
+  );
 
   const close = useCallback(() => {
     'worklet';

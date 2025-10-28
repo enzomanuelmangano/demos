@@ -10,6 +10,8 @@ type SectionListItemProps = {
 };
 
 const SectionListItem: React.FC<SectionListItemProps> = ({ item, height }) => {
+  // eslint-disable-next-line react-compiler/react-compiler
+  'use no memo';
   if (isHeader(item)) {
     const { header } = item as HeaderListItem;
     return (

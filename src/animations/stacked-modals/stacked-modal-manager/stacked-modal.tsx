@@ -54,6 +54,7 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
     bottom.value = withCustomSpring(
       initialBottomPosition + bottomOffset + bottomHeight,
     );
+    // eslint-disable-next-line react-compiler/react-compiler
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomHeight]);
 

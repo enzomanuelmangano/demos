@@ -83,7 +83,7 @@ const QRCodeGenerator = () => {
                   width: windowWidth - 50,
                 }}
                 onUpdate={prog => {
-                  deviationProgress.value = prog;
+                  deviationProgress.set(prog);
                 }}
               />
             </View>

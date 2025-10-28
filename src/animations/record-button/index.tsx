@@ -71,15 +71,14 @@ export const RecordButton = () => {
   const shouldEnableSnapping = useSharedValue(false);
 
   const onScrollBeginDrag = useCallback(() => {
-    shouldEnableSnapping.value = progress.value < 0.9;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    shouldEnableSnapping.set(progress.value < 0.9);
+  }, [progress, shouldEnableSnapping]);
+
   const onScrollEndDrag = useCallback(() => {
     if (progress.value > 0.97 && shouldEnableSnapping.value) {
       scrollRef.current?.scrollToIndex({ index: 1 });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [progress, shouldEnableSnapping, scrollRef]);
 
   const renderItem = useCallback(
     ({ item }: { item: 'HomeScreen' | 'TopScreen' }) => {

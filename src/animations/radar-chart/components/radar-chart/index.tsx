@@ -111,7 +111,8 @@ function RadarChart<K extends string>({
           />
         )}
         {layerIntensities.map((_, index) => {
-          // eslint-disable-next-line react-hooks/rules-of-hooks
+          'use no memo';
+          // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
           const path = useDerivedValue(() => {
             return pathByIntensity.value[index];
           }, [pathByIntensity, index]);
@@ -129,7 +130,7 @@ function RadarChart<K extends string>({
           );
         })}
         {textSkills.map((item, index) => {
-          // eslint-disable-next-line react-hooks/rules-of-hooks
+          // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
           const x = useDerivedValue(() => {
             if (!font) {
               return 0;
@@ -160,12 +161,12 @@ function RadarChart<K extends string>({
         })}
 
         {allValues.value.map((_: number[], index: number) => {
-          // eslint-disable-next-line react-hooks/rules-of-hooks
+          // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
           const internalPath = useDerivedValue(() => {
             return internalPaths.value[index];
           }, [internalPaths, index]);
 
-          // eslint-disable-next-line react-hooks/rules-of-hooks
+          // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
           const internalPointsData = useDerivedValue(() => {
             return internalPoints.value[index];
           }, [internalPoints, index]);

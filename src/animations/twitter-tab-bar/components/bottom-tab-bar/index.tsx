@@ -137,7 +137,7 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
               textColor={colors.text}
               onPress={() => {
                 onTapIcon(index);
-                focusedIndex.value = index;
+                focusedIndex.set(index);
               }}
             />
           );

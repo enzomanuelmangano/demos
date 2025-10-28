@@ -38,7 +38,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
       }}>
       {new Array(3).fill(0).map((_, i) => {
         // Calculate z-index style for proper stacking in new architecture
-        // eslint-disable-next-line react-hooks/rules-of-hooks
+        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
         const rZIndexStyle = useAnimatedStyle(() => {
           // Calculate dynamic zIndex - higher values for elements that should be on top
           // In the paper folding, we want the first fold (index 0) to be on top
@@ -51,7 +51,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
         }, []);
 
         // Calculate animated style for each fold section
-        // eslint-disable-next-line react-hooks/rules-of-hooks
+        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
         const rCardStyle = useAnimatedStyle(() => {
           // Interpolate translateY based on progress
           const translateY = interpolate(
@@ -105,7 +105,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
 
         // To get the emphasis on the paper shadow, we can animate the color of each fold
         // In detail, the first fold won't have any shadow, and the shadow will be emphasized on the second and third fold
-        // eslint-disable-next-line react-hooks/rules-of-hooks
+        // eslint-disable-next-line react-compiler/react-compiler, react-hooks/rules-of-hooks
         const rectColor = useDerivedValue(() => {
           if (i === 0) {
             return '#ffffff';

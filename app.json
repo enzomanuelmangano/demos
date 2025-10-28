@@ -22,6 +22,9 @@
       "fallbackToCacheTimeout": 0
     },
     "assetBundlePatterns": ["**/*"],
+    "experiments": {
+      "reactCompiler": true
+    },
     "ios": {
       "supportsTablet": false,
       "config": {

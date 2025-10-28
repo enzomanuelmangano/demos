@@ -48,8 +48,9 @@ const useSwipeControls = () => {
 
   useEffect(() => {
     return () => {
+      // eslint-disable-next-line react-compiler/react-compiler
       // eslint-disable-next-line react-hooks/exhaustive-deps
-      timeouts.current.forEach(timeout => {
+      timeouts.current.forEach((timeout: NodeJS.Timeout) => {
         clearTimeout(timeout);
       });
     };

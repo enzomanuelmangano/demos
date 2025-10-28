@@ -13,6 +13,7 @@ module.exports = {
     'react',
     'react-hooks',
     'react-native',
+    'react-compiler',
     'deprecation',
     'prettier',
     'pressto',
@@ -31,6 +32,9 @@ module.exports = {
     'scripts/',
   ],
   rules: {
+    // React Compiler
+    'react-compiler/react-compiler': 'warn',
+
     // eslint-plugin-refined rules (enable one at a time as needed)
     'refined/border-radius-with-curve': 'warn',
     'refined/prefer-hairline-width': 'warn',

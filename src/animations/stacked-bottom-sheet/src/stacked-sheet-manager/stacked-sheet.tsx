@@ -60,6 +60,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
   useEffect(() => {
     bottom.value = withSpring(BaseSafeArea + bottomHeight);
 
+    // eslint-disable-next-line react-compiler/react-compiler
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomHeight]);
 

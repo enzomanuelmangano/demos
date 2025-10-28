@@ -100,8 +100,12 @@ function SelectableGridList<T>({
     pendingIndexes.value = [];
     currentActiveIndexesSet.value = new Set();
     pendingIndexesSet.value = new Set();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [
+    currentActiveIndexes,
+    pendingIndexes,
+    currentActiveIndexesSet,
+    pendingIndexesSet,
+  ]);
 
   useImperativeHandle(
     gridListRef,
@@ -135,21 +139,28 @@ function SelectableGridList<T>({
 
   const initialSelectedIndex = useSharedValue<number | null>(null);
 
-  const toggleIndex = useCallback((index: number) => {
-    'worklet';
-    const currentSet = new Set(currentActiveIndexes.value);
-    if (currentSet.has(index)) {
-      currentSet.delete(index);
-    } else {
-      currentSet.add(index);
-    }
-    currentActiveIndexes.value = Array.from(currentSet);
-    currentActiveIndexesSet.value = currentSet;
+  const toggleIndex = useCallback(
+    (index: number) => {
+      'worklet';
+      const currentSet = new Set(currentActiveIndexes.value);
+      if (currentSet.has(index)) {
+        currentSet.delete(index);
+      } else {
+        currentSet.add(index);
+      }
+      currentActiveIndexes.value = Array.from(currentSet);
+      currentActiveIndexesSet.value = currentSet;
 
-    pendingIndexes.value = [];
-    pendingIndexesSet.value = new Set();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      pendingIndexes.value = [];
+      pendingIndexesSet.value = new Set();
+    },
+    [
+      currentActiveIndexes,
+      pendingIndexes,
+      currentActiveIndexesSet,
+      pendingIndexesSet,
+    ],
+  );
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {

@@ -45,6 +45,8 @@ const MeasureableAnimatedView = forwardRef<
   MeasureableAnimatedViewRef,
   ViewProps
 >((props, ref) => {
+  // eslint-disable-next-line react-compiler/react-compiler
+  'use no memo';
   const animatedRef = useAnimatedRef<Animated.View>();
 
   const rMeasure: MeasureFunction = useCallback(() => {

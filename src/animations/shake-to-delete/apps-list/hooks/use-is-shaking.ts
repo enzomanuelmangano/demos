@@ -22,17 +22,17 @@ const isShaking = makeMutable(false);
 export const useIsShaking = () => {
   // Start the shaking animation
   const startShaking = useCallback(() => {
-    isShaking.value = true;
+    isShaking.set(true);
   }, []);
 
   // Stop the shaking animation
   const stopShaking = useCallback(() => {
-    isShaking.value = false;
+    isShaking.set(false);
   }, []);
 
   // Toggle between shaking and not shaking states
   const toggleShaking = useCallback(() => {
-    isShaking.value = !isShaking.value;
+    isShaking.set(!isShaking.value);
   }, []);
 
   return { isShaking, startShaking, stopShaking, toggleShaking };

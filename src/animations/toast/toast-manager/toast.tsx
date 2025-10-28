@@ -56,10 +56,10 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
     if (!toast) return;
-    bottom.value = withSpring(BaseSafeArea + toast.id * ToastOffset);
-
+    bottom.set(withSpring(BaseSafeArea + toast.id * ToastOffset));
+    // eslint-disable-next-line react-compiler/react-compiler
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [toast?.id]);
+  }, [bottom, toast?.id]);
 
   const translateX = useSharedValue(0);
   const isSwiping = useSharedValue(false);

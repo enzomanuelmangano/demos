@@ -81,6 +81,7 @@ const App = () => {
 
     try {
       await mutateAsync(handleMutation);
+      // eslint-disable-next-line react-compiler/react-compiler
       timeoutRef.current = setTimeout(() => {
         reset();
       }, 1500);
