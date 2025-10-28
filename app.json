@@ -81,6 +81,23 @@
             "reactNativeReleaseLevel": "experimental"
           }
         }
+      ],
+      [
+        "expo-quick-actions",
+        {
+          "iosActions": [
+            {
+              "id": "1",
+              "title": "Leave Feedback",
+              "subtitle": "Share your thoughts",
+              "icon": "symbol:heart.fill",
+              "params": {
+                "href": "/",
+                "action": "feedback"
+              }
+            }
+          ]
+        }
       ]
     ],
     "extra": {

@@ -1,6 +1,6 @@
 import { Dimensions, StatusBar, StyleSheet } from 'react-native';
 
-import { Suspense, useCallback } from 'react';
+import { memo, Suspense, useCallback } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
@@ -12,6 +12,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { DrawerContent } from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
+import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
 import { trays } from '../src/trays';
 
@@ -39,6 +40,13 @@ const drawerOptions = {
   swipeEdgeWidth: Dimensions.get('window').width * 0.35,
 } as const;
 
+const QuickActionsProvider = memo(
+  ({ children }: { children: React.ReactNode }) => {
+    useQuickActions();
+    return <>{children}</>;
+  },
+);
+
 export default function RootLayout() {
   // Check for OTA updates
   useOta();
@@ -56,24 +64,26 @@ export default function RootLayout() {
             <FontsProvider>
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>
-                  <Drawer
-                    drawerContent={DrawerContent}
-                    screenOptions={drawerOptions}>
-                    <Drawer.Screen
-                      name="index"
-                      options={{
-                        drawerLabel: 'Home',
-                        title: 'Home',
-                      }}
-                    />
-                    <Drawer.Screen
-                      name="animations/[slug]"
-                      options={{
-                        drawerLabel: 'Animation',
-                        title: 'Animation',
-                      }}
-                    />
-                  </Drawer>
+                  <QuickActionsProvider>
+                    <Drawer
+                      drawerContent={DrawerContent}
+                      screenOptions={drawerOptions}>
+                      <Drawer.Screen
+                        name="index"
+                        options={{
+                          drawerLabel: 'Home',
+                          title: 'Home',
+                        }}
+                      />
+                      <Drawer.Screen
+                        name="animations/[slug]"
+                        options={{
+                          drawerLabel: 'Animation',
+                          title: 'Animation',
+                        }}
+                      />
+                    </Drawer>
+                  </QuickActionsProvider>
                 </Retray.Navigator>
               </Retray.Theme>
             </FontsProvider>
