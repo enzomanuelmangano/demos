@@ -2,7 +2,7 @@
   "expo": {
     "name": "Demos",
     "slug": "thank-you",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -21,9 +21,7 @@
       "enabled": true,
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": false,
       "config": {
@@ -34,9 +32,7 @@
         "aps-environment": "development"
       },
       "appleTeamId": "W3N4N47454",
-      "associatedDomains": [
-        "applinks:app.reactiive.io"
-      ],
+      "associatedDomains": ["applinks:app.reactiive.io"],
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true
       }
@@ -58,10 +54,7 @@
               "pathPrefix": "/"
             }
           ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
+          "category": ["BROWSABLE", "DEFAULT"]
         }
       ]
     },
