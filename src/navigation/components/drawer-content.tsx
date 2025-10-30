@@ -1,4 +1,5 @@
 import {
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
@@ -89,6 +90,7 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
           item={item}
           style={styles.listItem}
           onPress={() => {
+            Keyboard.dismiss();
             router.push(`/animations/${item.slug}`);
           }}
         />
