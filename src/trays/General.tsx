@@ -4,7 +4,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 
-import { getAnimationMetadata } from '../animations/registry';
 import { ShowUnstableAnimationsAtom } from '../navigation/states/filters';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -17,17 +16,8 @@ interface GeneralItem {
   type: string;
 }
 
-interface GeneralProps {
-  slug?: string;
-}
-
-export const General = ({ slug }: GeneralProps) => {
+export const General = () => {
   const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
-
-  const metadata = slug ? getAnimationMetadata(slug) : null;
-  const sourceDescription = slug
-    ? `View ${metadata?.name || 'this animation'} on GitHub`
-    : 'View the code on GitHub';
 
   const Items: readonly GeneralItem[] = [
     {
@@ -36,13 +26,6 @@ export const General = ({ slug }: GeneralProps) => {
       icon: 'flask',
       backgroundColor: '#FF9500',
       type: 'unstable',
-    },
-    {
-      title: 'Source Code',
-      description: sourceDescription,
-      icon: 'logo-github',
-      backgroundColor: '#24292e',
-      type: 'source',
     },
     {
       title: 'Sponsor',
@@ -57,12 +40,6 @@ export const General = ({ slug }: GeneralProps) => {
     switch (type) {
       case 'unstable':
         setShowUnstable(!showUnstable);
-        break;
-      case 'source':
-        const sourceUrl = slug
-          ? `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
-          : 'https://github.com/enzomanuelmangano/demos/tree/main/src/animations';
-        Linking.openURL(sourceUrl);
         break;
       case 'sponsor':
         Linking.openURL('https://github.com/sponsors/enzomanuelmangano');

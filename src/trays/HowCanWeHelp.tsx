@@ -1,9 +1,10 @@
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Linking } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 
 import { AnimationInspirations } from '../animations/inspirations';
+import { getAnimationMetadata } from '../animations/registry';
 import { useRetray } from '../packages/retray';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -21,6 +22,13 @@ interface HowCanWeHelpProps {
 }
 
 export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
+  const { show } = useRetray();
+
+  const metadata = slug ? getAnimationMetadata(slug) : null;
+  const sourceDescription = slug
+    ? `View ${metadata?.name || 'this animation'} on GitHub`
+    : 'View the code on GitHub';
+
   const AllItems: readonly HelpItem[] = [
     {
       title: 'Feedback',
@@ -28,6 +36,13 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
       icon: 'chatbox-ellipses',
       backgroundColor: '#4A90E2',
       type: 'feedback',
+    },
+    {
+      title: 'Source Code',
+      description: sourceDescription,
+      icon: 'logo-github',
+      backgroundColor: '#24292e',
+      type: 'source',
     },
     {
       title: 'Inspiration',
@@ -38,14 +53,12 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
     },
     {
       title: 'General',
-      description: 'Settings, source code, and more',
+      description: 'Settings and more',
       icon: 'settings-outline',
       backgroundColor: '#8E8E93',
       type: 'general',
     },
   ] as const;
-
-  const { show } = useRetray();
 
   // Check if inspiration data exists for the current slug
   // Hide inspiration only if BOTH authorName and link are null
@@ -66,6 +79,12 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
     switch (type) {
       case 'feedback':
         show('shareFeedback', { slug });
+        break;
+      case 'source':
+        const sourceUrl = slug
+          ? `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
+          : 'https://github.com/enzomanuelmangano/demos/tree/main/src/animations';
+        Linking.openURL(sourceUrl);
         break;
       case 'inspiration':
         show('inspiration', { slug });
