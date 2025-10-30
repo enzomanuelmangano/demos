@@ -1,4 +1,4 @@
-import { Dimensions, StatusBar, StyleSheet } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
 
 import { memo, Suspense, useCallback } from 'react';
 
@@ -10,7 +10,10 @@ import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
-import { DrawerContent } from '../src/navigation/components/drawer-content';
+import {
+  DrawerContent,
+  DrawerContentWidth,
+} from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
@@ -37,7 +40,7 @@ const drawerOptions = {
   },
   overlayColor: 'rgba(0, 0, 0, 0.5)',
   swipeEnabled: true,
-  swipeEdgeWidth: Dimensions.get('window').width * 0.35,
+  swipeEdgeWidth: DrawerContentWidth,
 } as const;
 
 const QuickActionsProvider = memo(
@@ -46,6 +49,16 @@ const QuickActionsProvider = memo(
     return <>{children}</>;
   },
 );
+
+const mainScreenOptions = {
+  drawerLabel: 'Home',
+  title: 'Home',
+} as const;
+
+const animationScreenOptions = {
+  drawerLabel: 'Animation',
+  title: 'Animation',
+} as const;
 
 export default function RootLayout() {
   // Check for OTA updates
@@ -68,19 +81,10 @@ export default function RootLayout() {
                     <Drawer
                       drawerContent={DrawerContent}
                       screenOptions={drawerOptions}>
-                      <Drawer.Screen
-                        name="index"
-                        options={{
-                          drawerLabel: 'Home',
-                          title: 'Home',
-                        }}
-                      />
+                      <Drawer.Screen name="index" options={mainScreenOptions} />
                       <Drawer.Screen
                         name="animations/[slug]"
-                        options={{
-                          drawerLabel: 'Animation',
-                          title: 'Animation',
-                        }}
+                        options={animationScreenOptions}
                       />
                     </Drawer>
                   </QuickActionsProvider>
