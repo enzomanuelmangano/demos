@@ -76,11 +76,15 @@ function App() {
     }
   }, [step]);
 
+  const rotate = useDerivedValue(() => {
+    return withTiming(isActionTrayOpened.value ? 45 : 0);
+  }, [isActionTrayOpened]);
+
   const rToggleButtonStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          rotate: withTiming(isActionTrayOpened.value ? '45deg' : '0deg'),
+          rotate: `${rotate.value}deg`,
         },
       ],
     };
@@ -88,9 +92,6 @@ function App() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.text}>
-        The code looks so bad. I'll fix it soon 👀
-      </Text>
       <PressableScale
         style={[styles.button, rToggleButtonStyle]}
         onPress={toggleActionTray}>
@@ -244,14 +245,6 @@ const styles = StyleSheet.create({
   headingText: {
     fontSize: 20,
     fontWeight: '600',
-  },
-  text: {
-    color: Palette.text,
-    fontSize: 32,
-    fontWeight: '700',
-    marginHorizontal: 30,
-    marginTop: 15,
-    textAlign: 'center',
   },
 });
 
