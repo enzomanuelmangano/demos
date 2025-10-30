@@ -7,81 +7,33 @@ import {
   View,
 } from 'react-native';
 
-import { useCallback, useMemo, type JSX } from 'react';
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import { LegendList, LegendListRenderItemProps } from '@legendapp/list';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { PressableScale, PressablesGroup } from 'pressto';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
-import { createIcon } from '../../animations/icon-factory';
 import {
-  getAllAnimations,
-  type AnimationComponent,
-  type AnimationMetadataType,
-} from '../../animations/registry';
-import {
+  AnimationItem,
+  AnimationsAtom,
   SearchFilterAtom,
-  ShowUnstableAnimationsAtom,
 } from '../../navigation/states/filters';
 
 const keyExtractor = (item: AnimationItem) => item.slug;
 
 const LIST_ITEM_HEIGHT = 50;
 
-type AnimationItem = {
-  id: number;
-  name: string;
-  slug: string;
-  route: string;
-  alert?: boolean;
-  icon: () => JSX.Element;
-  component: AnimationComponent;
-  metadata: AnimationMetadataType;
-};
-
 export function DrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
   const { top, bottom } = useSafeAreaInsets();
-  const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
-  const [showUnstable] = useAtom(ShowUnstableAnimationsAtom);
-
-  const allAnimations = useMemo(() => {
-    return getAllAnimations()
-      .map((animation, index) => ({
-        id: index,
-        ...animation,
-        route: animation.slug,
-        name: animation.metadata.name,
-        alert: animation.metadata.alert,
-        icon: () => createIcon(animation.metadata),
-      }))
-      .reverse();
-  }, []);
-
-  const filteredAnimations: AnimationItem[] = useMemo(() => {
-    let animations = allAnimations;
-
-    // Filter out unstable animations if the toggle is off
-    if (!showUnstable) {
-      animations = animations.filter(animation => !animation.alert);
-    }
-
-    // Apply search filter
-    if (searchFilter.trim()) {
-      animations = animations.filter(animation =>
-        animation.name.toLowerCase().includes(searchFilter.toLowerCase()),
-      );
-    }
-
-    return animations;
-  }, [allAnimations, searchFilter, showUnstable]);
+  const setSearchFilter = useSetAtom(SearchFilterAtom);
+  const allAnimations = useAtomValue(AnimationsAtom);
 
   const renderItem = useCallback(
     ({ item }: LegendListRenderItemProps<AnimationItem>) => {
@@ -122,7 +74,6 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
           <TextInput
             autoComplete="off"
             autoCorrect={false}
-            value={searchFilter}
             autoCapitalize="none"
             returnKeyType="search"
             clearButtonMode="always"
@@ -141,7 +92,7 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
             waitForInitialLayout
             renderItem={renderItem}
             scrollEventThrottle={16}
-            data={filteredAnimations}
+            data={allAnimations}
             keyExtractor={keyExtractor}
             keyboardDismissMode="on-drag"
             estimatedItemSize={LIST_ITEM_HEIGHT}

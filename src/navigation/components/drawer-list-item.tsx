@@ -1,19 +1,18 @@
 import { StyleSheet, Text } from 'react-native';
 
-import { type FC, type JSX, memo } from 'react';
+import { memo, type FC } from 'react';
 
+import { atom, useAtomValue } from 'jotai';
+import { atomFamily } from 'jotai/utils';
 import { createAnimatedPressable } from 'pressto';
 import { interpolate } from 'react-native-reanimated';
 
+import { AnimationItem, FilteredAnimationsAtom } from '../states/filters';
+
 import type { StyleProp, ViewStyle } from 'react-native';
 
-type ExpoRouterListItemProps = {
-  item: {
-    id: number;
-    name: string;
-    icon: () => JSX.Element;
-    alert?: boolean;
-  };
+type DrawerListItemProps = {
+  item: AnimationItem;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 };
@@ -31,8 +30,21 @@ const PressableHighlight = createAnimatedPressable(
   },
 );
 
-const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
+const IsItemVisible = atomFamily((itemSlug: string) => {
+  return atom(get => {
+    const allAnimations = get(FilteredAnimationsAtom);
+    return allAnimations.some(item => item.slug === itemSlug);
+  });
+});
+
+const DrawerListItem: FC<DrawerListItemProps> = memo(
   ({ item, onPress, style }) => {
+    const isItemVisible = useAtomValue(IsItemVisible(item.slug));
+
+    if (!isItemVisible) {
+      return null;
+    }
+
     return (
       <PressableHighlight style={[styles.container, style]} onPress={onPress}>
         <item.icon />
@@ -40,6 +52,9 @@ const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
         {item.alert && <Text style={styles.alert}>⚠️</Text>}
       </PressableHighlight>
     );
+  },
+  (prevProps, nextProps) => {
+    return prevProps.item.slug === nextProps.item.slug;
   },
 );
 
