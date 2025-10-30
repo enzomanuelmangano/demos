@@ -21,7 +21,9 @@
       "enabled": true,
       "fallbackToCacheTimeout": 0
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false,
       "config": {
@@ -32,7 +34,9 @@
         "aps-environment": "development"
       },
       "appleTeamId": "W3N4N47454",
-      "associatedDomains": ["applinks:app.reactiive.io"],
+      "associatedDomains": [
+        "applinks:app.reactiive.io"
+      ],
       "infoPlist": {
         "CADisableMinimumFrameDurationOnPhone": true
       }
@@ -54,7 +58,10 @@
               "pathPrefix": "/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -98,7 +105,8 @@
             }
           ]
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

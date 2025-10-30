@@ -32,6 +32,7 @@
         "expo-router": "~6.0.13",
         "expo-sensors": "~15.0.7",
         "expo-splash-screen": "~31.0.10",
+        "expo-sqlite": "~16.0.8",
         "expo-status-bar": "~3.0.8",
         "expo-system-ui": "~6.0.8",
         "expo-updates": "~29.0.12",
@@ -689,6 +690,8 @@
 
     "available-typed-arrays": ["available-typed-arrays@1.0.7", "", { "dependencies": { "possible-typed-array-names": "^1.0.0" } }, "sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ=="],
 
+    "await-lock": ["await-lock@2.2.2", "", {}, "sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw=="],
+
     "babel-jest": ["babel-jest@29.7.0", "", { "dependencies": { "@jest/transform": "^29.7.0", "@types/babel__core": "^7.1.14", "babel-plugin-istanbul": "^6.1.1", "babel-preset-jest": "^29.6.3", "chalk": "^4.0.0", "graceful-fs": "^4.2.9", "slash": "^3.0.0" }, "peerDependencies": { "@babel/core": "^7.8.0" } }, "sha512-BrvGY3xZSwEcCzKvKsCi2GgHqDqsYkOP4/by5xCgIwGXQxIEh+8ew3gmrE1y7XRR6LHZIj6yLYnUi/mm2KXKBg=="],
 
     "babel-plugin-istanbul": ["babel-plugin-istanbul@6.1.1", "", { "dependencies": { "@babel/helper-plugin-utils": "^7.0.0", "@istanbuljs/load-nyc-config": "^1.0.0", "@istanbuljs/schema": "^0.1.2", "istanbul-lib-instrument": "^5.0.4", "test-exclude": "^6.0.0" } }, "sha512-Y1IQok9821cC9onCx5otgFfRm7Lm+I+wwxOx738M/WLPZ9Q42m4IG5W0FNX8WLL2gYMZo3JkuXIH2DOpWM+qwA=="],
@@ -1000,6 +1003,8 @@
     "expo-server": ["expo-server@1.0.2", "", {}, "sha512-QlQLjFuwgCiBc+Qq0IyBBHiZK1RS0NJSsKVB5iECMJrR04q7PhkaF7dON0fhvo00COy4fT9rJ5brrJDpFro/gA=="],
 
     "expo-splash-screen": ["expo-splash-screen@31.0.10", "", { "dependencies": { "@expo/prebuild-config": "^54.0.3" }, "peerDependencies": { "expo": "*" } }, "sha512-i6g9IK798mae4yvflstQ1HkgahIJ6exzTCTw4vEdxV0J2SwiW3Tj+CwRjf0te7Zsb+7dDQhBTmGZwdv00VER2A=="],
+
+    "expo-sqlite": ["expo-sqlite@16.0.8", "", { "dependencies": { "await-lock": "^2.2.2" }, "peerDependencies": { "expo": "*", "react": "*", "react-native": "*" } }, "sha512-xw776gFgH4ZM5oGs0spSLNmkHO/kJ/EuRXGzE4/22yII9EmG84vm7aM/M2aEb8taBTqwhSGYUpkwkRT5YFFmsg=="],
 
     "expo-status-bar": ["expo-status-bar@3.0.8", "", { "dependencies": { "react-native-is-edge-to-edge": "^1.2.1" }, "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-L248XKPhum7tvREoS1VfE0H6dPCaGtoUWzRsUv7hGKdiB4cus33Rc0sxkWkoQ77wE8stlnUlL5lvmT0oqZ3ZBw=="],
 
