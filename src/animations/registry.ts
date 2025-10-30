@@ -15,6 +15,7 @@ export interface AnimationMetadataType extends Record<string, unknown> {
   iconFamily: IconFamily;
   alert?: boolean;
   iconColor?: string;
+  hideDrawerIcon?: boolean;
 }
 
 export interface IconMetadata {
@@ -679,7 +680,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'DotSheet',
     iconName: 'paperclip',
     iconFamily: 'MaterialCommunityIcons',
-    alert: true,
+    hideDrawerIcon: true,
   },
   'coverflow-carousel': {
     name: 'Coverflow Carousel',

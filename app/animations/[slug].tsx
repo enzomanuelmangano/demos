@@ -78,15 +78,17 @@ export default function AnimationScreen() {
         intensity={rBlurIntensity}
         style={styles.blurView}
       />
-      <AnimatedDrawerIcon
-        containerStyle={[
-          styles.menu,
-          rDrawerIconStyle,
-          {
-            top: safeTop,
-          },
-        ]}
-      />
+      {!metadata.hideDrawerIcon && (
+        <AnimatedDrawerIcon
+          containerStyle={[
+            styles.menu,
+            rDrawerIconStyle,
+            {
+              top: safeTop,
+            },
+          ]}
+        />
+      )}
     </>
   );
 }
