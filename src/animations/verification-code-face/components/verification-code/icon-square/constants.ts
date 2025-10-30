@@ -1,6 +1,6 @@
 const MOUTH_HEIGHT = 20;
 const MOUTH_WIDTH = 25;
-const EYEBROW_HEIGHT = 5;
+const EYEBROW_HEIGHT = 8;
 const EYEBROW_WIDTH = 15;
 
 type PathParams = {

@@ -1,4 +1,4 @@
 import { atom } from 'jotai';
 
 export const SearchFilterAtom = atom('');
-export const ShowUnstableAnimationsAtom = atom(false);
+export const ShowUnstableAnimationsAtom = atom(true);
