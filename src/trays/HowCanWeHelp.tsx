@@ -65,7 +65,7 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
   const handleItemPress = (type: string) => {
     switch (type) {
       case 'feedback':
-        show('shareFeedback');
+        show('shareFeedback', { slug });
         break;
       case 'inspiration':
         show('inspiration', { slug });

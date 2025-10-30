@@ -5,7 +5,9 @@ import { ShareFeedback } from './ShareFeedback';
 
 export const trays = {
   help: (props?: { slug?: string }) => <HowCanWeHelp slug={props?.slug} />,
-  shareFeedback: () => <ShareFeedback />,
+  shareFeedback: (props?: { slug?: string }) => (
+    <ShareFeedback slug={props?.slug} />
+  ),
   inspiration: (props?: { slug?: string }) => (
     <Inspiration slug={props?.slug} />
   ),
