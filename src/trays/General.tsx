@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 
+import { getAnimationMetadata } from '../animations/registry';
 import { ShowUnstableAnimationsAtom } from '../navigation/states/filters';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -21,6 +22,13 @@ interface GeneralProps {
 }
 
 export const General = ({ slug }: GeneralProps) => {
+  const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
+
+  const metadata = slug ? getAnimationMetadata(slug) : null;
+  const sourceDescription = slug
+    ? `View ${metadata?.name || 'this animation'} on GitHub`
+    : 'View the code on GitHub';
+
   const Items: readonly GeneralItem[] = [
     {
       title: 'Show Unstable',
@@ -31,7 +39,7 @@ export const General = ({ slug }: GeneralProps) => {
     },
     {
       title: 'Source Code',
-      description: 'View the code on GitHub',
+      description: sourceDescription,
       icon: 'logo-github',
       backgroundColor: '#24292e',
       type: 'source',
@@ -44,8 +52,6 @@ export const General = ({ slug }: GeneralProps) => {
       type: 'sponsor',
     },
   ] as const;
-
-  const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
 
   const handleItemPress = (type: string) => {
     switch (type) {
