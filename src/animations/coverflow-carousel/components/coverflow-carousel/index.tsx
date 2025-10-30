@@ -18,8 +18,6 @@ const ItemWidth = 160;
 export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
   images,
 }) => {
-  // const animatedRef = useAnimatedRef<any>();
-  // const scrollOffset = useScrollViewOffset(animatedRef);
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { x } }) => {

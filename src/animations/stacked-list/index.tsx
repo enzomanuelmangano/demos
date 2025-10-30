@@ -3,10 +3,10 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
-  useAnimatedRef,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
-  useScrollViewOffset,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import type { SharedValue } from 'react-native-reanimated';
@@ -149,20 +149,18 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
 
 // Main application component
 export const StackedList = () => {
-  // Reference for animated flat list
-  const scrollAnimatedRef = useAnimatedRef<Animated.FlatList<number>>();
-
-  // Get scroll offset
-  // Note: Casting to any because TypeScript does not provide consistent types for useScrollViewOffset
-  // This useScrollViewOffset is a magical hook provided by Reanimated that returns the scroll offset of a ScrollView/FlatList
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const scrollOffset = useScrollViewOffset(scrollAnimatedRef as any);
+  const scrollOffset = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollOffset.value = event.contentOffset.y;
+    },
+  });
 
   // Render the app
   return (
     <View style={styles.container}>
       <Animated.FlatList
-        ref={scrollAnimatedRef}
+        onScroll={onScroll}
         data={Items}
         showsVerticalScrollIndicator={true}
         contentContainerStyle={{
