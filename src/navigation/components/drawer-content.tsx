@@ -62,6 +62,10 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
     return { paddingBottom: bottom, marginTop: 12 };
   }, [bottom]);
 
+  const scrollComponent = useCallback((props: any) => {
+    return <ScrollView {...props} />;
+  }, []);
+
   return (
     <View style={[styles.container, { paddingTop: top }]}>
       <View style={styles.header}>
@@ -98,7 +102,7 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
             estimatedItemSize={LIST_ITEM_HEIGHT}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={contentContainerStyle}
-            renderScrollComponent={props => <ScrollView {...props} />}
+            renderScrollComponent={scrollComponent}
           />
         </PressablesGroup>
         <LinearGradient
