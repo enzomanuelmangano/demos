@@ -1,8 +1,9 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 // @@TODO: restore once available in pressto
 // import { PressableGlass } from 'pressto/glass';
 import { PressableScale } from 'pressto';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { useDemoStackedToast } from './hook';
 
