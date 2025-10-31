@@ -30,7 +30,7 @@ import {
   SearchFilterAtom,
 } from '../../navigation/states/filters';
 
-const keyExtractor = (item: AnimationItem) => item.slug;
+const keyExtractor = (item: AnimationItem) => item?.slug || '';
 
 const LIST_ITEM_HEIGHT = 50;
 
@@ -63,8 +63,11 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
 
   const handleSearchChange = useCallback(
     (event: TextInputChangeEvent) => {
-      listRef.current?.scrollToIndex({ index: 0, animated: false });
       setSearchFilter(event.nativeEvent.text);
+      // Scroll to top after filter is applied, in the next frame
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToIndex({ index: 0, animated: false });
+      });
     },
     [setSearchFilter],
   );

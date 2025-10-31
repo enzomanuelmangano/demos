@@ -25,6 +25,7 @@ export type AnimationItem = {
 
 export const AnimationsAtom = atom<AnimationItem[]>(
   getAllAnimations()
+    .filter(animation => animation.metadata !== undefined)
     .map((animation, index) => ({
       id: index,
       ...animation,
@@ -42,6 +43,11 @@ export const FilteredAnimationsAtom = atom<AnimationItem[]>(get => {
   const showUnstable = get(ShowUnstableAnimationsAtom);
 
   const filteredAnimations = allAnimations.filter(item => {
+    // Filter out any undefined items as a safety check
+    if (!item || !item.slug) {
+      return false;
+    }
+
     if (!showUnstable && item.alert) {
       return false;
     }

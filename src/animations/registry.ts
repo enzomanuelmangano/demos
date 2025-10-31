@@ -926,9 +926,16 @@ export const getAnimationMetadata = (
 };
 
 export const getAllAnimations = () => {
-  return Object.keys(AnimationRegistry).map(slug => ({
-    slug,
-    component: AnimationRegistry[slug as AnimationSlug],
-    metadata: AnimationMetadata[slug as AnimationSlug],
-  }));
+  return Object.keys(AnimationRegistry)
+    .map(slug => ({
+      slug,
+      component: AnimationRegistry[slug as AnimationSlug],
+      metadata: AnimationMetadata[slug as AnimationSlug],
+    }))
+    .filter(animation => {
+      if (animation.metadata === undefined) {
+        console.warn('Missing metadata for animation:', animation.slug);
+      }
+      return animation.metadata !== undefined;
+    });
 };
