@@ -3,18 +3,18 @@
 /**
  * Animation Metadata Statistics Analyzer
  *
- * Analyzes all _meta.json files to extract and visualize common patterns,
+ * Analyzes extracted metadata to visualize common patterns,
  * hooks, techniques, technologies, and other metadata across all animations.
+ *
+ * Works with deterministic extraction format.
  *
  * Usage:
  *   node scripts/meta-stats.js                    # Show all statistics
  *   node scripts/meta-stats.js --hooks            # Show only hooks
  *   node scripts/meta-stats.js --techniques       # Show only techniques
- *   node scripts/meta-stats.js --tech             # Show only technologies
- *   node scripts/meta-stats.js --tags             # Show only tags
+ *   node scripts/meta-stats.js --packages         # Show only packages
  *   node scripts/meta-stats.js --top 10           # Show top 10 results
  *   node scripts/meta-stats.js --search "term"    # Search for specific term
- *   node scripts/meta-stats.js --find "Linear"    # Find items containing text
  *   node scripts/meta-stats.js --json             # Output as JSON
  */
 
@@ -72,48 +72,93 @@ function readMetadata(slug) {
 }
 
 /**
- * Extract all hooks from metadata
+ * Extract hooks from metadata (new deterministic format)
  */
 function extractHooks(metadata, packageFilter = null) {
-  const hooks = new Set();
-
-  // Extract from packages_and_versions
-  if (metadata.packages_and_versions) {
-    Object.entries(metadata.packages_and_versions).forEach(([pkgName, pkg]) => {
-      // Apply package filter if specified
-      if (packageFilter && pkgName !== packageFilter) {
-        return;
-      }
-
-      if (pkg.hooks && Array.isArray(pkg.hooks)) {
-        pkg.hooks.forEach(hook => hooks.add(hook));
-      }
-    });
+  if (!metadata.hooks || !Array.isArray(metadata.hooks)) {
+    return [];
   }
 
-  return Array.from(hooks);
+  if (!packageFilter) {
+    return metadata.hooks;
+  }
+
+  // Filter by package if specified
+  if (metadata.packages_detail && metadata.packages_detail[packageFilter]) {
+    return metadata.packages_detail[packageFilter].hooks || [];
+  }
+
+  return [];
 }
 
 /**
- * Extract components from metadata
+ * Extract functions from metadata (new deterministic format)
  */
-function extractComponents(metadata, packageFilter = null) {
-  const components = new Set();
-
-  if (metadata.packages_and_versions) {
-    Object.entries(metadata.packages_and_versions).forEach(([pkgName, pkg]) => {
-      // Apply package filter if specified
-      if (packageFilter && pkgName !== packageFilter) {
-        return;
-      }
-
-      if (pkg.components && Array.isArray(pkg.components)) {
-        pkg.components.forEach(comp => components.add(comp));
-      }
-    });
+function extractFunctions(metadata, packageFilter = null) {
+  if (!metadata.functions || !Array.isArray(metadata.functions)) {
+    return [];
   }
 
-  return Array.from(components);
+  if (!packageFilter) {
+    return metadata.functions;
+  }
+
+  // Filter by package if specified
+  if (metadata.packages_detail && metadata.packages_detail[packageFilter]) {
+    return metadata.packages_detail[packageFilter].functions || [];
+  }
+
+  return [];
+}
+
+/**
+ * Extract components from metadata (new deterministic format)
+ */
+function extractComponents(metadata, packageFilter = null) {
+  if (!metadata.components || !Array.isArray(metadata.components)) {
+    return [];
+  }
+
+  if (!packageFilter) {
+    return metadata.components;
+  }
+
+  // Filter by package if specified
+  if (metadata.packages_detail && metadata.packages_detail[packageFilter]) {
+    return metadata.packages_detail[packageFilter].components || [];
+  }
+
+  return [];
+}
+
+/**
+ * Extract patterns from metadata (new deterministic format)
+ */
+function extractPatterns(metadata) {
+  if (!metadata.patterns || !Array.isArray(metadata.patterns)) {
+    return [];
+  }
+  return metadata.patterns;
+}
+
+/**
+ * Extract techniques from metadata (new deterministic format)
+ */
+function extractTechniques(metadata) {
+  if (!metadata.techniques || !Array.isArray(metadata.techniques)) {
+    return [];
+  }
+  return metadata.techniques;
+}
+
+/**
+ * Extract packages from metadata (new deterministic format)
+ */
+function extractPackages(metadata) {
+  if (!metadata.packages || !Array.isArray(metadata.packages)) {
+    return [];
+  }
+  return metadata.packages;
 }
 
 /**
@@ -134,83 +179,14 @@ function extractAllItems(metadata) {
   };
 
   // Extract from various fields
-  addArray(extractHooks(metadata), 'hook');
-  addArray(extractComponents(metadata), 'component');
-  addArray(extractTechniques(metadata), 'technique');
-  addArray(extractReanimatedPatterns(metadata), 'reanimated_pattern');
-  addArray(extractTechnologies(metadata), 'technology');
-  addArray(extractTags(metadata), 'tag');
-  addArray(extractPackages(metadata), 'package');
-
-  // Extract from main_features
-  addArray(metadata.main_features, 'feature');
-
-  // Extract from performance_optimizations
-  addArray(metadata.performance_optimizations, 'optimization');
-
-  // Extract from known_limitations
-  addArray(metadata.known_limitations, 'limitation');
+  addArray(metadata.hooks, 'hook');
+  addArray(metadata.functions, 'function');
+  addArray(metadata.components, 'component');
+  addArray(metadata.patterns, 'pattern');
+  addArray(metadata.techniques, 'technique');
+  addArray(metadata.packages, 'package');
 
   return items;
-}
-
-/**
- * Extract animation techniques
- */
-function extractTechniques(metadata) {
-  if (
-    !metadata.animation_techniques ||
-    !Array.isArray(metadata.animation_techniques)
-  ) {
-    return [];
-  }
-  return metadata.animation_techniques;
-}
-
-/**
- * Extract Reanimated patterns
- */
-function extractReanimatedPatterns(metadata) {
-  if (
-    !metadata.reanimated_patterns ||
-    !Array.isArray(metadata.reanimated_patterns)
-  ) {
-    return [];
-  }
-  return metadata.reanimated_patterns;
-}
-
-/**
- * Extract core technologies
- */
-function extractTechnologies(metadata) {
-  if (
-    !metadata.core_technologies ||
-    !Array.isArray(metadata.core_technologies)
-  ) {
-    return [];
-  }
-  return metadata.core_technologies;
-}
-
-/**
- * Extract tags
- */
-function extractTags(metadata) {
-  if (!metadata.tags || !Array.isArray(metadata.tags)) {
-    return [];
-  }
-  return metadata.tags;
-}
-
-/**
- * Extract packages
- */
-function extractPackages(metadata) {
-  if (!metadata.packages_and_versions) {
-    return [];
-  }
-  return Object.keys(metadata.packages_and_versions);
 }
 
 /**
@@ -312,11 +288,10 @@ function analyzeMetadata(options = {}) {
   );
 
   const allHooks = [];
+  const allFunctions = [];
   const allComponents = [];
+  const allPatterns = [];
   const allTechniques = [];
-  const allReanimatedPatterns = [];
-  const allTechnologies = [];
-  const allTags = [];
   const allPackages = [];
 
   let metadataCount = 0;
@@ -334,8 +309,8 @@ function analyzeMetadata(options = {}) {
     // Check if this animation uses the filtered package
     if (packageFilter) {
       const hasPackage =
-        metadata.packages_and_versions &&
-        Object.keys(metadata.packages_and_versions).includes(packageFilter);
+        metadata.packages &&
+        metadata.packages.includes(packageFilter);
 
       if (!hasPackage) {
         return;
@@ -345,11 +320,10 @@ function analyzeMetadata(options = {}) {
     }
 
     allHooks.push(...extractHooks(metadata, packageFilter));
+    allFunctions.push(...extractFunctions(metadata, packageFilter));
     allComponents.push(...extractComponents(metadata, packageFilter));
+    allPatterns.push(...extractPatterns(metadata));
     allTechniques.push(...extractTechniques(metadata));
-    allReanimatedPatterns.push(...extractReanimatedPatterns(metadata));
-    allTechnologies.push(...extractTechnologies(metadata));
-    allTags.push(...extractTags(metadata));
     allPackages.push(...extractPackages(metadata));
   });
 
@@ -361,11 +335,10 @@ function analyzeMetadata(options = {}) {
       : metadataCount,
     packageFilter,
     hooks: sortCounts(countItems(allHooks)),
+    functions: sortCounts(countItems(allFunctions)),
     components: sortCounts(countItems(allComponents)),
+    patterns: sortCounts(countItems(allPatterns)),
     techniques: sortCounts(countItems(allTechniques)),
-    reanimatedPatterns: sortCounts(countItems(allReanimatedPatterns)),
-    technologies: sortCounts(countItems(allTechnologies)),
-    tags: sortCounts(countItems(allTags)),
     packages: sortCounts(countItems(allPackages)),
   };
 }
@@ -402,7 +375,6 @@ function searchMetadata(searchTerm, options = {}) {
       if (searchPattern.test(item)) {
         results.push({
           animationSlug: animation.slug,
-          animationName: metadata.animation_name || animation.slug,
           item,
           category,
         });
@@ -475,19 +447,16 @@ function displaySummary(stats) {
     `  Unique Hooks:               ${colors.bright}${stats.hooks.length}${colors.reset}`,
   );
   console.log(
+    `  Unique Functions:           ${colors.bright}${stats.functions.length}${colors.reset}`,
+  );
+  console.log(
     `  Unique Components:          ${colors.bright}${stats.components.length}${colors.reset}`,
   );
   console.log(
+    `  Unique Patterns:            ${colors.bright}${stats.patterns.length}${colors.reset}`,
+  );
+  console.log(
     `  Unique Techniques:          ${colors.bright}${stats.techniques.length}${colors.reset}`,
-  );
-  console.log(
-    `  Unique Reanimated Patterns: ${colors.bright}${stats.reanimatedPatterns.length}${colors.reset}`,
-  );
-  console.log(
-    `  Unique Technologies:        ${colors.bright}${stats.technologies.length}${colors.reset}`,
-  );
-  console.log(
-    `  Unique Tags:                ${colors.bright}${stats.tags.length}${colors.reset}`,
   );
   console.log(
     `  Unique Packages:            ${colors.bright}${stats.packages.length}${colors.reset}`,
@@ -583,12 +552,10 @@ function main() {
   // Parse options
   const options = {
     showHooks: args.includes('--hooks'),
+    showFunctions: args.includes('--functions'),
     showComponents: args.includes('--components'),
+    showPatterns: args.includes('--patterns'),
     showTechniques: args.includes('--techniques'),
-    showReanimated:
-      args.includes('--reanimated') || args.includes('--patterns'),
-    showTech: args.includes('--tech') || args.includes('--technologies'),
-    showTags: args.includes('--tags'),
     showPackages: args.includes('--packages'),
     json: args.includes('--json'),
     showAnimations: args.includes('--animations') || args.includes('--list'),
@@ -621,11 +588,10 @@ function main() {
   // If no specific category selected, show all
   const showAll =
     !options.showHooks &&
+    !options.showFunctions &&
     !options.showComponents &&
+    !options.showPatterns &&
     !options.showTechniques &&
-    !options.showReanimated &&
-    !options.showTech &&
-    !options.showTags &&
     !options.showPackages;
 
   if (args.includes('--help') || args.includes('-h')) {
@@ -635,11 +601,10 @@ ${colors.bright}Animation Metadata Statistics${colors.reset}
 ${colors.bright}Usage:${colors.reset}
   ${colors.cyan}npm run meta:stats${colors.reset}                                Show all statistics
   ${colors.cyan}npm run meta:stats -- --hooks${colors.reset}                     Show only React hooks
+  ${colors.cyan}npm run meta:stats -- --functions${colors.reset}                 Show only functions
   ${colors.cyan}npm run meta:stats -- --components${colors.reset}                Show only components
-  ${colors.cyan}npm run meta:stats -- --techniques${colors.reset}                Show only animation techniques
-  ${colors.cyan}npm run meta:stats -- --reanimated${colors.reset}                Show only Reanimated patterns
-  ${colors.cyan}npm run meta:stats -- --tech${colors.reset}                      Show only technologies
-  ${colors.cyan}npm run meta:stats -- --tags${colors.reset}                      Show only tags
+  ${colors.cyan}npm run meta:stats -- --patterns${colors.reset}                  Show only patterns
+  ${colors.cyan}npm run meta:stats -- --techniques${colors.reset}                Show only techniques
   ${colors.cyan}npm run meta:stats -- --packages${colors.reset}                  Show only packages
   ${colors.cyan}npm run meta:stats -- --package "name"${colors.reset}            Filter by specific package
   ${colors.cyan}npm run meta:stats -- --top 10${colors.reset}                    Show top 10 results
@@ -649,20 +614,14 @@ ${colors.bright}Usage:${colors.reset}
 
 ${colors.bright}Examples:${colors.reset}
   npm run meta:stats -- --hooks --top 15
-  npm run meta:stats -- --techniques --tags
+  npm run meta:stats -- --techniques --patterns
   npm run meta:stats -- --search "Linear"
-  npm run meta:stats -- --find "Transition" --animations
+  npm run meta:stats -- --find "spring" --animations
 
 ${colors.bright}Package Filter Examples:${colors.reset}
   npm run meta:stats -- --package "react-native-reanimated" --hooks
   npm run meta:stats -- --package "@shopify/react-native-skia" --components
   npm run meta:stats -- --package "react-native-gesture-handler" --hooks --top 10
-  npm run meta:stats -- --package "expo-blur" --components
-
-${colors.bright}Search Examples:${colors.reset}
-  npm run meta:stats -- --search "LinearTransition"
-  npm run meta:stats -- --find "spring" --top 20
-  npm run meta:stats -- --search "useAnimated" --animations
     `);
     return;
   }
@@ -707,11 +666,23 @@ ${colors.bright}Search Examples:${colors.reset}
   if (showAll || options.showHooks) {
     const title = options.packageFilter
       ? `🪝 Most Used Hooks (${options.packageFilter})`
-      : '🪝 Most Used React Hooks';
+      : '🪝 Most Used Hooks';
 
     displayStats(title, stats.hooks, {
       limit: options.limit,
       color: colors.green,
+      totalAnimations: baseCount,
+    });
+  }
+
+  if (showAll || options.showFunctions) {
+    const title = options.packageFilter
+      ? `⚡ Most Used Functions (${options.packageFilter})`
+      : '⚡ Most Used Functions';
+
+    displayStats(title, stats.functions, {
+      limit: options.limit,
+      color: colors.yellow,
       totalAnimations: baseCount,
     });
   }
@@ -728,8 +699,8 @@ ${colors.bright}Search Examples:${colors.reset}
     });
   }
 
-  if (showAll || options.showReanimated) {
-    displayStats('🎭 Most Used Reanimated Patterns', stats.reanimatedPatterns, {
+  if (showAll || options.showPatterns) {
+    displayStats('🎭 Most Used Patterns', stats.patterns, {
       limit: options.limit,
       color: colors.magenta,
       totalAnimations: stats.animationsWithMeta,
@@ -737,15 +708,7 @@ ${colors.bright}Search Examples:${colors.reset}
   }
 
   if (showAll || options.showTechniques) {
-    displayStats('⚡ Most Common Animation Techniques', stats.techniques, {
-      limit: options.limit,
-      color: colors.yellow,
-      totalAnimations: stats.animationsWithMeta,
-    });
-  }
-
-  if (showAll || options.showTech) {
-    displayStats('🔧 Most Used Technologies', stats.technologies, {
+    displayStats('⚡ Most Common Techniques', stats.techniques, {
       limit: options.limit,
       color: colors.cyan,
       totalAnimations: stats.animationsWithMeta,
@@ -756,14 +719,6 @@ ${colors.bright}Search Examples:${colors.reset}
     displayStats('📦 Most Used Packages', stats.packages, {
       limit: options.limit,
       color: colors.blue,
-      totalAnimations: stats.animationsWithMeta,
-    });
-  }
-
-  if (showAll || options.showTags) {
-    displayStats('🏷️  Most Popular Tags', stats.tags, {
-      limit: options.limit,
-      color: colors.cyan,
       totalAnimations: stats.animationsWithMeta,
     });
   }
@@ -778,9 +733,9 @@ module.exports = {
   analyzeMetadata,
   searchMetadata,
   extractHooks,
+  extractFunctions,
   extractComponents,
+  extractPatterns,
   extractTechniques,
-  extractReanimatedPatterns,
-  extractTechnologies,
-  extractTags,
+  extractPackages,
 };

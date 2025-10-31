@@ -25,6 +25,8 @@
     "meta:list": "node scripts/analytics/meta-hash.js list",
     "meta:help": "node scripts/analytics/meta-hash.js --help",
     "meta:stats": "node scripts/analytics/meta-stats.js",
+    "meta:extract": "node scripts/analytics/extract-metadata.js",
+    "meta:extract:all": "node scripts/analytics/extract-metadata.js --all",
     "expo:ota": "eas update --channel production"
   },
   "dependencies": {

@@ -1,3 +1,34 @@
+## 🔍 Deterministic Metadata Extraction
+
+**Automatically extract animation metadata from source code** using AST parsing — 100% deterministic, no AI.
+
+```bash
+# Extract metadata for a single animation
+npm run meta:extract everybody-can-cook
+
+# Extract metadata for all animations
+npm run meta:extract:all
+```
+
+**What gets extracted:**
+- ✅ Packages used (with versions)
+- ✅ Hooks called (useSharedValue, useAnimatedStyle, etc.)
+- ✅ Functions called (withTiming, withSpring, etc.)
+- ✅ Components used (Animated.View, Canvas, etc.)
+- ✅ Patterns detected (reactive-styling-pattern, scroll-animation, etc.)
+- ✅ Techniques identified (spring-physics, staggered-timing, etc.)
+- ✅ File structure (entry, components, hooks, utils)
+
+**Benefits:**
+- 100% deterministic and reproducible
+- Updates automatically when code changes
+- Perfect for statistics and pattern analysis
+- No manual work required
+
+See [README.md](./README.md) for detailed documentation.
+
+---
+
 ### Statistics Analyzer
 
 Analyze patterns across all animations with visual charts:
