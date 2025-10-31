@@ -1,875 +1,154 @@
 {
-  "animation_name": "Tab Navigation",
   "animation_slug": "tab-navigation",
-  "description": "A dynamic tab navigation bar with morphing widths and smooth transitions. Features tabs that expand when active and compress when inactive, with dynamic width calculations based on screen size. Uses Reanimated interpolation for smooth width transitions, icon positioning animations, and text opacity effects. The tabs include icons and labels with a pressable scale interaction using the Pressto library.",
-  "main_features": [
-    "Dynamic width morphing between active and inactive states",
-    "Responsive tab width calculations based on screen dimensions",
-    "Smooth interpolation-driven width transitions (300ms timing)",
-    "Icon repositioning animation from center to left on activation",
-    "Text opacity animation with cubic easing (progress^3)",
-    "Dynamic gap animation between icon and text",
-    "PressableScale interactions for tactile feedback",
-    "Flexible tab configuration with custom icons and labels",
-    "Automatic width distribution across available screen space",
-    "Gap-based layout with configurable spacing"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.620Z",
   "file_structure": {
-    "index.tsx": "Main export wrapper component",
-    "src/index.tsx": "App container with tab state management (useState)",
-    "src/components/tabs/index.tsx": "Tabs container with width calculations and layout logic",
-    "src/components/tabs/tab.tsx": "Individual Tab component with animations and interactions",
-    "src/constants.ts": "Tab data configuration (labels and icons)"
+    "entry": "src/index.tsx",
+    "components": [
+      "src/components/tabs/tab.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [
+      "src/constants.ts"
+    ],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "interactions": "pressto (PressableScale)",
-    "icons": "@expo/vector-icons (AntDesign)",
-    "ui": "react-native",
-    "layout": "react-native (useWindowDimensions)"
+  "packages": [
+    "@expo/vector-icons",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./components/tabs": {
+      "imports": [
+        "Tabs"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "TABS_DATA"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./tab": {
+      "imports": [
+        "Tab"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "AntDesign"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useState"
+      ],
       "hooks": [
-        "useSharedValue",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "interpolate",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "withSpring"
+      ],
+      "hooks": [
         "useAnimatedStyle",
         "useDerivedValue"
       ],
       "functions": [
-        "withTiming",
-        "interpolate"
+        "interpolate",
+        "withSpring"
       ],
       "components": [
-        "Animated.View",
-        "Animated.Text"
-      ],
-      "critical_feature": "useDerivedValue for computed progress and withTiming for smooth 300ms transitions"
-    },
-    "pressto": {
-      "version": "0.3.5-beta.1",
-      "components": [
-        "PressableScale"
-      ],
-      "usage": "Provides scale-down feedback on tab press"
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "components": [
-        "AntDesign"
-      ],
-      "icons_used": [
-        "user",
-        "home",
-        "wallet",
-        "swap"
-      ],
-      "usage": "Tab icons with 20px size"
-    },
-    "react-native": {
-      "version": "0.81.4",
-      "components": [
-        "View",
-        "StyleSheet"
-      ],
-      "hooks": [
-        "useWindowDimensions"
-      ],
-      "usage": "Core UI components and responsive width calculations"
-    },
-    "react": {
-      "version": "19.1.0",
-      "hooks": [
-        "useState"
-      ],
-      "usage": "Active tab index state management"
-    }
-  },
-  "animation_techniques": {
-    "progress_derivation": {
-      "hook": "useDerivedValue",
-      "calculation": "isActive ? 1 : 0 with withTiming",
-      "timing_config": {
-        "duration": 300
-      },
-      "range": "0 (inactive) to 1 (active)",
-      "purpose": "Normalized progress value driving all animations",
-      "dependencies": [
-        "isActive"
-      ],
-      "updates_on": "Active state changes"
-    },
-    "width_morphing": {
-      "pattern": "interpolate based on progress",
-      "shared_value": "progress",
-      "input_range": "[0, 1]",
-      "output_range": "[minWidth, maxWidth]",
-      "effect": "Tab smoothly expands from minimum to maximum width",
-      "timing": "300ms with default easing",
-      "responsive": "Width range calculated from screen dimensions and tab count"
-    },
-    "icon_repositioning": {
-      "pattern": "interpolate translateX based on progress",
-      "input_range": "[0, 1]",
-      "output_range": "[(minWidth - IconSize) / 2, IconSize]",
-      "initial_position": "Center of collapsed tab",
-      "active_position": "Left side with IconSize padding",
-      "effect": "Icon slides from center to left as tab expands",
-      "applied_as": "Absolute position with dynamic left value"
-    },
-    "gap_animation": {
-      "pattern": "interpolate between gap values",
-      "input_range": "[0, 1]",
-      "output_range": "[0, 15]",
-      "inactive_state": "No gap (icon-only display)",
-      "active_state": "15px gap between icon and text",
-      "purpose": "Creates space for text appearance"
-    },
-    "text_opacity": {
-      "pattern": "Cubic easing on progress (progress^3)",
-      "calculation": "opacity = progress.value ** 3",
-      "inactive_opacity": 0,
-      "active_opacity": 1,
-      "easing_explanation": "Cubic easing creates delayed fade-in for smoother appearance",
-      "effect": "Text fades in slowly at start, rapidly at end"
-    },
-    "text_margin": {
-      "pattern": "Dynamic marginLeft driven by gap derived value",
-      "value": "gap.value",
-      "range": "0px to 15px",
-      "synchronization": "Perfectly synced with gap animation"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [],
-    "derived_values": [
-      {
-        "name": "progress",
-        "type": "DerivedValue<number>",
-        "calculation": "withTiming(isActive ? 1 : 0, { duration: 300 })",
-        "dependencies": [
-          "isActive"
-        ],
-        "range": "0 to 1",
-        "purpose": "Master animation progress value",
-        "drives": "All tab animations (width, position, opacity, gap)"
-      },
-      {
-        "name": "gap",
-        "type": "DerivedValue<number>",
-        "calculation": "interpolate(progress.value, [0, 1], [0, 15])",
-        "dependencies": [
-          "progress"
-        ],
-        "range": "0px to 15px",
-        "purpose": "Dynamic gap between icon and text"
-      }
-    ],
-    "useAnimatedStyle_instances": [
-      {
-        "name": "rTabStyle",
-        "target": "Tab container (Animated.View)",
-        "animated_properties": [
-          "width"
-        ],
-        "calculation": "interpolate(progress.value, [0, 1], [minWidth, maxWidth])",
-        "dependencies": [
-          "isActive"
-        ],
-        "purpose": "Morphs tab width between min and max"
-      },
-      {
-        "name": "rIconStyle",
-        "target": "Icon container (Animated.View)",
-        "animated_properties": [
-          "left"
-        ],
-        "calculation": "interpolate(progress.value, [0, 1], [(minWidth - IconSize) / 2, IconSize])",
-        "position": "absolute",
-        "dependencies": [
-          "progress",
-          "minWidth"
-        ],
-        "purpose": "Repositions icon from center to left"
-      },
-      {
-        "name": "rTextStyle",
-        "target": "Tab text (Animated.Text)",
-        "animated_properties": [
-          "opacity",
-          "marginLeft"
-        ],
-        "opacity": "progress.value ** 3",
-        "marginLeft": "gap.value",
-        "dependencies": [
-          "isActive"
-        ],
-        "purpose": "Fades in text with dynamic margin"
-      }
-    ],
-    "withTiming_usage": {
-      "location": "progress useDerivedValue",
-      "duration": 300,
-      "easing": "Default (ease-in-out)",
-      "targets": [
-        "All tab animations via progress derivation"
-      ],
-      "benefit": "Single timing animation drives all synchronized effects"
-    },
-    "interpolate_usage": {
-      "usage_count": 3,
-      "instances": [
-        {
-          "purpose": "Tab width",
-          "input_range": "[0, 1]",
-          "output_range": "[minWidth, maxWidth]"
-        },
-        {
-          "purpose": "Icon horizontal position",
-          "input_range": "[0, 1]",
-          "output_range": "[(minWidth - IconSize) / 2, IconSize]"
-        },
-        {
-          "purpose": "Icon-text gap",
-          "input_range": "[0, 1]",
-          "output_range": "[0, 15]"
-        }
+        "Animated.Text",
+        "Animated.View"
       ]
     }
   },
-  "component_architecture": {
-    "App": {
-      "type": "Container component",
-      "state": {
-        "activeTabIndex": {
-          "type": "number",
-          "initial": 0,
-          "setter": "setActiveTabIndex"
-        }
-      },
-      "responsibilities": [
-        "Manages active tab state",
-        "Renders Tabs component with data and state"
-      ],
-      "styling": "Centered white background container"
-    },
-    "Tabs": {
-      "type": "Layout and calculation component",
-      "props": {
-        "tabs": {
-          "type": "{ label: string; icon: keyof typeof AntDesign.glyphMap }[]",
-          "required": true,
-          "usage": "Tab configuration data"
-        },
-        "activeTabIndex": {
-          "type": "number",
-          "required": true,
-          "usage": "Currently active tab index"
-        },
-        "setActiveTabIndex": {
-          "type": "(index: number) => void",
-          "required": true,
-          "usage": "Callback to change active tab"
-        }
-      },
-      "calculations": {
-        "tabsWidth": {
-          "formula": "windowWidth - paddingHorizontal * 2 - gap * (tabs.length - 1)",
-          "purpose": "Total available width for all tabs"
-        },
-        "maxTabWidth": {
-          "value": 170,
-          "description": "Maximum width for active tab"
-        },
-        "minTabWidth": {
-          "formula": "(tabsWidth - maxTabWidth) / (tabs.length - 1)",
-          "purpose": "Width for inactive tabs (distributed equally)"
-        }
-      },
-      "layout_constants": {
-        "gap": 10,
-        "paddingHorizontal": 10
-      },
-      "responsibilities": [
-        "Calculate responsive tab widths",
-        "Render Tab components with calculated dimensions",
-        "Handle tab press events"
-      ]
-    },
-    "Tab": {
-      "type": "Animated interactive component",
-      "props": {
-        "label": {
-          "type": "string",
-          "required": true,
-          "usage": "Tab text label"
-        },
-        "icon": {
-          "type": "keyof typeof AntDesign.glyphMap",
-          "required": true,
-          "usage": "Icon name from AntDesign"
-        },
-        "maxWidth": {
-          "type": "number",
-          "required": true,
-          "usage": "Maximum width when active"
-        },
-        "minWidth": {
-          "type": "number",
-          "required": true,
-          "usage": "Minimum width when inactive"
-        },
-        "isActive": {
-          "type": "boolean",
-          "required": true,
-          "usage": "Whether tab is currently active"
-        },
-        "onPress": {
-          "type": "() => void",
-          "required": true,
-          "usage": "Press handler callback"
-        }
-      },
-      "constants": {
-        "IconSize": 20
-      },
-      "responsibilities": [
-        "Animate width transitions",
-        "Animate icon positioning",
-        "Animate text appearance",
-        "Provide press feedback",
-        "Render icon and label"
-      ]
-    }
-  },
-  "mathematical_relationships": {
-    "available_tab_space": {
-      "formula": "tabsWidth = windowWidth - paddingHorizontal * 2 - gap * (tabs.length - 1)",
-      "components": [
-        "windowWidth: Full screen width",
-        "paddingHorizontal * 2: Left and right padding (20px total)",
-        "gap * (tabs.length - 1): Space between tabs"
-      ],
-      "example": "With 4 tabs, width 390px, gap 10px: 390 - 20 - 30 = 340px"
-    },
-    "inactive_tab_width": {
-      "formula": "minTabWidth = (tabsWidth - maxTabWidth) / (tabs.length - 1)",
-      "logic": "Distribute remaining space equally among inactive tabs",
-      "example": "With tabsWidth=340px, maxWidth=170px, 3 inactive tabs: (340-170)/3 = 56.67px each"
-    },
-    "icon_center_position": {
-      "formula": "(minWidth - IconSize) / 2",
-      "purpose": "Center icon horizontally in collapsed tab",
-      "example": "minWidth=57px, IconSize=20px: (57-20)/2 = 18.5px from left"
-    },
-    "icon_active_position": {
-      "value": "IconSize (20px)",
-      "purpose": "Left-align icon with padding equal to its size"
-    },
-    "cubic_opacity_easing": {
-      "formula": "opacity = progress ** 3",
-      "curve": "Slow start (0→0.001 for 0→0.1), rapid end (0.729→1 for 0.9→1)",
-      "benefit": "Text appears subtly then quickly for cleaner transition"
-    }
-  },
-  "layout_and_positioning": {
-    "tab_container": {
-      "flexDirection": "row",
-      "gap": 10,
-      "paddingHorizontal": 10,
-      "width": "Full window width",
-      "justifyContent": "Automatic (flex-start)",
-      "note": "Gap creates spacing, tabs have dynamic widths"
-    },
-    "individual_tab": {
-      "height": 60,
-      "backgroundColor": "#f1f1f1 (light gray)",
-      "borderRadius": 15,
-      "borderCurve": "continuous",
-      "justifyContent": "center",
-      "dynamic_width": "Animated between minWidth and maxWidth"
-    },
-    "tab_inner_container": {
-      "width": "100%",
-      "flexDirection": "row",
-      "alignItems": "center",
-      "justifyContent": "center",
-      "overflow": "hidden"
-    },
-    "icon_positioning": {
-      "position": "absolute",
-      "height": 20,
-      "width": 20,
-      "zIndex": 100,
-      "left": "Animated (center to left transition)",
-      "backgroundColor": "#f1f1f1 (matches tab background)"
-    },
-    "text_styling": {
-      "fontSize": 16,
-      "fontWeight": "500",
-      "zIndex": 100,
-      "numberOfLines": 1,
-      "opacity": "Animated (0 to 1)",
-      "marginLeft": "Animated (0 to 15px)"
-    }
-  },
-  "interaction_patterns": {
-    "press_interaction": {
-      "component": "PressableScale from pressto",
-      "effect": "Scale down animation on press",
-      "callback": "onPress() to update activeTabIndex",
-      "accessibility": "Default pressable accessibility"
-    },
-    "visual_feedback": {
-      "immediate": "PressableScale effect",
-      "animated": [
-        "Width expansion (300ms)",
-        "Icon repositioning (300ms)",
-        "Text fade-in (300ms with cubic easing)",
-        "Gap opening (300ms)"
-      ]
-    },
-    "state_transitions": {
-      "inactive_to_active": {
-        "width": "minWidth → maxWidth",
-        "icon": "center → left",
-        "text": "hidden (opacity 0) → visible (opacity 1)",
-        "gap": "0px → 15px"
-      },
-      "active_to_inactive": {
-        "width": "maxWidth → minWidth",
-        "icon": "left → center",
-        "text": "visible → hidden",
-        "gap": "15px → 0px"
-      }
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "app_background": "#fff (white)",
-      "tab_background": "#f1f1f1 (light gray)",
-      "icon_color": "black",
-      "text_color": "black"
-    },
-    "dimensions": {
-      "tab_height": 60,
-      "tab_border_radius": 15,
-      "max_tab_width": 170,
-      "min_tab_width": "Calculated dynamically",
-      "gap_between_tabs": 10,
-      "horizontal_padding": 10,
-      "icon_size": 20,
-      "text_font_size": 16,
-      "icon_text_gap": "0-15px (animated)"
-    },
-    "styling_features": {
-      "border_curve": "continuous (iOS rounded corner style)",
-      "overflow": "hidden (clips overflowing text)",
-      "z_index_layering": "Icon and text at z-index 100"
-    }
-  },
-  "data_structure": {
-    "TABS_DATA": {
-      "type": "Array<{ label: string; icon: keyof typeof AntDesign.glyphMap }>",
-      "location": "src/constants.ts",
-      "length": 4,
-      "items": [
-        {
-          "label": "Accounts",
-          "icon": "user"
-        },
-        {
-          "label": "Home",
-          "icon": "home"
-        },
-        {
-          "label": "Payments",
-          "icon": "wallet"
-        },
-        {
-          "label": "Transfers",
-          "icon": "swap"
-        }
-      ],
-      "extensibility": "Easy to add/remove tabs by modifying array"
-    }
-  },
-  "responsive_design": {
-    "screen_width_handling": {
-      "hook": "useWindowDimensions()",
-      "responsive_calculations": [
-        "tabsWidth adapts to screen size",
-        "minTabWidth recalculates for different screens",
-        "maxTabWidth remains fixed (170px)"
-      ],
-      "cross_device_support": "Works on phones, tablets, and different orientations"
-    },
-    "dynamic_tab_count": {
-      "flexibility": "Formula adapts to any number of tabs",
-      "calculation": "Distributes inactive tab space based on tabs.length - 1",
-      "limitation": "Many tabs may result in very small minWidth"
-    }
-  },
-  "performance_optimizations": {
-    "single_animation_driver": {
-      "pattern": "Single progress derived value drives all animations",
-      "benefit": "Synchronized animations with single timing calculation",
-      "efficiency": "Reduces animation overhead"
-    },
-    "derived_values_usage": {
-      "progress": "Recalculates only when isActive changes",
-      "gap": "Automatically updates when progress changes",
-      "benefit": "Efficient reactive recalculation"
-    },
-    "minimal_re_renders": {
-      "state_location": "Parent component (App)",
-      "prop_passing": "Only activeTabIndex and setter passed down",
-      "tab_isolation": "Each tab renders independently based on isActive prop"
-    },
-    "animation_efficiency": {
-      "worklets": "All animations run on UI thread",
-      "shared_values": "None (uses derived values only)",
-      "overhead": "Minimal - simple interpolations and calculations"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Bottom navigation bars",
-      "Top tab navigation with icons",
-      "Dashboard section switchers",
-      "Settings category navigation",
-      "App main navigation"
-    ],
-    "secondary": [
-      "Segmented controls with icons",
-      "Filter/sort option bars",
-      "Multi-section form navigation",
-      "Feature toggles with visual feedback",
-      "Wizard step indicators"
-    ],
-    "real_world_examples": [
-      "Banking app navigation (Accounts, Payments, Transfers)",
-      "E-commerce category filters",
-      "Social media section tabs",
-      "Productivity app views",
-      "Fitness app workout categories"
-    ],
-    "not_recommended_for": [
-      "Many tabs (>6) - minWidth becomes too small",
-      "Scrollable tab bars - uses fixed container width",
-      "Vertical navigation - designed for horizontal layout",
-      "Text-heavy tabs - truncation may occur at minWidth"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_imports": "Uses typeof AntDesign.glyphMap for icon type safety",
-      "prop_types": "Explicit interfaces for TabsProps and TabProps",
-      "type_annotations": "Clear function signatures and return types"
-    },
-    "component_structure": {
-      "separation": "Clear separation: App (state) → Tabs (layout) → Tab (animation)",
-      "reusability": "Tabs and Tab components fully reusable with prop configuration",
-      "composition": "Clean parent-child hierarchy",
-      "single_responsibility": "Each component has single, clear purpose"
-    },
-    "constants": {
-      "IconSize": "Extracted as named constant (20)",
-      "magic_numbers": "Layout values (gap: 10, padding: 10) inline but clear",
-      "maxTabWidth": "Configurable constant (170)",
-      "extracted_data": "Tab data in separate constants file"
-    },
-    "naming_conventions": {
-      "components": "PascalCase (Tabs, Tab)",
-      "props": "camelCase with descriptive names",
-      "animated_styles": "r prefix convention (rTabStyle, rIconStyle, rTextStyle)",
-      "derived_values": "Descriptive names (progress, gap)"
-    },
-    "documentation": {
-      "inline_comments": "Clear inline comments explaining calculations",
-      "component_jsdoc": "JSDoc comment for Tabs component",
-      "self_documenting": "Clear variable names make code readable"
-    },
-    "best_practices": [
-      "useDerivedValue for reactive calculations",
-      "Single animation driver pattern",
-      "Proper TypeScript typing",
-      "Component composition",
-      "Extracted constants and data",
-      "Clear animation dependencies"
-    ]
-  },
-  "known_limitations": {
-    "fixed_max_width": {
-      "issue": "maxTabWidth hardcoded at 170px",
-      "impact": "May not scale well on very small or very large screens",
-      "enhancement": "Could be made responsive (e.g., 40% of screen width)"
-    },
-    "many_tabs_issue": {
-      "issue": "minTabWidth becomes very small with many tabs",
-      "calculation": "With 6+ tabs, inactive tabs may be too narrow",
-      "enhancement": "Could implement horizontal scrolling for overflow tabs",
-      "workaround": "Limit to 4-5 tabs maximum"
-    },
-    "text_truncation": {
-      "issue": "Long labels may truncate at minWidth",
-      "mitigation": "numberOfLines={1} prevents wrapping",
-      "visibility": "Text hidden when inactive, so truncation not visible",
-      "enhancement": "Could show tooltip on press for full label"
-    },
-    "no_badge_support": {
-      "limitation": "No built-in notification badge display",
-      "use_case": "Common in tab bars to show unread counts",
-      "enhancement": "Could add badge prop and render on tab"
-    },
-    "fixed_icon_size": {
-      "limitation": "IconSize constant (20px) not configurable",
-      "enhancement": "Could accept icon size as prop"
-    },
-    "accessibility": {
-      "missing": [
-        "accessibilityLabel for tabs",
-        "accessibilityState for active/inactive",
-        "accessibilityRole='tab'",
-        "Screen reader support for tab count"
-      ]
-    },
-    "keyboard_navigation": {
-      "missing": "No keyboard navigation support (arrow keys)",
-      "impact": "Not accessible via external keyboard"
-    },
-    "no_animation_customization": {
-      "limitation": "Animation duration (300ms) and easing hardcoded",
-      "enhancement": "Could accept animation config as prop"
-    }
-  },
-  "potential_improvements": {
-    "animation_enhancements": [
-      "Configurable animation duration and easing",
-      "Spring-based animations instead of timing",
-      "Staggered animations (icon, then text)",
-      "Active indicator underline animation",
-      "Background color transition on activation",
-      "Scale animation on icon"
-    ],
-    "interaction_improvements": [
-      "Haptic feedback on tab selection",
-      "Long press for additional actions",
-      "Swipe gesture to change tabs",
-      "Drag to reorder tabs",
-      "Double tap for quick action"
-    ],
-    "customization_options": [
-      "Configurable maxTabWidth (prop or responsive)",
-      "Custom icon sizes",
-      "Custom colors per tab",
-      "Custom gap and padding values",
-      "Badge/notification indicator support",
-      "Custom press animations",
-      "Vertical orientation support",
-      "Custom icon components (not just AntDesign)"
-    ],
-    "accessibility": [
-      "Add accessibilityRole='tab'",
-      "Add accessibilityState with selected",
-      "Add accessibilityLabel combining icon and label",
-      "Keyboard navigation support",
-      "Screen reader announcements",
-      "Focus indicators",
-      "Reduced motion support"
-    ],
-    "responsive_design": [
-      "Responsive maxTabWidth (percentage-based)",
-      "Horizontal scrolling for overflow tabs",
-      "Minimum width threshold with scrolling fallback",
-      "Adaptive icon size based on screen size",
-      "Portrait/landscape adaptations"
-    ],
-    "functionality": [
-      "Tab bar position prop (top/bottom)",
-      "Scrollable tab container for many tabs",
-      "Active indicator line/dot",
-      "Tab removal/addition animations",
-      "Nested sub-tabs support",
-      "Programmable tab switching animations"
-    ],
-    "performance": [
-      "Memo wrapper for Tab component",
-      "useCallback for onPress handlers",
-      "Virtualization for many tabs",
-      "Lazy loading of tab content"
-    ]
-  },
-  "key_insights": {
-    "single_progress_driver": "Using one progress derived value to drive all animations ensures perfect synchronization",
-    "responsive_width_distribution": "Dynamic calculation of minTabWidth ensures tabs fill available space on any screen",
-    "cubic_opacity_easing": "progress^3 creates smoother text appearance than linear interpolation",
-    "icon_repositioning_math": "Icon moves from centered to left-aligned using interpolation between calculated positions",
-    "gap_animation_importance": "Animating gap (not just margin) creates space for text smoothly",
-    "absolute_icon_positioning": "Absolute positioning allows independent icon movement while text flows naturally",
-    "z_index_layering": "Z-index ensures icon and text render above container for proper visibility",
-    "overflow_hidden": "Overflow hidden prevents text from extending beyond tab boundaries during animations",
-    "borderCurve_continuous": "iOS continuous curve creates more elegant rounded corners than standard borderRadius"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic useState for managing active state",
-      "useWindowDimensions for responsive layouts",
-      "Understanding flexbox gap property",
-      "Component props and callbacks",
-      "Basic Reanimated animations",
-      "Icon libraries usage"
-    ],
-    "for_intermediate": [
-      "useDerivedValue for reactive calculations",
-      "withTiming for duration-based animations",
-      "interpolate for mapping value ranges",
-      "useAnimatedStyle for animated styling",
-      "Dynamic width calculations for responsive design",
-      "Absolute positioning within flex layouts",
-      "Type-safe icon prop typing",
-      "Component composition patterns"
-    ],
-    "for_advanced": [
-      "Single animation driver pattern for synchronization",
-      "Mathematical width distribution algorithms",
-      "Custom easing functions (cubic opacity)",
-      "Responsive design calculations with dynamic counts",
-      "Performance optimization with derived values",
-      "Complex layout positioning calculations",
-      "TypeScript generic typing (ReturnType, typeof)",
-      "Creating reusable animated component systems"
-    ]
-  },
-  "comparison_to_similar_patterns": {
-    "vs_standard_tab_bars": {
-      "standard": "Fixed width tabs or equal distribution",
-      "this": "Dynamic morphing between min/max widths",
-      "advantage": "More visual feedback and space efficiency"
-    },
-    "vs_bottom_navigation": {
-      "standard": "Typically icon-only or separate icon+label always visible",
-      "this": "Icon-only when inactive, icon+label when active",
-      "advantage": "Better space utilization, cleaner inactive appearance"
-    },
-    "vs_segmented_controls": {
-      "segmented": "Equal widths with sliding background indicator",
-      "this": "Dynamic widths with inline text appearance",
-      "difference": "This feels more fluid and content-aware"
-    },
-    "vs_expanding_fab": {
-      "similarity": "Both expand to reveal more content",
-      "difference": "FAB expands from circular, this expands rectangular tabs",
-      "application": "FAB for actions, this for navigation"
-    }
-  },
-  "testing_considerations": {
-    "unit_tests": [
-      "tabsWidth calculation with various screen widths",
-      "minTabWidth calculation with different tab counts",
-      "Icon position interpolation ranges",
-      "Progress value updates on state changes"
-    ],
-    "integration_tests": [
-      "Tab press updates activeTabIndex",
-      "Active tab expands to maxWidth",
-      "Inactive tabs compress to minTabWidth",
-      "Icon repositions correctly on state change",
-      "Text appears/disappears with opacity animation"
-    ],
-    "visual_tests": [
-      "Smooth width transitions",
-      "Icon slides from center to left cleanly",
-      "Text fades in without flicker",
-      "No layout shift during animations",
-      "Consistent gap spacing",
-      "No overflow or clipping issues"
-    ],
-    "edge_cases": [
-      "Single tab (all formulas should handle tabs.length = 1)",
-      "Many tabs (6+) - check minWidth doesn't go negative",
-      "Very long tab labels - verify truncation",
-      "Very short tab labels - ensure proper spacing",
-      "Rapid tab switching - animation interruptions",
-      "Small screen sizes (minWidth becomes very small)",
-      "Large screen sizes (maxWidth remains reasonable)",
-      "Tab press during animation - state consistency"
-    ],
-    "performance_tests": [
-      "Animation maintains 60fps",
-      "No jank during rapid switching",
-      "Memory stable across interactions",
-      "CPU usage reasonable with multiple tabs"
-    ],
-    "accessibility_tests": [
-      "Screen reader announces tabs (when implemented)",
-      "Tab navigation via keyboard (when implemented)",
-      "Focus indicators visible",
-      "Touch targets at least 44x44px"
-    ]
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features fully supported",
-      "border_curve": "borderCurve: 'continuous' provides native iOS feel",
-      "performance": "Excellent with Reanimated UI thread execution"
-    },
-    "android": {
-      "features": "All features fully supported",
-      "border_curve": "borderCurve may fallback to standard borderRadius",
-      "performance": "Excellent with Reanimated UI thread execution"
-    },
-    "web": {
-      "compatibility": "Should work with React Native Web",
-      "considerations": [
-        "borderCurve may not be supported",
-        "useWindowDimensions works as expected",
-        "PressableScale animations should work",
-        "Icon rendering depends on web font loading"
-      ]
-    }
-  },
-  "related_patterns": {
-    "morphing_tabs": "Tabs with dynamic width changes",
-    "bottom_navigation": "Bottom tab bar navigation",
-    "segmented_control": "iOS-style segmented controls",
-    "expanding_buttons": "Buttons that expand to reveal content",
-    "animated_indicators": "Tab indicators with smooth animations",
-    "icon_label_transitions": "Transitioning between icon and text states"
-  },
-  "real_world_inspiration": {
-    "ios_tab_bars": "iOS native tab bars with icon and label",
-    "material_navigation": "Material Design bottom navigation",
-    "banking_apps": "Finance app tab navigation patterns",
-    "telegram": "Telegram's chat filter tabs",
-    "twitter": "Twitter's profile tabs with icons"
-  },
-  "bundle_size_impact": {
-    "code_size": "~163 lines total (5 files)",
-    "dependencies": "Reanimated, pressto, @expo/vector-icons (likely already in project)",
-    "runtime_memory": "Minimal - derived values only, no shared values",
-    "estimated_size": "~4KB (excluding dependencies)"
-  },
-  "tags": [
-    "tab-navigation",
-    "morphing-tabs",
-    "dynamic-width",
-    "bottom-navigation",
-    "icon-tabs",
-    "animated-tabs",
-    "reanimated",
-    "interpolation",
-    "responsive-design",
-    "withTiming",
+  "hooks": [
+    "useAnimatedStyle",
     "useDerivedValue",
-    "pressto",
-    "mobile-navigation",
-    "tab-bar",
-    "ui-navigation"
+    "useState",
+    "useWindowDimensions"
   ],
-  "content_hash": "5b582e6cea644af84c1ea44482f24a8f08956b3592be14cc7fd8f79214d44b56",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.472Z",
-  "last_validated": "2025-10-12T09:19:28.472Z"
+  "functions": [
+    "interpolate",
+    "setActiveTabIndex",
+    "withSpring"
+  ],
+  "components": [
+    "Animated.Text",
+    "Animated.View",
+    "AntDesign",
+    "PressableScale",
+    "Tab",
+    "Tabs",
+    "View"
+  ],
+  "patterns": [
+    "animated-styling",
+    "derived-computation",
+    "spring-animation",
+    "value-interpolation"
+  ],
+  "techniques": [
+    "spring-physics",
+    "value-mapping",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 5,
+    "total_packages": 5,
+    "total_hooks": 4,
+    "total_functions": 3,
+    "total_components": 7,
+    "total_patterns": 4,
+    "total_techniques": 3
+  }
 }

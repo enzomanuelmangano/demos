@@ -1,1017 +1,190 @@
 {
-  "animation_name": "Fibonacci Shader Grid",
   "animation_slug": "fibonacci-shader-grid",
-  "description": "A mesmerizing animated shader visualization based on Fibonacci spiral mathematics, rendered with Skia. Features a parametric GLSL shader that generates colorful, organic circular patterns using Fibonacci-based angles and distances. Includes an interactive 2D control panel with draggable pointer to dynamically adjust the number of circles and magical multiplier value, creating infinite variations of stunning mathematical art.",
-  "main_features": [
-    "Parametric GLSL shader with dynamic recompilation",
-    "Fibonacci spiral-based circle positioning algorithm",
-    "Real-time shader parameter manipulation",
-    "Interactive 2D control panel with draggable pointer",
-    "Continuous time-based animation loop",
-    "Circular mask with soft blur edges",
-    "Spring-based gesture interactions",
-    "Grid-based visual control interface",
-    "Mathematical parameter exploration (circle count and angle multiplier)",
-    "GPU-accelerated Skia shader rendering",
-    "Dynamic shader source generation from Reanimated values",
-    "Cosine-based color generation with phase shifts"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.273Z",
   "file_structure": {
-    "index.tsx": "Main FibonacciShaderGrid component with Canvas, Shader, and control panel",
-    "components/control-panel/index.tsx": "Interactive 2D control panel with pan gesture and grid visualization",
-    "components/animated-slider/index.tsx": "Custom slider component (not currently used in main component)",
-    "components/pressable-scale/index.tsx": "Reusable pressable component with scale animation (not currently used)"
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "rendering": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "shaders": "GLSL (OpenGL Shading Language)",
-    "pattern": "Mathematical art via runtime shader compilation"
+  "packages": [
+    "@shopify/react-native-skia",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
+  "packages_detail": {
+    "./components/control-panel": {
+      "imports": [
+        "ControlPanel"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
+      "imports": [
+        "Blur",
         "Canvas",
+        "Circle",
+        "Mask",
         "Rect",
         "Shader",
-        "Mask",
-        "Circle",
-        "Blur"
+        "Skia"
       ],
-      "utilities": [
-        "Skia",
-        "RuntimeEffect"
-      ],
-      "usage": "GPU-accelerated shader rendering with dynamic parameter injection",
-      "critical_feature": "RuntimeEffect.Make() enables dynamic GLSL shader compilation from JavaScript string"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+    "react": {
+      "imports": [
+        "useCallback",
+        "useEffect",
+        "useMemo"
+      ],
       "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "useAnimatedStyle"
+        "useCallback",
+        "useEffect",
+        "useMemo"
       ],
-      "functions": [
-        "withRepeat",
-        "withTiming",
-        "withSpring",
-        "interpolate"
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Dimensions",
+        "StyleSheet",
+        "View"
       ],
-      "easing": [
-        "Easing.linear"
-      ],
-      "critical_feature": "useDerivedValue for dynamic shader source recompilation based on parameter changes"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-gesture-handler": {
-      "version": "~2.28.0",
+      "imports": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Easing",
+        "Extrapolation",
+        "SharedValue",
+        "interpolate",
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withRepeat",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "interpolate",
+        "withRepeat",
+        "withSpring",
+        "withTiming"
+      ],
       "components": [
-        "GestureDetector",
-        "Gesture"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "usage": "2D pan gesture control for interactive parameter adjustment on control panel"
-    }
-  },
-  "animation_techniques": {
-    "fibonacci_spiral_algorithm": {
-      "mathematical_basis": "Fibonacci spiral positioning using golden ratio-inspired angles",
-      "formula": "p = cos(i * magicalMul + iTime + vec2(0, 11)) * sqrt(1.0 - a * a)",
-      "variables": {
-        "i": "Circle index (0 to N)",
-        "magicalMul": "Angle multiplier (1.2 to 3.6), affects spiral tightness",
-        "iTime": "Animation time (0 to 15, repeating)",
-        "a": "Normalized position: (i / (N * 0.5) - 1.0), range [-1, 1]"
-      },
-      "effect": "Creates organic, spiral patterns reminiscent of natural Fibonacci spirals found in nature",
-      "sweet_spot": "magicalMul ≈ 2.4 (default) or 77.51937688783158 for extraordinary patterns"
-    },
-    "dynamic_shader_compilation": {
-      "pattern": "Parametric shader string interpolation with runtime compilation",
-      "implementation": "useDerivedValue returns Skia.RuntimeEffect.Make() with interpolated values",
-      "parameters_injected": [
-        "iResolution (canvas size)",
-        "iTime (animation time)",
-        "N (number of circles)",
-        "magicalMul (angle multiplier)"
-      ],
-      "reason": "GLSL const variables cannot be uniforms when used in loops, requires string interpolation",
-      "tradeoff": "Recompiles shader on parameter change, but enables dynamic loop count",
-      "innovation": "Creative solution to GLSL loop constant requirements"
-    },
-    "time_animation": {
-      "pattern": "Infinite repeat with reverse",
-      "initial_value": 0,
-      "target_value": 15,
-      "duration": "20000ms (20 seconds)",
-      "repeat": -1,
-      "reverse": true,
-      "easing": "Easing.linear",
-      "effect": "Creates continuous back-and-forth animation from 0 to 15 and back, drives spiral rotation"
-    },
-    "coordinate_transformation": {
-      "fragment_coordinate": "FC (input pixel coordinate)",
-      "normalization": "u = FC.xy * 2.0 - iResolution.xy (center-origin coordinates)",
-      "perspective_projection": "c = u / iResolution.y + vec2(p.x, a) / (p.y + 2.0)",
-      "effect": "Creates 3D perspective projection effect for depth illusion"
-    },
-    "color_generation": {
-      "formula": "o += (cos(i + vec4(0, 2, 4, 0)) + 1) / dot(c, c) * (1.0 - p.y) / (N * 75.0)",
-      "technique": "Cosine-based RGB with phase shifts (0, 2, 4) for color variation",
-      "distance_falloff": "1 / dot(c, c) creates inverse square falloff (bright at center)",
-      "depth_modulation": "(1.0 - p.y) adjusts brightness based on circle depth",
-      "normalization": "Division by (N * 75.0) prevents oversaturation with many circles",
-      "result": "Smooth color gradients with vibrant, organic appearance"
-    },
-    "circular_masking": {
-      "mask_mode": "luminance",
-      "mask_shape": "Circle with radius = CANVAS_SIZE / 2",
-      "mask_effect": "Blur with intensity 10",
-      "purpose": "Softens edges of rectangular shader output, creates smooth circular boundary",
-      "visual_benefit": "Eliminates harsh rectangular edges, more organic appearance"
-    },
-    "control_panel_interaction": {
-      "gesture": "Gesture.Pan()",
-      "mapping": "2D panel coordinates → parameter values",
-      "x_axis": "Controls circle count (MIN_CIRCLES_AMOUNT to MAX_CIRCLES_AMOUNT)",
-      "y_axis": "Controls magical multiplier (MIN_MAGICAL_MUL to MAX_MAGICAL_MUL)",
-      "interpolation": "interpolate with CLAMP extrapolation for bounds enforcement",
-      "spring_config": "{ mass: 0.5 } for initial position snap",
-      "feedback": "Pointer scales to 1.2 and opacity drops to 0.6 during drag",
-      "effect": "Real-time parameter exploration through intuitive 2D gesture interface"
-    }
-  },
-  "shader_implementation": {
-    "shader_language": "GLSL (OpenGL Shading Language)",
-    "shader_type": "Fragment shader",
-    "main_function": "vec4 main(vec2 FC)",
-    "constants": {
-      "iResolution": "vec2(CANVAS_SIZE, CANVAS_SIZE) - Canvas dimensions",
-      "iTime": "float - Current animation time",
-      "N": "float - Number of circles in visualization"
-    },
-    "dynamic_parameters": {
-      "magicalMul": "Injected into shader via string interpolation in loop formula"
-    },
-    "algorithm_steps": [
-      "1. Initialize output color (black with full alpha)",
-      "2. Loop through N circles",
-      "3. Calculate normalized position 'a' for each circle",
-      "4. Calculate 2D position 'p' using cos() with Fibonacci angles",
-      "5. Apply perspective projection to get screen coordinate 'c'",
-      "6. Calculate color contribution with cosine RGB and distance falloff",
-      "7. Accumulate colors additively",
-      "8. Return final accumulated color"
-    ],
-    "key_formulas": {
-      "position_normalize": "a = i / (N * 0.5) - 1.0",
-      "fibonacci_angle": "i * magicalMul + iTime + vec2(0, 11)",
-      "radial_position": "cos(angle) * sqrt(1.0 - a * a)",
-      "perspective": "u / iResolution.y + vec2(p.x, a) / (p.y + 2.0)",
-      "color": "(cos(i + vec4(0, 2, 4, 0)) + 1) / dot(c, c) * (1.0 - p.y) / (N * 75.0)"
-    },
-    "optimization_notes": {
-      "const_requirement": "N must be const for loop, hence string interpolation approach",
-      "divisor_tuning": "The 75.0 divisor can be adjusted for brightness control",
-      "additive_blending": "Colors accumulate additively, creating bright overlapping regions"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "n",
-        "type": "SharedValue<number>",
-        "initial": "INITIAL_CIRCLES_AMOUNT (87.5)",
-        "range": "[5, 175]",
-        "purpose": "Controls number of circles in shader visualization"
-      },
-      {
-        "name": "magicalMul",
-        "type": "SharedValue<number>",
-        "initial": "INITIAL_MAGICAL_MUL (2.4)",
-        "range": "[1.2, 3.6]",
-        "purpose": "Controls Fibonacci spiral angle multiplier"
-      },
-      {
-        "name": "iTime",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "animated_range": "[0, 15]",
-        "purpose": "Drives continuous animation of spiral rotation"
-      },
-      {
-        "name": "isActive (in ControlPanel)",
-        "type": "SharedValue<boolean>",
-        "purpose": "Tracks active drag state for pointer feedback"
-      },
-      {
-        "name": "translateX, translateY (in AnimatedSlider)",
-        "type": "SharedValue<number>",
-        "purpose": "Tracks slider position for value control"
-      }
-    ],
-    "useDerivedValue": {
-      "dynamicSource": {
-        "dependencies": [
-          "n",
-          "magicalMul",
-          "iTime"
-        ],
-        "calculation": "String interpolation + Skia.RuntimeEffect.Make()",
-        "return_type": "RuntimeEffect (compiled shader)",
-        "recalculation": "On any parameter change",
-        "critical_insight": "Enables dynamic const values in GLSL loops via recompilation",
-        "performance_note": "Shader recompilation is relatively expensive, but necessary for this approach"
-      },
-      "rPointerStyle (in ControlPanel)": {
-        "dependencies": [
-          "x",
-          "y",
-          "isActive"
-        ],
-        "properties": [
-          "translateX",
-          "translateY",
-          "scale",
-          "opacity"
-        ],
-        "purpose": "Animates pointer position and feedback on control panel"
-      }
-    },
-    "useAnimatedStyle": {
-      "instances": [
-        {
-          "name": "rPointerStyle",
-          "component": "ControlPanel pointer",
-          "properties": [
-            "translateX",
-            "translateY",
-            "scale",
-            "opacity"
-          ],
-          "animations": [
-            "withTiming (opacity)",
-            "withSpring (scale)"
-          ]
-        },
-        {
-          "name": "rPickerStyle",
-          "component": "AnimatedSlider picker",
-          "properties": [
-            "translateX",
-            "scale"
-          ],
-          "animations": [
-            "withTiming (scale)"
-          ]
-        },
-        {
-          "name": "rProgressBarStyle",
-          "component": "AnimatedSlider progress bar",
-          "properties": [
-            "width"
-          ]
-        }
+        "Animated.View"
       ]
     },
-    "gesture_patterns": {
-      "control_panel_pan": {
-        "gesture": "Gesture.Pan()",
-        "handlers": {
-          "onBegin": "Set isActive, snap to touch position with spring",
-          "onUpdate": "Direct value assignment for real-time tracking",
-          "onFinalize": "Reset isActive"
-        },
-        "coordinate_mapping": [
-          "remapXcoord: panel x → parameter x (interpolate with clamp)",
-          "remapYcoord: panel y → parameter y (interpolate with clamp)",
-          "mapXvalue: parameter x → panel x (inverse interpolation)",
-          "mapYvalue: parameter y → panel y (inverse interpolation)"
-        ],
-        "spring_config": "{ mass: 0.5 } for initial snap to position"
-      },
-      "slider_pan": {
-        "gesture": "Gesture.Pan()",
-        "handlers": {
-          "onBegin": "Scale up picker, save context",
-          "onUpdate": "Update position with translation offset",
-          "onFinalize": "Scale down picker"
-        },
-        "clamping": "useDerivedValue with clamp function",
-        "feedback": "useAnimatedReaction triggers onUpdate callback"
-      }
-    },
-    "withRepeat": {
-      "animation": "withTiming(15, { duration: 20000, easing: Easing.linear })",
-      "repetitions": -1,
-      "reverse": true,
-      "effect": "Infinite ping-pong animation for shader time parameter"
-    },
-    "withSpring": {
-      "usage": [
-        "Control panel initial position snap (mass: 0.5)",
-        "Pointer scale feedback (implicit spring config)"
+    "react-native-worklets": {
+      "imports": [
+        "scheduleOnRN"
       ],
-      "benefit": "Natural, organic feel for gesture interactions"
-    },
-    "useEffect": {
-      "trigger": "Component mount",
-      "action": "Start iTime animation with withRepeat",
-      "dependencies": "[] (empty, runs once)",
-      "cleanup": "None (animation runs indefinitely)"
-    },
-    "useCallback": {
-      "remapXcoord": "Maps panel x coordinate to parameter range",
-      "remapYcoord": "Maps panel y coordinate to parameter range",
-      "mapXvalue": "Maps parameter value to panel x coordinate",
-      "mapYvalue": "Maps parameter value to panel y coordinate",
-      "dependencies": "Properly specified with min/max/width/height",
-      "worklet": "Marked with 'worklet' directive for UI thread execution"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "mathematical_algorithms": {
-    "fibonacci_spiral": {
-      "inspiration": "Natural Fibonacci spirals (sunflowers, galaxies, nautilus shells)",
-      "angle_formula": "i * magicalMul + iTime",
-      "golden_ratio_connection": "Optimal magicalMul values relate to golden ratio (~1.618)",
-      "recommended_values": [
-        "2.4 (default, balanced spiral)",
-        "2.399963229 (near golden ratio)",
-        "77.51937688783158 (creates extraordinary fermat spiral patterns)"
-      ],
-      "position_calculation": {
-        "radial": "sqrt(1.0 - a * a) - circular arc based on normalized position",
-        "angular": "cos(i * magicalMul + iTime + vec2(0, 11))",
-        "result": "p.x and p.y for 2D circle position"
-      }
-    },
-    "perspective_projection": {
-      "screen_normalization": "u = FC.xy * 2.0 - iResolution.xy",
-      "effect": "Centers coordinate system, range [-resolution, resolution]",
-      "projection_formula": "c = u / iResolution.y + vec2(p.x, a) / (p.y + 2.0)",
-      "depth_factor": "(p.y + 2.0) creates perspective depth",
-      "visual_result": "3D-like depth illusion from 2D calculations"
-    },
-    "distance_field": {
-      "formula": "dot(c, c)",
-      "meaning": "Squared distance from point to pixel",
-      "inverse_falloff": "1 / dot(c, c)",
-      "effect": "Bright at circle centers, fades with distance",
-      "similarity": "Inverse square law (like physical light)"
-    },
-    "color_phase_shifting": {
-      "base": "cos(i + vec4(0, 2, 4, 0))",
-      "red_channel": "cos(i + 0)",
-      "green_channel": "cos(i + 2)",
-      "blue_channel": "cos(i + 4)",
-      "alpha_channel": "cos(i + 0)",
-      "normalization": "(cos(x) + 1) maps [-1, 1] to [0, 2]",
-      "result": "Smooth rainbow-like color transitions based on circle index"
-    },
-    "parameter_interpolation": {
-      "pattern": "interpolate(input, inputRange, outputRange, Extrapolation.CLAMP)",
-      "control_panel_x": "[0, width] → [minX, maxX]",
-      "control_panel_y": "[0, height] → [minY, maxY]",
-      "reverse_mapping": "[minX, maxX] → [0, width] for pointer positioning",
-      "clamping": "Extrapolation.CLAMP prevents out-of-bounds values"
-    },
-    "normalization": {
-      "circle_index": "a = i / (N * 0.5) - 1.0, range [-1, 1]",
-      "color_accumulation": "Division by (N * 75.0) prevents oversaturation",
-      "tunable_constant": "75.0 can be adjusted for brightness control",
-      "effect": "More circles = dimmer individual contributions, balanced overall brightness"
-    }
-  },
-  "configuration": {
-    "circle_count": {
-      "MIN_CIRCLES_AMOUNT": 5,
-      "MAX_CIRCLES_AMOUNT": 175,
-      "INITIAL_CIRCLES_AMOUNT": 87.5,
-      "note": "Max set to 350/2, higher values possible but performance-dependent"
-    },
-    "angle_multiplier": {
-      "MIN_MAGICAL_MUL": 1.2,
-      "MAX_MAGICAL_MUL": 3.6,
-      "INITIAL_MAGICAL_MUL": 2.4,
-      "sweet_spots": [
-        "2.4 (default)",
-        "77.51937688783158 (beautiful fermat spiral)"
-      ]
-    },
-    "canvas_dimensions": {
-      "CANVAS_SIZE": "SCREEN_WIDTH (full width square)",
-      "responsive": "Adapts to device screen width",
-      "aspect_ratio": "1:1 (square canvas)"
-    },
-    "animation_timing": {
-      "duration": "20000ms (20 seconds)",
-      "time_range": "[0, 15]",
-      "easing": "linear",
-      "repeat": "infinite with reverse"
-    },
-    "control_panel_sizing": {
-      "width": "Math.round((SCREEN_WIDTH - 90) / 10) * 6",
-      "height": "Math.round((SCREEN_WIDTH - 90) / 10) * 6",
-      "aspect_ratio": "1:1 (square)",
-      "grid_cells": "36 (6x6 grid)",
-      "button_radius": 24
-    },
-    "mask_blur": {
-      "intensity": 10,
-      "purpose": "Soft edges on circular boundary"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "black",
-      "shader_colors": "Dynamic RGB based on cosine functions (cyan, magenta, yellow, red spectrum)",
-      "control_panel_background": "rgba(255,255,255,0.09)",
-      "control_panel_border": "rgba(255,255,255,0.4)",
-      "grid_lines": "rgba(255,255,255,0.1)",
-      "crosshair_lines": "rgba(255,255,255,0.8)",
-      "pointer": "white",
-      "aesthetic": "Dark background with vibrant, organic shader patterns"
-    },
-    "control_panel_design": {
-      "layout": "6x6 grid with centered crosshair",
-      "grid_cells": 36,
-      "cell_spacing": "0.7px gaps between cells",
-      "crosshair": "2px white lines at center (horizontal and vertical)",
-      "pointer": {
-        "size": "48px diameter (BUTTON_RADIUS * 2)",
-        "shape": "circle",
-        "color": "white",
-        "opacity_active": 0.6,
-        "opacity_inactive": 1,
-        "scale_active": 1.2,
-        "scale_inactive": 1
-      },
-      "border": {
-        "width": 2,
-        "radius": 24,
-        "color": "rgba(255,255,255,0.4)"
-      }
-    },
-    "shader_appearance": {
-      "pattern": "Fibonacci spiral with organic, flowing circles",
-      "colors": "Vibrant multi-colored gradients",
-      "brightness": "Bright at circle centers, fading outward",
-      "movement": "Continuous rotation and evolution",
-      "edge_treatment": "Soft circular mask with blur"
-    },
-    "layout": {
-      "main_container": "Black background, flex: 1",
-      "canvas_section": {
-        "marginTop": 50,
-        "width": "SCREEN_WIDTH",
-        "height": "SCREEN_WIDTH",
-        "justifyContent": "center",
-        "alignItems": "center"
-      },
-      "control_section": {
-        "flex": 1,
-        "justifyContent": "center",
-        "alignItems": "center",
-        "marginBottom": 100
-      }
-    }
-  },
-  "component_architecture": {
-    "FibonacciShaderGrid": {
-      "type": "Main visualization component",
-      "structure": "Canvas with Shader + ControlPanel",
-      "state": "n, magicalMul, iTime SharedValues",
-      "rendering": "Skia Canvas with masked shader rect"
-    },
-    "ControlPanel": {
-      "type": "Interactive 2D parameter control",
-      "props": {
-        "x": "SharedValue<number> - horizontal parameter (circle count)",
-        "y": "SharedValue<number> - vertical parameter (angle multiplier)",
-        "minX, maxX": "Parameter ranges for x-axis",
-        "minY, maxY": "Parameter ranges for y-axis",
-        "width, height": "Panel dimensions"
-      },
-      "features": [
-        "6x6 grid visualization",
-        "Draggable pointer",
-        "Crosshair guides",
-        "Spring-based gestures",
-        "Scale and opacity feedback"
-      ],
-      "coordinate_system": "Custom mapping between panel coordinates and parameter values"
-    },
-    "AnimatedSlider": {
-      "type": "Custom slider component (unused in main)",
-      "props": {
-        "pickerSize": "Thumb size (default 35)",
-        "minValue, maxValue": "Value range",
-        "color": "Progress bar color",
-        "style": "Container style with width",
-        "onUpdate": "Callback on value change",
-        "initialProgress": "Starting position [0-1]"
-      },
-      "features": [
-        "Pan gesture control",
-        "Progress bar fill",
-        "Scale feedback",
-        "Value clamping",
-        "useAnimatedReaction for callbacks"
-      ]
-    },
-    "PressableScale": {
-      "type": "Reusable pressable with scale animation (unused in main)",
-      "props": {
-        "children": "ReactNode to render",
-        "onPress": "Callback function",
-        "style": "ViewStyle"
-      },
-      "animation": "Scale to 0.9 on press with withTiming",
-      "gesture": "Gesture.Tap() with maxDuration 4000ms"
-    }
-  },
-  "performance_optimizations": {
-    "skia_rendering": {
-      "benefit": "GPU-accelerated shader execution, runs on dedicated GPU thread",
-      "technique": "Native Skia rendering with GLSL shaders",
-      "expected_performance": "60fps on most devices, even with 175 circles"
-    },
-    "shader_recompilation": {
-      "trigger": "Only when n or magicalMul change",
-      "cost": "Relatively expensive, but infrequent during normal use",
-      "during_drag": "Continuous recompilation, but manageable performance",
-      "optimization": "iTime doesn't trigger recompilation (injected as const)"
-    },
-    "mask_technique": {
-      "approach": "Single circular mask with blur",
-      "benefit": "Smooth edges without multiple render passes",
-      "performance": "Minimal overhead, GPU-accelerated"
-    },
-    "worklet_usage": {
-      "remapping_functions": "All coordinate transformations marked as worklets",
-      "benefit": "Run on UI thread without JS bridge overhead",
-      "critical_path": "Gesture updates don't block JS thread"
-    },
-    "component_separation": {
-      "unused_components": "AnimatedSlider and PressableScale included but not used",
-      "impact": "Minor bundle size, no runtime performance impact",
-      "consideration": "Could be removed or moved to shared components"
-    },
-    "shared_value_efficiency": {
-      "direct_updates": "Control panel directly modifies n and magicalMul",
-      "no_prop_drilling": "SharedValues passed as props, no intermediate state",
-      "reactive_updates": "useDerivedValue automatically recalculates on changes"
-    }
-  },
-  "react_patterns": {
-    "useEffect": {
-      "usage": "Start iTime animation on mount",
-      "dependencies": "[] - runs once",
-      "pattern": "Classic animation initialization pattern"
-    },
-    "useDerivedValue": {
-      "usage": "Dynamic shader source generation",
-      "dependencies": "[] - reads from closured SharedValues",
-      "pattern": "Reactive derived computation",
-      "innovation": "Creative use for runtime shader compilation"
-    },
-    "useCallback": {
-      "usage": "Coordinate mapping functions in ControlPanel",
-      "dependencies": "Properly specified (maxX, minX, width, etc.)",
-      "worklet": "All callbacks marked as worklets for UI thread",
-      "benefit": "Stable references prevent unnecessary re-renders"
-    },
-    "useSharedValue": {
-      "pattern": "All animated values as SharedValues",
-      "benefit": "UI thread updates without JS bridge",
-      "values": [
-        "n",
-        "magicalMul",
-        "iTime",
-        "isActive"
-      ]
-    },
-    "component_composition": {
-      "pattern": "Small, focused components",
-      "main": "FibonacciShaderGrid (visualization logic)",
-      "control": "ControlPanel (interaction logic)",
-      "utility": "AnimatedSlider, PressableScale (reusable components)"
-    },
-    "memo_consideration": {
-      "current": "No memo used",
-      "recommendation": "Could memo ControlPanel to prevent re-renders",
-      "impact": "Likely minimal, SharedValues prevent most re-renders"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Mathematical visualization and education",
-      "Generative art applications",
-      "Interactive shader exploration tools",
-      "Visual music players with parameter control",
-      "Meditation and relaxation apps with organic visuals"
-    ],
-    "secondary": [
-      "Loading screens with engaging animations",
-      "Background visuals for content apps",
-      "Creative coding demonstrations",
-      "Fibonacci sequence educational tools",
-      "Screensaver applications"
-    ],
-    "educational": [
-      "Teaching Fibonacci spirals and golden ratio",
-      "Shader programming introduction",
-      "Mathematical pattern exploration",
-      "Interactive parameter space visualization",
-      "GLSL and GPU programming concepts"
-    ],
-    "customization_potential": [
-      "Audio reactivity (map audio frequencies to parameters)",
-      "Data visualization (parameter values from data)",
-      "Different mathematical patterns (modify shader formulas)",
-      "Color scheme customization",
-      "Save and share parameter presets"
-    ],
-    "real_world_inspiration": [
-      "XorDev's Fibonacci shader (Twitter inspiration)",
-      "Natural Fibonacci patterns in nature",
-      "Generative art platforms",
-      "Shadertoy interactive shaders"
-    ]
-  },
-  "code_quality": {
-    "typescript": "Full TypeScript with explicit types",
-    "type_definitions": [
-      "ControlPanelProps",
-      "SliderProps",
-      "PressableScaleProps"
-    ],
-    "imports": {
-      "organized": "Grouped by package (React Native, React, Skia, Reanimated, Gesture Handler)",
-      "selective": "Named imports for all dependencies"
-    },
-    "documentation": {
-      "inline_comments": "Excellent - explains shader approach, mathematical concepts, and key decisions",
-      "shader_explanation": "Detailed comment explaining parametric shader string approach",
-      "inspiration_credit": "Credits XorDev on Twitter for shader inspiration",
-      "debugging_hints": "Comments like 'Decomment me to visualize the purpose of the mask'",
-      "easter_eggs": "Mentions magical value 77.51937688783158 with 'beautiful' comment"
-    },
-    "code_organization": {
-      "constants": "Well-defined at top of file (MIN/MAX/INITIAL values)",
-      "components": "Separated into dedicated component files",
-      "structure": "Clear separation between rendering and interaction logic"
-    },
-    "naming_conventions": {
-      "components": "PascalCase (FibonacciShaderGrid, ControlPanel)",
-      "variables": "camelCase (magicalMul, iTime, dynamicSource)",
-      "constants": "SCREAMING_SNAKE_CASE (MIN_CIRCLES_AMOUNT, CANVAS_SIZE)",
-      "props": "Descriptive names (minX, maxX, pickerSize)"
-    },
-    "best_practices": [
-      "Proper worklet annotations",
-      "Correct interpolation with clamping",
-      "SharedValue for all animated state",
-      "TypeScript for type safety",
-      "Component separation for reusability",
-      "Credits and attribution for inspiration"
-    ],
-    "areas_for_improvement": [
-      "Could extract shader GLSL string to separate file",
-      "AnimatedSlider and PressableScale unused - could be removed or integrated",
-      "Could add TypeScript types for shader parameters",
-      "Magic numbers like 75.0 could be named constants",
-      "Could add PropTypes or component documentation"
-    ]
-  },
-  "known_limitations": {
-    "shader_recompilation_cost": {
-      "issue": "Shader recompiles on every n or magicalMul change",
-      "impact": "Performance overhead during continuous parameter adjustment",
-      "current": "Acceptable for this use case, but not ideal for rapid changes",
-      "alternative": "Could use uniform parameters if loop count was fixed"
-    },
-    "loop_count_constraint": {
-      "issue": "GLSL requires const values for loop bounds",
-      "workaround": "Dynamic string interpolation with shader recompilation",
-      "limitation": "Cannot use uniform for N parameter",
-      "tradeoff": "Flexibility vs. performance"
-    },
-    "max_circles_performance": {
-      "issue": "Max circles commented as 350 but set to 350/2",
-      "reason": "Performance dependent on device GPU",
-      "recommendation": "Test on target devices before increasing",
-      "consideration": "Low-end devices may struggle with 175+ circles"
-    },
-    "fixed_canvas_size": {
-      "issue": "Canvas size based on screen width at component mount",
-      "limitation": "Doesn't respond to screen rotation or window resize",
-      "impact": "Minor for mobile apps, could be issue for web or tablets"
-    },
-    "no_preset_system": {
-      "limitation": "No way to save or recall favorite parameter combinations",
-      "enhancement": "Could add preset buttons or parameter history"
-    },
-    "control_panel_resolution": {
-      "limitation": "Control panel provides continuous values but could be more precise",
-      "enhancement": "Could add numeric inputs or fine-tuning controls"
-    }
-  },
-  "potential_improvements": {
-    "interactivity": [
-      "Add preset buttons for known beautiful values (e.g., 77.51937688783158)",
-      "Double-tap to randomize parameters",
-      "Pinch gesture to zoom canvas",
-      "Record and playback parameter animations",
-      "Screenshot/export current visualization"
-    ],
-    "features": [
-      "Audio reactivity (map audio to parameters)",
-      "Multiple shader modes (different mathematical patterns)",
-      "Color scheme customization",
-      "Animation speed control (time scale)",
-      "Parameter history/undo",
-      "Share parameter values",
-      "Gallery of presets"
-    ],
-    "visual_enhancements": [
-      "Different color algorithms (HSV, gradients, etc.)",
-      "Post-processing effects (bloom, chromatic aberration)",
-      "Background patterns or textures",
-      "Particle effects overlaid on shader",
-      "Multiple blend modes"
-    ],
-    "performance": [
-      "Quality settings for low-end devices",
-      "Adaptive circle count based on FPS",
-      "Debounce shader recompilation during rapid changes",
-      "Pre-compiled shader cache for common parameters",
-      "LOD system (lower quality during interaction)"
-    ],
-    "usability": [
-      "Numeric value display for current parameters",
-      "Reset to default button",
-      "Info popup explaining parameters",
-      "Tutorial/onboarding for first-time users",
-      "Keyboard shortcuts for fine control (web/desktop)"
-    ],
-    "educational": [
-      "Explain Fibonacci math in UI",
-      "Show formula overlays",
-      "Step-through animation mode",
-      "Compare different mathematical patterns side-by-side",
-      "Export as mathematical paper figures"
-    ]
-  },
-  "key_insights": {
-    "parametric_shader_innovation": "Creative solution to GLSL const requirements using string interpolation and runtime compilation",
-    "fibonacci_in_shaders": "Fibonacci spiral patterns achievable with simple trigonometric formulas in fragment shaders",
-    "golden_ratio_magic": "Special angle multiplier values (near golden ratio) create particularly beautiful patterns",
-    "2d_control_paradigm": "Two-parameter control panel provides intuitive exploration of parameter space",
-    "inverse_square_beauty": "Inverse square distance falloff creates natural-looking luminosity",
-    "cosine_color_elegance": "Cosine with phase shifts generates smooth, vibrant color gradients",
-    "perspective_from_2d": "3D perspective effect achievable in 2D shader with projection math",
-    "interactive_mathematical_art": "Real-time parameter control transforms static math into explorable art",
-    "shader_mask_technique": "Circular mask with blur creates professional soft edges",
-    "inspiration_matters": "Credits XorDev, shows importance of community and shared learning"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic Skia Canvas usage",
-      "Simple SharedValue animations",
-      "Pan gesture basics",
-      "Interpolation for mapping values",
-      "Component composition"
-    ],
-    "for_intermediate": [
-      "Runtime shader compilation with Skia",
-      "useDerivedValue for computed values",
-      "2D gesture coordinate mapping",
-      "Mask and blur effects in Skia",
-      "Spring animations with gestures",
-      "useAnimatedStyle patterns"
-    ],
-    "for_advanced": [
-      "GLSL fragment shader programming",
-      "Parametric shader generation",
-      "Mathematical visualization algorithms",
-      "Fibonacci spiral mathematics",
-      "Performance optimization for shaders",
-      "Complex coordinate transformations",
-      "GPU-accelerated rendering patterns",
-      "Creative solutions to platform constraints"
-    ],
-    "mathematical_concepts": [
-      "Fibonacci spirals and golden ratio",
-      "Inverse square law",
-      "Perspective projection",
-      "Trigonometric functions for animation",
-      "Cosine-based color generation",
-      "Normalized coordinate spaces",
-      "Distance fields"
-    ],
-    "shader_programming": [
-      "GLSL syntax and const requirements",
-      "Fragment coordinate systems",
-      "Color accumulation and blending",
-      "Loop-based pattern generation",
-      "Vector operations (dot products)",
-      "Coordinate transformations"
-    ]
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Shader renders correctly on mount",
-      "Circular mask creates soft edges",
-      "Animation loops smoothly",
-      "Control panel responds to gestures",
-      "Parameter changes update visualization",
-      "Pointer follows touch accurately",
-      "Colors appear vibrant and correct"
-    ],
-    "interaction_tests": [
-      "Pan gesture works smoothly",
-      "Pointer snaps to initial touch position",
-      "Scale and opacity feedback during drag",
-      "Parameters clamp to min/max ranges",
-      "Crosshair guides visible and aligned",
-      "Grid cells render correctly"
-    ],
-    "performance_tests": [
-      "Maintain 60fps during animation",
-      "Shader recompilation doesn't cause jank",
-      "Gesture responsiveness during parameter changes",
-      "Memory stable over extended use",
-      "Test with max circle count (175)",
-      "Test on low-end devices"
-    ],
-    "mathematical_tests": [
-      "Parameter ranges produce valid visualizations",
-      "Known good values (77.51...) work correctly",
-      "Extreme values don't crash",
-      "Interpolation produces correct parameter values",
-      "Coordinate mapping is bidirectional and consistent"
-    ],
-    "platform_tests": [
-      "iOS shader compilation works",
-      "Android shader compilation works",
-      "Different screen sizes and aspect ratios",
-      "Different GPU capabilities",
-      "Blur effects render correctly across platforms"
-    ],
-    "edge_cases": [
-      "Minimum circle count (5)",
-      "Maximum circle count (175)",
-      "Extreme angle multiplier values",
-      "Very small screens",
-      "Very large screens (tablets)",
-      "Rapid parameter changes"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "decorative": "Primarily visual/artistic, no critical content",
-      "interactive": "Control panel requires precise touch gestures",
-      "no_text": "No text labels or instructions"
-    },
-    "limitations": [
-      "Not accessible to blind users",
-      "Requires precise motor control",
-      "No keyboard navigation",
-      "No screen reader support",
-      "Rapid animation could cause discomfort"
-    ],
-    "recommendations": {
-      "motion": {
-        "issue": "Continuous animation with bright colors",
-        "action": "Respect prefers-reduced-motion",
-        "implementation": "Pause animation or reduce intensity",
-        "alternative": "Static visualization option"
-      },
-      "interaction": {
-        "issue": "Pan gesture requires precise control",
-        "action": "Add alternative input methods",
-        "options": [
-          "Numeric inputs",
-          "Preset buttons",
-          "Voice control"
-        ]
-      },
-      "visual": {
-        "issue": "Relies entirely on color perception",
-        "action": "Add pattern overlays or textures",
-        "consideration": "Not critical for purely decorative art"
-      },
-      "seizures": {
-        "issue": "Bright, rapidly changing colors",
-        "action": "Add warning or disable option",
-        "test": "Verify no rapid flashing patterns"
-      }
-    }
-  },
-  "comparison_to_alternatives": {
-    "vs_lottie_animation": {
-      "lottie": "Pre-rendered animation file",
-      "this_approach": "Real-time parametric shader generation",
-      "benefits": "Infinite variations, interactive control, smaller bundle",
-      "tradeoffs": "Requires GPU, more complex code, learning curve"
-    },
-    "vs_webgl_threejs": {
-      "webgl": "Web-standard 3D graphics library",
-      "this_approach": "Native Skia with React Native integration",
-      "benefits": "Better mobile performance, native integration, simpler setup",
-      "tradeoffs": "Not web-standard, platform-specific"
-    },
-    "vs_canvas_2d": {
-      "canvas_2d": "2D drawing API (web or React Native)",
-      "this_approach": "GPU-accelerated shader",
-      "benefits": "Much better performance, more sophisticated effects, GPU parallelism",
-      "tradeoffs": "More complex, requires GLSL knowledge"
-    },
-    "vs_static_image": {
-      "static": "Pre-rendered image or GIF",
-      "this_approach": "Interactive, parametric generation",
-      "benefits": "Infinite variations, much smaller size, user control",
-      "tradeoffs": "Requires computation, varies by device"
-    }
-  },
-  "related_patterns": {
-    "fibonacci_visualizations": "Various Fibonacci spiral visualization techniques",
-    "shader_art": "Generative art using GPU shaders",
-    "parametric_animations": "User-controllable animation parameters",
-    "mathematical_art": "Math-based visual pattern generation",
-    "fermat_spirals": "Related spiral pattern algorithms"
-  },
-  "bundle_size_impact": {
-    "code_size": "~320 lines (main: 160, control: 90, slider: 65, pressable: 55)",
-    "dependencies": {
-      "skia": "Likely already in project (2-3MB)",
-      "reanimated": "Likely already in project (1-2MB)",
-      "gesture-handler": "Likely already in project (500KB)"
-    },
-    "shader_code": "~30 lines GLSL as template string",
-    "unused_components": "AnimatedSlider and PressableScale add ~120 lines",
-    "runtime_memory": "Minimal - few SharedValues, compiled shader, grid elements",
-    "estimated_additional": "< 10KB (excluding shared dependencies)"
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features supported",
-      "performance": "Excellent, native Skia rendering",
-      "shader_compilation": "Fast",
-      "blur_effects": "Native support",
-      "recommendations": "Primary target platform"
-    },
-    "android": {
-      "features": "All features supported",
-      "performance": "Excellent on modern devices, varies by GPU",
-      "shader_compilation": "Fast on modern devices",
-      "blur_effects": "Native support",
-      "recommendations": "Test on low-end devices with high circle counts"
-    },
-    "web": {
-      "compatibility": "Skia has web support (CanvasKit)",
-      "performance": "Good in modern browsers",
-      "shader_compilation": "WebGL-based",
-      "considerations": "May need polyfills, larger bundle size",
-      "testing": "Extensive cross-browser testing recommended"
-    }
-  },
-  "inspiration_and_credits": {
-    "primary_inspiration": "XorDev on Twitter (https://x.com/XorDev/status/1475524322785640455?s=20)",
-    "quote_from_code": "This guy is amazing and honestly without his code this animation wouldn't exist",
-    "mathematical_basis": "Fibonacci spirals and golden ratio mathematics",
-    "shader_technique": "Parametric string interpolation approach is original to this implementation",
-    "community": "Example of building on open-source inspiration with proper attribution"
-  },
-  "tags": [
-    "skia",
-    "shader",
-    "glsl",
-    "fibonacci",
-    "golden-ratio",
-    "mathematical-art",
-    "generative-art",
-    "interactive",
-    "parametric",
-    "reanimated",
-    "gesture-handler",
-    "runtime-shader",
-    "gpu-accelerated",
-    "spiral",
-    "fermat-spiral",
-    "control-panel",
-    "2d-control",
-    "pan-gesture",
-    "educational",
-    "visualization"
+  "hooks": [
+    "useAnimatedReaction",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useEffect",
+    "useMemo",
+    "useSharedValue"
   ],
-  "content_hash": "dca3f8867f418d237a44962691e49be2d90c0d9d97566d7b9d872585ab9dcf87",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.343Z",
-  "last_validated": "2025-10-12T09:19:28.343Z"
+  "functions": [
+    "clamp",
+    "interpolate",
+    "mapXvalue",
+    "mapYvalue",
+    "onUpdate",
+    "remapXcoord",
+    "remapYcoord",
+    "scheduleOnRN",
+    "withRepeat",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "Blur",
+    "Canvas",
+    "Circle",
+    "ControlPanel",
+    "GestureDetector",
+    "Mask",
+    "Rect",
+    "Shader",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "spring-animation",
+    "repeating-animation",
+    "value-interpolation",
+    "reactive-styling-pattern",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "spring-physics",
+    "loop-animations",
+    "value-mapping",
+    "canvas-rendering",
+    "blur-effects",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 4,
+    "total_packages": 6,
+    "total_hooks": 7,
+    "total_functions": 11,
+    "total_components": 10,
+    "total_patterns": 10,
+    "total_techniques": 8
+  }
 }

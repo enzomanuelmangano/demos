@@ -1,921 +1,255 @@
 {
-  "animation_name": "Fourier Visualizer",
   "animation_slug": "fourier-visualizer",
-  "description": "An interactive drawing visualizer that transforms hand-drawn paths into animated Fourier series representations using epicycles. Users draw shapes on canvas, and the animation decomposes the drawing into rotating circles (epicycles) using Fast Fourier Transform (FFT), then reconstructs the original path through the combined motion of these circles. Demonstrates mathematical concepts of Fourier analysis in a visually engaging way.",
-  "main_features": [
-    "Interactive touch-based drawing on canvas",
-    "Fast Fourier Transform (FFT) computation of drawn paths",
-    "Epicycle extraction and sorting by amplitude",
-    "Real-time reconstruction of drawn shapes via rotating circles",
-    "Smooth 20-second animation playback",
-    "Visual display of all epicycles as circles",
-    "Progressive path drawing visualization",
-    "Clear button to reset and start new drawings",
-    "Automatic fade-out after animation completes",
-    "Pan gesture detection for drawing input",
-    "Worklet-based FFT computation for performance"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.317Z",
   "file_structure": {
-    "index.tsx": "Main app component with drawing canvas and gesture handling",
-    "components/fourier-visualizer/index.tsx": "Core Fourier visualization component using epicycles",
-    "utils/fft.ts": "Fast Fourier Transform implementation using fft.js library",
-    "utils/extract-epicycles.ts": "Converts FFT complex numbers to epicycle parameters",
-    "utils/fill.ts": "Path point extraction and power-of-two array filling",
-    "utils/geometry.ts": "PathGeometry class for measuring and sampling paths",
-    "utils/types.ts": "TypeScript type definitions for Point and Complex numbers"
+    "entry": "index.tsx",
+    "components": [
+      "components/fourier-visualizer/utils/extract-epicycles.ts",
+      "components/fourier-visualizer/utils/fft.ts",
+      "components/fourier-visualizer/utils/fill.ts",
+      "components/fourier-visualizer/utils/geometry.ts",
+      "components/fourier-visualizer/utils/types.ts"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "graphics": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "mathematics": "fft.js",
-    "worklets": "react-native-worklets",
-    "interactions": "pressto"
+  "packages": [
+    "@expo/vector-icons",
+    "@shopify/react-native-skia",
+    "fft.js",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "@shopify/react-native-skia": "2.2.12",
+    "fft.js": "^4.0.4",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
+  "packages_detail": {
+    "./components/fourier-visualizer": {
+      "imports": [
+        "FourierVisualizer"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./geometry": {
+      "imports": [
+        "PathGeometry"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./types": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils/extract-epicycles": {
+      "imports": [
+        "extractEpicycles"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils/fft": {
+      "imports": [
+        "computeFFT"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils/fill": {
+      "imports": [
+        "fillToPowerOfTwo",
+        "getPoints"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "MaterialIcons"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
+      "imports": [
         "Canvas",
         "Path",
-        "Skia"
-      ],
-      "methods": [
-        "Path.Make()",
-        "Path.MakeFromSVGString()",
-        "Path.toSVGString()",
-        "Path.reset()",
-        "Path.moveTo()",
-        "Path.lineTo()",
-        "Path.getLastPt()",
-        "Path.addCircle()",
-        "ContourMeasureIter",
+        "Skia",
         "fitbox",
         "processTransform2d",
         "vec"
       ],
-      "usage": "Drawing canvas, path manipulation, epicycle circles rendering",
-      "critical_feature": "Path-based drawing and geometric transformations"
-    },
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "components": [
-        "Animated.View"
-      ],
-      "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "useAnimatedStyle",
-        "useAnimatedReaction"
-      ],
-      "functions": [
-        "withTiming",
-        "withSpring",
-        "cancelAnimation"
-      ],
-      "utilities": [
-        "Easing.linear"
-      ],
-      "usage": "Animation timing, epicycle calculations, reactive updates",
-      "critical_feature": "Worklet-based animations and derived value chains"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector",
-        "Gesture"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "handlers": [
-        "onStart",
-        "onChange",
-        "onEnd"
-      ],
-      "usage": "Touch-based drawing interaction and path creation",
-      "critical_feature": "Pan gesture for continuous drawing input"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "fft.js": {
-      "version": "^4.0.4",
-      "class": "FFT",
-      "methods": [
-        "transform(output, input)"
-      ],
-      "usage": "Fast Fourier Transform computation for path decomposition",
-      "critical_feature": "Efficient frequency domain transformation of spatial data"
-    },
-    "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
-        "scheduleOnRN"
-      ],
-      "usage": "Bridge between UI thread worklets and React Native thread",
-      "critical_feature": "Thread-safe callback execution for FFT results"
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "pressto": {
-      "version": "0.3.5-beta.1",
-      "components": [
+      "imports": [
         "PressableScale"
       ],
-      "usage": "Clear button with scale press animation"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "families": [
-        "MaterialIcons"
+    "react": {
+      "imports": [
+        "forwardRef",
+        "useCallback",
+        "useImperativeHandle",
+        "useRef"
       ],
-      "usage": "Clear icon in reset button"
-    }
-  },
-  "animation_techniques": {
-    "fourier_decomposition": {
-      "mathematical_concept": "Any periodic function can be represented as sum of sine/cosine waves",
-      "implementation": "2D path treated as complex function f(t) where x=real, y=imaginary",
-      "process": [
-        "1. Extract evenly-spaced points from drawn path",
-        "2. Fill array to nearest power of two (FFT requirement)",
-        "3. Compute FFT treating (x,y) coordinates as complex numbers",
-        "4. Extract epicycles from FFT output",
-        "5. Sort epicycles by amplitude (largest circles first)",
-        "6. Animate epicycles rotating at their respective frequencies"
+      "hooks": [
+        "useCallback",
+        "useImperativeHandle",
+        "useRef"
       ],
-      "visual_result": "Rotating circles whose combined motion traces original drawing"
+      "functions": [],
+      "components": []
     },
-    "epicycle_animation": {
-      "pattern": "Nested circular motions at different frequencies",
-      "time_parameter": "Shared value animating from 0 to 2π over 20 seconds",
-      "position_calculation": {
-        "formula": "position = amplitude * (cos(frequency * time + phase), sin(frequency * time + phase))",
-        "cumulative": "Each epicycle's center is at tip of previous epicycle",
-        "chain": "Creates cascade of rotating circles"
-      },
-      "timing": {
-        "duration": 20000,
-        "easing": "Easing.linear",
-        "range": "0 to 2π - 0.05"
-      },
-      "effect": "Smooth reconstruction of original path through circular motion"
-    },
-    "path_reconstruction": {
-      "pattern": "Progressive path building",
-      "implementation": "Last epicycle position traced over time",
-      "method": {
-        "track": "Final epicycle tip position",
-        "draw": "Line from previous position to current position",
-        "accumulate": "resultPath grows throughout animation"
-      },
-      "visual": "Original drawing emerges from epicycle motion"
-    },
-    "drawing_interaction": {
-      "gesture": "Pan gesture",
-      "onStart": {
-        "actions": [
-          "Clear previous animation",
-          "Reset drawing path",
-          "Set opacity to 1",
-          "Move to starting point"
-        ]
-      },
-      "onChange": {
-        "action": "Add line segment to current position",
-        "technique": "Convert to SVG string and back for Skia path updates"
-      },
-      "onEnd": {
-        "actions": [
-          "Fade out drawn path",
-          "Convert path to SVG string",
-          "Schedule FFT computation and animation"
-        ]
-      }
-    },
-    "fade_animations": {
-      "drawn_path": {
-        "on_draw": "Opacity 1 (visible during drawing)",
-        "on_release": "withTiming(0) - fades out when epicycle animation starts"
-      },
-      "epicycle_animation": {
-        "on_start": "withTiming(1) - fades in",
-        "on_complete": "withTiming(0) - fades out when animation finishes"
-      }
-    },
-    "clear_button_animation": {
-      "opacity": "withTiming(isDrawing ? 1 : 0)",
-      "position": "withSpring(isDrawing ? 65 : 0) bottom offset",
-      "trigger": "Appears when epicycles are animating",
-      "interaction": "Stops animation and clears canvas"
-    }
-  },
-  "mathematical_algorithms": {
-    "fft_implementation": {
-      "library": "fft.js",
-      "algorithm": "Fast Fourier Transform (Cooley-Tukey)",
-      "complexity": "O(N log N) where N is number of points",
-      "input_format": "Array of interleaved real/imaginary pairs [x1, y1, x2, y2, ...]",
-      "output_format": "Array of complex frequency components",
-      "requirement": "Input size must be power of two",
-      "processing": "Transforms spatial domain (x,y points) to frequency domain (epicycle parameters)"
-    },
-    "epicycle_extraction": {
-      "input": "Array of complex numbers from FFT",
-      "output": "Array of { frequency, amplitude, phase }",
-      "frequency_calculation": "((j + N/2) % N) - N/2 (shifts zero frequency to center)",
-      "amplitude_calculation": "sqrt(real² + imag²) / N (normalized magnitude)",
-      "phase_calculation": "atan2(imag, real) (angle in radians)",
-      "indexing_logic": "Alternates between low and high frequencies for smooth visualization",
-      "sorting": "By amplitude descending (largest circles animate first)"
-    },
-    "power_of_two_filling": {
-      "purpose": "FFT requires array length to be power of two",
-      "algorithm": {
-        "step_1": "Calculate next power of two >= current length",
-        "step_2": "Create new array of target length",
-        "step_3": "Copy original points to start",
-        "step_4": "Fill remaining slots with last point"
-      },
-      "benefit": "Maintains path shape while meeting FFT requirements",
-      "implementation": "Bitwise operations for efficiency"
-    },
-    "point_extraction": {
-      "class": "PathGeometry",
-      "method": "getPointAtLength()",
-      "sampling": {
-        "count": "Math.round(totalLength) points",
-        "spacing": "Evenly distributed along path",
-        "measurement": "ContourMeasureIter for accurate path length"
-      },
-      "purpose": "Convert continuous path to discrete points for FFT"
-    },
-    "cumulative_positioning": {
-      "pattern": "Each epicycle builds on previous position",
-      "implementation": {
-        "initialization": "cumulativeX = 0, cumulativeY = 0",
-        "loop": "For each epicycle, add its contribution to cumulative position",
-        "formula": "new_position = cumulative + amplitude * (cos(angle), sin(angle))",
-        "update": "cumulative = new_position for next iteration"
-      },
-      "visual_effect": "Creates chain of rotating circles"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "drawPath",
-        "type": "SharedValue<SkPath>",
-        "scope": "Main component",
-        "purpose": "Current drawing path from user input",
-        "updates": "During pan gesture onChange events"
-      },
-      {
-        "name": "time",
-        "type": "SharedValue<number>",
-        "scope": "FourierVisualizer",
-        "purpose": "Animation time parameter (0 to 2π)",
-        "animation": "withTiming linear easing over 20 seconds"
-      },
-      {
-        "name": "baseEpicycles",
-        "type": "SharedValue<Epicycle[]>",
-        "scope": "FourierVisualizer",
-        "purpose": "Array of epicycle parameters from FFT",
-        "updates": "Set once when drawing completes"
-      },
-      {
-        "name": "resultPath",
-        "type": "SharedValue<SkPath>",
-        "scope": "FourierVisualizer",
-        "purpose": "Reconstructed path traced by last epicycle",
-        "updates": "Progressive accumulation in useDerivedValue"
-      },
-      {
-        "name": "circlesPath",
-        "type": "SharedValue<SkPath>",
-        "scope": "FourierVisualizer",
-        "purpose": "Path containing all epicycle circles",
-        "updates": "Rebuilt each frame in useDerivedValue"
-      },
-      {
-        "name": "epicyclePositions",
-        "type": "SharedValue<{x, y}[]>",
-        "scope": "FourierVisualizer",
-        "purpose": "Current positions of all epicycle centers",
-        "updates": "Recalculated in useAnimatedReaction on time changes"
-      },
-      {
-        "name": "opacity",
-        "type": "SharedValue<number>",
-        "scope": "Multiple",
-        "purpose": "Controls visibility of animations",
-        "animations": "withTiming for smooth fade in/out"
-      },
-      {
-        "name": "isDrawing",
-        "type": "SharedValue<boolean>",
-        "scope": "Main component",
-        "purpose": "Tracks if epicycle animation is running",
-        "usage": "Controls clear button visibility"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "drawPath",
-        "dependencies": [
-          "epicyclePositions",
-          "baseEpicycles"
-        ],
-        "scope": "FourierVisualizer",
-        "calculation": "Builds path connecting epicycle centers and updates circles",
-        "also_updates": [
-          "resultPath",
-          "circlesPath"
-        ],
-        "performance": "Recalculates only when positions change"
-      }
-    ],
-    "animated_reactions": [
-      {
-        "name": "epicycle_position_calculator",
-        "watch": "[time.value, baseEpicycles.value]",
-        "action": "Calculate all epicycle positions for current time",
-        "pattern": "Loop through epicycles computing cumulative positions",
-        "output": "Updates epicyclePositions SharedValue",
-        "frequency": "Every frame during animation"
-      }
-    ],
-    "worklet_functions": [
-      {
-        "name": "draw",
-        "signature": "({ path, onComplete })",
-        "worklet": true,
-        "purpose": "Initialize and start epicycle animation",
-        "steps": [
-          "Extract points from path",
-          "Fill to power of two",
-          "Compute FFT",
-          "Extract and sort epicycles",
-          "Reset result path",
-          "Start time animation"
-        ],
-        "callback": "onComplete called via scheduleOnRN when animation finishes"
-      },
-      {
-        "name": "clear",
-        "signature": "()",
-        "worklet": true,
-        "purpose": "Stop animation and reset all state",
-        "actions": [
-          "Set opacity to 0",
-          "Clear epicycles array",
-          "Clear positions array",
-          "Reset result path",
-          "Cancel time animation"
-        ]
-      }
-    ]
-  },
-  "performance_optimizations": {
-    "fft_computation": {
-      "algorithm": "O(N log N) Fast Fourier Transform",
-      "vs_dft": "Much faster than O(N²) Discrete Fourier Transform",
-      "worklet_execution": "Runs on UI thread for responsiveness",
-      "library_optimization": "fft.js is highly optimized implementation"
-    },
-    "power_of_two_requirement": {
-      "benefit": "Enables FFT algorithm (much faster than DFT)",
-      "implementation": "Efficient bitwise operations for calculation",
-      "padding": "Minimal additional points added"
-    },
-    "amplitude_sorting": {
-      "strategy": "Sort epicycles by amplitude descending",
-      "visual_benefit": "Larger circles animate first (more visible contribution)",
-      "computational_benefit": "Could truncate small epicycles for performance"
-    },
-    "path_point_sampling": {
-      "count": "Math.round(totalLength) - adaptive based on path length",
-      "benefit": "Longer paths get more samples, shorter paths fewer",
-      "balance": "Accuracy vs computation time"
-    },
-    "skia_rendering": {
-      "thread": "UI thread (no bridge crossing)",
-      "acceleration": "GPU-accelerated path rendering",
-      "updates": "Direct property updates without React reconciliation"
-    },
-    "derived_value_efficiency": {
-      "recalculation": "Only when dependencies change",
-      "epicycle_positions": "Calculated once per frame via useAnimatedReaction",
-      "draw_path": "Derived from positions, updates automatically"
-    },
-    "svg_string_conversion": {
-      "pattern": "Convert path to SVG string and back",
-      "purpose": "Ensures Skia recognizes path updates",
-      "cost": "Some overhead but necessary for reactivity",
-      "frequency": "Only during active drawing"
-    },
-    "ref_handling": {
-      "pattern": "useRef for FourierVisualizer imperative methods",
-      "benefit": "Direct method calls without prop drilling",
-      "fast_refresh_workaround": "Manual ref type definition to avoid Hermes errors"
-    }
-  },
-  "component_architecture": {
-    "main_app": {
-      "file": "index.tsx",
-      "responsibilities": [
-        "Drawing canvas setup",
-        "Pan gesture handling",
-        "Path state management",
-        "Clear button UI",
-        "FourierVisualizer orchestration"
+    "react-native": {
+      "imports": [
+        "StyleSheet"
       ],
-      "state": [
-        "drawPath SharedValue",
-        "opacity SharedValue",
-        "isDrawing SharedValue"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector"
       ],
-      "refs": [
-        "FourierVisualizer ref for imperative methods"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Easing",
+        "cancelAnimation",
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "cancelAnimation",
+        "withSpring",
+        "withTiming"
+      ],
+      "components": [
+        "Animated.View"
       ]
     },
-    "fourier_visualizer": {
-      "file": "components/fourier-visualizer/index.tsx",
-      "pattern": "forwardRef with useImperativeHandle",
-      "exposed_methods": {
-        "draw": "Start epicycle animation from path",
-        "clear": "Stop animation and reset"
-      },
-      "responsibilities": [
-        "FFT computation",
-        "Epicycle extraction",
-        "Position calculations",
-        "Path reconstruction",
-        "Circle visualization"
+    "react-native-worklets": {
+      "imports": [
+        "scheduleOnRN"
       ],
-      "rendering": "Three Path components (epicycle lines, circles, result)"
-    },
-    "utility_modules": {
-      "fft.ts": "Pure function wrapping fft.js library",
-      "extract-epicycles.ts": "Pure function converting FFT output to epicycles",
-      "fill.ts": "Point extraction and array padding utilities",
-      "geometry.ts": "PathGeometry class for path measurements",
-      "types.ts": "Type definitions shared across modules"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "visual_design": {
-    "color_palette": {
-      "background": "#D4D4D4 (light gray)",
-      "drawing_path": "Black (implied default)",
-      "epicycle_lines": "rgba(0, 0, 0, 0.2) - semi-transparent black",
-      "epicycle_circles": "rgba(0, 0, 0, 0.2) - semi-transparent black",
-      "result_path": "black",
-      "clear_button_background": "#111 (very dark gray)",
-      "clear_button_icon": "white"
-    },
-    "stroke_widths": {
-      "drawing_path": 10,
-      "epicycle_lines": 2.5,
-      "epicycle_circles": 0.8,
-      "result_path": 5
-    },
-    "button_design": {
-      "size": "64x64 (aspect ratio 1)",
-      "shape": "Circle (borderRadius 32)",
-      "position": "Fixed bottom-right (right: 30, bottom varies)",
-      "icon": "MaterialIcons 'clear' size 24",
-      "animation": "Slides up from bottom when visible"
-    },
-    "opacity_states": {
-      "drawing": "Full opacity (1.0) while drawing",
-      "epicycles": "Fade in (0→1) when animation starts, fade out (1→0) when complete",
-      "clear_button": "Appears (0→1) when animation running"
-    },
-    "layout": {
-      "canvas": "Full screen flex: 1",
-      "button": "Absolute positioned overlay",
-      "z_index": "Button above canvas via absolute positioning"
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture": {
-      "type": "Gesture.Pan()",
-      "handlers": {
-        "onStart": {
-          "trigger": "User touches screen",
-          "actions": [
-            "Call clear() on FourierVisualizer (via scheduleOnRN)",
-            "Set isDrawing to false",
-            "Reset drawPath",
-            "Set opacity to 1",
-            "Move path to starting point",
-            "Draw initial point"
-          ],
-          "thread": "Gesture handler on UI thread"
-        },
-        "onChange": {
-          "trigger": "User drags finger",
-          "actions": [
-            "Add line segment to current position",
-            "Convert to SVG and back for Skia update"
-          ],
-          "frequency": "Every gesture update frame",
-          "thread": "UI thread"
-        },
-        "onEnd": {
-          "trigger": "User lifts finger",
-          "actions": [
-            "Fade out drawing path",
-            "Convert path to SVG string",
-            "Schedule drawPathWrapper on RN thread",
-            "Trigger FFT computation and animation"
-          ],
-          "bridge": "scheduleOnRN for thread transition"
-        }
-      }
-    }
-  },
-  "worklet_patterns": {
-    "draw_function": {
-      "marked_worklet": true,
-      "thread": "UI thread",
-      "heavy_computation": {
-        "fft": "Runs on UI thread but fast enough (O(N log N))",
-        "consideration": "Could move to separate thread for very complex paths"
-      },
-      "callback_handling": "Uses scheduleOnRN to call onComplete on RN thread"
-    },
-    "clear_function": {
-      "marked_worklet": true,
-      "thread": "UI thread",
-      "synchronous": true,
-      "effect": "Immediate cancellation of animations"
-    },
-    "thread_transitions": {
-      "ui_to_rn": "scheduleOnRN(callback)",
-      "gesture_to_ui": "Native gesture handler integration",
-      "use_case": "Callback after animation completion, clearing visualizer"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Mathematical education tool for Fourier series",
-      "Interactive visualization of signal decomposition",
-      "Demonstrating frequency domain concepts",
-      "Art generation through mathematical decomposition",
-      "Understanding epicycles and circular motion"
-    ],
-    "educational": [
-      "Teaching Fourier analysis",
-      "Explaining FFT algorithms",
-      "Visualizing frequency components",
-      "Demonstrating signal processing concepts",
-      "Showing relationship between spatial and frequency domains"
-    ],
-    "entertainment": [
-      "Drawing game with mathematical twist",
-      "Mesmerizing animation generation",
-      "Signature animation effects",
-      "Creative pattern exploration"
-    ],
-    "technical_demonstrations": [
-      "Skia path manipulation showcase",
-      "FFT implementation example",
-      "Gesture handling patterns",
-      "Worklet usage demonstration",
-      "Complex animation coordination"
-    ]
-  },
-  "code_quality": {
-    "strengths": [
-      "Comprehensive inline documentation with detailed comments",
-      "Clear separation of concerns (UI, computation, geometry)",
-      "Type safety with TypeScript throughout",
-      "Proper worklet annotations",
-      "Imperative handle pattern for component methods",
-      "Mathematical algorithms clearly documented",
-      "Efficient use of Skia path operations",
-      "Smart use of SharedValues for reactive updates"
-    ],
-    "areas_for_improvement": [
-      "Could add error handling for invalid paths",
-      "No loading state during FFT computation",
-      "Hard-coded animation duration (could be prop)",
-      "Fast Refresh workaround needed for ref type",
-      "Could memoize more utility functions",
-      "No accessibility considerations",
-      "Magic numbers could be extracted to constants"
-    ],
-    "typescript": {
-      "coverage": "Full TypeScript",
-      "type_definitions": [
-        "Point",
-        "Complex",
-        "Epicycle",
-        "FourierVisualizerRefType"
-      ],
-      "imports": "Proper type imports from libraries",
-      "worklet_types": "Correct typing for worklet functions"
-    },
-    "documentation": {
-      "fft.ts": "Excellent JSDoc explaining FFT concept and implementation",
-      "extract-epicycles.ts": "Detailed comments on epicycle concept and math",
-      "fill.ts": "Clear explanation of FFT requirement and padding",
-      "geometry.ts": "Good class documentation",
-      "index.tsx": "Helpful comments on key decisions"
-    }
-  },
-  "known_limitations": {
-    "fft_computation_cost": {
-      "issue": "Very complex drawings with many points could cause frame drops",
-      "mitigation": "FFT is O(N log N) so scales well",
-      "threshold": "Should be fine for typical hand-drawn paths",
-      "improvement": "Could move FFT to background thread if needed"
-    },
-    "power_of_two_padding": {
-      "issue": "Filling array can add significant duplicate points",
-      "impact": "Minimal - duplicate points don't affect FFT result much",
-      "example": "330 points padded to 512 adds 182 duplicate points"
-    },
-    "animation_duration": {
-      "limitation": "Fixed 20-second duration",
-      "improvement": "Could be configurable prop"
-    },
-    "single_path_only": {
-      "limitation": "Can only animate one drawing at a time",
-      "improvement": "Could support multiple simultaneous animations"
-    },
-    "no_color_customization": {
-      "limitation": "Colors are hard-coded",
-      "improvement": "Could accept color props"
-    },
-    "no_stroke_customization": {
-      "limitation": "Stroke widths are fixed",
-      "improvement": "Could make configurable"
-    },
-    "epicycle_count": {
-      "limitation": "Number of epicycles equals number of points",
-      "impact": "Could be hundreds of circles for complex paths",
-      "improvement": "Could limit to top N epicycles by amplitude"
-    },
-    "accessibility": {
-      "missing": "No screen reader support, keyboard navigation, or alternative interactions",
-      "improvement": "Add accessibility labels and alternative input methods"
-    },
-    "memory_management": {
-      "consideration": "Large epicycle arrays held in memory",
-      "improvement": "Could implement epicycle recycling or limits"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Adjustable animation speed/duration",
-      "Pause/resume animation controls",
-      "Epicycle count limiter (show top N by amplitude)",
-      "Color picker for drawing and epicycles",
-      "Stroke width controls",
-      "Save/load drawings",
-      "Export animation as video",
-      "Multiple simultaneous animations",
-      "Background patterns library",
-      "Undo/redo for drawings"
-    ],
-    "visual_enhancements": [
-      "Color-coded epicycles by frequency",
-      "Epicycle labels showing frequency",
-      "Amplitude visualization (circle thickness)",
-      "Frequency spectrum display",
-      "Animation progress indicator",
-      "Drawing guidelines or grid",
-      "Preview mode showing final result",
-      "Different visual styles (neon, minimal, technical)"
-    ],
-    "performance": [
-      "Move FFT computation to background thread",
-      "Implement epicycle culling (remove tiny circles)",
-      "Progressive epicycle rendering",
-      "Path simplification before FFT",
-      "Caching of FFT results",
-      "Memory pooling for large arrays"
-    ],
-    "interaction": [
-      "Multi-touch for multiple paths",
-      "Pinch to zoom canvas",
-      "Pan to move view",
-      "Tap to place control points",
-      "Shape library to trace",
-      "Symmetry modes",
-      "Guided tutorials"
-    ],
-    "educational": [
-      "Step-by-step animation explanation",
-      "Frequency domain visualization",
-      "Real-time epicycle parameters display",
-      "Comparison with original path",
-      "Error metrics display",
-      "Interactive FFT parameter tuning"
-    ]
-  },
-  "key_insights": {
-    "fft_power": "FFT algorithm makes real-time Fourier decomposition feasible on mobile",
-    "visual_mathematics": "Complex mathematical concepts become intuitive through visualization",
-    "epicycle_elegance": "Sorting by amplitude creates visually pleasing progression",
-    "skia_performance": "Skia enables smooth rendering of hundreds of circles and paths",
-    "worklet_necessity": "Worklets essential for keeping animations smooth during computation",
-    "path_as_signal": "Treating 2D path as complex signal enables frequency analysis",
-    "power_of_two_trick": "Padding to power of two enables efficient FFT",
-    "cumulative_positions": "Chaining epicycles creates emergent complexity from simple rotations",
-    "thread_orchestration": "Careful thread management between UI and RN threads maintains responsiveness"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Introduction to Fourier series",
-      "Basic gesture handling",
-      "Skia path drawing",
-      "Animation basics with Reanimated",
-      "SharedValue concepts"
-    ],
-    "for_intermediate": [
-      "Fast Fourier Transform understanding",
-      "Complex number mathematics",
-      "Worklet patterns and threading",
-      "Imperative handle pattern",
-      "Geometric calculations",
-      "Path manipulation with Skia",
-      "useAnimatedReaction usage"
-    ],
-    "for_advanced": [
-      "FFT algorithm implementation details",
-      "Signal processing concepts",
-      "Performance optimization for heavy computations",
-      "Cross-thread communication patterns",
-      "Complex derived value chains",
-      "Mathematical visualization techniques",
-      "Epicycle parameter extraction",
-      "Power-of-two array manipulation"
-    ],
-    "mathematical_concepts": [
-      "Fourier series and decomposition",
-      "Frequency domain analysis",
-      "Complex number representation",
-      "Epicycles in astronomy and mathematics",
-      "Signal sampling theory",
-      "Discrete vs continuous transforms"
-    ]
-  },
-  "related_patterns": {
-    "similar_visualizations": [
-      "Lissajous curves",
-      "Harmonograph simulations",
-      "Wave interference patterns",
-      "Signal waveform displays",
-      "Audio visualizers"
-    ],
-    "mathematical_animations": [
-      "Mandelbrot set explorers",
-      "Chaos theory visualizations",
-      "Parametric curve plotters",
-      "3D function surfaces",
-      "Vector field visualizations"
-    ],
-    "drawing_applications": [
-      "Sketch apps with effects",
-      "Signature capture with animation",
-      "Path morphing animations",
-      "Calligraphy simulators",
-      "Animation curve editors"
-    ]
-  },
-  "real_world_inspiration": {
-    "educational_tools": [
-      "3Blue1Brown Fourier series videos",
-      "Desmos graphing calculator",
-      "Wolfram demonstrations",
-      "Khan Academy interactive lessons"
-    ],
-    "historical_context": {
-      "epicycles": "Ancient astronomy used epicycles to model planetary motion",
-      "ptolemy": "Ptolemaic system used multiple epicycles",
-      "fourier": "Joseph Fourier's work on heat transfer led to Fourier series"
-    },
-    "modern_applications": [
-      "Audio compression (MP3 uses DCT, similar to FFT)",
-      "Image compression (JPEG uses DCT)",
-      "Signal processing in communications",
-      "Medical imaging (MRI uses Fourier transforms)",
-      "Quantum mechanics (wave function analysis)"
-    ]
-  },
-  "testing_considerations": {
-    "unit_tests": [
-      "FFT computation correctness",
-      "Epicycle extraction math",
-      "Power-of-two filling logic",
-      "Point extraction from paths",
-      "Angle calculations"
-    ],
-    "integration_tests": [
-      "Drawing gesture flow",
-      "FFT to animation pipeline",
-      "Clear button functionality",
-      "Animation completion callback",
-      "Path reconstruction accuracy"
-    ],
-    "visual_tests": [
-      "Epicycles render correctly",
-      "Result path matches original drawing",
-      "Smooth animation at 60fps",
-      "Proper fade transitions",
-      "Button animations"
-    ],
-    "edge_cases": [
-      "Single point drawing",
-      "Very short path",
-      "Very complex path (1000+ points)",
-      "Self-intersecting paths",
-      "Rapid clear and redraw",
-      "Path with minimal movement",
-      "Straight line drawing"
-    ],
-    "performance_tests": [
-      "FFT computation time for various path sizes",
-      "Frame rate during animation",
-      "Memory usage with large epicycle arrays",
-      "Gesture responsiveness",
-      "Animation smoothness"
-    ]
-  },
-  "accessibility_recommendations": {
-    "current_state": {
-      "screen_readers": "No support",
-      "keyboard": "No keyboard navigation",
-      "motor_impairments": "Requires precise touch/drawing ability",
-      "visual_impairments": "No alternative representations"
-    },
-    "improvements": [
-      "Add accessibility labels for canvas and button",
-      "Provide text description of animation",
-      "Alternative input method (tap points instead of drawing)",
-      "Audio feedback for drawing and animation",
-      "Haptic feedback for interaction milestones",
-      "High contrast mode",
-      "Larger touch targets option",
-      "Voice commands for control"
-    ]
-  },
-  "mathematical_accuracy": {
-    "fft_precision": {
-      "algorithm": "Standard FFT implementation (fft.js)",
-      "floating_point": "JavaScript number precision (IEEE 754)",
-      "accuracy": "Sufficient for visualization purposes",
-      "errors": "Typical floating point rounding errors"
-    },
-    "reconstruction_quality": {
-      "factors": [
-        "Number of points sampled from path",
-        "Power-of-two padding impact",
-        "Animation time discretization",
-        "Floating point precision"
-      ],
-      "visual_result": "Very close to original drawing",
-      "quantitative": "Could measure error metrics but not currently implemented"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~500 lines across all files",
-    "dependencies": {
-      "fft.js": "~4KB - specialized FFT library",
-      "other_libs": "Already in project (Skia, Reanimated, Gesture Handler)"
-    },
-    "runtime_memory": {
-      "paths": "Moderate - one path per animation phase",
-      "epicycles": "Variable - depends on drawing complexity",
-      "positions": "Array of {x,y} for each epicycle",
-      "typical": "< 1MB for typical drawings"
-    },
-    "estimated_total": "~10KB code + 4KB fft.js = ~14KB additional"
-  },
-  "tags": [
-    "fourier-series",
-    "fft",
-    "fast-fourier-transform",
-    "epicycles",
-    "mathematical-visualization",
-    "signal-processing",
-    "drawing",
-    "gesture-drawing",
-    "skia",
-    "path-animation",
-    "reanimated",
-    "worklets",
-    "interactive",
-    "educational",
-    "mathematics",
-    "frequency-domain",
-    "circular-motion",
-    "complex-numbers",
-    "animation-reconstruction",
-    "canvas-drawing"
+  "hooks": [
+    "useAnimatedReaction",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useImperativeHandle",
+    "useRef",
+    "useSharedValue"
   ],
-  "content_hash": "251769568f75920994366131e63a441dfe276e6da23c0229d2725f9f4e0b7cfc",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.354Z",
-  "last_validated": "2025-10-12T09:19:28.354Z"
+  "functions": [
+    "Array",
+    "cancelAnimation",
+    "computeFFT",
+    "extractEpicycles",
+    "fillToPowerOfTwo",
+    "fitbox",
+    "forwardRef",
+    "getPoints",
+    "isPowerOfTwo",
+    "nextPowerOfTwo",
+    "processTransform2d",
+    "scheduleOnRN",
+    "vec",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "Canvas",
+    "FourierVisualizer",
+    "GestureDetector",
+    "MaterialIcons",
+    "Path",
+    "PressableScale"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "spring-animation",
+    "reactive-styling-pattern",
+    "imperative-animation-api",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "spring-physics",
+    "ref-based-control",
+    "canvas-rendering",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 7,
+    "total_packages": 9,
+    "total_hooks": 7,
+    "total_functions": 15,
+    "total_components": 7,
+    "total_patterns": 9,
+    "total_techniques": 6
+  }
 }

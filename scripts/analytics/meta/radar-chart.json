@@ -1,1072 +1,221 @@
 {
-  "animation_name": "Radar Chart",
   "animation_slug": "radar-chart",
-  "description": "A fully animated radar/spider chart component built with React Native Skia. Features smooth transitions between data sets with interpolated polygons, customizable grid layers, and dynamic data point animations. Supports multiple data series with independent colors, animated value transitions, and configurable grid complexity.",
-  "main_features": [
-    "Animated radar/spider chart with polygon rendering",
-    "Smooth data transitions with interpolation",
-    "Multiple data series support with custom colors",
-    "Configurable internal grid layers (concentric polygons)",
-    "Animated data points with stroke styling",
-    "Dynamic polygon path generation",
-    "Radial grid lines from center",
-    "Rotated text labels for each axis",
-    "Responsive canvas sizing",
-    "Custom font rendering with Skia",
-    "Color manipulation with darkening effects",
-    "Worklet-optimized calculations",
-    "Animation cancellation and interruption handling"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.109Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Demo container with random data generation and shuffle interaction"
-    },
-    "components": {
-      "components/radar-chart/index.tsx": "Main RadarChart component with Skia rendering logic",
-      "components/radar-chart/typings.ts": "TypeScript type definitions for RadarChart props and data"
-    },
-    "hooks": {
-      "components/radar-chart/hooks/use-canvas-layout.ts": "Hook for calculating canvas dimensions and center coordinates",
-      "components/radar-chart/hooks/use-polygon-grid.ts": "Hook for generating radial grid lines from center",
-      "components/radar-chart/hooks/use-unwrapped-radar-values.ts": "Hook for data unwrapping, interpolation, and animation state management"
-    },
-    "utils": {
-      "components/radar-chart/utils/get-scaled-polygon.ts": "Function to generate scaled polygon paths from data values",
-      "components/radar-chart/utils/unwrap-ref.ts": "Utility to normalize regular values and SharedValues"
-    },
-    "types": {
-      "components/radar-chart/typings.ts": "Generic type definitions supporting any string-based axis keys"
-    },
-    "constants": {},
-    "assets": {}
+    "entry": "index.tsx",
+    "components": [
+      "components/radar-chart/hooks/use-canvas-layout.ts",
+      "components/radar-chart/hooks/use-polygon-grid.ts",
+      "components/radar-chart/hooks/use-unwrapped-radar-values.ts",
+      "components/radar-chart/typings.ts",
+      "components/radar-chart/utils/get-scaled-polygon.ts",
+      "components/radar-chart/utils/unwrap-ref.ts"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "graphics": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "color_manipulation": "color",
-    "pattern": "Animated data visualization"
+  "packages": [
+    "@shopify/react-native-skia",
+    "color",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "color": "^4.2.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
+  "packages_detail": {
+    "../typings": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/radar-chart": {
+      "imports": [
+        "RadarChart"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-canvas-layout": {
+      "imports": [
+        "useCanvasLayout"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-polygon-grid": {
+      "imports": [
+        "usePolygonGrid"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-unwrapped-radar-values": {
+      "imports": [
+        "useUnwrappedValues"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./typings": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils/get-scaled-polygon": {
+      "imports": [
+        "getScaledPolygonPath"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
+      "imports": [
         "Canvas",
+        "Extrapolate",
+        "Group",
         "Path",
         "Points",
+        "Skia",
         "Text",
-        "Group"
-      ],
-      "modules": [
-        "Skia (Path.Make())",
+        "interpolate",
         "useFont"
       ],
-      "functions": [
-        "interpolate",
-        "Extrapolate"
-      ],
-      "usage": "Complete chart rendering including polygons, grid lines, data points, and axis labels",
-      "critical_feature": "GPU-accelerated polygon rendering with dynamic path generation"
-    },
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "withTiming",
-        "cancelAnimation"
-      ],
-      "utilities": [
-        "interpolate (from Skia)",
-        "Extrapolate.CLAMP"
-      ],
-      "usage": "Data transition animations, value interpolation, and animation state management",
-      "critical_feature": "Smooth data transitions with animation cancellation and interruption handling"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "color": {
-      "version": "^4.2.3",
-      "methods": [
-        "Color()",
-        "darken()",
-        "hex()"
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
       ],
-      "usage": "Darkening polygon fill colors for stroke colors",
-      "pattern": "Color(pathColor).darken(0.1).hex()"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react": {
-      "hooks": [
-        "useState",
-        "useMemo",
+      "imports": [
         "useCallback",
-        "useEffect"
+        "useEffect",
+        "useMemo",
+        "useState"
       ],
-      "usage": "Component state, memoization, and lifecycle management"
-    }
-  },
-  "animation_techniques": {
-    "data_transition_animation": {
-      "pattern": "Interpolated transition between current and target data sets",
-      "hook": "useUnwrappedValues",
-      "state_management": {
-        "currentData": "SharedValue holding current data state",
-        "targetData": "SharedValue holding target data state",
-        "progress": "SharedValue (0 to 1) controlling interpolation"
-      },
-      "timing": {
-        "duration": 150,
-        "function": "withTiming"
-      },
-      "interpolation": {
-        "method": "interpolate",
-        "input": "progress.value",
-        "range": "[0, 1]",
-        "output": "[currentValue, targetValue]",
-        "extrapolate": "CLAMP"
-      },
-      "interruption_handling": {
-        "pattern": "Animation cancellation before starting new animation",
-        "implementation": "cancelAnimation(progress) before new withTiming",
-        "benefit": "Smooth transitions even when data changes mid-animation"
-      },
-      "mid_animation_updates": {
-        "challenge": "New data arrives while animation in progress",
-        "solution": "Interpolate current position and save as new currentData",
-        "formula": "interpolate(progress.value, [0, 1], [current, target])",
-        "effect": "Seamless continuation from interrupted state"
-      }
-    },
-    "polygon_path_generation": {
-      "pattern": "Convert array of normalized values to Skia polygon path",
-      "function": "getScaledPolygonPath",
-      "worklet": true,
-      "parameters": {
-        "values": "Array of numbers (0-1 representing normalized values)",
-        "centerX": "Canvas center X coordinate",
-        "centerY": "Canvas center Y coordinate",
-        "radius": "Maximum radius for polygon"
-      },
-      "algorithm": {
-        "step_1": "Calculate angle step: (2π) / values.length",
-        "step_2": "For each value, calculate angle: index * angleStep",
-        "step_3": "Convert polar to cartesian: x = center + sin(angle) * radius * value",
-        "step_4": "Convert polar to cartesian: y = center - cos(angle) * radius * value",
-        "step_5": "First point uses moveTo, subsequent points use lineTo",
-        "step_6": "Close path to complete polygon"
-      },
-      "coordinate_system": {
-        "angle_zero": "Top of canvas (12 o'clock)",
-        "direction": "Clockwise rotation",
-        "scaling": "Each value multiplies radius (0 = center, 1 = full radius)"
-      }
-    },
-    "grid_layer_generation": {
-      "pattern": "Concentric polygons representing value scales",
-      "prop": "internalLayers (default 4)",
-      "calculation": "Array of intensities: 1 - (index / internalLayers)",
-      "example": "4 layers → intensities [1.0, 0.75, 0.5, 0.25]",
-      "rendering": "Each intensity creates polygon with all values set to that intensity",
-      "memoization": "useMemo with internalLayers dependency",
-      "special_case": "internalLayers = 0 returns empty array (no grid)"
-    },
-    "radial_grid_lines": {
-      "pattern": "Lines radiating from center to polygon vertices",
-      "hook": "usePolygonGrid",
-      "generation": {
-        "count": "n (number of axes/vertices)",
-        "angle_calculation": "(index * 2π) / n",
-        "path_creation": "Skia.Path.Make()",
-        "drawing": "moveTo(center) → lineTo(vertex) for each line"
-      },
-      "optimization": "useDerivedValue recalculates only when dependencies change"
-    },
-    "text_label_rotation": {
-      "pattern": "Rotate text labels around center to align with axes",
-      "component": "Group with transform prop",
-      "transform": "{ rotate: ((2π) / valuesLength) * index }",
-      "origin": "{ x: centerX.value, y: centerY.value }",
-      "text_positioning": {
-        "x": "Centered using font.measureText(item).width / 2",
-        "y": "Fixed offset (20) from center",
-        "rotation_effect": "Text rotates to align with corresponding axis"
-      },
-      "font_measurement": "Dynamic width calculation for perfect centering"
-    },
-    "data_point_rendering": {
-      "component": "Points (Skia)",
-      "calculation": {
-        "angle": "index * ((2π) / values.length)",
-        "x": "centerX.value + sin(angle) * radius.value * value",
-        "y": "centerY.value - cos(angle) * radius.value * value"
-      },
-      "points_array": "Array of {x, y} objects for each data point",
-      "styling": {
-        "color": "Darkened version of polygon color",
-        "style": "fill",
-        "strokeWidth": "strokeWidth * 4 (larger than path stroke)",
-        "strokeCap": "round"
-      },
-      "derived_value": "useDerivedValue updates points when data changes"
-    },
-    "color_manipulation": {
-      "pattern": "Darken fill color for stroke/point color",
-      "implementation": "Color(pathColor).darken(0.1).hex()",
-      "purpose": "Create visual distinction between fill and outline",
-      "darken_amount": 0.1,
-      "benefit": "Automatic harmonious color scheme generation"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "size",
-        "type": "SharedValue<{ width: number, height: number }>",
-        "scope": "useCanvasLayout hook",
-        "initial": "{ width: canvasSize, height: canvasSize }",
-        "purpose": "Canvas dimensions passed to Canvas onSize prop"
-      },
-      {
-        "name": "centerX",
-        "type": "DerivedValue<number>",
-        "scope": "useCanvasLayout hook",
-        "calculation": "size.value.width / 2",
-        "dependencies": [
-          "size"
-        ],
-        "purpose": "Horizontal center coordinate for all positioning"
-      },
-      {
-        "name": "centerY",
-        "type": "DerivedValue<number>",
-        "scope": "useCanvasLayout hook",
-        "calculation": "size.value.height / 2",
-        "dependencies": [
-          "size"
-        ],
-        "purpose": "Vertical center coordinate for all positioning"
-      },
-      {
-        "name": "radius",
-        "type": "DerivedValue<number>",
-        "scope": "RadarChart component",
-        "calculation": "Math.min(centerX.value, centerY.value) * 0.82 - dotStrokeWidth / 2",
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "dotStrokeWidth"
-        ],
-        "purpose": "Maximum radius for polygon, scaled to 82% with stroke adjustment"
-      },
-      {
-        "name": "currentData",
-        "type": "SharedValue<RadarDataType<K>>",
-        "scope": "useUnwrappedValues hook",
-        "initial": "dataArray",
-        "updates": "Set to interpolated position on animation interruption",
-        "purpose": "Current animation state for smooth transitions"
-      },
-      {
-        "name": "targetData",
-        "type": "SharedValue<RadarDataType<K>>",
-        "initial": "dataArray",
-        "scope": "useUnwrappedValues hook",
-        "updates": "Set to new data when data prop changes",
-        "purpose": "Target state for interpolation"
-      },
-      {
-        "name": "progress",
-        "type": "SharedValue<number>",
-        "scope": "useUnwrappedValues hook",
-        "initial": 1,
-        "range": "0 to 1",
-        "animation": "withTiming(1, { duration: 150 })",
-        "purpose": "Animation progress for data interpolation"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "pathByIntensity",
-        "scope": "RadarChart component",
-        "calculation": "layerIntensities.map(intensity => getPolygonPath(Array(n).fill(intensity)))",
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "radius",
-          "valuesLength",
-          "layerIntensities"
-        ],
-        "purpose": "Generate polygon paths for each grid layer"
-      },
-      {
-        "name": "internalConnectedLinesFromCenter",
-        "scope": "usePolygonGrid hook",
-        "calculation": "Skia path with lines from center to each vertex",
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "radius",
-          "n"
-        ],
-        "purpose": "Radial grid lines path"
-      },
-      {
-        "name": "internalPaths",
-        "scope": "RadarChart component",
-        "calculation": "allValues.value.map(values => getPolygonPath(values))",
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "radius",
-          "allValues"
-        ],
-        "purpose": "Data polygon paths for each series"
-      },
-      {
-        "name": "internalPoints",
-        "scope": "RadarChart component",
-        "calculation": "Calculate {x, y} coordinates for all data points",
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "radius",
-          "allValues"
-        ],
-        "purpose": "Data point positions for Points component"
-      },
-      {
-        "name": "allValues",
-        "scope": "useUnwrappedValues hook",
-        "calculation": "Interpolate between currentData and targetData based on progress",
-        "dependencies": [
-          "data",
-          "progress"
-        ],
-        "purpose": "Animated values array for all data series"
-      },
-      {
-        "name": "transformOrigin",
-        "scope": "RadarChart component",
-        "calculation": "{ x: centerX.value, y: centerY.value }",
-        "dependencies": [
-          "centerX",
-          "centerY"
-        ],
-        "purpose": "Rotation origin for text labels"
-      }
-    ],
-    "worklet_functions": [
-      {
-        "name": "getPolygonPath",
-        "type": "useCallback",
-        "signature": "(pathValues: number[]) => SkPath",
-        "worklet": true,
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "radius"
-        ],
-        "purpose": "Memoized worklet to generate polygon paths",
-        "calls": "getScaledPolygonPath utility function"
-      }
-    ],
-    "memoization_strategies": {
-      "layerIntensities": {
-        "hook": "useMemo",
-        "dependencies": [
-          "internalLayers"
-        ],
-        "purpose": "Avoid recalculating intensity array on every render",
-        "calculation": "Array(internalLayers).fill(1).map((_, i) => 1 - i/internalLayers)"
-      },
-      "textSkills": {
-        "hook": "useMemo",
-        "dependencies": [
-          "data"
-        ],
-        "purpose": "Extract axis labels from first data item",
-        "calculation": "Object.keys(dataArray[0]?.values ?? {})"
-      },
-      "valuesLength": {
-        "hook": "useMemo",
-        "dependencies": [
-          "data",
-          "isSharedValue"
-        ],
-        "purpose": "Calculate maximum number of axes across all data series",
-        "calculation": "Math.max(...data.map(item => Object.keys(item.values).length))"
-      }
-    },
-    "animation_cancellation": {
-      "pattern": "Cancel previous animation before starting new one",
-      "implementation": "cancelAnimation(progress) in useEffect",
-      "benefit": "Prevents animation conflicts and ensures smooth transitions",
-      "location": "useUnwrappedValues hook"
-    }
-  },
-  "component_architecture": {
-    "radar_chart": {
-      "type": "Generic component with TypeScript generics",
-      "generic_parameter": "K extends string",
-      "benefit": "Type-safe axis keys (e.g., 'Checkmate' | 'Fork' | ...)",
-      "props": {
-        "data": {
-          "type": "Readonly<SharedValue<RadarDataType<K>>> | Readonly<RadarDataType<K>>",
-          "required": true,
-          "flexibility": "Accepts both SharedValue and regular array",
-          "description": "Array of data series with values object"
-        },
-        "strokeWidth": {
-          "type": "number",
-          "default": 1,
-          "description": "Width of grid lines and polygon strokes"
-        },
-        "internalLayers": {
-          "type": "number",
-          "default": 4,
-          "description": "Number of concentric grid polygons"
-        },
-        "showGrid": {
-          "type": "boolean",
-          "default": true,
-          "description": "Show/hide radial grid lines from center"
-        },
-        "strokeColor": {
-          "type": "string",
-          "default": "white",
-          "description": "Color for grid lines and layer outlines"
-        },
-        "font": {
-          "type": "SkFont | null",
-          "required": false,
-          "description": "Skia font for axis labels"
-        },
-        "style": {
-          "type": "StyleProp<ViewStyle>",
-          "required": false,
-          "description": "Canvas style (width/height/aspectRatio)"
-        }
-      }
-    },
-    "data_type_definition": {
-      "name": "RadarDataType<K extends string>",
-      "structure": "Array of objects",
-      "object_shape": {
-        "color": "Optional string (RGBA or hex color)",
-        "values": "Object with keys of type K and number values (0-1 normalized)"
-      },
-      "example": [
-        {
-          "color": "rgba(255,255,0,0.2)",
-          "values": {
-            "Checkmate": 1,
-            "Deflection": 0.6,
-            "Endgame": 0.1,
-            "Fork": 0.1,
-            "Sacrifice": 0.5
-          }
-        }
+      "hooks": [
+        "useCallback",
+        "useEffect",
+        "useMemo",
+        "useState"
       ],
-      "constraints": {
-        "values_range": "Recommended 0-1 for proper scaling",
-        "color_format": "Any valid CSS color (RGBA, hex, named)",
-        "keys_consistency": "All data items should have same keys for proper rendering"
-      }
+      "functions": [],
+      "components": []
     },
-    "demo_container": {
-      "type": "Example implementation",
-      "state": "useState with randomly generated data",
-      "data_generation": {
-        "function": "generateRandomDataChart",
-        "axes": [
-          "Checkmate",
-          "Deflection",
-          "Endgame",
-          "Fork",
-          "Sacrifice"
-        ],
-        "series_count": 2,
-        "value_generation": "Math.random()",
-        "colors": [
-          "rgba(255,255,0,0.2)",
-          "rgba(0,255,255,0.3)"
-        ]
-      },
-      "interaction": {
-        "button": "Shuffle button to regenerate random data",
-        "action": "setData(generateRandomDataChart())",
-        "effect": "Triggers smooth animated transition to new values"
-      },
-      "styling": {
-        "background": "black",
-        "canvas_style": "{ width: windowWidth, aspectRatio: 1 }",
-        "responsive": "Square canvas that fills screen width"
-      }
-    }
-  },
-  "mathematical_calculations": {
-    "polar_to_cartesian_conversion": {
-      "formula": {
-        "x": "centerX + sin(angle) * radius * value",
-        "y": "centerY - cos(angle) * radius * value"
-      },
-      "angle_calculation": "index * (2π / n)",
-      "angle_zero": "Top of canvas (12 o'clock position)",
-      "rotation_direction": "Clockwise",
-      "note": "Negative y because screen coordinates increase downward"
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "radius_calculation": {
-      "formula": "Math.min(centerX, centerY) * 0.82 - dotStrokeWidth / 2",
-      "min_reason": "Ensure circle fits within canvas (handle non-square canvases)",
-      "scale_factor": 0.82,
-      "scale_purpose": "Leave margin around chart (18% padding)",
-      "stroke_adjustment": "Subtract half dot stroke to prevent clipping"
-    },
-    "intensity_scaling": {
-      "formula": "1 - (index / internalLayers)",
-      "purpose": "Create evenly spaced concentric polygons",
-      "example": "4 layers: [1.0, 0.75, 0.5, 0.25]",
-      "visual_result": "Outermost polygon at 100%, innermost at 25% of radius"
-    },
-    "interpolation_math": {
-      "function": "interpolate(progress, [0, 1], [currentValue, targetValue], CLAMP)",
-      "progress_range": "0 (start) to 1 (end)",
-      "clamp": "Prevents extrapolation beyond range",
-      "applied_to": "Each individual data point value",
-      "granularity": "Per-value interpolation for smooth morphing"
-    }
-  },
-  "performance_optimizations": {
-    "worklet_annotations": {
+    "react-native-reanimated": {
+      "imports": [
+        "cancelAnimation",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring"
+      ],
+      "hooks": [
+        "useDerivedValue",
+        "useSharedValue"
+      ],
       "functions": [
-        "getScaledPolygonPath",
-        "unwrapRef",
-        "getPolygonPath (useCallback)"
+        "cancelAnimation",
+        "interpolate",
+        "withSpring"
       ],
-      "benefit": "Execute on UI thread without bridge crossing",
-      "critical_for": "Smooth polygon updates during animation"
-    },
-    "derived_value_chains": {
-      "pattern": "Derived values depend on other derived values",
-      "example": "size → centerX/centerY → radius → polygonPaths",
-      "benefit": "Automatic recalculation only when necessary",
-      "efficiency": "Reanimated tracks dependencies and minimizes work"
-    },
-    "useMemo_optimizations": [
-      {
-        "location": "layerIntensities calculation",
-        "dependencies": [
-          "internalLayers"
-        ],
-        "prevents": "Array recalculation on every render"
-      },
-      {
-        "location": "textSkills extraction",
-        "dependencies": [
-          "data"
-        ],
-        "prevents": "Object.keys recalculation on every render"
-      },
-      {
-        "location": "valuesLength calculation",
-        "dependencies": [
-          "data",
-          "isSharedValue"
-        ],
-        "prevents": "Max calculation on every render"
-      },
-      {
-        "location": "Canvas layout calculations",
-        "dependencies": [
-          "canvasStyle"
-        ],
-        "prevents": "StyleSheet.flatten on every render"
-      }
-    ],
-    "useCallback_optimizations": [
-      {
-        "location": "getPolygonPath",
-        "dependencies": [
-          "centerX",
-          "centerY",
-          "radius"
-        ],
-        "benefit": "Stable function reference for derived values",
-        "worklet": true
-      }
-    ],
-    "animation_interruption_handling": {
-      "technique": "Save interpolated position on interruption",
-      "benefit": "No visual jump when new data arrives mid-animation",
-      "implementation": "Calculate current interpolated state and set as new currentData",
-      "performance": "Prevents animation restart from original position"
-    },
-    "skia_performance": {
-      "rendering": "GPU-accelerated via Skia",
-      "thread": "UI thread (no JavaScript thread involvement)",
-      "path_generation": "Efficient Skia.Path.Make() with direct operations",
-      "benefit": "Smooth 60fps even with complex polygons and multiple layers"
-    },
-    "conditional_rendering": {
-      "grid_visibility": "showGrid prop to skip rendering radial lines",
-      "layer_count": "internalLayers = 0 skips grid layer rendering",
-      "font_check": "font && <Text> prevents rendering when font not loaded",
-      "benefit": "Render only necessary elements"
-    },
-    "early_return_optimization": {
-      "location": "useUnwrappedValues - allValues derived value",
-      "pattern": "if (progress.value === 1) return target",
-      "benefit": "Skip interpolation calculation when animation complete"
+      "components": []
     }
   },
-  "use_cases": {
-    "primary": [
-      "Data visualization for multi-dimensional metrics",
-      "Skill/ability comparison charts",
-      "Performance analytics dashboards",
-      "Character statistics in games",
-      "Product comparison tools",
-      "Employee performance reviews",
-      "Sports player statistics",
-      "Nutritional value comparisons",
-      "Competitor analysis",
-      "Survey result visualization"
-    ],
-    "secondary": [
-      "Educational statistics visualization",
-      "Health and fitness tracking",
-      "Financial portfolio analysis",
-      "Team performance metrics",
-      "Quality assessment across categories",
-      "Multi-criteria decision analysis",
-      "Risk assessment visualizations"
-    ],
-    "real_world_examples": [
-      "Chess skill breakdown (as in demo)",
-      "RPG character stats (strength, agility, intelligence, etc.)",
-      "Product ratings across features",
-      "Employee skills matrix",
-      "Sports player attributes (FIFA/NBA games)",
-      "Website performance metrics",
-      "Brand perception across dimensions"
-    ],
-    "educational": [
-      "Teaching data visualization principles",
-      "Demonstrating Skia polygon rendering",
-      "Learning about polar coordinate systems",
-      "Understanding data interpolation",
-      "Exploring animation state management"
-    ]
-  },
-  "code_quality": {
-    "strengths": [
-      "Full TypeScript with generic type parameters",
-      "Comprehensive inline comments explaining complex logic",
-      "Proper worklet annotations for UI thread execution",
-      "Well-structured hook separation (layout, grid, values)",
-      "Memoization for performance optimization",
-      "Type-safe data handling with generics",
-      "Clean separation of concerns (components, hooks, utils)",
-      "Flexible data input (SharedValue or regular array)",
-      "Robust animation interruption handling",
-      "Detailed algorithm explanations in comments"
-    ],
-    "areas_for_improvement": [
-      "Could extract magic numbers to constants (0.82 radius scale, 150ms duration)",
-      "ESLint warning about rules-of-hooks in map (using useDerivedValue in loops)",
-      "Could add prop validation or runtime checks for data shape",
-      "Missing error handling for invalid data (empty arrays, negative values)",
-      "Could add accessibility labels for screen readers",
-      "Font measurement assumes font is loaded (no loading state)",
-      "No fallback for missing color property in data",
-      "Could add JSDoc comments for exported types and components",
-      "Timezone offset calculation in example (not related to radar chart itself)"
-    ],
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "generics": "Generic K extends string for type-safe axis keys",
-      "type_definitions": [
-        "RadarDataType<K>",
-        "RadarChartProps<K>",
-        "GetScaledPolygonPath",
-        "UsePolygonGridParams"
-      ],
-      "type_imports": "Proper imports from Reanimated and Skia",
-      "type_safety": "Compile-time checks for data shape consistency"
-    },
-    "documentation": {
-      "inline_comments": "Excellent - detailed explanations of algorithms",
-      "function_descriptions": "Clear purpose statements for hooks and utilities",
-      "algorithm_explanations": "Step-by-step breakdown of complex calculations",
-      "examples": "Data example provided in demo file comments",
-      "missing": "JSDoc for public API, README for component usage"
-    },
-    "naming": {
-      "components": "PascalCase (RadarChart)",
-      "hooks": "camelCase with 'use' prefix (useCanvasLayout)",
-      "functions": "camelCase (getScaledPolygonPath)",
-      "types": "PascalCase (RadarDataType)",
-      "clarity": "Descriptive names that convey purpose"
-    },
-    "component_structure": {
-      "main_component": "RadarChart - Core rendering logic",
-      "demo": "RadarChartContainer - Example usage",
-      "hooks": "Three focused hooks with single responsibilities",
-      "utils": "Pure functions for calculations",
-      "modularity": "Well-organized file structure"
-    }
-  },
-  "known_limitations": {
-    "eslint_rules_violation": {
-      "issue": "useDerivedValue called inside map function",
-      "location": "layerIntensities.map() and allValues.value.map()",
-      "eslint_comment": "// eslint-disable-next-line react-hooks/rules-of-hooks",
-      "reason": "Creating derived values for dynamic array items",
-      "impact": "Works but violates React hooks rules",
-      "alternative": "Could restructure to avoid hooks in loops"
-    },
-    "data_validation": {
-      "missing": "No validation for data array structure",
-      "could_fail": [
-        "Empty data array",
-        "Mismatched keys between data items",
-        "Values outside 0-1 range",
-        "Missing values object",
-        "Non-numeric values"
-      ],
-      "recommendation": "Add runtime validation or TypeScript strict checks"
-    },
-    "font_loading": {
-      "issue": "No check if font is loaded successfully",
-      "current": "font && <Text> guards against null",
-      "missing": "Loading state or error handling",
-      "impact": "Labels won't render if font fails to load"
-    },
-    "fixed_styling": {
-      "dot_stroke_width": "Hardcoded as strokeWidth * 4",
-      "text_y_position": "Hardcoded at y={20}",
-      "radius_scale": "Hardcoded at 0.82",
-      "improvement": "Make these configurable via props"
-    },
-    "accessibility": {
-      "missing": "No accessibility labels or screen reader support",
-      "canvas_limitation": "Skia canvas not accessible to screen readers",
-      "recommendation": "Add invisible accessibility elements describing data"
-    },
-    "color_fallback": {
-      "issue": "Optional color property in data",
-      "current_behavior": "Undefined if not provided",
-      "impact": "Rendering may fail without color",
-      "should_add": "Default color or validation"
-    },
-    "animation_duration": {
-      "hardcoded": "150ms in useUnwrappedValues",
-      "improvement": "Make configurable via prop",
-      "current": "No way to adjust animation speed"
-    },
-    "polygon_complexity": {
-      "limitation": "Performance may degrade with very large number of axes",
-      "practical_limit": "~20-30 axes for smooth performance",
-      "issue": "Many derived values and path calculations"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Interactive data points (tap to show value)",
-      "Tooltip on hover/press showing exact values",
-      "Legend component for multi-series charts",
-      "Axis value labels (0%, 25%, 50%, 75%, 100%)",
-      "Min/max value indicators",
-      "Data export functionality",
-      "Screenshot/share feature",
-      "Zoom and pan interactions",
-      "Multiple chart types (filled vs outline only)",
-      "Configurable polygon shapes (circular radar vs sharp polygon)"
-    ],
-    "visual_enhancements": [
-      "Gradient fills for polygons",
-      "Glow effects on data points",
-      "Animated data point pulses",
-      "Shadow effects on polygons",
-      "Customizable grid line styles (dashed, dotted)",
-      "Different stroke caps and joins",
-      "Background patterns or textures",
-      "Theme support (light/dark modes)",
-      "Custom axis label positioning",
-      "Icon support for axis labels"
-    ],
-    "animation_improvements": [
-      "Configurable animation duration and easing",
-      "Staggered animation for multiple series",
-      "Entry animation on mount",
-      "Rotation animation option",
-      "Scale animation option",
-      "Sequential value updates (one axis at a time)",
-      "Spring physics option instead of timing",
-      "Custom interpolation curves"
-    ],
-    "interaction_patterns": [
-      "Drag data points to update values",
-      "Pinch to zoom chart",
-      "Pan to rotate chart",
-      "Tap axis label to highlight series",
-      "Swipe to switch between data sets",
-      "Long press for detailed information",
-      "Haptic feedback on interactions"
-    ],
-    "customization": [
-      "Configurable color schemes",
-      "Custom shape renderers for data points",
-      "Adjustable padding/margins",
-      "Flexible axis label rendering (custom components)",
-      "Configurable grid density",
-      "Custom polygon fill patterns",
-      "Border radius for data points",
-      "Stroke dash patterns"
-    ],
-    "data_features": [
-      "Auto-normalization of values to 0-1 range",
-      "Support for negative values (dual-axis radar)",
-      "Percentage vs absolute value modes",
-      "Data aggregation functions (avg, max, min)",
-      "Time-series radar charts",
-      "Comparative mode (show difference between series)",
-      "Baseline value support",
-      "Missing data handling (gaps in polygons)"
-    ],
-    "performance": [
-      "Virtualization for very complex charts",
-      "LOD (level of detail) for distant grid layers",
-      "Configurable quality vs performance tradeoff",
-      "Lazy rendering for off-screen charts",
-      "Memoize more expensive calculations",
-      "Reduce unnecessary re-renders"
-    ],
-    "accessibility": [
-      "Screen reader support with data description",
-      "Keyboard navigation",
-      "High contrast mode",
-      "Alternative text representations",
-      "Sonification (audio representation of data)",
-      "Configurable text sizes",
-      "Color blind friendly palettes"
-    ],
-    "developer_experience": [
-      "JSDoc documentation for all public APIs",
-      "Storybook examples",
-      "Unit tests for calculations",
-      "Integration tests for animations",
-      "TypeScript strict mode compatibility",
-      "Error boundaries",
-      "Developer warnings for invalid data",
-      "Debug mode with value overlays"
-    ]
-  },
-  "key_insights": {
-    "animation_interruption": "Proper handling of animation interruptions prevents visual jumps and creates smooth transitions even when data changes rapidly",
-    "generic_types": "TypeScript generics enable type-safe axis keys while maintaining component flexibility",
-    "polar_coordinates": "Radar charts are fundamentally polar coordinate systems converted to cartesian for rendering",
-    "derived_value_chains": "Chaining derived values (size → center → radius → paths) creates elegant reactive data flow",
-    "worklet_importance": "Worklet annotations are critical for smooth 60fps polygon animations on UI thread",
-    "skia_efficiency": "Skia path generation is more efficient than multiple View/SVG components for complex shapes",
-    "interpolation_granularity": "Per-value interpolation creates smooth morphing between polygons rather than cross-fade",
-    "memoization_strategy": "Strategic memoization of geometry calculations prevents unnecessary recalculation overhead",
-    "color_harmony": "Automatic color darkening creates visual hierarchy between fill and stroke",
-    "responsive_sizing": "Canvas sizing via style prop with aspectRatio enables flexible responsive layouts",
-    "data_flexibility": "Supporting both SharedValue and regular arrays makes component usable in various contexts"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic Skia rendering with Canvas and Path",
-      "SharedValue and useDerivedValue basics",
-      "useState for simple interactions",
-      "Understanding polar vs cartesian coordinates",
-      "Basic animation with withTiming"
-    ],
-    "for_intermediate": [
-      "TypeScript generics for flexible components",
-      "Complex derived value chains and dependencies",
-      "Animation interruption and cancellation",
-      "Worklet functions and UI thread execution",
-      "Skia path generation algorithms",
-      "Color manipulation with libraries",
-      "Custom hook creation for reusable logic",
-      "Data interpolation techniques",
-      "Canvas sizing and layout strategies"
-    ],
-    "for_advanced": [
-      "Advanced animation state management",
-      "Optimizing Skia rendering performance",
-      "Complex geometric calculations (polar to cartesian)",
-      "Building reusable visualization components",
-      "Type-safe generic components with constraints",
-      "Animation performance profiling",
-      "Creating smooth transitions during interruptions",
-      "Managing multiple animation timelines",
-      "Building data visualization libraries"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_victory_native": {
-      "victory": "Full-featured charting library with many chart types",
-      "this_component": "Lightweight, specialized radar chart",
-      "bundle_size": "Much smaller bundle impact",
-      "customization": "More control over rendering and animations",
-      "ease_of_use": "Victory is more plug-and-play"
-    },
-    "vs_recharts": {
-      "recharts": "Web-based charting library (SVG)",
-      "this_component": "Native with Skia (GPU-accelerated)",
-      "performance": "Better mobile performance with Skia",
-      "animations": "More control over animation timing and interruption"
-    },
-    "vs_d3_react_native": {
-      "d3": "Powerful but complex, requires SVG or Canvas wrapper",
-      "this_component": "Simpler, focused on one chart type",
-      "learning_curve": "Much easier to understand and modify",
-      "flexibility": "D3 more flexible, this more opinionated"
-    },
-    "vs_svg_implementation": {
-      "svg": "Standard approach using react-native-svg",
-      "skia": "GPU-accelerated, better performance",
-      "benefit": "Skia runs on UI thread, SVG crosses bridge",
-      "trade_off": "SVG more familiar to web developers"
-    }
-  },
-  "design_patterns": {
-    "composition_pattern": {
-      "hooks": "Three specialized hooks for different concerns",
-      "useCanvasLayout": "Canvas dimensions and center",
-      "usePolygonGrid": "Grid line generation",
-      "useUnwrappedValues": "Data unwrapping and animation",
-      "benefit": "Each hook has single responsibility, easily testable"
-    },
-    "render_props_alternative": {
-      "current": "All rendering done in component",
-      "could_add": "Custom renderers for data points, labels, grid",
-      "benefit": "More flexibility for advanced customization"
-    },
-    "controlled_vs_uncontrolled": {
-      "current": "Controlled component (data prop)",
-      "animation_state": "Internally managed (progress SharedValue)",
-      "benefit": "Simple API while handling animation complexity internally"
-    },
-    "generic_constraints": {
-      "pattern": "K extends string ensures type safety",
-      "benefit": "Compile-time checks for axis key consistency",
-      "flexibility": "Works with any set of string keys"
-    }
-  },
-  "testing_considerations": {
-    "unit_tests": [
-      "getScaledPolygonPath produces correct coordinates",
-      "unwrapRef handles both SharedValue and regular values",
-      "useCanvasLayout calculates correct center points",
-      "Layer intensity calculation produces correct array",
-      "Value length calculation handles multiple data items",
-      "Angle calculations are correct (polar to cartesian)"
-    ],
-    "integration_tests": [
-      "Data changes trigger animations",
-      "Animation completes in expected time",
-      "Animation interruption handles mid-flight changes",
-      "Multiple data series render correctly",
-      "Grid layers render with correct intensities",
-      "Text labels rotate correctly"
-    ],
-    "visual_tests": [
-      "Polygons render at correct positions",
-      "Data points align with polygon vertices",
-      "Grid lines extend from center to edges",
-      "Text labels are centered and readable",
-      "Colors match data specification",
-      "Stroke widths are correct"
-    ],
-    "animation_tests": [
-      "Smooth interpolation between values",
-      "No visual jumps during data changes",
-      "Animation cancellation works correctly",
-      "Progress value goes from 0 to 1",
-      "Interruption saves correct intermediate state"
-    ],
-    "edge_cases": [
-      "Empty data array",
-      "Single data point",
-      "Single axis",
-      "Very large number of axes (20+)",
-      "All values at 0",
-      "All values at 1",
-      "Negative values",
-      "Values > 1",
-      "Missing color property",
-      "Null/undefined font",
-      "Zero internalLayers",
-      "Very fast data updates",
-      "Data shape mismatch between items"
-    ],
-    "performance_tests": [
-      "60fps during animation",
-      "Memory stable across many data changes",
-      "No memory leaks from animation cleanup",
-      "Worklet execution time is minimal",
-      "Derived value recalculation is optimized"
-    ]
-  },
-  "accessibility_recommendations": {
-    "current_state": "No accessibility support",
-    "should_add": [
-      "Accessible label describing chart purpose",
-      "Accessible value announcing current data",
-      "Alternative text representation of data",
-      "Semantic description of trends and insights",
-      "Support for screen reader navigation",
-      "Keyboard controls for data exploration",
-      "High contrast mode for visibility",
-      "Configurable color schemes for color blindness",
-      "Text size adjustments",
-      "Focus indicators for interactive elements"
-    ],
-    "implementation_suggestions": {
-      "aria_labels": "Wrap Canvas in View with accessibilityLabel",
-      "data_description": "Generate text summary of data values",
-      "screen_reader": "Announce data changes when values update",
-      "keyboard": "Add focusable elements for keyboard navigation",
-      "reduced_motion": "Disable animations when prefers-reduced-motion is enabled",
-      "sonification": "Consider audio cues for data values"
-    }
-  },
-  "bundle_size_impact": {
-    "component_size": "~400 lines across all files",
-    "dependencies": {
-      "skia": "Already in project (2.2.12)",
-      "reanimated": "Already in project (~4.1.1)",
-      "color": "Small library (~4.2.3)",
-      "react": "Core dependency"
-    },
-    "runtime_memory": "Minimal - few SharedValues, efficient path generation",
-    "estimated_impact": "< 10KB additional (color library + component code)"
-  },
-  "tags": [
-    "radar-chart",
-    "spider-chart",
-    "data-visualization",
-    "skia",
-    "reanimated",
-    "animated-chart",
-    "polygon-rendering",
-    "multi-dimensional-data",
-    "statistics",
-    "metrics",
-    "performance-chart",
-    "skill-chart",
-    "comparison-chart",
-    "polar-coordinates",
-    "interpolation",
-    "worklets",
-    "ui-thread",
-    "gpu-accelerated",
-    "generic-types",
-    "typescript"
+  "hooks": [
+    "useCallback",
+    "useCanvasLayout",
+    "useDerivedValue",
+    "useEffect",
+    "useFont",
+    "useMemo",
+    "usePolygonGrid",
+    "useSharedValue",
+    "useState",
+    "useUnwrappedValues",
+    "useWindowDimensions"
   ],
-  "content_hash": "20a064b3551491c394611cae2a27debba1c43743ac897c206f3ca6501c8ad669",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.414Z",
-  "last_validated": "2025-10-12T09:19:28.414Z"
+  "functions": [
+    "Color",
+    "cancelAnimation",
+    "generateRandomDataChart",
+    "getPolygonPath",
+    "getScaledPolygonPath",
+    "interpolate",
+    "require",
+    "setData",
+    "withSpring"
+  ],
+  "components": [
+    "Canvas",
+    "Group",
+    "Path",
+    "Points",
+    "PressableScale",
+    "RadarChart",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "derived-computation",
+    "spring-animation",
+    "value-interpolation",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "spring-physics",
+    "value-mapping",
+    "canvas-rendering"
+  ],
+  "stats": {
+    "total_files": 8,
+    "total_packages": 6,
+    "total_hooks": 11,
+    "total_functions": 9,
+    "total_components": 8,
+    "total_patterns": 5,
+    "total_techniques": 3
+  }
 }

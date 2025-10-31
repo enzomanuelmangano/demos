@@ -1,69 +1,142 @@
 {
-  "animation_name": "Toast Notifications",
   "animation_slug": "toast",
-  "description": "A lightweight, swipeable toast notification system with automatic stacking, smooth spring animations, and gesture-based dismissal. Features dynamic ID management, auto-dismiss functionality, customizable leading icons, and support for titles with optional subtitles. Toasts stack vertically from the bottom with progressive scaling and opacity effects, creating a polished notification experience perfect for user feedback and alerts.",
-  "main_features": [
-    "Stacked toast notifications with vertical layering",
-    "Swipe-to-dismiss gesture (left swipe only)",
-    "Automatic ID management and re-ordering on dismiss",
-    "Dynamic bottom positioning based on toast count",
-    "Spring animations for smooth entrance and position updates",
-    "Auto-dismiss functionality with configurable timeout",
-    "Custom leading icons via render function",
-    "Support for title and optional subtitle",
-    "Progressive scaling effect for stacked toasts",
-    "Opacity fade for inactive toasts",
-    "Duplicate prevention via key system",
-    "Maximum toast limit (6 toasts)",
-    "Seamless entrance from below screen",
-    "Platform-optimized shadows and styling",
-    "Continuous border curve for iOS styling"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.832Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Main demo app with toast showcase and PressableScale trigger button"
-    },
-    "components": {
-      "toast-manager/toast-provider.tsx": "Context provider managing toast state and rendering orchestration",
-      "toast-manager/toast.tsx": "Individual toast component with gesture handling and animations",
-      "toast-manager/context.ts": "Context definition with ToastType interface and useToast hook",
-      "toast-manager/index.ts": "Barrel export for toast manager system"
-    },
-    "hooks": {
-      "toast-manager/context.ts": "useToast hook for accessing toast context methods"
-    },
-    "types": {
-      "defined_in": "toast-manager/context.ts",
-      "types": [
-        "ToastType (id, title, subtitle, leading, key, autodismiss)"
-      ]
-    },
-    "constants": {
-      "inline": {
-        "ToastOffset": "20px between toasts",
-        "ToastHeight": "70px",
-        "HideToastOffset": "90px (ToastOffset + ToastHeight)",
-        "BaseSafeArea": "50px from bottom"
-      }
-    },
-    "assets": "None",
-    "utils": "None"
+    "entry": "toast-manager/index.ts",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": [
+      "toast-manager/context.ts",
+      "toast-manager/hooks.ts",
+      "toast-manager/toast-provider.tsx",
+      "toast-manager/toast.tsx"
+    ]
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "threading": "react-native-worklets",
-    "interactions": "pressto",
-    "icons": "@expo/vector-icons",
-    "state_management": "React Context API",
-    "pattern": "Stacked toast notifications with gesture-based dismissal"
+  "packages": [
+    "@expo/vector-icons",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./context": {
+      "imports": [
+        "InternalToastContext",
+        "ToastContext"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks": {
+      "imports": [
+        "useInternalToast"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./toast": {
+      "imports": [
+        "Toast"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./toast-manager": {
+      "imports": [
+        "ToastProvider",
+        "useToast"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "AntDesign"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "createContext",
+        "useCallback",
+        "useContext",
+        "useEffect",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
       "hooks": [
+        "useCallback",
+        "useContext",
+        "useEffect",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "useAnimatedStyle",
         "useSharedValue",
-        "useAnimatedStyle"
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedStyle",
+        "useSharedValue"
       ],
       "functions": [
         "withSpring",
@@ -71,830 +144,76 @@
       ],
       "components": [
         "Animated.View"
-      ],
-      "critical_feature": "Spring animations for smooth toast entrance and gesture-driven exit"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector",
-        "GestureHandlerRootView"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "events": [
-        "onBegin",
-        "onUpdate",
-        "onEnd",
-        "onFinalize"
-      ],
-      "usage": "Pan gesture for left-swipe-to-dismiss on active toast"
+      ]
     },
     "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
+      "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Bridge worklet callbacks to JS thread for onDismiss state updates",
-      "critical_for": "Calling React setState from gesture handlers"
-    },
-    "pressto": {
-      "version": "0.3.5-beta.1",
-      "components": [
-        "PressableScale"
-      ],
-      "usage": "Demo trigger button with scale press animation"
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "components": [
-        "AntDesign"
-      ],
-      "usage": "Leading icons in toast notifications (check-circle, shake, swap, smile, user, twitter)",
-      "icon_count": 6
-    },
-    "react": {
-      "version": "19.1.0",
-      "hooks": [
-        "useState",
-        "useCallback",
-        "useMemo",
-        "useRef",
-        "useContext",
-        "useEffect"
-      ],
-      "context": [
-        "createContext"
-      ]
-    },
-    "react-native": {
-      "hooks": [
-        "useWindowDimensions"
-      ],
-      "components": [
-        "View",
-        "Text",
-        "StyleSheet"
-      ],
-      "usage": "Window dimensions for responsive sizing and positioning"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "toast_entrance": {
-      "pattern": "Spring animation from below screen",
-      "initial_position": {
-        "first_toast": "-HideToastOffset (-90px, below screen)",
-        "subsequent_toasts": "BaseSafeArea + (previousId - 1) * ToastOffset"
-      },
-      "final_position": "BaseSafeArea + (toast.id * ToastOffset)",
-      "animation": "withSpring(BaseSafeArea + toast.id * ToastOffset)",
-      "spring_config": "Default spring configuration",
-      "effect": "Toast slides up from bottom with natural spring bounce",
-      "trigger": "useEffect watching toast.id changes",
-      "note": "First toast animates from below screen, others from previous position"
-    },
-    "swipe_to_dismiss": {
-      "gesture": "Gesture.Pan()",
-      "direction": "Left only (horizontal swipe, blocks positive translationX)",
-      "threshold": "-50px",
-      "dismiss_animation": "withTiming(-windowWidth, undefined, callback)",
-      "snap_back": "withSpring(0) if swipe < -50px",
-      "lifecycle": [
-        "onBegin: isSwiping = true",
-        "onUpdate: translateX = event.translationX (if < 0)",
-        "onEnd: dismissItem() if translationX < -50, else snap back to 0",
-        "onFinalize: isSwiping = false"
-      ],
-      "completion_callback": "scheduleOnRN(onDismiss, toast.id)",
-      "enabled": "Only on active toast (id === 0)"
-    },
-    "stacking_effect": {
-      "pattern": "Dynamic bottom positioning with scale reduction",
-      "bottom_calculation": "BaseSafeArea + toast.id * ToastOffset",
-      "scale_reduction": {
-        "formula": "1 - toast.id * 0.05",
-        "range": "1.0 (front) to 0.75 (toast 5) and smaller",
-        "step": "5% reduction per stack level",
-        "animation": "withTiming(scale)",
-        "during_swipe": "scale * 0.96 for tactile feedback"
-      },
-      "offset": "20px (ToastOffset) between each toast",
-      "effect": "Toasts stack vertically with progressive scaling, newest at bottom (id=0)",
-      "z_index": "1000 - toast.id (top toast has highest z-index)"
-    },
-    "opacity_fade": {
-      "pattern": "withTiming(toast.id <= 1 ? 1 : 0)",
-      "visible_toasts": "First 2 toasts (id 0 and 1)",
-      "hidden_toasts": "Toasts with id >= 2 fade to opacity 0",
-      "purpose": "Hide content of toasts beyond first two for clean look",
-      "content_target": "rVisibleContainerStyle applied to content wrapper"
-    },
-    "auto_dismiss": {
-      "trigger": "autodismiss property set to true",
-      "condition": "Only active toast (id === 0)",
-      "timeout": "2500ms",
-      "action": "dismissItem() called automatically",
-      "cleanup": "setTimeout cleared on unmount or when toast becomes inactive",
-      "effect": "Toast automatically swipes off-screen after timeout"
-    },
-    "shadow_animation": {
-      "shadow_radius": "Math.max(10 - toast.id * 2, 5)",
-      "range": "10px (front) to 5px (back)",
-      "floor": "Minimum 5px shadow",
-      "effect": "Creates depth perception in stack",
-      "platform": "iOS shadow properties, Android elevation"
-    },
-    "exit_animation": {
-      "type": "Timing animation (withTiming)",
-      "direction": "Horizontal slide to left (-windowWidth)",
-      "callback": "scheduleOnRN to update React state",
-      "id_rebalancing": "Remaining toasts shift down (id decrements)"
-    }
-  },
-  "state_management": {
-    "context_architecture": {
-      "pattern": "Single context with public API",
-      "context": {
-        "name": "ToastContext",
-        "methods": [
-          "showToast"
-        ],
-        "purpose": "Public API for showing toasts",
-        "consumers": "useToast hook, any component needing to show toasts"
-      }
-    },
-    "toast_lifecycle": {
-      "on_show": [
-        "1. Check if too many toasts (> 5), warn and reject",
-        "2. Increment all existing toast IDs by 1",
-        "3. Add new toast with id: 0 to end of array",
-        "4. New toast becomes active (id 0), others shift up",
-        "5. Bottom positions recalculate for all toasts",
-        "6. Spring animations update positions"
-      ],
-      "on_dismiss": [
-        "1. Map over toasts, set matched toast to null",
-        "2. Decrement IDs of all toasts with id > dismissed toast's id",
-        "3. Filter out null values",
-        "4. Remaining toasts animate to new positions"
-      ]
-    },
-    "id_management": {
-      "pattern": "Auto-incrementing IDs with rebalancing",
-      "new_toast_id": "Always 0 (newest toast at bottom of stack)",
-      "id_increment": "All existing toasts increment id by 1 when new toast shows",
-      "id_decrement": "Toasts with id > dismissed toast decrement id by 1",
-      "active_toast": "Toast with id === 0",
-      "benefit": "Consistent positioning logic, no manual ID tracking"
-    },
-    "duplicate_prevention": {
-      "pattern": "Key-based uniqueness check",
-      "default_key": "Toast title (if string)",
-      "custom_key": "Optional key property for same-title toasts",
-      "usage": "Prevents duplicate toasts unless explicitly allowed via custom key"
-    },
-    "shared_values": [
-      {
-        "name": "bottom",
-        "type": "SharedValue<number>",
-        "initial": "-HideToastOffset (first) or BaseSafeArea + offset (subsequent)",
-        "updates": "withSpring on toast.id changes",
-        "scope": "Per toast instance"
-      },
-      {
-        "name": "translateX",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "updates": "Pan gesture translationX, dismiss animation",
-        "scope": "Per toast instance"
-      },
-      {
-        "name": "isSwiping",
-        "type": "SharedValue<boolean>",
-        "initial": false,
-        "updates": "Gesture lifecycle (onBegin, onFinalize)",
-        "scope": "Per toast instance",
-        "purpose": "Track gesture state for scale adjustment during swipe"
-      }
-    ],
-    "react_state": [
-      {
-        "name": "toasts",
-        "type": "ToastType[]",
-        "management": "useState in ToastProvider",
-        "updates": "showToast (adds), onDismiss (removes)",
-        "structure": "{ id: number, title: string | ReactNode, subtitle?: string | ReactNode, leading?: () => ReactNode, key?: string, autodismiss?: boolean }"
-      }
-    ]
-  },
-  "component_architecture": {
-    "ToastProvider": {
-      "type": "Context provider and orchestrator",
-      "responsibilities": [
-        "Manage toasts array state",
-        "Provide showToast method to consumers",
-        "Handle toast ID management and rebalancing",
-        "Enforce maximum toast limit (6 toasts)",
-        "Render sorted toasts with unique keys",
-        "Handle onDismiss callback for toast removal"
-      ],
-      "optimization": "useMemo for context value, useCallback for methods",
-      "rendering": "Maps sortedToasts to Toast components",
-      "key_generation": "toast.key || (typeof toast.title === 'string' ? toast.title : toast.id)"
-    },
-    "Toast": {
-      "type": "Individual toast component (FC)",
-      "props": {
-        "index": "Array index (for key generation)",
-        "toast": "ToastType with all toast properties",
-        "onDismiss": "Callback to remove toast by id"
-      },
-      "responsibilities": [
-        "Render toast content (leading icon, title, subtitle)",
-        "Handle pan gesture for swipe-to-dismiss",
-        "Animate position changes on id updates",
-        "Apply scale and opacity based on stack position",
-        "Manage auto-dismiss timeout if enabled",
-        "Execute exit animations"
-      ],
-      "animations": [
-        "bottom (spring for vertical position)",
-        "translateX (pan gesture and dismiss)",
-        "scale (stack depth and swipe feedback)",
-        "opacity (content visibility for non-active toasts)"
-      ],
-      "gesture": "Pan gesture with left-only swipe constraint, enabled only for active toast"
-    }
-  },
-  "reanimated_patterns": {
-    "useAnimatedStyle_instances": [
-      {
-        "name": "rToastStyle",
-        "target": "Toast container positioning and depth",
-        "properties": [
-          "bottom (vertical position)",
-          "zIndex (stacking order)",
-          "transform: [{ scale }, { translateX }] (depth effect and swipe)"
-        ],
-        "dependencies": [
-          "toast"
-        ]
-      },
-      {
-        "name": "rVisibleContainerStyle",
-        "target": "Toast content visibility",
-        "properties": [
-          "opacity (based on id, visible for id <= 1)"
-        ],
-        "dependencies": [
-          "toast.id"
-        ]
-      }
-    ],
-    "worklet_functions": [
-      {
-        "name": "dismissItem",
-        "directive": "'worklet'",
-        "purpose": "Animate toast off-screen and trigger onDismiss",
-        "animation": "withTiming(-windowWidth, undefined, callback)",
-        "callback": "scheduleOnRN(onDismiss, toast.id)"
-      }
-    ],
-    "spring_configurations": {
-      "toast_position": {
-        "config": "Default spring",
-        "usage": "Position updates and snap back",
-        "feel": "Natural bounce, smooth settling"
-      }
-    },
-    "timing_configurations": {
-      "dismiss_animation": {
-        "duration": "Default withTiming",
-        "property": "translateX to -windowWidth"
-      },
-      "scale_animation": {
-        "duration": "Default withTiming",
-        "property": "scale (during swipe and stack changes)"
-      },
-      "opacity_animation": {
-        "duration": "Default withTiming",
-        "property": "opacity (content visibility)"
-      }
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture": {
-      "type": "Gesture.Pan()",
-      "constraint": "Left swipe only (event.translationX > 0 returns early)",
-      "threshold": "-50px to dismiss",
-      "continuous": true,
-      "enabled": "Only for active toast (isActiveToast = toast.id === 0)",
-      "lifecycle": {
-        "onBegin": "Set isSwiping to true",
-        "onUpdate": "Update translateX if translationX < 0",
-        "onEnd": "Dismiss if < -50px, else snap back to 0",
-        "onFinalize": "Set isSwiping to false"
-      }
-    },
-    "gesture_state": {
-      "isSwiping": {
-        "type": "SharedValue<boolean>",
-        "usage": "Determines scale during swipe (scale * 0.96)",
-        "effect": "Provides tactile feedback during swipe gesture"
-      }
-    },
-    "dismiss_logic": {
-      "condition": "event.translationX < -50",
-      "true": "dismissItem() - animate off-screen",
-      "false": "translateX.value = withSpring(0) - snap back"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "toast_background": "white (#ffffff)",
-      "text_color": "black (default)",
-      "icon_color": "black (default)",
-      "demo_background": "#fff (white)",
-      "demo_button_background": "#111 (black)",
-      "demo_button_text": "white"
-    },
-    "dimensions": {
-      "toast_height": "70px (ToastHeight constant)",
-      "toast_width": "90% of screen width",
-      "toast_horizontal_position": "5% from left (centered)",
-      "border_radius": "20px",
-      "stack_offset": "20px (ToastOffset) between toasts",
-      "base_safe_area": "50px from bottom",
-      "hide_offset": "90px (ToastOffset + ToastHeight)"
-    },
-    "typography": {
-      "title": {
-        "size": "16px",
-        "weight": "bold"
-      },
-      "subtitle": {
-        "size": "13px",
-        "color": "#666"
-      },
-      "demo_button_text": {
-        "color": "white",
-        "weight": "700",
-        "letterSpacing": "1.2",
-        "transform": "uppercase"
-      }
-    },
-    "shadows": {
-      "container": {
-        "ios": {
-          "shadowColor": "#000",
-          "shadowOffset": "{ width: 0, height: 0 }",
-          "shadowRadius": "Math.max(10 - toast.id * 2, 5)",
-          "shadowOpacity": 0.2
-        },
-        "android": {
-          "elevation": 5
-        }
-      }
-    },
-    "border_curve": {
-      "property": "borderCurve: 'continuous'",
-      "platform": "iOS",
-      "radius": "20px",
-      "effect": "Squircle border (Apple-style smooth corners)",
-      "applied_to": [
-        "Toast container",
-        "Demo button"
-      ]
-    }
-  },
-  "layout_and_positioning": {
-    "toast_positioning": {
-      "position": "absolute",
-      "width": "windowWidth * 0.9",
-      "left": "windowWidth * 0.05 (centered)",
-      "bottom": "Animated (BaseSafeArea + toast.id * ToastOffset)",
-      "zIndex": "1000 - toast.id (decreasing for older toasts)"
-    },
-    "demo_layout": {
-      "container": "flex: 1, center alignment, white background",
-      "button": {
-        "paddingHorizontal": "25px",
-        "paddingVertical": "18px",
-        "borderRadius": "25px",
-        "backgroundColor": "#111"
-      }
-    },
-    "responsive_considerations": {
-      "width": "Based on useWindowDimensions (90% of screen)",
-      "positioning": "Dynamic based on window width"
-    }
-  },
-  "performance_optimizations": {
-    "context_optimization": {
-      "pattern": "useMemo for context value",
-      "benefit": "Prevents unnecessary re-renders of consumer components"
-    },
-    "callback_optimization": {
-      "showToast": {
-        "pattern": "useCallback with empty dependencies",
-        "benefit": "Stable function reference"
-      },
-      "onDismiss": {
-        "pattern": "useCallback with empty dependencies",
-        "benefit": "Stable function reference"
-      },
-      "dismissItem": {
-        "pattern": "useCallback (worklet) with dependencies",
-        "benefit": "Worklet function for UI thread execution"
-      }
-    },
-    "sorting_optimization": {
-      "pattern": "useMemo for sortedToasts",
-      "dependencies": "[toasts]",
-      "purpose": "Sort toasts by id only when array changes"
-    },
-    "worklet_optimization": {
-      "dismissItem": "Runs on UI thread for smooth animations",
-      "gesture_handlers": "All gesture callbacks run on UI thread",
-      "scheduleOnRN": "Only bridges to JS thread for React state updates",
-      "benefit": "60fps animations without JS thread bottleneck"
-    },
-    "max_toast_limit": {
-      "limit": 6,
-      "enforcement": "Warning logged, new toast rejected if limit exceeded",
-      "benefit": "Prevents performance degradation with too many toasts"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "User feedback notifications",
-      "Success/error/info messages",
-      "Form submission confirmations",
-      "Network status updates",
-      "Action confirmations",
-      "Non-blocking alerts",
-      "Transient information display"
-    ],
-    "real_world_examples": [
-      "Copy to clipboard confirmation",
-      "Item added to cart notification",
-      "Network connection status",
-      "File upload success/failure",
-      "Settings saved confirmation",
-      "Permission granted/denied alerts",
-      "Undo action prompts",
-      "Quick tips and hints"
-    ],
-    "design_patterns": {
-      "notification_system": "Lightweight toast notifications",
-      "feedback_mechanism": "Immediate user feedback",
-      "non_modal_alerts": "Alerts that don't block interaction",
-      "stacked_notifications": "Multiple concurrent notifications"
-    }
-  },
-  "code_quality": {
-    "strengths": [
-      "Clean separation of concerns (provider, toast, context)",
-      "TypeScript with explicit types throughout",
-      "Comprehensive comments explaining complex logic",
-      "Constants extracted for dimensions",
-      "Proper use of React hooks (useState, useCallback, useMemo, useEffect)",
-      "Worklet optimization for gesture handling",
-      "Auto-dismiss functionality built-in",
-      "Duplicate prevention system",
-      "Maximum toast limit enforcement"
-    ],
-    "areas_for_improvement": [
-      "Initial position logic noted as 'not elegant' by developer",
-      "Toast limit warning to console (could be callback)",
-      "No customization props for colors, dimensions, or animations",
-      "Hardcoded values (50px threshold, 2500ms timeout) could be configurable",
-      "No accessibility labels or screen reader support",
-      "No keyboard dismissal support",
-      "useEffect dependency warning disabled (intentional but noted)"
-    ],
-    "typescript_coverage": {
-      "types_defined": [
-        "ToastType"
-      ],
-      "prop_interfaces": "Explicit types for toast properties",
-      "context_types": "Strongly typed context value",
-      "hook_return_types": "Implicit but type-safe"
-    },
-    "documentation_quality": {
-      "inline_comments": [
-        "Explanation of initial position logic complexity",
-        "Comments on ID management and rebalancing",
-        "Context creation and usage documented",
-        "Key generation logic explained"
-      ],
-      "code_comments": "Explaining 'why' not just 'what'",
-      "educational_value": "Good learning resource for toast systems"
-    },
-    "react_patterns": {
-      "hooks_usage": "Excellent - proper dependencies and ordering",
-      "context_pattern": "Standard Context API pattern",
-      "memoization": "Strategic use of useMemo and useCallback",
-      "component_composition": "Clean separation of provider and toast",
-      "state_updates": "Immutable patterns (map, filter)"
-    }
-  },
-  "known_limitations": {
-    "initial_position_complexity": {
-      "issue": "First toast uses different initial position than subsequent toasts",
-      "reason": "First toast needs to animate from below screen, others from previous position",
-      "impact": "Logic is complex and acknowledged as 'not elegant'",
-      "potential_improvement": "Could unify logic with better initial state management"
-    },
-    "hardcoded_values": {
-      "swipe_threshold": "-50px",
-      "autodismiss_timeout": "2500ms",
-      "max_toasts": "6 (enforced with > 5 check)",
-      "toast_dimensions": "ToastHeight (70px), ToastOffset (20px), BaseSafeArea (50px)",
-      "enhancement": "Could be exposed as configurable props/constants"
-    },
-    "no_customization": {
-      "issue": "No props for customizing appearance",
-      "hardcoded": [
-        "Colors (white background, black text)",
-        "Dimensions (70px height, 90% width)",
-        "Animations (spring config, timing duration)",
-        "Scale factor (0.05 per level)",
-        "Visible toasts (2 with content visible)"
-      ],
-      "enhancement": "Could expose theme system or customization props"
-    },
-    "gesture_limitation": {
-      "issue": "Only active toast (id=0) can be swiped",
-      "current_behavior": "Other toasts not interactive",
-      "potential_enhancement": "Could allow swiping any toast"
-    },
-    "accessibility": {
-      "missing": [
-        "No accessibility labels",
-        "No screen reader announcements",
-        "No reduced motion support",
-        "No keyboard dismissal"
-      ],
-      "impact": "Not usable by screen reader users"
-    },
-    "no_tap_to_dismiss": {
-      "issue": "No tap gesture to quickly dismiss",
-      "current": "Only swipe gesture or auto-dismiss",
-      "enhancement": "Could add tap or double-tap to dismiss"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Tap to dismiss gesture",
-      "Configurable auto-dismiss timeout",
-      "Priority levels (error, warning, info, success) with color coding",
-      "Sound effects on toast appearance",
-      "Haptic feedback on show/dismiss",
-      "Toast position configuration (top/bottom)",
-      "Action buttons in toast content",
-      "Progress bar for auto-dismiss countdown",
-      "Toast update method (update existing by key)",
-      "Pause auto-dismiss on touch",
-      "Toast queue system with max visible limit",
-      "Swipe right to view details"
-    ],
-    "customization": [
-      "Theme props (colors, dimensions)",
-      "Configurable animation durations",
-      "Custom spring configurations",
-      "Adjustable swipe threshold",
-      "Configurable max toast count",
-      "Custom shadow properties",
-      "Border radius customization",
-      "Scale factor customization"
-    ],
-    "animation_refinements": [
-      "Stagger entrance animations",
-      "Bounce effect on max toasts",
-      "Parallax effect on stack",
-      "Custom entrance/exit animations",
-      "Color-coded toasts by type",
-      "Shimmer effect for loading toasts"
-    ],
-    "accessibility": [
-      "Screen reader announcements",
-      "Accessibility labels for toasts",
-      "Keyboard shortcuts (Esc to dismiss active)",
-      "Prefers-reduced-motion support",
-      "Focus management",
-      "ARIA live regions for web",
-      "High contrast mode support"
-    ],
-    "developer_experience": [
-      "Promise-based API (await toast.show())",
-      "TypeScript generics for toast data",
-      "Comprehensive JSDoc",
-      "Built-in toast presets",
-      "Debug mode",
-      "Storybook stories",
-      "Unit tests"
-    ]
-  },
-  "key_insights": {
-    "id_management": "Auto-incrementing IDs with rebalancing enables consistent positioning without manual tracking - newest toast always id=0",
-    "initial_position_strategy": "Different initial positions for first vs subsequent toasts allows smooth entrance from below screen",
-    "gesture_constraint": "Left-only swipe (blocking positive translationX) prevents accidental gestures and conflicts",
-    "worklet_necessity": "scheduleOnRN essential for bridging worklet gestures to React state updates",
-    "z_index_calculation": "1000 - toast.id ensures top toast always renders above others",
-    "scale_feedback": "Reducing scale to 0.96 during swipe provides tactile feedback",
-    "opacity_strategy": "Only showing content for first 2 toasts keeps visual clean",
-    "spring_animations": "Default spring config creates natural, organic feel for toast movements",
-    "key_system": "Optional key property allows duplicate titles when needed while preventing accidental duplicates",
-    "max_limit": "Hard limit of 6 toasts prevents performance issues and UI clutter"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Context API for global state",
-      "useState for array management",
-      "useCallback and useMemo optimization",
-      "Basic Reanimated animations (useSharedValue, useAnimatedStyle)",
-      "Pan gesture basics",
-      "Component composition patterns",
-      "useEffect for side effects"
-    ],
-    "for_intermediate": [
-      "ID management in dynamic lists",
-      "Pan gesture handling with constraints",
-      "withSpring vs withTiming trade-offs",
-      "useAnimatedStyle patterns",
-      "Transform animations (scale, translateX)",
-      "Gesture lifecycle management",
-      "scheduleOnRN for thread bridging",
-      "Auto-dismiss with timeout cleanup",
-      "Worklet functions",
-      "Array manipulation for state updates"
-    ],
-    "for_advanced": [
-      "Complex state transformations (ID rebalancing)",
-      "Worklet-based gesture handlers",
-      "Dynamic positioning systems",
-      "Gesture-driven animations",
-      "Toast system architecture patterns",
-      "Performance optimization with limits",
-      "Key-based duplicate prevention",
-      "Multi-toast state coordination"
-    ]
-  },
-  "comparison_to_similar_implementations": {
-    "vs_react_native_toast_message": {
-      "similarity": "Both are React Native toast libraries",
-      "this_has": "Stacking with scaling, swipe gestures, simpler API",
-      "that_has": "More features (types, positions), auto-dismiss by default, more customization"
-    },
-    "vs_clerk_toast": {
-      "similarity": "Both have stacking effect",
-      "difference": "Clerk has backdrop and blur, this is more minimal and lightweight"
-    },
-    "vs_react_toastify": {
-      "similarity": "Toast notification system",
-      "difference": "This is React Native with gestures, that is web-only with more features"
-    },
-    "vs_snackbar": {
-      "similarity": "Bottom notifications",
-      "difference": "This stacks multiple, snackbar typically shows one at a time"
-    }
-  },
-  "testing_considerations": {
-    "visual_regression": [
-      "Toast entrance animation smoothness",
-      "Stacking with correct 20px offset",
-      "Scale reduction for stacked toasts (5% per level)",
-      "Opacity fade for toasts beyond id=1",
-      "Swipe gesture visual feedback (scale to 0.96)",
-      "Shadow variation based on position"
-    ],
-    "interaction_testing": [
-      "Show toast via button press",
-      "Swipe left to dismiss active toast",
-      "Swipe less than threshold snaps back",
-      "Multiple rapid toast additions",
-      "Auto-dismiss works for toasts with autodismiss=true",
-      "Toast ordering (newest at bottom, id=0)",
-      "Max toast limit enforcement (> 5 warning)"
-    ],
-    "state_testing": [
-      "ID management on add (all increment by 1)",
-      "ID rebalancing on dismiss (affected ids decrement)",
-      "Toast count accuracy",
-      "Context value updates",
-      "Duplicate prevention via key",
-      "Custom key allows duplicate titles"
-    ],
-    "edge_cases": [
-      "Add 7+ toasts quickly (exceeds limit)",
-      "Dismiss toasts during animations",
-      "Auto-dismiss and manual dismiss conflict",
-      "Screen rotation during animations",
-      "Very long toast titles",
-      "Toast with no title (edge case)",
-      "Rapid swipe gestures"
-    ],
-    "platform_testing": [
-      "Shadows vs elevation appear correct",
-      "Continuous border curve on iOS",
-      "Gesture handling on both platforms",
-      "Safe area respected on notched devices"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No accessibility support",
-      "announcements": "Toast messages not announced",
-      "keyboard": "No keyboard navigation",
-      "reduced_motion": "No reduced motion support"
-    },
-    "recommendations": [
-      "Add accessibilityRole='alert' to toasts",
-      "Add accessibilityLabel with toast title and subtitle",
-      "Announce toasts to screen reader (accessibilityLiveRegion='polite' on Android)",
-      "Add accessible dismiss action",
-      "Support Escape key to dismiss active toast (web)",
-      "Respect prefers-reduced-motion (instant transitions)",
-      "Add accessibilityHint for swipe gesture",
-      "Ensure color contrast meets WCAG AA",
-      "Add keyboard shortcuts (Esc to dismiss)"
-    ]
-  },
-  "demo_implementation": {
-    "toast_examples": [
-      {
-        "title": "I am a simple toast",
-        "icon": "check-circle",
-        "features": [
-          "Basic title",
-          "Leading icon"
-        ]
-      },
-      {
-        "title": "Well, not so simple",
-        "icon": "shake",
-        "features": [
-          "Different icon"
-        ]
-      },
-      {
-        "title": "You can swipe me",
-        "icon": "swap",
-        "features": [
-          "Emphasizes swipe gesture"
-        ]
-      },
-      {
-        "title": "You can add a subtitle",
-        "subtitle": "Here I am",
-        "icon": "smile",
-        "features": [
-          "Title and subtitle"
-        ]
-      },
-      {
-        "title": "And if you're lazy",
-        "subtitle": "I can dismiss myself",
-        "icon": "user",
-        "autodismiss": true,
-        "features": [
-          "Auto-dismiss enabled"
-        ]
-      },
-      {
-        "title": "You can spam me!",
-        "icon": "twitter",
-        "key": "random",
-        "features": [
-          "Custom key for duplicates"
-        ]
-      }
-    ],
-    "progression": "5 unique toasts, then spam with random keys",
-    "interaction_pattern": "Button press cycles through examples, then allows spamming"
-  },
-  "tags": [
-    "toast",
-    "notifications",
-    "stacked-ui",
-    "swipe-to-dismiss",
-    "pan-gesture",
-    "spring-animation",
-    "reanimated",
-    "gesture-handler",
-    "context-api",
-    "auto-dismiss",
-    "user-feedback",
-    "alerts",
-    "worklets",
-    "scale-animation",
-    "lightweight",
-    "simple-toast"
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useContext",
+    "useEffect",
+    "useInternalToast",
+    "useMemo",
+    "useRef",
+    "useSharedValue",
+    "useState",
+    "useToast",
+    "useWindowDimensions"
   ],
-  "content_hash": "40954a64d53ea911e5e4f99e8e598678defe8d9b0f4d270e9ebba37a72dd66fe",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.486Z",
-  "last_validated": "2025-10-12T09:19:28.486Z"
+  "functions": [
+    "Boolean",
+    "clearTimeout",
+    "createContext",
+    "dismissItem",
+    "renderToast",
+    "scheduleOnRN",
+    "setTimeout",
+    "setToasts",
+    "showToast",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "AntDesign",
+    "App",
+    "GestureDetector",
+    "GestureHandlerRootView",
+    "InternalToastContext.Provider",
+    "PressableScale",
+    "Text",
+    "Toast",
+    "ToastContext.Provider",
+    "ToastProvider",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "timing-animation",
+    "spring-animation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "spring-physics",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 6,
+    "total_packages": 7,
+    "total_hooks": 11,
+    "total_functions": 11,
+    "total_components": 12,
+    "total_patterns": 5,
+    "total_techniques": 3
+  }
 }

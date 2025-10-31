@@ -1,842 +1,212 @@
 {
-  "animation_name": "Online Offline Status Transition",
   "animation_slug": "online-offline",
-  "description": "An animated user status list component that dynamically transitions items between online and offline states with smooth layout animations and visual effects. Features overlapping circular avatars grouped into online and offline sections with animated background pills, grayscale color matrix transitions using Skia for offline users, and dynamic list reorganization with spring-based layout animations.",
-  "main_features": [
-    "Dynamic item transition between online/offline states",
-    "Overlapping circular avatar layout with calculated positioning",
-    "Animated background sections (pills) with smooth width/position changes",
-    "Grayscale color matrix animation using Skia for offline users",
-    "Spring-based LinearTransition for smooth item repositioning",
-    "Automatic layout dimension calculations with gap management",
-    "Customizable item size, gap, padding, and colors",
-    "Touch interaction to randomly move users between states",
-    "Separated online/offline sections with dynamic gap",
-    "Memoized components for optimal performance"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.843Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Main demo component with state management and touch interaction"
-    },
-    "components": {
-      "components/online-to-offline/index.tsx": "Core list component with layout orchestration",
-      "components/online-to-offline/list-item.tsx": "Individual avatar item with Skia grayscale effect",
-      "components/online-to-offline/background-section.tsx": "Animated background pill sections"
-    },
-    "hooks": {
-      "components/online-to-offline/hooks.ts": "useLayoutDimensions and useListItems hooks"
-    },
-    "utils": {
-      "components/online-to-offline/utils.ts": "Layout calculation utilities (overlap, section width, gap)"
-    },
-    "types": {
-      "components/online-to-offline/types.ts": "TypeScript type definitions for all components"
-    },
-    "constants": {
-      "components/online-to-offline/utils.ts": "GAP_MULTIPLIER constant (value: 4)"
-    },
-    "animations": {
-      "components/online-to-offline/animations.ts": "Reusable LinearTransition configuration"
-    }
+    "entry": "index.tsx",
+    "components": [
+      "components/online-to-offline/animations.ts",
+      "components/online-to-offline/background-section.tsx",
+      "components/online-to-offline/hooks.ts",
+      "components/online-to-offline/list-item.tsx",
+      "components/online-to-offline/types.ts",
+      "components/online-to-offline/utils.ts"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "rendering": "@shopify/react-native-skia",
-    "images": "Skia Canvas with ColorMatrix filter"
+  "packages": [
+    "@shopify/react-native-skia",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./animations": {
+      "imports": [
+        "LayoutTransition"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./background-section": {
+      "imports": [
+        "BackgroundSection"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/online-to-offline": {
+      "imports": [
+        "OnlineToOffline"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks": {
+      "imports": [
+        "useLayoutDimensions",
+        "useListItems"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./list-item": {
+      "imports": [
+        "ListItem"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./types": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils": {
+      "imports": [
+        "calculateGapWidth",
+        "calculateOverlap",
+        "calculateSectionWidth"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@shopify/react-native-skia": {
+      "imports": [
+        "Canvas",
+        "ColorMatrix",
+        "Group",
+        "Image",
+        "useImage"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "memo",
+        "useCallback",
+        "useMemo",
+        "useState"
+      ],
       "hooks": [
+        "useCallback",
+        "useMemo",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Easing",
+        "FadeIn",
+        "FadeOut",
+        "LayoutAnimationConfig",
+        "LinearTransition",
+        "interpolate",
         "useDerivedValue",
         "withTiming"
       ],
-      "layout_animations": [
-        "LinearTransition"
+      "hooks": [
+        "useDerivedValue"
       ],
       "functions": [
-        "withTiming",
         "interpolate",
-        "Easing"
+        "withTiming"
       ],
       "components": [
         "Animated.View"
-      ],
-      "critical_feature": "LinearTransition.springify() for smooth item repositioning with spring physics"
-    },
-    "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "Canvas",
-        "Image",
-        "Group",
-        "ColorMatrix"
-      ],
-      "hooks": [
-        "useImage"
-      ],
-      "usage": "Rendering images with animated grayscale color matrix transitions for offline state",
-      "note": "Using Skia for smooth color interpolation; could be replaced with expo-image + native filters for production"
-    }
-  },
-  "animation_techniques": {
-    "item_repositioning": {
-      "pattern": "Layout prop-driven positioning with spring physics",
-      "animation": "LinearTransition.springify().mass(1).damping(20).stiffness(120)",
-      "trigger": "Item moves between online/offline arrays or position changes",
-      "animated_properties": [
-        "left: calculated position based on index and overlap",
-        "position changes smoothly as items are added/removed"
-      ],
-      "physics": {
-        "mass": 1,
-        "damping": 20,
-        "stiffness": 120
-      },
-      "effect": "Smooth spring-based sliding animation as items reorganize"
-    },
-    "background_pill_animation": {
-      "pattern": "Layout-driven width and position changes",
-      "animation": "LinearTransition.springify().mass(1).damping(20).stiffness(120)",
-      "trigger": "Section item count changes (online/offline)",
-      "animated_properties": [
-        "width: calculated from item count and overlap",
-        "left: calculated from online section width + gap"
-      ],
-      "visual_effect": "Background pills smoothly expand/contract and reposition",
-      "conditional_rendering": "Pill not rendered when section has 0 items"
-    },
-    "grayscale_transition": {
-      "pattern": "Skia ColorMatrix interpolation",
-      "trigger": "isOffline prop changes (true/false)",
-      "duration": 300,
-      "easing": "Easing.linear",
-      "matrices": {
-        "identity": "No filter - full color (online state)",
-        "grayscale": "Green channel only - grayscale effect (offline state)"
-      },
-      "interpolation": "Element-wise interpolation between identity and grayscale matrices",
-      "implementation": "useDerivedValue with animated progress (0 to 1)",
-      "effect": "Smooth color-to-grayscale transition when user goes offline"
-    },
-    "overlap_effect": {
-      "pattern": "Calculated overlapping positioning",
-      "calculation": "overlap = gap * GAP_MULTIPLIER (gap * 4)",
-      "positioning": "Each item offset by (itemSize - overlap) from previous",
-      "result": "Avatars overlap to create compact, connected appearance",
-      "customization": "Overlap amount controlled by gap prop"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "grayscaleProgress",
-        "type": "DerivedValue<number>",
-        "calculation": "withTiming(isOffline ? 1 : 0, { duration: 300, easing: Easing.linear })",
-        "scope": "ListItem component",
-        "purpose": "Drive grayscale color matrix interpolation",
-        "updates": "When isOffline prop changes"
-      }
-    ],
-    "useDerivedValue": {
-      "usage_count": 2,
-      "instances": [
-        {
-          "name": "grayscaleProgress",
-          "calculation": "Animated transition from 0 (color) to 1 (grayscale)",
-          "dependencies": [
-            "isOffline"
-          ],
-          "purpose": "Smooth interpolation for color matrix effect"
-        },
-        {
-          "name": "animatedColorMatrix",
-          "calculation": "Element-wise interpolation between identity and grayscale matrices",
-          "dependencies": [
-            "grayscaleProgress.value"
-          ],
-          "purpose": "Generate animated 20-element color matrix array",
-          "benefit": "Automatic recalculation on grayscale progress change"
-        }
       ]
-    },
-    "layout_animations": {
-      "LinearTransition": {
-        "configuration": "springify().mass(1).damping(20).stiffness(120)",
-        "applied_to": [
-          "List container (width changes)",
-          "Background sections (width and left position)",
-          "List items (left position)"
-        ],
-        "benefit": "All layout changes use consistent spring physics",
-        "effect": "Natural, bouncy movement for all repositioning"
-      }
-    },
-    "useMemo": {
-      "usage_count": 2,
-      "instances": [
-        {
-          "hook": "useLayoutDimensions",
-          "dependencies": [
-            "online.length",
-            "offline.length",
-            "itemSize",
-            "gap",
-            "sectionGap"
-          ],
-          "returns": "LayoutDimensions object with calculated widths and positions",
-          "purpose": "Prevent unnecessary recalculation of layout dimensions"
-        },
-        {
-          "hook": "useListItems",
-          "dependencies": [
-            "online",
-            "offline"
-          ],
-          "returns": "Combined array of ListItem objects with isOffline flag",
-          "purpose": "Prevent unnecessary array regeneration"
-        }
-      ]
-    },
-    "useCallback": {
-      "usage_count": 2,
-      "instances": [
-        {
-          "name": "calculateItemPosition",
-          "dependencies": [
-            "layoutDimensions",
-            "itemSize",
-            "online.length"
-          ],
-          "purpose": "Stable function reference for position calculation",
-          "logic": "Returns absolute left position based on section and overlap"
-        },
-        {
-          "name": "handleTouchEnd",
-          "dependencies": "[]",
-          "purpose": "Stable touch handler for random item state changes",
-          "logic": "Randomly moves items between online/offline with proper repositioning"
-        }
-      ]
-    },
-    "memo": {
-      "usage": "ListItem component wrapped in React.memo",
-      "purpose": "Prevent re-renders when props haven't changed",
-      "benefit": "Performance optimization with multiple avatar items"
     }
   },
-  "component_architecture": {
-    "online_offline": {
-      "type": "Main demo component",
-      "state": {
-        "items": {
-          "type": "Array<{ uri: string; isOffline: boolean }>",
-          "initial": "7 items (4 online, 3 offline)",
-          "updates": "handleTouchEnd randomly moves items between states"
-        }
-      },
-      "derived_state": {
-        "onlineItems": "items.filter(item => !item.isOffline)",
-        "offlineItems": "items.filter(item => item.isOffline)"
-      },
-      "interaction": "onTouchEnd event triggers random state transition",
-      "children": [
-        "OnlineToOffline (list component)"
-      ]
-    },
-    "online_to_offline": {
-      "type": "Core reusable list component",
-      "props": {
-        "offline": {
-          "type": "string[]",
-          "required": true,
-          "usage": "Array of offline user image URIs"
-        },
-        "online": {
-          "type": "string[]",
-          "required": true,
-          "usage": "Array of online user image URIs"
-        },
-        "itemSize": {
-          "type": "number",
-          "default": 64,
-          "usage": "Diameter of circular avatar"
-        },
-        "gap": {
-          "type": "number",
-          "required": true,
-          "usage": "Base gap used for overlap calculation"
-        },
-        "listPadding": {
-          "type": "number",
-          "default": 4,
-          "usage": "Padding around background pills"
-        },
-        "listColor": {
-          "type": "string",
-          "default": "#000000",
-          "usage": "Color of background pills and avatar borders"
-        },
-        "sectionGap": {
-          "type": "number",
-          "optional": true,
-          "usage": "Custom gap between online/offline sections (defaults to itemSize - overlap)"
-        }
-      },
-      "hooks": [
-        "useLayoutDimensions (custom)",
-        "useListItems (custom)",
-        "useCallback"
-      ],
-      "children": [
-        "BackgroundSection (2 instances: online + offline)",
-        "ListItem (mapped from combined list)"
-      ]
-    },
-    "list_item": {
-      "type": "Memoized presentational component",
-      "memo": true,
-      "props": {
-        "item": {
-          "type": "string",
-          "usage": "Image URI for avatar"
-        },
-        "leftPosition": {
-          "type": "number",
-          "usage": "Calculated absolute left position"
-        },
-        "itemSize": {
-          "type": "number",
-          "usage": "Diameter for width, height, and borderRadius calculation"
-        },
-        "listColor": {
-          "type": "string",
-          "usage": "Border color"
-        },
-        "isOffline": {
-          "type": "boolean",
-          "usage": "Determines grayscale effect application"
-        }
-      },
-      "rendering": "Skia Canvas with animated ColorMatrix filter",
-      "note": "Contains implementation note about Skia vs expo-image tradeoffs"
-    },
-    "background_section": {
-      "type": "Presentational component",
-      "conditional_rendering": "Returns null if width === 0",
-      "props": {
-        "width": {
-          "type": "number",
-          "usage": "Calculated section width based on item count"
-        },
-        "left": {
-          "type": "number",
-          "usage": "Absolute left position (minus padding adjustment)"
-        },
-        "listPadding": {
-          "type": "number",
-          "usage": "Added to width and used for positioning offset"
-        },
-        "listColor": {
-          "type": "string",
-          "usage": "Background color of pill"
-        }
-      },
-      "styling": {
-        "borderCurve": "continuous (iOS smooth corners)",
-        "borderRadius": 999,
-        "position": "absolute",
-        "zIndex": 0
-      }
-    }
-  },
-  "layout_calculations": {
-    "overlap_calculation": {
-      "formula": "overlap = gap * GAP_MULTIPLIER",
-      "constant": "GAP_MULTIPLIER = 4",
-      "example": "gap=3.5 → overlap=14",
-      "purpose": "Determine how much avatars overlap each other"
-    },
-    "section_width_calculation": {
-      "formula": "itemSize + (itemCount - 1) * (itemSize - overlap)",
-      "edge_case": "Returns 0 if itemCount === 0",
-      "logic": "First item takes full itemSize, remaining items add (itemSize - overlap)",
-      "example": "3 items, size=40, overlap=14 → 40 + 2*(40-14) = 92"
-    },
-    "gap_width_calculation": {
-      "formula": "sectionGap !== undefined ? sectionGap : (itemSize - overlap)",
-      "default": "Uses same distance as item spacing",
-      "customization": "Can override with sectionGap prop",
-      "purpose": "Space between online and offline sections"
-    },
-    "layout_dimensions": {
-      "listWidth": "onlineWidth + gapWidth + offlineWidth",
-      "onlineBackgroundWidth": "Calculated from online.length",
-      "offlineBackgroundStart": "onlineWidth + gapWidth",
-      "offlineBackgroundWidth": "Calculated from offline.length",
-      "overlap": "Stored for position calculations"
-    },
-    "item_positioning": {
-      "online_items": "index * (itemSize - overlap)",
-      "offline_items": "offlineBackgroundStart + offlineIndex * (itemSize - overlap)",
-      "calculation_timing": "Done in calculateItemPosition callback"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "container_background": "#fff (white)",
-      "list_background": "#EAEAEA (light gray) in demo",
-      "avatar_border": "3px solid, color matches list background",
-      "grayscale_effect": "Applied via ColorMatrix to offline avatars"
-    },
-    "dimensions": {
-      "default_item_size": 40,
-      "default_gap": 3.5,
-      "default_list_padding": 2,
-      "default_section_gap": "12 (in demo)",
-      "border_width": 3,
-      "calculated_overlap": "14 (with default gap)"
-    },
-    "border_styling": {
-      "avatar": {
-        "borderWidth": 3,
-        "borderRadius": "itemSize / 2 (circular)",
-        "borderColor": "listColor",
-        "overflow": "hidden (clips image to circle)"
-      },
-      "background_pill": {
-        "borderCurve": "continuous",
-        "borderRadius": 999,
-        "effect": "Smooth rounded pill shape"
-      }
-    },
-    "positioning": {
-      "container": "centered horizontally and vertically",
-      "items": "absolute positioning with calculated left values",
-      "background_sections": "absolute with zIndex: 0 (behind items)"
-    }
-  },
-  "state_management": {
-    "demo_component": {
-      "initial_state": "7 items: 4 online, 3 offline with Unsplash image URIs",
-      "state_updates": "Touch interaction randomly moves items between states",
-      "algorithm": {
-        "step_1": "Count online and offline items",
-        "step_2": "Return early if either section is empty",
-        "step_3": "Randomly choose direction (50/50 online→offline or offline→online)",
-        "step_4": "Select random item from source section",
-        "step_5": "For online→offline: remove and append to end",
-        "step_6": "For offline→online: remove and insert after last online item",
-        "step_7": "Update isOffline flag on moved item"
-      }
-    },
-    "list_items_transformation": {
-      "input": "Separate online and offline string arrays",
-      "output": "Combined array with { item: string, isOffline: boolean }",
-      "order": "Online items first, then offline items",
-      "memoization": "useListItems hook prevents unnecessary regeneration"
-    }
-  },
-  "skia_implementation": {
-    "color_matrix_approach": {
-      "identity_matrix": "1,0,0,0,0, 0,1,0,0,0, 0,0,1,0,0, 0,0,0,1,0 (20 values, 4 channels)",
-      "grayscale_matrix": "0,1,0,0,0, 0,1,0,0,0, 0,1,0,0,0, 0,0,0,1,0 (uses green channel only)",
-      "interpolation": "Element-wise interpolation based on grayscaleProgress (0-1)",
-      "channels": "Red, Green, Blue, Alpha (5 values each)",
-      "effect": "Smooth transition from full color to grayscale"
-    },
-    "canvas_structure": {
-      "Canvas": "Root Skia component, full width/height",
-      "Group": "Wrapper for applying effects",
-      "Image": "Renders image with uri, positioned at (0,0)",
-      "ColorMatrix": "Child of Image, applies animated matrix",
-      "fit": "cover (fills circular avatar shape)"
-    },
-    "performance_note": {
-      "issue": "Multiple Canvas instances (one per avatar) not ideal",
-      "alternative": "expo-image with react-native-color-matrix-image-filters",
-      "tradeoff": "Skia enables smooth color interpolation during transition",
-      "reason": "Optimized for Expo Go development compatibility",
-      "recommendation": "Consider expo-image for production apps"
-    }
-  },
-  "interaction_patterns": {
-    "touch_interaction": {
-      "event": "onTouchEnd on container View",
-      "handler": "handleTouchEnd (useCallback with empty deps)",
-      "action": "Randomly moves one item between online/offline states",
-      "animation_result": "Items smoothly reposition with spring physics"
-    },
-    "state_transition_logic": {
-      "validation": "Ensures both sections have items before moving",
-      "randomization": "50/50 chance of moving online→offline or offline→online",
-      "item_selection": "Random item from source section",
-      "array_manipulation": {
-        "online_to_offline": "Remove from position, append to end",
-        "offline_to_online": "Remove from position, insert after last online item"
-      }
-    }
-  },
-  "performance_optimizations": {
-    "memoization": {
-      "React.memo": "ListItem component prevents unnecessary re-renders",
-      "useMemo": "Layout dimensions and list items only recalculated when dependencies change",
-      "useCallback": "Stable function references for position calculation and touch handler"
-    },
-    "layout_animations": {
-      "engine": "Reanimated layout animations (UI thread)",
-      "benefit": "No bridge crossing for position/size changes"
-    },
-    "derived_values": {
-      "grayscaleProgress": "Runs on UI thread with worklet",
-      "animatedColorMatrix": "Computed on UI thread without JS bridge"
-    },
-    "conditional_rendering": {
-      "background_sections": "Not rendered when width === 0",
-      "benefit": "Avoids unnecessary component mounting"
-    },
-    "image_optimization": {
-      "strategy": "Skia image caching via useImage hook",
-      "benefit": "Images loaded once and reused"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "User presence indicators in chat applications",
-      "Online/offline status displays in social apps",
-      "Team availability indicators in collaboration tools",
-      "Friend online status in gaming apps",
-      "Participant status in video conferencing",
-      "Device connection status displays"
-    ],
-    "secondary": [
-      "Connection status for IoT devices",
-      "Server/service health monitoring dashboards",
-      "Real-time collaboration tool presence",
-      "Multiplayer game lobby player status",
-      "Live streaming viewer indicators"
-    ],
-    "educational": [
-      "Teaching Reanimated layout animations",
-      "Demonstrating Skia color matrix effects",
-      "Showing overlap positioning calculations",
-      "Layout dimension computation patterns",
-      "Spring physics tuning examples"
-    ],
-    "real_world_examples": [
-      "Slack workspace member status",
-      "Discord server member lists",
-      "Teams meeting participant indicators",
-      "WhatsApp contact online status",
-      "Gaming platform friend lists"
-    ]
-  },
-  "code_quality": {
-    "strengths": [
-      "Full TypeScript coverage with explicit type definitions",
-      "Clean separation of concerns (components, hooks, utils, types)",
-      "Reusable component design with configurable props",
-      "Custom hooks for complex calculations (useLayoutDimensions, useListItems)",
-      "Proper memoization with React.memo, useMemo, useCallback",
-      "Comprehensive inline documentation (Skia implementation note)",
-      "Type-safe props with descriptive interfaces",
-      "Consistent naming conventions (camelCase, PascalCase)",
-      "Modular file structure with clear responsibilities",
-      "Performance-conscious implementation"
-    ],
-    "areas_for_improvement": [
-      "Could add prop validation for itemSize, gap (minimum values)",
-      "Missing accessibility labels for screen readers",
-      "No error handling for image loading failures",
-      "Could extract spring configuration to constants",
-      "Missing unit tests for utility functions",
-      "No documentation for exported components (JSDoc)",
-      "Could add TypeScript generics for item data",
-      "No support for custom image components",
-      "Hardcoded grayscale matrix (could support different filters)"
-    ],
-    "typescript_usage": {
-      "coverage": "100% - all files use TypeScript",
-      "type_definitions": [
-        "OfflineToOnlineProps",
-        "ListItem",
-        "LayoutDimensions",
-        "BackgroundSectionProps",
-        "ItemProps"
-      ],
-      "type_imports": "Uses 'type' keyword for type-only imports",
-      "inference": "Good use of return type inference in hooks"
-    },
-    "component_patterns": {
-      "composition": "Clear parent-child relationships",
-      "props_drilling": "Minimal - only necessary props passed down",
-      "hooks": "Custom hooks for complex logic extraction",
-      "memoization": "Strategic use for performance"
-    }
-  },
-  "known_limitations": {
-    "skia_performance": {
-      "issue": "Multiple Canvas instances (one per avatar) adds overhead",
-      "impact": "May affect performance with many avatars (20+)",
-      "workaround": "Consider expo-image with native filters for production"
-    },
-    "image_loading": {
-      "issue": "No loading states or error handling for images",
-      "impact": "Broken images appear as empty circles",
-      "enhancement": "Add placeholder or error fallback"
-    },
-    "accessibility": {
-      "issue": "No screen reader support or accessibility labels",
-      "impact": "Not accessible to visually impaired users",
-      "enhancement": "Add accessibilityLabel, accessibilityRole, accessibilityState"
-    },
-    "fixed_demo_logic": {
-      "issue": "Demo randomly moves items instead of simulating real status changes",
-      "limitation": "Not production-ready state management",
-      "enhancement": "Integrate with actual online/offline detection"
-    },
-    "web_support": {
-      "issue": "Skia may have limited web support",
-      "impact": "Animation may not work on React Native Web",
-      "consideration": "Test thoroughly on web platform"
-    },
-    "customization_limits": {
-      "issue": "Grayscale filter is hardcoded",
-      "enhancement": "Could support custom ColorMatrix effects or opacity changes"
-    }
-  },
-  "potential_improvements": {
-    "animation_enhancements": [
-      "Add entrance animations when items first appear",
-      "Stagger animations when multiple items change state",
-      "Add scale effect on state transition",
-      "Pulse animation for newly offline users",
-      "Badge indicators for status changes"
-    ],
-    "interaction_improvements": [
-      "Swipe individual items to change state",
-      "Long press for item details",
-      "Tap item to highlight/select",
-      "Double tap to pin users to top",
-      "Drag to reorder within sections"
-    ],
-    "visual_enhancements": [
-      "Custom filter effects beyond grayscale (sepia, tint, etc.)",
-      "Status badges/indicators on avatars",
-      "Animated border color changes",
-      "Glow effect for online users",
-      "Typing indicators or activity status"
-    ],
-    "functionality": [
-      "Real network status integration",
-      "Last seen timestamps",
-      "User names displayed on hover/press",
-      "Search/filter functionality",
-      "Section headers ('Online', 'Offline')",
-      "Item count badges",
-      "Load more pagination"
-    ],
-    "accessibility": [
-      "VoiceOver/TalkBack support with proper labels",
-      "Keyboard navigation",
-      "Reduced motion support (disable animations)",
-      "Color contrast improvements",
-      "Screen reader announcements for status changes"
-    ],
-    "performance": [
-      "Virtualization for large user lists",
-      "Image lazy loading",
-      "Progressive image loading",
-      "Replace Skia with expo-image for production",
-      "Throttle/debounce rapid state changes"
-    ],
-    "customization": [
-      "Configurable spring physics parameters",
-      "Custom ColorMatrix filters",
-      "Theme support (dark mode)",
-      "Different avatar shapes (square, rounded square)",
-      "Configurable border styles"
-    ]
-  },
-  "key_insights": {
-    "overlap_positioning": "Negative space positioning (itemSize - overlap) creates seamless overlapping effect",
-    "layout_dimensions_hook": "Pre-calculating all layout dimensions in useMemo prevents recalculation on every render",
-    "spring_physics_tuning": "mass=1, damping=20, stiffness=120 provides natural, responsive movement without excessive bounce",
-    "color_matrix_interpolation": "Element-wise interpolation of 20-element matrices creates smooth color-to-grayscale transition",
-    "conditional_background_rendering": "Returning null when width===0 prevents unnecessary component mounting and layout calculations",
-    "skia_tradeoff": "Skia enables smooth color interpolation but adds overhead; consider native filters for production",
-    "list_transformation": "Combining online/offline arrays with isOffline flag simplifies rendering while maintaining state",
-    "absolute_positioning": "Absolute positioning with calculated left values enables smooth layout transitions without flexbox constraints",
-    "gap_multiplier": "Using GAP_MULTIPLIER=4 provides visually pleasing overlap without excessive crowding",
-    "memo_optimization": "React.memo on ListItem critical for performance when repositioning multiple items"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic Reanimated LinearTransition layout animations",
-      "useCallback for stable function references",
-      "Conditional rendering patterns",
-      "Array filter and map operations",
-      "Props-based component configuration"
-    ],
-    "for_intermediate": [
-      "Skia Canvas and Image rendering",
-      "ColorMatrix filters and interpolation",
-      "Custom hooks for complex calculations",
-      "useMemo for performance optimization",
-      "Absolute positioning with dynamic calculations",
-      "Spring physics configuration",
-      "useDerivedValue for animated computations"
-    ],
-    "for_advanced": [
-      "Complex layout dimension calculations",
-      "Multi-stage array transformations with proper insertions",
-      "Skia ColorMatrix color space transformations",
-      "Performance optimization with React.memo and hooks",
-      "Balancing animation smoothness vs. performance",
-      "Worklet-based animations on UI thread",
-      "Designing reusable animated components with clean APIs"
-    ]
-  },
-  "testing_considerations": {
-    "visual_regression": [
-      "Online to offline transition smooth",
-      "Offline to online transition smooth",
-      "Background pills resize and reposition correctly",
-      "Grayscale effect applies smoothly",
-      "Overlapping positions calculate correctly",
-      "Empty sections render without errors"
-    ],
-    "interaction_testing": [
-      "Touch triggers state change",
-      "Multiple rapid touches handled correctly",
-      "State changes when only 1 online or 1 offline item",
-      "No changes when a section is empty",
-      "Randomization properly distributed"
-    ],
-    "layout_testing": [
-      "Items overlap by correct amount",
-      "Gap between sections correct",
-      "Background pills fully cover items",
-      "Container centers correctly",
-      "Different itemSize values work properly"
-    ],
-    "edge_cases": [
-      "All items online (no offline section)",
-      "All items offline (no online section)",
-      "Single item in each section",
-      "Many items (10+ per section)",
-      "Very small itemSize values",
-      "Very large gap values",
-      "Image load failures",
-      "Network images vs local images"
-    ],
-    "performance_testing": [
-      "Smooth 60fps during transitions",
-      "No frame drops with multiple simultaneous moves",
-      "Memory stable across many state changes",
-      "Skia rendering performance with many avatars"
-    ],
-    "cross_platform": [
-      "iOS Skia rendering",
-      "Android Skia rendering",
-      "Web support (if applicable)",
-      "borderCurve: continuous fallback on Android",
-      "Image loading behavior per platform"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No accessibility labels or roles",
-      "reduced_motion": "No support for prefers-reduced-motion",
-      "keyboard_navigation": "Not implemented",
-      "semantic_markup": "Missing semantic information"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to list ('Online users: 4, Offline users: 3')",
-      "Add accessibilityRole to items ('image' or 'button')",
-      "Add accessibilityState with { disabled: isOffline }",
-      "Announce state changes to screen readers",
-      "Support reduced motion (disable/simplify animations)",
-      "Add accessibilityHint for interactive elements",
-      "Ensure sufficient color contrast for borders",
-      "Provide text alternatives to visual indicators"
-    ],
-    "implementation_suggestions": {
-      "reduced_motion": "Use AccessibilityInfo.isReduceMotionEnabled() and disable spring animations",
-      "screen_reader": "Use AccessibilityInfo.announceForAccessibility() when user status changes",
-      "labels": "Include user name/identifier in accessibilityLabel if available"
-    }
-  },
-  "comparison_to_similar_patterns": {
-    "vs_simple_list": {
-      "similarity": "Both render lists of items",
-      "difference": "This uses overlapping, grouped layout vs. standard vertical list",
-      "advantage": "More compact, visually grouped representation"
-    },
-    "vs_badge_indicators": {
-      "similarity": "Both show online/offline status",
-      "difference": "This uses position + grayscale vs. green/gray dots",
-      "advantage": "Clear visual separation of states, better for many users"
-    },
-    "vs_skia_filters": {
-      "similarity": "Both use Skia for visual effects",
-      "difference": "This uses ColorMatrix vs. other filters (blur, brightness)",
-      "tradeoff": "ColorMatrix provides smooth interpolation but multiple Canvas overhead"
-    }
-  },
-  "related_patterns": {
-    "list_animations": [
-      "Drag to reorder lists",
-      "Swipe to delete items",
-      "Expanding/collapsing sections",
-      "Animated list insertions/removals"
-    ],
-    "status_indicators": [
-      "Presence badges",
-      "Activity status rings",
-      "Typing indicators",
-      "Connection status bars"
-    ],
-    "skia_effects": [
-      "Image filters (blur, brightness, contrast)",
-      "Color tinting and adjustments",
-      "Shader effects",
-      "Morphing shapes"
-    ]
-  },
-  "real_world_inspiration": {
-    "slack": "Online/offline member status in channels",
-    "discord": "Voice channel participant lists with status indicators",
-    "teams": "Meeting participant presence indicators",
-    "whatsapp": "Contact online status displays",
-    "zoom": "Meeting participant video tiles with connection status"
-  },
-  "bundle_size_impact": {
-    "code_size": "~370 lines total (main + components + hooks + utils + types + animations)",
-    "dependencies": "Reanimated and Skia likely already in project for animations",
-    "runtime_memory": "Minimal - few SharedValues, small item counts typical",
-    "skia_overhead": "Canvas per avatar adds memory, consider alternatives for large lists",
-    "estimated_size": "< 15KB"
-  },
-  "tags": [
-    "layout-animation",
-    "online-offline-status",
-    "skia",
-    "color-matrix",
-    "grayscale-filter",
-    "linear-transition",
-    "spring-animation",
-    "overlapping-layout",
-    "user-presence",
-    "reanimated",
-    "circular-avatars",
-    "dynamic-positioning",
-    "grouped-lists",
-    "status-indicators",
-    "worklet"
+  "hooks": [
+    "useCallback",
+    "useDerivedValue",
+    "useImage",
+    "useLayoutDimensions",
+    "useListItems",
+    "useMemo",
+    "useState"
   ],
-  "content_hash": "eaa483baeb798394c5df88ca2f28d0053f99c4151f155ecbc3a8762e847ce751",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.397Z",
-  "last_validated": "2025-10-12T09:19:28.397Z"
+  "functions": [
+    "calculateGapWidth",
+    "calculateItemPosition",
+    "calculateOverlap",
+    "calculateSectionWidth",
+    "interpolate",
+    "memo",
+    "setItems",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "BackgroundSection",
+    "Canvas",
+    "ColorMatrix",
+    "Group",
+    "Image",
+    "LayoutAnimationConfig",
+    "ListItem",
+    "OnlineToOffline",
+    "PressableScale",
+    "View"
+  ],
+  "patterns": [
+    "derived-computation",
+    "timing-animation",
+    "value-interpolation",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "value-mapping",
+    "canvas-rendering"
+  ],
+  "stats": {
+    "total_files": 8,
+    "total_packages": 5,
+    "total_hooks": 7,
+    "total_functions": 8,
+    "total_components": 11,
+    "total_patterns": 4,
+    "total_techniques": 3
+  }
 }

@@ -1,966 +1,257 @@
 {
-  "animation_name": "Popup Handler",
   "animation_slug": "popup-handler",
-  "description": "A sophisticated context menu system featuring a blurred backdrop popup with draggable trigger button. The implementation uses long-press gestures to show contextual menus, synchronous UI thread measurements for precise positioning, and automatic alignment detection. The popup includes a custom blur provider with animated backdrop, smart positioning that adapts to screen edges, and smooth scale/fade animations for menu appearance.",
-  "main_features": [
-    "Long-press gesture detection to trigger context menu",
-    "Blurred backdrop with dark tint during popup display",
-    "Draggable circular button with pan gesture support",
-    "Synchronous measure() for precise popup positioning on UI thread",
-    "Smart popup alignment (top-left, top-right, bottom-left, bottom-right)",
-    "Automatic edge detection to prevent off-screen menus",
-    "Smooth scale + fade animations for menu appearance",
-    "Customizable menu options with leading/trailing icons",
-    "Touch-outside-to-dismiss functionality",
-    "Animated popup dismissal with timing animations",
-    "Highlighted node display at trigger location",
-    "Context-based state management for popup system",
-    "Worklet-based scheduling for JS-thread callbacks",
-    "Exclusive gesture handling (long-press vs tap)"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.012Z",
   "file_structure": {
-    "index.tsx": "Main demo with draggable button and popup trigger example",
-    "BlurredPopup/index.tsx": "Re-exports BlurredPopupProvider and TouchablePopupHandler",
-    "BlurredPopup/BlurredContext.tsx": "Context definition with types for popup system",
-    "BlurredPopup/BlurredPopupProvider.tsx": "Main provider component managing popup state, blur, and rendering",
-    "BlurredPopup/TouchablePopupHandler.tsx": "Wrapper component for elements that trigger popups via long-press"
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": [
+      "BlurredPopup/BlurredContext.tsx",
+      "BlurredPopup/BlurredPopupProvider.tsx",
+      "BlurredPopup/TouchablePopupHandler.tsx"
+    ]
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "blur": "expo-blur",
-    "worklets": "react-native-worklets",
-    "state_management": "React Context API",
-    "icons": "@expo/vector-icons"
+  "packages": [
+    "@expo/vector-icons",
+    "expo-blur",
+    "expo-haptics",
+    "expo-image",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-blur": "~15.0.7",
+    "expo-haptics": "~15.0.7",
+    "expo-image": "~3.0.10",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./BlurredContext": {
+      "imports": [
+        "BlurredPopupContext"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./BlurredPopup": {
+      "imports": [
+        "BlurredPopupProvider",
+        "TouchablePopupHandler"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./BlurredPopupProvider": {
+      "imports": [
+        "BlurredPopupProvider"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./TouchablePopupHandler": {
+      "imports": [
+        "TouchablePopupHandler"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "FontAwesome"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-blur": {
+      "imports": [
+        "BlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-haptics": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-image": {
+      "imports": [
+        "Image"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableOpacity"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "createContext",
+        "useCallback",
+        "useContext",
+        "useMemo",
+        "useState"
+      ],
       "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "useAnimatedStyle",
-        "useAnimatedProps",
-        "useAnimatedReaction",
-        "useAnimatedRef",
-        "withSpring",
-        "withTiming",
-        "measure"
+        "useCallback",
+        "useContext",
+        "useMemo",
+        "useState"
       ],
-      "components": [
-        "Animated.View"
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View",
+        "useWindowDimensions"
       ],
-      "critical_feature": "measure() for synchronous UI thread measurements and useAnimatedReaction for JS callback scheduling",
-      "usage": "Pan gesture animations, blur opacity, menu scale/fade, and precise position calculations"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
+      "imports": [
+        "Gesture",
         "GestureDetector",
         "GestureHandlerRootView"
       ],
-      "gestures": [
-        "Gesture.Pan",
-        "Gesture.LongPress",
-        "Gesture.Tap",
-        "Gesture.Exclusive"
-      ],
-      "usage": "Draggable button with pan gesture and exclusive long-press/tap handling",
-      "critical_feature": "Gesture.Exclusive for preventing gesture conflicts"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "expo-blur": {
-      "version": "~15.0.7",
+    "react-native-reanimated": {
+      "imports": [
+        "measure",
+        "useAnimatedProps",
+        "useAnimatedReaction",
+        "useAnimatedRef",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedProps",
+        "useAnimatedReaction",
+        "useAnimatedRef",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "withSpring",
+        "withTiming"
+      ],
       "components": [
-        "BlurView"
-      ],
-      "props": [
-        "intensity",
-        "tint",
-        "style"
-      ],
-      "usage": "Dark blurred backdrop behind popup menu (configurable intensity)",
-      "critical_feature": "Dark tint blur effect at 5-20 intensity (default 10)"
+        "Animated.View"
+      ]
     },
     "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
+      "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Schedule JS-thread callbacks from UI thread worklets",
-      "critical_feature": "Bridge between UI thread measure() and JS context callbacks"
-    },
-    "expo-image": {
-      "version": "~3.0.8",
-      "components": [
-        "Image"
-      ],
-      "usage": "Background image in demo (Unsplash photo)"
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "components": [
-        "FontAwesome"
-      ],
-      "icons_used": [
-        "location-arrow"
-      ],
-      "usage": "Directional arrow icons in menu options (rotated per alignment)"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "blur_opacity_animation": {
-      "pattern": "withTiming blur opacity from 0 to 1",
-      "shared_value": "blurOpacity = useSharedValue(0)",
-      "animation": "withTiming(1, { duration: 300 })",
-      "trigger": "When showPopup is called",
-      "dismissal": "withTiming(0, { duration: 300 })",
-      "effect": "Smooth fade-in/fade-out of blurred backdrop",
-      "applied_to": "BlurView wrapper with animated opacity style"
-    },
-    "menu_scale_fade": {
-      "pattern": "Combined scale (0.95 → 1) and opacity (0 → 1) animation",
-      "opacity": "useDerivedValue(() => withTiming(menuVisible.value ? 1 : 0, { duration: 200 }))",
-      "scale": "useDerivedValue(() => withTiming(menuVisible.value ? 1 : 0.95, { duration: 200 }))",
-      "effect": "Menu pops in from 95% scale, fades out to 95% scale",
-      "timing": "200ms timing animation (faster than blur)",
-      "trigger": "menuVisible shared value toggle"
-    },
-    "draggable_button": {
-      "pattern": "Pan gesture with context-based position tracking",
-      "shared_values": [
-        "translateX",
-        "translateY",
-        "context { x, y }"
-      ],
-      "onBegin": "Save current position to context",
-      "onUpdate": "translateX/Y = event.translation + context value",
-      "transform": "transform: [{ translateX }, { translateY }]",
-      "effect": "Smooth dragging with gesture handler integration"
-    },
-    "snap_to_corners": {
-      "pattern": "Animated reaction to snap button to screen corners",
-      "shared_value": "selectedAngle ('top-left' | 'top-right' | 'bottom-left' | 'bottom-right')",
-      "reaction": "useAnimatedReaction watches selectedAngle changes",
-      "calculation": "x/y based on angle includes/excludes 'right'/'bottom'",
-      "animation": "withSpring(x) and withSpring(y)",
-      "timing": "Delayed by 800ms via setTimeout in demo",
-      "effect": "Button springs to selected corner after menu selection"
-    },
-    "synchronized_state_reset": {
-      "pattern": "useAnimatedReaction monitors blur opacity to reset state",
-      "watches": "blurOpacity.value",
-      "condition": "value === 0 && prevValue > value (fade complete)",
-      "action": "scheduleOnRN(resetParams) - clear popup state on JS thread",
-      "purpose": "Clean up popup state after dismissal animation completes",
-      "critical": "Prevents memory leaks and stale state"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "menuVisible",
-        "type": "boolean",
-        "scope": "BlurredPopupProvider",
-        "purpose": "Controls menu scale/opacity animations",
-        "initial": false,
-        "updates": "Set to true in showPopup, false when closing"
-      },
-      {
-        "name": "blurOpacity",
-        "type": "number (0-1)",
-        "scope": "BlurredPopupProvider",
-        "purpose": "Controls backdrop blur visibility",
-        "initial": 0,
-        "updates": "Animated with withTiming on show/dismiss"
-      },
-      {
-        "name": "translateX",
-        "type": "number",
-        "scope": "PopupHandler demo",
-        "purpose": "Horizontal position of draggable button",
-        "initial": 0,
-        "updates": "Pan gesture and snap animations"
-      },
-      {
-        "name": "translateY",
-        "type": "number",
-        "scope": "PopupHandler demo",
-        "purpose": "Vertical position of draggable button",
-        "initial": 0,
-        "updates": "Pan gesture and snap animations"
-      },
-      {
-        "name": "context",
-        "type": "{ x: number, y: number }",
-        "scope": "PopupHandler demo",
-        "purpose": "Store position before gesture starts",
-        "initial": "{ x: 0, y: 0 }",
-        "updates": "onBegin of pan gesture"
-      },
-      {
-        "name": "selectedAngle",
-        "type": "Angle union type",
-        "scope": "PopupHandler demo",
-        "purpose": "Track which corner to snap button to",
-        "initial": "'top-left'",
-        "updates": "Menu option selection callbacks"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "menuOpacity",
-        "calculation": "withTiming(menuVisible.value ? 1 : 0, { duration: 200 })",
-        "dependencies": [
-          "menuVisible"
-        ],
-        "type": "number (0-1)",
-        "purpose": "Animated opacity for menu appearance"
-      },
-      {
-        "name": "menuScale",
-        "calculation": "withTiming(menuVisible.value ? 1 : 0.95, { duration: 200 })",
-        "dependencies": [
-          "menuVisible"
-        ],
-        "type": "number",
-        "purpose": "Animated scale for menu pop effect"
-      }
-    ],
-    "animated_styles": [
-      {
-        "name": "rBlurViewStyle",
-        "scope": "BlurredPopupProvider",
-        "properties": [
-          "opacity"
-        ],
-        "calculation": "opacity: blurOpacity.value",
-        "usage": "Fade blur backdrop in/out"
-      },
-      {
-        "name": "rMenuPopupStyle",
-        "scope": "BlurredPopupProvider",
-        "properties": [
-          "opacity",
-          "transform"
-        ],
-        "calculation": "opacity: menuOpacity.value, scale: menuScale.value",
-        "usage": "Scale and fade menu popup"
-      },
-      {
-        "name": "rStyle",
-        "scope": "PopupHandler demo",
-        "properties": [
-          "transform"
-        ],
-        "calculation": "translateX: translateX.value, translateY: translateY.value",
-        "usage": "Position draggable button"
-      }
-    ],
-    "animated_props": [
-      {
-        "name": "menuAnimatedProps",
-        "scope": "BlurredPopupProvider",
-        "properties": [
-          "pointerEvents"
-        ],
-        "calculation": "hasParams ? 'auto' : 'none'",
-        "purpose": "Disable touch events when popup not visible",
-        "critical": "Prevents phantom touch targets"
-      }
-    ],
-    "measure_on_ui_thread": {
-      "pattern": "Synchronous measure() inside gesture handler",
-      "implementation": "const dimensions = measure(viewRef)",
-      "hook": "useAnimatedRef<Animated.View>()",
-      "critical": "Must run on UI thread for sync measurement",
-      "returns": "MeasuredDimensions { x, y, width, height, pageX, pageY }",
-      "usage": "Passed to JS thread via scheduleOnRN",
-      "benefit": "No async measurement lag, instant popup positioning"
-    }
-  },
-  "gesture_patterns": {
-    "pan_gesture": {
-      "type": "Gesture.Pan()",
-      "component": "Draggable button",
-      "callbacks": {
-        "onBegin": "Save current translateX/Y to context",
-        "onUpdate": "Update translateX/Y with event.translation + context"
-      },
-      "effect": "Free dragging of button across screen"
-    },
-    "long_press_gesture": {
-      "type": "Gesture.LongPress()",
-      "minDuration": 450,
-      "component": "TouchablePopupHandler",
-      "callbacks": {
-        "onStart": [
-          "1. Synchronously measure element with measure(viewRef)",
-          "2. Schedule showPopup on JS thread with dimensions",
-          "3. Trigger haptic feedback (commented out)"
-        ]
-      },
-      "effect": "Show popup after 450ms press"
-    },
-    "tap_gesture": {
-      "type": "Gesture.Tap()",
-      "component": "TouchablePopupHandler",
-      "callbacks": {
-        "onTouchesUp": "Execute optional onPress callback"
-      },
-      "effect": "Handle quick taps without triggering popup"
-    },
-    "exclusive_gesture": {
-      "pattern": "Gesture.Exclusive(longPressGesture, singleTapGesture)",
-      "purpose": "Prevent tap from triggering during long-press",
-      "benefit": "Clean gesture separation without conflicts",
-      "priority": "Long-press takes precedence when duration met"
-    }
-  },
-  "context_architecture": {
-    "BlurredPopupContext": {
-      "type": "React.createContext<BlurredContextType>",
-      "provides": {
-        "showPopup": "Function to trigger popup display"
-      },
-      "parameters": {
-        "layout": "MeasuredDimensions - Size and position of trigger",
-        "node": "ReactNode - Element to display at trigger location",
-        "options": "PopupOptionType[] - Menu items"
-      },
-      "default_value": "{ showPopup: () => {} }",
-      "consumers": "TouchablePopupHandler (via useContext)"
-    },
-    "BlurredPopupProvider": {
-      "type": "Provider component",
-      "state": [
-        "params: { node, layout, options } | null - Popup state",
-        "menuVisible: SharedValue<boolean> - Menu visibility",
-        "blurOpacity: SharedValue<number> - Blur animation state"
-      ],
-      "props": {
-        "children": "App content",
-        "menuLayout": "Optional menu styling config",
-        "maxBlur": "Blur intensity (default 5, used as 5 * 20 = 100)"
-      },
-      "responsibilities": [
-        "Manage popup state",
-        "Render blur backdrop",
-        "Render menu with options",
-        "Handle dismissal",
-        "Calculate popup position/alignment",
-        "Animate popup appearance/disappearance"
-      ]
-    },
-    "TouchablePopupHandler": {
-      "type": "Wrapper component",
-      "consumes": "BlurredPopupContext",
-      "props": {
-        "children": "Content to wrap",
-        "highlightedChildren": "Optional alternate content for popup",
-        "style": "View styling",
-        "onPress": "Optional tap callback",
-        "options": "PopupOptionType[] - Menu items"
-      },
-      "responsibilities": [
-        "Wrap content with gesture detector",
-        "Measure element on long-press",
-        "Trigger showPopup via context"
-      ]
-    }
-  },
-  "positioning_algorithm": {
-    "alignment_detection": {
-      "step_1": "Get trigger dimensions (pageX, pageY, width, height)",
-      "step_2": "Calculate available space below: canvasSize.height - pageY - popupHeight",
-      "step_3": "Determine yAlignment: space < 100 ? 'top' : 'bottom'",
-      "step_4": "Calculate available space right: canvasSize.width - pageX",
-      "step_5": "Determine xAlignment: space > 200 ? 'left' : 'right'",
-      "step_6": "Combine: alignment = `${yAlignment}-${xAlignment}`",
-      "result": "One of 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'"
-    },
-    "position_calculation": {
-      "x_position": "alignment.includes('right') ? width : pageX",
-      "y_position": "alignment.includes('bottom') ? pageY + height : pageY - popupHeight",
-      "additional_y_space": "5 * (yAlignment === 'top' ? -1 : 1)",
-      "final_style": "{ position: 'absolute', top: y + additionalYSpace, [xAlignment]: x, height: popupHeight }",
-      "dynamic": "Positioning object key depends on alignment ('left' vs 'right')"
-    },
-    "popup_height": {
-      "calculation": "listItemHeight * optionsLength",
-      "default_item_height": "54px",
-      "configurable": "Via menuLayout prop",
-      "usage": "Required for alignment detection and positioning"
-    },
-    "edge_cases": {
-      "top_alignment": "Menu appears above trigger, subtracts popupHeight from pageY",
-      "bottom_alignment": "Menu appears below trigger, adds height to pageY",
-      "left_alignment": "Menu aligns left edge with trigger",
-      "right_alignment": "Menu aligns right edge with trigger (uses 'right' CSS property)"
-    }
-  },
-  "menu_rendering": {
-    "list_items": {
-      "component": "TouchableOpacity",
-      "height": "menuLayout.listItemHeight (default 54px)",
-      "background": "menuLayout.backgroundColor (default 'rgba(255,255,255,0.95)')",
-      "layout": "flexDirection: row, alignItems: center",
-      "padding": "paddingHorizontal: 16px",
-      "structure": "[leading icon] [label text] [flex spacer] [trailing icon]"
-    },
-    "styling": {
-      "first_item": "borderTopLeftRadius: 12, borderTopRightRadius: 12",
-      "last_item": "borderBottomLeftRadius: 12, borderBottomRightRadius: 12, borderBottomWidth: 0",
-      "separator": "borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.08)'",
-      "shadow": "elevation: 8, shadowColor: #000, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16"
-    },
-    "interaction": {
-      "onPress": "Close popup → Execute option callback",
-      "activeOpacity": 0.6,
-      "dismissal": "menuVisible.value = false, then blur fade after 100ms"
-    },
-    "z_indexing": {
-      "popup_menu": "zIndex: 20",
-      "background_dismissal": "zIndex: -20",
-      "highlighted_node": "zIndex: -30",
-      "container": "zIndex: 500",
-      "blur_view": "zIndex: 100 when visible, -10 when hidden"
-    }
-  },
-  "worklet_scheduling": {
-    "pattern": "scheduleOnRN for UI thread → JS thread communication",
-    "use_case_1": {
-      "location": "TouchablePopupHandler longPressGesture",
-      "action": "Schedule showPopup callback with measured dimensions",
-      "reason": "showPopup sets React state, must run on JS thread"
-    },
-    "use_case_2": {
-      "location": "TouchablePopupHandler longPressGesture",
-      "action": "Schedule haptic feedback (commented out)",
-      "reason": "Haptic API requires JS thread"
-    },
-    "use_case_3": {
-      "location": "BlurredPopupProvider useAnimatedReaction",
-      "action": "Schedule resetParams when blur opacity reaches 0",
-      "reason": "resetParams calls setParams (React state), must run on JS thread"
-    },
-    "critical_pattern": "Always wrap React state updates with scheduleOnRN when called from worklets"
-  },
-  "demo_implementation": {
-    "draggable_button": {
-      "size": "64px (aspect ratio 1:1)",
-      "appearance": "White circle",
-      "background_image": "Unsplash landscape photo",
-      "initial_position": "Top-left (0, 0)",
-      "gesture": "Pan gesture for dragging",
-      "trigger": "Long-press to show menu"
-    },
-    "menu_options": {
-      "count": 4,
-      "labels": [
-        "Top Left",
-        "Top Right",
-        "Bottom Left",
-        "Bottom Right"
-      ],
-      "icons": "FontAwesome location-arrow with rotation per direction",
-      "rotations": {
-        "top-right": "0deg",
-        "bottom-right": "90deg",
-        "top-left": "270deg",
-        "bottom-left": "180deg"
-      },
-      "action": "Snap button to selected corner (800ms delay)"
-    },
-    "snap_logic": {
-      "pattern": "useAnimatedReaction watches selectedAngle",
-      "calculations": {
-        "x": "angle.includes('right') ? width - internalPadding : internalPadding",
-        "y": "angle.includes('bottom') ? height - size : internalPadding * 2"
-      },
-      "animation": "withSpring for natural motion",
-      "timing": "Delayed 800ms to allow menu dismissal animation"
-    }
-  },
-  "performance_optimizations": {
-    "synchronous_measurement": {
-      "pattern": "measure(viewRef) on UI thread",
-      "benefit": "No async delay, instant position calculation",
-      "vs_measureInWindow": "Sync vs async, eliminates frame lag"
-    },
-    "useMemo_for_styles": {
-      "nodeStyle": "Memoized based on params",
-      "popupStyle": "Memoized based on params, popupHeight, canvasSize",
-      "blurViewStyle": "Memoized based on params?.node",
-      "menuLayout": "Memoized based on menuLayoutProp",
-      "benefit": "Prevents style object recreation on every render"
-    },
-    "useCallback_optimizations": {
-      "showPopup": "Memoized with [menuVisible, blurOpacity]",
-      "dismissBlurredPopup": "Memoized with [blurOpacity]",
-      "resetParams": "Memoized with []",
-      "close": "Memoized with [dismissBlurredPopup, menuVisible]",
-      "benefit": "Stable function references prevent child re-renders"
-    },
-    "animated_props_for_pointer_events": {
-      "pattern": "useAnimatedProps for pointerEvents",
-      "benefit": "Updates on UI thread without re-render",
-      "vs_conditional_render": "More efficient than mounting/unmounting"
-    },
-    "useDerivedValue_for_animations": {
-      "menuOpacity": "Derived from menuVisible",
-      "menuScale": "Derived from menuVisible",
-      "benefit": "Reactive animations run entirely on UI thread"
-    },
-    "conditional_rendering": {
-      "pattern": "Empty fragment when params?.node == null",
-      "benefit": "Avoids rendering menu items when not needed",
-      "note": "Still renders View to maintain zIndex priorities"
-    }
-  },
-  "type_definitions": {
-    "PopupAlignment": "'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'",
-    "PopupOptionType": {
-      "label": "string",
-      "onPress": "() => void (optional)",
-      "leading": "ReactNode (optional)",
-      "trailing": "ReactNode (optional)"
-    },
-    "BlurredContextType": {
-      "showPopup": "Function accepting { layout, node, options }"
-    },
-    "MenuLayout": {
-      "backgroundColor": "string (optional)",
-      "titleColor": "string (optional)",
-      "listItemHeight": "number (optional)"
-    },
-    "TouchablePopupHandlerProps": {
-      "children": "ReactNode (optional)",
-      "highlightedChildren": "ReactNode (optional)",
-      "style": "StyleProp<ViewStyle> (optional)",
-      "onPress": "() => void (optional)",
-      "options": "PopupOptionType[] (required)"
-    }
-  },
-  "visual_design": {
-    "demo": {
-      "background": "#111 (very dark gray)",
-      "background_image": "Unsplash landscape photo overlay",
-      "button": "64px white circle"
-    },
-    "popup_menu": {
-      "background": "rgba(255,255,255,0.95) (semi-transparent white)",
-      "border_radius": "12px",
-      "shadow": "Elevation 8, black shadow with 0.25 opacity, 16px radius",
-      "text_color": "#1a1a1a (dark gray, default)",
-      "item_height": "54px (default)",
-      "item_separator": "0.5px rgba(0,0,0,0.08) bottom border"
-    },
-    "blur_backdrop": {
-      "tint": "dark",
-      "intensity": "maxBlur * 20 (default 5 * 20 = 100)",
-      "style": "StyleSheet.absoluteFillObject",
-      "z_index": "100 when visible, -10 when hidden"
-    },
-    "highlighted_node": {
-      "position": "Absolute at trigger location",
-      "content": "highlightedChildren ?? children",
-      "animations": "Same scale/fade as menu",
-      "z_index": "-30 (behind menu)"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Context menus for list items",
-      "Long-press actions on buttons/cards",
-      "Contextual actions for draggable elements",
-      "Settings menus for UI components",
-      "Quick actions for chat messages",
-      "Right-click style menus (mobile)",
-      "Action sheets with blur backdrop"
-    ],
-    "real_world_examples": [
-      "iOS/iPadOS context menus (long-press)",
-      "Telegram message long-press actions",
-      "Twitter tweet options menu",
-      "Instagram post options",
-      "Gmail email long-press actions",
-      "Spotify song options menu",
-      "Notes app note options"
-    ],
-    "not_recommended_for": [
-      "Simple dropdowns (too complex)",
-      "Primary navigation (use dedicated nav)",
-      "Time-critical actions (long-press delay)",
-      "Frequently used actions (prefer visible buttons)"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_definitions": [
-        "PopupAlignment union type",
-        "PopupOptionType interface",
-        "BlurredContextType interface",
-        "MenuLayout type",
-        "BlurredPopupProviderProps",
-        "TouchablePopupHandlerProps"
-      ],
-      "type_imports": "Separate type imports for ViewProps, ViewStyle, MeasuredDimensions",
-      "const_assertions": "'as const' for angles array",
-      "generics": "FC<Props> for functional components"
-    },
-    "component_separation": {
-      "BlurredContext": "Type definitions and context creation",
-      "BlurredPopupProvider": "State management, rendering, positioning logic",
-      "TouchablePopupHandler": "Gesture handling and measurement",
-      "index.tsx": "Demo implementation"
-    },
-    "documentation": {
-      "jsdoc_comments": {
-        "BlurredContext": "Extensive JSDoc for context and types",
-        "TouchablePopupHandler": "Detailed JSDoc for component and props",
-        "wrappedJsShowPopup": "Function purpose explanation",
-        "showPopup": "Parameter documentation"
-      },
-      "inline_comments": [
-        "Default showPopup explanation",
-        "zIndex swap explanation",
-        "Haptic feedback placeholder",
-        "Measure explanation",
-        "Exclusive gesture explanation"
-      ]
-    },
-    "best_practices": [
-      "Context pattern for cross-component communication",
-      "Separation of concerns (rendering, gestures, state)",
-      "useCallback for stable references",
-      "useMemo for expensive calculations",
-      "Type-safe props and context",
-      "Clean component composition",
-      "Default values for optional props",
-      "Proper TypeScript const assertions"
-    ],
-    "constants": {
-      "DEFAULT_MENU_LAYOUT": "Required<MenuLayout> with defaults",
-      "size": "64 (button size in demo)",
-      "angles": "const array with 'as const' assertion",
-      "styles": "StyleSheet.create for all styles"
-    }
-  },
-  "known_limitations": {
-    "haptic_feedback": {
-      "issue": "Haptic feedback code commented out",
-      "library": "react-native-haptic-feedback",
-      "action": "Trigger 'impactLight' on long-press",
-      "status": "Disabled, would need to uncomment and install package"
-    },
-    "menu_height_calculation": {
-      "issue": "Popup height calculated before knowing final count",
-      "edge_case": "If options change after initial measurement",
-      "impact": "Minor - options typically static per popup"
-    },
-    "blur_intensity_scaling": {
-      "issue": "maxBlur multiplied by 20 for intensity",
-      "example": "maxBlur=5 → intensity=100",
-      "confusion": "Non-obvious scaling factor",
-      "improvement": "Could accept intensity directly or document scaling"
-    },
-    "accessibility": {
-      "missing": "No accessibility labels on menu items",
-      "screen_reader": "Menu items not announced properly",
-      "keyboard": "No keyboard navigation support",
-      "touch_targets": "Item height configurable but not validated (minimum 44px recommended)"
-    },
-    "platform_differences": {
-      "android_blur": "Blur may render differently on Android",
-      "elevation_vs_shadow": "Elevation for Android, shadow for iOS (both defined)",
-      "performance": "Blur can be expensive on lower-end devices"
-    },
-    "z_index_complexity": {
-      "issue": "Multiple z-index values across components",
-      "values": "-30, -20, -10, 10, 20, 100, 500",
-      "maintenance": "Hard to track and modify",
-      "improvement": "Could extract to constants with semantic names"
-    },
-    "no_nested_popups": {
-      "limitation": "Only one popup can be open at a time",
-      "state": "Single params state in provider",
-      "improvement": "Would need popup stack for nested menus"
-    }
-  },
-  "potential_improvements": {
-    "interaction_enhancements": [
-      "Haptic feedback on long-press start",
-      "Haptic feedback on menu item press",
-      "Swipe-to-dismiss gesture on menu",
-      "Keyboard navigation support",
-      "Hover effects on menu items (for web/large screens)",
-      "Press-and-drag to select menu item",
-      "Cancel popup if drag threshold exceeded"
-    ],
-    "visual_refinements": [
-      "Custom blur styles (light/dark/adaptive)",
-      "Menu item press animation",
-      "Entrance animation variations (slide, pop, etc.)",
-      "Arrow/pointer from menu to trigger",
-      "Custom shadow configurations",
-      "Menu item icons with color support",
-      "Section separators in menu",
-      "Menu item subtitle support"
-    ],
-    "functionality": [
-      "Nested/cascading menus",
-      "Scrollable menus for many items",
-      "Menu width configuration",
-      "Custom positioning strategies",
-      "Prevent dismissal on backdrop press (modal mode)",
-      "Menu item disabled state",
-      "Menu item destructive styling (red for delete)",
-      "Checkbox/radio menu items"
-    ],
-    "customization": [
-      "Theme support (light/dark)",
-      "Custom menu animations",
-      "Configurable gesture duration",
-      "Custom blur intensity curve",
-      "Item height per option (not global)",
-      "Custom item components",
-      "Backdrop color/opacity configuration"
-    ],
-    "accessibility": [
-      "accessibilityLabel for menu items",
-      "accessibilityRole='menu' and 'menuitem'",
-      "Screen reader announcements",
-      "Keyboard navigation (arrow keys, enter, escape)",
-      "Focus management",
-      "Minimum touch target validation",
-      "High contrast mode support",
-      "Reduce motion support (instant animations)"
-    ],
-    "performance": [
-      "Virtualized menu for long lists",
-      "Lazy blur rendering",
-      "Memoize menu items",
-      "Optimize z-index management",
-      "Reduce blur complexity on low-end devices"
-    ],
-    "code_improvements": [
-      "Extract z-index values to constants",
-      "Simplify blur intensity API",
-      "Enable haptic feedback by default",
-      "Add menu item press callbacks to context",
-      "Improve type safety for alignment",
-      "Add comprehensive prop documentation",
-      "Create example variants in demo"
-    ]
-  },
-  "key_insights": {
-    "synchronous_measurement": "measure() on UI thread eliminates async lag for perfect popup positioning",
-    "exclusive_gestures": "Gesture.Exclusive cleanly separates tap from long-press without conflicts",
-    "worklet_scheduling": "scheduleOnRN bridges UI thread measurements to JS thread state updates",
-    "blur_z_index_trick": "Dynamic zIndex (-10 vs 100) prevents touch blocking when popup hidden",
-    "animated_props_performance": "useAnimatedProps for pointerEvents updates without re-renders",
-    "context_for_portals": "Context API enables portal-like behavior without actual portal library",
-    "alignment_detection": "Smart edge detection ensures menus always fully visible on screen",
-    "separate_scale_opacity": "Independent scale and opacity animations create polished pop effect"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "React Context API basics",
-      "Long-press gesture handling",
-      "Basic blur effects with expo-blur",
-      "Touch event handling",
-      "Conditional rendering patterns"
-    ],
-    "for_intermediate": [
-      "Synchronous measure() on UI thread",
-      "scheduleOnRN for worklet-to-JS communication",
-      "Exclusive gesture composition",
-      "Dynamic positioning algorithms",
-      "useAnimatedReaction for side effects",
-      "Complex state management with Context",
-      "Z-index layering strategies"
-    ],
-    "for_advanced": [
-      "Building reusable context menu systems",
-      "Performance optimization with animated props",
-      "Complex gesture interactions",
-      "Portal-like rendering with Context",
-      "Edge detection and responsive positioning",
-      "Coordinating multiple animation states",
-      "Worklet scheduling patterns",
-      "Creating animation wrapper abstractions"
-    ]
-  },
-  "performance_considerations": {
-    "blur_cost": {
-      "description": "BlurView can be expensive on lower-end devices",
-      "intensity": "Higher intensity = more expensive",
-      "recommendation": "maxBlur of 5-10 for good balance",
-      "optimization": "Could disable blur on low-end devices"
-    },
-    "menu_rendering": {
-      "description": "All menu items rendered at once",
-      "limit": "Works well for < 10 items",
-      "recommendation": "Use FlatList for longer menus"
-    },
-    "animation_overhead": {
-      "description": "Multiple animations run simultaneously",
-      "blur_opacity": "300ms timing animation",
-      "menu_scale_opacity": "200ms timing animations (2 derived values)",
-      "mitigation": "All animations run on UI thread"
-    },
-    "measure_performance": {
-      "description": "Synchronous measurement is fast",
-      "benefit": "No layout thrashing, single measurement",
-      "critical": "Runs on UI thread, no bridge crossing"
-    }
-  },
-  "comparison_to_alternatives": {
-    "vs_react_native_menu": {
-      "similarity": "Both provide context menus",
-      "difference": "This uses custom blur backdrop, gesture-based triggering",
-      "benefit": "More visual polish, customizable"
-    },
-    "vs_bottom_sheet": {
-      "similarity": "Both show contextual options",
-      "difference": "Bottom sheet slides from bottom, this pops up near trigger",
-      "use_case": "This better for contextual actions, bottom sheet for detailed content"
-    },
-    "vs_dropdown_menu": {
-      "similarity": "Both show menu options",
-      "difference": "This requires long-press, shows blurred backdrop",
-      "trigger": "Long-press vs tap/click"
-    },
-    "vs_action_sheet": {
-      "similarity": "Both provide action options",
-      "difference": "Action sheet modal from bottom, this contextual near trigger",
-      "ux": "This better for spatial context"
-    }
-  },
-  "testing_considerations": {
-    "visual_regression": [
-      "Menu renders with correct position for all alignments",
-      "Blur backdrop appears with correct intensity",
-      "Highlighted node displays at trigger location",
-      "Menu items render with correct styling",
-      "Shadow and border radius appear correctly"
-    ],
-    "interaction_testing": [
-      "Long-press triggers popup (450ms minimum)",
-      "Tap executes onPress without popup",
-      "Touch outside dismisses popup",
-      "Menu item press executes callback",
-      "Menu item press dismisses popup",
-      "Pan gesture moves button smoothly"
-    ],
-    "animation_testing": [
-      "Blur fades in smoothly (300ms)",
-      "Menu scales from 0.95 to 1 (200ms)",
-      "Menu fades in with scale",
-      "Dismissal animations reverse smoothly",
-      "Button snaps to corners with spring"
-    ],
-    "positioning_testing": [
-      "Menu aligns correctly for top-left",
-      "Menu aligns correctly for top-right",
-      "Menu aligns correctly for bottom-left",
-      "Menu aligns correctly for bottom-right",
-      "Menu stays on screen near edges",
-      "Edge detection works correctly"
-    ],
-    "state_management": [
-      "Popup state resets after dismissal",
-      "Context provides showPopup correctly",
-      "Multiple TouchablePopupHandlers work independently",
-      "Rapid show/dismiss handled gracefully"
-    ],
-    "edge_cases": [
-      "Very long menu (> 10 items)",
-      "Menu items with no icons",
-      "Menu items with both icons",
-      "Empty menu options array",
-      "Trigger at screen edges",
-      "Very small trigger element",
-      "Rapid long-press triggering"
-    ]
-  },
-  "accessibility_recommendations": {
-    "current_state": {
-      "labels": "No accessibility labels",
-      "roles": "No accessibility roles",
-      "announcements": "No screen reader support",
-      "keyboard": "No keyboard navigation",
-      "reduced_motion": "No prefers-reduced-motion support"
-    },
-    "should_add": [
-      "accessibilityLabel on menu items",
-      "accessibilityRole='menu' on popup container",
-      "accessibilityRole='menuitem' on menu items",
-      "accessibilityState for disabled items (if added)",
-      "Announce popup opening/closing",
-      "Keyboard navigation (arrow keys, escape)",
-      "Focus trap within open menu",
-      "Minimum 44x44pt touch targets",
-      "Respect reduce motion (instant transitions)",
-      "Screen reader instructions for long-press"
-    ]
-  },
-  "related_patterns": {
-    "context_menus": "Similar contextual menu systems",
-    "long_press_interactions": "Other long-press triggered actions",
-    "blur_backdrops": "UI elements with blur effects",
-    "portal_patterns": "Rendering outside normal hierarchy",
-    "gesture_based_ui": "Gesture-driven interactions",
-    "draggable_elements": "Pan gesture drag patterns"
-  },
-  "bundle_size_impact": {
-    "code_size": "~500 lines total (all components)",
-    "dependencies": "Reanimated, Gesture Handler, expo-blur (likely in project)",
-    "runtime_memory": "Moderate - BlurView, animated values, menu state",
-    "performance": "Good - UI thread animations, efficient gestures"
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features fully supported",
-      "blur": "Native blur support, excellent performance",
-      "gestures": "Smooth gesture handling",
-      "shadows": "shadowOpacity, shadowRadius supported"
-    },
-    "android": {
-      "features": "All features supported",
-      "blur": "May have performance impact on low-end devices",
-      "gestures": "Smooth gesture handling",
-      "shadows": "elevation property supported"
-    },
-    "web": {
-      "compatibility": "Most features work with react-native-web",
-      "blur": "CSS backdrop-filter used, browser support varies",
-      "gestures": "Gesture handler supports web",
-      "limitations": "Long-press may conflict with context menu"
-    }
-  },
-  "tags": [
-    "context-menu",
-    "popup",
-    "long-press",
-    "gesture-handler",
-    "blur-backdrop",
-    "reanimated",
-    "draggable",
-    "measure",
-    "ui-thread",
-    "worklets",
-    "positioning",
-    "context-api",
-    "animated-menu",
-    "smart-alignment",
-    "touch-interaction",
-    "scale-animation",
-    "fade-animation"
+  "hooks": [
+    "useAnimatedProps",
+    "useAnimatedReaction",
+    "useAnimatedRef",
+    "useAnimatedStyle",
+    "useCallback",
+    "useContext",
+    "useDerivedValue",
+    "useMemo",
+    "useSharedValue",
+    "useState",
+    "useWindowDimensions"
   ],
-  "content_hash": "5cf58072b16b5b50d4eba0b85cebc863a5084c113a7990c230195da9f438a9a9",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.405Z",
-  "last_validated": "2025-10-12T09:19:28.405Z"
+  "functions": [
+    "Boolean",
+    "close",
+    "createContext",
+    "dismissBlurredPopup",
+    "getRotationByAngle",
+    "measure",
+    "onPress",
+    "scheduleOnRN",
+    "setParams",
+    "setTimeout",
+    "showPopup",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "BlurView",
+    "BlurredPopupContext.Provider",
+    "BlurredPopupProvider",
+    "FontAwesome",
+    "GestureDetector",
+    "GestureHandlerRootView",
+    "Image",
+    "PopupHandler",
+    "PressableOpacity",
+    "Text",
+    "TouchablePopupHandler",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "spring-animation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "spring-physics",
+    "blur-effects",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 5,
+    "total_packages": 10,
+    "total_hooks": 11,
+    "total_functions": 13,
+    "total_components": 13,
+    "total_patterns": 7,
+    "total_techniques": 5
+  }
 }

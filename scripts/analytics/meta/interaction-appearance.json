@@ -1,803 +1,320 @@
 {
-  "animation_name": "Interaction Appearance",
   "animation_slug": "interaction-appearance",
-  "description": "A sophisticated theme switcher implementation demonstrating iOS-style transitions with coordinated blur, scale, and opacity animations. Features a floating action button that triggers simultaneous theme changes with smooth rescaling of content, animated blur overlays, and dynamic color palette transitions for a polished user experience.",
-  "main_features": [
-    "Dynamic theme switching (light/dark modes)",
-    "Coordinated multi-component animations",
-    "Global shared value state management",
-    "Animated blur overlay during theme transition",
-    "Content rescaling effect (zoom out on press)",
-    "Theme-aware color palette system",
-    "Floating action button with press interactions",
-    "React Context-based theme provider",
-    "Skia-powered image rendering with blur effects",
-    "Safe area-aware positioning",
-    "Gradient overlays with theme adaptation"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.463Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Main export wrapper with providers (SafeAreaProvider, GestureHandlerRootView, ThemeProvider)"
-    },
-    "components": {
-      "src/index.tsx": "Root app component that renders MovieDetail with demo content",
-      "src/screens/movie-detail.tsx": "Main screen showing movie poster, title, and description with theme-aware styling",
-      "src/components/animated-blur-view.tsx": "Animated wrapper around expo-blur BlurView component",
-      "src/components/movie-image.tsx": "Skia Canvas-based image component with blur effects and theme transition",
-      "src/components/bottom-linear-gradient.tsx": "Theme-aware gradient overlay for content fade effect",
-      "src/components/theme-switch/index.tsx": "Barrel export for theme switch components",
-      "src/components/theme-switch/floating-button-theme.tsx": "Floating action button that triggers theme change",
-      "src/components/theme-switch/theme-blur.tsx": "Full-screen blur overlay during theme transition",
-      "src/components/theme-switch/theme-rescaler.tsx": "Container that scales content during theme change"
-    },
-    "hooks": {},
-    "utils": {},
-    "assets": {},
-    "types": {},
-    "constants": {},
-    "theme": {
-      "src/theme/index.ts": "Barrel export for theme system",
-      "src/theme/provider.tsx": "React Context-based theme provider with toggle functionality",
-      "src/theme/palette.ts": "Color palettes and spacing definitions for light/dark themes",
-      "src/theme/components.ts": "Re-exported View and Text components",
-      "src/theme/shared-value.ts": "Global shared value for tracking theme switching state"
-    }
+    "entry": "src/theme/index.ts",
+    "components": [
+      "src/components/animated-blur-view.tsx",
+      "src/components/bottom-linear-gradient.tsx",
+      "src/components/movie-image.tsx",
+      "src/components/theme-switch/floating-button-theme.tsx",
+      "src/components/theme-switch/theme-blur.tsx",
+      "src/components/theme-switch/theme-rescaler.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": [
+      "src/screens/movie-detail.tsx",
+      "src/theme/components.ts",
+      "src/theme/palette.ts",
+      "src/theme/provider.tsx",
+      "src/theme/shared-value.ts"
+    ]
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "rendering": "@shopify/react-native-skia",
-    "blur_effects": "expo-blur",
-    "gradients": "@shopify/react-native-skia LinearGradient",
-    "interactions": "pressto",
-    "state_management": "React Context + Reanimated makeMutable",
-    "safe_area": "react-native-safe-area-context",
-    "gestures": "react-native-gesture-handler",
-    "color_utilities": "color"
+  "packages": [
+    "@expo/vector-icons",
+    "@shopify/react-native-skia",
+    "color",
+    "expo-blur",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-safe-area-context"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "@shopify/react-native-skia": "2.2.12",
+    "color": "^4.2.3",
+    "expo-blur": "~15.0.7",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "../../theme": {
+      "imports": [
+        "isSwitchingThemeShared",
+        "useTheme"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../animated-blur-view": {
+      "imports": [
+        "AnimatedBlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../components/bottom-linear-gradient": {
+      "imports": [
+        "BottomLinearGradient"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../components/movie-image": {
+      "imports": [
+        "MovieImage"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../components/theme-switch": {
+      "imports": [
+        "FloatingButtonTheme",
+        "ThemeBlurView",
+        "ThemeRescaler"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../theme": {
+      "imports": [
+        "Text",
+        "View",
+        "isSwitchingThemeShared",
+        "useTheme"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./palette": {
+      "imports": [
+        "DarkTheme",
+        "LightTheme"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./screens/movie-detail": {
+      "imports": [
+        "MovieDetail"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./src": {
+      "imports": [
+        "App"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./src/theme": {
+      "imports": [
+        "ThemeProvider"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "MaterialIcons"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@shopify/react-native-skia": {
+      "imports": [
+        "Blur",
+        "Canvas",
+        "Fill",
+        "Group",
+        "Image",
+        "LinearGradient",
+        "rect",
+        "rrect",
+        "useImage"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "color": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-blur": {
+      "imports": [
+        "BlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "createContext",
+        "memo",
+        "useCallback",
+        "useContext",
+        "useMemo",
+        "useState"
+      ],
       "hooks": [
+        "useCallback",
+        "useContext",
+        "useMemo",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "ScrollView",
+        "StyleSheet",
+        "Text",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "GestureHandlerRootView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "makeMutable",
         "useAnimatedStyle",
         "useDerivedValue",
-        "withTiming",
-        "makeMutable"
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedStyle",
+        "useDerivedValue"
+      ],
+      "functions": [
+        "withTiming"
       ],
       "components": [
         "Animated.View",
         "Animated.createAnimatedComponent"
-      ],
-      "utilities": [
-        "makeMutable"
-      ],
-      "critical_feature": "Global shared state with makeMutable for cross-component coordination"
-    },
-    "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "Canvas",
-        "Image",
-        "Group",
-        "Blur",
-        "Fill",
-        "LinearGradient"
-      ],
-      "hooks": [
-        "useImage"
-      ],
-      "utilities": [
-        "rect",
-        "rrect"
-      ],
-      "usage": "Movie poster rendering with blur effects and theme-aware opacity transitions"
-    },
-    "expo-blur": {
-      "version": "~15.0.7",
-      "components": [
-        "BlurView"
-      ],
-      "usage": "Full-screen blur overlay during theme transitions",
-      "animated": "Wrapped with Animated.createAnimatedComponent"
-    },
-    "pressto": {
-      "version": "0.3.5-beta.1",
-      "components": [
-        "PressableScale"
-      ],
-      "usage": "Floating action button with scale press feedback"
+      ]
     },
     "react-native-safe-area-context": {
-      "version": "~5.6.0",
-      "hooks": [
+      "imports": [
+        "SafeAreaProvider",
         "useSafeAreaInsets"
       ],
-      "usage": "Safe bottom positioning for floating button and image layout"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureHandlerRootView"
-      ],
-      "usage": "Gesture handling infrastructure"
-    },
-    "color": {
-      "version": "^4.2.3",
-      "usage": "Color manipulation for semi-transparent border colors",
-      "methods": [
-        "alpha()",
-        "rgb().string()"
-      ]
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "components": [
-        "MaterialIcons"
-      ],
-      "icons_used": [
-        "sunny"
-      ],
-      "usage": "Theme toggle button icon"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "global_state_coordination": {
-      "pattern": "makeMutable shared value for cross-component state",
-      "variable": "isSwitchingThemeShared",
-      "type": "SharedValue<boolean>",
-      "scope": "Global - accessible from any component",
-      "lifecycle": {
-        "onPressIn": "Set to true (theme switch starting)",
-        "onPressOut": "Set to false (theme switch completed/cancelled)"
-      },
-      "consumers": [
-        "ThemeBlurView (controls blur intensity)",
-        "ThemeRescaler (controls scale animation)",
-        "MovieImage (controls blurred image opacity)"
-      ],
-      "benefit": "Coordinates multiple animations without prop drilling or Context re-renders"
-    },
-    "theme_blur_overlay": {
-      "component": "ThemeBlurView",
-      "pattern": "useDerivedValue with withTiming",
-      "property": "blur intensity",
-      "values": {
-        "switching": 15,
-        "not_switching": 0
-      },
-      "duration": 350,
-      "implementation": "useDerivedValue(() => withTiming(isSwitchingThemeShared.value ? 15 : 0, { duration: 350 }))",
-      "effect": "Full-screen blur overlay fades in/out during theme change",
-      "z_index": 5,
-      "pointer_events": "none"
-    },
-    "content_rescaling": {
-      "component": "ThemeRescaler",
-      "pattern": "useAnimatedStyle with scale transform",
-      "property": "transform.scale",
-      "values": {
-        "switching": 0.95,
-        "normal": 1
-      },
-      "duration": 350,
-      "implementation": "transform: [{ scale: withTiming(isSwitchingThemeShared.value ? 0.95 : 1, { duration: 350 }) }]",
-      "effect": "Content zooms out slightly during theme transition, creating depth",
-      "applied_to": "All content within ThemeRescaler wrapper"
-    },
-    "blurred_image_fade": {
-      "component": "MovieImage",
-      "pattern": "Conditional opacity animation with different durations",
-      "logic": {
-        "switching": "Fade out to 0 (350ms)",
-        "not_switching": "Fade in to 1 (1000ms)"
-      },
-      "implementation": "useDerivedValue with conditional withTiming",
-      "effect": "Background blurred image fades during theme change, returns slowly",
-      "only_applies_to": "Blurred variant (blur prop present)"
-    },
-    "theme_color_transitions": {
-      "pattern": "React state-driven color changes",
-      "mechanism": "Theme Context provides color palette",
-      "components_affected": [
-        "View backgrounds",
-        "Text colors",
-        "Button backgrounds",
-        "Border colors"
-      ],
-      "transition": "Instant color swap (no animation)",
-      "note": "Color changes coordinated with blur/scale animations"
-    },
-    "button_press_feedback": {
-      "component": "FloatingButtonTheme (PressableScale)",
-      "pattern": "Press scale animation",
-      "interaction": "Scale down on press, scale up on release",
-      "pressto_default": "Smooth spring-based scale animation",
-      "additional_logic": {
-        "onPressIn": "Set isSwitchingThemeShared to true",
-        "onPress": "Toggle theme",
-        "onPressOut": "Set isSwitchingThemeShared to false"
-      }
-    },
-    "gradient_theme_adaptation": {
-      "component": "BottomLinearGradient",
-      "pattern": "Conditional gradient colors based on theme",
-      "light_theme": [
-        "rgba(255,255,255,0)",
-        "rgba(255,255,255,0)",
-        "background_color"
-      ],
-      "dark_theme": [
-        "rgba(0,0,0,0)",
-        "rgba(0,0,0,0)",
-        "background_color"
-      ],
-      "direction": "Top to bottom",
-      "height": 400,
-      "note": "Different transparent colors for smooth blending on each theme"
-    }
-  },
-  "reanimated_patterns": {
-    "makeMutable_global_state": {
-      "pattern": "Global mutable shared value for cross-component coordination",
-      "implementation": "export const isSwitchingThemeShared = makeMutable(false)",
-      "file": "src/theme/shared-value.ts",
-      "benefits": [
-        "No Context re-renders",
-        "Worklet-safe access",
-        "No prop drilling",
-        "Multiple components can read/write",
-        "UI thread optimized"
-      ],
-      "use_case": "Coordinating blur, scale, and opacity animations across components"
-    },
-    "useDerivedValue_with_conditions": {
-      "pattern": "Derived value with conditional logic",
-      "examples": [
-        "Blur intensity (15 or 0)",
-        "Blurred image opacity (conditional fade durations)"
-      ],
-      "benefit": "Computes animated values based on shared state",
-      "runs_on": "UI thread"
-    },
-    "useAnimatedStyle_transform": {
-      "pattern": "Transform-based animations",
-      "properties": [
-        "scale"
-      ],
-      "implementation": "useAnimatedStyle(() => ({ transform: [{ scale: withTiming(...) }] }))",
-      "benefit": "GPU-accelerated transform animations"
-    },
-    "Animated_createAnimatedComponent": {
-      "pattern": "Making third-party components animatable",
-      "component": "BlurView from expo-blur",
-      "result": "AnimatedBlurView",
-      "enables": "Animated intensity prop on BlurView",
-      "file": "src/components/animated-blur-view.tsx"
-    },
-    "withTiming_coordination": {
-      "pattern": "Synchronized timing animations",
-      "duration": 350,
-      "applied_to": [
-        "Blur intensity",
-        "Content scale",
-        "Blurred image fade (when switching)"
-      ],
-      "benefit": "All animations complete simultaneously for cohesive feel"
-    }
-  },
-  "skia_integration": {
-    "canvas_rendering": {
-      "component": "MovieImage",
-      "pattern": "Skia Canvas for GPU-accelerated rendering",
-      "benefits": [
-        "High-performance image rendering",
-        "Built-in blur effects",
-        "Rounded rectangle clipping",
-        "Animated opacity"
-      ]
-    },
-    "image_loading": {
-      "hook": "useImage",
-      "source": "Remote URL (movie poster)",
-      "type": "SkImage | null",
-      "async": true
-    },
-    "blur_effect": {
-      "component": "Blur from @shopify/react-native-skia",
-      "intensity": 500,
-      "applied_to": "Background blurred image variant",
-      "note": "Skia native blur, not expo-blur"
-    },
-    "clipping": {
-      "shape": "rrect (rounded rectangle)",
-      "params": "rect(32, imageY, 200, imageHeight), 20, 20",
-      "effect": "Rounded corners on movie poster",
-      "applied_via": "Group clip prop"
-    },
-    "linear_gradient": {
-      "component": "BottomLinearGradient",
-      "implementation": "Skia LinearGradient with Fill",
-      "start": "{ x: 0, y: 0 }",
-      "end": "{ x: 0, y: 400 }",
-      "colors": "Theme-dependent (memoized)"
-    },
-    "opacity_animation": {
-      "pattern": "Animated opacity on Skia Group",
-      "property": "opacity",
-      "source": "useDerivedValue (blurImageOpacity)",
-      "effect": "Fades blurred background image during theme changes"
-    }
-  },
-  "theme_system": {
-    "architecture": "React Context-based with global shared values",
-    "provider": {
-      "component": "ThemeProvider",
-      "state": "useState<'light' | 'dark'>",
-      "initial": "light",
-      "context_value": {
-        "theme": "Current theme name",
-        "setTheme": "State setter",
-        "toggleTheme": "useCallback toggle function",
-        "colors": "Current theme color palette",
-        "spacing": "Spacing constants",
-        "textVariants": "Text style variants"
-      }
-    },
-    "palettes": {
-      "LightPalette": {
-        "primary": "black",
-        "background": "#FCFCFC",
-        "card": "#f0f0f0",
-        "border": "rgba(160, 160, 160, 0.05)",
-        "text": "#A0A0A0"
-      },
-      "DarkPalette": {
-        "primary": "white",
-        "background": "#090909",
-        "card": "#1D1D1F",
-        "border": "#2C2C2C",
-        "text": "#808080"
-      }
-    },
-    "spacing": {
-      "scale": "none (0) to xxxl (64)",
-      "values": [
-        0,
-        1,
-        2,
-        4,
-        8,
-        12,
-        16,
-        20,
-        32,
-        48,
-        64
-      ],
-      "shared": "Same for both themes"
-    },
-    "hook": {
-      "name": "useTheme",
-      "returns": "ThemeContextType",
-      "validation": "Throws error if used outside ThemeProvider",
-      "usage": "Access current theme, colors, and toggle function"
-    },
-    "global_coordination": {
-      "pattern": "Context for theme state, SharedValue for animation coordination",
-      "separation": "UI state (Context) vs animation state (makeMutable)",
-      "benefit": "Theme changes don't cause animation re-renders"
-    }
-  },
-  "component_architecture": {
-    "provider_hierarchy": [
-      "SafeAreaProvider (outermost)",
-      "GestureHandlerRootView",
-      "ThemeProvider",
-      "App"
-    ],
-    "screen_structure": [
-      "FloatingButtonTheme (absolute positioned)",
-      "ThemeBlurView (absolute positioned overlay)",
-      "View (background container)",
-      "  ThemeRescaler (scaling wrapper)",
-      "    MovieImage (blurred background)",
-      "    ScrollView",
-      "      MovieImage (crisp foreground)",
-      "      Text content",
-      "    BottomLinearGradient"
-    ],
-    "component_responsibilities": {
-      "FloatingButtonTheme": "Trigger theme changes and set switching state",
-      "ThemeBlurView": "Visual feedback during transition (blur overlay)",
-      "ThemeRescaler": "Scale effect during transition",
-      "MovieImage": "Dual-purpose: background blur and foreground crisp",
-      "BottomLinearGradient": "Content fade effect at bottom"
-    }
-  },
-  "performance_optimizations": [
-    "makeMutable for global state (no Context re-renders)",
-    "useMemo for gradient colors based on theme",
-    "useMemo for canvas styles",
-    "useMemo for image rounded rect",
-    "useCallback for toggleTheme",
-    "useDerivedValue for computed animated values",
-    "memo() on BottomLinearGradient",
-    "Conditional rendering (blur image vs spacer view)",
-    "pointerEvents='none' on overlay blur",
-    "Skia GPU-accelerated rendering"
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useContext",
+    "useDerivedValue",
+    "useImage",
+    "useMemo",
+    "useSafeAreaInsets",
+    "useState",
+    "useTheme"
   ],
-  "visual_design": {
-    "floating_button": {
-      "size": "64x64 (aspectRatio: 1)",
-      "position": "Absolute, right: 32, bottom: 32 + safeBottom",
-      "background": "colors.card",
-      "border": "1px, colors.border",
-      "borderRadius": 32,
-      "borderCurve": "continuous",
-      "icon": "MaterialIcons 'sunny', size 20",
-      "icon_color": "colors.primary",
-      "z_index": 999
-    },
-    "movie_poster": {
-      "width": 200,
-      "height": 250,
-      "position": "32px from left",
-      "borderRadius": 20,
-      "variants": {
-        "background": "Heavily blurred (blur: 500), fades on theme change",
-        "foreground": "Crisp, no blur"
-      }
-    },
-    "text_styling": {
-      "title": {
-        "fontSize": 32,
-        "color": "colors.primary"
-      },
-      "description": {
-        "fontSize": 16,
-        "lineHeight": 22,
-        "marginRight": 32,
-        "marginTop": 16,
-        "color": "colors.text"
-      }
-    },
-    "gradient": {
-      "height": 400,
-      "position": "Absolute bottom",
-      "colors": "4-stop gradient (transparent to background)",
-      "purpose": "Fade content at bottom edge"
-    },
-    "blur_overlay": {
-      "coverage": "Full screen (StyleSheet.absoluteFillObject)",
-      "intensity": "0 to 15",
-      "z_index": 5,
-      "tint": "Default (system)"
-    }
-  },
-  "interaction_flow": {
-    "theme_switch_sequence": [
-      "1. User presses floating button",
-      "2. onPressIn: isSwitchingThemeShared = true",
-      "3. ThemeBlurView: blur intensity animates 0 → 15 (350ms)",
-      "4. ThemeRescaler: content scale animates 1 → 0.95 (350ms)",
-      "5. MovieImage: blurred variant fades 1 → 0 (350ms)",
-      "6. onPress: toggleTheme() called, colors swap instantly",
-      "7. onPressOut: isSwitchingThemeShared = false",
-      "8. ThemeBlurView: blur intensity animates 15 → 0 (350ms)",
-      "9. ThemeRescaler: content scale animates 0.95 → 1 (350ms)",
-      "10. MovieImage: blurred variant fades 0 → 1 (1000ms, slower)"
-    ],
-    "animation_timing": {
-      "press_down_to_press_up": "User-controlled",
-      "fade_out": "350ms",
-      "fade_in": "350ms blur, 1000ms blurred image",
-      "total_transition": "~700-1000ms"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Theme switching with visual feedback",
-      "Settings screens with theme toggles",
-      "Media detail screens with dynamic themes",
-      "Content viewers with light/dark modes",
-      "Profile screens with theme preferences"
-    ],
-    "demonstrates": [
-      "Global animation coordination with makeMutable",
-      "Multi-component synchronized transitions",
-      "Context + SharedValue hybrid state management",
-      "Skia rendering with theme awareness",
-      "Press-driven animation sequences",
-      "Blur effects for transition feedback"
-    ],
-    "reusable_patterns": {
-      "ThemeProvider": "Any app needing light/dark theme",
-      "makeMutable_coordination": "Cross-component animation sync",
-      "AnimatedBlurView": "Blur overlays for transitions",
-      "Theme-aware_gradients": "Visual effects adapting to theme"
-    },
-    "real_world_examples": [
-      "Instagram dark mode transition",
-      "Twitter theme switcher",
-      "iOS Settings appearance toggle",
-      "Spotify theme changes",
-      "Apple Music theme adaptation"
-    ]
-  },
-  "code_quality": {
-    "strengths": [
-      "Full TypeScript with proper types",
-      "Clear separation of concerns (theme, components, screens)",
-      "Proper use of React hooks (useCallback, useMemo)",
-      "Performance-aware (memo, useDerivedValue)",
-      "Clean component composition",
-      "Reusable theme system",
-      "Comments explaining complex logic",
-      "Barrel exports for clean imports",
-      "Safe area awareness",
-      "Platform-agnostic design"
-    ],
-    "areas_for_improvement": [
-      "Magic numbers could be extracted to constants (15, 0.95, 350, 500)",
-      "Could add JSDoc comments for complex components",
-      "Theme type could be more strict (branded type instead of 'light' | 'dark')",
-      "Demo content hardcoded in App component could be externalized",
-      "Could add error boundaries",
-      "Missing accessibility labels on theme toggle button",
-      "No reduced motion support",
-      "BottomLinearGradient displayName missing"
-    ]
-  },
-  "known_limitations": {
-    "theme_persistence": {
-      "issue": "Theme selection not persisted",
-      "current": "Always starts with 'light' theme",
-      "improvement": "Could use AsyncStorage or expo-secure-store"
-    },
-    "animation_cancellation": {
-      "issue": "Rapid button presses may cause animation conflicts",
-      "current": "onPressOut sets switching to false immediately",
-      "improvement": "Could track animation completion state"
-    },
-    "system_theme_sync": {
-      "issue": "Doesn't follow system appearance preference",
-      "note": "Code has commented-out useColorScheme() hook",
-      "improvement": "Could listen to system theme changes"
-    },
-    "reduced_motion": {
-      "issue": "No accessibility support for reduced motion",
-      "missing": "AccessibilityInfo.isReduceMotionEnabled check",
-      "improvement": "Should disable/simplify animations for accessibility"
-    },
-    "blur_platform_support": {
-      "concern": "Blur effects may look different on Android",
-      "mitigation": "expo-blur handles platform differences"
-    },
-    "gradient_color_hack": {
-      "issue": "Commented note about rgba(0,0,0,0) vs rgba(255,255,255,0)",
-      "current": "Different transparent colors for different themes",
-      "reason": "Likely gradient interpolation behavior"
-    }
-  },
-  "potential_improvements": {
-    "feature_enhancements": [
-      "Multiple theme options (not just light/dark)",
-      "Custom color palette builder",
-      "Smooth color interpolation during theme change",
-      "Haptic feedback on theme toggle",
-      "Sound effects for theme change",
-      "Animated icon transition (sun to moon)",
-      "Theme preview before applying",
-      "Scheduled theme changes (auto dark at night)"
-    ],
-    "animation_enhancements": [
-      "Stagger animations for different elements",
-      "Ripple effect from button outward",
-      "Color wave transition across screen",
-      "Particle effects during transition",
-      "Spring-based scale instead of timing",
-      "Custom easing curves",
-      "Different animations per theme direction (light→dark vs dark→light)"
-    ],
-    "accessibility": [
-      "Respect prefers-reduced-motion",
-      "Add accessibilityLabel to theme button",
-      "Add accessibilityHint explaining theme toggle",
-      "Screen reader announcements for theme changes",
-      "Keyboard navigation support",
-      "High contrast mode support",
-      "Focus indicators"
-    ],
-    "state_management": [
-      "Persist theme preference",
-      "Sync with system theme preference",
-      "Multiple theme profiles",
-      "Per-screen theme overrides",
-      "Smooth theme transitions on mount"
-    ],
-    "performance": [
-      "Debounce rapid theme changes",
-      "Lazy load theme resources",
-      "Optimize Skia canvas rendering",
-      "Reduce blur calculations during animation"
-    ]
-  },
-  "key_insights": {
-    "makeMutable_power": "makeMutable enables perfect cross-component animation coordination without Context re-renders",
-    "dual_state_pattern": "Separating UI state (Context) from animation state (SharedValue) optimizes performance",
-    "animation_choreography": "Single global boolean coordinates blur, scale, and opacity animations elegantly",
-    "timing_coordination": "350ms duration across multiple animations creates cohesive transition feel",
-    "skia_theme_integration": "Skia components can respond to theme changes via opacity animations",
-    "gradient_theming": "Different transparent colors needed for smooth gradients in different themes",
-    "press_lifecycle_hooks": "onPressIn/onPressOut perfect for animation start/end triggers",
-    "blur_feedback": "Full-screen blur provides clear visual feedback during state transitions",
-    "scale_depth": "Subtle scale-down (0.95) creates depth perception during transitions"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "React Context for theme management",
-      "useState and useCallback basics",
-      "Safe area insets usage",
-      "Basic Reanimated animations",
-      "Component composition patterns",
-      "TypeScript prop types"
-    ],
-    "for_intermediate": [
-      "makeMutable for global shared state",
-      "useDerivedValue for computed animations",
-      "Animated.createAnimatedComponent",
-      "Skia Canvas basics",
-      "Multi-component animation coordination",
-      "Theme system architecture",
-      "useImage for remote images",
-      "Conditional animation logic"
-    ],
-    "for_advanced": [
-      "Hybrid state management (Context + SharedValue)",
-      "Cross-component animation orchestration",
-      "Skia performance optimization",
-      "Advanced blur techniques",
-      "Theme system scalability",
-      "Animation timing coordination",
-      "GPU-accelerated rendering patterns",
-      "Worklet-safe state sharing"
-    ]
-  },
-  "testing_considerations": {
-    "unit_tests": [
-      "Theme toggle function switches themes",
-      "Color palettes have all required colors",
-      "useTheme hook throws outside provider",
-      "Spacing constants are correct"
-    ],
-    "component_tests": [
-      "ThemeProvider provides correct context",
-      "FloatingButtonTheme renders and responds to press",
-      "ThemeBlurView animates on state change",
-      "ThemeRescaler scales children",
-      "MovieImage loads and renders correctly"
-    ],
-    "integration_tests": [
-      "Button press triggers theme change",
-      "All colors update on theme change",
-      "Animations coordinate correctly",
-      "Blur overlay appears/disappears",
-      "Scale returns to normal after press",
-      "Image opacity transitions work"
-    ],
-    "visual_tests": [
-      "Blur intensity reaches 15 during switch",
-      "Scale reaches 0.95 during switch",
-      "All animations complete smoothly",
-      "Colors match palette",
-      "Gradient adapts to theme",
-      "No flicker or jank"
-    ],
-    "edge_cases": [
-      "Rapid theme toggling",
-      "Theme change while scrolling",
-      "Image fails to load",
-      "Very fast press/release",
-      "Theme change during animation",
-      "Multiple simultaneous presses",
-      "Missing safe area insets"
-    ]
-  },
-  "accessibility_recommendations": {
-    "current_state": "Limited accessibility implementation",
-    "should_add": [
-      "accessibilityLabel on FloatingButtonTheme",
-      "accessibilityHint explaining theme toggle action",
-      "accessibilityRole='button'",
-      "Respect prefers-reduced-motion (disable/simplify animations)",
-      "Screen reader announcement for theme changes",
-      "Sufficient color contrast in both themes",
-      "Focus indicators for keyboard navigation",
-      "Test with VoiceOver/TalkBack"
-    ],
-    "current_positives": [
-      "Clear visual feedback",
-      "Sufficient touch target size (64x64)",
-      "High contrast icon colors",
-      "Smooth animations not too fast"
-    ]
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": [
-        "Native BlurView support",
-        "Continuous border curves",
-        "Skia rendering",
-        "Safe area insets"
-      ],
-      "performance": "Excellent",
-      "visual_quality": "Native blur effects"
-    },
-    "android": {
-      "features": [
-        "expo-blur fallback",
-        "Skia rendering",
-        "All animations work"
-      ],
-      "performance": "Excellent",
-      "visual_quality": "Good (blur may differ slightly)",
-      "note": "Continuous border curves ignored"
-    },
-    "web": {
-      "compatibility": "Partial (Skia may have limitations)",
-      "considerations": [
-        "BlurView requires web-compatible fallback",
-        "Gesture handler needs web support",
-        "Safe area insets may not apply"
-      ]
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "Small (~400 lines total)",
-    "dependencies": [
-      "Reanimated (likely already in project)",
-      "Skia (moderate size but powerful)",
-      "expo-blur (small)",
-      "pressto (small)",
-      "color (tiny)"
-    ],
-    "runtime_memory": "Minimal (few SharedValues, single image)",
-    "estimated_impact": "Skia is main addition if not already used (~2-3MB), otherwise < 10KB"
-  },
-  "related_patterns": {
-    "theme_providers": "Standard React Context pattern for theming",
-    "global_animation_state": "makeMutable for cross-component coordination",
-    "blur_transitions": "iOS-style blur overlays for state changes",
-    "press_choreography": "onPressIn/onPressOut for animation sequences",
-    "dual_state_management": "Context for UI, SharedValue for animations"
-  },
-  "real_world_inspiration": {
-    "ios_settings": "iOS Settings app appearance toggle",
-    "instagram": "Instagram dark mode transition effect",
-    "twitter": "Twitter theme switcher with smooth transitions",
-    "apple_music": "Apple Music theme changes"
-  },
-  "tags": [
-    "theme-switching",
-    "dark-mode",
-    "light-mode",
-    "blur-effects",
-    "scale-animation",
-    "reanimated",
-    "skia",
+  "functions": [
+    "Color",
+    "createContext",
     "makeMutable",
-    "context",
-    "global-state",
-    "coordinated-animations",
-    "pressto",
-    "floating-action-button",
-    "opacity-animation",
-    "gradient",
-    "safe-area",
-    "theme-provider",
-    "state-management"
+    "memo",
+    "rect",
+    "rrect",
+    "setTheme",
+    "withTiming"
   ],
-  "content_hash": "32258d1d38b8920735076290b8f92efc58ed2388075fb95d5bfab77f4d0ab338",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.378Z",
-  "last_validated": "2025-10-12T09:19:28.378Z"
+  "components": [
+    "Animated.View",
+    "Animated.createAnimatedComponent",
+    "AnimatedBlurView",
+    "App",
+    "Blur",
+    "BottomLinearGradient",
+    "Canvas",
+    "Fill",
+    "FloatingButtonTheme",
+    "GestureHandlerRootView",
+    "Group",
+    "Image",
+    "LinearGradient",
+    "MaterialIcons",
+    "MovieDetail",
+    "MovieImage",
+    "PressableScale",
+    "SafeAreaProvider",
+    "ScrollView",
+    "Text",
+    "ThemeBlurView",
+    "ThemeContext.Provider",
+    "ThemeProvider",
+    "ThemeRescaler",
+    "View"
+  ],
+  "patterns": [
+    "animated-styling",
+    "derived-computation",
+    "timing-animation",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "canvas-rendering",
+    "blur-effects",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 15,
+    "total_packages": 10,
+    "total_hooks": 9,
+    "total_functions": 8,
+    "total_components": 25,
+    "total_patterns": 4,
+    "total_techniques": 4
+  }
 }

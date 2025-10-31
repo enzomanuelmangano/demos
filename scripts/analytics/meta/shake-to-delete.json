@@ -1,901 +1,238 @@
 {
-  "animation_name": "Shake to Delete",
   "animation_slug": "shake-to-delete",
-  "description": "An iOS-inspired app deletion interface that mimics the Home Screen edit mode behavior. Features long-press activation, continuous shaking animations with unique parameters per item, and delete buttons that appear with smooth fade-in. Uses deterministic pseudo-random number generation to create varied but consistent wobble animations for each app tile, with metallic gradient backgrounds and a responsive grid layout.",
-  "main_features": [
-    "Long-press activation for edit mode (iOS-style)",
-    "Continuous shaking animation with unique parameters per item",
-    "Deterministic pseudo-random animation variations using Linear Congruential Generator",
-    "Delete buttons with fade-in/fade-out transitions",
-    "Exit animation for deleted items (FadeOut)",
-    "LinearTransition for grid reflow after deletion",
-    "Metallic gradient backgrounds for app tiles",
-    "Responsive grid layout with 4 columns",
-    "Shake animation combining translation and rotation",
-    "Shared mutable state for synchronized shake control",
-    "TouchableOpacity areas with extended hit slop for delete buttons",
-    "Safe area aware layout with dynamic padding"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.224Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Main demo component with LinearGradient background"
-    },
-    "components": {
-      "apps-list/index.tsx": "Grid container managing items state and layout calculations",
-      "apps-list/app-item.tsx": "Individual app tile with gradient, shake animation, and delete button"
-    },
-    "hooks": {
-      "apps-list/hooks/use-is-shaking.ts": "Shared mutable state hook for global shake control",
-      "apps-list/hooks/use-shaking-animation.ts": "Deterministic shake animation with unique parameters per item",
-      "apps-list/hooks/animation-config.ts": "Configuration constants for shake animation parameters",
-      "apps-list/hooks/index.ts": "Barrel export for hooks"
-    },
-    "constants": {
-      "apps-list/constants.ts": "Metallic and vibrant gradient color data (24 metallic gradients used)"
-    }
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [
+      "apps-list/hooks/animation-config.ts",
+      "apps-list/hooks/use-is-shaking.ts",
+      "apps-list/hooks/use-shaking-animation.ts"
+    ],
+    "utils": [],
+    "types": [],
+    "constants": [
+      "apps-list/constants.ts"
+    ],
+    "assets": [],
+    "other": [
+      "apps-list/app-item.tsx"
+    ]
   },
-  "core_technologies": [
-    "react-native-reanimated",
-    "react-native-safe-area-context",
+  "packages": [
+    "@expo/vector-icons",
     "expo-linear-gradient",
-    "@expo/vector-icons"
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated",
+    "react-native-safe-area-context"
   ],
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useAnimatedStyle",
-        "useDerivedValue",
-        "makeMutable",
-        "cancelAnimation"
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-linear-gradient": "~15.0.7",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0"
+  },
+  "packages_detail": {
+    "./animation-config": {
+      "imports": [
+        "SHAKING_ANIMATION"
       ],
-      "layout_animations": [
-        "LinearTransition",
-        "FadeOut"
-      ],
-      "functions": [
-        "withRepeat",
-        "withSequence",
-        "withTiming",
-        "interpolate"
-      ],
-      "components": [
-        "Animated.View",
-        "Animated.ScrollView"
-      ],
-      "critical_feature": "makeMutable for shared state across components, withRepeat for continuous shaking, LinearTransition for smooth grid reflow"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-safe-area-context": {
-      "version": "~5.6.0",
-      "hooks": [
-        "useSafeAreaInsets"
+    "./app-item": {
+      "imports": [
+        "AppItem"
       ],
-      "usage": "Top padding for grid to avoid notch and status bar"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "expo-linear-gradient": {
-      "version": "~15.0.7",
-      "component": "LinearGradient",
-      "usage": "Metallic gradient backgrounds for app tiles and screen background"
+    "./apps-list": {
+      "imports": [
+        "AppsList"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "APPS_DATA"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks": {
+      "imports": [
+        "useIsShaking"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-shaking-animation": {
+      "imports": [
+        "useShakingAnimation"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./use-is-shaking": {
+      "imports": [
+        "useIsShaking"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "icons_used": [
-        "Ionicons.remove"
+      "imports": [
+        "Ionicons"
       ],
-      "usage": "Delete button icon (minus symbol)"
-    }
-  },
-  "animation_techniques": {
-    "shake_animation": {
-      "pattern": "Continuous sequence with deterministic random parameters",
-      "trigger": "Long press on any app item",
-      "progress_values": "-1 → 1 → -1 (continuous loop)",
-      "sequence": [
-        "withTiming(-1, duration)",
-        "withTiming(1, duration * 2) - slower reverse",
-        "withTiming(0, duration)"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-linear-gradient": {
+      "imports": [
+        "LinearGradient"
       ],
-      "repetition": "withRepeat(-1, true) - infinite with reverse",
-      "animated_properties": {
-        "translateX": "interpolate(progress, [-1, 0, 1], [-amplitude, 0, amplitude])",
-        "rotate": "interpolate(progress, [-1, 0, 1], [baseRotation - rotationAmplitude, 0, baseRotation + rotationAmplitude])"
-      },
-      "deterministic_randomization": {
-        "algorithm": "Linear Congruential Generator (LCG)",
-        "formula": "X(n+1) = (a * X(n) + c) mod m",
-        "parameters": {
-          "multiplier": 9301,
-          "increment": 49297,
-          "modulus": 233280
-        },
-        "seed": "item.id",
-        "purpose": "Each item gets unique but consistent animation parameters"
-      },
-      "parameter_variations": {
-        "amplitude": "BASE_AMPLITUDE (1px) + random() * AMPLITUDE_VARIATION (0.2px) = 1-1.2px",
-        "duration": "BASE_DURATION (80ms) + random() * DURATION_VARIATION (40ms) = 80-120ms",
-        "rotationAmplitude": "BASE_ROTATION_AMPLITUDE (1°) + random() * ROTATION_VARIATION (2°) = 1-3°",
-        "baseRotation": "BASE_ROTATION_BASE (-3°) + random() * ROTATION_BASE_VARIATION (6°) = -3° to 3°"
-      },
-      "stop_animation": "withTiming(0, 150ms) - smooth return to neutral"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "delete_button_visibility": {
-      "pattern": "Opacity-driven fade with pointer events control",
-      "animation": "withTiming(isShaking ? 1 : 0)",
-      "properties": {
-        "opacity": "0 (hidden) → 1 (visible)",
-        "pointerEvents": "'none' → 'auto' (synchronized with opacity)"
-      },
-      "purpose": "Button appears when shaking, disappears when stable"
-    },
-    "item_deletion": {
-      "pattern": "Exit animation followed by state removal",
-      "exit": "FadeOut (default 300ms)",
-      "timing": "150ms delay before state update to allow animation to complete",
-      "state_update": "setItems(prev => prev.filter(i => i.id !== item.id))",
-      "grid_reflow": "LinearTransition.duration(350) on remaining items"
-    },
-    "layout_transition": {
-      "pattern": "Automatic grid reflow on item removal",
-      "animation": "LinearTransition.duration(350)",
-      "trigger": "Item count change",
-      "effect": "Items smoothly move to fill empty spaces"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_mutable_state": {
-      "pattern": "Module-level makeMutable for global state",
-      "implementation": "const isShaking = makeMutable(false)",
-      "scope": "Shared across all component instances",
-      "benefits": [
-        "All items shake synchronously",
-        "Single source of truth",
-        "No prop drilling needed",
-        "Direct value updates (no useState re-renders)"
+    "pressto": {
+      "imports": [
+        "PressableOpacity"
       ],
-      "access": "Via useIsShaking() hook returning the mutable and control functions"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "shared_values": [
-      {
-        "name": "isShaking",
-        "type": "SharedValue<boolean>",
-        "scope": "Global (module-level)",
-        "initial": false,
-        "updates": "toggleShaking, startShaking, stopShaking functions",
-        "consumers": "All AppItem components and AppsList",
-        "purpose": "Synchronize shake state across all items"
-      },
-      {
-        "name": "progress",
-        "type": "SharedValue<number>",
-        "scope": "Per item (useShakingAnimation hook)",
-        "initial": 0,
-        "range": "-1 to 1 (looping)",
-        "updates": "useDerivedValue with withRepeat sequence",
-        "purpose": "Drive shake animation for individual item"
-      }
-    ],
-    "useDerivedValue": {
-      "usage_count": 1,
-      "instance": "progress",
-      "calculation": "Creates continuous shake animation or returns to neutral based on isShaking",
-      "sequence_when_shaking": [
-        "withTiming(-1, duration)",
-        "withTiming(1, duration * 2)",
-        "withTiming(0, duration)",
-        "wrapped in withRepeat(-1, true)"
+    "react": {
+      "imports": [
+        "useCallback",
+        "useMemo",
+        "useState"
       ],
-      "sequence_when_stopped": "withTiming(0, 150ms)",
-      "dependencies": [
-        "isShaking"
-      ],
-      "cleanup": "cancelAnimation(progress) to prevent memory leaks",
-      "purpose": "Reactive animation that responds to global shake state"
-    },
-    "useAnimatedStyle": {
-      "usage_count": 2,
-      "instances": [
-        {
-          "name": "rShakingStyle",
-          "animated_properties": {
-            "transform": [
-              "{ translateX: interpolate(...) }",
-              "{ rotate: `${interpolate(...)}deg` }"
-            ]
-          },
-          "applied_to": "AppItem container",
-          "purpose": "Apply shake motion (translation + rotation)"
-        },
-        {
-          "name": "rDeleteButtonContainerStyle",
-          "animated_properties": {
-            "opacity": "withTiming(isShaking ? 1 : 0)",
-            "pointerEvents": "isShaking ? 'auto' : 'none'"
-          },
-          "applied_to": "Delete button container",
-          "purpose": "Fade button in/out and control interactivity"
-        }
-      ]
-    },
-    "useCallback": {
-      "usage_count": 3,
-      "callbacks": [
-        {
-          "name": "startShaking",
-          "dependencies": "[]",
-          "action": "isShaking.value = true",
-          "purpose": "Stable reference for starting shake mode"
-        },
-        {
-          "name": "stopShaking",
-          "dependencies": "[]",
-          "action": "isShaking.value = false",
-          "purpose": "Stable reference for stopping shake mode"
-        },
-        {
-          "name": "toggleShaking",
-          "dependencies": "[]",
-          "action": "isShaking.value = !isShaking.value",
-          "purpose": "Stable reference for toggling shake mode"
-        }
-      ]
-    },
-    "makeMutable": {
-      "usage": "Global shake state management",
-      "pattern": "Module-level mutable outside component",
-      "advantages": [
-        "No React re-renders for animation state changes",
-        "Shared state without Context API",
-        "Direct UI thread updates",
-        "Minimal overhead"
-      ],
-      "location": "use-is-shaking.ts module scope"
-    },
-    "cancelAnimation": {
-      "usage": "Cleanup on progress value recreation",
-      "pattern": "Cancel existing animation before starting new one",
-      "purpose": "Prevent memory leaks from abandoned animations",
-      "implementation": "if (progress) cancelAnimation(progress) in useDerivedValue"
-    }
-  },
-  "component_architecture": {
-    "shake_to_delete_animation": {
-      "type": "Root container component",
-      "children": [
-        "LinearGradient (background: #000000 to #121212)",
-        "AppsList (main grid)"
-      ],
-      "purpose": "Provide dark gradient background and mount grid"
-    },
-    "apps_list": {
-      "type": "Grid container with state management",
-      "state": {
-        "items": {
-          "type": "AppData[]",
-          "initial": "APPS_DATA (24 metallic gradient items)",
-          "updates": "Filter on delete"
-        }
-      },
       "hooks": [
-        "useIsShaking() - shake state control",
-        "useWindowDimensions() - responsive sizing",
-        "useSafeAreaInsets() - safe area padding",
-        "useState() - items list management",
-        "useMemo() - layout calculations"
+        "useCallback",
+        "useMemo",
+        "useState"
       ],
-      "layout_calculation": {
-        "pattern": "Dynamic sizing based on screen width",
-        "spacing": 8,
-        "columns": 4,
-        "formula": "itemSize = (availableWidth - spacing * (columns - 1)) / columns - 2",
-        "memoized": true,
-        "dependencies": [
-          "screenWidth"
-        ]
-      },
-      "interactions": {
-        "onPress_wrapper": "stopShaking() - tap outside items to exit edit mode",
-        "onLongPress_item": "toggleShaking() - long press to enter edit mode",
-        "onDelete_item": "stopShaking() + setTimeout filter (150ms delay)"
-      }
+      "functions": [],
+      "components": []
     },
-    "app_item": {
-      "type": "Individual app tile component",
-      "props": {
-        "item": {
-          "type": "AppData",
-          "required": true,
-          "fields": [
-            "id",
-            "colors"
-          ]
-        },
-        "onLongPress": {
-          "type": "() => void",
-          "required": true,
-          "usage": "Trigger edit mode"
-        },
-        "onDelete": {
-          "type": "() => void",
-          "optional": true,
-          "usage": "Handle item deletion"
-        },
-        "style": {
-          "type": "StyleProp<ViewStyle>",
-          "optional": true,
-          "usage": "Container dimensions and spacing"
-        }
-      },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "FadeOut",
+        "LinearTransition",
+        "cancelAnimation",
+        "interpolate",
+        "makeMutable",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "withRepeat",
+        "withSequence",
+        "withTiming"
+      ],
       "hooks": [
-        "useIsShaking() - access global shake state",
-        "useShakingAnimation(item.id) - unique shake animation"
+        "useAnimatedStyle",
+        "useDerivedValue"
       ],
-      "layers": [
-        "Animated.View - shake animation wrapper",
-        "TouchableOpacity - main interaction area (long press)",
-        "LinearGradient - colored background",
-        "Delete button overlay (conditionally visible)"
+      "functions": [
+        "cancelAnimation",
+        "interpolate",
+        "withRepeat",
+        "withSequence",
+        "withTiming"
       ],
-      "animations": {
-        "layout": "LinearTransition.duration(350)",
-        "exiting": "FadeOut"
-      }
-    }
-  },
-  "data_structure": {
-    "apps_data_raw": {
-      "vibrant_gradients": {
-        "count": 50,
-        "usage": "Available but not used in final implementation",
-        "format": "Array of { colors: string[] }"
-      },
-      "metallic_gradients": {
-        "count": 24,
-        "usage": "USED in final APPS_DATA",
-        "format": "Array of { colors: [highlight, shadow, mid-tone] }",
-        "examples": [
-          "Brushed Steel: ['#E8E9ED', '#B8B9BD', '#D1D2D6']",
-          "Polished Silver: ['#FFFFFF', '#C8CBD0', '#E6E8EA']",
-          "Gunmetal: ['#595C63', '#2A2D33', '#424548']",
-          "Platinum: ['#F5F5F5', '#C0C0C0', '#DEDEDE']"
-        ]
-      }
-    },
-    "apps_data": {
-      "source": "METALLIC_APPS_DATA_RAW.map with id assignment",
-      "count": 24,
-      "structure": {
-        "id": "number (0-23)",
-        "colors": "readonly string[] (3 colors: highlight, shadow, mid-tone)"
-      },
-      "type": "const assertion for type safety"
-    },
-    "app_data_type": {
-      "definition": "(typeof APPS_DATA)[number]",
-      "pattern": "Array element type extraction",
-      "result": "{ readonly id: number; readonly colors: readonly string[] }"
-    }
-  },
-  "animation_config": {
-    "base_parameters": {
-      "amplitude": {
-        "base": 1,
-        "variation": 0.2,
-        "final_range": "1-1.2px",
-        "purpose": "Horizontal shake distance"
-      },
-      "duration": {
-        "base": 80,
-        "variation": 40,
-        "final_range": "80-120ms",
-        "purpose": "Shake cycle speed"
-      },
-      "rotation_amplitude": {
-        "base": 1,
-        "variation": 2,
-        "final_range": "1-3°",
-        "purpose": "Rotation wobble amount"
-      },
-      "rotation_base": {
-        "base": -3,
-        "variation": 6,
-        "final_range": "-3° to 3°",
-        "purpose": "Rotation center offset"
-      }
-    },
-    "lcg_algorithm": {
-      "purpose": "Deterministic pseudo-random number generation",
-      "implementation": "(seed * 9301 + 49297) % 233280",
-      "characteristics": [
-        "Same seed always produces same sequence",
-        "Fast computation",
-        "No external dependencies",
-        "Good distribution for animation parameters"
-      ],
-      "usage": "generateRandom(itemId) returns consistent random function per item"
-    },
-    "timing_strategy": {
-      "shake_sequence": [
-        "Phase 1: 0 → -1 (duration ms) - move left",
-        "Phase 2: -1 → 1 (duration * 2 ms) - slower right swing",
-        "Phase 3: 1 → 0 (duration ms) - return to neutral"
-      ],
-      "asymmetric_timing": "Phase 2 is 2x slower for natural wobble feel",
-      "stop_timing": "150ms smooth return to neutral position"
-    }
-  },
-  "layout_and_positioning": {
-    "grid_configuration": {
-      "columns": 4,
-      "spacing": 8,
-      "containerPadding": "SPACING (8px) on horizontal sides",
-      "item_sizing": {
-        "calculation": "(screenWidth - 16 - (spacing * 3)) / 4 - 2",
-        "explanation": "Full width minus padding minus gaps, divided by 4, minus 2px buffer",
-        "aspectRatio": 1,
-        "dynamic": true,
-        "responsive": "Recalculates on screen width change"
-      },
-      "item_spacing": {
-        "marginRight": "SPACING (8px)",
-        "marginBottom": "SPACING (8px)",
-        "padding": "SPACING + 6 (14px) for gradient",
-        "calculated": "Applied per item from layoutConfig"
-      }
-    },
-    "scroll_view": {
-      "type": "Animated.ScrollView",
-      "contentContainerStyle": {
-        "flexDirection": "row",
-        "flexWrap": "wrap",
-        "paddingTop": "insets.top (safe area)",
-        "paddingHorizontal": "layoutConfig.containerPadding",
-        "paddingBottom": 300
-      },
-      "layout_animation": "LinearTransition",
-      "scrollIndicator": "hidden"
-    },
-    "app_item_structure": {
-      "outer_container": {
-        "aspectRatio": 1,
-        "width": "layoutConfig.itemSize (dynamic)",
-        "marginRight": "layoutConfig.spacing (8px)",
-        "marginBottom": "layoutConfig.spacing (8px)",
-        "padding": "14px"
-      },
-      "touchable_area": {
-        "flex": 1,
-        "shadow": {
-          "shadowColor": "#b8b8b8",
-          "shadowOffset": "{ width: 0, height: 1 }",
-          "shadowOpacity": 0.2,
-          "shadowRadius": 4,
-          "elevation": 2
-        }
-      },
-      "gradient": {
-        "borderRadius": 16,
-        "borderCurve": "continuous (iOS)",
-        "colors": "item.colors (3 metallic colors)",
-        "start": "{ x: 0, y: 0 }",
-        "end": "{ x: 1, y: 1 } (diagonal gradient)"
-      }
-    },
-    "delete_button": {
-      "position": "absolute",
-      "top": -4,
-      "left": -4,
-      "zIndex": 1,
-      "button_size": {
-        "width": 20,
-        "height": 20,
-        "borderRadius": 100
-      },
-      "icon_size": 12,
-      "hitSlop": "{ top: 10, bottom: 10, left: 10, right: 10 }",
-      "background": "rgba(255, 255, 255, 0.8)",
-      "purpose": "Extended touch area for better UX"
-    },
-    "safe_area": {
-      "hook": "useSafeAreaInsets()",
-      "applied": "paddingTop: insets.top",
-      "purpose": "Avoid status bar and notch on iOS/Android"
-    }
-  },
-  "performance_optimizations": [
-    "Shared mutable state avoids React re-renders for animation updates",
-    "makeMutable runs on UI thread without bridge crossing",
-    "useMemo for layout calculations - only recalculates on screen width change",
-    "useCallback for stable function references (startShaking, stopShaking, toggleShaking)",
-    "Deterministic random generation - no Math.random() calls during animation",
-    "cancelAnimation prevents memory leaks from abandoned animations",
-    "LinearTransition uses layout animations on UI thread",
-    "All animations run on UI thread via Reanimated worklets",
-    "Single ScrollView instead of FlatList (appropriate for ~24 items)",
-    "Gradient colors are static readonly arrays (no recalculations)",
-    "Pointer events control prevents unnecessary touch handling when button hidden",
-    "setTimeout for deletion allows exit animation to complete visibly"
-  ],
-  "interaction_patterns": {
-    "enter_edit_mode": {
-      "trigger": "Long press on any app item",
-      "handler": "onLongPress={toggleShaking}",
-      "behavior": "All items start shaking simultaneously",
-      "visual_feedback": "Delete buttons fade in on all items"
-    },
-    "exit_edit_mode": {
-      "triggers": [
-        "Tap anywhere outside items (Pressable wrapper)",
-        "Press delete button (automatically stops shaking)"
-      ],
-      "handler": "onPress={stopShaking}",
-      "behavior": "All items stop shaking and return to neutral",
-      "visual_feedback": "Delete buttons fade out"
-    },
-    "delete_item": {
-      "trigger": "Press delete button on item",
-      "sequence": [
-        "1. stopShaking() - exit edit mode",
-        "2. FadeOut animation starts (300ms)",
-        "3. setTimeout 150ms delay",
-        "4. State update filters out item",
-        "5. LinearTransition reflows grid (350ms)"
-      ],
-      "timing_reason": "Delay ensures fade animation is visible before removal"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "Linear gradient #000000 to #121212 (dark)",
-      "app_tiles": "24 unique metallic gradients",
-      "gradient_style": "Diagonal (start: {0,0}, end: {1,1})",
-      "delete_button": "rgba(255, 255, 255, 0.8) (semi-transparent white)",
-      "delete_icon": "black"
-    },
-    "shadows": {
-      "app_items": {
-        "ios": {
-          "shadowColor": "#b8b8b8",
-          "shadowOffset": "{ width: 0, height: 1 }",
-          "shadowOpacity": 0.2,
-          "shadowRadius": 4
-        },
-        "android": {
-          "elevation": 2
-        }
-      }
-    },
-    "border_radius": {
-      "app_tiles": 16,
-      "border_curve": "continuous (iOS smoother corners)",
-      "delete_button": 100
-    },
-    "metallic_palette": {
-      "style": "Subtle, professional metallic tones",
-      "variety": "Brushed Steel, Polished Silver, Platinum, Chrome, Gunmetal, etc.",
-      "total_variations": 24,
-      "color_count_per_gradient": 3
-    }
-  },
-  "use_cases": [
-    "iOS-style home screen app management",
-    "Grid-based item deletion interfaces",
-    "Dashboard widget removal",
-    "Photo gallery management",
-    "Product favorites removal",
-    "Playlist item deletion",
-    "Bookmark management",
-    "Tag/category management interfaces",
-    "File manager item deletion",
-    "Contact list management",
-    "Shopping cart item removal with visual feedback",
-    "Task board card deletion",
-    "Educational demos of iOS interaction patterns",
-    "Prototyping app launchers",
-    "Custom home screen implementations"
-  ],
-  "code_quality": {
-    "strengths": [
-      "Comprehensive TypeScript with explicit types",
-      "Well-documented with JSDoc comments",
-      "Clear separation of concerns (hooks, components, constants)",
-      "Reusable hook pattern for shake animation",
-      "Constants defined in separate configuration file",
-      "Type-safe with readonly type assertions",
-      "Clean component composition",
-      "Proper cleanup with cancelAnimation",
-      "Stable function references with useCallback",
-      "Performance-optimized with useMemo and makeMutable",
-      "Descriptive variable names (rShakingStyle, layoutConfig, etc.)",
-      "Modular file structure with logical grouping"
-    ],
-    "areas_for_improvement": [
-      "Could extract grid layout logic into a custom hook",
-      "Delete confirmation dialog would improve UX",
-      "Could add haptic feedback on long press and delete",
-      "Hard-coded 150ms delay could be a constant",
-      "No error boundaries for graceful failure handling",
-      "Could benefit from unit tests for LCG algorithm",
-      "Animation parameters could be configurable via props",
-      "Could add accessibility labels for screen readers"
-    ]
-  },
-  "typescript_patterns": {
-    "type_definitions": [
-      "AppData - extracted from array element type",
-      "AppItemProps - interface with optional and required props",
-      "StyleProp<ViewStyle> - React Native style types"
-    ],
-    "const_assertions": {
-      "APPS_DATA_RAW": "as const for immutable readonly types",
-      "METALLIC_APPS_DATA_RAW": "as const for immutable readonly types",
-      "APPS_DATA": "as const after map operation",
-      "SHAKING_ANIMATION.BASE": "as const for configuration object"
-    },
-    "type_extraction": {
-      "pattern": "(typeof APPS_DATA)[number]",
-      "purpose": "Extract element type from readonly array",
-      "benefit": "Automatic type updates when array structure changes"
-    },
-    "type_imports": {
-      "usage": "import type { ... } for type-only imports",
-      "examples": [
-        "type { AppData }",
-        "type { StyleProp, ViewStyle }"
-      ],
-      "benefit": "Clearer distinction between runtime and compile-time imports"
-    }
-  },
-  "known_limitations": [
-    "No virtualization - all 24 items render immediately (fine for small lists)",
-    "No persistence - deleted items return on component remount",
-    "No undo functionality after deletion",
-    "No delete confirmation dialog (immediate deletion)",
-    "Fixed 4-column grid (not responsive to different screen sizes/orientations)",
-    "No support for reordering items (drag and drop)",
-    "No animation for adding new items",
-    "Delete button appears on all items (even if some shouldn't be deletable)",
-    "No support for multi-select deletion",
-    "Animation parameters are hardcoded in config (not props)",
-    "No accessibility labels or VoiceOver support",
-    "No reduced motion support for users with motion sensitivity",
-    "Grid doesn't adapt column count for tablets or landscape",
-    "No loading states or error handling",
-    "ScrollView instead of FlatList limits scalability to hundreds of items"
-  ],
-  "potential_improvements": [
-    "Add haptic feedback (Expo Haptics) on long press and delete",
-    "Implement delete confirmation dialog or undo toast",
-    "Add spring-based physics for more natural shake motion",
-    "Support variable column count (2-6) based on screen size",
-    "Add drag-to-reorder functionality (gesture-handler)",
-    "Implement persistence with AsyncStorage or state management",
-    "Add entrance animations (staggered FadeIn) on mount",
-    "Support custom gradient colors via props",
-    "Add loading skeleton screens",
-    "Implement pull-to-refresh to restore deleted items",
-    "Add multi-select mode for batch deletion",
-    "Support different shake intensities (light, medium, strong)",
-    "Add sound effects for delete action",
-    "Implement search/filter functionality",
-    "Add empty state when all items deleted",
-    "Support custom delete icons or actions",
-    "Add animation presets (gentle, normal, aggressive)",
-    "Implement accessibility features (VoiceOver, TalkBack)",
-    "Support reduced motion preferences",
-    "Add tablet/landscape optimizations",
-    "Virtualization for large item counts (react-native-reanimated FlatList)",
-    "Add item edit mode (rename, change colors)",
-    "Support nested folders or categories"
-  ],
-  "key_insights": [
-    "makeMutable at module scope creates shared state without Context API overhead",
-    "Deterministic random generation ensures consistent animations per item across re-renders",
-    "Linear Congruential Generator is fast and sufficient for visual animation variations",
-    "Asymmetric timing (phase 2 is 2x slower) creates more natural wobble feel",
-    "Combining translateX and rotate creates convincing shake effect",
-    "setTimeout delay before state update allows exit animation to be visible",
-    "Pointer events control must sync with opacity to prevent invisible touch targets",
-    "cancelAnimation in useDerivedValue prevents memory leaks on state changes",
-    "useMemo for layout calculations prevents unnecessary recalculations",
-    "LinearTransition automatically handles grid reflow on item removal",
-    "Extended hit slop on small buttons improves touch accuracy",
-    "Metallic gradients with 3 colors create realistic depth",
-    "Wrapping ScrollView in Pressable provides easy edit mode exit",
-    "withRepeat(-1, true) creates infinite reversing animation",
-    "Safe area insets prevent content from hiding under notch/status bar"
-  ],
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic Reanimated animations (withTiming, withRepeat, withSequence)",
-      "FadeOut exit animations",
-      "LinearTransition for layout changes",
-      "Long press gesture handling",
-      "Array filtering for deletion",
-      "Safe area context usage",
-      "Linear gradients in React Native"
-    ],
-    "for_intermediate": [
-      "makeMutable for shared state management",
-      "useDerivedValue for reactive animations",
-      "useAnimatedStyle for style transformations",
-      "interpolate for mapping animation values",
-      "Dynamic grid layout calculations with useMemo",
-      "Combining translation and rotation transforms",
-      "Responsive sizing based on screen dimensions",
-      "Custom hooks for animation logic encapsulation",
-      "Pointer events control with animated styles",
-      "cancelAnimation for cleanup"
-    ],
-    "for_advanced": [
-      "Deterministic pseudo-random number generation with LCG",
-      "Module-level shared state patterns",
-      "Animation parameter variation strategies",
-      "Asymmetric timing sequences for natural motion",
-      "Performance optimization with UI thread animations",
-      "Type extraction from const assertion arrays",
-      "Component architecture for reusable animations",
-      "Synchronizing multiple animation timings",
-      "Advanced TypeScript patterns (const assertions, type extraction)",
-      "Memory management in animation systems"
-    ]
-  },
-  "mathematical_concepts": {
-    "linear_congruential_generator": {
-      "formula": "X(n+1) = (a * X(n) + c) mod m",
-      "parameters": {
-        "a (multiplier)": 9301,
-        "c (increment)": 49297,
-        "m (modulus)": 233280
-      },
-      "properties": [
-        "Deterministic - same seed produces same sequence",
-        "Fast - single modular arithmetic operation",
-        "Good distribution for small sample sizes",
-        "Period length: up to m (233280)"
-      ],
-      "usage": "Generates unique but consistent random values per item ID",
-      "range": "Output normalized to [0, 1] by dividing by modulus"
-    },
-    "interpolation": {
-      "linear_interpolation": "Maps input range to output range proportionally",
-      "translation": "[-1, 0, 1] → [-amplitude, 0, amplitude]",
-      "rotation": "[-1, 0, 1] → [baseRotation - amplitude, 0, baseRotation + amplitude]",
-      "purpose": "Convert animation progress to pixel/degree values"
-    }
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No accessibility labels or hints",
-      "voice_over": "Would announce generic 'TouchableOpacity' without context",
-      "reduced_motion": "No support for prefers-reduced-motion",
-      "touch_targets": "Good - extended hit slop on delete buttons",
-      "visual_contrast": "Excellent - white buttons on colored backgrounds"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to app items ('App tile, double tap to open, long press to edit')",
-      "Add accessibilityLabel to delete buttons ('Delete [app name]')",
-      "Add accessibilityRole='button' to touchable elements",
-      "Announce edit mode entry/exit with AccessibilityInfo.announceForAccessibility",
-      "Support reduced motion by disabling shake animation",
-      "Add accessibilityHint for long press action",
-      "Implement haptic feedback for better sensory feedback",
-      "Ensure delete buttons meet minimum 44x44 touch target (currently 20x20 + 10px hit slop = 40x40, close)",
-      "Add confirmation for deletion with screen reader announcement"
-    ]
-  },
-  "platform_considerations": {
-    "ios": {
-      "inspiration": "Native iOS home screen edit mode",
-      "borderCurve": "continuous (iOS-specific smooth corners)",
-      "shadows": "shadowColor, shadowOffset, shadowOpacity, shadowRadius",
-      "safe_area": "Handles notch and dynamic island",
-      "haptics": "Could use Haptics.impactAsync for feedback"
-    },
-    "android": {
-      "shadows": "elevation property for Material Design shadows",
-      "safe_area": "Handles status bar and navigation bar",
-      "borderCurve": "Falls back to standard borderRadius",
-      "haptics": "Could use Haptics.impactAsync for feedback"
-    },
-    "web": {
-      "limitations": [
-        "borderCurve 'continuous' not supported",
-        "Shadows may render differently",
-        "Touch interactions less natural than mobile",
-        "No native long press (must use timer)"
-      ]
-    }
-  },
-  "comparison_to_similar_patterns": {
-    "vs_ios_home_screen": {
-      "similarities": [
-        "Long press activation",
-        "Shake animation on all items",
-        "Delete buttons in corner",
-        "Grid layout",
-        "Smooth removal animation"
-      ],
-      "differences": [
-        "iOS has page dots indicator",
-        "iOS supports drag-to-reorder",
-        "iOS has app badges and labels",
-        "iOS edit mode has 'Done' button",
-        "iOS has folder support"
+      "components": [
+        "Animated.View"
       ]
     },
-    "vs_swipe_to_delete": {
-      "advantages": "Visual feedback on all deletable items, familiar iOS pattern",
-      "disadvantages": "Takes more screen space, requires two steps (enter mode, then delete)"
-    },
-    "vs_checkbox_selection": {
-      "advantages": "More playful, more visual feedback, familiar pattern",
-      "disadvantages": "No multi-select support, requires edit mode entry"
+    "react-native-safe-area-context": {
+      "imports": [
+        "useSafeAreaInsets"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "testing_considerations": [
-    "Test deterministic random generation produces consistent values per ID",
-    "Verify all items shake when any item long-pressed",
-    "Test shake stops when tapping outside",
-    "Verify delete button appears/disappears with correct timing",
-    "Test item deletion triggers FadeOut animation",
-    "Verify grid reflows correctly after deletion",
-    "Test layout calculations for different screen widths",
-    "Verify safe area padding on different devices",
-    "Test multiple rapid long presses don't break state",
-    "Verify memory doesn't leak with repeated shake start/stop",
-    "Test deletion timing (150ms delay) prevents race conditions",
-    "Verify all 24 items render correctly with unique gradients",
-    "Test touch targets for delete buttons (especially on small screens)",
-    "Verify animation cancellation works correctly",
-    "Test edge case: delete all items"
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useIsShaking",
+    "useMemo",
+    "useSafeAreaInsets",
+    "useShakingAnimation",
+    "useState",
+    "useWindowDimensions"
   ],
-  "related_patterns": [
-    "iOS Home Screen (primary inspiration)",
-    "Swipe-to-delete lists",
-    "Drag-to-reorder grids",
-    "Edit mode toggles",
-    "Shake-to-undo gestures",
-    "Wobble animations",
-    "Grid layout animations",
-    "Delete confirmations",
-    "Multi-select interfaces",
-    "Trash/recycle bin patterns"
-  ],
-  "bundle_size_impact": {
-    "code_size": "~385 lines total (all files combined)",
-    "dependencies": "Reanimated, safe-area-context, linear-gradient, vector-icons (likely already in project)",
-    "runtime_memory": "Low - 24 items, minimal shared values, one module-level mutable",
-    "gradient_data": "~2KB (24 gradient arrays)",
-    "estimated_total": "< 15KB"
-  },
-  "tags": [
-    "shake-animation",
-    "delete-interaction",
-    "ios-pattern",
-    "grid-layout",
-    "long-press",
-    "edit-mode",
-    "deterministic-random",
-    "lcg-algorithm",
-    "metallic-gradients",
-    "linear-gradient",
-    "shared-state",
+  "functions": [
+    "calculateAnimationParams",
+    "cancelAnimation",
+    "generateRandom",
+    "interpolate",
     "makeMutable",
-    "fade-animation",
-    "linear-transition",
-    "reanimated",
-    "rotation-animation",
-    "translation-animation",
-    "safe-area",
-    "responsive-grid",
-    "deletion-animation",
-    "continuous-animation",
-    "ui-thread-animation",
-    "home-screen-pattern"
+    "random",
+    "setItems",
+    "setTimeout",
+    "stopShaking",
+    "withRepeat",
+    "withSequence",
+    "withTiming"
   ],
-  "content_hash": "035684f02f9e06f52e8da2d24e5dc60b41d7e174c6c8549b39967ec1bf004db2",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.428Z",
-  "last_validated": "2025-10-12T09:19:28.428Z"
+  "components": [
+    "Animated.View",
+    "AppItem",
+    "AppsList",
+    "Ionicons",
+    "LinearGradient",
+    "PressableOpacity"
+  ],
+  "patterns": [
+    "animated-styling",
+    "derived-computation",
+    "timing-animation",
+    "repeating-animation",
+    "sequence-animation",
+    "value-interpolation"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "loop-animations",
+    "sequential-animations",
+    "value-mapping",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 8,
+    "total_packages": 7,
+    "total_hooks": 9,
+    "total_functions": 12,
+    "total_components": 6,
+    "total_patterns": 6,
+    "total_techniques": 5
+  }
 }

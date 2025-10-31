@@ -1,914 +1,227 @@
 {
-  "animation_name": "Bottom Bar Skia",
   "animation_slug": "bottom-bar-skia",
-  "description": "A high-performance bottom navigation bar built entirely with Skia and React Native Skia Gesture, featuring an animated circular indicator that smoothly follows tab selection with spring physics. Utilizes Skia's Path API to create a custom-shaped tab bar with a cutout circle, blur effects for depth, and color matrix transformations for visual polish. Icons animate vertically and change color based on focus state, providing fluid tab switching with GPU-accelerated rendering.",
-  "main_features": [
-    "Custom Skia-rendered tab bar with dynamic path construction",
-    "Animated circular indicator with spring-based position interpolation",
-    "Vertical icon translation animation on tab selection",
-    "Color interpolation for icon focus states (purple to white)",
-    "Blur and ColorMatrix effects for visual depth and contrast",
-    "Touch gesture handling via react-native-skia-gesture",
-    "Safe area inset support for notched devices",
-    "SVG icon rendering with FitBox scaling",
-    "Dynamic tab bar sizing based on screen dimensions",
-    "Integration with React Navigation bottom tabs",
-    "Worklet-based navigation for UI thread performance",
-    "GPU-accelerated rendering with Skia Canvas"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.949Z",
   "file_structure": {
-    "index.tsx": "Main demo app with bottom tab navigator setup",
-    "components/bottom-tab-bar/index.tsx": "Core tab bar component with Skia Canvas rendering",
-    "components/bottom-tab-bar/bottom-tab-item/index.tsx": "Individual tab item with icon animation and gesture handling",
-    "components/bottom-tab-bar/bottom-tab-item/svg-icons/index.ts": "SVG path definitions for Home, Search, and User icons",
-    "constants/screens.ts": "Screen name constants configuration"
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [
+      "constants/screens.ts"
+    ],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "rendering": "@shopify/react-native-skia",
-    "gestures": "react-native-skia-gesture",
-    "animations": "react-native-reanimated",
-    "navigation": "@react-navigation/bottom-tabs",
-    "threading": "react-native-worklets",
-    "layout": "react-native-safe-area-context"
+  "packages": [
+    "@react-navigation/bottom-tabs",
+    "@shopify/react-native-skia",
+    "expo-haptics",
+    "react",
+    "react-native",
+    "react-native-reanimated",
+    "react-native-safe-area-context",
+    "react-native-skia-gesture",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@react-navigation/bottom-tabs": "^7.4.0",
+    "@shopify/react-native-skia": "2.2.12",
+    "expo-haptics": "~15.0.7",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-skia-gesture": "0.4.5-beta.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "usage": "GPU-accelerated Canvas rendering with custom shapes and effects",
-      "components": [
-        "Canvas",
-        "Group",
-        "Path",
-        "Circle",
-        "Paint",
-        "FitBox"
+  "packages_detail": {
+    "../../constants/screens": {
+      "imports": [
+        "ScreenNames"
       ],
-      "effects": [
-        "Blur",
-        "ColorMatrix"
-      ],
-      "utilities": [
-        "rect",
-        "Skia"
-      ],
-      "methods": [
-        "Skia.Path.Make()",
-        "addRect()",
-        "addCircle()"
-      ],
-      "critical_feature": "Path API for creating custom tab bar shape with circular cutout",
-      "performance_reason": "GPU-accelerated rendering, no View hierarchy overhead"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-skia-gesture": {
-      "version": "~2.3.3",
-      "components": [
-        "Touchable.Canvas",
-        "Touchable.Rect"
+    "./bottom-tab-item": {
+      "imports": [
+        "BottomTabItem"
       ],
-      "usage": "Touch gesture handling directly on Skia Canvas elements",
-      "critical_feature": "Enables tap gestures on Skia primitives without wrapping in Views",
-      "benefit": "Maintains pure Skia rendering while supporting interactions"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/bottom-tab-bar": {
+      "imports": [
+        "BottomTabBar"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants/screens": {
+      "imports": [
+        "ScreenNames"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./svg-icons": {
+      "imports": [
+        "BOTTOM_BAR_ICONS"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@react-navigation/bottom-tabs": {
+      "imports": [
+        "createBottomTabNavigator"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@shopify/react-native-skia": {
+      "imports": [
+        "Blur",
+        "Circle",
+        "ColorMatrix",
+        "FitBox",
+        "Group",
+        "Paint",
+        "Path",
+        "Skia",
+        "rect"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-haptics": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "memo",
+        "useCallback",
+        "useMemo"
+      ],
+      "hooks": [
+        "useCallback",
+        "useMemo"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
+      "imports": [
+        "interpolateColor",
         "useDerivedValue",
-        "interpolateColor"
-      ],
-      "functions": [
         "withSpring",
         "withTiming"
       ],
-      "usage": "Smooth spring animations for circle position and icon movement",
-      "critical_feature": "useDerivedValue for reactive path and transform calculations on UI thread"
-    },
-    "@react-navigation/bottom-tabs": {
-      "version": "^7.4.0",
-      "components": [
-        "createBottomTabNavigator"
+      "hooks": [
+        "useDerivedValue"
       ],
-      "types": [
-        "BottomTabBarProps"
+      "functions": [
+        "interpolateColor",
+        "withSpring",
+        "withTiming"
       ],
-      "usage": "Bottom tab navigation structure with custom Skia tab bar renderer"
+      "components": []
     },
-    "@react-navigation/native": {
-      "version": "^7.1.8",
-      "usage": "Core navigation functionality"
+    "react-native-safe-area-context": {
+      "imports": [
+        "useSafeAreaInsets"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-skia-gesture": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-worklets": {
-      "version": "0.5.1",
       "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Bridge navigation calls from UI thread (worklet) to JS thread",
-      "critical_for": "Calling navigation.navigate() from Skia gesture handlers"
-    },
-    "react-native-safe-area-context": {
-      "version": "~5.6.0",
-      "hooks": [
-        "useSafeAreaInsets"
-      ],
-      "usage": "Dynamic bottom padding for notched devices (iPhone home indicator)",
-      "calculation": "bottomTabBarHeight = 65 + bottom / 2"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "spring_based_circle_animation": {
-      "pattern": "Spring physics for natural tab indicator movement",
-      "shared_value": "animatedIndex = withSpring(currentIndex)",
-      "config": "Default spring (natural bounce)",
-      "effect": "Circle smoothly follows tab selection with overshoot and settle",
-      "calculation": "cx = (screenWidth / tabCount) * animatedIndex + screenWidth / (tabCount * 2)",
-      "key_insight": "Center position calculated dynamically based on animated index"
-    },
-    "dynamic_path_construction": {
-      "pattern": "Reactive Skia Path creation in useDerivedValue",
-      "worklet": true,
-      "steps": [
-        "1. Create new path with Skia.Path.Make()",
-        "2. Add rectangle for tab bar body (addRect)",
-        "3. Add circle cutout at animated position (addCircle)",
-        "4. Return composed path"
-      ],
-      "reactive_dependencies": [
-        "screenWidth",
-        "bottomTabBarHeight",
-        "animatedCircleCx"
-      ],
-      "effect": "Tab bar shape morphs as circle position changes",
-      "cutout_circle": {
-        "cx": "animatedCircleCx.value",
-        "cy": "BOTTOM_BAR_HEIGHT_OFFSET (50)",
-        "r": "BOTTOM_BAR_HEIGHT_OFFSET (50)"
-      }
-    },
-    "icon_vertical_translation": {
-      "pattern": "Vertical movement based on focus state",
-      "animation": "withTiming(isActive ? baseTranslateY - 35 : baseTranslateY, { duration: 200 })",
-      "baseTranslateY": "y + height / 2 - iconSize / 2 - 8",
-      "active_offset": "-35px upward movement",
-      "timing_config": "200ms duration",
-      "effect": "Active tab icon lifts up by 35px, aligning with circle cutout"
-    },
-    "icon_color_interpolation": {
-      "pattern": "Color transition between inactive and active states",
-      "progress": "withTiming(isActive ? 1 : 0, { duration: 200 })",
-      "colors": "interpolateColor(progress, [0, 1], ['#7E6CE2', '#FFFFFF'])",
-      "inactive_color": "#7E6CE2 (purple - matches circle fill)",
-      "active_color": "#FFFFFF (white - contrasts with purple circle)",
-      "synchronization": "Color and position animations use same 200ms duration"
-    },
-    "blur_and_color_matrix": {
-      "blur_effect": {
-        "component": "Blur",
-        "blur_amount": 5,
-        "applied_to": "Tab bar path via Paint layer",
-        "purpose": "Softens edges, adds depth and glassmorphic feel"
-      },
-      "color_matrix": {
-        "component": "ColorMatrix",
-        "matrix": [
-          "R: [1, 0, 0, 0, 0] - identity",
-          "G: [0, 1, 0, 0, 0] - identity",
-          "B: [0, 0, 1, 0, 0] - identity",
-          "A: [0, 0, 0, 20, -10] - alpha contrast boost"
-        ],
-        "effect": "Increases alpha contrast (20x multiplier, -10 offset)",
-        "purpose": "Enhances edge definition after blur, creates crisp white appearance",
-        "result": "Sharp, bright white tab bar with soft shadow edges"
-      }
-    },
-    "svg_icon_fitting": {
-      "pattern": "FitBox for proportional SVG scaling",
-      "component": "FitBox",
-      "src": "SVG viewBox dimensions (e.g., rect(0, 0, 24, 24))",
-      "dst": "Target render size (rect(0, 0, 30, 30))",
-      "effect": "SVG icons automatically scaled to 30x30px while preserving aspect ratio",
-      "children": "Path component with SVG path data and animated color"
-    }
-  },
-  "skia_patterns": {
-    "path_construction": {
-      "api": "Skia.Path.Make()",
-      "methods": {
-        "addRect": {
-          "usage": "rect(x, y, width, height)",
-          "coordinates": "rect(-10, 45, screenWidth + 50, bottomTabBarHeight + 50)",
-          "purpose": "Tab bar background rectangle (slightly oversized for shadow)"
-        },
-        "addCircle": {
-          "usage": "addCircle(cx, cy, r)",
-          "coordinates": "addCircle(animatedCircleCx.value, 50, 50)",
-          "purpose": "Cutout circle that follows active tab"
-        }
-      },
-      "composition": "Circle added to rect path creates cutout effect",
-      "reactive": "Path recreated in useDerivedValue when dependencies change"
-    },
-    "paint_layer": {
-      "pattern": "Group layer prop for applying effects to children",
-      "structure": "<Group layer={paint}><Path .../></Group>",
-      "paint_children": [
-        "Blur - softens edges",
-        "ColorMatrix - adjusts alpha contrast"
-      ],
-      "benefit": "Effects applied as single GPU operation, not per-pixel"
-    },
-    "canvas_structure": {
-      "component": "Touchable.Canvas",
-      "children_order": [
-        "1. Group with Paint effects containing Path (tab bar)",
-        "2. Circle (purple indicator)",
-        "3. BottomTabItem components (icons with touch areas)"
-      ],
-      "layering": "Render order determines z-index (later = on top)",
-      "touch_handling": "Touchable.Canvas enables gesture handling on Canvas children"
-    },
-    "touchable_rect": {
-      "component": "Touchable.Rect",
-      "props": {
-        "x": "Tab item x position",
-        "y": "BOTTOM_BAR_HEIGHT_OFFSET (50)",
-        "width": "screenWidth / tabBarScreens",
-        "height": "bottomTabBarHeight",
-        "color": "transparent",
-        "onTap": "Navigation callback (worklet)"
-      },
-      "purpose": "Invisible touch target for tab selection",
-      "worklet": "onTap callback runs on UI thread"
-    }
-  },
-  "reanimated_patterns": {
-    "derived_values": [
-      {
-        "name": "animatedIndex",
-        "calculation": "withSpring(currentIndex)",
-        "dependencies": [
-          "currentIndex"
-        ],
-        "type": "SharedValue<number>",
-        "purpose": "Smooth spring-animated tab index for circle position",
-        "updates": "Automatically when state.index changes via React Navigation"
-      },
-      {
-        "name": "animatedCircleCx",
-        "calculation": "(screenWidth / tabBarScreens) * animatedIndex.value + screenWidth / (tabBarScreens * 2)",
-        "dependencies": [
-          "screenWidth",
-          "animatedIndex",
-          "tabBarScreens"
-        ],
-        "type": "SharedValue<number>",
-        "purpose": "Horizontal center position for indicator circle",
-        "formula_breakdown": {
-          "tab_width": "screenWidth / tabBarScreens",
-          "tab_center_offset": "screenWidth / (tabBarScreens * 2)",
-          "result": "Center of each tab area"
-        }
-      },
-      {
-        "name": "bottomTabPath",
-        "calculation": "Skia.Path with rect and circle",
-        "dependencies": [
-          "screenWidth",
-          "bottomTabBarHeight",
-          "animatedCircleCx"
-        ],
-        "type": "SharedValue<SkPath>",
-        "purpose": "Dynamic tab bar shape with animated circular cutout",
-        "reactive": "Recreates path when circle position changes"
-      },
-      {
-        "name": "translateY",
-        "scope": "BottomTabItem",
-        "calculation": "withTiming(isActive ? baseTranslateY - 35 : baseTranslateY, { duration: 200 })",
-        "dependencies": [
-          "baseTranslateY",
-          "isActive"
-        ],
-        "purpose": "Vertical icon position animation"
-      },
-      {
-        "name": "iconColor",
-        "scope": "BottomTabItem",
-        "calculation": "interpolateColor(iconColorProgress.value, [0, 1], ['#7E6CE2', '#FFFFFF'])",
-        "dependencies": [
-          "iconColorProgress"
-        ],
-        "purpose": "Icon color transition on focus change"
-      },
-      {
-        "name": "transform",
-        "scope": "BottomTabItem",
-        "calculation": "[{ translateX: ... }, { translateY: translateY.value }]",
-        "dependencies": [
-          "translateY"
-        ],
-        "purpose": "Combined position transform for icon Group"
-      }
-    ],
-    "useMemo_optimizations": [
-      {
-        "name": "paint",
-        "dependencies": "[]",
-        "content": "Paint with Blur and ColorMatrix children",
-        "purpose": "Prevents recreating Paint component on every render",
-        "benefit": "Stable reference for Group layer prop"
-      },
-      {
-        "name": "dst",
-        "scope": "BottomTabItem",
-        "dependencies": "[]",
-        "content": "rect(0, 0, iconSize, iconSize)",
-        "purpose": "FitBox destination rectangle",
-        "benefit": "Prevents rect allocation on every render"
-      },
-      {
-        "name": "icon",
-        "scope": "BottomTabItem",
-        "computed": "BOTTOM_BAR_ICONS[index]",
-        "purpose": "Icon path and viewBox dimensions",
-        "static": "Array lookup, doesn't need memoization"
-      }
-    ],
-    "memo_components": [
-      {
-        "component": "BottomTabItem",
-        "benefit": "Prevents re-render when other tabs are pressed",
-        "dependencies": "Props (x, y, onTap, height, width, currentIndex, index)",
-        "critical_for": "Smooth animations, no stuttering on tab switch"
-      }
-    ]
-  },
-  "navigation_patterns": {
-    "bottom_tab_navigator": {
-      "library": "@react-navigation/bottom-tabs",
-      "creation": "createBottomTabNavigator()",
-      "screens": [
-        "Home",
-        "Search",
-        "User"
-      ],
-      "custom_tab_bar": {
-        "prop": "tabBar",
-        "value": "useCallback((props: BottomTabBarProps) => <BottomTabBar {...props} />)",
-        "purpose": "Replace default tab bar with custom Skia implementation"
-      }
-    },
-    "screen_configuration": {
-      "pattern": "ScreenNames object maps keys to screen names",
-      "definition": "const ScreenNames = { Home: 'Home', Search: 'Search', User: 'User' } as const",
-      "type_safety": "TypeScript const assertion for literal types",
-      "usage": "Object.values(ScreenNames) for iteration, Object.keys() for count"
-    },
-    "worklet_navigation": {
-      "pattern": "scheduleOnRN for bridging worklet to JS thread",
-      "implementation": "onTap={() => { 'worklet'; scheduleOnRN(navigateTo, screenName); }}",
-      "reason": "Gesture handler runs on UI thread, navigation.navigate() is JS function",
-      "callback": "navigateTo = (screenName) => navigation.navigate(screenName)",
-      "critical": "Must bridge to JS thread for React Navigation state updates"
-    },
-    "state_synchronization": {
-      "navigation_state": "state.index from BottomTabBarProps",
-      "animation_state": "animatedIndex SharedValue",
-      "flow": "state.index changes → animatedIndex updates via useDerivedValue → circle animates",
-      "benefit": "Navigation state drives animations automatically"
-    }
-  },
-  "component_architecture": {
-    "BottomBarSkia": {
-      "type": "Main exported component",
-      "structure": "BottomTab.Navigator with custom tabBar",
-      "screens": [
-        "Home - BackgroundView with gray tint",
-        "Search - BackgroundView with gray tint",
-        "User - BackgroundView with gray tint"
-      ],
-      "tab_bar_callback": "useCallback(() => <BottomTabBar />, [])",
-      "responsibility": "Demo app setup and navigation configuration"
-    },
-    "BottomTabBar": {
-      "type": "Functional component",
-      "props": "BottomTabBarProps (state, navigation)",
-      "structure": [
-        "Touchable.Canvas (Skia canvas container)",
-        "Group with Paint layer (tab bar background)",
-        "Circle (purple indicator)",
-        "BottomTabItem components (mapped from ScreenNames)",
-        "View (spacer for layout, opacity: 0)"
-      ],
-      "constants": {
-        "BOTTOM_BAR_HEIGHT_OFFSET": "50px",
-        "bottomTabBarHeight": "65 + bottom / 2",
-        "tabBarScreens": "Object.keys(ScreenNames).length"
-      },
-      "calculations": {
-        "animatedCircleCx": "Dynamic horizontal position based on tab index",
-        "bottomTabPath": "Dynamic Skia path with circle cutout"
-      }
-    },
-    "BottomTabItem": {
-      "type": "Memoized functional component",
-      "props": {
-        "x": "number - Horizontal position",
-        "y": "number - Vertical position (BOTTOM_BAR_HEIGHT_OFFSET)",
-        "onTap": "() => void - Tab press callback (worklet)",
-        "height": "number - Touch area height",
-        "width": "number - Touch area width",
-        "currentIndex": "number - Currently active tab index",
-        "index": "number - This tab's index"
-      },
-      "structure": [
-        "Group (container)",
-        "Touchable.Rect (transparent touch target)",
-        "Group with transform (icon positioning)",
-        "FitBox with Path (SVG icon with animated color)"
-      ],
-      "constants": {
-        "iconSize": "30px",
-        "TimingConfig": "{ duration: 200 }"
-      },
-      "memo": true,
-      "optimization": "Only re-renders when props change, not on parent updates"
-    },
-    "BackgroundView": {
-      "type": "Simple placeholder component",
-      "structure": "View with gray background",
-      "style": "flex: 1, backgroundColor: 'rgba(0,0,0,0.1)'",
-      "purpose": "Demo screens to show tab switching"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "tab_bar_background": "white (with blur and color matrix effects)",
-      "circle_indicator": "#7E6CE2 (purple)",
-      "icon_inactive": "#7E6CE2 (purple - matches circle)",
-      "icon_active": "#FFFFFF (white - contrasts with circle)",
-      "screen_background": "rgba(0,0,0,0.1) (light gray tint)"
-    },
-    "dimensions": {
-      "tab_bar_height": "65 + bottom / 2 (dynamic based on safe area)",
-      "height_offset": "50px (circle radius and cutout height)",
-      "total_canvas_height": "bottomTabBarHeight + 50",
-      "icon_size": "30x30px",
-      "circle_radius": "43px (indicator circle)",
-      "cutout_radius": "50px (path cutout circle)"
-    },
-    "positioning": {
-      "tab_bar": "position: absolute, bottom: 0, full width",
-      "circle": "cy: 50 (BOTTOM_BAR_HEIGHT_OFFSET), cx: animated",
-      "icons": "Positioned in tabs with vertical animation",
-      "spacer_view": "height: bottomTabBarHeight, zIndex: -5, opacity: 0"
-    },
-    "shadows_and_effects": {
-      "ios_shadow": {
-        "shadowColor": "rgba(0, 0, 0, 0.2)",
-        "shadowOffset": "{ width: 0, height: -10 }",
-        "shadowOpacity": 0.2,
-        "shadowRadius": 25
-      },
-      "android_elevation": 5,
-      "blur_effect": "blur: 5 (applied via Paint)",
-      "color_matrix": "Alpha contrast boost for crisp edges"
-    },
-    "layout": {
-      "tab_distribution": "Equal width tabs (screenWidth / tabBarScreens)",
-      "circle_centering": "Automatically centered in active tab area",
-      "icon_alignment": "Centered in tab area with vertical offset animation"
-    }
-  },
-  "svg_icon_system": {
-    "icon_definitions": {
-      "HOME_ICON": {
-        "svg_path": "M21.71,11.29l-9-9a1,1,0,0,0-1.42,0l-9,9...",
-        "viewBox": "rect(0, 0, 24, 24)",
-        "source": "Home shape SVG path"
-      },
-      "SEARCH_ICON": {
-        "svg_path": "M54.734,9.053C39.12,18.067,27.95,32.624...",
-        "viewBox": "rect(0, 0, 183.792, 183.792)",
-        "source": "Magnifying glass SVG path"
-      },
-      "USER_ICON": {
-        "svg_path": "M288 320a224 224 0 1 0 448 0 224 224 0 1 0-448 0...",
-        "viewBox": "rect(0, 0, 1024, 1024)",
-        "source": "User profile SVG path"
-      }
-    },
-    "icon_array": {
-      "name": "BOTTOM_BAR_ICONS",
-      "structure": "[HOME_ICON, SEARCH_ICON, USER_ICON]",
-      "access_pattern": "BOTTOM_BAR_ICONS[index]",
-      "properties": [
-        "path (SkPath)",
-        "src (rect with viewBox dimensions)"
-      ]
-    },
-    "rendering": {
-      "component": "FitBox with Path child",
-      "src_prop": "icon.src (original SVG viewBox)",
-      "dst_prop": "rect(0, 0, 30, 30) (target render size)",
-      "path_component": "Path with icon.path and animated color",
-      "scaling": "Automatic proportional scaling by FitBox"
-    }
-  },
-  "performance_optimizations": {
-    "gpu_acceleration": {
-      "pattern": "Full Skia Canvas rendering",
-      "benefit": "All rendering happens on GPU, no View hierarchy",
-      "vs_views": "Eliminates React Native bridge crossing for render updates",
-      "critical": "Path updates, circle position, icon transforms all GPU-side"
-    },
-    "worklet_execution": {
-      "pattern": "useDerivedValue calculations run on UI thread",
-      "worklet_functions": [
-        "animatedIndex calculation",
-        "animatedCircleCx calculation",
-        "bottomTabPath construction",
-        "icon transform calculations"
-      ],
-      "benefit": "60fps animations without JS thread blocking"
-    },
-    "memo_optimization": {
-      "component": "BottomTabItem wrapped in memo",
-      "benefit": "Tab items only re-render when their props change",
-      "prevents": "All tabs re-rendering when one tab's animation updates",
-      "critical_for": "Smooth animations with multiple tabs"
-    },
-    "useMemo_for_static_values": {
-      "paint": "Paint component with effects (stable reference)",
-      "dst": "FitBox destination rect (prevents allocation)",
-      "benefit": "Prevents recreation of stable values on every render"
-    },
-    "path_reactivity": {
-      "pattern": "Path only recreates when dependencies change",
-      "dependencies": [
-        "screenWidth",
-        "bottomTabBarHeight",
-        "animatedCircleCx"
-      ],
-      "optimization": "Not recreated on every frame, only when circle moves",
-      "benefit": "Efficient path construction"
-    },
-    "spacer_view": {
-      "purpose": "Reserve layout space without visual rendering",
-      "implementation": "View with opacity: 0, zIndex: -5",
-      "reason": "Prevents content from being hidden under absolute-positioned tab bar",
-      "benefit": "Layout space without render cost"
-    }
-  },
-  "layout_and_positioning": {
-    "absolute_positioning": {
-      "tab_bar": "position: absolute, bottom: 0, full width",
-      "z_layering": "Natural stacking via render order in Canvas"
-    },
-    "safe_area_handling": {
-      "hook": "useSafeAreaInsets()",
-      "bottom_inset": "Used for bottomTabBarHeight calculation",
-      "calculation": "65 + bottom / 2",
-      "purpose": "Accounts for iPhone home indicator and Android gesture navigation",
-      "devices": "Essential for iPhone X+ and modern Android devices"
-    },
-    "responsive_sizing": {
-      "hook": "useWindowDimensions()",
-      "width_usage": "Tab width calculation (screenWidth / tabBarScreens)",
-      "circle_position": "Dynamic based on screen width",
-      "benefit": "Adapts to different screen sizes and orientations"
-    },
-    "canvas_dimensions": {
-      "height": "bottomTabBarHeight + BOTTOM_BAR_HEIGHT_OFFSET",
-      "width": "100% (full screen width)",
-      "overflow": "Visible (circle extends above tab bar)"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Bottom navigation bars in mobile apps",
-      "High-performance tab navigation",
-      "Apps requiring custom tab bar designs",
-      "GPU-accelerated navigation UI",
-      "Design-heavy apps with unique navigation patterns"
-    ],
-    "real_world_examples": [
-      "Social media apps with custom tab bars",
-      "E-commerce apps with animated navigation",
-      "Media apps with fluid navigation",
-      "Productivity apps with visual navigation feedback",
-      "Portfolio apps showcasing animation capabilities"
-    ],
-    "design_patterns": [
-      "Animated tab indicators",
-      "Custom shape tab bars",
-      "Floating navigation elements",
-      "Glassmorphic navigation UI",
-      "Icon-only bottom navigation"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_definitions": [
-        "BottomTabBarProps (from React Navigation)",
-        "FC type annotations",
-        "BottomTabIconProps interface"
-      ],
-      "type_imports": "type keyword for type-only imports",
-      "const_assertions": "'as const' for ScreenNames"
-    },
-    "component_separation": {
-      "index.tsx": "Demo app and navigation setup",
-      "bottom-tab-bar/index.tsx": "Core tab bar Skia rendering",
-      "bottom-tab-item/index.tsx": "Individual tab item component",
-      "svg-icons/index.ts": "Icon definitions and paths",
-      "screens.ts": "Screen name constants"
-    },
-    "constants_extraction": {
-      "BOTTOM_BAR_HEIGHT_OFFSET": "50 (circle radius)",
-      "iconSize": "30 (icon dimensions)",
-      "TimingConfig": "{ duration: 200 } (animation timing)",
-      "ScreenNames": "Screen name configuration object"
-    },
-    "best_practices": [
-      "Separation of concerns (navigation, rendering, data)",
-      "Memoized components for performance",
-      "Worklet annotations for UI thread execution",
-      "Type-safe screen names",
-      "Reusable component patterns"
-    ]
-  },
-  "known_limitations": {
-    "fixed_icon_positions": {
-      "issue": "Icons always positioned at equal intervals",
-      "limitation": "Cannot have unequal spacing or custom positions",
-      "workaround": "Would require custom positioning logic per tab"
-    },
-    "svg_icons_only": {
-      "issue": "Icon system requires SVG paths",
-      "limitation": "Cannot use raster images or icon fonts directly",
-      "workaround": "Convert icons to SVG paths or use different rendering approach"
-    },
-    "hardcoded_colors": {
-      "issue": "Circle color (#7E6CE2) and color scheme hardcoded",
-      "limitation": "No theming or color customization without code changes",
-      "improvement": "Could accept color props or use theme provider"
-    },
-    "three_tab_limitation": {
-      "issue": "Demo and icons defined for exactly 3 tabs",
-      "limitation": "BOTTOM_BAR_ICONS array has 3 icons",
-      "scalability": "Adding tabs requires defining new icons and updating array",
-      "improvement": "Could accept dynamic icon configuration"
-    },
-    "no_labels": {
-      "issue": "Icons only, no text labels below icons",
-      "limitation": "Users rely solely on icon recognition",
-      "accessibility_impact": "May be unclear for new users",
-      "improvement": "Could add optional labels with fade animations"
-    },
-    "accessibility": {
-      "missing": "No accessibility labels or roles",
-      "screen_reader": "Icons not announced to screen readers",
-      "keyboard": "No keyboard navigation support",
-      "touch_targets": "Touch areas defined but not explicitly sized for accessibility"
-    }
-  },
-  "potential_improvements": {
-    "interaction_enhancements": [
-      "Haptic feedback on tab press",
-      "Long press for contextual actions",
-      "Swipe gestures to switch tabs",
-      "Badge notifications on tab icons",
-      "Icon morph animations (shape transitions)",
-      "Ripple effect on tap"
-    ],
-    "visual_refinements": [
-      "Optional text labels below icons",
-      "Customizable circle indicator designs",
-      "Gradient fills for circle or tab bar",
-      "Multiple indicator styles (underline, dot, etc.)",
-      "Icon scale animation on press",
-      "Glow effect on active tab"
-    ],
-    "customization_options": [
-      "Configurable colors via props (circle, icons, background)",
-      "Dynamic icon configuration (accept icon array)",
-      "Adjustable animation durations",
-      "Custom spring configurations",
-      "Height and offset customization",
-      "Position options (top/bottom)"
-    ],
-    "accessibility": [
-      "Accessibility labels for tabs",
-      "Screen reader announcements on tab change",
-      "Keyboard navigation support",
-      "Minimum touch target sizes (44x44pt)",
-      "High contrast mode support",
-      "Reduce motion preference (disable animations)"
-    ],
-    "functionality": [
-      "Support for more than 3 tabs",
-      "Scrollable tab bar for many tabs",
-      "Badge counters on tabs",
-      "Custom icon components (not just SVG paths)",
-      "Tab press and hold menu",
-      "Floating action button integration"
-    ],
-    "performance": [
-      "Texture atlas for icon rendering",
-      "Precomputed path caching",
-      "Conditional rendering based on visibility",
-      "Lazy icon loading"
-    ]
-  },
-  "key_insights": {
-    "skia_performance": "Pure Skia rendering eliminates View hierarchy overhead and enables GPU-accelerated animations",
-    "path_cutout_technique": "Adding circle to rect path creates visual cutout effect for indicator",
-    "worklet_navigation": "scheduleOnRN is essential for calling React Navigation from Skia gesture handlers",
-    "spring_natural_feel": "Spring physics on circle movement creates natural, organic tab switching feel",
-    "color_matrix_power": "ColorMatrix alpha manipulation creates crisp edges after blur effect",
-    "derived_value_reactivity": "useDerivedValue enables reactive Skia path construction on UI thread",
-    "icon_synchronization": "200ms timing for both color and position creates cohesive icon animation",
-    "safe_area_calculation": "Half bottom inset prevents excessive padding while maintaining safe area"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "React Navigation bottom tabs setup",
-      "Custom tab bar implementation",
-      "Safe area handling for notched devices",
-      "Basic Skia Canvas usage",
-      "Touch gesture handling"
-    ],
-    "for_intermediate": [
-      "Skia Path API for custom shapes",
-      "useDerivedValue for reactive calculations",
-      "Touchable components in Skia",
-      "SVG rendering with FitBox",
-      "Color interpolation animations",
-      "Spring-based animations",
-      "Blur and ColorMatrix effects",
-      "Worklet-based navigation bridging"
-    ],
-    "for_advanced": [
-      "GPU-accelerated UI rendering with Skia",
-      "Performance optimization with pure Skia",
-      "Complex path construction and manipulation",
-      "Paint layers for effect composition",
-      "Integration of Skia with React Navigation",
-      "UI thread calculations with worklets",
-      "Color matrix transformations",
-      "Render order z-index strategies in Canvas"
-    ]
-  },
-  "comparison_to_similar_patterns": {
-    "vs_default_react_navigation_tab_bar": {
-      "similarity": "Same BottomTabBarProps interface, same navigation behavior",
-      "difference": "Custom Skia rendering vs View-based, animated indicator vs static"
-    },
-    "vs_blurred_bottom_bar": {
-      "similarity": "Both custom bottom navigation bars",
-      "difference": "Skia rendering vs blur effects with Views, circle cutout vs floating pill"
-    },
-    "vs_view_based_custom_tab_bar": {
-      "similarity": "Custom tab bar design",
-      "difference": "GPU-accelerated Skia vs React Native Views, better performance"
-    },
-    "vs_material_bottom_navigation": {
-      "similarity": "Bottom navigation pattern",
-      "difference": "Custom design vs Material Design spec, animated circle vs color wave"
-    }
-  },
-  "testing_considerations": {
-    "visual_regression": [
-      "Tab bar renders with correct shape",
-      "Circle indicator positioned correctly on each tab",
-      "Icons render with correct colors",
-      "Blur and color matrix effects applied correctly",
-      "Safe area padding correct on notched devices"
-    ],
-    "interaction_testing": [
-      "Tapping tab switches screens",
-      "Circle animates smoothly to selected tab",
-      "Icons move up on selection",
-      "Icon colors transition correctly",
-      "All tabs accessible and functional"
-    ],
-    "animation_testing": [
-      "Spring animation smooth (no sudden jumps)",
-      "Icon position and color animations synchronized",
-      "No animation stuttering on tab switch",
-      "Animations complete correctly"
-    ],
-    "navigation_testing": [
-      "Navigation between tabs works correctly",
-      "Initial route renders correctly",
-      "Navigation state syncs with animation state",
-      "Rapid tab switching handled correctly"
-    ],
-    "platform_testing": [
-      "Skia rendering works on both iOS and Android",
-      "Shadows display correctly (iOS and Android elevation)",
-      "Safe area handling works on various devices",
-      "Touch gestures responsive on all platforms"
-    ],
-    "edge_cases": [
-      "Adding/removing tabs dynamically",
-      "Very wide or narrow screens",
-      "Landscape orientation",
-      "Rapid tab switching",
-      "Tab switching during animation"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "labels": "No accessibility labels on tab items",
-      "roles": "No accessibility roles defined",
-      "announcements": "No screen reader announcements",
-      "keyboard": "No keyboard navigation",
-      "reduced_motion": "No prefers-reduced-motion support",
-      "touch_targets": "Touch areas defined but not sized explicitly"
-    },
-    "recommendations": [
-      "Add accessibility labels to Touchable.Rect ('Home tab', 'Search tab', etc.)",
-      "Add accessibility hints ('Double tap to go to {screen}')",
-      "Add accessibility role='button' or 'tab'",
-      "Announce tab changes to screen reader",
-      "Ensure minimum touch target size 44x44pt",
-      "Support keyboard navigation (arrow keys to switch tabs)",
-      "Respect reduce motion (instant transitions)",
-      "Add focus indicators for keyboard users",
-      "Test with VoiceOver and TalkBack"
-    ]
-  },
-  "related_patterns": {
-    "custom_tab_bars": "Other custom bottom navigation implementations",
-    "skia_ui_components": "UI components built with React Native Skia",
-    "animated_indicators": "Tab indicators with smooth animations",
-    "path_based_ui": "UI elements created with Skia paths",
-    "gesture_navigation": "Navigation controlled by gestures"
-  },
-  "state_management": {
-    "navigation_state": {
-      "managed_by": "React Navigation",
-      "current_tab": "state.index from BottomTabBarProps",
-      "routes": "state.routes array with navigation state"
-    },
-    "animation_state": {
-      "animatedIndex": "SharedValue tracking animated tab index",
-      "animatedCircleCx": "SharedValue for circle horizontal position",
-      "bottomTabPath": "SharedValue for dynamic tab bar path",
-      "per_tab_state": "translateY and iconColor per tab item"
-    },
-    "synchronization": {
-      "pattern": "Navigation state → animatedIndex → animations",
-      "flow": "state.index changes trigger useDerivedValue updates",
-      "benefit": "Automatic animation synchronization with navigation"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~200 lines total (all components)",
-    "dependencies": "Skia, Skia Gesture, Reanimated (likely already in project)",
-    "runtime_memory": "Minimal - few SharedValues, Skia path, SVG paths",
-    "gpu_memory": "Low - simple shapes, no complex textures",
-    "performance": "Excellent - GPU-accelerated, minimal CPU usage"
-  },
-  "platform_considerations": {
-    "ios": {
-      "shadow": "shadowColor, shadowOffset, shadowOpacity, shadowRadius used",
-      "border_curve": "Not used in this implementation",
-      "skia_support": "Full Skia support, excellent performance"
-    },
-    "android": {
-      "elevation": "elevation: 5 used for shadow",
-      "skia_support": "Full Skia support, excellent performance"
-    },
-    "web": {
-      "compatibility": "Skia has CanvasKit backend for web",
-      "performance": "Good, may be slightly slower than native",
-      "gestures": "react-native-skia-gesture web support may need verification"
-    }
-  },
-  "tags": [
-    "bottom-navigation",
-    "tab-bar",
-    "skia",
-    "skia-gesture",
-    "gpu-rendering",
-    "animated-indicator",
-    "spring-animation",
-    "path-api",
-    "svg-icons",
-    "react-navigation",
-    "custom-shapes",
-    "blur-effects",
-    "color-matrix",
-    "worklets",
-    "reanimated",
-    "safe-area",
-    "high-performance",
-    "canvas-rendering"
+  "hooks": [
+    "useCallback",
+    "useDerivedValue",
+    "useMemo",
+    "useSafeAreaInsets",
+    "useWindowDimensions"
   ],
-  "content_hash": "513e920c109095cf29c5f5689f7a55c73c4960b85432cdaf88e9540ee0e4367b",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.295Z",
-  "last_validated": "2025-10-12T09:19:28.295Z"
+  "functions": [
+    "createBottomTabNavigator",
+    "interpolateColor",
+    "memo",
+    "rect",
+    "scheduleOnRN",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Blur",
+    "BottomTab.Navigator",
+    "BottomTab.Screen",
+    "BottomTabBar",
+    "BottomTabItem",
+    "Circle",
+    "ColorMatrix",
+    "FitBox",
+    "Group",
+    "Paint",
+    "Path",
+    "Touchable.Canvas",
+    "Touchable.Rect",
+    "View"
+  ],
+  "patterns": [
+    "derived-computation",
+    "timing-animation",
+    "spring-animation",
+    "color-interpolation",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "spring-physics",
+    "color-transitions",
+    "canvas-rendering",
+    "blur-effects"
+  ],
+  "stats": {
+    "total_files": 5,
+    "total_packages": 9,
+    "total_hooks": 5,
+    "total_functions": 7,
+    "total_components": 14,
+    "total_patterns": 5,
+    "total_techniques": 5
+  }
 }

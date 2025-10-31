@@ -1,1042 +1,214 @@
 {
-  "animation_name": "QR Code Generator",
   "animation_slug": "qrcode",
-  "description": "An interactive QR code generator with real-time text input, dynamic Skia-based rendering, and customizable visual effects. Features a gradient-colored QR code with discrete path effects for a stylized appearance. Users can type any text to generate a scannable QR code, and adjust the deviation parameter via a custom slider to control the path distortion effect. The component demonstrates advanced Skia rendering techniques, including LinearGradient and DiscretePathEffect applied to QR code paths.",
-  "main_features": [
-    "Real-time QR code generation from text input",
-    "Linear gradient coloring (red to yellow spectrum)",
-    "Discrete path effect for stylized QR appearance",
-    "Interactive slider for deviation control (0-6 range)",
-    "High error correction level (H) for reliability",
-    "Custom stroke width configuration",
-    "Responsive sizing (90% of window width)",
-    "Dark theme UI with white text and borders",
-    "TextInput with auto-complete and auto-correct disabled",
-    "Fallback QR code value (reactiive.io)",
-    "Two slider implementations: custom gesture-based and native SwiftUI",
-    "Animated slider picker with scale and border radius transitions"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.067Z",
   "file_structure": {
-    "index.tsx": "Main QRCodeGenerator component with TextInput, QRCode display, and Slider control",
-    "components/slider/index.tsx": "Custom gesture-based slider implementation using Pan gesture and Reanimated",
-    "components/slider/index.liquid.tsx": "Alternative native SwiftUI-based slider using @expo/ui"
+    "entry": "index.tsx",
+    "components": [
+      "components/slider/index.liquid.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "qr_code": "react-native-qrcode-skia",
-    "graphics": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "ui": "react-native",
-    "native_ui": "@expo/ui/swift-ui (for liquid slider variant)"
+  "packages": [
+    "@expo/ui/swift-ui",
+    "@shopify/react-native-skia",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-qrcode-skia",
+    "react-native-reanimated",
+    "react-native-safe-area-context",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-qrcode-skia": "^0.3.1",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-qrcode-skia": {
-      "version": "^0.3.1",
-      "component": "QRCode",
-      "props": {
-        "value": "Text string to encode",
-        "size": "QR code dimensions",
-        "strokeWidth": "Path stroke width (0.5 default)",
-        "errorCorrectionLevel": "H (highest, ~30% recovery)"
-      },
-      "children": [
-        "LinearGradient for color",
-        "DiscretePathEffect for stylized appearance"
+  "packages_detail": {
+    "./components/slider": {
+      "imports": [
+        "Slider"
       ],
-      "usage": "Skia-based QR code rendering with customizable visual effects",
-      "benefit": "High-performance QR code generation with GPU-accelerated Skia rendering"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/ui/swift-ui": {
+      "imports": [
+        "Host",
+        "Slider"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "LinearGradient",
+      "imports": [
         "DiscretePathEffect",
+        "LinearGradient",
         "vec"
       ],
-      "usage": "Visual effects applied to QR code paths",
-      "benefit": "Hardware-accelerated rendering for smooth visual effects"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useCallback",
+        "useMemo",
+        "useState"
+      ],
+      "hooks": [
+        "useCallback",
+        "useMemo",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Keyboard",
+        "ScrollView",
+        "StyleSheet",
+        "Text",
+        "TextInput",
+        "TouchableWithoutFeedback",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-qrcode-skia": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
+      "imports": [
+        "Extrapolation",
+        "interpolate",
+        "useAnimatedProps",
+        "useAnimatedReaction",
         "useAnimatedStyle",
         "useDerivedValue",
-        "useAnimatedReaction",
+        "useSharedValue",
+        "withTiming"
+      ],
+      "hooks": [
         "useAnimatedProps",
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
         "interpolate",
         "withTiming"
       ],
       "components": [
-        "Animated.View"
-      ],
-      "critical_feature": "Slider picker animations and gesture-based value updates on UI thread"
+        "Animated.View",
+        "Animated.createAnimatedComponent"
+      ]
     },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "apis": [
-        "Gesture.Pan()",
-        "GestureDetector"
+    "react-native-safe-area-context": {
+      "imports": [
+        "useSafeAreaInsets"
       ],
-      "usage": "Custom slider pan gesture handling",
-      "benefit": "Native gesture recognition with UI thread execution"
-    },
-    "@expo/ui/swift-ui": {
-      "version": "~0.2.0-beta.6",
-      "components": [
-        "Host",
-        "Slider"
-      ],
-      "usage": "Native SwiftUI-based slider in liquid variant",
-      "benefit": "Platform-native slider behavior and appearance",
-      "note": "Used in index.liquid.tsx variant only"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
+      "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Scheduling onUpdate callback on React Native thread from worklet",
-      "critical_feature": "Bridging UI thread animations to React Native callbacks"
-    },
-    "react-native": {
-      "components": [
-        "TextInput",
-        "View",
-        "Text",
-        "useWindowDimensions",
-        "StyleSheet"
-      ],
-      "hooks": [
-        "useState",
-        "useCallback",
-        "useMemo"
-      ],
-      "usage": "Core UI components and responsive sizing"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "slider_picker_animation": {
-      "pattern": "Multi-property timing animations on gesture begin/end",
-      "properties": [
-        "scale",
-        "borderRadius",
-        "borderWidth"
-      ],
-      "on_begin": {
-        "scale": "withTiming(1) - expand to full size",
-        "borderRadius": "withTiming(pickerSize / 2) - full circle",
-        "borderWidth": "withTiming(4) - thin border"
-      },
-      "on_end": {
-        "scale": "withTiming(0.7) - shrink to 70%",
-        "borderRadius": "withTiming(pickerSize / 2.5) - rounded square",
-        "borderWidth": "withTiming(pickerSize / 3) - thick border"
-      },
-      "effect": "Visual feedback during slider interaction with morphing shape"
-    },
-    "slider_translation": {
-      "pattern": "Pan gesture with context and clamping",
-      "implementation": "translateX.value = contextX.value + event.translationX",
-      "clamping": "useDerivedValue with clamp(translateX, 0, sliderWidth)",
-      "picker_positioning": "clampedTranslateX.value - pickerSize / 2",
-      "effect": "Smooth dragging with bounds enforcement"
-    },
-    "progress_bar_width": {
-      "pattern": "Animated width tracking slider position",
-      "calculation": "width: clampedTranslateX.value",
-      "effect": "Filled portion grows as slider moves right"
-    },
-    "value_interpolation": {
-      "pattern": "Linear interpolation from position to custom range",
-      "input_range": "[0, sliderWidth]",
-      "output_range": "[minValue, maxValue]",
-      "implementation": "interpolate(clampedTranslateX, [0, sliderWidth], [minValue, maxValue])",
-      "usage": "Convert pixel position to deviation value (0-6 range)"
-    },
-    "animated_reaction": {
-      "pattern": "useAnimatedReaction to bridge UI thread to React Native thread",
-      "watches": "clampedTranslateX.value",
-      "callback": "scheduleOnRN(onUpdate, progress)",
-      "purpose": "Update QR code deviation parameter from slider position",
-      "benefit": "Efficient one-way data flow from animation to React state"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "strokeWidthProgress",
-        "type": "number (constant)",
-        "initial": 0.5,
-        "scope": "QRCodeGenerator",
-        "purpose": "QR code path stroke width (not animated)"
-      },
-      {
-        "name": "deviationProgress",
-        "type": "SharedValue<number>",
-        "initial": 6,
-        "scope": "QRCodeGenerator",
-        "updates": "Slider onUpdate callback",
-        "drives": "DiscretePathEffect deviation parameter"
-      },
-      {
-        "name": "translateX",
-        "type": "SharedValue<number>",
-        "initial": "initialProgress * sliderWidth",
-        "scope": "Slider component",
-        "updates": "Pan gesture onUpdate",
-        "drives": "Picker position and progress bar width"
-      },
-      {
-        "name": "contextX",
-        "type": "SharedValue<number>",
-        "scope": "Slider component",
-        "purpose": "Store translateX at gesture begin for relative updates",
-        "pattern": "Common gesture handler pattern"
-      },
-      {
-        "name": "scale",
-        "type": "SharedValue<number>",
-        "initial": 0.7,
-        "scope": "Slider component",
-        "updates": "Gesture begin/finalize",
-        "drives": "Picker scale transform"
-      },
-      {
-        "name": "pickerBorderRadius",
-        "type": "SharedValue<number>",
-        "initial": "pickerSize / 2.5",
-        "scope": "Slider component",
-        "updates": "Gesture begin/finalize",
-        "drives": "Picker visual morphing"
-      },
-      {
-        "name": "pickerBorderWidth",
-        "type": "SharedValue<number>",
-        "initial": "Math.floor(pickerSize / 3)",
-        "scope": "Slider component",
-        "updates": "Gesture begin/finalize",
-        "drives": "Picker border thickness"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "clampedTranslateX",
-        "scope": "Slider component",
-        "calculation": "clamp(translateX.value, 0, sliderWidth)",
-        "dependencies": [
-          "translateX",
-          "sliderWidth"
-        ],
-        "purpose": "Enforce slider bounds",
-        "benefit": "Prevents picker from going outside track"
-      },
-      {
-        "name": "sliderProgress (liquid variant)",
-        "scope": "LiquidSlider component",
-        "calculation": "interpolate(updatedValue, [0, 1], [minValue, maxValue], CLAMP)",
-        "purpose": "Convert 0-1 slider value to custom range"
-      }
-    ],
-    "useAnimatedStyle_instances": [
-      {
-        "name": "rPickerStyle",
-        "target": "Slider picker (draggable handle)",
-        "properties": {
-          "borderWidth": "pickerBorderWidth.value",
-          "borderRadius": "pickerBorderRadius.value",
-          "transform": [
-            "{ translateX: clampedTranslateX.value - pickerSize / 2 }",
-            "{ scale: scale.value }"
-          ]
-        },
-        "purpose": "Animate picker position, scale, border during interaction"
-      },
-      {
-        "name": "rProgressBarStyle",
-        "target": "Filled progress bar",
-        "properties": {
-          "width": "clampedTranslateX.value"
-        },
-        "purpose": "Animate progress bar width to match picker position"
-      }
-    ],
-    "useAnimatedReaction": {
-      "watches": "clampedTranslateX.value",
-      "callback": "Interpolate position to progress value, schedule onUpdate on RN thread",
-      "pattern": "Bridge UI thread shared value to React callback",
-      "benefit": "QR code updates in real-time without performance impact"
-    },
-    "useAnimatedProps": {
-      "component": "ReanimatedSlider (liquid variant)",
-      "props": {
-        "value": "sliderProgress.value"
-      },
-      "purpose": "Drive native slider value with animated prop",
-      "benefit": "Smooth synchronization with native component"
-    },
-    "gesture_handlers": [
-      {
-        "name": "Pan gesture",
-        "pattern": "Gesture.Pan() with onBegin, onUpdate, onFinalize",
-        "onBegin": "Save context, start animations (scale, border)",
-        "onUpdate": "Update translateX based on gesture translation",
-        "onFinalize": "Restore default animations (scale, border)",
-        "benefit": "Complete gesture lifecycle handling with visual feedback"
-      }
-    ]
-  },
-  "skia_rendering": {
-    "qr_code_structure": [
-      {
-        "component": "QRCode",
-        "props": {
-          "value": "qrText || 'reactiive.io'",
-          "size": "windowWidth * 0.9",
-          "strokeWidth": 0.5,
-          "errorCorrectionLevel": "H"
-        },
-        "children": [
-          "LinearGradient",
-          "DiscretePathEffect"
-        ]
-      }
-    ],
-    "linear_gradient": {
-      "component": "LinearGradient",
-      "start": "vec(0, 0) - top-left corner",
-      "end": "vec(windowWidth, windowWidth) - bottom-right corner",
-      "colors": [
-        "#FF0000",
-        "#FF4D00",
-        "#FF9900",
-        "#FFCC00"
-      ],
-      "color_description": "Red → Red-Orange → Orange → Yellow spectrum",
-      "effect": "Diagonal gradient across QR code",
-      "benefit": "Eye-catching colorful appearance while maintaining scannability"
-    },
-    "discrete_path_effect": {
-      "component": "DiscretePathEffect",
-      "length": 10,
-      "deviation": "deviationProgress.value (animated 0-6)",
-      "effect": "Segments QR code paths into discrete chunks with random deviation",
-      "visual_result": "Stylized, sketchy appearance",
-      "interactivity": "User controls deviation via slider",
-      "note": "Too high deviation may affect scannability"
-    }
-  },
-  "component_architecture": {
-    "QRCodeGenerator": {
-      "type": "Main functional component",
-      "state": [
-        {
-          "name": "qrText",
-          "type": "string",
-          "initial": "reactiive.io",
-          "trigger": "TextInput onChangeText",
-          "purpose": "QR code content"
-        }
-      ],
-      "constants": [
-        {
-          "name": "strokeWidthProgress",
-          "value": 0.5,
-          "purpose": "QR code stroke width (not animated)"
-        },
-        {
-          "name": "deviationProgress",
-          "value": "useSharedValue(6)",
-          "purpose": "Discrete path effect deviation"
-        }
-      ],
-      "layout": {
-        "container": "flex: 1, black background",
-        "text_input": "Top, with border and padding",
-        "qr_code": "Center, 90% width, aspect ratio 1:1",
-        "slider_container": "Bottom, with title and slider"
-      }
-    },
-    "Slider (custom variant)": {
-      "type": "Reusable functional component with TypeScript",
-      "props": {
-        "pickerSize": {
-          "type": "number",
-          "default": 50,
-          "usage": "Draggable handle size"
-        },
-        "sliderHeight": {
-          "type": "number",
-          "default": 4,
-          "usage": "Track height"
-        },
-        "minValue": {
-          "type": "number",
-          "default": 0,
-          "usage": "Minimum output value"
-        },
-        "maxValue": {
-          "type": "number",
-          "default": 1,
-          "usage": "Maximum output value"
-        },
-        "color": {
-          "type": "string",
-          "default": "white",
-          "usage": "Picker and progress bar color"
-        },
-        "style": {
-          "type": "StyleProp<ViewStyle>",
-          "required": true,
-          "must_include": "width property",
-          "usage": "Container styling with required width"
-        },
-        "onUpdate": {
-          "type": "(progress: number) => void",
-          "optional": true,
-          "usage": "Callback fired when slider value changes"
-        },
-        "initialProgress": {
-          "type": "number",
-          "default": 0,
-          "usage": "Initial slider position (0-1 normalized)"
-        }
-      },
-      "pattern": "Fully custom slider with gesture handler and reanimated",
-      "inspiration": "Balloon slider animation (Patreon post reference in comments)"
-    },
-    "LiquidSlider (native variant)": {
-      "type": "Functional component wrapping native SwiftUI Slider",
-      "props": "Same as custom Slider",
-      "implementation": "Uses @expo/ui Host and Slider components",
-      "difference": "Native appearance and behavior instead of custom gesture handling",
-      "benefit": "Platform-native feel and accessibility support",
-      "limitation": "iOS-specific (@expo/ui/swift-ui)"
-    }
-  },
-  "visual_design": {
-    "layout": {
-      "container": {
-        "backgroundColor": "black",
-        "flex": 1,
-        "justifyContent": "center"
-      },
-      "text_input": {
-        "position": "Top, 5% horizontal margin",
-        "borderWidth": 1,
-        "borderColor": "white",
-        "borderRadius": 10,
-        "paddingHorizontal": 15,
-        "paddingVertical": 15,
-        "marginBottom": 25
-      },
-      "qr_code": {
-        "size": "90% of window width",
-        "aspectRatio": 1,
-        "alignSelf": "center"
-      },
-      "slider_container": {
-        "marginLeft": 25,
-        "marginTop": 30
-      }
-    },
-    "color_scheme": {
-      "background": "black",
-      "text": "white",
-      "input_border": "white",
-      "placeholder": "gray",
-      "cursor": "white",
-      "slider_track": "gray",
-      "slider_progress": "white",
-      "slider_picker": "white with border",
-      "qr_gradient": [
-        "#FF0000",
-        "#FF4D00",
-        "#FF9900",
-        "#FFCC00"
-      ]
-    },
-    "typography": {
-      "text_input": {
-        "fontSize": 20,
-        "color": "white"
-      },
-      "title": {
-        "fontSize": 20,
-        "fontWeight": "bold",
-        "letterSpacing": 1,
-        "color": "white"
-      }
-    },
-    "slider_design": {
-      "track": {
-        "height": 4,
-        "backgroundColor": "gray",
-        "borderRadius": 5
-      },
-      "progress_bar": {
-        "backgroundColor": "white",
-        "position": "absolute",
-        "height": "100%"
-      },
-      "picker": {
-        "size": "50px (default)",
-        "aspectRatio": 1,
-        "backgroundColor": "white",
-        "borderColor": "white",
-        "position": "absolute",
-        "initial": {
-          "borderRadius": "pickerSize / 2.5 (rounded square)",
-          "borderWidth": "pickerSize / 3 (thick)",
-          "scale": 0.7
-        },
-        "active": {
-          "borderRadius": "pickerSize / 2 (circle)",
-          "borderWidth": 4,
-          "scale": 1
-        }
-      }
-    },
-    "responsive_sizing": {
-      "qr_code": "90% of window width (useWindowDimensions)",
-      "slider": "windowWidth - 50",
-      "benefit": "Adapts to all screen sizes"
-    }
-  },
-  "interaction_patterns": {
-    "text_input": {
-      "trigger": "User types in TextInput",
-      "action": "setQRCode(text) updates state",
-      "effect": "QR code regenerates in real-time",
-      "autocomplete": "off",
-      "autocorrect": false,
-      "autocapitalize": "none",
-      "purpose": "Clean input for URLs and text"
-    },
-    "slider_dragging": {
-      "trigger": "Pan gesture on picker",
-      "sequence": [
-        "1. onBegin: Save contextX, animate scale to 1, morph to circle",
-        "2. onUpdate: Update translateX = contextX + translationX",
-        "3. clampedTranslateX: Enforce bounds [0, sliderWidth]",
-        "4. useAnimatedReaction: Interpolate to progress, call onUpdate",
-        "5. onFinalize: Animate scale to 0.7, morph back to rounded square"
-      ],
-      "visual_feedback": "Picker grows and becomes circular while dragging",
-      "effect": "QR code deviation updates in real-time"
-    },
-    "liquid_slider_interaction": {
-      "trigger": "Native slider interaction",
-      "callback": "onSliderValueChange",
-      "implementation": "interpolate value, call onUpdate if provided",
-      "benefit": "Native slider behavior and accessibility"
-    }
-  },
-  "state_management": {
-    "react_state": [
-      {
-        "name": "qrText",
-        "type": "string",
-        "initial": "reactiive.io",
-        "updates_from": "TextInput onChangeText",
-        "affects": "QR code value prop"
-      }
-    ],
-    "shared_values": [
-      {
-        "name": "deviationProgress",
-        "updates_from": "Slider onUpdate callback",
-        "affects": "DiscretePathEffect deviation",
-        "real_time": true
-      }
-    ],
-    "data_flow": {
-      "text_input_flow": [
-        "1. User types in TextInput",
-        "2. onChangeText updates qrText state",
-        "3. React re-renders QRCode with new value",
-        "4. Skia regenerates QR code on UI thread"
-      ],
-      "slider_flow": [
-        "1. User drags slider picker (gesture)",
-        "2. translateX SharedValue updates on UI thread",
-        "3. clampedTranslateX derived value updates",
-        "4. useAnimatedReaction interpolates to deviation value",
-        "5. scheduleOnRN calls onUpdate callback on RN thread",
-        "6. deviationProgress SharedValue updates",
-        "7. DiscretePathEffect re-renders with new deviation"
-      ]
-    }
-  },
-  "performance_optimizations": {
-    "skia_rendering": {
-      "pattern": "QR code generated on UI thread via Skia",
-      "benefit": "No bridge crossing, 60fps rendering",
-      "gpu_acceleration": true
-    },
-    "worklet_pattern": {
-      "clamp_function": "Marked as 'worklet' for UI thread execution",
-      "benefit": "Bounds checking runs on UI thread"
-    },
-    "useMemo": {
-      "flattenedStyle": "Memoized style flattening in Slider",
-      "dependencies": [
-        "style"
-      ],
-      "benefit": "Avoid re-flattening on every render"
-    },
-    "useCallback": {
-      "onSliderValueChange": "Stable reference for slider callback (liquid variant)",
-      "dependencies": [
-        "onUpdate",
-        "minValue",
-        "maxValue",
-        "sliderProgress"
-      ],
-      "benefit": "Prevent unnecessary re-renders"
-    },
-    "shared_value_updates": {
-      "pattern": "Direct SharedValue updates in gestures",
-      "benefit": "UI thread only, no React re-renders during animation"
-    },
-    "animated_reaction": {
-      "pattern": "useAnimatedReaction for one-way data flow",
-      "benefit": "Efficient bridge from UI thread to React thread only when needed"
-    },
-    "responsive_sizing": {
-      "useWindowDimensions": "Hook for responsive window dimensions",
-      "recalculation": "Only on window resize",
-      "benefit": "Efficient responsive layout"
-    }
-  },
-  "qr_code_configuration": {
-    "default_value": "reactiive.io",
-    "fallback_pattern": "qrText ? qrText : 'reactiive.io'",
-    "error_correction_level": {
-      "value": "H",
-      "meaning": "High (~30% of data can be restored)",
-      "benefit": "QR code remains scannable even with deviation effect and partial damage"
-    },
-    "stroke_width": {
-      "value": 0.5,
-      "purpose": "Thin paths for discrete effect visibility",
-      "note": "Could be made configurable like deviation"
-    },
-    "size": {
-      "calculation": "windowWidth * 0.9",
-      "responsive": true,
-      "maintains_aspect_ratio": true
-    },
-    "gradient_configuration": {
-      "start_point": "vec(0, 0)",
-      "end_point": "vec(windowWidth, windowWidth)",
-      "direction": "Diagonal from top-left to bottom-right",
-      "colors": "4-color gradient (red to yellow spectrum)"
-    },
-    "deviation_configuration": {
-      "min": 0,
-      "max": 6,
-      "initial": 0.5,
-      "default_display": 6,
-      "control": "Interactive slider",
-      "effect": "Higher values = more distortion"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Custom QR code generator apps",
-      "Event check-in systems with branded QR codes",
-      "Dynamic QR code creation for URLs, text, WiFi credentials",
-      "Business card apps with stylized QR codes",
-      "Marketing materials with artistic QR codes",
-      "Menu or catalog QR code generators"
-    ],
-    "real_world_examples": [
-      "Restaurant menu generators with custom branding",
-      "Event ticket generators with unique styling",
-      "WiFi credential sharing with visual flair",
-      "Payment request screens with branded QR codes",
-      "URL shortener services with custom QR designs",
-      "Social media profile QR generators"
-    ],
-    "educational": [
-      "Teaching Skia visual effects (gradients, path effects)",
-      "Demonstrating custom slider implementation",
-      "Real-time QR code generation",
-      "Gesture handling with Reanimated",
-      "Bridging UI thread and React Native thread"
-    ],
-    "customization_scenarios": [
-      "Different color gradients for brand matching",
-      "Variable deviation effects for different styles",
-      "Multiple path effects combined",
-      "Custom error correction levels for different use cases",
-      "Logo embedding in QR code center"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_definitions": [
-        "SliderProps (with detailed type constraints)",
-        "FC (Functional Component)"
-      ],
-      "type_constraints": [
-        "style prop requires width, omits width/height from ViewStyle base",
-        "Proper optional/required prop typing"
-      ],
-      "type_imports": "Explicit type-only imports for better tree-shaking"
-    },
-    "component_organization": {
-      "main": "index.tsx - QR code generator demo",
-      "slider_custom": "components/slider/index.tsx - Gesture-based implementation",
-      "slider_native": "components/slider/index.liquid.tsx - SwiftUI-based implementation",
-      "separation": "Clear separation between demo and reusable components",
-      "pattern": "Component variants for different platform approaches"
-    },
-    "constants": {
-      "PRIMARY_COLOR": "Defined at module level in slider",
-      "defaults": "Sensible defaults for all optional props",
-      "derived_constants": "Calculated at component level (borderRadius, borderWidth, scale)"
-    },
-    "documentation": {
-      "inline_comments": [
-        "Clear explanation of slider origin (Balloon slider reference)",
-        "Worklet annotation on helper functions",
-        "Props documentation via TypeScript types"
-      ],
-      "references": [
-        "Balloon slider animation from Patreon (linked in comments)"
-      ],
-      "code_clarity": "Self-documenting prop names and structure"
-    },
-    "best_practices": [
-      "Separate gesture-based and native implementations",
-      "Proper gesture lifecycle handling (onBegin, onUpdate, onFinalize)",
-      "Worklet annotations for UI thread functions",
-      "Type-safe props with detailed constraints",
-      "Memoization for performance (useMemo, useCallback)",
-      "Clean separation of concerns",
-      "Proper cleanup patterns",
-      "Fallback values for user input"
-    ],
-    "areas_for_improvement": [
-      "No prop validation for deviation range",
-      "Could extract QR code configuration as props",
-      "Missing accessibility labels",
-      "Could add loading state for QR generation",
-      "No error handling for invalid QR data",
-      "Hardcoded slider range (0-6) could be configurable"
-    ]
-  },
-  "known_limitations": {
-    "platform_specific": {
-      "liquid_slider": "iOS-only (@expo/ui/swift-ui dependency)",
-      "note": "Two variants provided for cross-platform compatibility"
-    },
-    "deviation_bounds": {
-      "issue": "No upper bound validation beyond slider max",
-      "impact": "Very high deviation may make QR code unscannable",
-      "improvement": "Add warning or automatic scannability check"
-    },
-    "no_qr_validation": {
-      "issue": "No validation of QR code content or size limits",
-      "impact": "Very long text may exceed QR capacity or cause rendering issues",
-      "improvement": "Add content length validation and error handling"
-    },
-    "fixed_gradient": {
-      "limitation": "Gradient colors are hardcoded",
-      "improvement": "Accept colors as props for customization"
-    },
-    "no_download_feature": {
-      "limitation": "No way to save or share generated QR code",
-      "improvement": "Add export to image or share functionality"
-    },
-    "slider_accessibility": {
-      "issue": "Custom slider lacks accessibility labels and support",
-      "impact": "Screen reader users cannot use slider effectively",
-      "note": "LiquidSlider (native) has better accessibility"
-    },
-    "no_error_correction_config": {
-      "limitation": "Error correction level fixed at 'H'",
-      "trade_off": "High error correction reduces data capacity",
-      "improvement": "Make configurable based on use case"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Save QR code as image (PNG/SVG)",
-      "Share QR code functionality",
-      "QR code scanner to verify scannability",
-      "Copy generated text to clipboard",
-      "History of generated QR codes",
-      "Preset templates for common use cases (WiFi, URL, vCard)",
-      "Logo embedding in QR code center",
-      "Multiple path effect options (not just discrete)",
-      "Gradient presets or color picker",
-      "QR code size selector"
-    ],
-    "animation_enhancements": [
-      "Fade transition when QR code changes",
-      "Scale pulse on generation",
-      "Shimmer effect on fresh generation",
-      "Slider value label with spring animation",
-      "Haptic feedback on slider snap points",
-      "Error animation if QR generation fails",
-      "Loading spinner for complex QR codes"
-    ],
-    "customization": [
-      "Configurable gradient (colors, direction, type)",
-      "Multiple path effect types (blur, corner, dash, compose)",
-      "Adjustable stroke width via slider",
-      "Error correction level selector",
-      "Background color customization",
-      "Border and padding options",
-      "Custom QR code module shapes"
-    ],
-    "validation_and_error_handling": [
-      "Text length validation with feedback",
-      "QR capacity warning",
-      "Scannability indicator",
-      "Invalid content detection",
-      "Network URL validation",
-      "WiFi credential format validation"
-    ],
-    "accessibility": [
-      "Screen reader labels for all elements",
-      "Slider accessibility support (use native or add custom)",
-      "Keyboard navigation support",
-      "Voice control support",
-      "High contrast mode",
-      "Reduced motion support",
-      "Announce QR code content changes"
-    ],
-    "developer_experience": [
-      "Separate reusable QRCodeGenerator component package",
-      "Comprehensive prop documentation",
-      "Storybook stories for all configurations",
-      "Unit tests for QR generation",
-      "Visual regression tests",
-      "Example templates and presets"
-    ]
-  },
-  "key_insights": {
-    "skia_qr_benefits": "Skia-based QR code rendering enables GPU-accelerated visual effects while maintaining scannability",
-    "discrete_path_effect": "DiscretePathEffect creates stylized appearance by segmenting paths - balance between style and scannability",
-    "real_time_generation": "QR code regenerates on every text change without performance impact due to UI thread rendering",
-    "slider_architecture": "Two implementations show trade-offs: custom for flexibility, native for accessibility and platform feel",
-    "gradient_on_qr": "Linear gradients applied to QR code paths create colorful appearance while maintaining scannable structure",
-    "error_correction_importance": "High error correction (H) crucial when applying visual effects that may obscure modules",
-    "gesture_feedback": "Animated picker (scale, border morph) provides clear tactile feedback during slider interaction",
-    "worklet_bridge": "scheduleOnRN enables efficient one-way communication from UI thread animations to React callbacks",
-    "responsive_qr": "Dynamic sizing based on window dimensions ensures QR code is prominent on all screen sizes",
-    "fallback_pattern": "Fallback QR value ensures component always displays something meaningful"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic QR code generation",
-      "TextInput handling and state management",
-      "useState for simple state",
-      "useWindowDimensions for responsive sizing",
-      "Basic Skia components (LinearGradient)",
-      "Component props and defaults"
-    ],
-    "for_intermediate": [
-      "Custom slider implementation with gestures",
-      "Pan gesture handling with gesture-handler",
-      "useAnimatedStyle for multiple properties",
-      "useAnimatedReaction for bridging threads",
-      "useDerivedValue for computed values",
-      "Skia path effects (DiscretePathEffect)",
-      "scheduleOnRN for callback scheduling",
-      "Component variants pattern (custom vs native)"
-    ],
-    "for_advanced": [
-      "Gesture lifecycle management (begin/update/finalize)",
-      "Worklet functions and UI thread execution",
-      "Complex prop type constraints (StyleProp manipulation)",
-      "Combining Skia effects on complex components",
-      "Performance optimization with useMemo/useCallback",
-      "Cross-platform strategy (custom vs native components)",
-      "Real-time visual effects on generated content",
-      "Error correction level trade-offs"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_qrcode_library": {
-      "alternative": "react-native-qrcode-svg",
-      "this_approach": "Skia-based with GPU acceleration",
-      "pros": "Better performance, visual effects support, same render thread as animations",
-      "cons": "Larger dependency (Skia), less mature QR library"
-    },
-    "vs_static_qr": {
-      "alternative": "Pre-generated QR code images",
-      "this_approach": "Real-time generation with dynamic content",
-      "benefit": "User can generate any QR code on demand, no server needed"
-    },
-    "vs_native_slider": {
-      "custom_approach": "Full control, consistent cross-platform appearance",
-      "native_approach": "Better accessibility, platform-specific feel",
-      "solution": "Provide both variants"
-    },
-    "vs_web_qr_generator": {
-      "web": "Canvas/SVG based, clipboard access",
-      "this": "Native mobile, smooth animations, gesture support",
-      "benefit": "Better mobile UX, offline capable, native feel"
-    }
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features fully supported",
-      "performance": "Excellent with Metal rendering for Skia",
-      "liquid_slider": "Native SwiftUI slider available",
-      "qr_scanning": "Built-in camera QR scanning",
-      "recommendations": "Use LiquidSlider for platform-native feel"
-    },
-    "android": {
-      "features": "All features supported except LiquidSlider",
-      "performance": "Excellent with Vulkan rendering for Skia",
-      "recommendation": "Use custom gesture-based slider",
-      "qr_scanning": "Camera2 or CameraX for scanning",
-      "note": "Custom slider provides consistent cross-platform experience"
-    },
-    "web": {
-      "compatibility": "Skia works with react-native-web via CanvasKit",
-      "considerations": [
-        "Gesture handler may need web-specific configuration",
-        "@expo/ui not available on web (use custom slider)",
-        "QR scanning needs web-specific implementation (getUserMedia)",
-        "Consider HTML5 Canvas fallback for QR generation"
-      ]
-    }
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "QR code renders correctly with various text inputs",
-      "Gradient applies correctly across QR code",
-      "Deviation effect visible at different levels",
-      "Slider picker animates smoothly",
-      "Progress bar tracks picker position",
-      "Text input displays user input correctly",
-      "Responsive sizing on different screen sizes"
-    ],
-    "functional_tests": [
-      "QR code is scannable with phone camera",
-      "QR code contains correct text value",
-      "Slider updates deviation in real-time",
-      "Text input updates QR code immediately",
-      "Fallback value works when input is empty",
-      "Bounds clamping prevents picker from leaving track",
-      "Value interpolation maps correctly to range"
-    ],
-    "interaction_tests": [
-      "Slider dragging works smoothly",
-      "Picker visual feedback on touch",
-      "Text input accepts keyboard input",
-      "Multiple rapid slider changes handled smoothly",
-      "Rapid text changes don't cause glitches"
-    ],
-    "edge_cases": [
-      "Empty text input (fallback to default)",
-      "Very long text (>1000 characters)",
-      "Special characters and emojis",
-      "Maximum deviation (6) still scannable?",
-      "Very small window size",
-      "Rapid component mount/unmount",
-      "Slider drag outside bounds",
-      "Invalid QR data"
-    ],
-    "performance_tests": [
-      "QR generation time with long text",
-      "60fps slider animation",
-      "Memory usage with repeated generations",
-      "Skia rendering performance",
-      "Text input lag test (rapid typing)"
-    ],
-    "scannability_tests": [
-      "Test with actual QR code scanners",
-      "Test at different deviation levels",
-      "Test with different text lengths",
-      "Test gradient readability",
-      "Test error correction effectiveness"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "text_input": "Some support via native TextInput accessibility",
-      "qr_code": "No accessibility labels",
-      "slider": "Custom slider lacks accessibility (native variant better)",
-      "screen_readers": "Limited support"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to TextInput ('Enter text for QR code')",
-      "Add accessibilityHint ('Type any text to generate a QR code')",
-      "Add accessibilityLabel to QR code ('Generated QR code for: {text}')",
-      "Add accessibility to slider value ('Deviation: {value}')",
-      "Use LiquidSlider on iOS for native accessibility",
-      "Add VoiceOver/TalkBack announcements for QR generation",
-      "Support keyboard navigation",
-      "Add voice control support",
-      "Respect prefers-reduced-motion (instant slider, no animations)",
-      "Provide text alternative for QR code content",
-      "Add haptic feedback on slider interaction"
-    ],
-    "native_slider_advantage": {
-      "point": "LiquidSlider (SwiftUI) has built-in accessibility",
-      "benefit": "Screen readers work out of box",
-      "recommendation": "Use native variant when accessibility is priority"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~300 lines total (main: ~100, sliders: ~200)",
-    "dependencies": {
-      "react-native-qrcode-skia": "~15KB",
-      "react-native-skia": "Large but likely already in project",
-      "react-native-gesture-handler": "Common dependency",
-      "@expo/ui": "Only loaded if using liquid variant"
-    },
-    "runtime_memory": "Moderate - QR code canvas, shared values, gradient data",
-    "estimated_impact": "< 20KB code (excluding Skia which is shared)",
-    "optimization_notes": [
-      "Skia amortized across multiple animations",
-      "QR code canvas size proportional to window width",
-      "Minimal JavaScript bundle impact"
-    ]
-  },
-  "inspirations_and_references": {
-    "design_pattern": "Utility app with real-time feedback",
-    "slider_reference": {
-      "source": "Balloon slider animation",
-      "platform": "Patreon",
-      "url": "https://www.patreon.com/posts/balloon-slider-79018863",
-      "credit": "Mentioned in slider component comments"
-    },
-    "qr_styling": "Modern gradient aesthetic popular in design systems",
-    "interaction_pattern": "Real-time parameter adjustment via slider"
-  },
-  "tags": [
-    "qr-code",
-    "generator",
-    "skia",
-    "linear-gradient",
-    "discrete-path-effect",
-    "custom-slider",
-    "gesture-handler",
-    "reanimated",
-    "text-input",
-    "real-time",
-    "interactive",
-    "pan-gesture",
-    "worklets",
-    "error-correction",
-    "responsive-design",
-    "native-ui",
-    "swiftui",
-    "utility",
-    "stylized-qr"
+  "hooks": [
+    "useAnimatedProps",
+    "useAnimatedReaction",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useMemo",
+    "useSafeAreaInsets",
+    "useSharedValue",
+    "useState",
+    "useWindowDimensions"
   ],
-  "content_hash": "e2f6bc87f294301e6d8849f25bfcc51575a7489658562ef1d56abde001f8eba6",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.411Z",
-  "last_validated": "2025-10-12T09:19:28.411Z"
+  "functions": [
+    "clamp",
+    "interpolate",
+    "onUpdate",
+    "scheduleOnRN",
+    "setQRCode",
+    "vec",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "Animated.createAnimatedComponent",
+    "DiscretePathEffect",
+    "GestureDetector",
+    "Host",
+    "LinearGradient",
+    "QRCode",
+    "ReanimatedSlider",
+    "ScrollView",
+    "Slider",
+    "Text",
+    "TextInput",
+    "TouchableWithoutFeedback",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "value-interpolation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "value-mapping",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 3,
+    "total_packages": 9,
+    "total_hooks": 10,
+    "total_functions": 7,
+    "total_components": 14,
+    "total_patterns": 7,
+    "total_techniques": 4
+  }
 }

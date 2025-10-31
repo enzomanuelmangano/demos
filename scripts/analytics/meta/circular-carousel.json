@@ -1,741 +1,152 @@
 {
-  "animation_name": "Circular Carousel",
   "animation_slug": "circular-carousel",
-  "description": "A 3D circular carousel with interactive scrolling, featuring dynamic scale transformations, circular positioning via interpolation, and smooth spring animations. Items are positioned in a circular arc using translateY interpolation, with optional scale effects that can be toggled on/off. Demonstrates advanced interpolation techniques for creating circular list layouts.",
-  "main_features": [
-    "Circular list layout with arc positioning",
-    "Dynamic scale transformation (toggleable)",
-    "Smooth spring animations for scale transitions",
-    "Horizontal scrolling with snap-to-interval",
-    "Opacity fade for items moving away from center",
-    "translateY interpolation creating circular arc effect",
-    "Paging-enabled smooth scrolling",
-    "Toggle switch for enabling/disabling scale effect",
-    "Throttled scroll events for performance",
-    "Image-based carousel items with circular borders"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.010Z",
   "file_structure": {
-    "index.tsx": "Main component with toggle switch and CircularList integration",
-    "components/circular-list/index.tsx": "Animated FlatList wrapper with scroll handler",
-    "components/circular-list/list-item.tsx": "Individual carousel item with 3D transforms and animations"
+    "entry": "index.tsx",
+    "components": [
+      "components/circular-list/list-item.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "images": "expo-image",
-    "ui": "react-native (Switch, View, Text)"
+  "packages": [
+    "expo-image",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "expo-image": "~3.0.10",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./components/circular-list": {
+      "imports": [
+        "CircularList"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./list-item": {
+      "imports": [
+        "CircularListItem",
+        "LIST_ITEM_WIDTH"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-image": {
+      "imports": [
+        "Image"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useCallback",
+        "useState"
+      ],
       "hooks": [
-        "useSharedValue",
+        "useCallback",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Dimensions",
+        "StyleSheet",
+        "Switch",
+        "Text",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Extrapolation",
+        "SharedValue",
+        "interpolate",
         "useAnimatedScrollHandler",
-        "useDerivedValue",
         "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring"
+      ],
+      "hooks": [
+        "useAnimatedScrollHandler",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
         "interpolate",
         "withSpring"
       ],
       "components": [
         "Animated.FlatList",
         "Animated.View"
-      ],
-      "enums": [
-        "Extrapolation"
-      ],
-      "critical_feature": "useDerivedValue for dynamic scale output range calculation"
-    },
-    "expo-image": {
-      "version": "~3.0.8",
-      "component": "Image",
-      "usage": "High-performance image loading for carousel items with Unsplash URLs",
-      "benefit": "Better caching and loading performance than standard Image component"
-    },
-    "react-native": {
-      "components": [
-        "Switch",
-        "View",
-        "Text",
-        "Dimensions",
-        "StyleSheet"
-      ],
-      "apis": [
-        "Dimensions.get('window')"
-      ],
-      "usage": "Core UI components and window dimensions for responsive sizing"
-    }
-  },
-  "animation_techniques": {
-    "circular_positioning": {
-      "pattern": "translateY interpolation to create circular arc",
-      "input_range": "[size*(i-1), size*i, size*(i+1)]",
-      "output_range": "[0, -LIST_ITEM_WIDTH/2, 0]",
-      "effect": "Items translate vertically creating circular curve",
-      "key_insight": "Circular layout achieved purely through translateY, not rotateZ"
-    },
-    "dynamic_scale_animation": {
-      "pattern": "Conditional scale output range with spring animation",
-      "implementation": "useDerivedValue with withSpring transition",
-      "disabled_range": "[1, 1, 1, 1, 1]",
-      "enabled_range": "[0.5, 0.9, 1.2, 0.9, 0.5]",
-      "animation": "withSpring(finalOutputRange) for smooth transitions",
-      "effect": "Center item scales up to 1.2x, edges scale down to 0.5x",
-      "magic": "Animated output range - entire scale curve animates with spring"
-    },
-    "opacity_fade": {
-      "input_range": "[size*(i-2), size*(i-1), size*i, size*(i+1), size*(i+2)]",
-      "output_range": "[0.5, 1, 1, 1, 0.5]",
-      "extrapolation": "CLAMP",
-      "effect": "Items fade at edges of carousel"
-    },
-    "translate_interpolation": {
-      "pattern": "Five-point interpolation range for smooth transitions",
-      "translateY_range": "[0, -LIST_ITEM_WIDTH/3, -LIST_ITEM_WIDTH/2, -LIST_ITEM_WIDTH/3, 0]",
-      "effect": "Creates symmetric circular arc with peak at center"
-    },
-    "position_offset": {
-      "static_translateX": "LIST_ITEM_WIDTH / 2 + LIST_ITEM_WIDTH",
-      "purpose": "Offset items to create circular layout starting position",
-      "effect": "Items positioned to create circular appearance"
-    }
-  },
-  "reanimated_patterns": {
-    "useAnimatedScrollHandler": {
-      "pattern": "Optimized scroll event handling on UI thread",
-      "callback": "onScroll updates contentOffset SharedValue",
-      "runs_on": "UI thread (native)",
-      "benefit": "No bridge crossing, 60fps scroll handling",
-      "worklet": true
-    },
-    "shared_values": [
-      {
-        "name": "contentOffset",
-        "type": "SharedValue<number>",
-        "scope": "CircularList",
-        "initial": 0,
-        "updates": "useAnimatedScrollHandler onScroll event",
-        "purpose": "Tracks horizontal scroll position for all animations"
-      },
-      {
-        "name": "scaleOutputRange",
-        "type": "useDerivedValue<number[]>",
-        "scope": "CircularListItem",
-        "dependencies": [
-          "scaleEnabled"
-        ],
-        "calculation": "withSpring(scaleEnabled ? showScalingOutputRange : avoidScalingOutputRange)",
-        "purpose": "Animated output range for scale interpolation",
-        "unique_pattern": "Entire array animates with spring between two states"
-      },
-      {
-        "name": "scale",
-        "type": "useDerivedValue<number>",
-        "scope": "CircularListItem",
-        "dependencies": [
-          "contentOffset",
-          "scaleOutputRange",
-          "scaleEnabled"
-        ],
-        "calculation": "interpolate(contentOffset, inputRange, scaleOutputRange.value, CLAMP)",
-        "purpose": "Final scale value for transform"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "scaleOutputRange",
-        "pattern": "useDerivedValue with animated array",
-        "dependencies": [
-          "scaleEnabled"
-        ],
-        "innovation": "Entire output range array animates with spring",
-        "benefit": "Smooth transition between scale curves, not just individual values"
-      },
-      {
-        "name": "scale",
-        "pattern": "useDerivedValue with interpolate",
-        "dependencies": [
-          "scaleEnabled (via scaleOutputRange)"
-        ],
-        "recalculates": "On scaleEnabled change and contentOffset change"
-      }
-    ],
-    "useAnimatedStyle": {
-      "name": "rStyle",
-      "properties": [
-        "opacity",
-        "transform: [translateX, translateY, scale]"
-      ],
-      "interpolations": [
-        "translateY: interpolate(contentOffset, inputRange, translateOutputRange)",
-        "opacity: interpolate(contentOffset, inputRange, opacityOutputRange, CLAMP)",
-        "scale: scale.value (from derived value)"
-      ],
-      "dependencies": "Automatically tracked by Reanimated"
-    },
-    "input_range_pattern": {
-      "structure": "Five-point range for smooth transitions",
-      "calculation": "[size*(i-2), size*(i-1), size*i, size*(i+1), size*(i+2)]",
-      "coverage": "Previous, approach, center, leave, next",
-      "benefit": "Smooth transitions with easing zones"
-    }
-  },
-  "component_patterns": {
-    "toggle_switch": {
-      "component": "Switch (React Native)",
-      "state": "useState<boolean>",
-      "callback": "useCallback for onToggleSwitch",
-      "props": {
-        "trackColor": "{ false: '#ccc', true: '#111' }",
-        "value": "scaleEnabled",
-        "onValueChange": "onToggleSwitch"
-      }
-    },
-    "flatlist_configuration": {
-      "component": "Animated.FlatList",
-      "horizontal": true,
-      "pagingEnabled": true,
-      "snapToInterval": "LIST_ITEM_WIDTH",
-      "scrollEventThrottle": 16,
-      "showsHorizontalScrollIndicator": false,
-      "contentContainerStyle": {
-        "alignItems": "center",
-        "justifyContent": "center",
-        "paddingRight": "LIST_ITEM_WIDTH * 3"
-      }
-    },
-    "circular_list_item": {
-      "pattern": "Animated.View with Image child",
-      "animations": [
-        "opacity",
-        "translateX",
-        "translateY",
-        "scale"
-      ],
-      "styling": "Circular image with border and shadow"
-    }
-  },
-  "mathematical_algorithms": {
-    "circular_arc_formula": {
-      "concept": "Simulate circular path using vertical translation",
-      "key_positions": {
-        "far_left": "translateY: 0 (baseline)",
-        "approach_left": "translateY: -LIST_ITEM_WIDTH/3 (rising)",
-        "center": "translateY: -LIST_ITEM_WIDTH/2 (peak of arc)",
-        "leave_right": "translateY: -LIST_ITEM_WIDTH/3 (descending)",
-        "far_right": "translateY: 0 (baseline)"
-      },
-      "symmetry": "Symmetric curve around center item"
-    },
-    "scale_distribution": {
-      "disabled": "Constant 1.0 (no scaling)",
-      "enabled": {
-        "edges": "0.5 (50% size)",
-        "approaching": "0.9 (90% size)",
-        "center": "1.2 (120% size - emphasis)",
-        "pattern": "Gaussian-like distribution emphasizing center"
-      }
-    },
-    "input_range_calculation": {
-      "formula": "(index - offset) * LIST_ITEM_WIDTH",
-      "offsets": "[-2, -1, 0, +1, +2]",
-      "example": "For item 3: [LIST_ITEM_WIDTH, 2*LIST_ITEM_WIDTH, 3*LIST_ITEM_WIDTH, 4*LIST_ITEM_WIDTH, 5*LIST_ITEM_WIDTH]"
-    },
-    "position_offset_calculation": {
-      "translateX": "LIST_ITEM_WIDTH / 2 + LIST_ITEM_WIDTH = 1.5 * LIST_ITEM_WIDTH",
-      "purpose": "Shift items to create circular starting position",
-      "effect": "Items start off-center for circular appearance"
-    },
-    "responsive_sizing": {
-      "formula": "windowWidth / 4",
-      "calculation": "Dimensions.get('window').width / 4",
-      "example": "On 400px screen: 100px items",
-      "benefit": "Adapts to different screen sizes"
-    }
-  },
-  "interpolation_mastery": {
-    "five_point_interpolation": {
-      "points": 5,
-      "structure": "[prev, approach, center, leave, next]",
-      "usage": "translateY, opacity, scale (when enabled)",
-      "benefit": "Smooth easing zones around center item"
-    },
-    "three_point_interpolation": {
-      "points": 3,
-      "structure": "[prev, center, next]",
-      "usage": "Simplified ranges (not used in this implementation)",
-      "note": "Five-point provides smoother transitions"
-    },
-    "extrapolation": {
-      "used": "Extrapolation.CLAMP for opacity and scale",
-      "benefit": "Values stay within output range bounds",
-      "prevents": "Scale/opacity going beyond defined limits"
-    }
-  },
-  "visual_design": {
-    "layout": {
-      "container": "flex: 1, centered",
-      "label": "Top-positioned text label",
-      "switch": "Below label",
-      "carousel": "position: absolute, bottom: 0",
-      "carousel_height": "LIST_ITEM_WIDTH * 3"
-    },
-    "item_design": {
-      "shape": "Circular (borderRadius: 100)",
-      "border": "2px white border",
-      "shadow": {
-        "shadowColor": "#000",
-        "shadowOffset": "{ width: 0, height: 10 }",
-        "shadowOpacity": 0.2,
-        "shadowRadius": 10
-      },
-      "image_margin": 8,
-      "image_shadow": "shadowRadius: 20",
-      "aspect_ratio": "1:1 (square container, circular appearance)"
-    },
-    "typography": {
-      "label": {
-        "fontSize": 18,
-        "fontWeight": "bold",
-        "letterSpacing": 1,
-        "textTransform": "uppercase",
-        "marginBottom": 8
-      }
-    },
-    "spacing": {
-      "item_width": "windowWidth / 4",
-      "item_margin": 8,
-      "content_padding_right": "LIST_ITEM_WIDTH * 3",
-      "carousel_height": "LIST_ITEM_WIDTH * 3"
-    },
-    "positioning": {
-      "carousel": "position: absolute, bottom: 0, left: 0, right: 0",
-      "items": "Centered horizontally and vertically in carousel container"
-    }
-  },
-  "data_structure": {
-    "image_data": {
-      "type": "string[] (Unsplash URLs)",
-      "count": 9,
-      "format": "https://images.unsplash.com/...",
-      "params": "ixlib=rb-4.0.3, auto=format, fit=crop, q=10",
-      "quality": "Low quality (q=10) for performance",
-      "note": "Production should use proper image assets or CDN"
-    },
-    "item_size": {
-      "constant": "LIST_ITEM_WIDTH",
-      "calculation": "windowWidth / 4",
-      "exported": true,
-      "shared_between": "CircularList and CircularListItem"
-    }
-  },
-  "performance_optimizations": {
-    "scroll_throttle": {
-      "value": 16,
-      "frequency": "~60fps",
-      "benefit": "Balance between smoothness and performance"
-    },
-    "paging_enabled": {
-      "value": true,
-      "benefit": "Smooth snapping, reduces animation calculations"
-    },
-    "snap_to_interval": {
-      "value": "LIST_ITEM_WIDTH",
-      "benefit": "Predictable scroll positions, reduces jank"
-    },
-    "useCallback": {
-      "onToggleSwitch": "Stable function reference prevents re-renders",
-      "benefit": "Switch component doesn't re-render unnecessarily"
-    },
-    "derived_values": {
-      "pattern": "Calculations in useDerivedValue run on UI thread",
-      "benefit": "No bridge crossing for interpolations",
-      "runs_on": "UI thread"
-    },
-    "expo_image": {
-      "benefit": "Better caching and memory management than RN Image",
-      "features": [
-        "Automatic caching",
-        "Loading placeholders",
-        "Memory optimization"
       ]
     }
   },
-  "unique_innovations": {
-    "animated_output_range": {
-      "concept": "Entire interpolation output range array animates with spring",
-      "implementation": "withSpring(finalOutputRange) inside useDerivedValue",
-      "innovation": "Not just animating values, but animating the curve itself",
-      "result": "Smooth morphing between two different scale distribution curves",
-      "code_location": "list-item.tsx lines 43-62",
-      "author_comment": "Here's where the magic happens 🪄"
-    },
-    "circular_without_rotation": {
-      "concept": "Circular layout without using rotateZ or circular path calculations",
-      "method": "Pure translateY interpolation to simulate arc",
-      "benefit": "Simpler math, better performance than true circular positioning",
-      "result": "Visually circular appearance with linear transformations"
-    }
-  },
-  "gesture_handling": {
-    "scroll_gesture": {
-      "type": "Native scroll (FlatList)",
-      "horizontal": true,
-      "handler": "useAnimatedScrollHandler",
-      "tracking": "contentOffset.x via event.contentOffset.x",
-      "throttle": "16ms (scrollEventThrottle)"
-    },
-    "snapping": {
-      "enabled": true,
-      "interval": "LIST_ITEM_WIDTH",
-      "deceleration": "fast (via pagingEnabled)",
-      "effect": "Items snap to center position"
-    }
-  },
-  "state_management": {
-    "react_state": [
-      {
-        "name": "scaleEnabled",
-        "type": "boolean",
-        "initial": false,
-        "trigger": "Toggle switch",
-        "affects": "Scale animation output range"
-      }
-    ],
-    "shared_values": [
-      {
-        "name": "contentOffset",
-        "updates_from": "Scroll events",
-        "drives": "All item animations (position, scale, opacity)"
-      }
-    ],
-    "data_flow": {
-      "steps": [
-        "1. User scrolls FlatList horizontally",
-        "2. useAnimatedScrollHandler updates contentOffset SharedValue",
-        "3. Each CircularListItem interpolates based on contentOffset and its index",
-        "4. translateY creates circular arc positioning",
-        "5. opacity fades items at edges",
-        "6. scale (if enabled) emphasizes center item",
-        "7. All animations run on UI thread simultaneously"
-      ]
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Image carousels with emphasis on center item",
-      "Product showcases with 3D effect",
-      "Media galleries with circular presentation",
-      "Avatar or profile picture selectors",
-      "Card selection interfaces"
-    ],
-    "real_world_examples": [
-      "Apple Cover Flow (similar circular/3D concept)",
-      "Product feature highlights",
-      "Onboarding screens with emphasis",
-      "Settings selector wheels",
-      "Time picker alternatives"
-    ],
-    "educational": [
-      "Teaching interpolation techniques",
-      "Demonstrating useDerivedValue patterns",
-      "Showing scroll-based animations",
-      "Animated output range patterns",
-      "Circular layout without rotation"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_definitions": [
-        "CircularListProps",
-        "FC (Function Component)"
-      ],
-      "imports": "type keyword for type-only imports"
-    },
-    "component_architecture": {
-      "main": "CircularCarousel - Top-level orchestration",
-      "list": "CircularList - List management and scroll handling",
-      "item": "CircularListItem - Individual item rendering and animation",
-      "separation": "Clean separation of concerns"
-    },
-    "constants": {
-      "LIST_ITEM_WIDTH": "Exported constant, calculated from window dimensions",
-      "data": "Module-level constant array of image URLs"
-    },
-    "documentation": {
-      "inline_comments": [
-        "Excellent explanation of circular list concept (lines 19-23)",
-        "'Here's where the magic happens' for animated output range (line 41)",
-        "Clear explanation of scale output ranges (lines 44-55)",
-        "useDerivedValue explanation (lines 62-78)",
-        "Interpolation explanation (lines 70-75)"
-      ],
-      "references": [
-        "Interpolate with ScrollView: https://youtu.be/SqwpRr7kbnQ",
-        "React Native Advanced Onboarding: https://youtu.be/OT-73hpwxXQ"
-      ],
-      "educational_value": "Extensive comments make this excellent learning material"
-    },
-    "best_practices": [
-      "useCallback for stable function references",
-      "Separate component files for modularity",
-      "Type safety throughout",
-      "Clear naming conventions",
-      "Worklet-compatible patterns",
-      "Performance-conscious defaults"
-    ]
-  },
-  "known_limitations": {
-    "image_urls": {
-      "issue": "Uses external Unsplash URLs",
-      "concerns": [
-        "Network dependency",
-        "Loading time",
-        "No offline support"
-      ],
-      "improvement": "Use local assets or CDN with fallbacks"
-    },
-    "fixed_item_count": {
-      "issue": "Data is hardcoded array of 9 images",
-      "improvement": "Accept data prop for dynamic content"
-    },
-    "single_dimension_layout": {
-      "limitation": "Only horizontal scrolling supported",
-      "improvement": "Could add vertical variant"
-    },
-    "no_active_index": {
-      "limitation": "No callback for currently centered item",
-      "improvement": "Add onIndexChange callback"
-    },
-    "padding_right_hardcoded": {
-      "value": "LIST_ITEM_WIDTH * 3",
-      "issue": "Magic number for padding",
-      "improvement": "Calculate based on visible items or make configurable"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Auto-scroll/auto-play capability",
-      "Pagination dots indicator",
-      "onIndexChange callback for tracking center item",
-      "Swipeable dismiss gesture on items",
-      "Zoom in on tap",
-      "Video support alongside images",
-      "Infinite scroll / loop capability"
-    ],
-    "customization": [
-      "Configurable item size (not just windowWidth/4)",
-      "Adjustable arc height (translateY range)",
-      "Custom scale ranges",
-      "Configurable spring animation parameters",
-      "Color/theme props for borders and shadows",
-      "Custom item renderer prop"
-    ],
-    "performance": [
-      "Image preloading strategy",
-      "Lazy loading for large datasets",
-      "Memory optimization for image caching",
-      "Virtual scrolling for very large lists"
-    ],
-    "accessibility": [
-      "Screen reader support",
-      "Keyboard navigation",
-      "AccessibilityLabel for items",
-      "Announce current item index",
-      "Reduced motion support"
-    ],
-    "ux_enhancements": [
-      "Loading states for images",
-      "Error states for failed image loads",
-      "Placeholder images",
-      "Touch feedback on items",
-      "Haptic feedback on snap",
-      "Double-tap to expand"
-    ]
-  },
-  "key_insights": {
-    "animated_output_range_innovation": "Animating entire interpolation curve (not just values) creates smooth scale distribution morphing",
-    "circular_via_translateY": "Circular arc achieved purely with vertical translation - simpler than true circular math",
-    "five_point_interpolation": "Five-point ranges create smooth easing zones around center item",
-    "spring_on_array": "withSpring can animate entire arrays, enabling curve morphing",
-    "derived_value_power": "useDerivedValue enables complex conditional animation logic on UI thread",
-    "paging_performance": "pagingEnabled with snapToInterval drastically improves scroll performance",
-    "expo_image_advantage": "expo-image provides better performance than standard RN Image",
-    "scroll_throttle_balance": "16ms throttle (60fps) balances smoothness and performance"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "FlatList horizontal scrolling",
-      "Basic interpolation concepts",
-      "useAnimatedScrollHandler basics",
-      "Transform animations (translateX, translateY, scale)",
-      "Opacity animations"
-    ],
-    "for_intermediate": [
-      "useDerivedValue for computed animations",
-      "Multi-point interpolation ranges",
-      "Scroll-based animations",
-      "Component prop patterns (optional props)",
-      "useCallback optimization",
-      "Circular layout techniques"
-    ],
-    "for_advanced": [
-      "Animated output ranges (withSpring on arrays)",
-      "Complex interpolation with multiple dependencies",
-      "Performance optimization strategies",
-      "Conditional animation logic in derived values",
-      "Creating visual effects with transform composition",
-      "Simulating complex paths with simple transformations"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_flatlist_with_rotation": {
-      "this_approach": "translateY interpolation only",
-      "alternative": "rotateZ with circular path calculations",
-      "pros": "Simpler math, better performance, easier to understand",
-      "cons": "Not true circular positioning, limited to specific visual effect"
-    },
-    "vs_custom_scroll_view": {
-      "this_approach": "FlatList with pagingEnabled",
-      "alternative": "Custom PanGestureHandler with manual scroll",
-      "pros": "Native scroll physics, built-in snapping, better performance",
-      "cons": "Less control over scroll behavior"
-    },
-    "vs_static_scale": {
-      "this_approach": "Toggleable animated scale with morphing curve",
-      "alternative": "Always-on scale or no scale",
-      "innovation": "User can toggle effect, demonstrates animated output ranges",
-      "benefit": "Educational and flexible"
-    }
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features supported",
-      "performance": "Excellent with Metal rendering",
-      "shadows": "Native shadows work well"
-    },
-    "android": {
-      "features": "All features supported",
-      "performance": "Excellent",
-      "shadows": "May need elevation instead of shadow props for best performance",
-      "note": "Consider adding elevation prop for Android shadows"
-    },
-    "web": {
-      "compatibility": "Should work with react-native-web",
-      "considerations": [
-        "Test scroll behavior",
-        "Shadow rendering",
-        "Image loading"
-      ]
-    }
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Verify circular arc appearance at all scroll positions",
-      "Check scale animation smoothness when toggling",
-      "Confirm opacity fading at edges",
-      "Verify images load correctly",
-      "Test on different screen sizes"
-    ],
-    "interaction_tests": [
-      "Scroll smoothly without jank",
-      "Snap to correct positions",
-      "Toggle switch updates scale animation",
-      "Rapid scrolling doesn't break animations",
-      "Scale transition smooth when toggling during scroll"
-    ],
-    "performance_tests": [
-      "Monitor FPS during scrolling (target: 60fps)",
-      "Check memory usage with image loading",
-      "Test with larger datasets",
-      "Profile animation calculations"
-    ],
-    "edge_cases": [
-      "First item scroll behavior",
-      "Last item scroll behavior",
-      "Rapid toggle switching",
-      "Fast flinging",
-      "Image loading failures"
-    ]
-  },
-  "related_patterns": {
-    "similar_animations": [
-      "Apple Cover Flow",
-      "Netflix carousel",
-      "3D carousel components",
-      "Card stack animations",
-      "Wheel picker animations"
-    ],
-    "interpolation_patterns": [
-      "Scroll-based parallax",
-      "Sticky headers",
-      "Collapsing toolbars",
-      "Card deck animations"
-    ]
-  },
-  "bundle_size_impact": {
-    "code_size": "~150 lines total (small footprint)",
-    "dependencies": "All dependencies common in React Native projects",
-    "runtime_memory": "Minimal - few SharedValues, optimized with paging",
-    "image_impact": "Depends on image count and size",
-    "estimated_impact": "< 20KB minified (excluding images)"
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "Limited support",
-      "keyboard_navigation": "Not supported",
-      "labels": "Generic Switch label only"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to Switch ('Toggle scale effect')",
-      "Add accessibilityRole='image' to items",
-      "Add accessibilityLabel to each image",
-      "Announce current item when scrolling stops",
-      "Support keyboard arrow keys for navigation",
-      "Respect prefers-reduced-motion (disable animations)",
-      "Add focus indicators for keyboard navigation"
-    ]
-  },
-  "inspirations_and_references": {
-    "video_tutorials": [
-      {
-        "title": "Interpolate with ScrollView",
-        "url": "https://youtu.be/SqwpRr7kbnQ?list=PLjHsmVtnAr9TWoMAh-3QMiP7bPUqPFuFZ",
-        "topic": "ScrollView interpolation basics"
-      },
-      {
-        "title": "React Native Advanced Onboarding",
-        "url": "https://youtu.be/OT-73hpwxXQ",
-        "topic": "Advanced interpolation techniques"
-      }
-    ],
-    "concepts": [
-      "Apple Cover Flow",
-      "Circular carousels",
-      "3D transform animations",
-      "Scroll-based interpolations"
-    ]
-  },
-  "tags": [
-    "carousel",
-    "circular-layout",
-    "3d-transforms",
-    "scroll-animation",
-    "interpolation",
-    "reanimated",
-    "flatlist",
-    "image-carousel",
-    "scale-animation",
-    "spring-animation",
-    "derived-values",
-    "animated-output-range",
-    "expo-image",
-    "horizontal-scroll",
-    "snap-scroll",
-    "opacity-fade",
-    "toggle-effect"
+  "hooks": [
+    "useAnimatedScrollHandler",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useSharedValue",
+    "useState"
   ],
-  "content_hash": "bc8c879e11e15cdd9e5f29739f77f2e8487f9320ad91c11f667a9980635f6d96",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.302Z",
-  "last_validated": "2025-10-12T09:19:28.302Z"
+  "functions": [
+    "interpolate",
+    "setScaleEnabled",
+    "withSpring"
+  ],
+  "components": [
+    "Animated.FlatList",
+    "Animated.View",
+    "CircularList",
+    "CircularListItem",
+    "Image",
+    "Switch",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "scroll-animation",
+    "spring-animation",
+    "value-interpolation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "scroll-based-animation",
+    "spring-physics",
+    "value-mapping",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 3,
+    "total_packages": 4,
+    "total_hooks": 6,
+    "total_functions": 3,
+    "total_components": 8,
+    "total_patterns": 7,
+    "total_techniques": 4
+  }
 }

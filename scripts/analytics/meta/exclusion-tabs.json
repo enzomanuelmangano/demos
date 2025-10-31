@@ -1,476 +1,231 @@
 {
-  "animation_name": "Exclusion Tabs",
   "animation_slug": "exclusion-tabs",
-  "description": "A sophisticated tab navigation component with fluid metaball morphing effects using Skia's blend modes. Features dynamic tab transitions with blur and color matrix effects that create organic blob-like shapes merging between tabs. Uses path-based rendering for precise touch detection and smooth animations with border radius transitions and horizontal translations that create a liquid, cohesive appearance.",
-  "main_features": [
-    "Metaball morphing effect using Skia blur and color matrix",
-    "Path-based touch detection for precise tap areas",
-    "Dynamic border radius transitions on active tab (0 to 12px)",
-    "Horizontal translation animations creating merge effect",
-    "Skia Canvas rendering with layer effects",
-    "Text measurement for dynamic tab widths",
-    "Responsive padding and centering calculations",
-    "Separate rendering layers for boxes and text",
-    "Color transitions between active and inactive states",
-    "Touch-based navigation with worklet optimization",
-    "Custom animated path generation per tab",
-    "Blur and ColorMatrix filters for liquid blob effect"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.235Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Export wrapper exposing App as ExclusionTabs"
-    },
-    "components": {
-      "src/index.tsx": "Main demo component with tab state and layout",
-      "src/components/exclusion-tabs/index.tsx": "Core ExclusionTabs component with Skia canvas and layer effects",
-      "src/components/exclusion-tabs/exclusion-tab-box.tsx": "Individual tab box with path rendering and touch detection",
-      "src/components/exclusion-tabs/exclusion-tab-text.tsx": "Text rendering component with position calculations"
-    },
-    "hooks": {
-      "src/components/exclusion-tabs/hooks/use-animated-path-data.ts": "Hook managing path animation and transformations",
-      "src/components/exclusion-tabs/hooks/use-text-widths.ts": "Hook calculating text measurements and box dimensions (renamed from useBoxWidths)"
-    },
-    "utils": {},
-    "assets": {},
-    "types": {},
-    "constants": {
-      "src/constants.ts": "Font configuration with platform-specific defaults"
-    }
+    "entry": "src/index.tsx",
+    "components": [
+      "src/components/exclusion-tabs/exclusion-tab-box.tsx",
+      "src/components/exclusion-tabs/exclusion-tab-text.tsx",
+      "src/components/exclusion-tabs/hooks/use-animated-path-data.ts",
+      "src/components/exclusion-tabs/hooks/use-text-widths.ts"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [
+      "src/constants.ts"
+    ],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": [
+  "packages": [
     "@shopify/react-native-skia",
+    "expo-haptics",
+    "react",
+    "react-native",
     "react-native-reanimated",
     "react-native-skia-gesture",
     "react-native-worklets"
   ],
-  "packages_and_versions": {
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "expo-haptics": "~15.0.7",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-skia-gesture": "0.4.5-beta.1",
+    "react-native-worklets": "0.5.1"
+  },
+  "packages_detail": {
+    "../../../constants": {
+      "imports": [
+        "font"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../../constants": {
+      "imports": [
+        "font"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/exclusion-tabs": {
+      "imports": [
+        "ExclusionTabs"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./exclusion-tab-box": {
+      "imports": [
+        "ExclusionTabBox"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./exclusion-tab-text": {
+      "imports": [
+        "ExclusionTabText"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-animated-path-data": {
+      "imports": [
+        "useAnimatedPathData"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-text-widths": {
+      "imports": [
+        "useBoxWidths"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./use-text-widths": {
+      "imports": [
+        "useBoxWidths"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "Group",
-        "Paint",
+      "imports": [
         "Blur",
         "ColorMatrix",
-        "Text"
-      ],
-      "functions": [
-        "Skia.Path.Make()",
+        "Group",
+        "Paint",
+        "Skia",
+        "Text",
         "matchFont",
         "rect",
         "rrect"
       ],
-      "methods": [
-        "path.addRRect()",
-        "path.getBounds()",
-        "font.measureText()",
-        "font.getSize()"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-haptics": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useCallback",
+        "useMemo",
+        "useState"
       ],
-      "critical_feature": "Skia paths with blur and color matrix for metaball effect, layer composition for separate box and text rendering",
-      "usage": "Canvas rendering for tab boxes and text with GPU-accelerated effects"
+      "hooks": [
+        "useCallback",
+        "useMemo",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Platform",
+        "StyleSheet",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
+      "imports": [
         "useDerivedValue",
         "withTiming"
       ],
-      "types": [
-        "SharedValue"
+      "hooks": [
+        "useDerivedValue"
       ],
-      "critical_feature": "Derived values for animated path calculations and color transitions",
-      "usage": "All animation logic and dynamic value calculations"
+      "functions": [
+        "withTiming"
+      ],
+      "components": []
     },
     "react-native-skia-gesture": {
-      "version": "0.4.5-beta.1",
-      "components": [
-        "Touchable.Canvas",
-        "Touchable.Path"
-      ],
-      "usage": "Path-based touch detection with onTap callback and worklet support",
-      "critical_feature": "Enables precise touch detection matching visible tab shapes"
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
+      "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Scheduling JS thread callbacks from worklet context",
-      "critical_feature": "Bridge UI thread touch events to JS thread callbacks"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": [
-    {
-      "name": "Metaball morphing",
-      "description": "Blur + ColorMatrix filter creating liquid blob merge effect",
-      "implementation": "Blur(5) combined with ColorMatrix alpha channel manipulation",
-      "parameters": {
-        "blur_intensity": 5,
-        "color_matrix": {
-          "R": [
-            1,
-            0,
-            0,
-            0,
-            0
-          ],
-          "G": [
-            0,
-            1,
-            0,
-            0,
-            0
-          ],
-          "B": [
-            0,
-            0,
-            1,
-            0,
-            0
-          ],
-          "A": [
-            0,
-            0,
-            0,
-            15,
-            -9
-          ]
-        }
-      },
-      "key_insight": "Alpha channel matrix (multiplier 15, bias -9) creates threshold effect where blurred shapes merge into single blob"
-    },
-    {
-      "name": "Border radius transition",
-      "description": "Dynamic border radius animation between active and inactive states",
-      "implementation": "useDerivedValue with withTiming",
-      "parameters": {
-        "active_state": 12,
-        "inactive_state": 0,
-        "timing": "default withTiming duration"
-      }
-    },
-    {
-      "name": "Horizontal translation",
-      "description": "Conditional translateX based on tab position relative to active tab",
-      "implementation": "Animated translation creating overlap for enhanced metaball merge",
-      "parameters": {
-        "tabs_after_active": 10,
-        "tabs_before_active": -10,
-        "active_tab": 0
-      }
-    },
-    {
-      "name": "Color transitions",
-      "description": "Smooth color fade between active and inactive states",
-      "implementation": "useDerivedValue with withTiming on color",
-      "parameters": {
-        "duration": 150,
-        "active_color": "#3E82F7",
-        "inactive_color": "#000000"
-      }
-    },
-    {
-      "name": "Path animation",
-      "description": "Animated Skia path recalculated in useDerivedValue",
-      "implementation": "Dynamic path with animated position, dimensions, and border radius",
-      "dependencies": [
-        "borderRadius",
-        "translateX",
-        "text width",
-        "padding"
-      ]
-    },
-    {
-      "name": "Text positioning",
-      "description": "Transform based on path bounds for synchronized movement",
-      "implementation": "Calculate position from path.getBounds() with optical centering",
-      "formula": {
-        "translateX": "bounds.x + internalBoxPadding",
-        "translateY": "bounds.y + height/2 + fontSize/3"
-      }
-    }
+  "hooks": [
+    "useAnimatedPathData",
+    "useBoxWidths",
+    "useCallback",
+    "useDerivedValue",
+    "useMemo",
+    "useState",
+    "useWindowDimensions"
   ],
-  "reanimated_patterns": [
-    {
-      "type": "useDerivedValue",
-      "name": "borderRadius",
-      "scope": "useAnimatedPathData hook",
-      "calculation": "withTiming(isActiveTab ? 12 : 0)",
-      "dependencies": [
-        "isActiveTab"
-      ],
-      "purpose": "Animated border radius for active tab transition"
-    },
-    {
-      "type": "useDerivedValue",
-      "name": "translateX",
-      "scope": "useAnimatedPathData hook",
-      "calculation": "Conditional: 10 if after active, -10 if before, 0 if active",
-      "dependencies": [
-        "activeTabIndex",
-        "index"
-      ],
-      "purpose": "Horizontal offset for tab overlap effect"
-    },
-    {
-      "type": "useDerivedValue",
-      "name": "animatedTranslateX",
-      "scope": "useAnimatedPathData hook",
-      "calculation": "withTiming(translateX.value)",
-      "dependencies": [
-        "translateX"
-      ],
-      "purpose": "Smooth animated version of translateX value"
-    },
-    {
-      "type": "useDerivedValue",
-      "name": "skPath",
-      "scope": "useAnimatedPathData hook",
-      "calculation": "Skia path with animated rect dimensions and border radius",
-      "dependencies": [
-        "borderRadius",
-        "pathHeight",
-        "index",
-        "animatedTranslateX"
-      ],
-      "purpose": "Main animated path for tab shape"
-    },
-    {
-      "type": "useDerivedValue",
-      "name": "color",
-      "scope": "ExclusionTabBox component",
-      "calculation": "withTiming(isActiveTab ? activeBackgroundColor : backgroundColor, {duration: 150})",
-      "dependencies": [
-        "isActiveTab"
-      ],
-      "purpose": "Color transition for tab background"
-    },
-    {
-      "type": "useDerivedValue",
-      "name": "transform",
-      "scope": "ExclusionTabText component",
-      "calculation": "translateX and translateY based on path bounds",
-      "dependencies": [
-        "skPath"
-      ],
-      "purpose": "Position text to follow animated tab path"
-    },
-    {
-      "type": "worklet function",
-      "name": "getPreviousBoxWidth",
-      "signature": "(index: number) => number",
-      "directive": "'worklet'",
-      "purpose": "Calculate cumulative width of tabs before given index",
-      "implementation": "Loop through tabs 0 to index-1, sum widths + padding",
-      "optimization": "useCallback memoization"
-    },
-    {
-      "type": "useMemo",
-      "name": "textWidths",
-      "calculation": "tabs.map(tab => font.measureText(tab).width)",
-      "dependencies": [
-        "tabs"
-      ],
-      "benefit": "Avoids expensive text measurement on every render"
-    },
-    {
-      "type": "useMemo",
-      "name": "totalWidth",
-      "calculation": "Sum of all text widths + padding",
-      "dependencies": [
-        "internalBoxPadding",
-        "textWidths"
-      ],
-      "benefit": "Used for centering calculation"
-    },
-    {
-      "type": "useMemo",
-      "name": "layer",
-      "value": "Paint with Blur and ColorMatrix",
-      "dependencies": [],
-      "benefit": "Expensive Skia objects created once"
-    }
+  "functions": [
+    "getPreviousBoxWidth",
+    "matchFont",
+    "onPress",
+    "onTabChange",
+    "rect",
+    "rrect",
+    "scheduleOnRN",
+    "setActiveTabIndex",
+    "withTiming"
   ],
-  "performance_optimizations": [
-    "GPU-accelerated Skia rendering eliminates JS bridge crossing",
-    "useMemo for expensive text measurements prevents recalculation",
-    "useMemo for Paint layer with Blur and ColorMatrix (created once)",
-    "useCallback for worklet function (getPreviousBoxWidth)",
-    "All animation calculations on UI thread via useDerivedValue",
-    "Path-based rendering more efficient than multiple View components",
-    "Separate layer groups prevent text blur while maintaining effects",
-    "Explicit dependencies in hooks prevent unnecessary recalculations",
-    "Text measurements cached when tabs array doesn't change",
-    "Single Canvas component instead of multiple native views"
+  "components": [
+    "Blur",
+    "ColorMatrix",
+    "ExclusionTabBox",
+    "ExclusionTabText",
+    "ExclusionTabs",
+    "Group",
+    "Paint",
+    "Text",
+    "Touchable.Canvas",
+    "Touchable.Path",
+    "View"
   ],
-  "use_cases": [
-    "Segmented controls with fluid transitions",
-    "Tab navigation with premium feel",
-    "Category selectors with visual polish",
-    "Settings panels with animated sections",
-    "Filter toggles with liquid animations",
-    "App navigation tabs",
-    "Content category switchers",
-    "View mode toggles (list/grid)",
-    "Time period selectors (day/week/month)",
-    "Profile section tabs",
-    "Dashboard view switchers"
+  "patterns": [
+    "derived-computation",
+    "timing-animation",
+    "skia-graphics"
   ],
-  "code_quality": {
-    "strengths": [
-      "Full TypeScript coverage with explicit types",
-      "Well-organized component hierarchy with clear separation of concerns",
-      "Extensive inline comments explaining metaball technique",
-      "Custom hooks extract complex logic (useAnimatedPathData, useBoxWidths)",
-      "Proper worklet directives on UI thread functions",
-      "Memoization for expensive calculations (useMemo, useCallback)",
-      "Explicit dependencies in all hooks",
-      "Readonly array types for immutability",
-      "Platform-specific defaults with Platform.select",
-      "Educational documentation with links to learning resources",
-      "Clean controlled component pattern",
-      "Type-safe props with interfaces"
-    ],
-    "areas_for_improvement": [
-      "Missing accessibility support (no accessibilityLabel, accessibilityRole)",
-      "No screen reader support for Skia-rendered text",
-      "Text color is hardcoded (#FFFFFF) - could be a prop",
-      "No keyboard navigation support",
-      "Could add focus indicators for keyboard users",
-      "Font customization requires modifying constants file",
-      "No overflow handling for many tabs (no scrolling)",
-      "Could add reduced motion support (disable metaball effect)"
-    ]
-  },
-  "known_limitations": [
-    "Tabs can overflow container if total width exceeds containerWidth - no scrolling or wrapping",
-    "Adding/removing tabs requires re-measuring text - could be noticeable with many tabs",
-    "Missing comprehensive accessibility support (labels, roles, keyboard navigation, screen readers)",
-    "Uses platform default fonts (Helvetica/serif) - custom fonts require constants.ts modification",
-    "Text color is hardcoded white - no text color prop",
-    "No individual tab color customization",
-    "Path-based touch detection may complicate accessibility implementation",
-    "Metaball technique requires understanding of Skia filters and matrix math",
-    "No support for tab icons, badges, or notification indicators",
-    "Fixed animation durations - not customizable via props"
+  "techniques": [
+    "timing-based-transitions",
+    "canvas-rendering",
+    "blur-effects"
   ],
-  "potential_improvements": [
-    "Add haptic feedback on tab change",
-    "Implement swipe gesture to switch tabs",
-    "Add long press for contextual actions",
-    "Use spring animation on path for bounce effect",
-    "Add scale animation on press",
-    "Support drag to reorder tabs",
-    "Implement gradient fills instead of solid colors",
-    "Add shadow or glow on active tab",
-    "Support icons in tabs",
-    "Add badge/notification indicators",
-    "Create vertical tab bar variant",
-    "Add different morphing effects (not just metaball)",
-    "Implement particle effects on transition",
-    "Add text color animation",
-    "Support scrollable tabs for overflow",
-    "Implement tab wrapping to multiple rows",
-    "Add disabled tab states",
-    "Support programmatic tab scrolling",
-    "Allow tab width customization (equal vs content-based)",
-    "Add minimum/maximum tab width constraints",
-    "Implement tab insertion/removal animations",
-    "Add full screen reader support",
-    "Implement keyboard navigation (arrow keys)",
-    "Add focus indicators",
-    "Support accessibility labels and hints",
-    "Add reduced motion alternative",
-    "Support high contrast mode",
-    "Make text color customizable via prop",
-    "Allow custom font via prop",
-    "Make blur intensity adjustable",
-    "Allow customizable color matrix",
-    "Add border width and color options",
-    "Make animation duration customizable",
-    "Support custom animation curves"
-  ],
-  "key_insights": [
-    "Metaball technique is highly reusable - same blur + color matrix pattern used in multiple animations",
-    "Layer separation is critical - applying layer only to boxes (not text) prevents text blur while maintaining effect",
-    "Path-based touch detection provides exact hit testing matching visual shape, better UX than bounding box",
-    "10px translation overlap via translateX strengthens metaball merge, makes effect more pronounced",
-    "All rendering and animation on GPU/UI thread via Skia + Reanimated, no JS bridge crossing during animations",
-    "font.measureText() enables pixel-perfect layout without hardcoded widths",
-    "scheduleOnRN pattern enables calling non-worklet callbacks from worklet context",
-    "Alpha channel matrix transformation (multiplier 15, bias -9) creates threshold from soft blur into hard-edged shapes that merge organically",
-    "Optical centering with fontSize/3 offset makes text appear more centered than pure geometric center",
-    "Memoizing expensive operations (layer creation, text measurements) prevents unnecessary recalculation",
-    "Touchable.Path from react-native-skia-gesture provides worklet-compatible touch detection on custom shapes",
-    "Separating animation logic into custom hooks (useAnimatedPathData, useBoxWidths) improves code organization and reusability"
-  ],
-  "learning_opportunities": [
-    {
-      "level": "beginner",
-      "topics": [
-        "Basic Skia rendering (Canvas, Path, Text)",
-        "Component prop patterns and TypeScript interfaces",
-        "useState for local state management",
-        "Array mapping for rendering lists",
-        "Platform-specific values with Platform.select",
-        "Basic color transitions"
-      ]
-    },
-    {
-      "level": "intermediate",
-      "topics": [
-        "Skia blur and color matrix effects",
-        "useDerivedValue for reactive calculations",
-        "withTiming for smooth animations",
-        "Custom hooks for reusable logic",
-        "useMemo and useCallback optimization",
-        "Path-based touch detection with react-native-skia-gesture",
-        "Worklet directive and scheduleOnRN pattern",
-        "Text measurement with Skia fonts",
-        "Conditional animations based on state"
-      ]
-    },
-    {
-      "level": "advanced",
-      "topics": [
-        "Metaball morphing technique implementation with Skia",
-        "Color matrix mathematics for visual effects",
-        "Skia layer composition and filter effects",
-        "Complex path animation coordination",
-        "Dynamic layout calculations with text measurement",
-        "UI thread worklet optimization strategies",
-        "Performance optimization with Skia and Reanimated",
-        "Creating organic liquid animations",
-        "Threshold effects with alpha channel manipulation",
-        "Advanced Skia Paint and layer techniques",
-        "Coordinating multiple derived values",
-        "Building custom gesture-based interactions"
-      ]
-    }
-  ],
-  "tags": [
-    "metaball",
-    "liquid-animation",
-    "blob-effect",
-    "skia",
-    "tabs",
-    "segmented-control",
-    "navigation",
-    "blur-effect",
-    "color-matrix",
-    "morphing",
-    "organic-animation",
-    "path-animation",
-    "touch-detection",
-    "fluid-ui",
-    "reanimated",
-    "gpu-accelerated",
-    "advanced-animation",
-    "worklets",
-    "skia-gesture",
-    "dynamic-layout"
-  ],
-  "content_hash": "0c20c3c1c60193ee76e7dd0dd0dc82727702fc9300a6c4d074650dca536d2efc",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.334Z",
-  "last_validated": "2025-10-12T09:19:28.334Z"
+  "stats": {
+    "total_files": 8,
+    "total_packages": 7,
+    "total_hooks": 7,
+    "total_functions": 9,
+    "total_components": 11,
+    "total_patterns": 3,
+    "total_techniques": 3
+  }
 }

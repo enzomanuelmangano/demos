@@ -1,631 +1,170 @@
 {
-  "animation_name": "Smooth Dropdown",
   "animation_slug": "smooth-dropdown",
-  "description": "An elegant animated dropdown menu with smooth expand/collapse transitions, stacked card effects, and dynamic background color transitions. Features spring animations, scale interactions, rotating indicators, and a visually appealing layered card design that spreads out when expanded.",
-  "main_features": [
-    "Smooth expand/collapse animations with spring physics",
-    "Stacked card effect when collapsed",
-    "Dynamic spread animation when expanded",
-    "Tap-to-scale feedback on items",
-    "Rotating arrow indicator on header",
-    "Dynamic background color transitions",
-    "Layered z-index stacking",
-    "Interpolated position and scale transformations",
-    "Icon-based menu items with labels",
-    "Header item with toggle functionality"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.299Z",
   "file_structure": {
-    "index.tsx": "Demo app showcasing Dropdown component with sample options",
-    "components/dropdown/index.tsx": "Main Dropdown component with state management",
-    "components/dropdown/dropdrop-item.tsx": "Individual dropdown item with animations and interactions"
+    "entry": "index.tsx",
+    "components": [
+      "components/dropdown/dropdrop-item.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "ui": "react-native",
-    "icons": "@expo/vector-icons",
-    "color_manipulation": "color"
+  "packages": [
+    "@expo/vector-icons",
+    "color",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "color": "^4.2.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "useAnimatedStyle",
-        "withSpring",
-        "withTiming",
-        "interpolate"
+  "packages_detail": {
+    "./components/dropdown": {
+      "imports": [
+        "Dropdown"
       ],
-      "components": [
-        "Animated.View"
-      ],
-      "critical_feature": "useDerivedValue with withSpring for smooth progress transitions"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "color": {
-      "version": "^4.2.3",
-      "methods": [
-        "Color().lighten().hex()"
+    "./components/dropdown/dropdrop-item": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./dropdrop-item": {
+      "imports": [
+        "DropdownItem"
       ],
-      "usage": "Dynamic background color calculation based on item index"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "components": [
+      "imports": [
         "AntDesign",
         "MaterialIcons"
       ],
-      "icons_used": {
-        "AntDesign": [
-          "ellipsis",
-          "bar-chart",
-          "book",
-          "calendar",
-          "camera"
-        ],
-        "MaterialIcons": [
-          "arrow-forward-ios",
-          "arrow-forward"
-        ]
-      }
-    }
-  },
-  "animation_techniques": {
-    "progress_spring": {
-      "shared_value": "isToggled",
-      "derived_value": "progress = withSpring(isToggled.value ? 1 : 0)",
-      "animation": "Default spring configuration",
-      "drives": [
-        "Position",
-        "Scale",
-        "Background color",
-        "Opacity",
-        "Rotation"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "color": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
       ],
-      "effect": "Smooth, natural expand/collapse motion"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "position_interpolation": {
-      "property": "bottom",
-      "input_range": "[0, 1]",
-      "output_range_collapsed": "index * 15 (stacked with 15px offset)",
-      "output_range_expanded": "maxDropDownHeight / 2 - index * (itemHeight + 10)",
-      "effect": "Items stack when collapsed, spread out symmetrically when expanded",
-      "calculation": "Dynamic based on item index and total dropdown height"
-    },
-    "scale_interpolation": {
-      "property": "transform: scale",
-      "input_range": "[0, 1]",
-      "output_range": "[1 - index * 0.05, 1]",
-      "effect": "Collapsed items scale down progressively (header=1.0, item1=0.95, item2=0.90, etc.)",
-      "combined_with": "Tap gesture scale for compound effect"
-    },
-    "background_color_transition": {
-      "collapsed_state": "Color('#1B1B1B').lighten(lighten).hex()",
-      "expanded_state": "#1B1B1B (uniform)",
-      "lighten_formula": "1 - (optionsLength - index) / optionsLength",
-      "threshold": "progress.value < 0.5",
-      "effect": "Collapsed items have progressively lighter backgrounds creating depth perception",
-      "note": "Avoids opacity to preserve child element visibility"
-    },
-    "opacity_fade": {
-      "targets": "Non-header item content",
-      "input_range": "[0, 1]",
-      "output_range": "[isHeader ? 1 : 0, 1]",
-      "effect": "Only header content visible when collapsed, all items visible when expanded"
-    },
-    "arrow_rotation": {
-      "property": "transform: rotate",
-      "input_range": "[0, 1]",
-      "output_range": "[0, Math.PI / 2]",
-      "extrapolation": "CLAMP",
-      "unit": "radians",
-      "effect": "Header arrow rotates 90° clockwise when expanding",
-      "conditional": "Only applies to header item"
-    },
-    "tap_feedback": {
-      "trigger": "onTouchStart / onTouchEnd",
-      "animation": "withTiming(0.95) / withTiming(1)",
-      "property": "tapGestureScale SharedValue",
-      "combined_with": "position/scale interpolation",
-      "effect": "Tactile scale-down feedback on press"
-    }
-  },
-  "state_management": {
-    "shared_values": [
-      {
-        "name": "isToggled",
-        "type": "boolean",
-        "initial": false,
-        "updates": "On header press",
-        "controls": "Dropdown expand/collapse state"
-      },
-      {
-        "name": "progress",
-        "type": "number (0-1)",
-        "source": "useDerivedValue",
-        "calculation": "withSpring(isToggled.value ? 1 : 0)",
-        "purpose": "Smooth animated progress between collapsed (0) and expanded (1)"
-      },
-      {
-        "name": "tapGestureScale",
-        "type": "number",
-        "initial": 1,
-        "updates": "onTouchStart (0.95), onTouchEnd (1)",
-        "scope": "Per DropdownItem",
-        "purpose": "Press feedback scale animation"
-      }
-    ],
-    "constants": [
-      {
-        "name": "DROP_DOWN_ITEM_HEIGHT",
-        "value": 75,
-        "usage": "Default height of each dropdown item"
-      },
-      {
-        "name": "DROP_DOWN_ITEM_PADDING",
-        "value": 10,
-        "usage": "Padding between items for height calculations"
-      }
-    ],
-    "derived_calculations": [
-      {
-        "name": "fullDropDownExpandedHeight",
-        "formula": "(dropDownItemHeight + DROP_DOWN_ITEM_PADDING) * options.length",
-        "purpose": "Total height of expanded dropdown (excluding header)"
-      }
-    ]
-  },
-  "component_architecture": {
-    "Dropdown": {
-      "type": "Functional component with memo",
-      "props": {
-        "options": "DropdownOptionType[] (menu items)",
-        "header": "DropdownOptionType (header item)",
-        "onPick": "(option: DropdownOptionType) => void",
-        "contentContainerStyle": "StyleProp<ViewStyle> (optional)",
-        "dropDownItemHeight": "number (optional, default 75)"
-      },
-      "state": [
-        "isToggled (SharedValue<boolean>)",
-        "progress (DerivedValue<number>)"
+    "react": {
+      "imports": [
+        "ComponentProps",
+        "memo",
+        "useCallback"
       ],
-      "rendering": "Maps over fullOptions (header + options) to create DropdownItems",
-      "layout": "Centered View container with absolute positioned items"
+      "hooks": [
+        "useCallback"
+      ],
+      "functions": [],
+      "components": []
     },
-    "DropdownItem": {
-      "type": "Functional component with memo",
-      "props": {
-        "label": "string",
-        "iconName": "AntDesign icon name",
-        "onPress": "Callback with item and isHeader flag",
-        "progress": "SharedValue<number>",
-        "isHeader": "boolean",
-        "index": "number",
-        "itemHeight": "number",
-        "maxDropDownHeight": "number",
-        "optionsLength": "number"
-      },
-      "state": [
-        "tapGestureScale (SharedValue<number>)"
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View"
       ],
-      "interactions": [
-        "onTouchStart: Scale down animation",
-        "onTouchEnd: Scale up + trigger onPress callback"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Extrapolation",
+        "SharedValue",
+        "interpolate",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring"
       ],
-      "animated_styles": [
-        "rItemStyle: position, scale, backgroundColor, zIndex",
-        "rContentStyle: opacity",
-        "rArrowContainerStyle: rotation (header only)"
+      "hooks": [
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "interpolate",
+        "withSpring"
+      ],
+      "components": [
+        "Animated.View"
       ]
-    },
-    "SmoothDropdown": {
-      "type": "Demo/Entry component",
-      "structure": "Container with Dropdown component",
-      "data": "4 sample options (Charts, Book, Calendar, Camera)",
-      "header": "Header item with ellipsis icon",
-      "callback": "console.log selected option"
     }
   },
-  "interaction_patterns": {
-    "header_toggle": {
-      "trigger": "Touch on header item (index === 0)",
-      "action": "isToggled.value = !isToggled.value",
-      "effect": "Toggles dropdown between collapsed and expanded states",
-      "feedback": "Arrow rotation + scale animation"
-    },
-    "item_selection": {
-      "trigger": "Touch on non-header item",
-      "action": "Calls onPick(option) callback",
-      "feedback": "Scale down then up animation",
-      "note": "Does not auto-collapse dropdown"
-    },
-    "tap_feedback": {
-      "pattern": "Scale down on press, scale up on release",
-      "duration": "Default withTiming duration",
-      "scale_values": "[1 → 0.95 → 1]",
-      "applies_to": "All items (header and options)"
-    }
-  },
-  "visual_design": {
-    "color_palette": {
-      "base_background": "#1B1B1B (dark gray)",
-      "collapsed_backgrounds": "Progressively lighter shades via Color.lighten()",
-      "expanded_background": "#1B1B1B (uniform)",
-      "icon_box_background": "#0C0C0C (darker gray)",
-      "text_color": "white",
-      "arrow_color_header": "rgba(255,255,255,0.8)",
-      "arrow_color_item": "rgba(255,255,255,0.5)",
-      "container_background": "#000 (black)"
-    },
-    "dimensions": {
-      "item_height": "75px (default)",
-      "item_width": "80% of container",
-      "item_padding": 10,
-      "icon_box": "80% of item height (aspect ratio 1:1)",
-      "border_radius": 10
-    },
-    "typography": {
-      "label": {
-        "fontSize": 16,
-        "color": "white",
-        "letterSpacing": 1.2,
-        "textTransform": "uppercase",
-        "fontWeight": "normal"
-      }
-    },
-    "spacing": {
-      "item_padding": "15px",
-      "icon_margin_right": "12px",
-      "arrow_margin_right": "5px",
-      "stacked_offset": "15px when collapsed",
-      "spread_offset": "(itemHeight + 10) between items when expanded"
-    },
-    "layout": {
-      "container": "Centered, black background",
-      "items": "Absolute positioning with dynamic bottom values",
-      "content": "Horizontal flex row with spacer (flex: 1)",
-      "icon": "Left-aligned in rounded square",
-      "label": "Center with flex spacer",
-      "arrow": "Right-aligned"
-    }
-  },
-  "z_index_management": {
-    "formula": "optionsLength - index",
-    "header_z_index": "Highest (e.g., 5 for 5 items)",
-    "last_item_z_index": "Lowest (e.g., 1 for last item)",
-    "effect": "Header always on top, items stack below in order",
-    "benefit": "Proper layering for stacked card effect"
-  },
-  "mathematical_calculations": {
-    "lighten_value": {
-      "formula": "1 - (optionsLength - index) / optionsLength",
-      "example_5_items": [
-        "Header (index 0): 1 - 5/5 = 0 (darkest)",
-        "Item 1 (index 1): 1 - 4/5 = 0.2",
-        "Item 2 (index 2): 1 - 3/5 = 0.4",
-        "Item 3 (index 3): 1 - 2/5 = 0.6",
-        "Item 4 (index 4): 1 - 1/5 = 0.8 (lightest)"
-      ],
-      "purpose": "Creates gradient effect in collapsed state"
-    },
-    "expanded_position": {
-      "formula": "maxDropDownHeight / 2 - index * (itemHeight + 10)",
-      "example": "For maxHeight=340, itemHeight=75",
-      "center_point": 170,
-      "item_positions": [
-        "Index 0: 170 - 0 = 170 (header top)",
-        "Index 1: 170 - 85 = 85",
-        "Index 2: 170 - 170 = 0 (center)",
-        "Index 3: 170 - 255 = -85",
-        "Index 4: 170 - 340 = -170 (bottom)"
-      ],
-      "effect": "Items spread symmetrically around center"
-    }
-  },
-  "performance_optimizations": {
-    "memo": {
-      "Dropdown": "Prevents re-renders when parent changes",
-      "DropdownItem": "Each item memoized independently",
-      "benefit": "Only re-renders when props change"
-    },
-    "useCallback": {
-      "onPickDropdownItem": {
-        "dependencies": [
-          "isToggled",
-          "onPick"
-        ],
-        "benefit": "Stable function reference for child components"
-      },
-      "onTouchStart": {
-        "dependencies": [
-          "tapGestureScale"
-        ],
-        "benefit": "Prevents recreation on every render"
-      },
-      "onTouchEnd": {
-        "dependencies": [
-          "tapGestureScale",
-          "onPress",
-          "label",
-          "isHeader",
-          "iconName"
-        ],
-        "benefit": "Stable callback reference"
-      }
-    },
-    "useDerivedValue": {
-      "pattern": "withSpring inside useDerivedValue",
-      "benefit": "Automatic spring animation on state change without manual withSpring calls",
-      "dependencies": "Empty array (reacts to isToggled.value changes automatically)"
-    },
-    "ui_thread_execution": {
-      "interpolations": "All interpolate() calls in useAnimatedStyle run on UI thread",
-      "animations": "withSpring and withTiming run on UI thread",
-      "benefit": "Smooth 60fps animations without JS thread bottleneck"
-    }
-  },
-  "reanimated_patterns": {
-    "derived_value_spring": {
-      "pattern": "useDerivedValue(() => withSpring(condition ? 1 : 0))",
-      "usage": "progress value drives all animations",
-      "benefit": "Single source of truth for animation state"
-    },
-    "compound_transform": {
-      "pattern": "scale: scale * tapGestureScale.value",
-      "effect": "Combines interpolated scale with tap feedback scale",
-      "benefit": "Smooth interaction without conflicts"
-    },
-    "conditional_style": {
-      "pattern": "progress.value < 0.5 ? collapsedStyle : expandedStyle",
-      "usage": "Background color transition at midpoint",
-      "benefit": "Discrete transition for non-interpolatable values"
-    },
-    "extrapolation_clamp": {
-      "usage": "Arrow rotation interpolation",
-      "effect": "Prevents over-rotation beyond 90°",
-      "benefit": "Predictable animation bounds"
-    }
-  },
-  "typescript_usage": {
-    "type_definitions": [
-      "DropdownOptionType",
-      "DropdownProps",
-      "DropdownItemProps"
-    ],
-    "DropdownOptionType": {
-      "properties": {
-        "label": "string",
-        "iconName": "ComponentProps<typeof AntDesign>['name']"
-      },
-      "benefit": "Type-safe icon names from AntDesign"
-    },
-    "component_generics": {
-      "FC": "Functional Component type from React",
-      "memo": "Memoized component wrapper",
-      "ComponentProps": "Extract prop types from component"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Dropdown menus",
-      "Context menus",
-      "Action sheets (compact style)",
-      "Settings panels",
-      "Tool palettes",
-      "Navigation menus (mobile)"
-    ],
-    "secondary": [
-      "Floating action menus",
-      "Quick action panels",
-      "Filter options",
-      "Sort menus",
-      "Share options"
-    ],
-    "real_world_examples": [
-      "Mobile app overflow menus",
-      "Game HUD radial menus",
-      "Design tool option panels",
-      "Media player options",
-      "E-commerce filter dropdowns"
-    ]
-  },
-  "code_quality": {
-    "strengths": [
-      "Full TypeScript with explicit types",
-      "Clean component separation",
-      "Memoized components for performance",
-      "useCallback for stable references",
-      "Clear prop interfaces",
-      "Descriptive variable names",
-      "Elegant mathematical calculations",
-      "Efficient animation patterns",
-      "Well-commented calculations (lighten logic)",
-      "Proper z-index management"
-    ],
-    "areas_for_improvement": [
-      "File naming typo: 'dropdrop-item.tsx' should be 'dropdown-item.tsx'",
-      "No PropTypes or default prop documentation",
-      "Limited inline comments",
-      "onPick callback could accept undefined for dismissal",
-      "No TypeScript strict null checks on refs",
-      "Magic numbers could be extracted to constants (0.05 scale factor, 0.5 threshold)"
-    ]
-  },
-  "known_limitations": {
-    "no_auto_collapse": {
-      "issue": "Dropdown stays open after item selection",
-      "impact": "User must manually close by tapping header",
-      "enhancement": "Add auto-collapse prop or behavior"
-    },
-    "fixed_icon_library": {
-      "issue": "Only supports AntDesign icons",
-      "impact": "Cannot use custom icons or other libraries",
-      "enhancement": "Support custom icon components"
-    },
-    "file_naming_typo": {
-      "issue": "dropdrop-item.tsx instead of dropdown-item.tsx",
-      "impact": "Confusing file name",
-      "fix": "Rename file"
-    },
-    "hardcoded_styling": {
-      "issue": "Colors, sizes, and spacing are hardcoded",
-      "impact": "Limited customization without editing component",
-      "enhancement": "Expose styling props"
-    },
-    "no_backdrop": {
-      "issue": "No backdrop/overlay to dismiss dropdown",
-      "impact": "Can only close via header tap",
-      "enhancement": "Add optional backdrop with tap-to-dismiss"
-    },
-    "no_animation_config": {
-      "issue": "Spring and timing configs are default",
-      "impact": "Cannot customize animation feel",
-      "enhancement": "Expose animation config props"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Auto-collapse after item selection (configurable)",
-      "Backdrop overlay with tap-to-dismiss",
-      "Keyboard navigation support",
-      "Search/filter functionality",
-      "Nested dropdown menus",
-      "Custom icon component support",
-      "Disabled item states",
-      "Item badges/notifications",
-      "Dividers between items",
-      "Custom header content slot"
-    ],
-    "customization": [
-      "Configurable colors via props",
-      "Adjustable item heights",
-      "Custom animation configs (spring, timing)",
-      "Border radius customization",
-      "Icon size and spacing props",
-      "Text styling props",
-      "Positioning options (top/bottom/left/right)",
-      "Width configuration"
-    ],
-    "accessibility": [
-      "Accessibility labels for screen readers",
-      "Role and state announcements",
-      "Focus management",
-      "Keyboard navigation (arrow keys)",
-      "Reduce motion support",
-      "High contrast mode support"
-    ],
-    "interactions": [
-      "Haptic feedback on selection",
-      "Long press actions",
-      "Swipe to close gesture",
-      "Multi-select mode",
-      "Item reordering",
-      "Drag to reorder"
-    ],
-    "visual": [
-      "Shadows/elevation",
-      "Gradient backgrounds",
-      "Icon animations on expand",
-      "Stagger animation for items",
-      "Custom arrow indicators",
-      "Item hover states (web)",
-      "Loading states for async actions"
-    ]
-  },
-  "key_insights": {
-    "color_library_benefit": "Using 'color' library for lighten() avoids opacity issues that would affect child elements",
-    "midpoint_threshold": "Using progress.value < 0.5 for color switching creates clean transition at midpoint",
-    "derived_spring": "withSpring inside useDerivedValue automatically animates on value changes",
-    "compound_scale": "Multiplying interpolated scale with tap scale creates smooth compound effect",
-    "z_index_formula": "optionsLength - index creates natural stacking order",
-    "symmetric_spread": "maxHeight / 2 - index * spacing centers items when expanded",
-    "absolute_positioning": "Absolute positioning with dynamic bottom values enables overlapping and spreading",
-    "progress_drives_all": "Single progress SharedValue drives all animations for perfect synchronization"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic Reanimated SharedValue usage",
-      "Simple interpolations",
-      "Touch event handling",
-      "Conditional rendering with isHeader",
-      "Absolute positioning basics",
-      "Icon library integration"
-    ],
-    "for_intermediate": [
-      "useDerivedValue with withSpring pattern",
-      "Compound transform animations",
-      "Color manipulation with libraries",
-      "Z-index management for layering",
-      "useCallback optimization",
-      "Component memoization",
-      "Dynamic style calculations"
-    ],
-    "for_advanced": [
-      "Mathematical formula design for animations",
-      "Symmetrical layout calculations",
-      "Progress-based multi-property interpolations",
-      "Threshold-based discrete transitions",
-      "Performance optimization strategies",
-      "Complex stacking effects",
-      "Coordinated multi-element animations"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_react_native_picker": {
-      "picker": "Native OS picker component",
-      "this": "Custom animated dropdown",
-      "benefit": "Full control over styling and animations"
-    },
-    "vs_modal_action_sheet": {
-      "modal": "Full-screen or bottom sheet",
-      "this": "Compact inline dropdown",
-      "benefit": "Less intrusive, stays in context"
-    },
-    "vs_react_native_popup_menu": {
-      "popup_menu": "Library-based dropdown",
-      "this": "Custom implementation with unique animations",
-      "benefit": "Unique stacked card aesthetic"
-    }
-  },
-  "animation_personality": {
-    "feel": "Playful yet polished",
-    "speed": "Moderate with spring bounce",
-    "style": "Card-based, layered",
-    "inspiration": "Modern mobile UI patterns",
-    "uniqueness": "Stacked card effect with color gradients"
-  },
-  "technical_highlights": {
-    "elegant_math": "lighten formula creates natural depth perception",
-    "single_source_truth": "progress SharedValue drives entire animation",
-    "ui_thread_performance": "All animations on UI thread via Reanimated",
-    "compound_effects": "Multiple interpolations work in harmony",
-    "color_manipulation": "Dynamic background colors without opacity issues",
-    "smooth_springs": "Default spring config provides natural motion"
-  },
-  "related_patterns": {
-    "action_tray": "Bottom sheet with similar interaction patterns",
-    "radial_menu": "Circular expansion menu",
-    "stack_cards": "Card stack interfaces",
-    "accordion": "Expand/collapse list items"
-  },
-  "tags": [
-    "dropdown",
-    "menu",
-    "stacked-cards",
-    "expand-collapse",
-    "spring-animation",
-    "interpolation",
-    "reanimated",
-    "touch-feedback",
-    "color-manipulation",
-    "z-index-layering",
-    "smooth-transitions",
-    "action-menu",
-    "context-menu",
-    "icons",
-    "mobile-ui"
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useSharedValue"
   ],
-  "content_hash": "764057dad4bbfd7a71c8e5d91c57f34af5d7d418b2506155c8e169e7618bb665",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.440Z",
-  "last_validated": "2025-10-12T09:19:28.440Z"
+  "functions": [
+    "Color",
+    "interpolate",
+    "memo",
+    "onPick",
+    "onPress",
+    "withSpring"
+  ],
+  "components": [
+    "Animated.View",
+    "AntDesign",
+    "Dropdown",
+    "DropdownItem",
+    "MaterialIcons",
+    "PressableScale",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "spring-animation",
+    "value-interpolation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "spring-physics",
+    "value-mapping",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 3,
+    "total_packages": 6,
+    "total_hooks": 4,
+    "total_functions": 6,
+    "total_components": 8,
+    "total_patterns": 6,
+    "total_techniques": 3
+  }
 }

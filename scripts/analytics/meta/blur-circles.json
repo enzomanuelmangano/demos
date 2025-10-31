@@ -1,764 +1,188 @@
 {
-  "animation_name": "Blur Circles",
   "animation_slug": "blur-circles",
-  "description": "Two independently moving circles rendered with Skia, featuring smooth organic motion driven by Perlin noise, dynamic blur effects, and gradient fills. One circle displays a vibrant sweep gradient while the other creates a glassmorphic effect with inner blur masking.",
-  "main_features": [
-    "Perlin noise-based organic circular motion",
-    "Dual circle animation with different frequencies and amplitudes",
-    "Sweep gradient with CMYK color scheme",
-    "Selective blur effect using clip paths",
-    "Glassmorphic circle with inner blur mask",
-    "Independent noise functions for each circle",
-    "Inverted clipping for precise blur control",
-    "Continuous looping animation",
-    "GPU-accelerated Skia rendering",
-    "Custom hook for noise-based vector calculation"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.872Z",
   "file_structure": {
-    "index.tsx": "Main BlurCircles component with canvas rendering and animation logic",
-    "constants.ts": "Configuration constants including noise functions, dimensions, and animation parameters",
-    "hooks/use-vec.ts": "Custom hook for calculating noise-based x,y coordinates over time"
+    "entry": "index.tsx",
+    "components": [
+      "constants.ts"
+    ],
+    "hooks": [
+      "hooks/use-vec.ts"
+    ],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "rendering": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "noise": "simplex-noise",
-    "threading": "react-native-worklets"
+  "packages": [
+    "@shopify/react-native-skia",
+    "react",
+    "react-native",
+    "react-native-reanimated",
+    "react-native-worklets",
+    "simplex-noise"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1",
+    "simplex-noise": "^4.0.3"
   },
-  "packages_and_versions": {
+  "packages_detail": {
+    "../constants": {
+      "imports": [
+        "center"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "A",
+        "FREQUENCY",
+        "RADIUS",
+        "noise2D",
+        "secondNoise2D"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-vec": {
+      "imports": [
+        "useVec"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
+      "imports": [
+        "Blur",
+        "BlurMask",
         "Canvas",
         "Circle",
         "Group",
-        "Blur",
-        "BlurMask"
-      ],
-      "effects": [
-        "SweepGradient"
-      ],
-      "utilities": [
-        "vec",
+        "SweepGradient",
         "rect",
-        "rrect"
+        "rrect",
+        "vec"
       ],
-      "usage": "GPU-accelerated rendering of animated circles with blur effects and gradients",
-      "performance_reason": "Native-level performance, 60fps smooth animations with complex effects"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useCallback",
+        "useEffect",
+        "useMemo"
+      ],
+      "hooks": [
+        "useCallback",
+        "useEffect",
+        "useMemo"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Dimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
+      "imports": [
+        "useAnimatedReaction",
         "useDerivedValue",
-        "useAnimatedReaction"
+        "useSharedValue",
+        "withRepeat",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedReaction",
+        "useDerivedValue",
+        "useSharedValue"
       ],
       "functions": [
         "withRepeat",
         "withTiming"
       ],
-      "critical_feature": "Infinite repeat animation with reverse for continuous clock"
-    },
-    "simplex-noise": {
-      "version": "^4.0.3",
-      "function": "createNoise2D",
-      "usage": "Generates smooth Perlin noise for organic circular motion",
-      "instances": 2,
-      "note": "Two separate noise functions for independent circle movements"
+      "components": []
     },
     "react-native-worklets": {
-      "version": "0.5.1",
       "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Bridge UI thread noise calculations to JS thread for vector updates"
-    }
-  },
-  "animation_techniques": {
-    "perlin_noise_motion": {
-      "pattern": "2D Perlin noise for organic movement",
-      "implementation": "noise2D(clock.value / frequency, 0) for x-axis, noise2D(0, clock.value / frequency) for y-axis",
-      "noise_functions": {
-        "colored_circle": "noise2D",
-        "glass_circle": "secondNoise2D"
-      },
-      "benefit": "Creates smooth, natural-looking motion without predictable patterns",
-      "frequency_modulation": "Lower frequency = slower, more gradual movement",
-      "amplitude_scaling": "Multiplied by amplitude to control movement range"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "clock_animation": {
-      "pattern": "Infinite repeat timing animation",
-      "initial_value": 0,
-      "target_value": 20000,
-      "duration": "20000ms (20 seconds)",
-      "repeat": -1,
-      "reverse": true,
-      "effect": "Creates continuous back-and-forth animation from 0 to 20000 and back",
-      "purpose": "Drives noise function input for continuous motion"
-    },
-    "gradient_circle": {
-      "type": "SweepGradient",
-      "center": "vec(50, 128)",
-      "colors": [
-        "cyan",
-        "magenta",
-        "yellow",
-        "cyan"
+    "simplex-noise": {
+      "imports": [
+        "createNoise2D"
       ],
-      "applied_to": "Colored circle",
-      "effect": "Radial color sweep creating vibrant, dynamic appearance",
-      "memoization": true,
-      "reason": "Gradient doesn't change, memoized to prevent recreation"
-    },
-    "selective_blur": {
-      "pattern": "Clipped group with blur + inverted clip without blur",
-      "implementation": [
-        "Group 1: clip={clipCircle}, blur={10} - blurred edges",
-        "Group 2: clip={clipCircle} invertClip - sharp center"
-      ],
-      "effect": "Only the parts of the colored circle outside the glass circle are blurred",
-      "benefit": "Creates sophisticated layered effect where circles interact visually",
-      "clip_shape": "rrect (rounded rectangle) matching glass circle dimensions"
-    },
-    "glassmorphic_effect": {
-      "component": "Circle with BlurMask",
-      "radius": "RADIUS (80)",
-      "color": "rgba(0,0,0,0.08)",
-      "stroke_width": 10,
-      "blur_mask": {
-        "blur": 20,
-        "style": "inner"
-      },
-      "stroke": {
-        "color": "rgba(255,255,255,0.25)",
-        "width": 1
-      },
-      "effect": "Semi-transparent circle with frosted glass appearance",
-      "layers": "Dark semi-transparent fill + inner blur + white stroke outline"
-    },
-    "dual_frequency_motion": {
-      "colored_circle": {
-        "frequency": "FREQUENCY (1800)",
-        "amplitude": "A (30)",
-        "noise": "noise2D",
-        "movement": "Slower, smaller range"
-      },
-      "glass_circle": {
-        "frequency": "FREQUENCY * 2 (3600)",
-        "amplitude": "A * 3 (90)",
-        "noise": "secondNoise2D",
-        "movement": "Faster, larger range"
-      },
-      "effect": "Circles move at different speeds and ranges, creating dynamic interaction",
-      "visual_result": "Glass circle moves more dramatically while colored circle is more subtle"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "custom_hooks": {
-    "useVec": {
-      "purpose": "Calculate x,y coordinates from noise function over time",
-      "parameters": {
-        "clock": "SharedValue<number> - animation time value",
-        "frequency": "number - controls speed of movement",
-        "amplitude": "number - controls range of movement",
-        "noise": "(x: number, y: number) => number - 2D noise function"
-      },
-      "returns": {
-        "cx": "SharedValue<number> - center x coordinate",
-        "cy": "SharedValue<number> - center y coordinate"
-      },
-      "implementation": [
-        "useAnimatedReaction watches clock.value",
-        "On clock change, scheduleOnRN updates vecNoise",
-        "Noise calculation: x = noise(clock / frequency, 0) * amplitude",
-        "Similar for y axis with different noise inputs",
-        "useDerivedValue adds noise offset to screen center"
-      ],
-      "threading": {
-        "reaction": "UI thread (worklet)",
-        "updateVecNoise": "JS thread (via scheduleOnRN)",
-        "derived_values": "UI thread (worklet)"
-      },
-      "optimization": "Separate noise calculation from coordinate derivation for cleaner separation"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "clock",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "range": "0 to 20000 (repeating)",
-        "purpose": "Drives noise function input for continuous animation"
-      },
-      {
-        "name": "vecNoise (in useVec)",
-        "type": "SharedValue<SkPoint>",
-        "initial": "vec(0, 0)",
-        "purpose": "Stores noise-based offset vector",
-        "updates": "On clock change via useAnimatedReaction"
-      }
-    ],
-    "useDerivedValue": [
-      {
-        "name": "clipCircle",
-        "dependencies": [
-          "cx2",
-          "cy2"
-        ],
-        "calculation": "rrect around glass circle position",
-        "purpose": "Dynamic clip path following glass circle movement",
-        "type": "SkRRect"
-      },
-      {
-        "name": "cx, cy (in useVec)",
-        "dependencies": [
-          "vecNoise"
-        ],
-        "calculation": "vecNoise.value + screen center",
-        "purpose": "Final circle center coordinates"
-      }
-    ],
-    "useAnimatedReaction": {
-      "watches": "clock.value",
-      "prepareFunction": "Returns current clock value",
-      "reactionFunction": "Calculates noise values and updates vecNoise on JS thread",
-      "dependencies": [
-        "updateVecNoise"
-      ],
-      "purpose": "Bridge clock changes to noise calculations",
-      "pattern": "Watch UI thread value, update JS thread calculation"
-    },
-    "withRepeat": {
-      "animation": "withTiming(20000, { duration: 20000 })",
-      "repetitions": -1,
-      "reverse": true,
-      "effect": "Infinite back-and-forth animation creating continuous motion"
-    },
-    "useEffect": {
-      "trigger": "Component mount",
-      "action": "Starts clock animation with withRepeat",
-      "dependencies": [
-        "clock"
-      ],
-      "cleanup": "None (animation runs indefinitely)"
-    }
-  },
-  "skia_rendering": {
-    "canvas": {
-      "style": "{ flex: 1, backgroundColor: 'white' }",
-      "size": "Full screen",
-      "background": "White"
-    },
-    "rendering_order": [
-      {
-        "layer": 1,
-        "description": "Blurred portion of gradient circle (clipped by glass circle)",
-        "component": "Group with clip + Blur"
-      },
-      {
-        "layer": 2,
-        "description": "Sharp portion of gradient circle (inverted clip)",
-        "component": "Group with invertClip"
-      },
-      {
-        "layer": 3,
-        "description": "Glass circle with inner blur",
-        "component": "Circle with BlurMask"
-      },
-      {
-        "layer": 4,
-        "description": "White stroke outline on glass circle",
-        "component": "Circle with stroke style"
-      }
-    ],
-    "group_clipping": {
-      "pattern": "Group with clip prop",
-      "clip_path": "clipCircle (rrect following glass circle)",
-      "normal_clip": "Renders only content inside clip path",
-      "inverted_clip": "Renders only content outside clip path",
-      "benefit": "Precise control over which parts receive blur effect"
-    },
-    "blur_application": {
-      "blur_component": {
-        "type": "Blur",
-        "value": 10,
-        "applied_to": "Entire Group",
-        "effect": "Blurs all children of the group"
-      },
-      "blur_mask": {
-        "type": "BlurMask",
-        "blur": 20,
-        "style": "inner",
-        "applied_to": "Individual Circle",
-        "effect": "Inner glow/frosted glass appearance"
-      }
-    },
-    "memoization": {
-      "sweepGradient": {
-        "hook": "useMemo",
-        "dependencies": "[] (empty)",
-        "reason": "Gradient configuration never changes",
-        "benefit": "Prevents JSX recreation on every render"
-      }
-    }
-  },
-  "mathematical_algorithms": {
-    "perlin_noise": {
-      "algorithm": "Simplex/Perlin noise in 2D",
-      "properties": [
-        "Smooth transitions between values",
-        "Deterministic (same input = same output)",
-        "Natural-looking randomness",
-        "Continuous across space"
-      ],
-      "input": "Two dimensional coordinates (x, y)",
-      "output": "Value typically in range [-1, 1]",
-      "application": "noise2D(clock / frequency, 0) converts time to spatial noise coordinate"
-    },
-    "frequency_control": {
-      "formula": "clock.value / frequency",
-      "frequency_1800": "Divides 20000 by 1800 ≈ 11.1 complete noise cycles",
-      "frequency_3600": "Divides 20000 by 3600 ≈ 5.55 complete noise cycles",
-      "effect": "Lower frequency = slower transitions between noise values"
-    },
-    "amplitude_scaling": {
-      "formula": "noise_output * amplitude + center",
-      "noise_range": "[-1, 1]",
-      "scaled_range_1": "[-30, 30] for colored circle (amplitude 30)",
-      "scaled_range_2": "[-90, 90] for glass circle (amplitude 90)",
-      "final_position": "center.x + scaled_noise_x, center.y + scaled_noise_y"
-    },
-    "coordinate_system": {
-      "origin": "Top-left (0, 0)",
-      "center_calculation": {
-        "x": "SCREEN_WIDTH / 2",
-        "y": "SCREEN_HEIGHT / 2"
-      },
-      "circle_positioning": "Absolute coordinates from center + noise offset"
-    },
-    "clip_path_calculation": {
-      "rect": "rect(cx - radius, cy - radius, diameter, diameter)",
-      "rrect": "rrect(rect, radius, radius)",
-      "purpose": "Creates rounded rectangle (circle) for clipping",
-      "dynamic": "Recalculated on every frame as circle moves"
-    }
-  },
-  "configuration": {
-    "dimension_constants": {
-      "SCREEN_WIDTH": "Dimensions.get('window').width",
-      "SCREEN_HEIGHT": "Dimensions.get('window').height",
-      "center": {
-        "x": "SCREEN_WIDTH / 2",
-        "y": "SCREEN_HEIGHT / 2"
-      }
-    },
-    "animation_parameters": {
-      "FREQUENCY": {
-        "value": 1800,
-        "description": "Base frequency for colored circle noise",
-        "unit": "milliseconds per noise cycle"
-      },
-      "A": {
-        "value": 30,
-        "description": "Base amplitude for colored circle movement",
-        "unit": "pixels"
-      },
-      "RADIUS": {
-        "value": 80,
-        "description": "Circle radius",
-        "unit": "pixels"
-      }
-    },
-    "derived_parameters": {
-      "colored_circle_frequency": "FREQUENCY (1800)",
-      "colored_circle_amplitude": "A (30)",
-      "glass_circle_frequency": "FREQUENCY * 2 (3600)",
-      "glass_circle_amplitude": "A * 3 (90)"
-    },
-    "noise_instances": {
-      "noise2D": "createNoise2D() - for colored circle",
-      "secondNoise2D": "createNoise2D() - for glass circle"
-    },
-    "timing_constants": {
-      "clock_duration": "20000ms",
-      "clock_target": 20000,
-      "animation_repeat": "infinite",
-      "animation_reverse": true
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "white",
-      "gradient_colors": [
-        "cyan",
-        "magenta",
-        "yellow",
-        "cyan"
-      ],
-      "glass_circle_fill": "rgba(0,0,0,0.08)",
-      "glass_circle_stroke": "rgba(255,255,255,0.25)",
-      "aesthetic": "Vibrant CMYK gradient with subtle glassmorphic overlay"
-    },
-    "circle_specifications": {
-      "colored_circle": {
-        "radius": 80,
-        "fill": "Sweep gradient (cyan → magenta → yellow → cyan)",
-        "blur": "10px (edges only, via clipping)",
-        "movement": "Subtle, slow organic motion"
-      },
-      "glass_circle": {
-        "radius": 80,
-        "fill": "Semi-transparent black (8% opacity)",
-        "stroke": "White (25% opacity, 1px width)",
-        "inner_blur": "20px",
-        "stroke_width": "10px (for rounded stroke cap)",
-        "stroke_cap": "round",
-        "movement": "More pronounced, faster organic motion"
-      }
-    },
-    "layering_effects": {
-      "base": "White background",
-      "layer_1": "Gradient circle (blurred edges where overlapped by glass)",
-      "layer_2": "Gradient circle (sharp center where overlapped)",
-      "layer_3": "Glass circle creating frosted effect",
-      "interaction": "Circles appear to interact as they move over each other"
-    },
-    "blur_distribution": {
-      "gradient_circle_blur": "Only where clipped by glass circle boundary",
-      "glass_circle_blur": "Inner blur (BlurMask with 'inner' style)",
-      "visual_result": "Sophisticated depth and layering effect"
-    }
-  },
-  "performance_optimizations": {
-    "skia_rendering": {
-      "benefit": "GPU-accelerated rendering, handles 60fps easily",
-      "technique": "Native Skia engine for all drawing operations"
-    },
-    "memoization": {
-      "sweepGradient": "useMemo prevents gradient recreation",
-      "benefit": "Reduces JSX allocations on every frame"
-    },
-    "worklet_separation": {
-      "pattern": "useAnimatedReaction + scheduleOnRN",
-      "ui_thread": "Clock watching and derived value calculations",
-      "js_thread": "Noise function calculations",
-      "benefit": "Keeps heavy noise calculations off critical animation path"
-    },
-    "derived_values": {
-      "pattern": "useDerivedValue for clip path and coordinates",
-      "benefit": "Automatic recalculation only when dependencies change",
-      "avoids": "Manual coordinate updates and unnecessary calculations"
-    },
-    "single_canvas": {
-      "benefit": "One Canvas component for all rendering",
-      "vs_alternative": "Much better than multiple View/Image components",
-      "performance": "Minimal overhead, native rendering"
-    }
-  },
-  "react_patterns": {
-    "useEffect": {
-      "usage": "Start clock animation on mount",
-      "dependencies": [
-        "clock"
-      ],
-      "cleanup": "None needed (animation should run indefinitely)"
-    },
-    "useMemo": {
-      "usage": "Memoize SweepGradient JSX",
-      "dependencies": "[] (empty - never changes)",
-      "benefit": "Prevents gradient component recreation"
-    },
-    "custom_hooks": {
-      "useVec": "Encapsulates noise-based coordinate calculation logic",
-      "reusability": "Can be used for multiple circles with different parameters",
-      "instances": 2
-    },
-    "useCallback": {
-      "usage": "updateVecNoise function in useVec",
-      "dependencies": [
-        "clock",
-        "frequency",
-        "amplitude",
-        "noise",
-        "vecNoise"
-      ],
-      "purpose": "Stable reference for scheduleOnRN callback"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Loading screens with organic motion",
-      "Background animations for apps",
-      "Visual ambiance for content",
-      "Decorative UI elements",
-      "Splash screens with dynamic effects"
-    ],
-    "secondary": [
-      "Music visualizers (with audio-driven parameters)",
-      "Meditation/relaxation apps",
-      "Weather app backgrounds",
-      "Generative art displays",
-      "Screensaver effects"
-    ],
-    "customization_potential": [
-      "Change colors to match brand",
-      "Adjust frequencies for different feels",
-      "Add more circles with varying parameters",
-      "Use different noise types or patterns",
-      "Respond to user interaction or data"
-    ],
-    "real_world_inspiration": [
-      "Lava lamps",
-      "Organic cellular motion",
-      "Bubble interactions",
-      "Abstract art backgrounds"
-    ]
-  },
-  "code_quality": {
-    "typescript": "Full TypeScript with explicit types",
-    "type_definitions": [
-      "UseVecParams",
-      "SharedValue imported type"
-    ],
-    "imports": {
-      "selective": "Named imports for all dependencies",
-      "organized": "Grouped by package (React, Skia, Reanimated, etc.)"
-    },
-    "documentation": {
-      "inline_comments": "Excellent - explains clipping strategy, noise usage, component purposes",
-      "hook_documentation": "Detailed comments in useVec explaining logic",
-      "notes": "Helpful notes on interesting implementation details"
-    },
-    "code_organization": {
-      "constants": "Separate file for configuration",
-      "hooks": "Custom hooks in dedicated folder",
-      "main_component": "Clean, focused on rendering logic"
-    },
-    "naming_conventions": {
-      "components": "PascalCase (BlurCircles)",
-      "hooks": "camelCase with 'use' prefix (useVec)",
-      "constants": "SCREAMING_SNAKE_CASE",
-      "variables": "camelCase"
-    },
-    "best_practices": [
-      "Separation of concerns (constants, hooks, components)",
-      "Custom hook for reusable logic",
-      "Memoization where appropriate",
-      "Clear variable names (cx, cy for center x, y)",
-      "Type safety throughout"
-    ]
-  },
-  "known_limitations": {
-    "performance_on_low_end": {
-      "issue": "Multiple blur effects can be expensive on very low-end devices",
-      "mitigation": "Skia is highly optimized, should run well on most devices",
-      "consideration": "Test on target devices"
-    },
-    "noise_calculation": {
-      "issue": "Noise function runs on JS thread via scheduleOnRN",
-      "impact": "Could potentially cause minor jank if JS thread is busy",
-      "alternative": "Could pre-calculate noise values or use simpler motion functions"
-    },
-    "fixed_parameters": {
-      "issue": "Frequency, amplitude, radius are hardcoded constants",
-      "enhancement": "Could be props for customization",
-      "current_design": "Optimized for specific visual effect"
-    },
-    "no_interaction": {
-      "limitation": "Purely decorative, no touch interaction",
-      "enhancement": "Could add touch/gesture influence on motion",
-      "current_scope": "Designed as ambient animation"
-    }
-  },
-  "potential_improvements": {
-    "interactivity": [
-      "Touch to influence circle motion",
-      "Gesture to adjust frequency/amplitude",
-      "Tap to add more circles",
-      "Drag circles around"
-    ],
-    "customization": [
-      "Props for colors, frequencies, amplitudes",
-      "Configurable blur intensities",
-      "Circle count prop",
-      "Different gradient types",
-      "Animation speed control"
-    ],
-    "features": [
-      "Multiple circles with varying parameters",
-      "Different noise types (fractal, ridged, etc.)",
-      "Audio reactivity",
-      "Data-driven motion",
-      "Particle trails following circles"
-    ],
-    "performance": [
-      "Pre-calculated noise lookup tables",
-      "Simplified motion on low-end devices",
-      "Optional quality settings"
-    ],
-    "effects": [
-      "Additional blur types",
-      "Shadow effects",
-      "Color shifting over time",
-      "Pulsing circle sizes",
-      "Trail/motion blur effects"
-    ]
-  },
-  "key_insights": {
-    "noise_for_organic_motion": "Perlin noise is ideal for natural-looking circular motion",
-    "dual_frequency_depth": "Different frequencies and amplitudes create visual depth and interest",
-    "selective_blur_sophistication": "Clip + inverted clip pattern enables precise blur control",
-    "glassmorphism_technique": "Inner BlurMask with semi-transparent fill creates frosted glass effect",
-    "independent_noise_functions": "Separate noise instances ensure truly independent motion",
-    "gradient_memoization": "Small optimization that prevents unnecessary allocations",
-    "threading_strategy": "Noise on JS thread, coordinates on UI thread balances performance",
-    "skia_performance": "Complex visual effects achievable at 60fps with Skia"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Skia Canvas basics",
-      "Basic shape rendering (Circle)",
-      "Gradient fills",
-      "useEffect for starting animations",
-      "SharedValue and withRepeat"
-    ],
-    "for_intermediate": [
-      "Perlin noise for animation",
-      "useDerivedValue for computed values",
-      "Group clipping in Skia",
-      "BlurMask vs Blur effects",
-      "Custom hooks with Reanimated",
-      "useAnimatedReaction for side effects"
-    ],
-    "for_advanced": [
-      "Inverted clipping for selective effects",
-      "Threading optimization with scheduleOnRN",
-      "Complex layered rendering with Skia",
-      "Noise function-driven animations",
-      "Multi-parameter motion coordination",
-      "Performance optimization strategies"
-    ]
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Circles move smoothly without jank",
-      "Blur effects render correctly",
-      "Gradient displays properly",
-      "Clipping boundaries are clean",
-      "Glass effect appears frosted",
-      "White stroke is visible"
-    ],
-    "performance_tests": [
-      "Maintain 60fps on target devices",
-      "Memory stable over time",
-      "No gradual slowdown",
-      "Smooth on iOS and Android"
-    ],
-    "edge_cases": [
-      "Very small screens",
-      "Very large screens (tablets)",
-      "Extreme aspect ratios",
-      "Low-end devices",
-      "Background/foreground transitions"
-    ],
-    "platform_specific": [
-      "iOS blur rendering",
-      "Android blur rendering",
-      "Web support (if applicable)",
-      "Different Skia backend behaviors"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_animated_view": {
-      "alternative": "Animated.View with transform animations",
-      "this_approach": "Skia Canvas with noise-driven motion",
-      "benefits": "Better performance, more sophisticated effects, GPU-accelerated",
-      "tradeoffs": "More complex setup, requires Skia knowledge"
-    },
-    "vs_lottie": {
-      "alternative": "Pre-made Lottie animation",
-      "this_approach": "Runtime-generated motion with Skia",
-      "benefits": "Infinite variation, smaller bundle size, customizable",
-      "tradeoffs": "Can't preview exact output, requires code"
-    },
-    "vs_svg_animation": {
-      "alternative": "Animated SVG circles",
-      "this_approach": "Skia rendering with blur effects",
-      "benefits": "Better blur support, better performance, more effects",
-      "tradeoffs": "Platform-specific (not web-standard)"
-    }
-  },
-  "related_patterns": {
-    "perlin_noise_animations": "Other animations using noise functions",
-    "skia_blur_effects": "Different blur effect techniques",
-    "organic_motion": "Natural-looking movement patterns",
-    "glassmorphism": "Frosted glass UI effects",
-    "gradient_animations": "Animated gradient fills"
-  },
-  "bundle_size_impact": {
-    "code_size": "~120 lines total (main: 100, hook: 66, constants: 18)",
-    "dependencies": {
-      "skia": "Likely already in project for other animations",
-      "reanimated": "Likely already in project",
-      "simplex-noise": "~3KB, small dependency"
-    },
-    "runtime_memory": "Minimal - few SharedValues, Skia objects",
-    "estimated_total": "< 5KB additional (excluding shared dependencies)"
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "decorative": "Purely decorative animation",
-      "no_interaction": "No interactive elements",
-      "no_text": "No text or critical content"
-    },
-    "recommendations": [
-      "Respect prefers-reduced-motion (pause or simplify)",
-      "Ensure doesn't distract from main content",
-      "Consider option to disable decorative animations",
-      "Test with screen readers (should be ignored)"
-    ],
-    "implementation_suggestions": {
-      "reduced_motion": "Stop or slow animation when motion reduced",
-      "accessibility": "accessibilityElementsHidden={true} on Canvas",
-      "focus": "Should not interfere with focus management"
-    }
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All effects supported",
-      "performance": "Excellent",
-      "blur": "Native blur support"
-    },
-    "android": {
-      "features": "All effects supported",
-      "performance": "Excellent",
-      "blur": "Native blur support"
-    },
-    "web": {
-      "compatibility": "Skia has web support (CanvasKit)",
-      "performance": "Good, depends on browser",
-      "testing": "Should be tested separately"
-    }
-  },
-  "tags": [
-    "skia",
-    "blur",
-    "circles",
-    "perlin-noise",
-    "organic-motion",
-    "gradient",
-    "glassmorphism",
-    "reanimated",
-    "gpu-accelerated",
-    "decorative",
-    "ambient",
-    "custom-hook",
-    "clipping",
-    "noise-animation",
-    "smooth-motion"
+  "hooks": [
+    "useAnimatedReaction",
+    "useCallback",
+    "useDerivedValue",
+    "useEffect",
+    "useMemo",
+    "useSharedValue",
+    "useVec"
   ],
-  "content_hash": "7d2241d91a566badd468672dbb357e9b671361f6429738a3cfb5324566fd2a48",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.289Z",
-  "last_validated": "2025-10-12T09:19:28.289Z"
+  "functions": [
+    "createNoise2D",
+    "noise",
+    "rect",
+    "rrect",
+    "scheduleOnRN",
+    "vec",
+    "withRepeat",
+    "withTiming"
+  ],
+  "components": [
+    "Blur",
+    "BlurMask",
+    "Canvas",
+    "Circle",
+    "Group",
+    "SweepGradient"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "repeating-animation",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "loop-animations",
+    "canvas-rendering",
+    "blur-effects"
+  ],
+  "stats": {
+    "total_files": 3,
+    "total_packages": 6,
+    "total_hooks": 7,
+    "total_functions": 8,
+    "total_components": 6,
+    "total_patterns": 6,
+    "total_techniques": 5
+  }
 }

@@ -1,851 +1,161 @@
 {
-  "animation_name": "Balance Slider",
   "animation_slug": "balance-slider",
-  "description": "An interactive dual-sided balance slider component featuring smooth pan gestures, dynamic percentage display, and adaptive UI shrinking behavior. Designed for comparing two proportional values (like Coffee vs Milk ratios), the slider provides real-time percentage feedback with intelligent label positioning and adaptive height animations when approaching boundaries.",
-  "main_features": [
-    "Dual-sided balance slider with draggable picker",
-    "Real-time percentage calculation for both sides",
-    "Dynamic label positioning with animated text",
-    "Adaptive UI shrinking when reaching configured boundaries",
-    "Spring-based animations for smooth interactions",
-    "Colored zones representing left/right proportions",
-    "Custom configurable color schemes for each side",
-    "Vertical label shifting animation near boundaries",
-    "Percentage display with ReText for UI thread rendering",
-    "Pan gesture with spring animation on tap"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.715Z",
   "file_structure": {
-    "index.tsx": "Main component orchestrating the balance slider demo with GestureHandlerRootView",
-    "components/balance-slider/index.tsx": "Core BalanceSlider component with gesture handling and layout logic",
-    "components/balance-slider/text-label/index.tsx": "TextLabel component showing name and animated percentage"
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "threading": "react-native-worklets",
-    "text_animation": "react-native-redash (ReText)"
+  "packages": [
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-redash",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-redash": "^18.1.4",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./components/balance-slider": {
+      "imports": [
+        "BalanceSliderComponent"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./text-label": {
+      "imports": [
+        "TextLabel"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useCallback",
+        "useMemo"
+      ],
       "hooks": [
-        "useSharedValue",
+        "useCallback",
+        "useMemo"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
         "useAnimatedStyle",
         "useDerivedValue",
+        "useSharedValue",
+        "withSpring"
+      ],
+      "hooks": [
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
         "withSpring"
       ],
       "components": [
         "Animated.View"
-      ],
-      "critical_feature": "useDerivedValue for reactive percentage calculations and UI state management"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector",
-        "GestureHandlerRootView"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "methods": [
-        "onBegin",
-        "onUpdate"
-      ],
-      "usage": "Pan gesture for slider dragging with spring feedback on tap"
-    },
-    "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
-        "scheduleOnRN"
-      ],
-      "purpose": "Bridge worklet callbacks to JS thread for onChange callback",
-      "critical_for": "Calling user-provided onChange callback from UI thread with percentage updates"
+      ]
     },
     "react-native-redash": {
-      "version": "^18.1.4",
-      "components": [
+      "imports": [
         "ReText"
       ],
-      "usage": "UI thread text rendering for animated percentage display",
-      "benefit": "Smooth percentage updates without JavaScript thread involvement"
-    }
-  },
-  "animation_techniques": {
-    "pan_gesture_interaction": {
-      "gesture": "Gesture.Pan()",
-      "lifecycle": {
-        "onBegin": "Spring animation to event.x position with overshootClamping",
-        "onUpdate": "Continuous position update tracking finger position"
-      },
-      "spring_config": {
-        "overshootClamping": true,
-        "effect": "Immediate snap to touch position on begin, then smooth dragging"
-      },
-      "positioning": "x.value = event.x + pickerWidth / 2 (centers picker on touch point)"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "balance_visualization": {
-      "pattern": "Dynamic width percentage for three containers (left, picker, right)",
-      "left_container": "width: uiXPercentage * 100%",
-      "picker_container": "width: PICKER_WIDTH_PERCENTAGE (5%)",
-      "right_container": "width: (1 - uiXPercentage - PICKER_WIDTH_PERCENTAGE) * 100%",
-      "clamping": "xPercentage clamped between 0 and 1",
-      "effect": "Visual representation of left/right balance"
-    },
-    "adaptive_shrinking": {
-      "pattern": "Height interpolation based on boundary detection",
-      "trigger": "hasReachedBoundaries = xPercentage < leftLimit || xPercentage > rightLimit",
-      "animation": "withSpring(hasReachedBoundaries ? 0.3 : 1)",
-      "applied_to": [
-        "Left box",
-        "Right box",
-        "Picker container"
+    "react-native-worklets": {
+      "imports": [
+        "scheduleOnRN"
       ],
-      "purpose": "Visual feedback when slider reaches limits where labels would be cut off",
-      "scale_factor": "30% height when at boundaries, 100% otherwise"
-    },
-    "label_positioning": {
-      "pattern": "Vertical translation based on boundary state",
-      "base_position": "-height / 2 + 10 (above slider by default)",
-      "shifted_position": "baseHeight - height / 5 (moves up when boundary reached)",
-      "animation": "withSpring(translateY)",
-      "effect": "Labels shift upward to maintain visibility when boxes shrink"
-    },
-    "percentage_display": {
-      "pattern": "ReText with useDerivedValue for UI thread rendering",
-      "calculation": "Math.round(percentage * 100) + '%'",
-      "type": "left shows xPercentage, right shows 1 - xPercentage",
-      "animation": "Smooth number transitions via ReText",
-      "benefit": "60fps percentage updates without JS thread involvement"
-    },
-    "color_transitions": {
-      "pattern": "Distinct color schemes for left and right sides",
-      "properties": [
-        "box (container)",
-        "label (text)",
-        "percentage (number)"
-      ],
-      "effect": "Clear visual distinction between two sides being balanced"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "x",
-        "type": "SharedValue<number>",
-        "initial": "(width + pickerWidth) * initialPercentage",
-        "range": "Unclamped (raw position value)",
-        "updates": "Pan gesture onBegin (spring) and onUpdate",
-        "purpose": "Raw horizontal position of the picker"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "xPercentage",
-        "calculation": "clamp((x.value - pickerWidth / 2) / width, 0, 1)",
-        "dependencies": [
-          "x",
-          "pickerWidth",
-          "width"
-        ],
-        "purpose": "Normalized percentage (0-1) of slider position",
-        "clamping": "Ensures value stays within 0-1 bounds"
-      },
-      {
-        "name": "uiXPercentage",
-        "calculation": "xPercentage.value * (1 - PICKER_WIDTH_PERCENTAGE)",
-        "purpose": "Adjusted percentage accounting for picker width to prevent visual overflow",
-        "use_case": "Used for width calculations to avoid shifting at right limit"
-      },
-      {
-        "name": "hasReachedBoundaries",
-        "calculation": "xPercentage.value < leftLimit || xPercentage.value > rightLimit",
-        "dependencies": [
-          "xPercentage",
-          "leftPercentageLimitBeforeShift",
-          "rightPercentageLimitBeforeShift"
-        ],
-        "type": "SharedValue<boolean>",
-        "purpose": "Trigger for adaptive shrinking animation"
-      },
-      {
-        "name": "boxHeightPercentage",
-        "calculation": "withSpring(hasReachedBoundaries.value ? 0.3 : 1)",
-        "purpose": "Animated height scale factor for boxes and picker",
-        "animation": "Spring with default config"
-      },
-      {
-        "name": "text (in TextLabel)",
-        "calculation": "Math.round(percentage * 100) + '%'",
-        "type": "String percentage for display",
-        "purpose": "Formatted percentage text for ReText component"
-      }
-    ],
-    "worklet_functions": {
-      "clamp": {
-        "signature": "(value: number, lowerBound: number, upperBound: number) => number",
-        "worklet": true,
-        "logic": "Math.min(Math.max(lowerBound, value), upperBound)",
-        "purpose": "Constrain percentage value within 0-1 bounds",
-        "usage": "Prevents slider from going beyond valid range"
-      },
-      "onChangeWrapper": {
-        "pattern": "useCallback wrapping scheduleOnRN",
-        "purpose": "Bridge percentage updates to JS thread",
-        "arguments": "{ leftPercentage, rightPercentage }",
-        "timing": "Called on every gesture update via scheduleOnRN"
-      }
-    },
-    "useAnimatedStyle_usage": [
-      {
-        "name": "rFirstContainerStyle",
-        "properties": [
-          "width (percentage)",
-          "height (percentage)"
-        ],
-        "purpose": "Left side box dimensions"
-      },
-      {
-        "name": "rSecondContainerStyle",
-        "properties": [
-          "width (percentage)",
-          "height (percentage)"
-        ],
-        "purpose": "Right side box dimensions"
-      },
-      {
-        "name": "rPickerContainerStyle",
-        "properties": [
-          "height (percentage)"
-        ],
-        "purpose": "Center picker height animation"
-      },
-      {
-        "name": "rContainerStyle (TextLabel)",
-        "properties": [
-          "transform (translateY)"
-        ],
-        "purpose": "Label vertical positioning animation"
-      }
-    ],
-    "scheduleOnRN_usage": {
-      "location": "Pan gesture onUpdate",
-      "pattern": "scheduleOnRN(onChangeWrapper, xPercentage.value)",
-      "purpose": "Call onChange callback from UI thread with current percentage",
-      "frequency": "Every frame during drag",
-      "critical": "onChange may contain console.log or setState calls requiring JS thread"
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture_lifecycle": {
-      "onBegin": [
-        "x.value = withSpring(event.x + pickerWidth / 2, { overshootClamping: true })",
-        "Immediate spring animation to touch position",
-        "Provides instant feedback when user taps slider"
-      ],
-      "onUpdate": [
-        "x.value = event.x + pickerWidth / 2",
-        "Continuous tracking of finger position",
-        "scheduleOnRN(onChangeWrapper, xPercentage.value)",
-        "Real-time callback with current percentage"
-      ]
-    },
-    "position_centering": {
-      "pattern": "event.x + pickerWidth / 2",
-      "purpose": "Centers picker on touch point rather than aligning left edge",
-      "effect": "Natural feel where picker follows finger center"
-    },
-    "spring_feedback": {
-      "trigger": "onBegin tap",
-      "config": "overshootClamping: true",
-      "effect": "Quick snap to position without bounce",
-      "benefit": "Crisp interaction feel without overshoot"
-    }
-  },
-  "component_architecture": {
-    "balanceSlider_component": {
-      "responsibilities": [
-        "Gesture handling",
-        "Position state management",
-        "Percentage calculation",
-        "Layout of boxes and picker",
-        "Rendering TextLabel components"
-      ],
-      "props": {
-        "width": "Total slider width",
-        "height": "Total slider height",
-        "leftLabel": "Label for left side",
-        "rightLabel": "Label for right side",
-        "colors": "Color schemes for both sides",
-        "initialPercentage": "Starting position (default 0.5)",
-        "onChange": "Callback with { leftPercentage, rightPercentage }",
-        "leftPercentageLimitBeforeShift": "Threshold for left boundary shrinking",
-        "rightPercentageLimitBeforeShift": "Threshold for right boundary shrinking"
-      }
-    },
-    "textLabel_component": {
-      "responsibilities": [
-        "Display label text and percentage",
-        "Vertical position animation",
-        "Percentage calculation for its side"
-      ],
-      "props": {
-        "label": "Display text (e.g., 'Coffee')",
-        "color": "{ label, percentage } color scheme",
-        "type": "'left' | 'right' for positioning",
-        "xPercentage": "SharedValue<number> from parent",
-        "height": "Parent slider height for position calculations",
-        "shifted": "SharedValue<boolean> for boundary state"
-      },
-      "positioning": "Absolute positioning with [type]: 8 (left or right)"
-    },
-    "picker_design": {
-      "width": "width * 0.05 (5% of slider width)",
-      "height": "Animated via boxHeightPercentage",
-      "visual": "White vertical bar (width: pickerWidth / 4)",
-      "style": "borderRadius: 50 (fully rounded)"
-    }
-  },
-  "state_management": {
-    "initialization_flow": {
-      "steps": [
-        "1. Calculate pickerWidth (5% of total width)",
-        "2. Initialize x SharedValue to initialPercentage position",
-        "3. Create onChangeWrapper callback with useCallback",
-        "4. Setup derived values (xPercentage, uiXPercentage, etc.)",
-        "5. Configure pan gesture with callbacks",
-        "6. Render layout with absolute positioned labels"
-      ]
-    },
-    "interaction_flow": {
-      "user_taps": [
-        "1. Gesture onBegin fires",
-        "2. x animates to tap position with spring",
-        "3. xPercentage derived value recalculates",
-        "4. All useAnimatedStyle hooks update",
-        "5. Box widths and heights animate",
-        "6. Labels check if they need to shift",
-        "7. Percentages update in ReText components"
-      ],
-      "user_drags": [
-        "1. Gesture onUpdate fires continuously",
-        "2. x.value updated to finger position",
-        "3. scheduleOnRN calls onChange callback",
-        "4. Derived values recalculate on every frame",
-        "5. UI updates at 60fps",
-        "6. Boundary detection runs continuously",
-        "7. Height animations trigger if crossing thresholds"
-      ]
-    },
-    "percentage_calculation_flow": {
-      "steps": [
-        "1. Raw x position captured from gesture",
-        "2. Adjusted by subtracting pickerWidth / 2",
-        "3. Divided by total width for percentage",
-        "4. Clamped to 0-1 range",
-        "5. Used for both display and layout calculations"
-      ]
-    }
-  },
-  "performance_optimizations": {
-    "worklet_calculations": {
-      "pattern": "All calculations in worklets (clamp, percentage math)",
-      "benefit": "No bridge crossing for math operations",
-      "runs_on": "UI thread"
-    },
-    "retext_usage": {
-      "pattern": "ReText for animated percentage display",
-      "benefit": "Text updates on UI thread without re-renders",
-      "performance": "60fps text updates during drag",
-      "alternative_note": "Comment suggests Skia Text or react-native-animateable-text as alternatives"
-    },
-    "derived_value_efficiency": {
-      "pattern": "useDerivedValue chains automatically recalculate",
-      "benefit": "Only recalculate when dependencies change",
-      "optimization": "No manual memoization needed"
-    },
-    "gesture_performance": {
-      "pan_gesture": "Runs entirely on UI thread",
-      "only_bridge": "scheduleOnRN for onChange callback",
-      "result": "Smooth 60fps interaction"
-    },
-    "useCallback_optimization": {
-      "onChangeWrapper": "Wrapped in useCallback with [onChange] dependency",
-      "benefit": "Stable reference prevents gesture recreation",
-      "critical": "Gesture doesn't recreate on every render"
-    },
-    "useMemo_opportunities": {
-      "percentageLabel": "Memoized in TextLabel component",
-      "dependencies": [
-        "color.percentage",
-        "text",
-        "type"
-      ],
-      "benefit": "JSX element not recreated unnecessarily"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "example_left": {
-        "box": "#44220C (dark brown - coffee)",
-        "label": "#964D20 (medium brown)",
-        "percentage": "#E37C33 (orange-brown)"
-      },
-      "example_right": {
-        "box": "#363636 (dark gray)",
-        "label": "#999898 (medium gray)",
-        "percentage": "#F8F8F8 (light gray/white)"
-      },
-      "picker": "white (#FFFFFF)",
-      "background": "#000 (black in demo)"
-    },
-    "typography": {
-      "label_style": {
-        "fontFamily": "FiraCodeMedium",
-        "fontSize": 16,
-        "height": 20,
-        "textTransform": "uppercase",
-        "textAlign": "center (via styles)"
-      },
-      "percentage_style": {
-        "fontFamily": "FiraCodeMedium",
-        "fontSize": 16,
-        "height": 20,
-        "textTransform": "uppercase",
-        "marginHorizontal": 6,
-        "top": 2.5
-      }
-    },
-    "spacing_and_sizing": {
-      "slider": {
-        "example_width": "windowWidth * 0.9",
-        "example_height": 50,
-        "borderRadius": 5
-      },
-      "picker": {
-        "width_percentage": "5% of slider width",
-        "visual_width": "pickerWidth / 4 (so 1.25% visible)",
-        "borderRadius": 50,
-        "height": "80% of container (when not shrunk)"
-      },
-      "labels": {
-        "position": "8px from left or right edge",
-        "vertical_offset": "-height / 2 + 10 (above slider)",
-        "shift_amount": "height / 5 upward when boundary reached"
-      },
-      "margins": {
-        "percentage_horizontal": 6,
-        "label_bottom": 4
-      }
-    },
-    "layout": {
-      "main_container": {
-        "flexDirection": "row",
-        "alignItems": "flex-end",
-        "width": "prop value",
-        "height": "prop value"
-      },
-      "label_positioning": "Absolute with bottom: 0, zIndex: 10",
-      "box_alignment": "flex-end alignment creates bottom-aligned boxes"
-    }
-  },
-  "mathematical_algorithms": {
-    "percentage_calculation": {
-      "raw_position": "x (SharedValue)",
-      "adjustment": "x - pickerWidth / 2 (center-based)",
-      "normalization": "(adjusted_x) / width",
-      "clamping": "Math.min(Math.max(0, normalized), 1)",
-      "display": "Math.round(percentage * 100) + '%'"
-    },
-    "ui_percentage_adjustment": {
-      "formula": "xPercentage * (1 - PICKER_WIDTH_PERCENTAGE)",
-      "reason": "Prevents right side from shifting when slider at 100%",
-      "explanation": "Accounts for picker width in layout calculations"
-    },
-    "boundary_detection": {
-      "formula": "xPercentage < leftLimit || xPercentage > rightLimit",
-      "type": "Boolean expression",
-      "usage": "Triggers both height shrinking and label shifting"
-    },
-    "height_scale": {
-      "normal": 1,
-      "shrunk": 0.3,
-      "animation": "Spring interpolation between states",
-      "application": "height: `${boxHeightPercentage.value * 100}%`"
-    },
-    "label_translation": {
-      "base": "-height / 2 + 10",
-      "shifted": "base - height / 5",
-      "result": "Labels move up by 20% of slider height at boundaries"
-    }
-  },
-  "configuration": {
-    "required_props": {
-      "width": "Total slider width in pixels",
-      "height": "Total slider height in pixels",
-      "leftLabel": "String label for left side",
-      "rightLabel": "String label for right side",
-      "colors": "Color scheme object with left/right configs",
-      "leftPercentageLimitBeforeShift": "0-1 value for left boundary",
-      "rightPercentageLimitBeforeShift": "0-1 value for right boundary"
-    },
-    "optional_props": {
-      "initialPercentage": {
-        "default": 0.5,
-        "range": "0-1",
-        "description": "Starting balance position"
-      },
-      "onChange": {
-        "type": "({ leftPercentage, rightPercentage }) => void",
-        "optional": true,
-        "description": "Callback fired on every update"
-      }
-    },
-    "constants": {
-      "PICKER_WIDTH_PERCENTAGE": {
-        "value": 0.05,
-        "description": "Picker width as fraction of total width (5%)",
-        "impact": "Affects layout calculations and visual balance"
-      }
-    },
-    "example_configuration": {
-      "width": "windowWidth * 0.9",
-      "height": 50,
-      "leftLabel": "Coffee",
-      "rightLabel": "Milk",
-      "leftPercentageLimitBeforeShift": 0.33,
-      "rightPercentageLimitBeforeShift": 0.72,
-      "note": "Limits calculated based on label width to prevent cutoff"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Recipe ratio adjusters (ingredients)",
-      "Budget allocation sliders (spending categories)",
-      "Time distribution tools (work/life balance)",
-      "Resource allocation interfaces",
-      "Comparison tools (product A vs B)",
-      "Mixing ratios (paint colors, cocktails)",
-      "Investment portfolio balancing",
-      "Survey response sliders (agree/disagree)"
-    ],
-    "real_world_examples": [
-      "Coffee brewing apps (coffee to milk ratio)",
-      "Budgeting apps (savings vs spending)",
-      "Productivity apps (work vs break time)",
-      "Design tools (color mixing)",
-      "Audio mixing (left/right channel balance)",
-      "Game settings (difficulty balance)",
-      "Educational apps (comparing concepts)"
-    ],
-    "educational": [
-      "Teaching pan gesture handling",
-      "Demonstrating derived value patterns",
-      "Showing adaptive UI techniques",
-      "Percentage calculation visualizations",
-      "ReText UI thread rendering examples"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_definitions": [
-        "ColorScheme: { box, label, percentage }",
-        "BalanceSliderProps (comprehensive prop types)"
-      ],
-      "worklet_annotations": "Explicit 'worklet' directive on clamp function"
-    },
-    "component_structure": {
-      "main_component": "BalanceSlider - exported for reuse",
-      "sub_component": "TextLabel - separate file for modularity",
-      "wrapper": "Demo app with GestureHandlerRootView setup",
-      "separation": "Clear separation between demo and reusable component"
-    },
-    "naming_conventions": {
-      "shared_values": "camelCase (x, scale)",
-      "derived_values": "camelCase with descriptive names",
-      "animated_styles": "r prefix (rFirstContainerStyle)",
-      "constants": "SCREAMING_SNAKE_CASE (PICKER_WIDTH_PERCENTAGE)"
-    },
-    "documentation": {
-      "inline_comments": [
-        "Extensive explanation of limit calculation strategy (lines 32-42)",
-        "Notes about automatic calculation possibilities",
-        "Explanation of why hardcoding is acceptable for known labels",
-        "ReText alternatives mentioned in TextLabel (lines 42-46)"
-      ],
-      "parameter_documentation": "Props documented via comments in usage example"
-    },
-    "best_practices": [
-      "useCallback for onChange wrapper",
-      "useMemo for static JSX (percentageLabel)",
-      "Component extraction (TextLabel)",
-      "Type safety throughout",
-      "Worklet optimization"
-    ]
-  },
-  "known_limitations": {
-    "manual_limit_calculation": {
-      "issue": "leftPercentageLimitBeforeShift and rightPercentageLimitBeforeShift must be manually calculated",
-      "workaround": "Hardcode values based on visual testing",
-      "author_note": "Could measure label width automatically (measure('Coffee 100%').width / sliderWidth)",
-      "trade_off": "Complexity vs. simplicity - hardcoding easier for known labels",
-      "location": "Comments in index.tsx lines 32-42"
-    },
-    "font_dependency": {
-      "issue": "Hardcoded 'FiraCodeMedium' font",
-      "location": "TextLabel component",
-      "impact": "Requires font in project assets",
-      "improvement": "Could be a prop with default fallback"
-    },
-    "fixed_picker_size": {
-      "issue": "Picker width hardcoded as 5% of total width",
-      "limitation": "Not configurable via props",
-      "impact": "May not suit all design requirements"
-    },
-    "text_alignment_offsets": {
-      "issue": "Magic numbers for positioning (top: 2.5, marginHorizontal: 6)",
-      "reason": "Manual optical alignment for font rendering",
-      "improvement": "Could be calculated from font metrics"
-    },
-    "no_accessibility": {
-      "screen_readers": "No accessibility labels",
-      "keyboard": "No keyboard controls",
-      "announcements": "No value change announcements"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Automatic label width measurement to calculate limits",
-      "Snap points for common ratios (25%, 50%, 75%)",
-      "Haptic feedback at snap points or boundaries",
-      "Min/max constraints for each side",
-      "Custom picker shapes/designs",
-      "Vertical slider variant",
-      "Step size configuration (discrete values)",
-      "Double-tap to reset to 50/50"
-    ],
-    "customization": [
-      "Configurable spring animations",
-      "Font family as prop",
-      "Picker size configuration",
-      "Border radius customization",
-      "Custom shrink behavior (percentage, animation)",
-      "Label positioning options"
-    ],
-    "accessibility": [
-      "accessibilityRole='slider'",
-      "accessibilityValue with current percentages",
-      "accessibilityLabel describing purpose",
-      "Screen reader announcements on change",
-      "Keyboard arrow key support",
-      "Reduced motion preference support",
-      "Touch target size verification"
-    ],
-    "performance": [
-      "Consider Skia Text for percentage display",
-      "Memoize more derived calculations",
-      "Optimize for very small or large widths"
-    ],
-    "ux_enhancements": [
-      "Visual feedback at exact 50/50 balance",
-      "Percentage value tooltips on hover (web)",
-      "Undo/redo functionality",
-      "Preset ratio buttons",
-      "Color interpolation between sides in picker area",
-      "Sound effects for boundaries"
-    ]
-  },
-  "key_insights": {
-    "adaptive_shrinking_innovation": "Shrinking UI at boundaries is clever solution to label overflow problem",
-    "ui_percentage_adjustment": "Separate uiXPercentage prevents layout shift issues - critical detail",
-    "retext_for_performance": "ReText enables 60fps percentage updates without JavaScript thread",
-    "spring_on_tap": "Spring animation on onBegin provides instant feedback while maintaining smooth feel",
-    "boundary_coordination": "hasReachedBoundaries drives both height and label position changes simultaneously",
-    "clamp_worklet": "Simple clamp function as worklet keeps all math on UI thread",
-    "picker_centering": "Adding pickerWidth / 2 to event.x creates natural finger-following behavior",
-    "component_separation": "TextLabel as separate component enables independent animation logic",
-    "scheduleOnRN_bridge": "Essential pattern for calling user callbacks from UI thread context",
-    "color_scheme_flexibility": "Comprehensive color props enable full visual customization"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic pan gesture handling",
-      "Shared values and animations",
-      "Component composition",
-      "Props and prop types",
-      "useCallback basics"
-    ],
-    "for_intermediate": [
-      "useDerivedValue chains",
-      "Gesture lifecycle (onBegin, onUpdate)",
-      "scheduleOnRN for thread bridging",
-      "useAnimatedStyle patterns",
-      "Percentage-based layouts",
-      "Spring animation configurations",
-      "ReText for UI thread text rendering"
-    ],
-    "for_advanced": [
-      "Adaptive UI patterns (shrinking on boundaries)",
-      "Complex derived value dependencies",
-      "Worklet optimization strategies",
-      "Coordinated multi-component animations",
-      "Layout math for dynamic positioning",
-      "Performance optimization with worklets",
-      "Gesture context patterns"
-    ]
-  },
-  "related_patterns": {
-    "similar_interactions": [
-      "Balance/comparison sliders",
-      "Audio pan controls (left/right channel)",
-      "Color mixing sliders (RGB channels)",
-      "Budget allocation tools",
-      "Time distribution interfaces",
-      "Before/after comparison sliders"
-    ],
-    "slider_variants": [
-      "Single-sided range slider",
-      "Two-handle range slider",
-      "Circular balance dial",
-      "Vertical balance slider",
-      "Multi-segment proportion slider"
-    ],
-    "design_patterns": [
-      "Adaptive UI based on content",
-      "Label overflow handling",
-      "Gesture-driven interfaces",
-      "Real-time value feedback",
-      "Color-coded proportional visualization"
-    ]
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Picker follows finger smoothly",
-      "Box widths update correctly",
-      "Percentages add up to 100%",
-      "Labels shift at correct boundaries",
-      "Boxes shrink at configured limits",
-      "Colors apply correctly to all elements",
-      "Spring animation on tap is smooth"
-    ],
-    "interaction_tests": [
-      "Drag slider across full range",
-      "Tap anywhere on slider to jump",
-      "Rapid position changes",
-      "Drag to extreme left and right",
-      "Cross boundary thresholds multiple times",
-      "onChange callback fires correctly"
-    ],
-    "edge_cases": [
-      "Slider at exactly 0%",
-      "Slider at exactly 100%",
-      "Slider at 50/50 balance",
-      "Very small widths (< 100px)",
-      "Very large widths (> 1000px)",
-      "initialPercentage at boundaries",
-      "Rapid boundary crossings"
-    ],
-    "percentage_accuracy": [
-      "Percentages sum to 100%",
-      "Math.round doesn't cause drift",
-      "Boundary limits work as configured",
-      "xPercentage stays within 0-1"
-    ],
-    "performance_tests": [
-      "60fps during drag",
-      "No frame drops at boundaries",
-      "Memory stable across interactions",
-      "ReText renders without lag"
-    ]
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": [
-        "All features supported"
-      ],
-      "performance": "Excellent",
-      "gestures": "Native feel with spring animations"
-    },
-    "android": {
-      "features": [
-        "All features supported"
-      ],
-      "performance": "Excellent",
-      "gestures": "Smooth pan gesture handling"
-    },
-    "web": {
-      "compatibility": "Should work with react-native-web",
-      "gestures": "Pan gesture supported",
-      "considerations": [
-        "Test ReText rendering",
-        "Mouse vs touch events"
-      ]
-    }
-  },
-  "comparison_to_alternatives": {
-    "vs_standard_slider": {
-      "pros": [
-        "Dual-value visualization",
-        "Percentage feedback on both sides",
-        "Color-coded proportions",
-        "Adaptive boundary behavior"
-      ],
-      "cons": [
-        "More complex implementation",
-        "Requires manual limit calculation",
-        "More visual elements to render"
-      ]
-    },
-    "vs_two_separate_inputs": {
-      "this_approach": "Visual balance representation",
-      "alternative": "Two independent sliders",
-      "benefit": "Immediate visual understanding of proportion relationship",
-      "use_when": "Values must sum to 100% or represent proportions"
-    }
-  },
-  "author_notes": {
-    "limit_calculation": {
-      "location": "index.tsx lines 32-42",
-      "suggestion": "Could calculate automatically by measuring 'Coffee 100%' width",
-      "decision": "Hardcoding is easier when labels are known and fixed",
-      "formula": "measure('Coffee 100%').width / sliderWidth",
-      "trade_off": "Simplicity vs. flexibility"
-    },
-    "retext_alternatives": {
-      "location": "text-label/index.tsx lines 42-46",
-      "alternatives": [
-        "Skia Text for GPU rendering",
-        "react-native-animateable-text for animated text"
-      ],
-      "current_choice": "ReText - simplest solution"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~300 lines total (main + components)",
-    "dependencies": "All dependencies common in React Native projects with Reanimated",
-    "runtime_memory": "Minimal - few SharedValues, simple component tree",
-    "estimated_impact": "< 30KB minified"
-  },
-  "tags": [
-    "slider",
-    "balance",
-    "proportion",
-    "comparison",
-    "pan-gesture",
-    "reanimated",
-    "gesture-handler",
-    "adaptive-ui",
-    "percentage",
-    "dual-sided",
-    "worklets",
-    "spring-animation",
-    "retext",
-    "ratio",
-    "interactive"
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useMemo",
+    "useSharedValue",
+    "useWindowDimensions"
   ],
-  "content_hash": "918dcc193c97d23cbfcbea3ece73f0f591b3e9c43bb1872a31bf32f295b60262",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.283Z",
-  "last_validated": "2025-10-12T09:19:28.283Z"
+  "functions": [
+    "clamp",
+    "onChange",
+    "scheduleOnRN",
+    "withSpring"
+  ],
+  "components": [
+    "Animated.View",
+    "App",
+    "BalanceSliderComponent",
+    "GestureDetector",
+    "GestureHandlerRootView",
+    "ReText",
+    "Text",
+    "TextLabel",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "spring-animation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "spring-physics",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 3,
+    "total_packages": 6,
+    "total_hooks": 6,
+    "total_functions": 4,
+    "total_components": 9,
+    "total_patterns": 5,
+    "total_techniques": 2
+  }
 }

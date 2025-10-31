@@ -1,902 +1,245 @@
 {
-  "animation_name": "Swipe Cards",
   "animation_slug": "swipe-cards",
-  "description": "A Tinder-style swipeable card stack with gesture-based interactions, programmatic swipe controls, and smooth animations. Features pan gesture handling with rotation, scale transformations for card depth, imperative controls via refs, and reset functionality with staggered animations. Cards disappear off-screen when swiped left or right with callbacks for interaction tracking.",
-  "main_features": [
-    "Tinder-style card stack with swipe interactions",
-    "Pan gesture with horizontal and vertical translation",
-    "Rotation animation based on horizontal swipe direction",
-    "Progressive scale transformation for card depth (stacked effect)",
-    "Vertical translation for 3D stack visualization",
-    "Imperative swipe controls via forwardRef and useImperativeHandle",
-    "Left/right swipe callbacks for tracking user preferences",
-    "External button controls for programmatic swiping",
-    "Reset functionality with staggered card animations",
-    "Active index tracking across all cards",
-    "Smooth spring animations for swipe completion",
-    "Like/dislike counter tracking with useRef",
-    "FadeIn/FadeOut transitions on reset"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.611Z",
   "file_structure": {
-    "index.tsx": "Main component with card stack, control buttons, and reset logic",
-    "components/Card/index.tsx": "SwipeableCard component with gesture handling and imperative methods",
-    "constants.ts": "Image assets array (9 JPG images)",
-    "hooks/use-swipe-controls.ts": "Custom hook managing card refs, swipe actions, and reset logic",
-    "assets/": "9 image files (01.jpg through 09.jpg) for card content"
+    "entry": "index.tsx",
+    "components": [
+      "constants.ts"
+    ],
+    "hooks": [
+      "hooks/use-swipe-controls.ts"
+    ],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "worklets": "react-native-worklets (scheduleOnRN)",
-    "images": "expo-image",
-    "pressable": "pressto (PressableScale)",
-    "icons": "@expo/vector-icons (AntDesign)"
+  "packages": [
+    "@expo/vector-icons",
+    "expo-image",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-image": "~3.0.10",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useAnimatedStyle",
-        "useDerivedValue"
-      ],
-      "functions": [
-        "withSpring",
-        "withTiming",
-        "interpolate",
-        "cancelAnimation",
-        "Extrapolation.CLAMP"
-      ],
-      "critical_feature": "useDerivedValue for rotation interpolation and useSharedValue for gesture state"
+  "packages_detail": {
+    "../../constants": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "methods": [
-        "onBegin",
-        "onUpdate",
-        "onFinalize"
-      ],
-      "usage": "Pan gesture for card swiping with translation tracking"
+    "../components/Card": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
-        "scheduleOnRN"
+    "../constants": {
+      "imports": [
+        "IMAGES"
       ],
-      "purpose": "Bridge worklet callbacks to JS thread for swipe callbacks",
-      "critical_for": "Calling onSwipeRight/onSwipeLeft from UI thread"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "expo-image": {
-      "version": "~3.0.8",
-      "component": "Image",
-      "props_used": [
-        "source",
-        "style",
-        "contentFit",
-        "cachePolicy"
+    "./components/Card": {
+      "imports": [
+        "SwipeableCard"
       ],
-      "cache_policy": "memory-disk for optimized image loading",
-      "usage": "Display card images with efficient caching"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "pressto": {
-      "version": "0.3.5-beta.1",
-      "component": "PressableScale",
-      "usage": "Interactive buttons with scale feedback",
-      "props_used": [
-        "style",
-        "onPress"
-      ]
+    "./constants": {
+      "imports": [
+        "IMAGES"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/use-swipe-controls": {
+      "imports": [
+        "useSwipeControls"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "icon_set": "AntDesign",
-      "icons_used": [
-        "close",
-        "reload",
-        "heart"
+      "imports": [
+        "AntDesign"
       ],
-      "usage": "Control button icons for swipe actions"
-    }
-  },
-  "animation_techniques": {
-    "card_rotation": {
-      "pattern": "Interpolate horizontal translation to rotation",
-      "input_range": "[-width/3, 0, width/3]",
-      "output_range": "[-Math.PI/20, 0, Math.PI/20]",
-      "extrapolation": "CLAMP",
-      "effect": "Card rotates clockwise when swiped right, counter-clockwise when swiped left",
-      "max_rotation": "~9 degrees (Math.PI/20 radians)",
-      "derived_value": "useDerivedValue for reactive rotation calculation"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "card_stack_depth": {
-      "scale_pattern": "1 - 0.07 * (index - activeIndex)",
-      "translation_pattern": "(index - activeIndex) * 23",
-      "opacity_pattern": "index - activeIndex < 5 ? 1 : 0",
-      "timing": "withTiming for smooth transitions",
-      "effect": "Cards behind active card appear smaller and lower",
-      "visible_cards": "Maximum 5 cards visible at once",
-      "progressive_scale": "Each card 7% smaller than the one in front"
-    },
-    "swipe_translation": {
-      "horizontal": "translateX from pan gesture",
-      "vertical": "translateY from pan gesture",
-      "completion": "withSpring(maxCardTranslation) for off-screen animation",
-      "max_translation": "width * 1.5 (ensures card fully exits viewport)",
-      "reset": "withSpring(0) to return to original position"
-    },
-    "gesture_threshold": {
-      "calculation": "interpolate(translateX, inputRange, [currentIndex+1, currentIndex, currentIndex+1])",
-      "logic": "If nextActiveIndex === activeIndex + 1, trigger swipe",
-      "threshold": "width/3 (approximately 33% of screen width)",
-      "effect": "Card must be dragged 1/3 of screen to trigger swipe"
-    },
-    "spring_animation": {
-      "swipe_completion": "withSpring(maxCardTranslation) for natural exit",
-      "cancel_swipe": "withSpring(0) for elastic return",
-      "reset": "withSpring(0) on each card with cancelAnimation first",
-      "config": "Default spring configuration (no custom params)",
-      "feel": "Natural, bouncy motion"
-    },
-    "staggered_reset": {
-      "pattern": "setTimeout with index-based delay",
-      "delay_calculation": "index * 100ms",
-      "effect": "Cards reset one by one in sequence",
-      "cleanup": "Timeouts stored and cleared on unmount",
-      "animation": "Each card springs back to original position"
-    },
-    "z_index_layering": {
-      "pattern": "zIndex: -index",
-      "effect": "First card (index 0) on top, subsequent cards behind",
-      "absolute_positioning": "All cards position: absolute for stacking"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "activeIndex",
-        "type": "SharedValue<number>",
-        "scope": "Global (from useSwipeControls hook)",
-        "initial": 0,
-        "updates": "Incremented on swipe left/right",
-        "purpose": "Track which card is currently active/visible"
-      },
-      {
-        "name": "translateX",
-        "type": "SharedValue<number>",
-        "scope": "Local to each SwipeableCard",
-        "initial": 0,
-        "updates": "Pan gesture onUpdate",
-        "purpose": "Horizontal position during swipe"
-      },
-      {
-        "name": "translateY",
-        "type": "SharedValue<number>",
-        "scope": "Local to each SwipeableCard",
-        "initial": 0,
-        "updates": "Pan gesture onUpdate",
-        "purpose": "Vertical position during swipe"
-      },
-      {
-        "name": "currentActiveIndex",
-        "type": "SharedValue<number>",
-        "scope": "Local to each SwipeableCard",
-        "purpose": "Store activeIndex at gesture start for comparison"
-      },
-      {
-        "name": "nextActiveIndex",
-        "type": "SharedValue<number>",
-        "scope": "Local to each SwipeableCard",
-        "purpose": "Calculate if swipe threshold exceeded"
-      }
-    ],
-    "useDerivedValue": {
-      "usage_count": 1,
-      "instance": {
-        "name": "rotate",
-        "calculation": "interpolate(translateX, inputRange, [-Math.PI/20, 0, Math.PI/20], CLAMP)",
-        "dependencies": [
-          "translateX.value",
-          "inputRange"
-        ],
-        "purpose": "Convert horizontal translation to rotation angle",
-        "worklet": true
-      }
-    },
-    "useAnimatedStyle": {
-      "usage_count": 1,
-      "location": "SwipeableCard rCardStyle",
-      "animated_properties": [
-        "opacity: withTiming(index - activeIndex < 5 ? 1 : 0)",
-        "translateY: withTiming((index - activeIndex) * 23)",
-        "scale: withTiming(1 - 0.07 * (index - activeIndex))",
-        "rotate: rotate.value (from useDerivedValue)",
-        "translateX: translateX.value",
-        "translateY: translateY.value"
+    "expo-image": {
+      "imports": [
+        "Image"
       ],
-      "purpose": "Animate card position, rotation, scale, and opacity"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "useImperativeHandle": {
-      "location": "SwipeableCard",
-      "exposed_methods": [
-        "swipeRight",
-        "swipeLeft",
-        "reset"
+    "pressto": {
+      "imports": [
+        "PressableScale"
       ],
-      "purpose": "Allow parent to trigger swipe/reset programmatically",
-      "ref_type": "SwipeableCardRefType"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "useCallback": {
-      "usage_count": 6,
-      "callbacks": [
-        {
-          "name": "swipeRight",
-          "scope": "SwipeableCard",
-          "directive": "none (uses worklet context)",
-          "purpose": "Animate card to right and increment activeIndex"
-        },
-        {
-          "name": "swipeLeft",
-          "scope": "SwipeableCard",
-          "directive": "none (uses worklet context)",
-          "purpose": "Animate card to left and increment activeIndex"
-        },
-        {
-          "name": "reset",
-          "scope": "SwipeableCard",
-          "purpose": "Cancel animations and spring card back to center"
-        },
-        {
-          "name": "swipeRight",
-          "scope": "useSwipeControls hook",
-          "purpose": "Call current card's swipeRight method"
-        },
-        {
-          "name": "swipeLeft",
-          "scope": "useSwipeControls hook",
-          "purpose": "Call current card's swipeLeft method"
-        },
-        {
-          "name": "reset",
-          "scope": "useSwipeControls hook",
-          "purpose": "Staggered reset of all card refs"
-        },
-        {
-          "name": "onReset",
-          "scope": "Main SwipeCards component",
-          "purpose": "Reset activeIndex and counters, trigger card reset"
-        }
+    "react": {
+      "imports": [
+        "createRef",
+        "forwardRef",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef"
+      ],
+      "hooks": [
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Extrapolation",
+        "FadeIn",
+        "FadeOut",
+        "cancelAnimation",
+        "interpolate",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "cancelAnimation",
+        "interpolate",
+        "withSpring",
+        "withTiming"
+      ],
+      "components": [
+        "Animated.View"
       ]
     },
-    "cancelAnimation": {
-      "usage": "Before reset to stop ongoing animations",
-      "pattern": "cancelAnimation(translateX) then withSpring(0)",
-      "purpose": "Prevent animation conflicts during reset"
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture_lifecycle": {
-      "onBegin": {
-        "actions": [
-          "Store Math.floor(activeIndex.value) in currentActiveIndex",
-          "Capture initial state for comparison"
-        ],
-        "purpose": "Initialize gesture state"
-      },
-      "onUpdate": {
-        "actions": [
-          "Check if currentActiveIndex === index (only active card moves)",
-          "Update translateX with event.translationX",
-          "Update translateY with event.translationY",
-          "Calculate nextActiveIndex via interpolation",
-          "Determine if swipe threshold exceeded"
-        ],
-        "guard": "Early return if card is not active",
-        "purpose": "Track finger position and calculate swipe threshold"
-      },
-      "onFinalize": {
-        "actions": [
-          "Check if currentActiveIndex === index",
-          "If nextActiveIndex === activeIndex + 1:",
-          "  - Determine sign of translationX",
-          "  - Call swipeRight or swipeLeft via scheduleOnRN",
-          "Else: spring back to original position"
-        ],
-        "guard": "Early return if card is not active",
-        "purpose": "Complete or cancel swipe based on threshold"
-      }
-    },
-    "swipe_threshold_logic": {
-      "calculation": "interpolate(translateX, [-width/3, 0, width/3], [currentIndex+1, currentIndex, currentIndex+1])",
-      "left_threshold": "-width/3",
-      "right_threshold": "width/3",
-      "effect": "Swipe completes if dragged beyond 33% of screen width",
-      "direction": "Math.sign(event.translationX) determines left (-1) or right (1)"
-    },
-    "inactive_card_blocking": {
-      "pattern": "if (currentActiveIndex !== index) return",
-      "location": "onUpdate and onFinalize",
-      "purpose": "Only the top card responds to gestures",
-      "effect": "Cards behind active card don't interfere"
-    },
-    "scheduleOnRN_usage": {
-      "location": "SwipeableCard onFinalize",
-      "pattern": "scheduleOnRN(swipeRight) or scheduleOnRN(swipeLeft)",
-      "purpose": "Call imperative methods from UI thread",
-      "critical": "swipeRight/swipeLeft call callbacks that may update JS state"
-    }
-  },
-  "imperative_controls": {
-    "ref_management": {
-      "pattern": "createRef<SwipeableCardRefType>() for each card",
-      "storage": "Array of refs in useSwipeControls hook",
-      "initialization": "useMemo to create refs once on mount",
-      "count": "One ref per image in IMAGES array"
-    },
-    "exposed_methods": {
-      "swipeRight": "Animate card right and call onSwipeRight callback",
-      "swipeLeft": "Animate card left and call onSwipeLeft callback",
-      "reset": "Cancel animations and return card to center"
-    },
-    "button_controls": {
-      "close_button": "Calls swipeLeft on current card",
-      "heart_button": "Calls swipeRight on current card",
-      "reload_button": "Resets all cards with onReset",
-      "validation": "Check if ref exists before calling methods"
-    },
-    "staggered_operations": {
-      "pattern": "forEach with setTimeout(callback, index * 100)",
-      "use_case": "Reset all cards with visual delay",
-      "cleanup": "Store timeouts in ref, clear on unmount",
-      "effect": "Cards animate back one by one"
-    }
-  },
-  "state_management": {
-    "active_index_flow": {
-      "steps": [
-        "1. User swipes card or presses button",
-        "2. swipeLeft or swipeRight called",
-        "3. translateX animated to ±maxCardTranslation",
-        "4. activeIndex.value incremented",
-        "5. All cards recalculate position/scale/opacity",
-        "6. Next card becomes visible and interactive",
-        "7. Callback (onSwipeLeft/onSwipeRight) fired"
-      ]
-    },
-    "counter_tracking": {
-      "liked": "useRef<number>(0) - tracks right swipes",
-      "disliked": "useRef<number>(0) - tracks left swipes",
-      "updates": "Incremented in card callbacks",
-      "reset": "Set to 0 in onReset",
-      "usage": "Could be used for analytics or displaying totals"
-    },
-    "reset_flow": {
-      "steps": [
-        "1. User presses reload button",
-        "2. onReset called",
-        "3. activeIndex set to 0",
-        "4. liked/disliked counters reset",
-        "5. reset() hook method called",
-        "6. Each card's reset method called with 100ms delay",
-        "7. Cards animate back to original positions",
-        "8. First card becomes active again"
-      ]
-    }
-  },
-  "component_patterns": {
-    "forwardRef_usage": {
-      "pattern": "forwardRef<{}, SwipeableCardProps>",
-      "ref_type": "Empty object (not used externally)",
-      "note": "Type could be improved to SwipeableCardRefType",
-      "exposed_via": "useImperativeHandle",
-      "benefit": "Parent can control child imperatively"
-    },
-    "custom_hook_pattern": {
-      "hook": "useSwipeControls",
-      "responsibility": "Manage refs, expose swipe/reset methods",
-      "returns": "{ activeIndex, refs, swipeRight, swipeLeft, reset }",
-      "encapsulation": "Hides ref management complexity",
-      "reusability": "Could be reused in other swipe card implementations"
-    },
-    "render_strategy": {
-      "pattern": "new Array(IMAGES.length).fill(0).map",
-      "order": "Rendered in order (0, 1, 2, ...)",
-      "z_index": "Controls visual stacking (negative index)",
-      "absolute_positioning": "All cards overlay each other",
-      "effect": "First card appears on top"
-    },
-    "callback_props": {
-      "onSwipeRight": "Called when card swiped right",
-      "onSwipeLeft": "Called when card swiped left",
-      "optional": "Both callbacks optional (? operator)",
-      "usage": "Track user preferences, update counters"
-    },
-    "useMemo_optimization": {
-      "inputRange": "Memoized based on window width",
-      "benefit": "Prevent recalculation on every render",
-      "dependencies": "[width]"
-    },
-    "useWindowDimensions": {
-      "usage": "const { width } = useWindowDimensions()",
-      "purpose": "Responsive calculations for rotation and swipe threshold",
-      "derived_values": "maxCardTranslation = width * 1.5, inputRange = [-width/3, 0, width/3]"
-    }
-  },
-  "layout_and_positioning": {
-    "card_dimensions": {
-      "height": "75% of container",
-      "width": "90% of container",
-      "position": "absolute",
-      "z_index": "-index (first card on top)",
-      "border_radius": "25 with continuous curve",
-      "overflow": "hidden (clips image)"
-    },
-    "container_layout": {
-      "main_container": "flex: 1, backgroundColor: #242831",
-      "cards_container": "flex: 7, marginTop: 20, centered",
-      "buttons_container": "flex: 2, flexDirection: row, centered"
-    },
-    "button_styling": {
-      "close_button": {
-        "height": 80,
-        "aspectRatio": 1,
-        "borderRadius": 40,
-        "backgroundColor": "#3A3D45",
-        "icon": "close (32px, white)"
-      },
-      "reload_button": {
-        "height": 60,
-        "aspectRatio": 1,
-        "marginHorizontal": 10,
-        "icon": "reload (24px, white)"
-      },
-      "heart_button": {
-        "height": 80,
-        "aspectRatio": 1,
-        "borderRadius": 40,
-        "backgroundColor": "#3A3D45",
-        "icon": "heart (32px, white)"
-      },
-      "shadow": {
-        "color": "black",
-        "offset": "{ width: 0, height: 4 }",
-        "opacity": 0.1,
-        "elevation": 4
-      }
-    },
-    "responsive_sizing": {
-      "card_width": "90% (adapts to screen)",
-      "maxCardTranslation": "width * 1.5 (responsive exit distance)",
-      "inputRange": "Based on window width",
-      "benefit": "Works on all device sizes"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "#242831 (dark blue-gray)",
-      "button_bg": "#3A3D45 (lighter gray)",
-      "button_icon": "white",
-      "card_content": "Image fills entire card"
-    },
-    "image_handling": {
-      "count": 9,
-      "format": "JPG",
-      "sizes": "462KB - 1.95MB (large, high-quality)",
-      "loading": "expo-image with memory-disk caching",
-      "fit": "cover (fills card, maintains aspect ratio)",
-      "quality": "High-resolution for smooth display"
-    },
-    "animation_feel": {
-      "swipe": "Spring animation (natural, bouncy)",
-      "stack_transitions": "Timing animation (smooth, linear)",
-      "rotation": "Derived from translation (feels connected)",
-      "overall": "Playful, engaging, responsive"
-    },
-    "depth_visualization": {
-      "scale_reduction": "7% per card (progressive shrinking)",
-      "vertical_offset": "23px per card (staggered down)",
-      "opacity": "0 for cards beyond 5th position",
-      "effect": "3D stack appearance without 3D transforms"
-    }
-  },
-  "performance_optimizations": {
-    "worklet_functions": {
-      "swipeRight": "Runs on UI thread",
-      "swipeLeft": "Runs on UI thread",
-      "gesture_callbacks": "All run on UI thread",
-      "benefit": "No bridge crossing during gesture"
-    },
-    "useMemo_optimization": {
-      "inputRange": "Calculated once per width change",
-      "refs_array": "Created once on mount",
-      "benefit": "Reduce recalculations"
-    },
-    "useCallback_stability": {
-      "swipe_methods": "Stable references with proper dependencies",
-      "reset_methods": "Stable references prevent re-renders",
-      "benefit": "Prevent unnecessary child re-renders"
-    },
-    "image_caching": {
-      "policy": "memory-disk",
-      "benefit": "Fast loading on subsequent views",
-      "preload": "All images loaded upfront with require()"
-    },
-    "conditional_rendering": {
-      "opacity_optimization": "Cards beyond 5 positions have opacity 0",
-      "benefit": "GPU can skip rendering invisible cards",
-      "z_index": "Negative index ensures proper layering"
-    },
-    "cancelAnimation_usage": {
-      "pattern": "Cancel before starting new animation",
-      "benefit": "Prevent animation conflicts, improve performance",
-      "location": "Reset method"
-    },
-    "early_return_pattern": {
-      "location": "onUpdate and onFinalize",
-      "pattern": "if (currentActiveIndex !== index) return",
-      "benefit": "Inactive cards don't process gesture events"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Dating apps (Tinder, Bumble)",
-      "Product browsing and shopping",
-      "Content discovery (articles, videos)",
-      "Recipe swiping",
-      "Job application browsing",
-      "Property/real estate browsing"
-    ],
-    "secondary": [
-      "Image galleries with like/dislike",
-      "Flashcard apps for studying",
-      "Event/venue discovery",
-      "Restaurant/food discovery",
-      "Fashion/style inspiration browsing",
-      "Travel destination browsing"
-    ],
-    "educational": [
-      "Teaching gesture handling patterns",
-      "Demonstrating imperative controls with refs",
-      "Showing stacked card animations",
-      "Pan gesture with threshold logic",
-      "Spring animation examples",
-      "useImperativeHandle pattern"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_definitions": [
-        "SwipeableCardProps",
-        "SwipeableCardRefType",
-        "typeof IMAGES"
+    "react-native-worklets": {
+      "imports": [
+        "scheduleOnRN"
       ],
-      "type_imports": "Proper 'type' keyword usage",
-      "prop_types": "All props typed, optional callbacks"
-    },
-    "component_architecture": {
-      "main_component": "SwipeCards - orchestrates stack and controls",
-      "swipeable_card": "Self-contained gesture and animation logic",
-      "custom_hook": "useSwipeControls - encapsulates ref management",
-      "separation": "Clear separation of concerns"
-    },
-    "constants": {
-      "IMAGES": "Centralized image asset array",
-      "benefit": "Easy to add/remove images",
-      "location": "Separate constants.ts file"
-    },
-    "ref_management": {
-      "pattern": "Array of createRef in custom hook",
-      "cleanup": "Timeout cleanup in useEffect",
-      "validation": "Check ref exists before calling methods",
-      "type_safety": "Typed refs with SwipeableCardRefType"
-    },
-    "callback_safety": {
-      "pattern": "callback?.() optional chaining",
-      "benefit": "Safe even if callbacks not provided",
-      "usage": "onSwipeRight and onSwipeLeft"
-    },
-    "hook_dependencies": {
-      "useCallback": "Proper dependency arrays",
-      "useMemo": "Correct dependencies for refs and inputRange",
-      "useEffect": "Cleanup function for timeouts"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "known_limitations": {
-    "fixed_card_count": {
-      "issue": "All cards rendered upfront, no virtualization",
-      "impact": "Not suitable for hundreds of cards",
-      "reasonable_limit": "~20-30 cards maximum",
-      "current": "9 cards (works well)"
-    },
-    "no_undo": {
-      "issue": "Cannot undo individual swipes",
-      "workaround": "Full reset only",
-      "improvement": "Could add swipe history and undo stack"
-    },
-    "vertical_translation_ignored": {
-      "issue": "translateY tracked but not used for decisions",
-      "effect": "Only horizontal swipe counts",
-      "potential": "Could add vertical swipe rejection or different action"
-    },
-    "image_size": {
-      "issue": "Images are 462KB - 1.95MB each",
-      "total": "~9MB total for all images",
-      "impact": "Large bundle size, slower initial load",
-      "improvement": "Could optimize/compress images or use CDN"
-    },
-    "no_accessibility": {
-      "issue": "No accessibility labels or alternative controls",
-      "impact": "Not usable with screen readers",
-      "keyboard": "No keyboard navigation"
-    },
-    "button_validation": {
-      "issue": "Button checks if ref exists but relies on activeIndex.value",
-      "edge_case": "Could fail if activeIndex out of sync",
-      "improvement": "More robust validation"
-    },
-    "ref_type_mismatch": {
-      "issue": "forwardRef generic type is {} instead of SwipeableCardRefType",
-      "impact": "TypeScript doesn't enforce ref type",
-      "improvement": "Use proper type in forwardRef"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Undo last swipe",
-      "Swipe history tracking",
-      "Vertical swipe for different action (e.g., super like)",
-      "Double-tap to toggle like",
-      "Pinch to zoom on image",
-      "Card preview (peek next card)",
-      "End-of-stack notification",
-      "Custom swipe animations per card"
-    ],
-    "interaction": [
-      "Haptic feedback on swipe",
-      "Sound effects",
-      "Like/dislike visual overlays during swipe",
-      "Swipe velocity affects animation",
-      "Swipe distance affects rotation intensity",
-      "Customize swipe threshold",
-      "Different animations for left vs right"
-    ],
-    "visual": [
-      "Card details overlay (text, buttons)",
-      "Gradient overlays on cards",
-      "Like/Nope stamps during swipe",
-      "Progress indicator (X of Y cards)",
-      "Like/dislike counter display",
-      "Custom card shapes/masks",
-      "Parallax effect on card images"
-    ],
-    "performance": [
-      "Lazy load images (only load visible + next 2-3)",
-      "Optimize image sizes",
-      "Virtual card rendering for large stacks",
-      "Preload next card image while current is active",
-      "Compressed image formats (WebP)"
-    ],
-    "accessibility": [
-      "Keyboard controls (arrow keys, space/enter)",
-      "Screen reader support",
-      "AccessibilityLabel on cards and buttons",
-      "Alternative UI for assistive technologies",
-      "Reduced motion support",
-      "High contrast mode",
-      "Focus management"
-    ],
-    "customization": [
-      "Custom spring/timing configurations",
-      "Configurable card dimensions",
-      "Custom swipe threshold",
-      "Card rotation intensity prop",
-      "Stack depth customization (how many visible)",
-      "Custom button styling",
-      "Theme support"
-    ],
-    "data_management": [
-      "Dynamic data loading (API/database)",
-      "Infinite scroll (load more cards)",
-      "Sync swipes to backend",
-      "Offline queue for swipes",
-      "Match notifications"
-    ]
-  },
-  "key_insights": {
-    "rotation_interpolation": "Interpolating translation to rotation creates natural swipe feel",
-    "stack_depth_illusion": "Scale + vertical translation creates 3D depth without 3D transforms",
-    "imperative_controls": "useImperativeHandle enables button controls for gesture-based UI",
-    "threshold_logic": "Interpolation-based threshold more elegant than if/else",
-    "inactive_card_blocking": "Early return pattern prevents gesture conflicts",
-    "staggered_animations": "setTimeout with index-based delay creates pleasing reset effect",
-    "spring_for_swipes": "Spring animations feel more natural than timing for card exits",
-    "ref_array_management": "createRef array with useMemo provides stable refs",
-    "scheduleOnRN_bridging": "Critical for calling callbacks from UI thread",
-    "active_index_coordination": "Single shared activeIndex coordinates all cards",
-    "cancelAnimation_pattern": "Essential before reset to prevent animation conflicts",
-    "opacity_optimization": "Setting opacity 0 for far cards improves rendering performance"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic pan gesture handling",
-      "useSharedValue and useAnimatedStyle",
-      "Simple spring animations",
-      "Absolute positioning for stacking",
-      "useCallback and useMemo basics"
-    ],
-    "for_intermediate": [
-      "Interpolation techniques",
-      "useDerivedValue for computed animations",
-      "useImperativeHandle for imperative controls",
-      "Ref management patterns",
-      "Gesture threshold logic",
-      "Stacked card effect with scale/translation",
-      "scheduleOnRN for thread bridging",
-      "Rotation animations",
-      "Complex gesture handling (onBegin/onUpdate/onFinalize)"
-    ],
-    "for_advanced": [
-      "Custom hook design patterns",
-      "Coordinating multiple animated components",
-      "Animation cancellation strategies",
-      "Performance optimization with early returns",
-      "Staggered animations with cleanup",
-      "Worklet optimization",
-      "Ref type system patterns",
-      "Complex state synchronization across components"
-    ]
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Cards stack properly with correct z-index",
-      "Rotation smooth during swipe",
-      "Scale/translation create depth effect",
-      "Cards animate off-screen smoothly",
-      "Reset animation staggers correctly",
-      "Buttons render with correct icons"
-    ],
-    "interaction_tests": [
-      "Pan gesture swipes card",
-      "Swipe right increments activeIndex",
-      "Swipe left increments activeIndex",
-      "Cancel swipe (release before threshold) returns card",
-      "Close button swipes left",
-      "Heart button swipes right",
-      "Reload button resets all cards",
-      "Only top card responds to gestures"
-    ],
-    "edge_cases": [
-      "Swipe last card (index out of bounds)",
-      "Rapid swipes without waiting for animation",
-      "Reset during active swipe",
-      "Button press during gesture",
-      "Multiple simultaneous gestures",
-      "Gesture on inactive card (should no-op)",
-      "Swipe all cards then reset"
-    ],
-    "performance_tests": [
-      "60fps during swipe gesture",
-      "Smooth animation during spring",
-      "No frame drops on reset",
-      "Image loading doesn't block UI",
-      "Memory stable across many swipes"
-    ],
-    "platform_tests": [
-      "Test on iOS and Android",
-      "Verify spring feel consistent",
-      "Check rotation calculation accuracy",
-      "Ensure buttons work on all devices",
-      "Test various screen sizes"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No support",
-      "keyboard_navigation": "No support",
-      "reduced_motion": "Not respected",
-      "labels": "No accessibility labels"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to cards (e.g., 'Photo 1 of 9')",
-      "Add accessibilityRole='button' to control buttons",
-      "Add accessibilityLabel to buttons ('Like', 'Dislike', 'Reset')",
-      "Add accessibilityHint explaining swipe action",
-      "Keyboard support (arrow keys for next/prev, space/enter for like/dislike)",
-      "Screen reader announcements on card change",
-      "Respect prefers-reduced-motion (instant transitions)",
-      "Alternative UI for swipe actions (accessible buttons on card)",
-      "Ensure buttons meet 44x44pt touch target minimum",
-      "High contrast mode support"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_native_components": {
-      "pros": [
-        "Full control over animations",
-        "Custom gestures and thresholds",
-        "Imperative controls",
-        "Unique visual design"
-      ],
-      "cons": [
-        "More complex implementation",
-        "No built-in accessibility",
-        "Manual ref management"
-      ]
-    },
-    "vs_libraries": {
-      "react_native_deck_swiper": {
-        "similarity": "Both provide Tinder-style swipe",
-        "this_approach": "Custom implementation with Reanimated 4",
-        "library_approach": "Pre-built component with more features",
-        "benefit": "Full control and learning opportunity",
-        "tradeoff": "More code vs. batteries-included"
-      }
-    }
-  },
-  "related_patterns": {
-    "similar_animations": [
-      "Tinder swipe cards",
-      "Instagram stories swipe",
-      "Apple TV app card browsing",
-      "App onboarding carousels",
-      "Product gallery swipes"
-    ],
-    "gesture_patterns": [
-      "Swipe to delete",
-      "Pull to refresh",
-      "Dismissible modals",
-      "Drag to reorder",
-      "Swipe navigation"
-    ],
-    "inspiration": [
-      "Tinder (original swipe card pattern)",
-      "Bumble (dating app swipes)",
-      "JSwipe (vertical and horizontal swipes)",
-      "Rewind (photo browsing)"
-    ]
-  },
-  "real_world_inspiration": {
-    "tinder": "Original swipe card interaction pattern",
-    "bumble": "Swipe-based dating with like/pass actions",
-    "jswipe": "Multiple swipe directions for different actions",
-    "zillow": "Real estate browsing with swipes",
-    "pinterest": "Image discovery with swipe interactions"
-  },
-  "bundle_size_impact": {
-    "code_size": "~350 lines total (components + hook)",
-    "images": "~9MB (462KB - 1.95MB per image)",
-    "dependencies": "Reanimated, gesture-handler (likely already in project)",
-    "runtime_memory": "Moderate - 9 images loaded in memory",
-    "estimated_impact": "~9MB (mostly images, could be optimized)"
-  },
-  "tags": [
-    "swipe-cards",
-    "tinder-style",
-    "pan-gesture",
-    "card-stack",
-    "dating-app",
-    "rotation-animation",
-    "spring-animation",
-    "imperative-controls",
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useEffect",
     "useImperativeHandle",
-    "forwardRef",
-    "reanimated",
-    "gesture-handler",
-    "worklets",
-    "card-depth",
-    "stack-effect",
-    "swipe-threshold",
-    "staggered-animation",
-    "like-dislike"
+    "useMemo",
+    "useRef",
+    "useSharedValue",
+    "useSwipeControls",
+    "useWindowDimensions"
   ],
-  "content_hash": "9d91e462bf6218d00270c880dc9d09c0f6191f70c70fed7d95e64cd388379df0",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.469Z",
-  "last_validated": "2025-10-12T09:19:28.469Z"
+  "functions": [
+    "cancelAnimation",
+    "clearTimeout",
+    "createRef",
+    "forwardRef",
+    "interpolate",
+    "onSwipeLeft",
+    "onSwipeRight",
+    "require",
+    "reset",
+    "scheduleOnRN",
+    "setTimeout",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "AntDesign",
+    "GestureDetector",
+    "Image",
+    "PressableScale",
+    "SwipeableCard",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "timing-animation",
+    "spring-animation",
+    "value-interpolation",
+    "reactive-styling-pattern",
+    "imperative-animation-api"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "spring-physics",
+    "value-mapping",
+    "ref-based-control",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 4,
+    "total_packages": 8,
+    "total_hooks": 10,
+    "total_functions": 13,
+    "total_components": 7,
+    "total_patterns": 8,
+    "total_techniques": 5
+  }
 }

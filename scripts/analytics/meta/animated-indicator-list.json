@@ -1,763 +1,236 @@
 {
-  "animation_name": "Animated Indicator List",
   "animation_slug": "animated-indicator-list",
-  "description": "A scrollable section list with an animated horizontal header indicator that smoothly transitions between sections. Features synchronized scroll tracking, dynamic header positioning, and a sliding indicator that follows the active section with smooth interpolations.",
-  "main_features": [
-    "Scrollable FlatList with headers and items",
-    "Horizontal header navigation strip",
-    "Animated indicator that tracks active section",
-    "Smooth interpolation of indicator width and position",
-    "Header auto-scrolling to center active section",
-    "Touch-to-scroll header navigation",
-    "Dynamic header layout measurement on UI thread",
-    "Vertical position tracking with Y-axis offsets",
-    "Synchronized scrolling between list and header",
-    "Real-time layout measurement with Reanimated"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.621Z",
   "file_structure": {
-    "index.tsx": "Main AnimatedIndicatorList component with FlatList and header",
-    "components/SectionListItem.tsx": "Renders individual list items and headers",
-    "components/MeasureableAnimatedView.tsx": "Wrapper for Animated.View with Reanimated measure capability",
-    "constants.ts": "Data array with headers and items (movie data)",
-    "typings.ts": "Type definitions (empty file)",
-    "hooks/useConst.ts": "Custom hook for constant values that never change",
-    "hooks/useHeaderLayout.ts": "Manages header layout measurement and positioning",
-    "hooks/useHeaderStyle.ts": "Calculates animated styles for header and indicator",
-    "hooks/useTimeout.ts": "Memory-safe timeout hook",
-    "hooks/useMounted.ts": "Reanimated SharedValue-based mounted state"
+    "entry": "index.tsx",
+    "components": [
+      "components/MeasureableAnimatedView.tsx",
+      "components/SectionListItem.tsx",
+      "constants.ts",
+      "typings.ts"
+    ],
+    "hooks": [
+      "hooks/useConst.ts",
+      "hooks/useHeaderLayout.ts",
+      "hooks/useHeaderStyle.ts",
+      "hooks/useMounted.ts",
+      "hooks/useTimeout.ts"
+    ],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "ui": "react-native (FlatList, SafeAreaView)",
-    "safe_area": "react-native-safe-area-context"
+  "packages": [
+    "react",
+    "react-native",
+    "react-native-reanimated",
+    "react-native-safe-area-context"
+  ],
+  "packages_with_versions": {
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "../components/MeasureableAnimatedView": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../constants": {
+      "imports": [
+        "isHeader"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/MeasureableAnimatedView": {
+      "imports": [
+        "MeasureableAnimatedView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/SectionListItem": {
+      "imports": [
+        "SectionListItem"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "data",
+        "isHeader"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/useHeaderLayout": {
+      "imports": [
+        "useHeaderLayout"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/useHeaderStyle": {
+      "imports": [
+        "useHeaderStyle"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./useMounted": {
+      "imports": [
+        "useMounted"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./useTimeout": {
+      "imports": [
+        "useTimeout"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "createRef",
+        "forwardRef",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef"
+      ],
       "hooks": [
-        "useSharedValue",
-        "useAnimatedScrollHandler",
-        "useDerivedValue",
-        "useAnimatedStyle",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Extrapolation",
+        "SharedValue",
+        "interpolate",
+        "measure",
         "useAnimatedRef",
-        "useAnimatedReaction"
+        "useAnimatedScrollHandler",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "hooks": [
+        "useAnimatedRef",
+        "useAnimatedScrollHandler",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
       ],
       "functions": [
-        "interpolate",
-        "measure"
+        "interpolate"
       ],
       "components": [
-        "Animated.View",
-        "Animated.FlatList"
-      ],
-      "critical_feature": "useAnimatedScrollHandler for UI thread scroll handling and measure() for layout measurement on UI thread"
+        "Animated.FlatList",
+        "Animated.View"
+      ]
     },
     "react-native-safe-area-context": {
-      "version": "~5.6.0",
-      "hooks": [
+      "imports": [
         "useSafeAreaInsets"
       ],
-      "usage": "Safe area padding for top and bottom"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "scroll_tracking": {
-      "hook": "useAnimatedScrollHandler",
-      "shared_value": "contentOffsetY",
-      "trigger": "onScroll event",
-      "updates": "Every scroll frame",
-      "runs_on": "UI thread",
-      "benefit": "60fps scroll tracking without JS thread"
-    },
-    "indicator_width_interpolation": {
-      "pattern": "interpolate(contentOffsetY, headersLayoutY, headersLayoutX.widths)",
-      "input_range": "Y positions of each header section",
-      "output_range": "Measured widths of each header element",
-      "extrapolation": "CLAMP",
-      "effect": "Indicator width morphs to match active header width",
-      "dynamic": "Width values measured at runtime from actual header elements"
-    },
-    "header_horizontal_scroll": {
-      "pattern": "interpolate(contentOffsetY, headersLayoutY, headersLayoutX.x)",
-      "input_range": "Y positions of each header section",
-      "output_range": "X positions of each header element",
-      "extrapolation": "CLAMP",
-      "transform": "translateX: -translateX (inverted for scrolling effect)",
-      "effect": "Header row translates horizontally to center active header",
-      "coordination": "Synced with indicator position"
-    },
-    "layout_measurement": {
-      "component": "MeasureableAnimatedView",
-      "method": "measure() from Reanimated",
-      "timing": "After mount (with 100ms delay)",
-      "worklet": true,
-      "measured_properties": [
-        "x",
-        "y",
-        "width",
-        "height"
-      ],
-      "storage": "useDerivedValue with Record<string, LayoutRectangle>",
-      "challenge": "Arrays of useAnimatedRef not possible, solved with custom wrapper"
-    },
-    "vertical_position_calculation": {
-      "pattern": "Accumulator pattern with reduce",
-      "calculation": "Sum of previous item heights",
-      "items": "headerHeight (65px) or itemHeight (50px)",
-      "result": "Array of { header: string, value: number }",
-      "purpose": "Maps header names to their Y positions in list",
-      "memoization": "useMemo with [data, headerHeight, itemHeight]"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "contentOffsetY",
-        "type": "number",
-        "initial": 0,
-        "updates": "useAnimatedScrollHandler",
-        "drives": "All header and indicator animations"
-      },
-      {
-        "name": "mounted",
-        "type": "boolean",
-        "initial": false,
-        "updates": "After 100ms timeout",
-        "purpose": "Prevents measuring layouts before they're ready"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "headersLayoutX",
-        "type": "Record<string, LayoutRectangle>",
-        "calculation": "Measures each header ref via ref.reanimatedMeasure()",
-        "dependencies": [
-          "mounted.value"
-        ],
-        "worklet": true,
-        "purpose": "Stores X positions and widths of header elements"
-      },
-      {
-        "name": "headersLayoutXData",
-        "type": "Array<{ header: string, value: LayoutRectangle }>",
-        "calculation": "Transforms headersLayoutX object into sorted array",
-        "sorting": "By x position (left to right)",
-        "fallback": "Returns dummy data if not all headers measured",
-        "purpose": "Provides sorted array for interpolation"
-      }
-    ],
-    "useAnimatedStyle_instances": [
-      {
-        "name": "rIndicatorStyle",
-        "target": "Sliding indicator bar",
-        "properties": [
-          "width (interpolated from header widths)",
-          "height (fixed 3px)",
-          "backgroundColor (black)"
-        ],
-        "dependencies": [
-          "contentOffsetY",
-          "headersLayoutY"
-        ]
-      },
-      {
-        "name": "rHeaderListStyle",
-        "target": "Header row container",
-        "properties": [
-          "transform: translateX (negative of interpolated value)"
-        ],
-        "effect": "Scrolls header row horizontally",
-        "dependencies": [
-          "contentOffsetY",
-          "headersLayoutY"
-        ]
-      }
-    ],
-    "useCallback_optimization": {
-      "onSelectHeaderItem": {
-        "dependencies": [],
-        "purpose": "Scrolls FlatList to selected header",
-        "method": "flatlistRef.current?.scrollToIndex({ index })"
-      }
-    }
-  },
-  "custom_hooks": {
-    "useConst": {
-      "purpose": "Creates a constant value that never changes across re-renders",
-      "implementation": "useRef with lazy initialization",
-      "benefit": "Alternative to useMemo with no dependencies",
-      "use_case": "Creating refs array for headers",
-      "comparison": "Similar to React.useMemo(() => value, [])"
-    },
-    "useTimeout": {
-      "purpose": "Memory-safe timeout management",
-      "features": [
-        "Clears previous timeout before creating new one",
-        "Cleanup on unmount",
-        "Prevents memory leaks"
-      ],
-      "api": "run(handler, timeout)",
-      "benefit": "Handles timeout lifecycle automatically"
-    },
-    "useMounted": {
-      "purpose": "SharedValue-based mounted state (not React state)",
-      "implementation": "useSharedValue(false) + useTimeout",
-      "delay": "100ms after mount",
-      "benefit": "Can be used in worklets (unlike useState)",
-      "use_case": "Delays layout measurement until components are mounted"
-    },
-    "useHeaderLayout": {
-      "purpose": "Manages header layout measurement and tracking",
-      "params": {
-        "headers": "Array of header items",
-        "data": "Full data array (headers + items)",
-        "itemHeight": "Height of regular items",
-        "headerHeight": "Height of header items"
-      },
-      "returns": {
-        "headerRefs": "Array of refs for header elements",
-        "headersLayoutX": "Derived value with X positions/widths",
-        "headersLayoutY": "Memoized Y positions"
-      },
-      "complexity": "High - orchestrates measurement and positioning"
-    },
-    "useHeaderStyle": {
-      "purpose": "Calculates animated styles based on scroll position",
-      "params": {
-        "contentOffsetY": "SharedValue tracking scroll",
-        "headersLayoutX": "Measured X positions/widths",
-        "headersLayoutY": "Calculated Y positions"
-      },
-      "returns": {
-        "rIndicatorStyle": "Animated indicator styles",
-        "rHeaderListStyle": "Animated header row styles"
-      },
-      "interpolations": 2
-    }
-  },
-  "component_architecture": {
-    "AnimatedIndicatorList": {
-      "type": "Main component",
-      "state": [
-        "contentOffsetY (SharedValue)",
-        "headerRefs (array of refs)",
-        "headersLayoutX (derived)",
-        "headersLayoutY (memoized)"
-      ],
-      "structure": [
-        "Header strip (Animated.View + headers)",
-        "Indicator bar (Animated.View)",
-        "Scrollable list (Animated.FlatList)"
-      ]
-    },
-    "SectionListItem": {
-      "type": "Functional component",
-      "props": {
-        "item": "ListItem | HeaderListItem",
-        "height": "number"
-      },
-      "rendering": "Conditional based on isHeader(item)",
-      "styles": [
-        "Headers: gray background, bold text, left padding",
-        "Items: white background, regular text, left padding"
-      ]
-    },
-    "MeasureableAnimatedView": {
-      "type": "forwardRef component",
-      "pattern": "Wrapper around Animated.View",
-      "ref_type": "MeasureableAnimatedViewRef",
-      "exposed_method": "reanimatedMeasure(): MeasuredDimensions | null",
-      "purpose": "Enables array of refs with Reanimated measure capability",
-      "technical_solution": "Bridges React.createRef with useAnimatedRef",
-      "imperative_handle": true
-    }
-  },
-  "data_structure": {
-    "data_array": {
-      "type": "(ListItem | HeaderListItem)[]",
-      "length": 26,
-      "headers": 5,
-      "items": 21,
-      "theme": "Gangster movies by actor",
-      "headers_list": [
-        "Robert De Niro",
-        "Al Pacino",
-        "Joe Pesci",
-        "Leonardo DiCaprio",
-        "Brad Pitt"
-      ],
-      "structure": "Alternating headers and items (sections)"
-    },
-    "ListItem": {
-      "properties": {
-        "title": "string (movie title)"
-      }
-    },
-    "HeaderListItem": {
-      "properties": {
-        "header": "string (actor name)"
-      }
-    },
-    "isHeader": {
-      "type": "Type guard function",
-      "implementation": "Boolean((item as any)?.header)",
-      "purpose": "Distinguishes headers from items"
-    }
-  },
-  "layout_and_positioning": {
-    "dimensions": {
-      "HeaderHeight": 65,
-      "ItemHeight": 50,
-      "indicator_height": 3,
-      "indicator_color": "black"
-    },
-    "safe_area": {
-      "top": "insets.top",
-      "bottom": "insets.bottom",
-      "source": "useSafeAreaInsets()"
-    },
-    "flatlist_config": {
-      "scrollEventThrottle": 16,
-      "contentContainerStyle": {
-        "paddingBottom": 400
-      },
-      "renderItem": "SectionListItem",
-      "data": "Full array (26 items)",
-      "ref": "flatlistRef for imperative scrolling"
-    },
-    "header_strip": {
-      "position": "Top of screen (below safe area)",
-      "layout": "Horizontal row with headers",
-      "overflow": "hidden (clips scrolled headers)",
-      "background": "transparent"
-    },
-    "indicator": {
-      "position": "Below header strip",
-      "height": "3px",
-      "dynamic_width": "Interpolated from header widths",
-      "color": "black",
-      "alignment": "Left edge of container"
-    }
-  },
-  "interaction_patterns": {
-    "scroll_interaction": {
-      "trigger": "User scrolls FlatList",
-      "updates": "contentOffsetY.value",
-      "effects": [
-        "Indicator width morphs to active header width",
-        "Header strip scrolls horizontally",
-        "Indicator position updates"
-      ],
-      "synchronization": "All effects use same contentOffsetY value"
-    },
-    "header_tap": {
-      "trigger": "onTouchStart on header item",
-      "action": "onSelectHeaderItem(header)",
-      "effect": "FlatList scrolls to header position",
-      "method": "flatlistRef.current?.scrollToIndex({ index })",
-      "result": "Jumps to selected section"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "#fff (white)",
-      "header_background": "rgba(0,0,0,0.1) (10% black)",
-      "item_background": "white",
-      "indicator": "black",
-      "header_text": "black",
-      "item_text": "black"
-    },
-    "typography": {
-      "header_text": {
-        "fontSize": 20,
-        "fontWeight": "bold",
-        "letterSpacing": 1,
-        "textTransform": "none"
-      },
-      "header_strip_text": {
-        "fontSize": 14,
-        "fontWeight": "bold",
-        "textTransform": "uppercase",
-        "letterSpacing": 1
-      },
-      "item_text": {
-        "fontSize": 15
-      }
-    },
-    "spacing": {
-      "header_padding": "20px all sides",
-      "header_list_padding": "15px left",
-      "item_padding": "15px left"
-    },
-    "layout": {
-      "header_strip": "Horizontal row, flexDirection: 'row'",
-      "list": "Vertical scrolling",
-      "indicator": "Positioned below headers"
-    }
-  },
-  "technical_challenges_and_solutions": {
-    "arrays_of_animated_refs": {
-      "problem": "Cannot map() over useAnimatedRef hook (hooks can't be called in loops)",
-      "solution": "Create MeasureableAnimatedView wrapper with forwardRef + useImperativeHandle",
-      "pattern": "React.createRef<MeasureableAnimatedViewRef>() in array, each wraps useAnimatedRef internally",
-      "benefit": "Enables array of refs that can measure() on UI thread"
-    },
-    "layout_measurement_timing": {
-      "problem": "Layout measurements return undefined/zero if measured too early",
-      "solution": "useMounted hook with 100ms delay before measuring",
-      "implementation": "useDerivedValue checks mounted.value before measuring",
-      "note": "Measurement happens on UI thread via worklet"
-    },
-    "header_filtering": {
-      "problem": "Need array of only headers for measurement",
-      "solution": "data.filter(isHeader) as HeaderListItem[]",
-      "benefit": "Clean typed array of headers"
-    },
-    "y_position_calculation": {
-      "problem": "Need Y positions of headers in scrollable list",
-      "solution": "Accumulator pattern with reduce, summing item heights",
-      "memoization": "useMemo to recalculate only when data/heights change",
-      "complexity": "O(n) where n = data length"
-    },
-    "fallback_for_unmeasured": {
-      "problem": "Initial render before measurements complete",
-      "solution": "headersLayoutXData returns dummy data if length doesn't match",
-      "dummy_data": "Each header gets { x: i, width: 0, y: 0, height: 0 }",
-      "effect": "Prevents crashes, animations work once measured"
-    },
-    "react_native_ref_crash": {
-      "issue": "React Native bug #32105 causes crashes while navigating back",
-      "workaround": "Manual ref assignment: headerRefs[index] = { current: value }",
-      "comment": "Documented in code with GitHub issue link",
-      "location": "index.tsx line 76-79"
-    }
-  },
-  "performance_optimizations": {
-    "ui_thread_execution": {
-      "scroll_handling": "useAnimatedScrollHandler runs on UI thread",
-      "layout_measurement": "measure() runs on UI thread via worklet",
-      "interpolations": "All interpolations run on UI thread in useAnimatedStyle",
-      "benefit": "60fps scrolling and animations without JS thread bottleneck"
-    },
-    "useMemo_usage": {
-      "headersLayoutXRefs": "Memoized array creation",
-      "headersLayoutY": "Memoized Y position calculation",
-      "benefit": "Prevents recalculation on every render"
-    },
-    "useCallback_usage": {
-      "onSelectHeaderItem": "Stable reference for header tap handlers",
-      "benefit": "Prevents unnecessary re-renders of header items"
-    },
-    "useDerivedValue": {
-      "headersLayoutX": "Recalculates only when dependencies change",
-      "headersLayoutXData": "Derived from headersLayoutX",
-      "benefit": "Efficient reactive calculations on UI thread"
-    },
-    "conditional_measurement": {
-      "pattern": "Only measure if (!mounted.value || layout is null/zero width)",
-      "benefit": "Avoids redundant measurements",
-      "caching": "Stores measurements in headersLayoutX object"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Contact list with alphabetical section headers",
-      "Settings screens with category sections",
-      "Music/video library with artist/album headers",
-      "E-commerce categories with section navigation",
-      "Restaurant menu with food category sections"
-    ],
-    "secondary": [
-      "Long lists with anchored navigation",
-      "Timeline views with date sections",
-      "Chat messages grouped by date",
-      "File browser with folder sections"
-    ],
-    "real_world_examples": [
-      "iOS Contacts app (with alphabet sidebar)",
-      "Spotify artist discography sections",
-      "App Store categories",
-      "Instagram profile tabs with indicator"
-    ]
-  },
-  "code_quality": {
-    "typescript": "Full TypeScript with explicit types",
-    "type_definitions": [
-      "HeaderListItem",
-      "ListItem",
-      "UseHeaderLayoutParams",
-      "UseHeaderStyleParams",
-      "MeasureableAnimatedViewRef",
-      "MeasureFunction",
-      "SectionListItemProps"
-    ],
-    "separation_of_concerns": {
-      "hooks": "Logic separated into custom hooks",
-      "components": "UI separated into dedicated components",
-      "constants": "Data in separate file",
-      "benefit": "Clean, maintainable architecture"
-    },
-    "documentation": {
-      "inline_comments": "Excellent - explains complex patterns",
-      "technical_notes": "Documents React Native bug workaround",
-      "architectural_explanations": "MeasureableAnimatedView has extensive explanation",
-      "humor": "\"So yes, I like gangster movies\" in constants.ts"
-    },
-    "best_practices": [
-      "Custom hooks for reusable logic",
-      "Type guards (isHeader)",
-      "Ref patterns with forwardRef + useImperativeHandle",
-      "Memory-safe timeout management",
-      "Proper memoization",
-      "Worklet annotations"
-    ]
-  },
-  "known_limitations": {
-    "layout_measurement_delay": {
-      "issue": "100ms delay before measurements are available",
-      "effect": "Brief moment where indicator/header animations may not work",
-      "mitigation": "Fallback dummy data prevents crashes",
-      "user_impact": "Usually not noticeable"
-    },
-    "scrollToIndex_accuracy": {
-      "issue": "Requires accurate item heights for smooth scrolling",
-      "current": "Works well with fixed heights",
-      "problem_scenario": "Variable height items would need getItemLayout"
-    },
-    "header_overflow": {
-      "behavior": "Headers scroll off-screen horizontally",
-      "no_pagination": "No visual indication of hidden headers",
-      "improvement": "Could add left/right fade gradients"
-    },
-    "empty_typings_file": {
-      "issue": "typings.ts exists but is empty (0 bytes)",
-      "impact": "None - types defined in constants.ts instead",
-      "cleanup": "Could remove unused file"
-    },
-    "accessibility": {
-      "missing": "No accessibility labels or roles",
-      "screen_reader": "May not announce section changes",
-      "keyboard_navigation": "No keyboard navigation support"
-    }
-  },
-  "potential_improvements": {
-    "visual_enhancements": [
-      "Gradient fade at edges of header strip",
-      "Active header text color change",
-      "Indicator with rounded corners",
-      "Shadow under indicator",
-      "Sticky headers in list",
-      "Parallax effects"
-    ],
-    "interaction_enhancements": [
-      "Horizontal scroll gesture on header strip",
-      "Long press on header for options",
-      "Swipe on indicator to navigate",
-      "Haptic feedback on section change",
-      "Search/filter functionality"
-    ],
-    "functionality": [
-      "getItemLayout for better scrolling",
-      "Variable height item support",
-      "Customizable indicator styles",
-      "Configurable header/item heights",
-      "Multiple indicators (nested sections)",
-      "Virtualized list for better performance"
-    ],
-    "accessibility": [
-      "Section change announcements",
-      "Accessibility labels for headers",
-      "Keyboard navigation",
-      "Focus management",
-      "Reduced motion support"
-    ],
-    "customization": [
-      "Configurable colors via props",
-      "Custom indicator component",
-      "Adjustable animation timing",
-      "Header position (top/bottom)",
-      "Indicator style variants"
-    ]
-  },
-  "key_insights": {
-    "dual_axis_coordination": "Synchronizing vertical scroll (list) with horizontal position (headers) requires careful interpolation setup",
-    "measurement_on_ui_thread": "Reanimated's measure() enables layout calculations without bridge crossing",
-    "ref_array_pattern": "MeasureableAnimatedView solves the 'hooks in loops' problem elegantly",
-    "derived_value_chaining": "One derived value (headersLayoutX) feeds into another (headersLayoutXData) for clean data transformation",
-    "interpolation_flexibility": "Same contentOffsetY drives both width and position interpolations with different ranges",
-    "delayed_measurement": "100ms delay is pragmatic solution to layout timing issues",
-    "reduce_for_positions": "Accumulator pattern with reduce elegantly calculates cumulative positions",
-    "type_guards": "isHeader() function enables clean type narrowing and conditional rendering"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "FlatList with custom renderItem",
-      "Basic scroll tracking",
-      "Conditional rendering",
-      "Type guards in TypeScript",
-      "Safe area handling"
-    ],
-    "for_intermediate": [
-      "useAnimatedScrollHandler",
-      "Interpolation with dynamic ranges",
-      "Custom hooks for logic separation",
-      "forwardRef + useImperativeHandle patterns",
-      "Layout measurement techniques",
-      "useDerivedValue for reactive calculations"
-    ],
-    "for_advanced": [
-      "Dual-axis animation coordination",
-      "Reanimated measure() on UI thread",
-      "Solving 'hooks in loops' with wrapper patterns",
-      "Complex derived value chains",
-      "Accumulator patterns for position calculation",
-      "Worklet-compatible custom hooks",
-      "Performance optimization strategies",
-      "Handling timing-dependent layout measurements"
-    ]
-  },
-  "comparison_to_similar_patterns": {
-    "vs_sectioned_list": {
-      "traditional": "SectionList with sticky headers",
-      "this": "FlatList with animated indicator",
-      "difference": "This adds horizontal navigation strip with indicator"
-    },
-    "vs_tab_bar": {
-      "tab_bar": "Fixed tabs with swipeable content",
-      "this": "Scrollable list with section-aware tab strip",
-      "similarity": "Both have animated indicators"
-    },
-    "vs_alphabet_scrollbar": {
-      "scrollbar": "Vertical sidebar with letter navigation",
-      "this": "Horizontal header strip with indicator",
-      "similarity": "Both provide quick section navigation"
-    }
-  },
-  "testing_considerations": {
-    "unit_tests": [
-      "isHeader() correctly identifies headers",
-      "headersLayoutY calculation is accurate",
-      "Key generation for list items",
-      "Ref array creation"
-    ],
-    "integration_tests": [
-      "Scroll updates contentOffsetY",
-      "Header tap scrolls to correct section",
-      "Indicator width matches active header",
-      "Header strip scrolls to center active header",
-      "Layout measurement completes successfully"
-    ],
-    "visual_tests": [
-      "Indicator smoothly transitions between headers",
-      "Header strip scrolls synchronously with list",
-      "No layout jumps or flickers",
-      "Safe area insets applied correctly"
-    ],
-    "edge_cases": [
-      "Empty data array",
-      "Single header",
-      "Single item per section",
-      "Very long header names",
-      "Many sections (50+)",
-      "Rapid scrolling",
-      "Tapping header before measurement completes"
-    ],
-    "performance_tests": [
-      "60fps during scroll",
-      "Memory usage with many items",
-      "Measurement overhead",
-      "Animation performance on low-end devices"
-    ]
-  },
-  "mathematical_algorithms": {
-    "y_position_accumulation": {
-      "pattern": "Reduce with accumulator",
-      "formula": "acc.count + (isHeader(item) ? headerHeight : itemHeight)",
-      "initialization": "{ count: 0 }",
-      "result": "Object mapping header names to Y offsets",
-      "complexity": "O(n) where n = data.length"
-    },
-    "indicator_width_interpolation": {
-      "type": "Linear interpolation",
-      "function": "interpolate(input, inputRange, outputRange, Extrapolation.CLAMP)",
-      "input": "contentOffsetY.value",
-      "inputRange": "headersLayoutY.map(({ value }) => value)",
-      "outputRange": "headersData.map(({ value }) => value?.width ?? 0)",
-      "extrapolation": "CLAMP prevents values outside ranges"
-    },
-    "header_position_interpolation": {
-      "type": "Linear interpolation with negation",
-      "function": "interpolate(input, inputRange, outputRange, Extrapolation.CLAMP)",
-      "input": "contentOffsetY.value",
-      "inputRange": "headersLayoutY.map(({ value }) => value)",
-      "outputRange": "headersData.map(({ value }) => value!.x)",
-      "transform": "translateX: -translateX (inverted)"
-    },
-    "key_generation": {
-      "pattern": "Simple array index",
-      "implementation": "Not explicitly shown (React default keys)",
-      "note": "Could use item.title or item.header for stable keys"
-    }
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features supported",
-      "performance": "Excellent",
-      "safe_area": "Properly handled with useSafeAreaInsets"
-    },
-    "android": {
-      "features": "All features supported",
-      "performance": "Excellent",
-      "safe_area": "Properly handled"
-    },
-    "web": {
-      "compatibility": "Should work with React Native Web",
-      "considerations": [
-        "FlatList performance may differ",
-        "Touch interactions work as expected",
-        "Safe area insets may need polyfill"
-      ]
-    }
-  },
-  "related_patterns": {
-    "sticky_headers": "Headers stick to top while scrolling",
-    "tab_indicators": "Animated indicators in tab bars",
-    "section_indexes": "Alphabetical sidebar for quick navigation",
-    "parallax_headers": "Headers with parallax scroll effects",
-    "collapsible_headers": "Headers that collapse on scroll"
-  },
-  "real_world_inspiration": {
-    "ios_contacts": "Alphabet sidebar with section headers",
-    "spotify": "Artist sections in playlists",
-    "instagram": "Profile tabs with sliding indicator",
-    "twitter": "Timeline with sticky headers"
-  },
-  "bundle_size_impact": {
-    "component_size": "Medium (~600 lines total including hooks)",
-    "dependencies": "Reanimated and safe-area-context (likely already in project)",
-    "custom_hooks": "5 small utility hooks",
-    "runtime_overhead": "Minimal - measurements cached",
-    "estimated_size": "~8KB"
-  },
-  "tags": [
-    "section-list",
-    "animated-indicator",
-    "scroll-tracking",
-    "header-navigation",
-    "interpolation",
-    "layout-measurement",
-    "reanimated",
-    "flatlist",
-    "dual-axis",
-    "synchronized-scrolling",
-    "ui-thread",
-    "custom-hooks",
-    "forwardRef",
-    "measure",
-    "derived-values"
+  "hooks": [
+    "useAnimatedRef",
+    "useAnimatedScrollHandler",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useEffect",
+    "useHeaderLayout",
+    "useHeaderStyle",
+    "useImperativeHandle",
+    "useMemo",
+    "useMounted",
+    "useRef",
+    "useSafeAreaInsets",
+    "useSharedValue",
+    "useTimeout"
   ],
-  "content_hash": "69428424899a9585b084be0b7d6fdce9bf063380a2dcb96334ad663293fbf7bd",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.277Z",
-  "last_validated": "2025-10-12T09:19:28.277Z"
+  "functions": [
+    "Boolean",
+    "clearTimeout",
+    "createRef",
+    "forwardRef",
+    "interpolate",
+    "isHeader",
+    "measure",
+    "onSelectHeaderItem",
+    "runTimeout",
+    "setTimeout"
+  ],
+  "components": [
+    "Animated.FlatList",
+    "Animated.View",
+    "MeasureableAnimatedView",
+    "SectionListItem",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "scroll-animation",
+    "value-interpolation",
+    "reactive-styling-pattern",
+    "imperative-animation-api"
+  ],
+  "techniques": [
+    "scroll-based-animation",
+    "value-mapping",
+    "ref-based-control",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 10,
+    "total_packages": 4,
+    "total_hooks": 15,
+    "total_functions": 10,
+    "total_components": 6,
+    "total_patterns": 7,
+    "total_techniques": 4
+  }
 }

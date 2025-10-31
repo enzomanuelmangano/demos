@@ -1,764 +1,178 @@
 {
-  "animation_name": "Liquid Glass Playground",
   "animation_slug": "liquid-glass-playground",
-  "description": "An interactive glass morphism effect playground demonstrating draggable glass overlay with blur effects. Features platform-specific implementations including expo-blur for standard devices, iOS-optimized BlurView, and expo-glass-effect for native liquid glass appearance. The overlay responds to pan gestures with spring animations and friction-based dragging.",
-  "main_features": [
-    "Platform-specific glass/blur implementations (3 variants)",
-    "Interactive pan gesture with friction-based dragging",
-    "Spring-based return animation with configurable damping",
-    "Glass morphism effect with blur and transparency",
-    "Platform-adaptive overlay rendering (iOS vs standard)",
-    "Continuous border radius for smooth appearance",
-    "Background image with overlay composition",
-    "Touch-responsive vertical translation",
-    "Automatic snap back to origin on gesture end"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.570Z",
   "file_structure": {
-    "index.tsx": "Main Playground component with gesture handling and image background",
-    "overlay.tsx": "Standard BlurView overlay with expo-blur (default implementation)",
-    "overlay.ios.tsx": "iOS-optimized BlurView overlay with expo-blur",
-    "overlay.liquid.tsx": "Native liquid glass overlay using expo-glass-effect (GlassView)"
+    "entry": "index.tsx",
+    "components": [
+      "haptics.ts",
+      "overlay.ios.tsx",
+      "overlay.liquid.tsx",
+      "overlay.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "blur_standard": "expo-blur (BlurView)",
-    "glass_native": "expo-glass-effect (GlassView)",
-    "images": "expo-image"
+  "packages": [
+    "expo-blur",
+    "expo-glass-effect",
+    "expo-haptics",
+    "expo-image",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "expo-blur": "~15.0.7",
+    "expo-glass-effect": "~0.1.4",
+    "expo-haptics": "~15.0.7",
+    "expo-image": "~3.0.10",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
+  "packages_detail": {
+    "./haptics": {
+      "imports": [
+        "HAPTIC_CONFIG",
+        "handleProgressiveHaptics"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./overlay": {
+      "imports": [
+        "Overlay"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-blur": {
+      "imports": [
+        "BlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-glass-effect": {
+      "imports": [
+        "GlassView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-haptics": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-image": {
+      "imports": [
+        "Image"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "FC"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Dimensions",
+        "StyleProp",
+        "StyleSheet",
+        "View",
+        "ViewStyle"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
     "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
+      "imports": [
+        "Easing",
+        "SharedValue",
         "useSharedValue",
-        "useAnimatedStyle"
+        "withSpring"
+      ],
+      "hooks": [
+        "useSharedValue"
       ],
       "functions": [
         "withSpring"
       ],
       "components": [
         "Animated.View"
-      ],
-      "critical_feature": "useSharedValue for gesture-driven translation"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "callbacks": [
-        "onUpdate",
-        "onEnd"
-      ],
-      "usage": "Pan gesture for dragging glass overlay"
-    },
-    "expo-blur": {
-      "version": "~15.0.7",
-      "components": [
-        "BlurView"
-      ],
-      "props": [
-        "intensity",
-        "tint",
-        "style"
-      ],
-      "usage": "Creates blur effect for standard and iOS overlays",
-      "platforms": [
-        "iOS",
-        "Android"
       ]
     },
-    "expo-glass-effect": {
-      "version": "~0.1.4",
-      "components": [
-        "GlassView"
+    "react-native-worklets": {
+      "imports": [
+        "scheduleOnRN"
       ],
-      "props": [
-        "glassEffectStyle",
-        "isInteractive",
-        "tintColor"
-      ],
-      "usage": "Native liquid glass effect (overlay.liquid.tsx)",
-      "platforms": [
-        "iOS with specific native modules"
-      ]
-    },
-    "expo-image": {
-      "version": "~3.0.8",
-      "components": [
-        "Image"
-      ],
-      "props": [
-        "source",
-        "contentFit",
-        "style"
-      ],
-      "usage": "Background image display with optimized performance"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "friction_based_dragging": {
-      "pattern": "Apply friction multiplier to gesture translation",
-      "implementation": "translateY.value = event.translationY * friction",
-      "friction_value": 0.5,
-      "effect": "Overlay moves at half speed of finger drag",
-      "benefit": "More controlled, less sensitive dragging experience",
-      "feel": "Smooth, liquid-like movement"
-    },
-    "spring_return_animation": {
-      "trigger": "onEnd gesture callback",
-      "target": 0,
-      "spring_config": {
-        "duration": 600,
-        "dampingRatio": 1
-      },
-      "effect": "Overlay smoothly returns to original position",
-      "damping_ratio": "1 (critically damped - no overshoot)",
-      "duration_note": "600ms provides smooth, visible return animation"
-    },
-    "vertical_translation": {
-      "axis": "Y-axis only",
-      "transform": "translateY",
-      "range": "Unlimited (depends on gesture)",
-      "typical_range": "User can drag up/down any distance with friction",
-      "reset": "Always returns to 0 on gesture end"
-    },
-    "glass_blur_effect": {
-      "implementation": "BlurView with dark tint",
-      "intensity": 50,
-      "tint": "dark",
-      "border": {
-        "width": "StyleSheet.hairlineWidth (1px or less)",
-        "color": "rgba(255,255,255,0.5)",
-        "effect": "Subtle white border for glass separation"
-      },
-      "effect": "Semi-transparent dark glass over background"
-    },
-    "liquid_glass_effect": {
-      "implementation": "GlassView with clear style",
-      "glass_effect_style": "clear",
-      "tint_color": "rgba(0,0,0,0.5)",
-      "is_interactive": false,
-      "effect": "Native iOS liquid glass appearance",
-      "note": "More natural glass effect on supported devices"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "translateY",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "updates": "onUpdate (continuous during pan with friction)",
-        "reset": "onEnd (withSpring back to 0)",
-        "purpose": "Vertical position of glass overlay"
-      }
-    ],
-    "useAnimatedStyle": {
-      "instances": 1,
-      "glass_overlay_style": {
-        "animated_properties": [
-          "translateY"
-        ],
-        "transform": "[{ translateY }]",
-        "applied_to": "Animated.View wrapping Overlay component"
-      }
-    },
-    "gesture_callbacks": {
-      "onUpdate": {
-        "frequency": "Every frame during pan gesture",
-        "calculation": "translateY.value = event.translationY * 0.5",
-        "worklet": true,
-        "runs_on": "UI thread"
-      },
-      "onEnd": {
-        "action": "translateY.value = withSpring(0, config)",
-        "spring_config": "{ duration: 600, dampingRatio: 1 }",
-        "worklet": true,
-        "effect": "Smooth return to center"
-      }
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture": {
-      "type": "Gesture.Pan()",
-      "direction": "Vertical (Y-axis)",
-      "callbacks": {
-        "onUpdate": {
-          "purpose": "Track continuous drag position",
-          "updates": "translateY with friction multiplier",
-          "friction": 0.5,
-          "calculation": "translationY * 0.5",
-          "effect": "Smooth, controlled dragging"
-        },
-        "onEnd": {
-          "purpose": "Return overlay to original position",
-          "animation": "withSpring to 0",
-          "spring_config": {
-            "duration": 600,
-            "dampingRatio": 1
-          },
-          "effect": "Critically damped return (no bounce)"
-        }
-      },
-      "no_onBegin": "Not needed - only tracking relative translation",
-      "gesture_detection": "Wraps entire glass overlay"
-    },
-    "friction_pattern": {
-      "value": 0.5,
-      "formula": "event.translationY * friction",
-      "benefit": "Reduces sensitivity, more controlled feel",
-      "alternative": "1.0 would be 1:1 finger movement",
-      "customization": "Can adjust for different feels (0.3 = very slow, 0.7 = faster)"
-    }
-  },
-  "platform_specific_implementations": {
-    "overlay.tsx": {
-      "component": "BlurView from expo-blur",
-      "platforms": "Default for all platforms",
-      "blur_intensity": 50,
-      "tint": "dark",
-      "border": "Hairline white border with 50% opacity",
-      "use_case": "Standard cross-platform glass effect"
-    },
-    "overlay.ios.tsx": {
-      "component": "BlurView from expo-blur",
-      "platforms": "iOS-specific optimizations",
-      "identical_to": "overlay.tsx in this implementation",
-      "blur_intensity": 50,
-      "tint": "dark",
-      "border": "Hairline white border with 50% opacity",
-      "potential": "Could be customized for iOS-specific blur styles"
-    },
-    "overlay.liquid.tsx": {
-      "component": "GlassView from expo-glass-effect",
-      "platforms": "iOS with native glass support",
-      "glass_effect_style": "clear",
-      "is_interactive": false,
-      "tint_color": "rgba(0,0,0,0.5)",
-      "use_case": "Native liquid glass appearance on supported devices",
-      "benefit": "More natural, performant glass effect"
-    },
-    "file_naming_convention": {
-      "pattern": "overlay.[platform].tsx",
-      "standard": "overlay.tsx",
-      "ios": "overlay.ios.tsx",
-      "liquid": "overlay.liquid.tsx",
-      "resolution": "React Native automatically chooses platform-specific file"
-    }
-  },
-  "performance_optimizations": {
-    "worklet_execution": {
-      "pattern": "All gesture callbacks run on UI thread",
-      "callbacks": [
-        "onUpdate",
-        "onEnd"
-      ],
-      "benefit": "No bridge crossing during drag",
-      "result": "Smooth 60fps dragging"
-    },
-    "single_shared_value": {
-      "optimization": "Only one SharedValue (translateY)",
-      "benefit": "Minimal memory usage",
-      "updates": "Direct value assignment (no derived values needed)"
-    },
-    "simple_calculation": {
-      "pattern": "Single multiplication for friction",
-      "operation": "translationY * 0.5",
-      "cost": "Negligible - single multiply per frame",
-      "runs_on": "UI thread in worklet"
-    },
-    "platform_specific_components": {
-      "benefit": "Use optimal component per platform",
-      "expo_blur": "Optimized blur implementation",
-      "expo_glass_effect": "Native glass rendering on supported devices",
-      "fallback": "Standard overlay.tsx for all platforms"
-    },
-    "spring_optimization": {
-      "critically_damped": "dampingRatio: 1",
-      "benefit": "No overshoot = less animation time",
-      "duration": "600ms - predictable animation length",
-      "efficiency": "Single spring animation, no chaining"
-    },
-    "expo_image_optimization": {
-      "component": "expo-image (not Image from react-native)",
-      "benefits": [
-        "Better caching",
-        "Faster loading",
-        "Memory efficient",
-        "Smooth rendering"
-      ],
-      "content_fit": "cover"
-    }
-  },
-  "visual_design": {
-    "glass_overlay": {
-      "position": "absolute fill (covers entire screen)",
-      "border_radius": 50,
-      "border_curve": "continuous",
-      "overflow": "hidden",
-      "z_index": 2,
-      "border": {
-        "width": "StyleSheet.hairlineWidth",
-        "color": "rgba(255,255,255,0.5)"
-      }
-    },
-    "blur_effect": {
-      "intensity": 50,
-      "tint": "dark",
-      "opacity": "Implicit in tint color",
-      "effect": "Dark semi-transparent glass"
-    },
-    "liquid_glass_effect": {
-      "style": "clear",
-      "tint": "rgba(0,0,0,0.5)",
-      "effect": "Native iOS liquid glass appearance"
-    },
-    "background_image": {
-      "source": "Unsplash (purple/blue abstract image)",
-      "url": "https://images.unsplash.com/photo-1592330169142-b488cfd72b2b",
-      "size": "w=2832, optimized with Unsplash API",
-      "fit": "cover",
-      "dimensions": "100% width and height"
-    },
-    "layout": {
-      "container": "Absolute fill, centered content",
-      "overlay_layer": "z-index: 2 (above background)",
-      "background_layer": "z-index: 0 (implicit, below overlay)"
-    },
-    "border_styling": {
-      "radius": 50,
-      "curve": "continuous (iOS-specific smooth curves)",
-      "effect": "Very rounded corners, almost pill-shaped",
-      "overflow": "hidden (clips content to rounded shape)"
-    }
-  },
-  "layout_and_positioning": {
-    "container_hierarchy": {
-      "level_1": "Container (absolute fill)",
-      "level_2a": "GestureDetector > Animated.View > Overlay (draggable glass)",
-      "level_2b": "Image (background, fixed position)"
-    },
-    "absolute_positioning": {
-      "container": "StyleSheet.absoluteFillObject",
-      "glass_overlay": "StyleSheet.absoluteFillObject",
-      "layering": "Glass overlay rendered before (above) background image"
-    },
-    "z_index": {
-      "glass_overlay": 2,
-      "background_image": "implicit 0",
-      "effect": "Glass overlay always on top"
-    },
-    "alignment": {
-      "container": "alignItems: center, justifyContent: center",
-      "content": "Centered but fills entire space"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Glass morphism effect demonstrations",
-      "Interactive blur overlays",
-      "Draggable glass panels",
-      "iOS design system showcases",
-      "Material design glass effects",
-      "Frosted glass UI elements"
-    ],
-    "secondary": [
-      "Custom modal backgrounds",
-      "Draggable bottom sheets with glass effect",
-      "Navigation overlays",
-      "Content preview panels",
-      "Interactive design playgrounds",
-      "UI/UX portfolio pieces"
-    ],
-    "educational": [
-      "Teaching glass morphism patterns",
-      "Demonstrating platform-specific implementations",
-      "Pan gesture handling basics",
-      "Spring animation tuning",
-      "Friction-based dragging",
-      "Platform file resolution (.ios.tsx, .liquid.tsx)"
-    ],
-    "real_world_applications": [
-      "iOS Control Center style overlays",
-      "Music player overlays",
-      "Settings panels",
-      "Notification centers",
-      "Media viewers with glass controls",
-      "Modern app overlays"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "prop_types": [
-        "OverlayProps"
-      ],
-      "type_imports": [
-        "StyleProp",
-        "ViewStyle",
-        "FC"
-      ],
-      "type_safety": "Strong typing for component props"
-    },
-    "component_architecture": {
-      "main_component": "Playground - orchestrates gesture and image",
-      "overlay_component": "Overlay - reusable glass effect component",
-      "platform_variants": "Three overlay implementations for flexibility",
-      "separation": "Clear separation between gesture logic and visual effect"
-    },
-    "constants": {
-      "image_object": {
-        "uri": "Hardcoded Unsplash URL",
-        "location": "Module level",
-        "type": "Image source object"
-      },
-      "friction": {
-        "value": 0.5,
-        "location": "Inline in onUpdate",
-        "could_extract": "Could be const FRICTION = 0.5"
-      }
-    },
-    "styling": {
-      "approach": "StyleSheet.create for performance",
-      "patterns": [
-        "StyleSheet.absoluteFillObject",
-        "StyleSheet.hairlineWidth"
-      ],
-      "organization": "Styles at bottom of file",
-      "inline_styles": "Minimal - only for dynamic transform"
-    },
-    "documentation": {
-      "inline_comments": "None in current implementation",
-      "improvement_opportunity": "Could add comments explaining platform variants",
-      "code_clarity": "Simple, self-documenting code structure"
-    },
-    "imports": {
-      "organization": "React Native, Expo, gesture handler, reanimated, local",
-      "type_imports": "Proper use of type imports",
-      "minimal": "Only necessary imports"
-    },
-    "best_practices": [
-      "Platform-specific file variants",
-      "StyleSheet.create for static styles",
-      "useSharedValue for animated values",
-      "Worklet-based gesture callbacks",
-      "Reusable Overlay component",
-      "Type-safe props"
-    ]
-  },
-  "known_limitations": {
-    "single_axis_movement": {
-      "limitation": "Only vertical (Y-axis) dragging",
-      "current": "translateY only",
-      "improvement": "Could support horizontal or both axes"
-    },
-    "no_drag_boundaries": {
-      "issue": "Overlay can be dragged infinitely up/down",
-      "current": "No clamping or bounds checking",
-      "improvement": "Could clamp to screen bounds or specific range",
-      "rationale": "Playground demo doesn't need constraints"
-    },
-    "hardcoded_image": {
-      "issue": "Background image URL hardcoded",
-      "location": "image object at module level",
-      "improvement": "Could accept image prop for reusability"
-    },
-    "fixed_spring_config": {
-      "issue": "Spring animation config hardcoded",
-      "values": "duration: 600, dampingRatio: 1",
-      "improvement": "Could be props for customization"
-    },
-    "fixed_friction": {
-      "value": 0.5,
-      "issue": "Not configurable without code change",
-      "improvement": "Could be a prop or constant"
-    },
-    "no_haptic_feedback": {
-      "missing": "No haptic feedback on drag or release",
-      "improvement": "Could add expo-haptics on gesture events"
-    },
-    "no_gesture_state_visual_feedback": {
-      "missing": "No visual indication of active drag state",
-      "improvement": "Could add scale, opacity, or glow effect during drag"
-    },
-    "platform_file_duplication": {
-      "issue": "overlay.tsx and overlay.ios.tsx are identical",
-      "purpose": "Structure for potential iOS-specific customization",
-      "improvement": "Could differentiate or consolidate if truly identical"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Horizontal (X-axis) dragging support",
-      "Two-axis dragging (X and Y simultaneously)",
-      "Drag boundaries with clamping",
-      "Drag velocity tracking",
-      "Fling gesture support (continue motion after release)",
-      "Snap points at specific positions",
-      "Multiple glass layers with parallax",
-      "Pinch to zoom glass overlay",
-      "Rotation gesture support"
-    ],
-    "customization": [
-      "Configurable friction prop",
-      "Custom spring animation props",
-      "Background image as prop",
-      "Glass effect intensity control",
-      "Border color/width customization",
-      "Border radius prop",
-      "Blur tint color option",
-      "Z-index configuration"
-    ],
-    "visual_enhancements": [
-      "Scale effect on active drag",
-      "Opacity change during drag",
-      "Shadow that follows glass position",
-      "Glow effect around glass edges",
-      "Gradient border animation",
-      "Color shift based on drag position",
-      "Ripple effect on touch",
-      "Trail effect following glass"
-    ],
-    "interaction_feedback": [
-      "Haptic feedback on drag start/end",
-      "Haptic feedback on boundary hit",
-      "Sound effects for glass movement",
-      "Visual feedback for active gesture state",
-      "Cursor change on web platform"
-    ],
-    "performance": [
-      "Memoize Overlay component",
-      "Optimize blur rendering",
-      "Add shouldRasterizeIOS for complex views",
-      "Lazy load background image",
-      "Add loading state for image"
-    ],
-    "accessibility": [
-      "Accessibility labels",
-      "Screen reader support",
-      "Keyboard navigation",
-      "Reduced motion support",
-      "High contrast mode support"
-    ],
-    "code_quality": [
-      "Extract friction constant",
-      "Extract spring config constant",
-      "Add JSDoc comments",
-      "Add prop types for customization",
-      "Create config object for all constants",
-      "Add TypeScript generics for flexible image source"
-    ]
-  },
-  "key_insights": {
-    "platform_specific_files": "React Native automatically resolves .ios.tsx and .liquid.tsx variants",
-    "friction_technique": "Multiplying translation by < 1 creates smooth, controlled drag feel",
-    "critically_damped_spring": "dampingRatio: 1 prevents overshoot for clean, professional feel",
-    "glass_morphism_implementation": "Combination of blur, tint, and border creates glass effect",
-    "worklet_performance": "Gesture callbacks in worklets enable 60fps dragging",
-    "z_index_layering": "Render order + z-index ensures glass overlay above background",
-    "absolute_positioning": "StyleSheet.absoluteFillObject enables full-screen overlay",
-    "expo_components": "expo-blur and expo-glass-effect provide optimized native implementations",
-    "simple_gesture_pattern": "onUpdate + onEnd sufficient for drag and return behavior",
-    "spring_over_timing": "withSpring feels more natural than withTiming for return animation"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic pan gesture handling",
-      "SharedValue usage",
-      "Transform animations (translateY)",
-      "StyleSheet.absoluteFillObject pattern",
-      "Component composition",
-      "Platform-specific file naming"
-    ],
-    "for_intermediate": [
-      "Friction-based gesture manipulation",
-      "Spring animation configuration",
-      "BlurView component usage",
-      "Platform-specific implementations",
-      "expo-image optimization",
-      "Z-index layering strategies",
-      "useAnimatedStyle patterns",
-      "Worklet optimization"
-    ],
-    "for_advanced": [
-      "Glass morphism effect techniques",
-      "Platform-specific component variants",
-      "expo-glass-effect integration",
-      "Gesture physics and friction",
-      "Spring damping ratio tuning",
-      "Cross-platform blur strategies",
-      "Performance optimization for blur effects",
-      "Native module integration patterns"
-    ]
-  },
-  "related_patterns": {
-    "similar_animations": [
-      "iOS Control Center draggable panels",
-      "Bottom sheet with glass effect",
-      "Apple Music Now Playing overlay",
-      "macOS window blur effects",
-      "Android Material Design blur",
-      "Draggable modal overlays"
-    ],
-    "gesture_patterns": [
-      "Draggable bottom sheets",
-      "Swipeable cards",
-      "Dismissible panels",
-      "Drawer navigation",
-      "Vertical scrolling with snap points"
-    ],
-    "blur_effect_patterns": [
-      "Frosted glass navigation bars",
-      "Blurred modal backgrounds",
-      "Context menu overlays",
-      "Notification panel backgrounds",
-      "Video player controls",
-      "Glass morphism UI components"
-    ]
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Glass overlay renders with blur effect",
-      "Border visible and correct color/width",
-      "Background image loads and displays",
-      "Overlay covers entire screen",
-      "Border radius applied correctly",
-      "Z-index layering correct (glass above image)"
-    ],
-    "interaction_tests": [
-      "Drag up moves overlay up",
-      "Drag down moves overlay down",
-      "Friction applied correctly (moves at 0.5x speed)",
-      "Release triggers return animation",
-      "Returns to original position (translateY: 0)",
-      "Spring animation feels smooth",
-      "No jank during continuous dragging"
-    ],
-    "platform_tests": [
-      "Standard overlay.tsx works on all platforms",
-      "iOS overlay.ios.tsx loads on iOS",
-      "Liquid overlay.liquid.tsx loads when available",
-      "Blur effect renders correctly on iOS",
-      "Blur effect renders correctly on Android",
-      "GlassView renders on supported devices"
-    ],
-    "performance_tests": [
-      "60fps during drag gesture",
-      "No frame drops on spring return",
-      "Blur rendering performant",
-      "Image loading doesn't block interaction",
-      "Memory stable across multiple drags"
-    ],
-    "edge_cases": [
-      "Very fast dragging",
-      "Rapid drag and release cycles",
-      "Drag to extreme positions",
-      "Multiple simultaneous touches",
-      "Screen rotation during drag",
-      "App backgrounding during gesture"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No accessibility labels",
-      "keyboard_navigation": "Not implemented",
-      "reduced_motion": "No support",
-      "focus_indicators": "None",
-      "voice_control": "Limited gesture support"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to glass overlay",
-      "Add accessibilityHint for drag interaction",
-      "Implement keyboard controls for overlay position",
-      "Respect prefers-reduced-motion (disable spring)",
-      "Add accessibilityRole='button' or 'adjustable'",
-      "Announce position changes to screen readers",
-      "Ensure contrast ratio for border visibility",
-      "Add focus indicators for keyboard navigation"
-    ],
-    "implementation_suggestions": {
-      "reduced_motion": "Use instant position changes instead of springs",
-      "keyboard": "Arrow keys to move overlay, Enter to reset",
-      "screen_reader": "Announce 'Glass overlay moved up/down/returned to center'",
-      "focus": "Visible outline when focused via keyboard"
-    }
-  },
-  "real_world_inspiration": {
-    "ios_control_center": "Draggable glass panels in iOS Control Center",
-    "ios_music_app": "Now Playing overlay with glass effect",
-    "macos_big_sur": "Glass morphism throughout macOS UI",
-    "windows_11_acrylic": "Acrylic blur effects in Windows 11",
-    "android_material_you": "Material Design 3 blur effects",
-    "figma_glass_effects": "Glass morphism trend in modern UI design"
-  },
-  "comparison_to_alternatives": {
-    "vs_standard_modal": {
-      "this_approach": "Glass effect with blur and drag interaction",
-      "standard_modal": "Opaque overlay without blur",
-      "benefit": "More modern, visually appealing, less obtrusive",
-      "trade_off": "Blur rendering has performance cost"
-    },
-    "vs_opacity_only": {
-      "this_approach": "Blur + tint + border for glass effect",
-      "opacity_only": "Simple transparent overlay",
-      "benefit": "Depth perception, visual hierarchy, modern aesthetic",
-      "cost": "More complex rendering, requires blur libraries"
-    },
-    "vs_static_overlay": {
-      "this_approach": "Draggable with gesture interaction",
-      "static_overlay": "Fixed position overlay",
-      "benefit": "Interactive, engaging, playful user experience",
-      "use_case": "Playgrounds, demos, interactive showcases"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~120 lines total (all 4 files)",
-    "dependencies": {
-      "expo_blur": "~15MB (likely already in project)",
-      "expo_glass_effect": "~2MB (optional, for liquid variant)",
-      "expo_image": "~10MB (likely already in project)",
-      "reanimated": "~3MB (likely already in project)",
-      "gesture_handler": "~2MB (likely already in project)"
-    },
-    "assets": "One background image (served by Unsplash CDN)",
-    "runtime_memory": "Minimal - 1 SharedValue, blur rendering memory",
-    "estimated_impact": "< 10KB code (dependencies likely already present)"
-  },
-  "performance_metrics": {
-    "target_fps": 60,
-    "gesture_update_frequency": "Every frame",
-    "runs_on": "UI thread (worklets)",
-    "expected_performance": "Smooth on modern devices",
-    "potential_bottleneck": "Blur rendering on low-end devices",
-    "optimization": "expo-blur and expo-glass-effect are optimized native modules"
-  },
-  "tags": [
-    "glass-morphism",
-    "blur-effect",
-    "draggable",
-    "pan-gesture",
-    "reanimated",
-    "spring-animation",
-    "friction",
-    "overlay",
-    "expo-blur",
-    "expo-glass-effect",
-    "platform-specific",
-    "ios",
-    "interactive",
-    "playground",
-    "demo",
-    "liquid-glass",
-    "frosted-glass",
-    "modern-ui",
-    "gesture-handler"
+  "hooks": [
+    "useSharedValue"
   ],
-  "content_hash": "eca96d1f32813c89f4d91a5778c7ed2d5d313647c729994c15e4484e68b307bd",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.384Z",
-  "last_validated": "2025-10-12T09:19:28.384Z"
+  "functions": [
+    "handleProgressiveHaptics",
+    "scheduleOnRN",
+    "withSpring"
+  ],
+  "components": [
+    "Animated.View",
+    "BlurView",
+    "GestureDetector",
+    "GlassView",
+    "Image",
+    "Overlay",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "spring-animation"
+  ],
+  "techniques": [
+    "spring-physics",
+    "blur-effects"
+  ],
+  "stats": {
+    "total_files": 5,
+    "total_packages": 9,
+    "total_hooks": 1,
+    "total_functions": 3,
+    "total_components": 7,
+    "total_patterns": 2,
+    "total_techniques": 2
+  }
 }

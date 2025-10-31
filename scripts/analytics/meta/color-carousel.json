@@ -1,833 +1,168 @@
 {
-  "animation_name": "Color Carousel",
   "animation_slug": "color-carousel",
-  "description": "A 3D perspective carousel showcasing color cards with dynamic rotation and scaling effects. Features smooth horizontal scrolling with snap-to-page behavior, perspective transforms creating depth, and an animated radial gradient background that transitions to match the active card's accent color. Each card scales and rotates based on its distance from the center, creating an immersive browsing experience.",
-  "main_features": [
-    "3D perspective carousel with rotateY transforms",
-    "Dynamic scale interpolation based on distance from center",
-    "Animated radial gradient background matching active card",
-    "Snap-to-page horizontal scrolling",
-    "Precise active index calculation during scroll",
-    "Dynamic zIndex based on proximity to center",
-    "Configurable maximum rendered items",
-    "Color darken effect for accent colors",
-    "GPU-accelerated Skia background rendering",
-    "Smooth color transitions with timing animations"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.067Z",
   "file_structure": {
-    "index.tsx": "Main component orchestrating carousel and animated background",
-    "constants.ts": "Color palette definitions and configuration",
-    "components/carousel/index.tsx": "Carousel container with scroll handling and item rendering",
-    "components/carousel/carousel-item.tsx": "Individual carousel item with 3D transforms and zIndex"
+    "entry": "index.tsx",
+    "components": [
+      "components/carousel/carousel-item.tsx",
+      "constants.ts"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "rendering": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "colors": "color (npm package)",
-    "layout": "react-native"
+  "packages": [
+    "@shopify/react-native-skia",
+    "color",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "color": "^4.2.3",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "Canvas",
-        "Rect",
-        "RadialGradient"
+  "packages_detail": {
+    "./carousel-item": {
+      "imports": [
+        "CarouselItem"
       ],
-      "utilities": [
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/carousel": {
+      "imports": [
+        "Carousel"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "BACKGROUND_COLOR",
+        "data",
+        "windowWidth"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@shopify/react-native-skia": {
+      "imports": [
+        "Canvas",
+        "RadialGradient",
+        "Rect",
         "vec"
       ],
-      "usage": "Animated radial gradient background",
-      "performance_benefit": "GPU-accelerated background rendering"
-    },
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "useAnimatedStyle",
-        "useAnimatedScrollHandler"
-      ],
-      "functions": [
-        "withTiming",
-        "interpolate",
-        "Extrapolation"
-      ],
-      "critical_feature": "useAnimatedScrollHandler for smooth scroll tracking"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "color": {
-      "version": "Latest",
-      "usage": "Darken colors for accent generation",
-      "method": "Color(color).darken(0.1).hex()",
-      "purpose": "Create harmonious accent colors from base colors"
-    }
-  },
-  "animation_techniques": {
-    "3d_perspective_rotation": {
-      "pattern": "RotateY transform with perspective",
-      "calculation": {
-        "precise_active_index": "initialActiveIndex + (-translateX + itemWidth/2) / (carouselWidth/maxRenderedItems)",
-        "rotate_offset": "preciseActiveIndex - index - 0.5",
-        "rotation_range": "interpolate(offset, [-2, -1, 0, 1, 2], [-25, -20, 0, 20, 25])"
-      },
-      "perspective": 500,
-      "effect": "Cards rotate away from viewer as they move from center",
-      "visual_impact": "Creates depth and 3D carousel feeling"
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "distance_based_scaling": {
-      "pattern": "Scale interpolation based on normalized distance from center",
-      "calculation": {
-        "position": "index * itemWidth + translateX.value",
-        "center": "carouselWidth / 2",
-        "raw_distance": "Math.abs(center - ((position + center + itemWidth / 2) % carouselWidth))",
-        "max_distance": "carouselWidth / 2",
-        "normalized_distance": "1 - distanceFromCenter / maxDistance",
-        "scale": "interpolate(normalizedDistance, [0, 1], [2, 0.8], CLAMP)"
-      },
-      "scale_range": "0.8 (far from center) to 2 (at center)",
-      "extrapolation": "CLAMP to prevent invalid scale values",
-      "effect": "Active card appears larger, creating focal point"
+    "react": {
+      "imports": [
+        "memo"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "dynamic_zindex": {
-      "pattern": "Z-index interpolation for proper layering",
-      "calculation": "interpolate(normalizedDistanceFromCenter, [0, 1], [1000, 0], CLAMP)",
-      "range": "0 (far) to 1000 (center)",
-      "rounding": "Math.floor(zIndex) for integer values",
-      "purpose": "Center card appears in front of side cards",
-      "necessity": "Critical for proper 3D layering with rotated cards"
+    "react-native": {
+      "imports": [
+        "Dimensions",
+        "StyleSheet",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "radial_gradient_background": {
-      "pattern": "Skia RadialGradient with animated colors",
-      "center": "vec(windowWidth / 2, windowWidth / 2)",
-      "radius": "windowWidth / 2",
-      "colors": "[activeAccentColor, BACKGROUND_COLOR]",
-      "color_transition": "withTiming(data[activeIndex]?.accentColor ?? BACKGROUND_COLOR)",
-      "effect": "Background fades from accent color at center to dark at edges",
-      "positioning": "zIndex: -1 (behind carousel)"
-    },
-    "active_index_tracking": {
-      "pattern": "Precise active index calculation during scroll",
-      "formula": "Math.floor(initialActiveIndex + (-translateX + itemWidth/2) / (carouselWidth/maxRenderedItems))",
-      "initial_active_index": "Math.floor(MAX_RENDERED_ITEMS / 2)",
-      "updates": "On every scroll frame in useAnimatedStyle",
-      "purpose": "Determine which card's accent color to use for background",
-      "side_effect": "activeIndex.value mutated directly in worklet"
-    },
-    "scroll_handling": {
-      "hook": "useAnimatedScrollHandler",
-      "tracked_value": "contentOffset.x",
-      "shared_value": "translateX.value = -x (negated for easier calculations)",
-      "throttle": "scrollEventThrottle={16} (~60fps)",
-      "benefit": "Smooth scroll tracking without re-renders"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "activeIndex",
-        "type": "SharedValue<number>",
-        "initial": "INITIAL_ACTIVE_INDEX (Math.floor(MAX_RENDERED_ITEMS / 2))",
-        "updates": "Mutated in CarouselItem's useAnimatedStyle during scroll",
-        "scope": "Global - tracks which card is currently active",
-        "purpose": "Drives background color transitions"
-      },
-      {
-        "name": "translateX",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "updates": "Updated in useAnimatedScrollHandler (negated contentOffset.x)",
-        "scope": "Local to Carousel component",
-        "purpose": "Tracks scroll position for all calculations"
-      },
-      {
-        "name": "radialBackgroundActiveColor",
-        "type": "DerivedValue<string>",
-        "calculation": "withTiming(data[activeIndex.value]?.accentColor ?? BACKGROUND_COLOR)",
-        "dependencies": [
-          "activeIndex"
-        ],
-        "purpose": "Animated transition of active accent color"
-      },
-      {
-        "name": "radialGradientColors",
-        "type": "DerivedValue<string[]>",
-        "calculation": "[radialBackgroundActiveColor.value, BACKGROUND_COLOR]",
-        "dependencies": [
-          "radialBackgroundActiveColor"
-        ],
-        "purpose": "Array of colors for RadialGradient"
-      }
-    ],
-    "useAnimatedScrollHandler": {
-      "event": "onScroll",
-      "callback": "contentOffset: { x }",
-      "action": "translateX.value = -x",
-      "negation_reason": "Easier mental model - positive translateX means scrolled right",
-      "performance": "Runs on UI thread, no bridge crossing"
-    },
-    "useDerivedValue": {
-      "instances": 2,
-      "radialBackgroundActiveColor": {
-        "pattern": "Lookup data by activeIndex, fallback to default",
-        "animation": "withTiming for smooth color transition",
-        "fallback": "BACKGROUND_COLOR when data not found"
-      },
-      "radialGradientColors": {
-        "pattern": "Construct gradient color array",
-        "dependencies": "Automatically tracks radialBackgroundActiveColor changes"
-      }
-    },
-    "useAnimatedStyle": {
-      "instances": 2,
-      "rItemListStyle": {
-        "transforms": [
-          "scale (based on distance from center)",
-          "perspective: 500 (3D effect)",
-          "rotateY (based on precise active index)"
-        ],
-        "side_effects": "Updates activeIndex.value",
-        "recalculates": "Every frame during scroll"
-      },
-      "rZIndexStyle": {
-        "property": "zIndex",
-        "calculation": "Same distance calculation as scale",
-        "rounding": "Math.floor for integer zIndex",
-        "separate_style": "Required because zIndex needs separate Animated.View"
-      }
-    },
-    "worklet_calculations": {
-      "position": "index * itemWidth + translateX.value",
-      "distance_from_center": "Math.abs(center - ((position + center + itemWidth / 2) % carouselWidth))",
-      "normalized_distance": "1 - distanceFromCenter / maxDistance",
-      "precise_active_index": "Complex formula for sub-pixel accuracy",
-      "all_on_ui_thread": "No bridge crossing for smooth 60fps"
-    }
-  },
-  "scroll_configuration": {
-    "scrollview_props": {
-      "horizontal": true,
-      "pagingEnabled": true,
-      "showsHorizontalScrollIndicator": false,
-      "scrollEventThrottle": 16,
-      "decelerationRate": 0.8,
-      "snapToOffsets": "items.map((_, index) => index * LIST_ITEM_WIDTH)"
-    },
-    "snap_behavior": {
-      "pattern": "snapToOffsets for precise page snapping",
-      "calculation": "Each item's left edge position",
-      "effect": "Snaps to show exactly one centered card",
-      "deceleration": "0.8 (slower than default 0.998) for controlled scrolling"
-    },
-    "paging_vs_snapping": {
-      "pagingEnabled": true,
-      "snapToOffsets": "Custom offsets per item",
-      "combination": "Both used for best snap behavior",
-      "item_width": "carouselWidth / maxRenderedItems"
-    }
-  },
-  "mathematical_algorithms": {
-    "distance_calculation": {
-      "formula": "Math.abs(center - ((position + center + itemWidth / 2) % carouselWidth))",
-      "position_calc": "index * itemWidth + translateX.value",
-      "center": "carouselWidth / 2",
-      "modulo_usage": "% carouselWidth for wrapping behavior",
-      "offset_adjustment": "+ center + itemWidth / 2",
-      "purpose": "Calculate how far each card is from center point"
-    },
-    "normalization": {
-      "formula": "1 - distanceFromCenter / maxDistance",
-      "range": "0 (far) to 1 (at center)",
-      "purpose": "Convert pixel distance to normalized 0-1 scale",
-      "benefit": "Enables consistent interpolation ranges"
-    },
-    "active_index_formula": {
+    "react-native-reanimated": {
+      "imports": [
+        "Extrapolation",
+        "interpolate",
+        "useAnimatedScrollHandler",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedScrollHandler",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "interpolate",
+        "withTiming"
+      ],
       "components": [
-        "initialActiveIndex: Math.floor(maxRenderedItems / 2)",
-        "scroll_offset: -translateX.value",
-        "center_adjustment: + itemWidth / 2",
-        "item_size: carouselWidth / maxRenderedItems"
-      ],
-      "full_formula": "Math.floor(initialActiveIndex + (-translateX + itemWidth/2) / (carouselWidth/maxRenderedItems))",
-      "floor_purpose": "Convert to integer index for array lookup",
-      "precision": "Sub-pixel precision before flooring for smooth interpolation"
-    },
-    "interpolate_ranges": {
-      "scale": {
-        "input": "[0, 1]",
-        "output": "[2, 0.8]",
-        "meaning": "Far cards 80% size, center card 200% size"
-      },
-      "rotateY": {
-        "input": "[-2, -1, 0, 1, 2]",
-        "output": "[-25, -20, 0, 20, 25]",
-        "meaning": "Progressive rotation based on position offset"
-      },
-      "zIndex": {
-        "input": "[0, 1]",
-        "output": "[1000, 0]",
-        "meaning": "Center card highest z-index, far cards lowest"
-      }
-    }
-  },
-  "color_system": {
-    "base_colors": [
-      "#336699",
-      "#6699CC",
-      "#99CCFF",
-      "#CCCCFF",
-      "#99CC99",
-      "#CCFFCC",
-      "#FFFF99",
-      "#FFCC99",
-      "#FF9999",
-      "#FFCCCC",
-      "#FF99CC",
-      "#CC99FF",
-      "#9966CC",
-      "#663399",
-      "#FF9966",
-      "#FF6600",
-      "#CC6600",
-      "#996600",
-      "#FFCC00",
-      "#FFFF00"
-    ],
-    "color_count": 20,
-    "accent_generation": {
-      "method": "Color(color).darken(0.1).hex()",
-      "darken_amount": "0.1 (10% darker)",
-      "library": "color (npm)",
-      "purpose": "Create harmonious darker accent for background gradient"
-    },
-    "data_structure": {
-      "pattern": "[null, null, ...colors, null, null]",
-      "null_padding": "2 null items at start and end",
-      "purpose": "Allow scrolling past first/last items for better UX",
-      "total_items": "24 (20 colors + 4 null)"
-    },
-    "background_color": "#111111 (very dark gray)",
-    "color_palette_theme": "Soft, pastel colors with good contrast against dark background"
-  },
-  "component_architecture": {
-    "color_carousel": {
-      "responsibility": "Main orchestration and background rendering",
-      "state": "activeIndex SharedValue",
-      "rendering": [
-        "Carousel component",
-        "Skia Canvas background"
-      ],
-      "aspect_ratio": "1:1 (square container)",
-      "configuration": "MAX_RENDERED_ITEMS = 5 (configurable)"
-    },
-    "carousel": {
-      "responsibility": "Scroll handling and item layout",
-      "props": [
-        "items",
-        "maxRenderedItems",
-        "width",
-        "activeIndex"
-      ],
-      "memo": true,
-      "render_method": "ScrollView with mapped items (not FlatList)",
-      "calculated_values": [
-        "LIST_ITEM_WIDTH",
-        "LIST_ITEM_HEIGHT"
-      ],
-      "aspect_ratio_constant": "LIST_ITEM_ASPECT_RATIO = 3/4"
-    },
-    "carousel_item": {
-      "responsibility": "Individual card rendering with transforms",
-      "props": [
-        "item",
-        "index",
-        "translateX",
-        "itemWidth",
-        "itemHeight",
-        "carouselWidth",
-        "maxRenderedItems",
-        "activeIndex"
-      ],
-      "memo": true,
-      "animated_styles": [
-        "rItemListStyle (transforms)",
-        "rZIndexStyle (layering)"
-      ],
-      "side_effects": "Mutates activeIndex.value",
-      "nested_structure": "Animated.View (zIndex) > Animated.View (transforms) > View (visual card)"
-    }
-  },
-  "visual_design": {
-    "layout": {
-      "container_background": "#111111 (dark gray)",
-      "container_alignment": "center (both axes)",
-      "carousel_container": "100% width, aspectRatio: 1",
-      "canvas_positioning": "StyleSheet.absoluteFill, zIndex: -1"
-    },
-    "card_styling": {
-      "background": "mainColor from data (or transparent for null items)",
-      "border_radius": 5,
-      "flex": 1,
-      "shadow": {
-        "ios": {
-          "shadowColor": "#000",
-          "shadowOffset": "{ width: 0, height: 0 }",
-          "shadowOpacity": 0.25,
-          "shadowRadius": 5
-        },
-        "android": {
-          "elevation": 5
-        }
-      },
-      "conditional_shadow": "Only applied when item?.mainColor exists"
-    },
-    "item_dimensions": {
-      "width": "windowWidth / MAX_RENDERED_ITEMS",
-      "height": "LIST_ITEM_WIDTH / LIST_ITEM_ASPECT_RATIO",
-      "aspect_ratio": "3:4 (portrait cards)",
-      "example": "5 items on 375px screen = 75px wide, 100px tall each"
-    },
-    "gradient_design": {
-      "type": "Radial",
-      "shape": "Circle from center",
-      "radius": "windowWidth / 2 (fills square)",
-      "color_stops": [
-        "Center: Active card's accent color",
-        "Edge: #111111 (background color)"
-      ],
-      "effect": "Spotlight effect highlighting active card"
-    }
-  },
-  "performance_optimizations": {
-    "memo_components": {
-      "Carousel": "Prevents re-render when parent re-renders",
-      "CarouselItem": "Each item only re-renders when props change",
-      "benefit": "With 24 items, prevents unnecessary recalculations"
-    },
-    "scrollview_vs_flatlist": {
-      "choice": "ScrollView",
-      "reason": "zIndex issues with FlatList mentioned in comments",
-      "trade_off": "All items render immediately (not virtualized)",
-      "acceptable_because": "Only 24 items, performance is fine",
-      "note": "Comment includes commented FlatList code for reference"
-    },
-    "ui_thread_calculations": {
-      "pattern": "All animations and calculations in worklets",
-      "benefit": "No bridge crossing, smooth 60fps",
-      "calculations": [
-        "Distance from center",
-        "Scale interpolation",
-        "Rotation interpolation",
-        "Active index calculation",
-        "zIndex calculation"
+        "Animated.ScrollView",
+        "Animated.View"
       ]
-    },
-    "skia_rendering": {
-      "pattern": "GPU-accelerated background",
-      "benefit": "Smooth gradient transitions without layout recalculation",
-      "vs_view": "More performant than View with gradient background"
-    },
-    "shared_value_efficiency": {
-      "translateX": "Single shared value drives all item animations",
-      "activeIndex": "Single value triggers background color change",
-      "benefit": "Minimal state, maximum reactivity"
     }
   },
-  "layout_and_positioning": {
-    "container_centering": {
-      "flex": 1,
-      "justifyContent": "center",
-      "alignItems": "center",
-      "effect": "Carousel centered in screen"
-    },
-    "canvas_layering": {
-      "position": "StyleSheet.absoluteFill",
-      "zIndex": -1,
-      "effect": "Background renders behind carousel"
-    },
-    "item_layering": {
-      "pattern": "Two-level nesting for separate zIndex and transform",
-      "outer": "Animated.View with zIndex style",
-      "inner": "Animated.View with transform styles",
-      "necessity": "Transform and zIndex require separate animated views for proper rendering"
-    },
-    "scroll_container": {
-      "contentContainerStyle": {
-        "alignItems": "center"
-      },
-      "purpose": "Vertically center items within ScrollView"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Color picker UI",
-      "Product carousels (e.g., clothing, shoes)",
-      "Gallery/portfolio showcases",
-      "Theme selector",
-      "Image carousel with depth effect",
-      "Profile browsing (dating apps style)"
-    ],
-    "educational": [
-      "Teaching 3D transforms in React Native",
-      "Demonstrating perspective effects",
-      "Showing distance-based interpolation",
-      "useAnimatedScrollHandler examples",
-      "Skia gradient integration"
-    ],
-    "design_inspiration": [
-      "Material Design card carousels",
-      "iOS cover flow",
-      "Spotify playlist covers",
-      "App Store feature carousels"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "generics": "CarouselProps<T extends BaseCarouselItemType>",
-      "type_definitions": [
-        "BaseCarouselItemType",
-        "CarouselProps",
-        "CarouselItemProps"
-      ],
-      "type_imports": "type keyword for type-only imports"
-    },
-    "component_structure": {
-      "separation": "Clear separation between main, carousel, and item",
-      "reusability": "Carousel component is generic and reusable",
-      "props_drilling": "Clean prop passing, no prop spreading"
-    },
-    "constants": {
-      "centralized": "constants.ts file for configuration",
-      "constants_defined": [
-        "colors array",
-        "data (with null padding)",
-        "BACKGROUND_COLOR",
-        "windowWidth",
-        "MAX_RENDERED_ITEMS",
-        "INITIAL_ACTIVE_INDEX",
-        "LIST_ITEM_ASPECT_RATIO"
-      ]
-    },
-    "documentation": {
-      "inline_comments": [
-        "Explanation of MAX_RENDERED_ITEMS choice (line 13-14)",
-        "useAnimatedScrollHandler reference to YouTube video (line 37-40)",
-        "ScrollView vs FlatList issue explanation (line 51-52, 86-87)",
-        "Commented FlatList code for reference (line 89-118)",
-        "Aspect ratio explanation (line 22-23)"
-      ],
-      "external_resources": "YouTube link to useAnimatedScrollHandler explanation"
-    },
-    "best_practices": [
-      "memo for performance",
-      "Type safety throughout",
-      "Separated concerns (UI, logic, constants)",
-      "Clear prop interfaces",
-      "Descriptive variable names"
-    ]
-  },
-  "known_limitations": {
-    "flatlist_zindex_issue": {
-      "issue": "zIndex doesn't work properly with FlatList",
-      "current_solution": "Using ScrollView instead",
-      "trade_off": "All items render immediately (no virtualization)",
-      "impact": "Fine for ~24 items, may need optimization for 100+",
-      "open_question": "Author invites solutions in comments"
-    },
-    "null_item_handling": {
-      "pattern": "null items render as transparent views",
-      "purpose": "Padding for scroll behavior",
-      "limitation": "Adds empty items to array, increases render count",
-      "alternative": "Could use contentInset or padding (platform differences)"
-    },
-    "activeindex_mutation": {
-      "pattern": "activeIndex.value mutated in useAnimatedStyle",
-      "concern": "Side effect in style calculation",
-      "acceptable": "Common pattern in Reanimated for tracking state",
-      "alternative": "Could use useAnimatedReaction (slightly less performant)"
-    },
-    "fixed_aspect_ratio": {
-      "value": "3/4 hardcoded in Carousel component",
-      "limitation": "Not configurable via props",
-      "workaround": "Edit constant or pass as prop",
-      "impact": "Minor - aspect ratio typically consistent per design"
-    },
-    "color_library_dependency": {
-      "package": "color",
-      "purpose": "Only used for darken() method",
-      "alternative": "Could implement darken manually to reduce dependencies",
-      "size_impact": "color package adds ~10KB to bundle"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Touch-to-select card (not just scroll)",
-      "Auto-play carousel option",
-      "Custom card content (images, text, etc.)",
-      "Vertical carousel variant",
-      "Multiple rows of cards",
-      "Infinite scroll (loop around)",
-      "Card expansion on tap",
-      "Custom gradient patterns (linear, conical)"
-    ],
-    "configuration": [
-      "Configurable aspect ratio via props",
-      "Adjustable rotation angles",
-      "Customizable scale range",
-      "Configurable perspective distance",
-      "Custom interpolation ranges",
-      "Theme presets"
-    ],
-    "performance": [
-      "FlatList support (solve zIndex issue)",
-      "Virtualization for large datasets",
-      "Lazy load card content",
-      "Optimize distance calculations",
-      "Cache calculated values"
-    ],
-    "interactions": [
-      "Swipe gestures for quick navigation",
-      "Pinch to zoom cards",
-      "Long press for actions",
-      "Haptic feedback on snap",
-      "Double tap to expand"
-    ],
-    "visual_effects": [
-      "Blur effect on side cards",
-      "Parallax background motion",
-      "Card flip animations",
-      "Particle effects on scroll",
-      "Shadow following card position",
-      "Animated borders"
-    ],
-    "accessibility": [
-      "Screen reader support",
-      "Keyboard navigation",
-      "Reduced motion mode",
-      "High contrast mode",
-      "Focus indicators"
-    ]
-  },
-  "key_insights": {
-    "distance_calculation_elegance": "Modulo operation enables wrapping distance calculation for circular carousel feel",
-    "dual_animated_views": "Separating zIndex and transform into different Animated.Views solves rendering issues",
-    "negative_translatex": "Negating scroll offset simplifies mental model (positive = scrolled right)",
-    "activeindex_in_worklet": "Calculating and mutating activeIndex in worklet avoids bridge crossing",
-    "null_padding_ux": "Adding null items at edges improves UX by allowing scroll past boundaries",
-    "radial_gradient_performance": "Skia gradient more performant than View-based gradients for animated backgrounds",
-    "precise_active_index": "Sub-pixel precision enables smooth background transitions",
-    "extrapolation_clamp": "CLAMP extrapolation prevents scale/zIndex from going out of bounds"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic carousel implementation",
-      "useAnimatedScrollHandler basics",
-      "SharedValue fundamentals",
-      "Interpolation concepts",
-      "React memo optimization"
-    ],
-    "for_intermediate": [
-      "3D transforms (perspective, rotateY)",
-      "Distance-based interpolation",
-      "useDerivedValue patterns",
-      "Skia gradient integration",
-      "Active index tracking during scroll",
-      "ZIndex layering strategies"
-    ],
-    "for_advanced": [
-      "Complex distance calculations with modulo",
-      "Precise sub-pixel index calculations",
-      "Performance optimization with worklets",
-      "Dual animated view patterns",
-      "ScrollView vs FlatList trade-offs",
-      "Color manipulation libraries"
-    ]
-  },
-  "related_concepts": {
-    "similar_patterns": [
-      "iOS cover flow",
-      "Netflix carousel",
-      "Spotify card carousels",
-      "Tinder card stack",
-      "Product image galleries"
-    ],
-    "animation_techniques": [
-      "Parallax scrolling",
-      "Depth of field effects",
-      "Perspective transforms",
-      "Distance-based animations",
-      "Dynamic gradients"
-    ],
-    "ui_patterns": [
-      "Pagination indicators",
-      "Snap scrolling",
-      "Card-based layouts",
-      "Gallery views",
-      "Content carousels"
-    ]
-  },
-  "testing_considerations": {
-    "visual_regression": [
-      "Cards scale correctly based on position",
-      "Rotation angles accurate",
-      "ZIndex layering correct (center card in front)",
-      "Background gradient transitions smoothly",
-      "Null items render as transparent",
-      "Shadows appear only on color cards"
-    ],
-    "interaction_testing": [
-      "Scroll snaps to correct positions",
-      "Active index updates during scroll",
-      "Background color matches active card",
-      "Smooth scrolling at 60fps",
-      "Scroll past boundaries (null items)",
-      "Rapid scrolling handles correctly"
-    ],
-    "mathematical_verification": [
-      "Distance calculation accurate",
-      "Normalization produces 0-1 range",
-      "Active index formula correct",
-      "Interpolation ranges produce expected values",
-      "Modulo wrapping works correctly"
-    ],
-    "edge_cases": [
-      "Single item in carousel",
-      "MAX_RENDERED_ITEMS = 1",
-      "Very large MAX_RENDERED_ITEMS (11+)",
-      "Null items only",
-      "Rapid scroll to end",
-      "Screen rotation during scroll"
-    ],
-    "performance_testing": [
-      "60fps during scroll",
-      "No frame drops on low-end devices",
-      "Memory stable across scrolling",
-      "Smooth gradient transitions",
-      "No jank on snap"
-    ],
-    "cross_platform": [
-      "Test on iOS and Android",
-      "Shadow rendering differences",
-      "Scroll behavior consistency",
-      "Color accuracy across platforms"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No accessibility labels",
-      "keyboard_navigation": "Not supported",
-      "reduced_motion": "No support",
-      "focus_management": "No focus indicators"
-    },
-    "recommendations": [
-      "Add accessibilityLabel to cards",
-      "Announce active card to screen readers",
-      "Support keyboard left/right navigation",
-      "Respect prefers-reduced-motion",
-      "Add focus indicators on cards",
-      "Provide alternative non-carousel view",
-      "Ensure color contrast on cards",
-      "Support screen reader gestures"
-    ],
-    "implementation_suggestions": {
-      "reduced_motion": "Disable transforms, keep basic layout",
-      "screen_reader": "Use accessibilityRole='adjustable'",
-      "keyboard": "Listen to key events, animate scrollTo"
-    }
-  },
-  "comparison_to_alternatives": {
-    "vs_flatlist_horizontal": {
-      "this_approach": "ScrollView with manual snap offsets",
-      "standard_approach": "FlatList with pagingEnabled",
-      "benefit": "Better zIndex control, simpler for small datasets",
-      "drawback": "No virtualization"
-    },
-    "vs_static_transform": {
-      "this_approach": "Dynamic distance-based transforms",
-      "simple_approach": "Fixed transforms per index",
-      "benefit": "Smooth continuous animation during scroll",
-      "complexity": "More complex math"
-    },
-    "vs_view_gradient": {
-      "this_approach": "Skia RadialGradient",
-      "alternative": "expo-linear-gradient or react-native-svg",
-      "benefit": "Better performance, GPU-accelerated",
-      "trade_off": "Requires Skia dependency"
-    }
-  },
-  "configuration": {
-    "adjustable_constants": {
-      "MAX_RENDERED_ITEMS": {
-        "current": 5,
-        "recommendation": "Use odd numbers for centered layout",
-        "range": "3-11 typical",
-        "note": "Author recommends 5 for best visual result"
-      },
-      "LIST_ITEM_ASPECT_RATIO": {
-        "current": "3/4 (portrait)",
-        "alternatives": [
-          "1 (square)",
-          "16/9 (landscape)",
-          "4/3 (landscape)"
-        ]
-      },
-      "rotation_range": {
-        "current": "[-25, -20, 0, 20, 25]",
-        "adjustable": "Change for more/less dramatic rotation"
-      },
-      "scale_range": {
-        "current": "[2, 0.8]",
-        "adjustable": "Change for more/less size difference"
-      },
-      "perspective": {
-        "current": 500,
-        "range": "200-1000 typical",
-        "effect": "Lower = more dramatic 3D, Higher = more subtle"
-      },
-      "darken_amount": {
-        "current": 0.1,
-        "range": "0.0-0.5",
-        "effect": "How much darker accent colors are"
-      }
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~350 lines total (all files)",
-    "dependencies": {
-      "required": [
-        "Skia",
-        "Reanimated"
-      ],
-      "additional": "color (~10KB)"
-    },
-    "runtime_memory": "Minimal - few SharedValues, 24 rendered items",
-    "estimated_size": "< 20KB (excluding dependencies)"
-  },
-  "historical_context": {
-    "youtube_reference": "https://youtu.be/OT-73hpwxXQ",
-    "topic": "useAnimatedScrollHandler explanation",
-    "note": "Author has made videos about this pattern before"
-  },
-  "tags": [
-    "carousel",
-    "3d-transforms",
-    "perspective",
-    "scroll-animation",
-    "skia",
-    "reanimated",
-    "radial-gradient",
-    "color-picker",
-    "distance-interpolation",
-    "snap-scrolling",
-    "zindex-layering",
-    "rotateY",
-    "scale-animation",
-    "dynamic-background",
-    "card-carousel",
-    "gallery"
+  "hooks": [
+    "useAnimatedScrollHandler",
+    "useAnimatedStyle",
+    "useDerivedValue",
+    "useSharedValue"
   ],
-  "content_hash": "aa9df624f932f75626ea4822cfba45d693fdc99d3bfbcc6f4d302f15f2fbe30f",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.309Z",
-  "last_validated": "2025-10-12T09:19:28.309Z"
+  "functions": [
+    "Color",
+    "interpolate",
+    "memo",
+    "vec",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.ScrollView",
+    "Animated.View",
+    "Canvas",
+    "Carousel",
+    "CarouselItem",
+    "RadialGradient",
+    "Rect",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "scroll-animation",
+    "timing-animation",
+    "value-interpolation",
+    "reactive-styling-pattern",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "scroll-based-animation",
+    "timing-based-transitions",
+    "value-mapping",
+    "canvas-rendering",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 4,
+    "total_packages": 5,
+    "total_hooks": 4,
+    "total_functions": 5,
+    "total_components": 8,
+    "total_patterns": 8,
+    "total_techniques": 5
+  }
 }

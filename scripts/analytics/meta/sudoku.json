@@ -1,882 +1,330 @@
 {
-  "animation_name": "Sudoku Game",
   "animation_slug": "sudoku",
-  "description": "A fully functional Sudoku puzzle game with smooth animations, interactive UI, and smart visual feedback. Features automatic puzzle generation with three difficulty levels, cell highlighting, validation, auto-solve capability, and celebration confetti on completion. Built with React Native Reanimated for fluid animations and optimized performance.",
-  "main_features": [
-    "Automatic Sudoku puzzle generation (easy/medium/hard)",
-    "Interactive 9x9 grid with cell selection",
-    "Number pad input with backspace",
-    "Smart cell highlighting (selected cell, same number, same row/column/box)",
-    "Real-time validation and visual feedback",
-    "Auto-solve functionality with spring animations",
-    "Confetti celebration on puzzle completion",
-    "Staggered cell entrance animations",
-    "Smooth fade and transition effects",
-    "New game with difficulty selection",
-    "Initial numbers locked (cannot be edited)",
-    "Long press Easter egg to auto-solve"
-  ],
+  "extracted_at": "2025-10-31T18:25:46.602Z",
   "file_structure": {
-    "index.tsx": "Main app component with game state and UI layout",
-    "theme.ts": "Centralized color scheme and elevation styles",
-    "logic/": {
-      "sudoku.ts": "Core Sudoku algorithms (generation, validation, solving)",
-      "sudoku-game.ts": "Game state management class (OOP pattern)",
-      "index.ts": "Public API exports"
-    },
-    "components/": {
-      "button.tsx": "Reusable animated button with press feedback",
-      "number-pad.tsx": "Interactive number input pad (1-9 + backspace)",
-      "sudoku-board/": {
-        "index.tsx": "Main board component orchestrating the grid",
-        "cell-container.tsx": "Container managing cell state and callbacks",
-        "cell.tsx": "Individual cell with animations and highlighting",
-        "constants.ts": "Board and cell size calculations"
-      }
-    }
-  },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "confetti": "react-native-fast-confetti",
-    "ui_effects": [
-      "expo-linear-gradient"
+    "entry": "logic/index.ts",
+    "components": [
+      "components/button.tsx",
+      "components/number-pad.tsx",
+      "components/sudoku-board/cell-container.tsx",
+      "components/sudoku-board/cell.tsx",
+      "components/sudoku-board/constants.ts",
+      "theme.ts"
     ],
-    "icons": "@expo/vector-icons",
-    "state_management": "React useState + OOP class",
-    "algorithms": "Backtracking algorithm for puzzle generation and solving"
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": [
+      "logic/sudoku-game.ts",
+      "logic/sudoku.ts"
+    ]
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "usage": "Cell animations, button feedback, transitions, highlighting",
+  "packages": [
+    "@expo/vector-icons",
+    "expo-haptics",
+    "expo-linear-gradient",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-fast-confetti",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-haptics": "~15.0.7",
+    "expo-linear-gradient": "~15.0.7",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-fast-confetti": "^1.1.1",
+    "react-native-reanimated": "~4.1.1"
+  },
+  "packages_detail": {
+    "../../logic": {
+      "imports": [
+        "SudokuGame"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../../theme": {
+      "imports": [
+        "COLORS"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../number-pad": {
+      "imports": [
+        "NumberPad"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../theme": {
+      "imports": [
+        "COLORS"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./cell": {
+      "imports": [
+        "Cell"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./cell-container": {
+      "imports": [
+        "CellContainer"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/button": {
+      "imports": [
+        "Button"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/sudoku-board": {
+      "imports": [
+        "SudokuBoard"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "BOARD_SIZE",
+        "CELL_SIZE"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./logic": {
+      "imports": [
+        "generateSudoku"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./sudoku": {
+      "imports": [
+        "isPuzzleComplete",
+        "isValidMove"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./theme": {
+      "imports": [
+        "COLORS",
+        "ELEVATION"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "Ionicons"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-haptics": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-linear-gradient": {
+      "imports": [
+        "LinearGradient"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "forwardRef",
+        "memo",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
       "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Alert",
+        "Dimensions",
+        "Platform",
+        "Pressable",
+        "StyleSheet",
+        "Text",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-fast-confetti": {
+      "imports": [
+        "PIConfetti"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "FadeIn",
+        "FadeInDown",
+        "FadeOut",
+        "LinearTransition",
         "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
         "withSpring",
         "withTiming"
       ],
       "components": [
-        "Animated.View",
         "Animated.Text",
-        "Animated.Pressable"
-      ],
-      "transitions": [
-        "FadeIn",
-        "FadeOut",
-        "FadeInDown",
-        "FadeOutDown",
-        "FadeOutRight",
-        "LinearTransition"
-      ],
-      "critical_features": [
-        "Staggered FadeIn for 81 cells",
-        "Derived values for cell highlighting logic",
-        "Spring animations for scale effects"
-      ]
-    },
-    "react-native-fast-confetti": {
-      "version": "^1.1.1",
-      "usage": "Celebration animation on puzzle completion",
-      "components": [
-        "PIConfetti"
-      ],
-      "config": {
-        "count": 500,
-        "flakeSize": "10x10",
-        "blastRadius": 300,
-        "fallDuration": 10000,
-        "blastDuration": 1000,
-        "fadeOutOnEnd": true
-      }
-    },
-    "expo-linear-gradient": {
-      "version": "~15.0.7",
-      "usage": "Background gradient (dark blue theme)",
-      "components": [
-        "LinearGradient"
-      ],
-      "colors": [
-        "#0A1222 → #121D33"
-      ]
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "usage": "Backspace icon in number pad",
-      "icons": [
-        "Ionicons.backspace-outline"
+        "Animated.View",
+        "Animated.createAnimatedComponent"
       ]
     }
   },
-  "animation_techniques": {
-    "cell_entrance": {
-      "pattern": "Staggered fade-in based on grid position",
-      "implementation": "FadeIn.delay((rowIndex + colIndex) * 75).duration(350)",
-      "stagger_formula": "(row + col) * 75ms",
-      "total_duration": "~1200ms for full board (81 cells)",
-      "effect": "Diagonal wave pattern from top-left to bottom-right"
-    },
-    "cell_highlighting": {
-      "pattern": "Derived value with spring/timing animations",
-      "triggers": [
-        "Cell selection (withSpring to highlight color)",
-        "Number matching (scale + opacity animation)",
-        "Row/column/box highlighting"
-      ],
-      "animations": [
-        "backgroundColor: withSpring(isSelected ? highlight : surface)",
-        "scale: withSpring(isHighlighted ? 1 : 0)",
-        "opacity: withTiming(isHighlighted ? 1 : 0, { duration: 150 })"
-      ],
-      "highlighting_rules": {
-        "selected_cell": "Blue highlight background",
-        "same_number": "Strong blue circle background with scale",
-        "same_row_col_box": "Subtle highlight (future enhancement)"
-      }
-    },
-    "button_press": {
-      "pattern": "Scale and translateY on press",
-      "implementation": "interpolate(pressed.value, [0, 1], [1, 0.97]) for scale",
-      "overlay": "Black overlay with opacity 0 → 0.1 on press",
-      "spring_config": {
-        "mass": 0.2,
-        "damping": 12,
-        "stiffness": 120
-      },
-      "effect": "Smooth press feedback with subtle squeeze"
-    },
-    "number_pad_buttons": {
-      "pattern": "Scale animation + background color change",
-      "scale": "withSpring(0.95) on press, 1.0 on release",
-      "highlighting": "Background changes to highlightStrong when number matches selection",
-      "border": "Border color changes to primary when highlighted",
-      "spring_mass": 0.3
-    },
-    "transitions": {
-      "start_to_game": "FadeOutRight for Start button, FadeIn for board",
-      "new_game_button": "FadeIn when game starts, FadeOutDown when resetting",
-      "board_entrance": "FadeInDown for entire board container",
-      "number_pad_entrance": "Delayed by delay + 1600ms after board"
-    },
-    "layout_transitions": {
-      "component": "LinearTransition",
-      "usage": "Smooth layout changes during state transitions",
-      "applied_to": [
-        "Header",
-        "Board container"
-      ]
-    }
-  },
-  "game_logic": {
-    "architecture": "OOP class-based game state management",
-    "class": "SudokuGame",
-    "paradigm": "Pure TypeScript, mutable internal state, immutable getters",
-    "state": {
-      "board": "9x9 array of CellValue (number | null)",
-      "initialBoard": "Immutable copy of starting puzzle",
-      "selectedCell": "{ row: number, col: number } (-1, -1 when none)",
-      "highlightedNumber": "number (0 when none)"
-    },
-    "methods": {
-      "getBoard": "Returns immutable copy of current board state",
-      "getInitialBoard": "Returns immutable copy of initial puzzle",
-      "getSelectedCell": "Returns copy of selected cell coordinates",
-      "getHighlightedNumber": "Returns currently highlighted number",
-      "selectCell": "Updates selection, toggles if already selected",
-      "setNumber": "Places number in selected cell (if valid)",
-      "clearCell": "Removes number from selected cell (if not initial)",
-      "isComplete": "Checks if puzzle is fully and correctly solved",
-      "solve": "Solves entire puzzle using backtracking algorithm",
-      "isCellInitial": "Checks if cell was part of initial puzzle",
-      "isCellSelected": "Checks if cell is currently selected",
-      "isCellHighlighted": "Checks if cell value matches highlighted number"
-    },
-    "validation": {
-      "isValidMove": "Checks row, column, and 3x3 box constraints",
-      "isCellValid": "Validates single cell against Sudoku rules",
-      "isPuzzleComplete": "Validates entire board is filled and correct"
-    },
-    "generation_algorithm": {
-      "type": "Backtracking with randomization",
-      "steps": [
-        "1. Fill diagonal 3x3 boxes (independent, can be filled randomly)",
-        "2. Use backtracking solver to fill remaining cells",
-        "3. Create copy as solution",
-        "4. Remove cells based on difficulty while maintaining unique solution",
-        "5. Verify each removal maintains unique solution via countSolutions"
-      ],
-      "difficulty_levels": {
-        "easy": "35 cells removed",
-        "medium": "45 cells removed",
-        "hard": "55 cells removed"
-      },
-      "uniqueness_guarantee": "countSolutions ensures exactly one solution after each removal"
-    },
-    "solving_algorithm": {
-      "type": "Backtracking (recursive)",
-      "pattern": "Try numbers 1-9 in empty cell, recurse, backtrack on failure",
-      "optimizations": [
-        "Validation before recursion (early exit)",
-        "Randomized number order in generation for variety"
-      ]
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "selectedCell",
-        "type": "SharedValue<{row: number, col: number}>",
-        "scope": "Board-level",
-        "updates": "On cell press via game.selectCell()",
-        "consumers": "All 81 cells derive isSelected state"
-      },
-      {
-        "name": "highlightedNumber",
-        "type": "SharedValue<number>",
-        "scope": "Board-level",
-        "updates": "On cell press or number input",
-        "consumers": "All cells and number pad buttons check for match"
-      },
-      {
-        "name": "pressed (Button)",
-        "type": "SharedValue<number>",
-        "scope": "Per-button instance",
-        "values": "0 (rest) or 1 (pressed)",
-        "usage": "Interpolated for scale and overlay opacity"
-      },
-      {
-        "name": "scale (NumberPadButton)",
-        "type": "SharedValue<number>",
-        "scope": "Per-button instance",
-        "values": "1 (rest) or 0.95 (pressed)",
-        "animation": "withSpring"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "isHighlighted (Cell)",
-        "formula": "value === highlightedNumber.value && highlightedNumber.value !== 0",
-        "triggers": "Cell animations for matching numbers"
-      },
-      {
-        "name": "isSelected (CellContainer)",
-        "formula": "selectedCell.value.row === row && col === col && highlightedNumber === 0",
-        "note": "Only selected when no number is highlighted"
-      },
-      {
-        "name": "isHighlighted (NumberPadButton)",
-        "formula": "value === highlightedNumber.value",
-        "triggers": "Button background and border color changes"
-      },
-      {
-        "name": "scale (Cell highlighting)",
-        "formula": "withSpring(isHighlighted ? 1 : 0)",
-        "usage": "Animated circle background for highlighted cells"
-      }
-    ],
-    "animated_styles": [
-      "Cell background color (selected state)",
-      "Cell highlight circle (scale + opacity)",
-      "Button scale and translateY (press feedback)",
-      "Button overlay opacity",
-      "Number pad button scale",
-      "Number pad button background color"
-    ],
-    "memoization": {
-      "Cell": "memo() prevents re-renders when props unchanged",
-      "NumberPadButton": "memo() for 10 buttons",
-      "CellContainer": "memo() for 81 cells",
-      "NumberPad": "memo() for entire number pad",
-      "useMemo_cellStyle": "Memoizes style arrays in Cell",
-      "useMemo_textStyle": "Memoizes text style in Cell",
-      "useMemo_numberButtons": "Memoizes button array in NumberPad",
-      "useMemo_boardContent": "Memoizes entire 81-cell grid"
-    }
-  },
-  "react_patterns": {
-    "forwardRef": {
-      "component": "SudokuBoard",
-      "ref_type": "SudokuBoardRef",
-      "exposed_methods": [
-        "solve"
-      ]
-    },
-    "useImperativeHandle": {
-      "usage": "Exposes solve() method to parent component",
-      "implementation": "Calls game.solve() and updates board state",
-      "use_case": "Long press Easter egg to auto-solve puzzle"
-    },
-    "class_instance_in_state": {
-      "pattern": "useState(() => new SudokuGame(initialBoard))",
-      "benefit": "Game instance persists across re-renders",
-      "initialization": "Lazy initialization with function",
-      "immutability": "getters return copies, internal state is mutable"
-    },
-    "callback_memoization": {
-      "hooks": [
-        "useCallback"
-      ],
-      "callbacks": [
-        "handleCellPress",
-        "handleNumberPress",
-        "handleBackspace",
-        "handleReset",
-        "onGeniusLongPress",
-        "forceSolveWithConfetti"
-      ],
-      "benefit": "Stable references prevent unnecessary re-renders"
-    },
-    "component_composition": {
-      "hierarchy": "Sudoku → SudokuBoard → CellContainer → Cell",
-      "separation": "Logic (Container) separated from presentation (Cell)",
-      "props_drilling": "Minimal - shared values passed efficiently"
-    },
-    "refs": [
-      "sudokuRef: SudokuBoardRef (for solve method)",
-      "confettiRef: PIConfettiMethods (for confetti.restart)"
-    ]
-  },
-  "performance_optimizations": {
-    "memo_components": {
-      "count": "81 Cell components + 10 NumberPad buttons",
-      "benefit": "Prevents re-renders when props haven't changed",
-      "critical": "Essential for 81-cell grid to remain performant"
-    },
-    "shared_value_efficiency": {
-      "pattern": "Two board-level SharedValues consumed by all cells",
-      "vs_prop_drilling": "No need to pass callbacks or state through 81 components",
-      "reactivity": "Only cells affected by changes re-render animations"
-    },
-    "derived_values_on_ui_thread": {
-      "benefit": "Highlighting logic runs on UI thread",
-      "avoids": "Bridge crossing for every cell on every press",
-      "smoothness": "Instant visual feedback on interactions"
-    },
-    "lazy_initialization": {
-      "pattern": "useState(() => new SudokuGame(...))",
-      "benefit": "Game instance created only once, not on every render"
-    },
-    "useMemo_for_static_data": {
-      "examples": [
-        "cellStyle array",
-        "textStyle array",
-        "isBorderRight/Bottom booleans",
-        "isInitial boolean",
-        "numberButtons array",
-        "boardContent grid"
-      ],
-      "benefit": "Recalculates only when dependencies change"
-    },
-    "staggered_animation_timing": {
-      "entrance": "Cells animate in progressively, not all at once",
-      "benefit": "Smoother frame rate during initial render"
-    },
-    "conditional_rendering": {
-      "board": "Only renders when hasStarted is true",
-      "number_pad": "Delayed render via isNumberPadReady",
-      "benefit": "Spreads work across multiple frames"
-    }
-  },
-  "ui_ux_design": {
-    "color_scheme": {
-      "theme": "Dark blue with vibrant blue accents",
-      "background": "#0A1222 → #121D33 (gradient)",
-      "surface": "#121D33 (card background)",
-      "primary": "#3B82F6 (vibrant blue)",
-      "primaryLight": "#60A5FA",
-      "text": "#FAFAFA (pure white)",
-      "textSecondary": "#E2E8F0",
-      "textTertiary": "#94A3B8 (subtle)",
-      "initial_numbers": "#94A3B8 (muted)",
-      "user_input": "#FFFFFF (crisp white)",
-      "highlight": "rgba(59, 130, 246, 0.25) (subtle blue)",
-      "highlightStrong": "rgba(59, 130, 246, 0.35)"
-    },
-    "typography": {
-      "title": "40px, weight 700, uppercase, tracking 1",
-      "subtitle": "15px, tertiary color, tracking 0.3",
-      "cell_text_initial": "20px, weight 500, muted color",
-      "cell_text_user": "20px, weight 600, white",
-      "button_text": "14-16px, weight 500, tracking 0.2",
-      "numpad_text": "18px, weight 500"
-    },
-    "layout": {
-      "board_size": "Math.min(width - 48, 400) max",
-      "cell_size": "BOARD_SIZE / 9 (dynamic)",
-      "board_border": "2px primary color with shadow",
-      "board_radius": "8px",
-      "cell_borders": "0.5px standard, 2px for 3x3 box boundaries",
-      "elevation": "Shadow with primary color (sophisticated glow)"
-    },
-    "spacing": {
-      "container_padding": "20px",
-      "header_margin_bottom": "48px",
-      "board_padding": "16px",
-      "numpad_margin_top": "32px",
-      "numpad_gap": "10px",
-      "button_padding": "6-10px vertical, 12-20px horizontal"
-    },
-    "visual_hierarchy": {
-      "z_index_minus1": "Cell highlight backgrounds",
-      "z_index_0": "Cells and text",
-      "z_index_100": "Confetti overlay",
-      "depth_cues": "Shadows, gradients, elevation styles"
-    },
-    "feedback_mechanisms": {
-      "cell_selection": "Background color change + border highlight",
-      "number_input": "Immediate cell update + completion check",
-      "matching_numbers": "All matching cells highlight with scale animation",
-      "button_press": "Scale down + overlay + spring back",
-      "invalid_input": "Locked cells don't respond to input",
-      "completion": "Confetti blast + alert dialog"
-    },
-    "border_styling": {
-      "standard_cells": "0.5px subtle border",
-      "box_separators": "2px primary color at 50% opacity",
-      "board_outer": "2px primary color solid",
-      "border_curve": "continuous (iOS-style smooth corners)"
-    }
-  },
-  "mathematical_algorithms": {
-    "coordinate_system": {
-      "origin": "Top-left (0, 0)",
-      "row_range": "0-8 (9 rows)",
-      "col_range": "0-8 (9 columns)",
-      "box_calculation": "Math.floor(row / 3) * 3, Math.floor(col / 3) * 3"
-    },
-    "validation_algorithm": {
-      "row_check": "Iterate 0-8 columns, ensure no duplicate (except self)",
-      "column_check": "Iterate 0-8 rows, ensure no duplicate",
-      "box_check": "Calculate box origin, check 3x3 grid for duplicates",
-      "complexity": "O(27) per validation (9+9+9 checks)"
-    },
-    "backtracking_solver": {
-      "pattern": "Recursive depth-first search",
-      "base_case": "No empty cells found → solution complete",
-      "recursive_case": "Try each number 1-9, recurse, backtrack on failure",
-      "optimization": "Early exit on isValidMove failure",
-      "complexity": "O(9^m) where m is number of empty cells (worst case)",
-      "practical_performance": "Solves typical puzzle in milliseconds"
-    },
-    "generation_algorithm": {
-      "step_1": "Fill diagonal boxes (3 independent 3x3 grids)",
-      "step_2": "Solve rest using backtracking",
-      "step_3": "Remove cells randomly",
-      "step_4": "Verify unique solution after each removal",
-      "difficulty_control": "Number of cells removed",
-      "uniqueness_verification": {
-        "algorithm": "countSolutions with early exit",
-        "stops_when": "More than 1 solution found",
-        "ensures": "Puzzle has exactly one solution"
-      }
-    },
-    "shuffle_algorithm": {
-      "type": "Fisher-Yates shuffle",
-      "purpose": "Randomize number order for variety in generation",
-      "implementation": "Swap elements from end to start with random index",
-      "unbiased": true
-    },
-    "stagger_calculation": {
-      "formula": "(rowIndex + colIndex) * 75",
-      "range": "0ms (top-left) to 1200ms (bottom-right)",
-      "pattern": "Diagonal progression",
-      "visual_effect": "Wave-like entrance"
-    }
-  },
-  "interaction_patterns": {
-    "cell_selection": {
-      "trigger": "Press on any cell",
-      "action": "game.selectCell(row, col)",
-      "effects": [
-        "Update selectedCell SharedValue",
-        "Update highlightedNumber SharedValue",
-        "Cell background animates to highlight color",
-        "All cells with same number get highlight circles"
-      ],
-      "toggle": "Pressing selected cell deselects it"
-    },
-    "number_input": {
-      "trigger": "Press number on number pad",
-      "validation": "Must have selected cell and cell cannot be initial",
-      "action": "game.setNumber(number)",
-      "effects": [
-        "Cell updates with new number",
-        "Board state updates",
-        "Completion check runs",
-        "Confetti if puzzle complete"
-      ]
-    },
-    "backspace": {
-      "trigger": "Press backspace button",
-      "validation": "Selected cell must not be initial",
-      "action": "game.clearCell()",
-      "effect": "Cell value cleared, highlightedNumber set to 0"
-    },
-    "new_game": {
-      "trigger": "Press New Game button",
-      "confirmation": "Alert dialog to confirm",
-      "action": "Generate new puzzle, reset hasStarted",
-      "effect": "Board unmounts and remounts with new puzzle"
-    },
-    "auto_solve": {
-      "trigger": "Long press on title (Easter egg)",
-      "validation": "Game must be started",
-      "action": "forceSolveWithConfetti()",
-      "effects": [
-        "game.solve() fills all cells",
-        "Board updates with solution",
-        "Confetti blast after 100ms delay",
-        "Alert dialog after 2000ms"
-      ]
-    }
-  },
-  "code_quality": {
-    "typescript": "Full TypeScript with explicit types",
-    "type_definitions": [
-      "CellValue = number | null",
-      "SudokuBoard = CellValue[][]",
-      "SudokuBoardRef",
-      "SudokuBoardProps",
-      "CellProps",
-      "CellContainerProps",
-      "ButtonProps",
-      "NumberPadProps",
-      "NumberPadButtonProps"
-    ],
-    "documentation": {
-      "file_headers": "Comprehensive JSDoc comments for each file",
-      "component_descriptions": "Clear descriptions of purpose and behavior",
-      "function_comments": "Key algorithms explained",
-      "inline_comments": "Complex logic annotated"
-    },
-    "naming_conventions": {
-      "components": "PascalCase",
-      "hooks": "camelCase with 'use' prefix",
-      "constants": "SCREAMING_SNAKE_CASE",
-      "callbacks": "handle prefix (handlePress, handleReset)",
-      "booleans": "is/has prefix (isInitial, hasStarted)"
-    },
-    "separation_of_concerns": {
-      "logic_layer": "Pure algorithms in sudoku.ts",
-      "state_layer": "OOP class in sudoku-game.ts",
-      "ui_layer": "React components with animations",
-      "style_layer": "Centralized theme.ts",
-      "clear_boundaries": "Each layer has single responsibility"
-    },
-    "displayName": "All memo components have displayName for debugging",
-    "const_assertions": {
-      "ConfettiFlakeSize": "as const",
-      "COLORS": "as const",
-      "ELEVATION": "as const",
-      "SIZE_MAP": "as const"
-    }
-  },
-  "known_limitations": {
-    "no_validation_feedback": {
-      "issue": "No visual indication when user enters invalid number",
-      "impact": "User may not realize they made mistake until completion check",
-      "enhancement": "Could highlight conflicting cells in red"
-    },
-    "no_hints": {
-      "issue": "No hint system to help stuck players",
-      "impact": "Players might get frustrated without guidance",
-      "enhancement": "Could add 'Show Hint' button"
-    },
-    "no_undo": {
-      "issue": "Cannot undo moves",
-      "impact": "Mistakes require manual correction or restart",
-      "enhancement": "Could add move history and undo button"
-    },
-    "no_timer": {
-      "issue": "No time tracking",
-      "impact": "No sense of achievement or challenge timing",
-      "enhancement": "Could add timer and best times"
-    },
-    "no_pencil_marks": {
-      "issue": "Cannot add candidate numbers (pencil marks)",
-      "impact": "Advanced Sudoku techniques harder to apply",
-      "enhancement": "Could add note-taking mode for candidates"
-    },
-    "difficulty_locked": {
-      "issue": "Difficulty hardcoded to 'medium'",
-      "impact": "No variety in challenge level",
-      "enhancement": "Could add difficulty selector UI"
-    },
-    "no_persistence": {
-      "issue": "Game state not saved between sessions",
-      "impact": "Closing app loses progress",
-      "enhancement": "Could save to AsyncStorage"
-    },
-    "no_sound": {
-      "issue": "No audio feedback",
-      "impact": "Less engaging interaction",
-      "enhancement": "Could add haptics and sound effects"
-    }
-  },
-  "potential_improvements": {
-    "gameplay_features": [
-      "Hint system (reveal single cell)",
-      "Undo/redo functionality",
-      "Pencil marks (candidate numbers)",
-      "Auto-pencil marks",
-      "Error checking mode",
-      "Highlight conflicting cells",
-      "Timer with pause",
-      "Multiple save slots"
-    ],
-    "ui_enhancements": [
-      "Difficulty selector (easy/medium/hard)",
-      "Statistics tracking (games completed, best times)",
-      "Color themes (light mode, custom palettes)",
-      "Settings panel",
-      "Tutorial/onboarding",
-      "Accessibility improvements (larger text, high contrast)",
-      "Landscape orientation support"
-    ],
-    "animations": [
-      "Shake animation on invalid input",
-      "Pulse animation on completion",
-      "Number appearance animation",
-      "Error highlight animation",
-      "Progress indicator",
-      "Hint reveal animation"
-    ],
-    "technical": [
-      "AsyncStorage for game persistence",
-      "Share puzzle functionality",
-      "Daily challenge mode",
-      "Multiplayer competitive mode",
-      "Achievement system",
-      "Haptic feedback integration",
-      "Sound effects (optional)",
-      "Reduce motion accessibility option"
-    ],
-    "performance": [
-      "Web worker for puzzle generation",
-      "Pregenerate puzzles in background",
-      "Virtualization for extreme zoom (not needed for 9x9)",
-      "Further optimize re-renders"
-    ]
-  },
-  "key_insights": {
-    "oop_state_management": "SudokuGame class provides clean API for complex game logic",
-    "shared_value_efficiency": "Two board-level SharedValues drive 81+ animated components efficiently",
-    "separation_of_concerns": "Clean split: algorithms → game class → React components → animations",
-    "staggered_animations": "Diagonal entrance creates professional polish with minimal code",
-    "derived_value_power": "Cell highlighting logic runs entirely on UI thread via useDerivedValue",
-    "memo_critical": "With 81 cells, memo() prevents catastrophic re-render cascades",
-    "confetti_timing": "100ms delay before confetti allows solve animation to complete first",
-    "immutable_getters": "Game class uses mutable state internally but exposes immutable copies",
-    "lazy_class_init": "useState with function ensures game instance created once",
-    "easter_egg_ux": "Long press on title provides fun auto-solve without cluttering UI"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "React useState and useCallback",
-      "Component composition patterns",
-      "Event handling in React Native",
-      "Basic animations with Reanimated",
-      "Understanding game state"
-    ],
-    "for_intermediate": [
-      "OOP patterns in React",
-      "SharedValue and useDerivedValue",
-      "Memo optimization strategies",
-      "forwardRef and useImperativeHandle",
-      "Staggered animation timing",
-      "Layout animations",
-      "Custom hooks and patterns"
-    ],
-    "for_advanced": [
-      "Backtracking algorithms",
-      "Puzzle generation with uniqueness guarantee",
-      "Performance optimization for many components",
-      "Advanced Reanimated patterns",
-      "Thread coordination (UI vs JS)",
-      "Balancing OOP vs functional paradigms",
-      "Systematic approach to complex state"
-    ]
-  },
-  "use_cases": {
-    "primary": [
-      "Mobile puzzle game app",
-      "Brain training application",
-      "Educational math tool",
-      "Casual gaming entertainment"
-    ],
-    "demonstrates": [
-      "Complex game logic in React Native",
-      "Efficient animation of many elements",
-      "OOP state management pattern",
-      "Algorithm implementation (backtracking)",
-      "User interaction patterns",
-      "Visual feedback design"
-    ],
-    "reusable_components": {
-      "Button": [
-        "Form buttons",
-        "CTAs in any app",
-        "Navigation controls",
-        "Action triggers"
-      ],
-      "NumberPad": [
-        "PIN entry",
-        "Calculator apps",
-        "Phone dialers",
-        "Number selection UIs"
-      ],
-      "SudokuGame_class": [
-        "Other puzzle games",
-        "Game state management patterns",
-        "Validation logic examples"
-      ]
-    },
-    "educational_value": [
-      "Teaching backtracking algorithms",
-      "Demonstrating recursion",
-      "Explaining constraint satisfaction problems",
-      "Showing OOP in functional framework"
-    ]
-  },
-  "testing_considerations": {
-    "game_logic": {
-      "unit_testable": "All sudoku.ts functions pure, easily testable",
-      "test_cases": [
-        "isValidMove for rows, columns, boxes",
-        "generateSudoku creates valid puzzles",
-        "Puzzles have unique solutions",
-        "solveSudoku finds correct solution",
-        "isPuzzleComplete validates correctly",
-        "isCellValid checks constraints"
-      ]
-    },
-    "game_class": {
-      "testable": "SudokuGame methods can be tested independently",
-      "test_cases": [
-        "Cell selection and deselection",
-        "Number placement validation",
-        "Clear cell functionality",
-        "Initial cell locking",
-        "isComplete detection",
-        "solve() method success"
-      ]
-    },
-    "ui_testing": {
-      "interaction_tests": [
-        "Cell press updates selection",
-        "Number pad input works",
-        "Backspace clears cell",
-        "New game resets board",
-        "Cannot edit initial cells"
-      ],
-      "animation_tests": [
-        "Cells fade in on mount",
-        "Selected cell highlights",
-        "Matching numbers highlight",
-        "Button press animation",
-        "Confetti triggers on completion"
-      ]
-    },
-    "edge_cases": {
-      "empty_selection": "Number input when no cell selected",
-      "initial_cell_edit": "Attempting to modify locked cells",
-      "rapid_inputs": "Fast consecutive cell selections",
-      "complete_puzzle": "Confetti triggers only once",
-      "already_selected": "Toggle selection on same cell",
-      "invalid_coordinates": "Out of bounds cell selection"
-    },
-    "performance_tests": [
-      "Monitor FPS during entrance animation",
-      "Check re-render count on cell selection",
-      "Verify puzzle generation speed",
-      "Test solve algorithm performance",
-      "Memory usage with 81 components"
-    ]
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": [
-        "All animations",
-        "Confetti",
-        "Shadows",
-        "Blur gradients"
-      ],
-      "performance": "Excellent",
-      "shadow_support": "Native shadow properties"
-    },
-    "android": {
-      "features": [
-        "All animations",
-        "Confetti",
-        "Elevation"
-      ],
-      "performance": "Excellent",
-      "shadow_alternative": "Uses elevation property"
-    },
-    "web": {
-      "compatibility": "Should work with react-native-web",
-      "caveats": [
-        "Confetti may need web-specific implementation",
-        "Touch interactions map to clicks"
-      ],
-      "testing": "Not explicitly tested but architecture supports it"
-    }
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "touch_targets": "Cells and buttons are adequately sized",
-      "contrast": "High contrast text on dark background",
-      "feedback": "Visual feedback on all interactions"
-    },
-    "missing_features": {
-      "screen_reader": "No VoiceOver/TalkBack support",
-      "labels": "No accessibility labels or hints",
-      "color_blind": "Relies heavily on blue color scheme",
-      "reduce_motion": "No prefers-reduced-motion support"
-    },
-    "recommendations": [
-      "Add accessibility labels to all interactive elements",
-      "Announce game state changes to screen readers",
-      "Support keyboard navigation (web)",
-      "Add high contrast theme option",
-      "Respect reduce motion preferences",
-      "Provide audio cues as alternative to visual feedback",
-      "Adjustable text size option"
-    ]
-  },
-  "bundle_size_impact": {
-    "code_size": "~750 lines total across all files",
-    "dependencies": {
-      "reanimated": "Already in project (shared)",
-      "fast-confetti": "~50KB",
-      "expo-linear-gradient": "~20KB",
-      "expo-vector-icons": "Already in project (shared)"
-    },
-    "estimated_addition": "~70KB for confetti + minimal component code",
-    "runtime_memory": "81 cell components + 10 number buttons + game state + SharedValues",
-    "estimated_memory": "< 2MB including all components and animations"
-  },
-  "tags": [
-    "game",
-    "puzzle",
-    "sudoku",
-    "reanimated",
-    "animations",
-    "interactive",
-    "oop",
-    "backtracking",
-    "algorithm",
-    "confetti",
-    "staggered-animation",
-    "derived-values",
-    "shared-values",
-    "memo-optimization",
-    "performance",
-    "dark-theme",
-    "educational"
+  "hooks": [
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useEffect",
+    "useImperativeHandle",
+    "useMemo",
+    "useRef",
+    "useSharedValue",
+    "useState"
   ],
-  "content_hash": "dc28175343d02cca1fba26d64c8ae1ee11ee323f60daf39590ca35ac333dc29e",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.467Z",
-  "last_validated": "2025-10-12T09:19:28.467Z"
+  "functions": [
+    "Array",
+    "clearTimeout",
+    "countSolutions",
+    "fillBox",
+    "findEmpty",
+    "forceSolveWithConfetti",
+    "forwardRef",
+    "generateSudoku",
+    "isCellValid",
+    "isPuzzleComplete",
+    "isValidMove",
+    "memo",
+    "onBackspace",
+    "onCellPress",
+    "onComplete",
+    "onNumberPress",
+    "onPress",
+    "onSolved",
+    "playCelebrationHaptics",
+    "setBoard",
+    "setHasStarted",
+    "setIsNumberPadReady",
+    "setIsReady",
+    "setTimeout",
+    "shuffle",
+    "solveBoard",
+    "solveSudoku",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.Text",
+    "Animated.View",
+    "Animated.createAnimatedComponent",
+    "AnimatedPressable",
+    "Button",
+    "Cell",
+    "CellContainer",
+    "Ionicons",
+    "LinearGradient",
+    "NumberPad",
+    "NumberPadButton",
+    "PIConfetti",
+    "PressableScale",
+    "SudokuBoard",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "timing-animation",
+    "spring-animation",
+    "reactive-styling-pattern",
+    "imperative-animation-api"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "spring-physics",
+    "ref-based-control",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 11,
+    "total_packages": 8,
+    "total_hooks": 9,
+    "total_functions": 29,
+    "total_components": 16,
+    "total_patterns": 7,
+    "total_techniques": 4
+  }
 }

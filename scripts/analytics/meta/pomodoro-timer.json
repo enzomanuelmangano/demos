@@ -1,679 +1,321 @@
 {
-  "animation_name": "Pomodoro Timer",
   "animation_slug": "pomodoro-timer",
-  "description": "An interactive circular timer with draggable tick marks and animated rolling digit display. Features a radial tick-mark interface with pan gesture control, countdown timer functionality with interval management, and a sophisticated digit rolling animation with blur effects and intelligent zero-hiding. Includes haptic feedback, spring-based animations, and seamless timer state management.",
-  "main_features": [
-    "Circular draggable slider with radial tick-mark visualization",
-    "Mathematical transformation from linear translation to circular radians",
-    "Countdown timer with automatic interval management",
-    "Rolling digit counter with up to 5 digits (configurable)",
-    "Dynamic blur effect on digit transitions (iOS only)",
-    "Intelligent leading zero hiding with opacity and translation animations",
-    "Haptic feedback on slider progress changes",
-    "Pan gesture handling with decay animation on release",
-    "Timer completion callback with alert notification",
-    "Start/stop/reset timer controls with ref-based API",
-    "Individual tick lines positioned using trigonometric calculations",
-    "Gradient overlays on digit container for smooth fade effects",
-    "Timer state management preventing interaction during countdown",
-    "Responsive layout adapting to window dimensions"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.959Z",
   "file_structure": {
-    "index.tsx": "Root wrapper providing GestureHandlerRootView context",
-    "src/index.tsx": "Main app component orchestrating timer, slider, and controls",
-    "src/components/animated-count/animated-count.tsx": "Container managing array of AnimatedDigit components",
-    "src/components/animated-count/animated-digit.tsx": "Individual digit with vertical scroll, blur, and scale animations",
-    "src/components/draggable-slider/index.tsx": "Circular slider with pan gesture and tick-line rendering",
-    "src/components/draggable-slider/components/tick-line.tsx": "Individual tick line with trigonometric positioning",
-    "src/components/draggable-slider/hooks/useTimer.ts": "Timer logic with interval management and completion handling",
-    "src/components/draggable-slider/types.ts": "TypeScript type definitions for slider props",
-    "src/hooks/useToggle.ts": "Simple boolean toggle hook for timer enable/disable state",
-    "src/utils/haptics.ts": "Haptic feedback utility with platform-specific logic"
+    "entry": "src/index.tsx",
+    "components": [
+      "src/components/animated-count/animated-count.tsx",
+      "src/components/animated-count/animated-digit.tsx",
+      "src/components/draggable-slider/components/tick-line.tsx",
+      "src/components/draggable-slider/hooks/useTimer.ts",
+      "src/components/draggable-slider/types.ts"
+    ],
+    "hooks": [
+      "src/hooks/useToggle.ts"
+    ],
+    "utils": [
+      "src/utils/haptics.ts"
+    ],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated ~4.1.1",
-    "gestures": "react-native-gesture-handler ~2.28.0",
-    "worklets": "react-native-worklets 0.5.1",
-    "haptics": "expo-haptics ~15.0.7",
-    "blur_effects": "expo-blur ~15.0.7 (iOS only)",
-    "gradients": "expo-linear-gradient ~15.0.7",
-    "interactions": "pressto 0.3.5-beta.1 (PressableScale for button)"
+  "packages": [
+    "@expo/vector-icons",
+    "expo-blur",
+    "expo-haptics",
+    "expo-linear-gradient",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-blur": "~15.0.7",
+    "expo-haptics": "~15.0.7",
+    "expo-linear-gradient": "~15.0.7",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./animated-digit": {
+      "imports": [
+        "AnimatedDigit"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/animated-count/animated-count": {
+      "imports": [
+        "AnimatedCount"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/draggable-slider": {
+      "imports": [
+        "CircularDraggableSlider"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/tick-line": {
+      "imports": [
+        "TickLine"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/useTimer": {
+      "imports": [
+        "useTimer"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./hooks/useToggle": {
+      "imports": [
+        "useToggle"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./src": {
+      "imports": [
+        "App"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./types": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils/haptics": {
+      "imports": [
+        "hapticLight"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "MaterialCommunityIcons"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-blur": {
+      "imports": [
+        "BlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-haptics": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-linear-gradient": {
+      "imports": [
+        "LinearGradient"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "forwardRef",
+        "memo",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
       "hooks": [
-        "useSharedValue",
+        "useCallback",
+        "useEffect",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Alert",
+        "Dimensions",
+        "Platform",
+        "StyleSheet",
+        "Text",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector",
+        "GestureHandlerRootView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "cancelAnimation",
+        "interpolate",
+        "useAnimatedReaction",
         "useAnimatedStyle",
         "useDerivedValue",
-        "useAnimatedReaction"
+        "useSharedValue",
+        "withDecay",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
       ],
       "functions": [
-        "withSpring",
-        "withTiming",
+        "cancelAnimation",
         "interpolate",
         "withDecay",
-        "cancelAnimation"
+        "withSpring",
+        "withTiming"
       ],
       "components": [
         "Animated.View",
         "Animated.createAnimatedComponent"
-      ],
-      "critical_feature": "useDerivedValue for digit extraction and radian conversion"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector",
-        "GestureHandlerRootView"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "methods": [
-        "onBegin",
-        "onUpdate",
-        "onFinalize"
-      ],
-      "usage": "Pan gesture for circular slider dragging with decay animation"
+      ]
     },
     "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
+      "imports": [
         "scheduleOnRN"
       ],
-      "purpose": "Bridge worklet callbacks to JS thread for onProgressChange",
-      "critical_for": "Calling haptic feedback and updating animated number from UI thread"
-    },
-    "expo-haptics": {
-      "version": "~15.0.7",
-      "functions": [
-        "Haptics.selectionAsync"
-      ],
-      "usage": "Light haptic feedback on slider progress change",
-      "platform_note": "iOS only - Android disabled due to 'weird' haptics"
-    },
-    "expo-blur": {
-      "version": "~15.0.7",
-      "components": [
-        "BlurView"
-      ],
-      "usage": "Dynamic blur effect on digit changes (iOS only)",
-      "animation": "Blur intensity 0-17 based on isChanging state"
-    },
-    "expo-linear-gradient": {
-      "version": "~15.0.7",
-      "components": [
-        "LinearGradient"
-      ],
-      "usage": "Top and bottom gradient overlays on digit container for smooth fade"
-    },
-    "pressto": {
-      "version": "0.3.5-beta.1",
-      "components": [
-        "PressableScale"
-      ],
-      "usage": "Animated button for timer start/stop with scale feedback"
-    },
-    "@expo/vector-icons": {
-      "version": "Latest",
-      "components": [
-        "MaterialCommunityIcons"
-      ],
-      "icons_used": [
-        "timer",
-        "stop"
-      ],
-      "usage": "Timer control button icons"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "circular_slider_transformation": {
-      "pattern": "Linear translation mapped to circular radians via interpolation",
-      "core_concept": "Treat circle circumference as a straight line, map translation to angle",
-      "diameter_calculation": "2 * Math.PI * radius",
-      "distance_between_ticks": "diameter / linesAmount",
-      "interpolation": "interpolate(-progress, [0, listWidth], [offset, 2 * PI + offset])",
-      "offset": "Math.PI / 2 (90-degree rotation to start at top)",
-      "result": "Horizontal drag controls circular rotation",
-      "author_insight": "Lines 36-45 explain the mathematical approach in detail"
-    },
-    "tick_line_positioning": {
-      "pattern": "Trigonometric positioning of lines around circle",
-      "angle_calculation": "((2 * Math.PI) / linesAmount) * index - progressRadiants.value",
-      "x_position": "Math.cos(angle) * radius",
-      "y_position": "Math.sin(angle) * radius",
-      "rotation": "-Math.atan2(x, y) (radial orientation)",
-      "transforms": [
-        "translateX: x - lineWidth / 2",
-        "translateY: y - height / 2",
-        "rotate: rotation in radians"
-      ],
-      "disabled_state": "Color fades to 'rgba(222, 208, 208, 0.525)' when timer running"
-    },
-    "digit_rolling": {
-      "pattern": "Vertical translation with stacked digits (0-9)",
-      "implementation": "translateY: withSpring(-height * digit.value, {mass: 0.25})",
-      "spring_config": {
-        "mass": 0.25,
-        "benefit": "Quick, responsive digit changes"
-      },
-      "overflow": "hidden (masks non-visible digits)",
-      "trick": "All 10 digits rendered vertically, translation moves visible digit into view",
-      "scale_effect": "scaleX: withSpring(isChanging ? 0.7 : 1) for squeeze effect",
-      "effect": "Smooth rolling counter animation with scale feedback"
-    },
-    "digit_blur_effect": {
-      "pattern": "Dynamic blur intensity based on isChanging state (iOS only)",
-      "implementation": "AnimatedBlurView with intensity: isChangingProgress * 17",
-      "state_tracking": "useAnimatedReaction watches digit changes, sets isChanging",
-      "reset_timing": "isChanging resets to false after 200ms",
-      "blur_range": "0 to 17",
-      "purpose": "Motion blur effect during digit transitions",
-      "platform": "iOS only - Platform.OS === 'ios' check"
-    },
-    "zero_hiding": {
-      "pattern": "Opacity + translation based on leading zero detection",
-      "calculation": "invisibleDigitsAmount = maxDigits - count.value.toString().length",
-      "visibility_logic": "digit === 0 && all previous digits are 0",
-      "check": "index < maxDigits - invisibleDigitsAmount",
-      "opacity_animation": "withTiming(isVisible ? 1 : 0)",
-      "translation_animation": "withTiming((-width * invisibleDigitsAmount) / 2)",
-      "effect": "Leading zeros fade out and remaining digits slide left to stay centered"
-    },
-    "pan_gesture_with_decay": {
-      "gesture": "Gesture.Pan()",
-      "lifecycle": {
-        "onBegin": "cancelAnimation(progress), store previousProgress",
-        "onUpdate": "progress = translationX + previousProgress",
-        "onFinalize": "withDecay({velocity: velocityX}) or reset if progress > 0"
-      },
-      "decay_effect": "Natural deceleration when released with velocity",
-      "boundary_handling": "If progress > 0, animate back to 0 with timing",
-      "timer_lock": "All gesture callbacks return early if isTimerEnabled"
-    },
-    "gradient_overlays": {
-      "pattern": "Top and bottom LinearGradient for smooth fade effect",
-      "top_gradient": "[gradientAccentColor, transparent, transparent, transparent]",
-      "bottom_gradient": "[transparent, transparent, transparent, gradientAccentColor]",
-      "positioning": "position: 'absolute', zIndex: 50",
-      "purpose": "Smooth fade at edges of digit container",
-      "customization": "gradientAccentColor prop (default: '#000')"
-    },
-    "timer_countdown": {
-      "pattern": "setInterval-based counter with progress decrement",
-      "interval": "1000ms (1 second)",
-      "progress_update": "progress.value -= incrementOffset",
-      "counter_tracking": "counter.current increments each second",
-      "completion_check": "counter.current >= toValue",
-      "cleanup": "clearInterval on completion, stop, reset, or unmount",
-      "important_note": "Author recommends react-native-background-timer for production"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "animatedNumber",
-        "type": "SharedValue<number>",
-        "scope": "Main app component",
-        "initial": 0,
-        "updates": "Updated in onProgressChange callback from slider",
-        "purpose": "Current timer value in seconds driving digit display"
-      },
-      {
-        "name": "progress",
-        "type": "SharedValue<number>",
-        "scope": "CircularDraggableSlider",
-        "initial": 0,
-        "updates": "Pan gesture onUpdate and timer interval",
-        "purpose": "Slider position in pixels (negative for countdown)"
-      },
-      {
-        "name": "previousProgress",
-        "type": "SharedValue<number>",
-        "scope": "CircularDraggableSlider",
-        "purpose": "Stores gesture start position for relative dragging"
-      },
-      {
-        "name": "isTimerEnabled",
-        "type": "SharedValue<boolean>",
-        "scope": "useTimer hook",
-        "initial": false,
-        "updates": "runTimer, stopTimer, resetTimer functions",
-        "purpose": "Locks slider during countdown, changes tick line colors"
-      },
-      {
-        "name": "isChanging",
-        "type": "SharedValue<boolean>",
-        "scope": "AnimatedDigit",
-        "initial": false,
-        "purpose": "Tracks digit transitions for blur and scale effects"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "digit",
-        "scope": "AnimatedDigit",
-        "calculation": "getDigitByIndex({digitIndex: index, count: count.value, maxDigits})",
-        "dependencies": [
-          "count",
-          "index"
-        ],
-        "purpose": "Extract specific digit from count value",
-        "worklet": true
-      },
-      {
-        "name": "invisibleDigitsAmount",
-        "scope": "AnimatedDigit",
-        "calculation": "maxDigits - count.value.toString().length",
-        "dependencies": [
-          "count",
-          "maxDigits"
-        ],
-        "purpose": "Calculate number of leading zeros"
-      },
-      {
-        "name": "isVisible",
-        "scope": "AnimatedDigit",
-        "logic": "digit !== 0 || index < maxDigits - invisibleDigitsAmount",
-        "dependencies": [
-          "digit",
-          "invisibleDigitsAmount",
-          "index"
-        ],
-        "purpose": "Determine if digit should be visible (hide leading zeros)"
-      },
-      {
-        "name": "opacity",
-        "scope": "AnimatedDigit",
-        "calculation": "withTiming(isVisible.value ? 1 : 0)",
-        "purpose": "Smooth fade for digit visibility"
-      },
-      {
-        "name": "progressRadiants",
-        "scope": "CircularDraggableSlider",
-        "calculation": "interpolate(-progress.value, [0, listWidth], [offset, 2*PI+offset])",
-        "dependencies": [
-          "progress",
-          "listWidth"
-        ],
-        "purpose": "Convert linear progress to circular radians for tick positioning"
-      },
-      {
-        "name": "isChangingProgress",
-        "scope": "AnimatedDigit",
-        "calculation": "withTiming(isChanging.value ? 1 : 0)",
-        "purpose": "Smooth transition for blur intensity (0 to 1)"
-      },
-      {
-        "name": "blurIntensity",
-        "scope": "AnimatedDigit",
-        "calculation": "isChangingProgress.value * 17",
-        "purpose": "Dynamic blur intensity for iOS BlurView"
-      }
-    ],
-    "useAnimatedReaction": [
-      {
-        "scope": "CircularDraggableSlider",
-        "watches": "progressRadiants.value",
-        "callback": "Calculate seconds from radians, call onProgressChange",
-        "calculation": "Math.round((radiants - offset) / distanceBetweenTwoTicksRad)",
-        "purpose": "Convert radians back to seconds and notify parent",
-        "threading": "Bridges UI thread to JS thread for callback"
-      },
-      {
-        "scope": "AnimatedDigit",
-        "watches": "digit.value",
-        "callback": "Set isChanging = true, schedule reset after 200ms",
-        "compare": "(curr, prev) => curr !== prev",
-        "purpose": "Detect digit changes for blur effect",
-        "scheduling": "Uses scheduleOnRN to call resetIsChanging"
-      }
-    ],
-    "worklet_functions": {
-      "getDigitByIndex": {
-        "signature": "({digitIndex, count, maxDigits}) => number",
-        "worklet": true,
-        "logic": "Pad count with zeros, split to array, extract digit at position",
-        "example": "count=123, maxDigits=5, index=1 => '00123'[3] = '2'",
-        "purpose": "Extract individual digits from number in worklet context"
-      }
-    },
-    "scheduleOnRN_usage": [
-      {
-        "location": "Main app onProgressChange",
-        "pattern": "scheduleOnRN(hapticLight)",
-        "purpose": "Trigger haptic feedback from UI thread"
-      },
-      {
-        "location": "AnimatedDigit resetIsChanging",
-        "pattern": "scheduleOnRN(resetIsChanging)",
-        "purpose": "Schedule state reset on JS thread from animated reaction"
-      }
-    ]
-  },
-  "performance_optimizations": {
-    "memo_components": {
-      "AnimatedDigit": "Prevents re-render when sibling digits change",
-      "AnimatedCount": "Prevents re-render when parent state changes",
-      "benefit": "With maxDigits=5, only 1 digit re-renders per value change"
-    },
-    "useMemo_optimizations": [
-      "flattenedTextStyle in AnimatedDigit (line 108-110)",
-      "Prevent style object recreation on every render",
-      "Stable references for style props"
-    ],
-    "worklet_math": {
-      "pattern": "All calculations in worklets (getDigitByIndex, trigonometry)",
-      "benefit": "No bridge crossing for digit extraction or positioning",
-      "runs_on": "UI thread",
-      "examples": [
-        "digit extraction",
-        "radian conversion",
-        "tick positioning"
-      ]
-    },
-    "gesture_performance": {
-      "pan_gesture": "Runs entirely on UI thread",
-      "no_bridge": "Only bridges for onProgressChange callback (scheduleOnRN)",
-      "result": "60fps slider interaction"
-    },
-    "animation_choice": {
-      "spring_for_digits": "Natural, responsive feel with mass: 0.25",
-      "timing_for_visibility": "Quick fade without overshoot",
-      "timing_for_blur": "Smooth blur transitions",
-      "decay_for_release": "Natural deceleration on gesture end"
-    },
-    "conditional_rendering": {
-      "tick_lines": "All rendered once, positioned via transform",
-      "benefit": "No re-renders, pure animation",
-      "digits": "All 10 digits per position rendered once, animated into view"
-    },
-    "ref_based_timer_control": {
-      "pattern": "useImperativeHandle exposes timer functions",
-      "benefit": "No prop drilling, direct timer control",
-      "methods": [
-        "runTimer",
-        "stopTimer",
-        "resetTimer"
-      ]
-    },
-    "haptic_debouncing": {
-      "pattern": "Called on every progress change from worklet",
-      "platform_check": "iOS only to avoid 'weird' Android haptics",
-      "note": "Could benefit from throttling for very fast drags"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Pomodoro timer applications",
-      "Workout interval timers",
-      "Meditation and breathing exercise timers",
-      "Cooking timers",
-      "Study session timers",
-      "Time tracking applications",
-      "Countdown timer widgets"
-    ],
-    "real_world_examples": [
-      "Focus@Will timer interface",
-      "Calm meditation timer",
-      "Nike Training Club workout timer",
-      "Kitchen timer apps",
-      "Time-boxing productivity tools"
-    ],
-    "educational": [
-      "Teaching circular gesture transformations",
-      "Demonstrating radian to pixel conversions",
-      "Showing timer interval patterns",
-      "Illustrating digit animation techniques",
-      "Trigonometric positioning examples",
-      "Blur effect implementations",
-      "Ref-based component APIs"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_files": [
-        "types.ts for DraggableSliderProps"
-      ],
-      "type_imports": "type keyword for type-only imports",
-      "ref_types": "CircularDraggableSliderRefType for imperative handle"
-    },
-    "component_architecture": {
-      "separation": "Clear separation: app, slider, timer, digits, hooks, utils",
-      "nested_structure": "src/ folder with organized component hierarchy",
-      "reusability": "CircularDraggableSlider is fully reusable",
-      "composition": "AnimatedCount composes AnimatedDigit components",
-      "hook_extraction": "useTimer, useToggle extracted for reusability"
-    },
-    "constants": {
-      "LinesAmount": 200,
-      "radius": 280,
-      "maxDigits": 5,
-      "configuration": "Most values configurable via props"
-    },
-    "documentation": {
-      "inline_comments": [
-        "Excellent circular transformation explanation (lines 30-45)",
-        "Timer recommendation comment about react-native-background-timer",
-        "Overflow hidden trick comment (line 183)",
-        "Historical context from Patreon posts"
-      ],
-      "patreon_references": [
-        "AnimatedCount: https://www.patreon.com/posts/animated-text-84712135",
-        "Airbnb Slider optimization: https://www.patreon.com/posts/airbnb-animated-90962925"
-      ],
-      "todo_notes": "Author mentions plans for improvements to comma handling"
-    },
-    "best_practices": [
-      "memo for performance optimization",
-      "useMemo for expensive calculations",
-      "useCallback for stable function references",
-      "Worklet annotations on helper functions",
-      "Type safety throughout",
-      "useImperativeHandle for ref API",
-      "Cleanup in useEffect for intervals"
-    ],
-    "error_handling": {
-      "validation": "Checks for zero value before starting timer",
-      "alert": "Alert.alert for invalid timer values",
-      "cleanup": "Proper interval cleanup on unmount and timer stop"
-    },
-    "strengths": [
-      "Excellent mathematical transformation documentation",
-      "Clean component separation and organization",
-      "Comprehensive TypeScript types",
-      "Proper cleanup and memory management",
-      "Thoughtful animation configurations",
-      "Platform-specific optimizations (haptics, blur)",
-      "Ref-based API for imperative control",
-      "Reusable, configurable components"
-    ],
-    "areas_for_improvement": [
-      "Timer implementation could use react-native-background-timer (author acknowledges)",
-      "Haptic feedback could be throttled for performance",
-      "isChanging reset timing could be more sophisticated (author acknowledges line 119)",
-      "Accessibility features missing (labels, announcements)",
-      "Could extract magic numbers to constants",
-      "Timer completion callback could be more robust"
-    ]
-  },
-  "known_limitations": {
-    "timer_interval_limitation": {
-      "issue": "Uses standard setInterval, may pause in background",
-      "workaround": "Runs on Expo Go for simplicity",
-      "recommendation": "Use react-native-background-timer for production",
-      "author_note": "Lines 52-56 explicitly document this limitation"
-    },
-    "fixed_max_digits": {
-      "issue": "maxDigits (5) must be known in advance",
-      "trade_off": "Pre-render empty digits vs. dynamic rendering",
-      "current_value": 5,
-      "max_supported_seconds": 99999
-    },
-    "haptics_android": {
-      "limitation": "Disabled on Android due to 'weird' haptics",
-      "code": "if (Platform.OS === 'android') return;",
-      "effect": "iOS-only haptic feedback"
-    },
-    "blur_ios_only": {
-      "limitation": "BlurView only works on iOS",
-      "code": "Platform.OS === 'ios' check",
-      "fallback": "No blur effect on Android"
-    },
-    "isChanging_timing": {
-      "issue": "200ms timeout is hardcoded",
-      "author_note": "Lines 117-121 acknowledge this could be improved",
-      "current_approach": "setTimeout with fixed delay"
-    },
-    "gesture_lock_timing": {
-      "pattern": "Timer lock prevents interaction immediately",
-      "benefit": "Prevents conflicts during countdown",
-      "limitation": "Can't adjust timer once started (must stop first)"
-    },
-    "circular_boundary": {
-      "limitation": "Progress resets if dragged past 0",
-      "code": "if (progress.value > 0) { reset to 0 }",
-      "effect": "Can't drag in reverse direction"
-    },
-    "accessibility": {
-      "missing": [
-        "No accessibility labels or hints",
-        "No screen reader support",
-        "No keyboard navigation",
-        "No reduced motion support"
-      ]
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Pause/resume functionality (currently only start/stop)",
-      "Save presets for common timer durations",
-      "Multiple timer stages (Pomodoro with breaks)",
-      "Sound/notification on completion",
-      "Background timer support with react-native-background-timer",
-      "Time input via number pad as alternative to slider",
-      "Display formatted time (MM:SS instead of seconds)",
-      "History of completed timers",
-      "Timer labels/names"
-    ],
-    "customization": [
-      "Configurable tick line colors and sizes",
-      "Custom timer completion actions",
-      "Theming support (dark/light mode)",
-      "Custom fonts for digit display",
-      "Configurable animation spring/timing values",
-      "Variable radius for different screen sizes",
-      "Custom gradient colors",
-      "Haptic patterns customization"
-    ],
-    "accessibility": [
-      "AccessibilityLabel for slider and timer",
-      "AccessibilityValue for current time",
-      "AccessibilityHint for usage instructions",
-      "Screen reader announcements on time changes",
-      "Reduced motion support (disable blur, instant transitions)",
-      "Keyboard increment/decrement for time adjustment",
-      "High contrast mode support",
-      "Voice control integration"
-    ],
-    "performance": [
-      "Throttle haptic feedback to reduce overhead",
-      "Optimize isChanging reset with cancelable timeout",
-      "Memoize trigonometric calculations",
-      "Consider requestAnimationFrame for timer updates",
-      "Optimize for very large tick counts (>200)"
-    ],
-    "ux_enhancements": [
-      "Tap on circle to set time directly",
-      "Quick time buttons (5, 10, 15, 25 minutes)",
-      "Swipe to reset gesture",
-      "Visual feedback for timer completion (flash, pulse)",
-      "Progress ring showing remaining time",
-      "Show elapsed vs. remaining time toggle",
-      "Lap/split times for multiple rounds",
-      "Better error messages and validation"
-    ],
-    "technical": [
-      "Extract magic numbers to configuration",
-      "Improve isChanging detection algorithm",
-      "Add comprehensive error boundaries",
-      "Add analytics tracking for timer usage",
-      "Support for decimal time (minutes.seconds)",
-      "Persist timer state across app restarts"
-    ]
-  },
-  "key_insights": {
-    "circular_transformation_math": "Treating circle circumference as a straight line (2πr) enables intuitive linear-to-circular mapping via interpolation",
-    "trigonometric_positioning": "Tick lines positioned with cos/sin for x/y and atan2 for rotation - fundamental pattern for circular UIs",
-    "digit_stacking_optimization": "Rendering all 10 digits vertically and translating is more performant than conditional rendering",
-    "worklet_bridge_pattern": "scheduleOnRN essential for calling JS callbacks (haptics, state updates) from UI thread",
-    "blur_state_tracking": "useAnimatedReaction + setTimeout pattern enables motion blur effect synchronized with digit changes",
-    "gesture_decay_feel": "withDecay on gesture release provides natural, physics-based deceleration",
-    "ref_based_timer_api": "useImperativeHandle exposes timer control without prop drilling - clean parent-child communication",
-    "zero_centering_technique": "Coordinated opacity + translation keeps visible digits centered as leading zeros hide",
-    "timer_interval_trade_off": "setInterval sufficient for Expo Go, but production needs background-safe alternative",
-    "platform_specific_features": "Graceful degradation (haptics iOS-only, blur iOS-only) maintains cross-platform functionality"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic timer implementation with setInterval",
-      "Toggle state management with custom hook",
-      "Simple pan gestures",
-      "Ref-based component APIs",
-      "Platform-specific code patterns"
-    ],
-    "for_intermediate": [
-      "Linear to circular coordinate transformations",
-      "Pan gesture with decay animation",
-      "useDerivedValue for coordinate conversion",
-      "useAnimatedReaction for side effects",
-      "useImperativeHandle for parent-child communication",
-      "Haptic feedback integration",
-      "Interval-based timer patterns",
-      "Platform-specific feature implementation"
-    ],
-    "for_advanced": [
-      "Trigonometric positioning (sin, cos, atan2)",
-      "Complex mathematical transformations (radian conversion)",
-      "Blur effect synchronization with animations",
-      "Motion blur implementation patterns",
-      "Performance optimization with memo and worklets",
-      "Circular UI design patterns",
-      "Advanced gesture handling with state locks",
-      "Cross-thread communication strategies",
-      "Timer state management edge cases"
-    ]
-  },
-  "tags": [
-    "timer",
-    "pomodoro",
-    "countdown",
-    "circular-slider",
-    "radial-ui",
-    "rolling-digits",
-    "animated-counter",
-    "pan-gesture",
-    "trigonometry",
-    "reanimated",
-    "gesture-handler",
-    "worklets",
-    "haptic-feedback",
-    "blur-effect",
-    "decay-animation",
-    "interval-timer",
-    "digit-animation",
-    "leading-zeros",
-    "ref-api",
-    "circular-transformation",
-    "tick-marks",
-    "gradient-overlay",
-    "ios-blur",
-    "timer-management"
+  "hooks": [
+    "useAnimatedReaction",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useEffect",
+    "useImperativeHandle",
+    "useMemo",
+    "useRef",
+    "useSharedValue",
+    "useState",
+    "useTimer",
+    "useToggle"
   ],
-  "content_hash": "f45187c8277dc644f5959d58b417c22b4db2821c02b3f84a8161de622da01b1e",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.404Z",
-  "last_validated": "2025-10-12T09:19:28.404Z"
+  "functions": [
+    "cancelAnimation",
+    "clearCounter",
+    "clearInterval",
+    "forwardRef",
+    "getDigitByIndex",
+    "interpolate",
+    "memo",
+    "onCompletion",
+    "onProgressChange",
+    "parseInt",
+    "scheduleOnRN",
+    "setInterval",
+    "setTimeout",
+    "setValue",
+    "toggleTimer",
+    "withDecay",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "Animated.createAnimatedComponent",
+    "AnimatedBlurView",
+    "AnimatedCount",
+    "AnimatedDigit",
+    "App",
+    "CircularDraggableSlider",
+    "GestureDetector",
+    "GestureHandlerRootView",
+    "LinearGradient",
+    "MaterialCommunityIcons",
+    "PressableScale",
+    "Text",
+    "TickLine",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "spring-animation",
+    "value-interpolation",
+    "reactive-styling-pattern",
+    "imperative-animation-api"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "spring-physics",
+    "value-mapping",
+    "ref-based-control",
+    "blur-effects",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 10,
+    "total_packages": 10,
+    "total_hooks": 12,
+    "total_functions": 18,
+    "total_components": 15,
+    "total_patterns": 9,
+    "total_techniques": 7
+  }
 }

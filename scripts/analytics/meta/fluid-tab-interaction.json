@@ -1,969 +1,187 @@
 {
-  "animation_name": "Fluid Tab Interaction",
   "animation_slug": "fluid-tab-interaction",
-  "description": "An elegant iOS-style segmented control with fluid morphing animations, featuring dynamic blur effects during transitions. The control uses advanced interpolation techniques to smoothly transition between tabs with spring-animated selection states, background morphing, and layered blur overlays that create a glass-morphism effect during tab changes.",
-  "main_features": [
-    "iOS-style segmented control with animated indicator",
-    "Fluid background morphing with dynamic width interpolation",
-    "Layered blur effects during tab transitions",
-    "Independent blur intensity on individual tabs during transition",
-    "Press-to-scale interaction feedback via pressto library",
-    "Spring-based timing with custom Bezier easing curve",
-    "Dynamic position adjustment based on tab count and padding",
-    "Icon and text combination in tab buttons",
-    "Color interpolation for active/inactive tab labels",
-    "Animated indicator with shadow and border styling",
-    "Dual-layer blur system (global and per-tab)",
-    "SharedValue-based animation state management"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.303Z",
   "file_structure": {
-    "index.tsx": "Re-export wrapper exposing App as FluidTabInteraction",
-    "src/index.tsx": "Main demo component with segmented control and sample data",
-    "src/components/segmented-control/index.tsx": "Core segmented control component with animation logic",
-    "src/components/animated-blur-view.tsx": "Animated wrapper for expo-blur BlurView component",
-    "src/constants.ts": "Color palette constants for theming"
+    "entry": "src/index.tsx",
+    "components": [
+      "src/components/animated-blur-view.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [
+      "src/constants.ts"
+    ],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "blur": "expo-blur",
-    "icons": "@expo/vector-icons (MaterialCommunityIcons)",
-    "interactions": "pressto (PressableScale)",
-    "ui": "react-native (View, Text, StyleSheet)"
+  "packages": [
+    "@expo/vector-icons",
+    "expo-blur",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "expo-blur": "~15.0.7",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useAnimatedStyle",
-        "useAnimatedProps"
+  "packages_detail": {
+    "../../constants": {
+      "imports": [
+        "Palette"
       ],
-      "functions": [
-        "withTiming",
-        "interpolate",
-        "cancelAnimation",
-        "Easing.bezier",
-        "Animated.createAnimatedComponent"
-      ],
-      "components": [
-        "Animated.View",
-        "Animated.Text"
-      ],
-      "critical_feature": "useAnimatedProps for dynamic blur intensity interpolation and useSharedValue for tracking active tab indexes during transitions"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "expo-blur": {
-      "version": "~15.0.7",
-      "component": "BlurView",
-      "usage": "Animated blur overlays with interpolated intensity",
-      "properties": {
-        "intensity": "Animated via useAnimatedProps (0-15 range)",
-        "tint": "light (glass morphism effect)"
-      },
-      "benefit": "Native blur performance with animatable intensity"
+    "../animated-blur-view": {
+      "imports": [
+        "AnimatedBlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/segmented-control": {
+      "imports": [
+        "SegmentedControl"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./src": {
+      "imports": [
+        "App"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "icon_set": "MaterialCommunityIcons",
-      "usage": "Animated icons in tab buttons with color interpolation",
-      "animated": "Animated.createAnimatedComponent(MaterialCommunityIcons)"
+      "imports": [
+        "MaterialCommunityIcons"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-blur": {
+      "imports": [
+        "BlurView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "pressto": {
-      "version": "0.3.5-beta.1",
-      "component": "PressableScale",
-      "usage": "Press-to-scale animation for tab buttons",
-      "benefit": "Built-in scale animation on press without manual gesture handling"
-    },
-    "react-native": {
-      "version": "0.81.4",
-      "components": [
-        "View",
-        "Text",
-        "StyleSheet"
+      "imports": [
+        "PressableScale"
       ],
-      "hooks": [
-        "useWindowDimensions",
-        "useMemo"
-      ],
-      "usage": "Core UI components and responsive sizing"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react": {
-      "version": "19.1.0",
+      "imports": [
+        "useMemo",
+        "useState"
+      ],
       "hooks": [
-        "useState",
-        "useMemo"
-      ]
-    }
-  },
-  "animation_techniques": {
-    "background_morphing": {
-      "pattern": "Dynamic width interpolation with padding adjustment",
-      "shared_value": "selectedCellIndex",
-      "calculation": "cellBackgroundWidth * selectedCellIndex + padding",
-      "padding_formula": "interpolate(selectedCellIndex, [0, data.length - 1], [internalPadding, -internalPadding])",
-      "timing": "withTiming(position, { duration: 1000, easing: Bezier(0.4, 0.0, 0.2, 1) })",
-      "effect": "Background indicator smoothly slides to new position with width matching tab size",
-      "width_calculation": "cellBackgroundWidth - internalPadding / data.length",
-      "key_insight": "Padding interpolation ensures indicator stays centered by adjusting offset based on position"
-    },
-    "layered_blur_system": {
-      "layer_1_global_blur": {
-        "component": "AnimatedBlurView on indicator background",
-        "shared_value": "blurProgress (0 to 1)",
-        "intensity_range": "[0, 15, 0] (peaks at midpoint)",
-        "input_range": "[0, 0.5, 1]",
-        "trigger": "On tab press, animates from 0->1 then resets",
-        "effect": "Global blur overlay fades in/out during transition",
-        "z_index": 10
-      },
-      "layer_2_per_tab_blur": {
-        "component": "AnimatedBlurView on each tab",
-        "shared_value": "blurProgress (filtered by activeIndexes)",
-        "intensity_range": "[0, 10, 0] (peaks at midpoint)",
-        "input_range": "[0, 0.5, 1]",
-        "condition": "Only active for tabs in activeIndexes array",
-        "effect": "Individual tabs blur during transition from/to them",
-        "z_index": 1
-      },
-      "activeIndexes_pattern": {
-        "type": "SharedValue<number[]>",
-        "stores": "[previousTabIndex, newTabIndex]",
-        "lifecycle": "Set on press -> drives per-tab blur -> cleared on animation end",
-        "purpose": "Tracks which two tabs are involved in current transition"
-      }
-    },
-    "blur_intensity_interpolation": {
-      "pattern": "Parabolic intensity curve with peak at midpoint",
-      "formula": "interpolate(blurProgress, [0, 0.5, 1], [0, intensity_peak, 0])",
-      "global_peak": 15,
-      "per_tab_peak": 10,
-      "timing": "Synchronized with 1000ms position transition",
-      "effect": "Blur fades in during first half, fades out during second half",
-      "reset": "blurProgress.value = 0 in animation completion callback"
-    },
-    "color_interpolation": {
-      "pattern": "withTiming color transition for text and icons",
-      "active_color": "Palette.highlightLabel (#312F2D - dark)",
-      "inactive_color": "Palette.baseLabel (#9B9893 - gray)",
-      "timing": "Same 1000ms timing as position animation",
-      "applies_to": [
-        "Animated.Text",
-        "AnimatedIcon"
+        "useMemo",
+        "useState"
       ],
-      "effect": "Smooth color fade between active and inactive states"
+      "functions": [],
+      "components": []
     },
-    "position_calculation": {
-      "cell_width": "width / data.length (equal distribution)",
-      "base_position": "cellBackgroundWidth * selectedCellIndex",
-      "padding_offset": {
-        "first_tab": "+internalPadding (shifts right)",
-        "middle_tabs": "proportional interpolation",
-        "last_tab": "-internalPadding (shifts left)"
-      },
-      "purpose": "Centers indicator within container accounting for border padding"
-    },
-    "animation_cancellation": {
-      "pattern": "cancelAnimation(blurProgress) before new animation",
-      "purpose": "Prevents animation conflicts when rapidly switching tabs",
-      "location": "In onPress handler before starting new withTiming",
-      "benefit": "Clean animation restart without waiting for completion"
-    },
-    "completion_callback": {
-      "pattern": "withTiming third parameter callback",
-      "actions": [
-        "blurProgress.value = 0 (reset)",
-        "activeIndexes.value = [] (clear tracking)"
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "View",
+        "useWindowDimensions"
       ],
-      "purpose": "Cleanup animation state after completion"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "activeIndexes",
-        "type": "SharedValue<number[]>",
-        "initial": "[]",
-        "updates": "Set to [prevIndex, newIndex] on tab press",
-        "cleared": "In animation completion callback",
-        "purpose": "Tracks participating tabs in current transition for per-tab blur",
-        "scope": "SegmentedControl component"
-      },
-      {
-        "name": "blurProgress",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "range": "[0, 1]",
-        "animation": "withTiming(1, 1000ms) then reset to 0",
-        "drives": [
-          "Global blur intensity",
-          "Per-tab blur intensity"
-        ],
-        "lifecycle": "0 -> 1 during transition -> 0 on complete",
-        "scope": "SegmentedControl component"
-      }
-    ],
-    "react_state": [
-      {
-        "name": "selected",
-        "type": "Generic T extends { name: string; icon: string }",
-        "initial": "Data[0]",
-        "updates": "onPress callback from SegmentedControl",
-        "drives": "selectedCellIndex calculation via useMemo",
-        "scope": "App component"
-      }
-    ],
-    "useAnimatedProps_instances": [
-      {
-        "name": "animatedBlurProps",
-        "target": "AnimatedBlurView (global indicator blur)",
-        "property": "intensity",
-        "calculation": "interpolate(blurProgress.value, [0, 0.5, 1], [0, 15, 0])",
-        "effect": "Parabolic intensity curve for global blur overlay",
-        "dependencies": [
-          "blurProgress"
-        ]
-      },
-      {
-        "name": "internalBlurProps",
-        "target": "AnimatedBlurView (per-tab blur)",
-        "property": "intensity",
-        "calculation": "interpolate(activeIndexes.includes(index) ? blurProgress.value : 0, [0, 0.5, 1], [0, 10, 0])",
-        "effect": "Conditional blur only for tabs involved in transition",
-        "dependencies": [
-          "blurProgress",
-          "activeIndexes"
-        ],
-        "note": "Uses rules-of-hooks eslint-disable due to map iteration"
-      }
-    ],
-    "useAnimatedStyle_instances": [
-      {
-        "name": "rCellMessageStyle",
-        "target": "Animated.View (background indicator)",
-        "animated_property": "left",
-        "calculation": "withTiming(cellBackgroundWidth * selectedCellIndex + padding, TimingConfig)",
-        "dependencies": [
-          "selectedCellIndex"
-        ],
-        "effect": "Indicator slides horizontally to active tab with padding adjustment"
-      },
-      {
-        "name": "rCellBlurMessageStyle",
-        "target": "Animated.View (blur container)",
-        "animated_property": "left",
-        "calculation": "withTiming(cellBackgroundWidth * selectedCellIndex, TimingConfig)",
-        "dependencies": [
-          "selectedCellIndex"
-        ],
-        "effect": "Blur overlay tracks indicator position (without padding adjustment)",
-        "difference": "No padding offset unlike rCellMessageStyle"
-      },
-      {
-        "name": "rLabelStyle",
-        "target": "Animated.Text and AnimatedIcon",
-        "animated_property": "color",
-        "calculation": "withTiming(selectedCellIndex === index ? highlightLabel : baseLabel, TimingConfig)",
-        "dependencies": [
-          "selectedCellIndex",
-          "index"
-        ],
-        "effect": "Text and icon color transitions between active/inactive states",
-        "instances": "One per tab (created in map iteration)"
-      }
-    ],
-    "useMemo_optimizations": [
-      {
-        "name": "selectedCellIndex",
-        "calculation": "data.findIndex(item => item === selected)",
-        "dependencies": [
-          "data",
-          "selected"
-        ],
-        "purpose": "Converts selected object to numeric index",
-        "benefit": "Used throughout for interpolation calculations"
-      }
-    ],
-    "timing_config": {
-      "constant": "TimingConfig",
-      "duration": 1000,
-      "easing": "Easing.bezier(0.4, 0.0, 0.2, 1)",
-      "description": "Material Design's standard easing curve",
-      "used_for": [
-        "Position animations",
-        "Color transitions",
-        "Width morphing"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Easing",
+        "cancelAnimation",
+        "interpolate",
+        "useAnimatedProps",
+        "useAnimatedStyle",
+        "useSharedValue",
+        "withTiming"
       ],
-      "characteristic": "Accelerated start with gentle deceleration"
-    },
-    "eslint_workarounds": [
-      {
-        "line": 98,
-        "rule": "react-hooks/rules-of-hooks",
-        "reason": "useAnimatedProps inside map iteration - each tab needs unique props",
-        "justification": "Array length is stable (data.map), so hook call count is consistent"
-      },
-      {
-        "line": 109,
-        "rule": "react-hooks/rules-of-hooks",
-        "reason": "useAnimatedStyle inside map iteration - each tab needs unique style",
-        "justification": "Array length is stable, pattern is safe despite ESLint warning"
-      }
-    ]
-  },
-  "component_patterns": {
-    "segmented_control": {
-      "type": "Generic function component",
-      "generic_constraint": "T extends { name: string; icon: string }",
-      "props": {
-        "data": "readonly T[] (tab items)",
-        "onPress": "(item: T) => void (selection callback)",
-        "selected": "T (currently selected item)",
-        "width": "number (container width)",
-        "height": "number (container height)"
-      },
-      "readonly_data": "Ensures data immutability for optimization"
-    },
-    "pressable_scale_integration": {
-      "component": "PressableScale from pressto",
-      "benefit": "Built-in press animation without manual gesture handling",
-      "onPress_logic": [
-        "1. Call onPress(item) to update parent state",
-        "2. Find prevIndex from current selected item",
-        "3. Early return if same tab clicked",
-        "4. Set activeIndexes.value = [prevIndex, index]",
-        "5. Cancel any in-flight blur animation",
-        "6. Start new blur animation with completion callback"
-      ]
-    },
-    "animated_component_creation": {
-      "pattern": "Animated.createAnimatedComponent",
-      "component": "MaterialCommunityIcons",
-      "result": "AnimatedIcon",
-      "purpose": "Enable Reanimated animations on icon color property",
-      "usage": "AnimatedIcon with animated style prop"
-    },
-    "conditional_early_return": {
-      "check": "if (prevIndex === index) return",
-      "purpose": "Prevent animation when clicking already-selected tab",
-      "benefit": "Avoids unnecessary animation cycles and state updates"
-    }
-  },
-  "visual_design": {
-    "color_palette": {
-      "baseGray05": "#F5F3EE (container background)",
-      "baseGray80": "#30302E (unused in current implementation)",
-      "background": "#F9F8F4 (indicator background)",
-      "highlightLabel": "#312F2D (active text/icon color)",
-      "baseLabel": "#9B9893 (inactive text/icon color)"
-    },
-    "layout": {
-      "container": {
-        "border_radius": 30,
-        "border_width": 1,
-        "border_color": "Palette.baseGray05",
-        "flex_direction": "row",
-        "padding": "internalPadding (5px)"
-      },
-      "internal_padding": 5,
-      "cell_width": "width / data.length",
-      "indicator_height": "height - internalPadding * 2"
-    },
-    "indicator_styling": {
-      "background_color": "Palette.background (#F9F8F4)",
-      "border_radius": 30,
-      "border_width": 1,
-      "border_color": "Palette.baseGray05",
-      "shadow": {
-        "shadowOffset": "{ height: 1, width: 0 }",
-        "shadowOpacity": 0.1,
-        "shadowRadius": 2
-      },
-      "z_index": 1,
-      "position": "absolute"
-    },
-    "tab_item_styling": {
-      "layout": {
-        "flex": 1,
-        "flex_direction": "row",
-        "align_items": "center",
-        "justify_content": "center",
-        "gap": 5
-      },
-      "z_index": 2
-    },
-    "typography": {
-      "font_family": "Honk-Regular (custom font)",
-      "font_size": 14,
-      "text_align": "center",
-      "dynamic_color": "Interpolated between base and highlight"
-    },
-    "icon_styling": {
-      "size": 13,
-      "dynamic_color": "Interpolated between base and highlight",
-      "component": "MaterialCommunityIcons"
-    },
-    "blur_styling": {
-      "position": "absolute (overlays entire tab)",
-      "coverage": "{ bottom: 0, left: 0, right: 0, top: 0 }",
-      "z_index": 1,
-      "tint": "light (glass morphism effect)"
-    }
-  },
-  "data_structure": {
-    "demo_data": {
-      "type": "Array<{ name: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }>",
-      "items": [
-        "{ name: 'Accounts', icon: 'wallet-outline' }",
-        "{ name: 'Deposits', icon: 'bank' }",
-        "{ name: 'Funds', icon: 'chart-bar' }"
-      ],
-      "theme": "Financial app sections",
-      "length": 3
-    },
-    "icon_type": {
-      "constraint": "keyof typeof MaterialCommunityIcons.glyphMap",
-      "purpose": "Type-safe icon names",
-      "benefit": "Compile-time validation of icon names"
-    }
-  },
-  "mathematical_algorithms": {
-    "padding_interpolation": {
-      "formula": "interpolate(selectedCellIndex, [0, data.length - 1], [internalPadding, -internalPadding])",
-      "examples": {
-        "5_items": {
-          "index_0": "+5px (first tab, shift right)",
-          "index_1": "+2.5px",
-          "index_2": "0px (center)",
-          "index_3": "-2.5px",
-          "index_4": "-5px (last tab, shift left)"
-        }
-      },
-      "purpose": "Compensates for container padding to center indicator",
-      "key_insight": "Linear interpolation from positive to negative padding creates perfect centering"
-    },
-    "cell_background_width": {
-      "formula": "width / data.length",
-      "example": "390px / 3 = 130px per tab",
-      "usage": [
-        "Indicator position calculation",
-        "Tab button width",
-        "Blur overlay width"
-      ]
-    },
-    "indicator_width": {
-      "formula": "cellBackgroundWidth - internalPadding / data.length",
-      "example": "130px - 5px/3 = 128.33px",
-      "purpose": "Slightly narrower than cell for visual separation",
-      "effect": "Small gap on sides of indicator"
-    },
-    "blur_intensity_curve": {
-      "type": "Parabolic (quadratic)",
-      "formula": "intensity(t) = peak * (1 - (2t - 1)²)",
-      "approximation": "Linear interpolation [0, peak, 0] at [0, 0.5, 1]",
-      "peak_at": "t = 0.5 (midpoint of transition)",
-      "behavior": "Smooth fade in and fade out"
-    },
-    "position_calculation": {
-      "base": "cellBackgroundWidth * selectedCellIndex",
-      "adjustment": "+ interpolate(selectedCellIndex, [0, length-1], [padding, -padding])",
-      "final": "cellBackgroundWidth * index + padding(index)",
-      "coordinate_system": "Relative to container's left edge"
-    }
-  },
-  "interaction_flow": {
-    "tab_press_sequence": [
-      "1. User presses tab (PressableScale triggers press animation)",
-      "2. onPress callback invoked with selected item",
-      "3. Calculate prevIndex from current selected item",
-      "4. Early return if prevIndex === index (same tab)",
-      "5. Update activeIndexes.value = [prevIndex, index]",
-      "6. cancelAnimation(blurProgress) to clear any in-flight animation",
-      "7. Start blurProgress animation: withTiming(1, 1000ms, completionCallback)",
-      "8. Interpolations automatically drive:",
-      "   - Indicator position (rCellMessageStyle)",
-      "   - Blur overlay position (rCellBlurMessageStyle)",
-      "   - Global blur intensity (animatedBlurProps)",
-      "   - Per-tab blur intensity (internalBlurProps for active tabs)",
-      "   - Text/icon colors (rLabelStyle for all tabs)",
-      "9. At 50% (t=0.5): blur reaches peak intensity",
-      "10. On completion callback:",
-      "    - Reset blurProgress.value = 0",
-      "    - Clear activeIndexes.value = []",
-      "11. Visual result: smooth morphing transition with glass-morphism effect"
-    ],
-    "animation_synchronization": {
-      "single_source": "selectedCellIndex change",
-      "drives": [
-        "Position animations",
-        "Color transitions",
-        "Width morphing",
-        "Blur effects (indirectly via blurProgress)"
-      ],
-      "coordination": "All animations use same 1000ms TimingConfig",
-      "benefit": "Perfect synchronization without manual coordination"
-    }
-  },
-  "performance_optimizations": {
-    "ui_thread_execution": {
       "hooks": [
         "useAnimatedProps",
-        "useAnimatedStyle"
+        "useAnimatedStyle",
+        "useSharedValue"
       ],
-      "worklets": "All interpolations run on UI thread",
-      "benefit": "60fps animations with no JS thread involvement"
-    },
-    "useMemo_for_index": {
-      "calculation": "selectedCellIndex via findIndex",
-      "dependencies": [
-        "data",
-        "selected"
+      "functions": [
+        "cancelAnimation",
+        "interpolate",
+        "withTiming"
       ],
-      "benefit": "Avoids recalculating index on every render",
-      "recalculates": "Only when selection or data changes"
-    },
-    "conditional_blur": {
-      "pattern": "activeIndexes.value.includes(index) ? blurProgress.value : 0",
-      "benefit": "Only animate blur on tabs involved in transition",
-      "optimization": "Reduces unnecessary blur calculations for uninvolved tabs"
-    },
-    "animation_cancellation": {
-      "pattern": "cancelAnimation before starting new animation",
-      "benefit": "Prevents animation queue buildup on rapid taps",
-      "ensures": "Clean animation restart"
-    },
-    "shared_value_efficiency": {
-      "pattern": "Minimal SharedValues (just 2)",
-      "benefit": "Lower memory overhead and simpler dependency tracking",
-      "values": [
-        "activeIndexes",
-        "blurProgress"
-      ]
-    },
-    "pressto_library": {
-      "benefit": "Offloads press animation to optimized library",
-      "avoids": "Manual gesture handling and scale animation logic"
-    }
-  },
-  "unique_innovations": {
-    "layered_blur_architecture": {
-      "innovation": "Dual-layer blur system with different intensities and scopes",
-      "global_layer": "Full indicator blur (intensity: 0-15)",
-      "local_layer": "Per-tab blur only for transition participants (intensity: 0-10)",
-      "effect": "Rich glass-morphism effect with depth perception",
-      "technical_approach": "Single blurProgress SharedValue drives both layers via different interpolations"
-    },
-    "active_indexes_tracking": {
-      "innovation": "SharedValue array tracks which tabs are transitioning",
-      "pattern": "Store [from, to] indices during animation",
-      "benefit": "Enables selective per-tab effects without complex state management",
-      "lifecycle": "Set on press, drive per-tab blur, cleared on complete"
-    },
-    "dynamic_padding_compensation": {
-      "innovation": "Linear padding interpolation based on tab position",
-      "formula": "interpolate(index, [0, last], [+padding, -padding])",
-      "solves": "Container padding creates off-center indicator",
-      "benefit": "Perfect centering without manual position tweaking per tab"
-    },
-    "parabolic_blur_intensity": {
-      "innovation": "Blur peaks at transition midpoint then fades",
-      "curve": "[0, 15, 0] at [0, 0.5, 1]",
-      "effect": "Smooth glass-morphism effect during transition only",
-      "benefit": "Visual feedback during transition without permanent blur"
-    },
-    "generic_tab_data": {
-      "innovation": "Generic constraint T extends { name, icon }",
-      "benefit": "Type-safe reusable component for any icon+text data",
-      "flexibility": "Data can include additional properties beyond name/icon"
-    }
-  },
-  "gesture_handling": {
-    "press_interaction": {
-      "library": "pressto (PressableScale)",
-      "animation": "Built-in scale animation on press",
-      "feedback": "Visual feedback via scale transformation",
-      "onPress_callback": "Triggers tab selection and blur animation"
-    },
-    "no_gesture_handler": {
-      "note": "No react-native-gesture-handler usage",
-      "reason": "pressto handles press animation internally",
-      "benefit": "Simpler implementation without manual gesture configuration"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "iOS-style segmented controls in settings screens",
-      "Tab navigation for financial apps (accounts, deposits, funds)",
-      "Category selectors with smooth transitions",
-      "Filter controls with visual feedback",
-      "Multi-option toggle switches with 3+ options"
-    ],
-    "real_world_examples": [
-      "Banking app section switcher (accounts/transfers/history)",
-      "Fitness app view selector (daily/weekly/monthly)",
-      "Weather app time range selector (hourly/daily/weekly)",
-      "Shopping app category filter (all/electronics/clothing)",
-      "Music app view switcher (songs/albums/artists)"
-    ],
-    "design_patterns": [
-      "iOS UISegmentedControl with enhanced animations",
-      "Material Design segmented buttons with glass morphism",
-      "Tab bars with fluid indicator transitions",
-      "Toggle groups with more than 2 options"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with strict typing",
-      "generics": "Generic component constraint for flexible data types",
-      "type_definitions": [
-        "SegmentedControlProps<T>",
-        "MaterialCommunityIcons glyphMap keyof constraint"
-      ],
-      "imports": "Type-safe imports with proper type annotations"
-    },
-    "component_architecture": {
-      "separation": "Clean separation between demo (App) and reusable component (SegmentedControl)",
-      "reusability": "SegmentedControl is fully reusable with generic data",
-      "modularity": "AnimatedBlurView extracted as separate component"
-    },
-    "constants": {
-      "TimingConfig": "Shared timing configuration for consistent animations",
-      "Palette": "Centralized color constants in separate file",
-      "internalPadding": "Local constant for layout calculations"
-    },
-    "code_organization": {
-      "file_structure": "Logical separation: constants, components, main",
-      "component_size": "Manageable single-file component (~240 lines)",
-      "clarity": "Clear variable names and structure"
-    },
-    "best_practices": [
-      "Generic types for flexible reusable components",
-      "Shared constants for consistent theming",
-      "Animation cancellation to prevent conflicts",
-      "Early returns to avoid unnecessary computations",
-      "Optional chaining for safe property access",
-      "Nullish coalescing for fallback values",
-      "Completion callbacks for cleanup",
-      "useMemo for derived calculations"
-    ],
-    "strengths": [
-      "Type-safe icon names via MaterialCommunityIcons.glyphMap",
-      "Clean dual-layer blur architecture",
-      "Well-structured animation state management",
-      "Efficient SharedValue usage",
-      "Clear separation of concerns"
-    ],
-    "areas_for_improvement": [
-      "ESLint rules-of-hooks warnings (acceptable pattern but flagged)",
-      "Could extract magic numbers (15, 10, 35) to constants",
-      "Limited inline documentation/comments",
-      "Custom font 'Honk-Regular' may not be available in all projects",
-      "No prop validation or default props"
-    ]
-  },
-  "known_limitations": {
-    "custom_font_dependency": {
-      "font": "Honk-Regular",
-      "issue": "May not be available in consuming projects",
-      "effect": "Falls back to system font",
-      "improvement": "Make font configurable via props or use system font"
-    },
-    "fixed_blur_intensities": {
-      "global": 15,
-      "per_tab": 10,
-      "issue": "Hardcoded intensity values",
-      "improvement": "Make intensities configurable via props"
-    },
-    "no_accessibility": {
-      "missing": "No accessibility labels or hints",
-      "screen_reader": "May not announce selected tab",
-      "keyboard": "No keyboard navigation support",
-      "improvement": "Add accessibilityLabel, accessibilityRole, accessibilityState"
-    },
-    "animation_duration_fixed": {
-      "value": "1000ms",
-      "issue": "Cannot be customized",
-      "improvement": "Accept duration as prop with default value"
-    },
-    "no_disabled_state": {
-      "limitation": "Cannot disable individual tabs",
-      "use_case": "Temporarily unavailable options",
-      "improvement": "Add disabled prop to data items and handle in component"
-    },
-    "equal_width_tabs": {
-      "implementation": "All tabs have equal width based on container / count",
-      "limitation": "Long text may truncate or shrink",
-      "improvement": "Support dynamic widths with ScrollView for tabs"
-    },
-    "eslint_warnings": {
-      "issue": "react-hooks/rules-of-hooks disabled in two places",
-      "reason": "useAnimated* hooks inside map iteration",
-      "risk": "Safe in this case (stable array length) but flagged by linter",
-      "improvement": "Extract list item to separate component to satisfy ESLint"
-    }
-  },
-  "potential_improvements": {
-    "customization_props": [
-      "Configurable colors (active/inactive text, indicator, background)",
-      "Configurable blur intensities (global and per-tab)",
-      "Configurable animation duration and easing",
-      "Custom font family prop",
-      "Configurable border radius",
-      "Configurable padding values",
-      "Custom indicator shadow properties"
-    ],
-    "functionality_enhancements": [
-      "Disabled state for individual tabs",
-      "Badge or notification count on tabs",
-      "Custom indicator component via render prop",
-      "onChangeStart/onChangeEnd callbacks",
-      "Controlled/uncontrolled mode support",
-      "testID props for testing",
-      "Ref forwarding for imperative control"
-    ],
-    "accessibility_improvements": [
-      "accessibilityLabel for each tab",
-      "accessibilityRole='tab' and accessibilityRole='tablist'",
-      "accessibilityState={{ selected: boolean }}",
-      "Screen reader announcements on change",
-      "Keyboard navigation (arrow keys)",
-      "Reduced motion preference support (disable blur)",
-      "VoiceOver/TalkBack optimizations"
-    ],
-    "visual_enhancements": [
-      "Active tab icon color pulse animation",
-      "Haptic feedback on tab change (expo-haptics)",
-      "Gradient overlay option for indicator",
-      "Custom shadow colors",
-      "Vertical orientation support",
-      "Animated border color transitions",
-      "Scale animation on indicator (subtle pulse)"
-    ],
-    "performance_optimizations": [
-      "Extract list item to separate component to avoid ESLint warnings",
-      "Memoize individual tab components",
-      "useNativeDriver where applicable (may already be via Reanimated)",
-      "Optimize re-renders with React.memo on child components"
-    ],
-    "developer_experience": [
-      "More inline code documentation",
-      "Comprehensive prop documentation",
-      "Usage examples in comments",
-      "TypeScript doc comments for props",
-      "Extract magic numbers to named constants",
-      "Add default props support"
-    ]
-  },
-  "key_insights": {
-    "dual_layer_blur_power": "Combining global and per-tab blur creates rich depth effect without performance cost",
-    "active_indexes_pattern": "Tracking transition participants in SharedValue array enables selective effects",
-    "padding_compensation_elegance": "Linear interpolation from +padding to -padding perfectly centers indicator across all positions",
-    "single_progress_drives_multiple": "One blurProgress SharedValue drives both blur layers via different interpolations",
-    "parabolic_intensity_timing": "Peak blur at transition midpoint creates smooth glass-morphism without permanent blur",
-    "animation_cancellation_importance": "Cancelling in-flight animations prevents conflicts on rapid tab switches",
-    "color_interpolation_subtlety": "Smooth color transitions enhance polish without drawing attention",
-    "pressto_simplicity": "Using pressto eliminates gesture handling boilerplate",
-    "generic_type_flexibility": "Generic constraint enables type-safe reusability with any icon+text data",
-    "ui_thread_performance": "All animations on UI thread ensures 60fps on complex blur effects"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic useSharedValue usage",
-      "Simple useAnimatedStyle patterns",
-      "withTiming animations",
-      "Color interpolation",
-      "Layout calculations (width/height)",
-      "useMemo for derived values",
-      "Component composition"
-    ],
-    "for_intermediate": [
-      "useAnimatedProps for non-style properties",
-      "Blur effect animations",
-      "Multiple synchronized animations",
-      "Animation cancellation patterns",
-      "Completion callbacks in animations",
-      "Generic TypeScript components",
-      "Custom Bezier easing curves",
-      "Position interpolation techniques"
-    ],
-    "for_advanced": [
-      "Dual-layer animation systems",
-      "Conditional animation with SharedValue arrays",
-      "Dynamic padding compensation algorithms",
-      "Parabolic intensity curves",
-      "Complex state lifecycle management (activeIndexes pattern)",
-      "Performance optimization with selective animations",
-      "Glass-morphism effect implementation",
-      "Coordinating multiple animated properties from single source"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_react_native_segmented_control": {
-      "rn_segmented_control": "Native iOS component, simple API, limited customization",
-      "this_implementation": "Full custom control with advanced animations",
-      "advantages": "Blur effects, fluid transitions, full customization, works on Android",
-      "tradeoffs": "More complex, larger bundle size, requires Reanimated"
-    },
-    "vs_react_navigation_material_tabs": {
-      "material_tabs": "Underline indicator, simple slide animation",
-      "this_implementation": "Background indicator with blur, glass-morphism effect",
-      "visual_difference": "This has more iOS-like aesthetic vs Material Design",
-      "animation_complexity": "This has dual-layer blur vs simple underline slide"
-    },
-    "vs_radio_button_group": {
-      "radio_buttons": "Discrete selection, instant state change, no animation",
-      "this_implementation": "Fluid transitions, animated feedback, visual continuity",
-      "use_case": "This is better for frequent switching, radio buttons for forms"
-    }
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All features fully supported",
-      "performance": "Excellent (native blur support)",
-      "appearance": "Matches iOS design patterns",
-      "blur": "Native UIBlurEffect via expo-blur"
-    },
-    "android": {
-      "features": "All features supported",
-      "performance": "Good (RenderScript blur)",
-      "blur": "May be slightly less performant than iOS",
-      "recommendation": "Test on lower-end devices for blur performance"
-    },
-    "web": {
-      "compatibility": "Should work with React Native Web",
-      "blur": "CSS backdrop-filter via expo-blur web implementation",
-      "considerations": [
-        "CSS backdrop-filter support varies by browser",
-        "May need fallback for older browsers",
-        "Test press interactions on desktop"
+      "components": [
+        "Animated.Text",
+        "Animated.View",
+        "Animated.createAnimatedComponent"
       ]
     }
   },
-  "testing_considerations": {
-    "visual_tests": [
-      "Indicator slides smoothly to selected tab",
-      "Blur effects fade in and out correctly",
-      "Colors transition smoothly",
-      "Padding compensation centers indicator at all positions",
-      "No visual glitches during rapid tab switching",
-      "Proper rendering with different tab counts (2, 3, 4, 5+)"
-    ],
-    "interaction_tests": [
-      "Tapping tab changes selection",
-      "Press animation provides feedback",
-      "Tapping same tab doesn't restart animation",
-      "Rapid tapping doesn't break animation state",
-      "Animation completes and cleans up properly",
-      "No memory leaks from animation state"
-    ],
-    "edge_cases": [
-      "Single tab (should render but no interaction needed)",
-      "Two tabs (padding compensation edge case)",
-      "Many tabs (10+) - performance and layout",
-      "Very long tab names (text truncation/wrapping)",
-      "Custom width/height values (very small/large)",
-      "Rapid tab switching during animation"
-    ],
-    "performance_tests": [
-      "Maintain 60fps during blur animations",
-      "No dropped frames on low-end devices",
-      "Memory usage stable over many interactions",
-      "Animation cancellation prevents queue buildup"
-    ],
-    "accessibility_tests": [
-      "Screen reader announces tabs (when implemented)",
-      "Keyboard navigation works (when implemented)",
-      "Touch targets meet minimum size requirements",
-      "Color contrast meets WCAG standards"
-    ]
-  },
-  "bundle_size_impact": {
-    "code_size": "~240 lines (SegmentedControl) + ~5 lines (AnimatedBlurView)",
-    "dependencies": {
-      "likely_already_present": [
-        "react-native-reanimated (required for most animations)",
-        "@expo/vector-icons (common in Expo projects)"
-      ],
-      "adds_if_not_present": [
-        "expo-blur (~small)",
-        "pressto (~small)"
-      ]
-    },
-    "runtime_memory": "Minimal - 2 SharedValues + React state",
-    "estimated_impact": "~5-8KB minified (excluding already-present dependencies)"
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "touch_targets": "Full tab width/height - meets minimum 44x44 points",
-      "press_feedback": "Visual scale animation via pressto",
-      "color_contrast": "Should be validated (dark text on light background)",
-      "screen_readers": "No explicit support",
-      "keyboard": "No keyboard navigation"
-    },
-    "recommendations": [
-      "Add accessibilityRole='tablist' to container",
-      "Add accessibilityRole='tab' to each PressableScale",
-      "Add accessibilityLabel with tab name",
-      "Add accessibilityState={{ selected: selectedCellIndex === index }}",
-      "Add accessibilityHint='Double tap to switch to {name} tab'",
-      "Implement keyboard navigation (arrow keys)",
-      "Respect prefers-reduced-motion (disable blur if enabled)",
-      "Announce tab changes to screen readers",
-      "Ensure color contrast meets WCAG AA (4.5:1 minimum)"
-    ]
-  },
-  "related_patterns": {
-    "similar_animations": [
-      "iOS UISegmentedControl",
-      "Material Design segmented buttons",
-      "Liquid swipe navigation",
-      "Morphing tab indicators",
-      "Fluid interface transitions"
-    ],
-    "animation_techniques": [
-      "Glass-morphism effects",
-      "Dual-layer animations",
-      "Parabolic intensity curves",
-      "Dynamic padding compensation",
-      "Coordinated multi-property animations"
-    ]
-  },
-  "inspirations_and_references": {
-    "design_inspiration": [
-      "iOS UISegmentedControl native component",
-      "Apple's iOS design language",
-      "Glass-morphism design trend",
-      "Fluid interface design principles"
-    ],
-    "technical_patterns": [
-      "Reanimated 2/3 shared element transitions",
-      "Liquid swipe animations",
-      "Morphing shape animations"
-    ]
-  },
-  "tags": [
-    "segmented-control",
-    "ios-style",
-    "fluid-animation",
-    "glass-morphism",
-    "blur-effects",
-    "tab-selector",
-    "morphing-indicator",
-    "reanimated",
-    "interpolation",
-    "dual-layer-animation",
-    "spring-animation",
-    "bezier-easing",
-    "color-interpolation",
-    "pressto",
-    "expo-blur",
-    "material-icons",
-    "dynamic-padding",
-    "ui-thread",
-    "60fps",
-    "press-interaction"
+  "hooks": [
+    "useAnimatedProps",
+    "useAnimatedStyle",
+    "useMemo",
+    "useSharedValue",
+    "useState",
+    "useWindowDimensions"
   ],
-  "content_hash": "b1b209bcd6661625d4b0398af938a766371b10d4544d520f26faee10dabb3885",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.351Z",
-  "last_validated": "2025-10-12T09:19:28.351Z"
+  "functions": [
+    "cancelAnimation",
+    "interpolate",
+    "onPress",
+    "setSelected",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.Text",
+    "Animated.View",
+    "Animated.createAnimatedComponent",
+    "AnimatedBlurView",
+    "AnimatedIcon",
+    "PressableScale",
+    "SegmentedControl",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "timing-animation",
+    "value-interpolation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "value-mapping",
+    "blur-effects",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 5,
+    "total_packages": 6,
+    "total_hooks": 6,
+    "total_functions": 5,
+    "total_components": 8,
+    "total_patterns": 5,
+    "total_techniques": 4
+  }
 }

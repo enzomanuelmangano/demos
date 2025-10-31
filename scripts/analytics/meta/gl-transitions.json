@@ -1,926 +1,379 @@
 {
-  "animation_name": "GL Transitions",
   "animation_slug": "gl-transitions",
-  "description": "A powerful screen transition system using GLSL (OpenGL Shading Language) shaders to create stunning visual effects between screen navigations. Leverages React Native Skia's runtime shader capabilities to render GPU-accelerated transitions, including cross-zoom blur, directional warp, linear blur, and hexagonalize effects. Features snapshot-based screen captures with progress-driven shader animations.",
-  "main_features": [
-    "GLSL shader-based screen transitions",
-    "Multiple pre-built transition effects (CrossZoom, DirectionalWarp, LinearBlur, Hexagonalize)",
-    "GPU-accelerated rendering via React Native Skia",
-    "Snapshot-based screen capture for smooth transitions",
-    "Context-based transition management",
-    "Configurable transition timing and easing",
-    "Easy transition switching via provider configuration",
-    "Screen image shader composition",
-    "Progress-driven uniform updates",
-    "Inspired by https://gl-transitions.com/ gallery"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.369Z",
   "file_structure": {
-    "entries": {
-      "index.tsx": "Export wrapper for main App component",
-      "src/index.tsx": "Main App component with navigation stack setup and GLTransitionsProvider"
-    },
-    "components": {
-      "screens/home-screen.tsx": "Home screen with masonry note list and add note button",
-      "screens/add-note-screen.tsx": "Modal screen for creating new notes with transition triggers"
-    },
-    "hooks": {
-      "providers/gl-transitions/hooks.ts": "useGLTransition hook for accessing transition context"
-    },
-    "utils": {
-      "providers/gl-transitions/utils/shader-lib.ts": "GLSL template literal utilities (glsl, frag)",
-      "providers/gl-transitions/utils/transition.ts": "Transition wrapper that compiles GLSL with image shader uniforms",
-      "providers/gl-transitions/utils/index.ts": "Utility exports barrel file"
-    },
-    "providers": {
-      "providers/gl-transitions/provider.tsx": "GLTransitionsProvider context provider with transition orchestration",
-      "providers/gl-transitions/index.ts": "Provider exports barrel file"
-    },
-    "transitions": {
-      "the-magic/cross-zoom.ts": "Cross-zoom blur transition with exponential easing",
-      "the-magic/directional-warp.ts": "Directional warp transition with circular reveal",
-      "the-magic/linear-blur.ts": "Linear blur transition with multi-pass sampling",
-      "the-magic/hexagonalize.ts": "Hexagonal grid transition with step quantization",
-      "the-magic/index.tsx": "Transition exports barrel file"
-    },
-    "atoms": {
-      "atoms/notes.ts": "Jotai atom for global note state management"
-    },
-    "constants": {
-      "constants/theme.ts": "Palette color constants (background, surface, primary, text)"
-    }
+    "entry": "src/the-magic/index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [
+      "src/providers/gl-transitions/utils/shader-lib.ts",
+      "src/providers/gl-transitions/utils/transition.ts"
+    ],
+    "types": [],
+    "constants": [
+      "src/constants/theme.ts"
+    ],
+    "assets": [],
+    "other": [
+      "src/atoms/notes.ts",
+      "src/providers/gl-transitions/hooks.ts",
+      "src/providers/gl-transitions/provider.tsx",
+      "src/screens/add-note-screen.tsx",
+      "src/screens/home-screen.tsx",
+      "src/the-magic/cross-zoom.ts",
+      "src/the-magic/directional-warp.ts",
+      "src/the-magic/hexagonalize.ts",
+      "src/the-magic/linear-blur.ts"
+    ]
   },
-  "core_technologies": {
-    "rendering": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "navigation": "@react-navigation/native-stack",
-    "state_management": "jotai",
-    "gestures": "react-native-gesture-handler",
-    "shaders": "GLSL (OpenGL Shading Language)"
+  "packages": [
+    "@expo/vector-icons",
+    "@react-native-seoul/masonry-list",
+    "@react-navigation/native",
+    "@react-navigation/native-stack",
+    "@shopify/react-native-skia",
+    "expo-linear-gradient",
+    "jotai",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-safe-area-context",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "@react-native-seoul/masonry-list": "^1.4.2",
+    "@react-navigation/native": "^7.1.8",
+    "@react-navigation/native-stack": "^7.3.16",
+    "@shopify/react-native-skia": "2.2.12",
+    "expo-linear-gradient": "~15.0.7",
+    "jotai": "^2.9.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "Canvas",
-        "Fill",
-        "Shader",
-        "ImageShader"
+  "packages_detail": {
+    "../atoms/notes": {
+      "imports": [
+        "useNotes"
       ],
-      "functions": [
-        "makeImageFromView",
-        "Skia.RuntimeEffect.Make"
-      ],
-      "usage": "GPU-accelerated GLSL shader rendering and screen capture"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useDerivedValue",
-        "useAnimatedStyle"
+    "../constants/theme": {
+      "imports": [
+        "Palette"
       ],
-      "functions": [
-        "withTiming",
-        "Easing"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "../providers/gl-transitions": {
+      "imports": [
+        "glsl",
+        "useGLTransition"
       ],
-      "components": [
-        "Animated.View",
-        "FadeInDown",
-        "FadeOutDown",
-        "LinearTransition"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants/theme": {
+      "imports": [
+        "Palette"
       ],
-      "critical_feature": "withTiming for smooth shader progress animation"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./provider": {
+      "imports": [
+        "GLTransitionsContext"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./providers/gl-transitions": {
+      "imports": [
+        "GLTransitionsProvider"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./screens/add-note-screen": {
+      "imports": [
+        "AddNoteScreen"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./screens/home-screen": {
+      "imports": [
+        "HomeScreen"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./shader-lib": {
+      "imports": [
+        "frag"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./src": {
+      "imports": [
+        "App"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./the-magic": {
+      "imports": [
+        "DirectionalWarp"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./utils/transition": {
+      "imports": [
+        "transition"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "AntDesign"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@react-native-seoul/masonry-list": {
+      "imports": [],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@react-navigation/native": {
+      "imports": [
+        "useNavigation"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@react-navigation/native-stack": {
-      "version": "^7.3.16",
-      "components": [
-        "createNativeStackNavigator",
-        "Stack.Navigator",
-        "Stack.Screen",
-        "Stack.Group"
+      "imports": [
+        "createNativeStackNavigator"
       ],
-      "usage": "Screen navigation with modal presentation"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@shopify/react-native-skia": {
+      "imports": [
+        "Canvas",
+        "Fill",
+        "ImageShader",
+        "Shader",
+        "Skia",
+        "makeImageFromView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "expo-linear-gradient": {
+      "imports": [
+        "LinearGradient"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "jotai": {
-      "version": "^2.9.3",
-      "functions": [
+      "imports": [
         "atom",
         "useAtom"
       ],
-      "usage": "Global state management for notes without context complexity"
-    },
-    "@react-native-seoul/masonry-list": {
-      "version": "^1.4.2",
-      "components": [
-        "MasonryList"
-      ],
-      "usage": "Two-column masonry layout for note list with proper layout animations"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "pressto": {
-      "version": "0.3.5-beta.1",
-      "components": [
+      "imports": [
         "PressableScale"
       ],
-      "usage": "Pressable buttons with scale animation feedback"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureHandlerRootView"
-      ],
-      "usage": "Gesture handling system root wrapper"
-    },
-    "react-native-safe-area-context": {
-      "version": "~5.6.0",
-      "components": [
-        "SafeAreaProvider"
+    "react": {
+      "imports": [
+        "createContext",
+        "useCallback",
+        "useContext",
+        "useMemo",
+        "useRef"
       ],
       "hooks": [
+        "useCallback",
+        "useContext",
+        "useMemo",
+        "useRef"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Alert",
+        "StyleSheet",
+        "Text",
+        "TextInput",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "GestureHandlerRootView"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Easing",
+        "FadeInDown",
+        "FadeOutDown",
+        "LinearTransition",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "withTiming"
+      ],
+      "components": [
+        "Animated.View"
+      ]
+    },
+    "react-native-safe-area-context": {
+      "imports": [
+        "SafeAreaProvider",
         "useSafeAreaInsets"
       ],
-      "usage": "Safe area insets for proper spacing on notched devices"
-    },
-    "expo-linear-gradient": {
-      "version": "~15.0.7",
-      "components": [
-        "LinearGradient"
-      ],
-      "usage": "Decorative gradient background on add note screen"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
+      "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Schedule callbacks on React Native JS thread from worklet"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "snapshot_capture": {
-      "pattern": "makeImageFromView captures screen as SkImage",
-      "timing": {
-        "first_snapshot": "Captured on prepareTransition before navigation",
-        "second_snapshot": "Captured on runTransition after navigation"
-      },
-      "storage": "SharedValue<SkImage | null>",
-      "cleanup": "Set to null after transition completes",
-      "benefit": "Freezes screen state for smooth shader interpolation"
-    },
-    "progress_animation": {
-      "shared_value": "progress SharedValue<number>",
-      "range": "0 to 1",
-      "initial": 0,
-      "animation": "withTiming(1, timingConfig, callback)",
-      "default_config": {
-        "duration": 1500,
-        "easing": "Easing.linear"
-      },
-      "callback": "Resets snapshots and progress after completion"
-    },
-    "shader_uniforms": {
-      "progress": {
-        "type": "float",
-        "range": "0.0 to 1.0",
-        "purpose": "Controls transition interpolation",
-        "update": "useDerivedValue tracks progress.value"
-      },
-      "resolution": {
-        "type": "float2",
-        "value": "[width, height]",
-        "purpose": "Screen dimensions for UV coordinate calculations",
-        "source": "useWindowDimensions"
-      },
-      "image1": {
-        "type": "shader (ImageShader)",
-        "content": "firstScreenSnapshot",
-        "role": "Source image (getFromColor in GLSL)"
-      },
-      "image2": {
-        "type": "shader (ImageShader)",
-        "content": "secondScreenSnapshot",
-        "role": "Destination image (getToColor in GLSL)"
-      }
-    },
-    "canvas_layering": {
-      "pattern": "Animated canvas with absolute fill overlay",
-      "z_index": {
-        "when_idle": -10,
-        "when_animating": 10
-      },
-      "pointer_events": {
-        "when_idle": "none",
-        "when_animating": "auto"
-      },
-      "purpose": "Canvas only visible and interactive during transition"
-    },
-    "shader_compilation": {
-      "process": "GLSL string -> RuntimeEffect -> Shader",
-      "wrapper": "transition() wraps custom GLSL with uniform boilerplate",
-      "template": "Injects getFromColor/getToColor helpers and main function",
-      "error_handling": "Throws error if shader compilation fails"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "progress",
-        "type": "SharedValue<number>",
-        "initial": 0,
-        "range": "0 to 1",
-        "updates": "withTiming on runTransition",
-        "scope": "Provider context"
-      },
-      {
-        "name": "firstScreenSnapshot",
-        "type": "SharedValue<SkImage | null>",
-        "initial": null,
-        "updates": "makeImageFromView on prepareTransition",
-        "scope": "Provider context"
-      },
-      {
-        "name": "secondScreenSnapshot",
-        "type": "SharedValue<SkImage | null>",
-        "initial": null,
-        "updates": "makeImageFromView on runTransition",
-        "scope": "Provider context"
-      }
-    ],
-    "useDerivedValue": {
-      "usage_count": 1,
-      "instance": "uniforms",
-      "purpose": "Package progress and resolution for shader",
-      "dependencies": [
-        "progress.value",
-        "width",
-        "height"
-      ],
-      "benefit": "Automatic shader uniform updates on progress changes"
-    },
-    "useAnimatedStyle": {
-      "usage_count": 1,
-      "instance": "rCanvasStyle",
-      "animated_properties": [
-        "zIndex",
-        "pointerEvents"
-      ],
-      "dependencies": [
-        "progress.value"
-      ],
-      "purpose": "Show/hide canvas based on transition state"
-    },
-    "withTiming": {
-      "usage": "Animates progress from 0 to 1",
-      "configurable": true,
-      "default_duration": 1500,
-      "default_easing": "Easing.linear",
-      "callback": "Cleanup and onCompleted execution via scheduleOnRN"
-    }
-  },
-  "glsl_shader_techniques": {
-    "cross_zoom": {
-      "description": "Zoom blur effect with exponential easing",
-      "parameters": {
-        "strength": 0.4
-      },
-      "algorithm": {
-        "center_interpolation": "Linear ease from 0.25 to 0.75 across progress",
-        "dissolve": "Exponential ease-in-out for cross-fade",
-        "strength_curve": "Sinusoidal 0 -> strength -> 0",
-        "blur_samples": 40,
-        "weighting": "Gaussian-style (4 * (percent - percent^2))"
-      },
-      "effect": "Images zoom and blur toward center with cross-fade",
-      "performance": "40 samples per pixel (expensive)",
-      "source": "Ported from https://gist.github.com/rectalogic"
-    },
-    "directional_warp": {
-      "description": "Directional warp with circular reveal",
-      "parameters": {
-        "direction": "vec2(0.0, 1.0) (vertical)",
-        "smoothness": 0.5,
-        "center": "vec2(0.5, 0.5)"
-      },
-      "algorithm": {
-        "directional_mask": "smoothstep with directional vector",
-        "circular_gradient": "Distance from center for radial falloff",
-        "coordinate_warping": "(uv - 0.5) * (1.0 - m) + 0.5",
-        "mixing": "step function for hard edge, smoothstep for soft"
-      },
-      "effect": "Warp and circular reveal from top to bottom",
-      "visual": "Includes radius color gradient visualization",
-      "source": "https://gl-transitions.com/editor/directionalwarp"
-    },
-    "linear_blur": {
-      "description": "Multi-pass blur with linear cross-fade",
-      "parameters": {
-        "intensity": 0.1,
-        "passes": 6
-      },
-      "algorithm": {
-        "displacement": "intensity * (0.5 - distance(0.5, progress))",
-        "sampling_grid": "6x6 grid (36 samples per pixel)",
-        "blur_vector": "Radial from center",
-        "averaging": "Sum all samples, divide by passes^2"
-      },
-      "effect": "Blur increases to midpoint, then decreases",
-      "performance": "36 samples per pixel (very expensive)",
-      "source": "https://gl-transitions.com/editor/LinearBlur"
-    },
-    "hexagonalize": {
-      "description": "Hexagonal grid pixelation effect",
-      "parameters": {
-        "steps": 50,
-        "horizontalHexagons": 10,
-        "ratio": 0.5
-      },
-      "algorithm": {
-        "hexagon_math": "Axial coordinates (q, r, s)",
-        "coordinate_conversion": "UV -> hexagon -> rounded hexagon -> UV",
-        "step_quantization": "ceil(dist * steps) / steps",
-        "grid_calculation": "sqrt(3)/3 scaling with horizontal count"
-      },
-      "effect": "Progressive hexagonal pixelation, smooth at 0 and 1",
-      "complexity": "Struct-based hexagon math with rounding",
-      "source": "https://gl-transitions.com/editor/hexagonalize by Fernando Kuteken"
-    },
-    "shader_helpers": {
-      "getFromColor": {
-        "signature": "half4 getFromColor(float2 uv)",
-        "implementation": "image1.eval(uv * resolution)",
-        "purpose": "Sample first screen snapshot at UV coordinates"
-      },
-      "getToColor": {
-        "signature": "half4 getToColor(float2 uv)",
-        "implementation": "image2.eval(uv * resolution)",
-        "purpose": "Sample second screen snapshot at UV coordinates"
-      },
-      "main": {
-        "signature": "half4 main(vec2 xy)",
-        "implementation": "Converts xy to UV, calls transition(uv)",
-        "purpose": "Entry point for shader execution"
-      }
-    }
-  },
-  "provider_architecture": {
-    "context_structure": {
-      "GLTransitionsContext": {
-        "type": "React.Context<GLTransitionsContextType>",
-        "methods": {
-          "prepareTransition": {
-            "signature": "() => Promise<void>",
-            "steps": [
-              "Capture current screen as firstScreenSnapshot",
-              "Reset progress to 0"
-            ],
-            "timing": "Called before navigation (e.g., before navigate())"
-          },
-          "runTransition": {
-            "signature": "(config?: WithTimingConfig, onCompleted?: () => void) => Promise<void>",
-            "steps": [
-              "Capture next screen as secondScreenSnapshot",
-              "Animate progress from 0 to 1 with withTiming",
-              "Reset snapshots and progress on completion",
-              "Execute onCompleted callback via scheduleOnRN"
-            ],
-            "timing": "Called after navigation (next screen rendered)"
-          }
-        }
-      }
-    },
-    "provider_props": {
-      "children": {
-        "type": "ReactNode",
-        "required": false,
-        "usage": "Wrapped navigation content"
-      },
-      "transition": {
-        "type": "string (GLSL code)",
-        "required": true,
-        "usage": "GLSL transition shader code"
-      }
-    },
-    "state_management": {
-      "refs": [
-        {
-          "name": "containerRef",
-          "type": "React.Ref<View>",
-          "purpose": "Reference for makeImageFromView capture"
-        }
-      ],
-      "memoization": {
-        "contextValue": "useMemo to prevent unnecessary re-renders",
-        "source": "useMemo for compiled shader RuntimeEffect",
-        "dependencies": [
-          "glTransition"
-        ]
-      }
-    }
-  },
-  "navigation_integration": {
-    "stack_setup": {
-      "navigator": "createNativeStackNavigator",
-      "screens": {
-        "Home": {
-          "component": "HomeScreen",
-          "initial": true
-        },
-        "AddNote": {
-          "component": "AddNoteScreen",
-          "presentation": "containedModal"
-        }
-      },
-      "screen_options": {
-        "headerShown": false
-      }
-    },
-    "transition_workflow": {
-      "navigation_from_home": [
-        "1. User presses 'Add Note' button",
-        "2. await prepareTransition() captures home screen",
-        "3. navigation.navigate('AddNote')",
-        "4. New screen renders (user sees it briefly or immediately)",
-        "5. await runTransition() captures add note screen and animates"
-      ],
-      "navigation_back": [
-        "1. User presses close/save on AddNote screen",
-        "2. await runTransition() captures current screen and animates",
-        "3. setTimeout(() => goBack(), 1000) after animation completes"
-      ]
-    },
-    "timing_considerations": {
-      "prepareTransition": "Must complete before navigation",
-      "runTransition": "Must start after new screen renders",
-      "goBack_delay": "setTimeout ensures transition completes before unmount"
-    }
-  },
-  "state_management_pattern": {
-    "jotai_atoms": {
-      "NotesAtom": {
-        "type": "atom<NoteType[]>",
-        "initial": "InitialNotes (20 demo notes)",
-        "usage": "Global note list state"
-      }
-    },
-    "useNotes_hook": {
-      "pattern": "useAtom(NotesAtom)",
-      "returns": "[notes, setNotes]",
-      "benefit": "Reactive state without context boilerplate"
-    },
-    "rationale": {
-      "choice": "Jotai chosen over Context for simplicity",
-      "comment": "Author explicitly mentions being 'lazy to create context'",
-      "benefit": "Automatic reactivity across components"
-    }
-  },
-  "performance_optimizations": {
-    "snapshot_cleanup": {
-      "pattern": "Set snapshots to null after transition",
-      "benefit": "Frees SkImage memory immediately",
-      "timing": "Inside withTiming completion callback"
-    },
-    "canvas_visibility": {
-      "pattern": "zIndex -10 and pointerEvents 'none' when idle",
-      "benefit": "Canvas doesn't block interactions or render when not transitioning",
-      "optimization": "Only visible during active transition"
-    },
-    "shader_compilation": {
-      "pattern": "useMemo caches compiled RuntimeEffect",
-      "dependency": "Only recompiles when transition prop changes",
-      "benefit": "Avoids expensive shader compilation on every render"
-    },
-    "uniform_updates": {
-      "pattern": "useDerivedValue for uniforms",
-      "benefit": "Automatic updates on progress changes without manual tracking",
-      "runs_on": "UI thread"
-    },
-    "memoization": {
-      "contextValue": "Prevents context re-creation",
-      "ListHeaderComponent": "Memoized with useMemo in HomeScreen",
-      "callbacks": "prepareTransition and runTransition wrapped in useCallback"
-    },
-    "list_optimizations": {
-      "MasonryList": "Used instead of FlashList due to two-column layout bug",
-      "keyExtractor": "Stable ID-based keys",
-      "layout_animations": "LinearTransition for smooth reordering"
-    }
-  },
-  "visual_design": {
-    "color_palette": {
-      "background": "#f0f0f0 (light gray)",
-      "surface": "#fff (white)",
-      "primary": "#EB6439 (orange)",
-      "text": "#333 (dark gray)"
-    },
-    "home_screen": {
-      "layout": "Two-column masonry grid",
-      "header": {
-        "title": "Add Note (uppercase)",
-        "button": "Circular plus button with primary color"
-      },
-      "note_cards": {
-        "backgroundColor": "surface",
-        "borderRadius": 10,
-        "shadow": "Subtle (opacity 0.05, radius 10)",
-        "text": "16px, weight 600, line height 24",
-        "padding": 15,
-        "gap": "35/3 px between columns"
-      },
-      "animations": {
-        "entering": "FadeInDown with staggered delay (index * 100ms)",
-        "exiting": "FadeOutDown",
-        "layout": "LinearTransition for smooth reordering"
-      }
-    },
-    "add_note_screen": {
-      "background": "Palette.background with red gradient overlay",
-      "gradient": "rgba(255,0,0,0.05) to transparent",
-      "header": {
-        "left": "Close icon (AntDesign close, 32px)",
-        "center": "Create a new Note (18px)",
-        "right": "Check icon on primary background (24px)"
-      },
-      "input_container": {
-        "backgroundColor": "surface",
-        "borderRadius": 8,
-        "minHeight": 200,
-        "padding": 16,
-        "label": "Add a new note (uppercase, 12px)",
-        "input": "20px text with primary selection color"
-      }
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Custom screen transition animations",
-      "Creative app navigation experiences",
-      "Portfolio/showcase apps with unique transitions",
-      "Tutorial/onboarding flows with visual flair",
-      "Photo/video editing apps with creative transitions"
-    ],
-    "secondary": [
-      "Modal presentations with custom reveals",
-      "Tab switching with shader effects",
-      "Card flip animations between screens",
-      "Cinematic transitions for media apps",
-      "Game-like navigation experiences"
-    ],
-    "educational": [
-      "Learning GLSL shader programming",
-      "Understanding GPU-accelerated animations",
-      "Exploring React Native Skia capabilities",
-      "Screen capture and image manipulation techniques",
-      "Custom navigation transition patterns"
-    ],
-    "not_recommended_for": [
-      "Every navigation (too attention-grabbing for frequent use)",
-      "Apps requiring fast navigation (transitions add latency)",
-      "Accessibility-focused apps (may cause motion sickness)",
-      "Low-end devices (GPU-intensive)",
-      "Apps with complex navigation stacks (orchestration complexity)"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "type_imports": "Type-only imports with 'type' keyword",
-      "interfaces": [
-        "GLTransitionsProviderProps",
-        "GLTransitionsContextType",
-        "NoteType",
-        "Transition"
-      ],
-      "type_safety": "SharedValue, SkImage, WithTimingConfig typed"
-    },
-    "documentation": {
-      "inline_comments": "Excellent explanatory comments throughout",
-      "provider_explanation": "Detailed comment block explaining provider pattern",
-      "shader_comments": "License, author, and source attribution in GLSL",
-      "code_comments": {
-        "examples": [
-          "This code seems quite complex, but it really isn't...",
-          "Here's the magic 🤯",
-          "What's that? It's just a way to manage notes...",
-          "I talked about Jotai in this article..."
-        ]
-      },
-      "external_resources": [
-        "https://gl-transitions.com/gallery",
-        "https://youtu.be/PzKWpwmmRqM (William Candillon)",
-        "https://www.reactiive.io/articles/the-hidden-gems-of-react-native"
-      ]
-    },
-    "code_organization": {
-      "separation_of_concerns": "Clear provider/hooks/utils/transitions structure",
-      "barrel_exports": "Index files for clean imports",
-      "component_isolation": "Screens, providers, atoms in separate directories",
-      "reusability": "Transition system fully reusable across projects"
-    },
-    "best_practices": [
-      "useCallback for stable function references",
-      "useMemo for expensive calculations",
-      "Proper ref usage for screen capture",
-      "Cleanup in animation callbacks",
-      "Error handling in shader compilation",
-      "scheduleOnRN for JS thread callbacks from worklets"
-    ],
-    "areas_for_improvement": [
-      "Type guard for style width extraction (assumes width exists)",
-      "Error boundary for shader compilation failures",
-      "Loading state while snapshots are capturing",
-      "TypeScript strict mode compliance",
-      "ESLint disable comments (MasonryList type issue)"
-    ]
-  },
-  "known_limitations": {
-    "performance": {
-      "shader_complexity": {
-        "issue": "Complex shaders (40+ samples) can cause frame drops",
-        "examples": "CrossZoom (40 samples), LinearBlur (36 samples)",
-        "impact": "May not run at 60fps on low-end devices",
-        "mitigation": "Consider reducing sample counts for mobile"
-      },
-      "snapshot_latency": {
-        "issue": "makeImageFromView is async and may cause brief delay",
-        "impact": "User may see new screen before transition starts",
-        "workaround": "Current code uses await to minimize impact"
-      },
-      "gpu_dependency": {
-        "issue": "Requires GPU with shader support",
-        "fallback": "No graceful fallback if shaders fail to compile"
-      }
-    },
-    "navigation": {
-      "timing_coordination": {
-        "issue": "Requires precise timing between navigation and transitions",
-        "complexity": "Must manually coordinate prepareTransition/runTransition calls",
-        "error_prone": "Easy to forget prepareTransition or call in wrong order"
-      },
-      "goBack_delay": {
-        "issue": "setTimeout hack for ensuring transition completes",
-        "value": "Hardcoded 1000ms may not match transition duration",
-        "problem": "Screen unmounts before transition completes if too short"
-      }
-    },
-    "accessibility": {
-      "motion_sickness": {
-        "issue": "No reduced motion support",
-        "impact": "Can cause discomfort for users with vestibular disorders",
-        "recommendation": "Respect prefers-reduced-motion setting"
-      },
-      "screen_reader": {
-        "issue": "Transitions don't announce navigation changes",
-        "impact": "Screen reader users may be confused by delays"
-      }
-    },
-    "transition_availability": {
-      "limited_transitions": "Only 4 transitions included (of 100+ available on gl-transitions.com)",
-      "no_custom_params": "Transition parameters hardcoded in GLSL strings",
-      "no_runtime_config": "Can't adjust transition parameters without editing GLSL"
-    },
-    "masonry_list": {
-      "type_issue": {
-        "issue": "MasonryList renderItem type definition incorrect",
-        "workaround": "// @ts-ignore comment required",
-        "source": "Known limitation in @react-native-seoul/masonry-list"
-      },
-      "layout_animations": {
-        "issue": "FlashList has bug with two-column layout animations",
-        "reference": "https://github.com/Shopify/flash-list/issues/876",
-        "workaround": "Using MasonryList instead"
-      }
-    }
-  },
-  "potential_improvements": {
-    "transition_enhancements": [
-      "Add all 100+ transitions from gl-transitions.com gallery",
-      "Runtime configurable transition parameters",
-      "Transition preview/selection UI",
-      "Custom transition builder with parameter sliders",
-      "Transition composition (combine multiple effects)",
-      "Direction-aware transitions (forward vs back navigation)",
-      "Gesture-driven transition progress"
-    ],
-    "performance": [
-      "Reduce shader sample counts for mobile",
-      "Device capability detection (skip on low-end devices)",
-      "Transition quality settings (low/medium/high)",
-      "Precompile shaders at app start",
-      "Lazy load transitions on demand",
-      "Optimize snapshot resolution (scale down before capture)"
-    ],
-    "developer_experience": [
-      "useTransition hook wrapper for simpler API",
-      "Automatic navigation integration (no manual prepare/run calls)",
-      "TypeScript types for transition parameters",
-      "Transition testing utilities",
-      "Hot-reload shader development mode",
-      "Visual shader editor integration"
-    ],
-    "accessibility": [
-      "Respect prefers-reduced-motion (skip transition or use simple fade)",
-      "Configurable transition duration limits",
-      "Screen reader announcements for navigation changes",
-      "Focus management during transitions",
-      "Option to disable transitions globally"
-    ],
-    "navigation_integration": [
-      "Navigation container interceptor for automatic transitions",
-      "Route-specific transition configuration",
-      "Gesture-based navigation with transitions",
-      "Shared element transitions (hero animations)",
-      "Stack-aware transitions (different for push/pop)"
-    ],
-    "error_handling": [
-      "Fallback transitions if shader compilation fails",
-      "Error boundary for shader errors",
-      "Timeout for snapshot capture",
-      "Recovery from failed transitions",
-      "Development mode shader error overlay"
-    ]
-  },
-  "key_insights": {
-    "shader_wrapper_pattern": "The transition() wrapper function is elegant - injects uniform boilerplate around custom GLSL",
-    "snapshot_timing": "Two-phase capture (prepare then run) allows smooth transitions without flicker",
-    "canvas_layering": "Absolute fill canvas with dynamic zIndex creates overlay without disrupting layout",
-    "glsl_template_literals": "Using template literals for GLSL is convenient but loses syntax highlighting",
-    "progress_driven": "Single progress value (0-1) drives entire transition via shader uniforms",
-    "gpu_acceleration": "Shader-based transitions offload work to GPU, keeping UI thread free",
-    "transition_modularity": "Transition strings are fully modular - easy to swap without changing provider",
-    "makeImageFromView": "Powerful Skia API that captures any View as SkImage for shader manipulation",
-    "scheduleOnRN_necessity": "Callbacks from worklets must use scheduleOnRN to safely access JS state",
-    "gl_transitions_gallery": "Huge library of transitions available, just copy GLSL and wrap with glsl``"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "React Context API patterns",
-      "Navigation with React Navigation",
-      "Basic Reanimated SharedValue usage",
-      "Component composition patterns",
-      "Jotai atom state management"
-    ],
-    "for_intermediate": [
-      "Skia Canvas and shader basics",
-      "makeImageFromView for screen capture",
-      "useDerivedValue for computed values",
-      "Navigation timing coordination",
-      "Template literal utilities",
-      "Ref-based screen capture"
-    ],
-    "for_advanced": [
-      "GLSL shader programming",
-      "RuntimeEffect compilation",
-      "ImageShader composition",
-      "Shader uniform systems",
-      "GPU-accelerated image processing",
-      "Custom transition authoring",
-      "Worklet/JS thread coordination with scheduleOnRN",
-      "Complex animation orchestration"
-    ],
-    "glsl_concepts": [
-      "UV coordinate systems",
-      "Shader uniforms and samplers",
-      "Image sampling with eval",
-      "Color mixing and interpolation",
-      "Mathematical easing functions",
-      "Multi-pass sampling for blur",
-      "Geometric transformations",
-      "Procedural pattern generation"
-    ]
-  },
-  "testing_considerations": {
-    "visual_testing": [
-      "Verify each transition renders correctly",
-      "Check for shader compilation errors",
-      "Test on different screen sizes/resolutions",
-      "Verify snapshot capture quality",
-      "Check for visual artifacts or glitches",
-      "Test with complex screen content"
-    ],
-    "performance_testing": [
-      "Measure FPS during transitions",
-      "Test on low-end devices",
-      "Monitor GPU usage",
-      "Check memory usage with snapshots",
-      "Test rapid navigation scenarios",
-      "Profile shader execution time"
-    ],
-    "integration_testing": [
-      "Test prepareTransition -> navigate -> runTransition flow",
-      "Verify transition completes before goBack",
-      "Test interrupted transitions (user navigates during transition)",
-      "Test with different timing configurations",
-      "Test onCompleted callbacks execute correctly"
-    ],
-    "edge_cases": [
-      "Navigation before prepareTransition called",
-      "runTransition without prepareTransition",
-      "Rapid consecutive transitions",
-      "Transition during orientation change",
-      "App backgrounded during transition",
-      "Shader compilation failure scenarios"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_shared_element_transitions": {
-      "gl_transitions": "Full-screen shader effects",
-      "shared_element": "Element-specific morphing",
-      "use_case": "GL for artistic effects, shared element for continuity"
-    },
-    "vs_native_stack_animations": {
-      "gl_transitions": "Custom GLSL effects",
-      "native_stack": "Platform-native slide/fade",
-      "performance": "Native stack is more performant",
-      "creativity": "GL transitions more creative/unique"
-    },
-    "vs_lottie_transitions": {
-      "gl_transitions": "GPU-accelerated, screen capture-based",
-      "lottie": "Vector animation overlays",
-      "flexibility": "GL captures actual content, Lottie is decorative"
-    },
-    "vs_reanimated_transitions": {
-      "gl_transitions": "Shader-based pixel manipulation",
-      "reanimated": "Transform/opacity animations",
-      "complexity": "GL requires GLSL knowledge, Reanimated more accessible"
-    }
-  },
-  "real_world_inspiration": {
-    "gl_transitions_gallery": "https://gl-transitions.com/ - 100+ community-created transitions",
-    "william_candillon": "YouTube tutorial on Skia transitions",
-    "web_shaders": "WebGL transition effects ported to React Native",
-    "video_editing": "Professional video transition effects",
-    "game_transitions": "Scene transitions in video games"
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "reduced_motion": "Not supported",
-      "screen_readers": "No transition announcements",
-      "focus_management": "No focus handling during transitions",
-      "motion_safety": "Some transitions may cause motion sickness"
-    },
-    "recommendations": [
-      "Respect prefers-reduced-motion (use simple fade or skip transition)",
-      "Announce navigation changes to screen readers",
-      "Provide option to disable transitions in settings",
-      "Limit transition duration to prevent disorientation",
-      "Avoid transitions with rapid movement or flashing",
-      "Test with actual users who have vestibular disorders"
-    ],
-    "implementation_guide": {
-      "reduced_motion_detection": "Use AccessibilityInfo.isReduceMotionEnabled()",
-      "fallback_transition": "Simple fade or instant navigation",
-      "user_preference": "Add settings toggle for transition effects",
-      "duration_limits": "Keep transitions under 500ms for accessibility"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": {
-      "provider": "~170 lines",
-      "transitions": "~70 lines each * 4 = ~280 lines",
-      "utils": "~30 lines",
-      "total": "~480 lines + GLSL strings"
-    },
-    "runtime_memory": {
-      "snapshots": "2 SkImage objects (full screen resolution)",
-      "shader": "Compiled RuntimeEffect per transition",
-      "estimated": "~10-20MB during transition (screen captures)"
-    },
-    "dependencies": {
-      "required": "Skia likely already in project",
-      "additional": "Jotai (~3KB), masonry-list, pressto",
-      "total_estimated": "< 50KB for transition system itself"
-    }
-  },
-  "related_patterns": {
-    "shared_element_transitions": "Morphing specific elements between screens",
-    "hero_animations": "Smooth element transitions between routes",
-    "page_transitions": "Web-style page transition effects",
-    "scene_transitions": "Game scene transitions with effects",
-    "modal_presentations": "Custom modal reveal animations"
-  },
-  "tags": [
-    "gl-transitions",
-    "glsl",
-    "shaders",
-    "skia",
-    "screen-transitions",
-    "navigation",
-    "gpu-accelerated",
-    "runtime-effect",
-    "image-shader",
-    "cross-zoom",
-    "directional-warp",
-    "blur",
-    "hexagonalize",
-    "makeImageFromView",
-    "context-provider",
-    "jotai",
-    "masonry-list",
-    "reanimated",
-    "creative-transitions",
-    "shader-programming"
+  "hooks": [
+    "useAnimatedStyle",
+    "useAtom",
+    "useCallback",
+    "useContext",
+    "useDerivedValue",
+    "useGLTransition",
+    "useMemo",
+    "useNavigation",
+    "useNotes",
+    "useRef",
+    "useSafeAreaInsets",
+    "useSharedValue",
+    "useWindowDimensions"
   ],
-  "content_hash": "7547abb1ff2c9194915fc13228d6b81165e015fd1dc39ddfe7d8af2a20a03442",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.366Z",
-  "last_validated": "2025-10-12T09:19:28.366Z"
+  "functions": [
+    "atom",
+    "createContext",
+    "createNativeStackNavigator",
+    "glsl",
+    "goBack",
+    "makeImageFromView",
+    "prepareTransition",
+    "runTransition",
+    "scheduleOnRN",
+    "setNotes",
+    "setTimeout",
+    "transition",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "AntDesign",
+    "Canvas",
+    "Fill",
+    "GLTransitionsContext.Provider",
+    "GLTransitionsProvider",
+    "GestureHandlerRootView",
+    "ImageShader",
+    "LinearGradient",
+    "MasonryList",
+    "PressableScale",
+    "SafeAreaProvider",
+    "Shader",
+    "Stack.Group",
+    "Stack.Navigator",
+    "Stack.Screen",
+    "Text",
+    "TextInput",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "timing-animation",
+    "reactive-styling-pattern",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "canvas-rendering",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 17,
+    "total_packages": 14,
+    "total_hooks": 13,
+    "total_functions": 13,
+    "total_components": 19,
+    "total_patterns": 6,
+    "total_techniques": 3
+  }
 }

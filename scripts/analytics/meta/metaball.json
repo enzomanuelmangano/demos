@@ -1,782 +1,130 @@
 {
-  "animation_name": "Metaball",
   "animation_slug": "metaball",
-  "description": "Interactive metaball effect using Skia path simplification to create fluid organic blending between two draggable circles. Features smooth spring animations, color matrix-based blur threshold effects, and sweep gradient fills to achieve the classic metaball liquid fusion appearance where shapes merge and separate based on proximity.",
-  "main_features": [
-    "Dual draggable circles with independent gesture control",
-    "Real-time path simplification for organic shape blending",
-    "Color matrix alpha thresholding for sharp metaball boundaries",
-    "Blur effect combined with alpha clamping creates liquid fusion",
-    "Spring-based reset animation for one circle",
-    "Sweep gradient with cyan-blue-cyan color scheme",
-    "Transparent touch targets for gesture interaction",
-    "GPU-accelerated Skia rendering",
-    "Worklet-based gesture handlers on UI thread",
-    "Dynamic path recalculation on every frame"
-  ],
+  "extracted_at": "2025-10-31T18:25:45.651Z",
   "file_structure": {
-    "index.tsx": "Main Metaball component with canvas, gesture handlers, and path simplification logic"
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "rendering": "@shopify/react-native-skia",
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-skia-gesture",
-    "pattern": "Path simplification with color matrix filtering"
+  "packages": [
+    "@shopify/react-native-skia",
+    "react",
+    "react-native",
+    "react-native-reanimated",
+    "react-native-skia-gesture"
+  ],
+  "packages_with_versions": {
+    "@shopify/react-native-skia": "2.2.12",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-skia-gesture": "0.4.5-beta.1"
   },
-  "packages_and_versions": {
+  "packages_detail": {
     "@shopify/react-native-skia": {
-      "version": "2.2.12",
-      "components": [
-        "Canvas",
-        "Path",
+      "imports": [
+        "Blur",
+        "ColorMatrix",
         "Group",
         "Paint",
-        "Blur",
-        "ColorMatrix"
-      ],
-      "effects": [
-        "SweepGradient"
-      ],
-      "utilities": [
+        "Path",
         "Skia",
+        "SweepGradient",
         "vec"
       ],
-      "path_methods": [
-        "Skia.Path.Make()",
-        "addCircle()",
-        "simplify()"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "useMemo"
       ],
-      "usage": "Path simplification is the core technique that enables metaball blending",
-      "critical_feature": "Path.simplify() merges overlapping circles into smooth organic shapes"
+      "hooks": [
+        "useMemo"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
+      "imports": [
+        "useDerivedValue",
         "useSharedValue",
-        "useDerivedValue"
+        "withSpring"
+      ],
+      "hooks": [
+        "useDerivedValue",
+        "useSharedValue"
       ],
       "functions": [
         "withSpring"
       ],
-      "critical_feature": "useDerivedValue recalculates path on every frame as circles move"
+      "components": []
     },
     "react-native-skia-gesture": {
-      "version": "0.4.5-beta.1",
       "imports": [
-        "Touchable (default)",
         "useGestureHandler"
       ],
-      "components": [
-        "Touchable.Canvas",
-        "Touchable.Circle"
-      ],
-      "usage": "Provides worklet-based gesture handling for draggable circles with UI thread performance",
-      "benefit": "Seamless gesture integration with Skia rendering, no bridge overhead"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "metaball_effect": {
-      "pattern": "Path simplification + blur + color matrix threshold",
-      "implementation": [
-        "1. Create path with two circles using addCircle()",
-        "2. Call path.simplify() to merge overlapping regions",
-        "3. Apply blur to soften edges",
-        "4. Use ColorMatrix to threshold alpha channel (amplify and subtract)"
-      ],
-      "color_matrix_formula": {
-        "alpha_row": "[0, 0, 0, 60, -30]",
-        "explanation": "Multiplies alpha by 60, then subtracts 30",
-        "effect": "Creates sharp boundaries by clamping alpha to 0 or 1",
-        "result": "Smooth gradual blur becomes sharp liquid boundary"
-      },
-      "key_insight": "Path simplification handles the blending geometry, color matrix handles the visual appearance",
-      "why_it_works": "Overlapping circles merge into single path, blur softens, threshold sharpens = liquid fusion"
-    },
-    "path_simplification": {
-      "method": "Skia.Path.Make() + addCircle() + simplify()",
-      "process": [
-        "Create empty path",
-        "Add first circle at (firstCx, firstCy) with radius 80",
-        "Add second circle at (secondCx, secondCy) with radius 80",
-        "Call simplify() to merge overlapping regions"
-      ],
-      "simplify_behavior": "Removes redundant path segments and merges overlapping areas into smooth curves",
-      "result": "When circles overlap, they blend into organic compound shapes",
-      "recalculation": "useDerivedValue ensures path updates on every frame as circles move"
-    },
-    "blur_and_threshold": {
-      "blur_amount": 30,
-      "color_matrix_technique": "Alpha channel manipulation",
-      "alpha_transformation": "alpha_out = (alpha_in * 60) - 30",
-      "examples": {
-        "alpha_0.0": "0 * 60 - 30 = -30 → clamped to 0 (transparent)",
-        "alpha_0.5": "0.5 * 60 - 30 = 0 (transparent boundary)",
-        "alpha_0.6": "0.6 * 60 - 30 = 6 (starts to appear)",
-        "alpha_1.0": "1.0 * 60 - 30 = 30 → clamped to 1 (opaque)"
-      },
-      "effect": "Blur creates gradient, color matrix converts gradient to sharp edge",
-      "visual_result": "Smooth liquid-like boundaries between merged circles"
-    },
-    "sweep_gradient": {
-      "type": "SweepGradient",
-      "center": "vec(0, 0)",
-      "colors": [
-        "cyan",
-        "blue",
-        "cyan"
-      ],
-      "applied_to": "Path (the merged metaball shape)",
-      "effect": "Creates radial color sweep with cyan-blue gradient",
-      "start_and_end": "Cyan at both ends creates seamless circular sweep"
-    },
-    "spring_reset": {
-      "trigger": "onEnd of second circle gesture",
-      "target": "Screen center (width / 2, height / 2)",
-      "spring_config": "Default spring (no custom config)",
-      "behavior": "Second circle springs back to center when released",
-      "first_circle": "No reset - stays where dragged",
-      "asymmetry": "Creates interesting interaction pattern - one fixed after drag, one elastic"
-    },
-    "gesture_handling": {
-      "first_circle": {
-        "handlers": {
-          "onStart": "Saves current position to context",
-          "onActive": "Updates position with translation offset",
-          "onEnd": "None - circle stays at final position"
-        },
-        "behavior": "Free dragging without reset"
-      },
-      "second_circle": {
-        "handlers": {
-          "onStart": "Saves current position to context",
-          "onActive": "Updates position with translation offset",
-          "onEnd": "Springs back to center"
-        },
-        "behavior": "Elastic dragging with automatic return"
-      },
-      "context_pattern": "Stores initial position on start, applies delta on active",
-      "worklet_directive": "'worklet' on all gesture callbacks for UI thread execution"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "firstCx",
-        "type": "SharedValue<number>",
-        "initial": "width / 2",
-        "purpose": "First circle center x coordinate",
-        "updates": "Via gesture handler during drag"
-      },
-      {
-        "name": "firstCy",
-        "type": "SharedValue<number>",
-        "initial": "height / 2",
-        "purpose": "First circle center y coordinate",
-        "updates": "Via gesture handler during drag"
-      },
-      {
-        "name": "secondCx",
-        "type": "SharedValue<number>",
-        "initial": "width / 2",
-        "purpose": "Second circle center x coordinate",
-        "updates": "Via gesture handler during drag, withSpring on release"
-      },
-      {
-        "name": "secondCy",
-        "type": "SharedValue<number>",
-        "initial": "height / 2",
-        "purpose": "Second circle center y coordinate",
-        "updates": "Via gesture handler during drag, withSpring on release"
-      },
-      {
-        "name": "context",
-        "type": "SharedValue<{ x: number; y: number }>",
-        "initial": "{ x: width / 2, y: height / 2 }",
-        "purpose": "Stores gesture start position for calculating translation",
-        "scope": "Shared between both gesture handlers (reused)"
-      }
-    ],
-    "useDerivedValue": {
-      "usage_count": 1,
-      "instance": "path",
-      "dependencies": [
-        "firstCx",
-        "firstCy",
-        "secondCx",
-        "secondCy"
-      ],
-      "purpose": "Recalculate merged path on every frame when circles move",
-      "calculation": [
-        "Create new path",
-        "Add first circle",
-        "Add second circle",
-        "Simplify path to merge overlapping regions"
-      ],
-      "performance": "Runs on UI thread, recalculates only when dependencies change",
-      "return_type": "SkPath"
-    },
-    "withSpring": {
-      "usage_count": 2,
-      "trigger": "Second circle gesture onEnd",
-      "targets": [
-        {
-          "variable": "secondCx",
-          "target": "width / 2",
-          "config": "Default spring"
-        },
-        {
-          "variable": "secondCy",
-          "target": "height / 2",
-          "config": "Default spring"
-        }
-      ],
-      "effect": "Smooth elastic return to center",
-      "default_config": {
-        "damping": 10,
-        "mass": 1,
-        "stiffness": 100,
-        "note": "Reanimated default values"
-      }
-    },
-    "useGestureHandler": {
-      "instances": 2,
-      "pattern": "Hook from react-native-skia-gesture",
-      "callbacks": {
-        "onStart": "Store initial position in context",
-        "onActive": "Update position based on translation",
-        "onEnd": "Optional cleanup or reset (second circle only)"
-      },
-      "worklets": "All callbacks run on UI thread",
-      "spread_pattern": "Gesture object spread onto Touchable.Circle component"
-    }
-  },
-  "skia_rendering": {
-    "canvas": {
-      "component": "Touchable.Canvas",
-      "style": "{ flex: 1 }",
-      "size": "Full screen",
-      "background": "None (uses container background)"
-    },
-    "rendering_hierarchy": [
-      {
-        "layer": 1,
-        "component": "Group",
-        "props": "layer={paint}",
-        "purpose": "Apply blur and color matrix effects to children",
-        "note": "layer prop applies paint effects to entire group as composited layer"
-      },
-      {
-        "layer": 2,
-        "component": "Path",
-        "props": "path={path}",
-        "purpose": "Render the merged metaball shape",
-        "parent": "Group"
-      },
-      {
-        "layer": 3,
-        "component": "SweepGradient",
-        "props": "c={vec(0, 0)}, colors=['cyan', 'blue', 'cyan']",
-        "purpose": "Fill path with gradient",
-        "parent": "Path"
-      },
-      {
-        "layer": 4,
-        "component": "Touchable.Circle (second)",
-        "props": "cx, cy, r, color='transparent'",
-        "purpose": "Invisible touch target for second circle gesture",
-        "note": "Rendered above Group for touch handling"
-      },
-      {
-        "layer": 5,
-        "component": "Touchable.Circle (first)",
-        "props": "cx, cy, r, color='transparent'",
-        "purpose": "Invisible touch target for first circle gesture",
-        "note": "Rendered last = highest z-index for touch priority"
-      }
-    ],
-    "paint_composition": {
-      "pattern": "Paint with child effects",
-      "effects": [
-        {
-          "component": "Blur",
-          "blur": 30,
-          "purpose": "Soften edges of merged shape"
-        },
-        {
-          "component": "ColorMatrix",
-          "matrix": [
-            "1, 0, 0, 0, 0,    // Red passthrough",
-            "0, 1, 0, 0, 0,    // Green passthrough",
-            "0, 0, 1, 0, 0,    // Blue passthrough",
-            "0, 0, 0, 60, -30  // Alpha: multiply by 60, subtract 30"
-          ],
-          "purpose": "Threshold alpha channel to create sharp liquid boundaries"
-        }
-      ],
-      "memoization": true,
-      "reason": "Paint and effects never change, memoized to prevent recreation"
-    },
-    "layer_prop": {
-      "usage": "layer={paint} on Group",
-      "behavior": "Renders group to offscreen layer, applies paint effects, composites back",
-      "necessity": "Required for effects to apply to group as whole, not individual children",
-      "performance": "Slightly more expensive but necessary for correct visual effect"
-    },
-    "transparent_circles": {
-      "purpose": "Invisible gesture targets",
-      "color": "transparent",
-      "z_order": "Rendered after visible content for touch capture",
-      "benefit": "Separates gesture handling from visual rendering"
-    }
-  },
-  "mathematical_concepts": {
-    "path_simplification_algorithm": {
-      "type": "Computational geometry",
-      "operation": "Boolean union of overlapping shapes",
-      "skia_implementation": "Skia's simplify() performs path cleanup and merging",
-      "geometric_result": "Two overlapping circles become single compound shape with smooth connecting curves",
-      "visual_effect": "Classic metaball blending where circles 'melt' together"
-    },
-    "color_matrix_mathematics": {
-      "matrix_multiplication": "For each pixel: output_color = matrix × input_color",
-      "alpha_calculation": "alpha_out = (0 * R) + (0 * G) + (0 * B) + (60 * A) + (-30)",
-      "simplified": "alpha_out = 60A - 30",
-      "threshold_point": "A = 0.5 → alpha_out = 0 (boundary)",
-      "effect": "Creates sharp transition at alpha=0.5, amplifies values above",
-      "clamping": "Alpha output clamped to [0, 1] range"
-    },
-    "blur_gaussian": {
-      "algorithm": "Gaussian blur with radius 30",
-      "effect": "Each pixel averaged with neighbors in 30px radius",
-      "purpose": "Creates soft gradient between circles",
-      "without_threshold": "Would look like overlapping soft circles",
-      "with_threshold": "Sharp liquid-like boundary"
-    },
-    "spring_physics": {
-      "equation": "F = -kx - cv",
-      "k": "Stiffness (100 default)",
-      "c": "Damping (10 default)",
-      "behavior": "Oscillates toward target with damping",
-      "visual": "Smooth elastic return to center"
-    },
-    "coordinate_system": {
-      "origin": "Top-left (0, 0)",
-      "initial_position": "Screen center for both circles",
-      "gesture_delta": "Translation offset added to stored context position",
-      "bounds": "None - circles can be dragged anywhere on screen"
-    }
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "#0A0A0A (near black)",
-      "metaball_gradient": [
-        "cyan",
-        "blue",
-        "cyan"
-      ],
-      "aesthetic": "Vibrant neon metaballs on dark background",
-      "contrast": "High contrast for dramatic effect"
-    },
-    "circle_specifications": {
-      "radius": 80,
-      "units": "pixels",
-      "constant": "RADIUS = 80",
-      "count": 2,
-      "visual_appearance": "Not visible as circles, merged into metaball shape"
-    },
-    "gradient_details": {
-      "type": "Sweep (radial)",
-      "center": "vec(0, 0) - top-left origin",
-      "colors": [
-        "cyan → blue → cyan"
-      ],
-      "effect": "Creates color variation across metaball surface",
-      "rotation": "Sweeps 360 degrees around origin"
-    },
-    "metaball_appearance": {
-      "separated": "Two distinct circles with gradient fill",
-      "overlapping": "Smooth liquid fusion with connecting bridge",
-      "fully_merged": "Single organic blob shape",
-      "edge_quality": "Sharp boundaries due to color matrix threshold",
-      "feel": "Liquid, organic, elastic"
-    }
-  },
-  "interaction_patterns": {
-    "gesture_mechanics": {
-      "first_circle": {
-        "drag": "Free dragging anywhere on screen",
-        "release": "Stays at final position",
-        "behavior": "Persistent positioning"
-      },
-      "second_circle": {
-        "drag": "Free dragging anywhere on screen",
-        "release": "Springs back to center",
-        "behavior": "Elastic return"
-      }
-    },
-    "metaball_interaction": {
-      "separation": "Two distinct circles visible",
-      "approach": "Circles begin to blend as they get closer",
-      "overlap": "Smooth liquid bridge forms between circles",
-      "full_overlap": "Merge into single organic shape",
-      "separation_again": "Bridge stretches and breaks as circles separate",
-      "real_time": "All blending happens in real-time as user drags"
-    },
-    "touch_targets": {
-      "implementation": "Transparent Touchable.Circle components",
-      "radius": "Same as visual circles (80px)",
-      "positioning": "Follows SharedValue coordinates",
-      "z_order": "Rendered last for touch priority",
-      "benefit": "Clean separation between gesture and visual layers"
-    },
-    "gesture_context_pattern": {
-      "purpose": "Store drag start position",
-      "onStart": "context.value = { x: cx.value, y: cy.value }",
-      "onActive": "cx.value = context.value.x + translationX",
-      "benefit": "Smooth dragging relative to initial position, handles gesture reset correctly"
-    }
-  },
-  "performance_considerations": {
-    "skia_rendering": {
-      "benefit": "GPU-accelerated, 60fps metaball rendering",
-      "path_simplification": "Efficient Skia native implementation",
-      "blur": "GPU-accelerated gaussian blur",
-      "color_matrix": "Shader-based transformation, very fast"
-    },
-    "worklet_execution": {
-      "gesture_handlers": "Run on UI thread via worklet directive",
-      "path_derivation": "Runs on UI thread via useDerivedValue",
-      "benefit": "Zero bridge overhead, responsive dragging",
-      "smooth_dragging": "60fps drag response with real-time metaball blending"
-    },
-    "memoization": {
-      "paint": "useMemo prevents Paint recreation",
-      "gradient": "Implicit in JSX structure",
-      "benefit": "Reduces object allocations on every frame"
-    },
-    "path_recalculation": {
-      "frequency": "Every frame when circles move",
-      "cost": "Path.Make() + 2x addCircle() + simplify()",
-      "optimization": "Skia operations are highly optimized",
-      "acceptable": "Modern devices handle this easily at 60fps"
-    },
-    "shared_value_count": {
-      "total": 5,
-      "breakdown": "4 position values + 1 context object",
-      "overhead": "Minimal - SharedValues are lightweight"
-    }
-  },
-  "react_patterns": {
-    "hooks_used": [
-      "useWindowDimensions - Get screen dimensions",
-      "useSharedValue - Animation state (5 instances)",
-      "useDerivedValue - Path calculation",
-      "useGestureHandler - Gesture handling (2 instances)",
-      "useMemo - Paint memoization"
-    ],
-    "component_structure": {
-      "type": "Single file component",
-      "organization": "Constants → Component → Shared values → Gestures → Derived values → Render",
-      "complexity": "Medium - focused single-purpose component"
-    },
-    "useMemo": {
-      "usage": "Memoize Paint JSX with Blur and ColorMatrix",
-      "dependencies": "[] (empty)",
-      "reason": "Paint effects never change",
-      "benefit": "Prevents recreation on every render"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Interactive metaball demos",
-      "Physics-based blob interactions",
-      "Liquid menu animations",
-      "Creative loading indicators",
-      "Fluid shape morphing demos"
-    ],
-    "secondary": [
-      "Blob-based UI elements",
-      "Organic loading animations",
-      "Creative portfolio pieces",
-      "Physics playground apps",
-      "Interactive art installations"
-    ],
-    "educational": [
-      "Teaching path simplification",
-      "Demonstrating Skia effects",
-      "Showing color matrix transformations",
-      "Illustrating gesture handling",
-      "Metaball algorithm visualization"
-    ],
-    "real_world_inspiration": [
-      "Classic metaball graphics effect",
-      "Liquid menu designs",
-      "Blob-based modern UI trends",
-      "Organic shape animations"
-    ],
-    "not_recommended_for": [
-      "Production UI components (too playful)",
-      "Accessibility-critical interfaces",
-      "Performance-constrained devices",
-      "Professional business apps"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript",
-      "type_safety": "All variables and functions typed",
-      "imports": "Proper type imports from libraries",
-      "no_any": "No 'any' types used"
-    },
-    "code_organization": {
-      "structure": "Linear top-to-bottom flow",
-      "constants": "RADIUS at top",
-      "component": "Single focused component",
-      "readability": "Clear and concise"
-    },
-    "naming_conventions": {
-      "components": "PascalCase (Metaball)",
-      "constants": "SCREAMING_SNAKE_CASE (RADIUS)",
-      "variables": "camelCase (firstCx, secondCy)",
-      "descriptive": "Clear intent from names"
-    },
-    "best_practices": [
-      "worklet directive on all gesture callbacks",
-      "useMemo for static JSX",
-      "useDerivedValue for computed values",
-      "Proper gesture context pattern",
-      "Clean separation of concerns"
-    ],
-    "potential_improvements": {
-      "documentation": "Could add inline comments explaining metaball technique",
-      "constants": "Could extract spring config, blur amount, color matrix as constants",
-      "types": "Could define interface for gesture context shape",
-      "extraction": "Could extract Paint and gradient to separate components"
-    }
-  },
-  "known_limitations": {
-    "fixed_radius": {
-      "issue": "Circle radius is hardcoded constant",
-      "enhancement": "Could be prop or dynamic based on velocity",
-      "current": "Fixed at 80px"
-    },
-    "no_multi_touch": {
-      "limitation": "Can't drag both circles simultaneously",
-      "technical": "Each Touchable.Circle handles one gesture at a time",
-      "enhancement": "Would require gesture priority handling"
-    },
-    "no_bounds": {
-      "limitation": "Circles can be dragged off screen",
-      "enhancement": "Could add boundary constraints",
-      "current": "Unlimited drag range"
-    },
-    "fixed_spring_config": {
-      "limitation": "Spring animation uses default config",
-      "enhancement": "Could expose spring parameters as props",
-      "current": "Default spring (damping: 10, stiffness: 100)"
-    },
-    "single_interaction": {
-      "limitation": "Only one circle has spring-back behavior",
-      "asymmetry": "Intentional design choice creates interesting dynamic",
-      "enhancement": "Could make behavior configurable"
-    },
-    "accessibility": {
-      "missing": [
-        "No screen reader support",
-        "No keyboard interaction",
-        "No alternative for gesture-only control",
-        "No reduced motion support"
-      ],
-      "impact": "Not accessible to users with disabilities"
-    }
-  },
-  "potential_improvements": {
-    "feature_enhancements": [
-      "Add more than two circles",
-      "Variable radius based on drag velocity",
-      "Color changes based on circle proximity",
-      "Particle effects when circles merge/separate",
-      "Sound effects on collision"
-    ],
-    "interaction_improvements": [
-      "Multi-touch support for simultaneous dragging",
-      "Pinch to scale circle radius",
-      "Double tap to spawn new circle",
-      "Rotation gesture for shape deformation",
-      "Boundary constraints with bounce physics"
-    ],
-    "customization_options": [
-      "Props for colors, radius, spring config",
-      "Configurable blur and threshold amounts",
-      "Different blend modes",
-      "Custom gradient patterns",
-      "Optional gravity or physics simulation"
-    ],
-    "visual_enhancements": [
-      "Shadow effects",
-      "Inner glow or shine",
-      "Animated gradient rotation",
-      "Pulsing circle sizes",
-      "Trail effects during drag"
-    ],
-    "accessibility": [
-      "Alternative interaction methods",
-      "Screen reader descriptions",
-      "Reduce motion support",
-      "Keyboard controls"
-    ],
-    "performance": [
-      "Optional lower-quality mode for low-end devices",
-      "Reduce blur/effects on performance constraint",
-      "Level-of-detail based on device capability"
-    ]
-  },
-  "key_insights": {
-    "path_simplification_magic": "Skia's simplify() method is the secret to metaball blending - it automatically merges overlapping circles",
-    "color_matrix_threshold": "Blur + color matrix threshold is the classic technique for sharp metaball boundaries",
-    "alpha_amplification": "Multiplying alpha by 60 and subtracting 30 creates the threshold effect",
-    "gesture_separation": "Transparent circles separate gesture handling from visual rendering cleanly",
-    "asymmetric_behavior": "One fixed, one elastic circle creates more interesting interaction than symmetry",
-    "worklet_performance": "UI thread gestures + derived path = 60fps metaball blending with zero lag",
-    "layer_compositing": "Group with layer prop is essential for applying effects to merged shape",
-    "skia_power": "Complex visual effect achievable with relatively simple code thanks to Skia"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Skia Canvas basics",
-      "Path creation and rendering",
-      "Simple gesture handling",
-      "SharedValue fundamentals",
-      "Basic spring animations"
-    ],
-    "for_intermediate": [
-      "Path simplification technique",
-      "Color matrix transformations",
-      "Blur effects in Skia",
-      "useDerivedValue for computed paths",
-      "Gesture context pattern",
-      "Layer compositing in Skia"
-    ],
-    "for_advanced": [
-      "Metaball rendering algorithms",
-      "Color matrix mathematics",
-      "Alpha channel manipulation",
-      "Complex Skia effect composition",
-      "Performance optimization for real-time path operations",
-      "Worklet-based gesture optimization"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_svg_metaballs": {
-      "alternative": "SVG with filter effects",
-      "this_approach": "Skia with path simplification",
-      "benefits": "Better performance, native GPU acceleration, real-time interaction",
-      "tradeoffs": "Platform-specific (not web-standard)"
-    },
-    "vs_canvas_metaballs": {
-      "alternative": "2D canvas with marching squares",
-      "this_approach": "Skia with simplified paths",
-      "benefits": "Simpler code, built-in path operations, better performance",
-      "tradeoffs": "Less control over exact blob shape algorithm"
-    },
-    "vs_shader_metaballs": {
-      "alternative": "Custom GLSL shader with distance fields",
-      "this_approach": "High-level Skia API",
-      "benefits": "Much simpler to implement, easier to maintain",
-      "tradeoffs": "Less flexibility, can't do complex distance field operations"
-    }
-  },
-  "related_patterns": {
-    "metaball_rendering": "Classic computer graphics technique",
-    "path_simplification": "Computational geometry operations",
-    "liquid_interfaces": "Fluid UI animations",
-    "blob_animations": "Organic shape morphing",
-    "gesture_physics": "Touch-based physics interactions"
-  },
-  "algorithm_background": {
-    "metaballs_history": {
-      "invented": "Jim Blinn, 1982",
-      "original_use": "Molecular modeling",
-      "computer_graphics": "Classic effect for organic shapes",
-      "technique": "Implicit surfaces with threshold"
-    },
-    "traditional_implementation": {
-      "method": "Marching squares or marching cubes",
-      "process": "Sample field values, find iso-contour at threshold",
-      "complexity": "More computationally expensive"
-    },
-    "this_implementation": {
-      "method": "Path simplification approximation",
-      "benefits": "Faster, simpler, leverages Skia",
-      "tradeoff": "Less precise than true metaball math",
-      "result": "Visually similar effect with much simpler code"
-    }
-  },
-  "bundle_size_impact": {
-    "code_size": "~134 lines total",
-    "dependencies": {
-      "skia": "Likely already in project",
-      "reanimated": "Likely already in project",
-      "skia-gesture": "Lightweight gesture wrapper"
-    },
-    "runtime_memory": "Minimal - 5 SharedValues, one path object",
-    "estimated_size": "< 3KB (excluding shared dependencies)"
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "interaction": "Gesture-only, no alternative input",
-      "visual": "No text or critical information",
-      "decorative": "Primarily a visual demo/effect"
-    },
-    "recommendations": [
-      "Provide alternative interaction for keyboard/switch control",
-      "Add screen reader description of effect",
-      "Respect reduce motion preferences",
-      "Ensure not blocking critical content",
-      "Consider voice control alternatives"
-    ],
-    "implementation_suggestions": {
-      "reduced_motion": "Simplify or disable effect when motion reduced",
-      "alternative_control": "Buttons or sliders to move circles",
-      "description": "Add accessibility label describing metaball effect"
-    }
-  },
-  "platform_considerations": {
-    "ios": {
-      "features": "All effects fully supported",
-      "performance": "Excellent - 60fps on modern devices",
-      "gestures": "Smooth native touch handling"
-    },
-    "android": {
-      "features": "All effects fully supported",
-      "performance": "Excellent - 60fps on modern devices",
-      "gestures": "Smooth native touch handling"
-    },
-    "cross_platform": {
-      "consistency": "Identical behavior on both platforms",
-      "skia": "Same rendering engine on iOS and Android",
-      "testing": "Should test on range of device capabilities"
-    }
-  },
-  "tags": [
-    "metaball",
-    "skia",
-    "path-simplification",
-    "color-matrix",
-    "blur-threshold",
-    "gesture",
-    "draggable",
-    "liquid-effect",
-    "organic-shapes",
-    "interactive",
-    "spring-animation",
-    "gpu-accelerated",
-    "reanimated",
-    "skia-gesture",
-    "fluid-animation"
+  "hooks": [
+    "useDerivedValue",
+    "useGestureHandler",
+    "useMemo",
+    "useSharedValue",
+    "useWindowDimensions"
   ],
-  "content_hash": "336f97769f70d05577fe2294d143a41987bc3373c962ba87803fda290fce68a7",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.387Z",
-  "last_validated": "2025-10-12T09:19:28.387Z"
+  "functions": [
+    "vec",
+    "withSpring"
+  ],
+  "components": [
+    "Blur",
+    "ColorMatrix",
+    "Group",
+    "Paint",
+    "Path",
+    "SweepGradient",
+    "Touchable.Canvas",
+    "Touchable.Circle",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "derived-computation",
+    "spring-animation",
+    "skia-graphics"
+  ],
+  "techniques": [
+    "spring-physics",
+    "canvas-rendering",
+    "blur-effects"
+  ],
+  "stats": {
+    "total_files": 1,
+    "total_packages": 5,
+    "total_hooks": 5,
+    "total_functions": 2,
+    "total_components": 9,
+    "total_patterns": 4,
+    "total_techniques": 3
+  }
 }

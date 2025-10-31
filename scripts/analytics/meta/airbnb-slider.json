@@ -1,773 +1,214 @@
 {
-  "animation_name": "Airbnb Slider",
   "animation_slug": "airbnb-slider",
-  "description": "An animated price slider with rolling digit counter inspired by Airbnb's UI. Features smooth slider interaction, dynamic digit animations using vertical translation, intelligent zero-hiding logic, and adaptive currency symbol positioning. Includes both custom gesture-based and native iOS slider implementations.",
-  "main_features": [
-    "Custom animated slider with pan gesture handling",
-    "Rolling digit counter with vertical translation animation",
-    "Intelligent leading zero hiding with opacity transitions",
-    "Dynamic currency symbol positioning based on digit count",
-    "Individual digit translation with spring animations",
-    "iOS-native slider variant using SwiftUI integration",
-    "Responsive layout adapting to screen dimensions",
-    "Smooth spring-based scale feedback on slider interaction",
-    "Digit-by-digit animation using measure-based positioning"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.488Z",
   "file_structure": {
-    "index.tsx": "Main component orchestrating slider and animated count display",
-    "components/animated-count.tsx": "Container managing multiple AnimatedDigit components",
-    "components/animated-digit.tsx": "Individual digit with vertical scroll animation and visibility logic",
-    "components/animated-slider/index.tsx": "Custom slider with pan gesture and progress interpolation",
-    "components/animated-slider/index.liquid.tsx": "iOS-native slider using Expo SwiftUI integration",
-    "constants.ts": "Color palette definitions"
+    "entry": "index.tsx",
+    "components": [
+      "components/animated-count.tsx",
+      "components/animated-digit.tsx",
+      "components/animated-slider/index.liquid.tsx",
+      "constants.ts"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "worklets": "react-native-worklets (scheduleOnRN)",
-    "native_ui": "@expo/ui/swift-ui (iOS slider variant)"
+  "packages": [
+    "@expo/ui/swift-ui",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "hooks": [
-        "useSharedValue",
-        "useAnimatedStyle",
-        "useAnimatedProps",
-        "useDerivedValue",
-        "useAnimatedReaction"
+  "packages_detail": {
+    "../../constants": {
+      "imports": [
+        "Palette"
       ],
-      "functions": [
-        "withSpring",
-        "withTiming",
-        "interpolate",
-        "Extrapolation"
-      ],
-      "critical_feature": "useDerivedValue for digit extraction and derived animations"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
-      "components": [
-        "GestureDetector"
+    "./animated-digit": {
+      "imports": [
+        "AnimatedDigit"
       ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "methods": [
-        "onBegin",
-        "onUpdate",
-        "onFinalize"
-      ],
-      "usage": "Pan gesture for slider dragging"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "react-native-worklets": {
-      "version": "0.5.1",
-      "functions": [
-        "scheduleOnRN"
+    "./components/animated-count": {
+      "imports": [
+        "AnimatedCount"
       ],
-      "purpose": "Bridge worklet callbacks to JS thread for onUpdate callback",
-      "critical_for": "Calling user-provided onUpdate callback from UI thread"
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/animated-slider": {
+      "imports": [
+        "AnimatedSlider"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants": {
+      "imports": [
+        "Palette"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
     "@expo/ui/swift-ui": {
-      "version": "Latest",
-      "components": [
+      "imports": [
         "Host",
         "Slider"
       ],
-      "usage": "iOS-native slider alternative with SwiftUI integration",
-      "note": "Used in index.liquid.tsx variant"
-    }
-  },
-  "animation_techniques": {
-    "digit_rolling": {
-      "pattern": "Vertical translation with stacked digits (0-9)",
-      "implementation": "translateY: -height * digit.value",
-      "spring_config": {
-        "duration": 200,
-        "dampingRatio": 3
-      },
-      "overflow": "hidden (masks non-visible digits)",
-      "trick": "All 10 digits rendered vertically, translation moves visible digit into view",
-      "effect": "Smooth rolling counter animation like odometer"
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "zero_hiding": {
-      "pattern": "Opacity + translation based on leading zero detection",
-      "calculation": "invisibleDigitsAmount = maxDigits - count.value.toString().length",
-      "visibility_logic": "digit.value === 0 && index >= maxDigits - invisibleDigitsAmount",
-      "opacity_animation": "withTiming(isVisible ? 1 : 0)",
-      "translation_animation": "withTiming((-width * invisibleDigitsAmount) / 2)",
-      "effect": "Leading zeros fade out and digits slide left to stay centered"
+    "react": {
+      "imports": [
+        "memo",
+        "useCallback",
+        "useMemo"
+      ],
+      "hooks": [
+        "useCallback",
+        "useMemo"
+      ],
+      "functions": [],
+      "components": []
     },
-    "currency_symbol_positioning": {
-      "pattern": "Dynamic translateX based on missing digits",
-      "calculation": "missingDigits = maxDigits - digitCount",
-      "translateX": "withSpring((missingDigits * textDigitWidth) / 2 - textDigitWidth - 2.5)",
-      "effect": "Currency symbol moves with digit centering to stay properly aligned",
-      "spring": "Default spring for smooth, natural motion"
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "slider_pan_gesture": {
-      "gesture": "Gesture.Pan()",
-      "lifecycle": {
-        "onBegin": "Store current translateX in contextX, scale to 1",
-        "onUpdate": "translateX = contextX + translationX",
-        "onFinalize": "Scale back to defaultScale (0.8)"
-      },
-      "clamping": "clamp(translateX, 0, sliderWidth)",
-      "interpolation": "interpolate(clampedTranslateX, [0, sliderWidth], [minValue, maxValue])",
-      "feedback": "Scale animation (0.8 to 1) on interaction"
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
     },
-    "progress_bar_animation": {
-      "pattern": "Width interpolation",
-      "animated_property": "width: clampedTranslateX.value",
-      "effect": "Progress bar fills from left to right as slider moves"
-    },
-    "picker_positioning": {
-      "pattern": "TranslateX + Scale animation",
-      "translateX": "clampedTranslateX - pickerSize / 2 (centered on position)",
-      "scale": "Animated between 0.8 (idle) and 1 (active)",
-      "borderRadius": "pickerSize / 2 (circular)",
-      "positioning": "top: -pickerSize / 2 + sliderHeight / 2 (vertically centered)"
-    }
-  },
-  "reanimated_patterns": {
-    "shared_values": [
-      {
-        "name": "price",
-        "type": "SharedValue<number>",
-        "scope": "Main component",
-        "initial": 0,
-        "updates": "Updated in slider onUpdate callback",
-        "purpose": "Current price value driving all animations"
-      },
-      {
-        "name": "translateX",
-        "type": "SharedValue<number>",
-        "scope": "AnimatedSlider",
-        "initial": "initialProgress * sliderWidth",
-        "updates": "Pan gesture onUpdate",
-        "purpose": "Slider picker horizontal position"
-      },
-      {
-        "name": "scale",
-        "type": "SharedValue<number>",
-        "scope": "AnimatedSlider",
-        "initial": "defaultScale (0.8)",
-        "updates": "withTiming on gesture begin/finalize",
-        "purpose": "Picker scale feedback during interaction"
-      },
-      {
-        "name": "contextX",
-        "type": "SharedValue<number>",
-        "scope": "AnimatedSlider",
-        "purpose": "Stores gesture start position for relative dragging"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "digit",
-        "scope": "AnimatedDigit",
-        "calculation": "getDigitByIndex(index, count.value, maxDigits)",
-        "dependencies": [
-          "count",
-          "index"
-        ],
-        "purpose": "Extract specific digit from count value",
-        "worklet": true
-      },
-      {
-        "name": "invisibleDigitsAmount",
-        "scope": "AnimatedDigit",
-        "calculation": "maxDigits - count.value.toString().length",
-        "dependencies": [
-          "count",
-          "maxDigits"
-        ],
-        "purpose": "Calculate number of leading zeros"
-      },
-      {
-        "name": "isVisible",
-        "scope": "AnimatedDigit",
-        "logic": "digit !== 0 || index < maxDigits - invisibleDigitsAmount",
-        "dependencies": [
-          "digit",
-          "invisibleDigitsAmount",
-          "index"
-        ],
-        "purpose": "Determine if digit should be visible"
-      },
-      {
-        "name": "opacity",
-        "scope": "AnimatedDigit",
-        "calculation": "withTiming(isVisible.value ? 1 : 0)",
-        "purpose": "Smooth fade for digit visibility"
-      },
-      {
-        "name": "clampedTranslateX",
-        "scope": "AnimatedSlider",
-        "calculation": "clamp(translateX.value, 0, sliderWidth)",
-        "purpose": "Constrain slider position within bounds"
-      }
-    ],
-    "useAnimatedReaction": {
-      "scope": "AnimatedSlider",
-      "watches": "clampedTranslateX.value",
-      "callback": "interpolate and call onUpdate via scheduleOnRN",
-      "purpose": "React to slider position changes and notify parent",
-      "threading": "Bridges UI thread to JS thread for callback"
-    },
-    "worklet_functions": {
-      "getDigitByIndex": {
-        "signature": "({digitIndex, count, maxDigits}) => number",
-        "worklet": true,
-        "logic": "Pad count with zeros, extract digit at position, parse to int",
-        "example": "count=123, maxDigits=5 => '00123' => digit at index 0 = 3",
-        "purpose": "Extract individual digits from number in worklet context"
-      },
-      "clamp": {
-        "signature": "(value, lowerBound, upperBound) => number",
-        "worklet": true,
-        "logic": "Math.min(Math.max(value, lowerBound), upperBound)",
-        "purpose": "Constrain value within bounds"
-      }
-    },
-    "scheduleOnRN_usage": {
-      "location": "AnimatedSlider useAnimatedReaction",
-      "pattern": "scheduleOnRN(onUpdate, progress)",
-      "purpose": "Call user callback from UI thread",
-      "critical": "onUpdate may contain setState or other JS-thread operations"
-    }
-  },
-  "component_patterns": {
-    "digit_container_pattern": {
-      "structure": "Container (overflow hidden) > Column of 10 Text elements",
-      "render_strategy": "Render all digits 0-9, translate to show correct one",
-      "benefit": "No conditional rendering, pure animation",
-      "key_insight": "Comment: 'Comment this out to see the real trick' (line 106)"
-    },
-    "reverse_index_mapping": {
-      "pattern": "flexDirection: 'row-reverse' in AnimatedCount",
-      "effect": "Digits render right-to-left (units, tens, hundreds)",
-      "mapping": "index 0 = rightmost (units), index maxDigits-1 = leftmost",
-      "purpose": "Natural digit ordering (least to most significant)"
-    },
-    "memo_optimization": {
+    "react-native-reanimated": {
+      "imports": [
+        "Extrapolation",
+        "interpolate",
+        "useAnimatedProps",
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedProps",
+        "useAnimatedReaction",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
+        "interpolate",
+        "withSpring",
+        "withTiming"
+      ],
       "components": [
-        "AnimatedDigit",
-        "AnimatedCount"
-      ],
-      "benefit": "Prevent re-renders when sibling digits change",
-      "critical": "Each digit only re-renders when its value changes"
-    },
-    "useMemo_for_styles": {
-      "flattenedTextStyle": "AnimatedDigit line 68-70",
-      "flattenedStyle": "AnimatedSlider line 56-58",
-      "purpose": "Prevent style object recreation on every render",
-      "benefit": "Stable references for style props"
-    },
-    "dual_slider_implementation": {
-      "custom": "index.tsx - Full custom implementation with gesture handler",
-      "native": "index.liquid.tsx - iOS-native SwiftUI Slider",
-      "pattern": "Same API, different implementations",
-      "benefit": "Native feel on iOS, custom control for cross-platform"
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture_lifecycle": {
-      "onBegin": [
-        "scale.value = withTiming(1) - Visual feedback",
-        "contextX.value = clampedTranslateX.value - Store start position"
-      ],
-      "onUpdate": [
-        "translateX.value = contextX.value + event.translationX - Relative dragging"
-      ],
-      "onFinalize": [
-        "scale.value = withTiming(defaultScale) - Reset scale"
+        "Animated.View",
+        "Animated.createAnimatedComponent"
       ]
     },
-    "context_pattern": {
-      "usage": "contextX stores gesture start position",
-      "purpose": "Enable relative dragging (continue from where user touches)",
-      "pattern": "Standard gesture context pattern",
-      "benefit": "Smooth continuation of position, no jump to touch point"
-    },
-    "clamping_strategy": {
-      "method": "useDerivedValue + custom clamp function",
-      "bounds": "[0, sliderWidth]",
-      "benefit": "Picker stays within slider bounds",
-      "pattern": "Separate clamped value from raw translateX"
-    }
-  },
-  "state_management": {
-    "animation_flow": {
-      "slider_interaction": [
-        "1. User drags slider picker",
-        "2. Pan gesture updates translateX",
-        "3. clampedTranslateX derived value updates",
-        "4. useAnimatedReaction triggers",
-        "5. Progress interpolated to [minValue, maxValue]",
-        "6. onUpdate called via scheduleOnRN",
-        "7. price SharedValue updated in main component",
-        "8. AnimatedCount receives new price value",
-        "9. Each AnimatedDigit recalculates its digit",
-        "10. Digits animate with spring to new positions"
-      ]
-    },
-    "digit_calculation_flow": {
-      "steps": [
-        "1. count SharedValue changes",
-        "2. getDigitByIndex extracts digit for this position",
-        "3. invisibleDigitsAmount calculated",
-        "4. isVisible determined",
-        "5. opacity and translateX animate",
-        "6. digit position translateY animates"
-      ]
-    }
-  },
-  "performance_optimizations": {
-    "memo_components": {
-      "AnimatedDigit": "Prevents re-render when sibling digits change",
-      "AnimatedCount": "Prevents re-render when parent state changes",
-      "benefit": "With maxDigits=4, only 1 digit re-renders per value change"
-    },
-    "useMemo_optimizations": [
-      "flattenedTextStyle in AnimatedDigit",
-      "flattenedStyle in AnimatedSlider",
-      "Prevent style object recreation"
-    ],
-    "worklet_math": {
-      "pattern": "All calculations in worklets (getDigitByIndex, clamp)",
-      "benefit": "No bridge crossing for digit extraction or bounds checking",
-      "runs_on": "UI thread"
-    },
-    "gesture_performance": {
-      "pan_gesture": "Runs entirely on UI thread",
-      "no_bridge": "Only bridges for onUpdate callback (scheduleOnRN)",
-      "result": "60fps slider interaction"
-    },
-    "animation_choice": {
-      "spring_for_digits": "Natural, bouncy feel for rolling digits",
-      "timing_for_visibility": "Quick fade without overshoot",
-      "spring_config": "duration: 200, dampingRatio: 3 (quick, minimal bounce)"
-    },
-    "conditional_animation": {
-      "pattern": "Only selected digit animates position",
-      "benefit": "Reduce animation workload",
-      "all_digits_share": "Same count SharedValue, but each calculates own digit"
-    }
-  },
-  "visual_design": {
-    "color_palette": {
-      "primary": "#27303F (dark blue-gray)",
-      "secondary": "#9FA7B5 (light gray)",
-      "background": "#E3ECFA (light blue-gray)",
-      "text": "primary color for digits and currency",
-      "slider_track": "secondary (unfilled)",
-      "slider_progress": "primary (filled)"
-    },
-    "typography": {
-      "digits": {
-        "fontSize": 30,
-        "fontWeight": "bold",
-        "color": "Palette.primary"
-      },
-      "currency": {
-        "fontSize": 30,
-        "fontWeight": "bold",
-        "color": "Palette.primary",
-        "symbol": "$"
-      },
-      "dimensions": {
-        "textDigitWidth": 19,
-        "textDigitHeight": 36
-      }
-    },
-    "slider_design": {
-      "height": 4,
-      "width": "windowWidth - 90 (responsive)",
-      "borderRadius": 5,
-      "picker": {
-        "size": 35,
-        "aspectRatio": 1,
-        "borderRadius": "pickerSize / 2 (circular)",
-        "defaultScale": 0.8,
-        "activeScale": 1,
-        "backgroundColor": "Palette.primary"
-      },
-      "progressBar": {
-        "height": "matches slider",
-        "backgroundColor": "Palette.primary"
-      }
-    },
-    "spacing": {
-      "digits_margin_bottom": 50,
-      "container": "flex: 1, centered",
-      "alignment": "center (both horizontal and vertical)"
-    },
-    "layout": {
-      "main_container": "flex: 1, centered, background",
-      "digit_container": "flexDirection: row-reverse, overflow: visible",
-      "currency_position": "absolute, dynamically translated"
-    }
-  },
-  "mathematical_algorithms": {
-    "digit_extraction": {
-      "algorithm": "Pad with leading zeros, split to array, index from right",
-      "example": "count=123, maxDigits=5, index=1 => '00123'[3] = '2'",
-      "padding": "count.toString().padStart(maxDigits, '0')",
-      "indexing": "paddedValue[maxDigits - 1 - digitIndex]",
-      "parsing": "parseInt(..., 10)"
-    },
-    "translation_calculation": {
-      "digit_position": "-height * digit.value",
-      "example": "digit=5, height=36 => translateY: -180",
-      "zero_centering": "(-width * invisibleDigitsAmount) / 2",
-      "currency_offset": "(missingDigits * textDigitWidth) / 2 - textDigitWidth - 2.5"
-    },
-    "progress_interpolation": {
-      "input": "clampedTranslateX (0 to sliderWidth)",
-      "output": "minValue to maxValue",
-      "formula": "interpolate(translation, [0, sliderWidth], [minValue, maxValue], CLAMP)",
-      "rounding": "Math.round(prog) for integer prices"
-    },
-    "position_clamping": {
-      "formula": "Math.min(Math.max(value, lowerBound), upperBound)",
-      "bounds": "[0, sliderWidth]",
-      "benefit": "Picker stays within track"
-    }
-  },
-  "layout_and_positioning": {
-    "absolute_positioning": {
-      "currency_symbol": "position: 'absolute' with animated translateX",
-      "purpose": "Overlay currency on digit container",
-      "layering": "Currency renders before digits (earlier in render tree)"
-    },
-    "responsive_sizing": {
-      "hook": "useWindowDimensions()",
-      "slider_width": "windowWidth - 90",
-      "purpose": "Consistent margins across screen sizes"
-    },
-    "digit_sizing": {
-      "width": 19,
-      "height": 36,
-      "overflow": "hidden",
-      "purpose": "Mask digit scroll animation"
-    },
-    "picker_positioning": {
-      "horizontal": "translateX: clampedTranslateX - pickerSize / 2",
-      "vertical": "top: -pickerSize / 2 + sliderHeight / 2",
-      "effect": "Picker centered on its position, vertically centered on track"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Price selectors (e-commerce, booking apps)",
-      "Range pickers with numeric feedback",
-      "Budget calculators",
-      "Tip calculators",
-      "Quantity selectors"
-    ],
-    "real_world_examples": [
-      "Airbnb price range filters",
-      "Hotel booking price selectors",
-      "Donation amount pickers",
-      "Investment amount selectors",
-      "Time duration pickers"
-    ],
-    "educational": [
-      "Teaching digit-by-digit animations",
-      "Demonstrating pan gesture handling",
-      "Showing derived value patterns",
-      "Worklet function examples",
-      "Leading zero hiding techniques"
-    ]
-  },
-  "code_quality": {
-    "typescript": {
-      "coverage": "Full TypeScript with explicit types",
-      "prop_types": [
-        "SliderProps",
-        "AnimatedDigitProps",
-        "AnimatedCountProps"
+    "react-native-worklets": {
+      "imports": [
+        "scheduleOnRN"
       ],
-      "type_imports": "type keyword for type-only imports",
-      "defaults": "Default props with destructuring"
-    },
-    "component_architecture": {
-      "main_component": "Orchestrates slider and display",
-      "animated_count": "Manages digit array",
-      "animated_digit": "Self-contained digit logic",
-      "slider": "Reusable slider component",
-      "separation": "Clear separation of concerns"
-    },
-    "constants": {
-      "CURRENCY": "Module-level constant",
-      "Palette": "Separate constants file",
-      "maxValue": 4500,
-      "dimensions": "Defined at component level"
-    },
-    "documentation": {
-      "inline_comments": [
-        "Excellent explanation of digit calculation (lines 27-30)",
-        "Leading zero logic explained (lines 53-55)",
-        "Trick reveal comment (line 106)",
-        "Digit rendering explanation (lines 118-122)"
-      ],
-      "patreon_references": [
-        "Balloon Slider: https://www.patreon.com/posts/balloon-slider-79018863",
-        "Custom QrCode: https://www.patreon.com/posts/qrcode-generator-8617129",
-        "AnimatedCount: https://www.patreon.com/posts/animated-text-84712135"
-      ],
-      "historical_context": "Explains evolution from LayoutAnimation to pure Reanimated"
-    },
-    "best_practices": [
-      "memo for performance",
-      "useMemo for expensive calculations",
-      "Worklet annotations on helper functions",
-      "Type safety throughout",
-      "Separate files for components"
-    ]
-  },
-  "known_limitations": {
-    "fixed_max_digits": {
-      "issue": "maxDigits must be known in advance",
-      "workaround": "Set to maximum expected value",
-      "trade_off": "Pre-render empty digits vs. dynamic rendering",
-      "author_note": "Could use dynamic approach but would require re-renders (lines 37-40)"
-    },
-    "rounding_behavior": {
-      "implementation": "Math.round(prog)",
-      "effect": "Only integer values",
-      "limitation": "Can't show decimal prices (e.g., $24.99)",
-      "improvement": "Could support decimal places with additional digit components"
-    },
-    "currency_hardcoded": {
-      "value": "$",
-      "location": "CURRENCY constant",
-      "limitation": "Single currency symbol",
-      "improvement": "Could be a prop for internationalization"
-    },
-    "gesture_direction": {
-      "limitation": "Horizontal drag only",
-      "improvement": "Could support vertical slider variant"
-    },
-    "accessibility": {
-      "missing": "No accessibility labels",
-      "screen_readers": "Not optimized for VoiceOver/TalkBack",
-      "keyboard_navigation": "Not supported"
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "potential_improvements": {
-    "features": [
-      "Decimal place support for prices (e.g., $24.99)",
-      "Multiple currency support",
-      "Vertical slider variant",
-      "Step size configuration (currently continuous)",
-      "Min/max value display markers",
-      "Haptic feedback on value milestones",
-      "Snap points for common values"
-    ],
-    "customization": [
-      "Configurable spring animations",
-      "Custom color schemes via props",
-      "Font size and family props",
-      "Slider dimensions as props",
-      "Custom picker shapes"
-    ],
-    "accessibility": [
-      "AccessibilityLabel for slider",
-      "AccessibilityValue for current price",
-      "AccessibilityHint for usage",
-      "Screen reader announcements on value change",
-      "Reduced motion support (instant transitions)",
-      "Keyboard increment/decrement",
-      "High contrast mode support"
-    ],
-    "performance": [
-      "useNativeDriver exploration (limited for layout animations)",
-      "Memoize digit rendering",
-      "Optimize for very large maxDigits (>10)"
-    ],
-    "ux_enhancements": [
-      "Tap on slider track to jump to position",
-      "Double tap to reset",
-      "Display formatted price (thousands separator)",
-      "Show min/max labels",
-      "Value input field alternative"
-    ]
-  },
-  "key_insights": {
-    "digit_stacking_trick": "Render all 10 digits vertically, translate to show correct one - eliminates conditional rendering",
-    "zero_hiding_complexity": "Leading zero hiding requires coordinated opacity + translation + position awareness",
-    "derived_value_power": "useDerivedValue enables complex digit extraction logic in worklet context",
-    "context_pattern_essential": "Gesture context pattern critical for relative dragging without position jumps",
-    "scheduleOnRN_bridging": "Essential for calling user callbacks from UI thread",
-    "spring_timing_balance": "Quick spring (duration: 200, dampingRatio: 3) provides responsiveness without excessive bounce",
-    "memo_optimization": "memo on AnimatedDigit prevents unnecessary sibling re-renders",
-    "worklet_functions": "Custom worklet functions (getDigitByIndex, clamp) keep all math on UI thread",
-    "dual_implementation": "Providing both custom and native implementations shows platform-awareness"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic slider interaction",
-      "Shared values and animations",
-      "Simple pan gestures",
-      "Component composition",
-      "Props and prop types"
-    ],
-    "for_intermediate": [
-      "useDerivedValue for computed values",
-      "useAnimatedReaction for side effects",
-      "Pan gesture lifecycle (onBegin, onUpdate, onFinalize)",
-      "Gesture context pattern",
-      "scheduleOnRN for thread bridging",
-      "String manipulation in worklets (padStart, split)",
-      "Clamping and interpolation patterns"
-    ],
-    "for_advanced": [
-      "Complex derived value chains",
-      "Leading zero detection algorithm",
-      "Coordinated multi-component animations",
-      "Worklet function optimization",
-      "Performance profiling (memo vs. re-render)",
-      "Platform-specific implementations",
-      "Animation choreography (opacity + translation timing)"
-    ]
-  },
-  "related_patterns": {
-    "similar_animations": [
-      "iOS time picker (rolling digits)",
-      "Car odometer animations",
-      "Slot machine reels",
-      "Number counters",
-      "Animated statistics displays"
-    ],
-    "slider_variants": [
-      "Range slider (two handles)",
-      "Color picker sliders",
-      "Volume controls",
-      "Brightness controls",
-      "Video scrubber"
-    ],
-    "inspiration": [
-      "Airbnb price range filters",
-      "Booking.com price selectors",
-      "Calculator displays",
-      "Airport departure boards"
-    ]
-  },
-  "testing_considerations": {
-    "visual_tests": [
-      "Digit rolling smooth across all positions (0-9)",
-      "Leading zeros hide correctly",
-      "Currency symbol positions correctly",
-      "Slider moves smoothly",
-      "Progress bar width matches picker position",
-      "Scale feedback visible on interaction"
-    ],
-    "interaction_tests": [
-      "Drag slider updates price",
-      "Price rounds to integer correctly",
-      "Picker stays within bounds",
-      "Gesture context works (no jump on touch)",
-      "Scale animation triggers on begin/finalize",
-      "Multiple rapid drags don't break state"
-    ],
-    "edge_cases": [
-      "Value 0 (all zeros vs. single zero)",
-      "Maximum value (4500 - all digits visible)",
-      "Rapid value changes",
-      "Value change during animation",
-      "Very fast dragging"
-    ],
-    "performance_tests": [
-      "60fps during drag",
-      "No frame drops on digit animation",
-      "Memory stable across many interactions",
-      "CPU usage reasonable"
-    ],
-    "cross_platform": [
-      "Test on iOS and Android",
-      "Test native slider variant (index.liquid.tsx) on iOS",
-      "Verify gesture handling on both platforms",
-      "Check spring animation feel"
-    ]
-  },
-  "accessibility_considerations": {
-    "current_state": {
-      "screen_readers": "No support",
-      "keyboard_navigation": "No support",
-      "reduced_motion": "Not respected",
-      "labels": "No accessibility labels"
-    },
-    "recommendations": [
-      "Add accessibilityRole='adjustable' to slider",
-      "Add accessibilityValue with current price",
-      "Add accessibilityLabel 'Price slider'",
-      "Add accessibilityHint 'Drag to adjust price'",
-      "Support accessibilityIncrement/Decrement",
-      "Announce price changes to screen reader",
-      "Respect prefers-reduced-motion (instant transitions)",
-      "Add keyboard arrows support for increment/decrement",
-      "Ensure touch target size (picker 35x35 is good)",
-      "High contrast mode support"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_native_slider": {
-      "pros": [
-        "Custom styling",
-        "Animated digit display integration",
-        "Cross-platform consistency",
-        "Full control over animations"
-      ],
-      "cons": [
-        "More code to maintain",
-        "Missing native accessibility",
-        "No native haptics integration"
-      ],
-      "solution": "Provide both (index.tsx and index.liquid.tsx)"
-    },
-    "vs_simple_text_update": {
-      "this_approach": "Animated rolling digits",
-      "simple_approach": "Just update text value",
-      "benefit": "Visual continuity, perceived quality, user engagement",
-      "cost": "Complexity, performance consideration"
-    }
-  },
-  "historical_context": {
-    "evolution": "Originally used LayoutAnimation (see AnimatedCount comments lines 27-35)",
-    "problem": "LayoutAnimation couldn't keep up with frequent slider updates",
-    "solution": "Pure Reanimated approach with SharedValues",
-    "benefit": "Can handle high-frequency updates from slider",
-    "trade_off": "Need to know maxDigits in advance",
-    "lesson": "LayoutAnimation great for infrequent UI changes, Reanimated for high-frequency"
-  },
-  "bundle_size_impact": {
-    "code_size": "~400 lines total (main + components)",
-    "dependencies": "All dependencies common in React Native projects",
-    "runtime_memory": "Minimal - few SharedValues, small render tree",
-    "estimated_impact": "< 50KB minified"
-  },
-  "tags": [
-    "slider",
-    "price-selector",
-    "rolling-digits",
-    "animated-counter",
-    "pan-gesture",
-    "reanimated",
-    "gesture-handler",
-    "worklets",
-    "derived-values",
-    "spring-animation",
-    "airbnb",
-    "digit-animation",
-    "leading-zeros",
-    "currency-display",
-    "swiftui-integration",
-    "ios-native"
+  "hooks": [
+    "useAnimatedProps",
+    "useAnimatedReaction",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useMemo",
+    "useSharedValue",
+    "useWindowDimensions"
   ],
-  "content_hash": "9a22d86ab2795950df90a4dba08b236e7442e16f684ce3bdc42fdbd2439aaed3",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.265Z",
-  "last_validated": "2025-10-12T09:19:28.265Z"
+  "functions": [
+    "clamp",
+    "getDigitByIndex",
+    "interpolate",
+    "memo",
+    "onUpdate",
+    "parseInt",
+    "scheduleOnRN",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "Animated.View",
+    "Animated.createAnimatedComponent",
+    "AnimatedCount",
+    "AnimatedDigit",
+    "AnimatedSlider",
+    "GestureDetector",
+    "Host",
+    "ReanimatedSlider",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "animated-reaction",
+    "timing-animation",
+    "spring-animation",
+    "value-interpolation",
+    "reactive-styling-pattern"
+  ],
+  "techniques": [
+    "reactive-side-effects",
+    "timing-based-transitions",
+    "spring-physics",
+    "value-mapping",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 6,
+    "total_packages": 6,
+    "total_hooks": 8,
+    "total_functions": 9,
+    "total_components": 10,
+    "total_patterns": 8,
+    "total_techniques": 5
+  }
 }

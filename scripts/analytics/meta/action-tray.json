@@ -1,414 +1,216 @@
 {
-  "animation_name": "Action Tray",
   "animation_slug": "action-tray",
-  "description": "A draggable bottom sheet / action tray component with pan gestures, animated backdrop, dynamic content height, and imperative API. Features smooth spring animations, swipe-to-dismiss, and multi-step wizard capability.",
-  "main_features": [
-    "Draggable bottom sheet with pan gesture",
-    "Animated backdrop (tap to dismiss)",
-    "Imperative API (open, close, isActive)",
-    "Spring animations for smooth motion",
-    "Swipe down to dismiss gesture",
-    "Dynamic content height with spring animation",
-    "Multi-step wizard pattern demo",
-    "Dynamic border radius interpolation",
-    "Continuous border curve",
-    "Layout animations for content transitions"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.357Z",
   "file_structure": {
-    "index.tsx": "Demo app with multi-step wizard",
-    "components/ActionTray/index.tsx": "Core ActionTray component",
-    "components/ActionTray/Backdrop/index.tsx": "Backdrop overlay component",
-    "constants/palette.ts": "Color palette constants"
+    "entry": "index.tsx",
+    "components": [],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [
+      "constants/palette.ts"
+    ],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "gestures": "react-native-gesture-handler",
-    "interactions": "pressto",
-    "threading": "react-native-worklets"
+  "packages": [
+    "@expo/vector-icons",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-gesture-handler",
+    "react-native-reanimated",
+    "react-native-worklets"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-gesture-handler": "~2.28.0",
+    "react-native-reanimated": "~4.1.1",
+    "react-native-worklets": "0.5.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
+  "packages_detail": {
+    "./Backdrop": {
+      "imports": [
+        "Backdrop"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/ActionTray": {
+      "imports": [
+        "ActionTray"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./constants/palette": {
+      "imports": [
+        "Palette"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "MaterialCommunityIcons"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "forwardRef",
+        "memo",
+        "useCallback",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
       "hooks": [
-        "useSharedValue",
-        "useAnimatedStyle",
+        "useCallback",
+        "useImperativeHandle",
+        "useMemo",
+        "useRef",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "Dimensions",
+        "StyleSheet",
+        "Text",
+        "View",
+        "useWindowDimensions"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-gesture-handler": {
+      "imports": [
+        "Gesture",
+        "GestureDetector"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
+        "Easing",
+        "Extrapolation",
+        "FadeIn",
+        "FadeOut",
+        "LinearTransition",
+        "interpolate",
         "useAnimatedProps",
+        "useAnimatedStyle",
         "useDerivedValue",
+        "useSharedValue",
+        "withSpring",
+        "withTiming"
+      ],
+      "hooks": [
+        "useAnimatedProps",
+        "useAnimatedStyle",
+        "useDerivedValue",
+        "useSharedValue"
+      ],
+      "functions": [
         "interpolate",
         "withSpring",
         "withTiming"
       ],
-      "layout_animations": [
-        "LinearTransition",
-        "FadeIn",
-        "FadeOut"
-      ],
-      "critical_feature": "useAnimatedProps for dynamic pointerEvents"
-    },
-    "react-native-gesture-handler": {
-      "version": "~2.28.0",
       "components": [
-        "GestureDetector"
-      ],
-      "gestures": [
-        "Gesture.Pan()"
-      ],
-      "usage": "Pan gesture for dragging tray"
+        "Animated.Text",
+        "Animated.View"
+      ]
     },
     "react-native-worklets": {
-      "version": "0.5.1",
       "imports": [
         "scheduleOnRN"
       ],
-      "usage": "Bridge worklet callbacks to JS thread for onClose"
-    },
-    "pressto": {
-      "version": "0.3.5-beta.1",
-      "component": "PressableScale",
-      "usage": "Buttons with scale press animation"
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
-      "component": "MaterialCommunityIcons",
-      "icons_used": [
-        "plus",
-        "close-thick"
-      ]
+      "hooks": [],
+      "functions": [],
+      "components": []
     }
   },
-  "animation_techniques": {
-    "pan_gesture": {
-      "gesture": "Gesture.Pan()",
-      "onStart": "Stores current translateY in context",
-      "onUpdate": "Updates translateY with translationY + context (with -50px limit)",
-      "onEnd": "Closes if dragged down >100px, otherwise snaps back",
-      "constraint": "Prevents upward dragging beyond -50px"
-    },
-    "spring_animation": {
-      "usage": [
-        "Tray open/close",
-        "Content height changes"
-      ],
-      "config": "Default spring",
-      "effect": "Natural, bouncy motion"
-    },
-    "backdrop_fade": {
-      "animation": "withTiming(isActive ? 1 : 0)",
-      "pointer_events": "useAnimatedProps to toggle 'auto'/'none'",
-      "effect": "Backdrop fades in when active, blocks touches"
-    },
-    "border_radius_interpolation": {
-      "input_range": "[MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y]",
-      "output_range": "[25, 5]",
-      "effect": "Border radius reduces as tray opens fully",
-      "extrapolation": "CLAMP"
-    },
-    "toggle_button_rotation": {
-      "animation": "withTiming(isOpen ? '45deg' : '0deg')",
-      "effect": "Plus icon rotates 45° to become X when open"
-    },
-    "content_height_spring": {
-      "values": "[80, 200, 250] (for steps 0, 1, 2)",
-      "animation": "withSpring(height)",
-      "effect": "Content area smoothly expands/contracts between steps"
-    },
-    "layout_transitions": {
-      "entering": "FadeIn.delay(100)",
-      "exiting": "FadeOut.delay(100)",
-      "layout": "LinearTransition.easing(Easing.linear).duration(250)",
-      "effect": "Content cross-fades between wizard steps"
-    }
-  },
-  "component_patterns": {
-    "forwardRef_imperative_api": {
-      "ref_type": "ActionTrayRef",
-      "exposed_methods": {
-        "open": "() => void - Opens the tray",
-        "close": "() => void - Closes the tray",
-        "isActive": "() => boolean - Returns active state"
-      },
-      "pattern": "useImperativeHandle",
-      "benefit": "Parent can control tray programmatically"
-    },
-    "worklet_functions": {
-      "scrollTo": "Worklet for animating tray position",
-      "close": "Worklet for closing animation",
-      "open": "Worklet for opening animation",
-      "benefit": "Runs on UI thread for smooth performance"
-    },
-    "context_pattern": {
-      "usage": "useSharedValue({ y: 0 })",
-      "purpose": "Stores gesture start position",
-      "pattern": "Pan gesture context for relative dragging"
-    }
-  },
-  "gesture_handling": {
-    "pan_gesture_lifecycle": {
-      "onStart": "context.value = { y: translateY.value }",
-      "onUpdate": "translateY.value = event.translationY + context.value.y (if translationY > -50)",
-      "onEnd": "Close if translationY > 100, else snap back to context.value.y"
-    },
-    "drag_constraints": {
-      "upward_limit": "-50px (prevents dragging beyond open position)",
-      "downward_threshold": "100px (triggers close)",
-      "natural_feel": "No constraint on downward drag"
-    },
-    "snap_behavior": {
-      "on_small_drag": "Snaps back to original position",
-      "on_large_drag": "Closes completely",
-      "threshold": "100px drag distance"
-    }
-  },
-  "state_management": {
-    "shared_values": [
-      {
-        "name": "translateY",
-        "initial": "maxHeight (off-screen)",
-        "controls": "Tray vertical position"
-      },
-      {
-        "name": "active",
-        "type": "boolean",
-        "usage": "Tracks whether tray is open",
-        "triggers": "Backdrop visibility"
-      },
-      {
-        "name": "isActionTrayOpened",
-        "scope": "Parent component",
-        "usage": "Tracks open state for toggle button rotation"
-      },
-      {
-        "name": "context",
-        "type": "{ y: number }",
-        "usage": "Stores gesture start position"
-      }
-    ],
-    "react_state": [
-      {
-        "name": "step",
-        "type": "number",
-        "usage": "Tracks wizard step (0, 1, 2)",
-        "triggers": "Content and button text changes"
-      }
-    ],
-    "derived_values": [
-      {
-        "name": "rContentHeight",
-        "calculation": "interpolate(step, [0, 1, 2], [80, 200, 250])",
-        "purpose": "Dynamic content height based on step"
-      }
-    ]
-  },
-  "ui_ux_patterns": {
-    "bottom_sheet": {
-      "positioning": "position: absolute, bottom: 30",
-      "width": "95%",
-      "alignment": "center",
-      "effect": "Floats above content with margin from bottom"
-    },
-    "backdrop_dismiss": {
-      "pattern": "Dark overlay that dismisses on tap",
-      "opacity": "0.2 black",
-      "interaction": "onTouchStart triggers close"
-    },
-    "gesture_dismiss": {
-      "pattern": "Swipe down to dismiss",
-      "threshold": "100px drag",
-      "feel": "Natural, iOS-like"
-    },
-    "multi_step_wizard": {
-      "steps": 3,
-      "navigation": "Continue button advances steps",
-      "content": "Different content per step with fade transitions",
-      "titles": "Dynamic heading per step",
-      "final_action": "Last step closes tray"
-    },
-    "continuous_border_curve": {
-      "property": "borderCurve: 'continuous'",
-      "platform": "iOS",
-      "effect": "Squircle border (Apple-style rounded corners)"
-    }
-  },
-  "visual_design": {
-    "color_palette": {
-      "primary": "#4290F6 (blue)",
-      "background": "#FFF (white)",
-      "surface": "#F1F1F4 (light gray)",
-      "text": "#B3B3B6 (gray)",
-      "backdrop": "rgba(0,0,0,0.2)"
-    },
-    "spacing": {
-      "tray_padding": "25px",
-      "bottom_margin": "30px",
-      "button_height": "50px, 55px",
-      "close_button_size": "24px"
-    },
-    "typography": {
-      "heading": "20px, 600 weight",
-      "content": "16px, 600 weight",
-      "button": "16px, bold"
-    },
-    "border_radius": {
-      "tray": "5-25px (dynamic based on position)",
-      "buttons": "25px, 20px",
-      "style": "continuous (iOS squircle)"
-    }
-  },
-  "performance_optimizations": {
-    "memo": {
-      "Backdrop": "Prevents re-renders when parent changes",
-      "benefit": "Backdrop only re-renders when isActive changes"
-    },
-    "useCallback": [
-      "close",
-      "toggleActionTray",
-      "scrollTo",
-      "gesture_callbacks"
-    ],
-    "useMemo": [
-      "title (based on step)",
-      "actionTitle (based on step)",
-      "contentContainerStyle"
-    ],
-    "worklet_optimization": {
-      "pattern": "Worklet functions for UI thread execution",
-      "functions": [
-        "scrollTo",
-        "close",
-        "open"
-      ],
-      "benefit": "No bridge crossing for animations"
-    },
-    "useAnimatedProps": {
-      "usage": "pointerEvents for backdrop",
-      "benefit": "Animated pointer events without re-render",
-      "critical": "Prevents touch events when backdrop invisible"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Bottom sheets",
-      "Action menus",
-      "Multi-step forms/wizards",
-      "Contextual actions",
-      "Settings panels"
-    ],
-    "real_world_examples": [
-      "iOS Share Sheet",
-      "Google Maps bottom panel",
-      "Shopping cart summaries",
-      "Booking flows",
-      "Confirmation dialogs"
-    ]
-  },
-  "code_quality": {
-    "typescript": "Full TypeScript with explicit types",
-    "type_definitions": [
-      "ActionTrayProps",
-      "ActionTrayRef",
-      "BackdropProps"
-    ],
-    "forwardRef": "Proper forwardRef usage with generic types",
-    "imperative_handle": "useImperativeHandle for ref API",
-    "worklet_annotations": "Explicit 'worklet' directives",
-    "best_practices": [
-      "Separate concerns (Backdrop as own component)",
-      "Imperative API via ref",
-      "Gesture constraint logic",
-      "Backdrop pointer events management"
-    ]
-  },
-  "known_limitations": {
-    "no_keyboard_avoidance": {
-      "issue": "Doesn't adjust for keyboard",
-      "impact": "May be covered by keyboard on input focus"
-    },
-    "fixed_gesture_threshold": {
-      "issue": "100px threshold is hardcoded",
-      "enhancement": "Could be percentage-based or configurable"
-    },
-    "no_snap_points": {
-      "issue": "Only open/close, no intermediate snap points",
-      "enhancement": "Could support multiple heights"
-    },
-    "backdrop_color": {
-      "issue": "Hardcoded rgba(0,0,0,0.2)",
-      "enhancement": "Could be prop"
-    }
-  },
-  "potential_improvements": {
-    "features": [
-      "Multiple snap points (half-open, full-open)",
-      "Keyboard avoidance",
-      "Configurable gesture thresholds",
-      "Backdrop customization props",
-      "Drag handle indicator",
-      "Nested scroll support"
-    ],
-    "accessibility": [
-      "Screen reader announcements",
-      "Focus trap when open",
-      "Keyboard dismiss (Esc key)",
-      "Reduce motion support"
-    ],
-    "customization": [
-      "Configurable spring config",
-      "Custom backdrop color/opacity",
-      "Adjustable border radius",
-      "Positioning options (top/bottom)"
-    ]
-  },
-  "key_insights": {
-    "useAnimatedProps_critical": "useAnimatedProps for pointerEvents prevents unwanted touch events",
-    "worklet_imperative_api": "Imperative API methods can be worklets for UI thread execution",
-    "gesture_context": "Context pattern essential for relative dragging",
-    "backdrop_pattern": "Separate backdrop component is clean pattern",
-    "scheduleOnRN": "Bridge worklet callbacks to JS thread when needed",
-    "dynamic_border_radius": "Border radius interpolation adds polish",
-    "continuous_curve": "borderCurve: 'continuous' for Apple-style UI"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Bottom sheet basics",
-      "Pan gesture handling",
-      "forwardRef pattern",
-      "Backdrop implementation"
-    ],
-    "for_intermediate": [
-      "useImperativeHandle for ref API",
-      "Gesture context pattern",
-      "useAnimatedProps usage",
-      "worklet functions",
-      "scheduleOnRN for thread bridging"
-    ],
-    "for_advanced": [
-      "Complex gesture constraints",
-      "Multi-step wizard patterns",
-      "Performance optimization with worklets",
-      "Dynamic interpolation patterns"
-    ]
-  },
-  "related_patterns": {
-    "bottom_sheet": "Similar iOS-style bottom sheets",
-    "modal": "Full-screen modals with backdrop",
-    "drawer": "Side drawer navigation",
-    "popup_menu": "Contextual action menus"
-  },
-  "tags": [
-    "bottom-sheet",
-    "action-tray",
-    "pan-gesture",
-    "draggable",
-    "modal",
-    "backdrop",
-    "wizard",
-    "reanimated",
-    "gesture-handler",
-    "imperative-api",
-    "spring-animation"
+  "hooks": [
+    "useAnimatedProps",
+    "useAnimatedStyle",
+    "useCallback",
+    "useDerivedValue",
+    "useImperativeHandle",
+    "useMemo",
+    "useRef",
+    "useSharedValue",
+    "useState",
+    "useWindowDimensions"
   ],
-  "content_hash": "7f90db9560ebc9b093fb042bd8d69c48228323c393caccfb38d0fd4ec44b480e",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.260Z",
-  "last_validated": "2025-10-12T09:19:28.260Z"
+  "functions": [
+    "close",
+    "forwardRef",
+    "interpolate",
+    "memo",
+    "scheduleOnRN",
+    "scrollTo",
+    "setStep",
+    "withSpring",
+    "withTiming"
+  ],
+  "components": [
+    "ActionTray",
+    "Animated.Text",
+    "Animated.View",
+    "Backdrop",
+    "GestureDetector",
+    "MaterialCommunityIcons",
+    "PressableScale",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "shared-value-state",
+    "animated-styling",
+    "derived-computation",
+    "timing-animation",
+    "spring-animation",
+    "value-interpolation",
+    "reactive-styling-pattern",
+    "imperative-animation-api"
+  ],
+  "techniques": [
+    "timing-based-transitions",
+    "spring-physics",
+    "value-mapping",
+    "ref-based-control",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 4,
+    "total_packages": 7,
+    "total_hooks": 10,
+    "total_functions": 9,
+    "total_components": 9,
+    "total_patterns": 8,
+    "total_techniques": 5
+  }
 }

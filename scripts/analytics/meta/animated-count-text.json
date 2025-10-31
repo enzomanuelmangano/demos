@@ -1,776 +1,144 @@
 {
-  "animation_name": "Animated Count Text",
   "animation_slug": "animated-count-text",
-  "description": "A smooth digit-by-digit number counter animation that transitions between numbers of any length. Uses a slot machine-style vertical scroll technique where each digit position contains all numbers 0-9, with translateY animations revealing the target digit. Supports random number generation and seamless layout transitions when digit count changes.",
-  "main_features": [
-    "Digit-by-digit animation with independent transitions",
-    "Slot machine-style vertical scroll effect per digit",
-    "Smooth spring animations for digit transitions",
-    "Layout animations for adding/removing digit positions",
-    "Supports numbers of varying lengths (1 to 6+ digits)",
-    "Fade in/out animations for digits entering/exiting",
-    "Random number generator with configurable digit count",
-    "Overflow hidden container for clean scrolling effect"
-  ],
+  "extracted_at": "2025-10-31T18:25:44.567Z",
   "file_structure": {
-    "index.tsx": "Demo screen with shuffle button and random number generation",
-    "components/animated-count.tsx": "Container component managing digit array and layout",
-    "components/animated-digit.tsx": "Individual digit component with vertical scroll animation"
+    "entry": "index.tsx",
+    "components": [
+      "components/animated-count.tsx",
+      "components/animated-digit.tsx"
+    ],
+    "hooks": [],
+    "utils": [],
+    "types": [],
+    "constants": [],
+    "assets": [],
+    "other": []
   },
-  "core_technologies": {
-    "animations": "react-native-reanimated",
-    "pattern": "Layout animations + Transform animations",
-    "technique": "Vertical scrolling column of all digits (0-9)"
+  "packages": [
+    "@expo/vector-icons",
+    "pressto",
+    "react",
+    "react-native",
+    "react-native-reanimated"
+  ],
+  "packages_with_versions": {
+    "@expo/vector-icons": "^15.0.3",
+    "pressto": "0.6.0",
+    "react": "19.1.0",
+    "react-native": "0.81.5",
+    "react-native-reanimated": "~4.1.1"
   },
-  "packages_and_versions": {
-    "react-native-reanimated": {
-      "version": "~4.1.1",
-      "components": [
-        "Animated.View",
-        "Animated.Text"
+  "packages_detail": {
+    "./animated-digit": {
+      "imports": [
+        "AnimatedDigit"
       ],
-      "layout_animations": [
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "./components/animated-count": {
+      "imports": [
+        "AnimatedCount"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "@expo/vector-icons": {
+      "imports": [
+        "Entypo"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "pressto": {
+      "imports": [
+        "PressableScale"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react": {
+      "imports": [
+        "memo",
+        "useMemo",
+        "useState"
+      ],
+      "hooks": [
+        "useMemo",
+        "useState"
+      ],
+      "functions": [],
+      "components": []
+    },
+    "react-native": {
+      "imports": [
+        "StyleSheet",
+        "Text",
+        "View"
+      ],
+      "hooks": [],
+      "functions": [],
+      "components": []
+    },
+    "react-native-reanimated": {
+      "imports": [
         "FadeIn",
         "FadeOut",
-        "LinearTransition"
+        "LinearTransition",
+        "useAnimatedStyle",
+        "withSpring"
       ],
       "hooks": [
         "useAnimatedStyle"
       ],
-      "utilities": [
+      "functions": [
         "withSpring"
       ],
-      "critical_feature": "Layout animations for digit position changes combined with transform animations for digit values"
-    },
-    "@expo/vector-icons": {
-      "version": "^15.0.2",
       "components": [
-        "Entypo"
-      ],
-      "icon_used": "shuffle",
-      "usage": "Shuffle button icon to trigger random number generation"
+        "Animated.View"
+      ]
     }
   },
-  "animation_techniques": {
-    "vertical_scroll_principle": {
-      "pattern": "Pre-render all digits 0-9 in vertical column",
-      "implementation": "Array(10).fill(0).map((_, index) => <Text>{index}</Text>)",
-      "container": "Height-constrained with overflow: 'hidden'",
-      "animation": "translateY shifts column to reveal target digit",
-      "formula": "translateY = -height * digit",
-      "example": "For digit 3: translateY = -55 * 3 = -165px"
-    },
-    "digit_transition": {
-      "type": "useAnimatedStyle with withSpring",
-      "property": "transform: [{ translateY }]",
-      "calculation": "-height * digit",
-      "spring_config": {
-        "damping": 20,
-        "stiffness": 300,
-        "mass": 1
-      },
-      "effect": "Smooth spring animation scrolls to target digit",
-      "trigger": "When digit prop changes"
-    },
-    "digit_entering": {
-      "type": "FadeIn",
-      "duration": 250,
-      "trigger": "When number gains additional digits (e.g., 99 → 100)",
-      "applied_to": "AnimatedDigit container",
-      "effect": "New digit positions fade in smoothly"
-    },
-    "digit_exiting": {
-      "type": "FadeOut",
-      "duration": 250,
-      "trigger": "When number loses digits (e.g., 100 → 99)",
-      "applied_to": "AnimatedDigit container",
-      "effect": "Removed digit positions fade out"
-    },
-    "layout_transition": {
-      "type": "LinearTransition",
-      "method": "springify()",
-      "applied_to": "AnimatedCount container (flexDirection: 'row')",
-      "effect": "Smooth width adjustment when digit count changes",
-      "trigger": "Adding or removing digits from number"
-    }
-  },
-  "reanimated_patterns": {
-    "useAnimatedStyle": {
-      "location": "AnimatedDigit component",
-      "purpose": "Calculate translateY for digit scroll animation",
-      "dependencies": [
-        "digit",
-        "height"
-      ],
-      "calculation": "translateY: withSpring(-height * digit, springConfig)",
-      "returns": "transform style object",
-      "reactivity": "Re-animates whenever digit prop changes"
-    },
-    "layout_animations": {
-      "entering": {
-        "animation": "FadeIn.duration(250)",
-        "purpose": "Smooth appearance of new digit positions",
-        "timing": 250
-      },
-      "exiting": {
-        "animation": "FadeOut.duration(250)",
-        "purpose": "Smooth disappearance of removed digit positions",
-        "timing": 250
-      },
-      "layout": {
-        "animation": "LinearTransition.springify()",
-        "purpose": "Container width adjustment as digits change",
-        "spring": true
-      }
-    },
-    "spring_physics": {
-      "damping": {
-        "value": 20,
-        "effect": "Moderate damping prevents excessive oscillation"
-      },
-      "stiffness": {
-        "value": 300,
-        "effect": "High stiffness for snappy, responsive movement"
-      },
-      "mass": {
-        "value": 1,
-        "effect": "Standard mass for balanced motion"
-      },
-      "characteristic": "Fast response with minimal overshoot"
-    }
-  },
-  "component_architecture": {
-    "animated_count": {
-      "type": "Container component",
-      "memo": true,
-      "props": {
-        "number": {
-          "type": "number",
-          "required": true,
-          "description": "The number to display and animate"
-        }
-      },
-      "responsibilities": [
-        "Convert number to digit array",
-        "Manage layout of digit positions",
-        "Apply layout transition to container"
-      ],
-      "layout": "flexDirection: 'row' to arrange digits horizontally",
-      "optimization": "useMemo for digits array calculation"
-    },
-    "animated_digit": {
-      "type": "Individual digit component",
-      "memo": true,
-      "props": {
-        "digit": {
-          "type": "number",
-          "required": true,
-          "description": "The digit (0-9) to display",
-          "range": "0 to 9"
-        },
-        "height": {
-          "type": "number",
-          "required": true,
-          "description": "Height of digit container"
-        },
-        "width": {
-          "type": "number",
-          "required": true,
-          "description": "Width of digit container"
-        },
-        "textStyle": {
-          "type": "StyleProp<TextStyle>",
-          "required": true,
-          "description": "Style applied to each digit text"
-        }
-      },
-      "structure": {
-        "outer_container": "Height-constrained with overflow: 'hidden'",
-        "inner_container": "Vertically scrolling column with all digits 0-9",
-        "text_elements": "10 Text components (one per digit)"
-      }
-    },
-    "demo_screen": {
-      "type": "Example implementation",
-      "state": {
-        "number": {
-          "type": "number",
-          "initial": 1,
-          "updates": "Set to random number on shuffle button press"
-        }
-      },
-      "interaction": "Floating shuffle button to randomize number"
-    }
-  },
-  "digit_parsing_logic": {
-    "conversion_process": {
-      "step_1": "number.toString() - Convert number to string",
-      "step_2": ".split('') - Split into character array",
-      "step_3": ".map(digit => parseInt(digit, 10)) - Parse each char to integer",
-      "example": "123 → '123' → ['1','2','3'] → [1, 2, 3]"
-    },
-    "memoization": {
-      "hook": "useMemo",
-      "dependencies": [
-        "number"
-      ],
-      "purpose": "Recalculate digits array only when number changes",
-      "benefit": "Prevents unnecessary re-renders and recalculations"
-    },
-    "key_generation": {
-      "strategy": "position-${index}",
-      "rationale": "Keys based on position, not digit value",
-      "benefit": "Stable keys allow layout animations to work correctly",
-      "example": "Number 121 → keys: ['position-0', 'position-1', 'position-2']",
-      "critical": "Position-based keys ensure animations track digit positions, not values"
-    }
-  },
-  "random_number_generation": {
-    "function": "getRandomNumber(digits)",
-    "algorithm": {
-      "min_calculation": "Math.pow(10, digits - 1)",
-      "max_calculation": "Math.pow(10, digits) - 1",
-      "random_formula": "Math.floor(Math.random() * (max - min + 1)) + min",
-      "example": {
-        "digits_3": {
-          "min": "10^2 = 100",
-          "max": "10^3 - 1 = 999",
-          "result": "Random number between 100 and 999"
-        }
-      }
-    },
-    "digit_count_randomization": {
-      "formula": "Math.floor(6 * Math.random() + 1)",
-      "range": "1 to 6 digits",
-      "note": "Each shuffle randomly picks digit count then generates number"
-    },
-    "ensures": "Numbers always have the specified digit count (no leading zeros except single 0)"
-  },
-  "visual_design": {
-    "color_scheme": {
-      "background": "#000 (black)",
-      "text": "white",
-      "button_background": "white",
-      "button_icon": "black"
-    },
-    "typography": {
-      "fontSize": 50,
-      "fontWeight": "bold",
-      "textAlign": "center",
-      "textAlignVertical": "center"
-    },
-    "dimensions": {
-      "digit_height": 55,
-      "digit_width": 40,
-      "font_size": 50,
-      "rationale": "Tight fit with minimal padding for clean appearance"
-    },
-    "spacing": {
-      "container": "Centered in screen",
-      "button_position": {
-        "position": "absolute",
-        "bottom": 80,
-        "right": 30,
-        "aspectRatio": 1,
-        "height": 64,
-        "borderRadius": 32
-      }
-    },
-    "visual_hierarchy": {
-      "primary": "Animated number (large, centered, white on black)",
-      "secondary": "Shuffle button (floating bottom-right)",
-      "contrast": "High contrast for readability and visual impact"
-    }
-  },
-  "react_patterns": {
-    "memo": {
-      "components": [
-        "AnimatedCount",
-        "AnimatedDigit"
-      ],
-      "purpose": "Prevent re-renders when parent updates with same props",
-      "critical_for": "Performance with multiple digit components"
-    },
-    "useMemo": {
-      "usage_1": {
-        "location": "AnimatedCount",
-        "calculation": "digits array",
-        "dependencies": [
-          "number"
-        ],
-        "benefit": "Only recalculate when number changes"
-      },
-      "usage_2": {
-        "location": "AnimatedDigit",
-        "calculation": "flattened text style",
-        "dependencies": [
-          "textStyle"
-        ],
-        "benefit": "Style object stability for React reconciliation"
-      }
-    },
-    "useState": {
-      "location": "Demo screen (index.tsx)",
-      "state": "number",
-      "updates": "On shuffle button press"
-    },
-    "component_composition": {
-      "pattern": "Container/Presentational",
-      "container": "AnimatedCount manages digit array and layout",
-      "presentational": "AnimatedDigit handles individual digit rendering"
-    }
-  },
-  "key_generation_strategy": {
-    "approach": "Position-based keys (not value-based)",
-    "implementation": "key={`position-${index}`}",
-    "why_position_based": {
-      "reason_1": "Allows same digit value in multiple positions",
-      "reason_2": "Enables smooth layout transitions when digit count changes",
-      "reason_3": "React can track position changes, not just value changes",
-      "example": "Number 111 has three '1' digits - position keys make each unique"
-    },
-    "animation_impact": {
-      "benefit": "Layout animations work correctly",
-      "behavior": "When digit count changes, positions animate in/out smoothly",
-      "alternative_issue": "Value-based keys would cause incorrect animations"
-    }
-  },
-  "overflow_and_clipping": {
-    "outer_container": {
-      "property": "overflow: 'hidden'",
-      "purpose": "Hides digits above and below the visible one",
-      "dimensions": {
-        "height": 55,
-        "width": 40
-      },
-      "effect": "Only one digit visible at a time (slot machine effect)"
-    },
-    "inner_container": {
-      "layout": "flexDirection: 'column'",
-      "contains": "10 Text components stacked vertically",
-      "total_height": "10 * 55 = 550px",
-      "visible_portion": "Only 55px (one digit) visible through outer container"
-    },
-    "scroll_mechanism": {
-      "technique": "translateY moves inner container up/down",
-      "visible_calculation": "Digit N visible when translateY = -N * height",
-      "example": "To show digit 7: translateY = -7 * 55 = -385px"
-    }
-  },
-  "spring_physics_tuning": {
-    "damping": {
-      "value": 20,
-      "effect": "Moderate damping - slight bounce",
-      "characteristic": "Prevents excessive oscillation while maintaining lively feel"
-    },
-    "stiffness": {
-      "value": 300,
-      "effect": "High stiffness - fast response",
-      "characteristic": "Snappy, immediate reaction to changes"
-    },
-    "mass": {
-      "value": 1,
-      "effect": "Standard mass",
-      "characteristic": "Balanced weight, not too heavy or light"
-    },
-    "overall_feel": {
-      "speed": "Fast",
-      "bounce": "Minimal",
-      "responsiveness": "High",
-      "aesthetic": "Crisp, mechanical (slot machine-like)"
-    },
-    "alternative_configs": {
-      "smoother": {
-        "damping": 30,
-        "stiffness": 200,
-        "feel": "Softer, more fluid"
-      },
-      "bouncier": {
-        "damping": 10,
-        "stiffness": 300,
-        "feel": "More playful with visible overshoot"
-      }
-    }
-  },
-  "performance_considerations": {
-    "digit_count_impact": {
-      "description": "Performance scales linearly with digit count",
-      "typical_range": "1-6 digits (as implemented)",
-      "max_reasonable": "~10 digits",
-      "note": "Each digit renders 10 Text components"
-    },
-    "text_component_count": {
-      "per_digit": 10,
-      "for_6_digits": "60 Text components total",
-      "overhead": "Minimal - Text is lightweight",
-      "optimization": "All pre-rendered, only transform changes on animation"
-    },
-    "memo_benefits": {
-      "AnimatedCount": "Prevents re-render when parent updates",
-      "AnimatedDigit": "Each digit only re-renders when its specific digit value changes"
-    },
-    "useMemo_optimization": {
-      "digits_array": "Only recalculated when number changes, not on every render",
-      "textStyle": "Flattened once, reused for all 10 digit texts"
-    },
-    "animation_performance": {
-      "runs_on": "UI thread (Reanimated)",
-      "layout_animations": "GPU-accelerated",
-      "transform_animations": "GPU-accelerated translateY",
-      "fps": "Smooth 60fps even with multiple digits animating"
-    },
-    "spring_animation_efficiency": {
-      "native_springs": "Reanimated's native spring implementation",
-      "independent_digits": "Each digit's spring runs independently",
-      "no_blocking": "Animations don't block JS thread"
-    }
-  },
-  "use_cases": {
-    "primary": [
-      "Number counters (views, likes, followers)",
-      "Score displays in games",
-      "Timer displays",
-      "Financial dashboards (stock prices, balances)",
-      "Odometer-style counters"
-    ],
-    "secondary": [
-      "Loading progress percentages",
-      "Statistics dashboards",
-      "Real-time metrics displays",
-      "Countdown timers",
-      "Step counters in fitness apps"
-    ],
-    "real_world_examples": [
-      "YouTube subscriber count animations",
-      "Twitter follower count updates",
-      "Banking app balance reveals",
-      "Casino slot machines",
-      "Car odometers",
-      "Mechanical flip clocks"
-    ],
-    "educational": [
-      "Teaching layout animations",
-      "Demonstrating transform animations",
-      "Showing overflow clipping techniques",
-      "Array-based animation patterns"
-    ]
-  },
-  "comparison_to_alternatives": {
-    "vs_simple_text_switch": {
-      "traditional": "Replace entire number text at once",
-      "animated_count": "Each digit animates independently",
-      "benefit": "More visually interesting, shows magnitude of change"
-    },
-    "vs_counting_animation": {
-      "counting": "Increment/decrement number smoothly (e.g., 1, 2, 3...100)",
-      "animated_count": "Jump directly to target number with scroll effect",
-      "use_case": "Different purposes - this is for instant updates, not gradual counting"
-    },
-    "vs_flip_card_animation": {
-      "flip_card": "3D flip effect for each digit",
-      "animated_count": "2D vertical scroll (slot machine style)",
-      "complexity": "Slot machine simpler to implement, flip card more elaborate"
-    },
-    "vs_morphing_numbers": {
-      "morphing": "Digits morph/blend into new digits",
-      "animated_count": "Clear scroll through all digits 0-9",
-      "readability": "Slot machine more readable during animation"
-    }
-  },
-  "customization_options": {
-    "dimensions": {
-      "digit_height": "Adjustable (currently 55)",
-      "digit_width": "Adjustable (currently 40)",
-      "font_size": "Adjustable (currently 50)",
-      "note": "All three should be coordinated for proper appearance"
-    },
-    "spring_config": {
-      "damping": "Adjustable for different bounce characteristics",
-      "stiffness": "Adjustable for speed/snappiness",
-      "mass": "Adjustable for weight feel"
-    },
-    "colors": {
-      "text_color": "Fully customizable via textStyle prop",
-      "background": "Customizable in demo screen container"
-    },
-    "layout_timing": {
-      "entering_duration": "Currently 250ms, adjustable",
-      "exiting_duration": "Currently 250ms, adjustable",
-      "layout_transition": "Spring-based, can configure spring params"
-    },
-    "digit_appearance": {
-      "textStyle": "Accepts any TextStyle properties",
-      "fonts": "Can use custom fonts",
-      "shadows": "Can add text shadows",
-      "gradients": "Could use react-native-masked-view for gradient text"
-    }
-  },
-  "potential_enhancements": {
-    "visual_effects": [
-      "Add separator for thousands (e.g., 1,000)",
-      "Decimal point support for fractional numbers",
-      "Currency symbol prefix/suffix",
-      "Percentage sign support",
-      "Background glow/shadow effects",
-      "Color coding (green for increase, red for decrease)"
-    ],
-    "animation_variants": [
-      "Horizontal scroll instead of vertical",
-      "3D flip effect",
-      "Elastic/bounce springs",
-      "Staggered digit animations (leftmost digit first)",
-      "Blur effect during transition",
-      "Scale effect on digit change"
-    ],
-    "interactivity": [
-      "Swipe to increment/decrement",
-      "Tap digit to manually change",
-      "Pinch to change digit count",
-      "Hold to continuously increment"
-    ],
-    "features": [
-      "Prefix/suffix text (e.g., '$' or 'pts')",
-      "Animated decimal places",
-      "Sign display (+/-)",
-      "Leading zeros option",
-      "Minimum digit count enforcement",
-      "Smooth counting animation between values"
-    ],
-    "advanced": [
-      "Multiple number formats (currency, percentage, etc.)",
-      "Internationalization (different number systems)",
-      "Scientific notation support",
-      "Roman numerals mode",
-      "Binary/hex display modes"
-    ]
-  },
-  "known_limitations": {
-    "digit_range": {
-      "limitation": "Only works with integers 0-9",
-      "no_support": "Letters, special characters, decimals",
-      "workaround": "Could extend to support decimal point as separate component"
-    },
-    "negative_numbers": {
-      "limitation": "No built-in support for negative numbers",
-      "workaround": "Could add separate minus sign component"
-    },
-    "large_numbers": {
-      "limitation": "Performance may degrade with 20+ digits",
-      "reason": "Each digit renders 10 Text components",
-      "recommendation": "Use abbreviations (K, M, B) for very large numbers"
-    },
-    "accessibility": {
-      "issue": "Screen readers may announce each digit separately",
-      "missing": "No accessibility label for complete number",
-      "recommendation": "Add accessibilityLabel to container with full number"
-    },
-    "reduced_motion": {
-      "issue": "No support for prefers-reduced-motion",
-      "impact": "May be distracting for users with motion sensitivity",
-      "recommendation": "Add AccessibilityInfo check to disable animations if needed"
-    }
-  },
-  "code_quality": {
-    "typescript": "Full TypeScript with explicit types",
-    "type_definitions": [
-      "AnimatedCountProps",
-      "AnimatedDigitProps"
-    ],
-    "imports": {
-      "types": [
-        "FC",
-        "StyleProp",
-        "TextStyle"
-      ],
-      "proper_organization": true
-    },
-    "constants": {
-      "TEXT_DIGIT_HEIGHT": 55,
-      "TEXT_DIGIT_WIDTH": 40,
-      "FONT_SIZE": 50,
-      "note": "Well-organized constants at component level"
-    },
-    "naming": {
-      "components": "PascalCase",
-      "props": "camelCase",
-      "constants": "SCREAMING_SNAKE_CASE"
-    },
-    "documentation": {
-      "inline_comments": "Good comments explaining key concepts (digit column rendering)",
-      "type_safety": "Full type coverage",
-      "example_usage": "Clear demo in index.tsx"
-    },
-    "best_practices": [
-      "memo for performance",
-      "useMemo for expensive calculations",
-      "Proper key generation strategy",
-      "Type safety throughout",
-      "Separated component concerns"
-    ]
-  },
-  "key_insights": {
-    "overflow_clipping_power": "overflow: 'hidden' combined with translateY creates clean slot machine effect",
-    "pre_rendering_efficiency": "Pre-rendering all 10 digits is more efficient than dynamic rendering",
-    "position_based_keys": "Keys based on position (not value) enable proper layout animations",
-    "spring_tuning": "High stiffness + moderate damping creates mechanical, precise feel",
-    "layout_coordination": "Layout animations on container work seamlessly with transform animations on digits",
-    "independent_digits": "Each digit animates independently but feels unified",
-    "memoization_importance": "Memoization critical for preventing unnecessary digit recalculations"
-  },
-  "learning_opportunities": {
-    "for_beginners": [
-      "Basic useState for number state",
-      "Array manipulation (split, map, parseInt)",
-      "Layout animations (FadeIn, FadeOut)",
-      "Transform animations (translateY)",
-      "Overflow clipping technique"
-    ],
-    "for_intermediate": [
-      "Position-based key generation strategy",
-      "useAnimatedStyle with spring animations",
-      "Combining layout and transform animations",
-      "Component memoization for performance",
-      "useMemo optimization patterns",
-      "StyleSheet.flatten for style handling"
-    ],
-    "for_advanced": [
-      "Creating reusable animated components",
-      "Spring physics tuning for specific effects",
-      "Performance optimization with multiple animated elements",
-      "Animation coordination patterns",
-      "Building animation component libraries"
-    ]
-  },
-  "testing_considerations": {
-    "unit_tests": [
-      "Digit parsing produces correct array",
-      "Random number generation respects digit count constraints",
-      "Components render with various number inputs",
-      "Edge cases: 0, single digit, maximum digits"
-    ],
-    "visual_tests": [
-      "Digits scroll smoothly to target values",
-      "Layout transitions work when digit count changes",
-      "No overflow visible outside digit containers",
-      "Spring animations complete properly",
-      "Fade in/out timing correct"
-    ],
-    "interaction_tests": [
-      "Shuffle button triggers number change",
-      "Rapid button presses don't break animation",
-      "Animations complete before new ones start"
-    ],
-    "edge_cases": [
-      "Number 0",
-      "Single digit numbers (1-9)",
-      "Repeated digits (111, 777)",
-      "Alternating digits (101, 121)",
-      "Maximum digit count (e.g., 999999)",
-      "Rapid consecutive changes"
-    ],
-    "performance_tests": [
-      "60fps maintained during animations",
-      "No memory leaks with repeated changes",
-      "Performance with maximum digit count",
-      "Multiple simultaneous digit changes"
-    ],
-    "accessibility_tests": [
-      "Screen reader announces numbers correctly",
-      "Touch target size adequate for button",
-      "Color contrast sufficient",
-      "Animation doesn't prevent number reading"
-    ]
-  },
-  "mathematical_patterns": {
-    "number_decomposition": {
-      "process": "Break integer into individual digits",
-      "base_10": "Each position represents power of 10",
-      "example": "523 = 5×10² + 2×10¹ + 3×10⁰"
-    },
-    "position_indexing": {
-      "left_to_right": "Index 0 is leftmost (most significant digit)",
-      "example": "123 → digits[0]=1, digits[1]=2, digits[2]=3"
-    },
-    "random_number_ranges": {
-      "formula": "min + random * (max - min + 1)",
-      "ensures_bounds": "Number always within [min, max] inclusive",
-      "digit_guarantee": "N-digit numbers never have leading zeros (except 0)"
-    }
-  },
-  "animation_choreography": {
-    "timing_coordination": {
-      "digit_scrolls": "Spring-based, vary by distance traveled",
-      "layout_changes": "Spring-based transition for container width",
-      "fade_effects": "Fixed 250ms duration",
-      "result": "Multiple animations feel coordinated despite different timings"
-    },
-    "visual_continuity": {
-      "scroll_direction": "Always vertical (up for increase, down for decrease in visual terms)",
-      "layout_flow": "Horizontal digit arrangement maintained",
-      "center_alignment": "Container centered keeps animation focal"
-    }
-  },
-  "accessibility_recommendations": {
-    "current_state": "Minimal accessibility implementation",
-    "should_add": [
-      "accessibilityLabel on container with full number value",
-      "accessibilityHint for shuffle button ('Generates random number')",
-      "Support for prefers-reduced-motion",
-      "Screen reader testing"
-    ],
-    "implementation": {
-      "full_number_label": "<Animated.View accessibilityLabel={`Number ${number}`}>",
-      "reduced_motion": "Use withTiming(0) instead of withSpring when motion reduced",
-      "screen_reader": "Ensure number announced as complete value, not individual digits"
-    }
-  },
-  "related_patterns": {
-    "similar_animations": [
-      "Flip clock displays",
-      "Slot machine reels",
-      "Car odometers",
-      "Airport departure boards",
-      "Mechanical counters",
-      "Score tickers"
-    ],
-    "animation_techniques": [
-      "Carousel/slider patterns",
-      "Infinite scroll lists",
-      "Picker wheels",
-      "Tumbler locks",
-      "Analog to digital transitions"
-    ]
-  },
-  "real_world_inspiration": {
-    "mechanical_devices": "Physical slot machines and odometers",
-    "digital_interfaces": "iOS number pickers, Android time pickers",
-    "sports_scoreboards": "Stadium digit displays",
-    "financial_apps": "Stock price tickers, balance animations"
-  },
-  "bundle_size_impact": {
-    "component_size": "Small (~150 lines total across 3 files)",
-    "dependencies": "Only Reanimated (likely already in project)",
-    "runtime_overhead": "Minimal - small number of components",
-    "text_components": "Scales with digit count × 10",
-    "estimated_size": "< 3KB"
-  },
-  "tags": [
-    "counter-animation",
-    "number-display",
-    "digit-animation",
-    "slot-machine",
-    "odometer",
-    "transform-animation",
-    "layout-animations",
-    "reanimated",
-    "spring-physics",
-    "overflow-clipping",
-    "vertical-scroll",
-    "ticker",
-    "score-display"
+  "hooks": [
+    "useAnimatedStyle",
+    "useMemo",
+    "useState"
   ],
-  "content_hash": "766d7ec4c84f5b1057822866eb4194636426c706dce81007faee84d7a04d21a6",
-  "hash_algorithm": "sha256",
-  "hash_generated_at": "2025-10-12T09:19:28.273Z",
-  "last_validated": "2025-10-12T09:19:28.273Z"
+  "functions": [
+    "getRandomNumber",
+    "memo",
+    "parseInt",
+    "setNumber",
+    "withSpring"
+  ],
+  "components": [
+    "Animated.View",
+    "AnimatedCount",
+    "AnimatedDigit",
+    "Entypo",
+    "PressableScale",
+    "Text",
+    "View"
+  ],
+  "patterns": [
+    "animated-styling",
+    "spring-animation"
+  ],
+  "techniques": [
+    "spring-physics",
+    "transform-animations"
+  ],
+  "stats": {
+    "total_files": 3,
+    "total_packages": 5,
+    "total_hooks": 3,
+    "total_functions": 5,
+    "total_components": 7,
+    "total_patterns": 2,
+    "total_techniques": 2
+  }
 }
