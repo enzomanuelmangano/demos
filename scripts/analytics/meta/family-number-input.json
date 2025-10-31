@@ -1,6 +1,7 @@
 {
   "animation_slug": "family-number-input",
-  "extracted_at": "2025-10-31T18:25:45.260Z",
+  "content_hash": "c0b66de5aacacfe2e8faf02f2d8b542719cc0ec124f039373283cd0edbff879d",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -36,54 +37,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../../utils/get-commas-array": {
-      "imports": [
-        "getCommasArray"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-number": {
-      "imports": [
-        "AnimatedNumber"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/buttons-grid": {
-      "imports": [
-        "ButtonsGrid"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./individual-number": {
-      "imports": [
-        "AnimatedSingleNumber"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./input-button": {
-      "imports": [
-        "InputButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./number-input": {
-      "imports": [
-        "NumberInput"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "FontAwesome5"

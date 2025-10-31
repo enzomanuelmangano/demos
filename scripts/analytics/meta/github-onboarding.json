@@ -1,6 +1,7 @@
 {
   "animation_slug": "github-onboarding",
-  "extracted_at": "2025-10-31T18:25:45.349Z",
+  "content_hash": "07f3f168e676df88e0dccd812cb95c9670bd15c8c43b22ad426d0bdac8eb8268",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -35,31 +36,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/colorful-onboarding": {
-      "imports": [
-        "ColorfulOnboarding"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./page": {
-      "imports": [
-        "OnboardingPage"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./pagination-dots": {
-      "imports": [
-        "PaginationDot",
-        "PaginationDots"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -69,7 +45,12 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Image",
+        "LinearGradient",
+        "Rect"
+      ]
     },
     "color": {
       "imports": [],

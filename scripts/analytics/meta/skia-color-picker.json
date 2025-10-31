@@ -1,6 +1,7 @@
 {
   "animation_slug": "skia-color-picker",
-  "extracted_at": "2025-10-31T18:25:46.262Z",
+  "content_hash": "a008c2ed4abbe1f4e32b60d0d49c2a18d110ddd9e8fb85bb2b886bb8f6aaa774",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -35,66 +36,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/color-picker": {
-      "imports": [
-        "ColorPicker"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./shader": {
-      "imports": [
-        "radialGradientShader"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/clamp-to-circle": {
-      "imports": [
-        "clampToCircle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/get-hue-from-position": {
-      "imports": [
-        "getHueFromPosition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/get-saturation-from-position": {
-      "imports": [
-        "getSaturationFromPosition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/hsv-to-rgb": {
-      "imports": [
-        "hsvToRgb"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BlurMask",
@@ -109,7 +50,15 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Canvas",
+        "Circle",
+        "Group",
+        "Path",
+        "Shadow",
+        "SweepGradient"
+      ]
     },
     "react": {
       "imports": [],

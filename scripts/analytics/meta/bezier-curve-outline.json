@@ -1,6 +1,7 @@
 {
   "animation_slug": "bezier-curve-outline",
-  "extracted_at": "2025-10-31T18:25:44.840Z",
+  "content_hash": "d9ab00ba00ca758555cd962fcc709b133801712154a70349b2e4f0c818a3fcdf",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -43,78 +44,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../animated-blur-view": {
-      "imports": [
-        "AnimatedBlurView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../hooks/useSharedControlPoint": {
-      "imports": [
-        "useSharedControlPoint"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./chessboard-layout": {
-      "imports": [
-        "ChessboardLayout"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-blur-view": {
-      "imports": [
-        "AnimatedBlurView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-square": {
-      "imports": [
-        "AnimatedSquare"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bezier-outline": {
-      "imports": [
-        "BezierOutline"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "InitialPoints"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/useAnimateThroughPath": {
-      "imports": [
-        "useAnimateThroughPath"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/geometry": {
-      "imports": [
-        "PathGeometry"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Circle",
@@ -124,7 +53,12 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Circle",
+        "Group",
+        "Image",
+        "Path"
+      ]
     },
     "expo-blur": {
       "imports": [

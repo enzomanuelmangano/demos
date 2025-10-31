@@ -1,6 +1,7 @@
 {
   "animation_slug": "steddy-graph-interaction",
-  "extracted_at": "2025-10-31T18:25:46.470Z",
+  "content_hash": "520c0b0a7bcb26e32bda843952bbfda5e76962f6568926cd05081b31bb7d7003",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -31,48 +32,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../constants/palette": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/graph": {
-      "imports": [
-        "Graph"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/segmented-control": {
-      "imports": [
-        "SegmentedControl"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/graph-scores": {
-      "imports": [
-        "LIGHT_GRAPH_SCORES",
-        "PRO_GRAPH_SCORES",
-        "STANRDARD_GRAPH_SCORES"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/palette": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -85,9 +44,18 @@
         "useFont",
         "vec"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "CornerPathEffect",
+        "DashPathEffect",
+        "Line",
+        "Path",
+        "Text"
+      ]
     },
     "pressto": {
       "imports": [

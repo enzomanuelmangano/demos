@@ -1,6 +1,7 @@
 {
   "animation_slug": "blur-cards",
-  "extracted_at": "2025-10-31T18:25:44.844Z",
+  "content_hash": "aa113f8bffde9406d7d686fd4a097d9dab54d1bd3f9a4a5a631dcb1f10f6017a",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -42,7 +43,14 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Group",
+        "Path",
+        "RadialGradient",
+        "Rect"
+      ]
     },
     "pressto": {
       "imports": [

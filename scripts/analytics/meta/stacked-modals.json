@@ -1,6 +1,7 @@
 {
   "animation_slug": "stacked-modals",
-  "extracted_at": "2025-10-31T18:25:46.450Z",
+  "content_hash": "41a49e78d2297b310b99ea12834c2040dc3ce3392d8c0cd3dc48b2c07c0f327f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "stacked-modal-manager/index.ts",
     "components": [
@@ -38,89 +39,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../context": {
-      "imports": [
-        "InternalStackedModalContext",
-        "StackedModalContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../stacked-modal-manager/hooks": {
-      "imports": [
-        "useStackedModal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./backdrop": {
-      "imports": [
-        "Backdrop"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "MAX_VISIBLE_MODALS",
-        "MODAL_HEIGHT"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./context": {
-      "imports": [
-        "InternalStackedModalContext",
-        "StackedModalContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hook": {
-      "imports": [
-        "useDemoStackedModal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks": {
-      "imports": [
-        "useInternalStackedModal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-modal": {
-      "imports": [
-        "useModal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-modal": {
-      "imports": [
-        "StackedModal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-modal-manager": {
-      "imports": [
-        "StackedModalProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"

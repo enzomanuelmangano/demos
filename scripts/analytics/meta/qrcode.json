@@ -1,6 +1,7 @@
 {
   "animation_slug": "qrcode",
-  "extracted_at": "2025-10-31T18:25:46.067Z",
+  "content_hash": "ae5e6825a5fbd835f0c239b0099ff5abf865ec784fffd2e3b5b80299feb599c3",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -35,14 +36,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/slider": {
-      "imports": [
-        "Slider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/ui/swift-ui": {
       "imports": [
         "Host",
@@ -60,7 +53,11 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "DiscretePathEffect",
+        "LinearGradient",
+        "Text"
+      ]
     },
     "react": {
       "imports": [

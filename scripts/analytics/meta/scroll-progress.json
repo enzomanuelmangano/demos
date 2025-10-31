@@ -1,6 +1,7 @@
 {
   "animation_slug": "scroll-progress",
-  "extracted_at": "2025-10-31T18:25:46.160Z",
+  "content_hash": "d103c639695f5f420cf21fd07ca60f0bcd20fd92f5e40fce40474ca145b8c484",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "section-content-list/utils/index.ts",
     "components": [
@@ -41,63 +42,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../typings": {
-      "imports": [
-        "BottomProgressState"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./bottom-progress": {
-      "imports": [
-        "BottomProgress"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./collapsed-area": {
-      "imports": [
-        "CollapsedArea"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "sections"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./progress-bar-area": {
-      "imports": [
-        "ProgressBarArea"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./section-content-list": {
-      "imports": [
-        "SectionContentList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils": {
-      "imports": [
-        "clamp",
-        "getReadingTime"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

@@ -1,6 +1,7 @@
 {
   "animation_slug": "shared-transition",
-  "extracted_at": "2025-10-31T18:25:46.247Z",
+  "content_hash": "b783bd4bafeedde9cec6de395ff0a6f6bfaee74cdda10ab407351aa2127f8733",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "typings/index.ts",
     "components": [
@@ -37,72 +38,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../components/animated-image": {
-      "imports": [
-        "AnimatedImage"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/images": {
-      "imports": [
-        "dataSources"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/screen-names": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../typings": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../constants/screen-names": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/screen-names": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/details": {
-      "imports": [
-        "DetailsScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/home": {
-      "imports": [
-        "HomeScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./typings": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@react-native-seoul/masonry-list": {
       "imports": [],
       "hooks": [],

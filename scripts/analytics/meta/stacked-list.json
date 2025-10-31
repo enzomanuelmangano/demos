@@ -1,6 +1,7 @@
 {
   "animation_slug": "stacked-list",
-  "extracted_at": "2025-10-31T18:25:46.432Z",
+  "content_hash": "43c23359ae5fdf924a8a58faf7b7ea11759dd6a09e1941c8e4bc08acd57482f3",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],

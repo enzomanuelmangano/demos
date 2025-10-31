@@ -1,6 +1,7 @@
 {
   "animation_slug": "ios-home-bouncy",
-  "extracted_at": "2025-10-31T18:25:45.498Z",
+  "content_hash": "3c20f872c77ddf614148173a294ffb6d9b599097b11531af4ec38a6c115f61f4",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "screens/spring-customizer/index.tsx",
     "components": [
@@ -45,133 +46,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../../animations/bouncy": {
-      "imports": [
-        "startAnimation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../animations/bouncy": {
-      "imports": [
-        "BouncyProgressShared",
-        "ClosingSpringConfigShared",
-        "OpeningSpringConfigShared"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/bouncy-item": {
-      "imports": [
-        "BouncyView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants": {
-      "imports": [
-        "items"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animations": {
-      "imports": [
-        "ClosingEnteringKeyframe",
-        "ClosingExitingKeyframe",
-        "OpeningEnteringKeyframe",
-        "OpeningExitingKeyframe"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animations/bouncy": {
-      "imports": [
-        "startAnimation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./app-item": {
-      "imports": [
-        "AppItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/modal-content": {
-      "imports": [
-        "ModalContent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/pull-to-dismiss": {
-      "imports": [
-        "PullToDismissGesture"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/spring-slider-container": {
-      "imports": [
-        "SpringSliderContainer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/tab-selector": {
-      "imports": [
-        "TabSelector"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "LayoutConfig",
-        "NUM_COLUMNS",
-        "SPACING"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/home": {
-      "imports": [
-        "AppsList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/spring-customizer": {
-      "imports": [
-        "SpringCustomizer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./spring-config-slider": {
-      "imports": [
-        "SpringConfigSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-blur": {
       "imports": [
         "BlurView"

@@ -1,6 +1,7 @@
 {
   "animation_slug": "floating-modal",
-  "extracted_at": "2025-10-31T18:25:45.291Z",
+  "content_hash": "c5a684197c64cb3d642630b4805ac4bff2bc737b03881d17e4862c55877f41fd",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,54 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../constants": {
-      "imports": [
-        "FLOATING_BUTTON_SIZE"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./AddCloseIcon": {
-      "imports": [
-        "AddCloseIcon"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./AnimatedBackdrop": {
-      "imports": [
-        "AnimatedBackdrop"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./Modal": {
-      "imports": [
-        "ModalContent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/FloatingModal": {
-      "imports": [
-        "FloatingModal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "FLOATING_BUTTON_SIZE"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

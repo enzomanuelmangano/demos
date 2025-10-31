@@ -1,6 +1,7 @@
 {
   "animation_slug": "fractal-glass",
-  "extracted_at": "2025-10-31T18:25:45.325Z",
+  "content_hash": "c5c1741d294ba095f1459929dc8cbce236ad761dfc3eae1ee651a61a1f9eb975",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -32,14 +33,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/fractal-glass-mask": {
-      "imports": [
-        "FractalGlassMask"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Octicons"
@@ -62,7 +55,15 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Circle",
+        "Group",
+        "LinearGradient",
+        "Mask",
+        "Rect"
+      ]
     },
     "pressto": {
       "imports": [

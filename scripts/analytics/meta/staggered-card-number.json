@@ -1,6 +1,7 @@
 {
   "animation_slug": "staggered-card-number",
-  "extracted_at": "2025-10-31T18:25:46.458Z",
+  "content_hash": "e4f48fb886fe502305642c733df1432beadd719e43950df21ca49694834a2907",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,22 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/card-info": {
-      "imports": [
-        "CardInfo"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hideable-number": {
-      "imports": [
-        "HideableNumber"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Feather",

@@ -1,6 +1,7 @@
 {
   "animation_slug": "theme-canvas-animation",
-  "extracted_at": "2025-10-31T18:25:46.659Z",
+  "content_hash": "59ac63f63e19f9884ac934727d8ff061839086d5c24eadb66128d822d785f657",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "selectable-square/index.tsx",
     "components": [],
@@ -30,14 +31,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./selectable-square": {
-      "imports": [
-        "SelectableSquareContainer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Group",
@@ -47,9 +40,16 @@
         "Text",
         "useFont"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Group",
+        "Rect",
+        "RoundedRect",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

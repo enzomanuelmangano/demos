@@ -1,6 +1,7 @@
 {
   "animation_slug": "floating-bottom-bar",
-  "extracted_at": "2025-10-31T18:25:45.281Z",
+  "content_hash": "976a01f8e2cd99cb1e72b9d96866c8409f336a18840724e812861b386f31033d",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -34,46 +35,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../../constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animated-opacity-view": {
-      "imports": [
-        "AnimatedOpacityView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar": {
-      "imports": [
-        "BottomTabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./shader-light": {
-      "imports": [
-        "ShaderLight"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Feather",
@@ -102,7 +63,12 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "LinearGradient",
+        "Path",
+        "RoundedRect"
+      ]
     },
     "pressto": {
       "imports": [

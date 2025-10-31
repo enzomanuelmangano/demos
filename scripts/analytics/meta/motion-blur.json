@@ -1,6 +1,7 @@
 {
   "animation_slug": "motion-blur",
-  "extracted_at": "2025-10-31T18:25:45.799Z",
+  "content_hash": "bad8820075858fb5a910b2be1a0566b251ce3d7ff2b7623f2a7dda10fb10bac0",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [],
@@ -30,44 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../utils/generate-random-item": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/blurred-list": {
-      "imports": [
-        "BlurredList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/list-item": {
-      "imports": [
-        "ListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "MotionBlur"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/generate-random-item": {
-      "imports": [
-        "generateRandomItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Entypo"

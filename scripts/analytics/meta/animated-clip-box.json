@@ -1,6 +1,7 @@
 {
   "animation_slug": "animated-clip-box",
-  "extracted_at": "2025-10-31T18:25:44.552Z",
+  "content_hash": "565157d599d733a3e50bb22d0d9b8e2c29023756f676285ba3c197de9f21c99f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -28,22 +29,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/clip-box-button": {
-      "imports": [
-        "ClipBoxButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./expanded-circle": {
-      "imports": [
-        "ExpandedCircle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

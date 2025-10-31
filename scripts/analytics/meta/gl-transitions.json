@@ -1,6 +1,7 @@
 {
   "animation_slug": "gl-transitions",
-  "extracted_at": "2025-10-31T18:25:45.369Z",
+  "content_hash": "9c619e1d9ff1bc8ed0423ff596258e023cbf75971beedb6ff83ae0a7229374fb",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/the-magic/index.tsx",
     "components": [],
@@ -59,103 +60,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../atoms/notes": {
-      "imports": [
-        "useNotes"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../constants/theme": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../providers/gl-transitions": {
-      "imports": [
-        "glsl",
-        "useGLTransition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/theme": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./provider": {
-      "imports": [
-        "GLTransitionsContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./providers/gl-transitions": {
-      "imports": [
-        "GLTransitionsProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/add-note-screen": {
-      "imports": [
-        "AddNoteScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/home-screen": {
-      "imports": [
-        "HomeScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./shader-lib": {
-      "imports": [
-        "frag"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./the-magic": {
-      "imports": [
-        "DirectionalWarp"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/transition": {
-      "imports": [
-        "transition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"
@@ -197,7 +101,12 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Fill",
+        "LinearGradient",
+        "Text"
+      ]
     },
     "expo-linear-gradient": {
       "imports": [

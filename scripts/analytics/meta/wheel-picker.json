@@ -1,6 +1,7 @@
 {
   "animation_slug": "wheel-picker",
-  "extracted_at": "2025-10-31T18:25:47.062Z",
+  "content_hash": "633d669d8ff5bc78057de415bc4789a73a750c19615bb28ca01537edd584024e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -47,78 +48,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../constants": {
-      "imports": [
-        "ScreenWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animated-digit": {
-      "imports": [
-        "AnimatedDigit"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./boundary-gradient": {
-      "imports": [
-        "BoundaryGradient"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-count/animated-count": {
-      "imports": [
-        "AnimatedCount"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/draggable-slider": {
-      "imports": [
-        "DraggableSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "ScreenWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/get-lines-path": {
-      "imports": [
-        "getLinesPath"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/snap-point": {
-      "imports": [
-        "snapPoint"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/unwrap-reanimated-value": {
-      "imports": [
-        "unwrapReanimatedValue"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialCommunityIcons"
@@ -139,7 +68,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "LinearGradient",
+        "Path",
+        "Rect",
+        "Text"
+      ]
     },
     "color": {
       "imports": [],

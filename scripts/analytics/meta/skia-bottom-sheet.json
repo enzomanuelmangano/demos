@@ -1,6 +1,7 @@
 {
   "animation_slug": "skia-bottom-sheet",
-  "extracted_at": "2025-10-31T18:25:46.252Z",
+  "content_hash": "78f325548f98a61bd8976a9b362f7958e29a54947fea4009ef5224c178d8a7cd",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -26,14 +27,6 @@
     "react-native-skia-gesture": "0.4.5-beta.1"
   },
   "packages_detail": {
-    "./components/bottom-sheet": {
-      "imports": [
-        "BottomSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BackdropBlur",
@@ -45,9 +38,15 @@
         "rrect",
         "useImage"
       ],
-      "hooks": [],
+      "hooks": [
+        "useImage"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Image",
+        "RoundedRect"
+      ]
     },
     "react": {
       "imports": [

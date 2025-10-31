@@ -1,6 +1,7 @@
 {
   "animation_slug": "record-button",
-  "extracted_at": "2025-10-31T18:25:46.133Z",
+  "content_hash": "4d50189abdf1e019f677b041904d7dad6e1f73e6167662021f2def43c0993583",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -34,30 +35,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../utils/haptics": {
-      "imports": [
-        "hapticFeedback"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/record-button": {
-      "imports": [
-        "RecordButtonComponent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./create-skia-line": {
-      "imports": [
-        "getRightLinePath"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -67,7 +44,12 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Path",
+        "RoundedRect",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

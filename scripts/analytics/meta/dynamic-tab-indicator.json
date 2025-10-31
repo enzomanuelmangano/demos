@@ -1,6 +1,7 @@
 {
   "animation_slug": "dynamic-tab-indicator",
-  "extracted_at": "2025-10-31T18:25:45.194Z",
+  "content_hash": "f87ee8944fa2ca657e31131b6a5e14bd683fd84e1460a03575096f0f1aafb0ff",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,30 +31,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "./components/dynamic-tab-indicator": {
-      "imports": [
-        "DynamicTabIndicator"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/data": {
-      "imports": [
-        "data"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./section-tabs": {
-      "imports": [
-        "SectionTabs"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "pressto": {
       "imports": [
         "PressableOpacity"

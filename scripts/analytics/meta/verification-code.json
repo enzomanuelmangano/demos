@@ -1,6 +1,7 @@
 {
   "animation_slug": "verification-code",
-  "extracted_at": "2025-10-31T18:25:47.014Z",
+  "content_hash": "2390b15d15a31befa52e7862466c6928cd13971f7d9b716196e20258e9b71ddf",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "screens/verification-code/index.tsx",
     "components": [
@@ -29,44 +30,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../../email-demo/hooks/use-animated-shake": {
-      "imports": [
-        "useAnimatedShake"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/verification-code": {
-      "imports": [
-        "VerificationCode"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/verification-code/animated-code-number": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animated-code-number": {
-      "imports": [
-        "AnimatedCodeNumber"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/verification-code": {
-      "imports": [
-        "VerificationCodeScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-router": {
       "imports": [
         "useFocusEffect"

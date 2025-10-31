@@ -1,6 +1,7 @@
 {
   "animation_slug": "composable-text",
-  "extracted_at": "2025-10-31T18:25:45.070Z",
+  "content_hash": "8c1a24be7d3d8baa2c4bed4b7bc7c90bd2be461e854d88ba335adb7170fd0693",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -26,14 +27,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./composable-text": {
-      "imports": [
-        "ComposableText"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "pressto": {
       "imports": [
         "PressableScale"

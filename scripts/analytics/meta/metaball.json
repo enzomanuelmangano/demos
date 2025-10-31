@@ -1,6 +1,7 @@
 {
   "animation_slug": "metaball",
-  "extracted_at": "2025-10-31T18:25:45.651Z",
+  "content_hash": "336f97769f70d05577fe2294d143a41987bc3373c962ba87803fda290fce68a7",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -39,7 +40,14 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "ColorMatrix",
+        "Group",
+        "Paint",
+        "Path",
+        "SweepGradient"
+      ]
     },
     "react": {
       "imports": [

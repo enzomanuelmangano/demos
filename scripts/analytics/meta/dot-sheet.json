@@ -1,6 +1,7 @@
 {
   "animation_slug": "dot-sheet",
-  "extracted_at": "2025-10-31T18:25:45.108Z",
+  "content_hash": "c1b5a59b142570cf72b69ff6c2a2c167fafb1a3dcefc2107e7d0f3b1ca479448",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -35,30 +36,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "./components/background-gradient": {
-      "imports": [
-        "BackgroundGradient"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/card-input": {
-      "imports": [
-        "CardInput"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"
@@ -76,7 +53,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Fill",
+        "SweepGradient",
+        "Text"
+      ]
     },
     "pressto": {
       "imports": [

@@ -1,6 +1,7 @@
 {
   "animation_slug": "scrollable-bottom-sheet",
-  "extracted_at": "2025-10-31T18:25:46.185Z",
+  "content_hash": "45c25c701d7cb7c8ee31a09159e265f725118b6b50d84fc40193e01792622070",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -33,38 +34,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./Backdrop": {
-      "imports": [
-        "Backdrop"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./BottomSheet": {
-      "imports": [
-        "BottomSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/BottomSheet/ScrollableBottomSheet": {
-      "imports": [
-        "ScrollableBottomSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/BottomSheetPage": {
-      "imports": [
-        "BottomSheetPage"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-linear-gradient": {
       "imports": [
         "LinearGradient"

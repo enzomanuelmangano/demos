@@ -1,6 +1,7 @@
 {
   "animation_slug": "imessage-stack",
-  "extracted_at": "2025-10-31T18:25:45.405Z",
+  "content_hash": "de59fc41ba51c573c9de542492fff27038b14b05308c83e979816ec60aaa1776",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -22,16 +23,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./card": {
-      "imports": [
-        "CARD_HEIGHT",
-        "CARD_WIDTH",
-        "Card"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "react-native": {
       "imports": [
         "Dimensions",

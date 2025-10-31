@@ -1,6 +1,7 @@
 {
   "animation_slug": "particles-button",
-  "extracted_at": "2025-10-31T18:25:45.921Z",
+  "content_hash": "c0fe33c08dfa22329531143d3446b10e5067139ad3760625c5e129474b490770",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,22 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./blast-effect": {
-      "imports": [
-        "BlastCircleEffect"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/circular-button": {
-      "imports": [
-        "CircularButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign",
@@ -65,9 +50,17 @@
         "useRSXformBuffer",
         "useTexture"
       ],
-      "hooks": [],
+      "hooks": [
+        "useRSXformBuffer",
+        "useTexture"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Atlas",
+        "Canvas",
+        "Circle",
+        "Group"
+      ]
     },
     "pressto": {
       "imports": [

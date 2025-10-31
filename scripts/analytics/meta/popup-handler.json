@@ -1,6 +1,7 @@
 {
   "animation_slug": "popup-handler",
-  "extracted_at": "2025-10-31T18:25:46.012Z",
+  "content_hash": "080b8423b491225d3158dc5fa0faced5ef71a2986b7ab36b9967e1d5aaca02a3",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -40,39 +41,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./BlurredContext": {
-      "imports": [
-        "BlurredPopupContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./BlurredPopup": {
-      "imports": [
-        "BlurredPopupProvider",
-        "TouchablePopupHandler"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./BlurredPopupProvider": {
-      "imports": [
-        "BlurredPopupProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./TouchablePopupHandler": {
-      "imports": [
-        "TouchablePopupHandler"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "FontAwesome"

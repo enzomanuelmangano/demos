@@ -1,6 +1,7 @@
 {
   "animation_slug": "empty-qrcode",
-  "extracted_at": "2025-10-31T18:25:45.217Z",
+  "content_hash": "4b7115f8e0575313a825a28a6493869ae98302447ba8073c73714707dc444deb",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -31,30 +32,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/qrcode-share": {
-      "imports": [
-        "QRCodeShare"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-active-letter": {
-      "imports": [
-        "useActiveLetterAnimation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-active-qrcode": {
-      "imports": [
-        "useActiveQRCode"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -64,9 +41,16 @@
         "useFont",
         "vec"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "RadialGradient",
+        "Rect",
+        "Text"
+      ]
     },
     "pressto": {
       "imports": [

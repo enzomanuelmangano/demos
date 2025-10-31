@@ -1,6 +1,7 @@
 {
   "animation_slug": "alert-drawer",
-  "extracted_at": "2025-10-31T18:25:44.504Z",
+  "content_hash": "7dfcc0a4a26ff4fc5da1432937cde1e3cca83f1644c78bc506aa96aa088ff69e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -30,36 +31,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/alert-drawer": {
-      "imports": [
-        "AlertDrawer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "AlertDrawer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./styles": {
-      "imports": [
-        "ALERT_COLOR",
-        "BUTTON_HEIGHT",
-        "BUTTON_WIDTH",
-        "EXPANDED_CARD_HEIGHT",
-        "EXPANDED_CARD_WIDTH",
-        "MIN_BUTTON_WIDTH",
-        "styles"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "FontAwesome",

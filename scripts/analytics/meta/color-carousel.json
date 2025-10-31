@@ -1,6 +1,7 @@
 {
   "animation_slug": "color-carousel",
-  "extracted_at": "2025-10-31T18:25:45.067Z",
+  "content_hash": "a894749272323af038e6d8fd9d4c6cf217d5b165dd661b4baba8c68747194655",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -29,32 +30,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./carousel-item": {
-      "imports": [
-        "CarouselItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/carousel": {
-      "imports": [
-        "Carousel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "BACKGROUND_COLOR",
-        "data",
-        "windowWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -64,7 +39,11 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "RadialGradient",
+        "Rect"
+      ]
     },
     "color": {
       "imports": [],

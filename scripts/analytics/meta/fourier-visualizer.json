@@ -1,6 +1,7 @@
 {
   "animation_slug": "fourier-visualizer",
-  "extracted_at": "2025-10-31T18:25:45.317Z",
+  "content_hash": "251769568f75920994366131e63a441dfe276e6da23c0229d2725f9f4e0b7cfc",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -40,53 +41,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/fourier-visualizer": {
-      "imports": [
-        "FourierVisualizer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./geometry": {
-      "imports": [
-        "PathGeometry"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/extract-epicycles": {
-      "imports": [
-        "extractEpicycles"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/fft": {
-      "imports": [
-        "computeFFT"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/fill": {
-      "imports": [
-        "fillToPowerOfTwo",
-        "getPoints"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"
@@ -106,7 +60,10 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Path"
+      ]
     },
     "fft.js": {
       "imports": [],

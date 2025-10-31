@@ -1,6 +1,7 @@
 {
   "animation_slug": "stacked-bottom-sheet",
-  "extracted_at": "2025-10-31T18:25:46.413Z",
+  "content_hash": "6aeb73374f125cceafecbbc55030c6d4709ded2258768d6cbd7e537adecb584e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/stacked-sheet-manager/index.ts",
     "components": [],
@@ -38,95 +39,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../../spiral": {
-      "imports": [
-        "Spiral"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./context": {
-      "imports": [
-        "InternalStackedSheetContext",
-        "StackedSheetContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hook": {
-      "imports": [
-        "useDemoStackedSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks": {
-      "imports": [
-        "useInternalStackedSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/the-magic": {
-      "imports": [
-        "MagicScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src/stacked-sheet-manager": {
-      "imports": [
-        "StackedSheetProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-sheet": {
-      "imports": [
-        "StackedSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-sheet-handle": {
-      "imports": [
-        "StackedSheetHandle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-sheet-manager/hooks": {
-      "imports": [
-        "useStackedSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-sheet-manager/stacked-sheet-handle": {
-      "imports": [
-        "StackedSheetHandle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "pressto": {
       "imports": [
         "PressableScale"

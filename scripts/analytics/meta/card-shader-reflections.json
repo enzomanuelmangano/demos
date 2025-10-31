@@ -1,6 +1,7 @@
 {
   "animation_slug": "card-shader-reflections",
-  "extracted_at": "2025-10-31T18:25:44.988Z",
+  "content_hash": "f3ec0bf73b18fbad18575aaff7ff5e44ca697caf6221ca2752adba9ac219c7f4",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -37,118 +38,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../utils/constants": {
-      "imports": [
-        "CARD_HEIGHT",
-        "CARD_WIDTH",
-        "CardType",
-        "SPACING"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../utils/types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card-canvas.component": {
-      "imports": [
-        "CardCanvas"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card-carousel.styles": {
-      "imports": [
-        "styles"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card-chip.component": {
-      "imports": [
-        "CardChip"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card-chip.styles": {
-      "imports": [
-        "styles"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card.shader": {
-      "imports": [
-        "cardShader"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card.styles": {
-      "imports": [
-        "styles"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./card/card.component": {
-      "imports": [
-        "Card"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/card-carousel/card-carousel": {
-      "imports": [
-        "CardCarousel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "CardShaderReflections"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/constants": {
-      "imports": [
-        "CARD_DATA",
-        "CARD_HEIGHT",
-        "CARD_WIDTH",
-        "SCREEN_WIDTH"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -158,7 +47,11 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Fill",
+        "Text"
+      ]
     },
     "react": {
       "imports": [],

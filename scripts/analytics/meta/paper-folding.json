@@ -1,6 +1,7 @@
 {
   "animation_slug": "paper-folding",
-  "extracted_at": "2025-10-31T18:25:45.862Z",
+  "content_hash": "4635629cd17d14cff7cb9ed54e9a9844609411d5a9ebbcc3ede35277bbc31a6f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -28,22 +29,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./background-gradient": {
-      "imports": [
-        "BackgroundGradient"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components": {
-      "imports": [
-        "Paper"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -55,7 +40,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Rect",
+        "Shadow",
+        "SweepGradient"
+      ]
     },
     "expo-haptics": {
       "imports": [],

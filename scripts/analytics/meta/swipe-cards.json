@@ -1,6 +1,7 @@
 {
   "animation_slug": "swipe-cards",
-  "extracted_at": "2025-10-31T18:25:46.611Z",
+  "content_hash": "912877a6a7154a7bca8dde699c927648ec25ffaa613c75cbf87f4dec435368d0",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -36,50 +37,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../constants": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/Card": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../constants": {
-      "imports": [
-        "IMAGES"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/Card": {
-      "imports": [
-        "SwipeableCard"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "IMAGES"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-swipe-controls": {
-      "imports": [
-        "useSwipeControls"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

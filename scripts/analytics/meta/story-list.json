@@ -1,6 +1,7 @@
 {
   "animation_slug": "story-list",
-  "extracted_at": "2025-10-31T18:25:46.525Z",
+  "content_hash": "7d3dc8eb9995fdfd1d7360889a94f81062e419b98ea0689d8cd97f5bd6486e4b",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -28,31 +29,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../helpers": {
-      "imports": [
-        "clamp",
-        "findClosestSnapPoint"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/story-list": {
-      "imports": [
-        "StoryList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./story-item": {
-      "imports": [
-        "StoryListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-image": {
       "imports": [
         "Image"

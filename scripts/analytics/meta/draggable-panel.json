@@ -1,6 +1,7 @@
 {
   "animation_slug": "draggable-panel",
-  "extracted_at": "2025-10-31T18:25:45.137Z",
+  "content_hash": "50aeb46879dff028ddc79700ba3b8774f405092c3e190e2b160169b8be9cd902",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -34,55 +35,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../draggable-panel": {
-      "imports": [
-        "DraggableControlPanel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./collapsed-button": {
-      "imports": [
-        "CollapsedButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/spring-animation-panel": {
-      "imports": [
-        "SpringAnimationPanel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./panel-content": {
-      "imports": [
-        "PanelContent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/animation-helpers": {
-      "imports": [
-        "snapToCorner",
-        "useInitialPanelPosition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/spring-configs": {
-      "imports": [
-        "springAnimationConfigs"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"

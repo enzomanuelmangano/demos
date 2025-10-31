@@ -1,6 +1,7 @@
 {
   "animation_slug": "animated-indicator-list",
-  "extracted_at": "2025-10-31T18:25:44.621Z",
+  "content_hash": "69428424899a9585b084be0b7d6fdce9bf063380a2dcb96334ad663293fbf7bd",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -35,77 +36,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../components/MeasureableAnimatedView": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../constants": {
-      "imports": [
-        "isHeader"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/MeasureableAnimatedView": {
-      "imports": [
-        "MeasureableAnimatedView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/SectionListItem": {
-      "imports": [
-        "SectionListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "data",
-        "isHeader"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/useHeaderLayout": {
-      "imports": [
-        "useHeaderLayout"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/useHeaderStyle": {
-      "imports": [
-        "useHeaderStyle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./useMounted": {
-      "imports": [
-        "useMounted"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./useTimeout": {
-      "imports": [
-        "useTimeout"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "react": {
       "imports": [
         "createRef",

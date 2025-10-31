@@ -1,6 +1,7 @@
 {
   "animation_slug": "spiral",
-  "extracted_at": "2025-10-31T18:25:46.347Z",
+  "content_hash": "9295170e0f90e0bfde6ca64a327ca3d66bfab0bb4f9d9631a51cd4aca55a6cff",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -28,14 +29,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./utils": {
-      "imports": [
-        "logarithmicSpiral"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BlurMask",
@@ -50,7 +43,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Canvas",
+        "Group",
+        "Path",
+        "SweepGradient"
+      ]
     },
     "pressto": {
       "imports": [

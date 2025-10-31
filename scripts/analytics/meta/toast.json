@@ -1,6 +1,7 @@
 {
   "animation_slug": "toast",
-  "extracted_at": "2025-10-31T18:25:46.832Z",
+  "content_hash": "6cd5c3c946714752814d97f1fa661adfe04315b5e2b3d09000c7e35f802b389f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "toast-manager/index.ts",
     "components": [],
@@ -35,40 +36,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./context": {
-      "imports": [
-        "InternalToastContext",
-        "ToastContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks": {
-      "imports": [
-        "useInternalToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./toast": {
-      "imports": [
-        "Toast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./toast-manager": {
-      "imports": [
-        "ToastProvider",
-        "useToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

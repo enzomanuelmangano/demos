@@ -1,6 +1,7 @@
 {
   "animation_slug": "animated-grid-list",
-  "extracted_at": "2025-10-31T18:25:44.588Z",
+  "content_hash": "9e94e39cf220c3cdb36b319b755049452e68d069476f5acf460db9c318568570",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -28,30 +29,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "./components/animated-layout-list": {
-      "imports": [
-        "AnimatedLayoutList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/floating-button": {
-      "imports": [
-        "FloatingButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "data"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "pressto": {
       "imports": [
         "PressableScale"

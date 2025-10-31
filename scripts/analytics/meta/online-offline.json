@@ -1,6 +1,7 @@
 {
   "animation_slug": "online-offline",
-  "extracted_at": "2025-10-31T18:25:45.843Z",
+  "content_hash": "c66ab6a630e588e9035a3c756c16d8e2477c742028672d05592d5ec1e093a7a4",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -33,63 +34,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./animations": {
-      "imports": [
-        "LayoutTransition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./background-section": {
-      "imports": [
-        "BackgroundSection"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/online-to-offline": {
-      "imports": [
-        "OnlineToOffline"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks": {
-      "imports": [
-        "useLayoutDimensions",
-        "useListItems"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./list-item": {
-      "imports": [
-        "ListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils": {
-      "imports": [
-        "calculateGapWidth",
-        "calculateOverlap",
-        "calculateSectionWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -98,9 +42,16 @@
         "Image",
         "useImage"
       ],
-      "hooks": [],
+      "hooks": [
+        "useImage"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "ColorMatrix",
+        "Group",
+        "Image"
+      ]
     },
     "pressto": {
       "imports": [

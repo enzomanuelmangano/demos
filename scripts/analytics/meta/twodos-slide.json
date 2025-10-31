@@ -1,6 +1,7 @@
 {
   "animation_slug": "twodos-slide",
-  "extracted_at": "2025-10-31T18:25:46.941Z",
+  "content_hash": "159cae01dd0cc844ec837f46b32b504f5d0a48366ae5ab651a566e7062405a1c",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -38,38 +39,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../utils/draw-squircle": {
-      "imports": [
-        "drawSquirclePath"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-squares": {
-      "imports": [
-        "AnimatedSquares"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/friction-slider": {
-      "imports": [
-        "FrictionSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/haptic": {
-      "imports": [
-        "hapticFeedback"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign",
@@ -88,7 +57,12 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Group",
+        "Path",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

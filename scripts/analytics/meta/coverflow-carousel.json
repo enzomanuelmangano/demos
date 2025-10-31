@@ -1,6 +1,7 @@
 {
   "animation_slug": "coverflow-carousel",
-  "extracted_at": "2025-10-31T18:25:45.081Z",
+  "content_hash": "8385859411a9d4fe47efd96850a57501e2458d6000c5093f1f7cce9962b82225",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -27,30 +28,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./carousel-item": {
-      "imports": [
-        "CarouselItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/coverflow-carousel": {
-      "imports": [
-        "CoverFlowCarousel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "Images"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-image": {
       "imports": [
         "Image"

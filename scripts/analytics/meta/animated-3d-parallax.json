@@ -1,6 +1,7 @@
 {
   "animation_slug": "animated-3d-parallax",
-  "extracted_at": "2025-10-31T18:25:44.525Z",
+  "content_hash": "d3abc6166a4578c987b30b915012f74ddc74b31fba043425e48b3225ff2fdcf4",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -26,14 +27,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./hooks/use-3d-rotation-style": {
-      "imports": [
-        "use3DRotationStyle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-image": {
       "imports": [
         "Image"

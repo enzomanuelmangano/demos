@@ -1,6 +1,7 @@
 {
   "animation_slug": "ios-home-grid",
-  "extracted_at": "2025-10-31T18:25:45.531Z",
+  "content_hash": "cf29acf4eb80457aaa291f4231f1cd11646cc5e72dcd7c5d3d85045eb77a4b27",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -57,99 +58,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../app-detail-screen": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../navigation/expansion-provider": {
-      "imports": [
-        "useCustomNavigation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../navigation/navigation-item": {
-      "imports": [
-        "NavigationItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./app-detail-screen": {
-      "imports": [
-        "AppDetailScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./app-item": {
-      "imports": [
-        "AppItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./apps-list": {
-      "imports": [
-        "AppsList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./apps-list/constants": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "items"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./expansion-provider": {
-      "imports": [
-        "useCustomNavigation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./navigation/DetailScreenWrapper": {
-      "imports": [
-        "withDetailScreenWrapper"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./navigation/MainScreenWrapper": {
-      "imports": [
-        "withMainScreenWrapper"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./navigation/expansion-provider": {
-      "imports": [
-        "ExpansionProvider",
-        "useCustomNavigation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"

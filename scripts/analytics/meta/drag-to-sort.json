@@ -1,6 +1,7 @@
 {
   "animation_slug": "drag-to-sort",
-  "extracted_at": "2025-10-31T18:25:45.125Z",
+  "content_hash": "e5f450e64377b4aaa54e649082a341898a41abd1ad196b99683e1edc389c250a",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -38,58 +39,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../utils/haptics": {
-      "imports": [
-        "lightHapticFeedback"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./SortableItem": {
-      "imports": [
-        "SortableItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/ListItem": {
-      "imports": [
-        "ListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/SortableList": {
-      "imports": [
-        "SortableList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/SortableList/types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "ITEMS"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-haptics": {
       "imports": [],
       "hooks": [],

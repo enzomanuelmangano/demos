@@ -1,6 +1,7 @@
 {
   "animation_slug": "blur-circles",
-  "extracted_at": "2025-10-31T18:25:44.872Z",
+  "content_hash": "7d2241d91a566badd468672dbb357e9b671361f6429738a3cfb5324566fd2a48",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -32,34 +33,6 @@
     "simplex-noise": "^4.0.3"
   },
   "packages_detail": {
-    "../constants": {
-      "imports": [
-        "center"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "A",
-        "FREQUENCY",
-        "RADIUS",
-        "noise2D",
-        "secondNoise2D"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-vec": {
-      "imports": [
-        "useVec"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -74,7 +47,14 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "BlurMask",
+        "Canvas",
+        "Circle",
+        "Group",
+        "SweepGradient"
+      ]
     },
     "react": {
       "imports": [

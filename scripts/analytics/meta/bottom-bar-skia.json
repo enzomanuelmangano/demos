@@ -1,6 +1,7 @@
 {
   "animation_slug": "bottom-bar-skia",
-  "extracted_at": "2025-10-31T18:25:44.949Z",
+  "content_hash": "035af7a2ad13195bacd526261a79f053111ae2c82e4378bb2872448677e59e90",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -36,46 +37,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./bottom-tab-item": {
-      "imports": [
-        "BottomTabItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar": {
-      "imports": [
-        "BottomTabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./svg-icons": {
-      "imports": [
-        "BOTTOM_BAR_ICONS"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@react-navigation/bottom-tabs": {
       "imports": [
         "createBottomTabNavigator"
@@ -98,7 +59,15 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Circle",
+        "ColorMatrix",
+        "FitBox",
+        "Group",
+        "Paint",
+        "Path"
+      ]
     },
     "expo-haptics": {
       "imports": [],

@@ -1,6 +1,7 @@
 {
   "animation_slug": "split-button",
-  "extracted_at": "2025-10-31T18:25:46.367Z",
+  "content_hash": "35a6c2f544fcdff0ab0d9c6a5cdfad3aed0d672ce2b16f22ccb3e4e11fc3ec1e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,30 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../constants": {
-      "imports": [
-        "colors"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/split-button": {
-      "imports": [
-        "SplitButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "colors"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

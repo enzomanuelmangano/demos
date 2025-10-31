@@ -1,6 +1,7 @@
 {
   "animation_slug": "action-tray",
-  "extracted_at": "2025-10-31T18:25:44.357Z",
+  "content_hash": "a2178ec89397a304acff4d114551086ab874c14554bb3a2b49d9c9c959ce98b0",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -32,30 +33,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./Backdrop": {
-      "imports": [
-        "Backdrop"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/ActionTray": {
-      "imports": [
-        "ActionTray"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/palette": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialCommunityIcons"

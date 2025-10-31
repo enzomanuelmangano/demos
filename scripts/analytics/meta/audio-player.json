@@ -1,6 +1,7 @@
 {
   "animation_slug": "audio-player",
-  "extracted_at": "2025-10-31T18:25:44.677Z",
+  "content_hash": "5c123d9980d4de0ee9665b658d63b2bdafc4f7f4c13d3150b3067c831f063e64",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -34,75 +35,6 @@
     "react-native-redash": "^18.1.4"
   },
   "packages_detail": {
-    "../../../constants": {
-      "imports": [
-        "DURATION",
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants": {
-      "imports": [
-        "DURATION",
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../helpers": {
-      "imports": [
-        "zeroPad"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/waveform-scrubber": {
-      "imports": [
-        "WaveformScrubber"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "Palette",
-        "waveformSamples"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./helpers": {
-      "imports": [
-        "generateWaveform",
-        "normalizeArray",
-        "pickNValuesFromArray"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./waveform-sample": {
-      "imports": [
-        "WaveformScrubberSample"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./waveform-sample/use-current-playing-value": {
-      "imports": [
-        "useCurrentPlayingValue"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "react": {
       "imports": [
         "memo",

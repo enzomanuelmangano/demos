@@ -1,6 +1,7 @@
 {
   "animation_slug": "balance-slider",
-  "extracted_at": "2025-10-31T18:25:44.715Z",
+  "content_hash": "87dc97ec062641944aeeaa376d331ec63edb3b7c13090220e213663715773701",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -28,22 +29,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/balance-slider": {
-      "imports": [
-        "BalanceSliderComponent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./text-label": {
-      "imports": [
-        "TextLabel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "react": {
       "imports": [
         "useCallback",

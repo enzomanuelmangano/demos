@@ -1,6 +1,7 @@
 {
   "animation_slug": "clerk-toast",
-  "extracted_at": "2025-10-31T18:25:45.046Z",
+  "content_hash": "2a82a3053693e2686d1f34aac901f5eed0599dd9d8e08a8096855ba69ea53cec",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/stacked-toast-manager/index.ts",
     "components": [],
@@ -51,121 +52,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../constants": {
-      "imports": [
-        "MAX_VISIBLE_TOASTS",
-        "TOAST_HEIGHT"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../context": {
-      "imports": [
-        "InternalStackedToastContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../stacked-toast-manager/hooks": {
-      "imports": [
-        "useStackedToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./backdrop": {
-      "imports": [
-        "Backdrop"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "MAX_VISIBLE_TOASTS",
-        "TOAST_HEIGHT"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./context": {
-      "imports": [
-        "InternalStackedToastContext",
-        "StackedToastContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hook": {
-      "imports": [
-        "useDemoStackedToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks": {
-      "imports": [
-        "useInternalStackedToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-toast": {
-      "imports": [
-        "useToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src/stacked-toast-manager": {
-      "imports": [
-        "StackedToastProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-toast": {
-      "imports": [
-        "StackedToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./stacked-toast-manager/hooks": {
-      "imports": [
-        "useStackedToast"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-gradient-height": {
-      "imports": [
-        "useGradientHeight"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Octicons"

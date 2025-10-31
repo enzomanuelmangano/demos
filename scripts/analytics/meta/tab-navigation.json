@@ -1,6 +1,7 @@
 {
   "animation_slug": "tab-navigation",
-  "extracted_at": "2025-10-31T18:25:46.620Z",
+  "content_hash": "7bd609219c2b67a72716b5c0170aa0f5c2cb7feeeccc02b32212c963901dfdd2",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -30,30 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/tabs": {
-      "imports": [
-        "Tabs"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "TABS_DATA"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./tab": {
-      "imports": [
-        "Tab"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

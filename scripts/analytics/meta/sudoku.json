@@ -1,6 +1,7 @@
 {
   "animation_slug": "sudoku",
-  "extracted_at": "2025-10-31T18:25:46.602Z",
+  "content_hash": "92ea844183f59659e795bc71789bae3f8386423823627ee3b62b75e618a7c074",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "logic/index.ts",
     "components": [
@@ -42,105 +43,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../logic": {
-      "imports": [
-        "SudokuGame"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../theme": {
-      "imports": [
-        "COLORS"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../number-pad": {
-      "imports": [
-        "NumberPad"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../theme": {
-      "imports": [
-        "COLORS"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./cell": {
-      "imports": [
-        "Cell"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./cell-container": {
-      "imports": [
-        "CellContainer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/button": {
-      "imports": [
-        "Button"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/sudoku-board": {
-      "imports": [
-        "SudokuBoard"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "BOARD_SIZE",
-        "CELL_SIZE"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./logic": {
-      "imports": [
-        "generateSudoku"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./sudoku": {
-      "imports": [
-        "isPuzzleComplete",
-        "isValidMove"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./theme": {
-      "imports": [
-        "COLORS",
-        "ELEVATION"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"

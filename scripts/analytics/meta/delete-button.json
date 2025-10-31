@@ -1,6 +1,7 @@
 {
   "animation_slug": "delete-button",
-  "extracted_at": "2025-10-31T18:25:45.099Z",
+  "content_hash": "2f866c277dd834858092b12d548cde472520b29d991b2078ff328de2f11eeb37",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -37,66 +38,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/delete-button": {
-      "imports": [
-        "DeleteButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "CloseSvgPath",
-        "CloseSvgPathHeight",
-        "CloseSvgPathWidth",
-        "font",
-        "fontStyle"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "DeleteButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-close-buttons-animations": {
-      "imports": [
-        "useCloseButtonAnimations"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-delete-button-animations": {
-      "imports": [
-        "useDeleteButtonAnimations"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-gooey-layer": {
-      "imports": [
-        "useGooeyLayer"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-text-animations": {
-      "imports": [
-        "useTextAnimations"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -110,7 +51,14 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "ColorMatrix",
+        "Group",
+        "ImageSVG",
+        "Paint",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

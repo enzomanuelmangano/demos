@@ -1,6 +1,7 @@
 {
   "animation_slug": "instagram-shared-transition",
-  "extracted_at": "2025-10-31T18:25:45.432Z",
+  "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": null,
     "components": [],

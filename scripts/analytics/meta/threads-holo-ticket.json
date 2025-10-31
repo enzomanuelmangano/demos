@@ -1,6 +1,7 @@
 {
   "animation_slug": "threads-holo-ticket",
-  "extracted_at": "2025-10-31T18:25:46.708Z",
+  "content_hash": "ecf989d2d692e36c79ec29bf398c8afc4a86117cc90734548eea8fde870cd5ae",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -38,46 +39,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../holographic-card": {
-      "imports": [
-        "HolographicCard"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../hooks/use-device-tilt": {
-      "imports": [
-        "useDeviceTilt"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/ticket": {
-      "imports": [
-        "Ticket"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/ticket/back-side": {
-      "imports": [
-        "BackSide"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/ticket/front-side": {
-      "imports": [
-        "FrontSide"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BlurMask",
@@ -94,7 +55,18 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Canvas",
+        "Circle",
+        "Group",
+        "LinearGradient",
+        "Mask",
+        "Path",
+        "Rect",
+        "RoundedRect",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

@@ -1,6 +1,7 @@
 {
   "animation_slug": "expandable-mini-player",
-  "extracted_at": "2025-10-31T18:25:45.252Z",
+  "content_hash": "bc429be34efaa4f7a5b5d8cfdd5c11b907df868d349773a632932b164b750b5b",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/navigation/index.tsx",
     "components": [
@@ -47,117 +48,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../../../animations/easings": {
-      "imports": [
-        "EasingsUtils"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../../../constants/palette": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../../components/icons": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../../constants/palette": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../../constants/tabs": {
-      "imports": [
-        "BaseTabs"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../bottom-tab-bar/shared-progress": {
-      "imports": [
-        "ExpandedSheetMutableProgress"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/navigation": {
-      "imports": [
-        "Screen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/navigation/bottom-tab-bar": {
-      "imports": [
-        "TabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../constants": {
-      "imports": [
-        "TabBarHeight"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../shared-progress": {
-      "imports": [
-        "ExpandedSheetMutableProgress"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "MiniPlayerHeight",
-        "TabBarHeight"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./expanded-sheet": {
-      "imports": [
-        "ExpandedSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./sheet-content": {
-      "imports": [
-        "SheetContent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./tab-item": {
-      "imports": [
-        "TabItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"

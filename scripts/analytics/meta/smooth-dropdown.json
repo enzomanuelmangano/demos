@@ -1,6 +1,7 @@
 {
   "animation_slug": "smooth-dropdown",
-  "extracted_at": "2025-10-31T18:25:46.299Z",
+  "content_hash": "73a9b009644e880b972bdffa44e49bb0ff543d3e7065f5740d0a7741fef072c7",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,28 +31,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/dropdown": {
-      "imports": [
-        "Dropdown"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/dropdown/dropdrop-item": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./dropdrop-item": {
-      "imports": [
-        "DropdownItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign",

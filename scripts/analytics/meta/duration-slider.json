@@ -1,6 +1,7 @@
 {
   "animation_slug": "duration-slider",
-  "extracted_at": "2025-10-31T18:25:45.151Z",
+  "content_hash": "853bd2af675fb70d1d6de18ef6cf1fa4b53d1538325211cbe47ae7ec36038a1f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -35,52 +36,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../../../assets/fonts/SF-Pro-Rounded-Bold.otf": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./background-dots": {
-      "imports": [
-        "BackgroundDots"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/circular-slider": {
-      "imports": [
-        "CircularSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./donut": {
-      "imports": [
-        "Donut"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./picker": {
-      "imports": [
-        "Picker"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "DurationSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BlurMask",
@@ -94,9 +49,19 @@
         "useFont",
         "vec"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Circle",
+        "Group",
+        "Path",
+        "RadialGradient",
+        "Shadow",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

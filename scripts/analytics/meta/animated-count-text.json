@@ -1,6 +1,7 @@
 {
   "animation_slug": "animated-count-text",
-  "extracted_at": "2025-10-31T18:25:44.567Z",
+  "content_hash": "2af8dda3bc1a3f3f4f44ace414d4492dc89d0b3142b97b7025a2cab722eb7cf7",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -29,22 +30,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./animated-digit": {
-      "imports": [
-        "AnimatedDigit"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-count": {
-      "imports": [
-        "AnimatedCount"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Entypo"

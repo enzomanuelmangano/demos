@@ -1,6 +1,7 @@
 {
   "animation_slug": "dynamic-blur-tabs",
-  "extracted_at": "2025-10-31T18:25:45.186Z",
+  "content_hash": "2f3512df280702e9b7c80b98362f15625a0e38e05d6b2ae5d6c0750720224a0b",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/screens/scrollable-gradients/index.tsx",
     "components": [
@@ -46,87 +47,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../components/bottom-tab-bar/states": {
-      "imports": [
-        "IsTabBarActive"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../hooks/use-bottom-bar-height": {
-      "imports": [
-        "BOTTOM_BAR_HEIGHT",
-        "useSafeBottomBarHeight"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../bottom-tab-bar/tab-bar-item": {
-      "imports": [
-        "TabBarItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../pressable-scale": {
-      "imports": [
-        "PressableScale"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar": {
-      "imports": [
-        "BottomTabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/screens": {
-      "imports": [
-        "ScreenNamesArray"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/scrollable-gradients": {
-      "imports": [
-        "ScrollableGradients"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "DynamicBlurTabs"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./states": {
-      "imports": [
-        "IsTabBarActive"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"

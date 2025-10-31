@@ -1,6 +1,7 @@
 {
   "animation_slug": "prequel-slider",
-  "extracted_at": "2025-10-31T18:25:46.054Z",
+  "content_hash": "d40fcd9b6d242c78c029f2d1ffaee9d6089c41e9aba424bf62f198c3c762aa70",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -38,110 +39,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../components/image-editor/utils": {
-      "imports": [
-        "glsl"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../constants": {
-      "imports": [
-        "ScreenWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./boundary-gradient": {
-      "imports": [
-        "BoundaryGradient"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/donut-circular-progress": {
-      "imports": [
-        "DonutCircularProgress"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/draggable-slider": {
-      "imports": [
-        "DraggableSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/image-editor": {
-      "imports": [
-        "ImageEditor"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "ScreenWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./gl-transition": {
-      "imports": [
-        "ButterflyWaveScrawlerGL"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./shader-lib": {
-      "imports": [
-        "frag"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils": {
-      "imports": [
-        "transition"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/get-lines-path": {
-      "imports": [
-        "getLinesPath"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/snap-point": {
-      "imports": [
-        "snapPoint"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -157,9 +54,18 @@
         "rrect",
         "useImage"
       ],
-      "hooks": [],
+      "hooks": [
+        "useImage"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Fill",
+        "Group",
+        "LinearGradient",
+        "Path",
+        "Rect"
+      ]
     },
     "expo-haptics": {
       "imports": [],

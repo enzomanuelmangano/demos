@@ -1,6 +1,7 @@
 {
   "animation_slug": "3d-scroll-transition",
-  "extracted_at": "2025-10-31T18:25:44.264Z",
+  "content_hash": "fef28b8e4134cd4c79ed15fbf0925ad8c03bf200345f014014dded32e9be717c",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -26,14 +27,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/blurred-list-item": {
-      "imports": [
-        "BlurredListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -48,9 +41,21 @@
         "useFont",
         "vec"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "BlurMask",
+        "Canvas",
+        "Fill",
+        "Group",
+        "Mask",
+        "Paint",
+        "SweepGradient",
+        "Text"
+      ]
     },
     "react": {
       "imports": [

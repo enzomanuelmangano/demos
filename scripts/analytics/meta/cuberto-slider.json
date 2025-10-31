@@ -1,6 +1,7 @@
 {
   "animation_slug": "cuberto-slider",
-  "extracted_at": "2025-10-31T18:25:45.087Z",
+  "content_hash": "80033aa341bf51411bfec7f7f26009e0d1e333ae57368afb5b9c091d2839a309",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,14 +31,6 @@
     "react-native-redash": "^18.1.4"
   },
   "packages_detail": {
-    "./components/slider": {
-      "imports": [
-        "Slider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -48,7 +41,11 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "FitBox",
+        "Path"
+      ]
     },
     "react": {
       "imports": [

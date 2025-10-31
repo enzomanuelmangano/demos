@@ -1,6 +1,7 @@
 {
   "animation_slug": "mobile-input",
-  "extracted_at": "2025-10-31T18:25:45.770Z",
+  "content_hash": "cc5725074a91da354ae070030228af82c2efa251a4d6b5817a0b295170fcc753",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -38,78 +39,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./Dot": {
-      "imports": [
-        "Dot"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./Dots": {
-      "imports": [
-        "Dots"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./InputButton": {
-      "imports": [
-        "InputButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/AnimatedFace": {
-      "imports": [
-        "AnimatedFace"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/ButtonsGrid": {
-      "imports": [
-        "ButtonsGrid"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/CircleStroke": {
-      "imports": [
-        "CircleStroke"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/PinArea": {
-      "imports": [
-        "PinArea"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-animated-shake": {
-      "imports": [
-        "useAnimatedShake"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./lock-screen": {
-      "imports": [
-        "LockScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "FontAwesome5"
@@ -132,7 +61,14 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Canvas",
+        "Group",
+        "Path",
+        "SweepGradient",
+        "Text"
+      ]
     },
     "pressto": {
       "imports": [

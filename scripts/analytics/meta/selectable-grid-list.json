@@ -1,6 +1,7 @@
 {
   "animation_slug": "selectable-grid-list",
-  "extracted_at": "2025-10-31T18:25:46.202Z",
+  "content_hash": "d24569f386843824e11ca182a9e332080fd7731becb2112b407d91d97b186626",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -40,48 +41,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../constants": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/SelectableGridList": {
-      "imports": [
-        "SelectableGridList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/SelectableListItem": {
-      "imports": [
-        "SelectableListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils": {
-      "imports": [
-        "calculateGridItemIndex",
-        "generateNumbersInRange",
-        "sameElements"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign",

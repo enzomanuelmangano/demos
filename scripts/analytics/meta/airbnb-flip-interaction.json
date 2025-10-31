@@ -1,6 +1,7 @@
 {
   "animation_slug": "airbnb-flip-interaction",
-  "extracted_at": "2025-10-31T18:25:44.462Z",
+  "content_hash": "d45949b875c4a44b0cac6864a014e5b2c852ec60a5888d9c1795cd7382defaa6",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -40,90 +41,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../../../../constants": {
-      "imports": [
-        "spacing"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants": {
-      "imports": [
-        "spacing"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./back": {
-      "imports": [
-        "CardBack"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "spacing"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./flip-interaction": {
-      "imports": [
-        "FlipCard"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./flip-interaction/components/card/pages/MainPage": {
-      "imports": [
-        "MainPage"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./flip-interaction/components/card/pages/SecondPage": {
-      "imports": [
-        "SecondPage"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./flip-interaction/components/card/types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./front": {
-      "imports": [
-        "CardFront"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./profile-avatar": {
-      "imports": [
-        "ProfileAvatar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-blur": {
       "imports": [
         "BlurView"

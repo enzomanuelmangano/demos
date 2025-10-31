@@ -1,6 +1,7 @@
 {
   "animation_slug": "slide-to-reveal",
-  "extracted_at": "2025-10-31T18:25:46.274Z",
+  "content_hash": "2b79ed4b8091fc4363c38712ba7805e57ffb3fe2b60e69b3f65a521761d8ca68",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -29,22 +30,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/slide-to-reveal": {
-      "imports": [
-        "SlideToReveal"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./text-code": {
-      "imports": [
-        "TextCode"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BlurMask",
@@ -56,9 +41,19 @@
         "Text",
         "useFont"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Canvas",
+        "Circle",
+        "Group",
+        "Mask",
+        "RoundedRect",
+        "Text"
+      ]
     },
     "react": {
       "imports": [

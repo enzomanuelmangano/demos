@@ -1,6 +1,7 @@
 {
   "animation_slug": "interaction-appearance",
-  "extracted_at": "2025-10-31T18:25:45.463Z",
+  "content_hash": "fff3f1918377edddf981c021037b661ab78bc83d96cc129151674a9d5458a97e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/theme/index.ts",
     "components": [
@@ -49,93 +50,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../../theme": {
-      "imports": [
-        "isSwitchingThemeShared",
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../animated-blur-view": {
-      "imports": [
-        "AnimatedBlurView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/bottom-linear-gradient": {
-      "imports": [
-        "BottomLinearGradient"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/movie-image": {
-      "imports": [
-        "MovieImage"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/theme-switch": {
-      "imports": [
-        "FloatingButtonTheme",
-        "ThemeBlurView",
-        "ThemeRescaler"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../theme": {
-      "imports": [
-        "Text",
-        "View",
-        "isSwitchingThemeShared",
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./palette": {
-      "imports": [
-        "DarkTheme",
-        "LightTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/movie-detail": {
-      "imports": [
-        "MovieDetail"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src/theme": {
-      "imports": [
-        "ThemeProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"
@@ -156,9 +70,19 @@
         "rrect",
         "useImage"
       ],
-      "hooks": [],
+      "hooks": [
+        "useImage"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Fill",
+        "Group",
+        "Image",
+        "LinearGradient",
+        "Text"
+      ]
     },
     "color": {
       "imports": [],

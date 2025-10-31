@@ -1,6 +1,7 @@
 {
   "animation_slug": "liquid-glass-playground",
-  "extracted_at": "2025-10-31T18:25:45.570Z",
+  "content_hash": "f83f1a466cdf22440036a0c340fe028b27e0812f98e1f2768923a46645adecc1",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -39,23 +40,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./haptics": {
-      "imports": [
-        "HAPTIC_CONFIG",
-        "handleProgressiveHaptics"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./overlay": {
-      "imports": [
-        "Overlay"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-blur": {
       "imports": [
         "BlurView"

@@ -1,6 +1,7 @@
 {
   "animation_slug": "loading-button",
-  "extracted_at": "2025-10-31T18:25:45.623Z",
+  "content_hash": "b0da8af8f5c06943ba3505ddbbc3f553e78cde59e9d8dde4e640d49abefe4f46",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -32,22 +33,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./activity-indicator": {
-      "imports": [
-        "ActivityIndicator"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/loading-button": {
-      "imports": [
-        "LoadingButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -61,7 +46,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Circle",
+        "Group",
+        "ImageSVG",
+        "Path"
+      ]
     },
     "color": {
       "imports": [],

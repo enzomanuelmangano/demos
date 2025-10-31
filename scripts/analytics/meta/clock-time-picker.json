@@ -1,6 +1,7 @@
 {
   "animation_slug": "clock-time-picker",
-  "extracted_at": "2025-10-31T18:25:45.060Z",
+  "content_hash": "e3ae486a4c780a8924023a41916573b119b21b7afcc2093cb258733f552f31ca",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -31,22 +32,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/clock": {
-      "imports": [
-        "Clock"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/time-range": {
-      "imports": [
-        "TimeRange"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -57,7 +42,15 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Circle",
+        "Group",
+        "Line",
+        "LinearGradient",
+        "Shadow",
+        "Text"
+      ]
     },
     "date-fns": {
       "imports": [

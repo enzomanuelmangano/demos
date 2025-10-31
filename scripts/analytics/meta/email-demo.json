@@ -1,6 +1,7 @@
 {
   "animation_slug": "email-demo",
-  "extracted_at": "2025-10-31T18:25:45.206Z",
+  "content_hash": "5120fb19c46b3cd7f70038f7728398f457694bc9e23f6dbdf7141105eff6f38f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -36,44 +37,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../../constants": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/interactive-list": {
-      "imports": [
-        "InteractiveList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/list-item": {
-      "imports": [
-        "ListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "INITIAL_ITEMS"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-animated-shake": {
-      "imports": [
-        "useAnimatedShake"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"

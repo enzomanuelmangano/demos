@@ -1,6 +1,7 @@
 {
   "animation_slug": "airbnb-slider",
-  "extracted_at": "2025-10-31T18:25:44.488Z",
+  "content_hash": "8f43b0dc04f5eba00e28c2e66743232584006cec199e8c1db609e07180b86ec5",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -32,46 +33,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../constants": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animated-digit": {
-      "imports": [
-        "AnimatedDigit"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-count": {
-      "imports": [
-        "AnimatedCount"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/animated-slider": {
-      "imports": [
-        "AnimatedSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/ui/swift-ui": {
       "imports": [
         "Host",

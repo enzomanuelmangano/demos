@@ -1,6 +1,7 @@
 {
   "animation_slug": "verification-code-face",
-  "extracted_at": "2025-10-31T18:25:47.040Z",
+  "content_hash": "5d72f7b43726d20ede46dee3c1b42ec8f6293bcf5e47f70bc4efe8a29cbb7814",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "screens/verification-code/index.tsx",
     "components": [
@@ -35,91 +36,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../components/verification-code": {
-      "imports": [
-        "VerificationCode"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/verification-code/animated-code-number": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/verification-code/hooks/use-animated-shake": {
-      "imports": [
-        "useAnimatedShake"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/verification-code/icon-square": {
-      "imports": [
-        "IconSquare"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/verification-code/icon-square/icon": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./animated-code-number": {
-      "imports": [
-        "AnimatedCodeNumber"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "DefaultEyebrowPaths",
-        "DefaultMouthPaths"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./eye": {
-      "imports": [
-        "Eye"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./icon": {
-      "imports": [
-        "InternalIcon"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/verification-code": {
-      "imports": [
-        "VerificationCodeScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./useIconPaths": {
-      "imports": [
-        "useIconPaths"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -129,7 +45,10 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Path"
+      ]
     },
     "expo-router": {
       "imports": [

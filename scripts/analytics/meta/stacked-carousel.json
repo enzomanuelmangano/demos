@@ -1,6 +1,7 @@
 {
   "animation_slug": "stacked-carousel",
-  "extracted_at": "2025-10-31T18:25:46.427Z",
+  "content_hash": "a43816bc303579a7f18c784d73d902a9b7dfe3436605fdaf35427e02deda3d9e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -26,22 +27,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../paginator": {
-      "imports": [
-        "Paginator"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/stacked-carousel": {
-      "imports": [
-        "StackedCarousel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-haptics": {
       "imports": [],
       "hooks": [],

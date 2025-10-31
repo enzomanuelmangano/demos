@@ -1,6 +1,7 @@
 {
   "animation_slug": "grid-visualizer",
-  "extracted_at": "2025-10-31T18:25:45.375Z",
+  "content_hash": "ca10e9a8a8efe86474cc37387cf95345c726dbf456ecef8757215458d99a36fe",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -30,14 +31,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./grid-visualizer": {
-      "imports": [
-        "GridVisualizerComponent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Atlas",
@@ -52,9 +45,20 @@
         "useTexture",
         "vec"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont",
+        "useRSXformBuffer",
+        "useRectBuffer",
+        "useTexture"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Atlas",
+        "BlurMask",
+        "Canvas",
+        "Fill",
+        "RadialGradient"
+      ]
     },
     "react": {
       "imports": [

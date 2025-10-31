@@ -1,6 +1,7 @@
 {
   "animation_slug": "add-to-cart",
-  "extracted_at": "2025-10-31T18:25:44.389Z",
+  "content_hash": "40dd009df1fda1a071d8ddc381901ede1d6062bbd17439ed7225945700f7f38f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -36,46 +37,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/backdrop": {
-      "imports": [
-        "Backdrop"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-sheet": {
-      "imports": [
-        "BottomSheet"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/confirm-button": {
-      "imports": [
-        "ConfirmButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/list-item": {
-      "imports": [
-        "ListItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./pressable-scale": {
-      "imports": [
-        "PressableScale"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Feather"

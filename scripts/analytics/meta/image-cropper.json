@@ -1,6 +1,7 @@
 {
   "animation_slug": "image-cropper",
-  "extracted_at": "2025-10-31T18:25:45.401Z",
+  "content_hash": "46067154c7fc206fd43f5c26e2c561eea26361959f2a5ddc00b70272dfde53b5",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -39,60 +40,6 @@
     "react-native-skia-gesture": "0.4.5-beta.1"
   },
   "packages_detail": {
-    "../components/border-button": {
-      "imports": [
-        "FancyBorderButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../components/image-cropper": {
-      "imports": [
-        "ImageCropper"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../navigation": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/border-button": {
-      "imports": [
-        "FancyBorderButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/image-cropper": {
-      "imports": [
-        "ImageCropperComponent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./grid": {
-      "imports": [
-        "Grid"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./useCornerGestures": {
-      "imports": [
-        "useCornerGestures"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@react-navigation/native": {
       "imports": [
         "useNavigation"
@@ -121,9 +68,19 @@
         "skRect",
         "useImage"
       ],
-      "hooks": [],
+      "hooks": [
+        "useImage"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "FitBox",
+        "Group",
+        "Image",
+        "Path",
+        "Rect",
+        "Text"
+      ]
     },
     "@shopify/react-native-skia/lib/typescript/src/skia/types": {
       "imports": [],

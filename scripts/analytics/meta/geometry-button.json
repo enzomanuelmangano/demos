@@ -1,6 +1,7 @@
 {
   "animation_slug": "geometry-button",
-  "extracted_at": "2025-10-31T18:25:45.328Z",
+  "content_hash": "17d6f28a2fb48a2b984298c6dbc61b06a5445a00d3b58dde0238762824987264",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -32,14 +33,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./geometry-button": {
-      "imports": [
-        "GeometryButtonComponent"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -51,7 +44,11 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Group",
+        "Path"
+      ]
     },
     "expo-haptics": {
       "imports": [],

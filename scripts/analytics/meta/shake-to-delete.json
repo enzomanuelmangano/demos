@@ -1,6 +1,7 @@
 {
   "animation_slug": "shake-to-delete",
-  "extracted_at": "2025-10-31T18:25:46.224Z",
+  "content_hash": "411fbd6929c1a9885a045316622ad40c9f9aa8ec2df1d1dafc3c220c80bf6f49",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -38,62 +39,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "./animation-config": {
-      "imports": [
-        "SHAKING_ANIMATION"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./app-item": {
-      "imports": [
-        "AppItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./apps-list": {
-      "imports": [
-        "AppsList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "APPS_DATA"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks": {
-      "imports": [
-        "useIsShaking"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-shaking-animation": {
-      "imports": [
-        "useShakingAnimation"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-is-shaking": {
-      "imports": [
-        "useIsShaking"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "Ionicons"

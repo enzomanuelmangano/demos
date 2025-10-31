@@ -1,6 +1,7 @@
 {
   "animation_slug": "steps",
-  "extracted_at": "2025-10-31T18:25:46.495Z",
+  "content_hash": "2eaa54fde72262268f9ff1f46136258b2c9f80fbdff1bfb06c4644a08a7485d6",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/steps/step-buttons/index.tsx",
     "components": [],
@@ -32,38 +33,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./dot": {
-      "imports": [
-        "Dot"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./steps/dots": {
-      "imports": [
-        "Dots"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./steps/step-buttons": {
-      "imports": [
-        "StepButtons"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "AntDesign"

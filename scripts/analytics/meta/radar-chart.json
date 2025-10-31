@@ -1,6 +1,7 @@
 {
   "animation_slug": "radar-chart",
-  "extracted_at": "2025-10-31T18:25:46.109Z",
+  "content_hash": "a05cfcb0a70cc6cdf619e71c1b3bc1988e8cd1111517afc68c14a6d71b0ed075",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -35,58 +36,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../typings": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/radar-chart": {
-      "imports": [
-        "RadarChart"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-canvas-layout": {
-      "imports": [
-        "useCanvasLayout"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-polygon-grid": {
-      "imports": [
-        "usePolygonGrid"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-unwrapped-radar-values": {
-      "imports": [
-        "useUnwrappedValues"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./typings": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/get-scaled-polygon": {
-      "imports": [
-        "getScaledPolygonPath"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Canvas",
@@ -99,9 +48,17 @@
         "interpolate",
         "useFont"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Group",
+        "Path",
+        "Points",
+        "Text"
+      ]
     },
     "color": {
       "imports": [],

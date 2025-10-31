@@ -1,6 +1,7 @@
 {
   "animation_slug": "exclusion-tabs",
-  "extracted_at": "2025-10-31T18:25:45.235Z",
+  "content_hash": "3729aad06dd8d1fe4a218b9cc012da6c4370f3380b61556a4945b06cbb0b6eb4",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -37,70 +38,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../../constants": {
-      "imports": [
-        "font"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants": {
-      "imports": [
-        "font"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/exclusion-tabs": {
-      "imports": [
-        "ExclusionTabs"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./exclusion-tab-box": {
-      "imports": [
-        "ExclusionTabBox"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./exclusion-tab-text": {
-      "imports": [
-        "ExclusionTabText"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-animated-path-data": {
-      "imports": [
-        "useAnimatedPathData"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-text-widths": {
-      "imports": [
-        "useBoxWidths"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./use-text-widths": {
-      "imports": [
-        "useBoxWidths"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -115,7 +52,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "ColorMatrix",
+        "Group",
+        "Paint",
+        "Text"
+      ]
     },
     "expo-haptics": {
       "imports": [],

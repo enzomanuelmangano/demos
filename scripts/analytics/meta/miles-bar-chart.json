@@ -1,6 +1,7 @@
 {
   "animation_slug": "miles-bar-chart",
-  "extracted_at": "2025-10-31T18:25:45.688Z",
+  "content_hash": "c6a98b84dc16f57cd12d91328cac9123fb7b6600c30945fb952513e9d22cd802",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -32,39 +33,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/weekly-chart": {
-      "imports": [
-        "WeeklyChart"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "data",
-        "weekLabels"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./single-bar": {
-      "imports": [
-        "Bar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "date-fns": {
       "imports": [
         "format",

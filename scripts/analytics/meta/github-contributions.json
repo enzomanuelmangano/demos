@@ -1,6 +1,7 @@
 {
   "animation_slug": "github-contributions",
-  "extracted_at": "2025-10-31T18:25:45.340Z",
+  "content_hash": "8b3f1894a2e76f383ecad749f80b9cfaf3b6fc35a1002e3e4b9169a483f46fb1",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -36,85 +37,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../config/defaults": {
-      "imports": [
-        "ColorScheme",
-        "DEFAULT_COLOR_SCHEME"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./config/defaults": {
-      "imports": [
-        "COLOR_SCHEMES"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./contribution-calendar": {
-      "imports": [
-        "GitHubContributionCalendar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./contribution-calendar/types": {
-      "imports": [
-        "CalendarAnimationControls",
-        "ContributionData",
-        "ContributionLevel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./contribution-calendar/utils/date-utils": {
-      "imports": [
-        "getDateRange"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./contribution-data": {
-      "imports": [
-        "generateContributionData"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./contribution-square": {
-      "imports": [
-        "ContributionSquare",
-        "SquareAnimationControls"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [
-        "CalendarAnimationControls",
-        "ContributionData",
-        "ContributionLevel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/date-utils": {
-      "imports": [
-        "generateDayLabels",
-        "groupDaysIntoWeeks"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "date-fns": {
       "imports": [
         "addDays",

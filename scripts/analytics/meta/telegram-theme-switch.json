@@ -1,6 +1,7 @@
 {
   "animation_slug": "telegram-theme-switch",
-  "extracted_at": "2025-10-31T18:25:46.647Z",
+  "content_hash": "679630b888368041fe7902a8acf8205ad7c1f5086b0261c8c506c2e9399ec23f",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "screens/search/index.tsx",
     "components": [
@@ -44,122 +45,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../components/switch-theme": {
-      "imports": [
-        "SwitchThemeButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/theme-provider": {
-      "imports": [
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/palette": {
-      "imports": [
-        "DarkPalette",
-        "LightPalette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../animated-lottie-view": {
-      "imports": [
-        "AnimatedLottieView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../switch-theme": {
-      "imports": [
-        "useSwitchTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar": {
-      "imports": [
-        "BottomTabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/switch-theme": {
-      "imports": [
-        "SwitchThemeProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/theme-provider": {
-      "imports": [
-        "ThemeProvider",
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/screens": {
-      "imports": [
-        "ScreenNamesArray"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./context": {
-      "imports": [
-        "SwitchThemeContext",
-        "useSwitchTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/home": {
-      "imports": [
-        "HomeScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/search": {
-      "imports": [
-        "SearchScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./switch-theme-button": {
-      "imports": [
-        "MAX_THEME_ANIMATION_SIZE",
-        "SwitchThemeButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"
@@ -178,7 +63,11 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Canvas",
+        "Group",
+        "Image"
+      ]
     },
     "color": {
       "imports": [],

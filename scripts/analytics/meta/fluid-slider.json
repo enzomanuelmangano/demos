@@ -1,6 +1,7 @@
 {
   "animation_slug": "fluid-slider",
-  "extracted_at": "2025-10-31T18:25:45.297Z",
+  "content_hash": "7a9702bf345cdecf7dcf1710d0d941e60c404799edef5a2012e04f2389e17448",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -28,22 +29,6 @@
     "react-native-skia-gesture": "0.4.5-beta.1"
   },
   "packages_detail": {
-    "./components/fluid-slider": {
-      "imports": [
-        "FluidSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-picker-layout": {
-      "imports": [
-        "usePickerLayout"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -56,9 +41,18 @@
         "interpolate",
         "useFont"
       ],
-      "hooks": [],
+      "hooks": [
+        "useFont"
+      ],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Circle",
+        "ColorMatrix",
+        "Group",
+        "Paint",
+        "Text"
+      ]
     },
     "react": {
       "imports": [

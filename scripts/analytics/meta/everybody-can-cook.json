@@ -1,6 +1,7 @@
 {
   "animation_slug": "everybody-can-cook",
-  "extracted_at": "2025-10-31T18:25:45.224Z",
+  "content_hash": "1c488ecea3796e2790e72d63f165a48f5f832b1843e3d9b36db7215997f23e61",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -27,22 +28,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/staggered-text": {
-      "imports": [
-        "StaggeredText"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./staggered-digit": {
-      "imports": [
-        "StaggeredDigit"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "pressto": {
       "imports": [
         "PressableWithoutFeedback"

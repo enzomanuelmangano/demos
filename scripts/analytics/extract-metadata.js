@@ -14,11 +14,13 @@
 const fs = require('fs');
 const path = require('path');
 const ts = require('typescript');
+const crypto = require('crypto');
 
 const ANIMATIONS_DIR = path.join(__dirname, '..', '..', 'src', 'animations');
 const META_DIR = path.join(__dirname, 'meta');
 const PROJECT_ROOT = path.join(__dirname, '..', '..');
 const PACKAGE_JSON_PATH = path.join(PROJECT_ROOT, 'package.json');
+const HASH_ALGORITHM = 'sha256';
 
 // ANSI colors
 const colors = {
@@ -32,6 +34,7 @@ const colors = {
 
 /**
  * Get all TypeScript/JavaScript files in a directory recursively
+ * (for AST parsing - excludes JSON)
  */
 function getAllTsFiles(dirPath, arrayOfFiles = []) {
   const files = fs.readdirSync(dirPath);
@@ -42,6 +45,31 @@ function getAllTsFiles(dirPath, arrayOfFiles = []) {
     if (fs.statSync(fullPath).isDirectory()) {
       arrayOfFiles = getAllTsFiles(fullPath, arrayOfFiles);
     } else if (/\.(ts|tsx|js|jsx)$/.test(file)) {
+      arrayOfFiles.push(fullPath);
+    }
+  });
+
+  return arrayOfFiles;
+}
+
+/**
+ * Get all code files including JSON in a directory recursively
+ * (for hash calculation - matches meta-hash.js)
+ */
+function getAllCodeFiles(dirPath, arrayOfFiles = []) {
+  const files = fs.readdirSync(dirPath);
+
+  files.forEach(file => {
+    const fullPath = path.join(dirPath, file);
+
+    // Skip system files
+    if (file === '.DS_Store') {
+      return;
+    }
+
+    if (fs.statSync(fullPath).isDirectory()) {
+      arrayOfFiles = getAllCodeFiles(fullPath, arrayOfFiles);
+    } else if (/\.(ts|tsx|js|jsx|json)$/.test(file)) {
       arrayOfFiles.push(fullPath);
     }
   });
@@ -231,6 +259,31 @@ function analyzeFileStructure(animationPath) {
 }
 
 /**
+ * Calculate hash for animation folder
+ * Matches the logic in meta-hash.js for consistency
+ */
+function calculateAnimationHash(animationPath) {
+  const allFiles = getAllCodeFiles(animationPath);
+
+  // Sort files for consistent hashing
+  allFiles.sort();
+
+  // Create hash from all file contents
+  const hash = crypto.createHash(HASH_ALGORITHM);
+
+  allFiles.forEach(file => {
+    const relativePath = path.relative(animationPath, file);
+    const content = fs.readFileSync(file, 'utf8');
+
+    // Include filename in hash to detect renames
+    hash.update(relativePath);
+    hash.update(content);
+  });
+
+  return hash.digest('hex');
+}
+
+/**
  * Aggregate data from all files in an animation
  */
 function analyzeAnimation(animationPath, slug) {
@@ -276,15 +329,20 @@ function analyzeAnimation(animationPath, slug) {
     calls.components.forEach(comp => aggregatedData.components.add(comp));
   });
 
-  // Convert Sets to sorted arrays
-  const packages = Array.from(aggregatedData.packages).sort();
+  // Convert Sets to sorted arrays, filter out relative imports
+  const allPackages = Array.from(aggregatedData.packages);
+  const packages = allPackages.filter(pkg => !pkg.startsWith('.') && !pkg.startsWith('/')).sort();
   const hooks = Array.from(aggregatedData.hooks).sort();
   const functions = Array.from(aggregatedData.functions).sort();
   const components = Array.from(aggregatedData.components).sort();
 
-  // Convert namedImports Sets to arrays
+  // Convert namedImports Sets to arrays, filter out relative imports
   const namedImports = {};
   Object.keys(aggregatedData.namedImports).forEach(pkg => {
+    // Skip relative imports
+    if (pkg.startsWith('.') || pkg.startsWith('/')) {
+      return;
+    }
     namedImports[pkg] = Array.from(aggregatedData.namedImports[pkg]).sort();
   });
 
@@ -300,11 +358,15 @@ function analyzeAnimation(animationPath, slug) {
   // Get package versions
   const packageVersions = getPackageVersions(packages);
 
+  // Calculate content hash
+  const contentHash = calculateAnimationHash(animationPath);
+
   return {
     animation_slug: slug,
-    extracted_at: new Date().toISOString(),
+    content_hash: contentHash,
+    hash_algorithm: HASH_ALGORITHM,
     file_structure: fileStructure,
-    packages: packages.filter(p => !p.startsWith('.')), // Remove relative imports
+    packages: packages, // Already filtered above
     packages_with_versions: packageVersions,
     packages_detail: packageData,
     hooks: hooks,
@@ -314,7 +376,7 @@ function analyzeAnimation(animationPath, slug) {
     techniques: techniques,
     stats: {
       total_files: files.length,
-      total_packages: packages.filter(p => !p.startsWith('.')).length,
+      total_packages: packages.length,
       total_hooks: hooks.length,
       total_functions: functions.length,
       total_components: components.length,
@@ -330,7 +392,13 @@ function analyzeAnimation(animationPath, slug) {
 function categorizeByPackage(packages, namedImports, hooks, functions, components) {
   const packageData = {};
 
+  // Only include actual packages (not relative imports)
   packages.forEach(pkg => {
+    // Skip relative imports
+    if (pkg.startsWith('.') || pkg.startsWith('/')) {
+      return;
+    }
+
     packageData[pkg] = {
       imports: namedImports[pkg] || [],
       hooks: [],
@@ -353,6 +421,13 @@ function categorizeByPackage(packages, namedImports, hooks, functions, component
     'useLayoutEffect', 'useDebugValue',
   ];
 
+  const skiaHooks = [
+    'useFont', 'useImage', 'useTexture', 'useSVG', 'useData',
+    'useValue', 'useComputedValue', 'useTouchHandler', 'useClockValue',
+    'useLoop', 'useTiming', 'useSpring', 'useDecay', 'useDerivedValueOnJS',
+    'useRectBuffer', 'useRSXformBuffer', 'useDataCollection',
+  ];
+
   hooks.forEach(hook => {
     if (reanimatedHooks.includes(hook)) {
       if (packageData['react-native-reanimated']) {
@@ -361,6 +436,10 @@ function categorizeByPackage(packages, namedImports, hooks, functions, component
     } else if (reactHooks.includes(hook)) {
       if (packageData['react']) {
         packageData['react'].hooks.push(hook);
+      }
+    } else if (skiaHooks.includes(hook)) {
+      if (packageData['@shopify/react-native-skia']) {
+        packageData['@shopify/react-native-skia'].hooks.push(hook);
       }
     }
   });
@@ -382,10 +461,25 @@ function categorizeByPackage(packages, namedImports, hooks, functions, component
   });
 
   // Categorize components
+  const skiaComponents = [
+    'Canvas', 'Group', 'Paint', 'Image', 'Text', 'Path', 'Circle', 'Rect',
+    'RoundedRect', 'Line', 'Oval', 'Points', 'Vertices', 'DiffRect',
+    'LinearGradient', 'RadialGradient', 'SweepGradient', 'TwoPointConicalGradient',
+    'Turbulence', 'FractalNoise', 'Blur', 'CornerPathEffect', 'DiscretePathEffect',
+    'DashPathEffect', 'Path1DPathEffect', 'Path2DPathEffect', 'Line2DPathEffect',
+    'BlurMask', 'Shadow', 'ShadowLayer', 'Fill', 'Stroke', 'Atlas',
+    'Paragraph', 'Glyphs', 'TextPath', 'TextBlob', 'Box', 'BoxShadow',
+    'BackdropFilter', 'ImageSVG', 'FitBox', 'ColorMatrix', 'Mask',
+  ];
+
   components.forEach(comp => {
     if (comp.startsWith('Animated.')) {
       if (packageData['react-native-reanimated']) {
         packageData['react-native-reanimated'].components.push(comp);
+      }
+    } else if (skiaComponents.includes(comp)) {
+      if (packageData['@shopify/react-native-skia']) {
+        packageData['@shopify/react-native-skia'].components.push(comp);
       }
     }
   });

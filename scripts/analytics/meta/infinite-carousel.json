@@ -1,6 +1,7 @@
 {
   "animation_slug": "infinite-carousel",
-  "extracted_at": "2025-10-31T18:25:45.431Z",
+  "content_hash": "121dd4a6b8467e9992c31c93eda3c40a32483992a278d7a41e14ce74326316e8",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -34,79 +35,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../constants": {
-      "imports": [
-        "DEFAULT_WHITE",
-        "WindowHeight",
-        "WindowWidth"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./carousel-item": {
-      "imports": [
-        "CarouselItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/background-gradient": {
-      "imports": [
-        "BackgroundGradient"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/infinite-circular-carousel": {
-      "imports": [
-        "InfiniteCircularCarousel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/list-item-calc": {
-      "imports": [
-        "ListItemCard",
-        "ListItemSize"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants": {
-      "imports": [
-        "ThemeData"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./hooks/use-interpolate-config": {
-      "imports": [
-        "useInterpolateConfig"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./types": {
-      "imports": [],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./utils/snap-point": {
-      "imports": [
-        "snapPoint"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -117,7 +45,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "LinearGradient",
+        "Rect",
+        "SweepGradient"
+      ]
     },
     "expo-linear-gradient": {
       "imports": [

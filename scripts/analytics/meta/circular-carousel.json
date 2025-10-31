@@ -1,6 +1,7 @@
 {
   "animation_slug": "circular-carousel",
-  "extracted_at": "2025-10-31T18:25:45.010Z",
+  "content_hash": "8383cf98138a2c1357afcac0f47a697f8f4c2f31276694cbb8e63286da6ecc91",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -26,23 +27,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/circular-list": {
-      "imports": [
-        "CircularList"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./list-item": {
-      "imports": [
-        "CircularListItem",
-        "LIST_ITEM_WIDTH"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "expo-image": {
       "imports": [
         "Image"

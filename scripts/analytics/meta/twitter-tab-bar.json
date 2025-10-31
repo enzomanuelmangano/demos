@@ -1,6 +1,7 @@
 {
   "animation_slug": "twitter-tab-bar",
-  "extracted_at": "2025-10-31T18:25:46.906Z",
+  "content_hash": "80b4696ce289df3883158ca47cbf45fa00c852e131549b22c4a9cd40f106a00b",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "screens/home/index.tsx",
     "components": [
@@ -40,112 +41,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "../../components/bottom-tab-bar": {
-      "imports": [
-        "BOTTOM_BAR_HEIGHT"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/bottom-tab-bar/active-tab-bar-provider": {
-      "imports": [
-        "useActiveTabBarContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../components/theme-provider": {
-      "imports": [
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/palette": {
-      "imports": [
-        "DarkPalette",
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../../constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../theme-provider": {
-      "imports": [
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./active-tab-bar-provider": {
-      "imports": [
-        "useActiveTabBarContext"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar": {
-      "imports": [
-        "BottomTabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar/active-tab-bar-provider": {
-      "imports": [
-        "ActiveTabBarContextProvider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/theme-provider": {
-      "imports": [
-        "ThemeProvider",
-        "useTheme"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./constants/screens": {
-      "imports": [
-        "ScreenNamesArray"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./floating-button": {
-      "imports": [
-        "BottomFloatingButton"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./screens/home": {
-      "imports": [
-        "HomeScreen"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"

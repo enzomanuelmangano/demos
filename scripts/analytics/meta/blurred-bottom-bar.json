@@ -1,6 +1,7 @@
 {
   "animation_slug": "blurred-bottom-bar",
-  "extracted_at": "2025-10-31T18:25:44.927Z",
+  "content_hash": "6e2b38a18a1c0e3af28adb3720bdf5c8e9c31231bd590bd22c95bd403ac18247",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -41,30 +42,6 @@
     "react-native-safe-area-context": "~5.6.0"
   },
   "packages_detail": {
-    "../constants/screens": {
-      "imports": [
-        "ScreenNames"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/bottom-tab-bar": {
-      "imports": [
-        "BottomTabBar"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./tab-bar-item": {
-      "imports": [
-        "TabBarItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialIcons"

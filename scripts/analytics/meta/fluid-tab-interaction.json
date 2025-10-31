@@ -1,6 +1,7 @@
 {
   "animation_slug": "fluid-tab-interaction",
-  "extracted_at": "2025-10-31T18:25:45.303Z",
+  "content_hash": "b41800473c334e9d8f29259d8ce18dfc2868c6e4702b350f8ac0c23498cf291e",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "src/index.tsx",
     "components": [
@@ -32,38 +33,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "../../constants": {
-      "imports": [
-        "Palette"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "../animated-blur-view": {
-      "imports": [
-        "AnimatedBlurView"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./components/segmented-control": {
-      "imports": [
-        "SegmentedControl"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
-    "./src": {
-      "imports": [
-        "App"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@expo/vector-icons": {
       "imports": [
         "MaterialCommunityIcons"

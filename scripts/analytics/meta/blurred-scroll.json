@@ -1,6 +1,7 @@
 {
   "animation_slug": "blurred-scroll",
-  "extracted_at": "2025-10-31T18:25:44.933Z",
+  "content_hash": "f518b532e1f72536426beaa26d3c9c826ace157076251ac3cef237105cdf87ce",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [
@@ -24,14 +25,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/BlurredItem": {
-      "imports": [
-        "BlurredItem"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "BlurMask",
@@ -44,7 +37,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "BlurMask",
+        "Canvas",
+        "Group",
+        "LinearGradient",
+        "RoundedRect"
+      ]
     },
     "react-native": {
       "imports": [

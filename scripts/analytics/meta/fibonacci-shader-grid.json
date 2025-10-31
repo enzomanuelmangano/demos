@@ -1,6 +1,7 @@
 {
   "animation_slug": "fibonacci-shader-grid",
-  "extracted_at": "2025-10-31T18:25:45.273Z",
+  "content_hash": "c2af3e464e3295a170b648b42b869ee660b5aa31bf4b6ea65e93b687dd4f053a",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -28,14 +29,6 @@
     "react-native-worklets": "0.5.1"
   },
   "packages_detail": {
-    "./components/control-panel": {
-      "imports": [
-        "ControlPanel"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -48,7 +41,13 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Circle",
+        "Mask",
+        "Rect"
+      ]
     },
     "react": {
       "imports": [

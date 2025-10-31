@@ -1,6 +1,7 @@
 {
   "animation_slug": "fibonacci-shader",
-  "extracted_at": "2025-10-31T18:25:45.265Z",
+  "content_hash": "42aefa9de4d156d99c140b7bde1c3a5d884ec17fbbca65ce816b86c12f53473d",
+  "hash_algorithm": "sha256",
   "file_structure": {
     "entry": "index.tsx",
     "components": [],
@@ -28,14 +29,6 @@
     "react-native-reanimated": "~4.1.1"
   },
   "packages_detail": {
-    "./components/animated-slider": {
-      "imports": [
-        "AnimatedSlider"
-      ],
-      "hooks": [],
-      "functions": [],
-      "components": []
-    },
     "@shopify/react-native-skia": {
       "imports": [
         "Blur",
@@ -48,7 +41,14 @@
       ],
       "hooks": [],
       "functions": [],
-      "components": []
+      "components": [
+        "Blur",
+        "Canvas",
+        "Circle",
+        "Mask",
+        "Rect",
+        "Text"
+      ]
     },
     "pressto": {
       "imports": [
