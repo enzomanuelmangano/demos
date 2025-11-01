@@ -34,7 +34,6 @@ type StackedCarouselProps<T = unknown> = {
 const AnimatedCard = ({
   index,
   scrollX,
-  screenWidth,
   cardWidth,
   cardHeight,
   totalCards,
@@ -42,18 +41,17 @@ const AnimatedCard = ({
 }: {
   index: number;
   scrollX: SharedValue<number>;
-  screenWidth: number;
   cardWidth: number;
   cardHeight: number;
   totalCards: number;
   children: React.ReactNode;
 }) => {
   const extendedInputRange = [
-    (index - 2) * screenWidth,
-    (index - 1) * screenWidth,
-    index * screenWidth,
-    (index + 1) * screenWidth,
-    (index + 2) * screenWidth,
+    (index - 2) * cardWidth,
+    (index - 1) * cardWidth,
+    index * cardWidth,
+    (index + 1) * cardWidth,
+    (index + 2) * cardWidth,
   ];
 
   const animatedStyle = useAnimatedStyle(() => {
@@ -157,7 +155,7 @@ export const StackedCarousel = <T,>({
 
   // Calculate current page index for paginator
   const currentPageIndex = useDerivedValue(() => {
-    return scrollX.value / screenWidth;
+    return scrollX.value / cardWidth;
   });
 
   useAnimatedReaction(
@@ -177,7 +175,6 @@ export const StackedCarousel = <T,>({
           key={index}
           index={index}
           scrollX={scrollX}
-          screenWidth={screenWidth}
           cardWidth={cardWidth}
           cardHeight={cardHeight}
           totalCards={data.length}>
@@ -191,13 +188,17 @@ export const StackedCarousel = <T,>({
         renderItem={() => (
           <View
             style={{
-              width: screenWidth,
-              height: cardHeight + stackOffset * 6,
+              width: cardWidth,
+              height: cardHeight,
               justifyContent: 'center',
               alignItems: 'center',
+              // backgroundColor: '#7b7bfdff',
+              // borderRadius: 25,
+              // borderCurve: 'continuous',
             }}
           />
         )}
+        snapToInterval={cardWidth}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -209,6 +210,10 @@ export const StackedCarousel = <T,>({
           width: screenWidth,
           height: cardHeight + stackOffset * 6,
           zIndex: 1000,
+        }}
+        contentContainerStyle={{
+          paddingLeft: (screenWidth - cardWidth) / 2,
+          paddingTop: stackOffset * 3,
         }}
       />
 
@@ -243,7 +248,7 @@ const styles = StyleSheet.create({
   cardShadow: {
     backgroundColor: 'white',
     borderCurve: 'continuous',
-    borderRadius: 16,
+    borderRadius: 25,
     boxShadow: '0 0 5px 0 rgba(0, 0, 0, 0.05)',
     flex: 1,
     overflow: 'hidden',
