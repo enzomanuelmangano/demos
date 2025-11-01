@@ -63,10 +63,8 @@ export const IMessageStack = () => {
                   height: CARD_HEIGHT,
                   width: CARD_WIDTH,
                   // IMPORTANT: These invisible views create the scrollable area
-                  // backgroundColor: 'red',
+                  // backgroundColor: '#7b7bfdff',
                   // borderRadius: 25,
-                  // borderColor: 'white',
-                  // borderWidth: 1,
                   // borderCurve: 'continuous',
                 }}
               />

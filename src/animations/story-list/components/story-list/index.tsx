@@ -1,4 +1,4 @@
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { type ReactNode, useMemo } from 'react';
 
@@ -48,31 +48,59 @@ function StoryList<T>({
   });
 
   return (
-    <Animated.ScrollView
-      horizontal
-      snapToInterval={storyItemDimensions.width}
-      decelerationRate="fast"
-      disableIntervalMomentum
-      onScroll={onScroll}
-      showsHorizontalScrollIndicator={false}
-      scrollEventThrottle={16}
-      bounces
-      contentContainerStyle={{
-        width: contentWidth,
-      }}>
-      {stories.map((story, index) => (
-        <StoryListItem
-          key={index}
-          story={story}
-          index={index}
-          scrollOffset={scrollOffset}
-          itemWidth={storyItemDimensions.width}
-          itemHeight={storyItemDimensions.height}
-          paddingLeft={paddingLeft}
-          renderItem={renderItem}
-        />
-      ))}
-    </Animated.ScrollView>
+    <>
+      {/*
+       * The beauty of this approach is that we're not coordinating custom gesture detectors.
+       * Instead we're using just one ScrollView for the gesture handling.
+       * The actual story items are rendered separately and animated based on the scroll offset.
+       */}
+      <Animated.ScrollView
+        horizontal
+        snapToInterval={storyItemDimensions.width}
+        decelerationRate="fast"
+        disableIntervalMomentum
+        onScroll={onScroll}
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        bounces
+        contentContainerStyle={{
+          width: contentWidth,
+        }}>
+        {/* Invisible placeholder views that define the scrollable area */}
+        {stories.map((_, index) => (
+          <View
+            key={index}
+            style={{
+              width: storyItemDimensions.width,
+              height: storyItemDimensions.height,
+            }}
+          />
+        ))}
+      </Animated.ScrollView>
+      {/* Visual layer - absolutely positioned on top of ScrollView */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          pointerEvents: 'none',
+        }}>
+        {stories.map((story, index) => (
+          <StoryListItem
+            key={index}
+            story={story}
+            index={index}
+            scrollOffset={scrollOffset}
+            itemWidth={storyItemDimensions.width}
+            itemHeight={storyItemDimensions.height}
+            paddingLeft={paddingLeft}
+            renderItem={renderItem}
+          />
+        ))}
+      </Animated.View>
+    </>
   );
 }
 

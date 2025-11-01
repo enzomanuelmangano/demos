@@ -47,7 +47,7 @@ function StoryListItem<T>({
       left: paddingLeft,
       transform: [
         {
-          translateX: scrollOffset.value + translateX,
+          translateX: translateX,
         },
         { scale },
       ],
