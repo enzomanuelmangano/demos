@@ -1,4 +1,6 @@
 import {
+  Dimensions,
+  Keyboard,
   StyleSheet,
   Text,
   TextInput,
@@ -6,80 +8,42 @@ import {
   View,
 } from 'react-native';
 
-import { useCallback, useMemo, type JSX } from 'react';
-import React from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 
-import { LegendList, LegendListRenderItemProps } from '@legendapp/list';
+import {
+  LegendList,
+  LegendListRef,
+  LegendListRenderItemProps,
+} from '@legendapp/list';
 import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useAtom } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import { PressableScale, PressablesGroup } from 'pressto';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DrawerListItem } from './drawer-list-item';
-import { createIcon } from '../../animations/icon-factory';
 import {
-  getAllAnimations,
-  type AnimationComponent,
-  type AnimationMetadataType,
-} from '../../animations/registry';
-import {
+  AnimationItem,
+  FilteredAnimationsAtom,
   SearchFilterAtom,
-  ShowUnstableAnimationsAtom,
 } from '../../navigation/states/filters';
 
-const keyExtractor = (item: AnimationItem) => item.slug;
+const keyExtractor = (item: AnimationItem) => item?.slug || '';
 
 const LIST_ITEM_HEIGHT = 50;
 
-type AnimationItem = {
-  id: number;
-  name: string;
-  slug: string;
-  route: string;
-  alert?: boolean;
-  icon: () => JSX.Element;
-  component: AnimationComponent;
-  metadata: AnimationMetadataType;
-};
+export const DrawerContentWidth = Dimensions.get('window').width * 0.35;
+
+const GradientColors = ['#030303', '#03030300'] as const;
 
 export function DrawerContent(_props: DrawerContentComponentProps) {
   const router = useRouter();
   const { top, bottom } = useSafeAreaInsets();
-  const [searchFilter, setSearchFilter] = useAtom(SearchFilterAtom);
-  const [showUnstable] = useAtom(ShowUnstableAnimationsAtom);
-
-  const allAnimations = useMemo(() => {
-    return getAllAnimations()
-      .map((animation, index) => ({
-        id: index,
-        ...animation,
-        route: animation.slug,
-        name: animation.metadata.name,
-        alert: animation.metadata.alert,
-        icon: () => createIcon(animation.metadata),
-      }))
-      .reverse();
-  }, []);
-
-  const filteredAnimations: AnimationItem[] = useMemo(() => {
-    let animations = allAnimations;
-
-    // Filter out unstable animations if the toggle is off
-    if (!showUnstable) {
-      animations = animations.filter(animation => !animation.alert);
-    }
-
-    // Apply search filter
-    if (searchFilter.trim()) {
-      animations = animations.filter(animation =>
-        animation.name.toLowerCase().includes(searchFilter.toLowerCase()),
-      );
-    }
-
-    return animations;
-  }, [allAnimations, searchFilter, showUnstable]);
+  const setSearchFilter = useSetAtom(SearchFilterAtom);
+  const filteredAnimations = useAtomValue(FilteredAnimationsAtom);
+  const listRef = useRef<LegendListRef>(null);
 
   const renderItem = useCallback(
     ({ item }: LegendListRenderItemProps<AnimationItem>) => {
@@ -88,6 +52,7 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
           item={item}
           style={styles.listItem}
           onPress={() => {
+            Keyboard.dismiss();
             router.push(`/animations/${item.slug}`);
           }}
         />
@@ -99,6 +64,10 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
   const handleSearchChange = useCallback(
     (event: TextInputChangeEvent) => {
       setSearchFilter(event.nativeEvent.text);
+      // Scroll to top after filter is applied, in the next frame
+      requestAnimationFrame(() => {
+        listRef.current?.scrollToIndex({ index: 0, animated: false });
+      });
     },
     [setSearchFilter],
   );
@@ -106,6 +75,17 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
   const contentContainerStyle = useMemo(() => {
     return { paddingBottom: bottom, marginTop: 12 };
   }, [bottom]);
+
+  const scrollComponent = useCallback((props: any) => {
+    return <ScrollView {...props} />;
+  }, []);
+
+  const estimatedListSize = useMemo(() => {
+    return {
+      height: LIST_ITEM_HEIGHT * filteredAnimations.length,
+      width: DrawerContentWidth,
+    };
+  }, [filteredAnimations]);
 
   return (
     <View style={[styles.container, { paddingTop: top }]}>
@@ -119,7 +99,6 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
           <TextInput
             autoComplete="off"
             autoCorrect={false}
-            value={searchFilter}
             autoCapitalize="none"
             returnKeyType="search"
             clearButtonMode="always"
@@ -136,22 +115,23 @@ export function DrawerContent(_props: DrawerContentComponentProps) {
           <LegendList
             recycleItems={false}
             waitForInitialLayout
+            ref={listRef}
             renderItem={renderItem}
             scrollEventThrottle={16}
             data={filteredAnimations}
+            estimatedListSize={estimatedListSize}
             keyExtractor={keyExtractor}
             keyboardDismissMode="on-drag"
             estimatedItemSize={LIST_ITEM_HEIGHT}
             contentInsetAdjustmentBehavior="automatic"
             contentContainerStyle={contentContainerStyle}
-            // @@TODO: unstable
-            // renderScrollComponent={props => <ScrollView {...props} />}
+            renderScrollComponent={scrollComponent}
           />
         </PressablesGroup>
         <LinearGradient
           pointerEvents="none"
           style={styles.topGradient}
-          colors={['#030303', '#03030300']}
+          colors={GradientColors}
         />
       </View>
     </View>

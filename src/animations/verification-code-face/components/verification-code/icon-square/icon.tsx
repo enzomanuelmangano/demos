@@ -25,8 +25,8 @@ export type InternalIconRef = {
   normal: () => void;
 };
 
-const EYEBROW_CANVAS_SIZE = { width: 15, height: 5 };
-const EYEBROW_STROKE_WIDTH = 0.5;
+const EYEBROW_CANVAS_SIZE = { width: 15, height: 8 };
+const EYEBROW_STROKE_WIDTH = 1.2;
 const MOUTH_CANVAS_SIZE = { width: 25, height: 20 };
 const MOUTH_STROKE_WIDTH = 2;
 const PROGRESS_INPUT_RANGE = [0, 1];

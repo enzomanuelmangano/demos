@@ -1,14 +1,16 @@
 import { View, StyleSheet, Text, Linking } from 'react-native';
 
+import { memo } from 'react';
+
 import { PressableScale } from 'pressto';
 
 import { AnimationInspirations } from '../animations/inspirations';
 
-interface InspirationProps {
-  slug?: string;
-}
+type InspirationProps = {
+  slug: string;
+};
 
-export const Inspiration = ({ slug }: InspirationProps) => {
+export const Inspiration = memo(({ slug }: InspirationProps) => {
   const inspiration = slug ? AnimationInspirations[slug] : null;
 
   if (!slug || !inspiration) {
@@ -46,7 +48,7 @@ export const Inspiration = ({ slug }: InspirationProps) => {
         <PressableScale
           style={styles.linkButton}
           onPress={() => Linking.openURL(link)}>
-          <Text style={styles.linkButtonText}>View Original</Text>
+          <Text style={styles.linkButtonText}>View</Text>
         </PressableScale>
       )}
 
@@ -57,7 +59,7 @@ export const Inspiration = ({ slug }: InspirationProps) => {
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

@@ -1,85 +1,71 @@
-import { StyleSheet } from 'react-native';
-
 import { type ReactNode } from 'react';
 
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
-
-import type { StyleProp, ViewStyle } from 'react-native';
 
 type StoryListItemProps<T> = {
   story: T;
   index: number;
-  style?: StyleProp<ViewStyle>;
-  translateX: SharedValue<number>;
-  activeIndex: SharedValue<number>;
+  scrollOffset: SharedValue<number>;
   itemWidth: number;
+  itemHeight: number;
+  paddingLeft: number;
   renderItem: (item: T, index: number) => ReactNode;
-  visibleItems: number;
-  gap: number;
 };
 
 function StoryListItem<T>({
   story,
   index,
-  style,
-  translateX,
-  activeIndex,
+  scrollOffset,
   itemWidth,
+  itemHeight,
+  paddingLeft,
   renderItem,
-  visibleItems,
-  gap,
 }: StoryListItemProps<T>) {
-  const width = (StyleSheet.flatten(style).width as number) ?? 0;
-
-  // This is where the magic happens
   const rStyle = useAnimatedStyle(() => {
-    // This is the trick to make the items appear one after the other
-    // with a small gap between them (35)
-    // Note that since we want to see maximum 3 items at a time
-    // we need to limit the left value to 2 * 35
-    // Feel free to play with the values to see the effect on the UI
-    // Example:
-    // const left = Math.min(index - activeIndex.value, 20) * 20;
-    const left = Math.min(index - activeIndex.value, visibleItems - 1) * gap;
+    const activeIndex = scrollOffset.value / itemWidth;
 
-    // scale the items to make the active item bigger
-    const scale = 1 - (index - activeIndex.value) * 0.1;
+    const translateX = interpolate(
+      activeIndex,
+      [index - 2, index - 1, index, index + 1],
+      [70, 35, 0, -itemWidth - paddingLeft * 2],
+      Extrapolation.CLAMP,
+    );
 
-    // We just want to translate the items that have been swiped
-    // or that are currently active
-    const translateVal =
-      index <= activeIndex.value ? translateX.value + index * itemWidth : 0;
+    const scale = interpolate(
+      activeIndex,
+      [index - 2, index - 1, index, index + 1],
+      [0.8, 0.9, 1, 1],
+      Extrapolation.CLAMP,
+    );
 
     return {
-      left,
+      left: paddingLeft,
       transform: [
         {
-          scale,
+          translateX: translateX,
         },
-        {
-          translateX: translateVal,
-        },
+        { scale },
       ],
     };
-  }, [index]);
+  }, [index, itemWidth, paddingLeft]);
 
   return (
     <Animated.View
-      key={index}
       style={[
         {
           position: 'absolute',
           top: 0,
-          width,
-          height: width,
+          width: itemWidth,
+          height: itemHeight,
+          zIndex: -index,
         },
-        style,
         rStyle,
       ]}>
-      {/* Just in order to make the component reusable */}
       {renderItem(story, index)}
     </Animated.View>
   );

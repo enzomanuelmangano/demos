@@ -4,9 +4,14 @@ import { useState } from 'react';
 
 import { PressableScale } from 'pressto';
 
+import { getAnimationMetadata } from '../animations/registry';
 import { useRetray } from '../packages/retray';
 
-export const ShareFeedback = () => {
+interface ShareFeedbackProps {
+  slug?: string;
+}
+
+export const ShareFeedback = ({ slug }: ShareFeedbackProps) => {
   const [feedbackText, setFeedbackText] = useState('');
   const { dismiss } = useRetray();
 
@@ -15,19 +20,36 @@ export const ShareFeedback = () => {
   };
 
   const handleSubmit = () => {
-    const subject = 'Reactiive Demos Feedback';
-    const body = feedbackText || '';
+    const metadata = slug ? getAnimationMetadata(slug) : null;
+    const animationName = metadata?.name || 'General';
+
+    const subject = slug ? `Feedback: ${animationName}` : 'Feedback';
+
+    const contextLine = slug ? `Animation: ${animationName} (${slug})\n\n` : '';
+
+    const body = `${contextLine}${feedbackText}`;
     const mailtoUrl = `mailto:hello@reactiive.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
     Linking.openURL(mailtoUrl);
     handleClose();
   };
 
+  const metadata = slug ? getAnimationMetadata(slug) : null;
+  const placeholder = slug
+    ? `Share your thoughts on ${metadata?.name || 'this animation'}...`
+    : "What's on your mind?";
+
   return (
     <View style={styles.container}>
+      {slug && metadata && (
+        <View style={styles.contextCard}>
+          <Text style={styles.contextLabel}>Providing feedback for</Text>
+          <Text style={styles.contextValue}>{metadata.name}</Text>
+        </View>
+      )}
       <TextInput
         style={styles.input}
-        placeholder="What's on your mind?"
+        placeholder={placeholder}
         placeholderTextColor="#8E8E93"
         value={feedbackText}
         onChangeText={setFeedbackText}
@@ -72,6 +94,26 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  contextCard: {
+    backgroundColor: '#3A3A3C',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    gap: 6,
+    marginBottom: 16,
+    padding: 14,
+  },
+  contextLabel: {
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  contextValue: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
   input: {
     backgroundColor: '#3A3A3C',

@@ -16,11 +16,9 @@ interface GeneralItem {
   type: string;
 }
 
-interface GeneralProps {
-  slug?: string;
-}
+export const General = () => {
+  const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
 
-export const General = ({ slug }: GeneralProps) => {
   const Items: readonly GeneralItem[] = [
     {
       title: 'Show Unstable',
@@ -28,13 +26,6 @@ export const General = ({ slug }: GeneralProps) => {
       icon: 'flask',
       backgroundColor: '#FF9500',
       type: 'unstable',
-    },
-    {
-      title: 'Source Code',
-      description: 'View the code on GitHub',
-      icon: 'logo-github',
-      backgroundColor: '#24292e',
-      type: 'source',
     },
     {
       title: 'Sponsor',
@@ -45,18 +36,10 @@ export const General = ({ slug }: GeneralProps) => {
     },
   ] as const;
 
-  const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
-
   const handleItemPress = (type: string) => {
     switch (type) {
       case 'unstable':
         setShowUnstable(!showUnstable);
-        break;
-      case 'source':
-        const sourceUrl = slug
-          ? `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
-          : 'https://github.com/enzomanuelmangano/demos/tree/main/src/animations';
-        Linking.openURL(sourceUrl);
         break;
       case 'sponsor':
         Linking.openURL('https://github.com/sponsors/enzomanuelmangano');

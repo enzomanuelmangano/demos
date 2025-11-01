@@ -15,6 +15,7 @@ export interface AnimationMetadataType extends Record<string, unknown> {
   iconFamily: IconFamily;
   alert?: boolean;
   iconColor?: string;
+  hideDrawerIcon?: boolean;
 }
 
 export interface IconMetadata {
@@ -679,7 +680,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'DotSheet',
     iconName: 'paperclip',
     iconFamily: 'MaterialCommunityIcons',
-    alert: true,
+    hideDrawerIcon: true,
   },
   'coverflow-carousel': {
     name: 'Coverflow Carousel',
@@ -925,9 +926,16 @@ export const getAnimationMetadata = (
 };
 
 export const getAllAnimations = () => {
-  return Object.keys(AnimationRegistry).map(slug => ({
-    slug,
-    component: AnimationRegistry[slug as AnimationSlug],
-    metadata: AnimationMetadata[slug as AnimationSlug],
-  }));
+  return Object.keys(AnimationRegistry)
+    .map(slug => ({
+      slug,
+      component: AnimationRegistry[slug as AnimationSlug],
+      metadata: AnimationMetadata[slug as AnimationSlug],
+    }))
+    .filter(animation => {
+      if (animation.metadata === undefined) {
+        console.warn('Missing metadata for animation:', animation.slug);
+      }
+      return animation.metadata !== undefined;
+    });
 };

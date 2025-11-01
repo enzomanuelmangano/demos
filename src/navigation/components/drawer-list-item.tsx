@@ -1,19 +1,16 @@
 import { StyleSheet, Text } from 'react-native';
 
-import { type FC, type JSX, memo } from 'react';
+import { memo, type FC } from 'react';
 
 import { createAnimatedPressable } from 'pressto';
 import { interpolate } from 'react-native-reanimated';
 
+import { AnimationItem } from '../states/filters';
+
 import type { StyleProp, ViewStyle } from 'react-native';
 
-type ExpoRouterListItemProps = {
-  item: {
-    id: number;
-    name: string;
-    icon: () => JSX.Element;
-    alert?: boolean;
-  };
+type DrawerListItemProps = {
+  item: AnimationItem;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
 };
@@ -31,7 +28,7 @@ const PressableHighlight = createAnimatedPressable(
   },
 );
 
-const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
+const DrawerListItem: FC<DrawerListItemProps> = memo(
   ({ item, onPress, style }) => {
     return (
       <PressableHighlight style={[styles.container, style]} onPress={onPress}>
@@ -40,6 +37,9 @@ const DrawerListItem: FC<ExpoRouterListItemProps> = memo(
         {item.alert && <Text style={styles.alert}>⚠️</Text>}
       </PressableHighlight>
     );
+  },
+  (prevProps, nextProps) => {
+    return prevProps.item.slug === nextProps.item.slug;
   },
 );
 

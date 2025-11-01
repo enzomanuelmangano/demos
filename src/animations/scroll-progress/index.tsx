@@ -2,16 +2,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { useCallback } from 'react';
 
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
 import { sections } from './constants';
 import { SectionContentList } from './section-content-list';
 
 export function ScrollProgress() {
-  const insets = useSafeAreaInsets();
-
   const renderSection = useCallback(
-    (item: (typeof sections)[0], index: number) => {
+    (item: (typeof sections)[number], index: number) => {
       return (
         <View key={index} style={styles.textContainer}>
           <Text style={styles.title}>{item.title}</Text>
@@ -23,11 +19,7 @@ export function ScrollProgress() {
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}>
+    <View style={styles.container}>
       <SectionContentList
         sections={sections}
         renderSection={renderSection}

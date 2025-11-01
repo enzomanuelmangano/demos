@@ -1,19 +1,31 @@
 import { DevSettings, Platform } from 'react-native';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { Accelerometer } from 'expo-sensors';
 import debounce from 'lodash.debounce';
 
 export const useOnShakeEffect = (callback: () => void) => {
+  const callbackRef = useRef(callback);
+
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+
   const debouncedCallback = useMemo(
-    () => debounce(callback, 2500, { leading: true, trailing: false }),
-    [callback],
+    () =>
+      debounce(() => callbackRef.current(), 2500, {
+        leading: true,
+        trailing: false,
+      }),
+    [],
   );
 
   useEffect(() => {
     if (__DEV__ && Platform.OS !== 'web') {
-      return DevSettings.addMenuItem('💬 Send Feedback', callback);
+      return DevSettings.addMenuItem('💬 Send Feedback', () =>
+        callbackRef.current(),
+      );
     }
 
     let lastUpdate = 0;
@@ -45,5 +57,5 @@ export const useOnShakeEffect = (callback: () => void) => {
     return () => {
       subscription.remove();
     };
-  }, [callback, debouncedCallback]);
+  }, [debouncedCallback]);
 };

@@ -9,17 +9,24 @@ import {
   useRef,
 } from 'react';
 
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedReaction,
   useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomProgress } from './bottom-progress';
 import { clamp, getReadingTime } from './utils';
 
-import type { ScrollViewProps, StyleProp, ViewStyle } from 'react-native';
+import type {
+  LayoutChangeEvent,
+  ScrollViewProps,
+  StyleProp,
+  ViewStyle,
+} from 'react-native';
 
 type Section = {
   title: string;
@@ -32,11 +39,15 @@ type SectionContentListProps = ScrollViewProps & {
   bottomProgressStyle?: StyleProp<ViewStyle>;
 };
 
+const GRADIENT_COLORS = ['#111111', '#11111100'] as const;
+
 const SectionContentList: FC<SectionContentListProps> = memo(
   ({ sections, renderSection, bottomProgressStyle, ...scrollViewProps }) => {
     const viewHeight = useSharedValue(1000);
     const scrollHeight = useSharedValue(1000);
     const progress = useSharedValue(0);
+
+    const { top: safeTop, bottom: safeBottom } = useSafeAreaInsets();
 
     const isResetting = useSharedValue(false);
     const currentScroll = useSharedValue(0);
@@ -97,18 +108,41 @@ const SectionContentList: FC<SectionContentListProps> = memo(
       [isResetting],
     );
 
+    const onViewLayout = useCallback(
+      (event: LayoutChangeEvent) => {
+        viewHeight.value = event.nativeEvent.layout.height;
+      },
+      [viewHeight],
+    );
+
+    const contentContainerStyle = useMemo(() => {
+      return {
+        paddingTop: safeTop + 16,
+        paddingBottom: safeBottom + 100,
+        paddingHorizontal: 32,
+      };
+    }, [safeTop, safeBottom]);
+
     return (
-      <View
-        onLayout={event => {
-          viewHeight.value = event.nativeEvent.layout.height;
-        }}>
+      <View onLayout={onViewLayout}>
         <Animated.ScrollView
           {...scrollViewProps}
+          contentContainerStyle={contentContainerStyle}
           ref={scrollRef}
           onScroll={onScroll}
           scrollEventThrottle={16}>
           <View onLayout={onLayout}>{sections.map(renderSection)}</View>
         </Animated.ScrollView>
+        <LinearGradient
+          colors={GRADIENT_COLORS}
+          style={[
+            styles.gradient,
+            {
+              height: safeTop + 16,
+            },
+          ]}
+          pointerEvents="none"
+        />
         <BottomProgress
           readingTime={readingTime}
           onReset={onReset}
@@ -131,4 +165,13 @@ const SectionContentList: FC<SectionContentListProps> = memo(
   },
 );
 
+const styles = StyleSheet.create({
+  gradient: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 10,
+  },
+});
 export { SectionContentList };

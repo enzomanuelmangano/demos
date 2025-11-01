@@ -2,7 +2,7 @@
   "expo": {
     "name": "Demos",
     "slug": "thank-you",
-    "version": "1.0.0",
+    "version": "0.1.0",
     "orientation": "portrait",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -98,7 +98,8 @@
             }
           ]
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "extra": {
       "eas": {

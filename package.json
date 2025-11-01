@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -56,6 +56,7 @@
     "expo-router": "~6.0.13",
     "expo-sensors": "~15.0.7",
     "expo-splash-screen": "~31.0.10",
+    "expo-sqlite": "~16.0.8",
     "expo-status-bar": "~3.0.8",
     "expo-system-ui": "~6.0.8",
     "expo-updates": "~29.0.12",
