@@ -1,4 +1,4 @@
-import { Dimensions } from 'react-native';
+import { Dimensions, Platform, StyleSheet } from 'react-native';
 
 import { useCallback } from 'react';
 
@@ -8,6 +8,7 @@ import Animated, {
   cancelAnimation,
   interpolate,
   useAnimatedReaction,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -39,22 +40,102 @@ const MaxTranslationProgress = MaxTranslationFrictionThreshold * 1.8;
 const MinFriction = 1;
 const MaxFriction = 0.35;
 
-// This component is about a PanGesture with a "friction effect"
+const INITIAL_SCROLL_POSITION = MaxTranslationProgress;
+
 export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   onProgressChange,
   children,
   containerStyle,
 }) => {
-  const translateX = useSharedValue(0);
-  // The contextX is used to store the previous translation value
-  // Usually it's useful if the animation needs to keep track of the previous action.
-  // In this specific case, the animation resets its value to 0 after the gesture ends
-  // But if you release and before the animation ends you start a new gesture,
-  // the contextX will be useful (it's just a small detail, but it's good to know about it)
-  const contextX = useSharedValue(0);
+  const scrollOffset = useSharedValue(INITIAL_SCROLL_POSITION);
 
-  // This progressTranslateX is identical to the translateX shared value
-  // But the spring animation at the end applies the overshootClamping property
+  const convertScrollToProgress = useCallback((offset: number) => {
+    'worklet';
+    // Convert scroll offset to progress (-1 to 1)
+    // When scrollOffset = INITIAL_SCROLL_POSITION, progress = 0
+    // When scrolling right (positive), progress increases
+    // When scrolling left (negative), progress decreases
+    const translation = offset;
+    return interpolate(
+      translation,
+      [-ScreenWidth / 4, 0, ScreenWidth / 4],
+      [-1, 0, 1],
+      Extrapolation.EXTEND,
+    );
+  }, []);
+
+  const realProgress = useDerivedValue(() => {
+    return convertScrollToProgress(scrollOffset.value);
+  }, []);
+
+  const clampedProgress = useDerivedValue(() => {
+    // Clamp to -1..1 for visual feedback (path drawing)
+    return interpolate(
+      scrollOffset.value,
+      [-ScreenWidth / 4, 0, ScreenWidth / 4],
+      [-1, 0, 1],
+      Extrapolation.CLAMP,
+    );
+  }, []);
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollOffset.value = event.contentOffset.x;
+    },
+  });
+
+  // This is a reaction that triggers when the progress value changes
+  // It's a kind of "useEffect" but for Reanimated values
+  useAnimatedReaction(
+    () => realProgress.value,
+    (curr, prev) => {
+      if (prev !== curr) {
+        onProgressChange?.({
+          // The clampedProgress is the one that will be used to update the Path
+          // The realProgress includes the native scroll bounce effect
+          clampedProgress: clampedProgress.value,
+          realProgress: realProgress.value,
+        });
+      }
+    },
+  );
+
+  // Use native ScrollView on iOS for authentic physics, PanGesture on other platforms
+  if (Platform.OS === 'ios') {
+    return (
+      <Animated.ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={scrollHandler}
+        bounces
+        bouncesZoom={false}
+        decelerationRate="normal"
+        contentContainerStyle={styles.scrollView}
+        contentOffset={{ x: INITIAL_SCROLL_POSITION, y: 0 }}>
+        <Animated.View style={styles.scrollableView}>{children}</Animated.View>
+      </Animated.ScrollView>
+    );
+  }
+
+  // Fallback to PanGesture with manual friction for non-iOS platforms
+  return (
+    <FrictionSliderPanGesture
+      onProgressChange={onProgressChange}
+      containerStyle={containerStyle}>
+      {children}
+    </FrictionSliderPanGesture>
+  );
+};
+
+// Original PanGesture implementation for non-iOS platforms
+const FrictionSliderPanGesture: React.FC<FrictionSliderProps> = ({
+  onProgressChange,
+  children,
+  containerStyle,
+}) => {
+  const translateX = useSharedValue(0);
+  const contextX = useSharedValue(0);
   const progressTranslateX = useSharedValue(0);
 
   const convertTranslationToProgress = useCallback((translation: number) => {
@@ -68,7 +149,6 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   }, []);
 
   const clampedProgress = useDerivedValue(() => {
-    // Try to replace progressTranslateX with translateX to see the difference
     return convertTranslationToProgress(progressTranslateX.value);
   }, []);
 
@@ -76,23 +156,11 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
     return convertTranslationToProgress(translateX.value);
   }, []);
 
-  // This is a reaction that triggers when the progress value changes
-  // It's a kind of "useEffect" but for Reanimated values
-  // I really use a lot this pattern because it helps me to keep the code organized
-  // Without this approach it would be a bit annoying to fire the onProgressChange callback
   useAnimatedReaction(
     () => realProgress.value,
     (curr, prev) => {
       if (prev !== curr) {
         onProgressChange?.({
-          // The clampedProgress is the one that will be used to update the Path
-          // And it needs to ignore the re-bound effect
-          // The realProgress is fully binded to the spring animation effect
-          // And we need it to update the square rotation
-          // If you look closely, if we slide a lot and then we leave the finger
-          // The square will rotate a bit more to the right or left depending on the direction
-          // But the path is not affected by this effect.
-          // That's why we have two different progress values
           clampedProgress: clampedProgress.value,
           realProgress: realProgress.value,
         });
@@ -102,16 +170,12 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      // Cancels the current animation (if there's any)
-      // - for instance, if the user releases the gesture and immediately starts a new one
       cancelAnimation(translateX);
       contextX.value = translateX.value;
     })
     .onUpdate(event => {
       const baseTranslation = event.translationX + contextX.value;
 
-      // The friction effect is based on the distance that the user has moved the finger
-      // The further the user moves the finger, the more friction the animation will have
       const incrementalFriction = interpolate(
         Math.abs(baseTranslation),
         [0, MaxTranslationFrictionThreshold],
@@ -120,13 +184,10 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
       );
 
       const translationWithFriction = baseTranslation * incrementalFriction;
-      // The translateX value is the one that will be animated
       translateX.value = translationWithFriction;
       progressTranslateX.value = translationWithFriction;
     })
     .onFinalize(() => {
-      // As mentioned before, the progressTranslateX is used to apply the overshootClamping property
-      // And the translateX is used to keep track of the previous translation value
       translateX.value = withSpring(0, {
         mass: SpringMass,
         damping: 10,
@@ -158,3 +219,18 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
     </GestureDetector>
   );
 };
+
+const styles = StyleSheet.create({
+  scrollView: {
+    alignItems: 'flex-start',
+    height: 200,
+    justifyContent: 'center',
+    width: ScreenWidth,
+  },
+  scrollableView: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 48,
+  },
+});
