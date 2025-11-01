@@ -74,6 +74,7 @@ function StoryList<T>({
             style={{
               width: storyItemDimensions.width,
               height: storyItemDimensions.height,
+              // The magic trick
               // backgroundColor: '#7b7bfdff',
               // borderRadius: 25,
               // borderCurve: 'continuous',

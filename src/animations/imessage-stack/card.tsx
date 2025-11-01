@@ -1,4 +1,4 @@
-import { Dimensions, Platform, useWindowDimensions } from 'react-native';
+import { Dimensions, useWindowDimensions } from 'react-native';
 
 import { useMemo } from 'react';
 
@@ -64,10 +64,10 @@ const ANIMATION_CONFIG = {
   },
   shadow: {
     color: '#000',
-    opacity: 0.2,
-    radius: 20,
-    offset: { width: 0, height: 10 },
-    elevation: 10,
+    opacity: 0.08,
+    radius: 10,
+    offset: { width: 0, height: 5 },
+    elevation: 5,
   },
   border: {
     radius: 20,
@@ -281,21 +281,9 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
   const shadowStyle = useMemo(() => {
     const { shadow } = ANIMATION_CONFIG;
 
-    return Platform.select({
-      ios: {
-        shadowColor: shadow.color,
-        shadowOffset: shadow.offset,
-        shadowOpacity: shadow.opacity,
-        shadowRadius: shadow.radius,
-      },
-      android: {
-        elevation: shadow.elevation,
-      },
-      web: {
-        boxShadow: `0px ${shadow.offset.height}px ${shadow.radius}px rgba(0, 0, 0, ${shadow.opacity})`,
-      },
-      default: {},
-    });
+    return {
+      boxShadow: `0px ${shadow.offset.height}px ${shadow.radius}px rgba(0, 0, 0, ${shadow.opacity})`,
+    };
   }, []);
 
   return (

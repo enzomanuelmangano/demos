@@ -190,11 +190,12 @@ export const StackedCarousel = <T,>({
             style={{
               width: cardWidth,
               height: cardHeight,
-              justifyContent: 'center',
-              alignItems: 'center',
-              backgroundColor: '#7b7bfdff',
-              borderRadius: 25,
-              borderCurve: 'continuous',
+              // The magic trick
+              // justifyContent: 'center',
+              // alignItems: 'center',
+              // backgroundColor: '#7b7bfdff',
+              // borderRadius: 25,
+              // borderCurve: 'continuous',
             }}
           />
         )}
