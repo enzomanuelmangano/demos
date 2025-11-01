@@ -192,15 +192,15 @@ export const StackedCarousel = <T,>({
               height: cardHeight,
               justifyContent: 'center',
               alignItems: 'center',
-              // backgroundColor: '#7b7bfdff',
-              // borderRadius: 25,
-              // borderCurve: 'continuous',
+              backgroundColor: '#7b7bfdff',
+              borderRadius: 25,
+              borderCurve: 'continuous',
             }}
           />
         )}
         snapToInterval={cardWidth}
         horizontal
-        pagingEnabled
+        disableIntervalMomentum
         showsHorizontalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
