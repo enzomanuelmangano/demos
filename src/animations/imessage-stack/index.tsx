@@ -8,37 +8,19 @@ import Animated, {
 
 import { CARD_HEIGHT, CARD_WIDTH, Card } from './card';
 
-const CARDS = [
-  {
-    color: '#F1EEE0', // Soft beige
-  },
-  {
-    color: '#F3D9BC', // Light peach
-  },
-  {
-    color: '#F4ACB7', // Pale pink
-  },
-  {
-    color: '#F6DFEB', // Soft lavender
-  },
-  {
-    color: '#E2F0CB', // Light green
-  },
-  {
-    color: '#C7E3D4', // Mint green
-  },
-  {
-    color: '#AFCBFF', // Soft blue
-  },
-  {
-    color: '#E3DFFF', // Lavender blue
-  },
-  {
-    color: '#FFE5E0', // Light coral
-  },
-  {
-    color: '#FFD1DC', // Baby pink
-  },
+import type { CardData } from './card';
+
+const CARDS: CardData[] = [
+  { color: '#F1EEE0' }, // Soft beige
+  { color: '#F3D9BC' }, // Light peach
+  { color: '#F4ACB7' }, // Pale pink
+  { color: '#F6DFEB' }, // Soft lavender
+  { color: '#E2F0CB' }, // Light green
+  { color: '#C7E3D4' }, // Mint green
+  { color: '#AFCBFF' }, // Soft blue
+  { color: '#E3DFFF' }, // Lavender blue
+  { color: '#FFE5E0' }, // Light coral
+  { color: '#FFD1DC' }, // Baby pink
 ];
 
 const VerticalListPadding = 25;
