@@ -20,24 +20,32 @@
       }
     },
     "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "channel": "development"
-    },
-    "preview": {
-      "distribution": "internal",
-      "channel": "preview"
+      "channel": "development",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
+        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false",
+        "EXPO_PUBLIC_APP_VARIANT": "development"
+      }
     },
     "production": {
       "autoIncrement": true,
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
-        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false"
+        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false",
+        "EXPO_PUBLIC_APP_VARIANT": "production"
       }
     }
   },
   "submit": {
+    "development": {
+      "ios": {
+        "appleTeamId": "W3N4N47454",
+        "ascAppId": "6754805604",
+        "bundleIdentifier": "com.reactiive.dev"
+      }
+    },
     "production": {
       "ios": {
         "appleTeamId": "W3N4N47454",

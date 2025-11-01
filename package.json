@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -14,13 +14,16 @@
     "format": "bun eslint --fix 'app/**/*.ts' 'app/**/*.tsx' 'src/**/*.ts' 'src/**/*.tsx'",
     "prettier-format": "prettier --write 'app/**/*.ts' 'app/**/*.tsx' 'src/**/*.ts' 'src/**/*.tsx'",
     "prebuild": "npx expo prebuild --clean",
+    "build:ios:dev": "eas build --profile development --platform=ios --auto-submit --no-wait",
     "build:ios": "eas build --profile production --platform=ios --auto-submit --no-wait",
+    "submit:ios:dev": "eas submit --profile development --platform=ios",
     "submit:ios": "eas submit --profile production --platform=ios",
     "generate-icons-set": "cd scripts/generate-app-icon && bun install && bun generate-icons",
     "eas-build-pre-install": "bun generate-icons-set --value=$(node scripts/utils/get-animations-count.js)",
     "clean": "rimraf node_modules ios android $TMPDIR/haste-map-* $TMPDIR/metro-cache .expo && bun pm cache clean && watchman watch-del-all",
     "update-expo-packages": "expo install --fix",
-    "expo:ota": "eas update --channel production"
+    "ota:dev": "eas update --channel development",
+    "ota": "eas update --channel production"
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
