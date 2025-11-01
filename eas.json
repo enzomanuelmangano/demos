@@ -15,7 +15,8 @@
         "autoIncrement": "versionCode"
       },
       "env": {
-        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true"
+        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
+        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false"
       }
     },
     "development": {
@@ -31,7 +32,8 @@
       "autoIncrement": true,
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true"
+        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
+        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false"
       }
     }
   },

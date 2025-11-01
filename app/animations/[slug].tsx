@@ -70,6 +70,10 @@ export default function AnimationScreen() {
     );
   }
 
+  const hideDrawerIcon =
+    process.env.EXPO_PUBLIC_HIDE_DRAWER_ICON === 'true' ||
+    metadata.hideDrawerIcon;
+
   return (
     <>
       <AnimationComponent {...(dimensions as any)} />
@@ -78,7 +82,7 @@ export default function AnimationScreen() {
         intensity={rBlurIntensity}
         style={styles.blurView}
       />
-      {!metadata.hideDrawerIcon && (
+      {!hideDrawerIcon && (
         <AnimatedDrawerIcon
           containerStyle={[
             styles.menu,
