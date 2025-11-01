@@ -47,7 +47,7 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   children,
   containerStyle,
 }) => {
-  const scrollOffset = useSharedValue(INITIAL_SCROLL_POSITION);
+  const scrollOffset = useSharedValue(0);
 
   const convertScrollToProgress = useCallback((offset: number) => {
     'worklet';
@@ -80,7 +80,7 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = event.contentOffset.x;
+      scrollOffset.value = -event.contentOffset.x;
     },
   });
 
@@ -231,6 +231,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 48,
+    marginTop: 64,
   },
 });
