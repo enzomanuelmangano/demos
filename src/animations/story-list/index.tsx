@@ -3,7 +3,6 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { memo, useMemo } from 'react';
 
 import { Image } from 'expo-image';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { StoryList } from './components/story-list';
 
@@ -48,16 +47,12 @@ const StoryListContainer = memo(() => {
     <View style={styles.container}>
       <View
         style={{
-          height: width,
-          aspectRatio: 1,
-          paddingLeft: 25,
+          height: storyItemDimensions.height,
+          width: '100%',
         }}>
         <StoryList
           stories={stories}
-          pagingEnabled={false} // set to true to enable paging
           storyItemDimensions={storyItemDimensions}
-          visibleItems={3} // number of items visible at a time
-          gap={35} // gap between items
           renderItem={({ image }) => {
             return (
               <Image
@@ -65,7 +60,7 @@ const StoryListContainer = memo(() => {
                 cachePolicy={'memory-disk'}
                 style={[
                   {
-                    borderRadius: 20,
+                    borderRadius: 25,
                     // @@TODO: the image should support borderCurve
                     // @ts-ignore
                     borderCurve: 'continuous',
@@ -82,16 +77,6 @@ const StoryListContainer = memo(() => {
   );
 });
 
-const StoryListGestureContainer = () => {
-  return (
-    // The GestureHandlerRootView is required for gesture handlers to work (rngh)
-    // In a real app, you would probably wrap your entire app in this
-    <GestureHandlerRootView style={styles.fill}>
-      <StoryListContainer />
-    </GestureHandlerRootView>
-  );
-};
-
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
@@ -99,9 +84,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  fill: {
-    flex: 1,
-  },
 });
 
-export { StoryListGestureContainer as StoryList };
+export { StoryListContainer as StoryList };
