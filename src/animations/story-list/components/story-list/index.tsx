@@ -65,6 +65,7 @@ function StoryList<T>({
         bounces
         contentContainerStyle={{
           width: contentWidth,
+          paddingLeft: paddingLeft,
         }}>
         {/* Invisible placeholder views that define the scrollable area */}
         {stories.map((_, index) => (
@@ -73,6 +74,9 @@ function StoryList<T>({
             style={{
               width: storyItemDimensions.width,
               height: storyItemDimensions.height,
+              // backgroundColor: '#7b7bfdff',
+              // borderRadius: 25,
+              // borderCurve: 'continuous',
             }}
           />
         ))}
