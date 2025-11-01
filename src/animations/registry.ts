@@ -88,6 +88,7 @@ import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
 import { Metaball } from './metaball';
 import { MilesBarChart } from './miles-bar-chart';
+import { Mnist } from './mnist';
 import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
 import { OnlineOffline } from './online-offline';
@@ -243,6 +244,7 @@ export const AnimationRegistry = {
   'airbnb-flip-interaction': AirbnbFlipInteraction,
   'liquid-glass-playground': Playground,
   'blur-cards': BlurCards,
+  mnist: Mnist,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -905,6 +907,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Blur Cards',
     route: 'BlurCards',
     iconName: 'cards-variant',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  mnist: {
+    name: 'MNIST',
+    route: 'MNIST',
+    iconName: 'brain',
     iconFamily: 'MaterialCommunityIcons',
   },
 } as const;
