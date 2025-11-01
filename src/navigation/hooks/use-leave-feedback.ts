@@ -9,10 +9,12 @@ export const useLeaveFeedback = ({ screenName }: { screenName: string }) => {
       {
         text: 'OK',
         onPress: () => {
-          const subject = screenName
+          const title = screenName
             ? `Feedback on ${screenName} screen`
             : 'Reactiive Demos Feedback';
-          Linking.openURL(`mailto:hello@reactiive.io?subject=${subject}`);
+          Linking.openURL(
+            `https://github.com/enzomanuelmangano/demos/issues/new?title=${encodeURIComponent(title)}`,
+          );
         },
       },
     ]);

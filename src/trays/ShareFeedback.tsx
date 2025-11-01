@@ -23,14 +23,14 @@ export const ShareFeedback = ({ slug }: ShareFeedbackProps) => {
     const metadata = slug ? getAnimationMetadata(slug) : null;
     const animationName = metadata?.name || 'General';
 
-    const subject = slug ? `Feedback: ${animationName}` : 'Feedback';
+    const title = slug ? `Feedback: ${animationName}` : 'Feedback';
 
     const contextLine = slug ? `Animation: ${animationName} (${slug})\n\n` : '';
 
     const body = `${contextLine}${feedbackText}`;
-    const mailtoUrl = `mailto:hello@reactiive.io?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const issueUrl = `https://github.com/enzomanuelmangano/demos/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
 
-    Linking.openURL(mailtoUrl);
+    Linking.openURL(issueUrl);
     handleClose();
   };
 

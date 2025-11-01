@@ -20,7 +20,7 @@ This project is a work in progress (almost by definition). Here are the current 
 - [x] Drawer Navigation: currently the navigation is quite unintuitive and needs to be improved.
 - [x] Ensure consistent haptics support (use [pressto](https://github.com/enzomanuelmangano/pressto) whenever possible)
 - [ ] Optimize performance in Shaders demos
-- [ ] Feedback screen on Shake Detection
+- [x] Feedback screen on Shake Detection
 - [ ] TestFlight Release
 - [ ] Android Release (starting with App Tester / Firebase Distribution)
 
