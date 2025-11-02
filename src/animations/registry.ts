@@ -85,6 +85,7 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
+import { LinearSensors } from './linear-sensors';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
 import { MagnetSpring } from './magnet-spring';
@@ -228,6 +229,7 @@ export const AnimationRegistry = {
   'tab-navigation': TabNavigation,
   mnist: Mnist,
   'stacked-modals': StackedModals,
+  'linear-sensors': LinearSensors,
   'verification-code-face': VerificationCodeFace,
   'everybody-can-cook': EverybodyCanCook,
   'threads-holo-ticket': ThreadsHoloTicket,
@@ -801,6 +803,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Stacked Modals',
     route: 'StackedModals',
     iconName: 'card',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'linear-sensors': {
+    name: 'Linear Sensors',
+    route: 'LinearSensors',
+    iconName: 'hand-wave',
     iconFamily: 'MaterialCommunityIcons',
   },
   'verification-code-face': {

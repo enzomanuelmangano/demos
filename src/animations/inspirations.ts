@@ -248,6 +248,10 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     authorName: 'Apple iOS Home',
     link: null,
   },
+  'linear-sensors': {
+    authorName: '@60fpsdesign',
+    link: 'https://x.com/60fpsdesign/status/1836812918635286959',
+  },
   'liquid-glass-playground': {
     authorName: null,
     link: null,
