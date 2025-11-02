@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { useState } from 'react';
 
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { PressableOpacity } from 'pressto';
 import Animated, {
   interpolate,
@@ -21,6 +22,8 @@ import { SecondPage } from './flip-interaction/components/card/pages/SecondPage'
 import type { ProfileType } from './flip-interaction/components/card/types';
 
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
+
+const GRADIENT_COLORS = ['#FFFFFF', '#FFFFFF00'] as const;
 
 const ANIMATION = {
   translate: {
@@ -111,7 +114,7 @@ const sampleProfile: ProfileType = {
 
 const App = () => {
   const [isFlipped, setIsFlipped] = useState(false);
-  const insets = useSafeAreaInsets();
+  const { top: safeTop, bottom: safeBottom } = useSafeAreaInsets();
 
   const progress = useDerivedValue(() => {
     return withSpring(isFlipped ? 1 : 0, {
@@ -135,12 +138,13 @@ const App = () => {
   };
 
   return (
-    <View
-      style={[
-        styles.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
-      ]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingTop: safeTop + 30,
+          paddingBottom: safeBottom + 40,
+        }}>
         {/* Main Card Section */}
         <View style={styles.cardSection}>
           <PressableOpacity onPress={toggleCard}>
@@ -182,6 +186,16 @@ const App = () => {
           )}
         </View>
       </ScrollView>
+      <LinearGradient
+        colors={GRADIENT_COLORS}
+        style={[
+          styles.gradient,
+          {
+            height: safeTop + 16,
+          },
+        ]}
+        pointerEvents="none"
+      />
     </View>
   );
 };
@@ -191,7 +205,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: spacing.xl,
     paddingHorizontal: 20,
-    paddingTop: 30,
   },
   container: {
     backgroundColor: '#FFFFFF',
@@ -203,9 +216,15 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   descriptionSection: {
-    paddingBottom: 40,
     paddingHorizontal: spacing.xxl,
     paddingTop: 0,
+  },
+  gradient: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 10,
   },
 });
 
