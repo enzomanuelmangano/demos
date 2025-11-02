@@ -9,7 +9,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -42,18 +42,20 @@ const AddToCart = () => {
       animationProgress.value = 0;
       layoutData.value = { ...layout };
       selectedIndex.value = index;
-      animationProgress.value = withTiming(1, {
-        duration: 350,
+      animationProgress.value = withSpring(1, {
+        dampingRatio: 1,
+        duration: 500,
       });
     },
     [animationProgress, layoutData, selectedIndex],
   );
 
   const onDismiss = useCallback(() => {
-    animationProgress.value = withTiming(
+    animationProgress.value = withSpring(
       0,
       {
-        duration: 350,
+        dampingRatio: 1,
+        duration: 500,
       },
       hasCompleted => {
         if (hasCompleted) {
