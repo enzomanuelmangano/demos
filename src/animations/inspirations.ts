@@ -48,6 +48,10 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     authorName: null,
     link: 'https://x.com/i/status/1734891084826952094',
   },
+  'atlas-sphere': {
+    authorName: null,
+    link: null,
+  },
   'audio-player': {
     authorName: null,
     link: null,
@@ -251,6 +255,10 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'loading-button': {
     authorName: '@lochieaxon',
     link: 'https://x.com/lochieaxon/status/1700192743576973633?s=20',
+  },
+  'magnet-spring': {
+    authorName: null,
+    link: null,
   },
   metaball: {
     authorName: null,

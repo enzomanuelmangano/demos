@@ -35,6 +35,7 @@ import { AnimatedCountText } from './animated-count-text';
 import { AnimatedGridList } from './animated-grid-list';
 import { AnimatedIndicatorList } from './animated-indicator-list';
 import { AtlasButton } from './atlas-button';
+import { AtlasSphere } from './atlas-sphere';
 import { AudioPlayer } from './audio-player';
 import { BalanceSlider } from './balance-slider';
 import { BezierCurveOutline } from './bezier-curve-outline';
@@ -86,6 +87,7 @@ import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
+import { MagnetSpring } from './magnet-spring';
 import { Metaball } from './metaball';
 import { MilesBarChart } from './miles-bar-chart';
 import { Mnist } from './mnist';
@@ -204,6 +206,7 @@ export const AnimationRegistry = {
   'grid-visualizer': GridVisualizer,
   'imessage-stack': IMessageStack,
   'atlas-button': AtlasButton,
+  'atlas-sphere': AtlasSphere,
   'checkbox-interactions': CheckboxInteractions,
   'interaction-appearance': InteractionAppearance,
   'dot-sheet': DotSheet,
@@ -235,6 +238,7 @@ export const AnimationRegistry = {
   'clock-time-picker': ClockTimePicker,
   sudoku: Sudoku,
   'particles-button': ParticlesButton,
+  'magnet-spring': MagnetSpring,
   'ios-home-grid': iOSHomeGrid,
   'time-machine': TimeMachine,
   'ios-home-bouncy': IosHomeBouncy,
@@ -665,6 +669,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     iconName: 'react',
     iconFamily: 'MaterialCommunityIcons',
   },
+  'atlas-sphere': {
+    name: 'Atlas Sphere',
+    route: 'AtlasSphere',
+    iconName: 'sphere',
+    iconFamily: 'MaterialCommunityIcons',
+  },
   'checkbox-interactions': {
     name: 'Checkbox Interactions',
     route: 'CheckboxInteractions',
@@ -851,6 +861,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Particles Button',
     route: 'ParticlesButton',
     iconName: 'atom',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'magnet-spring': {
+    name: 'Magnet Spring',
+    route: 'MagnetSpring',
+    iconName: 'magnet',
     iconFamily: 'MaterialCommunityIcons',
   },
   'ios-home-grid': {
