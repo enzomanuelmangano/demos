@@ -3,14 +3,13 @@ import { StyleSheet } from 'react-native';
 import { type FC, memo, useCallback } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
+import { PressableScale } from 'pressto';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-
-import { PressableScale } from '../pressable-scale';
 
 type TabBarItemProps = {
   onPress: () => void;

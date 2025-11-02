@@ -13,7 +13,7 @@ import Animated, {
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -158,16 +158,16 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
           ref={animatedTextInput}
           onFocus={() => {
             // Here's the magic, we animate the progress value in a reactive way
-            progress.value = withTiming(1, { duration: 600 });
+            progress.value = withSpring(1, { duration: 800, dampingRatio: 1 });
           }}
           onBlur={() => {
             // When the input is unfocused, we animate the progress value back to 0
-            progress.value = withTiming(0, { duration: 600 });
+            progress.value = withSpring(0, { duration: 800, dampingRatio: 1 });
           }}
           style={[styles.input, rTextInputStyle]}
           autoCorrect={false}
           autoCapitalize="none"
-          placeholder="You can find the animation at ..."
+          placeholder="Hello there 👋"
           multiline
           placeholderTextColor="#b4b4b4"
         />
