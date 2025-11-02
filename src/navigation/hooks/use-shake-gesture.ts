@@ -14,7 +14,7 @@ export const useOnShakeEffect = (callback: () => void) => {
 
   const debouncedCallback = useMemo(
     () =>
-      debounce(() => callbackRef.current(), 2500, {
+      debounce(() => callbackRef.current(), 500, {
         leading: true,
         trailing: false,
       }),
@@ -32,7 +32,7 @@ export const useOnShakeEffect = (callback: () => void) => {
     let lastX = 0;
     let lastY = 0;
     let lastZ = 0;
-    const shakeThreshold = 400;
+    const shakeThreshold = 250;
 
     const subscription = Accelerometer.addListener(({ x, y, z }) => {
       const currentTime = new Date().getTime();
@@ -41,7 +41,9 @@ export const useOnShakeEffect = (callback: () => void) => {
         lastUpdate = currentTime;
 
         const speed =
-          (Math.abs(x + y + z - lastX - lastY - lastZ) / diffTime) * 10000;
+          ((Math.abs(x - lastX) + Math.abs(y - lastY) + Math.abs(z - lastZ)) /
+            diffTime) *
+          10000;
 
         if (speed > shakeThreshold) {
           console.log({ speed, shakeThreshold });
