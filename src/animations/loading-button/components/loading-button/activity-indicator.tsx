@@ -14,6 +14,7 @@ import {
 import Animated, {
   Easing,
   cancelAnimation,
+  interpolate,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -106,10 +107,14 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
     );
   }, [size, status]);
 
+  const progress = useDerivedValue(() => {
+    return withTiming(status === 'idle' ? 0 : 1, { duration: 200 });
+  });
+
   const containerStyle = useAnimatedStyle(() => ({
-    height: withTiming(status === 'idle' ? 0 : size, { duration: 300 }),
-    width: withTiming(status === 'idle' ? 0 : size, { duration: 300 }),
-    marginRight: withTiming(status === 'idle' ? 0 : 6, { duration: 300 }),
+    height: interpolate(progress.value, [0, 1], [0, size]),
+    width: interpolate(progress.value, [0, 1], [0, size]),
+    marginRight: interpolate(progress.value, [0, 1], [0, 6]),
     overflow: 'hidden',
   }));
 
