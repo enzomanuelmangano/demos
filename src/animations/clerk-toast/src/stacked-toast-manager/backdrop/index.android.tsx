@@ -5,7 +5,7 @@ import { useContext } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useAnimatedStyle,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { InternalStackedToastContext } from '../context';
@@ -19,9 +19,15 @@ export const Backdrop = () => {
   const rAnimatedStyle = useAnimatedStyle(() => {
     const top = windowHeight - gradientHeight;
     return {
-      top: withTiming(top, {
-        duration: 500,
-      }),
+      top: 0,
+      transform: [
+        {
+          translateY: withSpring(top, {
+            dampingRatio: 1,
+            duration: 500,
+          }),
+        },
+      ],
     };
   }, [windowHeight, stackedToasts.length]);
 

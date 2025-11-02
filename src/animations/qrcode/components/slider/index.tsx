@@ -9,7 +9,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -87,18 +87,22 @@ const Slider: FC<SliderProps> = ({
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      pickerBorderRadius.value = withTiming(pickerSize / 2);
-      pickerBorderWidth.value = withTiming(4);
-      scale.value = withTiming(1);
+      // @@TODO: prefer one shared value and animate
+      pickerBorderRadius.value = withSpring(pickerSize / 2);
+      pickerBorderWidth.value = withSpring(4, {
+        dampingRatio: 1,
+        duration: 500,
+      });
+      scale.value = withSpring(1);
       contextX.value = clampedTranslateX.value;
     })
     .onUpdate(event => {
       translateX.value = contextX.value + event.translationX;
     })
-    .onFinalize(() => {
-      scale.value = withTiming(defaultScale);
-      pickerBorderRadius.value = withTiming(defaultPickerBorderRadius);
-      pickerBorderWidth.value = withTiming(defaultPickerBorderWidth);
+    .onTouchesUp(() => {
+      scale.value = withSpring(defaultScale);
+      pickerBorderRadius.value = withSpring(defaultPickerBorderRadius);
+      pickerBorderWidth.value = withSpring(defaultPickerBorderWidth);
     });
 
   const rPickerStyle = useAnimatedStyle(() => {

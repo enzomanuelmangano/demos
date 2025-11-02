@@ -72,10 +72,11 @@ const StackedToast: React.FC<StackedToastProps> = ({
 
   const dismissItem = useCallback(() => {
     'worklet';
-    translateX.value = withTiming(
+    translateX.value = withSpring(
       -windowWidth,
       {
-        duration: 250,
+        dampingRatio: 1,
+        duration: 350,
       },
       isFinished => {
         if (isFinished) {
