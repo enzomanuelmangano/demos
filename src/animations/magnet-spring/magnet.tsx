@@ -9,7 +9,6 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 import type { SharedValue } from 'react-native-reanimated';
@@ -24,7 +23,6 @@ interface MagnetProps {
   radius: number;
   color: string;
   objectPosition: SharedValue<Position>;
-  type: 'spring' | 'timing';
 }
 
 const { width, height } = Dimensions.get('window');
@@ -69,7 +67,6 @@ const MAGNET_RADIUS = 10;
 const MAGNET_COLOR = '#c1c1c1'; // Aluminum
 const MAGNET_ACTIVE_COLOR = {
   spring: MAGNET_COLOR,
-  timing: MAGNET_COLOR,
 };
 const MAIN_MAGNET_COLOR = '#3b3b3b'; // Graphite steel
 const CHEESE_RADIUS = 25;
@@ -86,17 +83,11 @@ const getDistance = (position: Position, position2: Position) => {
   );
 };
 
-const useMagnetDrag = (
-  initialPosition: Position,
-  magnets: Position[],
-  { animation }: { animation: 'spring' | 'timing' },
-) => {
+const useMagnetDrag = (initialPosition: Position, magnets: Position[]) => {
   const positionX = useSharedValue(initialPosition.x);
   const positionY = useSharedValue(initialPosition.y);
   const isActive = useSharedValue(false);
   const context = useSharedValue<Position>({ x: 0, y: 0 });
-  const withAnimation = animation === 'spring' ? withSpring : withTiming;
-  const withConfig = animation === 'spring' ? SPRING_CONFIG : { duration: 500 };
   const position = useDerivedValue(() => ({
     x: positionX.value,
     y: positionY.value,
@@ -155,13 +146,13 @@ const useMagnetDrag = (
         x: positionX.value,
         y: positionY.value,
       });
-      positionX.value = withAnimation(nearestMagnetPosition.x, {
+      positionX.value = withSpring(nearestMagnetPosition.x, {
         velocity: velocityX,
-        ...withConfig,
+        ...SPRING_CONFIG,
       });
-      positionY.value = withAnimation(nearestMagnetPosition.y, {
+      positionY.value = withSpring(nearestMagnetPosition.y, {
         velocity: velocityY,
-        ...withConfig,
+        ...SPRING_CONFIG,
       });
     })
     .onFinalize(() => {
@@ -180,7 +171,6 @@ const Magnet: React.FC<MagnetProps> = ({
   radius,
   color,
   objectPosition,
-  type,
 }) => {
   const rAnimatedStyle = useAnimatedStyle(() => {
     const distance = getDistance(objectPosition.value, position);
@@ -193,7 +183,7 @@ const Magnet: React.FC<MagnetProps> = ({
     const bgColor = interpolateColor(
       scale,
       [1, 3],
-      [color, MAGNET_ACTIVE_COLOR[type]],
+      [color, MAGNET_ACTIVE_COLOR.spring],
     );
 
     return {
@@ -223,7 +213,6 @@ const Magnet: React.FC<MagnetProps> = ({
 };
 
 type MagnetsProps = {
-  type: 'spring' | 'timing';
   magnets?: Position[];
   initialPosition?: Position;
   magnetRadius?: number;
@@ -233,7 +222,6 @@ type MagnetsProps = {
 };
 
 export const Magnets: React.FC<MagnetsProps> = ({
-  type,
   magnets = DEFAULT_MAGNETS,
   initialPosition = magnets[0] || { x: width / 2, y: height / 2 },
   magnetRadius = MAGNET_RADIUS,
@@ -244,9 +232,6 @@ export const Magnets: React.FC<MagnetsProps> = ({
   const { animatedStyle, panGesture, position } = useMagnetDrag(
     initialPosition,
     magnets,
-    {
-      animation: type,
-    },
   );
 
   return (
@@ -275,7 +260,6 @@ export const Magnets: React.FC<MagnetsProps> = ({
           radius={magnetRadius}
           color={magnetColor}
           objectPosition={position}
-          type={type}
         />
       ))}
     </View>

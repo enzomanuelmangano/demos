@@ -7,7 +7,7 @@ import Animated, {
   SharedValue,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -75,7 +75,7 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
     return {
       transform: [
         {
-          scale: withTiming(highlighted.value ? 0.8 : 1),
+          scale: withSpring(highlighted.value ? 0.8 : 1),
         },
       ],
     };

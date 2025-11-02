@@ -15,7 +15,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -44,8 +44,9 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
       });
 
     const progress = useDerivedValue(() => {
-      return withTiming(isActive.value ? 1 : 0, {
-        duration: 500,
+      return withSpring(isActive.value ? 1 : 0, {
+        duration: 600,
+        dampingRatio: 1,
       });
     });
 
@@ -131,7 +132,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
       return {
         transform: [
           {
-            scale: withTiming(isActive.value ? 1 : 0.5),
+            scale: withSpring(isActive.value ? 1 : 0.5),
           },
         ],
       };

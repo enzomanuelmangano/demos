@@ -8,7 +8,7 @@ import { PressableScale } from 'pressto';
 import {
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -21,7 +21,10 @@ export const WheelPicker = () => {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const animatedSpacePerLine = useDerivedValue<number>(() => {
-    return withTiming(isExpanded ? 50 : 20);
+    return withSpring(isExpanded ? 50 : 20, {
+      dampingRatio: 1,
+      duration: 500,
+    });
   }, [isExpanded]);
 
   const progress = useSharedValue(0);

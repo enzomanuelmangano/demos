@@ -6,7 +6,7 @@ import Reanimated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -68,7 +68,7 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
     return {
       transform: [
         {
-          scale: withTiming(scale.value),
+          scale: withSpring(scale.value),
         },
       ],
     };

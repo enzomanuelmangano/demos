@@ -74,10 +74,11 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
     return {
       transform: [
         {
-          translateY: withTiming(
+          translateY: withSpring(
             isActive.value ? 0 : BOTTOM_BAR_HEIGHT + safeBottom,
             {
-              duration: 300,
+              dampingRatio: 1,
+              duration: 500,
             },
           ),
         },

@@ -7,12 +7,11 @@ import Animated, {
   interpolateColor,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { EasingsUtils } from '../../../../animations/easings';
 import { Palette } from '../../../../constants/palette';
 import { TabBarHeight } from '../constants';
 import { ExpandedSheetMutableProgress } from '../shared-progress';
@@ -40,9 +39,9 @@ export const ExpandedSheet = () => {
       }
       scheduleOnRN(Haptics.selectionAsync);
 
-      progress.value = withTiming(1, {
-        duration: 450,
-        easing: EasingsUtils.inOut,
+      progress.value = withSpring(1, {
+        dampingRatio: 1,
+        duration: 600,
       });
     })
     .onFinalize(() => {
@@ -66,9 +65,9 @@ export const ExpandedSheet = () => {
     .onFinalize(() => {
       if (!panEnabled.value) return;
       panEnabled.value = false;
-      progress.value = withTiming(progress.value > progressThreshold ? 1 : 0, {
-        duration: 350,
-        easing: EasingsUtils.inOut,
+      progress.value = withSpring(progress.value > progressThreshold ? 1 : 0, {
+        dampingRatio: 1,
+        duration: 600,
       });
     });
 
@@ -101,9 +100,7 @@ export const ExpandedSheet = () => {
       shadowOpacity: interpolate(progress.value, [0, 1], [0.2, 0.5]),
       transform: [
         {
-          scale: withTiming(isTapped.value ? 0.98 : 1, {
-            easing: EasingsUtils.inOut,
-          }),
+          scale: withSpring(isTapped.value ? 0.98 : 1),
         },
       ],
     };

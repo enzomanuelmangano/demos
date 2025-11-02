@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useRef } from 'react';
 
 import {
+  Easing,
   Extrapolation,
   useDerivedValue,
   useSharedValue,
@@ -24,6 +25,7 @@ export const InfiniteCarousel = () => {
   const backgroundPrimaryColor = useDerivedValue(() => {
     return withTiming(ThemeData[activeIndex.value].primary, {
       duration: 500,
+      easing: Easing.linear,
     });
   }, [activeIndex]);
 

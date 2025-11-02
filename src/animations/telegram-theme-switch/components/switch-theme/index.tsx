@@ -15,8 +15,6 @@ import Reanimated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
-  Easing,
   withSpring,
 } from 'react-native-reanimated';
 
@@ -34,7 +32,7 @@ type SwitchThemeProviderProps = {
   children?: React.ReactNode;
 };
 
-export const SWITCH_THEME_ANIMATION_DURATION = 600;
+export const SWITCH_THEME_ANIMATION_DURATION = 1000;
 
 const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   children,
@@ -107,11 +105,11 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
 
         // Set and initiate the animation progress
         animationProgress.value = 1 - toValue;
-        animationProgress.value = withTiming(
+        animationProgress.value = withSpring(
           toValue,
           {
             duration: SWITCH_THEME_ANIMATION_DURATION,
-            easing: Easing.linear,
+            dampingRatio: 1,
           },
           finished => {
             // Reset certain values after the animation is complete

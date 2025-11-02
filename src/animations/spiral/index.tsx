@@ -18,7 +18,7 @@ import {
   makeMutable,
   useAnimatedReaction,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { logarithmicSpiral } from './utils';
@@ -27,9 +27,10 @@ import type { SharedValue } from 'react-native-reanimated';
 
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
-const spiralCircleCount = 1400;
+const spiralCircleCount = Math.floor(windowHeight * 1.8);
 const TimingConfig = {
-  duration: 1500,
+  duration: 3000,
+  dampingRatio: 1,
 };
 
 export const Spiral = (dimensions?: { width: number; height: number }) => {
@@ -64,7 +65,7 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
     newAngle => {
       for (let index = 0; index < spiralCircleCount; index++) {
         spiralCoordinates[index].set(
-          withTiming(
+          withSpring(
             logarithmicSpiral({
               angle: newAngle,
               index,
