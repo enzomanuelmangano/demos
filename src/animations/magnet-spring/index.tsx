@@ -1,5 +1,5 @@
-import { MagnetSpring as MagnetSpringComponent } from './magnet-spring';
+import { Magnets } from './magnet';
 
 export const MagnetSpring = () => {
-  return <MagnetSpringComponent />;
+  return <Magnets />;
 };

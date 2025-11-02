@@ -2,12 +2,11 @@ import { useCallback } from 'react';
 
 import {
   cancelAnimation,
-  Easing,
   interpolate,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -39,11 +38,11 @@ type UseAnimateThroughPathProps = {
   pathReference: SharedValue<SkPath>;
 };
 
-const withCustomTiming = (value: number) => {
+const withCustomSpring = (value: number) => {
   'worklet';
-  return withTiming(value, {
-    duration: 1000,
-    easing: Easing.bezier(0.455, 0.03, 0.515, 0.955),
+  return withSpring(value, {
+    duration: 1500,
+    dampingRatio: 1,
   });
 };
 
@@ -68,12 +67,12 @@ export const useAnimateThroughPath = ({
     points.value = getPathPoints(pathReference.value);
     cancelAnimation(progress);
     progress.value = 0;
-    progress.value = withCustomTiming(1);
+    progress.value = withCustomSpring(1);
   }, [points, progress, pathReference]);
 
   const reverseAnimation = useCallback(() => {
     cancelAnimation(progress);
-    progress.value = withCustomTiming(0);
+    progress.value = withCustomSpring(0);
   }, [progress]);
 
   const cx = useDerivedValue(() => {

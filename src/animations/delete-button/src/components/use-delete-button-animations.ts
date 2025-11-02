@@ -45,7 +45,7 @@ export const useDeleteButtonAnimations = ({
   });
 
   const scale = useDerivedValue(() => {
-    return withTiming(isButtonPressed.value ? 0.95 : 1);
+    return withSpring(isButtonPressed.value ? 0.95 : 1);
   }, []);
 
   const buttonTransform = useDerivedValue(() => {

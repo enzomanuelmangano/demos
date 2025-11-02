@@ -15,7 +15,6 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 import { ActionTray, type ActionTrayRef } from './components/ActionTray';
@@ -77,7 +76,10 @@ function App() {
   }, [step]);
 
   const rotate = useDerivedValue(() => {
-    return withTiming(isActionTrayOpened.value ? 45 : 0);
+    return withSpring(isActionTrayOpened.value ? 45 : 0, {
+      dampingRatio: 0.8,
+      duration: 500,
+    });
   }, [isActionTrayOpened]);
 
   const rToggleButtonStyle = useAnimatedStyle(() => {

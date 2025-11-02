@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { PressableScale } from 'pressto';
 import {
+  Easing,
   LinearTransition,
   useAnimatedStyle,
   withTiming,
@@ -27,7 +28,7 @@ export const ComposableTextScreen = () => {
 
   const rTextStyle = useAnimatedStyle(() => {
     return {
-      color: withTiming(text.color, { duration: 200 }),
+      color: withTiming(text.color, { duration: 200, easing: Easing.linear }),
     };
   }, [text.color]);
 

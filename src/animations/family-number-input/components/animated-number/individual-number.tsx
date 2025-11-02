@@ -8,6 +8,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -59,7 +60,7 @@ export const AnimatedSingleNumber: FC<AnimatedSingleNumberProps> = ({
   }, [itemWidth, scale]);
 
   useEffect(() => {
-    bottom.value = withTiming(0);
+    bottom.value = withSpring(0);
     opacity.value = withTiming(1);
   }, [bottom, opacity]);
 

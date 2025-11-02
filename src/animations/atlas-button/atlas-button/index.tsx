@@ -12,13 +12,12 @@ import {
 } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   Extrapolation,
   interpolate,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -66,9 +65,9 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
     });
 
   const progress = useDerivedValue<number>(() => {
-    return withTiming(isActive.value ? 1 : 0, {
-      duration: 1000,
-      easing: Easing.bezier(0.25, 0.1, 0.25, 1),
+    return withSpring(isActive.value ? 1 : 0, {
+      duration: 1200,
+      dampingRatio: 1,
     });
   });
 

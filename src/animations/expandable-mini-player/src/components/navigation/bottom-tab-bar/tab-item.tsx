@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { createAnimatedPressable } from 'pressto';
-import { interpolate, withTiming } from 'react-native-reanimated';
+import { interpolate } from 'react-native-reanimated';
 
 import * as Icons from '../../../components/icons';
 import { Palette } from '../../../constants/palette';
@@ -17,7 +17,7 @@ const PressableScaleWithOpacity = createAnimatedPressable(
   (progress, { isSelected }) => {
     'worklet';
     return {
-      opacity: withTiming(isSelected ? 1 : 0.5),
+      opacity: interpolate(progress, [0, 1], [isSelected ? 1 : 0.5, 1]),
       transform: [
         {
           scale: interpolate(progress, [0, 1], [1, 0.97]),

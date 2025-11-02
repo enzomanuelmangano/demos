@@ -12,7 +12,7 @@ import {
 import {
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 const sadMouth = Skia.Path.MakeFromSVGString(
@@ -31,7 +31,7 @@ export type AnimatedFaceRefType = {
   closeEyes: () => void;
 };
 
-const runTimingConfig = { duration: 250 };
+const runTimingConfig = { dampingRatio: 1, duration: 400 };
 
 const AnimatedFace = forwardRef<AnimatedFaceRefType>((_, ref) => {
   const mouthProgress = useSharedValue(0.5);
@@ -44,23 +44,23 @@ const AnimatedFace = forwardRef<AnimatedFaceRefType>((_, ref) => {
   };
 
   const happy = useCallback(() => {
-    mouthProgress.value = withTiming(1, runTimingConfig);
+    mouthProgress.value = withSpring(1, runTimingConfig);
   }, [mouthProgress]);
 
   const sad = useCallback(() => {
-    mouthProgress.value = withTiming(0, runTimingConfig);
+    mouthProgress.value = withSpring(0, runTimingConfig);
   }, [mouthProgress]);
 
   const closeEyes = useCallback(() => {
-    eyesProgress.value = withTiming(0, runTimingConfig);
+    eyesProgress.value = withSpring(0, runTimingConfig);
   }, [eyesProgress]);
 
   const openEyes = useCallback(() => {
-    eyesProgress.value = withTiming(1, runTimingConfig);
+    eyesProgress.value = withSpring(1, runTimingConfig);
   }, [eyesProgress]);
 
   const reset = useCallback(() => {
-    mouthProgress.value = withTiming(0.5, runTimingConfig);
+    mouthProgress.value = withSpring(0.5, runTimingConfig);
     closeEyes();
   }, [mouthProgress, closeEyes]);
 

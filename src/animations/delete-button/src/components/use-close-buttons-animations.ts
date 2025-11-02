@@ -51,7 +51,7 @@ export const useCloseButtonAnimations = ({
   });
 
   const closeButtonScale = useDerivedValue(() => {
-    return withTiming(isCloseButtonPressed.value ? 0.95 : 1);
+    return withSpring(isCloseButtonPressed.value ? 0.95 : 1);
   }, []);
 
   const closeButtonTransform = useDerivedValue(() => {

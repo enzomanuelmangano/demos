@@ -148,7 +148,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
         opacity: opacity.value,
         transform: [
           {
-            translateX: withTiming((-width * invisibleDigitsAmount.value) / 2),
+            translateX: withSpring((-width * invisibleDigitsAmount.value) / 2),
           },
         ],
       };

@@ -5,6 +5,7 @@ import { type FC, memo } from 'react';
 import Animated, {
   type SharedValue,
   useAnimatedStyle,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 
@@ -63,7 +64,7 @@ const WaveformScrubberSample: FC<WaveformScrubberSampleProps> = memo(
         opacity: withTiming(isActive ? 1 : 0.6),
         transform: [
           {
-            scaleY: withTiming(scaleY),
+            scaleY: withSpring(scaleY),
           },
         ],
       };

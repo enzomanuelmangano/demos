@@ -1,6 +1,6 @@
 import Animated, {
   useAnimatedStyle,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import { isSwitchingThemeShared } from '../../theme';
@@ -16,8 +16,9 @@ export const ThemeRescaler: React.FC<ThemeRescalerProps> = ({ children }) => {
     return {
       transform: [
         {
-          scale: withTiming(isSwitchingThemeShared.value ? 0.95 : 1, {
-            duration: 350,
+          scale: withSpring(isSwitchingThemeShared.value ? 0.95 : 1, {
+            dampingRatio: 1,
+            duration: 600,
           }),
         },
       ],

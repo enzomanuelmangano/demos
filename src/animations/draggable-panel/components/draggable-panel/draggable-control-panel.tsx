@@ -4,7 +4,6 @@ import { type FC, useCallback, useMemo, useState, ReactNode } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Easing,
   FadeIn,
   FadeOut,
   interpolate,
@@ -13,7 +12,6 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 
 import {
@@ -183,9 +181,9 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
   });
 
   const progress = useDerivedValue(() => {
-    return withTiming(isCollapsed ? 0 : 1, {
-      duration: 180,
-      easing: Easing.inOut(Easing.ease),
+    return withSpring(isCollapsed ? 0 : 1, {
+      dampingRatio: 1,
+      duration: 500,
     });
   });
 
