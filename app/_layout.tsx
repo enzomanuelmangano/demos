@@ -1,9 +1,11 @@
 import { StatusBar, StyleSheet } from 'react-native';
 
-import { memo, Suspense, useCallback } from 'react';
+import { memo, Suspense, useCallback, useEffect } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
+import { useRouter } from 'expo-router';
 import Drawer from 'expo-router/drawer';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
@@ -63,10 +65,23 @@ const animationScreenOptions = {
 export default function RootLayout() {
   // Check for OTA updates
   useOta();
+  const router = useRouter();
 
   const onLayoutRootView = useCallback(() => {
     SplashScreen.hideAsync();
   }, []);
+
+  useEffect(() => {
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        const data = Linking.parse(url);
+        if (data.path) {
+          // @@TODO: investigate (needed for universal links)
+          router.push(data.path);
+        }
+      }
+    });
+  }, [router]);
 
   return (
     <Suspense>
