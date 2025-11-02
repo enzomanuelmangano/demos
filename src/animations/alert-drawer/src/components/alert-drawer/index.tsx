@@ -10,7 +10,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -85,7 +85,7 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
   const isExpanded = useSharedValue(false);
 
   const progress = useDerivedValue(() =>
-    withTiming(isExpanded.value ? 1 : 0, { duration: 300 }),
+    withSpring(isExpanded.value ? 1 : 0, { dampingRatio: 1, duration: 400 }),
   );
 
   const delayedProgress = useDerivedValue(() => progress.value ** 2);
