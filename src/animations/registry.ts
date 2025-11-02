@@ -223,6 +223,7 @@ export const AnimationRegistry = {
   'expandable-mini-player': ExpandableMiniPlayer,
   'bezier-curve-outline': BezierCurveOutline,
   'tab-navigation': TabNavigation,
+  mnist: Mnist,
   'stacked-modals': StackedModals,
   'verification-code-face': VerificationCodeFace,
   'everybody-can-cook': EverybodyCanCook,
@@ -244,7 +245,6 @@ export const AnimationRegistry = {
   'airbnb-flip-interaction': AirbnbFlipInteraction,
   'liquid-glass-playground': Playground,
   'blur-cards': BlurCards,
-  mnist: Mnist,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -781,6 +781,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     iconName: 'tab',
     iconFamily: 'MaterialCommunityIcons',
   },
+  mnist: {
+    name: 'MNIST',
+    route: 'MNIST',
+    iconName: 'brain',
+    iconFamily: 'MaterialCommunityIcons',
+  },
   'stacked-modals': {
     name: 'Stacked Modals',
     route: 'StackedModals',
@@ -907,12 +913,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Blur Cards',
     route: 'BlurCards',
     iconName: 'cards-variant',
-    iconFamily: 'MaterialCommunityIcons',
-  },
-  mnist: {
-    name: 'MNIST',
-    route: 'MNIST',
-    iconName: 'brain',
     iconFamily: 'MaterialCommunityIcons',
   },
 } as const;
