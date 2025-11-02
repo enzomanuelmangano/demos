@@ -16,7 +16,6 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { useCustomNavigation } from './expansion-provider';
 
 import type { StyleProp, ViewStyle } from 'react-native';
-import type { WrapperRef } from 'react-native-reanimated/lib/typescript/commonTypes';
 
 type NavigationItemProps = {
   children: ReactNode;
@@ -57,7 +56,7 @@ const NavigationItem = ({
     .onEnd(() => {
       active.value = false;
       scheduleOnRN(Haptics.selectionAsync);
-      startTransition(ref as AnimatedRef<WrapperRef>, {
+      startTransition(ref as AnimatedRef<any>, {
         id,
         borderRadius: config?.borderRadius,
         color: config?.color,
