@@ -13,22 +13,20 @@ export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
   return (
     <View style={styles.container}>
       <View style={styles.avatarContainer}>
-        <View style={styles.avatarWrapper}>
-          <Image
-            contentFit="cover"
-            source={{
-              uri: item.imageUrl,
-            }}
-            style={{
-              width: itemHeight * 0.45,
-              height: itemHeight * 0.45,
-              borderRadius: itemHeight * 0.225,
-              // @@TODO: the image should support borderCurve
-              // @ts-ignore
-              borderCurve: 'continuous',
-            }}
-          />
-        </View>
+        <Image
+          contentFit="cover"
+          source={{
+            uri: item.imageUrl,
+          }}
+          style={{
+            width: itemHeight * 0.45,
+            height: itemHeight * 0.45,
+            borderRadius: itemHeight * 0.225,
+            // @@TODO: the image should support borderCurve
+            // @ts-ignore
+            borderCurve: 'continuous',
+          }}
+        />
       </View>
       <View style={styles.labelsContainer}>
         <Text numberOfLines={1} style={styles.titleText}>
@@ -45,9 +43,6 @@ export const ListItem: React.FC<ListItemProps> = ({ item, itemHeight }) => {
 const styles = StyleSheet.create({
   avatarContainer: {
     marginRight: 12,
-  },
-  avatarWrapper: {
-    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   container: {
     alignItems: 'center',
