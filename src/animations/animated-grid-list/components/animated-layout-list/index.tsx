@@ -6,7 +6,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import type { StyleProp, ViewStyle } from 'react-native';
@@ -77,7 +77,10 @@ function AnimatedLayoutList<T>({
   }, []);
 
   const rAnimatedStyle = useAnimatedStyle(() => {
-    const rotate = withTiming(rotation.value);
+    const rotate = withSpring(rotation.value, {
+      dampingRatio: 1,
+      duration: 500,
+    });
 
     return {
       transform: [

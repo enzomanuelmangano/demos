@@ -10,7 +10,7 @@ import Animated, {
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -88,14 +88,14 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      scale.value = withTiming(1);
+      scale.value = withSpring(1);
       contextX.value = clampedTranslateX.value;
     })
     .onUpdate(event => {
       translateX.value = contextX.value + event.translationX;
     })
     .onFinalize(() => {
-      scale.value = withTiming(defaultScale);
+      scale.value = withSpring(defaultScale);
     });
   const rPickerStyle = useAnimatedStyle(() => {
     return {
