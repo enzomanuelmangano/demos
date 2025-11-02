@@ -87,6 +87,7 @@ import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
+import { MagnetSpring } from './magnet-spring';
 import { Metaball } from './metaball';
 import { MilesBarChart } from './miles-bar-chart';
 import { Mnist } from './mnist';
@@ -237,6 +238,7 @@ export const AnimationRegistry = {
   'clock-time-picker': ClockTimePicker,
   sudoku: Sudoku,
   'particles-button': ParticlesButton,
+  'magnet-spring': MagnetSpring,
   'ios-home-grid': iOSHomeGrid,
   'time-machine': TimeMachine,
   'ios-home-bouncy': IosHomeBouncy,
@@ -859,6 +861,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Particles Button',
     route: 'ParticlesButton',
     iconName: 'atom',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'magnet-spring': {
+    name: 'Magnet Spring',
+    route: 'MagnetSpring',
+    iconName: 'magnet',
     iconFamily: 'MaterialCommunityIcons',
   },
   'ios-home-grid': {
