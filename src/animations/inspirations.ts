@@ -22,7 +22,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'alert-drawer': {
     authorName: 'Family',
-    link: 'https://apps.apple.com/app/family/id1438638658',
+    link: 'https://apps.apple.com/it/app/family-crypto-wallet/id1606779267',
   },
   'animated-3d-parallax': {
     authorName: null,
@@ -45,28 +45,28 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'atlas-button': {
-    authorName: null,
+    authorName: '@jamesm',
     link: 'https://x.com/i/status/1734891084826952094',
   },
   'atlas-sphere': {
-    authorName: null,
-    link: null,
+    authorName: '@philipcdavis',
+    link: 'https://x.com/philipcdavis/status/1549409119131488256',
   },
   'audio-player': {
-    authorName: null,
-    link: null,
+    authorName: '@jmtrivedi',
+    link: 'https://x.com/jmtrivedi/status/1577711102099566592',
   },
   'balance-slider': {
     authorName: '@MalayVasa',
     link: 'https://x.com/MalayVasa/status/1748726374079381930',
   },
   'bezier-curve-outline': {
-    authorName: null,
-    link: null,
+    authorName: '@duyluongdesign',
+    link: 'https://x.com/duyluongdesign/status/1753455738616447042',
   },
   'blur-cards': {
-    authorName: null,
-    link: null,
+    authorName: '@abeyang',
+    link: 'https://x.com/abeyang/status/1824117770159813117',
   },
   'blur-circles': {
     authorName: '@supahfunk',
@@ -81,7 +81,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'bottom-bar-skia': {
-    authorName: null,
+    authorName: 'Tony Owen',
     link: 'https://tonyowen.medium.com/flutter-bottom-tab-bar-animation-75d1ca58c096',
   },
   'card-shader-reflections': {
@@ -97,8 +97,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/_Kavsoft/status/1676300031882846208?s=20',
   },
   'clerk-toast': {
-    authorName: 'Emil Kowalski',
-    link: 'https://x.com/emilkowalski_',
+    authorName: 'emilkowalski_',
+    link: 'https://x.com/emilkowalski_/status/1818747624088125509',
   },
   'clock-time-picker': {
     authorName: '@proskuaaa',
@@ -149,8 +149,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/_Kavsoft/status/1623806694844399617',
   },
   'email-demo': {
-    authorName: null,
-    link: null,
+    authorName: '@raffichill',
+    link: 'https://x.com/raffichill/status/1731712502977679853',
   },
   'empty-qr-code': {
     authorName: '@raffichill',
@@ -165,8 +165,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/wickedmishra/status/1823026659894940124',
   },
   'expandable-mini-player': {
-    authorName: 'Spotify',
-    link: 'https://apps.apple.com/app/spotify/id324684580',
+    authorName: 'Apple Music',
+    link: 'https://apps.apple.com/it/app/apple-music/id1108187390?l=en-GB',
   },
   'family-number-input': {
     authorName: '@benjitaylor',
@@ -181,24 +181,24 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/XorDev/status/1475524322785640455',
   },
   'floating-bottom-bar': {
-    authorName: null,
+    authorName: 'sikriti_dakua',
     link: 'https://www.pinterest.it/pin/548594798370796215/',
   },
   'floating-modal': {
-    authorName: null,
-    link: null,
+    authorName: '@cleerview',
+    link: 'https://x.com/cleerview/status/1538720315727089664',
   },
   'fluid-slider': {
-    authorName: null,
-    link: null,
+    authorName: 'Ramotion',
+    link: 'https://www.ramotion.com/fluid-slider/',
   },
   'fluid-tab-interaction': {
     authorName: '@nitishkmrk',
     link: 'https://x.com/nitishkmrk/status/1834915715490758731',
   },
   'fourier-visualizer': {
-    authorName: null,
-    link: null,
+    authorName: '3Blue1Brown',
+    link: 'https://youtu.be/-qgreAUpPwM',
   },
   'fractal-glass': {
     authorName: null,
@@ -209,12 +209,12 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'github-contributions': {
-    authorName: '@spottedinprod',
+    authorName: '@mykolaharmash',
     link: 'https://x.com/spottedinprod/status/1923759537711895014',
   },
   'github-onboarding': {
-    authorName: '@aheze0',
-    link: 'https://x.com/aheze0/status/1767132001893859372',
+    authorName: 'GitHub',
+    link: 'https://apps.apple.com/app/github/id1477376905',
   },
   'gl-transitions': {
     authorName: '@avstorm',
@@ -237,16 +237,16 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'interaction-appearance': {
-    authorName: null,
-    link: null,
+    authorName: '@nickpylll',
+    link: 'https://x.com/nickpylll/status/1805181393665704393',
   },
   'ios-home-bouncy': {
-    authorName: 'Apple iOS',
-    link: 'https://www.apple.com/ios/',
+    authorName: 'Apple iOS Home',
+    link: null,
   },
   'ios-home-grid': {
-    authorName: 'Apple iOS',
-    link: 'https://www.apple.com/ios/',
+    authorName: 'Apple iOS Home',
+    link: null,
   },
   'liquid-glass-playground': {
     authorName: null,
@@ -257,8 +257,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/lochieaxon/status/1700192743576973633?s=20',
   },
   'magnet-spring': {
-    authorName: null,
-    link: null,
+    authorName: 'Animated with Springs (WWDC 2023)',
+    link: 'https://youtu.be/HaZ2jw9rx9M?t=343',
   },
   metaball: {
     authorName: null,
@@ -266,35 +266,35 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'miles-bar-chart': {
     authorName: '@MilesRunningApp',
-    link: 'https://apps.apple.com/app/miles-rewards/id1070565563',
+    link: 'https://apps.apple.com/it/app/miles-running-tracker/id6478332265',
   },
   'mobile-input': {
-    authorName: null,
-    link: null,
+    authorName: 'Alex Arutuynov',
+    link: 'https://dribbble.com/shots/7001875-Crypto-application',
   },
   'motion-blur': {
-    authorName: null,
-    link: null,
+    authorName: '@afonindv',
+    link: 'https://x.com/afonindv/status/1793688077535154444',
   },
   'online-offline': {
     authorName: '@farrelput',
     link: 'https://x.com/farrelput/status/1915792408580628817',
   },
   'paper-folding': {
-    authorName: null,
-    link: null,
+    authorName: '@k_wagner',
+    link: 'https://x.com/k_wagner/status/1784169132084121787',
   },
   'particles-button': {
     authorName: null,
     link: null,
   },
   'pomodoro-timer': {
-    authorName: null,
-    link: null,
+    authorName: '@60fpsdesign',
+    link: 'https://x.com/60fpsdesign/status/1813266338229723359',
   },
   'popup-handler': {
-    authorName: null,
-    link: null,
+    authorName: '@TheArcadeApp',
+    link: 'https://github.com/OpenAgentsInc/arcade/pull/321',
   },
   'prequel-slider': {
     authorName: 'Prequel',
@@ -341,8 +341,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'skia-color-picker': {
-    authorName: null,
-    link: null,
+    authorName: 'William Candillon',
+    link: 'https://youtu.be/bAZhVl9YvB4',
   },
   'slide-to-reveal': {
     authorName: '@MalayVasa',
@@ -350,11 +350,11 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'smooth-dropdown': {
     authorName: '@traf',
-    link: 'https://x.com/traf/status/1634279149182369792?s=20',
+    link: 'https://x.com/traf/status/1634279149182369792',
   },
   snake: {
-    authorName: null,
-    link: null,
+    authorName: 'Money',
+    link: 'https://x.com/spottedinprod/status/1813962465639821543',
   },
   spiral: {
     authorName: null,
@@ -377,23 +377,23 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'stacked-modals': {
-    authorName: null,
-    link: null,
+    authorName: '@emilkowalski_',
+    link: 'https://x.com/emilkowalski_/status/1793339341311201556',
   },
   'staggered-card-number': {
-    authorName: null,
-    link: null,
+    authorName: '@Barbapapapps',
+    link: 'https://x.com/Barbapapapps/status/1760613619404783952',
   },
   'steddy-graph-interaction': {
     authorName: '@steddyapp',
-    link: 'https://youtu.be/RTYNKDODSfw',
+    link: 'https://x.com/steddyapp',
   },
   steps: {
-    authorName: null,
-    link: null,
+    authorName: '@zzerou_',
+    link: 'https://x.com/zzerou_/status/1812509007648846300',
   },
   'story-list': {
-    authorName: null,
+    authorName: 'Lahesh',
     link: 'https://dribbble.com/shots/3844950-Story-App-Concept',
   },
   sudoku: {
@@ -409,24 +409,24 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/60fpsdesign/status/1823211658459701437',
   },
   'telegram-theme-switch': {
-    authorName: null,
-    link: null,
+    authorName: 'Telegram',
+    link: 'https://apps.apple.com/app/telegram/id686449807',
   },
   'theme-canvas-animation': {
     authorName: '@nickpylll',
     link: 'https://x.com/nickpylll/status/1805181393665704393',
   },
   'threads-holo-ticket': {
-    authorName: null,
-    link: null,
+    authorName: 'Threads',
+    link: 'https://apps.apple.com/it/app/threads/id6446901002',
   },
   'time-machine': {
     authorName: 'Daniel Friyia',
     link: 'https://youtu.be/Af2-OT9mE14',
   },
   toast: {
-    authorName: null,
-    link: null,
+    authorName: '@emilkowalski_',
+    link: 'https://x.com/emilkowalski_/status/1628742238548250624',
   },
   'twitter-tab-bar': {
     authorName: 'Twitter',
@@ -442,7 +442,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'verification-code-face': {
     authorName: null,
-    link: 'https://dribbble.com/shots/7001875-Crypto-application',
+    link: null,
   },
   'wheel-picker': {
     authorName: '@_Kavsoft',
