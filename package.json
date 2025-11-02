@@ -89,6 +89,7 @@
     "@types/react": "~19.1.10",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
+    "babel-plugin-transform-remove-console": "^6.9.4",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-config-react-native-wcandillon": "^4.0.1",
