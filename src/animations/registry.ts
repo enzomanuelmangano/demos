@@ -808,7 +808,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   'linear-sensors': {
     name: 'Linear Sensors',
     route: 'LinearSensors',
-    iconName: 'hand-wave',
+    iconName: 'react',
     iconFamily: 'MaterialCommunityIcons',
   },
   'verification-code-face': {
