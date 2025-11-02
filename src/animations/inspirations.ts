@@ -48,6 +48,10 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     authorName: null,
     link: 'https://x.com/i/status/1734891084826952094',
   },
+  'atlas-sphere': {
+    authorName: null,
+    link: null,
+  },
   'audio-player': {
     authorName: null,
     link: null,

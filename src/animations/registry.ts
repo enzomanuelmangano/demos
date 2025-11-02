@@ -35,6 +35,7 @@ import { AnimatedCountText } from './animated-count-text';
 import { AnimatedGridList } from './animated-grid-list';
 import { AnimatedIndicatorList } from './animated-indicator-list';
 import { AtlasButton } from './atlas-button';
+import { AtlasSphere } from './atlas-sphere';
 import { AudioPlayer } from './audio-player';
 import { BalanceSlider } from './balance-slider';
 import { BezierCurveOutline } from './bezier-curve-outline';
@@ -204,6 +205,7 @@ export const AnimationRegistry = {
   'grid-visualizer': GridVisualizer,
   'imessage-stack': IMessageStack,
   'atlas-button': AtlasButton,
+  'atlas-sphere': AtlasSphere,
   'checkbox-interactions': CheckboxInteractions,
   'interaction-appearance': InteractionAppearance,
   'dot-sheet': DotSheet,
@@ -663,6 +665,12 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Atlas Button',
     route: 'AtlasButton',
     iconName: 'react',
+    iconFamily: 'MaterialCommunityIcons',
+  },
+  'atlas-sphere': {
+    name: 'Atlas Sphere',
+    route: 'AtlasSphere',
+    iconName: 'sphere',
     iconFamily: 'MaterialCommunityIcons',
   },
   'checkbox-interactions': {
