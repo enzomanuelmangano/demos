@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useMemo, useRef } from 'react';
 
@@ -25,13 +25,17 @@ export const GitHubContributions = () => {
   };
 
   return (
-    <PressableScale style={styles.appContainer} onPress={handleToggleAnimation}>
-      <GitHubContributionCalendar
-        ref={calendarRef}
-        data={contributionData}
-        colorScheme={COLOR_SCHEMES.github}
-      />
-    </PressableScale>
+    <View style={styles.appContainer}>
+      <PressableScale
+        style={styles.appContainer}
+        onPress={handleToggleAnimation}>
+        <GitHubContributionCalendar
+          ref={calendarRef}
+          data={contributionData}
+          colorScheme={COLOR_SCHEMES.github}
+        />
+      </PressableScale>
+    </View>
   );
 };
 

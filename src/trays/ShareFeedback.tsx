@@ -1,6 +1,6 @@
 import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { useState } from 'react';
+import { memo, useState } from 'react';
 
 import { PressableScale } from 'pressto';
 
@@ -11,7 +11,7 @@ interface ShareFeedbackProps {
   slug?: string;
 }
 
-export const ShareFeedback = ({ slug }: ShareFeedbackProps) => {
+export const ShareFeedback = memo(({ slug }: ShareFeedbackProps) => {
   const [feedbackText, setFeedbackText] = useState('');
   const { dismiss } = useRetray();
 
@@ -70,7 +70,7 @@ export const ShareFeedback = ({ slug }: ShareFeedbackProps) => {
       </View>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   buttonContainer: {

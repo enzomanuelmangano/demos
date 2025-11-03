@@ -1,5 +1,7 @@
 import { View, StyleSheet, Text, Linking } from 'react-native';
 
+import { useCallback } from 'react';
+
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 
@@ -75,25 +77,28 @@ export const HowCanWeHelp = ({ slug }: HowCanWeHelpProps) => {
     item => item.type !== 'inspiration' || hasInspiration,
   );
 
-  const handleItemPress = (type: string) => {
-    switch (type) {
-      case 'feedback':
-        show('shareFeedback', { slug });
-        break;
-      case 'source':
-        const sourceUrl = slug
-          ? `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
-          : 'https://github.com/enzomanuelmangano/demos/tree/main/src/animations';
-        Linking.openURL(sourceUrl);
-        break;
-      case 'inspiration':
-        show('inspiration', { slug });
-        break;
-      case 'general':
-        show('general', { slug });
-        break;
-    }
-  };
+  const handleItemPress = useCallback(
+    (type: string) => {
+      switch (type) {
+        case 'feedback':
+          show('shareFeedback', { slug });
+          break;
+        case 'source':
+          const sourceUrl = slug
+            ? `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`
+            : 'https://github.com/enzomanuelmangano/demos';
+          Linking.openURL(sourceUrl);
+          break;
+        case 'inspiration':
+          show('inspiration', { slug });
+          break;
+        case 'general':
+          show('general', { slug });
+          break;
+      }
+    },
+    [slug, show],
+  );
 
   return (
     <View style={styles.container}>

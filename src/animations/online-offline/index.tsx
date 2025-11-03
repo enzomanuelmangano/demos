@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useCallback, useState } from 'react';
 
@@ -116,17 +116,19 @@ export const OnlineOffline = () => {
 
   return (
     <LayoutAnimationConfig skipEntering>
-      <PressableScale style={styles.container} onPress={handleTouchEnd}>
-        <OnlineToOffline
-          offline={offlineItems.map(item => item.uri)}
-          online={onlineItems.map(item => item.uri)}
-          itemSize={40}
-          gap={3.5}
-          listPadding={2}
-          listColor="#EAEAEA"
-          sectionGap={12}
-        />
-      </PressableScale>
+      <View style={styles.container}>
+        <PressableScale style={styles.container} onPress={handleTouchEnd}>
+          <OnlineToOffline
+            offline={offlineItems.map(item => item.uri)}
+            online={onlineItems.map(item => item.uri)}
+            itemSize={40}
+            gap={3.5}
+            listPadding={2}
+            listColor="#EAEAEA"
+            sectionGap={12}
+          />
+        </PressableScale>
+      </View>
     </LayoutAnimationConfig>
   );
 };
