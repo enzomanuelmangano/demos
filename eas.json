@@ -15,8 +15,7 @@
         "autoIncrement": "versionCode"
       },
       "env": {
-        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
-        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false"
+        "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true"
       }
     },
     "development": {
@@ -24,7 +23,6 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
-        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false",
         "EXPO_PUBLIC_APP_VARIANT": "development"
       }
     },
@@ -33,7 +31,6 @@
       "channel": "production",
       "env": {
         "EXPO_PUBLIC_LIQUID_GLASS_ENABLED": "true",
-        "EXPO_PUBLIC_HIDE_DRAWER_ICON": "false",
         "EXPO_PUBLIC_APP_VARIANT": "production"
       }
     }
