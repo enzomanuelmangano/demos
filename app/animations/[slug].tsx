@@ -13,10 +13,12 @@ import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
 import { useAtomValue } from 'jotai';
 import Animated, {
+  Easing,
   interpolate,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
+  withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -41,6 +43,8 @@ export default function AnimationScreen() {
   const dimensions = useWindowDimensions();
   const rDrawerProgress = useDrawerProgress();
   const hideDrawerIconSetting = useAtomValue(HideDrawerIconAtom);
+  const metadata = getAnimationMetadata(slug);
+  const hideDrawerIcon = hideDrawerIconSetting || metadata?.hideDrawerIcon;
 
   const rBlurIntensity = useDerivedValue<number | undefined>(() => {
     return interpolate(rDrawerProgress.value, [0, 1], [0, 40]);
@@ -62,11 +66,27 @@ export default function AnimationScreen() {
     },
   );
 
+  const rHideDrawerIconProgress = useDerivedValue<number>(() => {
+    return withTiming(hideDrawerIcon ? 0 : 1, {
+      duration: 200,
+      easing: Easing.linear,
+    });
+  }, [hideDrawerIcon]);
+
   const rDrawerIconStyle = useAnimatedStyle(() => {
     return {
-      opacity: interpolate(rDrawerProgress.value, [0, 0.5, 1], [0.5, 1, 0]),
+      opacity: interpolate(
+        rDrawerProgress.value,
+        [0, 0.5, 1],
+        [
+          0.5 * rHideDrawerIconProgress.value,
+          1 * rHideDrawerIconProgress.value,
+          0,
+        ],
+      ),
+      pointerEvents: hideDrawerIcon ? 'none' : 'auto',
     };
-  });
+  }, [hideDrawerIcon]);
 
   const { show } = useRetray<Trays>();
 
@@ -85,7 +105,6 @@ export default function AnimationScreen() {
   }
 
   const AnimationComponent = getAnimationComponent(slug);
-  const metadata = getAnimationMetadata(slug);
 
   if (!AnimationComponent || !metadata) {
     return (
@@ -95,8 +114,6 @@ export default function AnimationScreen() {
     );
   }
 
-  const hideDrawerIcon = hideDrawerIconSetting || metadata.hideDrawerIcon;
-
   return (
     <>
       <AnimationComponent {...(dimensions as any)} />
@@ -105,17 +122,15 @@ export default function AnimationScreen() {
         intensity={rBlurIntensity}
         style={styles.blurView}
       />
-      {!hideDrawerIcon && (
-        <AnimatedDrawerIcon
-          containerStyle={[
-            styles.menu,
-            rDrawerIconStyle,
-            {
-              top: safeTop,
-            },
-          ]}
-        />
-      )}
+      <AnimatedDrawerIcon
+        containerStyle={[
+          styles.menu,
+          rDrawerIconStyle,
+          {
+            top: safeTop,
+          },
+        ]}
+      />
     </>
   );
 }
