@@ -1,16 +1,25 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Keyboard,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { useCallback } from 'react';
 
 import { useDrawerProgress } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
+import { useAtomValue } from 'jotai';
 import Animated, {
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   getAnimationComponent,
@@ -18,6 +27,7 @@ import {
 } from '../../src/animations/registry';
 import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
 import { useOnShakeEffect } from '../../src/navigation/hooks/use-shake-gesture';
+import { HideDrawerIconAtom } from '../../src/navigation/states/filters';
 import { useRetray } from '../../src/packages/retray';
 
 import type { Trays } from '../../src/trays';
@@ -30,12 +40,27 @@ export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const dimensions = useWindowDimensions();
   const rDrawerProgress = useDrawerProgress();
+  const hideDrawerIconSetting = useAtomValue(HideDrawerIconAtom);
 
   const rBlurIntensity = useDerivedValue<number | undefined>(() => {
     return interpolate(rDrawerProgress.value, [0, 1], [0, 40]);
   });
 
   const { top: safeTop } = useSafeAreaInsets();
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
+
+  useAnimatedReaction(
+    () => rDrawerProgress.value,
+    (currentProgress, previousProgress) => {
+      // When drawer is closing (progress going from high to low), dismiss keyboard
+      if (currentProgress < 0.1 && previousProgress !== currentProgress) {
+        scheduleOnRN(dismissKeyboard);
+      }
+    },
+  );
 
   const rDrawerIconStyle = useAnimatedStyle(() => {
     return {
@@ -70,9 +95,7 @@ export default function AnimationScreen() {
     );
   }
 
-  const hideDrawerIcon =
-    process.env.EXPO_PUBLIC_HIDE_DRAWER_ICON === 'true' ||
-    metadata.hideDrawerIcon;
+  const hideDrawerIcon = hideDrawerIconSetting || metadata.hideDrawerIcon;
 
   return (
     <>

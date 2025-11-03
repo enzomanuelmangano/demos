@@ -65,5 +65,7 @@ export const FilteredAnimationsAtom = atom<AnimationItem[]>(get => {
 
 export const ShowUnstableAnimationsAtom = atomWithKVStorage(
   'unstable_animations',
-  true,
+  false,
 );
+
+export const HideDrawerIconAtom = atomWithKVStorage('hide_drawer_icon', false);

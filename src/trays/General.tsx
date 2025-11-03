@@ -4,7 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 
-import { ShowUnstableAnimationsAtom } from '../navigation/states/filters';
+import {
+  HideDrawerIconAtom,
+  ShowUnstableAnimationsAtom,
+} from '../navigation/states/filters';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -18,6 +21,7 @@ interface GeneralItem {
 
 export const General = () => {
   const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
+  const [hideDrawerIcon, setHideDrawerIcon] = useAtom(HideDrawerIconAtom);
 
   const Items: readonly GeneralItem[] = [
     {
@@ -26,6 +30,13 @@ export const General = () => {
       icon: 'flask',
       backgroundColor: '#FF9500',
       type: 'unstable',
+    },
+    {
+      title: 'Hide Drawer Icon',
+      description: 'Hide the drawer icon in animation screens',
+      icon: 'eye-off-outline',
+      backgroundColor: '#5856D6',
+      type: 'hideDrawer',
     },
     {
       title: 'Sponsor',
@@ -40,6 +51,9 @@ export const General = () => {
     switch (type) {
       case 'unstable':
         setShowUnstable(!showUnstable);
+        break;
+      case 'hideDrawer':
+        setHideDrawerIcon(!hideDrawerIcon);
         break;
       case 'sponsor':
         Linking.openURL('https://github.com/sponsors/enzomanuelmangano');
@@ -72,6 +86,14 @@ export const General = () => {
               value={showUnstable}
               onValueChange={setShowUnstable}
               trackColor={{ false: '#3e3e3e', true: '#FF9500' }}
+              thumbColor="#ffffff"
+            />
+          )}
+          {item.type === 'hideDrawer' && (
+            <Switch
+              value={hideDrawerIcon}
+              onValueChange={setHideDrawerIcon}
+              trackColor={{ false: '#3e3e3e', true: '#5856D6' }}
               thumbColor="#ffffff"
             />
           )}
