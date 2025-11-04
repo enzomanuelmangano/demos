@@ -1,10 +1,4 @@
-import {
-  Keyboard,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { useCallback } from 'react';
 
@@ -15,13 +9,11 @@ import { useAtomValue } from 'jotai';
 import Animated, {
   Easing,
   interpolate,
-  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   getAnimationComponent,
@@ -51,20 +43,6 @@ export default function AnimationScreen() {
   });
 
   const { top: safeTop } = useSafeAreaInsets();
-
-  const dismissKeyboard = useCallback(() => {
-    Keyboard.dismiss();
-  }, []);
-
-  useAnimatedReaction(
-    () => rDrawerProgress.value,
-    (currentProgress, previousProgress) => {
-      // When drawer is closing (progress going from high to low), dismiss keyboard
-      if (currentProgress < 0.1 && previousProgress !== currentProgress) {
-        scheduleOnRN(dismissKeyboard);
-      }
-    },
-  );
 
   const rHideDrawerIconProgress = useDerivedValue<number>(() => {
     return withTiming(hideDrawerIcon ? 0 : 1, {
