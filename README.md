@@ -21,7 +21,7 @@ This project is a work in progress (almost by definition). Here are the current 
 - [x] Ensure consistent haptics support (use [pressto](https://github.com/enzomanuelmangano/pressto) whenever possible)
 - [ ] Optimize performance in Shaders demos
 - [x] Feedback screen on Shake Detection
-- [ ] TestFlight Release
+- [x] [TestFlight Release](https://testflight.apple.com/join/uB9PQHuT)
 - [ ] Android Release (starting with App Tester / Firebase Distribution)
 
 ## Quick Start
