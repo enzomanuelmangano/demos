@@ -1,0 +1,183 @@
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+
+import { useEffect } from 'react';
+
+import {
+  Canvas,
+  LinearGradient,
+  Path,
+  SkPath,
+  usePathValue,
+  vec,
+} from '@shopify/react-native-skia';
+import { PressableScale } from 'pressto';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  Easing,
+  Extrapolation,
+  interpolate,
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+
+const N_ITEMS = 2000;
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CANVAS_HEIGHT = SCREEN_HEIGHT;
+const CANVAS_WIDTH = SCREEN_WIDTH;
+
+const createEnhancedFibonacciPath = (
+  N: number,
+  magicalMul: number,
+  iTime: number,
+  distance: number,
+  skPath: SkPath,
+) => {
+  'worklet';
+  const centerX = CANVAS_WIDTH / 2;
+  const centerY = CANVAS_HEIGHT / 2;
+
+  for (let i = 0; i < N; i++) {
+    const a = i / (N * 0.5) - 1.0;
+    const px = Math.cos(i * magicalMul + iTime) * Math.sqrt(1.0 - a * a);
+    const py = Math.cos(i * magicalMul + iTime + 11) * Math.sqrt(1.0 - a * a);
+
+    // Enhanced 3D movement with multiple wave patterns
+    const wave1 = Math.sin(i * 0.1 + iTime * 0.7) * 80;
+    const wave2 = Math.cos(i * 0.05 + iTime * 0.3) * 40;
+    const wave3 = Math.sin(i * 0.15 + iTime * 1.2) * 20;
+    const z = wave1 + wave2 + wave3;
+
+    // Perspective projection
+    const scale = distance / (distance + z);
+
+    const x = centerX + px * CANVAS_WIDTH * 0.4 * scale;
+    const y = centerY + a * CANVAS_WIDTH * 0.4 * scale;
+
+    // Pulsing animation based on time and position
+    const pulse = Math.sin(i * 0.2 + iTime * 2.0) * 0.3 + 1.0;
+    const timePulse = Math.sin(iTime * 0.8) * 0.2 + 1.0;
+
+    const intensity = (1.0 - Math.abs(py)) / (N * 0.01);
+    const baseRadius = Math.max(0.5, Math.min(intensity * 20 * scale, 10));
+    const radius = baseRadius * pulse * timePulse;
+
+    skPath.addCircle(x, y, radius);
+  }
+
+  return skPath;
+};
+
+const SphereWaves = () => {
+  const magicalMul = useSharedValue(2.4);
+  const distance = useSharedValue(300);
+  const savedDistance = useSharedValue(300);
+
+  const iTime = useSharedValue(0.0);
+
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      savedDistance.value = distance.value;
+    })
+    .onUpdate(event => {
+      // Map scale ~0.3-3 to a wider multiplier range
+      const multiplier = interpolate(
+        event.scale,
+        [0.05, 0.2, 0.3, 1, 3],
+        [80, 25, 2, 1, 0.05],
+        Extrapolation.CLAMP,
+      );
+      distance.value = savedDistance.value * multiplier;
+    })
+    .onEnd(() => {
+      distance.value = withSpring(300);
+    });
+
+  const fibonacciPath = usePathValue(skPath => {
+    'worklet';
+    return createEnhancedFibonacciPath(
+      N_ITEMS,
+      magicalMul.value,
+      iTime.value,
+      distance.value,
+      skPath,
+    );
+  });
+
+  const animatedColors = useDerivedValue(() => {
+    'worklet';
+    const time = iTime.value;
+    const hueShift = (time * 40) % 360;
+
+    return [
+      `hsl(${(340 + hueShift) % 360}, 90%, 70%)`,
+      `hsl(${(280 + hueShift) % 360}, 85%, 75%)`,
+      `hsl(${(220 + hueShift) % 360}, 95%, 80%)`,
+      `hsl(${(160 + hueShift) % 360}, 88%, 72%)`,
+      `hsl(${(60 + hueShift) % 360}, 92%, 78%)`,
+    ];
+  }, [iTime]);
+
+  useEffect(() => {
+    iTime.value = withRepeat(
+      withTiming(15, { duration: 20000, easing: Easing.linear }),
+      -1,
+      true,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <GestureDetector gesture={pinchGesture}>
+      <View style={styles.container}>
+        <Canvas
+          style={{
+            width: CANVAS_WIDTH,
+            height: CANVAS_HEIGHT,
+            position: 'absolute',
+          }}>
+          {/* Main front layer with dynamic colors */}
+          <Path path={fibonacciPath} style="fill">
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(CANVAS_WIDTH, CANVAS_HEIGHT)}
+              colors={animatedColors}
+            />
+          </Path>
+        </Canvas>
+
+        <PressableScale
+          onPress={() => {
+            magicalMul.value = Math.random() * 100;
+          }}
+          style={styles.floatingButton}>
+          <Text style={styles.floatingContent}>🪄</Text>
+        </PressableScale>
+      </View>
+    </GestureDetector>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: 'black',
+    flex: 1,
+  },
+  floatingButton: {
+    alignItems: 'center',
+    backgroundColor: '#232323',
+    borderRadius: 32,
+    bottom: 120,
+    height: 64,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 60,
+    width: 64,
+  },
+  floatingContent: { fontSize: 32 },
+});
+
+export { SphereWaves };
