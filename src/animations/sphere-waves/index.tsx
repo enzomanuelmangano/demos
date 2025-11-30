@@ -1,6 +1,6 @@
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import {
   Canvas,
@@ -10,7 +10,6 @@ import {
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
-import { PressableScale } from 'pressto';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   Easing,
@@ -71,12 +70,41 @@ const createEnhancedFibonacciPath = (
   return skPath;
 };
 
+const INITIAL_MAGICAL_MUL = 2.4;
+
 const SphereWaves = () => {
-  const magicalMul = useSharedValue(2.4);
+  const magicalMul = useSharedValue(INITIAL_MAGICAL_MUL);
   const distance = useSharedValue(300);
   const savedDistance = useSharedValue(300);
 
   const iTime = useSharedValue(0.0);
+
+  // History tracking for magicalMul values
+  const historyRef = useRef<number[]>([INITIAL_MAGICAL_MUL]);
+  const historyIndexRef = useRef(0);
+
+  const tapGesture = Gesture.Tap().onEnd(event => {
+    const isRightSide = event.x > SCREEN_WIDTH / 2;
+
+    if (isRightSide) {
+      // Generate new random value and add to history
+      const newValue = Math.random() * 100;
+      // Trim any "future" history if we went back
+      historyRef.current = historyRef.current.slice(
+        0,
+        historyIndexRef.current + 1,
+      );
+      historyRef.current.push(newValue);
+      historyIndexRef.current = historyRef.current.length - 1;
+      magicalMul.value = newValue;
+    } else {
+      // Go back in history
+      if (historyIndexRef.current > 0) {
+        historyIndexRef.current -= 1;
+        magicalMul.value = historyRef.current[historyIndexRef.current];
+      }
+    }
+  });
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
@@ -130,8 +158,10 @@ const SphereWaves = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const combinedGesture = Gesture.Simultaneous(tapGesture, pinchGesture);
+
   return (
-    <GestureDetector gesture={pinchGesture}>
+    <GestureDetector gesture={combinedGesture}>
       <View style={styles.container}>
         <Canvas
           style={{
@@ -148,14 +178,6 @@ const SphereWaves = () => {
             />
           </Path>
         </Canvas>
-
-        <PressableScale
-          onPress={() => {
-            magicalMul.value = Math.random() * 100;
-          }}
-          style={styles.floatingButton}>
-          <Text style={styles.floatingContent}>🪄</Text>
-        </PressableScale>
       </View>
     </GestureDetector>
   );
@@ -166,18 +188,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'black',
     flex: 1,
   },
-  floatingButton: {
-    alignItems: 'center',
-    backgroundColor: '#232323',
-    borderRadius: 32,
-    bottom: 120,
-    height: 64,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 60,
-    width: 64,
-  },
-  floatingContent: { fontSize: 32 },
 });
 
 export { SphereWaves };
