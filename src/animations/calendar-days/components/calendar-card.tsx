@@ -1,11 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { interpolate } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Extrapolation,
+  interpolate,
   interpolateColor,
   useAnimatedStyle,
+  useDerivedValue,
+  withSpring,
+  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -112,29 +115,30 @@ const Page = ({
   backPageNumber,
   totalPages,
 }: PageProps) => {
-  const minPageProgress = index * (1 / totalPages);
-  const maxPageProgress = (index + 1) * (1 / totalPages);
+  // Each page has its own spring animation
+  // Target is 1 (flipped) if current page > this page's index, 0 (not flipped) otherwise
+  const pageFlipProgress = useDerivedValue(() => {
+    const currentPage = progress.value * totalPages;
+    // This page should be flipped if currentPage > index
+    const targetFlip = currentPage > index ? 1 : 0;
 
-  const pageBuffer = 1 / totalPages;
-  const maxPageBuffer = 5 * pageBuffer;
+    return withSpring(targetFlip, {
+      duration: 1000,
+      dampingRatio: 1,
+    });
+  }, [index, totalPages]);
 
   const rStyle = useAnimatedStyle(() => {
-    const pageProgress = interpolate(
-      progress.value,
-      [minPageProgress, maxPageProgress],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
+    const pageProgress = pageFlipProgress.value;
 
-    const isPageVisible =
-      progress.value >= minPageProgress - maxPageBuffer &&
-      progress.value <= maxPageProgress + maxPageBuffer;
-
-    const isActivePage = index === Math.round(progress.value * totalPages);
+    // Before 90deg (0.5): higher index pages should be on top (unflipped stack)
+    // After 90deg (0.5): lower index pages should be on top (flipped stack)
+    // This creates the proper stacking order during the flip animation
+    const zIndex =
+      pageProgress < 0.5 ? totalPages - index : index + totalPages + 1;
 
     return {
-      opacity: isPageVisible ? 1 : 0,
-      zIndex: isActivePage ? 100 : index,
+      zIndex,
       transform: [
         { perspective: 1000 },
         { translateY: -PAGE_SIZE / 2 },
@@ -145,12 +149,7 @@ const Page = ({
   });
 
   const rFirstHalfStyle = useAnimatedStyle(() => {
-    const pageProgress = interpolate(
-      progress.value,
-      [minPageProgress, maxPageProgress],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
+    const pageProgress = pageFlipProgress.value;
 
     // Darken as page lifts (0 to 0.5)
     const backgroundColor = interpolateColor(
@@ -166,12 +165,7 @@ const Page = ({
   });
 
   const rSecondHalfStyle = useAnimatedStyle(() => {
-    const pageProgress = interpolate(
-      progress.value,
-      [minPageProgress, maxPageProgress],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
+    const pageProgress = pageFlipProgress.value;
 
     // Start dark and lighten as page comes down (0.5 to 1)
     const backgroundColor = interpolateColor(
@@ -188,12 +182,7 @@ const Page = ({
 
   // Animated shadow cast onto the bottom half
   const rShadowStyle = useAnimatedStyle(() => {
-    const pageProgress = interpolate(
-      progress.value,
-      [minPageProgress, maxPageProgress],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
+    const pageProgress = pageFlipProgress.value;
 
     // Shadow peaks at mid-flip (90 degrees) when page is perpendicular
     const shadowOpacity = interpolate(
@@ -218,7 +207,6 @@ const Page = ({
           height: PAGE_SIZE,
           top: PAGE_SIZE,
           transformOrigin: ['50%', '50%', 0.005],
-          // zIndex: index === 0 || index === totalPages - 1 ? 100 : -index,
         },
       ]}>
       {/* Front face - bottom half of current number */}

@@ -1,10 +1,6 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import {
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import { AnimatedSlider } from './components/animated-slider';
 import { CalendarCard } from './components/calendar-card';
@@ -17,17 +13,11 @@ const App = () => {
 
   const sliderWidth = windowWidth - 80;
 
-  // Snap to nearest page (multiple of 1/TOTAL_PAGES) with spring animation
+  // Pass the raw progress directly to the calendar
+  // Each page handles its own spring animation independently
+  // This allows multiple pages to flip simultaneously when scrolling fast
   const calendarProgress = useDerivedValue(() => {
-    // Calculate which page we should snap to
-    const pageIndex = Math.round(progress.value * TOTAL_PAGES);
-    const snappedProgress = pageIndex / TOTAL_PAGES;
-
-    return withSpring(snappedProgress, {
-      mass: 0.5,
-      damping: 15,
-      stiffness: 150,
-    });
+    return progress.value;
   }, []);
 
   return (
