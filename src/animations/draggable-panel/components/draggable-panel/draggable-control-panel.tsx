@@ -140,6 +140,8 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
           currentHeight,
           screenWidth,
           screenHeight,
+          event.velocityX,
+          event.velocityY,
         );
 
         translateX.set(

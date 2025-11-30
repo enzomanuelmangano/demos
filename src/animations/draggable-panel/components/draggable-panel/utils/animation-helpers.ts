@@ -5,6 +5,8 @@ type SnapPosition = {
   y: number;
 };
 
+const VELOCITY_FACTOR = 0.15;
+
 export const snapToCorner = (
   x: number,
   y: number,
@@ -12,14 +14,20 @@ export const snapToCorner = (
   panelHeight: number,
   screenWidth: number,
   screenHeight: number,
+  velocityX: number = 0,
+  velocityY: number = 0,
 ): SnapPosition => {
   'worklet';
   const margin = 30;
   const topMargin = 80;
   const bottomMargin = 100;
 
-  const panelCenterX = x + panelWidth / 2;
-  const panelCenterY = y + panelHeight / 2;
+  // Project position based on velocity for more natural flick behavior
+  const projectedX = x + velocityX * VELOCITY_FACTOR;
+  const projectedY = y + velocityY * VELOCITY_FACTOR;
+
+  const panelCenterX = projectedX + panelWidth / 2;
+  const panelCenterY = projectedY + panelHeight / 2;
 
   const corners = [
     { x: margin, y: topMargin },
