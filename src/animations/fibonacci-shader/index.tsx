@@ -3,12 +3,13 @@ import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import { useEffect } from 'react';
 
 import {
+  Blur,
   Canvas,
-  LinearGradient,
-  Path,
-  SkPath,
-  usePathValue,
-  vec,
+  Circle,
+  Mask,
+  Rect,
+  Shader,
+  Skia,
 } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import {
@@ -23,51 +24,8 @@ import { AnimatedSlider } from './components/animated-slider';
 
 const MAX_CIRCLES_AMOUNT = 350;
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CANVAS_HEIGHT = SCREEN_HEIGHT;
-const CANVAS_WIDTH = SCREEN_WIDTH;
-const createEnhancedFibonacciPath = (
-  N: number,
-  magicalMul: number,
-  iTime: number,
-  zOffset: number = 0,
-  skPath: SkPath,
-) => {
-  'worklet';
-  const centerX = CANVAS_WIDTH / 2;
-  const centerY = CANVAS_HEIGHT / 2;
-
-  for (let i = 0; i < N; i++) {
-    const a = i / (N * 0.5) - 1.0;
-    const px = Math.cos(i * magicalMul + iTime) * Math.sqrt(1.0 - a * a);
-    const py = Math.cos(i * magicalMul + iTime + 11) * Math.sqrt(1.0 - a * a);
-
-    // Enhanced 3D movement with multiple wave patterns
-    const wave1 = Math.sin(i * 0.1 + iTime * 0.7 + zOffset) * 80;
-    const wave2 = Math.cos(i * 0.05 + iTime * 0.3) * 40;
-    const wave3 = Math.sin(i * 0.15 + iTime * 1.2) * 20;
-    const z = wave1 + wave2 + wave3;
-
-    // Perspective projection
-    const distance = 300;
-    const scale = distance / (distance + z);
-
-    const x = centerX + px * CANVAS_WIDTH * 0.4 * scale;
-    const y = centerY + a * CANVAS_WIDTH * 0.4 * scale;
-
-    // Pulsing animation based on time and position
-    const pulse = Math.sin(i * 0.2 + iTime * 2.0) * 0.3 + 1.0;
-    const timePulse = Math.sin(iTime * 0.8) * 0.2 + 1.0;
-
-    const intensity = (1.0 - Math.abs(py)) / (N * 0.01);
-    const baseRadius = Math.max(0.5, Math.min(intensity * 4 * scale, 10));
-    const radius = baseRadius * pulse * timePulse;
-
-    skPath.addCircle(x, y, radius);
-  }
-
-  return skPath;
-};
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CANVAS_SIZE = SCREEN_WIDTH;
 
 const FibonacciShader = () => {
   const N = useSharedValue(5.0);
@@ -75,30 +33,42 @@ const FibonacciShader = () => {
 
   const iTime = useSharedValue(0.0);
 
-  const fibonacciPath = usePathValue(skPath => {
-    'worklet';
-    return createEnhancedFibonacciPath(
-      N.value,
-      magicalMul.value,
-      iTime.value,
-      0,
-      skPath,
-    );
-  });
+  const dynamicSource = useDerivedValue(() => {
+    // WHAT IS THIS!!!
+    // With RN Skia you can actually parametrize the values and then pass them to the Shader uniforms.
+    // So why did I create the shader as a parametrized string?
 
-  const animatedColors = useDerivedValue(() => {
-    'worklet';
-    const time = iTime.value;
-    const hueShift = (time * 40) % 360;
+    // The main issue I had was with the "N":
+    // const float N.
+    // This value needs to be const because it's used in a loop (these are shader rules)
+    // But if we accept N as a uniform, it can't be used anymore in the loop.
+    // To avoid this issue I'm recomputing the shader as a Reanimated Shared Value of type string.
+    // Am I sure about this approach? Not at all 👀
 
-    return [
-      `hsl(${(340 + hueShift) % 360}, 90%, 70%)`,
-      `hsl(${(280 + hueShift) % 360}, 85%, 75%)`,
-      `hsl(${(220 + hueShift) % 360}, 95%, 80%)`,
-      `hsl(${(160 + hueShift) % 360}, 88%, 72%)`,
-      `hsl(${(60 + hueShift) % 360}, 92%, 78%)`,
-    ];
-  }, [iTime]);
+    // This shader is deeeeeply inspired by: https://x.com/XorDev/status/1475524322785640455?s=20
+    // This guy is amazing and honestly without his code this animation wouldn't exist.
+    return Skia.RuntimeEffect.Make(`
+      const vec2 iResolution = vec2(${CANVAS_SIZE}, ${CANVAS_SIZE});
+      const float iTime = ${iTime.value};
+      const float N = ${N.value};
+
+      vec4 main(vec2 FC) {
+        vec4 o = vec4(0, 0, 0, 1); 
+        vec2 p = vec2(0);
+        vec2 c = p ;
+        vec2 u = FC.xy * 2.0 - iResolution.xy;
+        float a;
+
+        for (float i = 0.0; i < N; i++) {
+
+          a = i / (N * 0.5) - 1.0;
+          p = cos(i * ${magicalMul.value} + iTime + vec2(0, 11)) * sqrt(1.0 - a * a);
+          c = u / iResolution.y + vec2(p.x, a) / (p.y + 2.0); 
+          o += (cos(i + vec4(0, 2, 4, 0)) + 1.0) / dot(c, c) * (1.0 - p.y) / (N * 75.0); // Play with this 75.0
+        }
+        return o;
+      }`)!;
+  }, []);
 
   useEffect(() => {
     iTime.value = withRepeat(
@@ -111,21 +81,40 @@ const FibonacciShader = () => {
 
   return (
     <View style={styles.container}>
-      <Canvas
+      <View
         style={{
-          width: CANVAS_WIDTH,
-          height: CANVAS_HEIGHT,
-          position: 'absolute',
+          marginTop: 100,
+          width: SCREEN_WIDTH,
+          height: SCREEN_WIDTH,
+          justifyContent: 'center',
+          alignItems: 'center',
         }}>
-        {/* Main front layer with dynamic colors */}
-        <Path path={fibonacciPath} style="fill">
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(CANVAS_WIDTH, CANVAS_HEIGHT)}
-            colors={animatedColors}
-          />
-        </Path>
-      </Canvas>
+        <Canvas
+          style={{
+            width: CANVAS_SIZE,
+            height: CANVAS_SIZE,
+          }}>
+          {/* 
+            This mask is applied just to smooth a bit the borders of the Rect with some blurry borders.
+            You can see it better by updating the backgroundColor of the Canvas
+           */}
+          <Mask
+            mode="luminance"
+            mask={
+              <Circle
+                cx={CANVAS_SIZE / 2}
+                cy={CANVAS_SIZE / 2}
+                r={CANVAS_SIZE / 2}
+                color={'#FFF'}>
+                <Blur blur={10} />
+              </Circle>
+            }>
+            <Rect x={0} y={0} width={CANVAS_SIZE} height={CANVAS_SIZE}>
+              <Shader source={dynamicSource} />
+            </Rect>
+          </Mask>
+        </Canvas>
+      </View>
 
       <View style={styles.animatedSlider}>
         <AnimatedSlider
