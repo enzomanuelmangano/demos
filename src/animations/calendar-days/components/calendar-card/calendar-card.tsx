@@ -44,7 +44,7 @@ export const CalendarCard = ({ progress, totalPages }: CalendarCardProps) => {
       <View style={styles.cardShadow}>
         <View>
           <Header />
-          <Body progress={progress} totalPages={totalPages} />
+          <Body progress={progress} totalPages={totalPages - 1} />
         </View>
       </View>
     </View>

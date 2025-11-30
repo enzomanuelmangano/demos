@@ -32,7 +32,7 @@ export const usePageFlipAnimation = ({
     const targetFlip = currentPage > index ? 1 : 0;
 
     return withSpring(targetFlip, {
-      duration: 1000,
+      duration: 1100,
       dampingRatio: 1,
     });
   }, [index, totalPages]);
@@ -46,7 +46,7 @@ export const usePageFlipAnimation = ({
     return {
       zIndex,
       transform: [
-        { perspective: 600 },
+        { perspective: 400 },
         { translateY: -PAGE_SIZE / 2 },
         { rotateX: `${pageProgress * 180}deg` },
         { translateY: PAGE_SIZE / 2 },

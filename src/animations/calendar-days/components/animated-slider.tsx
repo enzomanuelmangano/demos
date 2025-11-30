@@ -58,6 +58,7 @@ const AnimatedSlider: React.FC<AnimatedSliderProps> = ({
   }, [sliderWidth]);
 
   const gesture = Gesture.Pan()
+    .hitSlop(20)
     .onBegin(() => {
       scale.value = withSpring(1);
       contextX.value = clampedTranslateX.value;
@@ -100,6 +101,7 @@ const AnimatedSlider: React.FC<AnimatedSliderProps> = ({
           {
             backgroundColor: color,
             borderRadius: sliderHeight / 2,
+            borderCurve: 'continuous',
           },
           styles.progressBar,
           rProgressBarStyle,
