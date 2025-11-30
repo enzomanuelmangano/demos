@@ -1,4 +1,10 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Keyboard,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { useCallback } from 'react';
 
@@ -9,11 +15,13 @@ import { useAtomValue } from 'jotai';
 import Animated, {
   Easing,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   getAnimationComponent,
@@ -37,6 +45,20 @@ export default function AnimationScreen() {
   const hideDrawerIconSetting = useAtomValue(HideDrawerIconAtom);
   const metadata = getAnimationMetadata(slug);
   const hideDrawerIcon = hideDrawerIconSetting || metadata?.hideDrawerIcon;
+
+  const dismissKeyboard = useCallback(() => {
+    Keyboard.dismiss();
+  }, []);
+
+  useAnimatedReaction(
+    () => rDrawerProgress.value,
+    value => {
+      if (value < 0.5) {
+        scheduleOnRN(dismissKeyboard);
+        return;
+      }
+    },
+  );
 
   const rBlurIntensity = useDerivedValue<number | undefined>(() => {
     return interpolate(rDrawerProgress.value, [0, 1], [0, 40]);
