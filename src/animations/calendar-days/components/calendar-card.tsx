@@ -4,11 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Extrapolation,
   interpolate,
-  interpolateColor,
   useAnimatedStyle,
   useDerivedValue,
   withSpring,
-  withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 
@@ -133,14 +131,13 @@ const Page = ({
 
     // Before 90deg (0.5): higher index pages should be on top (unflipped stack)
     // After 90deg (0.5): lower index pages should be on top (flipped stack)
-    // This creates the proper stacking order during the flip animation
     const zIndex =
       pageProgress < 0.5 ? totalPages - index : index + totalPages + 1;
 
     return {
       zIndex,
       transform: [
-        { perspective: 1000 },
+        { perspective: 600 },
         { translateY: -PAGE_SIZE / 2 },
         { rotateX: `${pageProgress * 180}deg` },
         { translateY: PAGE_SIZE / 2 },
@@ -151,32 +148,50 @@ const Page = ({
   const rFirstHalfStyle = useAnimatedStyle(() => {
     const pageProgress = pageFlipProgress.value;
 
-    // Darken as page lifts (0 to 0.5)
-    const backgroundColor = interpolateColor(
+    return {
+      opacity: pageProgress < 0.5 ? 1 : 0,
+    };
+  });
+
+  // Shadow overlay on front face - gets darker as it rotates away from light
+  const rFirstHalfShadowStyle = useAnimatedStyle(() => {
+    const pageProgress = pageFlipProgress.value;
+
+    // Darken as page lifts (facing away from light source above)
+    const shadowOpacity = interpolate(
       pageProgress,
       [0, 0.5],
-      [BODY_COLOR, '#E8E8E8'],
+      [0, 0.3],
+      Extrapolation.CLAMP,
     );
 
     return {
-      opacity: pageProgress < 0.5 ? 1 : 0,
-      backgroundColor,
+      opacity: shadowOpacity,
     };
   });
 
   const rSecondHalfStyle = useAnimatedStyle(() => {
     const pageProgress = pageFlipProgress.value;
 
-    // Start dark and lighten as page comes down (0.5 to 1)
-    const backgroundColor = interpolateColor(
+    return {
+      opacity: pageProgress >= 0.5 ? 1 : 0,
+    };
+  });
+
+  // Shadow overlay on back face - starts dark, lightens as it faces the light
+  const rSecondHalfShadowStyle = useAnimatedStyle(() => {
+    const pageProgress = pageFlipProgress.value;
+
+    // Starts in shadow, lightens as it comes down to face the light
+    const shadowOpacity = interpolate(
       pageProgress,
       [0.5, 1],
-      ['#E8E8E8', BODY_COLOR],
+      [0.3, 0],
+      Extrapolation.CLAMP,
     );
 
     return {
-      opacity: pageProgress >= 0.5 ? 1 : 0,
-      backgroundColor,
+      opacity: shadowOpacity,
     };
   });
 
@@ -184,11 +199,11 @@ const Page = ({
   const rShadowStyle = useAnimatedStyle(() => {
     const pageProgress = pageFlipProgress.value;
 
-    // Shadow peaks at mid-flip (90 degrees) when page is perpendicular
+    // Shadow peaks at 90deg when page is perpendicular
     const shadowOpacity = interpolate(
       pageProgress,
       [0, 0.5, 1],
-      [0, 0.5, 0],
+      [0, 0.35, 0],
       Extrapolation.CLAMP,
     );
 
@@ -198,103 +213,8 @@ const Page = ({
   });
 
   return (
-    <Animated.View
-      style={[
-        rStyle,
-        {
-          position: 'absolute',
-          width: SIZE,
-          height: PAGE_SIZE,
-          top: PAGE_SIZE,
-          transformOrigin: ['50%', '50%', 0.005],
-        },
-      ]}>
-      {/* Front face - bottom half of current number */}
-      <Animated.View
-        style={[
-          rFirstHalfStyle,
-          {
-            position: 'absolute',
-            width: SIZE,
-            height: PAGE_SIZE,
-            overflow: 'hidden',
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
-            borderCurve: 'continuous',
-          },
-        ]}>
-        {/* Static shadow gradient on front face */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0.04)', 'transparent']}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 15,
-            zIndex: 9,
-          }}
-        />
-        <View
-          style={{
-            height: NUMBER_HEIGHT,
-            justifyContent: 'center',
-            alignItems: 'center',
-            transform: [
-              { translateY: -PAGE_SIZE / 2 },
-              { rotate: '180deg' },
-              { scaleX: -1 },
-              { scaleY: -1 },
-            ],
-          }}>
-          <Text style={styles.numberText}>{frontPageNumber}</Text>
-        </View>
-      </Animated.View>
-      {/* Back face - top half of next number */}
-      <Animated.View
-        style={[
-          rSecondHalfStyle,
-          {
-            position: 'absolute',
-            width: SIZE,
-            height: PAGE_SIZE,
-            overflow: 'hidden',
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderBottomLeftRadius: 20,
-            borderBottomRightRadius: 20,
-            borderCurve: 'continuous',
-          },
-        ]}>
-        {/* Static shadow gradient on back face */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.03)']}
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 15,
-            zIndex: 9,
-          }}
-        />
-        <View
-          style={{
-            height: NUMBER_HEIGHT,
-            justifyContent: 'center',
-            alignItems: 'center',
-            transform: [
-              { translateY: -PAGE_SIZE / 2 },
-              { rotate: '180deg' },
-              { scaleX: -1 },
-            ],
-          }}>
-          <Text style={styles.numberText}>{backPageNumber}</Text>
-        </View>
-      </Animated.View>
-      {/* Animated shadow overlay that casts onto the bottom static page */}
+    <>
+      {/* Animated shadow cast onto the bottom static half - rendered separately so it doesn't rotate */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -303,8 +223,8 @@ const Page = ({
             position: 'absolute',
             width: SIZE,
             height: PAGE_SIZE,
-            top: 0,
-            zIndex: -1,
+            top: PAGE_SIZE,
+            zIndex: 1,
           },
         ]}>
         <LinearGradient
@@ -318,7 +238,138 @@ const Page = ({
           }}
         />
       </Animated.View>
-    </Animated.View>
+
+      {/* The flipping page */}
+      <Animated.View
+        style={[
+          rStyle,
+          {
+            position: 'absolute',
+            width: SIZE,
+            height: PAGE_SIZE,
+            top: PAGE_SIZE,
+            transformOrigin: ['50%', '50%', 0.005],
+          },
+        ]}>
+        {/* Front face - bottom half of current number */}
+        <Animated.View
+          style={[
+            rFirstHalfStyle,
+            {
+              position: 'absolute',
+              width: SIZE,
+              height: PAGE_SIZE,
+              overflow: 'hidden',
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: BODY_COLOR,
+              borderBottomLeftRadius: 20,
+              borderBottomRightRadius: 20,
+              borderCurve: 'continuous',
+            },
+          ]}>
+          {/* Shadow gradient at fold line */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.04)', 'transparent']}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 10,
+              zIndex: 9,
+            }}
+          />
+          <View
+            style={{
+              height: NUMBER_HEIGHT,
+              justifyContent: 'center',
+              alignItems: 'center',
+              transform: [
+                { translateY: -PAGE_SIZE / 2 },
+                { rotate: '180deg' },
+                { scaleX: -1 },
+                { scaleY: -1 },
+              ],
+            }}>
+            <Text style={styles.numberText}>{frontPageNumber}</Text>
+          </View>
+          {/* Depth shadow overlay - darkens as page rotates away from light */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              rFirstHalfShadowStyle,
+              {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.3)',
+              },
+            ]}
+          />
+        </Animated.View>
+        {/* Back face - top half of next number */}
+        <Animated.View
+          style={[
+            rSecondHalfStyle,
+            {
+              position: 'absolute',
+              width: SIZE,
+              height: PAGE_SIZE,
+              overflow: 'hidden',
+              justifyContent: 'center',
+              alignItems: 'center',
+              backgroundColor: BODY_COLOR,
+              borderBottomLeftRadius: 20,
+              borderBottomRightRadius: 20,
+              borderCurve: 'continuous',
+            },
+          ]}>
+          {/* Shadow gradient at fold line */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.04)']}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 10,
+              zIndex: 9,
+            }}
+          />
+          <View
+            style={{
+              height: NUMBER_HEIGHT,
+              justifyContent: 'center',
+              alignItems: 'center',
+              transform: [
+                { translateY: -PAGE_SIZE / 2 },
+                { rotate: '180deg' },
+                { scaleX: -1 },
+              ],
+            }}>
+            <Text style={styles.numberText}>{backPageNumber}</Text>
+          </View>
+          {/* Depth shadow overlay - starts dark, lightens as page faces the light */}
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              rSecondHalfShadowStyle,
+              {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.3)',
+              },
+            ]}
+          />
+        </Animated.View>
+      </Animated.View>
+    </>
   );
 };
 
@@ -365,19 +416,19 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 20,
     borderCurve: 'continuous',
     height: BODY_HEIGHT,
-    overflow: 'hidden',
+    // overflow: 'hidden',
     position: 'relative',
     width: SIZE,
   },
   card: {
     borderCurve: 'continuous',
     borderRadius: 24,
-    overflow: 'hidden',
+    // overflow: 'hidden',
   },
   cardShadow: {
     borderCurve: 'continuous',
     borderRadius: 24,
-    boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.25)',
+    boxShadow: '0px 0px 20px rgba(0, 0, 0, 0.1)',
   },
   container: {
     alignItems: 'center',
