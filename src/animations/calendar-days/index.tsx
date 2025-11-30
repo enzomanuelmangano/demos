@@ -17,9 +17,18 @@ const App = () => {
 
   const sliderWidth = windowWidth - 80;
 
+  // Snap to nearest page (multiple of 1/TOTAL_PAGES) with spring animation
   const calendarProgress = useDerivedValue(() => {
-    return withSpring(progress.value, { duration: 500, dampingRatio: 1 });
-  }, [progress]);
+    // Calculate which page we should snap to
+    const pageIndex = Math.round(progress.value * TOTAL_PAGES);
+    const snappedProgress = pageIndex / TOTAL_PAGES;
+
+    return withSpring(snappedProgress, {
+      mass: 0.5,
+      damping: 15,
+      stiffness: 150,
+    });
+  }, []);
 
   return (
     <View style={styles.container}>

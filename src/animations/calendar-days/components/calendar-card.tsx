@@ -115,6 +115,9 @@ const Page = ({
   const minPageProgress = index * (1 / totalPages);
   const maxPageProgress = (index + 1) * (1 / totalPages);
 
+  const pageBuffer = 1 / totalPages;
+  const maxPageBuffer = 5 * pageBuffer;
+
   const rStyle = useAnimatedStyle(() => {
     const pageProgress = interpolate(
       progress.value,
@@ -124,11 +127,14 @@ const Page = ({
     );
 
     const isPageVisible =
-      progress.value >= minPageProgress - 1 / totalPages &&
-      progress.value <= maxPageProgress + 1 / totalPages;
+      progress.value >= minPageProgress - maxPageBuffer &&
+      progress.value <= maxPageProgress + maxPageBuffer;
+
+    const isActivePage = index === Math.round(progress.value * totalPages);
 
     return {
       opacity: isPageVisible ? 1 : 0,
+      zIndex: isActivePage ? 100 : index,
       transform: [
         { perspective: 1000 },
         { translateY: -PAGE_SIZE / 2 },
@@ -212,7 +218,7 @@ const Page = ({
           height: PAGE_SIZE,
           top: PAGE_SIZE,
           transformOrigin: ['50%', '50%', 0.005],
-          zIndex: index === 0 || index === totalPages - 1 ? 100 : index,
+          // zIndex: index === 0 || index === totalPages - 1 ? 100 : -index,
         },
       ]}>
       {/* Front face - bottom half of current number */}
@@ -381,15 +387,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardShadow: {
+    borderCurve: 'continuous',
     borderRadius: 24,
-    elevation: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      height: 10,
-      width: 0,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    boxShadow: '0px 10px 20px rgba(0, 0, 0, 0.25)',
   },
   container: {
     alignItems: 'center',
