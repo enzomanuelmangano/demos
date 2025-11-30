@@ -51,6 +51,11 @@ const StaticPage = ({ pageNumber, position }: StaticPageProps) => {
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
+        borderBottomLeftRadius: !isTop ? 20 : 0,
+        borderBottomRightRadius: !isTop ? 20 : 0,
+        borderTopLeftRadius: !isTop ? 0 : 20,
+        borderTopRightRadius: !isTop ? 0 : 20,
+        borderCurve: 'continuous',
       }}>
       {/* Divider line and shadow gradient above the fold on top half */}
       {isTop && (
@@ -377,7 +382,7 @@ const CalendarCard = ({ progress, totalPages }: CalendarCardProps) => {
   return (
     <View style={styles.container}>
       <View style={styles.cardShadow}>
-        <View style={styles.card}>
+        <View>
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerText}>ON THE</Text>
@@ -420,11 +425,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: SIZE,
   },
-  card: {
-    borderCurve: 'continuous',
-    borderRadius: 24,
-    // overflow: 'hidden',
-  },
   cardShadow: {
     borderCurve: 'continuous',
     borderRadius: 24,
@@ -437,6 +437,9 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     backgroundColor: HEADER_COLOR,
+    borderCurve: 'continuous',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     height: HEADER_HEIGHT,
     justifyContent: 'center',
     width: SIZE,
