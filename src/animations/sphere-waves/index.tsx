@@ -10,6 +10,8 @@ import {
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
+import debounce from 'lodash.debounce';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   Easing,
@@ -21,6 +23,7 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 const N_ITEMS = 2000;
 
@@ -72,6 +75,19 @@ const createEnhancedFibonacciPath = (
 
 const INITIAL_MAGICAL_MUL = 2.4;
 
+const lightHapticFeedback = () => {
+  Haptics.selectionAsync();
+};
+
+const heavyHapticFeedback = () => {
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+};
+
+const debouncedFeedback = debounce(heavyHapticFeedback, 500, {
+  leading: true,
+  trailing: false,
+});
+
 const SphereWaves = () => {
   const magicalMul = useSharedValue(INITIAL_MAGICAL_MUL);
   const distance = useSharedValue(300);
@@ -84,6 +100,7 @@ const SphereWaves = () => {
   const historyIndexRef = useRef(0);
 
   const tapGesture = Gesture.Tap().onEnd(event => {
+    scheduleOnRN(lightHapticFeedback);
     const isRightSide = event.x > SCREEN_WIDTH / 2;
 
     if (isRightSide) {
@@ -97,12 +114,12 @@ const SphereWaves = () => {
       historyRef.current.push(newValue);
       historyIndexRef.current = historyRef.current.length - 1;
       magicalMul.value = newValue;
-    } else {
-      // Go back in history
-      if (historyIndexRef.current > 0) {
-        historyIndexRef.current -= 1;
-        magicalMul.value = historyRef.current[historyIndexRef.current];
-      }
+      return;
+    }
+    // Go back in history
+    if (historyIndexRef.current > 0) {
+      historyIndexRef.current -= 1;
+      magicalMul.value = historyRef.current[historyIndexRef.current];
     }
   });
 
@@ -111,6 +128,9 @@ const SphereWaves = () => {
       savedDistance.value = distance.value;
     })
     .onUpdate(event => {
+      if (event.scale < 0.3) {
+        scheduleOnRN(debouncedFeedback);
+      }
       // Map scale ~0.3-3 to a wider multiplier range
       const multiplier = interpolate(
         event.scale,
@@ -151,7 +171,7 @@ const SphereWaves = () => {
 
   useEffect(() => {
     iTime.value = withRepeat(
-      withTiming(15, { duration: 20000, easing: Easing.linear }),
+      withTiming(15, { duration: 50000, easing: Easing.linear }),
       -1,
       true,
     );
