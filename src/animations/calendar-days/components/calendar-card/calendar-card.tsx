@@ -69,6 +69,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 0,
   },
   header: {
     alignItems: 'center',
