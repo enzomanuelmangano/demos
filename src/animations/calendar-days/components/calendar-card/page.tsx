@@ -4,7 +4,6 @@ import Animated from 'react-native-reanimated';
 
 import { PAGE_SIZE, SIZE } from './constants';
 import { PageFace } from './page-face';
-import { CastShadow } from './page-shadows';
 import { usePageFlipAnimation } from './use-page-flip-animation';
 
 import type { PageProps } from './types';
@@ -23,22 +22,18 @@ export const Page = ({
   });
 
   return (
-    <>
-      <CastShadow pageFlipProgress={pageFlipProgress} />
-
-      <Animated.View style={[rFlipStyle, styles.pageContainer]}>
-        <PageFace
-          pageNumber={frontPageNumber}
-          variant="front"
-          pageFlipProgress={pageFlipProgress}
-        />
-        <PageFace
-          pageNumber={backPageNumber}
-          variant="back"
-          pageFlipProgress={pageFlipProgress}
-        />
-      </Animated.View>
-    </>
+    <Animated.View style={[rFlipStyle, styles.pageContainer]}>
+      <PageFace
+        pageNumber={frontPageNumber}
+        variant="front"
+        pageFlipProgress={pageFlipProgress}
+      />
+      <PageFace
+        pageNumber={backPageNumber}
+        variant="back"
+        pageFlipProgress={pageFlipProgress}
+      />
+    </Animated.View>
   );
 };
 

@@ -106,8 +106,8 @@ const styles = StyleSheet.create({
   },
   numberText: {
     color: '#000000',
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 90,
-    fontWeight: '700',
     textAlign: 'center',
   },
 });

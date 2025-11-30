@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
   bottomPosition: {
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
+    borderCurve: 'continuous',
     top: PAGE_SIZE,
   },
   container: {
@@ -86,8 +87,8 @@ const styles = StyleSheet.create({
   },
   numberText: {
     color: '#000000',
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 90,
-    fontWeight: '700',
     textAlign: 'center',
   },
   topGradient: {
@@ -99,6 +100,7 @@ const styles = StyleSheet.create({
     zIndex: 9,
   },
   topPosition: {
+    borderCurve: 'continuous',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     top: 0,
