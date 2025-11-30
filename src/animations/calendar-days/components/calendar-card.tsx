@@ -1,8 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { interpolate } from '@shopify/react-native-skia';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   Extrapolation,
+  interpolateColor,
   useAnimatedStyle,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -13,10 +15,13 @@ type CalendarCardProps = {
 };
 
 const SIZE = 200;
-const PAGE_SIZE = SIZE / 2;
+const HEADER_HEIGHT = 50;
+const BODY_HEIGHT = SIZE - HEADER_HEIGHT;
+const PAGE_SIZE = BODY_HEIGHT / 2;
+const NUMBER_HEIGHT = BODY_HEIGHT;
 
-const TOP_COLOR = '#c9312c';
-const BOTTOM_COLOR = '#c9632c';
+const HEADER_COLOR = '#F07167';
+const BODY_COLOR = '#FFFFFF';
 
 type PageProps = {
   index: number;
@@ -41,20 +46,60 @@ const StaticPage = ({ pageNumber, position }: StaticPageProps) => {
         width: SIZE,
         height: PAGE_SIZE,
         top: isTop ? 0 : PAGE_SIZE,
-        backgroundColor: isTop ? TOP_COLOR : BOTTOM_COLOR,
+        backgroundColor: BODY_COLOR,
         alignItems: 'center',
-        borderTopLeftRadius: isTop ? 20 : 0,
-        borderTopRightRadius: isTop ? 20 : 0,
-        borderBottomLeftRadius: isTop ? 0 : 20,
-        borderBottomRightRadius: isTop ? 0 : 20,
-        borderCurve: 'continuous',
+        justifyContent: 'center',
         overflow: 'hidden',
       }}>
+      {/* Divider line and shadow gradient above the fold on top half */}
+      {isTop && (
+        <>
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.03)']}
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 15,
+              zIndex: 9,
+            }}
+          />
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 1,
+              backgroundColor: 'rgba(0,0,0,0.08)',
+              zIndex: 10,
+            }}
+          />
+        </>
+      )}
+      {/* Shadow gradient below the fold on bottom half */}
+      {!isTop && (
+        <LinearGradient
+          colors={['rgba(0,0,0,0.04)', 'transparent']}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 15,
+            zIndex: 9,
+          }}
+        />
+      )}
       <View
         style={{
+          height: NUMBER_HEIGHT,
+          justifyContent: 'center',
+          alignItems: 'center',
           transform: [{ translateY: isTop ? PAGE_SIZE / 2 : -PAGE_SIZE / 2 }],
         }}>
-        <Text style={styles.text}>{pageNumber}</Text>
+        <Text style={styles.numberText}>{pageNumber}</Text>
       </View>
     </View>
   );
@@ -101,8 +146,16 @@ const Page = ({
       Extrapolation.CLAMP,
     );
 
+    // Darken as page lifts (0 to 0.5)
+    const backgroundColor = interpolateColor(
+      pageProgress,
+      [0, 0.5],
+      [BODY_COLOR, '#E8E8E8'],
+    );
+
     return {
       opacity: pageProgress < 0.5 ? 1 : 0,
+      backgroundColor,
     };
   });
 
@@ -114,8 +167,38 @@ const Page = ({
       Extrapolation.CLAMP,
     );
 
+    // Start dark and lighten as page comes down (0.5 to 1)
+    const backgroundColor = interpolateColor(
+      pageProgress,
+      [0.5, 1],
+      ['#E8E8E8', BODY_COLOR],
+    );
+
     return {
       opacity: pageProgress >= 0.5 ? 1 : 0,
+      backgroundColor,
+    };
+  });
+
+  // Animated shadow cast onto the bottom half
+  const rShadowStyle = useAnimatedStyle(() => {
+    const pageProgress = interpolate(
+      progress.value,
+      [minPageProgress, maxPageProgress],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+
+    // Shadow peaks at mid-flip (90 degrees) when page is perpendicular
+    const shadowOpacity = interpolate(
+      pageProgress,
+      [0, 0.5, 1],
+      [0, 0.5, 0],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      opacity: shadowOpacity,
     };
   });
 
@@ -132,7 +215,7 @@ const Page = ({
           zIndex: index === 0 || index === totalPages - 1 ? 100 : index,
         },
       ]}>
-      {/* Front face - visible before flip (0-90deg) */}
+      {/* Front face - bottom half of current number */}
       <Animated.View
         style={[
           rFirstHalfStyle,
@@ -140,17 +223,31 @@ const Page = ({
             position: 'absolute',
             width: SIZE,
             height: PAGE_SIZE,
-            backgroundColor: BOTTOM_COLOR,
             overflow: 'hidden',
-            justifyContent: 'flex-start',
+            justifyContent: 'center',
             alignItems: 'center',
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
             borderCurve: 'continuous',
           },
         ]}>
+        {/* Static shadow gradient on front face */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.04)', 'transparent']}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 15,
+            zIndex: 9,
+          }}
+        />
         <View
           style={{
+            height: NUMBER_HEIGHT,
+            justifyContent: 'center',
+            alignItems: 'center',
             transform: [
               { translateY: -PAGE_SIZE / 2 },
               { rotate: '180deg' },
@@ -158,10 +255,10 @@ const Page = ({
               { scaleY: -1 },
             ],
           }}>
-          <Text style={styles.text}>{frontPageNumber}</Text>
+          <Text style={styles.numberText}>{frontPageNumber}</Text>
         </View>
       </Animated.View>
-      {/* Back face - visible after flip (90-180deg) */}
+      {/* Back face - top half of next number */}
       <Animated.View
         style={[
           rSecondHalfStyle,
@@ -169,25 +266,63 @@ const Page = ({
             position: 'absolute',
             width: SIZE,
             height: PAGE_SIZE,
-            backgroundColor: TOP_COLOR,
             overflow: 'hidden',
-            justifyContent: 'flex-start',
+            justifyContent: 'center',
             alignItems: 'center',
             borderBottomLeftRadius: 20,
             borderBottomRightRadius: 20,
             borderCurve: 'continuous',
           },
         ]}>
+        {/* Static shadow gradient on back face */}
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.03)']}
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 15,
+            zIndex: 9,
+          }}
+        />
         <View
           style={{
+            height: NUMBER_HEIGHT,
+            justifyContent: 'center',
+            alignItems: 'center',
             transform: [
               { translateY: -PAGE_SIZE / 2 },
               { rotate: '180deg' },
               { scaleX: -1 },
             ],
           }}>
-          <Text style={styles.text}>{backPageNumber}</Text>
+          <Text style={styles.numberText}>{backPageNumber}</Text>
         </View>
+      </Animated.View>
+      {/* Animated shadow overlay that casts onto the bottom static page */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          rShadowStyle,
+          {
+            position: 'absolute',
+            width: SIZE,
+            height: PAGE_SIZE,
+            top: 0,
+            zIndex: -1,
+          },
+        ]}>
+        <LinearGradient
+          colors={['rgba(0,0,0,0.6)', 'transparent']}
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: PAGE_SIZE,
+          }}
+        />
       </Animated.View>
     </Animated.View>
   );
@@ -196,37 +331,87 @@ const Page = ({
 const CalendarCard = ({ progress, totalPages }: CalendarCardProps) => {
   return (
     <View style={styles.container}>
-      <View style={{ width: SIZE, height: SIZE }}>
-        {/* Static top half - shows upper portion of the first number */}
-        <StaticPage pageNumber={1} position="top" />
+      <View style={styles.cardShadow}>
+        <View style={styles.card}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.headerText}>ON THE</Text>
+          </View>
 
-        {/* Static bottom half - shows lower portion of the last number */}
-        <StaticPage pageNumber={totalPages + 1} position="bottom" />
+          {/* Body with flip animation */}
+          <View style={styles.body}>
+            {/* Static top half - shows upper portion of the first number */}
+            <StaticPage pageNumber={1} position="top" />
 
-        {/* Flipping pages */}
-        {Array.from({ length: totalPages }).map((_, index) => (
-          <Page
-            key={index}
-            index={index}
-            progress={progress}
-            frontPageNumber={index + 1}
-            backPageNumber={index + 2}
-            totalPages={totalPages - 1}
-          />
-        ))}
+            {/* Static bottom half - shows lower portion of the last number */}
+            <StaticPage pageNumber={totalPages + 1} position="bottom" />
+
+            {/* Flipping pages */}
+            {Array.from({ length: totalPages }).map((_, index) => (
+              <Page
+                key={index}
+                index={index}
+                progress={progress}
+                frontPageNumber={index + 1}
+                backPageNumber={index + 2}
+                totalPages={totalPages}
+              />
+            ))}
+          </View>
+        </View>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  body: {
+    backgroundColor: BODY_COLOR,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    borderCurve: 'continuous',
+    height: BODY_HEIGHT,
+    overflow: 'hidden',
+    position: 'relative',
+    width: SIZE,
+  },
+  card: {
+    borderCurve: 'continuous',
+    borderRadius: 24,
+    overflow: 'hidden',
+  },
+  cardShadow: {
+    borderRadius: 24,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      height: 10,
+      width: 0,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+  },
   container: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  text: {
-    fontSize: 80,
-    lineHeight: 100,
+  header: {
+    alignItems: 'center',
+    backgroundColor: HEADER_COLOR,
+    height: HEADER_HEIGHT,
+    justifyContent: 'center',
+    width: SIZE,
+  },
+  headerText: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: 3,
+  },
+  numberText: {
+    color: '#000000',
+    fontSize: 90,
+    fontWeight: '700',
     textAlign: 'center',
   },
 });
