@@ -31,6 +31,7 @@ import { BalanceSlider } from './balance-slider';
 import { BezierCurveOutline } from './bezier-curve-outline';
 import { BlurCards } from './blur-cards';
 import { BlurCircles } from './blur-circles';
+import { CalendarDays } from './calendar-days';
 import { BlurredBottomBar } from './blurred-bottom-bar';
 import { BlurredScroll } from './blurred-scroll';
 import { BottomBarSkia } from './bottom-bar-skia';
@@ -241,6 +242,7 @@ export const AnimationRegistry = {
   'airbnb-flip-interaction': AirbnbFlipInteraction,
   'liquid-glass-playground': Playground,
   'blur-cards': BlurCards,
+  'calendar-days': CalendarDays,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -815,6 +817,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Blur Cards',
     route: 'BlurCards',
     iconName: 'layers-outline',
+  },
+  'calendar-days': {
+    name: 'Calendar Days',
+    route: 'CalendarDays',
+    iconName: 'calendar-outline',
   },
 } as const;
 
