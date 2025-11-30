@@ -4,26 +4,20 @@ import { useMemo } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
+  type SharedValue,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import type { StyleProp, ViewStyle } from 'react-native';
 
 type DaySliderProps = {
-  minDay?: number;
-  maxDay?: number;
+  progress: SharedValue<number>;
   style?: StyleProp<
     Omit<ViewStyle, 'width' | 'height'> & { width: number; height?: number }
   >;
-  onDayChange?: (day: number) => void;
-  initialDay?: number;
 };
 
 const PICKER_SIZE = 32;
@@ -36,21 +30,14 @@ const clamp = (value: number, lowerBound: number, upperBound: number) => {
   return Math.min(Math.max(value, lowerBound), upperBound);
 };
 
-const DaySlider = ({
-  minDay = 1,
-  maxDay = 31,
-  style,
-  onDayChange,
-  initialDay = 1,
-}: DaySliderProps) => {
+const DaySlider = ({ progress, style }: DaySliderProps) => {
   const flattenedStyle = useMemo(() => {
     return StyleSheet.flatten(style);
   }, [style]);
 
   const sliderWidth = flattenedStyle?.width ?? 280;
 
-  const initialX = ((initialDay - minDay) / (maxDay - minDay)) * sliderWidth;
-  const translateX = useSharedValue(initialX);
+  const translateX = useSharedValue(0);
   const contextX = useSharedValue(0);
   const scale = useSharedValue(1);
 
@@ -58,24 +45,10 @@ const DaySlider = ({
     return clamp(translateX.value, 0, sliderWidth);
   }, [sliderWidth]);
 
-  useAnimatedReaction(
-    () => {
-      return clampedTranslateX.value;
-    },
-    translation => {
-      const day = Math.round(
-        interpolate(
-          translation,
-          [0, sliderWidth],
-          [minDay, maxDay],
-          Extrapolation.CLAMP,
-        ),
-      );
-      if (onDayChange) {
-        scheduleOnRN(onDayChange, day);
-      }
-    },
-  );
+  // Update progress based on slider position
+  useDerivedValue(() => {
+    progress.value = clampedTranslateX.value / sliderWidth;
+  }, [sliderWidth]);
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
