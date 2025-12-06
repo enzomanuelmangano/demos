@@ -144,17 +144,15 @@ const styles = StyleSheet.create({
   },
   activeRightChip: {
     backgroundColor: colors.black,
-    shadowOpacity: 0.3,
+    boxShadow: '0px 0px 0px rgba(0, 0, 0, 0.3)',
   },
   chip: {
     borderColor: colors.border,
     borderCurve: 'continuous',
     borderRadius: 16,
     borderWidth: 1,
+    boxShadow: '0px 1px 5px rgba(0, 0, 0, 0.1)',
     height: 60,
-    shadowOffset: { height: 1, width: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
     width: 140,
   },
   chipContent: {
