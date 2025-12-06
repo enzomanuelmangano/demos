@@ -1,3 +1,5 @@
+import { Platform, type ViewStyle } from 'react-native';
+
 import {
   useAnimatedStyle,
   useDerivedValue,
@@ -8,8 +10,6 @@ import {
 } from 'react-native-reanimated';
 
 import { PAGE_SIZE } from './constants';
-
-import type { ViewStyle } from 'react-native';
 
 type UsePageFlipAnimationParams = {
   index: number;
@@ -46,7 +46,7 @@ export const usePageFlipAnimation = ({
     return {
       zIndex,
       transform: [
-        { perspective: 400 },
+        { perspective: Platform.OS === 'ios' ? 400 : 10000 },
         { translateY: -PAGE_SIZE / 2 },
         { rotateX: `${pageProgress * 180}deg` },
         { translateY: PAGE_SIZE / 2 },

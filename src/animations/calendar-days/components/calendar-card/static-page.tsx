@@ -89,7 +89,9 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 90,
+    includeFontPadding: false,
     textAlign: 'center',
+    textAlignVertical: 'center',
   },
   topGradient: {
     bottom: 0,

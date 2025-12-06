@@ -789,6 +789,13 @@ module.exports = function ({ types: t }, options = {}) {
             return;
           }
 
+          // Skip plugin on non-iOS platforms (liquid glass is iOS-only)
+          const platform = state.caller?.platform || state.opts?.platform;
+          if (platform && platform !== 'ios') {
+            state.skipPlugin = true;
+            return;
+          }
+
           // Reset state for each file
           state.processedImports = new Set();
           state.sharedComponentsAdded = false;
