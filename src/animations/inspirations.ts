@@ -452,4 +452,8 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     authorName: '@_Kavsoft',
     link: 'https://x.com/_Kavsoft/status/1769042151487549605',
   },
+  'sphere-waves': {
+    authorName: '@XorDev',
+    link: 'https://x.com/XorDev/status/1475524322785640455',
+  },
 } as const;
