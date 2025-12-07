@@ -150,12 +150,8 @@ const styles = StyleSheet.create({
   container: {
     borderCurve: 'continuous',
     borderRadius: 35,
-    elevation: 2,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.03)',
     position: 'absolute',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
   },
 });
 

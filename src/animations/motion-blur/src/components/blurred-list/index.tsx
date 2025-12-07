@@ -178,10 +178,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderCurve: 'continuous',
     borderRadius: 20,
-    elevation: 5,
+    boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.05)',
     height: LIST_ITEM_HEIGHT,
     justifyContent: 'center',
-    shadowRadius: 10,
     width: '80%',
   },
 });

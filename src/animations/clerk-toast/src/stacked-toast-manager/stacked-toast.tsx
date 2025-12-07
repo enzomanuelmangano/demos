@@ -180,12 +180,7 @@ const styles = StyleSheet.create({
   container: {
     borderCurve: 'continuous',
     borderRadius: 35,
-    elevation: 2,
     position: 'absolute',
-    shadowOffset: {
-      width: 0,
-      height: 0,
-    },
   },
 });
 

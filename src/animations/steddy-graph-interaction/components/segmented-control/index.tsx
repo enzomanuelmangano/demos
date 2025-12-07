@@ -122,10 +122,8 @@ const localStyles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 12,
     borderWidth: 1,
+    boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
     position: 'absolute',
-    shadowOffset: { height: 1, width: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
     zIndex: 1,
   },
   labelContainer: {
