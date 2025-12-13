@@ -104,6 +104,7 @@ import { SkiaColorPicker } from './skia-color-picker';
 import { SlideToReveal } from './slide-to-reveal';
 import { SmoothDropdown } from './smooth-dropdown';
 import { Snake } from './snake';
+import { ScrollableShapes } from './scrollable-shapes';
 import { SphereWaves } from './sphere-waves';
 import { Spiral } from './spiral';
 import { SplitButton } from './split-button';
@@ -245,6 +246,7 @@ export const AnimationRegistry = {
   'blur-cards': BlurCards,
   'calendar-days': CalendarDays,
   'sphere-waves': SphereWaves,
+  'scrollable-shapes': ScrollableShapes,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -829,6 +831,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Sphere Waves',
     route: 'SphereWaves',
     iconName: 'globe-outline',
+  },
+  'scrollable-shapes': {
+    name: 'Scrollable Shapes',
+    route: 'ScrollableShapes',
+    iconName: 'shapes-outline',
   },
 } as const;
 
