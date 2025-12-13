@@ -96,6 +96,7 @@ import { RadarChartContainer } from './radar-chart';
 import { RecordButton } from './record-button';
 import { ScrollProgress } from './scroll-progress';
 import { ScrollableBottomSheet } from './scrollable-bottom-sheet';
+import { ScrollableShapes } from './scrollable-shapes';
 import { SelectableGridList } from './selectable-grid-list';
 import { ShakeToDeleteAnimation } from './shake-to-delete';
 import { SharedTransitions } from './shared-transition';
@@ -245,6 +246,7 @@ export const AnimationRegistry = {
   'blur-cards': BlurCards,
   'calendar-days': CalendarDays,
   'sphere-waves': SphereWaves,
+  'scrollable-shapes': ScrollableShapes,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -829,6 +831,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Sphere Waves',
     route: 'SphereWaves',
     iconName: 'globe-outline',
+  },
+  'scrollable-shapes': {
+    name: 'Scrollable Shapes',
+    route: 'ScrollableShapes',
+    iconName: 'shapes-outline',
   },
 } as const;
 

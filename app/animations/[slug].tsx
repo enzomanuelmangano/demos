@@ -52,8 +52,8 @@ export default function AnimationScreen() {
 
   useAnimatedReaction(
     () => rDrawerProgress.value,
-    value => {
-      if (value < 0.5) {
+    (value, prevValue) => {
+      if (value < 0.5 && prevValue && prevValue !== value && prevValue > 0.5) {
         scheduleOnRN(dismissKeyboard);
         return;
       }
