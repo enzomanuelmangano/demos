@@ -73,7 +73,7 @@ const ScrollableShapes = () => {
     'worklet';
     const centerX = windowWidth / 2;
     const centerY = windowHeight / 2;
-    const distance = 400;
+    const distance = 350;
 
     // Input range for all shapes
     const shapeWidth = windowWidth;
