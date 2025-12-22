@@ -12,8 +12,6 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { BG_COLOR_DARK } from '../constants';
-
 interface ToggleButtonProps {
   progress: SharedValue<number>;
   onPress: () => void;
@@ -123,7 +121,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 0, 0, 0.06)',
     borderRadius: 32,
     borderWidth: 1,
-    boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.08)',
+    boxShadow: '0px 7px 12px rgba(0, 0, 0, 0.08)',
     elevation: 3,
     height: 64,
     justifyContent: 'center',
