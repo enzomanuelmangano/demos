@@ -191,7 +191,18 @@ const createPicture = (
     const dstRect = Skia.XYWHRect(t.x, t.y, t.size, t.size);
 
     // Draw colored background - repositions to form QR code
-    const bgColor = getAvatarColor(avatarIndex);
+    // Progressively increase contrast during morph while keeping variation
+    const satRange = BG_COLOR_SAT_MAX - BG_COLOR_SAT_MIN;
+    const lightRange = BG_COLOR_LIGHT_MAX - BG_COLOR_LIGHT_MIN;
+    const baseSat = BG_COLOR_SAT_MIN + (avatarIndex % 5) * (satRange / 4);
+    const baseLight = BG_COLOR_LIGHT_MIN + (avatarIndex % 4) * (lightRange / 3);
+
+    // Apply uniform boost to all colors: +10 saturation, -15 lightness at full QR
+    const contrastBoost = t.morphProgress;
+    const sat = Math.min(100, baseSat + 10 * contrastBoost);
+    const light = Math.max(30, baseLight - 15 * contrastBoost);
+
+    const bgColor = `hsl(${BG_COLOR_HUE}, ${sat}%, ${light}%)`;
     reusableWhiteBgPaint.setColor(Skia.Color(bgColor));
     // Linear interpolation: torus mode (imageOpacity) → QR mode (1.0)
     const bgOpacity = Math.max(t.imageOpacity, t.morphProgress);

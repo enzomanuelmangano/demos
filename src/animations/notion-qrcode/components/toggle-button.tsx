@@ -94,11 +94,11 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
       <Animated.View style={buttonPulseStyle}>
         <PressableScale style={styles.button} onPress={onPress}>
           <Animated.View style={[styles.iconContainer, teamIconStyle]}>
-            <Ionicons name="heart" size={22} color="#fff" />
+            <Ionicons name="scan" size={28} color="#1a1a1a" />
           </Animated.View>
 
           <Animated.View style={[styles.iconContainer, scanIconStyle]}>
-            <Ionicons name="qr-code" size={22} color="#fff" />
+            <Ionicons name="qr-code" size={28} color="#1a1a1a" />
           </Animated.View>
         </PressableScale>
       </Animated.View>
@@ -119,13 +119,15 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
 const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
-    backgroundColor: BG_COLOR_DARK,
-    borderRadius: 28,
-    boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.08)',
+    backgroundColor: '#ffffff',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    borderRadius: 32,
+    borderWidth: 1,
+    boxShadow: '0px 0px 12px rgba(0, 0, 0, 0.08)',
     elevation: 3,
-    height: 56,
+    height: 64,
     justifyContent: 'center',
-    width: 56,
+    width: 64,
   },
   buttonContainer: {
     alignItems: 'center',
@@ -137,10 +139,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
   },
   label: {
-    color: BG_COLOR_DARK,
-    fontFamily: 'SF-Pro-Rounded-Bold',
-    fontSize: 14,
-    letterSpacing: 1.5,
+    color: '#1a1a1a',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   labelAbsolute: {
