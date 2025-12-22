@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 import {
   Canvas,
   ClipOp,
+  ColorMatrix,
   Picture,
   Skia,
   SkImage,
@@ -359,7 +360,7 @@ const NotionQRCode = () => {
 const styles = StyleSheet.create({
   bottomGradient: {
     bottom: 0,
-    height: 250,
+    height: 280,
     left: 0,
     position: 'absolute',
     right: 0,
