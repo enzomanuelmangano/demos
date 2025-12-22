@@ -85,6 +85,7 @@ import { MilesBarChart } from './miles-bar-chart';
 import { Mnist } from './mnist';
 import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
+import { NotionQRCode } from './notion-qrcode';
 import { OnlineOffline } from './online-offline';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
@@ -247,6 +248,7 @@ export const AnimationRegistry = {
   'calendar-days': CalendarDays,
   'sphere-waves': SphereWaves,
   'scrollable-shapes': ScrollableShapes,
+  'notion-qrcode': NotionQRCode,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -836,6 +838,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Scrollable Shapes',
     route: 'ScrollableShapes',
     iconName: 'shapes-outline',
+  },
+  'notion-qrcode': {
+    name: 'Notion QR Code',
+    route: 'NotionQRCode',
+    iconName: 'qr-code-outline',
   },
 } as const;
 
