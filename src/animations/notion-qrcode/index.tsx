@@ -82,6 +82,7 @@ const createPicture = (
   progress: SharedValue<number>,
   iTime: SharedValue<number>,
   staggerBaseTime: SharedValue<number>,
+  frozenRotationTime: SharedValue<number>,
 ) => {
   'worklet';
   const recorder = Skia.PictureRecorder();
@@ -90,8 +91,9 @@ const createPicture = (
   );
 
   const progressValue = progress.value;
-  const timeValue = iTime.value % (Math.PI * 2);
+  const timeValue = iTime.value % (Math.PI * 2); // Use modulo for live rotation
   const staggerTime = staggerBaseTime.value;
+  const frozenRotation = frozenRotationTime.value;
 
   const transforms: AvatarTransform[] = [];
 
@@ -129,7 +131,13 @@ const createPicture = (
       (ALL_SHAPES[1][index].z - ALL_SHAPES[0][index].z) * eased;
 
     const transitionBoost = Math.sin(eased * Math.PI) * 0.6;
-    const rotationAmount = timeValue * (1 - eased) + transitionBoost;
+    // Calculate rotation relative to frozen point, handling 2π wrapping
+    let rotationDelta = timeValue - frozenRotation;
+    // Normalize delta to [-π, π] range to handle wrapping correctly
+    if (rotationDelta > Math.PI) rotationDelta -= 2 * Math.PI;
+    if (rotationDelta < -Math.PI) rotationDelta += 2 * Math.PI;
+    const rotationAmount =
+      (frozenRotation + rotationDelta) * (1 - eased) + transitionBoost;
     const tiltAmount = 0.3 * (1 - eased);
 
     let p: Point3D = { x: baseX, y: baseY, z: baseZ };
@@ -246,13 +254,16 @@ const NotionQRCode = () => {
   const isShowingQR = useSharedValue(false);
   const lastHapticIndex = useSharedValue(-1);
   const staggerBaseTime = useSharedValue(0.0);
+  const frozenRotationTime = useSharedValue(0.0);
 
   const toggleQR = () => {
     const showQR = !isShowingQR.value;
     isShowingQR.value = showQR;
     lastHapticIndex.value = -1;
-    // Freeze the current rotation angle for consistent stagger pattern
-    staggerBaseTime.value = iTime.value % (2 * Math.PI);
+    // Freeze the current rotation angles for consistent patterns
+    const currentRotation = iTime.value % (2 * Math.PI);
+    staggerBaseTime.value = currentRotation;
+    frozenRotationTime.value = currentRotation;
     progress.value = withSpring(showQR ? 1 : 0, {
       duration: showQR ? 6000 : 4000,
       dampingRatio: 1,
@@ -307,8 +318,14 @@ const NotionQRCode = () => {
       recorder.beginRecording(Skia.XYWHRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT));
       return recorder.finishRecordingAsPicture();
     }
-    return createPicture(spriteSheet, progress, iTime, staggerBaseTime);
-  }, [spriteSheet, progress, iTime, staggerBaseTime]);
+    return createPicture(
+      spriteSheet,
+      progress,
+      iTime,
+      staggerBaseTime,
+      frozenRotationTime,
+    );
+  }, [spriteSheet, progress, iTime, staggerBaseTime, frozenRotationTime]);
 
   if (!spriteSheet) {
     return <View style={styles.container} />;
