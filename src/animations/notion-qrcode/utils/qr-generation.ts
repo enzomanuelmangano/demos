@@ -1,10 +1,8 @@
 import QRCode from 'qrcode';
 
-import { QR_DATA } from '../constants';
-
-export const generateQRMatrix = (): boolean[][] => {
-  const qrData = QRCode.create(QR_DATA, { errorCorrectionLevel: 'M' });
-  const { modules } = qrData;
+export const generateQRMatrix = (qrData: string): boolean[][] => {
+  const qrCodeData = QRCode.create(qrData, { errorCorrectionLevel: 'M' });
+  const { modules } = qrCodeData;
   const { size } = modules;
 
   const matrix: boolean[][] = [];

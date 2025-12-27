@@ -1,8 +1,4 @@
-import {
-  GOLDEN_RATIO,
-  TORUS_MAJOR_RADIUS,
-  TORUS_MINOR_RADIUS,
-} from '../constants';
+import { GOLDEN_RATIO } from '../constants';
 import { Point3D } from '../types';
 
 const fibonacciPoint = (i: number, total: number) => {
@@ -12,7 +8,11 @@ const fibonacciPoint = (i: number, total: number) => {
   return { theta, phi };
 };
 
-export const generateTorusPoints = (count: number): Point3D[] => {
+export const generateTorusPoints = (
+  count: number,
+  majorRadius: number,
+  minorRadius: number,
+): Point3D[] => {
   const points: Point3D[] = [];
 
   for (let i = 0; i < count; i++) {
@@ -22,9 +22,9 @@ export const generateTorusPoints = (count: number): Point3D[] => {
     const v = phi * 2;
 
     points.push({
-      x: (TORUS_MAJOR_RADIUS + TORUS_MINOR_RADIUS * Math.cos(v)) * Math.cos(u),
-      y: TORUS_MINOR_RADIUS * Math.sin(v),
-      z: (TORUS_MAJOR_RADIUS + TORUS_MINOR_RADIUS * Math.cos(v)) * Math.sin(u),
+      x: (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u),
+      y: minorRadius * Math.sin(v),
+      z: (majorRadius + minorRadius * Math.cos(v)) * Math.sin(u),
     });
   }
 
