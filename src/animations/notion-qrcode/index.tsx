@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { forwardRef, useEffect, useImperativeHandle } from 'react';
+import { useEffect, useRef } from 'react';
 
 import {
   Canvas,
@@ -242,107 +242,94 @@ const HAPTIC_THRESHOLDS = [0.05, 0.12, 0.21, 0.32];
  * Core QR Code Animation component - renders the torus-to-QR morph animation.
  * Use the ref to control the animation via toggle().
  */
-const QRCodeAnimation = forwardRef<QRCodeAnimationRef, QRCodeAnimationProps>(
-  (
-    {
-      qrData,
-      sprite,
-      colors = DEFAULT_COLORS,
-      torus = DEFAULT_TORUS,
-      avatarSize = DEFAULT_AVATAR_SIZE,
-      qrTargetHeight = DEFAULT_QR_TARGET_HEIGHT,
-      progress: externalProgress,
-    },
-    ref,
-  ) => {
-    const iTime = useSharedValue(0.0);
-    const internalProgress = useSharedValue(0);
-    const progress = externalProgress ?? internalProgress;
-    const isShowingQR = useSharedValue(false);
-    const lastHapticIndex = useSharedValue(-1);
-    const staggerBaseTime = useSharedValue(0.0);
-    const frozenRotationTime = useSharedValue(0.0);
+const QRCodeAnimation = ({
+  qrData,
+  sprite,
+  colors = DEFAULT_COLORS,
+  torus = DEFAULT_TORUS,
+  avatarSize = DEFAULT_AVATAR_SIZE,
+  qrTargetHeight = DEFAULT_QR_TARGET_HEIGHT,
+  progress: externalProgress,
+  ref,
+}: QRCodeAnimationProps) => {
+  const iTime = useSharedValue(0.0);
+  const internalProgress = useSharedValue(0);
+  const progress = externalProgress ?? internalProgress;
+  const isShowingQR = useSharedValue(false);
+  const lastHapticIndex = useSharedValue(-1);
+  const staggerBaseTime = useSharedValue(0.0);
+  const frozenRotationTime = useSharedValue(0.0);
 
-    const shapeData = useShapeData(qrData, torus, qrTargetHeight, sprite);
+  const shapeData = useShapeData(qrData, torus, qrTargetHeight, sprite);
 
-    const toggle = () => {
-      const showQR = !isShowingQR.value;
-      isShowingQR.value = showQR;
-      lastHapticIndex.value = -1;
-      // Freeze the current rotation angles for consistent patterns
-      const currentRotation = iTime.value % (2 * Math.PI);
-      staggerBaseTime.value = currentRotation;
-      frozenRotationTime.value = currentRotation;
-      progress.value = withSpring(showQR ? 1 : 0, {
-        duration: showQR ? 6000 : 4000,
-        dampingRatio: 1,
-      });
-    };
+  const toggle = () => {
+    const showQR = !isShowingQR.value;
+    isShowingQR.value = showQR;
+    lastHapticIndex.value = -1;
+    // Freeze the current rotation angles for consistent patterns
+    const currentRotation = iTime.value % (2 * Math.PI);
+    staggerBaseTime.value = currentRotation;
+    frozenRotationTime.value = currentRotation;
+    progress.value = withSpring(showQR ? 1 : 0, {
+      duration: showQR ? 6000 : 4000,
+      dampingRatio: 1,
+    });
+  };
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    useImperativeHandle(ref, () => ({ toggle }), []);
+  // Assign toggle to ref
+  if (ref) {
+    ref.current = { toggle };
+  }
 
-    // Quick haptic burst at animation start, then silence
-    useAnimatedReaction(
-      () => progress.value,
-      (current, previous) => {
-        if (previous === null) return;
+  // Quick haptic burst at animation start, then silence
+  useAnimatedReaction(
+    () => progress.value,
+    (current, previous) => {
+      if (previous === null) return;
 
-        const isForward = current > previous;
+      const isForward = current > previous;
 
-        if (isForward) {
-          // Forward only: quick burst of haptics at the start
-          for (let i = 0; i < HAPTIC_THRESHOLDS.length; i++) {
-            const threshold = HAPTIC_THRESHOLDS[i];
-            if (
-              previous < threshold &&
-              current >= threshold &&
-              i > lastHapticIndex.value
-            ) {
-              lastHapticIndex.value = i;
-              scheduleOnRN(hapticSoft);
-              break;
-            }
-          }
-        } else {
-          // Reset tracking when going back (no haptics)
-          if (current < 0.05) {
-            lastHapticIndex.value = -1;
+      if (isForward) {
+        // Forward only: quick burst of haptics at the start
+        for (let i = 0; i < HAPTIC_THRESHOLDS.length; i++) {
+          const threshold = HAPTIC_THRESHOLDS[i];
+          if (
+            previous < threshold &&
+            current >= threshold &&
+            i > lastHapticIndex.value
+          ) {
+            lastHapticIndex.value = i;
+            scheduleOnRN(hapticSoft);
+            break;
           }
         }
-      },
-    );
-
-    const spriteSheet = useImage(sprite.source);
-
-    useEffect(() => {
-      const duration = 40000;
-      const rotationsCount = 1000;
-      iTime.value = withTiming(Math.PI * 2 * rotationsCount, {
-        duration: duration * rotationsCount,
-        easing: Easing.linear,
-      });
-    }, [iTime]);
-
-    const picture = useDerivedValue(() => {
-      if (!spriteSheet) {
-        const recorder = Skia.PictureRecorder();
-        recorder.beginRecording(
-          Skia.XYWHRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT),
-        );
-        return recorder.finishRecordingAsPicture();
+      } else {
+        // Reset tracking when going back (no haptics)
+        if (current < 0.05) {
+          lastHapticIndex.value = -1;
+        }
       }
-      return createPicture(
-        spriteSheet,
-        progress,
-        iTime,
-        staggerBaseTime,
-        frozenRotationTime,
-        shapeData,
-        colors,
-        avatarSize,
-      );
-    }, [
+    },
+  );
+
+  const spriteSheet = useImage(sprite.source);
+
+  useEffect(() => {
+    const duration = 40000;
+    const rotationsCount = 1000;
+    iTime.value = withTiming(Math.PI * 2 * rotationsCount, {
+      duration: duration * rotationsCount,
+      easing: Easing.linear,
+    });
+  }, [iTime]);
+
+  const picture = useDerivedValue(() => {
+    if (!spriteSheet) {
+      const recorder = Skia.PictureRecorder();
+      recorder.beginRecording(Skia.XYWHRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT));
+      return recorder.finishRecordingAsPicture();
+    }
+    return createPicture(
       spriteSheet,
       progress,
       iTime,
@@ -351,23 +338,30 @@ const QRCodeAnimation = forwardRef<QRCodeAnimationRef, QRCodeAnimationProps>(
       shapeData,
       colors,
       avatarSize,
-    ]);
-
-    if (!spriteSheet) {
-      return <View style={styles.container} />;
-    }
-
-    return (
-      <View style={styles.container}>
-        <Canvas style={styles.canvas}>
-          <Picture picture={picture} />
-        </Canvas>
-      </View>
     );
-  },
-);
+  }, [
+    spriteSheet,
+    progress,
+    iTime,
+    staggerBaseTime,
+    frozenRotationTime,
+    shapeData,
+    colors,
+    avatarSize,
+  ]);
 
-QRCodeAnimation.displayName = 'QRCodeAnimation';
+  if (!spriteSheet) {
+    return <View style={styles.container} />;
+  }
+
+  return (
+    <View style={styles.container}>
+      <Canvas style={styles.canvas}>
+        <Picture picture={picture} />
+      </Canvas>
+    </View>
+  );
+};
 
 // Default sprite configuration for backward compatibility
 const DEFAULT_SPRITE: SpriteConfig = {
@@ -384,7 +378,7 @@ const DEFAULT_SPRITE: SpriteConfig = {
  * Includes gradients and toggle button. For new usage, prefer QRCodeAnimation.
  */
 const NotionQRCode = () => {
-  const animationRef = { current: null as QRCodeAnimationRef | null };
+  const animationRef = useRef<QRCodeAnimationRef | null>(null);
   const progress = useSharedValue(0);
 
   const handleToggle = () => {
@@ -394,9 +388,7 @@ const NotionQRCode = () => {
   return (
     <View style={styles.container}>
       <QRCodeAnimation
-        ref={ref => {
-          animationRef.current = ref;
-        }}
+        ref={animationRef}
         qrData="https://www.reactiive.io"
         sprite={DEFAULT_SPRITE}
         progress={progress}

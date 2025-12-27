@@ -22,6 +22,10 @@ export interface TorusConfig {
   targetHeight: number;
 }
 
+export interface QRCodeAnimationRef {
+  toggle: () => void;
+}
+
 export interface QRCodeAnimationProps {
   qrData: string;
   sprite: SpriteConfig;
@@ -31,10 +35,8 @@ export interface QRCodeAnimationProps {
   qrTargetHeight?: number;
   /** Optional external progress value (0-1). If not provided, uses internal state. */
   progress?: import('react-native-reanimated').SharedValue<number>;
-}
-
-export interface QRCodeAnimationRef {
-  toggle: () => void;
+  /** Ref to control the animation via toggle() */
+  ref?: React.RefObject<QRCodeAnimationRef | null>;
 }
 
 export interface ShapeData {
