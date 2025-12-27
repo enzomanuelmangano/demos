@@ -5,7 +5,6 @@ import { useEffect } from 'react';
 import {
   Canvas,
   ClipOp,
-  ColorMatrix,
   Picture,
   Skia,
   SkImage,
