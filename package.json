@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",

@@ -1,20 +1,24 @@
 import { StyleSheet, Text, View } from 'react-native';
 
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BODY_COLOR, NUMBER_HEIGHT, PAGE_SIZE, SIZE } from './constants';
 
 import type { StaticPageProps } from './types';
 
-const FoldShadowTop = () => (
-  <>
-    <LinearGradient
-      colors={['transparent', 'rgba(0,0,0,0.03)']}
-      style={styles.topGradient}
-    />
-    <View style={styles.dividerLine} />
-  </>
-);
+const FoldShadowTop = () => {
+  const { top } = useSafeAreaInsets();
+  return (
+    <>
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.03)']}
+        style={[styles.topGradient, { height: top }]}
+      />
+      <View style={styles.dividerLine} />
+    </>
+  );
+};
 
 const FoldShadowBottom = () => (
   <LinearGradient
