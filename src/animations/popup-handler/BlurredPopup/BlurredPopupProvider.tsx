@@ -140,7 +140,7 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
 
   const blurViewStyle = useMemo(() => {
     return {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       zIndex: params?.node ? 100 : -10,
     };
   }, [params?.node]);
@@ -253,7 +253,7 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
           pointerEvents={hasParams ? 'auto' : 'none'}>
           <BlurView
             intensity={maxBlur * 20}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             onTouchEnd={close}
             tint="dark"
           />
@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   mainPopupContainerView: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 500,
   },
   nodeZ: {
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     zIndex: 20,
   },
   popupBackground: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: -20,
   },
   popupListItem: {

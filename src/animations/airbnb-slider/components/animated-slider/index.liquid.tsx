@@ -10,8 +10,6 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 
-import { Palette } from '../../constants';
-
 import type { StyleProp, ViewStyle } from 'react-native';
 
 type SliderProps = {
@@ -19,7 +17,6 @@ type SliderProps = {
   sliderHeight?: number;
   minValue?: number;
   maxValue?: number;
-  color?: string;
   style: StyleProp<
     Omit<ViewStyle, 'width' | 'height'> & { width: number; height?: number }
   >;
@@ -32,7 +29,6 @@ const ReanimatedSlider = Animated.createAnimatedComponent(Slider);
 const AnimatedSlider: React.FC<SliderProps> = ({
   minValue = 0,
   maxValue = 1,
-  color = Palette.primary,
   style,
   onUpdate,
   initialProgress = 0,
@@ -77,7 +73,6 @@ const AnimatedSlider: React.FC<SliderProps> = ({
       ]}>
       <ReanimatedSlider
         animatedProps={animatedProps}
-        color={color}
         onValueChange={onSliderValueChange}
       />
     </Host>

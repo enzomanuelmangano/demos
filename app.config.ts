@@ -34,7 +34,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
-  newArchEnabled: true,
   scheme: env.scheme,
   splash: {
     image: './assets/splash.png',
@@ -89,6 +88,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   plugins: [
     'expo-asset',
     'expo-font',
+    'expo-image',
     [
       'expo-color-space-plugin',
       {

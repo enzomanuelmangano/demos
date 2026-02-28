@@ -17,7 +17,7 @@ export const ThemeBlurView = () => {
       pointerEvents={'none'}
       intensity={intensity}
       style={{
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         zIndex: 5,
       }}
     />

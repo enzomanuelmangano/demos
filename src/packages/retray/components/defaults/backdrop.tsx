@@ -31,7 +31,7 @@ const Backdrop: React.FC = React.memo(() => {
       onTouchStart={actions.dismiss}
       style={[
         {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: theme.colors.overlay,
         },
         rBackdropStyle,

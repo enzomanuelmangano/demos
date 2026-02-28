@@ -30,7 +30,7 @@ export const CardCanvas: FC<CardCanvasProps> = ({
   );
 
   return (
-    <Canvas style={[StyleSheet.absoluteFillObject, { width, height }]}>
+    <Canvas style={[StyleSheet.absoluteFill, { width, height }]}>
       <Fill>
         <Shader source={cardShader} uniforms={uniforms} />
       </Fill>

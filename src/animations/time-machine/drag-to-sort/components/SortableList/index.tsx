@@ -1,4 +1,4 @@
-import { type ReactNode, type RefObject, useCallback } from 'react';
+import { type ReactNode, useCallback } from 'react';
 
 import Animated, {
   useAnimatedReaction,
@@ -70,7 +70,7 @@ function SortableList<T>({
           animatedIndex={animatedIndex}
           onDragEnd={onDragEnd}
           backgroundItem={backgroundItem}
-          scrollViewRef={scrollView as RefObject<Animated.ScrollView>}
+          scrollViewRef={scrollView}
           scrollContentOffsetY={scrollContentOffsetY}
           key={params.index}>
           {renderItemProp?.(params)}

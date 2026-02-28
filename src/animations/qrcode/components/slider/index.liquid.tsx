@@ -17,7 +17,6 @@ type SliderProps = {
   sliderHeight?: number;
   minValue?: number;
   maxValue?: number;
-  color?: string;
   style: StyleProp<
     Omit<ViewStyle, 'width' | 'height'> & { width: number; height?: number }
   >;
@@ -30,7 +29,6 @@ const ReanimatedSlider = Animated.createAnimatedComponent(Slider);
 const LiquidSlider: React.FC<SliderProps> = ({
   minValue = 0,
   maxValue = 1,
-  color = 'white',
   style,
   onUpdate,
   initialProgress = 0,
@@ -78,7 +76,6 @@ const LiquidSlider: React.FC<SliderProps> = ({
       ]}>
       <ReanimatedSlider
         animatedProps={animatedProps}
-        color={color}
         onValueChange={onSliderValueChange}
       />
     </Host>

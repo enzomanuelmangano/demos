@@ -162,7 +162,7 @@ const App = () => {
             animatedProps={blurProps}
             tint="light"
             style={{
-              ...StyleSheet.absoluteFillObject,
+              ...StyleSheet.absoluteFill,
               backgroundColor: 'rgba(255, 255, 255, 0.5)',
               zIndex: 1,
             }}

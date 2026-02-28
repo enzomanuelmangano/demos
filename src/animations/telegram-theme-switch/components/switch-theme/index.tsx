@@ -190,7 +190,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
       <Canvas
         pointerEvents="none"
         style={{
-          ...StyleSheet.absoluteFillObject, // Fill the entire space of the parent view
+          ...StyleSheet.absoluteFill, // Fill the entire space of the parent view
           width: windowWidth,
           height: windowHeight,
         }}>
@@ -211,7 +211,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
       <Reanimated.View
         style={[
           {
-            ...StyleSheet.absoluteFillObject, // Fill the entire space of the parent view
+            ...StyleSheet.absoluteFill, // Fill the entire space of the parent view
             position: 'absolute',
           },
           rStyle, // Dynamically generated style for the theme switch animation

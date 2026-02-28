@@ -1,9 +1,10 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { type FC, type ReactNode, type RefObject, useCallback } from 'react';
+import { type FC, type ReactNode, useCallback } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  type AnimatedRef,
   scrollTo,
   type SharedValue,
   useAnimatedReaction,
@@ -29,7 +30,7 @@ type SortableListItemProps = {
   onDragEnd?: (data: Positions) => void;
   backgroundItem?: ReactNode;
   scrollContentOffsetY: SharedValue<number>;
-  scrollViewRef: RefObject<Animated.ScrollView>;
+  scrollViewRef: AnimatedRef<Animated.ScrollView>;
 };
 
 const SortableItem: FC<SortableListItemProps> = ({
@@ -108,13 +109,9 @@ const SortableItem: FC<SortableListItemProps> = ({
 
       if (absoluteY <= lowerBound) {
         const nextPosition = scrollContentOffsetY.value - scrollSpeed;
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       } else if (absoluteY + scrollContentOffsetY.value >= upperBound) {
         const nextPosition = scrollContentOffsetY.value + scrollSpeed;
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       }
     },

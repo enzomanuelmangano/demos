@@ -66,13 +66,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
   },
   glassView: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     borderCurve: 'continuous',
     borderRadius: 50,
     height: '100%',

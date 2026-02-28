@@ -88,7 +88,7 @@ const App = () => {
     <View style={styles.container}>
       <AnimatedBlurView
         style={{
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           zIndex: 100,
           pointerEvents: 'none',
         }}
