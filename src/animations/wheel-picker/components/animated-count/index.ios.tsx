@@ -74,18 +74,7 @@ export const AnimatedCount = memo(
 
     return (
       <Host style={flattenedStyle}>
-        <AnimatedTextNativeView
-          text="0"
-          modifiers={[
-            ...staticModifiers,
-            {
-              $type: 'animation',
-              animation: SPRING_ANIMATION,
-              animatedValue: 0,
-            },
-          ]}
-          animatedProps={animatedProps}
-        />
+        <AnimatedTextNativeView animatedProps={animatedProps} />
       </Host>
     );
   },
