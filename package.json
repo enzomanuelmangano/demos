@@ -110,5 +110,8 @@
     "typescript": "~5.9.2"
   },
   "private": true,
-  "packageManager": "bun@1.2.22"
+  "packageManager": "bun@1.2.22",
+  "trustedDependencies": [
+    "@shopify/react-native-skia"
+  ]
 }
