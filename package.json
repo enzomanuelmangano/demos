@@ -2,6 +2,13 @@
   "name": "demos",
   "version": "0.1.9",
   "main": "expo-router/entry",
+  "reanimated": {
+    "staticFeatureFlags": {
+      "DISABLE_COMMIT_PAUSING_MECHANISM": true,
+      "USE_COMMIT_HOOK_ONLY_FOR_REACT_COMMITS": true,
+      "ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS": true
+    }
+  },
   "scripts": {
     "start": "expo start",
     "dev": "node scripts/start-with-animation.js",
