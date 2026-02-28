@@ -27,7 +27,8 @@ import { useEffect, useRef } from 'react';
 
 import { Canvas, Picture, Skia, useImage } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
   Easing,
   useAnimatedReaction,
   useDerivedValue,
@@ -88,12 +89,15 @@ const QRCodeAnimation = ({
   avatarSize = DEFAULT_AVATAR_SIZE,
   qrTargetHeight = DEFAULT_QR_TARGET_HEIGHT,
   progress: externalProgress,
+  zoom: externalZoom,
   ref,
 }: QRCodeAnimationProps) => {
   // ─── ANIMATION STATE ───
   const iTime = useSharedValue(0.0); // Continuous rotation time
   const internalProgress = useSharedValue(0); // Fallback if no external
+  const internalZoom = useSharedValue(0); // Fallback if no external zoom
   const progress = externalProgress ?? internalProgress;
+  const zoom = externalZoom ?? internalZoom;
   const isShowingQR = useSharedValue(false); // Current mode
   const lastHapticIndex = useSharedValue(-1); // Haptic tracking
   const staggerBaseTime = useSharedValue(0.0); // Frozen rotation for wave
@@ -183,6 +187,7 @@ const QRCodeAnimation = ({
       shapeData,
       colors,
       avatarSize,
+      zoom,
     );
   }, [
     spriteSheet,
@@ -193,6 +198,7 @@ const QRCodeAnimation = ({
     shapeData,
     colors,
     avatarSize,
+    zoom,
   ]);
 
   if (!spriteSheet) {
@@ -221,19 +227,57 @@ const DEFAULT_SPRITE: SpriteConfig = {
 /**
  * Pre-configured QR Code Animation with gradients and toggle button.
  * Uses the default reactiive.io QR code and avatar sprite.
+ *
+ * Supports pinch-to-zoom when viewing the donut:
+ * - Pinch IN = zoom OUT = see full donut shape
+ * - Pinch OUT = zoom IN = normal view
  */
 const NotionQRCode = () => {
   const animationRef = useRef<QRCodeAnimationRef | null>(null);
   const progress = useSharedValue(0);
+  const zoom = useSharedValue(0); // 0 = normal, 1 = zoomed out
+  const savedZoom = useSharedValue(0);
+
+  // Pinch gesture: only controls zoom when viewing donut (not QR)
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      savedZoom.value = zoom.value;
+    })
+    .onUpdate(event => {
+      // Only allow zoom when showing the donut (progress near 0)
+      if (progress.value > 0.1) return;
+
+      // Pinch IN (scale < 1) = zoom OUT = see full donut
+      // scale 0.3 → zoom 1, scale 1 → zoom 0
+      const newZoom = savedZoom.value + (1 - event.scale);
+      zoom.value = Math.max(0, Math.min(1, newZoom));
+    });
+
+  // Reset zoom when switching to QR mode
+  useAnimatedReaction(
+    () => progress.value,
+    (current, previous) => {
+      if (previous === null) return;
+      // Going to QR: reset zoom
+      if (current > 0.5 && previous <= 0.5) {
+        zoom.value = withSpring(0, { duration: 400, dampingRatio: 0.9 });
+      }
+    },
+  );
 
   return (
     <View style={styles.container}>
-      <QRCodeAnimation
-        ref={animationRef}
-        qrData="https://www.reactiive.io"
-        sprite={DEFAULT_SPRITE}
-        progress={progress}
-      />
+      <GestureDetector gesture={pinchGesture}>
+        <Animated.View style={styles.gestureContainer}>
+          <QRCodeAnimation
+            ref={animationRef}
+            qrData="https://www.reactiive.io"
+            sprite={DEFAULT_SPRITE}
+            progress={progress}
+            zoom={zoom}
+          />
+        </Animated.View>
+      </GestureDetector>
 
       <LinearGradient
         colors={['#fff', 'rgba(255, 255, 255, 0.8)', 'rgba(255, 255, 255, 0)']}
@@ -273,6 +317,13 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#f5f5f5',
     flex: 1,
+  },
+  gestureContainer: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   topGradient: {
     height: 150,

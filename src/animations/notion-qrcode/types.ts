@@ -35,6 +35,8 @@ export interface QRCodeAnimationProps {
   qrTargetHeight?: number;
   /** Optional external progress value (0-1). If not provided, uses internal state. */
   progress?: import('react-native-reanimated').SharedValue<number>;
+  /** Optional zoom level (0 = normal, 1 = zoomed out to see full donut). */
+  zoom?: import('react-native-reanimated').SharedValue<number>;
   /** Ref to control the animation via toggle() */
   ref?: React.RefObject<QRCodeAnimationRef | null>;
 }

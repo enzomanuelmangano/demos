@@ -20,7 +20,7 @@
  *    - Avatar image from sprite sheet (with clipping)
  */
 import { ClipOp, Skia, SkImage } from '@shopify/react-native-skia';
-import { SharedValue } from 'react-native-reanimated';
+import { interpolate, SharedValue } from 'react-native-reanimated';
 
 import {
   CANVAS_HEIGHT,
@@ -62,6 +62,7 @@ interface AvatarTransform {
  * @param shapeData - Pre-computed torus/QR points and sprite coordinates
  * @param colors - HSL color configuration for backgrounds
  * @param avatarSize - Base size of avatars in torus mode
+ * @param zoom - Zoom level (0 = normal view, 1 = zoomed out to see full donut)
  */
 export const createPicture = (
   spriteSheet: SkImage,
@@ -72,6 +73,7 @@ export const createPicture = (
   shapeData: ShapeData,
   colors: ColorConfig,
   avatarSize: number,
+  zoom: SharedValue<number>,
 ) => {
   'worklet';
 
@@ -90,6 +92,13 @@ export const createPicture = (
   const timeValue = iTime.value % (Math.PI * 2); // Current rotation (wrapped)
   const staggerTime = staggerBaseTime.value; // Frozen rotation for wave
   const frozenRotation = frozenRotationTime.value; // Rotation to lerp from
+  const zoomValue = zoom.value; // 0 = normal, 1 = zoomed out to see donut
+
+  // Zoom-interpolated values: zoom=0 (normal) → zoom=1 (see full donut)
+  // Position scale: 1 → 0.215 (ratio of targetHeight 0.14/0.65)
+  const zoomPositionScale = interpolate(zoomValue, [0, 1], [1, 0.215]);
+  // Tilt: 0.3 → 0.8 (more tilt to see donut shape from above)
+  const zoomTilt = interpolate(zoomValue, [0, 1], [0.3, 0.8]);
 
   // Shape data
   const { allShapes, nPoints, qrModuleSize, avatarAssignments, spriteCoords } =
@@ -164,10 +173,15 @@ export const createPicture = (
 
     const rotationAmount =
       (frozenRotation + rotationDelta) * (1 - eased) + transitionBoost;
-    const tiltAmount = 0.3 * (1 - eased);
+    // Tilt: 0.3 (normal) → 0.8 (zoomed out) - more tilt shows donut shape
+    const tiltAmount = zoomTilt * (1 - eased);
 
-    // Apply rotation
-    let p: Point3D = { x: baseX, y: baseY, z: baseZ };
+    // Apply zoom scale to positions (makes torus smaller when zoomed out)
+    let p: Point3D = {
+      x: baseX * zoomPositionScale,
+      y: baseY * zoomPositionScale,
+      z: baseZ * zoomPositionScale,
+    };
     p = rotateX(p, tiltAmount);
     p = rotateY(p, rotationAmount);
 
@@ -178,7 +192,9 @@ export const createPicture = (
     const screenY = CENTER_Y + p.y * scale;
 
     // ─── 2f: CALCULATE SIZE ────────────────────────────────────────────────
-    const avatarScale = avatarSize * scale;
+    // Avatar size: avatarSize * scale (normal) → avatarSize * 0.25 (zoomed out)
+    const avatarScaleMultiplier = interpolate(zoomValue, [0, 1], [scale, 0.25]);
+    const avatarScale = avatarSize * avatarScaleMultiplier;
     const qrScale = qrModuleSize * scale * 0.9;
     const baseSize = avatarScale + (qrScale - avatarScale) * eased;
 
