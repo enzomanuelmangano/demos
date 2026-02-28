@@ -34,4 +34,5 @@ export type ItemProps = {
   itemSize: number;
   listColor: string;
   isOffline: boolean;
+  zIndex: number;
 };
