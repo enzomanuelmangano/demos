@@ -31,7 +31,7 @@ export const ListItem = memo(
 
     const animatedStyle = useAnimatedStyle(() => {
       return {
-        filter: `grayscale(${grayscaleProgress.value})`,
+        filter: `blur(${grayscaleProgress.value}px) grayscale(${grayscaleProgress.value})`,
       };
     });
 
