@@ -12,7 +12,7 @@ import {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { AnimatedCount } from './components/animated-count/animated-count';
+import { AnimatedCount } from './components/animated-count';
 import { DraggableSlider } from './components/draggable-slider';
 
 const LinesAmount = 50;
