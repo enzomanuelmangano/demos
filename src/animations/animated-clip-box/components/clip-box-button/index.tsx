@@ -73,7 +73,7 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
         }}
         style={{
           overflow: 'hidden',
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
         }}>
         <ExpandedCircle
           r={r}

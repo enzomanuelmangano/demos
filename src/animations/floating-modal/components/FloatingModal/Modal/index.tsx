@@ -42,7 +42,7 @@ const ModalContent: FC<ModalProps> = memo(
         animatedProps={rAnimatedProps}
         style={[
           {
-            ...StyleSheet.absoluteFillObject,
+            ...StyleSheet.absoluteFill,
             alignItems: 'center',
           },
           rAnimatedStyle,

@@ -89,8 +89,8 @@ export default function RootLayout() {
       <KeyboardProvider>
         <GestureHandlerRootView style={styles.fill} onLayout={onLayoutRootView}>
           <PressablesConfig
-              globalHandlers={globalPressableHandlers}
-              defaultProps={{ rippleColor: 'transparent' }}>
+            globalHandlers={globalPressableHandlers}
+            defaultProps={{ rippleColor: 'transparent' }}>
             <FontsProvider>
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>

@@ -34,7 +34,7 @@ const Backdrop: FC<BackdropProps> = memo(({ isActive, onTap }) => {
       animatedProps={rBackdropProps}
       style={[
         {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: 'rgba(255,255,255,0.05)',
         },
         rBackdropStyle,

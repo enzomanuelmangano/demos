@@ -44,7 +44,7 @@ const styles = StyleSheet.create({
     right: 0,
   },
   tabsContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     bottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',

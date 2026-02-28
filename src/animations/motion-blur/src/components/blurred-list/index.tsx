@@ -157,7 +157,7 @@ export function BlurredList<T>({
 
 const styles = StyleSheet.create({
   blurView: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     bottom: -20,
     top: -5,
     zIndex: 100,

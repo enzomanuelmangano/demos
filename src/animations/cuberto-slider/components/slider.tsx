@@ -150,7 +150,7 @@ const Slider: React.FC<SliderProps> = ({
           },
           rBalloonProgressStyle,
         ]}>
-        <Canvas style={{ ...StyleSheet.absoluteFillObject }}>
+        <Canvas style={{ ...StyleSheet.absoluteFill }}>
           <FitBox
             src={rect(0, 0, 543, 711)}
             dst={rect(0, 0, balloonWidth, balloonHeight)}>
@@ -187,7 +187,7 @@ const Slider: React.FC<SliderProps> = ({
 
 const styles = StyleSheet.create({
   balloonText: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     bottom: 10,
     color: 'white',
     fontSize: 20,

@@ -33,7 +33,7 @@ const Backdrop: FC<BackdropProps> = memo(({ animationProgress, onPress }) => {
       animatedProps={animatedProps}
       style={[
         {
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
           backgroundColor: 'rgba(0,0,0,0.75)',
         },
         rStyle,

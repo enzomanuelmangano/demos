@@ -148,7 +148,7 @@ const PopupHandler = () => {
           uri,
         }}
         style={{
-          ...StyleSheet.absoluteFillObject,
+          ...StyleSheet.absoluteFill,
         }}
       />
       <GestureDetector gesture={gesture}>

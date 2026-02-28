@@ -40,7 +40,7 @@ const AnimatedBackdrop: FC<AnimatedBackdropProps> = memo(
         onTouchStart={onBackdropPress}
         style={[
           {
-            ...StyleSheet.absoluteFillObject,
+            ...StyleSheet.absoluteFill,
             backgroundColor: 'rgba(0,0,0,0.4)',
           },
           rAnimatedStyle,

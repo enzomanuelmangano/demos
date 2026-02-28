@@ -77,14 +77,14 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
           }}>
           <Animated.View
             style={{
-              ...StyleSheet.absoluteFillObject,
+              ...StyleSheet.absoluteFill,
               backgroundColor: '#1A1A1A',
             }}
           />
           <Animated.View
             style={[
               {
-                ...StyleSheet.absoluteFillObject,
+                ...StyleSheet.absoluteFill,
                 backgroundColor: '#9E9E9E',
               },
               rProgressBarAnimatedStyle,
