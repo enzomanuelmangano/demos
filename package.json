@@ -90,7 +90,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
-    "@expo/config-plugins": "~55.0.5",
     "@types/color": "^3.0.6",
     "@types/lodash.debounce": "^4",
     "@types/qrcode": "^1.5.5",
