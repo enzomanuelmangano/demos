@@ -1,23 +1,15 @@
-import { type FC, memo } from 'react';
+import { memo } from 'react';
 
-import Animated, { type SharedValue } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 
 import { AnimatedDigit } from './animated-digit';
+
+import type { AnimatedCountProps } from './types';
 
 const TEXT_DIGIT_HEIGHT = 60;
 const TEXT_DIGIT_WIDTH = 35;
 const FONT_SIZE = 50;
 const TEXT_COLOR = 'black';
-
-type AnimatedCountProps = {
-  count: SharedValue<number>;
-  maxDigits: number;
-  textDigitHeight?: number;
-  textDigitWidth?: number;
-  fontSize?: number;
-  color?: string;
-  gradientAccentColor?: string;
-};
 
 // The following component was started for this patreon post:
 // AnimatedCount: https://www.patreon.com/posts/animated-text-84712135
@@ -44,7 +36,7 @@ type AnimatedCountProps = {
 // but that would mean that we would have to re-render the component every time the count changes.
 // And that's not what we want (if the amount of digits isn't too big).
 
-const AnimatedCount: FC<AnimatedCountProps> = memo(
+export const AnimatedCount = memo(
   ({
     count,
     maxDigits,
@@ -53,7 +45,7 @@ const AnimatedCount: FC<AnimatedCountProps> = memo(
     fontSize = FONT_SIZE,
     color = TEXT_COLOR,
     gradientAccentColor = '#FFFFFF',
-  }) => {
+  }: AnimatedCountProps) => {
     return (
       <Animated.View
         style={{
@@ -81,5 +73,3 @@ const AnimatedCount: FC<AnimatedCountProps> = memo(
     );
   },
 );
-
-export { AnimatedCount };
