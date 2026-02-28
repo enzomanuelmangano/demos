@@ -240,7 +240,7 @@ const NotionQRCode = () => {
 
   // Pinch gesture: only controls zoom when viewing donut (not QR)
   const pinchGesture = Gesture.Pinch()
-    .onStart(() => {
+    .onBegin(() => {
       savedZoom.value = zoom.value;
     })
     .onUpdate(event => {
@@ -251,6 +251,13 @@ const NotionQRCode = () => {
       // scale 0.3 → zoom 1, scale 1 → zoom 0
       const newZoom = savedZoom.value + (1 - event.scale);
       zoom.value = Math.max(0, Math.min(1, newZoom));
+    })
+    .onFinalize(() => {
+      // Spring back to original view (same spring as toggle)
+      zoom.value = withSpring(0, {
+        duration: 1000,
+        dampingRatio: 1,
+      });
     });
 
   // Reset zoom when switching to QR mode

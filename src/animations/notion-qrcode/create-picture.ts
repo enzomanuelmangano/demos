@@ -193,7 +193,7 @@ export const createPicture = (
 
     // ─── 2f: CALCULATE SIZE ────────────────────────────────────────────────
     // Avatar size: avatarSize * scale (normal) → avatarSize * 0.25 (zoomed out)
-    const avatarScaleMultiplier = interpolate(zoomValue, [0, 1], [scale, 0.25]);
+    const avatarScaleMultiplier = interpolate(zoomValue, [0, 1], [scale, 0.2]);
     const avatarScale = avatarSize * avatarScaleMultiplier;
     const qrScale = qrModuleSize * scale * 0.9;
     const baseSize = avatarScale + (qrScale - avatarScale) * eased;
@@ -280,9 +280,10 @@ export const createPicture = (
       reusableWhiteBgPaint,
     );
 
+    const imgOpacity = interpolate(zoomValue, [0, 1], [t.imageOpacity, 0]);
     // ─── 4b: AVATAR IMAGE ──────────────────────────────────────────────────
-    if (t.imageOpacity > 0) {
-      reusablePaint.setAlphaf(t.imageOpacity);
+    if (imgOpacity > 0) {
+      reusablePaint.setAlphaf(imgOpacity);
 
       // Clip to rounded rectangle
       canvas.save();

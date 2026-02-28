@@ -1,12 +1,4 @@
-import { GOLDEN_RATIO } from '../constants';
 import { Point3D } from '../types';
-
-const fibonacciPoint = (i: number, total: number) => {
-  const t = i / total;
-  const theta = (2 * Math.PI * i) / GOLDEN_RATIO;
-  const phi = Math.acos(1 - 2 * t);
-  return { theta, phi };
-};
 
 export const generateTorusPoints = (
   count: number,
@@ -15,12 +7,34 @@ export const generateTorusPoints = (
 ): Point3D[] => {
   const points: Point3D[] = [];
 
-  for (let i = 0; i < count; i++) {
-    const { theta, phi } = fibonacciPoint(i, count);
+  // Uniform grid distribution (same approach as scrollable-shapes)
+  const ratio = majorRadius / minorRadius;
+  const minorSegments = Math.round(Math.sqrt(count / ratio));
+  const majorSegments = Math.round(count / minorSegments);
 
-    const u = theta;
-    const v = phi * 2;
+  let idx = 0;
+  for (let i = 0; i < majorSegments && idx < count; i++) {
+    // Stagger alternate rows like bricks to avoid visible lines
+    const offset = (i % 2) * 0.5;
+    const u = (i / majorSegments) * Math.PI * 2;
 
+    for (let j = 0; j < minorSegments && idx < count; j++) {
+      const v = ((j + offset) / minorSegments) * Math.PI * 2;
+
+      points.push({
+        x: (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u),
+        y: minorRadius * Math.sin(v),
+        z: (majorRadius + minorRadius * Math.cos(v)) * Math.sin(u),
+      });
+      idx++;
+    }
+  }
+
+  // Fill remaining points if needed
+  while (points.length < count) {
+    const t = points.length / count;
+    const u = t * Math.PI * 2 * majorSegments;
+    const v = t * Math.PI * 2 * minorSegments;
     points.push({
       x: (majorRadius + minorRadius * Math.cos(v)) * Math.cos(u),
       y: minorRadius * Math.sin(v),
@@ -28,7 +42,7 @@ export const generateTorusPoints = (
     });
   }
 
-  return points;
+  return points.slice(0, count);
 };
 
 export const generateQRPointsFromModules = (
