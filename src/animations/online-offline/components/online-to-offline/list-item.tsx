@@ -31,7 +31,7 @@ export const ListItem = memo(
 
     const animatedStyle = useAnimatedStyle(() => {
       return {
-        filter: [{ grayscale: grayscaleProgress.value }],
+        filter: `grayscale(${grayscaleProgress.value})`,
       };
     });
 
@@ -53,7 +53,8 @@ export const ListItem = memo(
         ]}>
         <Animated.Image
           source={{ uri: item }}
-          style={[styles.image, animatedStyle]}
+          // @@TODO: check react native styles for this
+          style={[styles.image, animatedStyle as any]}
           resizeMode="cover"
         />
       </Animated.View>
