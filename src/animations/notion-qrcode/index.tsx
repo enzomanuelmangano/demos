@@ -195,7 +195,8 @@ const QRCodeAnimation = ({
     avatarSize,
   ]);
 
-  if (!spriteSheet) {
+  // Don't render until both sprite and shape data are ready
+  if (!spriteSheet || shapeData.nPoints === 0) {
     return <View style={styles.container} />;
   }
 
