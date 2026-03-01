@@ -4,15 +4,12 @@ import { useEffect } from 'react';
 
 import {
   Blur,
-  BlurMask,
   Canvas,
   Circle,
-  Extrapolate,
-  interpolate,
-  LinearGradient,
-  Path,
+  Picture,
+  PointMode,
   RadialGradient,
-  usePathValue,
+  Skia,
   vec,
 } from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
@@ -22,11 +19,11 @@ import Animated, {
   withRepeat,
   withTiming,
   useAnimatedScrollHandler,
+  useDerivedValue,
 } from 'react-native-reanimated';
 
 import { Paginator } from './components';
 import {
-  type Point3D,
   N_POINTS,
   ALL_SHAPES,
   ALL_SHAPES_X,
@@ -36,30 +33,19 @@ import {
 
 // Number of shapes
 const SHAPES_COUNT = ALL_SHAPES.length;
+const DISTANCE = 350;
 
-// ============ 3D UTILITIES ============
-const rotateX = (p: Point3D, angle: number): Point3D => {
-  'worklet';
-  return {
-    x: p.x,
-    y: p.y * Math.cos(angle) - p.z * Math.sin(angle),
-    z: p.y * Math.sin(angle) + p.z * Math.cos(angle),
-  };
-};
-
-const rotateY = (p: Point3D, angle: number): Point3D => {
-  'worklet';
-  return {
-    x: p.x * Math.cos(angle) + p.z * Math.sin(angle),
-    y: p.y,
-    z: -p.x * Math.sin(angle) + p.z * Math.cos(angle),
-  };
-};
+// Pre-computed tilt rotation (0.2 radians)
+const TILT_COS = Math.cos(0.2);
+const TILT_SIN = Math.sin(0.2);
 
 const ScrollableShapes = () => {
   const iTime = useSharedValue(0.0);
   const scrollX = useSharedValue(0);
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
+  const centerX = windowWidth / 2;
+  const centerY = windowHeight / 2;
 
   // Scroll handler for the invisible ScrollView
   const scrollHandler = useAnimatedScrollHandler({
@@ -68,63 +54,106 @@ const ScrollableShapes = () => {
     },
   });
 
-  // Create the path by interpolating between shapes
-  const morphPath = usePathValue(skPath => {
-    'worklet';
-    const centerX = windowWidth / 2;
-    const centerY = windowHeight / 2;
-    const distance = 350;
+  // Input range for shape interpolation (computed once)
+  const inputRange = ALL_SHAPES.map((_, idx) => windowWidth * idx);
 
-    // Input range for all shapes
-    const shapeWidth = windowWidth;
-    const inputRange = new Array(ALL_SHAPES.length)
-      .fill(0)
-      .map((_, idx) => shapeWidth * idx);
+  // Create picture using drawPoints for massive performance gain
+  const picture = useDerivedValue(() => {
+    'worklet';
+    const recorder = Skia.PictureRecorder();
+    const canvas = recorder.beginRecording(
+      Skia.XYWHRect(0, 0, windowWidth, windowHeight),
+    );
+
+    const scroll = scrollX.value;
+    const time = iTime.value;
+
+    // Pre-compute rotation values once per frame
+    const cosT = Math.cos(time);
+    const sinT = Math.sin(time);
+
+    // Find segment once (same for all points)
+    let idx = 0;
+    while (idx < inputRange.length - 1 && scroll > inputRange[idx + 1]) {
+      idx++;
+    }
+    const nextIdx = Math.min(idx + 1, inputRange.length - 1);
+    const t =
+      idx >= inputRange.length - 1
+        ? 1
+        : (scroll - inputRange[idx]) / (inputRange[nextIdx] - inputRange[idx]);
+    const clampedT = t < 0 ? 0 : t > 1 ? 1 : t;
+
+    // Collect points in bins by depth for perspective sizing
+    const nearPoints: { x: number; y: number }[] = [];
+    const midPoints: { x: number; y: number }[] = [];
+    const farPoints: { x: number; y: number }[] = [];
 
     for (let i = 0; i < N_POINTS; i++) {
-      // Interpolate 3D point between the 4 shapes
-      const baseX = interpolate(
-        scrollX.value,
-        inputRange,
-        ALL_SHAPES_X[i],
-        Extrapolate.CLAMP,
-      );
+      const arrX = ALL_SHAPES_X[i];
+      const arrY = ALL_SHAPES_Y[i];
+      const arrZ = ALL_SHAPES_Z[i];
 
-      const baseY = interpolate(
-        scrollX.value,
-        inputRange,
-        ALL_SHAPES_Y[i],
-        Extrapolate.CLAMP,
-      );
+      // Lerp
+      const x = arrX[idx] + (arrX[nextIdx] - arrX[idx]) * clampedT;
+      const y = arrY[idx] + (arrY[nextIdx] - arrY[idx]) * clampedT;
+      const z = arrZ[idx] + (arrZ[nextIdx] - arrZ[idx]) * clampedT;
 
-      const baseZ = interpolate(
-        scrollX.value,
-        inputRange,
-        ALL_SHAPES_Z[i],
-        Extrapolate.CLAMP,
-      );
+      // Inline rotateX (tilt) then rotateY (time)
+      const y1 = y * TILT_COS - z * TILT_SIN;
+      const z1 = y * TILT_SIN + z * TILT_COS;
+      const x2 = x * cosT + z1 * sinT;
+      const z2 = -x * sinT + z1 * cosT;
 
-      // Apply rotation (based on iTime)
-      let p: Point3D = { x: baseX, y: baseY, z: baseZ };
-      p = rotateX(p, 0.2); // Slight fixed tilt
-      p = rotateY(p, iTime.value); // Animated horizontal rotation
+      // Perspective
+      const scale = DISTANCE / (DISTANCE + z2);
+      const sx = centerX + x2 * scale;
+      const sy = centerY + y1 * scale;
 
-      // Perspective projection
-      const scale = distance / (distance + p.z);
-      const screenX = centerX + p.x * scale;
-      const screenY = centerY + p.y * scale;
-
-      // Very small radius based on depth
-      const radius = Math.max(0.2, 0.5 * scale);
-
-      skPath.addCircle(screenX, screenY, radius);
+      // Bin by depth
+      const point = { x: sx, y: sy };
+      if (scale > 1.1) {
+        nearPoints.push(point);
+      } else if (scale > 0.9) {
+        midPoints.push(point);
+      } else {
+        farPoints.push(point);
+      }
     }
 
-    return skPath;
-  });
+    // Create gradient shader
+    const shader = Skia.Shader.MakeLinearGradient(
+      { x: 0, y: 0 },
+      { x: windowWidth, y: windowHeight },
+      [Skia.Color('#00d9ff'), Skia.Color('#ffffff'), Skia.Color('#ff006e')],
+      null,
+      0,
+    );
 
-  // Aurora Borealis gradient (static)
-  const colors = ['#00d9ff', '#ffffff', '#ff006e'];
+    // Draw each bin with appropriate size (far to near for proper depth)
+    const paint = Skia.Paint();
+    paint.setShader(shader);
+    paint.setStyle(1); // Stroke
+    paint.setStrokeCap(1); // Round
+
+    // Original used radius = Math.max(0.2, 0.5 * scale), so stroke width ~0.4-1.0
+    if (farPoints.length > 0) {
+      paint.setStrokeWidth(0.6);
+      canvas.drawPoints(PointMode.Points, farPoints, paint);
+    }
+
+    if (midPoints.length > 0) {
+      paint.setStrokeWidth(0.8);
+      canvas.drawPoints(PointMode.Points, midPoints, paint);
+    }
+
+    if (nearPoints.length > 0) {
+      paint.setStrokeWidth(1.0);
+      canvas.drawPoints(PointMode.Points, nearPoints, paint);
+    }
+
+    return recorder.finishRecordingAsPicture();
+  }, [scrollX, iTime, windowWidth, windowHeight, centerX, centerY, inputRange]);
 
   // Rotation animation
   useEffect(() => {
@@ -160,15 +189,8 @@ const ScrollableShapes = () => {
           <Blur blur={60} />
         </Circle>
 
-        {/* Main shape */}
-        <Path path={morphPath} style="fill">
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(windowWidth, windowHeight)}
-            colors={colors}
-          />
-          <BlurMask blur={5} style="solid" />
-        </Path>
+        {/* Main shape - using Picture for GPU caching */}
+        <Picture picture={picture} />
       </Canvas>
 
       {/* Invisible ScrollView to control the morph */}
