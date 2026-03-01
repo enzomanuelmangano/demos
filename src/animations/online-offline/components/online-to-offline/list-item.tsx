@@ -31,7 +31,7 @@ export const ListItem = memo(
 
     const animatedStyle = useAnimatedStyle(() => {
       return {
-        filter: `blur(${grayscaleProgress.value}px) grayscale(${grayscaleProgress.value})`,
+        filter: `grayscale(${grayscaleProgress.value})`,
       };
     });
 
@@ -68,7 +68,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   item: {
-    backgroundColor: '#fff',
     borderWidth: 3,
     overflow: 'hidden',
     position: 'absolute',
