@@ -252,7 +252,7 @@ const NotionQRCode = () => {
       // Pinch IN (scale < 1) = zoom OUT = see full donut
       // scale 0.3 → zoom 1, scale 1 → zoom 0
       const newZoom = savedZoom.value + (1 - event.scale);
-      zoom.value = Math.max(0, Math.min(1, newZoom * 1.2));
+      zoom.value = Math.max(0, Math.min(1, newZoom));
     })
     .onFinalize(() => {
       // Spring back to original view (same spring as toggle)
@@ -277,7 +277,7 @@ const NotionQRCode = () => {
         <Animated.View style={styles.gestureContainer}>
           <QRCodeAnimation
             ref={animationRef}
-            qrData="https://www.reactiive.io"
+            qrData="https://www.veryveryveryveryveryveryveryverylongqrcodeurl.com"
             sprite={DEFAULT_SPRITE}
             progress={progress}
             zoom={derivedZoom}

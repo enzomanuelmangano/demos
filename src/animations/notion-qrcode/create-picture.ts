@@ -31,7 +31,93 @@ import {
 } from './constants';
 import { reusableClipPath, reusablePaint, reusableWhiteBgPaint } from './data';
 import { ColorConfig, Point3D, ShapeData } from './types';
-import { rotateX, rotateY, smoothstep } from './utils';
+import { rotateXInPlace, rotateYInPlace, smoothstep } from './utils';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PERFORMANCE: Pre-allocated scratch objects to avoid per-frame allocations
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Scratch Point3D objects for rotation calculations (reused every frame)
+const scratchPoint1: Point3D = { x: 0, y: 0, z: 0 };
+const scratchPoint2: Point3D = { x: 0, y: 0, z: 0 };
+const scratchPoint3: Point3D = { x: 0, y: 0, z: 0 };
+
+// Depth sorting buckets - using bucket sort O(n) instead of insertion sort O(n²)
+// Z range is roughly -300 to +300, we use 128 buckets for good granularity
+const NUM_BUCKETS = 128;
+const Z_MIN = -400;
+const Z_MAX = 400;
+const Z_RANGE = Z_MAX - Z_MIN;
+
+// Pre-computed hex lookup for fast byte-to-hex conversion
+const HEX_CHARS = '0123456789abcdef';
+
+/**
+ * Convert HSL to hex string for Skia.Color().
+ * Faster than `hsl(${h}, ${s}%, ${l}%)` which requires CSS parsing.
+ * Hex strings like '#rrggbb' are directly interpretable.
+ *
+ * @param h - Hue (0-360)
+ * @param s - Saturation (0-100)
+ * @param l - Lightness (0-100)
+ * @returns Hex color string like '#rrggbb'
+ */
+const hslToHex = (h: number, s: number, l: number): string => {
+  'worklet';
+  // Convert to 0-1 range
+  const sNorm = s / 100;
+  const lNorm = l / 100;
+
+  const c = (1 - Math.abs(2 * lNorm - 1)) * sNorm;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = lNorm - c / 2;
+
+  let r = 0,
+    g = 0,
+    b = 0;
+
+  if (h < 60) {
+    r = c;
+    g = x;
+    b = 0;
+  } else if (h < 120) {
+    r = x;
+    g = c;
+    b = 0;
+  } else if (h < 180) {
+    r = 0;
+    g = c;
+    b = x;
+  } else if (h < 240) {
+    r = 0;
+    g = x;
+    b = c;
+  } else if (h < 300) {
+    r = x;
+    g = 0;
+    b = c;
+  } else {
+    r = c;
+    g = 0;
+    b = x;
+  }
+
+  // Convert to 0-255
+  const rByte = Math.round((r + m) * 255);
+  const gByte = Math.round((g + m) * 255);
+  const bByte = Math.round((b + m) * 255);
+
+  // Build hex string (faster than template literal with padding)
+  return (
+    '#' +
+    HEX_CHARS[rByte >> 4] +
+    HEX_CHARS[rByte & 0xf] +
+    HEX_CHARS[gByte >> 4] +
+    HEX_CHARS[gByte & 0xf] +
+    HEX_CHARS[bByte >> 4] +
+    HEX_CHARS[bByte & 0xf]
+  );
+};
 
 /**
  * Computed transform data for a single avatar in the current frame.
@@ -96,7 +182,7 @@ export const createPicture = (
 
   // Zoom-interpolated values: zoom=0 (normal) → zoom=1 (see full donut)
   // Position scale: 1 → 0.215 (ratio of targetHeight 0.14/0.65)
-  const zoomPositionScale = interpolate(zoomValue, [0, 1], [1, 0.215]);
+  const zoomPositionScale = interpolate(zoomValue, [0, 1], [1, 0.185]);
   // Tilt: 0.3 → 0.8 (more tilt to see donut shape from above)
   const zoomTilt = interpolate(zoomValue, [0, 1], [0.3, 0.8]);
 
@@ -125,11 +211,12 @@ export const createPicture = (
     // creating a "wave" effect that sweeps around during morphing.
 
     // Rotate torus point to frozen position for consistent wave pattern
-    let rotatedTorus = rotateX(torusPoint, 0.3);
-    rotatedTorus = rotateY(rotatedTorus, staggerTime);
+    // Using in-place rotation to avoid object allocation
+    rotateXInPlace(torusPoint, 0.3, scratchPoint1);
+    rotateYInPlace(scratchPoint1, staggerTime, scratchPoint2);
 
     // Convert XZ position to angle (0 to 2π around the torus)
-    const angle = Math.atan2(rotatedTorus.z, rotatedTorus.x);
+    const angle = Math.atan2(scratchPoint2.z, scratchPoint2.x);
     const normalizedAngle = (angle + Math.PI) / (2 * Math.PI); // 0 to 1
 
     // Wave delay: angle 0 starts immediately, angle 1 starts at 25% progress
@@ -177,13 +264,13 @@ export const createPicture = (
     const tiltAmount = zoomTilt * (1 - eased);
 
     // Apply zoom scale to positions (makes torus smaller when zoomed out)
-    let p: Point3D = {
-      x: baseX * zoomPositionScale,
-      y: baseY * zoomPositionScale,
-      z: baseZ * zoomPositionScale,
-    };
-    p = rotateX(p, tiltAmount);
-    p = rotateY(p, rotationAmount);
+    // Using scratch objects to avoid allocation
+    scratchPoint1.x = baseX * zoomPositionScale;
+    scratchPoint1.y = baseY * zoomPositionScale;
+    scratchPoint1.z = baseZ * zoomPositionScale;
+    rotateXInPlace(scratchPoint1, tiltAmount, scratchPoint2);
+    rotateYInPlace(scratchPoint2, rotationAmount, scratchPoint3);
+    const p = scratchPoint3;
 
     // ─── 2e: PERSPECTIVE PROJECTION ────────────────────────────────────────
     // Objects further away appear smaller
@@ -225,17 +312,35 @@ export const createPicture = (
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 3: DEPTH SORT
   // Draw back-to-front for correct occlusion (painter's algorithm)
+  // Using bucket sort O(n) instead of insertion sort O(n²)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Insertion sort by z-depth (larger z = further = draw first)
-  for (let i = 1; i < transforms.length; i++) {
-    const current = transforms[i];
-    let j = i - 1;
-    while (j >= 0 && transforms[j].z < current.z) {
-      transforms[j + 1] = transforms[j];
-      j--;
+  // Initialize buckets (array of arrays)
+  const buckets: AvatarTransform[][] = [];
+  for (let i = 0; i < NUM_BUCKETS; i++) {
+    buckets[i] = [];
+  }
+
+  // Distribute transforms into buckets based on z-depth
+  // Larger z = further back = higher bucket index (drawn first)
+  for (let i = 0; i < transforms.length; i++) {
+    const t = transforms[i];
+    // Clamp z to range and map to bucket index
+    const clampedZ = Math.max(Z_MIN, Math.min(Z_MAX, t.z));
+    // Invert: larger z goes to higher bucket (drawn first = back-to-front)
+    const bucketIndex = Math.floor(
+      ((clampedZ - Z_MIN) / Z_RANGE) * (NUM_BUCKETS - 1),
+    );
+    buckets[NUM_BUCKETS - 1 - bucketIndex].push(t);
+  }
+
+  // Flatten buckets back into transforms array (back-to-front order)
+  let writeIndex = 0;
+  for (let i = 0; i < NUM_BUCKETS; i++) {
+    const bucket = buckets[i];
+    for (let j = 0; j < bucket.length; j++) {
+      transforms[writeIndex++] = bucket[j];
     }
-    transforms[j + 1] = current;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -261,8 +366,9 @@ export const createPicture = (
     const sat = Math.min(100, baseSat + 10 * contrastBoost);
     const light = Math.max(30, baseLight - 15 * contrastBoost);
 
-    const bgColor = `hsl(${colors.hue}, ${sat}%, ${light}%)`;
-    reusableWhiteBgPaint.setColor(Skia.Color(bgColor));
+    // Use hex string instead of HSL - hex is faster to parse than hsl()
+    const bgColorHex = hslToHex(colors.hue, sat, light);
+    reusableWhiteBgPaint.setColor(Skia.Color(bgColorHex));
     const bgOpacity = Math.max(t.imageOpacity, t.morphProgress);
     reusableWhiteBgPaint.setAlphaf(bgOpacity);
 

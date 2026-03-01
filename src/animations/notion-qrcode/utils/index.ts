@@ -14,4 +14,10 @@ export {
   sortBySpiral,
   sortTorusByFlow,
 } from './shape-generation';
-export { rotateX, rotateY, smoothstep } from './transforms';
+export {
+  rotateX,
+  rotateXInPlace,
+  rotateY,
+  rotateYInPlace,
+  smoothstep,
+} from './transforms';
