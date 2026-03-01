@@ -138,12 +138,12 @@ const ScrollableShapes = () => {
 
     // Original used radius = Math.max(0.2, 0.5 * scale), so stroke width ~0.4-1.0
     if (farPoints.length > 0) {
-      paint.setStrokeWidth(0.6);
+      paint.setStrokeWidth(0.9);
       canvas.drawPoints(PointMode.Points, farPoints, paint);
     }
 
     if (midPoints.length > 0) {
-      paint.setStrokeWidth(0.8);
+      paint.setStrokeWidth(0.9);
       canvas.drawPoints(PointMode.Points, midPoints, paint);
     }
 
