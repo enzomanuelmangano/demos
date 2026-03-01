@@ -77,6 +77,7 @@ export const OnlineToOffline = ({
             itemSize={itemSize}
             listColor={listColor}
             isOffline={item.isOffline}
+            zIndex={listItems.length - index}
           />
         ))}
       </Animated.View>
