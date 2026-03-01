@@ -30,6 +30,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
+  Extrapolation,
+  interpolate,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
@@ -250,7 +252,7 @@ const NotionQRCode = () => {
       // Pinch IN (scale < 1) = zoom OUT = see full donut
       // scale 0.3 → zoom 1, scale 1 → zoom 0
       const newZoom = savedZoom.value + (1 - event.scale);
-      zoom.value = Math.max(0, Math.min(1, newZoom));
+      zoom.value = Math.max(0, Math.min(1, newZoom * 1.2));
     })
     .onFinalize(() => {
       // Spring back to original view (same spring as toggle)
@@ -260,17 +262,14 @@ const NotionQRCode = () => {
       });
     });
 
-  // Reset zoom when switching to QR mode
-  useAnimatedReaction(
-    () => progress.value,
-    (current, previous) => {
-      if (previous === null) return;
-      // Going to QR: reset zoom
-      if (current > 0.5 && previous <= 0.5) {
-        zoom.value = withSpring(0, { duration: 400, dampingRatio: 0.9 });
-      }
-    },
-  );
+  const derivedZoom = useDerivedValue(() => {
+    return interpolate(
+      progress.value,
+      [0, 1],
+      [zoom.value, 0],
+      Extrapolation.CLAMP,
+    );
+  }, [zoom]);
 
   return (
     <View style={styles.container}>
@@ -281,7 +280,7 @@ const NotionQRCode = () => {
             qrData="https://www.reactiive.io"
             sprite={DEFAULT_SPRITE}
             progress={progress}
-            zoom={zoom}
+            zoom={derivedZoom}
           />
         </Animated.View>
       </GestureDetector>
