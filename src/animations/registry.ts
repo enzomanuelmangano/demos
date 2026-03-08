@@ -59,6 +59,7 @@ import { ExpandableMiniPlayer } from './expandable-mini-player';
 import { FamilyNumberInput } from './family-number-input';
 import { FibonacciShader } from './fibonacci-shader';
 import { FibonacciShaderGrid } from './fibonacci-shader-grid';
+import { Checky } from './checky';
 import { FloatingBottomBar } from './floating-bottom-bar';
 import { FloatingModal } from './floating-modal';
 import { FluidSlider } from './fluid-slider';
@@ -249,6 +250,7 @@ export const AnimationRegistry = {
   'sphere-waves': SphereWaves,
   'scrollable-shapes': ScrollableShapes,
   'notion-qrcode': NotionQRCode,
+  checky: Checky,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -842,6 +844,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Notion QR Code',
     route: 'NotionQRCode',
     iconName: 'qr-code-outline',
+  },
+  checky: {
+    name: 'Checky',
+    route: 'Checky',
+    iconName: 'flame-outline',
   },
 } as const;
 
