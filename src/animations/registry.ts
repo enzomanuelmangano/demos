@@ -63,6 +63,7 @@ import { FloatingBottomBar } from './floating-bottom-bar';
 import { FloatingModal } from './floating-modal';
 import { FluidSlider } from './fluid-slider';
 import { FluidTabInteraction } from './fluid-tab-interaction';
+import { FoldingPaper } from './folding-paper';
 import { FourierVisualizer } from './fourier-visualizer';
 import { FractalGlass } from './fractal-glass';
 import { GeometryButton } from './geometry-button';
@@ -77,6 +78,8 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
+import { IsometricKnight } from './isometric-knight';
+import { IsometricTree } from './isometric-tree';
 import { LinearSensors } from './linear-sensors';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
@@ -87,9 +90,8 @@ import { Mnist } from './mnist';
 import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
 import { NotionQRCode } from './notion-qrcode';
-import { FoldingPaper } from './folding-paper';
-import { IsometricTree } from './isometric-tree';
 import { OnlineOffline } from './online-offline';
+import { PaperAirplane } from './paper-airplane';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
 import { PomodoroTimer } from './pomodoro-timer';
@@ -254,6 +256,8 @@ export const AnimationRegistry = {
   'notion-qrcode': NotionQRCode,
   'folding-paper-webgpu': FoldingPaper,
   'isometric-tree': IsometricTree,
+  'isometric-knight': IsometricKnight,
+  'paper-airplane': PaperAirplane,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -857,6 +861,16 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Isometric Tree',
     route: 'IsometricTree',
     iconName: 'leaf-outline',
+  },
+  'isometric-knight': {
+    name: 'Contribution Chart 3D',
+    route: 'IsometricKnight',
+    iconName: 'bar-chart-outline',
+  },
+  'paper-airplane': {
+    name: 'Paper Airplane',
+    route: 'PaperAirplane',
+    iconName: 'paper-plane-outline',
   },
 } as const;
 

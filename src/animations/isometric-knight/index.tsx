@@ -3,25 +3,21 @@ import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native'
 
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
-// Voxel types
+// Voxel types - GitHub green levels (0 = empty, 1-4 = contribution levels)
 const EMPTY = 0;
-const STONE_DARK = 1;
-const STONE_MID = 2;
-const STONE_LIGHT = 3;
-const DIRT = 4;
-const GRASS_DARK = 5;
-const GRASS_MID = 6;
-const TRUNK_DARK = 7;
-const TRUNK_LIGHT = 8;
-const LEAVES = 9;
-const FLOWER_PINK = 10;
-const FLOWER_YELLOW = 11;
-const FLOWER_RED = 12;
-const GRASS_LIGHT = 13;
-const GRASS_YELLOW = 14;
+const GREEN_LEVEL_0 = 1; // Lightest - no/few contributions
+const GREEN_LEVEL_1 = 2;
+const GREEN_LEVEL_2 = 3;
+const GREEN_LEVEL_3 = 4; // Darkest - most contributions
 
-const WORLD_SIZE = 26;
-const WORLD_HEIGHT = 38;
+// Grid dimensions (like GitHub: 52 weeks x 7 days)
+const GRID_COLS = 40; // weeks
+const GRID_ROWS = 7;  // days
+const MAX_HEIGHT = 12; // max column height
+
+const WORLD_SIZE_X = GRID_COLS;
+const WORLD_SIZE_Z = GRID_ROWS;
+const WORLD_HEIGHT = MAX_HEIGHT + 1;
 
 // Seeded random for consistent generation
 function seededRandom(seed: number) {
@@ -29,154 +25,75 @@ function seededRandom(seed: number) {
   return x - Math.floor(x);
 }
 
-// Generate the voxel world
+// Generate contribution data (simulating GitHub activity)
+function generateContributions(): number[][] {
+  const data: number[][] = [];
+
+  for (let col = 0; col < GRID_COLS; col++) {
+    const week: number[] = [];
+    for (let row = 0; row < GRID_ROWS; row++) {
+      const seed = col * 100 + row;
+      const rand = seededRandom(seed);
+
+      // Create realistic-looking contribution patterns
+      // More activity in certain "bursts"
+      const burstFactor = Math.sin(col * 0.3) * 0.5 + 0.5;
+      const weekendFactor = (row === 0 || row === 6) ? 0.3 : 1.0;
+      const activity = rand * burstFactor * weekendFactor;
+
+      // Convert to contribution level (0-4)
+      let level: number;
+      if (activity < 0.15) level = 0;
+      else if (activity < 0.35) level = 1;
+      else if (activity < 0.55) level = 2;
+      else if (activity < 0.75) level = 3;
+      else level = 4;
+
+      week.push(level);
+    }
+    data.push(week);
+  }
+
+  return data;
+}
+
+// Pre-generate contribution data
+const CONTRIBUTIONS = generateContributions();
+
+// Generate the voxel world - 3D contribution chart
 function generateVoxels(): number[] {
-  const voxels: number[] = new Array(WORLD_SIZE * WORLD_SIZE * WORLD_HEIGHT).fill(EMPTY);
+  const voxels: number[] = new Array(
+    WORLD_SIZE_X * WORLD_SIZE_Z * WORLD_HEIGHT,
+  ).fill(EMPTY);
 
   const setVoxel = (x: number, y: number, z: number, type: number) => {
-    if (x >= 0 && x < WORLD_SIZE && y >= 0 && y < WORLD_HEIGHT && z >= 0 && z < WORLD_SIZE) {
-      voxels[x + z * WORLD_SIZE + y * WORLD_SIZE * WORLD_SIZE] = type;
+    if (
+      x >= 0 &&
+      x < WORLD_SIZE_X &&
+      y >= 0 &&
+      y < WORLD_HEIGHT &&
+      z >= 0 &&
+      z < WORLD_SIZE_Z
+    ) {
+      voxels[x + z * WORLD_SIZE_X + y * WORLD_SIZE_X * WORLD_SIZE_Z] = type;
     }
   };
 
-  const getVoxel = (x: number, y: number, z: number): number => {
-    if (x >= 0 && x < WORLD_SIZE && y >= 0 && y < WORLD_HEIGHT && z >= 0 && z < WORLD_SIZE) {
-      return voxels[x + z * WORLD_SIZE + y * WORLD_SIZE * WORLD_SIZE];
-    }
-    return EMPTY;
-  };
+  // Build columns based on contribution data
+  for (let col = 0; col < GRID_COLS; col++) {
+    for (let row = 0; row < GRID_ROWS; row++) {
+      const level = CONTRIBUTIONS[col][row];
 
-  const centerX = WORLD_SIZE / 2;
-  const centerZ = WORLD_SIZE / 2;
-  const baseY = 8;
+      // Height based on contribution level
+      // Level 0 = 1 block, Level 4 = up to MAX_HEIGHT blocks
+      const height = level === 0 ? 1 : Math.ceil((level / 4) * MAX_HEIGHT);
 
-  // Generate island with terraced layers
-  for (let x = 0; x < WORLD_SIZE; x++) {
-    for (let z = 0; z < WORLD_SIZE; z++) {
-      const dx = x - centerX + 0.5;
-      const dz = z - centerZ + 0.5;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-      const seed = x * 100 + z;
+      // Color type based on level
+      const colorType = level === 0 ? GREEN_LEVEL_0 : level;
 
-      // Island radius with noise
-      const noise = seededRandom(seed) * 1.5 + Math.sin(x * 0.35) * Math.cos(z * 0.35) * 1.0;
-      const maxRadius = 11 + noise;
-
-      if (dist < maxRadius) {
-        // Terrain height with variation for terraces
-        const heightNoise = seededRandom(seed + 1000) * 2 + Math.sin(x * 0.3) * Math.cos(z * 0.5) * 1.5;
-        const terrainHeight = baseY + Math.floor(heightNoise);
-
-        // Stone stalactites hanging below
-        const stalactiteLength = Math.floor(4 + seededRandom(seed + 2000) * 4 + (maxRadius - dist) * 0.4);
-        for (let y = baseY - stalactiteLength; y < baseY - 2; y++) {
-          if (y >= 0 && dist < maxRadius - (baseY - y) * 0.6) {
-            const stoneType = y < baseY - stalactiteLength + 2 ? STONE_LIGHT :
-                             y < baseY - stalactiteLength + 4 ? STONE_MID : STONE_DARK;
-            setVoxel(x, y, z, stoneType);
-          }
-        }
-
-        // Dirt layer
-        for (let y = baseY - 2; y < terrainHeight; y++) {
-          setVoxel(x, y, z, DIRT);
-        }
-
-        // Grass layers with terracing and VISIBLE color patches
-        const grassLayers = 1 + Math.floor(seededRandom(seed + 3000) * 2);
-        for (let layer = 0; layer < grassLayers; layer++) {
-          const y = terrainHeight + layer;
-          if (dist < maxRadius - layer * 1.8) {
-            // Create color patches using position-based pattern
-            const patchX = Math.floor(x / 3);
-            const patchZ = Math.floor(z / 3);
-            const patchSeed = patchX * 17 + patchZ * 31 + layer * 7;
-            const patchRand = seededRandom(patchSeed);
-
-            let grassType: number;
-            if (patchRand < 0.3) {
-              grassType = GRASS_DARK;
-            } else if (patchRand < 0.55) {
-              grassType = GRASS_MID;
-            } else if (patchRand < 0.8) {
-              grassType = GRASS_LIGHT;
-            } else {
-              grassType = GRASS_YELLOW;
-            }
-            setVoxel(x, y, z, grassType);
-          }
-        }
-      }
-    }
-  }
-
-  // Add flowers and small decorations on grass
-  for (let x = 0; x < WORLD_SIZE; x++) {
-    for (let z = 0; z < WORLD_SIZE; z++) {
-      const seed = x * 100 + z + 5000;
-      for (let y = baseY; y < baseY + 6; y++) {
-        const below = getVoxel(x, y, z);
-        const above = getVoxel(x, y + 1, z);
-        if ((below === GRASS_LIGHT || below === GRASS_DARK || below === GRASS_MID || below === GRASS_YELLOW) && above === EMPTY) {
-          if (seededRandom(seed + y) < 0.08) {
-            const flowerType = seededRandom(seed + y + 100) < 0.5 ? FLOWER_PINK : FLOWER_YELLOW;
-            setVoxel(x, y + 1, z, flowerType);
-          }
-        }
-      }
-    }
-  }
-
-  // Generate tree trunk with gradient
-  const trunkX = Math.floor(centerX);
-  const trunkZ = Math.floor(centerZ);
-  const trunkBase = baseY + 3;
-  const trunkHeight = 10;
-
-  for (let y = trunkBase; y < trunkBase + trunkHeight; y++) {
-    // Gradient: light at bottom, dark at top (like reference)
-    const trunkType = y > trunkBase + 6 ? TRUNK_DARK : TRUNK_LIGHT;
-    setVoxel(trunkX, y, trunkZ, trunkType);
-
-    // Wider at base - use light trunk color for base
-    const baseType = y < trunkBase + 4 ? TRUNK_LIGHT : trunkType;
-    if (y < trunkBase + 4) {
-      setVoxel(trunkX + 1, y, trunkZ, baseType);
-      setVoxel(trunkX - 1, y, trunkZ, baseType);
-      setVoxel(trunkX, y, trunkZ + 1, baseType);
-      setVoxel(trunkX, y, trunkZ - 1, baseType);
-    }
-    if (y < trunkBase + 2) {
-      setVoxel(trunkX + 1, y, trunkZ + 1, baseType);
-      setVoxel(trunkX - 1, y, trunkZ + 1, baseType);
-      setVoxel(trunkX + 1, y, trunkZ - 1, baseType);
-      setVoxel(trunkX - 1, y, trunkZ - 1, baseType);
-    }
-  }
-
-  // Generate spherical foliage - sparser, more organic
-  const foliageCenterY = trunkBase + trunkHeight + 3;
-  const foliageRadius = 7;
-
-  for (let x = 0; x < WORLD_SIZE; x++) {
-    for (let y = 0; y < WORLD_HEIGHT; y++) {
-      for (let z = 0; z < WORLD_SIZE; z++) {
-        const dx = x - centerX;
-        const dy = (y - foliageCenterY) * 1.1;
-        const dz = z - centerZ;
-        const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-        const seed = x * 1000 + y * 100 + z;
-        const noise = seededRandom(seed) * 2.0 +
-                     Math.sin(x * 0.8) * Math.cos(z * 0.8) * 1.5;
-
-        // Sparse foliage - skip some cubes for organic look
-        const skipChance = seededRandom(seed + 500);
-        if (dist < foliageRadius + noise && dist > 3 && skipChance > 0.25) {
-          if (getVoxel(x, y, z) === EMPTY) {
-            setVoxel(x, y, z, LEAVES);
-          }
-        }
+      // Build the column
+      for (let y = 0; y < height; y++) {
+        setVoxel(col, y, row, colorType);
       }
     }
   }
@@ -211,24 +128,14 @@ struct VertexOutput {
 @group(0) @binding(1) var<storage, read> voxelData: array<u32>;
 @group(0) @binding(2) var<storage, read> voxelPositions: array<vec4f>;
 
-// Colors for each voxel type (RGB) - VIVID saturated palette like reference
+// GitHub contribution green palette
 fn getVoxelColor(voxelType: u32) -> vec3f {
   switch(voxelType) {
-    case 1u: { return vec3f(0.4, 0.4, 0.45); }    // Stone dark
-    case 2u: { return vec3f(0.6, 0.6, 0.65); }    // Stone mid
-    case 3u: { return vec3f(0.85, 0.85, 0.9); }   // Stone light/white
-    case 4u: { return vec3f(0.9, 0.75, 0.4); }    // Dirt - golden yellow
-    case 5u: { return vec3f(0.3, 0.65, 0.35); }   // Grass dark green
-    case 6u: { return vec3f(0.4, 0.75, 0.45); }   // Grass mid green
-    case 7u: { return vec3f(0.3, 0.28, 0.26); }   // Trunk dark gray
-    case 8u: { return vec3f(0.7, 0.68, 0.65); }   // Trunk light gray/white
-    case 9u: { return vec3f(1.0, 0.55, 0.5); }    // Leaves - VIVID coral salmon
-    case 10u: { return vec3f(1.0, 0.5, 0.45); }   // Flower coral
-    case 11u: { return vec3f(1.0, 0.9, 0.35); }   // Flower bright yellow
-    case 12u: { return vec3f(0.95, 0.35, 0.35); } // Flower red
-    case 13u: { return vec3f(0.45, 0.8, 0.5); }   // Grass light green
-    case 14u: { return vec3f(0.55, 0.85, 0.45); } // Grass bright green
-    default: { return vec3f(1.0, 0.0, 1.0); }     // Error
+    case 1u: { return vec3f(0.80, 0.90, 0.75); }  // Level 0 - Lightest green
+    case 2u: { return vec3f(0.60, 0.82, 0.55); }  // Level 1 - Light green
+    case 3u: { return vec3f(0.40, 0.72, 0.40); }  // Level 2 - Medium green
+    case 4u: { return vec3f(0.20, 0.55, 0.30); }  // Level 3 - Dark green
+    default: { return vec3f(0.15, 0.45, 0.25); }  // Darkest
   }
 }
 
@@ -254,7 +161,7 @@ fn main(
   let voxelPos = voxelInfo.xyz;
 
   // Cube size
-  let cubeSize = 0.014;
+  let cubeSize = 0.012;
 
   var localPos: vec3f;
   var faceNormal: vec3f;
@@ -266,9 +173,9 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  // Cube scale < 1.0 creates gaps between cubes (key for that polished look!)
-  let cs = 0.82; // cube scale - smaller = bigger gaps
-  let h = cs * 0.5; // half size
+  // Cube scale < 1.0 creates small gaps between cubes
+  let cs = 0.88;
+  let h = cs * 0.5;
 
   switch(faceIndex) {
     case 0u: { // Top (+Y)
@@ -305,18 +212,12 @@ fn main(
   var worldPos = voxelPos * cubeSize + localPos * cubeSize;
 
   // Center the model
-  worldPos.x -= f32(${WORLD_SIZE}) * cubeSize * 0.5;
-  worldPos.z -= f32(${WORLD_SIZE}) * cubeSize * 0.5;
-  worldPos.y -= f32(${WORLD_HEIGHT}) * cubeSize * 0.4;
-
-  // Gentle animation for leaves (type 9)
-  if (voxelType == 9u) {
-    let wave = sin(uniforms.time * 1.5 + voxelPos.x * 0.3 + voxelPos.z * 0.3) * 0.001;
-    worldPos.x += wave;
-  }
+  worldPos.x -= f32(${WORLD_SIZE_X}) * cubeSize * 0.5;
+  worldPos.z -= f32(${WORLD_SIZE_Z}) * cubeSize * 0.5;
+  worldPos.y -= f32(${WORLD_HEIGHT}) * cubeSize * 0.35;
 
   // Rotation animation
-  let rotSpeed = 0.06;
+  let rotSpeed = 0.04;
   let angle = uniforms.time * rotSpeed;
 
   worldPos = rotateY(worldPos, angle);
@@ -344,15 +245,15 @@ fn main(
   let nx_z = faceNormal.y * sx + ny_z * cx;
   let rotatedNormal = normalize(vec3f(ny_x, nx_y, nx_z));
 
-  // Light direction (from top-left)
-  let lightDir = normalize(vec3f(-0.5, 0.9, 0.3));
+  // Light direction (sculptural lighting from top-left)
+  let lightDir = normalize(vec3f(-0.4, 0.85, 0.35));
 
-  // Calculate shading - more contrast for realistic shadows
+  // Calculate shading
   let diffuse = max(dot(rotatedNormal, lightDir), 0.0);
-  let ambient = 0.3;
+  let ambient = 0.35;
   // Boost top faces for that clean isometric look
-  let topBoost = max(faceNormal.y, 0.0) * 0.25;
-  let shade = ambient + diffuse * 0.6 + topBoost;
+  let topBoost = max(faceNormal.y, 0.0) * 0.20;
+  let shade = ambient + diffuse * 0.55 + topBoost;
 
   // Orthographic projection
   let scale = 1.8;
@@ -383,7 +284,7 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
 }
 `;
 
-export const IsometricTree = () => {
+export const IsometricKnight = () => {
   const { width, height } = useWindowDimensions();
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
@@ -412,9 +313,9 @@ export const IsometricTree = () => {
     const voxelPositions: number[] = [];
 
     for (let y = 0; y < WORLD_HEIGHT; y++) {
-      for (let z = 0; z < WORLD_SIZE; z++) {
-        for (let x = 0; x < WORLD_SIZE; x++) {
-          const idx = x + z * WORLD_SIZE + y * WORLD_SIZE * WORLD_SIZE;
+      for (let z = 0; z < WORLD_SIZE_Z; z++) {
+        for (let x = 0; x < WORLD_SIZE_X; x++) {
+          const idx = x + z * WORLD_SIZE_X + y * WORLD_SIZE_X * WORLD_SIZE_Z;
           const voxel = VOXELS[idx];
           if (voxel !== EMPTY) {
             voxelTypes.push(voxel);
@@ -442,13 +343,29 @@ export const IsometricTree = () => {
       size: numVoxels * 16, // vec4f per voxel
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(voxelPosBuffer, 0, new Float32Array(voxelPositions));
+    device.queue.writeBuffer(
+      voxelPosBuffer,
+      0,
+      new Float32Array(voxelPositions),
+    );
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
-        { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
       ],
     });
 
@@ -501,7 +418,7 @@ export const IsometricTree = () => {
         colorAttachments: [
           {
             view: textureView,
-            clearValue: { r: 0.02, g: 0.02, b: 0.04, a: 1 },
+            clearValue: { r: 0.94, g: 0.93, b: 0.90, a: 1 },
             loadOp: 'clear',
             storeOp: 'store',
           },
@@ -546,5 +463,5 @@ export const IsometricTree = () => {
 
 const styles = StyleSheet.create({
   canvas: { flex: 1 },
-  container: { backgroundColor: '#050508', flex: 1 },
+  container: { backgroundColor: '#F0EDE6', flex: 1 },
 });
