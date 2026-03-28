@@ -4,7 +4,6 @@ import {
   Pressable,
   StyleSheet,
   Switch,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -27,16 +26,6 @@ const GRID_ROWS = CONTRIBUTION_GRID_ROWS;
 const CELL_FOOTPRINT_ISO = 0.78;
 const CELL_FOOTPRINT_FLAT = 0.91;
 
-/** Contribution ramp swatches (levels 1–4), aligned with `getFlatColor` in WGSL. */
-const LEGEND_SWATCH_COLORS = [
-  '#B3E3BA',
-  '#70D18F',
-  '#42B275',
-  '#1F8A57',
-] as const;
-
-const LEGEND_SWATCH_SIZE = 11;
-const LEGEND_SWATCH_GAP = 3;
 
 /**
  * GitHub only exposes 0–4 buckets, not raw counts. We map each bucket to a
@@ -51,10 +40,10 @@ function estimatedContributionsForLevel(level: number): number {
 
 /** Analyze grid to determine adaptive parameters */
 function analyzeGrid(contributionGrid: number[][]): {
-  sparsity: number;      // 0-1, how many cells are empty
-  intensity: number;     // 0-1, average contribution level
-  variance: number;      // 0-1, how spread out values are
-  peakDensity: number;   // 0-1, ratio of high-value cells
+  sparsity: number; // 0-1, how many cells are empty
+  intensity: number; // 0-1, average contribution level
+  variance: number; // 0-1, how spread out values are
+  peakDensity: number; // 0-1, ratio of high-value cells
 } {
   let total = 0;
   let nonZero = 0;
@@ -79,10 +68,14 @@ function analyzeGrid(contributionGrid: number[][]): {
   const peakDensity = nonZero > 0 ? highCount / nonZero : 0;
 
   // Calculate variance
-  const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-  const variance = values.length > 0
-    ? Math.sqrt(values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / values.length) / 4
-    : 0;
+  const mean =
+    values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  const variance =
+    values.length > 0
+      ? Math.sqrt(
+          values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / values.length,
+        ) / 4
+      : 0;
 
   return { sparsity, intensity, variance, peakDensity };
 }
@@ -140,7 +133,10 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 /** Soft elliptical edge so the landmass feels organic. Strength is adaptive. */
-function applyEllipticalLandmask(heights: number[][], strength: number): number[][] {
+function applyEllipticalLandmask(
+  heights: number[][],
+  strength: number,
+): number[][] {
   const cx = (GRID_COLS - 1) * 0.5;
   const cz = (GRID_ROWS - 1) * 0.5;
   const rx = GRID_COLS * 0.5;
@@ -151,7 +147,7 @@ function applyEllipticalLandmask(heights: number[][], strength: number): number[
       const nz = (r - cz) / rz;
       const d = nx * nx + nz * nz;
       const mask = 1 - smoothstep(0.64, 1.06, d);
-      const blend = (1 - strength) + strength * mask;
+      const blend = 1 - strength + strength * mask;
       return h * blend;
     }),
   );
@@ -279,7 +275,7 @@ function buildSceneData(contributionGrid: number[][], useRealData: boolean) {
 const NUM_BLOCKS = GRID_COLS * GRID_ROWS + NUM_YEARS;
 
 /** One surface family: canvas, shell, and clear color stay aligned. */
-const SURFACE_RGB = { r: 0.969, g: 0.961, b: 0.941 } as const;
+const SURFACE_RGB = { r: 0.976, g: 0.965, b: 0.945 } as const;
 
 const ISO_ANGLE_Y = 0.8;
 const ISO_ANGLE_X = -0.5;
@@ -295,6 +291,7 @@ struct Uniforms {
   blockCount: f32,
   progress: f32,
   dataProgress: f32, // 0 = synthetic, 1 = real contributions
+  zoomScale: f32,    // double-tap zoom (1.0 = default)
 }
 
 struct VertexOutput {
@@ -312,6 +309,7 @@ struct VertexOutput {
   @location(10) rimLight: f32,
   @location(11) valleyAO: f32,
   @location(12) fresnel: f32,
+  @location(13) time: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -389,26 +387,28 @@ fn gridShadow(myH: f32, col: f32, row: f32) -> f32 {
 }
 
 fn getBlockColor(level: u32) -> vec3f {
+  // Emerald green color ramp
   switch(level) {
-    case 0u: { return vec3f(0.84, 0.90, 0.86); }
-    case 1u: { return vec3f(0.74, 0.88, 0.74); }
-    case 2u: { return vec3f(0.50, 0.80, 0.58); }
-    case 3u: { return vec3f(0.30, 0.66, 0.44); }
-    case 4u: { return vec3f(0.13, 0.50, 0.32); }
-    case 6u: { return vec3f(0.972, 0.969, 0.958); }
-    default: { return vec3f(0.90, 0.94, 0.88); }
+    case 0u: { return vec3f(0.88, 0.91, 0.89); }
+    case 1u: { return vec3f(0.58, 0.85, 0.72); }
+    case 2u: { return vec3f(0.32, 0.75, 0.56); }
+    case 3u: { return vec3f(0.18, 0.62, 0.45); }
+    case 4u: { return vec3f(0.10, 0.50, 0.35); }
+    case 6u: { return vec3f(0.978, 0.972, 0.962); }
+    default: { return vec3f(0.90, 0.93, 0.90); }
   }
 }
 
 fn getFlatColor(level: u32) -> vec3f {
+  // Emerald green color ramp
   switch(level) {
-    case 0u: { return vec3f(0.92, 0.96, 0.90); }
-    case 1u: { return vec3f(0.70, 0.89, 0.72); }
-    case 2u: { return vec3f(0.44, 0.82, 0.56); }
-    case 3u: { return vec3f(0.26, 0.70, 0.46); }
-    case 4u: { return vec3f(0.12, 0.54, 0.34); }
-    case 6u: { return vec3f(0.99, 0.988, 0.982); }
-    default: { return vec3f(0.92, 0.96, 0.90); }
+    case 0u: { return vec3f(0.93, 0.95, 0.93); }
+    case 1u: { return vec3f(0.60, 0.88, 0.74); }
+    case 2u: { return vec3f(0.35, 0.78, 0.58); }
+    case 3u: { return vec3f(0.20, 0.65, 0.47); }
+    case 4u: { return vec3f(0.12, 0.52, 0.37); }
+    case 6u: { return vec3f(0.992, 0.988, 0.978); }
+    default: { return vec3f(0.93, 0.95, 0.93); }
   }
 }
 
@@ -469,11 +469,14 @@ fn main(
     case 0u: {
       let ux = qv.x - 0.5;
       let uz = qv.y - 0.5;
-      let tr = clamp(length(vec2f(ux, uz)) * 2.08, 0.0, 1.0);
-      let yTop = hh * (1.0 - 0.08 * smoothstep(0.32, 1.0, tr));
+      let tr = length(vec2f(ux, uz)) * 2.0;
+      // Conical/pyramidal tree shape - pointed at center, slopes down to edges
+      let cone = 1.0 - tr * 0.35;
+      let yTop = hh * max(cone, 0.0);
       localPos = vec3f(ux * csX, yTop, uz * csZ);
-      let bump = 0.62;
-      faceNormal = normalize(vec3f(-ux * csX * bump, 1.0, -uz * csZ * bump));
+      // Sharp normals for tree-like facets
+      let bump = 0.8;
+      faceNormal = normalize(vec3f(-ux * bump, 1.0, -uz * bump));
     }
     case 1u: {
       localPos = vec3f((qv.x - 0.5) * csX, -hh, (0.5 - qv.y) * csZ);
@@ -552,7 +555,8 @@ fn main(
   let fitWidth = 0.9 * uniforms.aspectRatio / halfW;
   let fitHeight = 0.9 / halfH;
   let flatScale = min(fitWidth, fitHeight);
-  let scale = mix(isoFit, flatScale, progress);
+  let baseScale = mix(isoFit, flatScale, progress);
+  let scale = baseScale * uniforms.zoomScale;
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
     rx_y * scale,
@@ -636,6 +640,7 @@ fn main(
   }
   if (isCard) { fresnelVal = 0.0; }
   output.fresnel = fresnelVal;
+  output.time = uniforms.time;
 
   return output;
 }
@@ -643,6 +648,7 @@ fn main(
 
 const fragmentShader = /* wgsl */ `
 struct FragmentInput {
+  @builtin(position) fragCoord: vec4f,
   @location(0) color: vec3f,
   @location(1) shade: f32,
   @location(2) isBase: f32,
@@ -656,11 +662,20 @@ struct FragmentInput {
   @location(10) rimLight: f32,
   @location(11) valleyAO: f32,
   @location(12) fresnel: f32,
+  @location(13) time: f32,
+}
+
+// Robust hash for film grain - handles large screen coordinates without gradient artifacts
+fn hash(p: vec2f) -> f32 {
+  // Use modular arithmetic to avoid precision issues with large coordinates
+  let p2 = fract(p * vec2f(0.1031, 0.1030));
+  let p3 = p2 + dot(p2, p2.yx + 19.19);
+  return fract((p3.x + p3.y) * p3.x);
 }
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
-  let bg = vec3f(0.969, 0.961, 0.941);
+  let bg = vec3f(0.976, 0.965, 0.945);
 
   let toneLo = vec3f(0.965, 0.963, 0.958);
   let toneHi = vec3f(1.0, 0.998, 0.993);
@@ -677,37 +692,59 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let rimDark = mix(1.0, 0.9, pow(input.topRim, 1.2));
   lit = lit * mix(rimDark, 1.0, input.progress);
 
+  // Contact shadows at base of blocks
   let contact = mix(0.88, 1.0, smoothstep(0.0, 0.7, input.heightFrac));
   lit = lit * mix(contact, 1.0, input.progress);
 
+  // Cast shadows from taller neighbors
   let castSoft = mix(1.0, input.shadowCast, 0.58);
   lit = lit * mix(castSoft, 1.0, input.progress);
 
-  // === Enhanced Lighting Effects (animate with depth transition) ===
+  // === Enhanced Lighting Effects - only in 3D ===
   let depthFactor = 1.0 - input.progress; // 1 in 3D, 0 in flat
 
-  // Rim/backlight: bright edges to separate trees
-  let rimBoost = 1.0 + input.rimLight * 0.25 * depthFactor;
-  lit = lit * rimBoost;
+  if (depthFactor > 0.01) {
+    // Rim/backlight
+    lit = lit * (1.0 + input.rimLight * 0.25 * depthFactor);
 
-  // Valley ambient occlusion: darken low areas between tall trees
-  let aoMult = 1.0 - input.valleyAO * 0.32 * depthFactor;
-  lit = lit * aoMult;
+    // Valley AO
+    lit = lit * (1.0 - input.valleyAO * 0.32 * depthFactor);
 
-  // Fresnel effect: glow on edges for depth separation
-  let fresnelBoost = 1.0 + input.fresnel * 0.14 * depthFactor;
-  lit = lit * fresnelBoost;
+    // Fresnel
+    lit = lit * (1.0 + input.fresnel * 0.14 * depthFactor);
 
-  // === End Enhanced Lighting ===
+    // Color temperature
+    let heightT = smoothstep(0.0, 1.0, input.heightFrac);
+    let warmShift = vec3f(1.04, 1.01, 0.96);
+    let coolShift = vec3f(0.97, 0.99, 1.03);
+    let tempShift = mix(coolShift, warmShift, heightT);
+    lit = lit * mix(vec3f(1.0), tempShift, 0.35 * depthFactor);
 
-  let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
-  lit = mix(vec3f(luma), lit, mix(1.04, 1.0, input.progress));
+    // Peak glow
+    let peakGlow = smoothstep(0.5, 1.0, input.peakLift);
+    lit = mix(lit, lit * vec3f(1.08, 1.06, 1.02), peakGlow * 0.4 * depthFactor * input.isTop);
 
-  let edgeFade = smoothstep(0.38, 0.62, input.edgeDist);
-  lit = lit * mix(1.0, 0.995, edgeFade * (1.0 - input.progress) * 0.1);
+    // Atmospheric haze
+    let hazeAmount = (1.0 - heightT) * (1.0 - input.peakLift) * depthFactor;
+    let litLuma = dot(lit, vec3f(0.299, 0.587, 0.114));
+    lit = mix(lit, vec3f(litLuma), 0.15 * hazeAmount);
+
+    // Saturation boost
+    let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
+    lit = mix(vec3f(luma), lit, 1.04);
+
+    // Edge fade
+    let edgeFade = smoothstep(0.38, 0.62, input.edgeDist);
+    lit = lit * (1.0 - edgeFade * 0.005);
+  }
 
   let baseFade = mix(0.26, 0.0, input.progress);
   var col = mix(lit, bg, input.isBase * baseFade);
+
+  // Film grain: static noise for organic texture (no animation)
+  let grainCoord = input.fragCoord.xy;
+  let grain = hash(grainCoord) - 0.5;
+  col = col + grain * 0.06;
 
   return vec4f(col, 1.0);
 }
@@ -730,8 +767,11 @@ function springStep(
   const decay = Math.exp(-SPRING_OMEGA * dt);
 
   // Critically damped: x(t) = (x₀ + (v₀ + ω₀*x₀)*t) * e^(-ω₀*t) + target
-  const newDisplacement = (displacement + (velocity + SPRING_OMEGA * displacement) * dt) * decay;
-  const newVelocity = (velocity - SPRING_OMEGA * (velocity + SPRING_OMEGA * displacement) * dt) * decay;
+  const newDisplacement =
+    (displacement + (velocity + SPRING_OMEGA * displacement) * dt) * decay;
+  const newVelocity =
+    (velocity - SPRING_OMEGA * (velocity + SPRING_OMEGA * displacement) * dt) *
+    decay;
 
   return {
     position: target + newDisplacement,
@@ -742,7 +782,7 @@ function springStep(
 export const IsometricKnight = () => {
   const { width, height } = useWindowDimensions();
   const { bottom: safeBottom } = useSafeAreaInsets();
-  const [useMyContributions, setUseMyContributions] = useState(false);
+  const [useMyContributions, setUseMyContributions] = useState(true);
   const layoutRef = useRef({ width, height });
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
@@ -753,10 +793,9 @@ export const IsometricKnight = () => {
   const lastFrameTimeRef = useRef(Date.now());
   // Data transition animation (0 = synthetic, 1 = real contributions)
   // Uses critically damped spring (dampingRatio=1, duration=450ms)
-  const useRealDataRef = useRef(false);
-  const dataProgressRef = useRef(0);
+  const useRealDataRef = useRef(true);
+  const dataProgressRef = useRef(1);
   const dataVelocityRef = useRef(0);
-
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
   }, []);
@@ -837,13 +876,21 @@ export const IsometricKnight = () => {
         size: NUM_BLOCKS * 4,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
-      device.queue.writeBuffer(colorBufferB, 0, new Uint32Array(realData.colors));
+      device.queue.writeBuffer(
+        colorBufferB,
+        0,
+        new Uint32Array(realData.colors),
+      );
 
       const heightBufferB = device.createBuffer({
         size: NUM_BLOCKS * 4,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
-      device.queue.writeBuffer(heightBufferB, 0, new Float32Array(realData.heights));
+      device.queue.writeBuffer(
+        heightBufferB,
+        0,
+        new Float32Array(realData.heights),
+      );
 
       const heightGridBufferB = device.createBuffer({
         size: heightGridByteSize,
@@ -951,7 +998,7 @@ export const IsometricKnight = () => {
         const { width: lw, height: lh } = layoutRef.current;
         const aspectRatio = lh > 0 ? lw / lh : width / height;
 
-        // Animate 3D↔flat transition (spring: dampingRatio=1, duration=250ms)
+        // Animate 3D↔flat transition with spring
         const target = isFlat.current ? 1 : 0;
         const viewSpring = springStep(
           progressRef.current,
@@ -961,12 +1008,15 @@ export const IsometricKnight = () => {
         );
         progressRef.current = viewSpring.position;
         progressVelocityRef.current = viewSpring.velocity;
-        if (Math.abs(progressRef.current - target) < 0.001 && Math.abs(progressVelocityRef.current) < 0.01) {
+        if (
+          Math.abs(progressRef.current - target) < 0.001 &&
+          Math.abs(progressVelocityRef.current) < 0.01
+        ) {
           progressRef.current = target;
           progressVelocityRef.current = 0;
         }
 
-        // Animate data transition (spring: dampingRatio=1, duration=450ms)
+        // Animate data transition (spring)
         const dataTarget = useRealDataRef.current ? 1 : 0;
         const spring = springStep(
           dataProgressRef.current,
@@ -976,8 +1026,10 @@ export const IsometricKnight = () => {
         );
         dataProgressRef.current = spring.position;
         dataVelocityRef.current = spring.velocity;
-        // Snap when settled
-        if (Math.abs(dataProgressRef.current - dataTarget) < 0.001 && Math.abs(dataVelocityRef.current) < 0.01) {
+        if (
+          Math.abs(dataProgressRef.current - dataTarget) < 0.001 &&
+          Math.abs(dataVelocityRef.current) < 0.01
+        ) {
           dataProgressRef.current = dataTarget;
           dataVelocityRef.current = 0;
         }
@@ -990,6 +1042,7 @@ export const IsometricKnight = () => {
           NUM_BLOCKS,
           progressRef.current,
           dataProgressRef.current,
+          1.0, // zoomScale fixed at 1.0
         ]);
         device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
@@ -1049,99 +1102,32 @@ export const IsometricKnight = () => {
 
   return (
     <View style={styles.container} onLayout={onLayout}>
-      <Pressable style={styles.pressable} onPress={handlePress}>
-        <Canvas ref={canvasRef} style={styles.canvas} />
+      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress}>
+        <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} />
       </Pressable>
       <View
         pointerEvents="box-none"
         style={[styles.sourceToggle, { bottom: safeBottom + 14 }]}>
-        <Text style={styles.sourceToggleLabel}>My contributions</Text>
         <Switch
           accessibilityLabel="Toggle real GitHub contribution data"
-          onValueChange={(value) => {
+          trackColor={{ false: '#C8CCC9', true: '#34D399' }}
+          ios_backgroundColor="#C8CCC9"
+          onValueChange={value => {
             setUseMyContributions(value);
             useRealDataRef.current = value;
           }}
           value={useMyContributions}
         />
       </View>
-      <View style={styles.legend} pointerEvents="none">
-        <View style={styles.legendRow}>
-          <Text style={styles.legendCaption}>Less</Text>
-          <View style={styles.legendRamp}>
-            <View style={styles.swatchRow}>
-              {LEGEND_SWATCH_COLORS.map((color, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.swatch,
-                    { width: LEGEND_SWATCH_SIZE, height: LEGEND_SWATCH_SIZE },
-                    i > 0 && { marginLeft: LEGEND_SWATCH_GAP },
-                    { backgroundColor: color },
-                  ]}
-                />
-              ))}
-            </View>
-            <View style={styles.legendMoreWrap}>
-              <Text style={styles.legendCaption}>More</Text>
-            </View>
-          </View>
-        </View>
-      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  canvas: { flex: 1 },
-  container: { backgroundColor: '#F7F5F0', flex: 1 },
-  legend: {
-    bottom: 28,
+  container: { backgroundColor: '#F9F6F1', flex: 1 },
+  sourceToggle: {
     position: 'absolute',
     right: 20,
-  },
-  legendCaption: {
-    color: 'rgba(55, 55, 55, 0.72)',
-    fontSize: 11,
-    letterSpacing: 0.2,
-    lineHeight: 14,
-    marginRight: 10,
-  },
-  legendMoreWrap: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 5,
-  },
-  legendRamp: {
-    alignItems: 'flex-end',
-  },
-  legendRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-  },
-  pressable: { flex: 1 },
-  sourceToggle: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    left: 16,
-    position: 'absolute',
     zIndex: 10,
-  },
-  sourceToggleLabel: {
-    color: 'rgba(55, 55, 55, 0.78)',
-    fontSize: 12,
-    letterSpacing: 0.15,
-  },
-  swatch: {
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    borderCurve: 'continuous',
-    borderRadius: 2,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  swatchRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
   },
 });

@@ -2,11 +2,12 @@ import {
   PixelRatio,
   Pressable,
   StyleSheet,
+  TextInput,
   View,
   useWindowDimensions,
 } from 'react-native';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import QRCode from 'qrcode';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
@@ -66,29 +67,35 @@ const PALETTE = {
 
 const CONTAINER_BG = COLORS.background;
 
-function generateQRMatrix(): boolean[][] {
-  const qrCodeData = QRCode.create('https://enzo.fyi', {
-    errorCorrectionLevel: 'M',
-  });
-  const { modules } = qrCodeData;
-  const { size } = modules;
+const DEFAULT_QR_CONTENT = 'https://enzo.fyi';
 
-  const matrix: boolean[][] = [];
-  for (let y = 0; y < size; y++) {
-    const row: boolean[] = [];
-    for (let x = 0; x < size; x++) {
-      row.push(modules.get(x, y) === 1);
+function generateQRMatrix(content: string): boolean[][] {
+  try {
+    const qrCodeData = QRCode.create(content || DEFAULT_QR_CONTENT, {
+      errorCorrectionLevel: 'M',
+    });
+    const { modules } = qrCodeData;
+    const { size } = modules;
+
+    const matrix: boolean[][] = [];
+    for (let y = 0; y < size; y++) {
+      const row: boolean[] = [];
+      for (let x = 0; x < size; x++) {
+        row.push(modules.get(x, y) === 1);
+      }
+      matrix.push(row);
     }
-    matrix.push(row);
-  }
 
-  return matrix;
+    return matrix;
+  } catch {
+    // Return default QR if content is invalid
+    return generateQRMatrix(DEFAULT_QR_CONTENT);
+  }
 }
 
-const QR_MATRIX = generateQRMatrix();
-const GRID_SIZE = QR_MATRIX.length;
-const GRID_COLS = GRID_SIZE;
-const GRID_ROWS = GRID_SIZE;
+// Maximum grid size we support (QR version ~6)
+const MAX_GRID_SIZE = 41;
+const MAX_BLOCKS = MAX_GRID_SIZE * MAX_GRID_SIZE;
 
 /** Standard QR finder patterns — three 7×7 blocks on the edges (no bottom-right finder). */
 const FINDER_PATTERN_SIZE = 7;
@@ -104,8 +111,9 @@ type FinderKind = 'tl' | 'tr' | 'bl';
 function finderPlacement(
   col: number,
   row: number,
+  gridSize: number,
 ): { kind: FinderKind; lx: number; ly: number } | null {
-  const n = GRID_SIZE;
+  const n = gridSize;
   const f = FINDER_PATTERN_SIZE;
   if (n < f) {
     return null;
@@ -128,8 +136,12 @@ function isFinderOuterRing(lx: number, ly: number): boolean {
   return lx === 0 || lx === f - 1 || ly === 0 || ly === f - 1;
 }
 
-function finderModuleHeight(col: number, row: number): number | null {
-  const p = finderPlacement(col, row);
+function finderModuleHeight(
+  col: number,
+  row: number,
+  gridSize: number,
+): number | null {
+  const p = finderPlacement(col, row, gridSize);
   if (p === null) {
     return null;
   }
@@ -166,9 +178,14 @@ function skylinePeakCorner(): { px: number; py: number } {
 }
 
 /**
- * Smooth, deterministic “districts” — mid/low variation without random heights.
+ * Smooth, deterministic "districts" — mid/low variation without random heights.
  */
-function skylineFabricHeight(col: number, row: number, g: number): number {
+function skylineFabricHeight(
+  col: number,
+  row: number,
+  gridSize: number,
+): number {
+  const g = Math.max(1, gridSize - 1);
   const nx = col / g;
   const nz = row / g;
   const w1 = Math.sin(nx * 3.4 * Math.PI + nz * 2.1 * Math.PI);
@@ -186,8 +203,8 @@ function skylineFabricHeight(col: number, row: number, g: number): number {
  * Landmark (Gaussian-ish bump) at one corner + city fabric elsewhere.
  * Only the chosen corner reaches ~1.0; the rest stays in a low band with gentle hills.
  */
-function skylineHeight(col: number, row: number): number {
-  const g = Math.max(1, GRID_SIZE - 1);
+function skylineHeight(col: number, row: number, gridSize: number): number {
+  const g = Math.max(1, gridSize - 1);
   const ax = col / g;
   const ay = row / g;
   const { px, py } = skylinePeakCorner();
@@ -196,7 +213,7 @@ function skylineHeight(col: number, row: number): number {
   const landmarkWeight = Math.exp(
     -Math.pow(dNorm / SKYLINE_LANDMARK_SIGMA, SKYLINE_LANDMARK_POWER),
   );
-  const fabric = skylineFabricHeight(col, row, g);
+  const fabric = skylineFabricHeight(col, row, gridSize);
   const h = landmarkWeight * 1.0 + (1.0 - landmarkWeight) * fabric;
   return Math.min(1, h);
 }
@@ -214,18 +231,21 @@ function packRGB(c: RGB): number {
   );
 }
 
-function generateBlockData(): {
+function generateBlockData(qrMatrix: boolean[][]): {
   positions: number[];
   heights: number[];
   colors: number[];
+  gridSize: number;
+  numBlocks: number;
 } {
+  const gridSize = qrMatrix.length;
   const positions: number[] = [];
   const heights: number[] = [];
   const colors: number[] = [];
 
-  for (let row = 0; row < GRID_ROWS; row++) {
-    for (let col = 0; col < GRID_COLS; col++) {
-      const isModule = QR_MATRIX[row][col];
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const isModule = qrMatrix[row][col];
 
       positions.push(col, 0, row, 0);
 
@@ -235,8 +255,8 @@ function generateBlockData(): {
       if (isModule) {
         const district = Math.floor(col / 6) + Math.floor(row / 6);
         color = district % 2 === 0 ? BUILDING_BASE : PALETTE.buildingAlt;
-        const fh = finderModuleHeight(col, row);
-        height = fh !== null ? fh : skylineHeight(col, row);
+        const fh = finderModuleHeight(col, row, gridSize);
+        height = fh !== null ? fh : skylineHeight(col, row, gridSize);
       } else {
         color = GROUND_COLOR;
         /** Normalized — vertex shader applies a small extrude scale for lots */
@@ -248,11 +268,46 @@ function generateBlockData(): {
     }
   }
 
-  return { positions, heights, colors };
+  return {
+    positions,
+    heights,
+    colors,
+    gridSize,
+    numBlocks: gridSize * gridSize,
+  };
 }
 
-const BLOCK_DATA = generateBlockData();
-const NUM_BLOCKS = GRID_COLS * GRID_ROWS;
+// Generate streetlight positions only on empty cells (streets)
+const STREETLIGHT_SPACING = 4; // Every 4 cells
+const MAX_STREETLIGHTS = 150;
+
+function generateStreetlightPositions(qrMatrix: boolean[][]): {
+  positions: Float32Array;
+  count: number;
+} {
+  const gridSize = qrMatrix.length;
+  const positions: number[] = [];
+
+  for (let row = 0; row < gridSize; row += STREETLIGHT_SPACING) {
+    for (let col = 0; col < gridSize; col += STREETLIGHT_SPACING) {
+      // Only place light if this cell is empty (not a building)
+      if (!qrMatrix[row][col]) {
+        positions.push(col, row);
+      }
+    }
+  }
+
+  // Pad to MAX_STREETLIGHTS
+  const result = new Float32Array(MAX_STREETLIGHTS * 2);
+  for (let i = 0; i < Math.min(positions.length, MAX_STREETLIGHTS * 2); i++) {
+    result[i] = positions[i];
+  }
+
+  return {
+    positions: result,
+    count: Math.min(positions.length / 2, MAX_STREETLIGHTS),
+  };
+}
 
 const ISO_ANGLE_Y = 0.78;
 const ISO_ANGLE_X = -0.55;
@@ -265,6 +320,10 @@ struct Uniforms {
   time: f32,
   blockCount: f32,
   progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
 }
 
 struct VertexOutput {
@@ -388,8 +447,8 @@ fn main(
   var worldPos = blockPos * blockSize + localPos * blockSize;
   worldPos.y += hh * blockSize;
 
-  worldPos.x -= f32(${GRID_COLS}) * blockSize * 0.5;
-  worldPos.z -= f32(${GRID_ROWS}) * blockSize * 0.5;
+  worldPos.x -= uniforms.gridSize * blockSize * 0.5;
+  worldPos.z -= uniforms.gridSize * blockSize * 0.5;
 
   let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
   let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
@@ -440,6 +499,10 @@ struct Uniforms {
   time: f32,
   blockCount: f32,
   progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -573,6 +636,10 @@ struct Uniforms {
   time: f32,
   blockCount: f32,
   progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
 }
 
 struct SkyOut {
@@ -603,6 +670,10 @@ struct Uniforms {
   time: f32,
   blockCount: f32,
   progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
 }
 
 struct SkyIn {
@@ -622,6 +693,175 @@ fn main(input: SkyIn) -> @location(0) vec4f {
 }
 `;
 
+// Streetlights shader - actual lamp posts with poles and glowing heads
+// Each streetlight = 18 vertices (pole: 6, lamp head: 6, glow quad: 6)
+const VERTS_PER_STREETLIGHT = 18;
+
+const streetlightVertexShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+struct LightOut {
+  @builtin(position) position: vec4f,
+  @location(0) partType: f32,  // 0=pole, 1=lamp, 2=glow
+  @location(1) localUv: vec2f,
+  @location(2) intensity: f32,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+@group(0) @binding(1) var<storage, read> lightPositions: array<vec2f>;
+
+fn hash(p: f32) -> f32 {
+  return fract(sin(p * 127.1) * 43758.5453);
+}
+
+@vertex
+fn main(
+  @builtin(vertex_index) vertexIndex: u32,
+  @builtin(instance_index) instanceIndex: u32,
+) -> LightOut {
+  var output: LightOut;
+  let progress = uniforms.progress;
+  let time = uniforms.time;
+  let gridSize = uniforms.gridSize;
+
+  // Determine which part of the streetlight (pole, lamp head, or glow)
+  let partIndex = vertexIndex / 6u;  // 0=pole, 1=lamp, 2=glow
+  let localVertex = vertexIndex % 6u;
+
+  // Quad vertices
+  let quadVerts = array<vec2f, 6>(
+    vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0),
+    vec2f(0.0, 1.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0)
+  );
+  let qv = quadVerts[localVertex];
+
+  // Read position from buffer (col, row)
+  let cellPos = lightPositions[instanceIndex];
+  let cellX = cellPos.x;
+  let cellZ = cellPos.y;
+
+  let blockSize = 0.0245;
+  let halfGrid = gridSize * blockSize * 0.5;
+
+  // Position at grid cell, offset to corner for lamp post look
+  let seed = f32(instanceIndex);
+  let cornerOffset = hash(seed * 1.7) * 0.3 - 0.15;
+  let baseX = cellX * blockSize - halfGrid + blockSize * (0.3 + cornerOffset);
+  let baseZ = cellZ * blockSize - halfGrid + blockSize * 0.3;
+
+  // Lamp post dimensions
+  let poleWidth = 0.001;
+  let poleHeight = 0.035 + hash(seed * 2.1) * 0.01;
+  let lampSize = 0.004;
+  let glowSize = 0.025;
+
+  var localPos: vec3f;
+  var partType: f32 = 0.0;
+
+  if (partIndex == 0u) {
+    // Pole - thin vertical rectangle
+    partType = 0.0;
+    let x = (qv.x - 0.5) * poleWidth;
+    let y = qv.y * poleHeight;
+    localPos = vec3f(baseX + x, y, baseZ);
+  } else if (partIndex == 1u) {
+    // Lamp head - small box at top of pole
+    partType = 1.0;
+    let x = (qv.x - 0.5) * lampSize;
+    let y = poleHeight + qv.y * lampSize * 0.6;
+    localPos = vec3f(baseX + x, y, baseZ);
+  } else {
+    // Glow - billboard quad centered on lamp
+    partType = 2.0;
+    localPos = vec3f(baseX, poleHeight + lampSize * 0.3, baseZ);
+  }
+
+  // Isometric transform
+  let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
+  let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
+
+  let cy = cos(isoAngleY);
+  let sy = sin(isoAngleY);
+  let cx = cos(isoAngleX);
+  let sx = sin(isoAngleX);
+
+  let ry_x = localPos.x * cy - localPos.z * sy;
+  let ry_z = localPos.x * sy + localPos.z * cy;
+  let rx_y = localPos.y * cx - ry_z * sx;
+  let rx_z = localPos.y * sx + ry_z * cx;
+
+  let scale = mix(1.0, 1.35, progress);
+
+  var screenX = ry_x * scale / uniforms.aspectRatio;
+  var screenY = rx_y * scale;
+
+  // For glow, expand as billboard
+  if (partIndex == 2u) {
+    let glowOffset = (qv - 0.5) * 2.0 * glowSize;
+    screenX += glowOffset.x;
+    screenY += glowOffset.y;
+  }
+
+  output.position = vec4f(screenX, screenY, rx_z * 0.01 + 0.5, 1.0);
+  output.partType = partType;
+  output.localUv = qv * 2.0 - 1.0;
+
+  // Flickering
+  let flicker = 0.9 + 0.1 * sin(time * (3.0 + hash(seed * 2.3) * 2.0) + seed * 10.0);
+  output.intensity = flicker * (1.0 - progress * 0.9);
+
+  return output;
+}
+`;
+
+const streetlightFragmentShader = /* wgsl */ `
+struct LightIn {
+  @location(0) partType: f32,
+  @location(1) localUv: vec2f,
+  @location(2) intensity: f32,
+}
+
+@fragment
+fn main(input: LightIn) -> @location(0) vec4f {
+  let uv = input.localUv;
+
+  if (input.partType < 0.5) {
+    // Pole - dark metal color
+    let poleColor = vec3f(0.15, 0.15, 0.17);
+    return vec4f(poleColor, 1.0);
+  } else if (input.partType < 1.5) {
+    // Lamp head - glowing warm color
+    let lampColor = vec3f(1.0, 0.85, 0.5) * input.intensity;
+    return vec4f(lampColor, 1.0);
+  } else {
+    // Glow effect
+    let dist = length(uv);
+    let glow = exp(-dist * 2.5) * input.intensity;
+    let bloom = smoothstep(1.0, 0.0, dist) * 0.3 * input.intensity;
+    let brightness = glow + bloom;
+
+    let warmColor = vec3f(1.0, 0.8, 0.4);
+    let finalColor = warmColor * brightness;
+    let alpha = brightness * 0.6;
+
+    if (alpha < 0.01) {
+      discard;
+    }
+
+    return vec4f(finalColor * alpha, alpha);
+  }
+}
+`;
+
 const LERP_SPEED = 4.0;
 
 function easeInOutCubic(t: number): number {
@@ -630,6 +870,7 @@ function easeInOutCubic(t: number): number {
 
 export const IsometricQRCode = () => {
   const { width, height } = useWindowDimensions();
+  const [qrContent, setQrContent] = useState(DEFAULT_QR_CONTENT);
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -638,9 +879,69 @@ export const IsometricQRCode = () => {
   const rawProgressRef = useRef(0);
   const lastFrameTimeRef = useRef(Date.now());
 
+  // Refs for GPU resources that need updating when QR content changes
+  const deviceRef = useRef<GPUDevice | null>(null);
+  const colorBufferRef = useRef<GPUBuffer | null>(null);
+  const posBufferRef = useRef<GPUBuffer | null>(null);
+  const heightBufferRef = useRef<GPUBuffer | null>(null);
+  const streetlightBufferRef = useRef<GPUBuffer | null>(null);
+  const blockDataRef = useRef<{
+    numBlocks: number;
+    gridSize: number;
+    streetlightCount: number;
+  }>({ numBlocks: 0, gridSize: 0, streetlightCount: 0 });
+  const qrContentRef = useRef(qrContent);
+  qrContentRef.current = qrContent;
+
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
   }, []);
+
+  // Update GPU buffers when QR content changes
+  useEffect(() => {
+    const device = deviceRef.current;
+    const colorBuffer = colorBufferRef.current;
+    const posBuffer = posBufferRef.current;
+    const heightBuffer = heightBufferRef.current;
+    const streetlightBuffer = streetlightBufferRef.current;
+
+    if (
+      !device ||
+      !colorBuffer ||
+      !posBuffer ||
+      !heightBuffer ||
+      !streetlightBuffer
+    )
+      return;
+
+    const qrMatrix = generateQRMatrix(qrContent);
+    const { positions, heights, colors, gridSize, numBlocks } =
+      generateBlockData(qrMatrix);
+    const streetlightData = generateStreetlightPositions(qrMatrix);
+
+    // Update refs for render loop
+    blockDataRef.current = {
+      numBlocks,
+      gridSize,
+      streetlightCount: streetlightData.count,
+    };
+
+    // Write new data to GPU buffers (pad to MAX_BLOCKS size)
+    const paddedColors = new Uint32Array(MAX_BLOCKS);
+    paddedColors.set(colors);
+    device.queue.writeBuffer(colorBuffer, 0, paddedColors);
+
+    const paddedPositions = new Float32Array(MAX_BLOCKS * 4);
+    paddedPositions.set(positions);
+    device.queue.writeBuffer(posBuffer, 0, paddedPositions);
+
+    const paddedHeights = new Float32Array(MAX_BLOCKS);
+    paddedHeights.set(heights);
+    device.queue.writeBuffer(heightBuffer, 0, paddedHeights);
+
+    // Update streetlight positions
+    device.queue.writeBuffer(streetlightBuffer, 0, streetlightData.positions);
+  }, [qrContent]);
 
   const initWebGPU = useCallback(async () => {
     if (!canvasRef.current) return;
@@ -652,6 +953,7 @@ export const IsometricQRCode = () => {
     if (!adapter) return;
 
     const device = await adapter.requestDevice();
+    deviceRef.current = device;
     const format = navigator.gpu.getPreferredCanvasFormat();
 
     const canvas = context.canvas as HTMLCanvasElement;
@@ -660,30 +962,57 @@ export const IsometricQRCode = () => {
 
     context.configure({ device, format, alphaMode: 'premultiplied' });
 
-    const { positions, heights, colors } = BLOCK_DATA;
+    // Generate initial QR data
+    const qrMatrix = generateQRMatrix(qrContentRef.current);
+    const { positions, heights, colors, gridSize, numBlocks } =
+      generateBlockData(qrMatrix);
+    const streetlightData = generateStreetlightPositions(qrMatrix);
+    blockDataRef.current = {
+      numBlocks,
+      gridSize,
+      streetlightCount: streetlightData.count,
+    };
 
     const uniformBuffer = device.createBuffer({
-      size: 16,
+      size: 32, // 8 floats: aspectRatio, time, blockCount, progress, gridSize, pad1, pad2, pad3
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    // Pre-allocate buffers for maximum QR size
     const colorBuffer = device.createBuffer({
-      size: NUM_BLOCKS * 4,
+      size: MAX_BLOCKS * 4,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(colorBuffer, 0, new Uint32Array(colors));
+    colorBufferRef.current = colorBuffer;
+    const paddedColors = new Uint32Array(MAX_BLOCKS);
+    paddedColors.set(colors);
+    device.queue.writeBuffer(colorBuffer, 0, paddedColors);
 
     const posBuffer = device.createBuffer({
-      size: NUM_BLOCKS * 16,
+      size: MAX_BLOCKS * 16,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(posBuffer, 0, new Float32Array(positions));
+    posBufferRef.current = posBuffer;
+    const paddedPositions = new Float32Array(MAX_BLOCKS * 4);
+    paddedPositions.set(positions);
+    device.queue.writeBuffer(posBuffer, 0, paddedPositions);
 
     const heightBuffer = device.createBuffer({
-      size: NUM_BLOCKS * 4,
+      size: MAX_BLOCKS * 4,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(heightBuffer, 0, new Float32Array(heights));
+    heightBufferRef.current = heightBuffer;
+    const paddedHeights = new Float32Array(MAX_BLOCKS);
+    paddedHeights.set(heights);
+    device.queue.writeBuffer(heightBuffer, 0, paddedHeights);
+
+    // Streetlight position buffer
+    const streetlightBuffer = device.createBuffer({
+      size: MAX_STREETLIGHTS * 2 * 4, // vec2f per light
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    streetlightBufferRef.current = streetlightBuffer;
+    device.queue.writeBuffer(streetlightBuffer, 0, streetlightData.positions);
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
@@ -733,6 +1062,30 @@ export const IsometricQRCode = () => {
     const skyBindGroup = device.createBindGroup({
       layout: skyBindGroupLayout,
       entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+    });
+
+    // Streetlight bind group layout (uniforms + positions)
+    const streetlightBindGroupLayout = device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+      ],
+    });
+
+    const streetlightBindGroup = device.createBindGroup({
+      layout: streetlightBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: streetlightBuffer } },
+      ],
     });
 
     const skyPipeline = device.createRenderPipeline({
@@ -809,13 +1162,52 @@ export const IsometricQRCode = () => {
       },
     });
 
+    // Streetlight pipeline - glowing lights on the ground
+    const streetlightPipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [streetlightBindGroupLayout],
+      }),
+      vertex: {
+        module: device.createShaderModule({ code: streetlightVertexShader }),
+        entryPoint: 'main',
+      },
+      fragment: {
+        module: device.createShaderModule({ code: streetlightFragmentShader }),
+        entryPoint: 'main',
+        targets: [
+          {
+            format,
+            blend: {
+              color: {
+                srcFactor: 'src-alpha',
+                dstFactor: 'one', // Additive blending for glow
+                operation: 'add',
+              },
+              alpha: {
+                srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add',
+              },
+            },
+          },
+        ],
+      },
+      primitive: { topology: 'triangle-list', cullMode: 'none' },
+      depthStencil: {
+        depthWriteEnabled: false,
+        depthCompare: 'always', // Always draw on top with blending
+        format: 'depth24plus',
+      },
+    });
+
     const depthTexture = device.createTexture({
       size: [canvas.width, canvas.height],
       format: 'depth24plus',
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    const aspectRatio = width / height;
+    // Use actual canvas dimensions for aspect ratio, not window dimensions
+    const aspectRatio = canvas.width / canvas.height;
 
     const render = () => {
       const now = Date.now();
@@ -831,12 +1223,17 @@ export const IsometricQRCode = () => {
       progressRef.current = easeInOutCubic(rawProgressRef.current);
 
       const time = (now - startTimeRef.current) / 1000;
+      const { numBlocks, gridSize, streetlightCount } = blockDataRef.current;
 
       const uniformData = new Float32Array([
         aspectRatio,
         time,
-        NUM_BLOCKS,
+        numBlocks,
         progressRef.current,
+        gridSize,
+        0, // padding
+        0, // padding
+        0, // padding
       ]);
       device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
@@ -866,7 +1263,12 @@ export const IsometricQRCode = () => {
 
       renderPass.setPipeline(pipeline);
       renderPass.setBindGroup(0, bindGroup);
-      renderPass.draw(36, NUM_BLOCKS);
+      renderPass.draw(36, numBlocks);
+
+      // Streetlights - lamp posts with poles and glowing heads
+      renderPass.setPipeline(streetlightPipeline);
+      renderPass.setBindGroup(0, streetlightBindGroup);
+      renderPass.draw(VERTS_PER_STREETLIGHT, streetlightCount);
 
       renderPass.end();
 
@@ -877,7 +1279,7 @@ export const IsometricQRCode = () => {
     };
 
     render();
-  }, [height, width]);
+  }, []);
 
   useEffect(() => {
     const id = setTimeout(initWebGPU, 100);
@@ -889,6 +1291,17 @@ export const IsometricQRCode = () => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          value={qrContent}
+          onChangeText={setQrContent}
+          placeholder="Enter QR content..."
+          placeholderTextColor="#999"
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+      </View>
       <Pressable
         accessibilityLabel="City view. Double tap for top-down QR code."
         onPress={handlePress}
@@ -902,5 +1315,21 @@ export const IsometricQRCode = () => {
 const styles = StyleSheet.create({
   canvas: { backgroundColor: 'transparent', flex: 1 },
   container: { backgroundColor: CONTAINER_BG, flex: 1 },
+  input: {
+    backgroundColor: '#fff',
+    borderColor: '#ddd',
+    borderCurve: 'continuous',
+    borderRadius: 8,
+    borderWidth: 1,
+    color: '#1a1a1a',
+    fontSize: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  inputContainer: {
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingTop: 60,
+  },
   pressable: { flex: 1 },
 });
