@@ -331,7 +331,7 @@ function packQRMatrix(qrMatrix: boolean[][]): Uint32Array {
 }
 
 // Generate pedestrian spawn positions on empty cells
-const MAX_PEDESTRIANS = 12;
+const MAX_PEDESTRIANS = 10;
 
 function generatePedestrianPositions(qrMatrix: boolean[][]): {
   positions: Float32Array;
@@ -340,11 +340,28 @@ function generatePedestrianPositions(qrMatrix: boolean[][]): {
   const gridSize = qrMatrix.length;
   const positions: number[] = [];
 
-  // Find all empty cells
+  // Helper to check if cell is empty (not a wall)
+  const isEmpty = (c: number, r: number): boolean => {
+    if (c < 0 || c >= gridSize || r < 0 || r >= gridSize) return false;
+    return !qrMatrix[r][c];
+  };
+
+  // Count adjacent empty cells (4 directions)
+  const countAdjacentEmpty = (col: number, row: number): number => {
+    let count = 0;
+    if (isEmpty(col + 1, row)) count++;
+    if (isEmpty(col - 1, row)) count++;
+    if (isEmpty(col, row + 1)) count++;
+    if (isEmpty(col, row - 1)) count++;
+    return count;
+  };
+
+  // Find all empty cells with at least 2 adjacent empty neighbors
+  // This avoids isolated single-cell spaces where pedestrians get stuck
   const emptyCells: [number, number][] = [];
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      if (!qrMatrix[row][col]) {
+  for (let row = 1; row < gridSize - 1; row++) {
+    for (let col = 1; col < gridSize - 1; col++) {
+      if (isEmpty(col, row) && countAdjacentEmpty(col, row) >= 2) {
         emptyCells.push([col, row]);
       }
     }
@@ -353,7 +370,7 @@ function generatePedestrianPositions(qrMatrix: boolean[][]): {
   // Randomly select cells for pedestrians
   const numPedestrians = Math.min(
     MAX_PEDESTRIANS,
-    Math.floor(emptyCells.length / 3),
+    Math.floor(emptyCells.length / 4),
   );
   const shuffled = emptyCells.sort(() => Math.random() - 0.5);
 
@@ -985,10 +1002,10 @@ fn main(input: LightIn) -> @location(0) vec4f {
 }
 `;
 
-// 3D human-shaped pedestrians rendered as boxes like buildings
-// Each body part has 3 visible faces (top, front, side) = 18 verts per part
-// 4 parts (head, torso, left leg, right leg) = 72 vertices total
-const VERTS_PER_PEDESTRIAN = 72;
+// Minecraft Steve - exact proportions from wiki: Head 8x8x8, Torso 8x12x4, Limbs 4x12x4
+// Total height = 32 pixels (8 head + 12 torso + 12 legs)
+// 6 body parts × 3 visible faces × 6 vertices = 108 vertices per character
+const VERTS_PER_PEDESTRIAN = 108;
 
 const pedestrianVertexShader = /* wgsl */ `
 struct Uniforms {
@@ -1005,7 +1022,7 @@ struct Uniforms {
 struct PedOut {
   @builtin(position) position: vec4f,
   @location(0) color: vec3f,
-  @location(1) shade: f32,
+  @location(1) faceType: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -1016,16 +1033,11 @@ fn hash(p: f32) -> f32 {
   return fract(sin(p * 127.1) * 43758.5453);
 }
 
-// Check if a cell is a building (returns true if wall)
 fn isWall(col: i32, row: i32) -> bool {
-  let matrixGridSize = i32(qrMatrix[0]);
-  if (col < 0 || col >= matrixGridSize || row < 0 || row >= matrixGridSize) {
-    return true; // Out of bounds = wall
-  }
-  let cellIndex = row * matrixGridSize + col;
-  let u32Index = cellIndex / 32 + 1; // +1 because index 0 is gridSize
-  let bitIndex = u32(cellIndex % 32);
-  return (qrMatrix[u32Index] & (1u << bitIndex)) != 0u;
+  let sz = i32(qrMatrix[0]);
+  if (col < 0 || col >= sz || row < 0 || row >= sz) { return true; }
+  let idx = row * sz + col;
+  return (qrMatrix[idx / 32 + 1] & (1u << u32(idx % 32))) != 0u;
 }
 
 @vertex
@@ -1034,14 +1046,14 @@ fn main(
   @builtin(instance_index) instanceIndex: u32,
 ) -> PedOut {
   var output: PedOut;
-  let progress = uniforms.progress;
   let time = uniforms.time;
   let gridSize = uniforms.gridSize;
+  let progress = uniforms.progress;
 
   // 18 vertices per body part (3 faces × 6 verts)
-  let partIndex = vertexIndex / 18u;  // 0=head, 1=torso, 2=left leg, 3=right leg
+  let partIndex = vertexIndex / 18u;
   let partVertex = vertexIndex % 18u;
-  let faceIndex = partVertex / 6u;    // 0=top, 1=front, 2=right side
+  let faceIndex = partVertex / 6u;
   let faceVertex = partVertex % 6u;
 
   let quadVerts = array<vec2f, 6>(
@@ -1055,121 +1067,199 @@ fn main(
   let blockSize = 0.0245;
   let halfGrid = gridSize * blockSize * 0.5;
 
-  // Walking animation
-  let moveSpeed = 0.3 + hash(seed * 2.1) * 0.2;
-  let phase = hash(seed * 3.7) * 6.28;
-  let t = time * moveSpeed + phase;
-  let walkCycle = t * 10.0;
+  // Movement timing - one box per second
+  let t = time + hash(seed * 3.7) * 100.0;
 
-  // Starting position at cell center
-  let startX = (cellPos.x) * blockSize - halfGrid + blockSize * 0.5;
-  let startZ = (cellPos.y) * blockSize - halfGrid + blockSize * 0.5;
+  // Simulate path: walk until wall, then turn
+  var col = i32(cellPos.x);
+  var row = i32(cellPos.y);
+  var dx = select(-1, 1, hash(seed * 4.1) > 0.5);
+  var dz = 0;
+  if (hash(seed * 4.5) > 0.5) { dz = dx; dx = 0; }
 
-  // Walk only horizontally OR vertically (not diagonal)
-  let walkAxis = hash(seed * 4.1);
-  let moveRange = blockSize * 2.5;
-  let walkOffset = sin(t) * moveRange;
+  let stepTime = 1.0;
+  let steps = i32(t / stepTime);
+  let frac = fract(t / stepTime);
 
-  var baseX = startX;
-  var baseZ = startZ;
+  for (var s = 0; s < min(steps, 200); s++) {
+    let nc = col + dx;
+    let nr = row + dz;
+    if (!isWall(nc, nr)) {
+      col = nc; row = nr;
+    } else {
+      let h = hash(f32(s) * 13.7 + seed * 7.3);
+      var found = false;
+      let dirs = array<vec2i, 4>(
+        vec2i(1, 0), vec2i(-1, 0), vec2i(0, 1), vec2i(0, -1)
+      );
+      let startDir = i32(h * 4.0) % 4;
+      for (var d = 0; d < 4; d++) {
+        let dirIdx = (startDir + d) % 4;
+        let tryDir = dirs[dirIdx];
+        if (!isWall(col + tryDir.x, row + tryDir.y)) {
+          dx = tryDir.x;
+          dz = tryDir.y;
+          found = true;
+          break;
+        }
+      }
+      if (!found) { dx = 0; dz = 0; }
+    }
 
-  if (walkAxis < 0.5) {
-    // Walk horizontally only (along X axis)
-    baseX = startX + walkOffset;
-  } else {
-    // Walk vertically only (along Z axis)
-    baseZ = startZ + walkOffset;
+    let changeDir = hash(f32(s) * 31.3 + seed * 17.1);
+    if (changeDir > 0.92) {
+      let h2 = hash(f32(s) * 23.7 + seed * 11.3);
+      let dirs2 = array<vec2i, 4>(
+        vec2i(1, 0), vec2i(-1, 0), vec2i(0, 1), vec2i(0, -1)
+      );
+      let tryDir = dirs2[i32(h2 * 4.0) % 4];
+      if (!isWall(col + tryDir.x, row + tryDir.y)) {
+        dx = tryDir.x;
+        dz = tryDir.y;
+      }
+    }
   }
 
-  // Keep within grid bounds
-  let gridLimit = halfGrid - blockSize;
-  baseX = clamp(baseX, -gridLimit, gridLimit);
-  baseZ = clamp(baseZ, -gridLimit, gridLimit);
-  let groundY = 0.004;
+  // Smooth interpolation to next cell
+  var nc = col + dx;
+  var nr = row + dz;
+  var smoothCol = f32(col);
+  var smoothRow = f32(row);
+  if (!isWall(nc, nr)) {
+    smoothCol = mix(f32(col), f32(nc), frac);
+    smoothRow = mix(f32(row), f32(nr), frac);
+  }
 
-  // Body proportions (3D boxes) - much larger for visibility
-  let headW = 0.018; let headH = 0.020; let headD = 0.016;
-  let torsoW = 0.022; let torsoH = 0.035; let torsoD = 0.014;
-  let legW = 0.009; let legH = 0.030; let legD = 0.009;
-  let legGap = 0.006;
+  let baseX = smoothCol * blockSize - halfGrid;
+  let baseZ = smoothRow * blockSize - halfGrid;
+  let groundY = 0.006;
 
-  // Leg swing animation - more visible movement
-  let legSwing = sin(walkCycle) * 0.012;
-  let bodyBob = abs(sin(walkCycle)) * 0.004;
+  // ============================================
+  // MINECRAFT STEVE EXACT PROPORTIONS
+  // Total: 32px tall (8 head + 12 torso + 12 legs)
+  // Made BIGGER - unit increased significantly
+  // ============================================
+  let unit = 0.0038; // Larger scale for visibility
+
+  // Head: 8×8×8 (perfect cube - the iconic Minecraft look)
+  let headW = 8.0 * unit;
+  let headH = 8.0 * unit;
+  let headD = 8.0 * unit;
+
+  // Torso: 8 wide × 12 tall × 4 deep
+  let torsoW = 8.0 * unit;
+  let torsoH = 12.0 * unit;
+  let torsoD = 4.0 * unit;
+
+  // Arms: 4 wide × 12 tall × 4 deep
+  let armW = 4.0 * unit;
+  let armH = 12.0 * unit;
+  let armD = 4.0 * unit;
+
+  // Legs: 4 wide × 12 tall × 4 deep
+  let legW = 4.0 * unit;
+  let legH = 12.0 * unit;
+  let legD = 4.0 * unit;
+
+  // Walking animation
+  let walkSpeed = 5.0;
+  let walkPhase = frac * 6.28318 * walkSpeed;
+  let legSwingAngle = sin(walkPhase) * 0.4;
+  let armSwingAngle = sin(walkPhase) * 0.35;
+  let bodyBob = abs(sin(walkPhase)) * 0.002;
+
+  // Calculate swing offsets
+  let legSwingZ = sin(legSwingAngle) * legH * 0.4;
+  let armSwingZ = sin(armSwingAngle) * armH * 0.35;
 
   // Part dimensions and positions
   var partW = 0.0; var partH = 0.0; var partD = 0.0;
   var partX = 0.0; var partY = 0.0; var partZ = 0.0;
-  var isHead = false;
+  var partType = 0u; // 0=head, 1=torso, 2=arm, 3=leg
 
   if (partIndex == 0u) {
-    // Head
+    // HEAD - centered on top
     partW = headW; partH = headH; partD = headD;
     partX = 0.0;
     partY = groundY + legH + torsoH + bodyBob;
     partZ = 0.0;
-    isHead = true;
+    partType = 0u;
   } else if (partIndex == 1u) {
-    // Torso
+    // TORSO - centered
     partW = torsoW; partH = torsoH; partD = torsoD;
     partX = 0.0;
     partY = groundY + legH + bodyBob;
     partZ = 0.0;
+    partType = 1u;
   } else if (partIndex == 2u) {
-    // Left leg
+    // LEFT ARM - attached at shoulder height
+    partW = armW; partH = armH; partD = armD;
+    partX = -(torsoW * 0.5 + armW * 0.5);
+    partY = groundY + legH + bodyBob;
+    partZ = -armSwingZ;
+    partType = 2u;
+  } else if (partIndex == 3u) {
+    // RIGHT ARM - attached at shoulder height
+    partW = armW; partH = armH; partD = armD;
+    partX = (torsoW * 0.5 + armW * 0.5);
+    partY = groundY + legH + bodyBob;
+    partZ = armSwingZ;
+    partType = 2u;
+  } else if (partIndex == 4u) {
+    // LEFT LEG
     partW = legW; partH = legH; partD = legD;
-    partX = -legGap;
+    partX = -legW * 0.5;
     partY = groundY;
-    partZ = legSwing;
+    partZ = legSwingZ;
+    partType = 3u;
   } else {
-    // Right leg
+    // RIGHT LEG
     partW = legW; partH = legH; partD = legD;
-    partX = legGap;
+    partX = legW * 0.5;
     partY = groundY;
-    partZ = -legSwing;
+    partZ = -legSwingZ;
+    partType = 3u;
   }
 
-  // Build 3D box vertices for this face
+  // Build 3D box - 3 visible faces for isometric view
   var localPos = vec3f(0.0);
-  var shade = 1.0;
-
+  var faceType = 0.0; // 0=top, 1=front, 2=side
   let hw = partW * 0.5;
   let hd = partD * 0.5;
 
   if (faceIndex == 0u) {
-    // Top face
+    // TOP face
     localPos = vec3f(
       partX + (qv.x - 0.5) * partW,
       partY + partH,
       partZ + (qv.y - 0.5) * partD
     );
-    shade = 1.0; // Brightest
+    faceType = 0.0;
   } else if (faceIndex == 1u) {
-    // Front face (facing camera in isometric)
+    // FRONT face (facing camera in isometric)
     localPos = vec3f(
       partX + (qv.x - 0.5) * partW,
       partY + qv.y * partH,
       partZ + hd
     );
-    shade = 0.85; // Medium
+    faceType = 1.0;
   } else {
-    // Right side face
+    // RIGHT SIDE face
     localPos = vec3f(
       partX + hw,
       partY + qv.y * partH,
       partZ + (qv.x - 0.5) * partD
     );
-    shade = 0.65; // Darkest (shadow side)
+    faceType = 2.0;
   }
 
   let worldX = baseX + localPos.x;
   let worldY = localPos.y;
   let worldZ = baseZ + localPos.z;
 
-  // Isometric transform
+  // Isometric camera transform
   let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
   let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
-
   let cy = cos(isoAngleY); let sy = sin(isoAngleY);
   let cx = cos(isoAngleX); let sx = sin(isoAngleX);
 
@@ -1178,36 +1268,35 @@ fn main(
   let rx_y = worldY * cx - ry_z * sx;
   let rx_z = worldY * sx + ry_z * cx;
 
-  let scale = mix(1.0, 1.35, progress);
-
+  let viewScale = mix(1.0, 1.35, progress);
   output.position = vec4f(
-    ry_x * scale / uniforms.aspectRatio,
-    rx_y * scale,
+    ry_x * viewScale / uniforms.aspectRatio,
+    rx_y * viewScale,
     rx_z * 0.01 + 0.5,
     1.0
   );
 
-  // Colors
-  let clothingHue = hash(seed * 5.5);
-  var clothingColor = vec3f(0.2, 0.2, 0.3);
-  if (clothingHue < 0.25) {
-    clothingColor = vec3f(0.18, 0.18, 0.22);
-  } else if (clothingHue < 0.5) {
-    clothingColor = vec3f(0.12, 0.18, 0.28);
-  } else if (clothingHue < 0.75) {
-    clothingColor = vec3f(0.28, 0.18, 0.12);
+  // ============================================
+  // MINECRAFT STEVE COLORS (exact from game)
+  // ============================================
+  let skinColor = vec3f(0.761, 0.569, 0.463);    // Steve's tan skin
+  let shirtColor = vec3f(0.0, 0.663, 0.663);     // Cyan/teal shirt
+  let pantsColor = vec3f(0.247, 0.247, 0.663);   // Dark blue jeans
+
+  // Assign base color by body part
+  var baseColor = skinColor;
+  if (partType == 0u) {
+    baseColor = skinColor;  // Head
+  } else if (partType == 1u) {
+    baseColor = shirtColor; // Torso
+  } else if (partType == 2u) {
+    baseColor = skinColor;  // Arms (Steve has bare arms)
   } else {
-    clothingColor = vec3f(0.22, 0.12, 0.18);
+    baseColor = pantsColor; // Legs
   }
 
-  let skinTone = vec3f(0.9, 0.75, 0.6);
-
-  if (isHead) {
-    output.color = skinTone * shade;
-  } else {
-    output.color = clothingColor * shade;
-  }
-  output.shade = 1.0;
+  output.color = baseColor;
+  output.faceType = faceType;
 
   return output;
 }
@@ -1216,12 +1305,24 @@ fn main(
 const pedestrianFragmentShader = /* wgsl */ `
 struct PedIn {
   @location(0) color: vec3f,
-  @location(1) shade: f32,
+  @location(1) faceType: f32,
 }
 
 @fragment
 fn main(input: PedIn) -> @location(0) vec4f {
-  return vec4f(input.color, 1.0);
+  // Minecraft-style face shading (like the game's lighting)
+  // Top = 100%, Front = 80%, Side = 60%
+  var shade = 1.0;
+  if (input.faceType < 0.5) {
+    shade = 1.0;  // Top face - full brightness
+  } else if (input.faceType < 1.5) {
+    shade = 0.85; // Front face - slightly darker
+  } else {
+    shade = 0.65; // Side face - darkest
+  }
+
+  let color = input.color * shade;
+  return vec4f(color, 1.0);
 }
 `;
 
