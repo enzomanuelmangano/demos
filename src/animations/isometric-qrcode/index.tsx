@@ -309,6 +309,49 @@ function generateStreetlightPositions(qrMatrix: boolean[][]): {
   };
 }
 
+// Generate pedestrian spawn positions on empty cells
+const MAX_PEDESTRIANS = 12;
+
+function generatePedestrianPositions(qrMatrix: boolean[][]): {
+  positions: Float32Array;
+  count: number;
+} {
+  const gridSize = qrMatrix.length;
+  const positions: number[] = [];
+
+  // Find all empty cells
+  const emptyCells: [number, number][] = [];
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (!qrMatrix[row][col]) {
+        emptyCells.push([col, row]);
+      }
+    }
+  }
+
+  // Randomly select cells for pedestrians
+  const numPedestrians = Math.min(
+    MAX_PEDESTRIANS,
+    Math.floor(emptyCells.length / 3),
+  );
+  const shuffled = emptyCells.sort(() => Math.random() - 0.5);
+
+  for (let i = 0; i < numPedestrians; i++) {
+    const [col, row] = shuffled[i];
+    positions.push(col, row);
+  }
+
+  const result = new Float32Array(MAX_PEDESTRIANS * 2);
+  for (let i = 0; i < positions.length; i++) {
+    result[i] = positions[i];
+  }
+
+  return {
+    positions: result,
+    count: numPedestrians,
+  };
+}
+
 const ISO_ANGLE_Y = 0.78;
 const ISO_ANGLE_X = -0.55;
 const FLAT_ANGLE_Y = 0.0;
@@ -693,9 +736,11 @@ fn main(input: SkyIn) -> @location(0) vec4f {
 }
 `;
 
-// Streetlights shader - actual lamp posts with poles and glowing heads
-// Each streetlight = 18 vertices (pole: 6, lamp head: 6, glow quad: 6)
-const VERTS_PER_STREETLIGHT = 18;
+// Streetlights shader using realistic glow techniques
+// Based on: https://inspirnathan.com/posts/65-glow-shader-in-shadertoy/
+// and LearnOpenGL light attenuation: https://learnopengl.com/Lighting/Light-casters
+// Each streetlight = 24 vertices (pole: 6, lamp housing: 6, bulb: 6, glow: 6)
+const VERTS_PER_STREETLIGHT = 24;
 
 const streetlightVertexShader = /* wgsl */ `
 struct Uniforms {
@@ -711,9 +756,10 @@ struct Uniforms {
 
 struct LightOut {
   @builtin(position) position: vec4f,
-  @location(0) partType: f32,  // 0=pole, 1=lamp, 2=glow
+  @location(0) partType: f32,
   @location(1) localUv: vec2f,
   @location(2) intensity: f32,
+  @location(3) seed: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -733,18 +779,15 @@ fn main(
   let time = uniforms.time;
   let gridSize = uniforms.gridSize;
 
-  // Determine which part of the streetlight (pole, lamp head, or glow)
-  let partIndex = vertexIndex / 6u;  // 0=pole, 1=lamp, 2=glow
+  let partIndex = vertexIndex / 6u;
   let localVertex = vertexIndex % 6u;
 
-  // Quad vertices
   let quadVerts = array<vec2f, 6>(
     vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0),
     vec2f(0.0, 1.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0)
   );
   let qv = quadVerts[localVertex];
 
-  // Read position from buffer (col, row)
   let cellPos = lightPositions[instanceIndex];
   let cellX = cellPos.x;
   let cellZ = cellPos.y;
@@ -752,37 +795,44 @@ fn main(
   let blockSize = 0.0245;
   let halfGrid = gridSize * blockSize * 0.5;
 
-  // Position at grid cell, offset to corner for lamp post look
   let seed = f32(instanceIndex);
-  let cornerOffset = hash(seed * 1.7) * 0.3 - 0.15;
-  let baseX = cellX * blockSize - halfGrid + blockSize * (0.3 + cornerOffset);
-  let baseZ = cellZ * blockSize - halfGrid + blockSize * 0.3;
+  let cornerOffset = hash(seed * 1.7) * 0.4 - 0.2;
+  let baseX = cellX * blockSize - halfGrid + blockSize * (0.5 + cornerOffset);
+  let baseZ = cellZ * blockSize - halfGrid + blockSize * 0.5;
 
-  // Lamp post dimensions
-  let poleWidth = 0.001;
-  let poleHeight = 0.035 + hash(seed * 2.1) * 0.01;
-  let lampSize = 0.004;
-  let glowSize = 0.025;
+  // Lamp post dimensions - taller and more visible
+  let poleWidth = 0.0012;
+  let poleHeight = 0.045 + hash(seed * 2.1) * 0.015;
+  let housingWidth = 0.006;
+  let housingHeight = 0.003;
+  let bulbSize = 0.003;
+  let glowSize = 0.06; // Larger glow area
 
   var localPos: vec3f;
   var partType: f32 = 0.0;
 
   if (partIndex == 0u) {
-    // Pole - thin vertical rectangle
+    // Pole
     partType = 0.0;
     let x = (qv.x - 0.5) * poleWidth;
     let y = qv.y * poleHeight;
     localPos = vec3f(baseX + x, y, baseZ);
   } else if (partIndex == 1u) {
-    // Lamp head - small box at top of pole
+    // Lamp housing (darker top part)
     partType = 1.0;
-    let x = (qv.x - 0.5) * lampSize;
-    let y = poleHeight + qv.y * lampSize * 0.6;
+    let x = (qv.x - 0.5) * housingWidth;
+    let y = poleHeight + housingHeight * 0.5 + qv.y * housingHeight;
+    localPos = vec3f(baseX + x, y, baseZ);
+  } else if (partIndex == 2u) {
+    // Light bulb (bright emissive)
+    partType = 2.0;
+    let x = (qv.x - 0.5) * bulbSize;
+    let y = poleHeight + qv.y * housingHeight * 0.5;
     localPos = vec3f(baseX + x, y, baseZ);
   } else {
-    // Glow - billboard quad centered on lamp
-    partType = 2.0;
-    localPos = vec3f(baseX, poleHeight + lampSize * 0.3, baseZ);
+    // Glow billboard
+    partType = 3.0;
+    localPos = vec3f(baseX, poleHeight + housingHeight * 0.3, baseZ);
   }
 
   // Isometric transform
@@ -804,8 +854,7 @@ fn main(
   var screenX = ry_x * scale / uniforms.aspectRatio;
   var screenY = rx_y * scale;
 
-  // For glow, expand as billboard
-  if (partIndex == 2u) {
+  if (partIndex == 3u) {
     let glowOffset = (qv - 0.5) * 2.0 * glowSize;
     screenX += glowOffset.x;
     screenY += glowOffset.y;
@@ -814,51 +863,325 @@ fn main(
   output.position = vec4f(screenX, screenY, rx_z * 0.01 + 0.5, 1.0);
   output.partType = partType;
   output.localUv = qv * 2.0 - 1.0;
+  output.seed = seed;
 
-  // Flickering
-  let flicker = 0.9 + 0.1 * sin(time * (3.0 + hash(seed * 2.3) * 2.0) + seed * 10.0);
-  output.intensity = flicker * (1.0 - progress * 0.9);
+  // Subtle flicker using multiple frequencies for realism
+  let f1 = sin(time * 15.0 + seed * 10.0) * 0.02;
+  let f2 = sin(time * 3.7 + seed * 5.0) * 0.03;
+  let flicker = 0.95 + f1 + f2;
+  output.intensity = flicker * (1.0 - progress * 0.95);
 
   return output;
 }
 `;
 
 const streetlightFragmentShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
 struct LightIn {
   @location(0) partType: f32,
   @location(1) localUv: vec2f,
   @location(2) intensity: f32,
+  @location(3) seed: f32,
 }
 
 @fragment
 fn main(input: LightIn) -> @location(0) vec4f {
   let uv = input.localUv;
+  let time = uniforms.time;
 
   if (input.partType < 0.5) {
-    // Pole - dark metal color
-    let poleColor = vec3f(0.15, 0.15, 0.17);
+    // Pole - dark iron/metal with subtle variation
+    let metalBase = vec3f(0.12, 0.11, 0.13);
+    let highlight = 0.02 * smoothstep(0.3, 0.0, abs(uv.x));
+    let poleColor = metalBase + highlight;
     return vec4f(poleColor, 1.0);
+
   } else if (input.partType < 1.5) {
-    // Lamp head - glowing warm color
-    let lampColor = vec3f(1.0, 0.85, 0.5) * input.intensity;
-    return vec4f(lampColor, 1.0);
-  } else {
-    // Glow effect
+    // Lamp housing - darker metal cap
+    let housingColor = vec3f(0.08, 0.08, 0.09);
+    return vec4f(housingColor, 1.0);
+
+  } else if (input.partType < 2.5) {
+    // Light bulb - bright warm emissive with hot center
     let dist = length(uv);
-    let glow = exp(-dist * 2.5) * input.intensity;
-    let bloom = smoothstep(1.0, 0.0, dist) * 0.3 * input.intensity;
-    let brightness = glow + bloom;
+    let core = smoothstep(0.8, 0.0, dist);
 
-    let warmColor = vec3f(1.0, 0.8, 0.4);
+    // Warm color temperature (like sodium lamp ~2200K)
+    let warmWhite = vec3f(1.0, 0.85, 0.55);
+    let hotCore = vec3f(1.0, 0.95, 0.85);
+    let bulbColor = mix(warmWhite, hotCore, core) * input.intensity * 1.2;
+
+    return vec4f(bulbColor, 1.0);
+
+  } else {
+    // Realistic glow using inverse distance falloff
+    // Based on: glow = intensity / distance (clamped)
+    let dist = length(uv);
+
+    // Prevent division by zero and clamp for stability
+    let safeDist = max(dist, 0.01);
+
+    // Multi-layer glow for realism (from LearnOpenGL bloom techniques)
+    // Layer 1: Sharp inner glow
+    let innerGlow = 0.015 / safeDist;
+    // Layer 2: Medium spread
+    let midGlow = 0.008 / (safeDist * safeDist + 0.1);
+    // Layer 3: Soft outer bloom
+    let outerBloom = exp(-dist * 3.0) * 0.4;
+
+    // Light attenuation (from LearnOpenGL light casters)
+    // attenuation = 1.0 / (constant + linear * d + quadratic * d²)
+    let attenuation = 1.0 / (1.0 + 2.0 * dist + 1.5 * dist * dist);
+
+    let totalGlow = (innerGlow + midGlow + outerBloom) * attenuation * input.intensity;
+    let brightness = clamp(totalGlow, 0.0, 1.0);
+
+    // Warm sodium lamp color with slight orange tint
+    let warmColor = vec3f(1.0, 0.75, 0.35);
     let finalColor = warmColor * brightness;
-    let alpha = brightness * 0.6;
 
-    if (alpha < 0.01) {
+    // Premultiplied alpha for proper blending
+    let alpha = brightness * 0.7;
+
+    if (alpha < 0.005) {
       discard;
     }
 
     return vec4f(finalColor * alpha, alpha);
   }
+}
+`;
+
+// 3D human-shaped pedestrians rendered as boxes like buildings
+// Each body part has 3 visible faces (top, front, side) = 18 verts per part
+// 4 parts (head, torso, left leg, right leg) = 72 vertices total
+const VERTS_PER_PEDESTRIAN = 72;
+
+const pedestrianVertexShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+struct PedOut {
+  @builtin(position) position: vec4f,
+  @location(0) color: vec3f,
+  @location(1) shade: f32,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+@group(0) @binding(1) var<storage, read> pedPositions: array<vec2f>;
+
+fn hash(p: f32) -> f32 {
+  return fract(sin(p * 127.1) * 43758.5453);
+}
+
+@vertex
+fn main(
+  @builtin(vertex_index) vertexIndex: u32,
+  @builtin(instance_index) instanceIndex: u32,
+) -> PedOut {
+  var output: PedOut;
+  let progress = uniforms.progress;
+  let time = uniforms.time;
+  let gridSize = uniforms.gridSize;
+
+  // 18 vertices per body part (3 faces × 6 verts)
+  let partIndex = vertexIndex / 18u;  // 0=head, 1=torso, 2=left leg, 3=right leg
+  let partVertex = vertexIndex % 18u;
+  let faceIndex = partVertex / 6u;    // 0=top, 1=front, 2=right side
+  let faceVertex = partVertex % 6u;
+
+  let quadVerts = array<vec2f, 6>(
+    vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0),
+    vec2f(0.0, 1.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0)
+  );
+  let qv = quadVerts[faceVertex];
+
+  let cellPos = pedPositions[instanceIndex];
+  let seed = f32(instanceIndex);
+  let blockSize = 0.0245;
+  let halfGrid = gridSize * blockSize * 0.5;
+
+  // Walking animation
+  let walkSpeed = 0.5 + hash(seed * 2.3) * 0.3;
+  let phase = hash(seed * 3.7) * 6.28;
+  let t = time * walkSpeed + phase;
+  let walkCycle = t * 10.0;
+
+  // Position exactly at cell center (centered on street block)
+  // Match building coordinate system: blockPos * blockSize - halfGrid
+  // Add 0.5 to center within the cell
+  let cellCenterX = (cellPos.x) * blockSize - halfGrid + blockSize * 0.5;
+  let cellCenterZ = (cellPos.y) * blockSize - halfGrid + blockSize * 0.5;
+
+  // Small walk within the cell center (stay on the street)
+  let walkAxis = hash(seed * 4.1);
+  let maxWalk = blockSize * 0.2;
+  let walkOffset = sin(t * 0.8) * maxWalk;
+
+  var baseX = cellCenterX;
+  var baseZ = cellCenterZ;
+  if (walkAxis < 0.5) {
+    baseX = cellCenterX + walkOffset;
+  } else {
+    baseZ = cellCenterZ + walkOffset;
+  }
+  let groundY = 0.004;
+
+  // Body proportions (3D boxes) - much larger for visibility
+  let headW = 0.018; let headH = 0.020; let headD = 0.016;
+  let torsoW = 0.022; let torsoH = 0.035; let torsoD = 0.014;
+  let legW = 0.009; let legH = 0.030; let legD = 0.009;
+  let legGap = 0.006;
+
+  // Leg swing animation - more visible movement
+  let legSwing = sin(walkCycle) * 0.012;
+  let bodyBob = abs(sin(walkCycle)) * 0.004;
+
+  // Part dimensions and positions
+  var partW = 0.0; var partH = 0.0; var partD = 0.0;
+  var partX = 0.0; var partY = 0.0; var partZ = 0.0;
+  var isHead = false;
+
+  if (partIndex == 0u) {
+    // Head
+    partW = headW; partH = headH; partD = headD;
+    partX = 0.0;
+    partY = groundY + legH + torsoH + bodyBob;
+    partZ = 0.0;
+    isHead = true;
+  } else if (partIndex == 1u) {
+    // Torso
+    partW = torsoW; partH = torsoH; partD = torsoD;
+    partX = 0.0;
+    partY = groundY + legH + bodyBob;
+    partZ = 0.0;
+  } else if (partIndex == 2u) {
+    // Left leg
+    partW = legW; partH = legH; partD = legD;
+    partX = -legGap;
+    partY = groundY;
+    partZ = legSwing;
+  } else {
+    // Right leg
+    partW = legW; partH = legH; partD = legD;
+    partX = legGap;
+    partY = groundY;
+    partZ = -legSwing;
+  }
+
+  // Build 3D box vertices for this face
+  var localPos = vec3f(0.0);
+  var shade = 1.0;
+
+  let hw = partW * 0.5;
+  let hd = partD * 0.5;
+
+  if (faceIndex == 0u) {
+    // Top face
+    localPos = vec3f(
+      partX + (qv.x - 0.5) * partW,
+      partY + partH,
+      partZ + (qv.y - 0.5) * partD
+    );
+    shade = 1.0; // Brightest
+  } else if (faceIndex == 1u) {
+    // Front face (facing camera in isometric)
+    localPos = vec3f(
+      partX + (qv.x - 0.5) * partW,
+      partY + qv.y * partH,
+      partZ + hd
+    );
+    shade = 0.85; // Medium
+  } else {
+    // Right side face
+    localPos = vec3f(
+      partX + hw,
+      partY + qv.y * partH,
+      partZ + (qv.x - 0.5) * partD
+    );
+    shade = 0.65; // Darkest (shadow side)
+  }
+
+  let worldX = baseX + localPos.x;
+  let worldY = localPos.y;
+  let worldZ = baseZ + localPos.z;
+
+  // Isometric transform
+  let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
+  let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
+
+  let cy = cos(isoAngleY); let sy = sin(isoAngleY);
+  let cx = cos(isoAngleX); let sx = sin(isoAngleX);
+
+  let ry_x = worldX * cy - worldZ * sy;
+  let ry_z = worldX * sy + worldZ * cy;
+  let rx_y = worldY * cx - ry_z * sx;
+  let rx_z = worldY * sx + ry_z * cx;
+
+  let scale = mix(1.0, 1.35, progress);
+
+  output.position = vec4f(
+    ry_x * scale / uniforms.aspectRatio,
+    rx_y * scale,
+    rx_z * 0.01 + 0.5,
+    1.0
+  );
+
+  // Colors
+  let clothingHue = hash(seed * 5.5);
+  var clothingColor = vec3f(0.2, 0.2, 0.3);
+  if (clothingHue < 0.25) {
+    clothingColor = vec3f(0.18, 0.18, 0.22);
+  } else if (clothingHue < 0.5) {
+    clothingColor = vec3f(0.12, 0.18, 0.28);
+  } else if (clothingHue < 0.75) {
+    clothingColor = vec3f(0.28, 0.18, 0.12);
+  } else {
+    clothingColor = vec3f(0.22, 0.12, 0.18);
+  }
+
+  let skinTone = vec3f(0.9, 0.75, 0.6);
+
+  if (isHead) {
+    output.color = skinTone * shade;
+  } else {
+    output.color = clothingColor * shade;
+  }
+  output.shade = 1.0;
+
+  return output;
+}
+`;
+
+const pedestrianFragmentShader = /* wgsl */ `
+struct PedIn {
+  @location(0) color: vec3f,
+  @location(1) shade: f32,
+}
+
+@fragment
+fn main(input: PedIn) -> @location(0) vec4f {
+  return vec4f(input.color, 1.0);
 }
 `;
 
@@ -885,11 +1208,13 @@ export const IsometricQRCode = () => {
   const posBufferRef = useRef<GPUBuffer | null>(null);
   const heightBufferRef = useRef<GPUBuffer | null>(null);
   const streetlightBufferRef = useRef<GPUBuffer | null>(null);
+  const pedestrianBufferRef = useRef<GPUBuffer | null>(null);
   const blockDataRef = useRef<{
     numBlocks: number;
     gridSize: number;
     streetlightCount: number;
-  }>({ numBlocks: 0, gridSize: 0, streetlightCount: 0 });
+    pedestrianCount: number;
+  }>({ numBlocks: 0, gridSize: 0, streetlightCount: 0, pedestrianCount: 0 });
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
 
@@ -904,13 +1229,15 @@ export const IsometricQRCode = () => {
     const posBuffer = posBufferRef.current;
     const heightBuffer = heightBufferRef.current;
     const streetlightBuffer = streetlightBufferRef.current;
+    const pedestrianBuffer = pedestrianBufferRef.current;
 
     if (
       !device ||
       !colorBuffer ||
       !posBuffer ||
       !heightBuffer ||
-      !streetlightBuffer
+      !streetlightBuffer ||
+      !pedestrianBuffer
     )
       return;
 
@@ -918,12 +1245,14 @@ export const IsometricQRCode = () => {
     const { positions, heights, colors, gridSize, numBlocks } =
       generateBlockData(qrMatrix);
     const streetlightData = generateStreetlightPositions(qrMatrix);
+    const pedestrianData = generatePedestrianPositions(qrMatrix);
 
     // Update refs for render loop
     blockDataRef.current = {
       numBlocks,
       gridSize,
       streetlightCount: streetlightData.count,
+      pedestrianCount: pedestrianData.count,
     };
 
     // Write new data to GPU buffers (pad to MAX_BLOCKS size)
@@ -941,6 +1270,9 @@ export const IsometricQRCode = () => {
 
     // Update streetlight positions
     device.queue.writeBuffer(streetlightBuffer, 0, streetlightData.positions);
+
+    // Update pedestrian positions
+    device.queue.writeBuffer(pedestrianBuffer, 0, pedestrianData.positions);
   }, [qrContent]);
 
   const initWebGPU = useCallback(async () => {
@@ -967,9 +1299,11 @@ export const IsometricQRCode = () => {
     const { positions, heights, colors, gridSize, numBlocks } =
       generateBlockData(qrMatrix);
     const streetlightData = generateStreetlightPositions(qrMatrix);
+    const pedestrianData = generatePedestrianPositions(qrMatrix);
     blockDataRef.current = {
       numBlocks,
       gridSize,
+      pedestrianCount: pedestrianData.count,
       streetlightCount: streetlightData.count,
     };
 
@@ -1013,6 +1347,14 @@ export const IsometricQRCode = () => {
     });
     streetlightBufferRef.current = streetlightBuffer;
     device.queue.writeBuffer(streetlightBuffer, 0, streetlightData.positions);
+
+    // Pedestrian position buffer
+    const pedestrianBuffer = device.createBuffer({
+      size: MAX_PEDESTRIANS * 2 * 4, // vec2f per pedestrian
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    pedestrianBufferRef.current = pedestrianBuffer;
+    device.queue.writeBuffer(pedestrianBuffer, 0, pedestrianData.positions);
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
@@ -1085,6 +1427,15 @@ export const IsometricQRCode = () => {
       entries: [
         { binding: 0, resource: { buffer: uniformBuffer } },
         { binding: 1, resource: { buffer: streetlightBuffer } },
+      ],
+    });
+
+    // Pedestrian bind group (same layout as streetlights)
+    const pedestrianBindGroup = device.createBindGroup({
+      layout: streetlightBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: pedestrianBuffer } },
       ],
     });
 
@@ -1200,6 +1551,44 @@ export const IsometricQRCode = () => {
       },
     });
 
+    // Pedestrian pipeline - walking figures
+    const pedestrianPipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [streetlightBindGroupLayout],
+      }),
+      vertex: {
+        module: device.createShaderModule({ code: pedestrianVertexShader }),
+        entryPoint: 'main',
+      },
+      fragment: {
+        module: device.createShaderModule({ code: pedestrianFragmentShader }),
+        entryPoint: 'main',
+        targets: [
+          {
+            format,
+            blend: {
+              color: {
+                srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add',
+              },
+              alpha: {
+                srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add',
+              },
+            },
+          },
+        ],
+      },
+      primitive: { topology: 'triangle-list', cullMode: 'none' },
+      depthStencil: {
+        depthWriteEnabled: true,
+        depthCompare: 'less',
+        format: 'depth24plus',
+      },
+    });
+
     const depthTexture = device.createTexture({
       size: [canvas.width, canvas.height],
       format: 'depth24plus',
@@ -1223,7 +1612,8 @@ export const IsometricQRCode = () => {
       progressRef.current = easeInOutCubic(rawProgressRef.current);
 
       const time = (now - startTimeRef.current) / 1000;
-      const { numBlocks, gridSize, streetlightCount } = blockDataRef.current;
+      const { numBlocks, gridSize, streetlightCount, pedestrianCount } =
+        blockDataRef.current;
 
       const uniformData = new Float32Array([
         aspectRatio,
@@ -1264,6 +1654,13 @@ export const IsometricQRCode = () => {
       renderPass.setPipeline(pipeline);
       renderPass.setBindGroup(0, bindGroup);
       renderPass.draw(36, numBlocks);
+
+      // Pedestrians - walking figures on the streets
+      if (pedestrianCount > 0) {
+        renderPass.setPipeline(pedestrianPipeline);
+        renderPass.setBindGroup(0, pedestrianBindGroup);
+        renderPass.draw(VERTS_PER_PEDESTRIAN, pedestrianCount);
+      }
 
       // Streetlights - lamp posts with poles and glowing heads
       renderPass.setPipeline(streetlightPipeline);
