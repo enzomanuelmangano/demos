@@ -1,4 +1,5 @@
 import {
+  LayoutChangeEvent,
   PixelRatio,
   Pressable,
   StyleSheet,
@@ -75,13 +76,8 @@ function addYearCards(data: {
   colors: number[];
 }) {
   for (let year = 0; year < NUM_YEARS; year++) {
-    const cx = GRID_COLS / 2;
+    const cx = (GRID_COLS - 1) / 2;
     const cz = year * 7 + 3;
-
-    // Shadow (color 5) — offset bottom-right, behind card
-    data.positions.push(cx + 0.5, -2, cz - 0.5, 0);
-    data.heights.push(0.001);
-    data.colors.push(5);
 
     // Card background (color 6) — behind contribution blocks
     data.positions.push(cx, -1, cz, 0);
@@ -95,7 +91,7 @@ const BLOCK_DATA = (() => {
   addYearCards(data);
   return data;
 })();
-const NUM_BLOCKS = GRID_COLS * GRID_ROWS + NUM_YEARS * 2;
+const NUM_BLOCKS = GRID_COLS * GRID_ROWS + NUM_YEARS;
 
 const ISO_ANGLE_Y = 0.78;
 const ISO_ANGLE_X = -0.58;
@@ -116,6 +112,7 @@ struct VertexOutput {
   @location(1) shade: f32,
   @location(2) isBase: f32,
   @location(3) progress: f32,
+  @location(4) isTop: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -125,27 +122,25 @@ struct VertexOutput {
 
 fn getBlockColor(level: u32) -> vec3f {
   switch(level) {
-    case 0u: { return vec3f(0.84, 0.83, 0.78); }
-    case 1u: { return vec3f(0.64, 0.80, 0.58); }
-    case 2u: { return vec3f(0.40, 0.72, 0.44); }
-    case 3u: { return vec3f(0.24, 0.58, 0.35); }
-    case 4u: { return vec3f(0.14, 0.42, 0.24); }
-    case 5u: { return vec3f(0.84, 0.83, 0.78); }
-    case 6u: { return vec3f(0.84, 0.83, 0.78); }
-    default: { return vec3f(0.84, 0.83, 0.78); }
+    case 0u: { return vec3f(0.87, 0.86, 0.82); }
+    case 1u: { return vec3f(0.50, 0.70, 0.56); }
+    case 2u: { return vec3f(0.26, 0.60, 0.42); }
+    case 3u: { return vec3f(0.14, 0.48, 0.34); }
+    case 4u: { return vec3f(0.07, 0.36, 0.24); }
+    case 6u: { return vec3f(0.95, 0.94, 0.91); }
+    default: { return vec3f(0.87, 0.86, 0.82); }
   }
 }
 
 fn getFlatColor(level: u32) -> vec3f {
   switch(level) {
-    case 0u: { return vec3f(0.94, 0.93, 0.90); }
-    case 1u: { return vec3f(0.61, 0.91, 0.66); }
-    case 2u: { return vec3f(0.25, 0.77, 0.39); }
-    case 3u: { return vec3f(0.19, 0.63, 0.31); }
-    case 4u: { return vec3f(0.13, 0.43, 0.22); }
-    case 5u: { return vec3f(0.88, 0.87, 0.85); }
-    case 6u: { return vec3f(1.0, 1.0, 0.98); }
-    default: { return vec3f(0.94, 0.93, 0.90); }
+    case 0u: { return vec3f(0.93, 0.92, 0.89); }
+    case 1u: { return vec3f(0.55, 0.88, 0.64); }
+    case 2u: { return vec3f(0.22, 0.78, 0.45); }
+    case 3u: { return vec3f(0.14, 0.64, 0.36); }
+    case 4u: { return vec3f(0.09, 0.48, 0.28); }
+    case 6u: { return vec3f(0.99, 0.99, 0.97); }
+    default: { return vec3f(0.93, 0.92, 0.89); }
   }
 }
 
@@ -167,7 +162,7 @@ fn main(
 
   let blockSize = 0.009;
   let maxHeight = 4.0;
-  let isCard = blockColor >= 5u;
+  let isCard = blockColor == 6u;
 
   var h3D = max(blockHeight * maxHeight, 0.04);
   var fH = 0.06;
@@ -190,10 +185,6 @@ fn main(
   if (isCard) {
     csX = (f32(${GRID_COLS}) + 1.5) * progress;
     csZ = (7.0 + 0.6) * progress;
-  }
-  if (blockColor == 5u) {
-    csX += 0.6 * progress;
-    csZ += 0.6 * progress;
   }
 
   let hwX = csX * 0.5;
@@ -234,8 +225,8 @@ fn main(
   var worldPos = blockPos * blockSize + localPos * blockSize;
   worldPos.y += hh * blockSize;
 
-  worldPos.x -= f32(${GRID_COLS}) * blockSize * 0.5;
-  worldPos.z -= f32(${GRID_ROWS}) * blockSize * 0.5;
+  worldPos.x -= (f32(${GRID_COLS}) - 1.0) * blockSize * 0.5;
+  worldPos.z -= (f32(${GRID_ROWS}) - 1.0) * blockSize * 0.5;
 
   // Separate years with gaps in flat view (9 years, 7 rows each)
   let yearIndex = floor(blockPos.z / 7.0);
@@ -257,31 +248,29 @@ fn main(
   let rx_y = worldPos.y * cx - ry_z * sx;
   let rx_z = worldPos.y * sx + ry_z * cx;
 
-  let ny_x = faceNormal.x * cy - faceNormal.z * sy;
-
-  var shade3D: f32;
-  if (faceNormal.y > 0.5) {
-    shade3D = 1.0;
-  } else if (faceNormal.y < -0.5) {
-    shade3D = 0.35;
-  } else {
-    if (ny_x < -0.1) {
-      shade3D = 0.68;
-    } else if (ny_x > 0.1) {
-      shade3D = 0.50;
-    } else {
-      shade3D = 0.42;
-    }
+  let lightDir = normalize(vec3f(0.42, 0.86, 0.28));
+  var rawDiffuse = max(dot(faceNormal, lightDir), 0.0);
+  var shade3D = 0.14 + 0.86 * pow(rawDiffuse, 0.72);
+  if (faceNormal.y > 0.55) {
+    shade3D = min(1.0, shade3D * 1.08 + 0.06);
+  }
+  if (faceNormal.y < -0.45) {
+    shade3D *= 0.72;
   }
   let shade = mix(shade3D, 1.0, progress);
 
-  let halfW = f32(${GRID_COLS}) * blockSize * 0.5;
+  let halfW = (f32(${GRID_COLS}) - 1.0) * blockSize * 0.5;
+  let halfZ = (f32(${GRID_ROWS}) - 1.0) * blockSize * 0.5;
+  let isoSpanX = abs(cy) * halfW + abs(sy) * halfZ;
+  let isoSpanY = abs(sx) * (abs(sy) * halfW + abs(cy) * halfZ) + abs(cx) * 4.2 * blockSize;
+  let isoFit = min(0.88 * uniforms.aspectRatio / max(isoSpanX, 1e-4), 0.88 / max(isoSpanY, 1e-4));
+
   let totalZ = f32(${GRID_ROWS}) + numGaps * yearGap;
   let halfH = totalZ * blockSize * 0.5;
   let fitWidth = 0.92 * uniforms.aspectRatio / halfW;
   let fitHeight = 0.92 / halfH;
   let flatScale = min(fitWidth, fitHeight);
-  let scale = mix(1.1, flatScale, progress);
+  let scale = mix(isoFit, flatScale, progress);
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
     rx_y * scale,
@@ -301,6 +290,12 @@ fn main(
   }
   output.isBase = isBaseVal;
 
+  var topVal = 0.0;
+  if (faceNormal.y > 0.5) {
+    topVal = 1.0;
+  }
+  output.isTop = topVal;
+
   return output;
 }
 `;
@@ -311,19 +306,28 @@ struct FragmentInput {
   @location(1) shade: f32,
   @location(2) isBase: f32,
   @location(3) progress: f32,
+  @location(4) isTop: f32,
 }
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
-  let bgColor = vec3f(0.94, 0.93, 0.90);
+  let bgTop = vec3f(0.96, 0.95, 0.92);
+  let bgBot = vec3f(0.90, 0.88, 0.84);
+  let bgColor = mix(bgBot, bgTop, 0.55);
 
-  let warmLight = vec3f(1.02, 1.0, 0.97);
-  let coolShadow = vec3f(0.88, 0.90, 0.96);
+  let warmLight = vec3f(1.04, 1.01, 0.96);
+  let coolShadow = vec3f(0.82, 0.88, 0.94);
   let tint = mix(coolShadow, warmLight, input.shade);
-  let shadedColor = input.color * mix(tint * input.shade, vec3f(1.0), input.progress);
+  var lit = input.color * mix(tint * input.shade, vec3f(1.0), input.progress);
 
-  let baseFade = mix(0.55, 0.0, input.progress);
-  var col = mix(shadedColor, bgColor * 0.97, input.isBase * baseFade);
+  let canopy = mix(vec3f(1.0), vec3f(1.06, 1.05, 1.0), input.isTop);
+  lit = lit * mix(canopy, vec3f(1.0), input.progress);
+
+  let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
+  lit = mix(vec3f(luma), lit, mix(1.12, 1.0, input.progress));
+
+  let baseFade = mix(0.48, 0.0, input.progress);
+  var col = mix(lit, bgColor * 0.99, input.isBase * baseFade);
 
   return vec4f(col, 1.0);
 }
@@ -337,6 +341,7 @@ function easeInOutCubic(t: number): number {
 
 export const IsometricKnight = () => {
   const { width, height } = useWindowDimensions();
+  const layoutRef = useRef({ width, height });
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -347,6 +352,13 @@ export const IsometricKnight = () => {
 
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
+  }, []);
+
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    const { width: w, height: h } = e.nativeEvent.layout;
+    if (w > 0 && h > 0) {
+      layoutRef.current = { width: w, height: h };
+    }
   }, []);
 
   const initWebGPU = useCallback(async () => {
@@ -454,12 +466,13 @@ export const IsometricKnight = () => {
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
-    const aspectRatio = width / height;
-
     const render = () => {
       const now = Date.now();
       const dt = Math.min((now - lastFrameTimeRef.current) / 1000, 0.05);
       lastFrameTimeRef.current = now;
+
+      const { width: lw, height: lh } = layoutRef.current;
+      const aspectRatio = lh > 0 ? lw / lh : width / height;
 
       const target = isFlat.current ? 1 : 0;
       rawProgressRef.current +=
@@ -486,7 +499,7 @@ export const IsometricKnight = () => {
         colorAttachments: [
           {
             view: textureView,
-            clearValue: { r: 0.94, g: 0.93, b: 0.9, a: 1 },
+            clearValue: { r: 0.93, g: 0.91, b: 0.87, a: 1 },
             loadOp: 'clear',
             storeOp: 'store',
           },
@@ -514,6 +527,10 @@ export const IsometricKnight = () => {
   }, [height, width]);
 
   useEffect(() => {
+    layoutRef.current = { width, height };
+  }, [width, height]);
+
+  useEffect(() => {
     const id = setTimeout(initWebGPU, 100);
     return () => {
       clearTimeout(id);
@@ -522,7 +539,7 @@ export const IsometricKnight = () => {
   }, [initWebGPU]);
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} onLayout={onLayout}>
       <Pressable style={styles.pressable} onPress={handlePress}>
         <Canvas ref={canvasRef} style={styles.canvas} />
       </Pressable>
@@ -532,6 +549,6 @@ export const IsometricKnight = () => {
 
 const styles = StyleSheet.create({
   canvas: { flex: 1 },
-  container: { backgroundColor: '#F0EDE6', flex: 1 },
+  container: { backgroundColor: '#EDE9E2', flex: 1 },
   pressable: { flex: 1 },
 });

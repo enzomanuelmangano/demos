@@ -1,4 +1,3 @@
-import React, { useCallback, useEffect, useRef } from 'react';
 import {
   PixelRatio,
   Pressable,
@@ -6,6 +5,8 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+
+import React, { useCallback, useEffect, useRef } from 'react';
 
 import QRCode from 'qrcode';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
@@ -40,24 +41,26 @@ interface RGB {
   b: number;
 }
 
+/** Muted masonry / concrete / glass — reads like real downtown blocks */
 const BUILDING_PALETTE: RGB[] = [
-  { r: 0.88, g: 0.42, b: 0.30 }, // Terracotta
-  { r: 0.92, g: 0.72, b: 0.38 }, // Warm sand
-  { r: 0.32, g: 0.55, b: 0.82 }, // Sky blue
-  { r: 0.25, g: 0.72, b: 0.62 }, // Teal
-  { r: 0.60, g: 0.40, b: 0.74 }, // Purple
-  { r: 0.30, g: 0.68, b: 0.38 }, // Green
-  { r: 0.40, g: 0.48, b: 0.65 }, // Slate
-  { r: 0.84, g: 0.42, b: 0.52 }, // Rose
-  { r: 0.28, g: 0.45, b: 0.70 }, // Deep blue
-  { r: 0.78, g: 0.58, b: 0.32 }, // Amber
+  { r: 0.45, g: 0.47, b: 0.5 }, // Cast concrete
+  { r: 0.38, g: 0.4, b: 0.44 }, // Weathered gray
+  { r: 0.55, g: 0.53, b: 0.5 }, // Limestone
+  { r: 0.42, g: 0.38, b: 0.36 }, // Brownstone
+  { r: 0.32, g: 0.35, b: 0.4 }, // Curtain wall (blue-gray glass)
+  { r: 0.36, g: 0.37, b: 0.39 }, // Steel frame
+  { r: 0.48, g: 0.46, b: 0.44 }, // Sandstone
+  { r: 0.34, g: 0.33, b: 0.35 }, // Charcoal brick
+  { r: 0.4, g: 0.42, b: 0.45 }, // Cool granite
+  { r: 0.44, g: 0.4, b: 0.38 }, // Warm brick
 ];
 
 const FINDER_PALETTE: RGB[] = [
-  { r: 0.95, g: 0.72, b: 0.20 }, // Gold
-  { r: 0.94, g: 0.60, b: 0.22 }, // Deep amber
+  { r: 0.58, g: 0.56, b: 0.52 }, // Landmark stone (still urban, not gold)
+  { r: 0.52, g: 0.5, b: 0.48 },
 ];
 
+/** Unused visually — ground voxels are discarded in the fragment shader */
 const GROUND_COLOR: RGB = { r: 1.0, g: 1.0, b: 1.0 };
 
 function isInFinderPattern(col: number, row: number, size: number): boolean {
@@ -107,19 +110,21 @@ function generateBlockData(): {
             seededRandom(col * 73 + row * 191) * FINDER_PALETTE.length,
           );
           color = FINDER_PALETTE[idx];
-          height = 0.75 + rand * 0.20;
+          height = 0.82 + rand * 0.22;
         } else {
           const idx = Math.floor(
             seededRandom(col * 59 + row * 223) * BUILDING_PALETTE.length,
           );
           color = BUILDING_PALETTE[idx];
           const tier = seededRandom(col * 419 + row * 167);
-          if (tier > 0.85) {
-            height = 0.8 + rand * 0.2;
-          } else if (tier > 0.35) {
-            height = 0.4 + rand * 0.35;
+          if (tier > 0.9) {
+            height = 0.92 + rand * 0.08;
+          } else if (tier > 0.78) {
+            height = 0.72 + rand * 0.2;
+          } else if (tier > 0.38) {
+            height = 0.38 + rand * 0.34;
           } else {
-            height = 0.2 + rand * 0.2;
+            height = 0.18 + rand * 0.22;
           }
         }
       } else {
@@ -137,6 +142,39 @@ function generateBlockData(): {
 
 const BLOCK_DATA = generateBlockData();
 const NUM_BLOCKS = GRID_COLS * GRID_ROWS;
+
+const NUM_PEDESTRIANS = 36;
+
+function generatePedestrians(): Float32Array {
+  const data = new Float32Array(NUM_PEDESTRIANS * 4);
+  let i = 0;
+  let guard = 0;
+  while (i < NUM_PEDESTRIANS && guard < 8000) {
+    guard += 1;
+    const col = Math.floor(seededRandom(guard * 13) * GRID_COLS);
+    const row = Math.floor(seededRandom(guard * 29) * GRID_ROWS);
+    if (QR_MATRIX[row][col]) {
+      continue;
+    }
+    const idx = i * 4;
+    data[idx] = col;
+    data[idx + 1] = row;
+    data[idx + 2] = 0.35 + seededRandom(guard * 41) * 0.35;
+    data[idx + 3] = seededRandom(guard * 97) * 628.3;
+    i += 1;
+  }
+  while (i < NUM_PEDESTRIANS) {
+    const idx = i * 4;
+    data[idx] = 1;
+    data[idx + 1] = 1;
+    data[idx + 2] = 0.4;
+    data[idx + 3] = 0;
+    i += 1;
+  }
+  return data;
+}
+
+const PEDESTRIAN_DATA = generatePedestrians();
 
 const ISO_ANGLE_Y = 0.78;
 const ISO_ANGLE_X = -0.55;
@@ -156,6 +194,11 @@ struct VertexOutput {
   @location(0) color: vec3f,
   @location(1) shade: f32,
   @location(2) shimmer: f32,
+  @location(3) building: f32,
+  @location(4) facadeUv: vec2f,
+  @location(5) faceVertical: f32,
+  @location(6) blockSeed: vec2f,
+  @location(7) faceNy: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -191,8 +234,8 @@ fn main(
   let blockColorPacked = blockColors[instanceIndex];
   let blockHeight = blockHeights[instanceIndex];
 
-  let blockSize = 0.022;
-  let maxHeight = 1.8;
+  let blockSize = 0.0245;
+  let maxHeight = 2.35;
   let isBuilding = blockHeight > 0.1;
 
   let height3D = max(blockHeight * maxHeight, 0.06);
@@ -221,11 +264,13 @@ fn main(
     let glintRaw = sin(time * 0.6 + glintPhase);
     let glint = pow(max(glintRaw, 0.0), 12.0);
 
-    shimmerVal = windowPulse * 0.12 + windowPulse2 * 0.08 + glint * 0.35;
+    shimmerVal = windowPulse * 0.08 + windowPulse2 * 0.06 + glint * 0.22;
   }
 
   var localPos: vec3f;
   var faceNormal: vec3f;
+  var facadeUv = vec2f(0.0);
+  var faceVertical = 0.0;
 
   let quadVerts = array<vec2f, 6>(
     vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0),
@@ -234,34 +279,44 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  let cs = mix(0.90, 1.0, progress);
+  let cs = mix(0.988, 1.0, progress);
   let hw = cs * 0.5;
   let hh = height * 0.5;
 
   switch(faceIndex) {
-    case 0u: { // Top
+    case 0u: { // Top — UV for roof variation
       localPos = vec3f((qv.x - 0.5) * cs, hh, (qv.y - 0.5) * cs);
       faceNormal = vec3f(0.0, 1.0, 0.0);
+      facadeUv = qv;
     }
     case 1u: { // Bottom
       localPos = vec3f((qv.x - 0.5) * cs, -hh, (0.5 - qv.y) * cs);
       faceNormal = vec3f(0.0, -1.0, 0.0);
+      facadeUv = qv;
     }
     case 2u: { // Front
       localPos = vec3f((qv.x - 0.5) * cs, (qv.y - 0.5) * height, hw);
       faceNormal = vec3f(0.0, 0.0, 1.0);
+      facadeUv = qv;
+      faceVertical = 1.0;
     }
     case 3u: { // Back
       localPos = vec3f((0.5 - qv.x) * cs, (qv.y - 0.5) * height, -hw);
       faceNormal = vec3f(0.0, 0.0, -1.0);
+      facadeUv = qv;
+      faceVertical = 1.0;
     }
     case 4u: { // Right
       localPos = vec3f(hw, (qv.y - 0.5) * height, (qv.x - 0.5) * cs);
       faceNormal = vec3f(1.0, 0.0, 0.0);
+      facadeUv = qv;
+      faceVertical = 1.0;
     }
     case 5u: { // Left
       localPos = vec3f(-hw, (qv.y - 0.5) * height, (0.5 - qv.x) * cs);
       faceNormal = vec3f(-1.0, 0.0, 0.0);
+      facadeUv = qv;
+      faceVertical = 1.0;
     }
     default: {
       localPos = vec3f(0.0);
@@ -294,18 +349,18 @@ fn main(
   let nx_z = faceNormal.y * sx + ny_z * cx;
   let rotatedNormal = normalize(vec3f(ny_x, nx_y, nx_z));
 
-  // Orbiting sun — dramatic enough to cast visible moving shadows
-  let lightAngle = time * 0.4;
+  // Low sun over the skyline — longer facades read more like a city canyon
+  let lightAngle = time * 0.38;
   let lightDir = normalize(vec3f(
-    cos(lightAngle) * 0.6,
-    0.75,
-    sin(lightAngle) * 0.6
+    cos(lightAngle) * 0.72,
+    0.58,
+    sin(lightAngle) * 0.72
   ));
 
   let diffuse = max(dot(rotatedNormal, lightDir), 0.0);
-  let ambient = 0.40;
-  let topBoost = max(faceNormal.y, 0.0) * 0.15;
-  let shade = ambient + diffuse * 0.55 + topBoost;
+  let ambient = 0.32;
+  let topBoost = max(faceNormal.y, 0.0) * 0.18;
+  let shade = ambient + diffuse * 0.62 + topBoost;
 
   let scale = mix(1.0, 1.35, progress);
   output.position = vec4f(
@@ -318,6 +373,11 @@ fn main(
   output.color = unpackColor(blockColorPacked);
   output.shade = shade;
   output.shimmer = shimmerVal;
+  output.building = select(0.0, 1.0, isBuilding);
+  output.facadeUv = facadeUv;
+  output.faceVertical = faceVertical;
+  output.blockSeed = vec2f(blockPos.x, blockPos.z);
+  output.faceNy = faceNormal.y;
 
   return output;
 }
@@ -328,14 +388,19 @@ struct FragmentInput {
   @location(0) color: vec3f,
   @location(1) shade: f32,
   @location(2) shimmer: f32,
+  @location(3) building: f32,
 }
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
+  if (input.building < 0.5) {
+    discard;
+  }
+
   let baseColor = input.color * input.shade;
 
-  // Shimmer adds warm brightness to buildings (windows + glass glints)
-  let warmTint = vec3f(1.08, 1.02, 0.92);
+  // Shimmer: lit windows + glass (warm evening city)
+  let warmTint = vec3f(1.1, 1.03, 0.94);
   let glow = baseColor + input.shimmer * baseColor * warmTint;
 
   return vec4f(glow, 1.0);
@@ -378,7 +443,7 @@ export const IsometricQRCode = () => {
     canvas.width = canvas.clientWidth * PixelRatio.get();
     canvas.height = canvas.clientHeight * PixelRatio.get();
 
-    context.configure({ device, format, alphaMode: 'opaque' });
+    context.configure({ device, format, alphaMode: 'premultiplied' });
 
     const { positions, heights, colors } = BLOCK_DATA;
 
@@ -407,10 +472,26 @@ export const IsometricQRCode = () => {
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
-        { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-        { binding: 3, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
       ],
     });
 
@@ -425,7 +506,9 @@ export const IsometricQRCode = () => {
     });
 
     const pipeline = device.createRenderPipeline({
-      layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout],
+      }),
       vertex: {
         module: device.createShaderModule({ code: vertexShader }),
         entryPoint: 'main',
@@ -457,7 +540,8 @@ export const IsometricQRCode = () => {
       lastFrameTimeRef.current = now;
 
       const target = isFlat.current ? 1 : 0;
-      rawProgressRef.current += (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
+      rawProgressRef.current +=
+        (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
       if (Math.abs(rawProgressRef.current - target) < 0.001) {
         rawProgressRef.current = target;
       }
@@ -480,7 +564,7 @@ export const IsometricQRCode = () => {
         colorAttachments: [
           {
             view: textureView,
-            clearValue: { r: 1.0, g: 1.0, b: 1.0, a: 1 },
+            clearValue: { r: 0.0, g: 0.0, b: 0.0, a: 0.0 },
             loadOp: 'clear',
             storeOp: 'store',
           },
@@ -525,7 +609,7 @@ export const IsometricQRCode = () => {
 };
 
 const styles = StyleSheet.create({
-  canvas: { flex: 1 },
-  container: { backgroundColor: '#FFFFFF', flex: 1 },
+  canvas: { backgroundColor: 'transparent', flex: 1 },
+  container: { backgroundColor: 'transparent', flex: 1 },
   pressable: { flex: 1 },
 });
