@@ -41,34 +41,14 @@ interface RGB {
   b: number;
 }
 
-/** Muted masonry / concrete / glass — reads like real downtown blocks */
-const BUILDING_PALETTE: RGB[] = [
-  { r: 0.45, g: 0.47, b: 0.5 }, // Cast concrete
-  { r: 0.38, g: 0.4, b: 0.44 }, // Weathered gray
-  { r: 0.55, g: 0.53, b: 0.5 }, // Limestone
-  { r: 0.42, g: 0.38, b: 0.36 }, // Brownstone
-  { r: 0.32, g: 0.35, b: 0.4 }, // Curtain wall (blue-gray glass)
-  { r: 0.36, g: 0.37, b: 0.39 }, // Steel frame
-  { r: 0.48, g: 0.46, b: 0.44 }, // Sandstone
-  { r: 0.34, g: 0.33, b: 0.35 }, // Charcoal brick
-  { r: 0.4, g: 0.42, b: 0.45 }, // Cool granite
-  { r: 0.44, g: 0.4, b: 0.38 }, // Warm brick
-];
+/** One albedo for all built modules — finder vs data must not compete with the QR pattern */
+const BUILDING_BASE: RGB = { r: 0.032, g: 0.034, b: 0.052 };
 
-const FINDER_PALETTE: RGB[] = [
-  { r: 0.58, g: 0.56, b: 0.52 }, // Landmark stone (still urban, not gold)
-  { r: 0.52, g: 0.5, b: 0.48 },
-];
+/** Normalized height for every built module — uniform slab so the QR grid reads clearly */
+const BUILDING_HEIGHT = 0.72;
 
 /** Unused visually — ground voxels are discarded in the fragment shader */
 const GROUND_COLOR: RGB = { r: 1.0, g: 1.0, b: 1.0 };
-
-function isInFinderPattern(col: number, row: number, size: number): boolean {
-  if (col < 7 && row < 7) return true;
-  if (col >= size - 7 && row < 7) return true;
-  if (col < 7 && row >= size - 7) return true;
-  return false;
-}
 
 function seededRandom(seed: number): number {
   const x = Math.sin(seed) * 10000;
@@ -95,7 +75,6 @@ function generateBlockData(): {
   for (let row = 0; row < GRID_ROWS; row++) {
     for (let col = 0; col < GRID_COLS; col++) {
       const isModule = QR_MATRIX[row][col];
-      const isFinder = isInFinderPattern(col, row, GRID_SIZE);
 
       positions.push(col, 0, row, 0);
 
@@ -103,30 +82,8 @@ function generateBlockData(): {
       let height: number;
 
       if (isModule) {
-        const rand = seededRandom(col * 137 + row * 311);
-
-        if (isFinder) {
-          const idx = Math.floor(
-            seededRandom(col * 73 + row * 191) * FINDER_PALETTE.length,
-          );
-          color = FINDER_PALETTE[idx];
-          height = 0.82 + rand * 0.22;
-        } else {
-          const idx = Math.floor(
-            seededRandom(col * 59 + row * 223) * BUILDING_PALETTE.length,
-          );
-          color = BUILDING_PALETTE[idx];
-          const tier = seededRandom(col * 419 + row * 167);
-          if (tier > 0.9) {
-            height = 0.92 + rand * 0.08;
-          } else if (tier > 0.78) {
-            height = 0.72 + rand * 0.2;
-          } else if (tier > 0.38) {
-            height = 0.38 + rand * 0.34;
-          } else {
-            height = 0.18 + rand * 0.22;
-          }
-        }
+        color = BUILDING_BASE;
+        height = BUILDING_HEIGHT;
       } else {
         color = GROUND_COLOR;
         height = 0.03 + seededRandom(col * 41 + row * 83) * 0.02;
@@ -142,39 +99,6 @@ function generateBlockData(): {
 
 const BLOCK_DATA = generateBlockData();
 const NUM_BLOCKS = GRID_COLS * GRID_ROWS;
-
-const NUM_PEDESTRIANS = 36;
-
-function generatePedestrians(): Float32Array {
-  const data = new Float32Array(NUM_PEDESTRIANS * 4);
-  let i = 0;
-  let guard = 0;
-  while (i < NUM_PEDESTRIANS && guard < 8000) {
-    guard += 1;
-    const col = Math.floor(seededRandom(guard * 13) * GRID_COLS);
-    const row = Math.floor(seededRandom(guard * 29) * GRID_ROWS);
-    if (QR_MATRIX[row][col]) {
-      continue;
-    }
-    const idx = i * 4;
-    data[idx] = col;
-    data[idx + 1] = row;
-    data[idx + 2] = 0.35 + seededRandom(guard * 41) * 0.35;
-    data[idx + 3] = seededRandom(guard * 97) * 628.3;
-    i += 1;
-  }
-  while (i < NUM_PEDESTRIANS) {
-    const idx = i * 4;
-    data[idx] = 1;
-    data[idx + 1] = 1;
-    data[idx + 2] = 0.4;
-    data[idx + 3] = 0;
-    i += 1;
-  }
-  return data;
-}
-
-const PEDESTRIAN_DATA = generatePedestrians();
 
 const ISO_ANGLE_Y = 0.78;
 const ISO_ANGLE_X = -0.55;
@@ -199,6 +123,9 @@ struct VertexOutput {
   @location(5) faceVertical: f32,
   @location(6) blockSeed: vec2f,
   @location(7) faceNy: f32,
+  @location(8) worldN: vec3f,
+  @location(9) viewPos: vec3f,
+  @location(10) blockH: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -213,10 +140,6 @@ fn unpackColor(packed: u32) -> vec3f {
   return vec3f(r, g, b);
 }
 
-fn hash(p: vec2f) -> f32 {
-  return fract(sin(dot(p, vec2f(12.9898, 78.233))) * 43758.5453);
-}
-
 @vertex
 fn main(
   @builtin(vertex_index) vertexIndex: u32,
@@ -225,7 +148,6 @@ fn main(
   var output: VertexOutput;
 
   let progress = uniforms.progress;
-  let time = uniforms.time;
 
   let faceIndex = vertexIndex / 6u;
   let faceVertex = vertexIndex % 6u;
@@ -235,37 +157,14 @@ fn main(
   let blockHeight = blockHeights[instanceIndex];
 
   let blockSize = 0.0245;
-  let maxHeight = 2.35;
+  let maxHeight = 3.25;
   let isBuilding = blockHeight > 0.1;
 
   let height3D = max(blockHeight * maxHeight, 0.06);
   let flatHeight = 0.06;
   let height = mix(height3D, flatHeight, progress);
 
-  // Per-building shimmer: windows lighting up and glass reflections
   var shimmerVal = 0.0;
-  if (isBuilding) {
-    let bPos = vec2f(blockPos.x, blockPos.z);
-
-    // Each building has unique phase and speed
-    let phase1 = hash(bPos) * 6.2832;
-    let speed1 = 0.4 + hash(bPos * 1.7) * 1.2;
-
-    // Slow warm pulse (windows lighting up)
-    let windowPulse = sin(time * speed1 + phase1) * 0.5 + 0.5;
-
-    // Secondary rhythm at different frequency
-    let phase2 = hash(bPos * 3.1) * 6.2832;
-    let speed2 = 0.8 + hash(bPos * 2.3) * 0.8;
-    let windowPulse2 = sin(time * speed2 + phase2) * 0.5 + 0.5;
-
-    // Glass glint: sharp occasional sparkle
-    let glintPhase = hash(bPos * 5.7) * 6.2832;
-    let glintRaw = sin(time * 0.6 + glintPhase);
-    let glint = pow(max(glintRaw, 0.0), 12.0);
-
-    shimmerVal = windowPulse * 0.08 + windowPulse2 * 0.06 + glint * 0.22;
-  }
 
   var localPos: vec3f;
   var faceNormal: vec3f;
@@ -279,7 +178,7 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  let cs = mix(0.988, 1.0, progress);
+  let cs = mix(0.93, 0.97, progress);
   let hw = cs * 0.5;
   let hh = height * 0.5;
 
@@ -349,19 +248,6 @@ fn main(
   let nx_z = faceNormal.y * sx + ny_z * cx;
   let rotatedNormal = normalize(vec3f(ny_x, nx_y, nx_z));
 
-  // Low sun over the skyline — longer facades read more like a city canyon
-  let lightAngle = time * 0.38;
-  let lightDir = normalize(vec3f(
-    cos(lightAngle) * 0.72,
-    0.58,
-    sin(lightAngle) * 0.72
-  ));
-
-  let diffuse = max(dot(rotatedNormal, lightDir), 0.0);
-  let ambient = 0.32;
-  let topBoost = max(faceNormal.y, 0.0) * 0.18;
-  let shade = ambient + diffuse * 0.62 + topBoost;
-
   let scale = mix(1.0, 1.35, progress);
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
@@ -371,24 +257,56 @@ fn main(
   );
 
   output.color = unpackColor(blockColorPacked);
-  output.shade = shade;
+  output.shade = 1.0;
   output.shimmer = shimmerVal;
   output.building = select(0.0, 1.0, isBuilding);
   output.facadeUv = facadeUv;
   output.faceVertical = faceVertical;
   output.blockSeed = vec2f(blockPos.x, blockPos.z);
   output.faceNy = faceNormal.y;
+  output.worldN = rotatedNormal;
+  output.viewPos = vec3f(ry_x, rx_y, rx_z);
+  output.blockH = blockHeight;
 
   return output;
 }
 `;
 
 const fragmentShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
 struct FragmentInput {
   @location(0) color: vec3f,
   @location(1) shade: f32,
   @location(2) shimmer: f32,
   @location(3) building: f32,
+  @location(4) facadeUv: vec2f,
+  @location(5) faceVertical: f32,
+  @location(6) blockSeed: vec2f,
+  @location(7) faceNy: f32,
+  @location(8) worldN: vec3f,
+  @location(9) viewPos: vec3f,
+  @location(10) blockH: f32,
+}
+
+fn hash2(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+
+fn acesFilm(x: vec3f) -> vec3f {
+  let a = 2.51;
+  let b = 0.03;
+  let c = 2.43;
+  let d = 0.59;
+  let e = 0.14;
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3f(0.0), vec3f(1.0));
 }
 
 @fragment
@@ -397,13 +315,204 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     discard;
   }
 
-  let baseColor = input.color * input.shade;
+  let t = uniforms.time;
+  let uv = input.facadeUv;
+  let base = input.color * input.shade;
+  let wallTone = base * vec3f(0.92, 0.94, 1.08) * 0.72;
+  let N = normalize(input.worldN);
+  let moonDir = normalize(vec3f(-0.52, 0.58, 0.38));
+  let L = moonDir;
+  let V = normalize(vec3f(0.14, 0.36, 0.92));
+  let H = normalize(L + V);
+  let NdL = max(dot(N, L), 0.0);
+  let NdH = max(dot(N, H), 0.0);
+  let rim = pow(clamp(1.0 - dot(V, N), 0.0, 1.0), 2.2);
 
-  // Shimmer: lit windows + glass (warm evening city)
-  let warmTint = vec3f(1.1, 1.03, 0.94);
-  let glow = baseColor + input.shimmer * baseColor * warmTint;
+  let moonCol = vec3f(0.22, 0.28, 0.45);
+  let skyHi = vec3f(0.06, 0.08, 0.14);
+  let skyAmb = vec3f(0.012, 0.014, 0.028);
+  let bounce = vec3f(0.18, 0.12, 0.05);
+  let amberSpill = vec3f(1.0, 0.72, 0.12);
 
-  return vec4f(glow, 1.0);
+  let dist = length(input.viewPos);
+  let aerial = 1.0 - exp(-dist * 0.085);
+  let fogCol = vec3f(0.008, 0.012, 0.031);
+  let sunsetFill = vec3f(0.0);
+
+  var albedo = vec3f(0.0);
+  var specAmt = 0.0;
+  var fresnelGlass = 0.0;
+  var skyReflect = 0.0;
+  var streetAo = 1.0;
+  var emissive = vec3f(0.0);
+
+  if (input.faceVertical > 0.5) {
+    let seed = input.blockSeed;
+    let nCol = 2.0;
+    let nRow = 3.0;
+    let gx = uv.x * nCol;
+    let gy = uv.y * nRow;
+    let cell = vec2f(floor(gx), floor(gy));
+    var cellUv = vec2f(fract(gx), fract(gy));
+
+    let fw = 0.045;
+    let ms = 0.006;
+    let mx = smoothstep(fw - ms, fw + ms, cellUv.x) *
+      smoothstep(1.0 - fw + ms, 1.0 - fw - ms, cellUv.x);
+    let my = smoothstep(fw - ms, fw + ms, cellUv.y) *
+      smoothstep(1.0 - fw + ms, 1.0 - fw - ms, cellUv.y);
+    let inPane = mx * my;
+    let edgeDist = min(
+      min(cellUv.x, 1.0 - cellUv.x),
+      min(cellUv.y, 1.0 - cellUv.y)
+    );
+    let recess = smoothstep(0.0, 0.22, edgeDist);
+
+    let frame = vec3f(0.052, 0.055, 0.068);
+    let winId = hash2(cell + seed * 0.19);
+    let lit = step(0.72, winId);
+    let pulse = sin(t * 0.5 + winId * 6.283) * 0.5 + 0.5;
+    let interior = vec3f(0.5, 0.53, 0.62) * lit * (0.78 + 0.22 * pulse);
+    let glassDark = vec3f(0.034, 0.037, 0.046);
+    let winCol = mix(glassDark, interior, max(lit, 0.1));
+    var mixCol = mix(frame, winCol, inPane * recess);
+    let fp = fract(uv.y * nRow);
+    mixCol *= 1.0 - 0.065 * exp(-pow(fp / 0.036, 2.0));
+
+    albedo = mixCol;
+    streetAo = mix(0.58, 1.0, smoothstep(0.0, 0.3, uv.y));
+    emissive = interior * inPane * recess * lit * 0.62;
+    let R = reflect(-V, N);
+    fresnelGlass = 0.03 * inPane * recess;
+    skyReflect = max(R.y, 0.0) * inPane * recess * 0.09;
+    specAmt = pow(NdH, 44.0) * 0.05 * inPane;
+  } else if (input.faceNy > 0.5) {
+    albedo = wallTone * 0.5;
+    specAmt = pow(NdH, 28.0) * 0.032;
+  } else {
+    albedo = wallTone * 0.36;
+    streetAo = 0.88;
+  }
+
+  let streetGlowAmt =
+    amberSpill * 0.12 * input.faceVertical * smoothstep(0.0, 0.5, 1.0 - uv.y);
+  let diffuse =
+    albedo * (skyAmb * 0.65 + bounce * 0.16 + moonCol * NdL * 0.07 + sunsetFill) * streetAo +
+    streetGlowAmt * vec3f(0.22, 0.2, 0.16) * 0.28;
+  let specCol = moonCol * specAmt * 0.48 + skyHi * skyReflect * fresnelGlass;
+  let rimLight = rim * vec3f(0.1, 0.12, 0.18) * 0.09;
+
+  var hdr = diffuse + specCol + rimLight + emissive;
+  hdr = mix(hdr, fogCol, aerial * 0.2);
+
+  hdr = acesFilm(hdr * 1.02);
+  let bloom = max(hdr - vec3f(0.78), vec3f(0.0));
+  hdr = hdr + bloom * bloom * vec3f(0.14, 0.15, 0.18);
+  hdr = pow(hdr, vec3f(1.0 / 2.08));
+  return vec4f(hdr, 1.0);
+}
+`;
+
+const skyVertexShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+}
+
+struct SkyOut {
+  @builtin(position) position: vec4f,
+  @location(0) uv: vec2f,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@vertex
+fn main(@builtin(vertex_index) vi: u32) -> SkyOut {
+  var tri = array<vec2f, 3>(
+    vec2f(-1.0, -1.0),
+    vec2f(3.0, -1.0),
+    vec2f(-1.0, 3.0)
+  );
+  let p = tri[vi];
+  var o: SkyOut;
+  o.position = vec4f(p, 1.0, 1.0);
+  o.uv = vec2f(p.x * 0.5 + 0.5, 0.5 - p.y * 0.5);
+  return o;
+}
+`;
+
+const skyFragmentShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+}
+
+struct SkyIn {
+  @location(0) uv: vec2f,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+fn hash2(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+
+fn vnoise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  let a = hash2(i);
+  let b = hash2(i + vec2f(1.0, 0.0));
+  let c = hash2(i + vec2f(0.0, 1.0));
+  let d = hash2(i + vec2f(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+
+fn fbm(p: vec2f) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var x = p;
+  v += a * vnoise(x);
+  x = x * 2.08 + vec2f(0.17, 0.23);
+  a *= 0.5;
+  v += a * vnoise(x);
+  x = x * 2.08 + vec2f(0.17, 0.23);
+  a *= 0.5;
+  v += a * vnoise(x);
+  x = x * 2.08 + vec2f(0.17, 0.23);
+  a *= 0.5;
+  v += a * vnoise(x);
+  return v;
+}
+
+@fragment
+fn main(input: SkyIn) -> @location(0) vec4f {
+  let t = uniforms.time;
+  let uv = input.uv;
+  let top = vec3f(0.02, 0.035, 0.09);
+  let horizon = vec3f(0.006, 0.012, 0.04);
+  let grad = mix(horizon, top, pow(uv.y, 0.85));
+
+  let moonUv = uv - vec2f(0.74, 0.18);
+  let moonAspect = vec2f(1.0, uniforms.aspectRatio);
+  let md = length(moonUv * moonAspect);
+  let moon = 1.0 - smoothstep(0.034, 0.056, md);
+  let moonGlow = exp(-md * 14.0) * 0.35;
+  let moonCol = vec3f(0.88, 0.9, 0.96);
+  var sky = grad * (1.0 - moon * 0.92) + moonCol * (moon + moonGlow);
+
+  let wind = vec2f(t * 0.012, t * 0.007);
+  let cuv = uv * vec2f(2.4, 1.6) + wind;
+  let c2 = fbm(cuv + fbm(cuv * 1.7 + t * 0.02));
+  let clouds = smoothstep(0.38, 0.72, c2) * (0.22 + 0.12 * sin(t * 0.15 + c2 * 3.0));
+  let cloudCol = vec3f(0.07, 0.09, 0.14);
+  sky = mix(sky, cloudCol + vec3f(0.04, 0.045, 0.055), clouds * 0.42);
+
+  return vec4f(sky, 1.0);
 }
 `;
 
@@ -474,7 +583,7 @@ export const IsometricQRCode = () => {
       entries: [
         {
           binding: 0,
-          visibility: GPUShaderStage.VERTEX,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
           buffer: { type: 'uniform' },
         },
         {
@@ -503,6 +612,42 @@ export const IsometricQRCode = () => {
         { binding: 2, resource: { buffer: posBuffer } },
         { binding: 3, resource: { buffer: heightBuffer } },
       ],
+    });
+
+    const skyBindGroupLayout = device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform' },
+        },
+      ],
+    });
+
+    const skyBindGroup = device.createBindGroup({
+      layout: skyBindGroupLayout,
+      entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+    });
+
+    const skyPipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [skyBindGroupLayout],
+      }),
+      vertex: {
+        module: device.createShaderModule({ code: skyVertexShader }),
+        entryPoint: 'main',
+      },
+      fragment: {
+        module: device.createShaderModule({ code: skyFragmentShader }),
+        entryPoint: 'main',
+        targets: [{ format }],
+      },
+      primitive: { topology: 'triangle-list', cullMode: 'none' },
+      depthStencil: {
+        depthWriteEnabled: false,
+        depthCompare: 'always',
+        format: 'depth24plus',
+      },
     });
 
     const pipeline = device.createRenderPipeline({
@@ -577,9 +722,14 @@ export const IsometricQRCode = () => {
         },
       });
 
+      renderPass.setPipeline(skyPipeline);
+      renderPass.setBindGroup(0, skyBindGroup);
+      renderPass.draw(3);
+
       renderPass.setPipeline(pipeline);
       renderPass.setBindGroup(0, bindGroup);
       renderPass.draw(36, NUM_BLOCKS);
+
       renderPass.end();
 
       device.queue.submit([commandEncoder.finish()]);
@@ -610,6 +760,6 @@ export const IsometricQRCode = () => {
 
 const styles = StyleSheet.create({
   canvas: { backgroundColor: 'transparent', flex: 1 },
-  container: { backgroundColor: 'transparent', flex: 1 },
+  container: { backgroundColor: '#020308', flex: 1 },
   pressable: { flex: 1 },
 });

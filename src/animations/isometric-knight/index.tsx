@@ -20,23 +20,90 @@ import {
 const GRID_COLS = CONTRIBUTION_GRID_COLS;
 const GRID_ROWS = CONTRIBUTION_GRID_ROWS;
 
-const HEIGHT_MAP: number[][] = CONTRIBUTION_GRID.map(col =>
-  col.map(level => {
-    switch (level) {
-      case 0:
-        return 0.02;
-      case 1:
-        return 0.15;
-      case 2:
-        return 0.35;
-      case 3:
-        return 0.65;
-      case 4:
-        return 1.0;
-      default:
-        return 0.02;
+/**
+ * GitHub only exposes 0–4 buckets, not raw counts. We map each bucket to a
+ * monotonic “typical contribution day” estimate so bar height scales with amount,
+ * then normalize by the strongest day in this grid.
+ */
+const CONTRIBUTION_ESTIMATE_BY_LEVEL: readonly number[] = [0, 1, 4, 11, 28];
+
+function estimatedContributionsForLevel(level: number): number {
+  return CONTRIBUTION_ESTIMATE_BY_LEVEL[level] ?? 0;
+}
+
+/** Normalized [0,1] height ∝ relative contribution amount for each cell. */
+function buildNormalizedContributionHeights(): number[][] {
+  const raw = CONTRIBUTION_GRID.map(col =>
+    col.map(level => estimatedContributionsForLevel(level)),
+  );
+  let max = 0;
+  for (const col of raw) {
+    for (const v of col) {
+      if (v > max) {
+        max = v;
+      }
     }
-  }),
+  }
+  if (max === 0) {
+    max = 1;
+  }
+  return raw.map(col => col.map(v => v / max));
+}
+
+/** Blur so peaks lift neighbors — continuous “mountain” terrain (ref-style). */
+function smoothHeightField(grid: number[][], passes: number): number[][] {
+  const cols = grid.length;
+  const rows = grid[0].length;
+  let cur = grid.map(c => [...c]);
+  for (let p = 0; p < passes; p++) {
+    const next: number[][] = [];
+    for (let c = 0; c < cols; c++) {
+      next[c] = [];
+      for (let r = 0; r < rows; r++) {
+        let sum = 0;
+        let count = 0;
+        for (let dc = -1; dc <= 1; dc++) {
+          for (let dr = -1; dr <= 1; dr++) {
+            const cc = c + dc;
+            const rr = r + dr;
+            if (cc >= 0 && cc < cols && rr >= 0 && rr < rows) {
+              sum += cur[cc][rr];
+              count += 1;
+            }
+          }
+        }
+        next[c][r] = sum / count;
+      }
+    }
+    cur = next;
+  }
+  return cur;
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+}
+
+/** Soft elliptical edge so the landmass feels organic, not a sharp rectangle. */
+function applyEllipticalLandmask(heights: number[][]): number[][] {
+  const cx = (GRID_COLS - 1) * 0.5;
+  const cz = (GRID_ROWS - 1) * 0.5;
+  const rx = GRID_COLS * 0.48;
+  const rz = GRID_ROWS * 0.46;
+  return heights.map((col, c) =>
+    col.map((h, r) => {
+      const nx = (c - cx) / rx;
+      const nz = (r - cz) / rz;
+      const d = nx * nx + nz * nz;
+      const mask = 1 - smoothstep(0.62, 1.05, d);
+      return h * mask;
+    }),
+  );
+}
+
+const HEIGHT_MAP: number[][] = applyEllipticalLandmask(
+  smoothHeightField(buildNormalizedContributionHeights(), 5),
 );
 
 function generateBlockData(): {
@@ -55,13 +122,7 @@ function generateBlockData(): {
       positions.push(col, 0, row, 0);
       heights.push(height);
 
-      let colorLevel: number;
-      if (height < 0.05) colorLevel = 0;
-      else if (height < 0.2) colorLevel = 1;
-      else if (height < 0.4) colorLevel = 2;
-      else if (height < 0.7) colorLevel = 3;
-      else colorLevel = 4;
-      colors.push(colorLevel);
+      colors.push(CONTRIBUTION_GRID[col][row]);
     }
   }
 
@@ -93,8 +154,11 @@ const BLOCK_DATA = (() => {
 })();
 const NUM_BLOCKS = GRID_COLS * GRID_ROWS + NUM_YEARS;
 
-const ISO_ANGLE_Y = 0.78;
-const ISO_ANGLE_X = -0.58;
+/** One surface family: canvas, shell, and clear color stay aligned. */
+const SURFACE_RGB = { r: 0.969, g: 0.961, b: 0.941 } as const;
+
+const ISO_ANGLE_Y = 0.8;
+const ISO_ANGLE_X = -0.5;
 const FLAT_ANGLE_Y = 0.0;
 const FLAT_ANGLE_X = -1.5708;
 
@@ -113,6 +177,9 @@ struct VertexOutput {
   @location(2) isBase: f32,
   @location(3) progress: f32,
   @location(4) isTop: f32,
+  @location(5) heightFrac: f32,
+  @location(6) edgeDist: f32,
+  @location(7) topRim: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -122,25 +189,25 @@ struct VertexOutput {
 
 fn getBlockColor(level: u32) -> vec3f {
   switch(level) {
-    case 0u: { return vec3f(0.87, 0.86, 0.82); }
-    case 1u: { return vec3f(0.50, 0.70, 0.56); }
-    case 2u: { return vec3f(0.26, 0.60, 0.42); }
-    case 3u: { return vec3f(0.14, 0.48, 0.34); }
-    case 4u: { return vec3f(0.07, 0.36, 0.24); }
-    case 6u: { return vec3f(0.95, 0.94, 0.91); }
-    default: { return vec3f(0.87, 0.86, 0.82); }
+    case 0u: { return vec3f(0.90, 0.94, 0.88); }
+    case 1u: { return vec3f(0.74, 0.88, 0.74); }
+    case 2u: { return vec3f(0.50, 0.80, 0.58); }
+    case 3u: { return vec3f(0.30, 0.66, 0.44); }
+    case 4u: { return vec3f(0.13, 0.50, 0.32); }
+    case 6u: { return vec3f(0.972, 0.969, 0.958); }
+    default: { return vec3f(0.90, 0.94, 0.88); }
   }
 }
 
 fn getFlatColor(level: u32) -> vec3f {
   switch(level) {
-    case 0u: { return vec3f(0.93, 0.92, 0.89); }
-    case 1u: { return vec3f(0.55, 0.88, 0.64); }
-    case 2u: { return vec3f(0.22, 0.78, 0.45); }
-    case 3u: { return vec3f(0.14, 0.64, 0.36); }
-    case 4u: { return vec3f(0.09, 0.48, 0.28); }
-    case 6u: { return vec3f(0.99, 0.99, 0.97); }
-    default: { return vec3f(0.93, 0.92, 0.89); }
+    case 0u: { return vec3f(0.92, 0.96, 0.90); }
+    case 1u: { return vec3f(0.70, 0.89, 0.72); }
+    case 2u: { return vec3f(0.44, 0.82, 0.56); }
+    case 3u: { return vec3f(0.26, 0.70, 0.46); }
+    case 4u: { return vec3f(0.12, 0.54, 0.34); }
+    case 6u: { return vec3f(0.99, 0.988, 0.982); }
+    default: { return vec3f(0.92, 0.96, 0.90); }
   }
 }
 
@@ -161,7 +228,7 @@ fn main(
   let blockHeight = blockHeights[instanceIndex];
 
   let blockSize = 0.009;
-  let maxHeight = 4.0;
+  let maxHeight = 5.15;
   let isCard = blockColor == 6u;
 
   var h3D = max(blockHeight * maxHeight, 0.04);
@@ -179,7 +246,7 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  var csX = mix(0.94, 0.88, progress);
+  var csX = mix(1.002, 0.88, progress);
   var csZ = csX;
 
   if (isCard) {
@@ -193,8 +260,13 @@ fn main(
 
   switch(faceIndex) {
     case 0u: {
-      localPos = vec3f((qv.x - 0.5) * csX, hh, (qv.y - 0.5) * csZ);
-      faceNormal = vec3f(0.0, 1.0, 0.0);
+      let ux = qv.x - 0.5;
+      let uz = qv.y - 0.5;
+      let tr = clamp(length(vec2f(ux, uz)) * 2.08, 0.0, 1.0);
+      let yTop = hh * (1.0 - 0.29 * smoothstep(0.32, 1.0, tr));
+      localPos = vec3f(ux * csX, yTop, uz * csZ);
+      let bump = 0.62;
+      faceNormal = normalize(vec3f(-ux * csX * bump, 1.0, -uz * csZ * bump));
     }
     case 1u: {
       localPos = vec3f((qv.x - 0.5) * csX, -hh, (0.5 - qv.y) * csZ);
@@ -248,14 +320,17 @@ fn main(
   let rx_y = worldPos.y * cx - ry_z * sx;
   let rx_z = worldPos.y * sx + ry_z * cx;
 
-  let lightDir = normalize(vec3f(0.42, 0.86, 0.28));
+  let lightDir = normalize(vec3f(0.42, 0.82, 0.38));
   var rawDiffuse = max(dot(faceNormal, lightDir), 0.0);
-  var shade3D = 0.14 + 0.86 * pow(rawDiffuse, 0.72);
-  if (faceNormal.y > 0.55) {
-    shade3D = min(1.0, shade3D * 1.08 + 0.06);
+  var shade3D = 0.26 + 0.74 * pow(rawDiffuse, 0.7);
+  if (faceNormal.y > 0.45) {
+    shade3D = min(1.0, shade3D * 1.12 + 0.07);
+  }
+  if (abs(faceNormal.y) < 0.12) {
+    shade3D *= 0.72;
   }
   if (faceNormal.y < -0.45) {
-    shade3D *= 0.72;
+    shade3D *= 0.82;
   }
   let shade = mix(shade3D, 1.0, progress);
 
@@ -263,18 +338,18 @@ fn main(
   let halfZ = (f32(${GRID_ROWS}) - 1.0) * blockSize * 0.5;
   let isoSpanX = abs(cy) * halfW + abs(sy) * halfZ;
   let isoSpanY = abs(sx) * (abs(sy) * halfW + abs(cy) * halfZ) + abs(cx) * 4.2 * blockSize;
-  let isoFit = min(0.88 * uniforms.aspectRatio / max(isoSpanX, 1e-4), 0.88 / max(isoSpanY, 1e-4));
+  let isoFit = min(0.84 * uniforms.aspectRatio / max(isoSpanX, 1e-4), 0.84 / max(isoSpanY, 1e-4));
 
   let totalZ = f32(${GRID_ROWS}) + numGaps * yearGap;
   let halfH = totalZ * blockSize * 0.5;
-  let fitWidth = 0.92 * uniforms.aspectRatio / halfW;
-  let fitHeight = 0.92 / halfH;
+  let fitWidth = 0.9 * uniforms.aspectRatio / halfW;
+  let fitHeight = 0.9 / halfH;
   let flatScale = min(fitWidth, fitHeight);
   let scale = mix(isoFit, flatScale, progress);
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
     rx_y * scale,
-    rx_z * 0.01 + 0.5,
+    rx_z * 0.014 + 0.5,
     1.0
   );
 
@@ -296,6 +371,21 @@ fn main(
   }
   output.isTop = topVal;
 
+  var hf = clamp((localPos.y + hh) / max(height, 1e-5), 0.0, 1.0);
+  if (isCard) {
+    hf = 0.5;
+  }
+  output.heightFrac = hf;
+  output.edgeDist = length(vec2f(ry_x, rx_y)) * scale;
+
+  var rim = 0.0;
+  if (faceIndex == 0u) {
+    let ux = qv.x - 0.5;
+    let uz = qv.y - 0.5;
+    rim = clamp(length(vec2f(ux, uz)) * 2.0, 0.0, 1.0);
+  }
+  output.topRim = rim;
+
   return output;
 }
 `;
@@ -307,27 +397,38 @@ struct FragmentInput {
   @location(2) isBase: f32,
   @location(3) progress: f32,
   @location(4) isTop: f32,
+  @location(5) heightFrac: f32,
+  @location(6) edgeDist: f32,
+  @location(7) topRim: f32,
 }
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
-  let bgTop = vec3f(0.96, 0.95, 0.92);
-  let bgBot = vec3f(0.90, 0.88, 0.84);
-  let bgColor = mix(bgBot, bgTop, 0.55);
+  let bg = vec3f(0.969, 0.961, 0.941);
 
-  let warmLight = vec3f(1.04, 1.01, 0.96);
-  let coolShadow = vec3f(0.82, 0.88, 0.94);
-  let tint = mix(coolShadow, warmLight, input.shade);
-  var lit = input.color * mix(tint * input.shade, vec3f(1.0), input.progress);
+  let toneLo = vec3f(0.965, 0.963, 0.958);
+  let toneHi = vec3f(1.0, 0.998, 0.993);
+  let tone = mix(toneLo, toneHi, pow(input.shade, mix(0.76, 0.86, input.progress)));
+  let lift = mix(0.93, 1.0, input.shade);
+  var lit = input.color * mix(tone * lift, vec3f(1.0), input.progress);
 
-  let canopy = mix(vec3f(1.0), vec3f(1.06, 1.05, 1.0), input.isTop);
+  let canopy = mix(vec3f(1.0), vec3f(1.06, 1.04, 1.025), input.isTop);
   lit = lit * mix(canopy, vec3f(1.0), input.progress);
 
-  let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
-  lit = mix(vec3f(luma), lit, mix(1.12, 1.0, input.progress));
+  let rimDark = mix(1.0, 0.86, pow(input.topRim, 1.35));
+  lit = lit * mix(rimDark, 1.0, input.progress);
 
-  let baseFade = mix(0.48, 0.0, input.progress);
-  var col = mix(lit, bgColor * 0.99, input.isBase * baseFade);
+  let contact = mix(0.965, 1.0, smoothstep(0.0, 0.78, input.heightFrac));
+  lit = lit * mix(contact, 1.0, input.progress);
+
+  let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
+  lit = mix(vec3f(luma), lit, mix(1.04, 1.0, input.progress));
+
+  let edgeFade = smoothstep(0.38, 0.62, input.edgeDist);
+  lit = lit * mix(1.0, 0.995, edgeFade * (1.0 - input.progress) * 0.1);
+
+  let baseFade = mix(0.26, 0.0, input.progress);
+  var col = mix(lit, bg, input.isBase * baseFade);
 
   return vec4f(col, 1.0);
 }
@@ -499,7 +600,12 @@ export const IsometricKnight = () => {
         colorAttachments: [
           {
             view: textureView,
-            clearValue: { r: 0.93, g: 0.91, b: 0.87, a: 1 },
+            clearValue: {
+              r: SURFACE_RGB.r,
+              g: SURFACE_RGB.g,
+              b: SURFACE_RGB.b,
+              a: 1,
+            },
             loadOp: 'clear',
             storeOp: 'store',
           },
@@ -549,6 +655,6 @@ export const IsometricKnight = () => {
 
 const styles = StyleSheet.create({
   canvas: { flex: 1 },
-  container: { backgroundColor: '#EDE9E2', flex: 1 },
+  container: { backgroundColor: '#F7F5F0', flex: 1 },
   pressable: { flex: 1 },
 });
