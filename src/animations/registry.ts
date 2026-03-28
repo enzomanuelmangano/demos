@@ -79,6 +79,8 @@ import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
 import { IsometricKnight } from './isometric-knight';
+import { IsometricQRCode } from './isometric-qrcode';
+import { IsometricStarryNight } from './isometric-starry-night';
 import { IsometricTree } from './isometric-tree';
 import { LinearSensors } from './linear-sensors';
 import { Playground } from './liquid-glass-playground';
@@ -257,6 +259,8 @@ export const AnimationRegistry = {
   'folding-paper-webgpu': FoldingPaper,
   'isometric-tree': IsometricTree,
   'isometric-knight': IsometricKnight,
+  'isometric-qrcode': IsometricQRCode,
+  'isometric-starry-night': IsometricStarryNight,
   'paper-airplane': PaperAirplane,
 } as const;
 
@@ -866,6 +870,16 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'GitHub Terrain',
     route: 'IsometricKnight',
     iconName: 'git-branch-outline',
+  },
+  'isometric-qrcode': {
+    name: 'Isometric QR Code',
+    route: 'IsometricQRCode',
+    iconName: 'qr-code-outline',
+  },
+  'isometric-starry-night': {
+    name: 'Starry Night',
+    route: 'IsometricStarryNight',
+    iconName: 'moon-outline',
   },
   'paper-airplane': {
     name: 'Paper Airplane',

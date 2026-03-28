@@ -1,3 +1,4 @@
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   PixelRatio,
   Pressable,
@@ -6,37 +7,78 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import React, { useCallback, useEffect, useRef } from 'react';
-
+import QRCode from 'qrcode';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
-import {
-  CONTRIBUTION_GRID,
-  CONTRIBUTION_GRID_COLS,
-  CONTRIBUTION_GRID_ROWS,
-} from './contribution-data';
+function generateQRMatrix(): boolean[][] {
+  const qrCodeData = QRCode.create('https://enzo.fyi', {
+    errorCorrectionLevel: 'M',
+  });
+  const { modules } = qrCodeData;
+  const { size } = modules;
 
-const GRID_COLS = CONTRIBUTION_GRID_COLS;
-const GRID_ROWS = CONTRIBUTION_GRID_ROWS;
-
-const HEIGHT_MAP: number[][] = CONTRIBUTION_GRID.map(col =>
-  col.map(level => {
-    switch (level) {
-      case 0:
-        return 0.02;
-      case 1:
-        return 0.15;
-      case 2:
-        return 0.35;
-      case 3:
-        return 0.65;
-      case 4:
-        return 1.0;
-      default:
-        return 0.02;
+  const matrix: boolean[][] = [];
+  for (let y = 0; y < size; y++) {
+    const row: boolean[] = [];
+    for (let x = 0; x < size; x++) {
+      row.push(modules.get(x, y) === 1);
     }
-  }),
-);
+    matrix.push(row);
+  }
+
+  return matrix;
+}
+
+const QR_MATRIX = generateQRMatrix();
+const GRID_SIZE = QR_MATRIX.length;
+const GRID_COLS = GRID_SIZE;
+const GRID_ROWS = GRID_SIZE;
+
+interface RGB {
+  r: number;
+  g: number;
+  b: number;
+}
+
+const BUILDING_PALETTE: RGB[] = [
+  { r: 0.88, g: 0.42, b: 0.30 }, // Terracotta
+  { r: 0.92, g: 0.72, b: 0.38 }, // Warm sand
+  { r: 0.32, g: 0.55, b: 0.82 }, // Sky blue
+  { r: 0.25, g: 0.72, b: 0.62 }, // Teal
+  { r: 0.60, g: 0.40, b: 0.74 }, // Purple
+  { r: 0.30, g: 0.68, b: 0.38 }, // Green
+  { r: 0.40, g: 0.48, b: 0.65 }, // Slate
+  { r: 0.84, g: 0.42, b: 0.52 }, // Rose
+  { r: 0.28, g: 0.45, b: 0.70 }, // Deep blue
+  { r: 0.78, g: 0.58, b: 0.32 }, // Amber
+];
+
+const FINDER_PALETTE: RGB[] = [
+  { r: 0.95, g: 0.72, b: 0.20 }, // Gold
+  { r: 0.94, g: 0.60, b: 0.22 }, // Deep amber
+];
+
+const GROUND_COLOR: RGB = { r: 1.0, g: 1.0, b: 1.0 };
+
+function isInFinderPattern(col: number, row: number, size: number): boolean {
+  if (col < 7 && row < 7) return true;
+  if (col >= size - 7 && row < 7) return true;
+  if (col < 7 && row >= size - 7) return true;
+  return false;
+}
+
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+function packRGB(c: RGB): number {
+  return (
+    Math.floor(c.r * 255) * 65536 +
+    Math.floor(c.g * 255) * 256 +
+    Math.floor(c.b * 255)
+  );
+}
 
 function generateBlockData(): {
   positions: number[];
@@ -47,58 +89,57 @@ function generateBlockData(): {
   const heights: number[] = [];
   const colors: number[] = [];
 
-  for (let col = 0; col < GRID_COLS; col++) {
-    for (let row = 0; row < GRID_ROWS; row++) {
-      const height = HEIGHT_MAP[col][row];
+  for (let row = 0; row < GRID_ROWS; row++) {
+    for (let col = 0; col < GRID_COLS; col++) {
+      const isModule = QR_MATRIX[row][col];
+      const isFinder = isInFinderPattern(col, row, GRID_SIZE);
 
       positions.push(col, 0, row, 0);
-      heights.push(height);
 
-      let colorLevel: number;
-      if (height < 0.05) colorLevel = 0;
-      else if (height < 0.2) colorLevel = 1;
-      else if (height < 0.4) colorLevel = 2;
-      else if (height < 0.7) colorLevel = 3;
-      else colorLevel = 4;
-      colors.push(colorLevel);
+      let color: RGB;
+      let height: number;
+
+      if (isModule) {
+        const rand = seededRandom(col * 137 + row * 311);
+
+        if (isFinder) {
+          const idx = Math.floor(
+            seededRandom(col * 73 + row * 191) * FINDER_PALETTE.length,
+          );
+          color = FINDER_PALETTE[idx];
+          height = 0.75 + rand * 0.20;
+        } else {
+          const idx = Math.floor(
+            seededRandom(col * 59 + row * 223) * BUILDING_PALETTE.length,
+          );
+          color = BUILDING_PALETTE[idx];
+          const tier = seededRandom(col * 419 + row * 167);
+          if (tier > 0.85) {
+            height = 0.8 + rand * 0.2;
+          } else if (tier > 0.35) {
+            height = 0.4 + rand * 0.35;
+          } else {
+            height = 0.2 + rand * 0.2;
+          }
+        }
+      } else {
+        color = GROUND_COLOR;
+        height = 0.03 + seededRandom(col * 41 + row * 83) * 0.02;
+      }
+
+      heights.push(height);
+      colors.push(packRGB(color));
     }
   }
 
   return { positions, heights, colors };
 }
 
-const NUM_YEARS = 9;
-
-function addYearCards(data: {
-  positions: number[];
-  heights: number[];
-  colors: number[];
-}) {
-  for (let year = 0; year < NUM_YEARS; year++) {
-    const cx = GRID_COLS / 2;
-    const cz = year * 7 + 3;
-
-    // Shadow (color 5) — offset bottom-right, behind card
-    data.positions.push(cx + 0.5, -2, cz - 0.5, 0);
-    data.heights.push(0.001);
-    data.colors.push(5);
-
-    // Card background (color 6) — behind contribution blocks
-    data.positions.push(cx, -1, cz, 0);
-    data.heights.push(0.001);
-    data.colors.push(6);
-  }
-}
-
-const BLOCK_DATA = (() => {
-  const data = generateBlockData();
-  addYearCards(data);
-  return data;
-})();
-const NUM_BLOCKS = GRID_COLS * GRID_ROWS + NUM_YEARS * 2;
+const BLOCK_DATA = generateBlockData();
+const NUM_BLOCKS = GRID_COLS * GRID_ROWS;
 
 const ISO_ANGLE_Y = 0.78;
-const ISO_ANGLE_X = -0.58;
+const ISO_ANGLE_X = -0.55;
 const FLAT_ANGLE_Y = 0.0;
 const FLAT_ANGLE_X = -1.5708;
 
@@ -114,8 +155,7 @@ struct VertexOutput {
   @builtin(position) position: vec4f,
   @location(0) color: vec3f,
   @location(1) shade: f32,
-  @location(2) isBase: f32,
-  @location(3) progress: f32,
+  @location(2) shimmer: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -123,30 +163,15 @@ struct VertexOutput {
 @group(0) @binding(2) var<storage, read> blockPositions: array<vec4f>;
 @group(0) @binding(3) var<storage, read> blockHeights: array<f32>;
 
-fn getBlockColor(level: u32) -> vec3f {
-  switch(level) {
-    case 0u: { return vec3f(0.84, 0.83, 0.78); }
-    case 1u: { return vec3f(0.64, 0.80, 0.58); }
-    case 2u: { return vec3f(0.40, 0.72, 0.44); }
-    case 3u: { return vec3f(0.24, 0.58, 0.35); }
-    case 4u: { return vec3f(0.14, 0.42, 0.24); }
-    case 5u: { return vec3f(0.84, 0.83, 0.78); }
-    case 6u: { return vec3f(0.84, 0.83, 0.78); }
-    default: { return vec3f(0.84, 0.83, 0.78); }
-  }
+fn unpackColor(packed: u32) -> vec3f {
+  let r = f32((packed >> 16u) & 0xFFu) / 255.0;
+  let g = f32((packed >> 8u) & 0xFFu) / 255.0;
+  let b = f32(packed & 0xFFu) / 255.0;
+  return vec3f(r, g, b);
 }
 
-fn getFlatColor(level: u32) -> vec3f {
-  switch(level) {
-    case 0u: { return vec3f(0.94, 0.93, 0.90); }
-    case 1u: { return vec3f(0.61, 0.91, 0.66); }
-    case 2u: { return vec3f(0.25, 0.77, 0.39); }
-    case 3u: { return vec3f(0.19, 0.63, 0.31); }
-    case 4u: { return vec3f(0.13, 0.43, 0.22); }
-    case 5u: { return vec3f(0.88, 0.87, 0.85); }
-    case 6u: { return vec3f(1.0, 1.0, 0.98); }
-    default: { return vec3f(0.94, 0.93, 0.90); }
-  }
+fn hash(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(12.9898, 78.233))) * 43758.5453);
 }
 
 @vertex
@@ -157,22 +182,47 @@ fn main(
   var output: VertexOutput;
 
   let progress = uniforms.progress;
+  let time = uniforms.time;
 
   let faceIndex = vertexIndex / 6u;
   let faceVertex = vertexIndex % 6u;
 
   let blockPos = blockPositions[instanceIndex].xyz;
-  let blockColor = blockColors[instanceIndex];
+  let blockColorPacked = blockColors[instanceIndex];
   let blockHeight = blockHeights[instanceIndex];
 
-  let blockSize = 0.009;
-  let maxHeight = 4.0;
-  let isCard = blockColor >= 5u;
+  let blockSize = 0.022;
+  let maxHeight = 1.8;
+  let isBuilding = blockHeight > 0.1;
 
-  var h3D = max(blockHeight * maxHeight, 0.04);
-  var fH = 0.06;
-  if (isCard) { h3D = 0.0; fH = 0.0; }
-  let height = mix(h3D, fH, progress);
+  let height3D = max(blockHeight * maxHeight, 0.06);
+  let flatHeight = 0.06;
+  let height = mix(height3D, flatHeight, progress);
+
+  // Per-building shimmer: windows lighting up and glass reflections
+  var shimmerVal = 0.0;
+  if (isBuilding) {
+    let bPos = vec2f(blockPos.x, blockPos.z);
+
+    // Each building has unique phase and speed
+    let phase1 = hash(bPos) * 6.2832;
+    let speed1 = 0.4 + hash(bPos * 1.7) * 1.2;
+
+    // Slow warm pulse (windows lighting up)
+    let windowPulse = sin(time * speed1 + phase1) * 0.5 + 0.5;
+
+    // Secondary rhythm at different frequency
+    let phase2 = hash(bPos * 3.1) * 6.2832;
+    let speed2 = 0.8 + hash(bPos * 2.3) * 0.8;
+    let windowPulse2 = sin(time * speed2 + phase2) * 0.5 + 0.5;
+
+    // Glass glint: sharp occasional sparkle
+    let glintPhase = hash(bPos * 5.7) * 6.2832;
+    let glintRaw = sin(time * 0.6 + glintPhase);
+    let glint = pow(max(glintRaw, 0.0), 12.0);
+
+    shimmerVal = windowPulse * 0.12 + windowPulse2 * 0.08 + glint * 0.35;
+  }
 
   var localPos: vec3f;
   var faceNormal: vec3f;
@@ -184,45 +234,33 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  var csX = mix(0.94, 0.88, progress);
-  var csZ = csX;
-
-  if (isCard) {
-    csX = (f32(${GRID_COLS}) + 1.5) * progress;
-    csZ = (7.0 + 0.6) * progress;
-  }
-  if (blockColor == 5u) {
-    csX += 0.6 * progress;
-    csZ += 0.6 * progress;
-  }
-
-  let hwX = csX * 0.5;
-  let hwZ = csZ * 0.5;
+  let cs = mix(0.90, 1.0, progress);
+  let hw = cs * 0.5;
   let hh = height * 0.5;
 
   switch(faceIndex) {
-    case 0u: {
-      localPos = vec3f((qv.x - 0.5) * csX, hh, (qv.y - 0.5) * csZ);
+    case 0u: { // Top
+      localPos = vec3f((qv.x - 0.5) * cs, hh, (qv.y - 0.5) * cs);
       faceNormal = vec3f(0.0, 1.0, 0.0);
     }
-    case 1u: {
-      localPos = vec3f((qv.x - 0.5) * csX, -hh, (0.5 - qv.y) * csZ);
+    case 1u: { // Bottom
+      localPos = vec3f((qv.x - 0.5) * cs, -hh, (0.5 - qv.y) * cs);
       faceNormal = vec3f(0.0, -1.0, 0.0);
     }
-    case 2u: {
-      localPos = vec3f((qv.x - 0.5) * csX, (qv.y - 0.5) * height, hwZ);
+    case 2u: { // Front
+      localPos = vec3f((qv.x - 0.5) * cs, (qv.y - 0.5) * height, hw);
       faceNormal = vec3f(0.0, 0.0, 1.0);
     }
-    case 3u: {
-      localPos = vec3f((0.5 - qv.x) * csX, (qv.y - 0.5) * height, -hwZ);
+    case 3u: { // Back
+      localPos = vec3f((0.5 - qv.x) * cs, (qv.y - 0.5) * height, -hw);
       faceNormal = vec3f(0.0, 0.0, -1.0);
     }
-    case 4u: {
-      localPos = vec3f(hwX, (qv.y - 0.5) * height, (qv.x - 0.5) * csZ);
+    case 4u: { // Right
+      localPos = vec3f(hw, (qv.y - 0.5) * height, (qv.x - 0.5) * cs);
       faceNormal = vec3f(1.0, 0.0, 0.0);
     }
-    case 5u: {
-      localPos = vec3f(-hwX, (qv.y - 0.5) * height, (0.5 - qv.x) * csZ);
+    case 5u: { // Left
+      localPos = vec3f(-hw, (qv.y - 0.5) * height, (0.5 - qv.x) * cs);
       faceNormal = vec3f(-1.0, 0.0, 0.0);
     }
     default: {
@@ -236,13 +274,6 @@ fn main(
 
   worldPos.x -= f32(${GRID_COLS}) * blockSize * 0.5;
   worldPos.z -= f32(${GRID_ROWS}) * blockSize * 0.5;
-
-  // Separate years with gaps in flat view (9 years, 7 rows each)
-  let yearIndex = floor(blockPos.z / 7.0);
-  let rowInYear = blockPos.z - yearIndex * 7.0;
-  let yearGap = 4.0;
-  let numGaps = 8.0;
-  worldPos.z += (yearIndex * yearGap - numGaps * yearGap * 0.5) * blockSize * progress;
 
   let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
   let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
@@ -258,30 +289,25 @@ fn main(
   let rx_z = worldPos.y * sx + ry_z * cx;
 
   let ny_x = faceNormal.x * cy - faceNormal.z * sy;
+  let ny_z = faceNormal.x * sy + faceNormal.z * cy;
+  let nx_y = faceNormal.y * cx - ny_z * sx;
+  let nx_z = faceNormal.y * sx + ny_z * cx;
+  let rotatedNormal = normalize(vec3f(ny_x, nx_y, nx_z));
 
-  var shade3D: f32;
-  if (faceNormal.y > 0.5) {
-    shade3D = 1.0;
-  } else if (faceNormal.y < -0.5) {
-    shade3D = 0.35;
-  } else {
-    if (ny_x < -0.1) {
-      shade3D = 0.68;
-    } else if (ny_x > 0.1) {
-      shade3D = 0.50;
-    } else {
-      shade3D = 0.42;
-    }
-  }
-  let shade = mix(shade3D, 1.0, progress);
+  // Orbiting sun — dramatic enough to cast visible moving shadows
+  let lightAngle = time * 0.4;
+  let lightDir = normalize(vec3f(
+    cos(lightAngle) * 0.6,
+    0.75,
+    sin(lightAngle) * 0.6
+  ));
 
-  let halfW = f32(${GRID_COLS}) * blockSize * 0.5;
-  let totalZ = f32(${GRID_ROWS}) + numGaps * yearGap;
-  let halfH = totalZ * blockSize * 0.5;
-  let fitWidth = 0.92 * uniforms.aspectRatio / halfW;
-  let fitHeight = 0.92 / halfH;
-  let flatScale = min(fitWidth, fitHeight);
-  let scale = mix(1.1, flatScale, progress);
+  let diffuse = max(dot(rotatedNormal, lightDir), 0.0);
+  let ambient = 0.40;
+  let topBoost = max(faceNormal.y, 0.0) * 0.15;
+  let shade = ambient + diffuse * 0.55 + topBoost;
+
+  let scale = mix(1.0, 1.35, progress);
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
     rx_y * scale,
@@ -289,17 +315,9 @@ fn main(
     1.0
   );
 
-  let color3D = getBlockColor(blockColor);
-  let colorFlat = getFlatColor(blockColor);
-  output.color = mix(color3D, colorFlat, progress);
+  output.color = unpackColor(blockColorPacked);
   output.shade = shade;
-  output.progress = progress;
-
-  var isBaseVal = 0.0;
-  if (blockColor == 0u) {
-    isBaseVal = 1.0;
-  }
-  output.isBase = isBaseVal;
+  output.shimmer = shimmerVal;
 
   return output;
 }
@@ -309,23 +327,18 @@ const fragmentShader = /* wgsl */ `
 struct FragmentInput {
   @location(0) color: vec3f,
   @location(1) shade: f32,
-  @location(2) isBase: f32,
-  @location(3) progress: f32,
+  @location(2) shimmer: f32,
 }
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
-  let bgColor = vec3f(0.94, 0.93, 0.90);
+  let baseColor = input.color * input.shade;
 
-  let warmLight = vec3f(1.02, 1.0, 0.97);
-  let coolShadow = vec3f(0.88, 0.90, 0.96);
-  let tint = mix(coolShadow, warmLight, input.shade);
-  let shadedColor = input.color * mix(tint * input.shade, vec3f(1.0), input.progress);
+  // Shimmer adds warm brightness to buildings (windows + glass glints)
+  let warmTint = vec3f(1.08, 1.02, 0.92);
+  let glow = baseColor + input.shimmer * baseColor * warmTint;
 
-  let baseFade = mix(0.55, 0.0, input.progress);
-  var col = mix(shadedColor, bgColor * 0.97, input.isBase * baseFade);
-
-  return vec4f(col, 1.0);
+  return vec4f(glow, 1.0);
 }
 `;
 
@@ -335,14 +348,14 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-export const IsometricKnight = () => {
+export const IsometricQRCode = () => {
   const { width, height } = useWindowDimensions();
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const isFlat = useRef(false);
-  const rawProgressRef = useRef(0);
   const progressRef = useRef(0);
+  const rawProgressRef = useRef(0);
   const lastFrameTimeRef = useRef(Date.now());
 
   const handlePress = useCallback(() => {
@@ -394,26 +407,10 @@ export const IsometricKnight = () => {
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'uniform' },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
+        { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
+        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        { binding: 3, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
       ],
     });
 
@@ -428,9 +425,7 @@ export const IsometricKnight = () => {
     });
 
     const pipeline = device.createRenderPipeline({
-      layout: device.createPipelineLayout({
-        bindGroupLayouts: [bindGroupLayout],
-      }),
+      layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
       vertex: {
         module: device.createShaderModule({ code: vertexShader }),
         entryPoint: 'main',
@@ -462,8 +457,7 @@ export const IsometricKnight = () => {
       lastFrameTimeRef.current = now;
 
       const target = isFlat.current ? 1 : 0;
-      rawProgressRef.current +=
-        (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
+      rawProgressRef.current += (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
       if (Math.abs(rawProgressRef.current - target) < 0.001) {
         rawProgressRef.current = target;
       }
@@ -486,7 +480,7 @@ export const IsometricKnight = () => {
         colorAttachments: [
           {
             view: textureView,
-            clearValue: { r: 0.94, g: 0.93, b: 0.9, a: 1 },
+            clearValue: { r: 1.0, g: 1.0, b: 1.0, a: 1 },
             loadOp: 'clear',
             storeOp: 'store',
           },
@@ -532,6 +526,6 @@ export const IsometricKnight = () => {
 
 const styles = StyleSheet.create({
   canvas: { flex: 1 },
-  container: { backgroundColor: '#F0EDE6', flex: 1 },
+  container: { backgroundColor: '#FFFFFF', flex: 1 },
   pressable: { flex: 1 },
 });
