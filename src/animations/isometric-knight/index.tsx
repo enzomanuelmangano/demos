@@ -3,22 +3,40 @@ import {
   PixelRatio,
   Pressable,
   StyleSheet,
+  Switch,
+  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
 import {
-  CONTRIBUTION_GRID,
   CONTRIBUTION_GRID_COLS,
   CONTRIBUTION_GRID_ROWS,
+  getContributionGrid,
 } from './contribution-data';
 
 const GRID_COLS = CONTRIBUTION_GRID_COLS;
 const GRID_ROWS = CONTRIBUTION_GRID_ROWS;
+
+/** Cell footprint in grid units (< 1 leaves gutters). 3D uses smaller footprint; 2D stays nearly flush. */
+const CELL_FOOTPRINT_ISO = 0.78;
+const CELL_FOOTPRINT_FLAT = 0.91;
+
+/** Contribution ramp swatches (levels 1–4), aligned with `getFlatColor` in WGSL. */
+const LEGEND_SWATCH_COLORS = [
+  '#B3E3BA',
+  '#70D18F',
+  '#42B275',
+  '#1F8A57',
+] as const;
+
+const LEGEND_SWATCH_SIZE = 11;
+const LEGEND_SWATCH_GAP = 3;
 
 /**
  * GitHub only exposes 0–4 buckets, not raw counts. We map each bucket to a
@@ -32,8 +50,10 @@ function estimatedContributionsForLevel(level: number): number {
 }
 
 /** Normalized [0,1] height ∝ relative contribution amount for each cell. */
-function buildNormalizedContributionHeights(): number[][] {
-  const raw = CONTRIBUTION_GRID.map(col =>
+function buildNormalizedContributionHeights(
+  contributionGrid: number[][],
+): number[][] {
+  const raw = contributionGrid.map(col =>
     col.map(level => estimatedContributionsForLevel(level)),
   );
   let max = 0;
@@ -89,24 +109,82 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
 function applyEllipticalLandmask(heights: number[][]): number[][] {
   const cx = (GRID_COLS - 1) * 0.5;
   const cz = (GRID_ROWS - 1) * 0.5;
-  const rx = GRID_COLS * 0.48;
-  const rz = GRID_ROWS * 0.46;
+  const rx = GRID_COLS * 0.5;
+  const rz = GRID_ROWS * 0.48;
   return heights.map((col, c) =>
     col.map((h, r) => {
       const nx = (c - cx) / rx;
       const nz = (r - cz) / rz;
       const d = nx * nx + nz * nz;
-      const mask = 1 - smoothstep(0.62, 1.05, d);
-      return h * mask;
+      const mask = 1 - smoothstep(0.64, 1.06, d);
+      return h * (0.84 + 0.16 * mask);
     }),
   );
 }
 
-const HEIGHT_MAP: number[][] = applyEllipticalLandmask(
-  smoothHeightField(buildNormalizedContributionHeights(), 5),
-);
+/** Pull mids down / keep peaks — stronger apparent relief without changing colors. */
+function emphasizePeaks(heights: number[][], gamma: number): number[][] {
+  return heights.map(col =>
+    col.map(h => Math.pow(Math.max(0, Math.min(1, h)), gamma)),
+  );
+}
 
-function generateBlockData(): {
+/**
+ * Real GitHub grids are sparse; without a floor, active days read as tiny dots.
+ * Blur + elliptical mask also washes out isolated commits — use a tighter pipeline.
+ */
+function applySparseContributionFloor(
+  heightMap: number[][],
+  contributionGrid: number[][],
+): number[][] {
+  return heightMap.map((col, c) =>
+    col.map((h, r) => {
+      const level = contributionGrid[c][r];
+      if (level <= 0) {
+        return h;
+      }
+      const floor = 0.14 + (level / 4) * 0.22;
+      return Math.max(h, floor);
+    }),
+  );
+}
+
+function buildHeightMap(
+  contributionGrid: number[][],
+  useRealData: boolean,
+): number[][] {
+  const normalized = buildNormalizedContributionHeights(contributionGrid);
+
+  if (useRealData) {
+    const blurred = smoothHeightField(normalized, 3);
+    const peaked = emphasizePeaks(blurred, 0.88);
+    const floored = applySparseContributionFloor(peaked, contributionGrid);
+    return floored;
+  }
+
+  return emphasizePeaks(
+    applyEllipticalLandmask(smoothHeightField(normalized, 5)),
+    1.08,
+  );
+}
+
+/** Flat grid for WGSL — neighbor height sampling (self-shadow / contact). */
+const HEIGHT_GRID_CELL_COUNT = GRID_COLS * GRID_ROWS;
+
+function buildHeightGridFlat(heightMap: number[][]): Float32Array {
+  const out = new Float32Array(HEIGHT_GRID_CELL_COUNT);
+  for (let c = 0; c < GRID_COLS; c++) {
+    for (let r = 0; r < GRID_ROWS; r++) {
+      out[c * GRID_ROWS + r] = heightMap[c][r];
+    }
+  }
+  return out;
+}
+
+function generateBlockData(
+  contributionGrid: number[][],
+  heightMap: number[][],
+): {
   positions: number[];
   heights: number[];
   colors: number[];
@@ -117,12 +195,12 @@ function generateBlockData(): {
 
   for (let col = 0; col < GRID_COLS; col++) {
     for (let row = 0; row < GRID_ROWS; row++) {
-      const height = HEIGHT_MAP[col][row];
+      const height = heightMap[col][row];
 
       positions.push(col, 0, row, 0);
       heights.push(height);
 
-      colors.push(CONTRIBUTION_GRID[col][row]);
+      colors.push(contributionGrid[col][row]);
     }
   }
 
@@ -147,11 +225,14 @@ function addYearCards(data: {
   }
 }
 
-const BLOCK_DATA = (() => {
-  const data = generateBlockData();
+function buildSceneData(contributionGrid: number[][], useRealData: boolean) {
+  const heightMap = buildHeightMap(contributionGrid, useRealData);
+  const data = generateBlockData(contributionGrid, heightMap);
   addYearCards(data);
-  return data;
-})();
+  const heightGridFlat = buildHeightGridFlat(heightMap);
+  return { ...data, heightGridFlat };
+}
+
 const NUM_BLOCKS = GRID_COLS * GRID_ROWS + NUM_YEARS;
 
 /** One surface family: canvas, shell, and clear color stay aligned. */
@@ -159,6 +240,8 @@ const SURFACE_RGB = { r: 0.969, g: 0.961, b: 0.941 } as const;
 
 const ISO_ANGLE_Y = 0.8;
 const ISO_ANGLE_X = -0.5;
+/** How much of the NDC view the isometric chart fills (higher = larger / “closer”). */
+const ISO_VIEWPORT_FILL = 0.96;
 const FLAT_ANGLE_Y = 0.0;
 const FLAT_ANGLE_X = -1.5708;
 
@@ -180,16 +263,53 @@ struct VertexOutput {
   @location(5) heightFrac: f32,
   @location(6) edgeDist: f32,
   @location(7) topRim: f32,
+  @location(8) shadowCast: f32,
+  @location(9) peakLift: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> blockColors: array<u32>;
 @group(0) @binding(2) var<storage, read> blockPositions: array<vec4f>;
 @group(0) @binding(3) var<storage, read> blockHeights: array<f32>;
+@group(0) @binding(4) var<storage, read> heightGrid: array<f32>;
+
+fn heightAt(c: i32, r: i32) -> f32 {
+  if (c < 0 || c >= i32(${GRID_COLS}) || r < 0 || r >= i32(${GRID_ROWS})) {
+    return 0.0;
+  }
+  return heightGrid[u32(c) * ${GRID_ROWS}u + u32(r)];
+}
+
+fn gridShadow(myH: f32, col: f32, row: f32) -> f32 {
+  if (myH < 0.008) {
+    return 1.0;
+  }
+  let lightDir = normalize(vec3f(0.38, 0.84, 0.36));
+  var g = vec2f(lightDir.x, lightDir.z);
+  let gl = length(g);
+  if (gl < 1e-4) {
+    return 1.0;
+  }
+  g = g / gl;
+  let bc = i32(floor(col + 0.5));
+  let br = i32(floor(row + 0.5));
+  var sh = 1.0;
+  for (var s: i32 = 1; s < 10; s = s + 1) {
+    let nc = bc + i32(round(g.x * f32(s)));
+    let nr = br + i32(round(g.y * f32(s)));
+    let nh = heightAt(nc, nr);
+    if (nh > myH + 0.06) {
+      let t = smoothstep(myH + 0.06, myH + 0.36, nh);
+      let fall = 1.0 - f32(s) * 0.05;
+      sh *= mix(1.0, 0.78, t * 0.55 * max(fall, 0.5));
+    }
+  }
+  return max(sh, 0.58);
+}
 
 fn getBlockColor(level: u32) -> vec3f {
   switch(level) {
-    case 0u: { return vec3f(0.90, 0.94, 0.88); }
+    case 0u: { return vec3f(0.84, 0.90, 0.86); }
     case 1u: { return vec3f(0.74, 0.88, 0.74); }
     case 2u: { return vec3f(0.50, 0.80, 0.58); }
     case 3u: { return vec3f(0.30, 0.66, 0.44); }
@@ -228,10 +348,10 @@ fn main(
   let blockHeight = blockHeights[instanceIndex];
 
   let blockSize = 0.009;
-  let maxHeight = 5.15;
+  let maxHeight = 8.6;
   let isCard = blockColor == 6u;
 
-  var h3D = max(blockHeight * maxHeight, 0.04);
+  var h3D = max(blockHeight * maxHeight, 0.026);
   var fH = 0.06;
   if (isCard) { h3D = 0.0; fH = 0.0; }
   let height = mix(h3D, fH, progress);
@@ -246,7 +366,7 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  var csX = mix(1.002, 0.88, progress);
+  var csX = mix(${CELL_FOOTPRINT_ISO}, ${CELL_FOOTPRINT_FLAT}, progress);
   var csZ = csX;
 
   if (isCard) {
@@ -263,7 +383,7 @@ fn main(
       let ux = qv.x - 0.5;
       let uz = qv.y - 0.5;
       let tr = clamp(length(vec2f(ux, uz)) * 2.08, 0.0, 1.0);
-      let yTop = hh * (1.0 - 0.29 * smoothstep(0.32, 1.0, tr));
+      let yTop = hh * (1.0 - 0.08 * smoothstep(0.32, 1.0, tr));
       localPos = vec3f(ux * csX, yTop, uz * csZ);
       let bump = 0.62;
       faceNormal = normalize(vec3f(-ux * csX * bump, 1.0, -uz * csZ * bump));
@@ -320,17 +440,17 @@ fn main(
   let rx_y = worldPos.y * cx - ry_z * sx;
   let rx_z = worldPos.y * sx + ry_z * cx;
 
-  let lightDir = normalize(vec3f(0.42, 0.82, 0.38));
+  let lightDir = normalize(vec3f(0.38, 0.84, 0.36));
   var rawDiffuse = max(dot(faceNormal, lightDir), 0.0);
-  var shade3D = 0.26 + 0.74 * pow(rawDiffuse, 0.7);
+  var shade3D = 0.26 + 0.74 * pow(rawDiffuse, 0.62);
   if (faceNormal.y > 0.45) {
-    shade3D = min(1.0, shade3D * 1.12 + 0.07);
+    shade3D = min(1.0, shade3D * 1.1 + 0.06);
   }
   if (abs(faceNormal.y) < 0.12) {
-    shade3D *= 0.72;
+    shade3D *= 0.62;
   }
   if (faceNormal.y < -0.45) {
-    shade3D *= 0.82;
+    shade3D *= 0.78;
   }
   let shade = mix(shade3D, 1.0, progress);
 
@@ -338,7 +458,7 @@ fn main(
   let halfZ = (f32(${GRID_ROWS}) - 1.0) * blockSize * 0.5;
   let isoSpanX = abs(cy) * halfW + abs(sy) * halfZ;
   let isoSpanY = abs(sx) * (abs(sy) * halfW + abs(cy) * halfZ) + abs(cx) * 4.2 * blockSize;
-  let isoFit = min(0.84 * uniforms.aspectRatio / max(isoSpanX, 1e-4), 0.84 / max(isoSpanY, 1e-4));
+  let isoFit = min(${ISO_VIEWPORT_FILL} * uniforms.aspectRatio / max(isoSpanX, 1e-4), ${ISO_VIEWPORT_FILL} / max(isoSpanY, 1e-4));
 
   let totalZ = f32(${GRID_ROWS}) + numGaps * yearGap;
   let halfH = totalZ * blockSize * 0.5;
@@ -386,6 +506,14 @@ fn main(
   }
   output.topRim = rim;
 
+  output.shadowCast = gridShadow(blockHeight, blockPos.x, blockPos.z);
+
+  var pl = 0.0;
+  if (!isCard && faceIndex == 0u) {
+    pl = blockHeight;
+  }
+  output.peakLift = pl;
+
   return output;
 }
 `;
@@ -400,6 +528,8 @@ struct FragmentInput {
   @location(5) heightFrac: f32,
   @location(6) edgeDist: f32,
   @location(7) topRim: f32,
+  @location(8) shadowCast: f32,
+  @location(9) peakLift: f32,
 }
 
 @fragment
@@ -408,18 +538,24 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
 
   let toneLo = vec3f(0.965, 0.963, 0.958);
   let toneHi = vec3f(1.0, 0.998, 0.993);
-  let tone = mix(toneLo, toneHi, pow(input.shade, mix(0.76, 0.86, input.progress)));
-  let lift = mix(0.93, 1.0, input.shade);
+  let tone = mix(toneLo, toneHi, pow(input.shade, mix(0.78, 0.86, input.progress)));
+  let lift = mix(0.94, 1.0, input.shade);
   var lit = input.color * mix(tone * lift, vec3f(1.0), input.progress);
 
-  let canopy = mix(vec3f(1.0), vec3f(1.06, 1.04, 1.025), input.isTop);
+  let canopy = mix(vec3f(1.0), vec3f(1.04, 1.03, 1.02), input.isTop);
   lit = lit * mix(canopy, vec3f(1.0), input.progress);
 
-  let rimDark = mix(1.0, 0.86, pow(input.topRim, 1.35));
+  let peakShade = mix(0.94, 1.07, input.peakLift);
+  lit = lit * mix(1.0, peakShade, (1.0 - input.progress) * input.isTop);
+
+  let rimDark = mix(1.0, 0.9, pow(input.topRim, 1.2));
   lit = lit * mix(rimDark, 1.0, input.progress);
 
-  let contact = mix(0.965, 1.0, smoothstep(0.0, 0.78, input.heightFrac));
+  let contact = mix(0.88, 1.0, smoothstep(0.0, 0.7, input.heightFrac));
   lit = lit * mix(contact, 1.0, input.progress);
+
+  let castSoft = mix(1.0, input.shadowCast, 0.58);
+  lit = lit * mix(castSoft, 1.0, input.progress);
 
   let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
   lit = mix(vec3f(luma), lit, mix(1.04, 1.0, input.progress));
@@ -442,6 +578,8 @@ function easeInOutCubic(t: number): number {
 
 export const IsometricKnight = () => {
   const { width, height } = useWindowDimensions();
+  const { bottom: safeBottom } = useSafeAreaInsets();
+  const [useMyContributions, setUseMyContributions] = useState(false);
   const layoutRef = useRef({ width, height });
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
@@ -468,169 +606,198 @@ export const IsometricKnight = () => {
     const context = canvasRef.current.getContext('webgpu');
     if (!context) return;
 
-    const adapter = await navigator.gpu?.requestAdapter();
-    if (!adapter) return;
+    try {
+      const adapter = await navigator.gpu?.requestAdapter();
+      if (!adapter) return;
 
-    const device = await adapter.requestDevice();
-    const format = navigator.gpu.getPreferredCanvasFormat();
+      const device = await adapter.requestDevice();
+      const format = navigator.gpu.getPreferredCanvasFormat();
 
-    const canvas = context.canvas as HTMLCanvasElement;
-    canvas.width = canvas.clientWidth * PixelRatio.get();
-    canvas.height = canvas.clientHeight * PixelRatio.get();
+      const canvas = context.canvas as HTMLCanvasElement;
+      canvas.width = canvas.clientWidth * PixelRatio.get();
+      canvas.height = canvas.clientHeight * PixelRatio.get();
 
-    context.configure({ device, format, alphaMode: 'opaque' });
+      context.configure({ device, format, alphaMode: 'opaque' });
 
-    const { positions, heights, colors } = BLOCK_DATA;
+      const { positions, heights, colors, heightGridFlat } = buildSceneData(
+        getContributionGrid(useMyContributions),
+        useMyContributions,
+      );
 
-    const uniformBuffer = device.createBuffer({
-      size: 16,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
+      /** WebGPU: uniform buffer size must be a multiple of 256 bytes. */
+      const UNIFORM_BUFFER_SIZE = 256;
+      const uniformBuffer = device.createBuffer({
+        size: UNIFORM_BUFFER_SIZE,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
 
-    const colorBuffer = device.createBuffer({
-      size: NUM_BLOCKS * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    device.queue.writeBuffer(colorBuffer, 0, new Uint32Array(colors));
+      const colorBuffer = device.createBuffer({
+        size: NUM_BLOCKS * 4,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(colorBuffer, 0, new Uint32Array(colors));
 
-    const posBuffer = device.createBuffer({
-      size: NUM_BLOCKS * 16,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    device.queue.writeBuffer(posBuffer, 0, new Float32Array(positions));
+      const posBuffer = device.createBuffer({
+        size: NUM_BLOCKS * 16,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(posBuffer, 0, new Float32Array(positions));
 
-    const heightBuffer = device.createBuffer({
-      size: NUM_BLOCKS * 4,
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    device.queue.writeBuffer(heightBuffer, 0, new Float32Array(heights));
+      const heightBuffer = device.createBuffer({
+        size: NUM_BLOCKS * 4,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(heightBuffer, 0, new Float32Array(heights));
 
-    const bindGroupLayout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'uniform' },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
-        {
-          binding: 2,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
-        {
-          binding: 3,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
-      ],
-    });
+      const heightGridByteSize = Math.max(
+        256,
+        Math.ceil(heightGridFlat.byteLength / 256) * 256,
+      );
+      const heightGridBuffer = device.createBuffer({
+        size: heightGridByteSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(
+        heightGridBuffer,
+        0,
+        new Float32Array(heightGridFlat),
+      );
 
-    const bindGroup = device.createBindGroup({
-      layout: bindGroupLayout,
-      entries: [
-        { binding: 0, resource: { buffer: uniformBuffer } },
-        { binding: 1, resource: { buffer: colorBuffer } },
-        { binding: 2, resource: { buffer: posBuffer } },
-        { binding: 3, resource: { buffer: heightBuffer } },
-      ],
-    });
-
-    const pipeline = device.createRenderPipeline({
-      layout: device.createPipelineLayout({
-        bindGroupLayouts: [bindGroupLayout],
-      }),
-      vertex: {
-        module: device.createShaderModule({ code: vertexShader }),
-        entryPoint: 'main',
-      },
-      fragment: {
-        module: device.createShaderModule({ code: fragmentShader }),
-        entryPoint: 'main',
-        targets: [{ format }],
-      },
-      primitive: { topology: 'triangle-list', cullMode: 'none' },
-      depthStencil: {
-        depthWriteEnabled: true,
-        depthCompare: 'less',
-        format: 'depth24plus',
-      },
-    });
-
-    const depthTexture = device.createTexture({
-      size: [canvas.width, canvas.height],
-      format: 'depth24plus',
-      usage: GPUTextureUsage.RENDER_ATTACHMENT,
-    });
-
-    const render = () => {
-      const now = Date.now();
-      const dt = Math.min((now - lastFrameTimeRef.current) / 1000, 0.05);
-      lastFrameTimeRef.current = now;
-
-      const { width: lw, height: lh } = layoutRef.current;
-      const aspectRatio = lh > 0 ? lw / lh : width / height;
-
-      const target = isFlat.current ? 1 : 0;
-      rawProgressRef.current +=
-        (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
-      if (Math.abs(rawProgressRef.current - target) < 0.001) {
-        rawProgressRef.current = target;
-      }
-      progressRef.current = easeInOutCubic(rawProgressRef.current);
-
-      const time = (now - startTimeRef.current) / 1000;
-
-      const uniformData = new Float32Array([
-        aspectRatio,
-        time,
-        NUM_BLOCKS,
-        progressRef.current,
-      ]);
-      device.queue.writeBuffer(uniformBuffer, 0, uniformData);
-
-      const commandEncoder = device.createCommandEncoder();
-      const textureView = context.getCurrentTexture().createView();
-
-      const renderPass = commandEncoder.beginRenderPass({
-        colorAttachments: [
+      const bindGroupLayout = device.createBindGroupLayout({
+        entries: [
           {
-            view: textureView,
-            clearValue: {
-              r: SURFACE_RGB.r,
-              g: SURFACE_RGB.g,
-              b: SURFACE_RGB.b,
-              a: 1,
-            },
-            loadOp: 'clear',
-            storeOp: 'store',
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'uniform' },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
+          {
+            binding: 4,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
           },
         ],
-        depthStencilAttachment: {
-          view: depthTexture.createView(),
-          depthClearValue: 1,
-          depthLoadOp: 'clear',
-          depthStoreOp: 'store',
+      });
+
+      const bindGroup = device.createBindGroup({
+        layout: bindGroupLayout,
+        entries: [
+          { binding: 0, resource: { buffer: uniformBuffer } },
+          { binding: 1, resource: { buffer: colorBuffer } },
+          { binding: 2, resource: { buffer: posBuffer } },
+          { binding: 3, resource: { buffer: heightBuffer } },
+          { binding: 4, resource: { buffer: heightGridBuffer } },
+        ],
+      });
+
+      const pipeline = device.createRenderPipeline({
+        layout: device.createPipelineLayout({
+          bindGroupLayouts: [bindGroupLayout],
+        }),
+        vertex: {
+          module: device.createShaderModule({ code: vertexShader }),
+          entryPoint: 'main',
+        },
+        fragment: {
+          module: device.createShaderModule({ code: fragmentShader }),
+          entryPoint: 'main',
+          targets: [{ format }],
+        },
+        primitive: { topology: 'triangle-list', cullMode: 'none' },
+        depthStencil: {
+          depthWriteEnabled: true,
+          depthCompare: 'less',
+          format: 'depth24plus',
         },
       });
 
-      renderPass.setPipeline(pipeline);
-      renderPass.setBindGroup(0, bindGroup);
-      renderPass.draw(36, NUM_BLOCKS);
-      renderPass.end();
+      const depthTexture = device.createTexture({
+        size: [canvas.width, canvas.height],
+        format: 'depth24plus',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+      });
 
-      device.queue.submit([commandEncoder.finish()]);
-      context.present();
+      const render = () => {
+        const now = Date.now();
+        const dt = Math.min((now - lastFrameTimeRef.current) / 1000, 0.05);
+        lastFrameTimeRef.current = now;
 
-      animationRef.current = requestAnimationFrame(render);
-    };
+        const { width: lw, height: lh } = layoutRef.current;
+        const aspectRatio = lh > 0 ? lw / lh : width / height;
 
-    render();
-  }, [height, width]);
+        const target = isFlat.current ? 1 : 0;
+        rawProgressRef.current +=
+          (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
+        if (Math.abs(rawProgressRef.current - target) < 0.001) {
+          rawProgressRef.current = target;
+        }
+        progressRef.current = easeInOutCubic(rawProgressRef.current);
+
+        const time = (now - startTimeRef.current) / 1000;
+
+        const uniformData = new Float32Array([
+          aspectRatio,
+          time,
+          NUM_BLOCKS,
+          progressRef.current,
+        ]);
+        device.queue.writeBuffer(uniformBuffer, 0, uniformData);
+
+        const commandEncoder = device.createCommandEncoder();
+        const textureView = context.getCurrentTexture().createView();
+
+        const renderPass = commandEncoder.beginRenderPass({
+          colorAttachments: [
+            {
+              view: textureView,
+              clearValue: {
+                r: SURFACE_RGB.r,
+                g: SURFACE_RGB.g,
+                b: SURFACE_RGB.b,
+                a: 1,
+              },
+              loadOp: 'clear',
+              storeOp: 'store',
+            },
+          ],
+          depthStencilAttachment: {
+            view: depthTexture.createView(),
+            depthClearValue: 1,
+            depthLoadOp: 'clear',
+            depthStoreOp: 'store',
+          },
+        });
+
+        renderPass.setPipeline(pipeline);
+        renderPass.setBindGroup(0, bindGroup);
+        renderPass.draw(36, NUM_BLOCKS);
+        renderPass.end();
+
+        device.queue.submit([commandEncoder.finish()]);
+        context.present();
+
+        animationRef.current = requestAnimationFrame(render);
+      };
+
+      render();
+    } catch (e) {
+      console.error('[IsometricKnight] WebGPU init failed', e);
+    }
+  }, [height, width, useMyContributions]);
 
   useEffect(() => {
     layoutRef.current = { width, height };
@@ -649,6 +816,39 @@ export const IsometricKnight = () => {
       <Pressable style={styles.pressable} onPress={handlePress}>
         <Canvas ref={canvasRef} style={styles.canvas} />
       </Pressable>
+      <View
+        pointerEvents="box-none"
+        style={[styles.sourceToggle, { bottom: safeBottom + 14 }]}>
+        <Text style={styles.sourceToggleLabel}>My contributions</Text>
+        <Switch
+          accessibilityLabel="Toggle real GitHub contribution data"
+          onValueChange={setUseMyContributions}
+          value={useMyContributions}
+        />
+      </View>
+      <View style={styles.legend} pointerEvents="none">
+        <View style={styles.legendRow}>
+          <Text style={styles.legendCaption}>Less</Text>
+          <View style={styles.legendRamp}>
+            <View style={styles.swatchRow}>
+              {LEGEND_SWATCH_COLORS.map((color, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.swatch,
+                    { width: LEGEND_SWATCH_SIZE, height: LEGEND_SWATCH_SIZE },
+                    i > 0 && { marginLeft: LEGEND_SWATCH_GAP },
+                    { backgroundColor: color },
+                  ]}
+                />
+              ))}
+            </View>
+            <View style={styles.legendMoreWrap}>
+              <Text style={styles.legendCaption}>More</Text>
+            </View>
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
@@ -656,5 +856,53 @@ export const IsometricKnight = () => {
 const styles = StyleSheet.create({
   canvas: { flex: 1 },
   container: { backgroundColor: '#F7F5F0', flex: 1 },
+  legend: {
+    bottom: 28,
+    position: 'absolute',
+    right: 20,
+  },
+  legendCaption: {
+    color: 'rgba(55, 55, 55, 0.72)',
+    fontSize: 11,
+    letterSpacing: 0.2,
+    lineHeight: 14,
+    marginRight: 10,
+  },
+  legendMoreWrap: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 5,
+  },
+  legendRamp: {
+    alignItems: 'flex-end',
+  },
+  legendRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+  },
   pressable: { flex: 1 },
+  sourceToggle: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+    left: 16,
+    position: 'absolute',
+    zIndex: 10,
+  },
+  sourceToggleLabel: {
+    color: 'rgba(55, 55, 55, 0.78)',
+    fontSize: 12,
+    letterSpacing: 0.15,
+  },
+  swatch: {
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+    borderCurve: 'continuous',
+    borderRadius: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  swatchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
 });
