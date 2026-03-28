@@ -52,13 +52,13 @@ const PALETTE = {
   buildingAlt: lerpRgb(building, background, 0.08),
   skyZenith: lerpRgb(background, { r: 0.9, g: 0.92, b: 0.98 }, 0.3),
   skyHorizon: background,
-  pavement: lerpRgb(building, background, 0.15),
-  pavementSide: lerpRgb(building, background, 0.08),
+  pavement: lerpRgb(building, background, 0.65),
+  pavementSide: lerpRgb(building, background, 0.5),
   fog: lerpRgb(background, building, 0.02),
   sun: background,
   skyFill: lerpRgb(background, { r: 0.9, g: 0.92, b: 0.98 }, 0.2),
   bounce: lerpRgb(background, building, 0.05),
-  window: lerpRgb(building, background, 0.12),
+  window: { r: 1.0, g: 0.92, b: 0.7 },
   crown: lerpRgb(building, background, 0.1),
   rim: lerpRgb(building, background, 0.25),
   spec: lerpRgb(background, building, 0.1),
@@ -340,7 +340,7 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  let cs = mix(0.93, 0.97, progress);
+  let cs = mix(0.88, 1.0, progress);
   let hw = cs * 0.5;
   let hh = height * 0.5;
 
@@ -532,31 +532,25 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   var streetAo = 1.0;
   var emissive = vec3f(0.0);
 
+  // Strong face differentiation for isometric city look
+  let isLeftFace = N.x < -0.5;
+  let isRightFace = N.z > 0.5;
+
   if (input.faceVertical > 0.5) {
-    let seed = input.blockSeed;
-    let grain = (hash2(uv * vec2f(7.0, 16.0) + seed) - 0.5) * 0.045;
-    let bands = sin(uv.y * 46.0 + seed.x * 4.0) * 0.018 + sin(uv.x * 28.0 + seed.y * 3.0) * 0.01;
-    let mullion = abs(fract(uv.x * 6.0) - 0.5);
-    let vertRib = smoothstep(0.38, 0.5, mullion) * 0.045;
-    let creaseV = abs(uv.x - 0.5) * 2.0;
-    let edge = smoothstep(0.4, 0.5, creaseV) * 0.038;
-    albedo = stone * (0.86 + 0.15 * NdSun + 0.07 * NdUp + grain + bands) * (1.0 - edge);
-    albedo = albedo * (1.0 - vertRib);
+    if (isLeftFace) {
+      // Left face - darkest (shadow side)
+      albedo = stone * 0.65;
+    } else {
+      // Right face - medium (lit side)
+      albedo = stone * 0.85;
+    }
     albedo = albedo * (1.0 + hBoost);
-    specAmt = pow(NdH, 88.0) * 0.022;
-    streetAo = mix(0.78, 1.0, smoothstep(0.0, 0.4, uv.y));
-    let cell = vec2f(floor(uv.x * 6.0), floor(uv.y * 12.0));
-    let win = step(0.78, hash2(cell + seed)) * smoothstep(0.18, 0.42, uv.y) * (1.0 - smoothstep(0.9, 1.0, uv.y));
-    emissive = ${wgslVec3(PALETTE.window)} * win * 0.07;
+    streetAo = mix(0.7, 1.0, smoothstep(0.0, 0.12, uv.y));
   } else if (input.faceNy > 0.5) {
-    let grain = (hash2(uv * 21.0 + input.blockSeed) - 0.5) * 0.04;
-    albedo = stone * (0.9 + 0.1 * NdSun + grain) * (1.0 + hBoost * 0.6);
-    specAmt = pow(NdH, 72.0) * 0.028;
-    let crown = smoothstep(0.78, 0.94, uv.y) * smoothstep(0.78, 0.55, input.blockH);
-    emissive = emissive + ${wgslVec3(PALETTE.crown)} * crown * 0.045;
+    // Top face - brightest
+    albedo = stone * 1.05 * (1.0 + hBoost * 0.5);
   } else {
-    albedo = stone * (0.55 + 0.32 * NdSun + 0.1 * NdUp);
-    streetAo = 0.93;
+    albedo = stone * 0.5;
   }
 
   let diffuse =

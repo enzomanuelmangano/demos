@@ -49,6 +49,44 @@ function estimatedContributionsForLevel(level: number): number {
   return CONTRIBUTION_ESTIMATE_BY_LEVEL[level] ?? 0;
 }
 
+/** Analyze grid to determine adaptive parameters */
+function analyzeGrid(contributionGrid: number[][]): {
+  sparsity: number;      // 0-1, how many cells are empty
+  intensity: number;     // 0-1, average contribution level
+  variance: number;      // 0-1, how spread out values are
+  peakDensity: number;   // 0-1, ratio of high-value cells
+} {
+  let total = 0;
+  let nonZero = 0;
+  let sum = 0;
+  let highCount = 0;
+  const values: number[] = [];
+
+  for (const col of contributionGrid) {
+    for (const level of col) {
+      total++;
+      if (level > 0) {
+        nonZero++;
+        sum += level;
+        values.push(level);
+        if (level >= 3) highCount++;
+      }
+    }
+  }
+
+  const sparsity = 1 - nonZero / total;
+  const intensity = nonZero > 0 ? sum / (nonZero * 4) : 0;
+  const peakDensity = nonZero > 0 ? highCount / nonZero : 0;
+
+  // Calculate variance
+  const mean = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+  const variance = values.length > 0
+    ? Math.sqrt(values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / values.length) / 4
+    : 0;
+
+  return { sparsity, intensity, variance, peakDensity };
+}
+
 /** Normalized [0,1] height ∝ relative contribution amount for each cell. */
 function buildNormalizedContributionHeights(
   contributionGrid: number[][],
@@ -59,18 +97,14 @@ function buildNormalizedContributionHeights(
   let max = 0;
   for (const col of raw) {
     for (const v of col) {
-      if (v > max) {
-        max = v;
-      }
+      if (v > max) max = v;
     }
   }
-  if (max === 0) {
-    max = 1;
-  }
+  if (max === 0) max = 1;
   return raw.map(col => col.map(v => v / max));
 }
 
-/** Blur so peaks lift neighbors — continuous “mountain” terrain (ref-style). */
+/** Blur so peaks lift neighbors — continuous "mountain" terrain. */
 function smoothHeightField(grid: number[][], passes: number): number[][] {
   const cols = grid.length;
   const rows = grid[0].length;
@@ -105,8 +139,8 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Soft elliptical edge so the landmass feels organic, not a sharp rectangle. */
-function applyEllipticalLandmask(heights: number[][]): number[][] {
+/** Soft elliptical edge so the landmass feels organic. Strength is adaptive. */
+function applyEllipticalLandmask(heights: number[][], strength: number): number[][] {
   const cx = (GRID_COLS - 1) * 0.5;
   const cz = (GRID_ROWS - 1) * 0.5;
   const rx = GRID_COLS * 0.5;
@@ -117,55 +151,64 @@ function applyEllipticalLandmask(heights: number[][]): number[][] {
       const nz = (r - cz) / rz;
       const d = nx * nx + nz * nz;
       const mask = 1 - smoothstep(0.64, 1.06, d);
-      return h * (0.84 + 0.16 * mask);
+      const blend = (1 - strength) + strength * mask;
+      return h * blend;
     }),
   );
 }
 
-/** Pull mids down / keep peaks — stronger apparent relief without changing colors. */
+/** Pull mids down / keep peaks — stronger apparent relief. */
 function emphasizePeaks(heights: number[][], gamma: number): number[][] {
   return heights.map(col =>
     col.map(h => Math.pow(Math.max(0, Math.min(1, h)), gamma)),
   );
 }
 
-/**
- * Real GitHub grids are sparse; without a floor, active days read as tiny dots.
- * Blur + elliptical mask also washes out isolated commits — use a tighter pipeline.
- */
-function applySparseContributionFloor(
+/** Ensure contributions have minimum visibility based on their level. */
+function applyContributionFloor(
   heightMap: number[][],
   contributionGrid: number[][],
+  floorStrength: number,
 ): number[][] {
   return heightMap.map((col, c) =>
     col.map((h, r) => {
       const level = contributionGrid[c][r];
-      if (level <= 0) {
-        return h;
-      }
-      const floor = 0.14 + (level / 4) * 0.22;
+      if (level <= 0) return h;
+      const floor = (0.12 + (level / 4) * 0.24) * floorStrength;
       return Math.max(h, floor);
     }),
   );
 }
 
+/** Adaptive height map building - analyzes data and adjusts processing automatically */
 function buildHeightMap(
   contributionGrid: number[][],
-  useRealData: boolean,
+  _useRealData: boolean, // kept for API compatibility, no longer used
 ): number[][] {
+  const stats = analyzeGrid(contributionGrid);
   const normalized = buildNormalizedContributionHeights(contributionGrid);
 
-  if (useRealData) {
-    const blurred = smoothHeightField(normalized, 3);
-    const peaked = emphasizePeaks(blurred, 0.88);
-    const floored = applySparseContributionFloor(peaked, contributionGrid);
-    return floored;
-  }
+  // Adaptive blur: sparse data needs more blur to create connected terrain
+  // Dense data needs less blur to preserve detail
+  const blurPasses = Math.round(2 + stats.sparsity * 4); // 2-6 passes
 
-  return emphasizePeaks(
-    applyEllipticalLandmask(smoothHeightField(normalized, 5)),
-    1.08,
-  );
+  // Adaptive gamma: low variance = compress peaks less, high variance = spread out more
+  // High intensity = lift shadows, low intensity = preserve contrast
+  const gamma = 0.85 + stats.variance * 0.3 - stats.intensity * 0.15; // ~0.7-1.15
+
+  // Adaptive edge softness: dense data gets softer edges, sparse gets sharper
+  const edgeStrength = 0.1 + stats.sparsity * 0.15; // 0.1-0.25
+
+  // Adaptive floor: sparser data needs higher floor to make contributions visible
+  const floorStrength = 0.6 + stats.sparsity * 0.5; // 0.6-1.1
+
+  // Apply pipeline
+  let heights = smoothHeightField(normalized, blurPasses);
+  heights = applyEllipticalLandmask(heights, edgeStrength);
+  heights = emphasizePeaks(heights, gamma);
+  heights = applyContributionFloor(heights, contributionGrid, floorStrength);
+
+  return heights;
 }
 
 /** Flat grid for WGSL — neighbor height sampling (self-shadow / contact). */
@@ -251,6 +294,7 @@ struct Uniforms {
   time: f32,
   blockCount: f32,
   progress: f32,
+  dataProgress: f32, // 0 = synthetic, 1 = real contributions
 }
 
 struct VertexOutput {
@@ -265,6 +309,9 @@ struct VertexOutput {
   @location(7) topRim: f32,
   @location(8) shadowCast: f32,
   @location(9) peakLift: f32,
+  @location(10) rimLight: f32,
+  @location(11) valleyAO: f32,
+  @location(12) fresnel: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -272,12 +319,46 @@ struct VertexOutput {
 @group(0) @binding(2) var<storage, read> blockPositions: array<vec4f>;
 @group(0) @binding(3) var<storage, read> blockHeights: array<f32>;
 @group(0) @binding(4) var<storage, read> heightGrid: array<f32>;
+// Second data set for animation between synthetic/real
+@group(0) @binding(5) var<storage, read> blockColorsB: array<u32>;
+@group(0) @binding(6) var<storage, read> blockHeightsB: array<f32>;
+@group(0) @binding(7) var<storage, read> heightGridB: array<f32>;
 
-fn heightAt(c: i32, r: i32) -> f32 {
+fn heightAtA(c: i32, r: i32) -> f32 {
   if (c < 0 || c >= i32(${GRID_COLS}) || r < 0 || r >= i32(${GRID_ROWS})) {
     return 0.0;
   }
   return heightGrid[u32(c) * ${GRID_ROWS}u + u32(r)];
+}
+
+fn heightAtB(c: i32, r: i32) -> f32 {
+  if (c < 0 || c >= i32(${GRID_COLS}) || r < 0 || r >= i32(${GRID_ROWS})) {
+    return 0.0;
+  }
+  return heightGridB[u32(c) * ${GRID_ROWS}u + u32(r)];
+}
+
+fn heightAt(c: i32, r: i32) -> f32 {
+  return mix(heightAtA(c, r), heightAtB(c, r), uniforms.dataProgress);
+}
+
+fn valleyOcclusion(myH: f32, col: f32, row: f32) -> f32 {
+  let bc = i32(floor(col + 0.5));
+  let br = i32(floor(row + 0.5));
+  var maxNeighborHeight = 0.0;
+
+  // Find the tallest immediate neighbor
+  for (var dc: i32 = -1; dc <= 1; dc = dc + 1) {
+    for (var dr: i32 = -1; dr <= 1; dr = dr + 1) {
+      if (dc == 0 && dr == 0) { continue; }
+      let nh = heightAt(bc + dc, br + dr);
+      maxNeighborHeight = max(maxNeighborHeight, nh);
+    }
+  }
+
+  // AO based on how much we're below the tallest neighbor
+  let diff = max(0.0, maxNeighborHeight - myH);
+  return smoothstep(0.0, 0.5, diff);
 }
 
 fn gridShadow(myH: f32, col: f32, row: f32) -> f32 {
@@ -344,8 +425,14 @@ fn main(
   let faceVertex = vertexIndex % 6u;
 
   let blockPos = blockPositions[instanceIndex].xyz;
-  let blockColor = blockColors[instanceIndex];
-  let blockHeight = blockHeights[instanceIndex];
+  // Interpolate between data sets A (synthetic) and B (real)
+  let colorA = blockColors[instanceIndex];
+  let colorB = blockColorsB[instanceIndex];
+  let heightA = blockHeights[instanceIndex];
+  let heightB = blockHeightsB[instanceIndex];
+  let blockHeight = mix(heightA, heightB, uniforms.dataProgress);
+  // For color, we pick based on threshold since it's discrete
+  let blockColor = select(colorA, colorB, uniforms.dataProgress > 0.5);
 
   let blockSize = 0.009;
   let maxHeight = 8.6;
@@ -473,8 +560,13 @@ fn main(
     1.0
   );
 
-  let color3D = getBlockColor(blockColor);
-  let colorFlat = getFlatColor(blockColor);
+  // Blend colors from both data sets, then blend 3D/flat
+  let color3D_A = getBlockColor(colorA);
+  let color3D_B = getBlockColor(colorB);
+  let colorFlat_A = getFlatColor(colorA);
+  let colorFlat_B = getFlatColor(colorB);
+  let color3D = mix(color3D_A, color3D_B, uniforms.dataProgress);
+  let colorFlat = mix(colorFlat_A, colorFlat_B, uniforms.dataProgress);
   output.color = mix(color3D, colorFlat, progress);
   output.shade = shade;
   output.progress = progress;
@@ -514,6 +606,37 @@ fn main(
   }
   output.peakLift = pl;
 
+  // === Enhanced Lighting ===
+
+  // View direction (isometric camera looks from top-right-front)
+  let viewDir = normalize(vec3f(sin(${ISO_ANGLE_Y}), -sin(${ISO_ANGLE_X}), cos(${ISO_ANGLE_Y})));
+
+  // Rim light: highlight edges perpendicular to view (silhouette edges)
+  let viewDot = abs(dot(faceNormal, viewDir));
+  var rimVal = pow(1.0 - viewDot, 4.0);
+  // Only apply to side faces, not top/bottom
+  rimVal *= smoothstep(0.3, 0.7, abs(faceNormal.x) + abs(faceNormal.z));
+  if (isCard) { rimVal = 0.0; }
+  output.rimLight = rimVal;
+
+  // Valley ambient occlusion
+  var aoVal = 0.0;
+  if (!isCard && blockHeight > 0.01) {
+    aoVal = valleyOcclusion(blockHeight, blockPos.x, blockPos.z);
+    // Fade AO toward top of block
+    aoVal *= (1.0 - hf * 0.5);
+  }
+  output.valleyAO = aoVal;
+
+  // Fresnel: subtle brightening on edges facing away from camera
+  var fresnelVal = pow(1.0 - viewDot, 2.5);
+  // Stronger on top surfaces for that canopy glow
+  if (faceNormal.y > 0.5) {
+    fresnelVal *= 1.2;
+  }
+  if (isCard) { fresnelVal = 0.0; }
+  output.fresnel = fresnelVal;
+
   return output;
 }
 `;
@@ -530,6 +653,9 @@ struct FragmentInput {
   @location(7) topRim: f32,
   @location(8) shadowCast: f32,
   @location(9) peakLift: f32,
+  @location(10) rimLight: f32,
+  @location(11) valleyAO: f32,
+  @location(12) fresnel: f32,
 }
 
 @fragment
@@ -557,6 +683,23 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let castSoft = mix(1.0, input.shadowCast, 0.58);
   lit = lit * mix(castSoft, 1.0, input.progress);
 
+  // === Enhanced Lighting Effects (animate with depth transition) ===
+  let depthFactor = 1.0 - input.progress; // 1 in 3D, 0 in flat
+
+  // Rim/backlight: bright edges to separate trees
+  let rimBoost = 1.0 + input.rimLight * 0.25 * depthFactor;
+  lit = lit * rimBoost;
+
+  // Valley ambient occlusion: darken low areas between tall trees
+  let aoMult = 1.0 - input.valleyAO * 0.32 * depthFactor;
+  lit = lit * aoMult;
+
+  // Fresnel effect: glow on edges for depth separation
+  let fresnelBoost = 1.0 + input.fresnel * 0.14 * depthFactor;
+  lit = lit * fresnelBoost;
+
+  // === End Enhanced Lighting ===
+
   let luma = dot(lit, vec3f(0.299, 0.587, 0.114));
   lit = mix(vec3f(luma), lit, mix(1.04, 1.0, input.progress));
 
@@ -570,10 +713,30 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
 }
 `;
 
-const LERP_SPEED = 4.0;
+/**
+ * Critically damped spring (dampingRatio = 1, duration ~450ms)
+ * Returns { position, velocity } after applying spring physics for dt seconds
+ */
+const SPRING_DURATION = 0.35; // 350ms
+const SPRING_OMEGA = -Math.log(0.01) / SPRING_DURATION; // ω₀ for 99% settle at duration
 
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function springStep(
+  current: number,
+  velocity: number,
+  target: number,
+  dt: number,
+): { position: number; velocity: number } {
+  const displacement = current - target;
+  const decay = Math.exp(-SPRING_OMEGA * dt);
+
+  // Critically damped: x(t) = (x₀ + (v₀ + ω₀*x₀)*t) * e^(-ω₀*t) + target
+  const newDisplacement = (displacement + (velocity + SPRING_OMEGA * displacement) * dt) * decay;
+  const newVelocity = (velocity - SPRING_OMEGA * (velocity + SPRING_OMEGA * displacement) * dt) * decay;
+
+  return {
+    position: target + newDisplacement,
+    velocity: newVelocity,
+  };
 }
 
 export const IsometricKnight = () => {
@@ -585,9 +748,14 @@ export const IsometricKnight = () => {
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const isFlat = useRef(false);
-  const rawProgressRef = useRef(0);
   const progressRef = useRef(0);
+  const progressVelocityRef = useRef(0);
   const lastFrameTimeRef = useRef(Date.now());
+  // Data transition animation (0 = synthetic, 1 = real contributions)
+  // Uses critically damped spring (dampingRatio=1, duration=450ms)
+  const useRealDataRef = useRef(false);
+  const dataProgressRef = useRef(0);
+  const dataVelocityRef = useRef(0);
 
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
@@ -619,10 +787,11 @@ export const IsometricKnight = () => {
 
       context.configure({ device, format, alphaMode: 'opaque' });
 
-      const { positions, heights, colors, heightGridFlat } = buildSceneData(
-        getContributionGrid(useMyContributions),
-        useMyContributions,
-      );
+      // Build BOTH data sets for smooth animation between them
+      const syntheticData = buildSceneData(getContributionGrid(false), false);
+      const realData = buildSceneData(getContributionGrid(true), true);
+      // Use synthetic as primary (A), real as secondary (B)
+      const { positions, heights, colors, heightGridFlat } = syntheticData;
 
       /** WebGPU: uniform buffer size must be a multiple of 256 bytes. */
       const UNIFORM_BUFFER_SIZE = 256;
@@ -663,6 +832,29 @@ export const IsometricKnight = () => {
         new Float32Array(heightGridFlat),
       );
 
+      // Secondary data set buffers (B = real contributions)
+      const colorBufferB = device.createBuffer({
+        size: NUM_BLOCKS * 4,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(colorBufferB, 0, new Uint32Array(realData.colors));
+
+      const heightBufferB = device.createBuffer({
+        size: NUM_BLOCKS * 4,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(heightBufferB, 0, new Float32Array(realData.heights));
+
+      const heightGridBufferB = device.createBuffer({
+        size: heightGridByteSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(
+        heightGridBufferB,
+        0,
+        new Float32Array(realData.heightGridFlat),
+      );
+
       const bindGroupLayout = device.createBindGroupLayout({
         entries: [
           {
@@ -690,6 +882,22 @@ export const IsometricKnight = () => {
             visibility: GPUShaderStage.VERTEX,
             buffer: { type: 'read-only-storage' },
           },
+          // Secondary data set (B)
+          {
+            binding: 5,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
+          {
+            binding: 6,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
+          {
+            binding: 7,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
         ],
       });
 
@@ -701,6 +909,10 @@ export const IsometricKnight = () => {
           { binding: 2, resource: { buffer: posBuffer } },
           { binding: 3, resource: { buffer: heightBuffer } },
           { binding: 4, resource: { buffer: heightGridBuffer } },
+          // Secondary data set (B)
+          { binding: 5, resource: { buffer: colorBufferB } },
+          { binding: 6, resource: { buffer: heightBufferB } },
+          { binding: 7, resource: { buffer: heightGridBufferB } },
         ],
       });
 
@@ -739,13 +951,36 @@ export const IsometricKnight = () => {
         const { width: lw, height: lh } = layoutRef.current;
         const aspectRatio = lh > 0 ? lw / lh : width / height;
 
+        // Animate 3D↔flat transition (spring: dampingRatio=1, duration=250ms)
         const target = isFlat.current ? 1 : 0;
-        rawProgressRef.current +=
-          (target - rawProgressRef.current) * Math.min(1, LERP_SPEED * dt);
-        if (Math.abs(rawProgressRef.current - target) < 0.001) {
-          rawProgressRef.current = target;
+        const viewSpring = springStep(
+          progressRef.current,
+          progressVelocityRef.current,
+          target,
+          dt,
+        );
+        progressRef.current = viewSpring.position;
+        progressVelocityRef.current = viewSpring.velocity;
+        if (Math.abs(progressRef.current - target) < 0.001 && Math.abs(progressVelocityRef.current) < 0.01) {
+          progressRef.current = target;
+          progressVelocityRef.current = 0;
         }
-        progressRef.current = easeInOutCubic(rawProgressRef.current);
+
+        // Animate data transition (spring: dampingRatio=1, duration=450ms)
+        const dataTarget = useRealDataRef.current ? 1 : 0;
+        const spring = springStep(
+          dataProgressRef.current,
+          dataVelocityRef.current,
+          dataTarget,
+          dt,
+        );
+        dataProgressRef.current = spring.position;
+        dataVelocityRef.current = spring.velocity;
+        // Snap when settled
+        if (Math.abs(dataProgressRef.current - dataTarget) < 0.001 && Math.abs(dataVelocityRef.current) < 0.01) {
+          dataProgressRef.current = dataTarget;
+          dataVelocityRef.current = 0;
+        }
 
         const time = (now - startTimeRef.current) / 1000;
 
@@ -754,6 +989,7 @@ export const IsometricKnight = () => {
           time,
           NUM_BLOCKS,
           progressRef.current,
+          dataProgressRef.current,
         ]);
         device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
@@ -797,7 +1033,7 @@ export const IsometricKnight = () => {
     } catch (e) {
       console.error('[IsometricKnight] WebGPU init failed', e);
     }
-  }, [height, width, useMyContributions]);
+  }, [height, width]);
 
   useEffect(() => {
     layoutRef.current = { width, height };
@@ -822,7 +1058,10 @@ export const IsometricKnight = () => {
         <Text style={styles.sourceToggleLabel}>My contributions</Text>
         <Switch
           accessibilityLabel="Toggle real GitHub contribution data"
-          onValueChange={setUseMyContributions}
+          onValueChange={(value) => {
+            setUseMyContributions(value);
+            useRealDataRef.current = value;
+          }}
           value={useMyContributions}
         />
       </View>
