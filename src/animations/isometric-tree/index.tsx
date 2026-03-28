@@ -285,8 +285,8 @@ fn main(
   worldPos.z -= f32(${WORLD_SIZE}) * cubeSize * 0.5;
   worldPos.y -= f32(${WORLD_HEIGHT}) * cubeSize * 0.35;
 
-  // Gentle animation for leaves
-  if (voxelType == 5u) {
+  // Gentle animation for leaves (type 9)
+  if (voxelType == 9u) {
     let wave = sin(uniforms.time * 1.5 + voxelPos.x * 0.3 + voxelPos.z * 0.3) * 0.001;
     worldPos.x += wave;
   }
@@ -329,7 +329,7 @@ fn main(
   let shade = ambient + diffuse * 0.6;
 
   // Orthographic projection
-  let scale = 1.0;
+  let scale = 1.5;
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
     rx_y * scale,
