@@ -309,6 +309,27 @@ function generateStreetlightPositions(qrMatrix: boolean[][]): {
   };
 }
 
+// Pack QR matrix into u32 array for shader (1 bit per cell)
+function packQRMatrix(qrMatrix: boolean[][]): Uint32Array {
+  const gridSize = qrMatrix.length;
+  const totalCells = gridSize * gridSize;
+  const numU32s = Math.ceil(totalCells / 32);
+  const packed = new Uint32Array(numU32s + 1); // +1 for gridSize
+  packed[0] = gridSize; // Store grid size at index 0
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const cellIndex = row * gridSize + col;
+      const u32Index = Math.floor(cellIndex / 32) + 1; // +1 because index 0 is gridSize
+      const bitIndex = cellIndex % 32;
+      if (qrMatrix[row][col]) {
+        packed[u32Index] |= (1 << bitIndex);
+      }
+    }
+  }
+  return packed;
+}
+
 // Generate pedestrian spawn positions on empty cells
 const MAX_PEDESTRIANS = 12;
 
@@ -989,9 +1010,22 @@ struct PedOut {
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> pedPositions: array<vec2f>;
+@group(0) @binding(2) var<storage, read> qrMatrix: array<u32>;
 
 fn hash(p: f32) -> f32 {
   return fract(sin(p * 127.1) * 43758.5453);
+}
+
+// Check if a cell is a building (returns true if wall)
+fn isWall(col: i32, row: i32) -> bool {
+  let matrixGridSize = i32(qrMatrix[0]);
+  if (col < 0 || col >= matrixGridSize || row < 0 || row >= matrixGridSize) {
+    return true; // Out of bounds = wall
+  }
+  let cellIndex = row * matrixGridSize + col;
+  let u32Index = cellIndex / 32 + 1; // +1 because index 0 is gridSize
+  let bitIndex = u32(cellIndex % 32);
+  return (qrMatrix[u32Index] & (1u << bitIndex)) != 0u;
 }
 
 @vertex
@@ -1022,29 +1056,35 @@ fn main(
   let halfGrid = gridSize * blockSize * 0.5;
 
   // Walking animation
-  let walkSpeed = 0.5 + hash(seed * 2.3) * 0.3;
+  let moveSpeed = 0.3 + hash(seed * 2.1) * 0.2;
   let phase = hash(seed * 3.7) * 6.28;
-  let t = time * walkSpeed + phase;
+  let t = time * moveSpeed + phase;
   let walkCycle = t * 10.0;
 
-  // Position exactly at cell center (centered on street block)
-  // Match building coordinate system: blockPos * blockSize - halfGrid
-  // Add 0.5 to center within the cell
-  let cellCenterX = (cellPos.x) * blockSize - halfGrid + blockSize * 0.5;
-  let cellCenterZ = (cellPos.y) * blockSize - halfGrid + blockSize * 0.5;
+  // Starting position at cell center
+  let startX = (cellPos.x) * blockSize - halfGrid + blockSize * 0.5;
+  let startZ = (cellPos.y) * blockSize - halfGrid + blockSize * 0.5;
 
-  // Small walk within the cell center (stay on the street)
+  // Walk only horizontally OR vertically (not diagonal)
   let walkAxis = hash(seed * 4.1);
-  let maxWalk = blockSize * 0.2;
-  let walkOffset = sin(t * 0.8) * maxWalk;
+  let moveRange = blockSize * 2.5;
+  let walkOffset = sin(t) * moveRange;
 
-  var baseX = cellCenterX;
-  var baseZ = cellCenterZ;
+  var baseX = startX;
+  var baseZ = startZ;
+
   if (walkAxis < 0.5) {
-    baseX = cellCenterX + walkOffset;
+    // Walk horizontally only (along X axis)
+    baseX = startX + walkOffset;
   } else {
-    baseZ = cellCenterZ + walkOffset;
+    // Walk vertically only (along Z axis)
+    baseZ = startZ + walkOffset;
   }
+
+  // Keep within grid bounds
+  let gridLimit = halfGrid - blockSize;
+  baseX = clamp(baseX, -gridLimit, gridLimit);
+  baseZ = clamp(baseZ, -gridLimit, gridLimit);
   let groundY = 0.004;
 
   // Body proportions (3D boxes) - much larger for visibility
@@ -1209,6 +1249,7 @@ export const IsometricQRCode = () => {
   const heightBufferRef = useRef<GPUBuffer | null>(null);
   const streetlightBufferRef = useRef<GPUBuffer | null>(null);
   const pedestrianBufferRef = useRef<GPUBuffer | null>(null);
+  const qrMatrixBufferRef = useRef<GPUBuffer | null>(null);
   const blockDataRef = useRef<{
     numBlocks: number;
     gridSize: number;
@@ -1230,6 +1271,7 @@ export const IsometricQRCode = () => {
     const heightBuffer = heightBufferRef.current;
     const streetlightBuffer = streetlightBufferRef.current;
     const pedestrianBuffer = pedestrianBufferRef.current;
+    const qrMatrixBuffer = qrMatrixBufferRef.current;
 
     if (
       !device ||
@@ -1237,7 +1279,8 @@ export const IsometricQRCode = () => {
       !posBuffer ||
       !heightBuffer ||
       !streetlightBuffer ||
-      !pedestrianBuffer
+      !pedestrianBuffer ||
+      !qrMatrixBuffer
     )
       return;
 
@@ -1273,6 +1316,10 @@ export const IsometricQRCode = () => {
 
     // Update pedestrian positions
     device.queue.writeBuffer(pedestrianBuffer, 0, pedestrianData.positions);
+
+    // Update QR matrix for wall detection
+    const packedMatrix = packQRMatrix(qrMatrix);
+    device.queue.writeBuffer(qrMatrixBuffer, 0, packedMatrix);
   }, [qrContent]);
 
   const initWebGPU = useCallback(async () => {
@@ -1356,6 +1403,15 @@ export const IsometricQRCode = () => {
     pedestrianBufferRef.current = pedestrianBuffer;
     device.queue.writeBuffer(pedestrianBuffer, 0, pedestrianData.positions);
 
+    // QR matrix buffer for wall detection (packed bits + gridSize)
+    const packedMatrix = packQRMatrix(qrMatrix);
+    const qrMatrixBuffer = device.createBuffer({
+      size: Math.max(packedMatrix.byteLength, 64), // Min 64 bytes
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    qrMatrixBufferRef.current = qrMatrixBuffer;
+    device.queue.writeBuffer(qrMatrixBuffer, 0, packedMatrix);
+
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
         {
@@ -1430,12 +1486,33 @@ export const IsometricQRCode = () => {
       ],
     });
 
-    // Pedestrian bind group (same layout as streetlights)
+    // Pedestrian bind group layout (uniforms + positions + QR matrix)
+    const pedestrianBindGroupLayout = device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+      ],
+    });
+
     const pedestrianBindGroup = device.createBindGroup({
-      layout: streetlightBindGroupLayout,
+      layout: pedestrianBindGroupLayout,
       entries: [
         { binding: 0, resource: { buffer: uniformBuffer } },
         { binding: 1, resource: { buffer: pedestrianBuffer } },
+        { binding: 2, resource: { buffer: qrMatrixBuffer } },
       ],
     });
 
@@ -1554,7 +1631,7 @@ export const IsometricQRCode = () => {
     // Pedestrian pipeline - walking figures
     const pedestrianPipeline = device.createRenderPipeline({
       layout: device.createPipelineLayout({
-        bindGroupLayouts: [streetlightBindGroupLayout],
+        bindGroupLayouts: [pedestrianBindGroupLayout],
       }),
       vertex: {
         module: device.createShaderModule({ code: pedestrianVertexShader }),

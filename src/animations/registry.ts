@@ -78,7 +78,7 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
-import { IsometricKnight } from './isometric-knight';
+import { GitHubTerrain } from './github-terrain';
 import { IsometricQRCode } from './isometric-qrcode';
 import { IsometricStarryNight } from './isometric-starry-night';
 import { IsometricTree } from './isometric-tree';
@@ -258,7 +258,7 @@ export const AnimationRegistry = {
   'notion-qrcode': NotionQRCode,
   'folding-paper-webgpu': FoldingPaper,
   'isometric-tree': IsometricTree,
-  'isometric-knight': IsometricKnight,
+  'github-terrain': GitHubTerrain,
   'isometric-qrcode': IsometricQRCode,
   'isometric-starry-night': IsometricStarryNight,
   'paper-airplane': PaperAirplane,
@@ -866,9 +866,9 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'IsometricTree',
     iconName: 'leaf-outline',
   },
-  'isometric-knight': {
+  'github-terrain': {
     name: 'GitHub Terrain',
-    route: 'IsometricKnight',
+    route: 'GitHubTerrain',
     iconName: 'git-branch-outline',
   },
   'isometric-qrcode': {
