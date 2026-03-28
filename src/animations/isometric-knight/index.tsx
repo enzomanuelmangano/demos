@@ -3,21 +3,9 @@ import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native'
 
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
-// Voxel types - GitHub green levels (0 = empty, 1-4 = contribution levels)
-const EMPTY = 0;
-const GREEN_LEVEL_0 = 1; // Lightest - no/few contributions
-const GREEN_LEVEL_1 = 2;
-const GREEN_LEVEL_2 = 3;
-const GREEN_LEVEL_3 = 4; // Darkest - most contributions
-
-// Grid dimensions (like GitHub: 52 weeks x 7 days)
-const GRID_COLS = 40; // weeks
-const GRID_ROWS = 7;  // days
-const MAX_HEIGHT = 12; // max column height
-
-const WORLD_SIZE_X = GRID_COLS;
-const WORLD_SIZE_Z = GRID_ROWS;
-const WORLD_HEIGHT = MAX_HEIGHT + 1;
+// Grid dimensions - more square-shaped
+const GRID_COLS = 20;
+const GRID_ROWS = 14;
 
 // Seeded random for consistent generation
 function seededRandom(seed: number) {
@@ -25,31 +13,43 @@ function seededRandom(seed: number) {
   return x - Math.floor(x);
 }
 
-// Generate contribution data (simulating GitHub activity)
-function generateContributions(): number[][] {
+// Generate terrain-like contribution heights (0.0 to 1.0)
+function generateHeightMap(): number[][] {
   const data: number[][] = [];
+
+  // Create mountain peaks at specific locations
+  const peaks = [
+    { x: 14, z: 8, strength: 1.0, spread: 5 },   // Main peak (right-back)
+    { x: 15, z: 10, strength: 0.85, spread: 4 }, // Adjacent peak
+    { x: 12, z: 6, strength: 0.7, spread: 4 },   // Connected ridge
+    { x: 6, z: 10, strength: 0.5, spread: 4 },   // Left back hill
+    { x: 4, z: 5, strength: 0.35, spread: 3 },   // Front left small
+    { x: 10, z: 3, strength: 0.3, spread: 3 },   // Front middle small
+    { x: 16, z: 4, strength: 0.4, spread: 3 },   // Front right
+  ];
 
   for (let col = 0; col < GRID_COLS; col++) {
     const week: number[] = [];
     for (let row = 0; row < GRID_ROWS; row++) {
-      const seed = col * 100 + row;
-      const rand = seededRandom(seed);
+      // Base height (minimum)
+      let height = 0.08;
 
-      // Create realistic-looking contribution patterns
-      // More activity in certain "bursts"
-      const burstFactor = Math.sin(col * 0.3) * 0.5 + 0.5;
-      const weekendFactor = (row === 0 || row === 6) ? 0.3 : 1.0;
-      const activity = rand * burstFactor * weekendFactor;
+      // Add peak influences (gaussian-like falloff)
+      for (const peak of peaks) {
+        const dx = col - peak.x;
+        const dz = row - peak.z;
+        const dist = Math.sqrt(dx * dx + dz * dz * 2);
+        const influence = Math.exp((-dist * dist) / (peak.spread * peak.spread)) * peak.strength;
+        height += influence;
+      }
 
-      // Convert to contribution level (0-4)
-      let level: number;
-      if (activity < 0.15) level = 0;
-      else if (activity < 0.35) level = 1;
-      else if (activity < 0.55) level = 2;
-      else if (activity < 0.75) level = 3;
-      else level = 4;
+      // Slight random variation
+      height += seededRandom(col * 100 + row) * 0.08;
 
-      week.push(level);
+      // Clamp
+      height = Math.min(1, height);
+
+      week.push(height);
     }
     data.push(week);
   }
@@ -57,64 +57,46 @@ function generateContributions(): number[][] {
   return data;
 }
 
-// Pre-generate contribution data
-const CONTRIBUTIONS = generateContributions();
+// Pre-generate height data
+const HEIGHT_MAP = generateHeightMap();
 
-// Generate the voxel world - 3D contribution chart
-function generateVoxels(): number[] {
-  const voxels: number[] = new Array(
-    WORLD_SIZE_X * WORLD_SIZE_Z * WORLD_HEIGHT,
-  ).fill(EMPTY);
+// We'll pass height data to shader - each position is ONE block with variable height
+// Format: [x, z, height, colorLevel] for each grid cell
+function generateBlockData(): { positions: number[]; heights: number[]; colors: number[] } {
+  const positions: number[] = [];
+  const heights: number[] = [];
+  const colors: number[] = [];
 
-  const setVoxel = (x: number, y: number, z: number, type: number) => {
-    if (
-      x >= 0 &&
-      x < WORLD_SIZE_X &&
-      y >= 0 &&
-      y < WORLD_HEIGHT &&
-      z >= 0 &&
-      z < WORLD_SIZE_Z
-    ) {
-      voxels[x + z * WORLD_SIZE_X + y * WORLD_SIZE_X * WORLD_SIZE_Z] = type;
-    }
-  };
-
-  // Build columns based on contribution data
   for (let col = 0; col < GRID_COLS; col++) {
     for (let row = 0; row < GRID_ROWS; row++) {
-      const level = CONTRIBUTIONS[col][row];
+      const height = HEIGHT_MAP[col][row];
 
-      // Height based on contribution level
-      // Level 0 = 1 block, Level 4 = up to MAX_HEIGHT blocks
-      const height = level === 0 ? 1 : Math.ceil((level / 4) * MAX_HEIGHT);
+      positions.push(col, 0, row, 0); // x, y, z, padding
 
-      // Color type based on level
-      const colorType = level === 0 ? GREEN_LEVEL_0 : level;
+      // Height determines both the stretch AND the color
+      heights.push(height);
 
-      // Build the column
-      for (let y = 0; y < height; y++) {
-        setVoxel(col, y, row, colorType);
-      }
+      // Color level based on height (1-4)
+      let colorLevel: number;
+      if (height < 0.2) colorLevel = 1;
+      else if (height < 0.4) colorLevel = 2;
+      else if (height < 0.6) colorLevel = 3;
+      else colorLevel = 4;
+      colors.push(colorLevel);
     }
   }
 
-  return voxels;
+  return { positions, heights, colors };
 }
 
-// Pre-generate voxels
-const VOXELS = generateVoxels();
-
-// Count non-empty voxels
-let voxelCount = 0;
-for (const v of VOXELS) {
-  if (v !== EMPTY) voxelCount++;
-}
+const BLOCK_DATA = generateBlockData();
+const NUM_BLOCKS = GRID_COLS * GRID_ROWS;
 
 const vertexShader = /* wgsl */ `
 struct Uniforms {
   aspectRatio: f32,
   time: f32,
-  voxelCount: f32,
+  blockCount: f32,
   padding: f32,
 }
 
@@ -125,25 +107,19 @@ struct VertexOutput {
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
-@group(0) @binding(1) var<storage, read> voxelData: array<u32>;
-@group(0) @binding(2) var<storage, read> voxelPositions: array<vec4f>;
+@group(0) @binding(1) var<storage, read> blockColors: array<u32>;
+@group(0) @binding(2) var<storage, read> blockPositions: array<vec4f>;
+@group(0) @binding(3) var<storage, read> blockHeights: array<f32>;
 
 // GitHub contribution green palette
-fn getVoxelColor(voxelType: u32) -> vec3f {
-  switch(voxelType) {
-    case 1u: { return vec3f(0.80, 0.90, 0.75); }  // Level 0 - Lightest green
-    case 2u: { return vec3f(0.60, 0.82, 0.55); }  // Level 1 - Light green
-    case 3u: { return vec3f(0.40, 0.72, 0.40); }  // Level 2 - Medium green
-    case 4u: { return vec3f(0.20, 0.55, 0.30); }  // Level 3 - Dark green
-    default: { return vec3f(0.15, 0.45, 0.25); }  // Darkest
+fn getBlockColor(level: u32) -> vec3f {
+  switch(level) {
+    case 1u: { return vec3f(0.76, 0.88, 0.72); }  // Lightest green
+    case 2u: { return vec3f(0.55, 0.78, 0.52); }  // Light green
+    case 3u: { return vec3f(0.38, 0.66, 0.42); }  // Medium green
+    case 4u: { return vec3f(0.22, 0.50, 0.32); }  // Dark green
+    default: { return vec3f(0.76, 0.88, 0.72); }
   }
-}
-
-// Rotate a vector around Y axis
-fn rotateY(v: vec3f, angle: f32) -> vec3f {
-  let c = cos(angle);
-  let s = sin(angle);
-  return vec3f(v.x * c - v.z * s, v.y, v.x * s + v.z * c);
 }
 
 @vertex
@@ -156,12 +132,16 @@ fn main(
   let faceIndex = vertexIndex / 6u;
   let faceVertex = vertexIndex % 6u;
 
-  let voxelInfo = voxelPositions[instanceIndex];
-  let voxelType = voxelData[instanceIndex];
-  let voxelPos = voxelInfo.xyz;
+  let blockPos = blockPositions[instanceIndex].xyz;
+  let blockColor = blockColors[instanceIndex];
+  let blockHeight = blockHeights[instanceIndex];
 
-  // Cube size
-  let cubeSize = 0.012;
+  // Block size in world units
+  let blockSize = 0.022;
+  let maxHeight = 1.8; // Tall peaks like mountains
+
+  // Scale height (0-1 range to actual height)
+  let height = max(blockHeight * maxHeight, 0.12); // minimum height for base blocks
 
   var localPos: vec3f;
   var faceNormal: vec3f;
@@ -173,33 +153,34 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  // Cube scale < 1.0 creates small gaps between cubes
-  let cs = 0.88;
-  let h = cs * 0.5;
+  // Block scale (gap between blocks)
+  let cs = 0.90;
+  let hw = cs * 0.5; // half width
+  let hh = height * 0.5; // half height (variable)
 
   switch(faceIndex) {
     case 0u: { // Top (+Y)
-      localPos = vec3f((qv.x - 0.5) * cs, h, (qv.y - 0.5) * cs);
+      localPos = vec3f((qv.x - 0.5) * cs, hh, (qv.y - 0.5) * cs);
       faceNormal = vec3f(0.0, 1.0, 0.0);
     }
     case 1u: { // Bottom (-Y)
-      localPos = vec3f((qv.x - 0.5) * cs, -h, (0.5 - qv.y) * cs);
+      localPos = vec3f((qv.x - 0.5) * cs, -hh, (0.5 - qv.y) * cs);
       faceNormal = vec3f(0.0, -1.0, 0.0);
     }
     case 2u: { // Front (+Z)
-      localPos = vec3f((qv.x - 0.5) * cs, (qv.y - 0.5) * cs, h);
+      localPos = vec3f((qv.x - 0.5) * cs, (qv.y - 0.5) * height, hw);
       faceNormal = vec3f(0.0, 0.0, 1.0);
     }
     case 3u: { // Back (-Z)
-      localPos = vec3f((0.5 - qv.x) * cs, (qv.y - 0.5) * cs, -h);
+      localPos = vec3f((0.5 - qv.x) * cs, (qv.y - 0.5) * height, -hw);
       faceNormal = vec3f(0.0, 0.0, -1.0);
     }
     case 4u: { // Right (+X)
-      localPos = vec3f(h, (qv.y - 0.5) * cs, (qv.x - 0.5) * cs);
+      localPos = vec3f(hw, (qv.y - 0.5) * height, (qv.x - 0.5) * cs);
       faceNormal = vec3f(1.0, 0.0, 0.0);
     }
     case 5u: { // Left (-X)
-      localPos = vec3f(-h, (qv.y - 0.5) * cs, (0.5 - qv.x) * cs);
+      localPos = vec3f(-hw, (qv.y - 0.5) * height, (0.5 - qv.x) * cs);
       faceNormal = vec3f(-1.0, 0.0, 0.0);
     }
     default: {
@@ -208,24 +189,18 @@ fn main(
     }
   }
 
-  // Scale and position
-  var worldPos = voxelPos * cubeSize + localPos * cubeSize;
+  // World position
+  var worldPos = blockPos * blockSize + localPos * blockSize;
+  worldPos.y += hh * blockSize; // Lift blocks so they sit on ground
 
-  // Center the model
-  worldPos.x -= f32(${WORLD_SIZE_X}) * cubeSize * 0.5;
-  worldPos.z -= f32(${WORLD_SIZE_Z}) * cubeSize * 0.5;
-  worldPos.y -= f32(${WORLD_HEIGHT}) * cubeSize * 0.35;
+  // Center the grid
+  worldPos.x -= f32(${GRID_COLS}) * blockSize * 0.5;
+  worldPos.z -= f32(${GRID_ROWS}) * blockSize * 0.5;
 
-  // Rotation animation
-  let rotSpeed = 0.04;
-  let angle = uniforms.time * rotSpeed;
-
-  worldPos = rotateY(worldPos, angle);
-  faceNormal = rotateY(faceNormal, angle);
-
-  // Isometric projection - classic top-down view
-  let isoAngleY = 0.785398; // 45° rotation
-  let isoAngleX = -0.52; // ~30° looking down from above
+  // NO rotation - static view
+  // Isometric camera angle (looking at the terrain from corner)
+  let isoAngleY = 0.75; // ~43° rotation
+  let isoAngleX = -0.50; // Looking down at the terrain
 
   let cy = cos(isoAngleY);
   let sy = sin(isoAngleY);
@@ -245,18 +220,17 @@ fn main(
   let nx_z = faceNormal.y * sx + ny_z * cx;
   let rotatedNormal = normalize(vec3f(ny_x, nx_y, nx_z));
 
-  // Light direction (sculptural lighting from top-left)
-  let lightDir = normalize(vec3f(-0.4, 0.85, 0.35));
+  // Light direction (soft top-left lighting)
+  let lightDir = normalize(vec3f(-0.3, 0.9, 0.3));
 
   // Calculate shading
   let diffuse = max(dot(rotatedNormal, lightDir), 0.0);
-  let ambient = 0.35;
-  // Boost top faces for that clean isometric look
-  let topBoost = max(faceNormal.y, 0.0) * 0.20;
-  let shade = ambient + diffuse * 0.55 + topBoost;
+  let ambient = 0.45;
+  let topBoost = max(faceNormal.y, 0.0) * 0.25;
+  let shade = ambient + diffuse * 0.45 + topBoost;
 
   // Orthographic projection
-  let scale = 1.8;
+  let scale = 0.9;
   output.position = vec4f(
     ry_x * scale / uniforms.aspectRatio,
     rx_y * scale,
@@ -264,7 +238,7 @@ fn main(
     1.0
   );
 
-  output.color = getVoxelColor(voxelType);
+  output.color = getBlockColor(blockColor);
   output.shade = shade;
 
   return output;
@@ -308,24 +282,8 @@ export const IsometricKnight = () => {
 
     context.configure({ device, format, alphaMode: 'opaque' });
 
-    // Prepare voxel data - only non-empty voxels
-    const voxelTypes: number[] = [];
-    const voxelPositions: number[] = [];
-
-    for (let y = 0; y < WORLD_HEIGHT; y++) {
-      for (let z = 0; z < WORLD_SIZE_Z; z++) {
-        for (let x = 0; x < WORLD_SIZE_X; x++) {
-          const idx = x + z * WORLD_SIZE_X + y * WORLD_SIZE_X * WORLD_SIZE_Z;
-          const voxel = VOXELS[idx];
-          if (voxel !== EMPTY) {
-            voxelTypes.push(voxel);
-            voxelPositions.push(x, y, z, 0); // vec4 for alignment
-          }
-        }
-      }
-    }
-
-    const numVoxels = voxelTypes.length;
+    // Block data
+    const { positions, heights, colors } = BLOCK_DATA;
 
     // Create buffers
     const uniformBuffer = device.createBuffer({
@@ -333,21 +291,23 @@ export const IsometricKnight = () => {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    const voxelTypeBuffer = device.createBuffer({
-      size: numVoxels * 4,
+    const colorBuffer = device.createBuffer({
+      size: NUM_BLOCKS * 4,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(voxelTypeBuffer, 0, new Uint32Array(voxelTypes));
+    device.queue.writeBuffer(colorBuffer, 0, new Uint32Array(colors));
 
-    const voxelPosBuffer = device.createBuffer({
-      size: numVoxels * 16, // vec4f per voxel
+    const posBuffer = device.createBuffer({
+      size: NUM_BLOCKS * 16, // vec4f per block
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(
-      voxelPosBuffer,
-      0,
-      new Float32Array(voxelPositions),
-    );
+    device.queue.writeBuffer(posBuffer, 0, new Float32Array(positions));
+
+    const heightBuffer = device.createBuffer({
+      size: NUM_BLOCKS * 4, // f32 per block
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    device.queue.writeBuffer(heightBuffer, 0, new Float32Array(heights));
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
@@ -366,6 +326,11 @@ export const IsometricKnight = () => {
           visibility: GPUShaderStage.VERTEX,
           buffer: { type: 'read-only-storage' },
         },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
       ],
     });
 
@@ -373,8 +338,9 @@ export const IsometricKnight = () => {
       layout: bindGroupLayout,
       entries: [
         { binding: 0, resource: { buffer: uniformBuffer } },
-        { binding: 1, resource: { buffer: voxelTypeBuffer } },
-        { binding: 2, resource: { buffer: voxelPosBuffer } },
+        { binding: 1, resource: { buffer: colorBuffer } },
+        { binding: 2, resource: { buffer: posBuffer } },
+        { binding: 3, resource: { buffer: heightBuffer } },
       ],
     });
 
@@ -408,7 +374,7 @@ export const IsometricKnight = () => {
     const render = () => {
       const time = (Date.now() - startTimeRef.current) / 1000;
 
-      const uniformData = new Float32Array([aspectRatio, time, numVoxels, 0]);
+      const uniformData = new Float32Array([aspectRatio, time, NUM_BLOCKS, 0]);
       device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
       const commandEncoder = device.createCommandEncoder();
@@ -433,8 +399,8 @@ export const IsometricKnight = () => {
 
       renderPass.setPipeline(pipeline);
       renderPass.setBindGroup(0, bindGroup);
-      // 36 vertices per cube (6 faces * 6 vertices), numVoxels instances
-      renderPass.draw(36, numVoxels);
+      // 36 vertices per block (6 faces * 6 vertices), NUM_BLOCKS instances
+      renderPass.draw(36, NUM_BLOCKS);
       renderPass.end();
 
       device.queue.submit([commandEncoder.finish()]);

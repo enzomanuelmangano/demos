@@ -863,9 +863,9 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     iconName: 'leaf-outline',
   },
   'isometric-knight': {
-    name: 'Contribution Chart 3D',
+    name: 'GitHub Terrain',
     route: 'IsometricKnight',
-    iconName: 'bar-chart-outline',
+    iconName: 'git-branch-outline',
   },
   'paper-airplane': {
     name: 'Paper Airplane',

@@ -19,8 +19,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
-const GRID_SIZE = 80;
-const STEP_LABELS = ['Flat', 'Crease', 'Corners', 'Edges', 'Fold', 'Wings'];
+const GRID_SIZE = 100;
+const STEP_LABELS = ['Flat', 'Corners', 'Airplane'];
 const NUM_STEPS = STEP_LABELS.length;
 
 const vertexShader = /* wgsl */ `
@@ -86,101 +86,65 @@ fn main(
   let halfW = paperW * 0.5;
   let halfH = paperH * 0.5;
 
-  // Original position - used for region detection
   let origX = (u - 0.5) * paperW;
   let origY = (v - 0.5) * paperH;
 
-  // Current position - modified by folds
   var pos = vec3f(origX, origY, 0.0);
   var normal = vec3f(0.0, 0.0, 1.0);
 
   let PI = 3.14159265;
   let progress = uniforms.stepProgress;
-
-  // Top of paper
   let topY = halfH;
 
   // ============================================
-  // STEP 1 (progress 0->1): Center crease
-  // Fold right half over then back to create crease
+  // STEP 1 (progress 0->1): Corner folds
+  // Fold top corners down to center line
   // ============================================
-  let t1raw = clamp(progress, 0.0, 1.0);
-  var foldAngle1: f32 = 0.0;
-  if (t1raw < 0.5) {
-    foldAngle1 = ease(t1raw * 2.0) * PI;
-  } else {
-    foldAngle1 = (1.0 - ease((t1raw - 0.5) * 2.0)) * PI;
-  }
+  let t1 = ease(clamp(progress, 0.0, 1.0));
 
-  // Right half folds around x=0
-  if (origX > 0.0) {
-    let cosA = cos(foldAngle1);
-    let sinA = sin(foldAngle1);
-    pos.x = origX * cosA;
-    pos.z = origX * sinA;
-    normal = vec3f(sinA, 0.0, cosA);
-  }
-
-  // ============================================
-  // STEP 2 (progress 1->2): Corner folds
-  // Top corners fold down to center line
-  // ============================================
-  let t2 = ease(clamp(progress - 1.0, 0.0, 1.0));
-
-  // Left corner triangle: above diagonal y = topY + x (for x < 0)
+  // Left corner: origX < 0 and above diagonal y = topY + x
   let inLeftCorner = origX < 0.0 && origY > (topY + origX);
 
-  // Right corner triangle: above diagonal y = topY - x (for x > 0)
+  // Right corner: origX > 0 and above diagonal y = topY - x
   let inRightCorner = origX > 0.0 && origY > (topY - origX);
 
-  if (t2 > 0.0 && inLeftCorner) {
-    let foldAngle = t2 * PI;
+  if (t1 > 0.0 && inLeftCorner) {
+    let foldAngle = t1 * PI;
 
-    // Fold line: from (0, topY) direction (-1, -1) normalized
-    let lineDir = vec2f(-0.7071067812, -0.7071067812);
+    // Fold line from (0, topY) with direction (-1, -1)
+    let d = 0.7071067812;
+    let lineDir = vec2f(-d, -d);
+    let perpDir = vec2f(-d, d); // perpendicular pointing into the triangle
     let lineOrigin = vec2f(0.0, topY);
 
-    // Current 2D position
-    let p2d = vec2f(pos.x, pos.y);
-
-    // Vector from line origin to point
-    let toPoint = p2d - lineOrigin;
-
-    // Component along fold line
+    let toPoint = vec2f(origX, origY) - lineOrigin;
     let alongLine = dot(toPoint, lineDir);
-
-    // Perpendicular component (distance from line, signed)
-    let perpDir = vec2f(lineDir.y, -lineDir.x); // (−1,−1) rotated 90° = (−1, 1) normalized = (-0.707, 0.707)
     let perpDist = dot(toPoint, perpDir);
 
-    // Point on fold line
     let foldPoint = lineOrigin + lineDir * alongLine;
 
-    // Rotate perpendicular component around fold line
     let cosA = cos(foldAngle);
     let sinA = sin(foldAngle);
 
-    // New position: fold point + rotated perpendicular
     pos.x = foldPoint.x + perpDir.x * perpDist * cosA;
     pos.y = foldPoint.y + perpDir.y * perpDist * cosA;
-    pos.z = perpDist * sinA + t2 * 0.008;
+    pos.z = abs(perpDist) * sinA + 0.001;
 
-    // Rotate normal
     normal = vec3f(perpDir.x * sinA, perpDir.y * sinA, cosA);
   }
 
-  if (t2 > 0.0 && inRightCorner) {
-    let foldAngle = t2 * PI;
+  if (t1 > 0.0 && inRightCorner) {
+    let foldAngle = t1 * PI;
 
-    // Fold line: from (0, topY) direction (1, -1) normalized
-    let lineDir = vec2f(0.7071067812, -0.7071067812);
+    let d = 0.7071067812;
+    let lineDir = vec2f(d, -d);
+    let perpDir = vec2f(-d, -d); // perpendicular pointing into the triangle
     let lineOrigin = vec2f(0.0, topY);
 
-    let p2d = vec2f(pos.x, pos.y);
-    let toPoint = p2d - lineOrigin;
+    let toPoint = vec2f(origX, origY) - lineOrigin;
     let alongLine = dot(toPoint, lineDir);
-    let perpDir = vec2f(lineDir.y, -lineDir.x); // (1,-1) rotated 90° CW = (-1,-1) norm = (-0.707, -0.707)
     let perpDist = dot(toPoint, perpDir);
+
     let foldPoint = lineOrigin + lineDir * alongLine;
 
     let cosA = cos(foldAngle);
@@ -188,147 +152,85 @@ fn main(
 
     pos.x = foldPoint.x + perpDir.x * perpDist * cosA;
     pos.y = foldPoint.y + perpDir.y * perpDist * cosA;
-    pos.z = -perpDist * sinA + t2 * 0.008;
+    pos.z = abs(perpDist) * sinA + 0.001;
 
-    normal = vec3f(-perpDir.x * sinA, -perpDir.y * sinA, cosA);
+    normal = vec3f(perpDir.x * sinA, perpDir.y * sinA, cosA);
   }
 
   // ============================================
-  // STEP 3 (progress 2->3): Edge folds
-  // Fold the angled edges to center again
+  // STEP 2 (progress 1->2): Body fold + wing spread
+  // Fold in half, then spread wings
   // ============================================
-  let t3 = ease(clamp(progress - 2.0, 0.0, 1.0));
+  let t2 = ease(clamp(progress - 1.0, 0.0, 1.0));
 
-  // After corner folds, we have new edges from nose going down
-  // These edges are at roughly x = ±0.15 in the upper region
-  // Fold the outer strips to the center
+  if (t2 > 0.0) {
+    // First: fold right half over (0 to 0.5 of t2)
+    // Then: spread wings (0.5 to 1.0 of t2)
 
-  let edgeEndY = topY - halfW; // Where corner fold ends (y = topY - halfW)
+    let foldT = clamp(t2 * 2.0, 0.0, 1.0);
+    let wingT = clamp(t2 * 2.0 - 1.0, 0.0, 1.0);
 
-  // Left edge strip: origX in range [-0.35, -0.1] and y > edgeEndY
-  let inLeftEdge = origX < -0.08 && origX > -0.35 && origY > edgeEndY && !inLeftCorner;
-
-  // Right edge strip: origX in range [0.1, 0.35] and y > edgeEndY
-  let inRightEdge = origX > 0.08 && origX < 0.35 && origY > edgeEndY && !inRightCorner;
-
-  if (t3 > 0.0 && inLeftEdge) {
-    let foldAngle = t3 * PI;
-    let foldX = -0.08;
-
-    let cosA = cos(foldAngle);
-    let sinA = sin(foldAngle);
-
-    let dx = pos.x - foldX;
-    pos.x = foldX + dx * cosA;
-    pos.z = pos.z + dx * sinA + t3 * 0.012;
-
-    // Update normal (rotate around Y axis)
-    normal = vec3f(
-      normal.x * cosA + normal.z * sinA,
-      normal.y,
-      -normal.x * sinA + normal.z * cosA
-    );
-  }
-
-  if (t3 > 0.0 && inRightEdge) {
-    let foldAngle = t3 * PI;
-    let foldX = 0.08;
-
-    let cosA = cos(foldAngle);
-    let sinA = sin(foldAngle);
-
-    let dx = pos.x - foldX;
-    pos.x = foldX + dx * cosA;
-    pos.z = pos.z - dx * sinA + t3 * 0.012;
-
-    normal = vec3f(
-      normal.x * cosA - normal.z * sinA,
-      normal.y,
-      normal.x * sinA + normal.z * cosA
-    );
-  }
-
-  // ============================================
-  // STEP 4 (progress 3->4): Body fold
-  // Fold entire plane in half along x=0
-  // ============================================
-  let t4 = ease(clamp(progress - 3.0, 0.0, 1.0));
-
-  if (t4 > 0.0) {
-    // Everything with origX > 0 folds over
-    // But we need to fold the CURRENT position, not original
-    // The fold axis is at x=0
-
+    // Body fold: right side folds over
     if (origX > 0.0) {
-      let foldAngle = t4 * PI;
+      let foldAngle = foldT * PI;
       let cosA = cos(foldAngle);
       let sinA = sin(foldAngle);
 
-      // Rotate around Y axis at x=0
       let newX = pos.x * cosA;
       let newZ = pos.z + pos.x * sinA;
 
       pos.x = newX;
-      pos.z = newZ + t4 * 0.02;
+      pos.z = newZ + foldT * 0.01;
 
-      // Rotate normal
       normal = vec3f(
         normal.x * cosA + normal.z * sinA,
         normal.y,
         -normal.x * sinA + normal.z * cosA
       );
     }
-  }
 
-  // ============================================
-  // STEP 5 (progress 4->5): Wing unfold
-  // Open wings to flying position
-  // ============================================
-  let t5 = ease(clamp(progress - 4.0, 0.0, 1.0));
+    // Wing spread: upper portion opens up
+    if (wingT > 0.0) {
+      let wingRegionY = topY - halfW * 0.8;
 
-  if (t5 > 0.0) {
-    // Wings are the upper portion (nose area)
-    let wingStartY = topY - halfW * 1.2;
+      if (origY > wingRegionY) {
+        let wingAngle = wingT * PI * 0.4;
 
-    if (origY > wingStartY) {
-      // After body fold, both sides are now overlapping at x <= 0
-      // We need to unfold them outward
+        // After body fold, left wing stays left, right wing is now also at left
+        // Spread them apart
+        if (origX <= 0.0) {
+          // Left wing - rotate outward (negative angle around Z-axis effect)
+          let cosA = cos(-wingAngle);
+          let sinA = sin(-wingAngle);
 
-      let wingAngle = t5 * PI * 0.4; // About 72 degrees
+          let newX = pos.x * cosA - pos.z * sinA;
+          let newZ = pos.x * sinA + pos.z * cosA;
 
-      // Left wing (original left side) - rotate one way
-      // Right wing (original right side, now folded over) - rotate other way
+          pos.x = newX;
+          pos.z = newZ;
 
-      if (origX <= 0.0) {
-        // Original left side - unfold to the left
-        let cosA = cos(-wingAngle);
-        let sinA = sin(-wingAngle);
+          normal = vec3f(
+            normal.x * cosA - normal.z * sinA,
+            normal.y,
+            normal.x * sinA + normal.z * cosA
+          );
+        } else {
+          // Right wing (was folded over) - rotate outward other way
+          let cosA = cos(wingAngle);
+          let sinA = sin(wingAngle);
 
-        let newX = pos.x * cosA - pos.z * sinA;
-        let newZ = pos.x * sinA + pos.z * cosA;
-        pos.x = newX;
-        pos.z = newZ;
+          let newX = pos.x * cosA - pos.z * sinA;
+          let newZ = pos.x * sinA + pos.z * cosA;
 
-        normal = vec3f(
-          normal.x * cosA - normal.z * sinA,
-          normal.y,
-          normal.x * sinA + normal.z * cosA
-        );
-      } else {
-        // Original right side (was folded over) - unfold to the right
-        let cosA = cos(wingAngle);
-        let sinA = sin(wingAngle);
+          pos.x = newX;
+          pos.z = newZ;
 
-        let newX = pos.x * cosA - pos.z * sinA;
-        let newZ = pos.x * sinA + pos.z * cosA;
-        pos.x = newX;
-        pos.z = newZ;
-
-        normal = vec3f(
-          normal.x * cosA - normal.z * sinA,
-          normal.y,
-          normal.x * sinA + normal.z * cosA
-        );
+          normal = vec3f(
+            normal.x * cosA - normal.z * sinA,
+            normal.y,
+            normal.x * sinA + normal.z * cosA
+          );
+        }
       }
     }
   }
@@ -342,7 +244,7 @@ fn main(
   output.position = vec4f(
     projected.x * scale / uniforms.aspectRatio,
     projected.y * scale,
-    pos.z * 0.1 + 0.5,
+    -pos.z * 0.1 + 0.5,
     1.0
   );
 
@@ -370,28 +272,45 @@ struct FragmentInput {
 fn main(input: FragmentInput) -> @location(0) vec4f {
   let normal = normalize(input.normal);
 
-  // Front/back coloring
   let isFront = normal.z > 0.0;
   let paperFront = vec3f(0.98, 0.98, 1.0);
-  let paperBack = vec3f(0.85, 0.85, 0.90);
+  let paperBack = vec3f(0.82, 0.82, 0.88);
 
   var color = select(paperBack, paperFront, isFront);
 
-  // Simple shading
-  let lightDir = normalize(vec3f(-0.3, 0.8, 0.5));
-  let shade = 0.6 + 0.4 * max(dot(abs(normal), lightDir), 0.0);
+  // Shading
+  let lightDir = normalize(vec3f(-0.3, 0.8, 0.6));
+  let shade = 0.55 + 0.45 * max(dot(abs(normal), lightDir), 0.0);
   color *= shade;
 
   // Center crease
   let creaseDist = abs(input.uv.x - 0.5);
-  let crease = smoothstep(0.0, 0.01, creaseDist);
-  color *= 0.9 + crease * 0.1;
+  let crease = smoothstep(0.0, 0.008, creaseDist);
+  color *= 0.88 + crease * 0.12;
 
-  // Edge darkening
+  // Diagonal creases for corners
+  let u = input.uv.x;
+  let v = input.uv.y;
+
+  // Left diagonal
+  let leftDiag = abs(v - 1.0 + u * 1.4);
+  let leftCrease = smoothstep(0.0, 0.015, leftDiag);
+  if (u < 0.5) {
+    color *= 0.92 + leftCrease * 0.08;
+  }
+
+  // Right diagonal
+  let rightDiag = abs(v - 1.0 + (1.0 - u) * 1.4);
+  let rightCrease = smoothstep(0.0, 0.015, rightDiag);
+  if (u > 0.5) {
+    color *= 0.92 + rightCrease * 0.08;
+  }
+
+  // Edge
   let edgeX = min(input.uv.x, 1.0 - input.uv.x);
   let edgeY = min(input.uv.y, 1.0 - input.uv.y);
-  let edge = smoothstep(0.0, 0.008, min(edgeX, edgeY));
-  color = mix(color * 0.5, color, edge);
+  let edge = smoothstep(0.0, 0.006, min(edgeX, edgeY));
+  color = mix(color * 0.4, color, edge);
 
   return vec4f(color, 1.0);
 }
@@ -638,7 +557,7 @@ const styles = StyleSheet.create({
   stepsContainer: {
     bottom: 60,
     flexDirection: 'row',
-    gap: 16,
+    gap: 24,
     justifyContent: 'center',
     left: 0,
     position: 'absolute',
