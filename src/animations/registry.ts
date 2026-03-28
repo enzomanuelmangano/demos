@@ -87,6 +87,8 @@ import { Mnist } from './mnist';
 import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
 import { NotionQRCode } from './notion-qrcode';
+import { FoldingPaper } from './folding-paper';
+import { IsometricTree } from './isometric-tree';
 import { OnlineOffline } from './online-offline';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
@@ -250,7 +252,8 @@ export const AnimationRegistry = {
   'sphere-waves': SphereWaves,
   'scrollable-shapes': ScrollableShapes,
   'notion-qrcode': NotionQRCode,
-  'github-terrain': GitHubTerrain,
+  'folding-paper-webgpu': FoldingPaper,
+  'isometric-tree': IsometricTree,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -845,10 +848,15 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'NotionQRCode',
     iconName: 'qr-code-outline',
   },
-  'github-terrain': {
-    name: 'GitHub Terrain',
-    route: 'GitHubTerrain',
-    iconName: 'logo-github',
+  'folding-paper-webgpu': {
+    name: 'Folding Paper',
+    route: 'FoldingPaperWebGPU',
+    iconName: 'document-outline',
+  },
+  'isometric-tree': {
+    name: 'Isometric Tree',
+    route: 'IsometricTree',
+    iconName: 'leaf-outline',
   },
 } as const;
 

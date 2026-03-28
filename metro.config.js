@@ -11,7 +11,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     context.originModulePath.includes('@shopify/react-native-skia')
   ) {
     return {
-      filePath: path.resolve(__dirname, 'src/stubs/webgpu-view-stub.js'),
+      filePath: path.resolve(__dirname, 'src/stubs/WebGPUViewStub.js'),
       type: 'sourceFile',
     };
   }
