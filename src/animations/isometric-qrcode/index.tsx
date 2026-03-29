@@ -48,112 +48,151 @@ function rgbToHex(c: RGB): string {
 }
 
 /**
- * Cohesive system — cool daylight, muted terracotta / brass, graphite QR.
- * Pool marker: isPoolLake needs z>0.85, y>0.46, x<0.17 (see vertex + fragment).
+ * Photorealistic PBR-inspired palette.
+ * Natural materials with physically-based colors and lighting.
+ * Pool marker: isPoolLake detects waterBase { r:0.15, g:0.42, b:0.52 } (see vertex + fragment).
  */
 const COLORS = {
-  ink: '#1b1c22',
-  canvas: '#f3f4f6',
+  ink: '#2c2f36',
+  canvas: '#e8e6e1',
 } as const;
 
 const ink = hexToRgb(COLORS.ink);
 const canvas = hexToRgb(COLORS.canvas);
 
-const skyZenith: RGB = { r: 0.78, g: 0.85, b: 0.92 };
-const skyHorizon: RGB = { r: 0.92, g: 0.93, b: 0.95 };
+// Realistic sky - deeper blue zenith, warm atmospheric haze at horizon
+const skyZenith: RGB = { r: 0.42, g: 0.58, b: 0.82 };
+const skyHorizon: RGB = { r: 0.78, g: 0.82, b: 0.88 };
 
 const SCENE_NIGHT_MUL: RGB = { r: 1.0, g: 1.0, b: 1.0 };
 
+// Warm sandstone base for realistic stone
+const sandstone: RGB = { r: 0.62, g: 0.55, b: 0.48 };
+const limestone: RGB = { r: 0.76, g: 0.68, b: 0.58 };
+const terracotta: RGB = { r: 0.65, g: 0.52, b: 0.45 };
+
 const PALETTE: Record<string, RGB> = {
-  building: ink,
-  buildingAlt: lerpRgb(ink, skyHorizon, 0.07),
+  // Buildings - warm earth tones
+  building: lerpRgb(terracotta, ink, 0.55),
+  buildingAlt: lerpRgb(sandstone, ink, 0.5),
   skyZenith,
   skyHorizon,
-  fog: lerpRgb(skyHorizon, skyZenith, 0.22),
-  sun: { r: 0.99, g: 0.985, b: 0.98 },
-  skyFill: lerpRgb(skyZenith, skyHorizon, 0.5),
-  bounce: lerpRgb(skyHorizon, skyZenith, 0.28),
-  pavement: lerpRgb(skyHorizon, ink, 0.11),
-  pavementSide: lerpRgb(skyHorizon, ink, 0.2),
-  window: lerpRgb(ink, skyZenith, 0.32),
-  crown: lerpRgb(ink, canvas, 0.1),
-  rim: lerpRgb(canvas, skyZenith, 0.1),
-  spec: { r: 0.93, g: 0.94, b: 0.96 },
+  fog: lerpRgb(skyHorizon, { r: 0.88, g: 0.85, b: 0.82 }, 0.35),
+  // Warm golden hour sunlight
+  sun: { r: 1.0, g: 0.94, b: 0.85 },
+  skyFill: lerpRgb(skyZenith, skyHorizon, 0.45),
+  // Warm earth bounce light
+  bounce: { r: 0.78, g: 0.68, b: 0.55 },
+  pavement: lerpRgb(limestone, sandstone, 0.35),
+  pavementSide: lerpRgb(sandstone, ink, 0.28),
+  window: { r: 0.22, g: 0.2, b: 0.28 },
+  crown: lerpRgb(sandstone, canvas, 0.22),
+  rim: { r: 0.95, g: 0.9, b: 0.82 },
+  // Warm specular
+  spec: { r: 0.92, g: 0.88, b: 0.8 },
 
-  ambient: { r: 0.095, g: 0.098, b: 0.106 },
-  warmFaceTint: lerpRgb({ r: 0.84, g: 0.86, b: 0.9 }, skyHorizon, 0.35),
-  coolFaceTint: lerpRgb(skyZenith, ink, 0.48),
-  topWarmTint: lerpRgb(canvas, skyZenith, 0.14),
-  bottomCoolTint: lerpRgb(skyZenith, ink, 0.36),
+  // Warm ambient
+  ambient: { r: 0.15, g: 0.12, b: 0.1 },
+  warmFaceTint: { r: 0.98, g: 0.92, b: 0.85 },
+  coolFaceTint: { r: 0.82, g: 0.78, b: 0.75 },
+  topWarmTint: { r: 1.0, g: 0.95, b: 0.88 },
+  bottomCoolTint: { r: 0.58, g: 0.52, b: 0.48 },
 
-  waterBase: { r: 0.12, g: 0.48, b: 0.86 },
-  waterLight: { r: 0.52, g: 0.74, b: 0.88 },
-  waterDark: { r: 0.08, g: 0.36, b: 0.58 },
-  waterFoam: lerpRgb({ r: 0.52, g: 0.74, b: 0.88 }, canvas, 0.38),
-  waterHighlight: lerpRgb({ r: 0.52, g: 0.74, b: 0.88 }, canvas, 0.52),
-  white: { r: 0.98, g: 0.98, b: 0.99 },
+  // Warm turquoise water
+  waterBase: { r: 0.15, g: 0.42, b: 0.52 },
+  waterLight: { r: 0.38, g: 0.58, b: 0.65 },
+  waterDark: { r: 0.1, g: 0.28, b: 0.38 },
+  waterFoam: { r: 0.9, g: 0.92, b: 0.92 },
+  waterHighlight: { r: 0.95, g: 0.96, b: 0.95 },
+  white: { r: 0.98, g: 0.96, b: 0.92 },
 
-  roofBright: { r: 0.52, g: 0.33, b: 0.3 },
-  roofMid: { r: 0.42, g: 0.27, b: 0.25 },
-  roofDark: { r: 0.33, g: 0.21, b: 0.2 },
+  // Terracotta roof tiles - warm clay
+  roofBright: { r: 0.75, g: 0.48, b: 0.35 },
+  roofMid: { r: 0.62, g: 0.38, b: 0.28 },
+  roofDark: { r: 0.48, g: 0.28, b: 0.22 },
 
-  dirtSide: lerpRgb(skyHorizon, ink, 0.34),
-  dirtDark: lerpRgb(skyHorizon, ink, 0.46),
-  dirtMid: lerpRgb(skyHorizon, ink, 0.4),
+  // Warm earth tones
+  dirtSide: { r: 0.58, g: 0.45, b: 0.35 },
+  dirtDark: { r: 0.42, g: 0.32, b: 0.25 },
+  dirtMid: { r: 0.5, g: 0.38, b: 0.3 },
 
-  stoneLight: lerpRgb(skyHorizon, ink, 0.16),
-  stoneMid: lerpRgb(skyHorizon, ink, 0.26),
-  stoneDark: lerpRgb(skyHorizon, ink, 0.4),
-  stoneDarkest: lerpRgb(skyHorizon, ink, 0.52),
+  // Warm sandstone with natural variation
+  stoneLight: { r: 0.82, g: 0.72, b: 0.62 },
+  stoneMid: { r: 0.68, g: 0.58, b: 0.5 },
+  stoneDark: { r: 0.52, g: 0.44, b: 0.38 },
+  stoneDarkest: { r: 0.4, g: 0.34, b: 0.28 },
 
-  brickLight: lerpRgb(skyHorizon, ink, 0.24),
-  brickMid: lerpRgb(skyHorizon, ink, 0.33),
-  brickDark: lerpRgb(skyHorizon, ink, 0.46),
+  // Warm brick
+  brickLight: { r: 0.72, g: 0.52, b: 0.42 },
+  brickMid: { r: 0.6, g: 0.42, b: 0.32 },
+  brickDark: { r: 0.45, g: 0.3, b: 0.24 },
 
-  rockLight: lerpRgb(skyHorizon, ink, 0.48),
-  rockMid: lerpRgb(skyHorizon, ink, 0.6),
-  rockDark: lerpRgb(skyHorizon, ink, 0.75),
-  rockAccent: lerpRgb(skyHorizon, ink, 0.55),
+  // Warm rock tones
+  rockLight: { r: 0.55, g: 0.48, b: 0.42 },
+  rockMid: { r: 0.45, g: 0.38, b: 0.32 },
+  rockDark: { r: 0.32, g: 0.26, b: 0.22 },
+  rockAccent: { r: 0.5, g: 0.42, b: 0.35 },
 
-  snowTop: lerpRgb(canvas, skyZenith, 0.1),
-  snowShade: lerpRgb(skyHorizon, skyZenith, 0.38),
+  // Warm snow tint
+  snowTop: { r: 0.98, g: 0.96, b: 0.94 },
+  snowShade: { r: 0.85, g: 0.82, b: 0.8 },
 
-  streetGoldBright: { r: 0.9, g: 0.82, b: 0.6 },
-  streetGoldMid: { r: 0.7, g: 0.58, b: 0.4 },
-  streetBronze: { r: 0.5, g: 0.4, b: 0.3 },
-  streetWarmGlow: { r: 0.85, g: 0.7, b: 0.46 },
+  // Warm brass/bronze
+  streetGoldBright: { r: 0.88, g: 0.72, b: 0.42 },
+  streetGoldMid: { r: 0.72, g: 0.55, b: 0.3 },
+  streetBronze: { r: 0.58, g: 0.42, b: 0.25 },
+  streetWarmGlow: { r: 0.95, g: 0.78, b: 0.48 },
 
-  fountainStone: lerpRgb(canvas, skyHorizon, 0.12),
-  fountainStoneDark: lerpRgb(skyHorizon, ink, 0.18),
+  // Warm limestone fountain
+  fountainStone: { r: 0.85, g: 0.78, b: 0.68 },
+  fountainStoneDark: { r: 0.62, g: 0.55, b: 0.48 },
 
-  pagodaRoofLight: { r: 0.5, g: 0.25, b: 0.22 },
-  pagodaRoofMid: { r: 0.4, g: 0.19, b: 0.17 },
-  pagodaRoofDark: { r: 0.31, g: 0.14, b: 0.13 },
+  // Japanese ceramic roof - warm slate
+  pagodaRoofLight: { r: 0.35, g: 0.32, b: 0.3 },
+  pagodaRoofMid: { r: 0.28, g: 0.25, b: 0.24 },
+  pagodaRoofDark: { r: 0.2, g: 0.18, b: 0.17 },
 
-  metalBright: { r: 0.88, g: 0.8, b: 0.56 },
-  metalMid: { r: 0.74, g: 0.63, b: 0.4 },
-  metalDark: { r: 0.56, g: 0.46, b: 0.32 },
+  // Warm aged brass
+  metalBright: { r: 0.82, g: 0.68, b: 0.4 },
+  metalMid: { r: 0.68, g: 0.52, b: 0.3 },
+  metalDark: { r: 0.5, g: 0.38, b: 0.22 },
 
-  lanternPaper: { r: 0.94, g: 0.85, b: 0.64 },
-  lanternCap: { r: 0.88, g: 0.76, b: 0.5 },
-  lanternBand: { r: 0.52, g: 0.26, b: 0.22 },
-  lanternYellow: { r: 0.92, g: 0.85, b: 0.6 },
-  lanternGold: { r: 0.88, g: 0.76, b: 0.5 },
-  lanternRed: { r: 0.54, g: 0.26, b: 0.22 },
-  lanternAccent: { r: 0.38, g: 0.3, b: 0.16 },
-  lanternHot: { r: 0.48, g: 0.36, b: 0.2 },
+  // Warm paper lantern
+  lanternPaper: { r: 0.98, g: 0.88, b: 0.68 },
+  lanternCap: { r: 0.75, g: 0.62, b: 0.4 },
+  lanternBand: { r: 0.5, g: 0.25, b: 0.18 },
+  lanternYellow: { r: 0.98, g: 0.85, b: 0.52 },
+  lanternGold: { r: 0.85, g: 0.7, b: 0.42 },
+  lanternRed: { r: 0.65, g: 0.28, b: 0.2 },
+  lanternAccent: { r: 0.4, g: 0.3, b: 0.18 },
+  lanternHot: { r: 0.6, g: 0.45, b: 0.25 },
 
-  woodDark: lerpRgb(ink, { r: 0.34, g: 0.24, b: 0.17 }, 0.52),
-  woodMid: lerpRgb(ink, { r: 0.4, g: 0.28, b: 0.2 }, 0.42),
-  woodLight: lerpRgb(ink, { r: 0.46, g: 0.34, b: 0.24 }, 0.36),
+  // Warm aged wood
+  woodDark: { r: 0.32, g: 0.24, b: 0.16 },
+  woodMid: { r: 0.42, g: 0.32, b: 0.22 },
+  woodLight: { r: 0.52, g: 0.4, b: 0.28 },
 
-  wallWhite: lerpRgb(canvas, skyHorizon, 0.06),
-  wallCream: lerpRgb(skyHorizon, canvas, 0.38),
-  frameWood: lerpRgb(ink, { r: 0.38, g: 0.27, b: 0.19 }, 0.48),
+  // Warm wall plaster
+  wallWhite: { r: 0.95, g: 0.9, b: 0.82 },
+  wallCream: { r: 0.9, g: 0.84, b: 0.74 },
+  frameWood: { r: 0.36, g: 0.28, b: 0.18 },
 
-  facadeWarm: { r: 0.93, g: 0.94, b: 0.96 },
-  facadeCool: lerpRgb(skyHorizon, skyZenith, 0.32),
-  facadeNeutral: lerpRgb(skyHorizon, skyZenith, 0.18),
+  // Warm building facades
+  facadeWarm: { r: 0.92, g: 0.85, b: 0.75 },
+  facadeCool: { r: 0.78, g: 0.72, b: 0.68 },
+  facadeNeutral: { r: 0.82, g: 0.76, b: 0.7 },
+
+  // Japanese autumn foliage - momiji colors
+  mapleRed: { r: 0.82, g: 0.18, b: 0.12 },
+  mapleOrange: { r: 0.88, g: 0.42, b: 0.15 },
+  mapleGold: { r: 0.92, g: 0.72, b: 0.22 },
+  mapleCrimson: { r: 0.72, g: 0.12, b: 0.18 },
+  autumnBrown: { r: 0.55, g: 0.35, b: 0.2 },
+  autumnTan: { r: 0.72, g: 0.55, b: 0.35 },
+  fallenLeaf: { r: 0.65, g: 0.42, b: 0.22 },
+  ginkgoYellow: { r: 0.95, g: 0.85, b: 0.28 },
+  moss: { r: 0.32, g: 0.38, b: 0.22 },
+  darkMoss: { r: 0.22, g: 0.28, b: 0.15 },
 };
 
 const CONTAINER_BG = COLORS.canvas;
@@ -203,9 +242,6 @@ const FINDER_INNER_MODULE_HEIGHT = 0.095;
 /** Which finder patterns become special structures */
 /** Fountain positions: 'bl' = top-left on screen, 'tr' = bottom-right on screen */
 const FOUNTAIN_FINDERS: ('bl' | 'tr')[] = ['bl', 'tr'];
-/** Castle position: 'br_area' = top-right on screen (no finder pattern there) */
-const CASTLE_POSITION: 'br_area' = 'br_area';
-
 type FinderKind = 'tl' | 'tr' | 'bl';
 
 function finderPlacement(
@@ -295,10 +331,6 @@ function getCastleCenter(gridSize: number): { col: number; row: number } {
  */
 const SKYLINE_PEAK_CORNER: 'tl' | 'tr' | 'bl' | 'br' = 'br';
 
-/** Stone garden skyline: gentle low hills, no tall peaks */
-const SKYLINE_LANDMARK_SIGMA = 0.15;
-const SKYLINE_LANDMARK_POWER = 3.0;
-
 /** Low uniform heights for stone pillar field */
 const SKYLINE_FABRIC_MIN = 0.14;
 const SKYLINE_FABRIC_MAX = 0.22;
@@ -384,6 +416,7 @@ function generateBlockData(qrMatrix: boolean[][]): {
   positions: number[];
   heights: number[];
   colors: number[];
+  neighbors: number[];
   gridSize: number;
   numBlocks: number;
 } {
@@ -391,10 +424,31 @@ function generateBlockData(qrMatrix: boolean[][]): {
   const positions: number[] = [];
   const heights: number[] = [];
   const colors: number[] = [];
+  const neighbors: number[] = [];
 
   // Get fountain centers and castle center to exclude those blocks
   const fountainCenters = getFountainCenters(gridSize);
   const castleCenter = getCastleCenter(gridSize);
+
+  // Helper to check if a cell is a "tall" block (QR module)
+  const isTallBlock = (c: number, r: number): boolean => {
+    if (c < 0 || c >= gridSize || r < 0 || r >= gridSize) return false;
+    // Check castle area
+    if (
+      Math.abs(c - castleCenter.col) <= 3 &&
+      Math.abs(r - castleCenter.row) <= 3
+    )
+      return false;
+    // Check fountain areas
+    if (
+      fountainCenters.some(
+        fc => Math.abs(c - fc.col) <= 1 && Math.abs(r - fc.row) <= 1,
+      )
+    )
+      return false;
+    if (isFinderInnerCell(c, r, gridSize)) return false;
+    return qrMatrix[r][c];
+  };
 
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
@@ -434,8 +488,21 @@ function generateBlockData(qrMatrix: boolean[][]): {
         height = 0.006;
       }
 
+      // Pack neighbor info: bit0=+X, bit1=-X, bit2=+Z, bit3=-Z, bits4-7=corners
+      let neighborBits = 0;
+      if (isTallBlock(col + 1, row)) neighborBits |= 1; // +X (right)
+      if (isTallBlock(col - 1, row)) neighborBits |= 2; // -X (left)
+      if (isTallBlock(col, row + 1)) neighborBits |= 4; // +Z (front)
+      if (isTallBlock(col, row - 1)) neighborBits |= 8; // -Z (back)
+      // Corners for smoother rounding
+      if (isTallBlock(col + 1, row + 1)) neighborBits |= 16; // +X+Z
+      if (isTallBlock(col - 1, row + 1)) neighborBits |= 32; // -X+Z
+      if (isTallBlock(col + 1, row - 1)) neighborBits |= 64; // +X-Z
+      if (isTallBlock(col - 1, row - 1)) neighborBits |= 128; // -X-Z
+
       heights.push(height);
       colors.push(packRGB(color));
+      neighbors.push(neighborBits);
     }
   }
 
@@ -443,6 +510,7 @@ function generateBlockData(qrMatrix: boolean[][]): {
     positions,
     heights,
     colors,
+    neighbors,
     gridSize,
     numBlocks: gridSize * gridSize,
   };
@@ -499,12 +567,15 @@ struct VertexOutput {
   @location(8) worldN: vec3f,
   @location(9) viewPos: vec3f,
   @location(10) blockH: f32,
+  @location(11) neighbors: f32,
+  @location(12) faceDir: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> blockColors: array<u32>;
 @group(0) @binding(2) var<storage, read> blockPositions: array<vec4f>;
 @group(0) @binding(3) var<storage, read> blockHeights: array<f32>;
+@group(0) @binding(4) var<storage, read> blockNeighbors: array<u32>;
 
 fn unpackColor(packed: u32) -> vec3f {
   let r = f32((packed >> 16u) & 0xFFu) / 255.0;
@@ -529,6 +600,7 @@ fn main(
   let blockColorPacked = blockColors[instanceIndex];
   let blockHeight = blockHeights[instanceIndex];
   let blockColor = unpackColor(blockColorPacked);
+  let neighborBits = blockNeighbors[instanceIndex];
 
   let blockSize = 0.0245;
   let maxHeight = 14.0;
@@ -539,8 +611,9 @@ fn main(
   /** Keep lot extrusion ~same absolute thickness as before (was 4.05×0.14) */
   let lotBase = blockHeight * maxHeight * 0.041;
 
+  // Detect water: waterBase = { r: 0.15, g: 0.42, b: 0.52 }
   let isPoolLake =
-    blockColor.z > 0.85 && blockColor.y > 0.46 && blockColor.x < 0.17;
+    blockColor.x < 0.2 && blockColor.y > 0.35 && blockColor.y < 0.55 && blockColor.z > 0.45 && blockColor.z < 0.6;
 
   let lx = i32(blockPos.x + 0.01);
   let lz = i32(blockPos.z + 0.01);
@@ -577,7 +650,7 @@ fn main(
 
   let qv = quadVerts[faceVertex];
 
-  let cs = mix(0.88, 1.0, progress);
+  let cs = 1.0;
   let hw = cs * 0.5;
   let hh = height * 0.5;
 
@@ -672,6 +745,8 @@ fn main(
   output.worldN = rotatedNormal;
   output.viewPos = vec3f(ry_x, rx_y, rx_z);
   output.blockH = blockHeight;
+  output.neighbors = f32(neighborBits);
+  output.faceDir = f32(faceIndex);
 
   return output;
 }
@@ -703,6 +778,8 @@ struct FragmentInput {
   @location(8) worldN: vec3f,
   @location(9) viewPos: vec3f,
   @location(10) blockH: f32,
+  @location(11) neighbors: f32,
+  @location(12) faceDir: f32,
 }
 
 fn hash2(p: vec2f) -> f32 {
@@ -716,6 +793,194 @@ fn acesFilm(x: vec3f) -> vec3f {
   let d = 0.59;
   let e = 0.14;
   return clamp((x * (a * x + b)) / (x * (c * x + d) + e), vec3f(0.0), vec3f(1.0));
+}
+
+// Calculate edge rounding factor based on neighbors
+// Returns 0.0-1.0 where 1.0 means fully exposed edge (should be rounded)
+fn getEdgeRounding(uv: vec2f, neighbors: u32, faceDir: u32) -> f32 {
+  let edgeSize = 0.12;
+  var rounding = 0.0;
+
+  // Neighbor bits: 0=+X, 1=-X, 2=+Z, 3=-Z, 4=+X+Z, 5=-X+Z, 6=+X-Z, 7=-X-Z
+  let hasRight = (neighbors & 1u) != 0u;
+  let hasLeft = (neighbors & 2u) != 0u;
+  let hasFront = (neighbors & 4u) != 0u;
+  let hasBack = (neighbors & 8u) != 0u;
+
+  // Top face (faceDir=0): check all 4 edges
+  if (faceDir == 0u) {
+    // Right edge (+X)
+    if (!hasRight && uv.x > (1.0 - edgeSize)) {
+      let t = (uv.x - (1.0 - edgeSize)) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    // Left edge (-X)
+    if (!hasLeft && uv.x < edgeSize) {
+      let t = (edgeSize - uv.x) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    // Front edge (+Z / +Y in UV)
+    if (!hasFront && uv.y > (1.0 - edgeSize)) {
+      let t = (uv.y - (1.0 - edgeSize)) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    // Back edge (-Z / -Y in UV)
+    if (!hasBack && uv.y < edgeSize) {
+      let t = (edgeSize - uv.y) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+  }
+  // Front face (faceDir=2): left/right edges
+  else if (faceDir == 2u) {
+    if (!hasRight && uv.x > (1.0 - edgeSize)) {
+      let t = (uv.x - (1.0 - edgeSize)) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    if (!hasLeft && uv.x < edgeSize) {
+      let t = (edgeSize - uv.x) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+  }
+  // Back face (faceDir=3): left/right edges (reversed)
+  else if (faceDir == 3u) {
+    if (!hasLeft && uv.x > (1.0 - edgeSize)) {
+      let t = (uv.x - (1.0 - edgeSize)) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    if (!hasRight && uv.x < edgeSize) {
+      let t = (edgeSize - uv.x) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+  }
+  // Right face (faceDir=4): front/back edges
+  else if (faceDir == 4u) {
+    if (!hasFront && uv.x > (1.0 - edgeSize)) {
+      let t = (uv.x - (1.0 - edgeSize)) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    if (!hasBack && uv.x < edgeSize) {
+      let t = (edgeSize - uv.x) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+  }
+  // Left face (faceDir=5): front/back edges (reversed)
+  else if (faceDir == 5u) {
+    if (!hasBack && uv.x > (1.0 - edgeSize)) {
+      let t = (uv.x - (1.0 - edgeSize)) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+    if (!hasFront && uv.x < edgeSize) {
+      let t = (edgeSize - uv.x) / edgeSize;
+      rounding = max(rounding, t * t);
+    }
+  }
+
+  return rounding;
+}
+
+// Overgrown vegetation - moss, grass, vines for organic feel
+struct VegetationResult {
+  color: vec3f,
+  amount: f32,
+}
+
+fn getVegetation(uv: vec2f, seed: vec2f, blockH: f32, isTop: bool, isLeftFace: bool, N: vec3f, time: f32) -> VegetationResult {
+  var result: VegetationResult;
+  result.color = vec3f(0.0);
+  result.amount = 0.0;
+
+  // Japanese autumn foliage colors (momiji)
+  let mapleRed = ${wgslVec3(PALETTE.mapleRed)};
+  let mapleOrange = ${wgslVec3(PALETTE.mapleOrange)};
+  let mapleGold = ${wgslVec3(PALETTE.mapleGold)};
+  let mapleCrimson = ${wgslVec3(PALETTE.mapleCrimson)};
+  let autumnBrown = ${wgslVec3(PALETTE.autumnBrown)};
+  let autumnTan = ${wgslVec3(PALETTE.autumnTan)};
+  let fallenLeaf = ${wgslVec3(PALETTE.fallenLeaf)};
+  let ginkgoYellow = ${wgslVec3(PALETTE.ginkgoYellow)};
+  let moss = ${wgslVec3(PALETTE.moss)};
+  let darkMoss = ${wgslVec3(PALETTE.darkMoss)};
+
+  // Per-block foliage - most blocks have scattered autumn leaves
+  let blockVeg = fract(sin(seed.x * 127.3 + seed.y * 311.7) * 43758.5);
+  let hasLeaves = blockVeg > 0.25; // ~75% of blocks have fallen leaves
+
+  // Multi-octave noise for organic patterns
+  let n1 = fract(sin(uv.x * 17.3 + uv.y * 31.7 + seed.x * 7.1) * 43758.5);
+  let n2 = fract(sin(uv.x * 43.1 + uv.y * 67.3 + seed.y * 13.7) * 43758.5);
+  let noise = n1 * 0.6 + n2 * 0.4;
+
+  if (isTop) {
+    // TOP FACE: Fallen autumn leaves scattered on stone
+    if (!hasLeaves) {
+      // Some blocks just have subtle moss
+      if (blockVeg > 0.35) {
+        let mossNoise = fract(sin(uv.x * 12.0 + uv.y * 15.0 + seed.x) * 43758.5);
+        if (mossNoise > 0.6) {
+          result.color = mix(moss, darkMoss, noise);
+          result.amount = mossNoise * 0.3;
+        }
+      }
+      return result;
+    }
+
+    // Pixelated fallen leaves (8x8 for chunkier leaves)
+    let px = floor(uv.x * 8.0);
+    let py = floor(uv.y * 8.0);
+    let leafNoise = fract(sin(px * 127.1 + py * 311.7 + seed.x * 17.3) * 43758.5);
+    let leafType = fract(sin(px * 73.1 + py * 91.7 + seed.y * 31.3) * 43758.5);
+
+    // Dense leaf coverage on tops
+    if (leafNoise > 0.25) {
+      // Pick autumn color based on leaf type
+      var leafColor = mapleOrange;
+      if (leafType < 0.2) { leafColor = mapleRed; }
+      else if (leafType < 0.35) { leafColor = mapleCrimson; }
+      else if (leafType < 0.5) { leafColor = mapleGold; }
+      else if (leafType < 0.65) { leafColor = ginkgoYellow; }
+      else if (leafType < 0.8) { leafColor = fallenLeaf; }
+      else { leafColor = autumnBrown; }
+
+      // Slight variation within each leaf
+      leafColor = leafColor * (0.85 + noise * 0.3);
+
+      result.color = leafColor;
+      result.amount = 0.85;
+    }
+
+  } else {
+    // SIDE FACES: Occasional clinging leaves and moss
+    if (!hasLeaves) {
+      return result;
+    }
+
+    // Sparse moss at bottom of walls (Japanese garden style)
+    if (uv.y < 0.2) {
+      let mossNoise = fract(sin(uv.x * 15.0 + uv.y * 12.0 + seed.x * 9.3) * 43758.5);
+      if (mossNoise > 0.6) {
+        result.color = mix(darkMoss, moss, noise);
+        result.amount = (0.2 - uv.y) * mossNoise * 0.5;
+        return result;
+      }
+    }
+
+    // Rare clinging autumn leaf
+    let leafX = floor(uv.x * 6.0);
+    let leafY = floor(uv.y * 4.0);
+    let clingNoise = fract(sin(leafX * 73.7 + leafY * 127.3 + seed.y * 17.3) * 43758.5);
+
+    if (clingNoise > 0.88) {
+      let leafType = fract(sin(leafX * 31.7 + seed.x * 73.1) * 43758.5);
+      var clingColor = mapleRed;
+      if (leafType < 0.3) { clingColor = mapleOrange; }
+      else if (leafType < 0.6) { clingColor = mapleGold; }
+
+      result.color = clingColor * 0.9;
+      result.amount = 0.7;
+    }
+  }
+
+  return result;
 }
 
 @fragment
@@ -745,9 +1010,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       discard;
     }
 
-    // Fountain pool floor — same palette as fountainFragmentShader water
+    // Fountain pool floor — detect waterBase { r: 0.15, g: 0.42, b: 0.52 }
     let isPoolLake =
-      input.color.z > 0.85 && input.color.y > 0.46 && input.color.x < 0.17;
+      input.color.x < 0.2 && input.color.y > 0.35 && input.color.y < 0.55 && input.color.z > 0.45 && input.color.z < 0.6;
 
     if (isPoolLake) {
       let t = uniforms.time;
@@ -756,31 +1021,41 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       let waterDark = ${wgslVec3(PALETTE.waterDark)};
       var albedoLake = waterBase;
       if (input.faceNy > 0.5) {
+        // Realistic water surface with caustic-like patterns
         let centerDist = length(uv - vec2f(0.5, 0.5));
-        let ripple = sin(centerDist * 20.0 - t * 3.6) * 0.5 + 0.5;
-        let rippleFade = 1.0 - smoothstep(0.0, 0.65, centerDist);
-        let diag1 = fract((uv.x + uv.y) * 4.0 + t * 1.2);
-        let wave = smoothstep(0.0, 0.3, diag1) * smoothstep(0.6, 0.3, diag1);
-        let pattern = mix(wave, ripple * rippleFade, 0.5);
-        albedoLake = mix(waterBase, waterLight, pattern * 0.65);
-        if (centerDist < 0.12) {
-          let foam = fract(sin(t * 8.0 + uv.x * 50.0) * 43758.5);
-          if (foam > 0.72) {
-            albedoLake = mix(albedoLake, ${wgslVec3(PALETTE.waterFoam)}, 0.35);
+        let ripple = sin(centerDist * 18.0 - t * 2.8) * 0.5 + 0.5;
+        let rippleFade = 1.0 - smoothstep(0.0, 0.6, centerDist);
+        // Layered wave patterns for realism
+        let wave1 = sin((uv.x + uv.y) * 12.0 + t * 1.5) * 0.5 + 0.5;
+        let wave2 = sin((uv.x - uv.y) * 8.0 - t * 1.2) * 0.5 + 0.5;
+        let pattern = mix(wave1 * wave2, ripple * rippleFade, 0.4);
+        // Depth-based color (darker in center, lighter at edges)
+        let depthFade = smoothstep(0.0, 0.5, centerDist);
+        albedoLake = mix(waterDark, waterLight, pattern * 0.5 + depthFade * 0.3);
+        // Subtle foam near center
+        if (centerDist < 0.15) {
+          let foam = fract(sin(t * 6.0 + uv.x * 40.0 + uv.y * 35.0) * 43758.5);
+          if (foam > 0.8) {
+            albedoLake = mix(albedoLake, ${wgslVec3(PALETTE.waterFoam)}, 0.25);
           }
         }
       } else {
-        let sideN = fract(sin(uv.x * 36.0 + uv.y * 24.0 + t * 1.5) * 43758.5);
-        albedoLake = mix(waterDark, waterBase, 0.5 + 0.35 * sideN);
-        albedoLake = albedoLake * (0.82 + 0.18 * NdSun);
+        // Underwater side view - darker with caustic hints
+        let sideN = fract(sin(uv.x * 28.0 + uv.y * 20.0 + t * 1.2) * 43758.5);
+        albedoLake = mix(waterDark, waterBase, 0.35 + 0.25 * sideN);
+        albedoLake = albedoLake * (0.75 + 0.25 * NdSun);
       }
-      let specLake = ${wgslVec3(PALETTE.spec)} * pow(NdH, 48.0) * 0.24;
+      // Realistic water specular (high gloss)
+      let waterSpec = ${wgslVec3(PALETTE.waterHighlight)} * pow(NdH, 96.0) * 0.45;
+      // Fresnel reflection (water F0 ~0.02)
+      let fresnelWater = 0.02 + 0.98 * pow(1.0 - max(dot(V, N), 0.0), 5.0);
+      let skyReflect = skyFill * fresnelWater * 0.35;
       var hdrL =
-        albedoLake * (bounce * 0.38 + sunCol * NdSun * 0.42 + skyFill * NdUp * 0.28) +
-        specLake;
-      hdrL = mix(hdrL, fogCol, aerial * 0.09 * (1.0 - p * 0.35));
-      hdrL = acesFilm(hdrL * 0.99);
-      hdrL = pow(hdrL, vec3f(1.0 / 2.06));
+        albedoLake * (bounce * 0.25 + sunCol * NdSun * 0.55 + skyFill * NdUp * 0.3) +
+        waterSpec + skyReflect;
+      hdrL = mix(hdrL, fogCol, aerial * 0.08 * (1.0 - p * 0.35));
+      hdrL = acesFilm(hdrL * 1.1);
+      hdrL = pow(hdrL, vec3f(1.0 / 2.2));
       // Stay opaque in top-down 2D (other ground fades with progress)
       return vec4f(hdrL, 1.0);
     }
@@ -847,37 +1122,19 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
 
     var albedo = stoneMid;
     if (input.faceNy > 0.5) {
-      // TOP - cobblestone pattern
-      let stoneU = fract(uv.x * 3.0);
-      let stoneV = fract(uv.y * 3.0);
-      let rowIdx = floor(uv.y * 3.0);
-      var stoneOffset = 0.0;
-      if (fract(rowIdx * 0.5) > 0.25) { stoneOffset = 0.5; }
-      let shiftedU = fract(uv.x * 3.0 + stoneOffset);
+      // TOP - smooth stone with subtle variation
+      let texNoise = fract(sin(uv.x * 40.0 + uv.y * 35.0 + g.x * 17.3) * 43758.5);
+      let texNoise2 = fract(sin(uv.x * 25.0 + uv.y * 30.0 + g.y * 11.7) * 43758.5);
 
-      // Stone block edges (mortar lines)
-      let isMortar = shiftedU < 0.06 || shiftedU > 0.94 || stoneV < 0.06 || stoneV > 0.94;
-
-      // Per-stone variation
-      let stoneIdx = floor(uv.x * 3.0 + stoneOffset) + rowIdx * 10.0;
-      let stoneNoise = fract(sin(stoneIdx * 127.1 + g.x * 17.3) * 43758.5);
-
-      if (isMortar) {
-        albedo = stoneDarkest;
-      } else if (stoneNoise < 0.3) {
-        albedo = stoneLight;
-      } else if (stoneNoise > 0.7) {
-        albedo = stoneDark;
-      } else {
-        albedo = stoneMid;
-      }
+      // Smooth color blend based on noise
+      albedo = mix(stoneMid, stoneLight, texNoise * 0.4);
+      albedo = mix(albedo, stoneDark, texNoise2 * 0.25);
 
       // Subtle surface texture
-      let texNoise = fract(sin(uv.x * 50.0 + uv.y * 40.0 + g.y) * 43758.5);
-      albedo = albedo * (0.95 + texNoise * 0.1);
-      albedo = albedo * (0.52 + 0.09 * NdSun + 0.22 * NdUp);
+      albedo = albedo * (0.92 + texNoise * 0.08);
+      albedo = albedo * (0.55 + 0.12 * NdSun + 0.25 * NdUp);
     } else {
-      // SIDE - darker stone
+      // SIDE - smooth darker stone
       let sideNoise = fract(sin(uv.x * 30.0 + uv.y * 20.0 + g.x) * 43758.5);
       albedo = mix(stoneDark, stoneMid, sideNoise * 0.4);
       albedo = albedo * (0.52 + 0.12 * NdSun + 0.18 * NdUp);
@@ -967,11 +1224,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       let depth = 1.0 - uv.y;
       var wallColor = mix(dirtSide, dirtDark, depth * 0.5);
 
-      // Subtle brick pattern
-      let brickV = fract(uv.y * 5.0);
-      let brickH = fract(uv.x * 3.0);
-      let isMortar = brickV < 0.08 || brickH < 0.06;
-      if (isMortar) { wallColor = wallColor * 0.85; }
+      // Smooth wall with subtle texture
+      let wallNoise = fract(sin(uv.x * 25.0 + uv.y * 30.0) * 43758.5);
+      wallColor = wallColor * (0.95 + wallNoise * 0.1);
 
       // Roof tile overhang at top
       let roofBlend = smoothstep(0.88, 0.95, uv.y);
@@ -980,18 +1235,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = wallColor * shade * tint;
 
     } else if (blockType == 3) {
-      // STONE BRICK - clean brick pattern
-      let brickV = fract(uv.y * 4.0);
-      let rowIdx = floor(uv.y * 4.0);
-      var brickOffset = 0.0;
-      if (fract(rowIdx * 0.5) > 0.25) { brickOffset = 0.5; }
-      let brickU = fract(uv.x * 2.0 + brickOffset);
-      // Mortar lines
-      let isMortar = brickU < 0.06 || brickU > 0.94 || brickV < 0.08 || brickV > 0.92;
-      var brickColor = brickMid;
-      if (isMortar) {
-        brickColor = brickDark * 0.75;
-      }
+      // STONE BRICK - smooth with variation
+      let brickNoise = fract(sin(uv.x * 20.0 + uv.y * 25.0 + seed.x) * 43758.5);
+      var brickColor = mix(brickMid, brickLight, brickNoise * 0.35);
       albedo = brickColor * shade * tint;
 
     } else if (blockType == 4) {
@@ -1011,9 +1257,14 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = mtnColor * shade * tint;
 
     } else if (blockType == 6) {
-      // Stone pillar — chiseled shaft + rough ashlar crown (gray only)
+      // Stone pillar with per-block material variation
       let pillarBaseH = 0.35;
       let isShaft = uv.y < pillarBaseH && input.blockH > 0.16;
+
+      // Per-block material variation (warm/cool, weathered/fresh)
+      let materialVar = fract(sin(seed.x * 31.7 + seed.y * 73.1) * 43758.5);
+      let warmShift = (materialVar - 0.5) * 0.15; // Varies warm/cool balance
+      let weathered = fract(sin(seed.x * 97.3 + seed.y * 127.9) * 43758.5);
 
       var pillarColor = stoneMid;
 
@@ -1038,32 +1289,24 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
         else if (pixelNoise2 < 0.14) { pillarColor = mix(pillarColor, rockDark, 0.5); }
       }
 
+      // Apply warm/cool variation
+      pillarColor.r = pillarColor.r + warmShift;
+      pillarColor.b = pillarColor.b - warmShift * 0.5;
+
+      // Weathering - desaturate and darken some blocks
+      if (weathered > 0.7) {
+        let gray = dot(pillarColor, vec3f(0.299, 0.587, 0.114));
+        pillarColor = mix(pillarColor, vec3f(gray) * 0.9, (weathered - 0.7) * 1.5);
+      }
+
       albedo = pillarColor * shade * tint;
 
     } else {
-      // COBBLESTONE SIDE - grey stone blocks
-      let gridX = fract(uv.x * 2.0);
-      let gridY = fract(uv.y * 3.0);
-      let rowIdx = floor(uv.y * 3.0);
-      var gridOffset = 0.0;
-      if (fract(rowIdx * 0.5) > 0.25) { gridOffset = 0.5; }
-      let shiftedX = fract(uv.x * 2.0 + gridOffset);
-
-      // Mortar gaps
-      let isMortar = shiftedX < 0.06 || shiftedX > 0.94 || gridY < 0.08 || gridY > 0.92;
-
-      // Per-stone variation
-      let stoneIdx = floor(uv.x * 2.0 + gridOffset) + rowIdx * 5.0 + seed.x;
-      let stoneVar = fract(sin(stoneIdx * 127.1) * 43758.5);
-
-      var cobbleColor = stoneMid;
-      if (isMortar) {
-        cobbleColor = stoneDark * 0.55;
-      } else if (stoneVar < 0.35) {
-        cobbleColor = stoneLight * 0.95;
-      } else if (stoneVar > 0.7) {
-        cobbleColor = stoneDark * 0.9;
-      }
+      // COBBLESTONE SIDE - smooth stone with variation
+      let sideNoise = fract(sin(uv.x * 20.0 + uv.y * 25.0 + seed.x) * 43758.5);
+      let sideNoise2 = fract(sin(uv.x * 15.0 + uv.y * 18.0 + seed.y) * 43758.5);
+      var cobbleColor = mix(stoneMid, stoneLight, sideNoise * 0.3);
+      cobbleColor = mix(cobbleColor, stoneDark, sideNoise2 * 0.2);
       albedo = cobbleColor * shade * tint;
     }
     albedo = albedo * (1.0 + hBoost);
@@ -1087,12 +1330,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = roofColor * topWarmTint;
 
     } else if (blockType == 3) {
-      // STONE BRICK TOP - clean grid pattern
-      let brickU = fract(uv.x * 2.0);
-      let brickV = fract(uv.y * 2.0);
-      let isMortar = brickU < 0.06 || brickU > 0.94 || brickV < 0.06 || brickV > 0.94;
-      var brickColor = brickMid;
-      if (isMortar) { brickColor = brickDark * 0.75; }
+      // STONE BRICK TOP - smooth with variation
+      let brickNoise = fract(sin(uv.x * 18.0 + uv.y * 22.0 + seed.x) * 43758.5);
+      var brickColor = mix(brickMid, brickLight, brickNoise * 0.35);
       albedo = brickColor * topWarmTint;
 
     } else if (blockType == 4) {
@@ -1113,42 +1353,42 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = mtnTopColor * topWarmTint;
 
     } else if (blockType == 6) {
-      // Stone pillar cap — weathered chipped granite
+      // Stone pillar cap with per-block material variation
       let px = floor(uv.x * 8.0);
       let py = floor(uv.y * 8.0);
       let pixelNoise = fract(sin(px * 127.1 + py * 311.7 + seed.x * 17.3) * 43758.5);
       let pixelNoise2 = fract(sin(px * 73.3 + py * 157.1 + seed.y * 31.7) * 43758.5);
+
+      // Match side face material variation
+      let materialVar = fract(sin(seed.x * 31.7 + seed.y * 73.1) * 43758.5);
+      let warmShift = (materialVar - 0.5) * 0.15;
+      let weathered = fract(sin(seed.x * 97.3 + seed.y * 127.9) * 43758.5);
+
       var capColor = stoneMid;
       if (pixelNoise < 0.24) { capColor = stoneLight; }
       else if (pixelNoise < 0.46) { capColor = mix(stoneMid, rockLight, 0.35); }
       else if (pixelNoise > 0.83) { capColor = stoneDark; }
       if (pixelNoise2 > 0.82) { capColor = mix(capColor, stoneLight, 0.2); }
       else if (pixelNoise2 < 0.13) { capColor = mix(capColor, rockDark, 0.45); }
+
+      // Apply warm/cool variation
+      capColor.r = capColor.r + warmShift;
+      capColor.b = capColor.b - warmShift * 0.5;
+
+      // Weathering
+      if (weathered > 0.7) {
+        let gray = dot(capColor, vec3f(0.299, 0.587, 0.114));
+        capColor = mix(capColor, vec3f(gray) * 0.9, (weathered - 0.7) * 1.5);
+      }
+
       albedo = capColor * topWarmTint;
 
     } else {
-      // COBBLESTONE TOP - grey stone grid with variation
-      let gridX = fract(uv.x * 2.0);
-      let gridY = fract(uv.y * 2.0);
-      let rowIdx = floor(uv.y * 2.0);
-      var gridOffset = 0.0;
-      if (fract(rowIdx * 0.5) > 0.25) { gridOffset = 0.5; }
-      let shiftedX = fract(uv.x * 2.0 + gridOffset);
-
-      let isMortar = shiftedX < 0.05 || shiftedX > 0.95 || gridY < 0.05 || gridY > 0.95;
-
-      // Per-stone color variation
-      let stoneIdx = floor(uv.x * 2.0 + gridOffset) + rowIdx * 5.0 + seed.x;
-      let stoneVar = fract(sin(stoneIdx * 127.1) * 43758.5);
-
-      var rockColor = stoneMid;
-      if (isMortar) {
-        rockColor = stoneDark * 0.6;
-      } else if (stoneVar < 0.3) {
-        rockColor = stoneLight;
-      } else if (stoneVar > 0.7) {
-        rockColor = stoneDark;
-      }
+      // COBBLESTONE TOP - smooth stone with variation
+      let topNoise = fract(sin(uv.x * 22.0 + uv.y * 28.0 + seed.x) * 43758.5);
+      let topNoise2 = fract(sin(uv.x * 16.0 + uv.y * 20.0 + seed.y) * 43758.5);
+      var rockColor = mix(stoneMid, stoneLight, topNoise * 0.35);
+      rockColor = mix(rockColor, stoneDark, topNoise2 * 0.2);
       albedo = rockColor * topWarmTint;
     }
   } else {
@@ -1164,21 +1404,76 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     }
   }
 
-  // CINEMATIC DIFFUSE - high contrast, warm/cool color separation
-  let diffuse =
-    albedo * (ambient + sunCol * NdSun * 0.48 + skyFill * NdUp * 0.42 + bounce * 0.22) * streetAo;
-  let specCol = ${wgslVec3(PALETTE.spec)} * specAmt * 0.28;
-  let rim = pow(clamp(1.0 - dot(V, N), 0.0, 1.0), 3.5);
-  let rimLight = rim * ${wgslVec3(PALETTE.rim)} * 0.065;
+  // Edge rounding for exposed edges (only for tall blocks)
+  let neighborBits = u32(input.neighbors);
+  let faceDir = u32(input.faceDir);
+  var edgeRound = 0.0;
+  if (input.building > 0.5) {
+    edgeRound = getEdgeRounding(uv, neighborBits, faceDir);
+  }
+
+  // Japanese autumn foliage overlay
+  if (input.building > 0.5) {
+    let isTopFace = input.faceNy > 0.5;
+    let isLeftSide = N.x < -0.5;
+    let veg = getVegetation(uv, seed, input.blockH, isTopFace, isLeftSide, N, uniforms.time);
+
+    // Apply autumn leaves - strong blend
+    if (veg.amount > 0.01) {
+      albedo = mix(albedo, veg.color, veg.amount);
+      specAmt = specAmt * (1.0 - veg.amount * 0.5);
+    }
+  }
+
+  // Also add fallen leaves to flat ground areas
+  if (input.building < 0.5 && input.faceNy > 0.5) {
+    let groundLeafNoise = fract(sin(uv.x * 12.0 + uv.y * 15.0 + seed.x * 7.3 + seed.y * 11.1) * 43758.5);
+    if (groundLeafNoise > 0.7) {
+      let leafType = fract(sin(seed.x * 31.7 + uv.x * 73.1) * 43758.5);
+      var leafCol = ${wgslVec3(PALETTE.mapleOrange)};
+      if (leafType < 0.25) { leafCol = ${wgslVec3(PALETTE.mapleRed)}; }
+      else if (leafType < 0.5) { leafCol = ${wgslVec3(PALETTE.mapleGold)}; }
+      else if (leafType < 0.75) { leafCol = ${wgslVec3(PALETTE.ginkgoYellow)}; }
+      albedo = mix(albedo, leafCol, (groundLeafNoise - 0.7) * 2.5);
+    }
+  }
+
+  // PBR-style lighting - physically-based diffuse and specular
+  // Direct sunlight (key light)
+  let directSun = sunCol * NdSun * 0.65;
+  // Sky fill (hemisphere approximation)
+  let skyLight = skyFill * NdUp * 0.35;
+  // Ground bounce (warm earth reflection)
+  let groundBounce = bounce * max(0.0, -N.y) * 0.15;
+  // Ambient (sky irradiance)
+  let ambientLight = ambient * 0.8;
+
+  // Apply edge darkening for rounded appearance
+  let edgeDarken = 1.0 - edgeRound * 0.35;
+  let diffuse = albedo * (ambientLight + directSun + skyLight + groundBounce) * streetAo * edgeDarken;
+
+  // GGX-inspired specular with roughness
+  let roughness = 0.45;
+  let specPower = 2.0 / (roughness * roughness) - 2.0;
+  let specCol = ${wgslVec3(PALETTE.spec)} * pow(NdH, specPower) * specAmt * 0.35;
+
+  // Fresnel rim light - enhanced at rounded edges
+  let fresnel = pow(clamp(1.0 - dot(V, N), 0.0, 1.0), 4.0);
+  let rimLight = fresnel * ${wgslVec3(PALETTE.rim)} * (0.08 + edgeRound * 0.15);
 
   var hdr = diffuse + specCol + rimLight + emissive;
 
-  let luminance = dot(hdr, vec3f(0.299, 0.587, 0.114));
-  hdr = mix(vec3f(luminance), hdr, 1.04);
+  // Subtle saturation boost for realism
+  let luminance = dot(hdr, vec3f(0.2126, 0.7152, 0.0722));
+  hdr = mix(vec3f(luminance), hdr, 1.08);
 
-  hdr = mix(hdr, fogCol, aerial * 0.1 * (1.0 - p * 0.4));
-  hdr = acesFilm(hdr * 1.02);
-  hdr = pow(hdr, vec3f(1.0 / 2.1));
+  // Atmospheric perspective
+  hdr = mix(hdr, fogCol, aerial * 0.12 * (1.0 - p * 0.4));
+
+  // ACES tonemapping with adjusted exposure
+  hdr = acesFilm(hdr * 1.15);
+  // sRGB gamma
+  hdr = pow(hdr, vec3f(1.0 / 2.2));
   return vec4f(hdr, 1.0);
 }
 `;
@@ -1320,7 +1615,7 @@ fn main(
   var blockY = 0.0;
   var blockZ = 0.0;
   var blockType = 0.0; // 0 = stone, 1 = water source, 2.x = flowing water, 3 = pool
-  let cubeSize = blockSize * 0.95;
+  let cubeSize = blockSize * 1.0;
 
   // Layout:
   // Blocks 0-15: Outer stone rim (4x4 hollow = 12, plus 4 corners = 16)
@@ -1623,22 +1918,9 @@ fn main(input: FountainIn) -> @location(0) vec4f {
     let stoneBase = ${wgslVec3(PALETTE.fountainStone)};
     let stoneDark = ${wgslVec3(PALETTE.fountainStoneDark)};
 
-    // Simple brick grid
-    let brickX = fract(uv.x * 2.0);
-    let brickY = fract(uv.y * 3.0);
-    let rowIdx = floor(uv.y * 3.0);
-    var offset = 0.0;
-    if (fract(rowIdx * 0.5) > 0.25) { offset = 0.5; }
-    let shiftedX = fract(uv.x * 2.0 + offset);
-
-    // Clean mortar lines
-    let isMortar = shiftedX < 0.05 || shiftedX > 0.95 || brickY < 0.06 || brickY > 0.94;
-
-    if (isMortar) {
-      color = stoneDark * 0.8;
-    } else {
-      color = stoneBase;
-    }
+    // Smooth stone with subtle variation
+    let stoneNoise = fract(sin(uv.x * 20.0 + uv.y * 25.0) * 43758.5);
+    color = mix(stoneBase, stoneDark, stoneNoise * 0.25);
     alpha = 1.0; // Stone is fully opaque
   }
 
@@ -1702,7 +1984,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> CastleOut {
   let progress = uniforms.progress;
   let blockSize = 0.0245;
   let halfGrid = gridSize * blockSize * 0.5;
-  let cubeSize = blockSize * 0.9;
+  let cubeSize = blockSize * 1.0;
 
   let centerCol = castlePos.x;
   let centerRow = castlePos.y;
@@ -2197,7 +2479,7 @@ function easeInOutCubic(t: number): number {
 }
 
 export const IsometricQRCode = () => {
-  const { width, height } = useWindowDimensions();
+  const { width: _width, height: _height } = useWindowDimensions();
   const [qrContent, setQrContent] = useState(DEFAULT_QR_CONTENT);
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
@@ -2212,6 +2494,7 @@ export const IsometricQRCode = () => {
   const colorBufferRef = useRef<GPUBuffer | null>(null);
   const posBufferRef = useRef<GPUBuffer | null>(null);
   const heightBufferRef = useRef<GPUBuffer | null>(null);
+  const neighborBufferRef = useRef<GPUBuffer | null>(null);
   const fountainBufferRef = useRef<GPUBuffer | null>(null);
   const castleBufferRef = useRef<GPUBuffer | null>(null);
   const qrMatrixBufferRef = useRef<GPUBuffer | null>(null);
@@ -2239,6 +2522,7 @@ export const IsometricQRCode = () => {
     const colorBuffer = colorBufferRef.current;
     const posBuffer = posBufferRef.current;
     const heightBuffer = heightBufferRef.current;
+    const neighborBuffer = neighborBufferRef.current;
     const fountainBuffer = fountainBufferRef.current;
     const castleBuffer = castleBufferRef.current;
     const qrMatrixBuffer = qrMatrixBufferRef.current;
@@ -2248,6 +2532,7 @@ export const IsometricQRCode = () => {
       !colorBuffer ||
       !posBuffer ||
       !heightBuffer ||
+      !neighborBuffer ||
       !fountainBuffer ||
       !castleBuffer ||
       !qrMatrixBuffer
@@ -2255,7 +2540,7 @@ export const IsometricQRCode = () => {
       return;
 
     const qrMatrix = generateQRMatrix(qrContent);
-    const { positions, heights, colors, gridSize, numBlocks } =
+    const { positions, heights, colors, neighbors, gridSize, numBlocks } =
       generateBlockData(qrMatrix);
     const fountainCenters = getFountainCenters(gridSize);
     const castleCenter = getCastleCenter(gridSize);
@@ -2281,6 +2566,10 @@ export const IsometricQRCode = () => {
     paddedHeights.set(heights);
     device.queue.writeBuffer(heightBuffer, 0, paddedHeights);
 
+    const paddedNeighbors = new Uint32Array(MAX_BLOCKS);
+    paddedNeighbors.set(neighbors);
+    device.queue.writeBuffer(neighborBuffer, 0, paddedNeighbors);
+
     // Update fountain positions (2 fountains × 2 floats)
     const fountainData = new Float32Array(4);
     fountainCenters.forEach((fc, i) => {
@@ -2295,7 +2584,11 @@ export const IsometricQRCode = () => {
 
     // Update QR matrix for wall detection
     const packedMatrix = packQRMatrix(qrMatrix);
-    device.queue.writeBuffer(qrMatrixBuffer, 0, packedMatrix);
+    device.queue.writeBuffer(
+      qrMatrixBuffer,
+      0,
+      packedMatrix.buffer as ArrayBuffer,
+    );
   }, [qrContent]);
 
   const initWebGPU = useCallback(async () => {
@@ -2319,7 +2612,7 @@ export const IsometricQRCode = () => {
 
     // Generate initial QR data
     const qrMatrix = generateQRMatrix(qrContentRef.current);
-    const { positions, heights, colors, gridSize, numBlocks } =
+    const { positions, heights, colors, neighbors, gridSize, numBlocks } =
       generateBlockData(qrMatrix);
     const fountainCenters = getFountainCenters(gridSize);
     const castleCenter = getCastleCenter(gridSize);
@@ -2363,6 +2656,16 @@ export const IsometricQRCode = () => {
     paddedHeights.set(heights);
     device.queue.writeBuffer(heightBuffer, 0, paddedHeights);
 
+    // Neighbor buffer for edge rounding
+    const neighborBuffer = device.createBuffer({
+      size: MAX_BLOCKS * 4,
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    neighborBufferRef.current = neighborBuffer;
+    const paddedNeighbors = new Uint32Array(MAX_BLOCKS);
+    paddedNeighbors.set(neighbors);
+    device.queue.writeBuffer(neighborBuffer, 0, paddedNeighbors);
+
     // Fountain positions buffer (2 fountains × 2 floats)
     const fountainBuffer = device.createBuffer({
       size: 4 * 4, // 4 floats for 2 vec2f positions
@@ -2392,7 +2695,11 @@ export const IsometricQRCode = () => {
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     qrMatrixBufferRef.current = qrMatrixBuffer;
-    device.queue.writeBuffer(qrMatrixBuffer, 0, packedMatrix);
+    device.queue.writeBuffer(
+      qrMatrixBuffer,
+      0,
+      packedMatrix.buffer as ArrayBuffer,
+    );
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
@@ -2416,6 +2723,11 @@ export const IsometricQRCode = () => {
           visibility: GPUShaderStage.VERTEX,
           buffer: { type: 'read-only-storage' },
         },
+        {
+          binding: 4,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
       ],
     });
 
@@ -2426,6 +2738,7 @@ export const IsometricQRCode = () => {
         { binding: 1, resource: { buffer: colorBuffer } },
         { binding: 2, resource: { buffer: posBuffer } },
         { binding: 3, resource: { buffer: heightBuffer } },
+        { binding: 4, resource: { buffer: neighborBuffer } },
       ],
     });
 

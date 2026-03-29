@@ -26,11 +26,11 @@ const COLORS = {
 };
 
 const PALETTE = {
-  skyZenith: { r: 0.55, g: 0.75, b: 0.95 },
-  skyHorizon: { r: 0.92, g: 0.90, b: 0.95 },
-  sun: { r: 1.1, g: 1.0, b: 0.92 },
-  skyFill: { r: 0.75, g: 0.85, b: 0.98 },
-  bounce: { r: 0.45, g: 0.58, b: 0.38 },
+  skyZenith: { r: 0.82, g: 0.88, b: 0.92 },
+  skyHorizon: { r: 0.91, g: 0.93, b: 0.91 },
+  sun: { r: 1.15, g: 1.05, b: 0.95 },
+  skyFill: { r: 0.85, g: 0.90, b: 0.95 },
+  bounce: { r: 0.50, g: 0.65, b: 0.42 },
 };
 
 const CONTAINER_BG = COLORS.background;
@@ -84,13 +84,13 @@ function generateBlockData(qrMatrix: boolean[][]): {
   const types: number[] = [];
 
   // Tree parameters - WIDE SPREADING cherry blossom (umbrella shape)
-  const trunkRadius = 2.5; // Thick trunk
-  const trunkHeight = 0.35; // Visible trunk
-  const canopyBaseHeight = 0.32; // Canopy sits higher
-  const canopyOuterRadius = gridSize * 0.48; // WIDE canopy - wider than tall
-  const canopyThickness = 0.08; // FLAT canopy - not tall pillars
-  const grassHeight = 0.045; // Ground grass height
-  const dirtHeight = 0.018; // Dirt/path height
+  const trunkRadius = 2.0; // Thick trunk
+  const trunkHeight = 0.42; // Taller visible trunk
+  const canopyBaseHeight = 0.38; // Canopy sits higher
+  const canopyOuterRadius = gridSize * 0.46; // Wide canopy
+  const canopyThickness = 0.12; // Thicker canopy for lushness
+  const grassHeight = 0.035; // Ground grass height
+  const dirtHeight = 0.012; // Dirt/path height - flatter
 
   // Pseudo-random function for organic variation
   const pseudoRandom = (col: number, row: number) => {
@@ -213,7 +213,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
   let gridSize = uniforms.gridSize;
   let blockSize = 0.0245;
   let halfGrid = gridSize * blockSize * 0.5;
-  let cubeSize = blockSize * 0.92;
+  let cubeSize = blockSize * 1.02; // Slight overlap to eliminate gaps
 
   let baseX = col * blockSize - halfGrid;
   let baseY = blockBaseY[blockIdx]; // Starting Y position (elevated for canopy)
@@ -340,16 +340,20 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtMid = vec3f(0.78, 0.70, 0.58);
   let dirtDark = vec3f(0.65, 0.55, 0.42);
 
-  // CHERRY BLOSSOM colors - vivid sakura pink (more saturated)
-  let sakuraBright = vec3f(1.0, 0.72, 0.78);    // Bright pink
-  let sakuraMid = vec3f(0.98, 0.58, 0.68);      // Medium pink - more saturated
-  let sakuraDeep = vec3f(0.95, 0.48, 0.58);     // Deeper pink
-  let sakuraRich = vec3f(0.88, 0.38, 0.50);     // Rich magenta accent
+  // CHERRY BLOSSOM colors - wide tonal range like Japanese maple
+  let sakuraCream = vec3f(1.0, 0.85, 0.80);     // Light peachy cream
+  let sakuraPeach = vec3f(1.0, 0.70, 0.65);     // Soft peach
+  let sakuraLight = vec3f(1.0, 0.55, 0.58);     // Light coral pink
+  let sakuraMid = vec3f(0.98, 0.45, 0.52);      // Medium salmon pink
+  let sakuraCoral = vec3f(0.95, 0.38, 0.45);    // Coral
+  let sakuraDeep = vec3f(0.88, 0.30, 0.40);     // Deep coral
+  let sakuraRich = vec3f(0.80, 0.22, 0.35);     // Rich rose
+  let sakuraDark = vec3f(0.70, 0.18, 0.30);     // Dark accent
 
-  // Accent colors - reduced percentages
-  let petalWhite = vec3f(1.0, 0.92, 0.94);      // Soft white petals (~5%)
-  let greenLeaf = vec3f(0.40, 0.62, 0.35);      // Green leaf accents (~8%)
-  let greenDark = vec3f(0.30, 0.52, 0.28);      // Darker green
+  // Accent colors
+  let petalWhite = vec3f(1.0, 0.90, 0.92);      // Soft white petals
+  let greenLeaf = vec3f(0.30, 0.58, 0.25);      // Green leaf accents
+  let greenDark = vec3f(0.22, 0.48, 0.18);      // Darker green
 
   // TRUNK colors (QR dark modules) - rich brown bark
   let barkDark = vec3f(0.22, 0.14, 0.08);
@@ -374,13 +378,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let NdSun = max(dot(N, sunDir), 0.0);
   let NdUp = max(dot(N, vec3f(0.0, 1.0, 0.0)), 0.0);
 
-  // 8x8 pixelation for Minecraft look - 3 noise layers for complex patterns
-  let px = floor(uv.x * 8.0);
-  let py = floor(uv.y * 8.0);
+  // Per-block noise - cleaner look, less pixelation
   let blockSeed = seed.x * 17.3 + seed.y * 31.1;
-  let noise1 = fract(sin(px * 127.1 + py * 311.7 + blockSeed) * 43758.5);
-  let noise2 = fract(sin(px * 73.3 + py * 157.1 + blockSeed * 1.7) * 43758.5);
-  let noise3 = fract(sin(px * 43.7 + py * 97.3 + blockSeed * 2.3) * 43758.5);
+  let noise1 = fract(sin(blockSeed) * 43758.5);
+  let noise2 = fract(sin(blockSeed * 1.7 + 127.1) * 43758.5);
+  let noise3 = fract(sin(blockSeed * 2.3 + 311.7) * 43758.5);
 
   if (input.faceNy > 0.5) {
     // TOP FACE - this is what QR scanner sees when flat
@@ -389,43 +391,57 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     if (blockType == 0) {
       // DIRT/PATH TOP (QR light) - light tan, reads as light
       var dirtColor = dirtMid;
-      if (noise1 < 0.3) { dirtColor = dirtLight; }
-      else if (noise1 > 0.7) { dirtColor = dirtDark; }
+      if (noise1 < 0.25) { dirtColor = dirtLight; }
+      else if (noise1 > 0.75) { dirtColor = dirtDark; }
 
-      // Stone pattern
-      let gridX = fract(uv.x * 3.0);
-      let gridY = fract(uv.y * 3.0);
-      let isMortar = gridX < 0.1 || gridX > 0.9 || gridY < 0.1 || gridY > 0.9;
-      if (isMortar) { dirtColor *= 0.85; }
+      // Subtle stone pattern - less busy
+      let gridX = fract(uv.x * 2.0);
+      let gridY = fract(uv.y * 2.0);
+      let isMortar = gridX < 0.08 || gridX > 0.92 || gridY < 0.08 || gridY > 0.92;
+      if (isMortar) { dirtColor *= 0.92; }
 
       albedo = dirtColor * topWarmTint;
     } else if (blockType == 1) {
-      // CHERRY BLOSSOM TOP - vivid sakura with Minecraft-style texture
+      // CHERRY BLOSSOM TOP - rich tonal variation
 
-      // Color distribution using noise1
-      var cherryColor = sakuraMid;  // Base
-      if (noise1 < 0.22) { cherryColor = sakuraBright; }      // 22% bright
-      else if (noise1 < 0.45) { cherryColor = sakuraMid; }    // 23% mid
-      else if (noise1 < 0.70) { cherryColor = sakuraDeep; }   // 25% deep
-      else { cherryColor = sakuraRich; }                       // 30% rich
+      // Smooth continuous interpolation across full color range
+      var cherryColor = sakuraMid;
+      let t = noise1;
 
-      // Green leaf accents (8%) using noise2
-      if (noise2 > 0.92) {
-        if (noise3 > 0.5) {
-          cherryColor = greenLeaf;
-        } else {
-          cherryColor = greenDark;
-        }
+      // 8-stop gradient for rich variation
+      if (t < 0.10) {
+        cherryColor = mix(sakuraCream, sakuraPeach, t / 0.10);
+      } else if (t < 0.25) {
+        cherryColor = mix(sakuraPeach, sakuraLight, (t - 0.10) / 0.15);
+      } else if (t < 0.40) {
+        cherryColor = mix(sakuraLight, sakuraMid, (t - 0.25) / 0.15);
+      } else if (t < 0.55) {
+        cherryColor = mix(sakuraMid, sakuraCoral, (t - 0.40) / 0.15);
+      } else if (t < 0.70) {
+        cherryColor = mix(sakuraCoral, sakuraDeep, (t - 0.55) / 0.15);
+      } else if (t < 0.85) {
+        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.70) / 0.15);
+      } else {
+        cherryColor = mix(sakuraRich, sakuraDark, (t - 0.85) / 0.15);
       }
 
-      // White petal highlights (5%) using noise3
-      if (noise3 > 0.95 && noise2 < 0.92) {
+      // Add secondary variation using noise2 for extra richness
+      let shift = (noise2 - 0.5) * 0.12;
+      cherryColor = cherryColor * (1.0 + shift);
+
+      // Occasional green leaf accents (4%)
+      if (noise2 > 0.96) {
+        cherryColor = mix(greenLeaf, greenDark, noise3);
+      }
+
+      // Rare white petal highlights (2%)
+      if (noise3 > 0.98 && noise2 <= 0.96) {
         cherryColor = petalWhite;
       }
 
-      // Saturation boost for vibrancy
+      // Saturation boost
       let gray = dot(cherryColor, vec3f(0.299, 0.587, 0.114));
-      cherryColor = mix(vec3f(gray), cherryColor, 1.4) * 1.08;
+      cherryColor = mix(vec3f(gray), cherryColor, 1.4) * 1.1;
 
       albedo = cherryColor * topWarmTint;
     } else if (blockType == 2) {
@@ -456,39 +472,49 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       if (noise1 > 0.6) { dirtColor = dirtDark; }
       albedo = dirtColor * shade * tint;
     } else if (blockType == 1) {
-      // CHERRY BLOSSOM SIDE - vivid sakura with texture
+      // CHERRY BLOSSOM SIDE - same rich tonal variation
       var cherryColor = sakuraMid;
-      if (noise1 < 0.22) { cherryColor = sakuraBright; }
-      else if (noise1 < 0.45) { cherryColor = sakuraMid; }
-      else if (noise1 < 0.70) { cherryColor = sakuraDeep; }
-      else { cherryColor = sakuraRich; }
+      let t = noise1;
 
-      // Green leaf accents on sides too (8%)
-      if (noise2 > 0.92) {
-        cherryColor = select(greenLeaf, greenDark, noise3 > 0.5);
+      if (t < 0.10) {
+        cherryColor = mix(sakuraCream, sakuraPeach, t / 0.10);
+      } else if (t < 0.25) {
+        cherryColor = mix(sakuraPeach, sakuraLight, (t - 0.10) / 0.15);
+      } else if (t < 0.40) {
+        cherryColor = mix(sakuraLight, sakuraMid, (t - 0.25) / 0.15);
+      } else if (t < 0.55) {
+        cherryColor = mix(sakuraMid, sakuraCoral, (t - 0.40) / 0.15);
+      } else if (t < 0.70) {
+        cherryColor = mix(sakuraCoral, sakuraDeep, (t - 0.55) / 0.15);
+      } else if (t < 0.85) {
+        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.70) / 0.15);
+      } else {
+        cherryColor = mix(sakuraRich, sakuraDark, (t - 0.85) / 0.15);
       }
 
-      // White petal highlights (5%)
-      if (noise3 > 0.95 && noise2 < 0.92) {
-        cherryColor = petalWhite;
+      // Secondary variation
+      let shift = (noise2 - 0.5) * 0.12;
+      cherryColor = cherryColor * (1.0 + shift);
+
+      // Green accents (4%)
+      if (noise2 > 0.96) {
+        cherryColor = mix(greenLeaf, greenDark, noise3);
       }
 
       // Saturation boost
       let gray = dot(cherryColor, vec3f(0.299, 0.587, 0.114));
-      cherryColor = mix(vec3f(gray), cherryColor, 1.4) * 1.08;
+      cherryColor = mix(vec3f(gray), cherryColor, 1.4) * 1.1;
 
       albedo = cherryColor * shade * tint;
     } else if (blockType == 2) {
-      // TRUNK SIDE - bark with vertical grooves
-      let barkX = fract(uv.x * 4.0);
-      let barkY = fract(uv.y * 6.0);
-      let groove = smoothstep(0.0, 0.2, barkX) * smoothstep(1.0, 0.8, barkX);
+      // TRUNK SIDE - subtle bark texture
+      let groove = smoothstep(0.0, 0.3, fract(uv.x * 3.0)) * smoothstep(1.0, 0.7, fract(uv.x * 3.0));
 
       var barkColor = barkMid;
-      if (noise1 < 0.35) { barkColor = barkDark; }
+      if (noise1 < 0.4) { barkColor = barkDark; }
       else if (noise1 > 0.7) { barkColor = barkLight; }
 
-      barkColor = mix(barkDark * 0.7, barkColor, groove);
+      barkColor = mix(barkDark * 0.8, barkColor, groove * 0.7 + 0.3);
       albedo = barkColor * shade * tint;
     } else {
       // GRASS SIDE - dirt below grass line
@@ -510,7 +536,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     if (blockType == 0) {
       albedo = dirtDark * 0.5 * bottomTint;
     } else if (blockType == 1) {
-      albedo = sakuraDeep * 0.5 * bottomTint;
+      albedo = sakuraCoral * 0.5 * bottomTint;
     } else if (blockType == 2) {
       albedo = barkDark * 0.5 * bottomTint;
     } else {
@@ -580,11 +606,12 @@ struct Uniforms {
 
 @fragment
 fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
-  let zenith = ${wgslVec3(PALETTE.skyZenith)};
-  let horizon = ${wgslVec3(PALETTE.skyHorizon)};
+  // Consistent soft greenish-gray background matching container
+  let bgColor = vec3f(0.91, 0.957, 0.91);
 
-  let t = pow(uv.y, 0.7);
-  var sky = mix(horizon, zenith, t);
+  // Very subtle gradient for depth
+  let t = pow(uv.y, 0.5);
+  var sky = mix(bgColor * 0.98, bgColor, t);
 
   sky = pow(sky, vec3f(1.0 / 2.2));
 
