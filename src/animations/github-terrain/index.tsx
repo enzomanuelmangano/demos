@@ -7,17 +7,14 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import * as Haptics from 'expo-haptics';
 import React, { useCallback, useRef, useState } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
 import { SURFACE_HEX } from './constants';
-import {
-  useWebGPURenderer,
-  RendererState,
-} from './hooks/useWebGPURenderer';
+import { useWebGPURenderer, RendererState } from './hooks/use-webgpu-renderer';
 
 export const GitHubTerrain = () => {
   const { width, height } = useWindowDimensions();

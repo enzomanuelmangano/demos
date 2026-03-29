@@ -49,7 +49,9 @@ export const UNIFORM_BUFFER_SIZE = 256; // Must be multiple of 256 bytes
  * GitHub only exposes 0–4 buckets, not raw counts. We map each bucket to a
  * monotonic "typical contribution day" estimate so bar height scales with amount.
  */
-export const CONTRIBUTION_ESTIMATE_BY_LEVEL: readonly number[] = [0, 1, 4, 11, 28];
+export const CONTRIBUTION_ESTIMATE_BY_LEVEL: readonly number[] = [
+  0, 1, 4, 11, 28,
+];
 
 // Color level used for year cards (special marker)
 export const YEAR_CARD_COLOR_LEVEL = 6;
