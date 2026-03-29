@@ -68,6 +68,7 @@ import { FractalGlass } from './fractal-glass';
 import { GeometryButton } from './geometry-button';
 import { GitHubContributions } from './github-contributions';
 import { GitHubOnboarding } from './github-onboarding';
+import { GitHubTerrain } from './github-terrain';
 import { GLTransitions } from './gl-transitions';
 import { GridVisualizer } from './grid-visualizer';
 import { ImageCropper } from './image-cropper';
@@ -249,6 +250,7 @@ export const AnimationRegistry = {
   'sphere-waves': SphereWaves,
   'scrollable-shapes': ScrollableShapes,
   'notion-qrcode': NotionQRCode,
+  'github-terrain': GitHubTerrain,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -842,6 +844,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Notion QR Code',
     route: 'NotionQRCode',
     iconName: 'qr-code-outline',
+  },
+  'github-terrain': {
+    name: 'GitHub Terrain',
+    route: 'GitHubTerrain',
+    iconName: 'logo-github',
   },
 } as const;
 

@@ -101,6 +101,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       {
         android: {
           reactNativeReleaseLevel: 'experimental',
+          minSdkVersion: 27,
         },
         ios: {
           reactNativeReleaseLevel: 'experimental',
@@ -125,6 +126,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-sqlite',
+    './plugins/with-skia-webgpu-fix',
   ],
   extra: {
     eas: {
