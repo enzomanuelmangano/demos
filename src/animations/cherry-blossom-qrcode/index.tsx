@@ -59,7 +59,7 @@ function generateQRMatrix(content: string): boolean[][] {
 }
 
 const MAX_GRID_SIZE = 41;
-const MAX_BLOCKS = MAX_GRID_SIZE * MAX_GRID_SIZE;
+const MAX_BLOCKS = MAX_GRID_SIZE * MAX_GRID_SIZE * 18; // Extra blocks for dense foliage
 
 // Block types:
 // 0 = dirt/path (QR light modules) - brown/tan, flat
@@ -84,61 +84,120 @@ function generateBlockData(qrMatrix: boolean[][]): {
   const types: number[] = [];
 
   // Tree parameters - WIDE SPREADING cherry blossom (umbrella shape)
-  const trunkRadius = 2.0; // Thick trunk
-  const trunkHeight = 0.42; // Taller visible trunk
-  const canopyBaseHeight = 0.38; // Canopy sits higher
-  const canopyOuterRadius = gridSize * 0.46; // Wide canopy
-  const canopyThickness = 0.12; // Thicker canopy for lushness
-  const grassHeight = 0.035; // Ground grass height
-  const dirtHeight = 0.012; // Dirt/path height - flatter
+  const blockSize = 0.0245; // Universal cube size - ALL blocks use this
+  const cubeHeight = blockSize; // Same as width for perfect cubes
+
+  const trunkRadius = 2.5;
+  const trunkLayers = 8;
+  const canopyBaseHeight = trunkLayers * cubeHeight; // Canopy sits on top of trunk
+  const canopyOuterRadius = gridSize * 0.46;
 
   // Pseudo-random function for organic variation
-  const pseudoRandom = (col: number, row: number) => {
-    const seed = Math.sin(col * 127.1 + row * 311.7) * 43758.5;
-    return seed - Math.floor(seed);
+  const pseudoRandom = (col: number, row: number, seed: number = 0) => {
+    const s = Math.sin(col * 127.1 + row * 311.7 + seed * 43.7) * 43758.5;
+    return s - Math.floor(s);
   };
 
+  let blockCount = 0;
+
+  // First pass: ground blocks (dirt, grass, trunk base)
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       const isQrDark = qrMatrix[row][col];
+      const dx = col - cx;
+      const dy = row - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
       positions.push(col, row, 0, 0);
+
+      // ALL blocks use same cubeHeight for perfect cubes
+      if (!isQrDark) {
+        heights.push(cubeHeight);
+        baseY.push(0);
+        types.push(0); // dirt
+      } else if (dist < trunkRadius) {
+        heights.push(cubeHeight);
+        baseY.push(0);
+        types.push(2); // trunk base
+      } else if (dist >= canopyOuterRadius) {
+        heights.push(cubeHeight);
+        baseY.push(0);
+        types.push(3); // grass
+      } else {
+        heights.push(cubeHeight);
+        baseY.push(0);
+        types.push(0); // dirt under canopy
+      }
+      blockCount++;
+    }
+  }
+
+  // Second pass: trunk blocks - stacked cubes with variation
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const isQrDark = qrMatrix[row][col];
+      if (!isQrDark) continue;
 
       const dx = col - cx;
       const dy = row - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (!isQrDark) {
-        // QR light module = dirt/path (type 0)
-        heights.push(dirtHeight);
-        baseY.push(0);
-        types.push(0);
-      } else {
-        // QR dark module - this forms the tree illusion
-        if (dist < trunkRadius) {
-          // TRUNK - solid blocks from ground going UP
-          heights.push(trunkHeight);
-          baseY.push(0);
+      if (dist < trunkRadius) {
+        // Stack trunk blocks vertically (skip layer 0, already added)
+        for (let layer = 1; layer < trunkLayers; layer++) {
+          positions.push(col, row, 0, 0);
+          heights.push(cubeHeight);
+          baseY.push(layer * cubeHeight);
           types.push(2);
-        } else if (dist < canopyOuterRadius) {
-          // CANOPY - wide spreading FLAT umbrella shape
-          const t = 1 - dist / canopyOuterRadius;
+          blockCount++;
+        }
+      }
+    }
+  }
 
-          // Flat canopy with slight variation - NOT tall pillars
-          const thickness = canopyThickness * (0.8 + 0.2 * t);
+  // Third pass: dense canopy foliage - stacked vertically with NO gaps
+  const maxLayers = 12; // Maximum vertical stack height - MORE DENSE
 
-          // Organic variation for fluffy look
-          const noise = pseudoRandom(col, row);
-          const heightVar = noise * 0.02 - 0.01;
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const isQrDark = qrMatrix[row][col];
+      if (!isQrDark) continue;
 
-          // Canopy blocks with slight droop at edges
-          heights.push(thickness + heightVar);
-          baseY.push(canopyBaseHeight - (1 - t) * 0.04); // Slight droop at edges
+      const dx = col - cx;
+      const dy = row - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist >= trunkRadius && dist < canopyOuterRadius) {
+        const t = 1 - dist / canopyOuterRadius; // 1 at center, 0 at edge
+
+        // Dome shape: more layers near center, fewer at edges
+        const layersHere = Math.max(3, Math.round(maxLayers * (0.25 + 0.75 * t * t)));
+
+        // Stack CUBIC blocks vertically with no gaps
+        for (let layer = 0; layer < layersHere; layer++) {
+          const layerY = canopyBaseHeight + layer * cubeHeight;
+
+          // Slight dome curve - center is higher
+          const domeOffset = Math.floor(t * 3) * cubeHeight;
+
+          positions.push(col, row, 0, 0);
+          heights.push(cubeHeight);
+          baseY.push(layerY + domeOffset);
           types.push(1);
-        } else {
-          // Outside canopy - regular grass at ground
-          heights.push(grassHeight);
-          baseY.push(0);
-          types.push(3);
+          blockCount++;
+        }
+
+        // Add extra blocks on top - STRICT GRID POSITIONING for QR code
+        const extraCount = Math.floor(pseudoRandom(col, row, 500) * 4);
+        for (let e = 0; e < extraCount; e++) {
+          const extraLayer = layersHere + e;
+          const domeOffset = Math.floor(t * 3) * cubeHeight;
+
+          positions.push(col, row, 0, 0);
+          heights.push(cubeHeight);
+          baseY.push(canopyBaseHeight + extraLayer * cubeHeight + domeOffset);
+          types.push(1);
+          blockCount++;
         }
       }
     }
@@ -150,7 +209,7 @@ function generateBlockData(qrMatrix: boolean[][]): {
     baseY,
     types,
     gridSize,
-    numBlocks: gridSize * gridSize,
+    numBlocks: blockCount,
   };
 }
 
@@ -213,12 +272,12 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
   let gridSize = uniforms.gridSize;
   let blockSize = 0.0245;
   let halfGrid = gridSize * blockSize * 0.5;
-  let cubeSize = blockSize * 1.02; // Slight overlap to eliminate gaps
+  let cubeSize = blockSize; // Perfect cubes - same size for all dimensions
 
   let baseX = col * blockSize - halfGrid;
   let baseY = blockBaseY[blockIdx]; // Starting Y position (elevated for canopy)
   let baseZ = row * blockSize - halfGrid;
-  let h = blockHeights[blockIdx];
+  let h = cubeSize; // Use cubeSize for height - PERFECT CUBES
   output.blockH = h;
 
   let typePacked = blockTypes[blockIdx];
@@ -355,10 +414,15 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let greenLeaf = vec3f(0.30, 0.58, 0.25);      // Green leaf accents
   let greenDark = vec3f(0.22, 0.48, 0.18);      // Darker green
 
-  // TRUNK colors (QR dark modules) - rich brown bark
-  let barkDark = vec3f(0.22, 0.14, 0.08);
-  let barkMid = vec3f(0.38, 0.24, 0.14);
-  let barkLight = vec3f(0.48, 0.32, 0.20);
+  // TRUNK colors (QR dark modules) - wide range of brown bark tones
+  let barkCream = vec3f(0.55, 0.42, 0.32);     // Light cream bark
+  let barkTan = vec3f(0.48, 0.35, 0.25);       // Tan
+  let barkLight = vec3f(0.42, 0.28, 0.18);     // Light brown
+  let barkMid = vec3f(0.35, 0.22, 0.14);       // Medium brown
+  let barkChoco = vec3f(0.30, 0.18, 0.10);     // Chocolate
+  let barkDark = vec3f(0.24, 0.14, 0.08);      // Dark brown
+  let barkDeep = vec3f(0.18, 0.10, 0.06);      // Deep brown
+  let barkBlack = vec3f(0.12, 0.07, 0.04);     // Nearly black
 
   // GRASS colors (QR dark modules) - dark green
   let grassDark = vec3f(0.22, 0.38, 0.15);
@@ -445,10 +509,30 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = cherryColor * topWarmTint;
     } else if (blockType == 2) {
-      // TRUNK TOP (QR dark) - brown bark
+      // TRUNK TOP - rich brown variation like cherry blossoms
       var barkColor = barkMid;
-      if (noise1 < 0.35) { barkColor = barkDark; }
-      else if (noise1 > 0.7) { barkColor = barkLight; }
+      let t = noise1;
+
+      // 8-stop gradient for rich bark variation
+      if (t < 0.08) {
+        barkColor = mix(barkCream, barkTan, t / 0.08);
+      } else if (t < 0.20) {
+        barkColor = mix(barkTan, barkLight, (t - 0.08) / 0.12);
+      } else if (t < 0.35) {
+        barkColor = mix(barkLight, barkMid, (t - 0.20) / 0.15);
+      } else if (t < 0.50) {
+        barkColor = mix(barkMid, barkChoco, (t - 0.35) / 0.15);
+      } else if (t < 0.65) {
+        barkColor = mix(barkChoco, barkDark, (t - 0.50) / 0.15);
+      } else if (t < 0.80) {
+        barkColor = mix(barkDark, barkDeep, (t - 0.65) / 0.15);
+      } else {
+        barkColor = mix(barkDeep, barkBlack, (t - 0.80) / 0.20);
+      }
+
+      // Secondary variation
+      let shift = (noise2 - 0.5) * 0.15;
+      barkColor = barkColor * (1.0 + shift);
 
       albedo = barkColor * topWarmTint;
     } else {
@@ -507,14 +591,30 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = cherryColor * shade * tint;
     } else if (blockType == 2) {
-      // TRUNK SIDE - subtle bark texture
-      let groove = smoothstep(0.0, 0.3, fract(uv.x * 3.0)) * smoothstep(1.0, 0.7, fract(uv.x * 3.0));
-
+      // TRUNK SIDE - rich brown variation
       var barkColor = barkMid;
-      if (noise1 < 0.4) { barkColor = barkDark; }
-      else if (noise1 > 0.7) { barkColor = barkLight; }
+      let t = noise1;
 
-      barkColor = mix(barkDark * 0.8, barkColor, groove * 0.7 + 0.3);
+      if (t < 0.08) {
+        barkColor = mix(barkCream, barkTan, t / 0.08);
+      } else if (t < 0.20) {
+        barkColor = mix(barkTan, barkLight, (t - 0.08) / 0.12);
+      } else if (t < 0.35) {
+        barkColor = mix(barkLight, barkMid, (t - 0.20) / 0.15);
+      } else if (t < 0.50) {
+        barkColor = mix(barkMid, barkChoco, (t - 0.35) / 0.15);
+      } else if (t < 0.65) {
+        barkColor = mix(barkChoco, barkDark, (t - 0.50) / 0.15);
+      } else if (t < 0.80) {
+        barkColor = mix(barkDark, barkDeep, (t - 0.65) / 0.15);
+      } else {
+        barkColor = mix(barkDeep, barkBlack, (t - 0.80) / 0.20);
+      }
+
+      // Secondary variation
+      let shift = (noise2 - 0.5) * 0.15;
+      barkColor = barkColor * (1.0 + shift);
+
       albedo = barkColor * shade * tint;
     } else {
       // GRASS SIDE - dirt below grass line
