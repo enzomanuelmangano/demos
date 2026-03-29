@@ -51,18 +51,18 @@ const background = hexToRgb(COLORS.background);
 const PALETTE = {
   building: building,
   buildingAlt: lerpRgb(building, background, 0.08),
-  skyZenith: background, // Keep white background
-  skyHorizon: background, // Keep white background
+  skyZenith: { r: 0.65, g: 0.82, b: 0.98 }, // Soft spring blue sky
+  skyHorizon: { r: 0.95, g: 0.92, b: 0.95 }, // Pale pink-white horizon
   pavement: lerpRgb(building, background, 0.65),
   pavementSide: lerpRgb(building, background, 0.5),
-  fog: { r: 0.96, g: 0.94, b: 0.92 }, // Subtle warm haze
-  sun: { r: 1.12, g: 0.98, b: 0.82 }, // Soft golden sun
-  skyFill: { r: 0.85, g: 0.82, b: 0.78 }, // Neutral warm fill
-  bounce: { r: 0.42, g: 0.38, b: 0.34 }, // Subtle warm bounce
-  window: { r: 1.0, g: 0.92, b: 0.75 },
+  fog: { r: 0.96, g: 0.94, b: 0.96 }, // Soft spring haze with pink tint
+  sun: { r: 1.1, g: 1.0, b: 0.92 }, // Warm spring sunlight
+  skyFill: { r: 0.75, g: 0.85, b: 0.98 }, // Soft blue fill
+  bounce: { r: 0.45, g: 0.52, b: 0.38 }, // Green ground bounce
+  window: { r: 1.0, g: 0.85, b: 0.5 }, // Warm lantern glow
   crown: lerpRgb(building, background, 0.1),
-  rim: { r: 1.05, g: 0.95, b: 0.82 }, // Soft golden rim
-  spec: { r: 1.02, g: 0.98, b: 0.92 }, // Subtle warm specular
+  rim: { r: 1.0, g: 0.95, b: 0.92 }, // Soft warm rim
+  spec: { r: 1.0, g: 0.98, b: 0.96 }, // Clean specular
 };
 
 const CONTAINER_BG = COLORS.background;
@@ -579,9 +579,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let uv = input.facadeUv;
   let N = normalize(input.worldN);
   let V = normalize(vec3f(0.12, 0.38, 0.88));
-  // Cinematic golden hour sun - warm side lighting
-  let sunDir = normalize(vec3f(0.55, 0.48, 0.45));
-  let halfUp = normalize(vec3f(0.15, 1.0, 0.2));
+  // Spring daylight - soft warm sunlight from above
+  let sunDir = normalize(vec3f(0.4, 0.7, 0.5));
+  let halfUp = normalize(vec3f(0.1, 1.0, 0.15));
   let NdSun = max(dot(N, sunDir), 0.0);
   let NdUp = max(dot(N, halfUp), 0.0);
   let H = normalize(sunDir + V);
@@ -589,7 +589,7 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let skyFill = ${wgslVec3(PALETTE.skyFill)};
   let sunCol = ${wgslVec3(PALETTE.sun)};
   let bounce = ${wgslVec3(PALETTE.bounce)};
-  let ambient = vec3f(0.22, 0.20, 0.18); // Subtle warm ambient
+  let ambient = vec3f(0.28, 0.26, 0.24); // Bright spring ambient
 
   let dist = length(input.viewPos);
   let aerial = 1.0 - exp(-dist * 0.048);
@@ -600,55 +600,39 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       discard;
     }
 
-    // Check if this ground block should be a glowing lantern
+    // Check if this ground block should be a stone garden lantern (toro)
     let g = input.blockSeed;
     let lanternChance = hash2(g * 13.7);
-    let isLantern = lanternChance > 0.85; // ~15% of ground blocks are lanterns
+    let isToro = lanternChance > 0.92; // ~8% of ground blocks are stone lanterns
 
-    if (isLantern) {
-      // Glowing lantern block - like Minecraft glowstone/sea lantern
-      let time = uniforms.time;
+    if (isToro) {
+      // Japanese stone lantern (toro) - gray stone with simple shape
+      let stoneLight = vec3f(0.72, 0.70, 0.68);
+      let stoneMid = vec3f(0.55, 0.53, 0.52);
+      let stoneDark = vec3f(0.38, 0.36, 0.35);
 
-      // Lantern colors - bright warm golden glow
-      let lanternCore = vec3f(1.0, 0.95, 0.7);     // Very bright center
-      let lanternMid = vec3f(1.0, 0.85, 0.5);      // Mid tone
-      let lanternEdge = vec3f(0.95, 0.7, 0.35);    // Warmer edge
+      // Simple stone texture
+      let noiseVal = fract(sin(uv.x * 30.0 + uv.y * 20.0 + g.x * 5.0) * 43758.5);
+      var stoneColor = stoneMid;
+      if (noiseVal > 0.7) { stoneColor = stoneLight; }
+      else if (noiseVal < 0.3) { stoneColor = stoneDark; }
 
-      // Pixelated glowstone-style texture (4x4 grid)
-      let px = floor(uv.x * 4.0);
-      let py = floor(uv.y * 4.0);
-      let cellNoise = fract(sin(px * 127.1 + py * 311.7 + g.x * 17.3) * 43758.5);
-
-      // Create glowing crystal pattern with pulsing
-      let pulse = sin(time * 3.0 + cellNoise * 6.28) * 0.15 + 1.0;
-
-      var lanternColor = lanternMid;
-      if (cellNoise > 0.6) {
-        lanternColor = lanternCore;
-      } else if (cellNoise < 0.3) {
-        lanternColor = lanternEdge;
+      // Face shading
+      var shade = 1.0;
+      if (input.faceNy > 0.5) {
+        shade = 1.05; // Top lit
+      } else {
+        shade = 0.75; // Sides darker
       }
 
-      // Add shimmer/sparkle effect
-      let sparkle = smoothstep(0.92, 1.0, fract(sin(px * 43.7 + py * 17.3 + time * 4.0) * 43758.5));
-      lanternColor += vec3f(0.4, 0.35, 0.2) * sparkle;
-
-      // Strong emissive glow
-      let emissiveStrength = 2.0 * pulse;
-      var hdrLantern = lanternColor * emissiveStrength;
-
-      // Very slight face shading (still very bright on sides)
-      if (input.faceNy < 0.5) {
-        hdrLantern *= 0.9;
-      }
-
-      hdrLantern = acesFilm(hdrLantern);
-      hdrLantern = pow(hdrLantern, vec3f(1.0 / 2.06));
+      var hdrToro = stoneColor * shade;
+      hdrToro = acesFilm(hdrToro);
+      hdrToro = pow(hdrToro, vec3f(1.0 / 2.06));
       let alpha = 1.0 - p;
       if (alpha < 0.002) {
         discard;
       }
-      return vec4f(hdrLantern * alpha, alpha);
+      return vec4f(hdrToro * alpha, alpha);
     }
 
     let pave = ${wgslVec3(PALETTE.pavement)};
@@ -688,13 +672,19 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   var emissive = vec3f(0.0);
 
   // Minecraft-style block types based on height
-  // 0=cobblestone, 1=grass, 3=stonebrick, 4=snow, 5=mountain rock
+  // 0=cobblestone, 1=grass, 3=stonebrick, 4=snow, 5=mountain rock, 6=cherry blossom
   var blockType = 0;
   let seed = input.blockSeed;
   let typeNoise = hash2(seed * 3.1);
+  let cherryNoise = hash2(seed * 7.7);
 
   if (input.blockH < 0.15) {
-    blockType = 1; // Grass - low ground
+    // Low ground - grass with scattered cherry blossom trees
+    if (cherryNoise > 0.82) {
+      blockType = 6; // Cherry blossom tree ~18% of grass blocks
+    } else {
+      blockType = 1; // Regular grass
+    }
   } else if (input.blockH < 0.3) {
     // Mix of stone brick and cobblestone
     if (typeNoise > 0.5) { blockType = 3; } else { blockType = 0; }
@@ -709,15 +699,20 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     blockType = 5;
   }
 
-  // CINEMATIC Minecraft colors - vibrant and saturated
-  // Grass - lush vivid greens
-  let grassBright = vec3f(0.45, 0.72, 0.25);
-  let grassMid = vec3f(0.38, 0.62, 0.20);
-  let grassDark = vec3f(0.28, 0.50, 0.15);
-  // Dirt - rich warm brown
-  let dirtSide = vec3f(0.58, 0.42, 0.26);
-  let dirtDark = vec3f(0.42, 0.30, 0.18);
-  let dirtMid = vec3f(0.50, 0.36, 0.22);
+  // SPRING Minecraft colors - lush and vibrant
+  // Grass - fresh spring greens
+  let grassBright = vec3f(0.42, 0.75, 0.32);
+  let grassMid = vec3f(0.35, 0.65, 0.25);
+  let grassDark = vec3f(0.25, 0.52, 0.18);
+  // Dirt - warm earthy brown
+  let dirtSide = vec3f(0.55, 0.40, 0.25);
+  let dirtDark = vec3f(0.40, 0.28, 0.16);
+  let dirtMid = vec3f(0.48, 0.34, 0.20);
+
+  // Cherry blossom colors - soft pinks
+  let sakuraPink = vec3f(1.0, 0.75, 0.82);
+  let sakuraBright = vec3f(1.0, 0.88, 0.92);
+  let sakuraDark = vec3f(0.85, 0.55, 0.65);
 
   // Stone/Cobblestone - neutral gray (OKLCH L=0.40-0.60, C=0, H=0)
   let stoneLight = vec3f(0.58, 0.58, 0.58);
@@ -752,10 +747,10 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let noise16 = fract(sin(px16 * 127.1 + py16 * 311.7 + seed.x * 17.3) * 43758.5);
   let noise16b = fract(sin(px16 * 73.3 + py16 * 157.1 + seed.y * 31.7) * 43758.5);
 
-  // Golden hour face lighting - subtle warm highlights, cool shadows
-  let warmTint = vec3f(1.08, 1.02, 0.94);   // Subtle golden tint
-  let coolTint = vec3f(0.88, 0.90, 0.96);   // Subtle cool shadow
-  let saturationBoost = 1.25;               // Make colors pop
+  // Spring face lighting - bright and fresh
+  let warmTint = vec3f(1.04, 1.02, 0.98);   // Soft warm spring light
+  let coolTint = vec3f(0.90, 0.92, 0.96);   // Light cool shadow
+  let saturationBoost = 1.3;                // Vibrant spring colors
 
   if (input.faceVertical > 0.5) {
     var shade = 0.9;
@@ -809,6 +804,42 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       else if (bandNoise < 0.4) { mtnColor = rockDark; }
       albedo = mtnColor * shade * tint;
 
+    } else if (blockType == 6) {
+      // CHERRY BLOSSOM TREE SIDE - trunk at bottom, blossoms above
+      let time = uniforms.time;
+
+      // Tree trunk at lower portion
+      let trunkZone = uv.y < 0.35;
+
+      if (trunkZone) {
+        // Dark wood trunk
+        let trunkBark = vec3f(0.32, 0.22, 0.15);
+        let trunkDark = vec3f(0.22, 0.15, 0.10);
+
+        // Bark texture - vertical lines
+        let barkLine = sin(uv.x * 24.0) * 0.5 + 0.5;
+        let barkColor = mix(trunkDark, trunkBark, barkLine * 0.4 + 0.6);
+
+        albedo = barkColor * shade * tint;
+      } else {
+        // Cherry blossom canopy - fluffy pink clouds
+        let blossomY = (uv.y - 0.35) / 0.65; // Normalize to blossom zone
+
+        let petalX = floor(uv.x * 5.0);
+        let petalY = floor(blossomY * 4.0);
+        let petalNoise = fract(sin(petalX * 127.1 + petalY * 311.7 + seed.x * 7.3) * 43758.5);
+
+        var blossomColor = sakuraPink;
+        if (petalNoise > 0.65) { blossomColor = sakuraBright; }
+        else if (petalNoise < 0.35) { blossomColor = sakuraDark; }
+
+        // Add depth shadow toward bottom of canopy
+        let canopyShade = smoothstep(0.0, 0.4, blossomY);
+        blossomColor *= 0.7 + canopyShade * 0.3;
+
+        albedo = blossomColor * shade * tint;
+      }
+
     } else {
       // COBBLESTONE - clean stone grid
       let gridX = fract(uv.x * 2.0);
@@ -823,8 +854,8 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     streetAo = mix(0.7, 1.0, smoothstep(0.0, 0.12, uv.y));
 
   } else if (input.faceNy > 0.5) {
-    // TOP FACE - subtle golden hour glow
-    let topWarmTint = vec3f(1.10, 1.04, 0.92);  // Subtle golden top
+    // TOP FACE - bright spring sunlight
+    let topWarmTint = vec3f(1.06, 1.03, 0.98);  // Soft spring sunlight
     if (blockType == 1) {
       // GRASS TOP - realistic natural grass
       // Smooth gradient based on position for natural variation
@@ -863,6 +894,37 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       }
       albedo = mtnTopColor * topWarmTint;
 
+    } else if (blockType == 6) {
+      // CHERRY BLOSSOM TREE TOP - pink fluffy canopy
+      let time = uniforms.time;
+
+      // Create fluffy cloud-like blossom pattern
+      let fluffX = sin(uv.x * 8.0 + time * 0.3) * 0.5 + 0.5;
+      let fluffY = sin(uv.y * 8.0 + time * 0.2) * 0.5 + 0.5;
+      let fluff = fluffX * fluffY;
+
+      // Pixelated petal clusters
+      let petalX = floor(uv.x * 6.0);
+      let petalY = floor(uv.y * 6.0);
+      let petalNoise = fract(sin(petalX * 127.1 + petalY * 311.7 + seed.x * 7.3) * 43758.5);
+
+      var blossomColor = sakuraPink;
+      if (petalNoise > 0.7) {
+        blossomColor = sakuraBright; // Lighter petals
+      } else if (petalNoise < 0.3) {
+        blossomColor = sakuraDark; // Deeper pink
+      }
+
+      // Add subtle sparkle for petal shimmer
+      let sparkle = smoothstep(0.88, 1.0, fract(sin(petalX * 73.3 + petalY * 17.7 + time) * 43758.5));
+      blossomColor += vec3f(0.15, 0.1, 0.1) * sparkle;
+
+      // Mix with some green leaves peeking through
+      let leafPeek = smoothstep(0.15, 0.25, petalNoise) * smoothstep(0.35, 0.25, petalNoise);
+      blossomColor = mix(blossomColor, grassMid, leafPeek * 0.3);
+
+      albedo = blossomColor * topWarmTint;
+
     } else {
       // COBBLESTONE TOP - clean stone grid
       let gridX = fract(uv.x * 2.0);
@@ -875,7 +937,7 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   } else {
     // BOTTOM FACE - subtle cool shadows
     let bottomCoolTint = vec3f(0.82, 0.84, 0.90);
-    if (blockType == 1) { albedo = dirtDark * 0.4 * bottomCoolTint; }
+    if (blockType == 1 || blockType == 6) { albedo = dirtDark * 0.4 * bottomCoolTint; }
     else if (blockType == 5) { albedo = rockDark * 0.35 * bottomCoolTint; }
     else { albedo = stoneDark * 0.4 * bottomCoolTint; }
   }
@@ -1345,11 +1407,15 @@ fn main(input: FountainIn) -> @location(0) vec4f {
 `;
 
 // ============================================
-// MINECRAFT-STYLE CASTLE SHADERS
+// JAPANESE PAGODA SHADERS
 // ============================================
-// Structure: Stone walls + 4 corner towers + pointed roofs + red flags
-// Based on medieval Minecraft castle designs - MUCH BIGGER VERSION
-const CASTLE_BLOCKS = 49; // Grand central tower only
+// Structure: Multi-tiered rectangular pagoda with teal roofs
+// Based on reference: stone base, 3 floors with white walls/dark frame,
+// teal roofs extending outward, yellow lanterns, golden spire
+// Layout: Foundation(9) + Floor1(walls16+frame8+roof16) + Floor2(walls9+frame8+roof12)
+//         + Floor3(walls4+frame4+roof9) + Spire(5) + Lanterns(12) = 112 blocks
+const PAGODA_BLOCKS = 112;
+const CASTLE_BLOCKS = PAGODA_BLOCKS;
 const CASTLE_VERTS = CASTLE_BLOCKS * 36;
 
 const castleVertexShader = /* wgsl */ `
@@ -1367,7 +1433,7 @@ struct Uniforms {
 struct CastleOut {
   @builtin(position) position: vec4f,
   @location(0) uv: vec2f,
-  @location(1) blockType: f32,  // 0=stone, 1=wood, 2=roof, 3=flag
+  @location(1) blockType: f32,  // 0=wall(white), 1=wood(dark), 2=roof(teal), 3=lantern(gold), 4=spire(gold)
   @location(2) faceType: f32,   // 0=top, 1=front, 2=side
 }
 
@@ -1409,96 +1475,195 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> CastleOut {
   var blockD = cubeSize;
 
   let baseY = 0.0;
-  let scale = 1.5;
-  let thickness = 1.6;
+  let scale = 1.3;
+  let floorH = cubeSize * 5.0;
+  let roofH = cubeSize * 0.8;
 
-  // Grand central tower only
-  // Blocks 0-15: Central base tier 4×4 = 16 blocks
-  // Blocks 16-24: Central second tier 3×3 = 9 blocks
-  // Blocks 25-28: Central third tier 2×2 = 4 blocks
-  // Blocks 29-36: Central spire 8 levels = 8 blocks
-  // Blocks 37-44: Central roof pyramid 8 levels = 8 blocks
-  // Blocks 45: Central flag pole = 1 block
-  // Blocks 46: Central flag = 1 block
-  // Total: 49 blocks
+  // PROPER RECTANGULAR PAGODA matching reference image:
+  // Stone foundation (3x3=9), then 3 floors each with walls + frame + roof + lanterns
 
-  if (blockIdx < 16u) {
-    // Central base tier (4×4) - wide foundation
-    let keepIdx = blockIdx;
-    let kx = f32(i32(keepIdx) % 4) - 1.5;
-    let kz = f32(i32(keepIdx) / 4) - 1.5;
-    blockX = baseX + kx * blockSize * scale * 1.0;
-    blockZ = baseZ + kz * blockSize * scale * 1.0;
+  if (blockIdx < 9u) {
+    // STONE FOUNDATION - 3x3 rectangular base
+    let idx = blockIdx;
+    let fx = f32(i32(idx) % 3) - 1.0;
+    let fz = f32(i32(idx) / 3) - 1.0;
+    blockX = baseX + fx * cubeSize * scale * 1.5;
+    blockZ = baseZ + fz * cubeSize * scale * 1.5;
     blockY = baseY;
-    blockW = cubeSize * scale * 1.0 * thickness;
-    blockD = cubeSize * scale * 1.0 * thickness;
-    blockH = cubeSize * 5.0;
-    blockType = 0.0; // Stone
-  } else if (blockIdx < 25u) {
-    // Central second tier (3×3) - narrower
-    let keepIdx = blockIdx - 16u;
-    let kx = f32(i32(keepIdx) % 3) - 1.0;
-    let kz = f32(i32(keepIdx) / 3) - 1.0;
-    blockX = baseX + kx * blockSize * scale * 0.9;
-    blockZ = baseZ + kz * blockSize * scale * 0.9;
-    blockY = baseY + cubeSize * 5.0;
-    blockW = cubeSize * scale * 0.9 * thickness;
-    blockD = cubeSize * scale * 0.9 * thickness;
-    blockH = cubeSize * 6.0;
-    blockType = 0.0; // Stone
-  } else if (blockIdx < 29u) {
-    // Central third tier (2×2) - even narrower
-    let keepIdx = blockIdx - 25u;
-    let kx = f32(i32(keepIdx) % 2) - 0.5;
-    let kz = f32(i32(keepIdx) / 2) - 0.5;
-    blockX = baseX + kx * blockSize * scale * 0.8;
-    blockZ = baseZ + kz * blockSize * scale * 0.8;
-    blockY = baseY + cubeSize * 11.0;
-    blockW = cubeSize * scale * 0.8 * thickness;
-    blockD = cubeSize * scale * 0.8 * thickness;
-    blockH = cubeSize * 7.0;
-    blockType = 0.0; // Stone
-  } else if (blockIdx < 37u) {
-    // Central spire (8 levels) - tall narrow tower
-    let level = blockIdx - 29u;
-    blockX = baseX;
-    blockZ = baseZ;
-    blockY = baseY + cubeSize * 18.0 + f32(level) * cubeSize * 1.2;
-    let spireScale = 0.7 - f32(level) * 0.04;
-    blockW = cubeSize * scale * spireScale * thickness;
-    blockD = cubeSize * scale * spireScale * thickness;
-    blockH = cubeSize * 1.2;
-    blockType = 0.0; // Stone
-  } else if (blockIdx < 45u) {
-    // Central roof pyramid (8 levels)
-    let rIdx = blockIdx - 37u;
-    let roofScale = 0.8 - f32(rIdx) * 0.09;
-    blockX = baseX;
-    blockZ = baseZ;
-    blockY = baseY + cubeSize * 27.6 + f32(rIdx) * cubeSize * 0.5;
-    blockW = cubeSize * scale * roofScale * thickness;
-    blockD = cubeSize * scale * roofScale * thickness;
-    blockH = cubeSize * 0.5;
-    blockType = 2.0; // Roof
-  } else if (blockIdx < 47u) {
-    // Central flag pole
-    blockX = baseX;
-    blockZ = baseZ;
-    blockY = baseY + cubeSize * 31.6;
-    blockW = cubeSize * 0.15;
-    blockD = cubeSize * 0.15;
+    blockW = cubeSize * scale * 1.5;
+    blockD = cubeSize * scale * 1.5;
     blockH = cubeSize * 2.0;
-    blockType = 1.0; // Wood
-  } else {
-    // Central flag
-    let wave = sin(time * 3.0) * 0.1;
-    blockX = baseX + cubeSize * 0.5 + wave * cubeSize;
+    blockType = 1.0; // Stone base (dark)
+
+  } else if (blockIdx < 25u) {
+    // FLOOR 1 WALLS - 4x4 rectangular grid (white with frame)
+    let idx = blockIdx - 9u;
+    let wx = f32(i32(idx) % 4) - 1.5;
+    let wz = f32(i32(idx) / 4) - 1.5;
+    blockX = baseX + wx * cubeSize * scale * 1.1;
+    blockZ = baseZ + wz * cubeSize * scale * 1.1;
+    blockY = baseY + cubeSize * 2.0;
+    blockW = cubeSize * scale * 1.1;
+    blockD = cubeSize * scale * 1.1;
+    blockH = floorH;
+    blockType = 0.0; // White walls
+
+  } else if (blockIdx < 33u) {
+    // FLOOR 1 WOOD FRAME - 8 edge posts (corners + midpoints)
+    let idx = blockIdx - 25u;
+    let framePos = array<vec2f, 8>(
+      vec2f(-2.0, -2.0), vec2f(0.0, -2.0), vec2f(2.0, -2.0),
+      vec2f(-2.0, 0.0),                     vec2f(2.0, 0.0),
+      vec2f(-2.0, 2.0),  vec2f(0.0, 2.0),  vec2f(2.0, 2.0)
+    );
+    let fp = framePos[idx];
+    blockX = baseX + fp.x * cubeSize * scale * 0.6;
+    blockZ = baseZ + fp.y * cubeSize * scale * 0.6;
+    blockY = baseY + cubeSize * 2.0;
+    blockW = cubeSize * scale * 0.25;
+    blockD = cubeSize * scale * 0.25;
+    blockH = floorH;
+    blockType = 1.0; // Dark wood frame
+
+  } else if (blockIdx < 49u) {
+    // FLOOR 1 ROOF - 4x4 rectangular teal roof extending outward
+    let idx = blockIdx - 33u;
+    let rx = f32(i32(idx) % 4) - 1.5;
+    let rz = f32(i32(idx) / 4) - 1.5;
+    blockX = baseX + rx * cubeSize * scale * 1.6;
+    blockZ = baseZ + rz * cubeSize * scale * 1.6;
+    blockY = baseY + cubeSize * 2.0 + floorH;
+    blockW = cubeSize * scale * 1.6;
+    blockD = cubeSize * scale * 1.6;
+    blockH = roofH;
+    blockType = 2.0; // Teal roof
+
+  } else if (blockIdx < 58u) {
+    // FLOOR 2 WALLS - 3x3 rectangular grid
+    let idx = blockIdx - 49u;
+    let wx = f32(i32(idx) % 3) - 1.0;
+    let wz = f32(i32(idx) / 3) - 1.0;
+    blockX = baseX + wx * cubeSize * scale * 1.0;
+    blockZ = baseZ + wz * cubeSize * scale * 1.0;
+    blockY = baseY + cubeSize * 2.0 + floorH + roofH;
+    blockW = cubeSize * scale * 1.0;
+    blockD = cubeSize * scale * 1.0;
+    blockH = floorH * 0.85;
+    blockType = 0.0; // White walls
+
+  } else if (blockIdx < 66u) {
+    // FLOOR 2 WOOD FRAME - 8 posts
+    let idx = blockIdx - 58u;
+    let framePos = array<vec2f, 8>(
+      vec2f(-1.6, -1.6), vec2f(0.0, -1.6), vec2f(1.6, -1.6),
+      vec2f(-1.6, 0.0),                     vec2f(1.6, 0.0),
+      vec2f(-1.6, 1.6),  vec2f(0.0, 1.6),  vec2f(1.6, 1.6)
+    );
+    let fp = framePos[idx];
+    blockX = baseX + fp.x * cubeSize * scale * 0.55;
+    blockZ = baseZ + fp.y * cubeSize * scale * 0.55;
+    blockY = baseY + cubeSize * 2.0 + floorH + roofH;
+    blockW = cubeSize * scale * 0.22;
+    blockD = cubeSize * scale * 0.22;
+    blockH = floorH * 0.85;
+    blockType = 1.0; // Dark wood
+
+  } else if (blockIdx < 78u) {
+    // FLOOR 2 ROOF - 3x4 = 12 blocks
+    let idx = blockIdx - 66u;
+    let rx = f32(i32(idx) % 4) - 1.5;
+    let rz = f32(i32(idx) / 4) - 1.0;
+    blockX = baseX + rx * cubeSize * scale * 1.3;
+    blockZ = baseZ + rz * cubeSize * scale * 1.3;
+    blockY = baseY + cubeSize * 2.0 + floorH * 1.85 + roofH;
+    blockW = cubeSize * scale * 1.3;
+    blockD = cubeSize * scale * 1.3;
+    blockH = roofH;
+    blockType = 2.0; // Teal roof
+
+  } else if (blockIdx < 82u) {
+    // FLOOR 3 WALLS - 2x2
+    let idx = blockIdx - 78u;
+    let wx = f32(i32(idx) % 2) - 0.5;
+    let wz = f32(i32(idx) / 2) - 0.5;
+    blockX = baseX + wx * cubeSize * scale * 0.9;
+    blockZ = baseZ + wz * cubeSize * scale * 0.9;
+    blockY = baseY + cubeSize * 2.0 + floorH * 1.85 + roofH * 2.0;
+    blockW = cubeSize * scale * 0.9;
+    blockD = cubeSize * scale * 0.9;
+    blockH = floorH * 0.75;
+    blockType = 0.0; // White walls
+
+  } else if (blockIdx < 86u) {
+    // FLOOR 3 WOOD FRAME - 4 corner posts
+    let idx = blockIdx - 82u;
+    let corners = array<vec2f, 4>(
+      vec2f(-1.1, -1.1), vec2f(1.1, -1.1),
+      vec2f(-1.1, 1.1),  vec2f(1.1, 1.1)
+    );
+    let c = corners[idx];
+    blockX = baseX + c.x * cubeSize * scale * 0.5;
+    blockZ = baseZ + c.y * cubeSize * scale * 0.5;
+    blockY = baseY + cubeSize * 2.0 + floorH * 1.85 + roofH * 2.0;
+    blockW = cubeSize * scale * 0.2;
+    blockD = cubeSize * scale * 0.2;
+    blockH = floorH * 0.75;
+    blockType = 1.0; // Dark wood
+
+  } else if (blockIdx < 95u) {
+    // FLOOR 3 ROOF - 3x3 = 9 blocks
+    let idx = blockIdx - 86u;
+    let rx = f32(i32(idx) % 3) - 1.0;
+    let rz = f32(i32(idx) / 3) - 1.0;
+    blockX = baseX + rx * cubeSize * scale * 1.1;
+    blockZ = baseZ + rz * cubeSize * scale * 1.1;
+    blockY = baseY + cubeSize * 2.0 + floorH * 2.6 + roofH * 2.0;
+    blockW = cubeSize * scale * 1.1;
+    blockD = cubeSize * scale * 1.1;
+    blockH = roofH;
+    blockType = 2.0; // Teal roof
+
+  } else if (blockIdx < 100u) {
+    // GOLDEN SPIRE - 5 stacked blocks getting smaller
+    let idx = blockIdx - 95u;
+    let spireScale = 0.5 - f32(idx) * 0.08;
+    blockX = baseX;
     blockZ = baseZ;
-    blockY = baseY + cubeSize * 33.2;
-    blockW = cubeSize * 1.0;
-    blockD = cubeSize * 0.15;
-    blockH = cubeSize * 0.7;
-    blockType = 3.0; // Flag
+    blockY = baseY + cubeSize * 2.0 + floorH * 2.6 + roofH * 3.0 + f32(idx) * cubeSize * 1.0;
+    blockW = cubeSize * scale * spireScale;
+    blockD = cubeSize * scale * spireScale;
+    blockH = cubeSize * 1.0;
+    blockType = 4.0; // Gold
+
+  } else {
+    // YELLOW LANTERNS - 12 hanging from roof corners (4 per floor)
+    let idx = blockIdx - 100u;
+    let floorNum = idx / 4u;
+    let cornerIdx = idx % 4u;
+    let lanternCorners = array<vec2f, 4>(
+      vec2f(-1.0, -1.0), vec2f(1.0, -1.0),
+      vec2f(-1.0, 1.0),  vec2f(1.0, 1.0)
+    );
+    let lc = lanternCorners[cornerIdx];
+
+    // Position based on floor
+    var roofSize = 1.6;
+    var yPos = baseY + cubeSize * 2.0 + floorH;
+    if (floorNum == 1u) {
+      roofSize = 1.3;
+      yPos = baseY + cubeSize * 2.0 + floorH * 1.85 + roofH;
+    } else if (floorNum >= 2u) {
+      roofSize = 1.1;
+      yPos = baseY + cubeSize * 2.0 + floorH * 2.6 + roofH * 2.0;
+    }
+
+    blockX = baseX + lc.x * cubeSize * scale * roofSize * 0.9;
+    blockZ = baseZ + lc.y * cubeSize * scale * roofSize * 0.9;
+    blockY = yPos - cubeSize * 0.8;
+    blockW = cubeSize * scale * 0.2;
+    blockD = cubeSize * scale * 0.2;
+    blockH = cubeSize * 0.6;
+    blockType = 3.0; // Yellow lantern
   }
 
   // Build cube faces
@@ -1588,95 +1753,118 @@ fn main(input: CastleIn) -> @location(0) vec4f {
 
   var color = vec3f(0.0);
 
-  if (blockType > 2.5) {
-    // RED FLAG
-    let flagRed = vec3f(0.85, 0.15, 0.15);
-    let flagDark = vec3f(0.7, 0.1, 0.1);
-    // Simple wave pattern
-    let wave = sin(uv.x * 6.28 + uniforms.time * 4.0) * 0.5 + 0.5;
-    color = mix(flagDark, flagRed, wave * 0.3 + 0.7);
+  if (blockType > 3.5) {
+    // GOLDEN SPIRE - ornate finial on top
+    let goldBright = vec3f(1.0, 0.85, 0.4);
+    let goldMid = vec3f(0.9, 0.72, 0.25);
+    let goldDark = vec3f(0.7, 0.55, 0.15);
+
+    // Vertical bands for decorative spire
+    let bandY = fract(uv.y * 6.0);
+    let bandShine = smoothstep(0.3, 0.5, bandY) * smoothstep(0.7, 0.5, bandY);
+
+    color = mix(goldMid, goldBright, bandShine * 0.6);
+
+    // Add sparkle
+    let sparkle = fract(sin(uv.x * 50.0 + uv.y * 30.0 + uniforms.time) * 43758.5);
+    if (sparkle > 0.92) { color = goldBright * 1.2; }
+
+  } else if (blockType > 2.5 && blockType < 3.5) {
+    // YELLOW LANTERN - hanging paper lantern like in reference
+    let lanternYellow = vec3f(1.0, 0.9, 0.4);
+    let lanternGold = vec3f(0.95, 0.75, 0.25);
+    let lanternRed = vec3f(0.85, 0.2, 0.15);
+
+    // Lantern body - yellow with red band
+    let topCap = uv.y > 0.85;
+    let bottomCap = uv.y < 0.15;
+    let redBand = uv.y > 0.4 && uv.y < 0.6;
+
+    if (topCap || bottomCap) {
+      color = lanternGold; // Gold caps
+    } else if (redBand) {
+      color = lanternRed; // Red decoration band
+    } else {
+      // Yellow paper body with subtle glow
+      let glow = sin(uv.y * 6.28) * 0.1 + 0.9;
+      color = lanternYellow * glow;
+    }
 
   } else if (blockType > 1.5) {
-    // ROOF - dark slate tiles
-    let roofDark = vec3f(0.22, 0.22, 0.28);
-    let roofMid = vec3f(0.30, 0.30, 0.36);
-    let roofLight = vec3f(0.38, 0.38, 0.44);
+    // TEAL ROOF - curved Japanese temple tiles
+    let roofTealDark = vec3f(0.15, 0.42, 0.45);
+    let roofTealMid = vec3f(0.22, 0.55, 0.58);
+    let roofTealLight = vec3f(0.32, 0.65, 0.68);
 
-    // Tile pattern
-    let tileX = fract(uv.x * 4.0);
-    let tileY = fract(uv.y * 6.0);
-    let rowIdx = floor(uv.y * 6.0);
+    // Curved tile pattern
+    let tileX = fract(uv.x * 5.0);
+    let tileY = fract(uv.y * 3.0);
+    let rowIdx = floor(uv.y * 3.0);
     var tileOffset = 0.0;
     if (fract(rowIdx * 0.5) > 0.25) { tileOffset = 0.5; }
-    let shiftedX = fract(uv.x * 4.0 + tileOffset);
+    let shiftedX = fract(uv.x * 5.0 + tileOffset);
 
-    // Tile edges
-    let edgeX = smoothstep(0.0, 0.1, shiftedX) * smoothstep(1.0, 0.9, shiftedX);
-    let edgeY = smoothstep(0.0, 0.15, tileY) * smoothstep(1.0, 0.85, tileY);
-    let edge = edgeX * edgeY;
+    // Curved tile shape
+    let tileCurve = sin(shiftedX * 3.14159) * 0.3;
+    let tileEdge = smoothstep(0.0, 0.12, shiftedX) * smoothstep(1.0, 0.88, shiftedX);
+    let tileVEdge = smoothstep(0.0, 0.15, tileY) * smoothstep(1.0, 0.85, tileY);
 
-    // Variation per tile
-    let tileIdx = floor(uv.x * 4.0 + tileOffset) + rowIdx * 4.0;
+    // Mix colors based on tile shape
+    color = mix(roofTealDark, roofTealMid, tileEdge * tileVEdge);
+    color = mix(color, roofTealLight, tileCurve * tileEdge);
+
+    // Add subtle variation per tile
+    let tileIdx = floor(uv.x * 5.0 + tileOffset) + rowIdx * 5.0;
     let variation = fract(sin(tileIdx * 127.1) * 43758.5);
-
-    color = mix(roofDark, roofMid, edge);
-    if (variation > 0.7) { color = mix(color, roofLight, 0.3); }
+    if (variation > 0.75) { color *= 1.1; }
+    else if (variation < 0.25) { color *= 0.9; }
 
   } else if (blockType > 0.5) {
-    // WOOD - timber frame / planks
-    let woodDark = vec3f(0.35, 0.22, 0.12);
-    let woodMid = vec3f(0.48, 0.32, 0.18);
-    let woodLight = vec3f(0.58, 0.40, 0.22);
+    // DARK WOOD - traditional Japanese timber frame
+    let woodDark = vec3f(0.18, 0.12, 0.08);
+    let woodMid = vec3f(0.28, 0.18, 0.12);
+    let woodLight = vec3f(0.35, 0.24, 0.16);
 
-    // Plank pattern
-    let plankY = fract(uv.y * 3.0);
-    let plankIdx = floor(uv.y * 3.0);
+    // Vertical wood grain
+    let grainX = sin(uv.x * 30.0) * 0.5 + 0.5;
+    let grainY = fract(uv.y * 8.0);
 
-    // Wood grain
-    let grainNoise = fract(sin(uv.x * 20.0 + plankIdx * 7.1) * 43758.5);
+    // Wood texture
+    let grainNoise = fract(sin(uv.x * 40.0 + floor(uv.y * 8.0) * 7.1) * 43758.5);
     color = woodMid;
     if (grainNoise > 0.7) { color = woodLight; }
     else if (grainNoise < 0.3) { color = woodDark; }
 
-    // Plank gaps
-    if (plankY < 0.08 || plankY > 0.92) { color = woodDark * 0.6; }
+    // Subtle grain lines
+    color = mix(color, woodDark, (1.0 - grainX) * 0.15);
 
   } else {
-    // STONE BRICK - castle walls
-    let stoneBase = vec3f(0.52, 0.50, 0.48);
-    let stoneDark = vec3f(0.38, 0.36, 0.34);
-    let stoneLight = vec3f(0.62, 0.60, 0.58);
+    // WHITE WALLS - shoji-style Japanese walls
+    let wallWhite = vec3f(0.95, 0.93, 0.90);
+    let wallCream = vec3f(0.92, 0.88, 0.82);
+    let frameWood = vec3f(0.25, 0.18, 0.12);
 
-    // Brick pattern (staggered)
-    let brickX = fract(uv.x * 2.0);
-    let brickY = fract(uv.y * 3.0);
-    let rowIdx = floor(uv.y * 3.0);
-    var brickOffset = 0.0;
-    if (fract(rowIdx * 0.5) > 0.25) { brickOffset = 0.5; }
-    let shiftedX = fract(uv.x * 2.0 + brickOffset);
+    // Grid pattern for shoji screen effect
+    let gridX = fract(uv.x * 3.0);
+    let gridY = fract(uv.y * 4.0);
 
-    // Mortar lines
-    let mortarX = smoothstep(0.0, 0.06, shiftedX) * smoothstep(1.0, 0.94, shiftedX);
-    let mortarY = smoothstep(0.0, 0.08, brickY) * smoothstep(1.0, 0.92, brickY);
-    let mortar = mortarX * mortarY;
+    // Wood frame lines
+    let isFrameX = gridX < 0.08 || gridX > 0.92;
+    let isFrameY = gridY < 0.06 || gridY > 0.94;
 
-    // Random per-brick variation
-    let brickIdx = floor(uv.x * 2.0 + brickOffset) + rowIdx * 2.0;
-    let variation = fract(sin(brickIdx * 127.1) * 43758.5);
-
-    color = mix(stoneDark * 0.7, stoneBase, mortar);
-    if (variation > 0.6) { color = mix(color, stoneLight, 0.25); }
-    else if (variation < 0.3) { color = mix(color, stoneDark, 0.2); }
-
-    // Surface noise
-    let noise = fract(sin(uv.x * 40.0 + uv.y * 30.0) * 43758.5) * 0.08 - 0.04;
-    color += noise;
+    if (isFrameX || isFrameY) {
+      color = frameWood;
+    } else {
+      // Paper panels with subtle texture
+      let paperNoise = fract(sin(uv.x * 100.0 + uv.y * 80.0) * 43758.5) * 0.03;
+      color = mix(wallWhite, wallCream, 0.3) + paperNoise;
+    }
   }
 
-  // Golden hour face shading - subtle warm/cool
-  let warmTint = vec3f(1.10, 1.04, 0.92);   // Subtle golden light
-  let coolTint = vec3f(0.85, 0.88, 0.96);   // Subtle cool shadow
-  let neutralTint = vec3f(0.96, 0.96, 0.96);
+  // Spring daylight face shading - soft and bright
+  let warmTint = vec3f(1.06, 1.02, 0.98);   // Soft warm light
+  let coolTint = vec3f(0.88, 0.90, 0.95);   // Soft cool shadow
+  let neutralTint = vec3f(0.98, 0.98, 0.98);
 
   var shade = 1.0;
   var tint = warmTint;
