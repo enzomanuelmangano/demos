@@ -397,16 +397,16 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // 2 = trunk (QR dark at center) - dark brown, reads as "dark" when flat
   // 3 = grass (QR dark outside tree) - dark green, reads as "dark" when flat
 
-  // DIRT/PATH colors (QR light modules) - high contrast tan/beige
-  let dirtLight = vec3f(0.95, 0.90, 0.82);
-  let dirtMid = vec3f(0.75, 0.68, 0.55);
-  let dirtDark = vec3f(0.55, 0.45, 0.35);
+  // DIRT/PATH colors (QR LIGHT modules) - keep bright for scannability
+  let dirtLight = vec3f(0.98, 0.95, 0.88);
+  let dirtMid = vec3f(0.92, 0.88, 0.78);
+  let dirtDark = vec3f(0.85, 0.80, 0.68);
 
-  // CHERRY BLOSSOM colors - high contrast range
-  let sakuraLight = vec3f(1.0, 0.70, 0.78);     // Light pink (bright)
-  let sakuraMid = vec3f(0.95, 0.45, 0.55);      // Medium pink
-  let sakuraDeep = vec3f(0.82, 0.28, 0.42);     // Deep pink (darker)
-  let sakuraRich = vec3f(0.65, 0.18, 0.32);     // Rich dark pink
+  // CHERRY BLOSSOM colors (QR DARK modules) - vivid but clearly dark
+  let sakuraLight = vec3f(0.95, 0.55, 0.65);    // Light pink
+  let sakuraMid = vec3f(0.85, 0.38, 0.50);      // Medium pink
+  let sakuraDeep = vec3f(0.70, 0.25, 0.38);     // Deep pink
+  let sakuraRich = vec3f(0.55, 0.18, 0.28);     // Dark pink
 
   // Accent colors (white only, no green)
   let petalWhite = vec3f(1.0, 0.88, 0.90);      // Soft white petals
@@ -417,16 +417,16 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let barkDark = vec3f(0.32, 0.20, 0.12);      // Dark brown
   let barkDeep = vec3f(0.28, 0.16, 0.09);      // Deep brown
 
-  // GRASS colors (QR dark modules) - high contrast green
-  let grassDark = vec3f(0.18, 0.35, 0.12);
-  let grassMid = vec3f(0.35, 0.55, 0.25);
-  let grassBright = vec3f(0.55, 0.72, 0.38);
+  // GRASS colors (QR DARK modules) - keep dark for scannability
+  let grassDark = vec3f(0.15, 0.28, 0.10);
+  let grassMid = vec3f(0.25, 0.42, 0.18);
+  let grassBright = vec3f(0.35, 0.52, 0.25);
 
   let seed = vec2f(input.col, input.row);
   var albedo = vec3f(0.5);
 
-  // Lighting
-  let sunDir = normalize(vec3f(0.6, 0.8, 0.4));
+  // Lighting - sun from top-left-front for isometric view
+  let sunDir = normalize(vec3f(-0.5, 0.8, -0.5));
   let sunCol = ${wgslVec3(PALETTE.sun)};
   let ambient = vec3f(0.35, 0.38, 0.45);
   let skyFill = ${wgslVec3(PALETTE.skyFill)};
@@ -443,23 +443,21 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let noise3 = fract(sin(blockSeed * 2.3 + 311.7) * 43758.5);
 
   if (input.faceNy > 0.5) {
-    // TOP FACE - this is what QR scanner sees when flat
-    let topWarmTint = vec3f(1.04, 1.02, 0.98);
+    // TOP FACE - brightest, this is what QR scanner sees when flat
+    let topWarmTint = vec3f(1.1, 1.08, 1.02);
 
     if (blockType == 0) {
-      // DIRT/PATH TOP (QR light) - high contrast
+      // DIRT/PATH TOP (QR LIGHT) - stay bright, less variation
       var dirtColor = dirtMid;
       let t = noise1;
-      if (t < 0.33) {
-        dirtColor = mix(dirtLight, dirtMid, t / 0.33);
-      } else if (t < 0.66) {
-        dirtColor = mix(dirtMid, dirtDark, (t - 0.33) / 0.33);
+      if (t < 0.5) {
+        dirtColor = mix(dirtLight, dirtMid, t / 0.5);
       } else {
-        dirtColor = dirtDark * (1.0 - (t - 0.66) * 0.3);
+        dirtColor = mix(dirtMid, dirtDark, (t - 0.5) / 0.5);
       }
 
-      // Strong variation for contrast
-      let shift = (noise2 - 0.5) * 0.2;
+      // Subtle variation - keep it light
+      let shift = (noise2 - 0.5) * 0.1;
       dirtColor = dirtColor * (1.0 + shift);
 
       albedo = dirtColor * topWarmTint;
@@ -528,10 +526,12 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     }
 
   } else if (abs(input.faceNz) > 0.5 || abs(input.faceNx) > 0.5) {
-    // SIDE FACES
-    let isFront = input.faceNz > 0.5;
-    let shade = select(0.65, 0.85, isFront);
-    let tint = select(vec3f(0.90, 0.92, 0.98), vec3f(0.98, 0.98, 0.98), isFront);
+    // SIDE FACES - use actual sun direction for shading
+    let faceN = normalize(vec3f(input.faceNx, input.faceNy, input.faceNz));
+    let sunLight = max(dot(faceN, sunDir), 0.0);
+    // Shade based on sun: 0.4 base + 0.5 from sun
+    let shade = 0.4 + sunLight * 0.5;
+    let tint = vec3f(0.95, 0.95, 0.98);
 
     if (blockType == 0) {
       // DIRT SIDE - high contrast
