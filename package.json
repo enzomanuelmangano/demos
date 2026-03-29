@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "main": "expo-router/entry",
   "reanimated": {
     "staticFeatureFlags": {
@@ -10,6 +10,7 @@
     }
   },
   "scripts": {
+    "postinstall": "node scripts/patch-skia-webgpu-android.js",
     "start": "expo start",
     "dev": "node scripts/start-with-animation.js",
     "android": "expo run:android",
