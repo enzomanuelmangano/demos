@@ -106,8 +106,8 @@ const FINDER_EDGE_MODULE_HEIGHT = 0.14;
 /** Inner 5×5 of the finder — shorter than the ring. */
 const FINDER_INNER_MODULE_HEIGHT = 0.095;
 
-/** Which finder pattern becomes the fountain (NOT 'tr' - that's the tallest) */
-const FOUNTAIN_FINDER: 'tl' | 'bl' = Math.random() > 0.5 ? 'tl' : 'bl';
+/** Which finder pattern becomes the fountain - top-left on screen = 'bl' in matrix */
+const FOUNTAIN_FINDER: 'tl' | 'bl' = 'bl';
 
 type FinderKind = 'tl' | 'tr' | 'bl';
 
@@ -258,16 +258,28 @@ function generateBlockData(qrMatrix: boolean[][]): {
   const heights: number[] = [];
   const colors: number[] = [];
 
+  // Get fountain center to exclude those blocks
+  const fountainCenter = getFountainCenter(gridSize);
+  const fc = fountainCenter;
+
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       const isModule = qrMatrix[row][col];
+
+      // Check if this block is in the fountain area (3x3 around center)
+      const inFountainArea =
+        Math.abs(col - fc.col) <= 1 && Math.abs(row - fc.row) <= 1;
 
       positions.push(col, 0, row, 0);
 
       let color: RGB;
       let height: number;
 
-      if (isModule) {
+      if (inFountainArea) {
+        // Flatten blocks in fountain area so fountain renders on top
+        color = GROUND_COLOR;
+        height = 0.001;
+      } else if (isModule) {
         const district = Math.floor(col / 6) + Math.floor(row / 6);
         color = district % 2 === 0 ? BUILDING_BASE : PALETTE.buildingAlt;
         const fh = finderModuleHeight(col, row, gridSize);
@@ -615,11 +627,62 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     if (input.faceNy < -0.45) {
       discard;
     }
+
+    // Check if this ground block should be a glowing lantern
+    let g = input.blockSeed;
+    let lanternChance = hash2(g * 13.7);
+    let isLantern = lanternChance > 0.85; // ~15% of ground blocks are lanterns
+
+    if (isLantern) {
+      // Glowing lantern block - like Minecraft glowstone/sea lantern
+      let time = uniforms.time;
+
+      // Lantern colors - bright warm golden glow
+      let lanternCore = vec3f(1.0, 0.95, 0.7);     // Very bright center
+      let lanternMid = vec3f(1.0, 0.85, 0.5);      // Mid tone
+      let lanternEdge = vec3f(0.95, 0.7, 0.35);    // Warmer edge
+
+      // Pixelated glowstone-style texture (4x4 grid)
+      let px = floor(uv.x * 4.0);
+      let py = floor(uv.y * 4.0);
+      let cellNoise = fract(sin(px * 127.1 + py * 311.7 + g.x * 17.3) * 43758.5);
+
+      // Create glowing crystal pattern with pulsing
+      let pulse = sin(time * 3.0 + cellNoise * 6.28) * 0.15 + 1.0;
+
+      var lanternColor = lanternMid;
+      if (cellNoise > 0.6) {
+        lanternColor = lanternCore;
+      } else if (cellNoise < 0.3) {
+        lanternColor = lanternEdge;
+      }
+
+      // Add shimmer/sparkle effect
+      let sparkle = smoothstep(0.92, 1.0, fract(sin(px * 43.7 + py * 17.3 + time * 4.0) * 43758.5));
+      lanternColor += vec3f(0.4, 0.35, 0.2) * sparkle;
+
+      // Strong emissive glow
+      let emissiveStrength = 2.0 * pulse;
+      var hdrLantern = lanternColor * emissiveStrength;
+
+      // Very slight face shading (still very bright on sides)
+      if (input.faceNy < 0.5) {
+        hdrLantern *= 0.9;
+      }
+
+      hdrLantern = acesFilm(hdrLantern);
+      hdrLantern = pow(hdrLantern, vec3f(1.0 / 2.06));
+      let alpha = 1.0 - p;
+      if (alpha < 0.002) {
+        discard;
+      }
+      return vec4f(hdrLantern * alpha, alpha);
+    }
+
     let pave = ${wgslVec3(PALETTE.pavement)};
     let paveSide = ${wgslVec3(PALETTE.pavementSide)};
     var albedo = pave;
     if (input.faceNy > 0.5) {
-      let g = input.blockSeed;
       let wx = abs(fract(uv.x * 8.0 + g.x * 0.07) - 0.5);
       let wy = abs(fract(uv.y * 8.0 + g.y * 0.07) - 0.5);
       let lane = smoothstep(0.1, 0.16, min(wx, wy));
@@ -652,25 +715,273 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   var streetAo = 1.0;
   var emissive = vec3f(0.0);
 
+  // Minecraft-style block types based on height
+  // 0=cobblestone, 1=grass, 2=wood, 3=stonebrick, 4=snow, 5=mountain rock
+  var blockType = 0;
+  let seed = input.blockSeed;
+  let typeNoise = hash2(seed * 3.1);
+
+  if (input.blockH < 0.15) {
+    blockType = 1; // Grass - low ground
+  } else if (input.blockH < 0.3) {
+    // Mix of stone brick and cobblestone
+    if (typeNoise > 0.5) { blockType = 3; } else { blockType = 0; }
+  } else if (input.blockH < 0.5) {
+    // Mix of wood planks and stone brick
+    if (typeNoise > 0.4) { blockType = 2; } else { blockType = 3; }
+  } else if (input.blockH > 0.7) {
+    // Mountain peaks - dark rock with scattered snow on top
+    blockType = 5;
+  } else {
+    // Mid-high mountains - dark rock
+    blockType = 5;
+  }
+
+  // Minecraft colors
+  // Grass
+  let grassBright = vec3f(0.55, 0.8, 0.3);
+  let grassMid = vec3f(0.45, 0.7, 0.22);
+  let grassDark = vec3f(0.35, 0.55, 0.15);
+  let dirtSide = vec3f(0.6, 0.45, 0.3);
+  let dirtDark = vec3f(0.45, 0.32, 0.2);
+  let dirtMid = vec3f(0.52, 0.38, 0.25);
+
+  // Stone/Cobblestone
+  let stoneLight = vec3f(0.6, 0.6, 0.6);
+  let stoneMid = vec3f(0.5, 0.5, 0.5);
+  let stoneDark = vec3f(0.35, 0.35, 0.35);
+
+  // Stone Bricks
+  let brickLight = vec3f(0.55, 0.55, 0.52);
+  let brickMid = vec3f(0.45, 0.45, 0.43);
+  let brickDark = vec3f(0.3, 0.3, 0.28);
+
+  // Wood Planks
+  let woodLight = vec3f(0.72, 0.53, 0.3);
+  let woodMid = vec3f(0.6, 0.42, 0.22);
+  let woodDark = vec3f(0.45, 0.3, 0.15);
+
+  // Mountain Rock - dark gray/black rock
+  let rockLight = vec3f(0.35, 0.33, 0.32);
+  let rockMid = vec3f(0.25, 0.24, 0.23);
+  let rockDark = vec3f(0.15, 0.14, 0.13);
+  let rockAccent = vec3f(0.3, 0.28, 0.25); // Slightly warm accent
+
+  // Snow colors
+  let snowTop = vec3f(0.95, 0.97, 1.0);        // White snow
+  let snowShade = vec3f(0.75, 0.82, 0.92);     // Bluish snow shadow
+
   // Strong face differentiation for isometric city look
   let isLeftFace = N.x < -0.5;
   let isRightFace = N.z > 0.5;
 
+  // High-res pixelated UV for detailed Minecraft textures (16x16 style)
+  let px8 = floor(uv.x * 8.0);
+  let py8 = floor(uv.y * 8.0);
+  let px16 = floor(uv.x * 16.0);
+  let py16 = floor(uv.y * 16.0);
+  let noise8 = fract(sin(px8 * 127.1 + py8 * 311.7 + seed.x * 17.3) * 43758.5);
+  let noise16 = fract(sin(px16 * 127.1 + py16 * 311.7 + seed.x * 17.3) * 43758.5);
+  let noise16b = fract(sin(px16 * 73.3 + py16 * 157.1 + seed.y * 31.7) * 43758.5);
+
   if (input.faceVertical > 0.5) {
-    if (isLeftFace) {
-      // Left face - darkest (shadow side)
-      albedo = stone * 0.65;
+    var shade = 0.85;
+    if (isLeftFace) { shade = 0.65; }
+
+    if (blockType == 1) {
+      // GRASS SIDE - detailed dirt with grass overhang
+      let dirtNoise = fract(sin(px16 * 97.1 + py16 * 213.7) * 43758.5);
+      let dirtNoise2 = fract(sin(px16 * 41.3 + py16 * 89.1) * 43758.5);
+      var dirtColor = dirtMid;
+      if (dirtNoise > 0.7) { dirtColor = dirtSide; }
+      else if (dirtNoise < 0.3) { dirtColor = dirtDark; }
+      // Add specks
+      if (dirtNoise2 > 0.9) { dirtColor = dirtColor * 1.15; }
+      else if (dirtNoise2 < 0.1) { dirtColor = dirtColor * 0.85; }
+      // Grass overhang at top (top 2 pixel rows)
+      if (py16 >= 14.0) {
+        let grassN = fract(sin(px16 * 53.1) * 43758.5);
+        if (grassN > 0.3) {
+          dirtColor = mix(grassDark, grassMid, grassN);
+        }
+      }
+      albedo = dirtColor * shade;
+
+    } else if (blockType == 2) {
+      // WOOD PLANKS - detailed grain texture
+      let plankIdx = floor(uv.y * 4.0);
+      let plankV = fract(uv.y * 4.0);
+      let grainNoise = fract(sin(px16 * 31.7 + plankIdx * 127.1) * 43758.5);
+      let knotChance = fract(sin(plankIdx * 73.1 + seed.x * 17.3) * 43758.5);
+      // Grain lines
+      var woodColor = woodMid;
+      let grainLine = fract(uv.y * 16.0);
+      if (grainLine < 0.15 || grainLine > 0.85) { woodColor = woodDark; }
+      else if (grainNoise > 0.7) { woodColor = woodLight; }
+      else if (grainNoise < 0.3) { woodColor = woodDark; }
+      // Occasional knots
+      if (knotChance > 0.85 && px16 > 6.0 && px16 < 10.0 && py16 > 6.0 && py16 < 10.0) {
+        woodColor = woodDark * 0.8;
+      }
+      // Plank separation lines
+      if (plankV < 0.08 || plankV > 0.92) { woodColor = woodDark * 0.7; }
+      albedo = woodColor * shade;
+
+    } else if (blockType == 3) {
+      // STONE BRICK - detailed with cracks and variation
+      let brickV = fract(uv.y * 4.0);
+      let rowIdx = floor(uv.y * 4.0);
+      var brickOffset = 0.0;
+      if (fract(rowIdx * 0.5) > 0.25) { brickOffset = 0.5; }
+      let brickU = fract(uv.x * 2.0 + brickOffset);
+      // Mortar lines
+      let isMortar = brickU < 0.08 || brickU > 0.92 || brickV < 0.1 || brickV > 0.9;
+      var brickColor = brickMid;
+      if (isMortar) {
+        brickColor = brickDark * 0.7;
+      } else {
+        // Brick surface detail
+        if (noise16 > 0.75) { brickColor = brickLight; }
+        else if (noise16 < 0.25) { brickColor = brickDark; }
+        // Cracks
+        if (noise16b > 0.95) { brickColor = brickColor * 0.7; }
+      }
+      albedo = brickColor * shade;
+
+    } else if (blockType == 4) {
+      // SNOW - sparkly texture
+      var snowColor = mix(snowShade, snowTop, noise16 * 0.4 + 0.5);
+      if (noise16b > 0.9) { snowColor = snowTop * 1.1; } // Sparkles
+      albedo = snowColor * shade;
+
+    } else if (blockType == 5) {
+      // MOUNTAIN ROCK - dark craggy rock face
+      let crackX = floor(uv.x * 6.0 + noise8 * 0.5);
+      let crackY = floor(uv.y * 8.0 + noise8 * 0.5);
+      let crackNoise = fract(sin(crackX * 127.1 + crackY * 311.7 + seed.x) * 43758.5);
+      let crackNoise2 = fract(sin(crackX * 73.3 + crackY * 89.1) * 43758.5);
+      var mtnColor = rockMid;
+      if (crackNoise > 0.7) { mtnColor = rockLight; }
+      else if (crackNoise < 0.3) { mtnColor = rockDark; }
+      // Cracks and crevices
+      let crackLine = fract(uv.y * 12.0 + noise16 * 2.0);
+      if (crackLine < 0.08) { mtnColor = rockDark * 0.5; }
+      // Slight warm accent variation
+      if (crackNoise2 > 0.85) { mtnColor = mix(mtnColor, rockAccent, 0.3); }
+      // Vertical striations
+      let striation = fract(uv.x * 8.0 + noise8 * 0.3);
+      if (striation < 0.05) { mtnColor = mtnColor * 0.7; }
+      albedo = mtnColor * shade;
+
     } else {
-      // Right face - medium (lit side)
-      albedo = stone * 0.85;
+      // COBBLESTONE - irregular chunky rocks
+      let chunkX = floor(uv.x * 3.0 + noise8 * 0.3);
+      let chunkY = floor(uv.y * 4.0 + noise8 * 0.3);
+      let chunkNoise = fract(sin(chunkX * 127.1 + chunkY * 311.7 + seed.x) * 43758.5);
+      var cobbleColor = stoneMid;
+      if (chunkNoise > 0.6) { cobbleColor = stoneLight; }
+      else if (chunkNoise < 0.35) { cobbleColor = stoneDark; }
+      // Add texture variation
+      cobbleColor = cobbleColor * (0.9 + noise16 * 0.2);
+      // Dark gaps between rocks
+      let gapX = fract(uv.x * 3.0 + noise8 * 0.3);
+      let gapY = fract(uv.y * 4.0 + noise8 * 0.3);
+      if (gapX < 0.1 || gapY < 0.12) { cobbleColor = stoneDark * 0.6; }
+      albedo = cobbleColor * shade;
     }
     albedo = albedo * (1.0 + hBoost);
     streetAo = mix(0.7, 1.0, smoothstep(0.0, 0.12, uv.y));
+
   } else if (input.faceNy > 0.5) {
-    // Top face - brightest
-    albedo = stone * 1.05 * (1.0 + hBoost * 0.5);
+    // TOP FACE
+    if (blockType == 1) {
+      // GRASS TOP - detailed with color variation
+      var grassColor = grassMid;
+      if (noise16 > 0.65) { grassColor = grassBright; }
+      else if (noise16 < 0.3) { grassColor = grassDark; }
+      // Add yellow/brown patches
+      if (noise16b > 0.92) { grassColor = mix(grassColor, vec3f(0.6, 0.55, 0.25), 0.4); }
+      // Flower specks
+      if (noise16b < 0.02) { grassColor = vec3f(0.9, 0.2, 0.2); } // Red flower
+      else if (noise16b > 0.98) { grassColor = vec3f(0.95, 0.95, 0.3); } // Yellow flower
+      albedo = grassColor;
+
+    } else if (blockType == 2) {
+      // WOOD TOP - plank ends with rings
+      let plankX = floor(uv.x * 4.0);
+      let plankNoise = fract(sin(plankX * 73.1 + seed.x) * 43758.5);
+      var woodColor = woodMid;
+      // Ring pattern
+      let ringDist = length(fract(vec2f(uv.x * 4.0, uv.y * 4.0)) - 0.5);
+      let ring = fract(ringDist * 6.0 + plankNoise * 2.0);
+      if (ring < 0.3) { woodColor = woodDark; }
+      else if (ring > 0.7) { woodColor = woodLight; }
+      // Plank gaps
+      let plankU = fract(uv.x * 4.0);
+      if (plankU < 0.06 || plankU > 0.94) { woodColor = woodDark * 0.6; }
+      albedo = woodColor;
+
+    } else if (blockType == 3) {
+      // STONE BRICK TOP - grid pattern
+      let brickU = fract(uv.x * 2.0);
+      let brickV = fract(uv.y * 2.0);
+      let isMortar = brickU < 0.08 || brickU > 0.92 || brickV < 0.08 || brickV > 0.92;
+      var brickColor = brickMid;
+      if (isMortar) { brickColor = brickDark * 0.7; }
+      else {
+        if (noise16 > 0.7) { brickColor = brickLight; }
+        else if (noise16 < 0.3) { brickColor = brickDark; }
+      }
+      albedo = brickColor;
+
+    } else if (blockType == 4) {
+      // SNOW TOP - sparkly
+      var snowColor = mix(snowShade, snowTop, 0.65 + noise16 * 0.35);
+      if (noise16b > 0.88) { snowColor = vec3f(1.0, 1.0, 1.0); }
+      albedo = snowColor;
+
+    } else if (blockType == 5) {
+      // MOUNTAIN TOP - dark rock with scattered snow patches
+      let crackNoise = fract(sin(px8 * 127.1 + py8 * 311.7 + seed.x) * 43758.5);
+      var mtnTopColor = rockMid;
+      if (crackNoise > 0.65) { mtnTopColor = rockLight; }
+      else if (crackNoise < 0.35) { mtnTopColor = rockDark; }
+      // Add texture
+      mtnTopColor = mtnTopColor * (0.9 + noise16 * 0.15);
+
+      // Scattered snow patches on the highest peaks
+      let snowPatchNoise = fract(sin(px8 * 73.1 + py8 * 157.3 + seed.y * 31.7) * 43758.5);
+      let snowPatchNoise2 = fract(sin(px16 * 41.3 + py16 * 89.1) * 43758.5);
+      // More snow on higher blocks
+      let snowChance = 0.3 + (input.blockH - 0.5) * 1.5; // Higher = more snow
+      if (snowPatchNoise > (1.0 - snowChance)) {
+        // Snow patch
+        var patchSnow = mix(snowShade, snowTop, 0.6 + snowPatchNoise2 * 0.4);
+        if (snowPatchNoise2 > 0.9) { patchSnow = vec3f(1.0, 1.0, 1.0); }
+        mtnTopColor = patchSnow;
+      }
+      albedo = mtnTopColor;
+
+    } else {
+      // COBBLESTONE TOP - bumpy rocks
+      let rockX = floor(uv.x * 3.0 + noise8 * 0.2);
+      let rockY = floor(uv.y * 3.0 + noise8 * 0.2);
+      let rockNoise = fract(sin(rockX * 127.1 + rockY * 311.7 + seed.x) * 43758.5);
+      var rockColor = stoneMid;
+      if (rockNoise > 0.55) { rockColor = stoneLight; }
+      else if (rockNoise < 0.4) { rockColor = stoneDark; }
+      rockColor = rockColor * (0.9 + noise16 * 0.2);
+      let gapX = fract(uv.x * 3.0 + noise8 * 0.2);
+      let gapY = fract(uv.y * 3.0 + noise8 * 0.2);
+      if (gapX < 0.1 || gapY < 0.1) { rockColor = stoneDark * 0.5; }
+      albedo = rockColor;
+    }
   } else {
-    albedo = stone * 0.5;
+    // BOTTOM FACE
+    if (blockType == 1) { albedo = dirtDark * 0.5; }
+    else if (blockType == 2) { albedo = woodDark * 0.5; }
+    else if (blockType == 5) { albedo = rockDark * 0.4; }
+    else { albedo = stoneDark * 0.5; }
   }
 
   let diffuse =
@@ -1211,8 +1522,8 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> FountainOut {
     vec2f(-1.0, 1.0),  vec2f(0.0, 1.0),  vec2f(1.0, 1.0)
   );
 
-  // Fountain sits ON TOP of finder pattern (finder height ~0.1)
-  let finderTopY = 0.11;
+  // Fountain at ground level (replaces finder pattern visually)
+  let finderTopY = 0.0;
   let poolSurfaceY = finderTopY + cubeSize * 0.3; // Pool water level
 
   if (blockIdx < 8u) {
