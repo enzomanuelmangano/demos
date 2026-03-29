@@ -397,10 +397,10 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // 2 = trunk (QR dark at center) - dark brown, reads as "dark" when flat
   // 3 = grass (QR dark outside tree) - dark green, reads as "dark" when flat
 
-  // DIRT/PATH colors (QR light modules) - light tan/beige
-  let dirtLight = vec3f(0.88, 0.82, 0.72);
-  let dirtMid = vec3f(0.78, 0.70, 0.58);
-  let dirtDark = vec3f(0.65, 0.55, 0.42);
+  // DIRT/PATH colors (QR light modules) - high contrast tan/beige
+  let dirtLight = vec3f(0.95, 0.90, 0.82);
+  let dirtMid = vec3f(0.75, 0.68, 0.55);
+  let dirtDark = vec3f(0.55, 0.45, 0.35);
 
   // CHERRY BLOSSOM colors - high contrast range
   let sakuraLight = vec3f(1.0, 0.70, 0.78);     // Light pink (bright)
@@ -417,10 +417,10 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let barkDark = vec3f(0.32, 0.20, 0.12);      // Dark brown
   let barkDeep = vec3f(0.28, 0.16, 0.09);      // Deep brown
 
-  // GRASS colors (QR dark modules) - dark green
-  let grassDark = vec3f(0.22, 0.38, 0.15);
-  let grassMid = vec3f(0.32, 0.52, 0.22);
-  let grassBright = vec3f(0.42, 0.62, 0.28);
+  // GRASS colors (QR dark modules) - high contrast green
+  let grassDark = vec3f(0.18, 0.35, 0.12);
+  let grassMid = vec3f(0.35, 0.55, 0.25);
+  let grassBright = vec3f(0.55, 0.72, 0.38);
 
   let seed = vec2f(input.col, input.row);
   var albedo = vec3f(0.5);
@@ -447,16 +447,20 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     let topWarmTint = vec3f(1.04, 1.02, 0.98);
 
     if (blockType == 0) {
-      // DIRT/PATH TOP (QR light) - light tan, reads as light
+      // DIRT/PATH TOP (QR light) - high contrast
       var dirtColor = dirtMid;
-      if (noise1 < 0.25) { dirtColor = dirtLight; }
-      else if (noise1 > 0.75) { dirtColor = dirtDark; }
+      let t = noise1;
+      if (t < 0.33) {
+        dirtColor = mix(dirtLight, dirtMid, t / 0.33);
+      } else if (t < 0.66) {
+        dirtColor = mix(dirtMid, dirtDark, (t - 0.33) / 0.33);
+      } else {
+        dirtColor = dirtDark * (1.0 - (t - 0.66) * 0.3);
+      }
 
-      // Subtle stone pattern - less busy
-      let gridX = fract(uv.x * 2.0);
-      let gridY = fract(uv.y * 2.0);
-      let isMortar = gridX < 0.08 || gridX > 0.92 || gridY < 0.08 || gridY > 0.92;
-      if (isMortar) { dirtColor *= 0.92; }
+      // Strong variation for contrast
+      let shift = (noise2 - 0.5) * 0.2;
+      dirtColor = dirtColor * (1.0 + shift);
 
       albedo = dirtColor * topWarmTint;
     } else if (blockType == 1) {
@@ -499,16 +503,26 @@ fn main(input: BlockInput) -> @location(0) vec4f {
         barkColor = mix(barkDark, barkDeep, (t - 0.66) / 0.34);
       }
 
-      // Subtle variation
-      let shift = (noise2 - 0.5) * 0.08;
+      // Strong variation for contrast
+      let shift = (noise2 - 0.5) * 0.2;
       barkColor = barkColor * (1.0 + shift);
 
       albedo = barkColor * topWarmTint;
     } else {
-      // GRASS TOP (QR dark) - green
+      // GRASS TOP (QR dark) - high contrast green
       var grassColor = grassMid;
-      if (noise1 < 0.3) { grassColor = grassBright; }
-      else if (noise1 > 0.75) { grassColor = grassDark; }
+      let t = noise1;
+      if (t < 0.33) {
+        grassColor = mix(grassBright, grassMid, t / 0.33);
+      } else if (t < 0.66) {
+        grassColor = mix(grassMid, grassDark, (t - 0.33) / 0.33);
+      } else {
+        grassColor = grassDark * (1.0 - (t - 0.66) * 0.2);
+      }
+
+      // Strong variation for contrast
+      let shift = (noise2 - 0.5) * 0.2;
+      grassColor = grassColor * (1.0 + shift);
 
       albedo = grassColor * topWarmTint;
     }
@@ -520,9 +534,18 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     let tint = select(vec3f(0.90, 0.92, 0.98), vec3f(0.98, 0.98, 0.98), isFront);
 
     if (blockType == 0) {
-      // DIRT SIDE
+      // DIRT SIDE - high contrast
       var dirtColor = dirtMid;
-      if (noise1 > 0.6) { dirtColor = dirtDark; }
+      let t = noise1;
+      if (t < 0.33) {
+        dirtColor = mix(dirtLight, dirtMid, t / 0.33);
+      } else if (t < 0.66) {
+        dirtColor = mix(dirtMid, dirtDark, (t - 0.33) / 0.33);
+      } else {
+        dirtColor = dirtDark * (1.0 - (t - 0.66) * 0.3);
+      }
+      let shift = (noise2 - 0.5) * 0.2;
+      dirtColor = dirtColor * (1.0 + shift);
       albedo = dirtColor * shade * tint;
     } else if (blockType == 1) {
       // CHERRY BLOSSOM SIDE - coherent pink tones
@@ -543,7 +566,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = cherryColor * shade * tint;
     } else if (blockType == 2) {
-      // TRUNK SIDE - coherent brown tones
+      // TRUNK SIDE - high contrast brown
       var barkColor = barkMid;
       let t = noise1;
 
@@ -555,24 +578,26 @@ fn main(input: BlockInput) -> @location(0) vec4f {
         barkColor = mix(barkDark, barkDeep, (t - 0.66) / 0.34);
       }
 
-      // Subtle variation
-      let shift = (noise2 - 0.5) * 0.08;
+      // Strong variation for contrast
+      let shift = (noise2 - 0.5) * 0.2;
       barkColor = barkColor * (1.0 + shift);
 
       albedo = barkColor * shade * tint;
     } else {
-      // GRASS SIDE - dirt below grass line
-      let grassLine = 0.7;
-      if (uv.y > grassLine) {
-        var grassColor = grassMid;
-        if (noise1 < 0.35) { grassColor = grassBright; }
-        else if (noise1 > 0.7) { grassColor = grassDark; }
-        albedo = grassColor * shade * tint;
+      // GRASS SIDE - high contrast
+      var grassColor = grassMid;
+      let t = noise1;
+      if (t < 0.33) {
+        grassColor = mix(grassBright, grassMid, t / 0.33);
+      } else if (t < 0.66) {
+        grassColor = mix(grassMid, grassDark, (t - 0.33) / 0.33);
       } else {
-        var dirtColor = dirtMid * 0.7;
-        if (noise1 > 0.6) { dirtColor = dirtDark * 0.7; }
-        albedo = dirtColor * shade * tint;
+        grassColor = grassDark * (1.0 - (t - 0.66) * 0.2);
       }
+      let shift = (noise2 - 0.5) * 0.2;
+      grassColor = grassColor * (1.0 + shift);
+
+      albedo = grassColor * shade * tint;
     }
   } else {
     // BOTTOM FACE
