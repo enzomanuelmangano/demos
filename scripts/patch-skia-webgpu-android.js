@@ -1,12 +1,15 @@
 #!/usr/bin/env node
 /**
- * Patches react-native-skia to avoid conflict with react-native-wgpu.
+ * Android-only patch for react-native-skia to avoid conflict with react-native-wgpu.
  * Both libraries register a native component called "WebGPUView",
- * causing duplicate symbol errors.
+ * causing duplicate symbol errors on Android.
  *
  * This script:
  * 1. Stubs out the TypeScript spec (prevents codegen conflicts)
- * 2. Removes WebGPUViewManager from RNSkiaPackage (prevents Java compilation errors)
+ * 2. Removes WebGPUViewManager from RNSkiaPackage.java
+ * 3. Stubs WebGPUViewManager.java to compile without codegen dependencies
+ *
+ * Note: iOS is handled separately by the Expo plugin (plugins/with-skia-webgpu-fix.js)
  */
 
 const fs = require('fs');
@@ -150,7 +153,7 @@ public class WebGPUViewManager extends ReactViewManager {
 }
 
 // Main
-console.log('Patching react-native-skia for react-native-wgpu compatibility...');
+console.log('Patching react-native-skia for react-native-wgpu compatibility (Android)...');
 
 try {
   if (!fs.existsSync(SKIA_PATH)) {
