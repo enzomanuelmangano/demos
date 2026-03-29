@@ -1050,15 +1050,15 @@ fn main(
 
   let baseY = 0.0;
 
-  if (blockIdx < 16u) {
-    // Outer stone rim - 4x4 square edge
+  if (blockIdx < 12u) {
+    // Outer stone rim - 4x4 square edge (12 blocks, not 16)
     let idx = blockIdx;
     var ox = 0.0;
     var oz = 0.0;
-    if (idx < 4u) { ox = f32(idx) - 1.5; oz = -1.5; }
-    else if (idx < 8u) { ox = f32(idx - 4u) - 1.5; oz = 1.5; }
-    else if (idx < 12u) { ox = -1.5; oz = f32(idx - 8u) - 0.5; }
-    else { ox = 1.5; oz = f32(idx - 12u) - 0.5; }
+    if (idx < 4u) { ox = f32(idx) - 1.5; oz = -1.5; }        // Top row: 4 blocks
+    else if (idx < 8u) { ox = f32(idx - 4u) - 1.5; oz = 1.5; } // Bottom row: 4 blocks
+    else if (idx < 10u) { ox = -1.5; oz = f32(idx - 8u) - 0.5; }  // Left col: 2 blocks
+    else { ox = 1.5; oz = f32(idx - 10u) - 0.5; }               // Right col: 2 blocks
     blockX = baseX + ox * cubeSize;
     blockZ = baseZ + oz * cubeSize;
     blockY = baseY;
