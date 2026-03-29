@@ -1,5 +1,11 @@
+import {
+  PixelRatio,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+
 import React, { useCallback, useEffect, useRef } from 'react';
-import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
@@ -31,16 +37,32 @@ function seededRandom(seed: number) {
 
 // Generate the voxel world
 function generateVoxels(): number[] {
-  const voxels: number[] = new Array(WORLD_SIZE * WORLD_SIZE * WORLD_HEIGHT).fill(EMPTY);
+  const voxels: number[] = new Array(
+    WORLD_SIZE * WORLD_SIZE * WORLD_HEIGHT,
+  ).fill(EMPTY);
 
   const setVoxel = (x: number, y: number, z: number, type: number) => {
-    if (x >= 0 && x < WORLD_SIZE && y >= 0 && y < WORLD_HEIGHT && z >= 0 && z < WORLD_SIZE) {
+    if (
+      x >= 0 &&
+      x < WORLD_SIZE &&
+      y >= 0 &&
+      y < WORLD_HEIGHT &&
+      z >= 0 &&
+      z < WORLD_SIZE
+    ) {
       voxels[x + z * WORLD_SIZE + y * WORLD_SIZE * WORLD_SIZE] = type;
     }
   };
 
   const getVoxel = (x: number, y: number, z: number): number => {
-    if (x >= 0 && x < WORLD_SIZE && y >= 0 && y < WORLD_HEIGHT && z >= 0 && z < WORLD_SIZE) {
+    if (
+      x >= 0 &&
+      x < WORLD_SIZE &&
+      y >= 0 &&
+      y < WORLD_HEIGHT &&
+      z >= 0 &&
+      z < WORLD_SIZE
+    ) {
       return voxels[x + z * WORLD_SIZE + y * WORLD_SIZE * WORLD_SIZE];
     }
     return EMPTY;
@@ -59,20 +81,30 @@ function generateVoxels(): number[] {
       const seed = x * 100 + z;
 
       // Island radius with noise
-      const noise = seededRandom(seed) * 1.5 + Math.sin(x * 0.35) * Math.cos(z * 0.35) * 1.0;
+      const noise =
+        seededRandom(seed) * 1.5 +
+        Math.sin(x * 0.35) * Math.cos(z * 0.35) * 1.0;
       const maxRadius = 11 + noise;
 
       if (dist < maxRadius) {
         // Terrain height with variation for terraces
-        const heightNoise = seededRandom(seed + 1000) * 2 + Math.sin(x * 0.3) * Math.cos(z * 0.5) * 1.5;
+        const heightNoise =
+          seededRandom(seed + 1000) * 2 +
+          Math.sin(x * 0.3) * Math.cos(z * 0.5) * 1.5;
         const terrainHeight = baseY + Math.floor(heightNoise);
 
         // Stone stalactites hanging below
-        const stalactiteLength = Math.floor(4 + seededRandom(seed + 2000) * 4 + (maxRadius - dist) * 0.4);
+        const stalactiteLength = Math.floor(
+          4 + seededRandom(seed + 2000) * 4 + (maxRadius - dist) * 0.4,
+        );
         for (let y = baseY - stalactiteLength; y < baseY - 2; y++) {
           if (y >= 0 && dist < maxRadius - (baseY - y) * 0.6) {
-            const stoneType = y < baseY - stalactiteLength + 2 ? STONE_LIGHT :
-                             y < baseY - stalactiteLength + 4 ? STONE_MID : STONE_DARK;
+            const stoneType =
+              y < baseY - stalactiteLength + 2
+                ? STONE_LIGHT
+                : y < baseY - stalactiteLength + 4
+                  ? STONE_MID
+                  : STONE_DARK;
             setVoxel(x, y, z, stoneType);
           }
         }
@@ -117,9 +149,16 @@ function generateVoxels(): number[] {
       for (let y = baseY; y < baseY + 6; y++) {
         const below = getVoxel(x, y, z);
         const above = getVoxel(x, y + 1, z);
-        if ((below === GRASS_LIGHT || below === GRASS_DARK || below === GRASS_MID || below === GRASS_YELLOW) && above === EMPTY) {
+        if (
+          (below === GRASS_LIGHT ||
+            below === GRASS_DARK ||
+            below === GRASS_MID ||
+            below === GRASS_YELLOW) &&
+          above === EMPTY
+        ) {
           if (seededRandom(seed + y) < 0.08) {
-            const flowerType = seededRandom(seed + y + 100) < 0.5 ? FLOWER_PINK : FLOWER_YELLOW;
+            const flowerType =
+              seededRandom(seed + y + 100) < 0.5 ? FLOWER_PINK : FLOWER_YELLOW;
             setVoxel(x, y + 1, z, flowerType);
           }
         }
@@ -167,8 +206,9 @@ function generateVoxels(): number[] {
         const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
         const seed = x * 1000 + y * 100 + z;
-        const noise = seededRandom(seed) * 2.0 +
-                     Math.sin(x * 0.8) * Math.cos(z * 0.8) * 1.5;
+        const noise =
+          seededRandom(seed) * 2.0 +
+          Math.sin(x * 0.8) * Math.cos(z * 0.8) * 1.5;
 
         // Sparse foliage - skip some cubes for organic look
         const skipChance = seededRandom(seed + 500);
@@ -442,13 +482,29 @@ export const IsometricTree = () => {
       size: numVoxels * 16, // vec4f per voxel
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    device.queue.writeBuffer(voxelPosBuffer, 0, new Float32Array(voxelPositions));
+    device.queue.writeBuffer(
+      voxelPosBuffer,
+      0,
+      new Float32Array(voxelPositions),
+    );
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
-        { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
       ],
     });
 
@@ -462,7 +518,9 @@ export const IsometricTree = () => {
     });
 
     const pipeline = device.createRenderPipeline({
-      layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout],
+      }),
       vertex: {
         module: device.createShaderModule({ code: vertexShader }),
         entryPoint: 'main',

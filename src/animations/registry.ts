@@ -78,7 +78,6 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
-import { GitHubTerrain } from './github-terrain';
 import { IsometricQRCode } from './isometric-qrcode';
 import { IsometricStarryNight } from './isometric-starry-night';
 import { IsometricTree } from './isometric-tree';

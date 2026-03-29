@@ -1,5 +1,11 @@
+import {
+  PixelRatio,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+
 import React, { useCallback, useEffect, useRef } from 'react';
-import { PixelRatio, StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
@@ -10,21 +16,21 @@ const GRID_ROWS = 24;
 // Color palette for Starry Night
 const COLORS = {
   // Sky blues
-  SKY_DARK: { r: 0.15, g: 0.20, b: 0.45 },
-  SKY_MID: { r: 0.25, g: 0.35, b: 0.60 },
-  SKY_LIGHT: { r: 0.40, g: 0.50, b: 0.75 },
-  SKY_SWIRL: { r: 0.35, g: 0.45, b: 0.70 },
+  SKY_DARK: { r: 0.15, g: 0.2, b: 0.45 },
+  SKY_MID: { r: 0.25, g: 0.35, b: 0.6 },
+  SKY_LIGHT: { r: 0.4, g: 0.5, b: 0.75 },
+  SKY_SWIRL: { r: 0.35, g: 0.45, b: 0.7 },
   // Stars/Moon yellows
-  STAR_BRIGHT: { r: 0.98, g: 0.95, b: 0.70 },
-  STAR_GLOW: { r: 0.90, g: 0.85, b: 0.55 },
+  STAR_BRIGHT: { r: 0.98, g: 0.95, b: 0.7 },
+  STAR_GLOW: { r: 0.9, g: 0.85, b: 0.55 },
   MOON_YELLOW: { r: 0.95, g: 0.88, b: 0.45 },
   // Cypress tree
-  CYPRESS_DARK: { r: 0.08, g: 0.12, b: 0.10 },
+  CYPRESS_DARK: { r: 0.08, g: 0.12, b: 0.1 },
   CYPRESS_MID: { r: 0.12, g: 0.18, b: 0.15 },
   // Village/ground
-  VILLAGE_DARK: { r: 0.10, g: 0.12, b: 0.18 },
-  HILLS_DARK: { r: 0.15, g: 0.18, b: 0.30 },
-  HILLS_MID: { r: 0.20, g: 0.25, b: 0.40 },
+  VILLAGE_DARK: { r: 0.1, g: 0.12, b: 0.18 },
+  HILLS_DARK: { r: 0.15, g: 0.18, b: 0.3 },
+  HILLS_MID: { r: 0.2, g: 0.25, b: 0.4 },
 };
 
 type ColorKey = keyof typeof COLORS;
@@ -59,7 +65,7 @@ function generateStarryNight(): Array<{ color: ColorKey; height: number }[]> {
         const moonCenterX = 28;
         const moonCenterY = 3;
         const dist = Math.sqrt(
-          Math.pow(col - moonCenterX, 2) + Math.pow(row - moonCenterY, 2)
+          Math.pow(col - moonCenterX, 2) + Math.pow(row - moonCenterY, 2),
         );
         if (dist < 2.5) {
           color = dist < 1.5 ? 'STAR_BRIGHT' : 'MOON_YELLOW';
@@ -410,10 +416,26 @@ export const IsometricStarryNight = () => {
 
     const bindGroupLayout = device.createBindGroupLayout({
       entries: [
-        { binding: 0, visibility: GPUShaderStage.VERTEX, buffer: { type: 'uniform' } },
-        { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-        { binding: 2, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-        { binding: 3, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 2,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+        {
+          binding: 3,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
       ],
     });
 
@@ -428,7 +450,9 @@ export const IsometricStarryNight = () => {
     });
 
     const pipeline = device.createRenderPipeline({
-      layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [bindGroupLayout],
+      }),
       vertex: {
         module: device.createShaderModule({ code: vertexShader }),
         entryPoint: 'main',

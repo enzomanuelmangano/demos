@@ -323,7 +323,7 @@ function packQRMatrix(qrMatrix: boolean[][]): Uint32Array {
       const u32Index = Math.floor(cellIndex / 32) + 1; // +1 because index 0 is gridSize
       const bitIndex = cellIndex % 32;
       if (qrMatrix[row][col]) {
-        packed[u32Index] |= (1 << bitIndex);
+        packed[u32Index] |= 1 << bitIndex;
       }
     }
   }

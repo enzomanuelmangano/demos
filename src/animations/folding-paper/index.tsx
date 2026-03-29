@@ -1,4 +1,3 @@
-import React, { useCallback, useEffect, useRef } from 'react';
 import {
   PixelRatio,
   Pressable,
@@ -8,7 +7,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { Canvas, CanvasRef } from 'react-native-wgpu';
+import React, { useCallback, useEffect, useRef } from 'react';
+
 import Animated, {
   useSharedValue,
   useAnimatedScrollHandler,
@@ -17,6 +17,7 @@ import Animated, {
   useDerivedValue,
   Easing,
 } from 'react-native-reanimated';
+import { Canvas, CanvasRef } from 'react-native-wgpu';
 
 const GRID_SIZE = 80;
 const STEP_LABELS = ['Flat', 'Fold'];
