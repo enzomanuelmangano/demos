@@ -558,26 +558,19 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = grassColor * topWarmTint;
     } else {
-      // FALLEN PETALS (type 4) - mostly brown with some green, covered by canopy in 2D
-      let fallenBrown = vec3f(0.48, 0.38, 0.28);
-      let fallenDarkBrown = vec3f(0.42, 0.32, 0.22);
-      let fallenOlive = vec3f(0.40, 0.42, 0.28);
-      let fallenTan = vec3f(0.52, 0.42, 0.32);
+      // FALLEN PETALS (type 4) - random brown OR green, covered by canopy in 2D
+      let brownLight = vec3f(0.52, 0.42, 0.30);
+      let brownDark = vec3f(0.42, 0.32, 0.22);
+      let greenLight = vec3f(0.38, 0.48, 0.28);
+      let greenDark = vec3f(0.32, 0.42, 0.24);
 
-      var fallenColor = fallenBrown;
-      let t = noise1;
-      if (t < 0.35) {
-        // Brown range - 35%
-        fallenColor = mix(fallenBrown, fallenDarkBrown, t / 0.35);
-      } else if (t < 0.65) {
-        // Tan range - 30%
-        fallenColor = mix(fallenDarkBrown, fallenTan, (t - 0.35) / 0.30);
-      } else if (t < 0.85) {
-        // Olive range - 20%
-        fallenColor = mix(fallenTan, fallenOlive, (t - 0.65) / 0.20);
+      var fallenColor = brownLight;
+      if (noise1 < 0.5) {
+        // Brown block
+        fallenColor = mix(brownLight, brownDark, noise2);
       } else {
-        // Back to brown - 15%
-        fallenColor = mix(fallenOlive, fallenBrown, (t - 0.85) / 0.15);
+        // Green block
+        fallenColor = mix(greenLight, greenDark, noise2);
       }
 
       let shift = (noise2 - 0.5) * 0.15;
@@ -684,11 +677,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = grassColor * shade * tint;
     } else {
-      // FALLEN PETALS SIDE (type 4) - mostly brown
+      // FALLEN PETALS SIDE (type 4) - brown/green mix
       let fallenBrown = vec3f(0.45, 0.35, 0.26);
-      let fallenOlive = vec3f(0.38, 0.40, 0.26);
+      let fallenGreen = vec3f(0.35, 0.42, 0.24);
 
-      var fallenColor = mix(fallenBrown, fallenOlive, noise1 * 0.4);
+      var fallenColor = mix(fallenBrown, fallenGreen, noise1 * 0.6);
       let shift = (noise2 - 0.5) * 0.15;
       fallenColor = fallenColor * (1.0 + shift);
 
