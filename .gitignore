@@ -9,6 +9,9 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
+.agents/
+.claude/skills
+skills-lock.json
 
 # macOS
 .DS_Store

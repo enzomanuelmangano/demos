@@ -106,6 +106,9 @@ const FINDER_EDGE_MODULE_HEIGHT = 0.14;
 /** Inner 5×5 of the finder — shorter than the ring. */
 const FINDER_INNER_MODULE_HEIGHT = 0.095;
 
+/** Which finder pattern becomes the fountain (NOT 'tr' - that's the tallest) */
+const FOUNTAIN_FINDER: 'tl' | 'bl' = Math.random() > 0.5 ? 'tl' : 'bl';
+
 type FinderKind = 'tl' | 'tr' | 'bl';
 
 function finderPlacement(
@@ -148,6 +151,18 @@ function finderModuleHeight(
   return isFinderOuterRing(p.lx, p.ly)
     ? FINDER_EDGE_MODULE_HEIGHT
     : FINDER_INNER_MODULE_HEIGHT;
+}
+
+/** Get the center position of the fountain in grid coordinates */
+function getFountainCenter(gridSize: number): { col: number; row: number } {
+  const f = FINDER_PATTERN_SIZE;
+  const center = Math.floor(f / 2);
+  if (FOUNTAIN_FINDER === 'tl') {
+    return { col: center, row: center };
+  } else {
+    // 'bl'
+    return { col: center, row: gridSize - f + center };
+  }
 }
 
 /**
@@ -277,38 +292,6 @@ function generateBlockData(qrMatrix: boolean[][]): {
   };
 }
 
-// Generate streetlight positions only on empty cells (streets)
-const STREETLIGHT_SPACING = 4; // Every 4 cells
-const MAX_STREETLIGHTS = 150;
-
-function generateStreetlightPositions(qrMatrix: boolean[][]): {
-  positions: Float32Array;
-  count: number;
-} {
-  const gridSize = qrMatrix.length;
-  const positions: number[] = [];
-
-  for (let row = 0; row < gridSize; row += STREETLIGHT_SPACING) {
-    for (let col = 0; col < gridSize; col += STREETLIGHT_SPACING) {
-      // Only place light if this cell is empty (not a building)
-      if (!qrMatrix[row][col]) {
-        positions.push(col, row);
-      }
-    }
-  }
-
-  // Pad to MAX_STREETLIGHTS
-  const result = new Float32Array(MAX_STREETLIGHTS * 2);
-  for (let i = 0; i < Math.min(positions.length, MAX_STREETLIGHTS * 2); i++) {
-    result[i] = positions[i];
-  }
-
-  return {
-    positions: result,
-    count: Math.min(positions.length / 2, MAX_STREETLIGHTS),
-  };
-}
-
 // Pack QR matrix into u32 array for shader (1 bit per cell)
 function packQRMatrix(qrMatrix: boolean[][]): Uint32Array {
   const gridSize = qrMatrix.length;
@@ -331,14 +314,13 @@ function packQRMatrix(qrMatrix: boolean[][]): Uint32Array {
 }
 
 // Generate pedestrian spawn positions on empty cells
-const MAX_PEDESTRIANS = 10;
+const MAX_PEDESTRIANS = 1;
 
 function generatePedestrianPositions(qrMatrix: boolean[][]): {
   positions: Float32Array;
   count: number;
 } {
   const gridSize = qrMatrix.length;
-  const positions: number[] = [];
 
   // Helper to check if cell is empty (not a wall)
   const isEmpty = (c: number, r: number): boolean => {
@@ -356,38 +338,32 @@ function generatePedestrianPositions(qrMatrix: boolean[][]): {
     return count;
   };
 
-  // Find all empty cells with at least 2 adjacent empty neighbors
-  // This avoids isolated single-cell spaces where pedestrians get stuck
-  const emptyCells: [number, number][] = [];
+  // Find the best spot: the cell with the most adjacent empty neighbors
+  let bestCol = -1;
+  let bestRow = -1;
+  let maxAdjacent = 0;
+
   for (let row = 1; row < gridSize - 1; row++) {
     for (let col = 1; col < gridSize - 1; col++) {
-      if (isEmpty(col, row) && countAdjacentEmpty(col, row) >= 2) {
-        emptyCells.push([col, row]);
+      if (isEmpty(col, row)) {
+        const adjacent = countAdjacentEmpty(col, row);
+        if (adjacent > maxAdjacent) {
+          maxAdjacent = adjacent;
+          bestCol = col;
+          bestRow = row;
+        }
       }
     }
   }
 
-  // Randomly select cells for pedestrians
-  const numPedestrians = Math.min(
-    MAX_PEDESTRIANS,
-    Math.floor(emptyCells.length / 4),
-  );
-  const shuffled = emptyCells.sort(() => Math.random() - 0.5);
-
-  for (let i = 0; i < numPedestrians; i++) {
-    const [col, row] = shuffled[i];
-    positions.push(col, row);
-  }
-
   const result = new Float32Array(MAX_PEDESTRIANS * 2);
-  for (let i = 0; i < positions.length; i++) {
-    result[i] = positions[i];
+  if (bestCol >= 0 && bestRow >= 0) {
+    result[0] = bestCol;
+    result[1] = bestRow;
+    return { positions: result, count: 1 };
   }
 
-  return {
-    positions: result,
-    count: numPedestrians,
-  };
+  return { positions: result, count: 0 };
 }
 
 const ISO_ANGLE_Y = 0.78;
@@ -774,234 +750,6 @@ fn main(input: SkyIn) -> @location(0) vec4f {
 }
 `;
 
-// Streetlights shader using realistic glow techniques
-// Based on: https://inspirnathan.com/posts/65-glow-shader-in-shadertoy/
-// and LearnOpenGL light attenuation: https://learnopengl.com/Lighting/Light-casters
-// Each streetlight = 24 vertices (pole: 6, lamp housing: 6, bulb: 6, glow: 6)
-const VERTS_PER_STREETLIGHT = 24;
-
-const streetlightVertexShader = /* wgsl */ `
-struct Uniforms {
-  aspectRatio: f32,
-  time: f32,
-  blockCount: f32,
-  progress: f32,
-  gridSize: f32,
-  _pad1: f32,
-  _pad2: f32,
-  _pad3: f32,
-}
-
-struct LightOut {
-  @builtin(position) position: vec4f,
-  @location(0) partType: f32,
-  @location(1) localUv: vec2f,
-  @location(2) intensity: f32,
-  @location(3) seed: f32,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-@group(0) @binding(1) var<storage, read> lightPositions: array<vec2f>;
-
-fn hash(p: f32) -> f32 {
-  return fract(sin(p * 127.1) * 43758.5453);
-}
-
-@vertex
-fn main(
-  @builtin(vertex_index) vertexIndex: u32,
-  @builtin(instance_index) instanceIndex: u32,
-) -> LightOut {
-  var output: LightOut;
-  let progress = uniforms.progress;
-  let time = uniforms.time;
-  let gridSize = uniforms.gridSize;
-
-  let partIndex = vertexIndex / 6u;
-  let localVertex = vertexIndex % 6u;
-
-  let quadVerts = array<vec2f, 6>(
-    vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0),
-    vec2f(0.0, 1.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0)
-  );
-  let qv = quadVerts[localVertex];
-
-  let cellPos = lightPositions[instanceIndex];
-  let cellX = cellPos.x;
-  let cellZ = cellPos.y;
-
-  let blockSize = 0.0245;
-  let halfGrid = gridSize * blockSize * 0.5;
-
-  let seed = f32(instanceIndex);
-  let cornerOffset = hash(seed * 1.7) * 0.4 - 0.2;
-  let baseX = cellX * blockSize - halfGrid + blockSize * (0.5 + cornerOffset);
-  let baseZ = cellZ * blockSize - halfGrid + blockSize * 0.5;
-
-  // Lamp post dimensions - taller and more visible
-  let poleWidth = 0.0012;
-  let poleHeight = 0.045 + hash(seed * 2.1) * 0.015;
-  let housingWidth = 0.006;
-  let housingHeight = 0.003;
-  let bulbSize = 0.003;
-  let glowSize = 0.06; // Larger glow area
-
-  var localPos: vec3f;
-  var partType: f32 = 0.0;
-
-  if (partIndex == 0u) {
-    // Pole
-    partType = 0.0;
-    let x = (qv.x - 0.5) * poleWidth;
-    let y = qv.y * poleHeight;
-    localPos = vec3f(baseX + x, y, baseZ);
-  } else if (partIndex == 1u) {
-    // Lamp housing (darker top part)
-    partType = 1.0;
-    let x = (qv.x - 0.5) * housingWidth;
-    let y = poleHeight + housingHeight * 0.5 + qv.y * housingHeight;
-    localPos = vec3f(baseX + x, y, baseZ);
-  } else if (partIndex == 2u) {
-    // Light bulb (bright emissive)
-    partType = 2.0;
-    let x = (qv.x - 0.5) * bulbSize;
-    let y = poleHeight + qv.y * housingHeight * 0.5;
-    localPos = vec3f(baseX + x, y, baseZ);
-  } else {
-    // Glow billboard
-    partType = 3.0;
-    localPos = vec3f(baseX, poleHeight + housingHeight * 0.3, baseZ);
-  }
-
-  // Isometric transform
-  let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
-  let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
-
-  let cy = cos(isoAngleY);
-  let sy = sin(isoAngleY);
-  let cx = cos(isoAngleX);
-  let sx = sin(isoAngleX);
-
-  let ry_x = localPos.x * cy - localPos.z * sy;
-  let ry_z = localPos.x * sy + localPos.z * cy;
-  let rx_y = localPos.y * cx - ry_z * sx;
-  let rx_z = localPos.y * sx + ry_z * cx;
-
-  let scale = mix(1.0, 1.35, progress);
-
-  var screenX = ry_x * scale / uniforms.aspectRatio;
-  var screenY = rx_y * scale;
-
-  if (partIndex == 3u) {
-    let glowOffset = (qv - 0.5) * 2.0 * glowSize;
-    screenX += glowOffset.x;
-    screenY += glowOffset.y;
-  }
-
-  output.position = vec4f(screenX, screenY, rx_z * 0.01 + 0.5, 1.0);
-  output.partType = partType;
-  output.localUv = qv * 2.0 - 1.0;
-  output.seed = seed;
-
-  // Subtle flicker using multiple frequencies for realism
-  let f1 = sin(time * 15.0 + seed * 10.0) * 0.02;
-  let f2 = sin(time * 3.7 + seed * 5.0) * 0.03;
-  let flicker = 0.95 + f1 + f2;
-  output.intensity = flicker * (1.0 - progress * 0.95);
-
-  return output;
-}
-`;
-
-const streetlightFragmentShader = /* wgsl */ `
-struct Uniforms {
-  aspectRatio: f32,
-  time: f32,
-  blockCount: f32,
-  progress: f32,
-  gridSize: f32,
-  _pad1: f32,
-  _pad2: f32,
-  _pad3: f32,
-}
-
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-
-struct LightIn {
-  @location(0) partType: f32,
-  @location(1) localUv: vec2f,
-  @location(2) intensity: f32,
-  @location(3) seed: f32,
-}
-
-@fragment
-fn main(input: LightIn) -> @location(0) vec4f {
-  let uv = input.localUv;
-  let time = uniforms.time;
-
-  if (input.partType < 0.5) {
-    // Pole - dark iron/metal with subtle variation
-    let metalBase = vec3f(0.12, 0.11, 0.13);
-    let highlight = 0.02 * smoothstep(0.3, 0.0, abs(uv.x));
-    let poleColor = metalBase + highlight;
-    return vec4f(poleColor, 1.0);
-
-  } else if (input.partType < 1.5) {
-    // Lamp housing - darker metal cap
-    let housingColor = vec3f(0.08, 0.08, 0.09);
-    return vec4f(housingColor, 1.0);
-
-  } else if (input.partType < 2.5) {
-    // Light bulb - bright warm emissive with hot center
-    let dist = length(uv);
-    let core = smoothstep(0.8, 0.0, dist);
-
-    // Warm color temperature (like sodium lamp ~2200K)
-    let warmWhite = vec3f(1.0, 0.85, 0.55);
-    let hotCore = vec3f(1.0, 0.95, 0.85);
-    let bulbColor = mix(warmWhite, hotCore, core) * input.intensity * 1.2;
-
-    return vec4f(bulbColor, 1.0);
-
-  } else {
-    // Realistic glow using inverse distance falloff
-    // Based on: glow = intensity / distance (clamped)
-    let dist = length(uv);
-
-    // Prevent division by zero and clamp for stability
-    let safeDist = max(dist, 0.01);
-
-    // Multi-layer glow for realism (from LearnOpenGL bloom techniques)
-    // Layer 1: Sharp inner glow
-    let innerGlow = 0.015 / safeDist;
-    // Layer 2: Medium spread
-    let midGlow = 0.008 / (safeDist * safeDist + 0.1);
-    // Layer 3: Soft outer bloom
-    let outerBloom = exp(-dist * 3.0) * 0.4;
-
-    // Light attenuation (from LearnOpenGL light casters)
-    // attenuation = 1.0 / (constant + linear * d + quadratic * d²)
-    let attenuation = 1.0 / (1.0 + 2.0 * dist + 1.5 * dist * dist);
-
-    let totalGlow = (innerGlow + midGlow + outerBloom) * attenuation * input.intensity;
-    let brightness = clamp(totalGlow, 0.0, 1.0);
-
-    // Warm sodium lamp color with slight orange tint
-    let warmColor = vec3f(1.0, 0.75, 0.35);
-    let finalColor = warmColor * brightness;
-
-    // Premultiplied alpha for proper blending
-    let alpha = brightness * 0.7;
-
-    if (alpha < 0.005) {
-      discard;
-    }
-
-    return vec4f(finalColor * alpha, alpha);
-  }
-}
-`;
-
 // Minecraft Steve - exact proportions from wiki: Head 8x8x8, Torso 8x12x4, Limbs 4x12x4
 // Total height = 32 pixels (8 head + 12 torso + 12 legs)
 // 6 body parts × 3 visible faces × 6 vertices = 108 vertices per character
@@ -1021,8 +769,10 @@ struct Uniforms {
 
 struct PedOut {
   @builtin(position) position: vec4f,
-  @location(0) color: vec3f,
-  @location(1) faceType: f32,
+  @location(0) uv: vec2f,
+  @location(1) partType: f32,
+  @location(2) faceType: f32,
+  @location(3) pixelSize: vec2f,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -1137,11 +887,10 @@ fn main(
   // ============================================
   // MINECRAFT STEVE EXACT PROPORTIONS
   // Total: 32px tall (8 head + 12 torso + 12 legs)
-  // Made BIGGER - unit increased significantly
   // ============================================
-  let unit = 0.0038; // Larger scale for visibility
+  let unit = 0.0038;
 
-  // Head: 8×8×8 (perfect cube - the iconic Minecraft look)
+  // Head: 8×8×8 (perfect cube)
   let headW = 8.0 * unit;
   let headH = 8.0 * unit;
   let headD = 8.0 * unit;
@@ -1161,71 +910,82 @@ fn main(
   let legH = 12.0 * unit;
   let legD = 4.0 * unit;
 
-  // Walking animation
-  let walkSpeed = 5.0;
+  // Walking animation - subtle to avoid body part clipping
+  let walkSpeed = 4.0;
   let walkPhase = frac * 6.28318 * walkSpeed;
-  let legSwingAngle = sin(walkPhase) * 0.4;
-  let armSwingAngle = sin(walkPhase) * 0.35;
-  let bodyBob = abs(sin(walkPhase)) * 0.002;
+  let legSwingAngle = sin(walkPhase) * 0.25;
+  let armSwingAngle = sin(walkPhase) * 0.2;
+  let bodyBob = abs(sin(walkPhase)) * 0.001;
 
-  // Calculate swing offsets
-  let legSwingZ = sin(legSwingAngle) * legH * 0.4;
-  let armSwingZ = sin(armSwingAngle) * armH * 0.35;
+  // Calculate swing offsets (reduced to prevent clipping)
+  let legSwingZ = sin(legSwingAngle) * legH * 0.25;
+  let armSwingZ = sin(armSwingAngle) * armH * 0.2;
 
   // Part dimensions and positions
   var partW = 0.0; var partH = 0.0; var partD = 0.0;
   var partX = 0.0; var partY = 0.0; var partZ = 0.0;
-  var partType = 0u; // 0=head, 1=torso, 2=arm, 3=leg
+  var partType = 0u; // 0=head, 1=torso, 2=leftArm, 3=rightArm, 4=leftLeg, 5=rightLeg
+  var pixelW = 8.0; var pixelH = 8.0; // Texture pixel dimensions for UV mapping
 
   if (partIndex == 0u) {
-    // HEAD - centered on top
+    // HEAD
     partW = headW; partH = headH; partD = headD;
     partX = 0.0;
     partY = groundY + legH + torsoH + bodyBob;
     partZ = 0.0;
     partType = 0u;
+    pixelW = 8.0; pixelH = 8.0;
   } else if (partIndex == 1u) {
-    // TORSO - centered
+    // TORSO
     partW = torsoW; partH = torsoH; partD = torsoD;
     partX = 0.0;
     partY = groundY + legH + bodyBob;
     partZ = 0.0;
     partType = 1u;
+    pixelW = 8.0; pixelH = 12.0;
   } else if (partIndex == 2u) {
-    // LEFT ARM - attached at shoulder height
+    // LEFT ARM
     partW = armW; partH = armH; partD = armD;
     partX = -(torsoW * 0.5 + armW * 0.5);
     partY = groundY + legH + bodyBob;
     partZ = -armSwingZ;
     partType = 2u;
+    pixelW = 4.0; pixelH = 12.0;
   } else if (partIndex == 3u) {
-    // RIGHT ARM - attached at shoulder height
+    // RIGHT ARM
     partW = armW; partH = armH; partD = armD;
     partX = (torsoW * 0.5 + armW * 0.5);
     partY = groundY + legH + bodyBob;
     partZ = armSwingZ;
-    partType = 2u;
+    partType = 3u;
+    pixelW = 4.0; pixelH = 12.0;
   } else if (partIndex == 4u) {
     // LEFT LEG
     partW = legW; partH = legH; partD = legD;
     partX = -legW * 0.5;
     partY = groundY;
     partZ = legSwingZ;
-    partType = 3u;
+    partType = 4u;
+    pixelW = 4.0; pixelH = 12.0;
   } else {
     // RIGHT LEG
     partW = legW; partH = legH; partD = legD;
     partX = legW * 0.5;
     partY = groundY;
     partZ = -legSwingZ;
-    partType = 3u;
+    partType = 5u;
+    pixelW = 4.0; pixelH = 12.0;
   }
 
   // Build 3D box - 3 visible faces for isometric view
+  // Matching building shader: FRONT at +Z, RIGHT at +X, TOP at +Y
   var localPos = vec3f(0.0);
   var faceType = 0.0; // 0=top, 1=front, 2=side
   let hw = partW * 0.5;
   let hd = partD * 0.5;
+  var uv = qv;
+
+  output.pixelSize = vec2f(pixelW, pixelH);
 
   if (faceIndex == 0u) {
     // TOP face
@@ -1235,8 +995,9 @@ fn main(
       partZ + (qv.y - 0.5) * partD
     );
     faceType = 0.0;
+    output.pixelSize = vec2f(pixelW, pixelW);
   } else if (faceIndex == 1u) {
-    // FRONT face (facing camera in isometric)
+    // FRONT face (at +Z, facing camera)
     localPos = vec3f(
       partX + (qv.x - 0.5) * partW,
       partY + qv.y * partH,
@@ -1244,7 +1005,7 @@ fn main(
     );
     faceType = 1.0;
   } else {
-    // RIGHT SIDE face
+    // RIGHT SIDE face (at +X)
     localPos = vec3f(
       partX + hw,
       partY + qv.y * partH,
@@ -1276,26 +1037,8 @@ fn main(
     1.0
   );
 
-  // ============================================
-  // MINECRAFT STEVE COLORS (exact from game)
-  // ============================================
-  let skinColor = vec3f(0.761, 0.569, 0.463);    // Steve's tan skin
-  let shirtColor = vec3f(0.0, 0.663, 0.663);     // Cyan/teal shirt
-  let pantsColor = vec3f(0.247, 0.247, 0.663);   // Dark blue jeans
-
-  // Assign base color by body part
-  var baseColor = skinColor;
-  if (partType == 0u) {
-    baseColor = skinColor;  // Head
-  } else if (partType == 1u) {
-    baseColor = shirtColor; // Torso
-  } else if (partType == 2u) {
-    baseColor = skinColor;  // Arms (Steve has bare arms)
-  } else {
-    baseColor = pantsColor; // Legs
-  }
-
-  output.color = baseColor;
+  output.uv = uv;
+  output.partType = f32(partType);
   output.faceType = faceType;
 
   return output;
@@ -1304,25 +1047,437 @@ fn main(
 
 const pedestrianFragmentShader = /* wgsl */ `
 struct PedIn {
-  @location(0) color: vec3f,
-  @location(1) faceType: f32,
+  @location(0) uv: vec2f,
+  @location(1) partType: f32,
+  @location(2) faceType: f32,
+  @location(3) pixelSize: vec2f,
+}
+
+// Minecraft Steve colors - authentic pixel art style
+fn getSteveColor(part: i32, face: i32, px: i32, py: i32) -> vec3f {
+  // Steve skin palette
+  let skin = vec3f(0.808, 0.627, 0.459);      // Main skin
+  let skinDark = vec3f(0.675, 0.502, 0.341);  // Shadow/nose
+  let hair = vec3f(0.275, 0.188, 0.118);      // Dark brown hair
+  let eyeWhite = vec3f(1.0, 1.0, 1.0);        // Eye white
+  let eyeBrown = vec3f(0.341, 0.220, 0.141);  // Eye brown/pupil
+  let mouth = vec3f(0.459, 0.271, 0.180);     // Mouth
+  let shirt = vec3f(0.0, 0.671, 0.671);       // Cyan shirt
+  let pants = vec3f(0.224, 0.224, 0.608);     // Blue pants
+
+  // HEAD (8x8)
+  if (part == 0) {
+    if (face == 0) { return hair; } // Top = hair
+    if (face == 1) {
+      // FRONT FACE - Steve's iconic face
+      // Row 0-1: Hair
+      if (py <= 1) { return hair; }
+      // Row 2-3: Eyes
+      if (py == 2 || py == 3) {
+        // Eyes: white outer, brown inner
+        // Right eye (viewer's left): px 2=white, px 3=brown
+        // Left eye (viewer's right): px 4=brown, px 5=white
+        if (px == 2) { return eyeWhite; }
+        if (px == 3) { return eyeBrown; }
+        if (px == 4) { return eyeBrown; }
+        if (px == 5) { return eyeWhite; }
+        return skin;
+      }
+      // Row 4: Nose highlight
+      if (py == 4) { return skin; }
+      // Row 5: Nose shadow
+      if (py == 5) {
+        if (px == 3 || px == 4) { return skinDark; }
+        return skin;
+      }
+      // Row 6: Mouth
+      if (py == 6) {
+        if (px >= 3 && px <= 4) { return mouth; }
+        return skin;
+      }
+      // Row 7: Chin
+      return skin;
+    }
+    // SIDE face - hair on top 2 rows
+    if (py <= 1) { return hair; }
+    return skin;
+  }
+
+  // TORSO
+  if (part == 1) { return shirt; }
+
+  // ARMS (bare skin in classic Steve)
+  if (part == 2 || part == 3) { return skin; }
+
+  // LEGS
+  return pants;
 }
 
 @fragment
 fn main(input: PedIn) -> @location(0) vec4f {
-  // Minecraft-style face shading (like the game's lighting)
-  // Top = 100%, Front = 80%, Side = 60%
+  let uv = clamp(input.uv, vec2f(0.0), vec2f(0.999));
+  let part = i32(input.partType + 0.5);
+  let face = i32(input.faceType + 0.5);
+
+  // Pixel coordinates
+  let px = i32(floor(uv.x * input.pixelSize.x));
+  let py = i32(floor((1.0 - uv.y) * input.pixelSize.y));
+
+  let color = getSteveColor(part, face, px, py);
+
+  // Minecraft-style flat shading per face
   var shade = 1.0;
-  if (input.faceType < 0.5) {
-    shade = 1.0;  // Top face - full brightness
-  } else if (input.faceType < 1.5) {
-    shade = 0.85; // Front face - slightly darker
+  if (face == 1) { shade = 0.8; }      // Front
+  else if (face == 2) { shade = 0.6; } // Side
+
+  return vec4f(color * shade, 1.0);
+}
+`;
+
+// ============================================
+// MINECRAFT-STYLE FOUNTAIN SHADERS
+// ============================================
+// Structure: Stone rim + water pool + central pillar + water source + flowing water
+// 8 stone rim + 1 water pool surface + 3 pillar + 1 water source + 16 flowing water (4 sides × 4 levels)
+// Each cube = 36 vertices (6 faces × 6 verts)
+const FOUNTAIN_BLOCKS = 29; // 8 rim + 1 pool + 3 pillar + 1 source + 16 flowing
+const FOUNTAIN_VERTS = FOUNTAIN_BLOCKS * 36;
+
+const fountainVertexShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+struct FountainOut {
+  @builtin(position) position: vec4f,
+  @location(0) uv: vec2f,
+  @location(1) blockType: f32,  // 0=stone, 1=water
+  @location(2) faceType: f32,   // 0=top, 1=front, 2=side
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+@group(0) @binding(1) var<storage, read> fountainPos: vec2f;
+
+@vertex
+fn main(@builtin(vertex_index) vertexIndex: u32) -> FountainOut {
+  var output: FountainOut;
+  let time = uniforms.time;
+  let gridSize = uniforms.gridSize;
+  let progress = uniforms.progress;
+  let blockSize = 0.0245;
+  let halfGrid = gridSize * blockSize * 0.5;
+
+  // Fountain center position
+  let centerCol = fountainPos.x;
+  let centerRow = fountainPos.y;
+  let baseX = centerCol * blockSize - halfGrid;
+  let baseZ = centerRow * blockSize - halfGrid;
+
+  // Which block and which vertex within that block
+  let blockIdx = vertexIndex / 36u;
+  let localVertIdx = vertexIndex % 36u;
+  let faceIdx = localVertIdx / 6u;
+  let vertIdx = localVertIdx % 6u;
+
+  // Quad vertices for building cube faces
+  let quadVerts = array<vec2f, 6>(
+    vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0),
+    vec2f(0.0, 1.0), vec2f(1.0, 0.0), vec2f(1.0, 1.0)
+  );
+  let qv = quadVerts[vertIdx];
+
+  // Block positions in the fountain structure
+  // Blocks 0-7: Base ring (stone bricks) - arranged in a square pattern
+  // Blocks 8-11: Central pillar (4 stacked stone blocks)
+  // Block 12: Water source on top
+
+  var blockX = 0.0;
+  var blockY = 0.0;
+  var blockZ = 0.0;
+  var blockType = 0.0; // 0 = stone, 1 = water
+  let cubeSize = blockSize * 0.9;
+
+  // Stone rim positions (8 blocks forming outer edge of basin)
+  let rimOffsets = array<vec2f, 8>(
+    vec2f(-1.0, -1.0), vec2f(0.0, -1.0), vec2f(1.0, -1.0),
+    vec2f(-1.0, 0.0),                    vec2f(1.0, 0.0),
+    vec2f(-1.0, 1.0),  vec2f(0.0, 1.0),  vec2f(1.0, 1.0)
+  );
+
+  // Fountain sits ON TOP of finder pattern (finder height ~0.1)
+  let finderTopY = 0.11;
+  let poolSurfaceY = finderTopY + cubeSize * 0.3; // Pool water level
+
+  if (blockIdx < 8u) {
+    // Stone rim - raised edge around the pool
+    let offset = rimOffsets[blockIdx];
+    blockX = baseX + offset.x * blockSize;
+    blockZ = baseZ + offset.y * blockSize;
+    blockY = finderTopY;
+    blockType = 0.0; // Stone
+  } else if (blockIdx == 8u) {
+    // Water pool surface (flat water in the basin)
+    blockX = baseX;
+    blockZ = baseZ;
+    blockY = finderTopY;
+    blockType = 3.0; // Pool water (special - shorter height)
+  } else if (blockIdx < 12u) {
+    // Central pillar - 3 stacked stone blocks rising from pool
+    let stackLevel = blockIdx - 9u;
+    blockX = baseX;
+    blockZ = baseZ;
+    blockY = poolSurfaceY + f32(stackLevel) * cubeSize;
+    blockType = 0.0; // Stone
+  } else if (blockIdx == 12u) {
+    // Water source block on top of pillar
+    blockX = baseX;
+    blockZ = baseZ;
+    blockY = poolSurfaceY + 3.0 * cubeSize;
+    blockType = 1.0; // Water source
   } else {
-    shade = 0.65; // Side face - darkest
+    // Flowing water (blocks 13-28)
+    // 4 directions × 4 levels = 16 flowing water blocks
+    let flowIdx = blockIdx - 13u;
+    let direction = flowIdx / 4u;  // 0=+X, 1=-X, 2=+Z, 3=-Z
+    let level = flowIdx % 4u;      // 0=top (at source), 3=bottom (at pool)
+
+    // Offset from center based on direction
+    var offsetX = 0.0;
+    var offsetZ = 0.0;
+    if (direction == 0u) { offsetX = cubeSize; }
+    else if (direction == 1u) { offsetX = -cubeSize; }
+    else if (direction == 2u) { offsetZ = cubeSize; }
+    else { offsetZ = -cubeSize; }
+
+    blockX = baseX + offsetX;
+    blockZ = baseZ + offsetZ;
+    // Water flows from source level (3*cubeSize) down to pool level (0)
+    // level 0 = at source, level 3 = at pool surface
+    blockY = poolSurfaceY + f32(3u - level) * cubeSize;
+    blockType = 2.0 + f32(level) * 0.1; // 2.0-2.3 for flow animation
   }
 
-  let color = input.color * shade;
-  return vec4f(color, 1.0);
+  // Build the cube faces (same as building blocks)
+  let hw = cubeSize * 0.5;
+  var localPos = vec3f(0.0);
+  var faceType = 0.0;
+
+  // Pool water is rendered as a thin slab (only top face visible)
+  let isPoolWater = blockType > 2.9 && blockType < 3.1;
+  let poolHeight = cubeSize * 0.15; // Thin water surface
+  let effectiveHeight = select(cubeSize, poolHeight, isPoolWater);
+
+  if (faceIdx == 0u) {
+    // Top face
+    localPos = vec3f(
+      blockX + (qv.x - 0.5) * cubeSize,
+      blockY + effectiveHeight,
+      blockZ + (qv.y - 0.5) * cubeSize
+    );
+    faceType = 0.0;
+  } else if (faceIdx == 1u) {
+    // Bottom face
+    localPos = vec3f(
+      blockX + (qv.x - 0.5) * cubeSize,
+      blockY,
+      blockZ + (0.5 - qv.y) * cubeSize
+    );
+    faceType = 0.0;
+  } else if (faceIdx == 2u) {
+    // Front face (+Z)
+    localPos = vec3f(
+      blockX + (qv.x - 0.5) * cubeSize,
+      blockY + qv.y * effectiveHeight,
+      blockZ + hw
+    );
+    faceType = 1.0;
+  } else if (faceIdx == 3u) {
+    // Back face (-Z)
+    localPos = vec3f(
+      blockX + (0.5 - qv.x) * cubeSize,
+      blockY + qv.y * effectiveHeight,
+      blockZ - hw
+    );
+    faceType = 1.0;
+  } else if (faceIdx == 4u) {
+    // Right face (+X)
+    localPos = vec3f(
+      blockX + hw,
+      blockY + qv.y * effectiveHeight,
+      blockZ + (qv.x - 0.5) * cubeSize
+    );
+    faceType = 2.0;
+  } else {
+    // Left face (-X)
+    localPos = vec3f(
+      blockX - hw,
+      blockY + qv.y * effectiveHeight,
+      blockZ + (0.5 - qv.x) * cubeSize
+    );
+    faceType = 2.0;
+  }
+
+  // Isometric transform
+  let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
+  let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
+  let cy = cos(isoAngleY); let sy = sin(isoAngleY);
+  let cx = cos(isoAngleX); let sx = sin(isoAngleX);
+
+  let ry_x = localPos.x * cy - localPos.z * sy;
+  let ry_z = localPos.x * sy + localPos.z * cy;
+  let rx_y = localPos.y * cx - ry_z * sx;
+  let rx_z = localPos.y * sx + ry_z * cx;
+
+  let viewScale = mix(1.0, 1.35, progress);
+
+  output.position = vec4f(
+    ry_x * viewScale / uniforms.aspectRatio,
+    rx_y * viewScale,
+    rx_z * 0.01 + 0.5,
+    1.0
+  );
+  output.uv = qv;
+  output.blockType = blockType;
+  output.faceType = faceType;
+
+  return output;
+}
+`;
+
+const fountainFragmentShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+struct FountainIn {
+  @location(0) uv: vec2f,
+  @location(1) blockType: f32,
+  @location(2) faceType: f32,
+}
+
+@fragment
+fn main(input: FountainIn) -> @location(0) vec4f {
+  let uv = input.uv;
+  let time = uniforms.time;
+  let blockType = input.blockType;
+  let face = i32(input.faceType + 0.5);
+
+  var color = vec3f(0.0);
+
+  if (blockType > 2.5) {
+    // POOL WATER - calm water surface with ripples
+    let waterBase = vec3f(0.1, 0.3, 0.7);
+    let waterLight = vec3f(0.25, 0.45, 0.85);
+
+    // Gentle ripples spreading outward
+    let center = uv - 0.5;
+    let dist = length(center);
+    let ripple = sin(dist * 20.0 - time * 3.0) * 0.5 + 0.5;
+
+    color = mix(waterBase, waterLight, ripple * 0.3);
+
+    // Surface sparkles
+    let sparkle = smoothstep(0.95, 1.0, sin(uv.x * 15.0 + time * 2.0) * sin(uv.y * 15.0 + time * 1.5));
+    color += sparkle * 0.4;
+
+  } else if (blockType > 1.5) {
+    // FLOWING WATER - animated downward flow
+    let flowLevel = (blockType - 2.0) * 10.0;
+    let waterBase = vec3f(0.15, 0.35, 0.85);
+    let waterLight = vec3f(0.4, 0.6, 1.0);
+    let waterFoam = vec3f(0.7, 0.85, 1.0);
+
+    // Downward flowing animation
+    let flowSpeed = 5.0;
+    let flowY = fract(uv.y - time * flowSpeed);
+
+    // Create vertical streaks for flowing effect
+    let streakX = floor(uv.x * 5.0);
+    let streakPhase = fract(sin(streakX * 127.1) * 43758.5);
+    let streak = fract(flowY + streakPhase);
+
+    // Wave pattern - brighter streaks
+    let wave = smoothstep(0.0, 0.4, streak) * smoothstep(1.0, 0.4, streak);
+
+    color = mix(waterBase, waterLight, wave * 0.7);
+
+    // Add foam/bubbles
+    let foam = smoothstep(0.85, 1.0, fract(uv.y * 4.0 - time * 3.0)) * 0.5;
+    color = mix(color, waterFoam, foam);
+
+    // Sparkle
+    let sparkle = smoothstep(0.95, 1.0, sin(uv.x * 15.0 + time * 6.0) * sin(flowY * 12.0));
+    color += sparkle * 0.4;
+
+  } else if (blockType > 0.5) {
+    // WATER SOURCE BLOCK - Minecraft style animated water
+    let waterBase = vec3f(0.2, 0.4, 0.9);
+    let waterLight = vec3f(0.4, 0.6, 1.0);
+
+    // Simple animated pattern like Minecraft water
+    let px = floor(uv.x * 4.0);
+    let py = floor(uv.y * 4.0);
+    let wave = sin(time * 2.0 + px * 0.5 + py * 0.3) * 0.5 + 0.5;
+
+    color = mix(waterBase, waterLight, wave * 0.3);
+
+    // Slight transparency feel with lighter streaks
+    let streak = sin(uv.x * 8.0 + uv.y * 4.0 + time * 3.0) * 0.5 + 0.5;
+    color += vec3f(0.1, 0.15, 0.2) * streak * 0.3;
+
+  } else {
+    // STONE BRICK - Minecraft cobblestone/stone brick texture
+    let stoneBase = vec3f(0.45, 0.45, 0.45);
+    let stoneDark = vec3f(0.3, 0.3, 0.3);
+    let stoneLight = vec3f(0.55, 0.55, 0.55);
+
+    // Create brick pattern (2x2 grid)
+    let brickX = fract(uv.x * 2.0);
+    let brickY = fract(uv.y * 2.0);
+
+    // Mortar lines between bricks
+    let mortarX = smoothstep(0.0, 0.08, brickX) * smoothstep(1.0, 0.92, brickX);
+    let mortarY = smoothstep(0.0, 0.08, brickY) * smoothstep(1.0, 0.92, brickY);
+    let mortar = mortarX * mortarY;
+
+    // Random variation per brick
+    let brickIdx = floor(uv.x * 2.0) + floor(uv.y * 2.0) * 2.0;
+    let variation = fract(sin(brickIdx * 127.1) * 43758.5) * 0.15 - 0.075;
+
+    color = mix(stoneDark, stoneBase + variation, mortar);
+
+    // Add some noise/texture
+    let noise = fract(sin(uv.x * 50.0 + uv.y * 37.0) * 43758.5) * 0.1 - 0.05;
+    color += noise;
+  }
+
+  // Minecraft-style face shading
+  var shade = 1.0;
+  if (face == 0) {
+    shade = 1.0;  // Top - brightest
+  } else if (face == 1) {
+    shade = 0.8;  // Front
+  } else {
+    shade = 0.6;  // Side - darkest
+  }
+
+  return vec4f(color * shade, 1.0);
 }
 `;
 
@@ -1348,15 +1503,15 @@ export const IsometricQRCode = () => {
   const colorBufferRef = useRef<GPUBuffer | null>(null);
   const posBufferRef = useRef<GPUBuffer | null>(null);
   const heightBufferRef = useRef<GPUBuffer | null>(null);
-  const streetlightBufferRef = useRef<GPUBuffer | null>(null);
   const pedestrianBufferRef = useRef<GPUBuffer | null>(null);
+  const fountainBufferRef = useRef<GPUBuffer | null>(null);
   const qrMatrixBufferRef = useRef<GPUBuffer | null>(null);
   const blockDataRef = useRef<{
     numBlocks: number;
     gridSize: number;
-    streetlightCount: number;
     pedestrianCount: number;
-  }>({ numBlocks: 0, gridSize: 0, streetlightCount: 0, pedestrianCount: 0 });
+    fountainCenter: { col: number; row: number };
+  }>({ numBlocks: 0, gridSize: 0, pedestrianCount: 0, fountainCenter: { col: 3, row: 3 } });
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
 
@@ -1370,8 +1525,8 @@ export const IsometricQRCode = () => {
     const colorBuffer = colorBufferRef.current;
     const posBuffer = posBufferRef.current;
     const heightBuffer = heightBufferRef.current;
-    const streetlightBuffer = streetlightBufferRef.current;
     const pedestrianBuffer = pedestrianBufferRef.current;
+    const fountainBuffer = fountainBufferRef.current;
     const qrMatrixBuffer = qrMatrixBufferRef.current;
 
     if (
@@ -1379,8 +1534,8 @@ export const IsometricQRCode = () => {
       !colorBuffer ||
       !posBuffer ||
       !heightBuffer ||
-      !streetlightBuffer ||
       !pedestrianBuffer ||
+      !fountainBuffer ||
       !qrMatrixBuffer
     )
       return;
@@ -1388,15 +1543,15 @@ export const IsometricQRCode = () => {
     const qrMatrix = generateQRMatrix(qrContent);
     const { positions, heights, colors, gridSize, numBlocks } =
       generateBlockData(qrMatrix);
-    const streetlightData = generateStreetlightPositions(qrMatrix);
     const pedestrianData = generatePedestrianPositions(qrMatrix);
+    const fountainCenter = getFountainCenter(gridSize);
 
     // Update refs for render loop
     blockDataRef.current = {
       numBlocks,
       gridSize,
-      streetlightCount: streetlightData.count,
       pedestrianCount: pedestrianData.count,
+      fountainCenter,
     };
 
     // Write new data to GPU buffers (pad to MAX_BLOCKS size)
@@ -1412,11 +1567,12 @@ export const IsometricQRCode = () => {
     paddedHeights.set(heights);
     device.queue.writeBuffer(heightBuffer, 0, paddedHeights);
 
-    // Update streetlight positions
-    device.queue.writeBuffer(streetlightBuffer, 0, streetlightData.positions);
-
     // Update pedestrian positions
     device.queue.writeBuffer(pedestrianBuffer, 0, pedestrianData.positions);
+
+    // Update fountain center position
+    const fountainData = new Float32Array([fountainCenter.col, fountainCenter.row]);
+    device.queue.writeBuffer(fountainBuffer, 0, fountainData);
 
     // Update QR matrix for wall detection
     const packedMatrix = packQRMatrix(qrMatrix);
@@ -1446,13 +1602,13 @@ export const IsometricQRCode = () => {
     const qrMatrix = generateQRMatrix(qrContentRef.current);
     const { positions, heights, colors, gridSize, numBlocks } =
       generateBlockData(qrMatrix);
-    const streetlightData = generateStreetlightPositions(qrMatrix);
     const pedestrianData = generatePedestrianPositions(qrMatrix);
+    const fountainCenter = getFountainCenter(gridSize);
     blockDataRef.current = {
       numBlocks,
       gridSize,
       pedestrianCount: pedestrianData.count,
-      streetlightCount: streetlightData.count,
+      fountainCenter,
     };
 
     const uniformBuffer = device.createBuffer({
@@ -1488,14 +1644,6 @@ export const IsometricQRCode = () => {
     paddedHeights.set(heights);
     device.queue.writeBuffer(heightBuffer, 0, paddedHeights);
 
-    // Streetlight position buffer
-    const streetlightBuffer = device.createBuffer({
-      size: MAX_STREETLIGHTS * 2 * 4, // vec2f per light
-      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
-    });
-    streetlightBufferRef.current = streetlightBuffer;
-    device.queue.writeBuffer(streetlightBuffer, 0, streetlightData.positions);
-
     // Pedestrian position buffer
     const pedestrianBuffer = device.createBuffer({
       size: MAX_PEDESTRIANS * 2 * 4, // vec2f per pedestrian
@@ -1503,6 +1651,15 @@ export const IsometricQRCode = () => {
     });
     pedestrianBufferRef.current = pedestrianBuffer;
     device.queue.writeBuffer(pedestrianBuffer, 0, pedestrianData.positions);
+
+    // Fountain center position buffer
+    const fountainBuffer = device.createBuffer({
+      size: 2 * 4, // vec2f
+      usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+    });
+    fountainBufferRef.current = fountainBuffer;
+    const fountainData = new Float32Array([fountainCenter.col, fountainCenter.row]);
+    device.queue.writeBuffer(fountainBuffer, 0, fountainData);
 
     // QR matrix buffer for wall detection (packed bits + gridSize)
     const packedMatrix = packQRMatrix(qrMatrix);
@@ -1563,30 +1720,6 @@ export const IsometricQRCode = () => {
       entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
     });
 
-    // Streetlight bind group layout (uniforms + positions)
-    const streetlightBindGroupLayout = device.createBindGroupLayout({
-      entries: [
-        {
-          binding: 0,
-          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-          buffer: { type: 'uniform' },
-        },
-        {
-          binding: 1,
-          visibility: GPUShaderStage.VERTEX,
-          buffer: { type: 'read-only-storage' },
-        },
-      ],
-    });
-
-    const streetlightBindGroup = device.createBindGroup({
-      layout: streetlightBindGroupLayout,
-      entries: [
-        { binding: 0, resource: { buffer: uniformBuffer } },
-        { binding: 1, resource: { buffer: streetlightBuffer } },
-      ],
-    });
-
     // Pedestrian bind group layout (uniforms + positions + QR matrix)
     const pedestrianBindGroupLayout = device.createBindGroupLayout({
       entries: [
@@ -1614,6 +1747,30 @@ export const IsometricQRCode = () => {
         { binding: 0, resource: { buffer: uniformBuffer } },
         { binding: 1, resource: { buffer: pedestrianBuffer } },
         { binding: 2, resource: { buffer: qrMatrixBuffer } },
+      ],
+    });
+
+    // Fountain bind group layout (uniforms + position)
+    const fountainBindGroupLayout = device.createBindGroupLayout({
+      entries: [
+        {
+          binding: 0,
+          visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+          buffer: { type: 'uniform' },
+        },
+        {
+          binding: 1,
+          visibility: GPUShaderStage.VERTEX,
+          buffer: { type: 'read-only-storage' },
+        },
+      ],
+    });
+
+    const fountainBindGroup = device.createBindGroup({
+      layout: fountainBindGroupLayout,
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: fountainBuffer } },
       ],
     });
 
@@ -1691,44 +1848,6 @@ export const IsometricQRCode = () => {
       },
     });
 
-    // Streetlight pipeline - glowing lights on the ground
-    const streetlightPipeline = device.createRenderPipeline({
-      layout: device.createPipelineLayout({
-        bindGroupLayouts: [streetlightBindGroupLayout],
-      }),
-      vertex: {
-        module: device.createShaderModule({ code: streetlightVertexShader }),
-        entryPoint: 'main',
-      },
-      fragment: {
-        module: device.createShaderModule({ code: streetlightFragmentShader }),
-        entryPoint: 'main',
-        targets: [
-          {
-            format,
-            blend: {
-              color: {
-                srcFactor: 'src-alpha',
-                dstFactor: 'one', // Additive blending for glow
-                operation: 'add',
-              },
-              alpha: {
-                srcFactor: 'one',
-                dstFactor: 'one-minus-src-alpha',
-                operation: 'add',
-              },
-            },
-          },
-        ],
-      },
-      primitive: { topology: 'triangle-list', cullMode: 'none' },
-      depthStencil: {
-        depthWriteEnabled: false,
-        depthCompare: 'always', // Always draw on top with blending
-        format: 'depth24plus',
-      },
-    });
-
     // Pedestrian pipeline - walking figures
     const pedestrianPipeline = device.createRenderPipeline({
       layout: device.createPipelineLayout({
@@ -1747,6 +1866,44 @@ export const IsometricQRCode = () => {
             blend: {
               color: {
                 srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add',
+              },
+              alpha: {
+                srcFactor: 'one',
+                dstFactor: 'one-minus-src-alpha',
+                operation: 'add',
+              },
+            },
+          },
+        ],
+      },
+      primitive: { topology: 'triangle-list', cullMode: 'none' },
+      depthStencil: {
+        depthWriteEnabled: true,
+        depthCompare: 'less',
+        format: 'depth24plus',
+      },
+    });
+
+    // Fountain pipeline - animated water feature
+    const fountainPipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({
+        bindGroupLayouts: [fountainBindGroupLayout],
+      }),
+      vertex: {
+        module: device.createShaderModule({ code: fountainVertexShader }),
+        entryPoint: 'main',
+      },
+      fragment: {
+        module: device.createShaderModule({ code: fountainFragmentShader }),
+        entryPoint: 'main',
+        targets: [
+          {
+            format,
+            blend: {
+              color: {
+                srcFactor: 'src-alpha',
                 dstFactor: 'one-minus-src-alpha',
                 operation: 'add',
               },
@@ -1790,7 +1947,7 @@ export const IsometricQRCode = () => {
       progressRef.current = easeInOutCubic(rawProgressRef.current);
 
       const time = (now - startTimeRef.current) / 1000;
-      const { numBlocks, gridSize, streetlightCount, pedestrianCount } =
+      const { numBlocks, gridSize, pedestrianCount } =
         blockDataRef.current;
 
       const uniformData = new Float32Array([
@@ -1833,17 +1990,17 @@ export const IsometricQRCode = () => {
       renderPass.setBindGroup(0, bindGroup);
       renderPass.draw(36, numBlocks);
 
+      // Fountain - beautiful water feature replacing one finder pattern
+      renderPass.setPipeline(fountainPipeline);
+      renderPass.setBindGroup(0, fountainBindGroup);
+      renderPass.draw(FOUNTAIN_VERTS, 1);
+
       // Pedestrians - walking figures on the streets
       if (pedestrianCount > 0) {
         renderPass.setPipeline(pedestrianPipeline);
         renderPass.setBindGroup(0, pedestrianBindGroup);
         renderPass.draw(VERTS_PER_PEDESTRIAN, pedestrianCount);
       }
-
-      // Streetlights - lamp posts with poles and glowing heads
-      renderPass.setPipeline(streetlightPipeline);
-      renderPass.setBindGroup(0, streetlightBindGroup);
-      renderPass.draw(VERTS_PER_STREETLIGHT, streetlightCount);
 
       renderPass.end();
 
