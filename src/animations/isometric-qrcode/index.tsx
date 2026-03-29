@@ -53,8 +53,8 @@ const PALETTE = {
   buildingAlt: lerpRgb(building, background, 0.08),
   skyZenith: { r: 0.65, g: 0.82, b: 0.98 }, // Soft spring blue sky
   skyHorizon: { r: 0.95, g: 0.92, b: 0.95 }, // Pale pink-white horizon
-  pavement: lerpRgb(building, background, 0.65),
-  pavementSide: lerpRgb(building, background, 0.5),
+  pavement: { r: 0.55, g: 0.54, b: 0.52 },
+  pavementSide: { r: 0.42, g: 0.41, b: 0.40 },
   fog: { r: 0.96, g: 0.94, b: 0.96 }, // Soft spring haze with pink tint
   sun: { r: 1.1, g: 1.0, b: 0.92 }, // Warm spring sunlight
   skyFill: { r: 0.75, g: 0.85, b: 0.98 }, // Soft blue fill
@@ -188,11 +188,11 @@ function getCastleCenter(gridSize: number): { col: number; row: number } {
  */
 const SKYLINE_PEAK_CORNER: 'tl' | 'tr' | 'bl' | 'br' = 'br';
 
-/** Cherry blossom garden: gentle low hills, no tall peaks */
+/** Stone garden skyline: gentle low hills, no tall peaks */
 const SKYLINE_LANDMARK_SIGMA = 0.15;
 const SKYLINE_LANDMARK_POWER = 3.0;
 
-/** Low uniform heights for cherry tree garden */
+/** Low uniform heights for stone pillar field */
 const SKYLINE_FABRIC_MIN = 0.14;
 const SKYLINE_FABRIC_MAX = 0.22;
 
@@ -642,19 +642,48 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       return vec4f(hdrToro * alpha, alpha);
     }
 
-    let pave = ${wgslVec3(PALETTE.pavement)};
-    let paveSide = ${wgslVec3(PALETTE.pavementSide)};
-    var albedo = pave;
+    // Stone floor colors - grey palette
+    let stoneLight = vec3f(0.52, 0.50, 0.48);
+    let stoneMid = vec3f(0.42, 0.40, 0.38);
+    let stoneDark = vec3f(0.30, 0.28, 0.26);
+    let stoneDarkest = vec3f(0.22, 0.20, 0.19);
+
+    var albedo = stoneMid;
     if (input.faceNy > 0.5) {
-      let wx = abs(fract(uv.x * 8.0 + g.x * 0.07) - 0.5);
-      let wy = abs(fract(uv.y * 8.0 + g.y * 0.07) - 0.5);
-      let lane = smoothstep(0.1, 0.16, min(wx, wy));
-      let gridDark = (1.0 - lane) * 0.1;
-      let stain = (hash2(floor(uv * 5.0) + g) - 0.5) * 0.035;
-      albedo = pave * (1.0 - gridDark + stain);
+      // TOP - cobblestone pattern
+      let stoneU = fract(uv.x * 3.0);
+      let stoneV = fract(uv.y * 3.0);
+      let rowIdx = floor(uv.y * 3.0);
+      var stoneOffset = 0.0;
+      if (fract(rowIdx * 0.5) > 0.25) { stoneOffset = 0.5; }
+      let shiftedU = fract(uv.x * 3.0 + stoneOffset);
+
+      // Stone block edges (mortar lines)
+      let isMortar = shiftedU < 0.06 || shiftedU > 0.94 || stoneV < 0.06 || stoneV > 0.94;
+
+      // Per-stone variation
+      let stoneIdx = floor(uv.x * 3.0 + stoneOffset) + rowIdx * 10.0;
+      let stoneNoise = fract(sin(stoneIdx * 127.1 + g.x * 17.3) * 43758.5);
+
+      if (isMortar) {
+        albedo = stoneDarkest;
+      } else if (stoneNoise < 0.3) {
+        albedo = stoneLight;
+      } else if (stoneNoise > 0.7) {
+        albedo = stoneDark;
+      } else {
+        albedo = stoneMid;
+      }
+
+      // Subtle surface texture
+      let texNoise = fract(sin(uv.x * 50.0 + uv.y * 40.0 + g.y) * 43758.5);
+      albedo = albedo * (0.95 + texNoise * 0.1);
       albedo = albedo * (0.9 + 0.14 * NdSun + 0.1 * NdUp);
     } else {
-      albedo = paveSide * (0.78 + 0.18 * NdSun + 0.07 * NdUp);
+      // SIDE - darker stone
+      let sideNoise = fract(sin(uv.x * 30.0 + uv.y * 20.0 + g.x) * 43758.5);
+      albedo = mix(stoneDark, stoneMid, sideNoise * 0.4);
+      albedo = albedo * (0.78 + 0.18 * NdSun + 0.07 * NdUp);
     }
     let diffSt = albedo * (bounce * 0.44 + sunCol * NdSun * 0.46 + skyFill * NdUp * 0.2);
     let specSt = ${wgslVec3(PALETTE.spec)} * pow(NdH, 56.0) * 0.14;
@@ -679,36 +708,27 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   var emissive = vec3f(0.0);
 
   // Minecraft-style block types based on height
-  // 0=cobblestone, 1=grass, 3=stonebrick, 4=snow, 5=mountain rock, 6=cherry blossom
+  // 0=cobblestone, 1=grass, 3=stonebrick, 4=snow, 5=mountain rock, 6=stone pillar
   var blockType = 0;
   let seed = input.blockSeed;
-  let typeNoise = hash2(seed * 3.1);
-  let cherryNoise = hash2(seed * 7.7);
 
   if (input.blockH < 0.13) {
     // Flat ground - grass
     blockType = 1;
   } else {
-    // All raised blocks become cherry blossom trees!
-    // Creates a beautiful spring garden around the pagoda
+    // Raised QR modules — carved stone pillars
     blockType = 6;
   }
 
-  // SPRING Minecraft colors - lush and vibrant
-  // Grass - fresh spring greens
-  let grassBright = vec3f(0.42, 0.75, 0.32);
-  let grassMid = vec3f(0.35, 0.65, 0.25);
-  let grassDark = vec3f(0.25, 0.52, 0.18);
-  // Dirt - warm earthy brown
-  let dirtSide = vec3f(0.55, 0.40, 0.25);
-  let dirtDark = vec3f(0.40, 0.28, 0.16);
-  let dirtMid = vec3f(0.48, 0.34, 0.20);
-
-  // Cherry blossom colors - vibrant pinks for spring!
-  let sakuraPink = vec3f(1.0, 0.68, 0.78);
-  let sakuraBright = vec3f(1.0, 0.85, 0.90);
-  let sakuraDark = vec3f(0.95, 0.45, 0.58);
-  let sakuraWhite = vec3f(1.0, 0.95, 0.97);
+  // Minecraft colors - Japanese rooftop style
+  // Rooftop tiles - brick red (darker, earthier)
+  let roofBright = vec3f(0.65, 0.22, 0.18);
+  let roofMid = vec3f(0.52, 0.16, 0.14);
+  let roofDark = vec3f(0.38, 0.12, 0.10);
+  // Soil/ground - neutral grey stone
+  let dirtSide = vec3f(0.52, 0.50, 0.48);
+  let dirtDark = vec3f(0.38, 0.36, 0.34);
+  let dirtMid = vec3f(0.45, 0.43, 0.41);
 
   // Stone/Cobblestone - neutral gray (OKLCH L=0.40-0.60, C=0, H=0)
   let stoneLight = vec3f(0.58, 0.58, 0.58);
@@ -746,7 +766,6 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   // Spring face lighting - bright and fresh
   let warmTint = vec3f(1.04, 1.02, 0.98);   // Soft warm spring light
   let coolTint = vec3f(0.90, 0.92, 0.96);   // Light cool shadow
-  let saturationBoost = 1.3;                // Vibrant spring colors
 
   if (input.faceVertical > 0.5) {
     var shade = 0.9;
@@ -754,20 +773,22 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     if (isLeftFace) { shade = 0.55; tint = coolTint; }
 
     if (blockType == 1) {
-      // GRASS SIDE - realistic soil with natural layers
-      // Smooth vertical gradient for natural soil stratification
+      // ROOFTOP SIDE - grey stone wall with roof tiles at top
+      // Stone wall texture
       let depth = 1.0 - uv.y;
-      var dirtColor = mix(dirtSide, dirtDark, depth * 0.6);
+      var wallColor = mix(dirtSide, dirtDark, depth * 0.5);
 
-      // Subtle horizontal variation for natural look
-      let hVariation = sin(uv.x * 6.28) * 0.04;
-      dirtColor = dirtColor * (1.0 + hVariation);
+      // Subtle brick pattern
+      let brickV = fract(uv.y * 5.0);
+      let brickH = fract(uv.x * 3.0);
+      let isMortar = brickV < 0.08 || brickH < 0.06;
+      if (isMortar) { wallColor = wallColor * 0.85; }
 
-      // Grass/root layer at top - smooth transition
-      let grassBlend = smoothstep(0.85, 0.95, uv.y);
-      dirtColor = mix(dirtColor, grassDark * 0.9, grassBlend);
+      // Roof tile overhang at top
+      let roofBlend = smoothstep(0.88, 0.95, uv.y);
+      wallColor = mix(wallColor, roofDark * 0.9, roofBlend);
 
-      albedo = dirtColor * shade * tint;
+      albedo = wallColor * shade * tint;
 
     } else if (blockType == 3) {
       // STONE BRICK - clean brick pattern
@@ -801,97 +822,59 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = mtnColor * shade * tint;
 
     } else if (blockType == 6) {
-      // CHERRY BLOSSOM TREE - vivid colors, trunk on bottom, leaves on top
+      // Stone pillar — chiseled shaft + rough ashlar crown (gray only)
+      let pillarBaseH = 0.35;
+      let isShaft = uv.y < pillarBaseH && input.blockH > 0.16;
 
-      // Trunk colors (rich warm brown bark)
-      let barkDark = vec3f(0.28, 0.16, 0.08);
-      let barkMid = vec3f(0.48, 0.30, 0.16);
-      let barkLight = vec3f(0.58, 0.40, 0.24);
+      var pillarColor = stoneMid;
 
-      // VIVID cherry blossom pinks - highly saturated
-      let leafHot = vec3f(1.0, 0.45, 0.65);      // Hot pink
-      let leafBase = vec3f(1.0, 0.55, 0.72);     // Vibrant pink
-      let leafPink = vec3f(0.95, 0.38, 0.58);    // Deep magenta
-      let leafDark = vec3f(0.82, 0.28, 0.48);    // Rich magenta
-
-      // Vivid green leaf accents
-      let greenLeaf = vec3f(0.30, 0.72, 0.28);   // Bright green
-      let greenDark = vec3f(0.22, 0.55, 0.20);   // Forest green
-
-      // Bright petal accents
-      let petalWhite = vec3f(1.0, 0.98, 1.0);    // Pure white
-      let petalPink = vec3f(1.0, 0.78, 0.88);    // Soft pink
-
-      // Determine if this is trunk or leaves
-      let trunkHeight = 0.35;
-      let isTrunk = uv.y < trunkHeight && input.blockH > 0.16;
-
-      var treeColor = leafBase;
-
-      if (isTrunk) {
-        // TRUNK texture - vertical bark pattern
-        let barkX = fract(uv.x * 6.0);
-        let barkNoise = fract(sin(floor(uv.x * 6.0) * 17.3 + floor(uv.y * 12.0) * 31.7 + seed.x) * 43758.5);
-
-        treeColor = barkMid;
-        if (barkNoise > 0.65) { treeColor = barkLight; }
-        else if (barkNoise < 0.35) { treeColor = barkDark; }
-
-        // Vertical groove lines
-        let groove = smoothstep(0.0, 0.15, barkX) * smoothstep(1.0, 0.85, barkX);
-        treeColor = mix(barkDark * 0.8, treeColor, groove);
-
+      if (isShaft) {
+        let streakX = fract(uv.x * 6.0);
+        let streakNoise = fract(sin(floor(uv.x * 6.0) * 17.3 + floor(uv.y * 12.0) * 31.7 + seed.x) * 43758.5);
+        pillarColor = mix(rockMid, stoneDark, streakNoise * 0.55);
+        if (streakNoise > 0.62) { pillarColor = mix(pillarColor, stoneLight, 0.38); }
+        else if (streakNoise < 0.28) { pillarColor = mix(pillarColor, rockDark, 0.42); }
+        let groove = smoothstep(0.0, 0.15, streakX) * smoothstep(1.0, 0.85, streakX);
+        pillarColor = mix(rockDark * 0.88, pillarColor, groove);
       } else {
-        // LEAVES texture - vivid Minecraft cherry blossom style
         let px = floor(uv.x * 8.0);
         let py = floor(uv.y * 8.0);
         let pixelNoise = fract(sin(px * 127.1 + py * 311.7 + seed.x * 17.3) * 43758.5);
         let pixelNoise2 = fract(sin(px * 73.3 + py * 157.1 + seed.y * 31.7) * 43758.5);
-        let pixelNoise3 = fract(sin(px * 43.7 + py * 97.3 + seed.x * 7.1) * 43758.5);
-
-        // Vivid pink variations
-        treeColor = leafBase;
-        if (pixelNoise < 0.25) {
-          treeColor = leafHot;
-        } else if (pixelNoise < 0.45) {
-          treeColor = leafPink;
-        } else if (pixelNoise > 0.88) {
-          treeColor = leafDark;
-        }
-
-        // Green leaf shapes (~18%)
-        if (pixelNoise2 > 0.82) {
-          if (pixelNoise3 > 0.5) {
-            treeColor = greenLeaf;
-          } else {
-            treeColor = greenDark;
-          }
-        }
-
-        // White/pink petals (~12%)
-        if (pixelNoise3 > 0.88 && pixelNoise2 < 0.82) {
-          if (pixelNoise > 0.5) {
-            treeColor = petalWhite;
-          } else {
-            treeColor = petalPink;
-          }
-        }
-
-        // Extra saturation and brightness boost for leaves
-        let gray = dot(treeColor, vec3f(0.299, 0.587, 0.114));
-        treeColor = mix(vec3f(gray), treeColor, 1.5) * 1.15;
+        pillarColor = stoneMid;
+        if (pixelNoise < 0.22) { pillarColor = stoneLight; }
+        else if (pixelNoise < 0.42) { pillarColor = mix(stoneMid, rockLight, 0.4); }
+        else if (pixelNoise > 0.8) { pillarColor = stoneDark; }
+        if (pixelNoise2 > 0.84) { pillarColor = mix(pillarColor, stoneLight, 0.22); }
+        else if (pixelNoise2 < 0.14) { pillarColor = mix(pillarColor, rockDark, 0.5); }
       }
 
-      albedo = treeColor * shade * tint;
+      albedo = pillarColor * shade * tint;
 
     } else {
-      // COBBLESTONE - clean stone grid
+      // COBBLESTONE SIDE - grey stone blocks
       let gridX = fract(uv.x * 2.0);
       let gridY = fract(uv.y * 3.0);
-      // Simple mortar gaps
-      let isMortar = gridX < 0.08 || gridX > 0.92 || gridY < 0.1 || gridY > 0.9;
+      let rowIdx = floor(uv.y * 3.0);
+      var gridOffset = 0.0;
+      if (fract(rowIdx * 0.5) > 0.25) { gridOffset = 0.5; }
+      let shiftedX = fract(uv.x * 2.0 + gridOffset);
+
+      // Mortar gaps
+      let isMortar = shiftedX < 0.06 || shiftedX > 0.94 || gridY < 0.08 || gridY > 0.92;
+
+      // Per-stone variation
+      let stoneIdx = floor(uv.x * 2.0 + gridOffset) + rowIdx * 5.0 + seed.x;
+      let stoneVar = fract(sin(stoneIdx * 127.1) * 43758.5);
+
       var cobbleColor = stoneMid;
-      if (isMortar) { cobbleColor = stoneDark * 0.7; }
+      if (isMortar) {
+        cobbleColor = stoneDark * 0.55;
+      } else if (stoneVar < 0.35) {
+        cobbleColor = stoneLight * 0.95;
+      } else if (stoneVar > 0.7) {
+        cobbleColor = stoneDark * 0.9;
+      }
       albedo = cobbleColor * shade * tint;
     }
     albedo = albedo * (1.0 + hBoost);
@@ -901,16 +884,19 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     // TOP FACE - bright spring sunlight
     let topWarmTint = vec3f(1.06, 1.03, 0.98);  // Soft spring sunlight
     if (blockType == 1) {
-      // GRASS TOP - realistic natural grass
-      // Smooth gradient based on position for natural variation
-      let posVariation = sin(uv.x * 4.0) * sin(uv.y * 4.0) * 0.12;
-      var grassColor = mix(grassMid, grassBright, 0.5 + posVariation);
+      // ROOFTOP - terracotta tile pattern
+      // Tile grid pattern
+      let tileU = fract(uv.x * 4.0);
+      let tileV = fract(uv.y * 6.0);
+      let tileEdge = smoothstep(0.0, 0.08, tileU) * smoothstep(1.0, 0.92, tileU);
+      let tileVEdge = smoothstep(0.0, 0.06, tileV) * smoothstep(1.0, 0.94, tileV);
 
-      // Subtle directional grain like real grass blades
-      let grain = sin(uv.x * 12.0 + uv.y * 2.0) * 0.04;
-      grassColor = grassColor * (1.0 + grain);
+      // Curved tile appearance
+      let tileCurve = sin(tileV * 3.14159) * 0.15;
+      var roofColor = mix(roofDark, roofMid, tileEdge * tileVEdge);
+      roofColor = mix(roofColor, roofBright, tileCurve * tileEdge);
 
-      albedo = grassColor * topWarmTint;
+      albedo = roofColor * topWarmTint;
 
     } else if (blockType == 3) {
       // STONE BRICK TOP - clean grid pattern
@@ -939,69 +925,42 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = mtnTopColor * topWarmTint;
 
     } else if (blockType == 6) {
-      // CHERRY BLOSSOM TOP - vivid colors matching sides
-      // VIVID cherry blossom pinks
-      let leafHot = vec3f(1.0, 0.45, 0.65);
-      let leafBase = vec3f(1.0, 0.55, 0.72);
-      let leafPink = vec3f(0.95, 0.38, 0.58);
-      let leafDark = vec3f(0.82, 0.28, 0.48);
-
-      // Vivid greens
-      let greenLeaf = vec3f(0.30, 0.72, 0.28);
-      let greenDark = vec3f(0.22, 0.55, 0.20);
-
-      // Bright petals
-      let petalWhite = vec3f(1.0, 0.98, 1.0);
-      let petalPink = vec3f(1.0, 0.78, 0.88);
-
-      // High-res pixel grid (8x8)
+      // Stone pillar cap — weathered chipped granite
       let px = floor(uv.x * 8.0);
       let py = floor(uv.y * 8.0);
       let pixelNoise = fract(sin(px * 127.1 + py * 311.7 + seed.x * 17.3) * 43758.5);
       let pixelNoise2 = fract(sin(px * 73.3 + py * 157.1 + seed.y * 31.7) * 43758.5);
-      let pixelNoise3 = fract(sin(px * 43.7 + py * 97.3 + seed.x * 7.1) * 43758.5);
-
-      // Vivid pink variations
-      var leafColor = leafBase;
-      if (pixelNoise < 0.25) {
-        leafColor = leafHot;
-      } else if (pixelNoise < 0.45) {
-        leafColor = leafPink;
-      } else if (pixelNoise > 0.88) {
-        leafColor = leafDark;
-      }
-
-      // Green leaf shapes (~18%)
-      if (pixelNoise2 > 0.82) {
-        if (pixelNoise3 > 0.5) {
-          leafColor = greenLeaf;
-        } else {
-          leafColor = greenDark;
-        }
-      }
-
-      // White/pink petal dots (~12%)
-      if (pixelNoise3 > 0.88 && pixelNoise2 < 0.82) {
-        if (pixelNoise > 0.5) {
-          leafColor = petalWhite;
-        } else {
-          leafColor = petalPink;
-        }
-      }
-
-      // Saturation and brightness boost
-      let gray = dot(leafColor, vec3f(0.299, 0.587, 0.114));
-      leafColor = mix(vec3f(gray), leafColor, 1.5) * 1.2;
-
-      albedo = leafColor * topWarmTint;
+      var capColor = stoneMid;
+      if (pixelNoise < 0.24) { capColor = stoneLight; }
+      else if (pixelNoise < 0.46) { capColor = mix(stoneMid, rockLight, 0.35); }
+      else if (pixelNoise > 0.83) { capColor = stoneDark; }
+      if (pixelNoise2 > 0.82) { capColor = mix(capColor, stoneLight, 0.2); }
+      else if (pixelNoise2 < 0.13) { capColor = mix(capColor, rockDark, 0.45); }
+      albedo = capColor * topWarmTint;
 
     } else {
-      // COBBLESTONE TOP - clean stone grid
+      // COBBLESTONE TOP - grey stone grid with variation
       let gridX = fract(uv.x * 2.0);
       let gridY = fract(uv.y * 2.0);
-      let isMortar = gridX < 0.06 || gridX > 0.94 || gridY < 0.06 || gridY > 0.94;
+      let rowIdx = floor(uv.y * 2.0);
+      var gridOffset = 0.0;
+      if (fract(rowIdx * 0.5) > 0.25) { gridOffset = 0.5; }
+      let shiftedX = fract(uv.x * 2.0 + gridOffset);
+
+      let isMortar = shiftedX < 0.05 || shiftedX > 0.95 || gridY < 0.05 || gridY > 0.95;
+
+      // Per-stone color variation
+      let stoneIdx = floor(uv.x * 2.0 + gridOffset) + rowIdx * 5.0 + seed.x;
+      let stoneVar = fract(sin(stoneIdx * 127.1) * 43758.5);
+
       var rockColor = stoneMid;
-      if (isMortar) { rockColor = stoneDark * 0.7; }
+      if (isMortar) {
+        rockColor = stoneDark * 0.6;
+      } else if (stoneVar < 0.3) {
+        rockColor = stoneLight;
+      } else if (stoneVar > 0.7) {
+        rockColor = stoneDark;
+      }
       albedo = rockColor * topWarmTint;
     }
   } else {
@@ -1010,9 +969,7 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     if (blockType == 1) {
       albedo = dirtDark * 0.4 * bottomCoolTint;
     } else if (blockType == 6) {
-      // Cherry leaves bottom - vivid magenta shadow
-      let leafBottom = vec3f(0.75, 0.32, 0.48);
-      albedo = leafBottom * 0.7 * bottomCoolTint;
+      albedo = rockDark * 0.44 * bottomCoolTint;
     } else if (blockType == 5) {
       albedo = rockDark * 0.35 * bottomCoolTint;
     } else {
@@ -1403,42 +1360,78 @@ fn main(input: FountainIn) -> @location(0) vec4f {
 
   var color = vec3f(0.0);
 
-  // Minecraft water colors - vibrant blue, semi-transparent
-  let waterBase = vec3f(0.2, 0.4, 0.9);
-  let waterLight = vec3f(0.4, 0.6, 1.0);
-  let waterDark = vec3f(0.1, 0.25, 0.7);
+  // Fountain water — cyan-leaning sky blue (low red avoids violet on dark faces)
+  let waterBase = vec3f(0.14, 0.52, 0.94);
+  let waterLight = vec3f(0.48, 0.76, 1.0);
+  let waterDark = vec3f(0.06, 0.36, 0.82);
   var alpha = 1.0;
 
   if (blockType > 2.5) {
-    // POOL WATER - Minecraft classic animated texture
-    let speed = 0.8;
-    // Diagonal flowing pattern (classic Minecraft)
-    let diag1 = fract((uv.x + uv.y) * 4.0 + time * speed);
-    let diag2 = fract((uv.x + uv.y) * 4.0 + time * speed + 0.5);
-    let wave = smoothstep(0.0, 0.3, diag1) * smoothstep(0.6, 0.3, diag1);
-    let wave2 = smoothstep(0.0, 0.3, diag2) * smoothstep(0.6, 0.3, diag2);
-    let pattern = max(wave, wave2 * 0.6);
+    // POOL WATER - rippling surface with falling water splashes
+    let speed = 1.2;
+    // Concentric ripples from center (where water falls)
+    let centerDist = length(uv - vec2f(0.5, 0.5));
+    let ripple = sin(centerDist * 20.0 - time * speed * 3.0) * 0.5 + 0.5;
+    let rippleFade = 1.0 - smoothstep(0.0, 0.5, centerDist);
 
-    color = mix(waterBase, waterLight, pattern * 0.5);
-    alpha = 0.75; // Semi-transparent
+    // Diagonal flowing pattern
+    let diag1 = fract((uv.x + uv.y) * 4.0 + time * speed);
+    let wave = smoothstep(0.0, 0.3, diag1) * smoothstep(0.6, 0.3, diag1);
+
+    let pattern = mix(wave, ripple * rippleFade, 0.5);
+    color = mix(waterBase, waterLight, pattern * 0.6);
+
+    // Foam/splash highlights in center
+    if (centerDist < 0.15) {
+      let foam = fract(sin(time * 8.0 + uv.x * 50.0) * 43758.5);
+      if (foam > 0.7) { color = mix(color, vec3f(0.9, 0.95, 1.0), 0.4); }
+    }
+    alpha = 0.75;
 
   } else if (blockType > 1.5) {
-    // FLOWING WATER - vertical cascade
-    let flowSpeed = 3.0;
-    let flow = fract(uv.y * 3.0 - time * flowSpeed);
-    let flowWave = smoothstep(0.0, 0.4, flow) * smoothstep(1.0, 0.4, flow);
+    // FLOWING WATER - cascading waterfall effect
+    let flowSpeed = 4.5;
+    // Multiple layers of falling water streams
+    let stream1 = fract(uv.y * 6.0 - time * flowSpeed);
+    let stream2 = fract(uv.y * 6.0 - time * flowSpeed + 0.33);
+    let stream3 = fract(uv.y * 6.0 - time * flowSpeed + 0.66);
 
-    color = mix(waterDark, waterLight, flowWave * 0.7);
-    alpha = 0.7;
+    // Create water droplet shapes falling down
+    let drop1 = smoothstep(0.0, 0.2, stream1) * smoothstep(0.5, 0.2, stream1);
+    let drop2 = smoothstep(0.0, 0.2, stream2) * smoothstep(0.5, 0.2, stream2);
+    let drop3 = smoothstep(0.0, 0.2, stream3) * smoothstep(0.5, 0.2, stream3);
+
+    // Horizontal variation for stream positions
+    let xNoise = fract(sin(floor(uv.x * 4.0) * 127.1) * 43758.5);
+    let streamMask = smoothstep(0.3, 0.5, xNoise) * smoothstep(0.9, 0.7, xNoise);
+
+    let flowPattern = (drop1 + drop2 * 0.7 + drop3 * 0.5) * streamMask;
+
+    // Bright highlights for water catching light
+    let highlight = smoothstep(0.5, 0.8, flowPattern);
+    color = mix(waterDark, waterLight, flowPattern * 0.8);
+    color = mix(color, vec3f(0.72, 0.9, 1.0), highlight * 0.5);
+    alpha = 0.65 + flowPattern * 0.2;
 
   } else if (blockType > 0.5) {
-    // WATER SOURCE - bubbling top
-    let speed = 1.5;
-    let bubble1 = sin((uv.x + uv.y) * 8.0 + time * speed) * 0.5 + 0.5;
-    let bubble2 = sin((uv.x - uv.y) * 6.0 + time * speed * 1.2) * 0.5 + 0.5;
-    let pattern = bubble1 * 0.5 + bubble2 * 0.5;
+    // WATER SOURCE - bubbling/splashing top
+    let speed = 2.5;
+    // Radial bubbling from center
+    let centerDist = length(uv - vec2f(0.5, 0.5));
+    let bubble1 = sin(centerDist * 15.0 - time * speed) * 0.5 + 0.5;
+    let bubble2 = sin((uv.x + uv.y) * 10.0 + time * speed * 1.3) * 0.5 + 0.5;
 
-    color = mix(waterBase, waterLight, pattern * 0.4);
+    // Spray particles
+    let spray = fract(sin(time * 12.0 + uv.x * 30.0 + uv.y * 40.0) * 43758.5);
+    let sprayMask = smoothstep(0.0, 0.2, centerDist) * (1.0 - smoothstep(0.3, 0.5, centerDist));
+
+    let pattern = bubble1 * 0.4 + bubble2 * 0.4 + spray * sprayMask * 0.3;
+    color = mix(waterBase, waterLight, pattern * 0.5);
+
+    // White foam splashes
+    if (spray > 0.85 && centerDist < 0.3) {
+      color = mix(color, vec3f(1.0, 1.0, 1.0), 0.5);
+    }
     alpha = 0.8;
 
   } else {
@@ -1869,10 +1862,10 @@ fn main(input: CastleIn) -> @location(0) vec4f {
     }
 
   } else if (blockType > 1.5) {
-    // TEAL ROOF - curved Japanese temple tiles
-    let roofTealDark = vec3f(0.15, 0.42, 0.45);
-    let roofTealMid = vec3f(0.22, 0.55, 0.58);
-    let roofTealLight = vec3f(0.32, 0.65, 0.68);
+    // BRICK RED ROOF - curved Japanese temple tiles
+    let roofRedDark = vec3f(0.38, 0.12, 0.10);
+    let roofRedMid = vec3f(0.52, 0.16, 0.14);
+    let roofRedLight = vec3f(0.65, 0.22, 0.18);
 
     // Curved tile pattern
     let tileX = fract(uv.x * 5.0);
@@ -1888,8 +1881,8 @@ fn main(input: CastleIn) -> @location(0) vec4f {
     let tileVEdge = smoothstep(0.0, 0.15, tileY) * smoothstep(1.0, 0.85, tileY);
 
     // Mix colors based on tile shape
-    color = mix(roofTealDark, roofTealMid, tileEdge * tileVEdge);
-    color = mix(color, roofTealLight, tileCurve * tileEdge);
+    color = mix(roofRedDark, roofRedMid, tileEdge * tileVEdge);
+    color = mix(color, roofRedLight, tileCurve * tileEdge);
 
     // Add subtle variation per tile
     let tileIdx = floor(uv.x * 5.0 + tileOffset) + rowIdx * 5.0;

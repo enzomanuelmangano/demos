@@ -79,6 +79,7 @@ import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
 import { IsometricQRCode } from './isometric-qrcode';
+import { BonsaiQRCode } from './bonsai-qrcode';
 import { CherryBlossomQRCode } from './cherry-blossom-qrcode';
 import { IsometricStarryNight } from './isometric-starry-night';
 import { IsometricTree } from './isometric-tree';
@@ -261,6 +262,7 @@ export const AnimationRegistry = {
   'github-terrain': GitHubTerrain,
   'isometric-qrcode': IsometricQRCode,
   'cherry-blossom-qrcode': CherryBlossomQRCode,
+  'bonsai-qrcode': BonsaiQRCode,
   'isometric-starry-night': IsometricStarryNight,
   'paper-airplane': PaperAirplane,
 } as const;
@@ -881,6 +883,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Cherry Blossom QR',
     route: 'CherryBlossomQRCode',
     iconName: 'flower-outline',
+  },
+  'bonsai-qrcode': {
+    name: 'Bonsai QR',
+    route: 'BonsaiQRCode',
+    iconName: 'leaf-outline',
   },
   'isometric-starry-night': {
     name: 'Starry Night',
