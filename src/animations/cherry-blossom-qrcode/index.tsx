@@ -126,7 +126,7 @@ function generateBlockData(qrMatrix: boolean[][]): {
       } else {
         heights.push(cubeHeight);
         baseY.push(0);
-        types.push(0); // dirt under canopy
+        types.push(4); // fallen petals under canopy (QR dark)
       }
       blockCount++;
     }
@@ -397,19 +397,16 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // 2 = trunk (QR dark at center) - dark brown, reads as "dark" when flat
   // 3 = grass (QR dark outside tree) - dark green, reads as "dark" when flat
 
-  // DIRT/PATH colors (QR LIGHT modules) - keep bright for scannability
-  let dirtLight = vec3f(0.98, 0.95, 0.88);
-  let dirtMid = vec3f(0.92, 0.88, 0.78);
-  let dirtDark = vec3f(0.85, 0.80, 0.68);
+  // DIRT/PATH colors (QR LIGHT modules) - very bright for scannability
+  let dirtLight = vec3f(1.0, 0.98, 0.94);
+  let dirtMid = vec3f(0.96, 0.94, 0.88);
+  let dirtDark = vec3f(0.92, 0.88, 0.82);
 
-  // CHERRY BLOSSOM colors (QR DARK modules) - vivid but clearly dark
-  let sakuraLight = vec3f(0.95, 0.55, 0.65);    // Light pink
-  let sakuraMid = vec3f(0.85, 0.38, 0.50);      // Medium pink
-  let sakuraDeep = vec3f(0.70, 0.25, 0.38);     // Deep pink
-  let sakuraRich = vec3f(0.55, 0.18, 0.28);     // Dark pink
-
-  // Accent colors (white only, no green)
-  let petalWhite = vec3f(1.0, 0.88, 0.90);      // Soft white petals
+  // CHERRY BLOSSOM colors (QR DARK modules) - much darker for scannability
+  let sakuraLight = vec3f(0.55, 0.30, 0.38);    // Light pink (much darker)
+  let sakuraMid = vec3f(0.45, 0.22, 0.30);      // Medium pink
+  let sakuraDeep = vec3f(0.35, 0.15, 0.22);     // Deep pink
+  let sakuraRich = vec3f(0.28, 0.10, 0.16);     // Dark pink
 
   // TRUNK colors - coherent brown range
   let barkLight = vec3f(0.45, 0.32, 0.22);     // Light brown
@@ -442,6 +439,27 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let noise2 = fract(sin(blockSeed * 1.7 + 127.1) * 43758.5);
   let noise3 = fract(sin(blockSeed * 2.3 + 311.7) * 43758.5);
 
+  // Calculate tree shadow on platform
+  let gridSize = uniforms.gridSize;
+  let cx = gridSize * 0.5;
+  let cy = gridSize * 0.5;
+
+  // Offset shadow based on light direction (-0.5, 0.8, -0.5)
+  // Light from top-left-front, so shadow shifts to bottom-right-back
+  let shadowOffsetX = 1.5; // Shift shadow in +X direction
+  let shadowOffsetY = 1.5; // Shift shadow in +Z direction
+
+  let dx = input.col - (cx + shadowOffsetX);
+  let dy = input.row - (cy + shadowOffsetY);
+  let distFromShadowCenter = sqrt(dx * dx + dy * dy);
+
+  // Canopy shadow - blocks under the canopy get darkened
+  let canopyRadius = gridSize * 0.46;
+  let trunkRadius = 2.5;
+  // Shadow is stronger near center, fades toward canopy edge
+  let shadowT = 1.0 - smoothstep(trunkRadius, canopyRadius, distFromShadowCenter);
+  let treeShadow = 1.0 - shadowT * 0.35; // Up to 35% darker under canopy
+
   if (input.faceNy > 0.5) {
     // TOP FACE - brightest, this is what QR scanner sees when flat
     let topWarmTint = vec3f(1.1, 1.08, 1.02);
@@ -460,6 +478,9 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.1;
       dirtColor = dirtColor * (1.0 + shift);
 
+      // Apply tree shadow to dirt under canopy
+      dirtColor = dirtColor * treeShadow;
+
       albedo = dirtColor * topWarmTint;
     } else if (blockType == 1) {
       // CHERRY BLOSSOM TOP - rich tonal variation
@@ -477,18 +498,13 @@ fn main(input: BlockInput) -> @location(0) vec4f {
         cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
       }
 
-      // Strong variation for contrast
-      let shift = (noise2 - 0.5) * 0.25;
+      // Moderate variation to keep contrast
+      let shift = (noise2 - 0.5) * 0.15;
       cherryColor = cherryColor * (1.0 + shift);
-
-      // White petal highlights (3%)
-      if (noise3 > 0.97) {
-        cherryColor = petalWhite;
-      }
 
       albedo = cherryColor * topWarmTint;
     } else if (blockType == 2) {
-      // TRUNK TOP - coherent brown variation
+      // TRUNK TOP - coherent brown variation with realistic shadows
       var barkColor = barkMid;
       let t = noise1;
 
@@ -505,17 +521,35 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.2;
       barkColor = barkColor * (1.0 + shift);
 
+      // Height-based lighting - lower blocks are darker (ambient occlusion)
+      let trunkMaxLayer = 12.0;
+      let heightRatio = min(layer / trunkMaxLayer, 1.0);
+      let aoShadow = 0.6 + heightRatio * 0.4; // 0.6 at base, 1.0 at top
+
+      // Edge darkening for ambient occlusion on each cube
+      let edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+      let edgeAO = 0.85 + smoothstep(0.0, 0.15, edgeDist) * 0.15;
+
+      barkColor = barkColor * aoShadow * edgeAO;
+
       albedo = barkColor * topWarmTint;
-    } else {
-      // GRASS TOP (QR dark) - high contrast green
+    } else if (blockType == 3) {
+      // GRASS TOP (QR dark) - mixed green and brownish tones
+      let grassBrown = vec3f(0.28, 0.25, 0.12);   // Earthy brown (less red)
+      let grassOlive = vec3f(0.32, 0.35, 0.15);   // Olive/dried grass
+
       var grassColor = grassMid;
       let t = noise1;
-      if (t < 0.33) {
-        grassColor = mix(grassBright, grassMid, t / 0.33);
-      } else if (t < 0.66) {
-        grassColor = mix(grassMid, grassDark, (t - 0.33) / 0.33);
+      if (t < 0.3) {
+        grassColor = mix(grassBright, grassMid, t / 0.3);
+      } else if (t < 0.6) {
+        grassColor = mix(grassMid, grassDark, (t - 0.3) / 0.3);
+      } else if (t < 0.8) {
+        // Brownish patches
+        grassColor = mix(grassDark, grassBrown, (t - 0.6) / 0.2);
       } else {
-        grassColor = grassDark * (1.0 - (t - 0.66) * 0.2);
+        // Olive dried grass
+        grassColor = mix(grassBrown, grassOlive, (t - 0.8) / 0.2);
       }
 
       // Strong variation for contrast
@@ -523,14 +557,38 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       grassColor = grassColor * (1.0 + shift);
 
       albedo = grassColor * topWarmTint;
+    } else {
+      // FALLEN PETALS (type 4) - QR dark under canopy
+      // Darker pink/mauve tones like scattered petals on ground
+      let fallenLight = vec3f(0.65, 0.45, 0.50);
+      let fallenMid = vec3f(0.50, 0.35, 0.40);
+      let fallenDark = vec3f(0.40, 0.28, 0.32);
+
+      var fallenColor = fallenMid;
+      let t = noise1;
+      if (t < 0.33) {
+        fallenColor = mix(fallenLight, fallenMid, t / 0.33);
+      } else if (t < 0.66) {
+        fallenColor = mix(fallenMid, fallenDark, (t - 0.33) / 0.33);
+      } else {
+        fallenColor = fallenDark * (1.0 - (t - 0.66) * 0.15);
+      }
+
+      let shift = (noise2 - 0.5) * 0.15;
+      fallenColor = fallenColor * (1.0 + shift);
+
+      // Apply tree shadow
+      fallenColor = fallenColor * treeShadow;
+
+      albedo = fallenColor * topWarmTint;
     }
 
   } else if (abs(input.faceNz) > 0.5 || abs(input.faceNx) > 0.5) {
     // SIDE FACES - use actual sun direction for shading
     let faceN = normalize(vec3f(input.faceNx, input.faceNy, input.faceNz));
     let sunLight = max(dot(faceN, sunDir), 0.0);
-    // Shade based on sun: 0.4 base + 0.5 from sun
-    let shade = 0.4 + sunLight * 0.5;
+    // Shade based on sun: 0.3 base + 0.65 from sun (stronger contrast)
+    let shade = 0.3 + sunLight * 0.65;
     let tint = vec3f(0.95, 0.95, 0.98);
 
     if (blockType == 0) {
@@ -566,7 +624,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = cherryColor * shade * tint;
     } else if (blockType == 2) {
-      // TRUNK SIDE - high contrast brown
+      // TRUNK SIDE - high contrast brown with realistic shadows
       var barkColor = barkMid;
       let t = noise1;
 
@@ -582,40 +640,90 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.2;
       barkColor = barkColor * (1.0 + shift);
 
+      // Height-based lighting - lower blocks are darker
+      let trunkMaxLayer = 12.0;
+      let heightRatio = min(layer / trunkMaxLayer, 1.0);
+      let aoShadow = 0.55 + heightRatio * 0.45; // Darker sides at base
+
+      // Vertical gradient on side faces - darker at bottom of each cube
+      let verticalAO = 0.75 + uv.y * 0.25;
+
+      // Edge darkening for crevices between blocks
+      let edgeDist = min(uv.x, 1.0 - uv.x);
+      let edgeAO = 0.9 + smoothstep(0.0, 0.1, edgeDist) * 0.1;
+
+      barkColor = barkColor * aoShadow * verticalAO * edgeAO;
+
       albedo = barkColor * shade * tint;
-    } else {
-      // GRASS SIDE - high contrast
+    } else if (blockType == 3) {
+      // GRASS SIDE - mixed green and brownish tones
+      let grassBrown = vec3f(0.28, 0.25, 0.12);   // Earthy brown (less red)
+      let grassOlive = vec3f(0.32, 0.35, 0.15);   // Olive/dried grass
+
       var grassColor = grassMid;
       let t = noise1;
-      if (t < 0.33) {
-        grassColor = mix(grassBright, grassMid, t / 0.33);
-      } else if (t < 0.66) {
-        grassColor = mix(grassMid, grassDark, (t - 0.33) / 0.33);
+      if (t < 0.3) {
+        grassColor = mix(grassBright, grassMid, t / 0.3);
+      } else if (t < 0.6) {
+        grassColor = mix(grassMid, grassDark, (t - 0.6) / 0.3);
+      } else if (t < 0.8) {
+        // Brownish patches
+        grassColor = mix(grassDark, grassBrown, (t - 0.6) / 0.2);
       } else {
-        grassColor = grassDark * (1.0 - (t - 0.66) * 0.2);
+        // Olive dried grass
+        grassColor = mix(grassBrown, grassOlive, (t - 0.8) / 0.2);
       }
       let shift = (noise2 - 0.5) * 0.2;
       grassColor = grassColor * (1.0 + shift);
 
       albedo = grassColor * shade * tint;
+    } else {
+      // FALLEN PETALS SIDE (type 4)
+      let fallenMid = vec3f(0.50, 0.35, 0.40);
+      let fallenDark = vec3f(0.40, 0.28, 0.32);
+
+      var fallenColor = mix(fallenMid, fallenDark, noise1);
+      let shift = (noise2 - 0.5) * 0.15;
+      fallenColor = fallenColor * (1.0 + shift);
+
+      albedo = fallenColor * shade * tint;
     }
   } else {
     // BOTTOM FACE
     let bottomTint = vec3f(0.6, 0.62, 0.7);
+    let fallenDark = vec3f(0.40, 0.28, 0.32);
     if (blockType == 0) {
       albedo = dirtDark * 0.5 * bottomTint;
     } else if (blockType == 1) {
       albedo = sakuraDeep * 0.5 * bottomTint;
     } else if (blockType == 2) {
       albedo = barkDark * 0.5 * bottomTint;
-    } else {
+    } else if (blockType == 3) {
       albedo = grassDark * 0.5 * bottomTint;
+    } else {
+      albedo = fallenDark * 0.5 * bottomTint;
     }
   }
 
   // Final lighting
   let diffuse = albedo * (ambient + sunCol * NdSun * 0.65 + skyFill * NdUp * 0.25 + bounce * 0.2);
   var hdr = diffuse;
+
+  // Subtle contrast adjustment when transitioning to 2D (flat view)
+  // Base colors are already optimized for scanning, so keep changes minimal
+  let contrastBoost = 1.0 + progress * 0.1; // Just 10% more contrast when flat
+
+  // Apply subtle contrast around midpoint
+  hdr = (hdr - 0.5) * contrastBoost + 0.5;
+
+  // Minimal adjustments for QR readability
+  if (blockType == 1 || blockType == 2 || blockType == 3 || blockType == 4) {
+    // Slight darkening when flat
+    hdr = hdr * (1.0 - progress * 0.05);
+  } else {
+    // Slight brightening when flat
+    hdr = hdr + progress * 0.02;
+  }
 
   hdr = acesFilm(hdr * 1.05);
   hdr = pow(hdr, vec3f(1.0 / 2.2));
@@ -685,6 +793,114 @@ fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
   sky = pow(sky, vec3f(1.0 / 2.2));
 
   return vec4f(sky, 1.0);
+}
+`;
+
+// Shadow shaders - renders a soft elliptical shadow beneath the platform
+const shadowVertexShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+struct ShadowOut {
+  @builtin(position) position: vec4f,
+  @location(0) uv: vec2f,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@vertex
+fn main(@builtin(vertex_index) vi: u32) -> ShadowOut {
+  // Quad vertices centered at origin
+  var quadVerts = array<vec2f, 6>(
+    vec2f(-1.0, -1.0), vec2f(1.0, -1.0), vec2f(-1.0, 1.0),
+    vec2f(-1.0, 1.0), vec2f(1.0, -1.0), vec2f(1.0, 1.0)
+  );
+
+  let qv = quadVerts[vi];
+  var o: ShadowOut;
+  o.uv = qv * 0.5 + 0.5; // 0-1 UV
+
+  // Shadow plane size - distant ground effect
+  let gridSize = uniforms.gridSize;
+  let blockSize = 0.0245;
+  let halfGrid = gridSize * blockSize * 0.5;
+  let shadowScale = 1.0; // Match platform size
+
+  // Position in 3D space - FAR below the platform for levitation effect
+  // Light comes from (-0.5, 0.8, -0.5), so shadow offsets toward (+x, +z)
+  let progress = uniforms.progress;
+  let shadowHeight = 0.45;
+  let lightDirXZ = vec2f(-0.5, -0.5); // XZ components of sun direction
+  // Offset fades out when going flat (looking straight down)
+  let shadowOffset = -lightDirXZ * shadowHeight * 0.4 * (1.0 - progress);
+
+  let localX = qv.x * halfGrid * shadowScale + shadowOffset.x;
+  let localY = -shadowHeight;
+  let localZ = qv.y * halfGrid * shadowScale + shadowOffset.y;
+
+  // Apply same isometric rotation as blocks
+  let isoAngleY = mix(${ISO_ANGLE_Y}, ${FLAT_ANGLE_Y}, progress);
+  let isoAngleX = mix(${ISO_ANGLE_X}, ${FLAT_ANGLE_X}, progress);
+
+  let cy = cos(isoAngleY); let sy = sin(isoAngleY);
+  let cx = cos(isoAngleX); let sx = sin(isoAngleX);
+
+  let ry_x = localX * cy - localZ * sy;
+  let ry_z = localX * sy + localZ * cy;
+  let rx_y = localY * cx - ry_z * sx;
+  let rx_z = localY * sx + ry_z * cx;
+
+  let viewScale = mix(1.0, 1.35, progress);
+  o.position = vec4f(
+    ry_x * viewScale / uniforms.aspectRatio,
+    rx_y * viewScale,
+    0.99, // Behind everything but sky
+    1.0
+  );
+
+  return o;
+}
+`;
+
+const shadowFragmentShader = /* wgsl */ `
+struct Uniforms {
+  aspectRatio: f32,
+  time: f32,
+  blockCount: f32,
+  progress: f32,
+  gridSize: f32,
+  _pad1: f32,
+  _pad2: f32,
+  _pad3: f32,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@fragment
+fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
+  // Center the UV
+  let centered = uv * 2.0 - 1.0;
+
+  // Soft circular distance - no visible shape edges
+  let dist = length(centered);
+
+  // Gaussian-like falloff for very soft blur
+  let shadowStrength = 0.12;
+  let falloff = exp(-dist * dist * 2.5); // Gaussian curve
+  let alpha = shadowStrength * falloff;
+
+  // Shadow color - slightly cool dark
+  let shadowColor = vec3f(0.1, 0.12, 0.15);
+
+  return vec4f(shadowColor * alpha, alpha);
 }
 `;
 
@@ -864,6 +1080,25 @@ export const CherryBlossomQRCode = () => {
       depthStencil: { depthWriteEnabled: false, depthCompare: 'always', format: 'depth24plus' },
     });
 
+    // Shadow pipeline - renders below the platform
+    const shadowPipeline = device.createRenderPipeline({
+      layout: device.createPipelineLayout({ bindGroupLayouts: [skyBindGroupLayout] }),
+      vertex: { module: device.createShaderModule({ code: shadowVertexShader }), entryPoint: 'main' },
+      fragment: {
+        module: device.createShaderModule({ code: shadowFragmentShader }),
+        entryPoint: 'main',
+        targets: [{
+          format,
+          blend: {
+            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha', operation: 'add' },
+          },
+        }],
+      },
+      primitive: { topology: 'triangle-list', cullMode: 'none' },
+      depthStencil: { depthWriteEnabled: false, depthCompare: 'always', format: 'depth24plus' },
+    });
+
     const pipeline = device.createRenderPipeline({
       layout: device.createPipelineLayout({ bindGroupLayouts: [bindGroupLayout] }),
       vertex: { module: device.createShaderModule({ code: vertexShader }), entryPoint: 'main' },
@@ -925,6 +1160,11 @@ export const CherryBlossomQRCode = () => {
       renderPass.setPipeline(skyPipeline);
       renderPass.setBindGroup(0, skyBindGroup);
       renderPass.draw(3);
+
+      // Render shadow beneath platform
+      renderPass.setPipeline(shadowPipeline);
+      renderPass.setBindGroup(0, skyBindGroup);
+      renderPass.draw(6);
 
       renderPass.setPipeline(pipeline);
       renderPass.setBindGroup(0, bindGroup);
