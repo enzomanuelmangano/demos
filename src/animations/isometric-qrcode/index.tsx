@@ -188,12 +188,12 @@ function getCastleCenter(gridSize: number): { col: number; row: number } {
  */
 const SKYLINE_PEAK_CORNER: 'tl' | 'tr' | 'bl' | 'br' = 'br';
 
-/** Landmark: only ~1 corner gets full height; falloff in normalized distance [0,1]. */
-const SKYLINE_LANDMARK_SIGMA = 0.29;
-const SKYLINE_LANDMARK_POWER = 2.4;
+/** Cherry blossom garden: gentle low hills, no tall peaks */
+const SKYLINE_LANDMARK_SIGMA = 0.15;
+const SKYLINE_LANDMARK_POWER = 3.0;
 
-/** Rest of grid: low-rise fabric (never near 1.0 except inside landmark blend). */
-const SKYLINE_FABRIC_MIN = 0.08;
+/** Low uniform heights for cherry tree garden */
+const SKYLINE_FABRIC_MIN = 0.14;
 const SKYLINE_FABRIC_MAX = 0.22;
 
 function skylinePeakCorner(): { px: number; py: number } {
@@ -236,18 +236,25 @@ function skylineFabricHeight(
  * Only the chosen corner reaches ~1.0; the rest stays in a low band with gentle hills.
  */
 function skylineHeight(col: number, row: number, gridSize: number): number {
-  const g = Math.max(1, gridSize - 1);
-  const ax = col / g;
-  const ay = row / g;
-  const { px, py } = skylinePeakCorner();
-  const d = Math.hypot(ax - px, ay - py);
-  const dNorm = d / Math.SQRT2;
-  const landmarkWeight = Math.exp(
-    -Math.pow(dNorm / SKYLINE_LANDMARK_SIGMA, SKYLINE_LANDMARK_POWER),
+  // Get pagoda center position
+  const f = 7; // finder pattern size
+  const pagodaCol = gridSize - f + Math.floor(f / 2);
+  const pagodaRow = gridSize - f + Math.floor(f / 2);
+
+  // Distance from pagoda in blocks
+  const distFromPagoda = Math.max(
+    Math.abs(col - pagodaCol),
+    Math.abs(row - pagodaRow),
   );
+
+  // Very flat ground within 3 blocks of pagoda
+  if (distFromPagoda <= 3) {
+    return 0.001; // Basically flat - grass level
+  }
+
+  // Normal height for trees further away
   const fabric = skylineFabricHeight(col, row, gridSize);
-  const h = landmarkWeight * 1.0 + (1.0 - landmarkWeight) * fabric;
-  return Math.min(1, h);
+  return fabric;
 }
 
 const BUILDING_BASE: RGB = PALETTE.building;
@@ -678,25 +685,13 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let typeNoise = hash2(seed * 3.1);
   let cherryNoise = hash2(seed * 7.7);
 
-  if (input.blockH < 0.15) {
-    // Low ground - grass with scattered cherry blossom trees
-    if (cherryNoise > 0.82) {
-      blockType = 6; // Cherry blossom tree ~18% of grass blocks
-    } else {
-      blockType = 1; // Regular grass
-    }
-  } else if (input.blockH < 0.3) {
-    // Mix of stone brick and cobblestone
-    if (typeNoise > 0.5) { blockType = 3; } else { blockType = 0; }
-  } else if (input.blockH < 0.5) {
-    // Stone brick for mid-height
-    blockType = 3;
-  } else if (input.blockH > 0.7) {
-    // Mountain peaks - dark rock with scattered snow on top
-    blockType = 5;
+  if (input.blockH < 0.13) {
+    // Flat ground - grass
+    blockType = 1;
   } else {
-    // Mid-high mountains - dark rock
-    blockType = 5;
+    // All raised blocks become cherry blossom trees!
+    // Creates a beautiful spring garden around the pagoda
+    blockType = 6;
   }
 
   // SPRING Minecraft colors - lush and vibrant
@@ -709,10 +704,11 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let dirtDark = vec3f(0.40, 0.28, 0.16);
   let dirtMid = vec3f(0.48, 0.34, 0.20);
 
-  // Cherry blossom colors - soft pinks
-  let sakuraPink = vec3f(1.0, 0.75, 0.82);
-  let sakuraBright = vec3f(1.0, 0.88, 0.92);
-  let sakuraDark = vec3f(0.85, 0.55, 0.65);
+  // Cherry blossom colors - vibrant pinks for spring!
+  let sakuraPink = vec3f(1.0, 0.68, 0.78);
+  let sakuraBright = vec3f(1.0, 0.85, 0.90);
+  let sakuraDark = vec3f(0.95, 0.45, 0.58);
+  let sakuraWhite = vec3f(1.0, 0.95, 0.97);
 
   // Stone/Cobblestone - neutral gray (OKLCH L=0.40-0.60, C=0, H=0)
   let stoneLight = vec3f(0.58, 0.58, 0.58);
@@ -805,40 +801,88 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = mtnColor * shade * tint;
 
     } else if (blockType == 6) {
-      // CHERRY BLOSSOM TREE SIDE - trunk at bottom, blossoms above
-      let time = uniforms.time;
+      // CHERRY BLOSSOM TREE - vivid colors, trunk on bottom, leaves on top
 
-      // Tree trunk at lower portion
-      let trunkZone = uv.y < 0.35;
+      // Trunk colors (rich warm brown bark)
+      let barkDark = vec3f(0.28, 0.16, 0.08);
+      let barkMid = vec3f(0.48, 0.30, 0.16);
+      let barkLight = vec3f(0.58, 0.40, 0.24);
 
-      if (trunkZone) {
-        // Dark wood trunk
-        let trunkBark = vec3f(0.32, 0.22, 0.15);
-        let trunkDark = vec3f(0.22, 0.15, 0.10);
+      // VIVID cherry blossom pinks - highly saturated
+      let leafHot = vec3f(1.0, 0.45, 0.65);      // Hot pink
+      let leafBase = vec3f(1.0, 0.55, 0.72);     // Vibrant pink
+      let leafPink = vec3f(0.95, 0.38, 0.58);    // Deep magenta
+      let leafDark = vec3f(0.82, 0.28, 0.48);    // Rich magenta
 
-        // Bark texture - vertical lines
-        let barkLine = sin(uv.x * 24.0) * 0.5 + 0.5;
-        let barkColor = mix(trunkDark, trunkBark, barkLine * 0.4 + 0.6);
+      // Vivid green leaf accents
+      let greenLeaf = vec3f(0.30, 0.72, 0.28);   // Bright green
+      let greenDark = vec3f(0.22, 0.55, 0.20);   // Forest green
 
-        albedo = barkColor * shade * tint;
+      // Bright petal accents
+      let petalWhite = vec3f(1.0, 0.98, 1.0);    // Pure white
+      let petalPink = vec3f(1.0, 0.78, 0.88);    // Soft pink
+
+      // Determine if this is trunk or leaves
+      let trunkHeight = 0.35;
+      let isTrunk = uv.y < trunkHeight && input.blockH > 0.16;
+
+      var treeColor = leafBase;
+
+      if (isTrunk) {
+        // TRUNK texture - vertical bark pattern
+        let barkX = fract(uv.x * 6.0);
+        let barkNoise = fract(sin(floor(uv.x * 6.0) * 17.3 + floor(uv.y * 12.0) * 31.7 + seed.x) * 43758.5);
+
+        treeColor = barkMid;
+        if (barkNoise > 0.65) { treeColor = barkLight; }
+        else if (barkNoise < 0.35) { treeColor = barkDark; }
+
+        // Vertical groove lines
+        let groove = smoothstep(0.0, 0.15, barkX) * smoothstep(1.0, 0.85, barkX);
+        treeColor = mix(barkDark * 0.8, treeColor, groove);
+
       } else {
-        // Cherry blossom canopy - fluffy pink clouds
-        let blossomY = (uv.y - 0.35) / 0.65; // Normalize to blossom zone
+        // LEAVES texture - vivid Minecraft cherry blossom style
+        let px = floor(uv.x * 8.0);
+        let py = floor(uv.y * 8.0);
+        let pixelNoise = fract(sin(px * 127.1 + py * 311.7 + seed.x * 17.3) * 43758.5);
+        let pixelNoise2 = fract(sin(px * 73.3 + py * 157.1 + seed.y * 31.7) * 43758.5);
+        let pixelNoise3 = fract(sin(px * 43.7 + py * 97.3 + seed.x * 7.1) * 43758.5);
 
-        let petalX = floor(uv.x * 5.0);
-        let petalY = floor(blossomY * 4.0);
-        let petalNoise = fract(sin(petalX * 127.1 + petalY * 311.7 + seed.x * 7.3) * 43758.5);
+        // Vivid pink variations
+        treeColor = leafBase;
+        if (pixelNoise < 0.25) {
+          treeColor = leafHot;
+        } else if (pixelNoise < 0.45) {
+          treeColor = leafPink;
+        } else if (pixelNoise > 0.88) {
+          treeColor = leafDark;
+        }
 
-        var blossomColor = sakuraPink;
-        if (petalNoise > 0.65) { blossomColor = sakuraBright; }
-        else if (petalNoise < 0.35) { blossomColor = sakuraDark; }
+        // Green leaf shapes (~18%)
+        if (pixelNoise2 > 0.82) {
+          if (pixelNoise3 > 0.5) {
+            treeColor = greenLeaf;
+          } else {
+            treeColor = greenDark;
+          }
+        }
 
-        // Add depth shadow toward bottom of canopy
-        let canopyShade = smoothstep(0.0, 0.4, blossomY);
-        blossomColor *= 0.7 + canopyShade * 0.3;
+        // White/pink petals (~12%)
+        if (pixelNoise3 > 0.88 && pixelNoise2 < 0.82) {
+          if (pixelNoise > 0.5) {
+            treeColor = petalWhite;
+          } else {
+            treeColor = petalPink;
+          }
+        }
 
-        albedo = blossomColor * shade * tint;
+        // Extra saturation and brightness boost for leaves
+        let gray = dot(treeColor, vec3f(0.299, 0.587, 0.114));
+        treeColor = mix(vec3f(gray), treeColor, 1.5) * 1.15;
       }
+
+      albedo = treeColor * shade * tint;
 
     } else {
       // COBBLESTONE - clean stone grid
@@ -895,35 +939,61 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       albedo = mtnTopColor * topWarmTint;
 
     } else if (blockType == 6) {
-      // CHERRY BLOSSOM TREE TOP - pink fluffy canopy
-      let time = uniforms.time;
+      // CHERRY BLOSSOM TOP - vivid colors matching sides
+      // VIVID cherry blossom pinks
+      let leafHot = vec3f(1.0, 0.45, 0.65);
+      let leafBase = vec3f(1.0, 0.55, 0.72);
+      let leafPink = vec3f(0.95, 0.38, 0.58);
+      let leafDark = vec3f(0.82, 0.28, 0.48);
 
-      // Create fluffy cloud-like blossom pattern
-      let fluffX = sin(uv.x * 8.0 + time * 0.3) * 0.5 + 0.5;
-      let fluffY = sin(uv.y * 8.0 + time * 0.2) * 0.5 + 0.5;
-      let fluff = fluffX * fluffY;
+      // Vivid greens
+      let greenLeaf = vec3f(0.30, 0.72, 0.28);
+      let greenDark = vec3f(0.22, 0.55, 0.20);
 
-      // Pixelated petal clusters
-      let petalX = floor(uv.x * 6.0);
-      let petalY = floor(uv.y * 6.0);
-      let petalNoise = fract(sin(petalX * 127.1 + petalY * 311.7 + seed.x * 7.3) * 43758.5);
+      // Bright petals
+      let petalWhite = vec3f(1.0, 0.98, 1.0);
+      let petalPink = vec3f(1.0, 0.78, 0.88);
 
-      var blossomColor = sakuraPink;
-      if (petalNoise > 0.7) {
-        blossomColor = sakuraBright; // Lighter petals
-      } else if (petalNoise < 0.3) {
-        blossomColor = sakuraDark; // Deeper pink
+      // High-res pixel grid (8x8)
+      let px = floor(uv.x * 8.0);
+      let py = floor(uv.y * 8.0);
+      let pixelNoise = fract(sin(px * 127.1 + py * 311.7 + seed.x * 17.3) * 43758.5);
+      let pixelNoise2 = fract(sin(px * 73.3 + py * 157.1 + seed.y * 31.7) * 43758.5);
+      let pixelNoise3 = fract(sin(px * 43.7 + py * 97.3 + seed.x * 7.1) * 43758.5);
+
+      // Vivid pink variations
+      var leafColor = leafBase;
+      if (pixelNoise < 0.25) {
+        leafColor = leafHot;
+      } else if (pixelNoise < 0.45) {
+        leafColor = leafPink;
+      } else if (pixelNoise > 0.88) {
+        leafColor = leafDark;
       }
 
-      // Add subtle sparkle for petal shimmer
-      let sparkle = smoothstep(0.88, 1.0, fract(sin(petalX * 73.3 + petalY * 17.7 + time) * 43758.5));
-      blossomColor += vec3f(0.15, 0.1, 0.1) * sparkle;
+      // Green leaf shapes (~18%)
+      if (pixelNoise2 > 0.82) {
+        if (pixelNoise3 > 0.5) {
+          leafColor = greenLeaf;
+        } else {
+          leafColor = greenDark;
+        }
+      }
 
-      // Mix with some green leaves peeking through
-      let leafPeek = smoothstep(0.15, 0.25, petalNoise) * smoothstep(0.35, 0.25, petalNoise);
-      blossomColor = mix(blossomColor, grassMid, leafPeek * 0.3);
+      // White/pink petal dots (~12%)
+      if (pixelNoise3 > 0.88 && pixelNoise2 < 0.82) {
+        if (pixelNoise > 0.5) {
+          leafColor = petalWhite;
+        } else {
+          leafColor = petalPink;
+        }
+      }
 
-      albedo = blossomColor * topWarmTint;
+      // Saturation and brightness boost
+      let gray = dot(leafColor, vec3f(0.299, 0.587, 0.114));
+      leafColor = mix(vec3f(gray), leafColor, 1.5) * 1.2;
+
+      albedo = leafColor * topWarmTint;
 
     } else {
       // COBBLESTONE TOP - clean stone grid
@@ -937,9 +1007,17 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   } else {
     // BOTTOM FACE - subtle cool shadows
     let bottomCoolTint = vec3f(0.82, 0.84, 0.90);
-    if (blockType == 1 || blockType == 6) { albedo = dirtDark * 0.4 * bottomCoolTint; }
-    else if (blockType == 5) { albedo = rockDark * 0.35 * bottomCoolTint; }
-    else { albedo = stoneDark * 0.4 * bottomCoolTint; }
+    if (blockType == 1) {
+      albedo = dirtDark * 0.4 * bottomCoolTint;
+    } else if (blockType == 6) {
+      // Cherry leaves bottom - vivid magenta shadow
+      let leafBottom = vec3f(0.75, 0.32, 0.48);
+      albedo = leafBottom * 0.7 * bottomCoolTint;
+    } else if (blockType == 5) {
+      albedo = rockDark * 0.35 * bottomCoolTint;
+    } else {
+      albedo = stoneDark * 0.4 * bottomCoolTint;
+    }
   }
 
   // CINEMATIC DIFFUSE - high contrast, warm/cool color separation
@@ -1483,28 +1561,28 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> CastleOut {
   // Stone foundation (3x3=9), then 3 floors each with walls + frame + roof + lanterns
 
   if (blockIdx < 9u) {
-    // STONE FOUNDATION - 3x3 rectangular base
+    // STONE FOUNDATION - 3x3 rectangular base - more compact
     let idx = blockIdx;
     let fx = f32(i32(idx) % 3) - 1.0;
     let fz = f32(i32(idx) / 3) - 1.0;
-    blockX = baseX + fx * cubeSize * scale * 1.5;
-    blockZ = baseZ + fz * cubeSize * scale * 1.5;
+    blockX = baseX + fx * cubeSize * scale * 1.0;
+    blockZ = baseZ + fz * cubeSize * scale * 1.0;
     blockY = baseY;
-    blockW = cubeSize * scale * 1.5;
-    blockD = cubeSize * scale * 1.5;
+    blockW = cubeSize * scale * 1.0;
+    blockD = cubeSize * scale * 1.0;
     blockH = cubeSize * 2.0;
     blockType = 1.0; // Stone base (dark)
 
   } else if (blockIdx < 25u) {
-    // FLOOR 1 WALLS - 4x4 rectangular grid (white with frame)
+    // FLOOR 1 WALLS - 4x4 rectangular grid (white with frame) - more compact
     let idx = blockIdx - 9u;
     let wx = f32(i32(idx) % 4) - 1.5;
     let wz = f32(i32(idx) / 4) - 1.5;
-    blockX = baseX + wx * cubeSize * scale * 1.1;
-    blockZ = baseZ + wz * cubeSize * scale * 1.1;
+    blockX = baseX + wx * cubeSize * scale * 0.75;
+    blockZ = baseZ + wz * cubeSize * scale * 0.75;
     blockY = baseY + cubeSize * 2.0;
-    blockW = cubeSize * scale * 1.1;
-    blockD = cubeSize * scale * 1.1;
+    blockW = cubeSize * scale * 0.75;
+    blockD = cubeSize * scale * 0.75;
     blockH = floorH;
     blockType = 0.0; // White walls
 
