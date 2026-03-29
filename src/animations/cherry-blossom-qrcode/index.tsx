@@ -402,22 +402,22 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtMid = vec3f(0.96, 0.94, 0.88);
   let dirtDark = vec3f(0.92, 0.88, 0.82);
 
-  // CHERRY BLOSSOM colors (QR DARK modules) - much darker for scannability
-  let sakuraLight = vec3f(0.55, 0.30, 0.38);    // Light pink (much darker)
-  let sakuraMid = vec3f(0.45, 0.22, 0.30);      // Medium pink
-  let sakuraDeep = vec3f(0.35, 0.15, 0.22);     // Deep pink
-  let sakuraRich = vec3f(0.28, 0.10, 0.16);     // Dark pink
+  // CHERRY BLOSSOM colors (QR DARK modules) - vivid but dark
+  let sakuraLight = vec3f(0.52, 0.18, 0.28);    // Light pink - more saturated
+  let sakuraMid = vec3f(0.42, 0.12, 0.22);      // Medium pink
+  let sakuraDeep = vec3f(0.32, 0.08, 0.16);     // Deep pink
+  let sakuraRich = vec3f(0.24, 0.04, 0.12);     // Dark pink
 
-  // TRUNK colors - coherent brown range
-  let barkLight = vec3f(0.45, 0.32, 0.22);     // Light brown
-  let barkMid = vec3f(0.38, 0.26, 0.16);       // Medium brown
-  let barkDark = vec3f(0.32, 0.20, 0.12);      // Dark brown
-  let barkDeep = vec3f(0.28, 0.16, 0.09);      // Deep brown
+  // TRUNK colors - richer browns
+  let barkLight = vec3f(0.32, 0.18, 0.08);     // Light brown - warmer
+  let barkMid = vec3f(0.26, 0.14, 0.05);       // Medium brown
+  let barkDark = vec3f(0.20, 0.10, 0.03);      // Dark brown
+  let barkDeep = vec3f(0.15, 0.07, 0.02);      // Deep brown
 
-  // GRASS colors (QR DARK modules) - keep dark for scannability
-  let grassDark = vec3f(0.15, 0.28, 0.10);
-  let grassMid = vec3f(0.25, 0.42, 0.18);
-  let grassBright = vec3f(0.35, 0.52, 0.25);
+  // GRASS colors (QR DARK modules) - vivid but dark
+  let grassDark = vec3f(0.06, 0.18, 0.04);
+  let grassMid = vec3f(0.10, 0.28, 0.06);
+  let grassBright = vec3f(0.15, 0.38, 0.10);
 
   let seed = vec2f(input.col, input.row);
   var albedo = vec3f(0.5);
@@ -558,20 +558,26 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = grassColor * topWarmTint;
     } else {
-      // FALLEN PETALS (type 4) - QR dark under canopy
-      // Darker pink/mauve tones like scattered petals on ground
-      let fallenLight = vec3f(0.65, 0.45, 0.50);
-      let fallenMid = vec3f(0.50, 0.35, 0.40);
-      let fallenDark = vec3f(0.40, 0.28, 0.32);
+      // FALLEN PETALS (type 4) - mostly brown with some green, covered by canopy in 2D
+      let fallenBrown = vec3f(0.48, 0.38, 0.28);
+      let fallenDarkBrown = vec3f(0.42, 0.32, 0.22);
+      let fallenOlive = vec3f(0.40, 0.42, 0.28);
+      let fallenTan = vec3f(0.52, 0.42, 0.32);
 
-      var fallenColor = fallenMid;
+      var fallenColor = fallenBrown;
       let t = noise1;
-      if (t < 0.33) {
-        fallenColor = mix(fallenLight, fallenMid, t / 0.33);
-      } else if (t < 0.66) {
-        fallenColor = mix(fallenMid, fallenDark, (t - 0.33) / 0.33);
+      if (t < 0.35) {
+        // Brown range - 35%
+        fallenColor = mix(fallenBrown, fallenDarkBrown, t / 0.35);
+      } else if (t < 0.65) {
+        // Tan range - 30%
+        fallenColor = mix(fallenDarkBrown, fallenTan, (t - 0.35) / 0.30);
+      } else if (t < 0.85) {
+        // Olive range - 20%
+        fallenColor = mix(fallenTan, fallenOlive, (t - 0.65) / 0.20);
       } else {
-        fallenColor = fallenDark * (1.0 - (t - 0.66) * 0.15);
+        // Back to brown - 15%
+        fallenColor = mix(fallenOlive, fallenBrown, (t - 0.85) / 0.15);
       }
 
       let shift = (noise2 - 0.5) * 0.15;
@@ -678,11 +684,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
       albedo = grassColor * shade * tint;
     } else {
-      // FALLEN PETALS SIDE (type 4)
-      let fallenMid = vec3f(0.50, 0.35, 0.40);
-      let fallenDark = vec3f(0.40, 0.28, 0.32);
+      // FALLEN PETALS SIDE (type 4) - mostly brown
+      let fallenBrown = vec3f(0.45, 0.35, 0.26);
+      let fallenOlive = vec3f(0.38, 0.40, 0.26);
 
-      var fallenColor = mix(fallenMid, fallenDark, noise1);
+      var fallenColor = mix(fallenBrown, fallenOlive, noise1 * 0.4);
       let shift = (noise2 - 0.5) * 0.15;
       fallenColor = fallenColor * (1.0 + shift);
 
@@ -691,7 +697,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   } else {
     // BOTTOM FACE
     let bottomTint = vec3f(0.6, 0.62, 0.7);
-    let fallenDark = vec3f(0.40, 0.28, 0.32);
+    let fallenBottom = vec3f(0.45, 0.42, 0.32);
     if (blockType == 0) {
       albedo = dirtDark * 0.5 * bottomTint;
     } else if (blockType == 1) {
@@ -701,7 +707,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     } else if (blockType == 3) {
       albedo = grassDark * 0.5 * bottomTint;
     } else {
-      albedo = fallenDark * 0.5 * bottomTint;
+      albedo = fallenBottom * 0.6 * bottomTint;
     }
   }
 
@@ -709,21 +715,6 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let diffuse = albedo * (ambient + sunCol * NdSun * 0.65 + skyFill * NdUp * 0.25 + bounce * 0.2);
   var hdr = diffuse;
 
-  // Subtle contrast adjustment when transitioning to 2D (flat view)
-  // Base colors are already optimized for scanning, so keep changes minimal
-  let contrastBoost = 1.0 + progress * 0.1; // Just 10% more contrast when flat
-
-  // Apply subtle contrast around midpoint
-  hdr = (hdr - 0.5) * contrastBoost + 0.5;
-
-  // Minimal adjustments for QR readability
-  if (blockType == 1 || blockType == 2 || blockType == 3 || blockType == 4) {
-    // Slight darkening when flat
-    hdr = hdr * (1.0 - progress * 0.05);
-  } else {
-    // Slight brightening when flat
-    hdr = hdr + progress * 0.02;
-  }
 
   hdr = acesFilm(hdr * 1.05);
   hdr = pow(hdr, vec3f(1.0 / 2.2));
