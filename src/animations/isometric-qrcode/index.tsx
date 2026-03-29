@@ -973,7 +973,7 @@ fn main(input: SkyIn) -> @location(0) vec4f {
 // Stone tiers + central pillar + water source + cascading water covering all tiers
 // Tier 0 (outer 5x5): 16 stone, Tier 1 (3x3): 8 stone, Pillar: 4 stone
 // Water: 1 source + pool (5x5=25) + cascade layers
-const FOUNTAIN_BLOCKS = 80;
+const FOUNTAIN_BLOCKS = 76;
 const FOUNTAIN_VERTS = FOUNTAIN_BLOCKS * 36;
 
 const fountainVertexShader = /* wgsl */ `
@@ -1063,9 +1063,9 @@ fn main(
     blockZ = baseZ + oz * cubeSize;
     blockY = baseY;
     blockType = 0.0;
-  } else if (blockIdx < 24u) {
+  } else if (blockIdx < 20u) {
     // Second tier - 8 blocks in ring
-    let idx = blockIdx - 16u;
+    let idx = blockIdx - 12u;
     let offsets = array<vec2f, 8>(
       vec2f(-1.0, -1.0), vec2f(0.0, -1.0), vec2f(1.0, -1.0),
       vec2f(-1.0, 0.0),                    vec2f(1.0, 0.0),
@@ -1076,9 +1076,9 @@ fn main(
     blockZ = baseZ + off.y * cubeSize * 0.7;
     blockY = baseY + cubeSize;
     blockType = 0.0;
-  } else if (blockIdx < 28u) {
+  } else if (blockIdx < 24u) {
     // Third tier - 4 cardinal blocks
-    let idx = blockIdx - 24u;
+    let idx = blockIdx - 20u;
     let offsets = array<vec2f, 4>(
       vec2f(0.0, -0.5), vec2f(-0.5, 0.0), vec2f(0.5, 0.0), vec2f(0.0, 0.5)
     );
@@ -1087,22 +1087,22 @@ fn main(
     blockZ = baseZ + off.y * cubeSize;
     blockY = baseY + cubeSize * 2.0;
     blockType = 0.0;
-  } else if (blockIdx < 31u) {
+  } else if (blockIdx < 27u) {
     // Central pillar - 3 stacked
-    let level = blockIdx - 28u;
+    let level = blockIdx - 24u;
     blockX = baseX;
     blockZ = baseZ;
     blockY = baseY + cubeSize * 2.5 + f32(level) * cubeSize;
     blockType = 0.0;
-  } else if (blockIdx == 31u) {
+  } else if (blockIdx == 27u) {
     // Water source on top
     blockX = baseX;
     blockZ = baseZ;
     blockY = baseY + cubeSize * 5.5;
     blockType = 1.0;
-  } else if (blockIdx < 56u) {
+  } else if (blockIdx < 52u) {
     // Pool water - 24 blocks covering base (5x5 grid minus center)
-    let idx = blockIdx - 32u;
+    let idx = blockIdx - 28u;
     let px = i32(idx % 5u) - 2;
     let pz = i32(idx / 5u) - 2;
     // Skip center block (pillar is there)
@@ -1119,7 +1119,7 @@ fn main(
     blockType = 3.0;
   } else {
     // Cascading water - flows down from top, 24 blocks covering tiers
-    let idx = blockIdx - 56u;
+    let idx = blockIdx - 52u;
     let tier = idx / 8u;  // 0, 1, 2 = three cascade levels
     let pos = idx % 8u;   // 8 positions around center
 
