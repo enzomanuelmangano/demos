@@ -51,18 +51,18 @@ const background = hexToRgb(COLORS.background);
 const PALETTE = {
   building: building,
   buildingAlt: lerpRgb(building, background, 0.08),
-  skyZenith: lerpRgb(background, { r: 0.9, g: 0.92, b: 0.98 }, 0.3),
-  skyHorizon: background,
+  skyZenith: background, // Keep white background
+  skyHorizon: background, // Keep white background
   pavement: lerpRgb(building, background, 0.65),
   pavementSide: lerpRgb(building, background, 0.5),
-  fog: lerpRgb(background, building, 0.02),
-  sun: background,
-  skyFill: lerpRgb(background, { r: 0.9, g: 0.92, b: 0.98 }, 0.2),
-  bounce: lerpRgb(background, building, 0.05),
-  window: { r: 1.0, g: 0.92, b: 0.7 },
+  fog: { r: 0.96, g: 0.94, b: 0.92 }, // Subtle warm haze
+  sun: { r: 1.12, g: 0.98, b: 0.82 }, // Soft golden sun
+  skyFill: { r: 0.85, g: 0.82, b: 0.78 }, // Neutral warm fill
+  bounce: { r: 0.42, g: 0.38, b: 0.34 }, // Subtle warm bounce
+  window: { r: 1.0, g: 0.92, b: 0.75 },
   crown: lerpRgb(building, background, 0.1),
-  rim: lerpRgb(building, background, 0.25),
-  spec: lerpRgb(background, building, 0.1),
+  rim: { r: 1.05, g: 0.95, b: 0.82 }, // Soft golden rim
+  spec: { r: 1.02, g: 0.98, b: 0.92 }, // Subtle warm specular
 };
 
 const CONTAINER_BG = COLORS.background;
@@ -193,8 +193,8 @@ const SKYLINE_LANDMARK_SIGMA = 0.29;
 const SKYLINE_LANDMARK_POWER = 2.4;
 
 /** Rest of grid: low-rise fabric (never near 1.0 except inside landmark blend). */
-const SKYLINE_FABRIC_MIN = 0.1;
-const SKYLINE_FABRIC_MAX = 0.28;
+const SKYLINE_FABRIC_MIN = 0.08;
+const SKYLINE_FABRIC_MAX = 0.22;
 
 function skylinePeakCorner(): { px: number; py: number } {
   switch (SKYLINE_PEAK_CORNER) {
@@ -210,7 +210,8 @@ function skylinePeakCorner(): { px: number; py: number } {
 }
 
 /**
- * Smooth, deterministic "districts" — mid/low variation without random heights.
+ * Pure smooth gradient from peak corner - no randomness.
+ * Heights decrease naturally as you move away from the "downtown" area.
  */
 function skylineFabricHeight(
   col: number,
@@ -220,15 +221,14 @@ function skylineFabricHeight(
   const g = Math.max(1, gridSize - 1);
   const nx = col / g;
   const nz = row / g;
-  const w1 = Math.sin(nx * 3.4 * Math.PI + nz * 2.1 * Math.PI);
-  const w2 = Math.cos(nx * 2.2 * Math.PI - nz * 3.6 * Math.PI);
-  const w3 = Math.sin((nx + nz) * 2.8 * Math.PI);
-  const mix = 0.33 * w1 + 0.34 * w2 + 0.33 * w3;
-  const t = 0.5 + 0.5 * mix;
-  const shaped = Math.pow(Math.max(0, Math.min(1, t)), 0.9);
-  return (
-    SKYLINE_FABRIC_MIN + shaped * (SKYLINE_FABRIC_MAX - SKYLINE_FABRIC_MIN)
-  );
+
+  // Pure distance-based gradient from peak corner
+  const { px, py } = skylinePeakCorner();
+  const distFromPeak = Math.hypot(nx - px, nz - py) / Math.SQRT2;
+
+  // Smooth falloff - no waves, no noise
+  const t = 1.0 - distFromPeak;
+  return SKYLINE_FABRIC_MIN + t * (SKYLINE_FABRIC_MAX - SKYLINE_FABRIC_MIN);
 }
 
 /**
@@ -579,8 +579,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let uv = input.facadeUv;
   let N = normalize(input.worldN);
   let V = normalize(vec3f(0.12, 0.38, 0.88));
-  let sunDir = normalize(vec3f(0.5, 0.42, 0.38));
-  let halfUp = normalize(vec3f(0.2, 1.0, 0.15));
+  // Cinematic golden hour sun - warm side lighting
+  let sunDir = normalize(vec3f(0.55, 0.48, 0.45));
+  let halfUp = normalize(vec3f(0.15, 1.0, 0.2));
   let NdSun = max(dot(N, sunDir), 0.0);
   let NdUp = max(dot(N, halfUp), 0.0);
   let H = normalize(sunDir + V);
@@ -588,6 +589,7 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let skyFill = ${wgslVec3(PALETTE.skyFill)};
   let sunCol = ${wgslVec3(PALETTE.sun)};
   let bounce = ${wgslVec3(PALETTE.bounce)};
+  let ambient = vec3f(0.22, 0.20, 0.18); // Subtle warm ambient
 
   let dist = length(input.viewPos);
   let aerial = 1.0 - exp(-dist * 0.048);
@@ -707,15 +709,15 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     blockType = 5;
   }
 
-  // Minecraft colors - OKLCH compliant palette
-  // Grass - darker, earthy greens (OKLCH L=0.55-0.65, C=0.14-0.18, H=135)
-  let grassBright = vec3f(0.38, 0.62, 0.22);
-  let grassMid = vec3f(0.32, 0.54, 0.18);
-  let grassDark = vec3f(0.25, 0.44, 0.14);
-  // Dirt - warm brown (OKLCH L=0.45-0.55, C=0.08-0.12, H=55)
-  let dirtSide = vec3f(0.52, 0.40, 0.28);
-  let dirtDark = vec3f(0.38, 0.28, 0.18);
-  let dirtMid = vec3f(0.45, 0.34, 0.23);
+  // CINEMATIC Minecraft colors - vibrant and saturated
+  // Grass - lush vivid greens
+  let grassBright = vec3f(0.45, 0.72, 0.25);
+  let grassMid = vec3f(0.38, 0.62, 0.20);
+  let grassDark = vec3f(0.28, 0.50, 0.15);
+  // Dirt - rich warm brown
+  let dirtSide = vec3f(0.58, 0.42, 0.26);
+  let dirtDark = vec3f(0.42, 0.30, 0.18);
+  let dirtMid = vec3f(0.50, 0.36, 0.22);
 
   // Stone/Cobblestone - neutral gray (OKLCH L=0.40-0.60, C=0, H=0)
   let stoneLight = vec3f(0.58, 0.58, 0.58);
@@ -750,180 +752,150 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let noise16 = fract(sin(px16 * 127.1 + py16 * 311.7 + seed.x * 17.3) * 43758.5);
   let noise16b = fract(sin(px16 * 73.3 + py16 * 157.1 + seed.y * 31.7) * 43758.5);
 
+  // Golden hour face lighting - subtle warm highlights, cool shadows
+  let warmTint = vec3f(1.08, 1.02, 0.94);   // Subtle golden tint
+  let coolTint = vec3f(0.88, 0.90, 0.96);   // Subtle cool shadow
+  let saturationBoost = 1.25;               // Make colors pop
+
   if (input.faceVertical > 0.5) {
-    var shade = 0.85;
-    if (isLeftFace) { shade = 0.65; }
+    var shade = 0.9;
+    var tint = warmTint;
+    if (isLeftFace) { shade = 0.55; tint = coolTint; }
 
     if (blockType == 1) {
-      // GRASS SIDE - detailed dirt with grass overhang
-      let dirtNoise = fract(sin(px16 * 97.1 + py16 * 213.7) * 43758.5);
-      let dirtNoise2 = fract(sin(px16 * 41.3 + py16 * 89.1) * 43758.5);
-      var dirtColor = dirtMid;
-      if (dirtNoise > 0.7) { dirtColor = dirtSide; }
-      else if (dirtNoise < 0.3) { dirtColor = dirtDark; }
-      // Add specks
-      if (dirtNoise2 > 0.9) { dirtColor = dirtColor * 1.15; }
-      else if (dirtNoise2 < 0.1) { dirtColor = dirtColor * 0.85; }
-      // Grass overhang at top (top 2 pixel rows)
-      if (py16 >= 14.0) {
-        let grassN = fract(sin(px16 * 53.1) * 43758.5);
-        if (grassN > 0.3) {
-          dirtColor = mix(grassDark, grassMid, grassN);
-        }
-      }
-      albedo = dirtColor * shade;
+      // GRASS SIDE - realistic soil with natural layers
+      // Smooth vertical gradient for natural soil stratification
+      let depth = 1.0 - uv.y;
+      var dirtColor = mix(dirtSide, dirtDark, depth * 0.6);
+
+      // Subtle horizontal variation for natural look
+      let hVariation = sin(uv.x * 6.28) * 0.04;
+      dirtColor = dirtColor * (1.0 + hVariation);
+
+      // Grass/root layer at top - smooth transition
+      let grassBlend = smoothstep(0.85, 0.95, uv.y);
+      dirtColor = mix(dirtColor, grassDark * 0.9, grassBlend);
+
+      albedo = dirtColor * shade * tint;
 
     } else if (blockType == 3) {
-      // STONE BRICK - detailed with cracks and variation
+      // STONE BRICK - clean brick pattern
       let brickV = fract(uv.y * 4.0);
       let rowIdx = floor(uv.y * 4.0);
       var brickOffset = 0.0;
       if (fract(rowIdx * 0.5) > 0.25) { brickOffset = 0.5; }
       let brickU = fract(uv.x * 2.0 + brickOffset);
       // Mortar lines
-      let isMortar = brickU < 0.08 || brickU > 0.92 || brickV < 0.1 || brickV > 0.9;
+      let isMortar = brickU < 0.06 || brickU > 0.94 || brickV < 0.08 || brickV > 0.92;
       var brickColor = brickMid;
       if (isMortar) {
-        brickColor = brickDark * 0.7;
-      } else {
-        // Brick surface detail
-        if (noise16 > 0.75) { brickColor = brickLight; }
-        else if (noise16 < 0.25) { brickColor = brickDark; }
-        // Cracks
-        if (noise16b > 0.95) { brickColor = brickColor * 0.7; }
+        brickColor = brickDark * 0.75;
       }
-      albedo = brickColor * shade;
+      albedo = brickColor * shade * tint;
 
     } else if (blockType == 4) {
       // SNOW - sparkly texture
       var snowColor = mix(snowShade, snowTop, noise16 * 0.4 + 0.5);
       if (noise16b > 0.9) { snowColor = snowTop * 1.1; } // Sparkles
-      albedo = snowColor * shade;
+      albedo = snowColor * shade * tint;
 
     } else if (blockType == 5) {
-      // MOUNTAIN ROCK - dark craggy rock face
-      let crackX = floor(uv.x * 6.0 + noise8 * 0.5);
-      let crackY = floor(uv.y * 8.0 + noise8 * 0.5);
-      let crackNoise = fract(sin(crackX * 127.1 + crackY * 311.7 + seed.x) * 43758.5);
-      let crackNoise2 = fract(sin(crackX * 73.3 + crackY * 89.1) * 43758.5);
+      // MOUNTAIN ROCK - clean dark rock
       var mtnColor = rockMid;
-      if (crackNoise > 0.7) { mtnColor = rockLight; }
-      else if (crackNoise < 0.3) { mtnColor = rockDark; }
-      // Cracks and crevices
-      let crackLine = fract(uv.y * 12.0 + noise16 * 2.0);
-      if (crackLine < 0.08) { mtnColor = rockDark * 0.5; }
-      // Slight warm accent variation
-      if (crackNoise2 > 0.85) { mtnColor = mix(mtnColor, rockAccent, 0.3); }
-      // Vertical striations
-      let striation = fract(uv.x * 8.0 + noise8 * 0.3);
-      if (striation < 0.05) { mtnColor = mtnColor * 0.7; }
-      albedo = mtnColor * shade;
+      // Subtle horizontal bands
+      let band = floor(uv.y * 4.0);
+      let bandNoise = fract(sin(band * 127.1 + seed.x) * 43758.5);
+      if (bandNoise > 0.6) { mtnColor = rockLight; }
+      else if (bandNoise < 0.4) { mtnColor = rockDark; }
+      albedo = mtnColor * shade * tint;
 
     } else {
-      // COBBLESTONE - irregular chunky rocks
-      let chunkX = floor(uv.x * 3.0 + noise8 * 0.3);
-      let chunkY = floor(uv.y * 4.0 + noise8 * 0.3);
-      let chunkNoise = fract(sin(chunkX * 127.1 + chunkY * 311.7 + seed.x) * 43758.5);
+      // COBBLESTONE - clean stone grid
+      let gridX = fract(uv.x * 2.0);
+      let gridY = fract(uv.y * 3.0);
+      // Simple mortar gaps
+      let isMortar = gridX < 0.08 || gridX > 0.92 || gridY < 0.1 || gridY > 0.9;
       var cobbleColor = stoneMid;
-      if (chunkNoise > 0.6) { cobbleColor = stoneLight; }
-      else if (chunkNoise < 0.35) { cobbleColor = stoneDark; }
-      // Add texture variation
-      cobbleColor = cobbleColor * (0.9 + noise16 * 0.2);
-      // Dark gaps between rocks
-      let gapX = fract(uv.x * 3.0 + noise8 * 0.3);
-      let gapY = fract(uv.y * 4.0 + noise8 * 0.3);
-      if (gapX < 0.1 || gapY < 0.12) { cobbleColor = stoneDark * 0.6; }
-      albedo = cobbleColor * shade;
+      if (isMortar) { cobbleColor = stoneDark * 0.7; }
+      albedo = cobbleColor * shade * tint;
     }
     albedo = albedo * (1.0 + hBoost);
     streetAo = mix(0.7, 1.0, smoothstep(0.0, 0.12, uv.y));
 
   } else if (input.faceNy > 0.5) {
-    // TOP FACE
+    // TOP FACE - subtle golden hour glow
+    let topWarmTint = vec3f(1.10, 1.04, 0.92);  // Subtle golden top
     if (blockType == 1) {
-      // GRASS TOP - detailed with color variation
-      var grassColor = grassMid;
-      if (noise16 > 0.65) { grassColor = grassBright; }
-      else if (noise16 < 0.3) { grassColor = grassDark; }
-      // Add yellow/brown patches (OKLCH L=0.58, C=0.10, H=80)
-      if (noise16b > 0.92) { grassColor = mix(grassColor, vec3f(0.52, 0.48, 0.24), 0.4); }
-      // Flower specks (OKLCH compliant)
-      if (noise16b < 0.02) { grassColor = vec3f(0.78, 0.22, 0.22); } // Red flower
-      else if (noise16b > 0.98) { grassColor = vec3f(0.88, 0.82, 0.28); } // Yellow flower
-      albedo = grassColor;
+      // GRASS TOP - realistic natural grass
+      // Smooth gradient based on position for natural variation
+      let posVariation = sin(uv.x * 4.0) * sin(uv.y * 4.0) * 0.12;
+      var grassColor = mix(grassMid, grassBright, 0.5 + posVariation);
+
+      // Subtle directional grain like real grass blades
+      let grain = sin(uv.x * 12.0 + uv.y * 2.0) * 0.04;
+      grassColor = grassColor * (1.0 + grain);
+
+      albedo = grassColor * topWarmTint;
 
     } else if (blockType == 3) {
-      // STONE BRICK TOP - grid pattern
+      // STONE BRICK TOP - clean grid pattern
       let brickU = fract(uv.x * 2.0);
       let brickV = fract(uv.y * 2.0);
-      let isMortar = brickU < 0.08 || brickU > 0.92 || brickV < 0.08 || brickV > 0.92;
+      let isMortar = brickU < 0.06 || brickU > 0.94 || brickV < 0.06 || brickV > 0.94;
       var brickColor = brickMid;
-      if (isMortar) { brickColor = brickDark * 0.7; }
-      else {
-        if (noise16 > 0.7) { brickColor = brickLight; }
-        else if (noise16 < 0.3) { brickColor = brickDark; }
-      }
-      albedo = brickColor;
+      if (isMortar) { brickColor = brickDark * 0.75; }
+      albedo = brickColor * topWarmTint;
 
     } else if (blockType == 4) {
-      // SNOW TOP - sparkly
+      // SNOW TOP - sparkly with warm sunlight
       var snowColor = mix(snowShade, snowTop, 0.65 + noise16 * 0.35);
       if (noise16b > 0.88) { snowColor = vec3f(1.0, 1.0, 1.0); }
-      albedo = snowColor;
+      albedo = snowColor * topWarmTint;
 
     } else if (blockType == 5) {
-      // MOUNTAIN TOP - dark rock with scattered snow patches
-      let crackNoise = fract(sin(px8 * 127.1 + py8 * 311.7 + seed.x) * 43758.5);
+      // MOUNTAIN TOP - clean dark rock with snow patches
       var mtnTopColor = rockMid;
-      if (crackNoise > 0.65) { mtnTopColor = rockLight; }
-      else if (crackNoise < 0.35) { mtnTopColor = rockDark; }
-      // Add texture
-      mtnTopColor = mtnTopColor * (0.9 + noise16 * 0.15);
-
-      // Scattered snow patches on the highest peaks
-      let snowPatchNoise = fract(sin(px8 * 73.1 + py8 * 157.3 + seed.y * 31.7) * 43758.5);
-      let snowPatchNoise2 = fract(sin(px16 * 41.3 + py16 * 89.1) * 43758.5);
-      // More snow on higher blocks
-      let snowChance = 0.3 + (input.blockH - 0.5) * 1.5; // Higher = more snow
-      if (snowPatchNoise > (1.0 - snowChance)) {
-        // Snow patch
-        var patchSnow = mix(snowShade, snowTop, 0.6 + snowPatchNoise2 * 0.4);
-        if (snowPatchNoise2 > 0.9) { patchSnow = vec3f(1.0, 1.0, 1.0); }
-        mtnTopColor = patchSnow;
+      // Snow patches on highest peaks
+      let snowChance = 0.3 + (input.blockH - 0.5) * 1.5;
+      let snowNoise = fract(sin(seed.x * 73.1 + seed.y * 157.3) * 43758.5);
+      if (snowNoise > (1.0 - snowChance)) {
+        mtnTopColor = snowTop;
       }
-      albedo = mtnTopColor;
+      albedo = mtnTopColor * topWarmTint;
 
     } else {
-      // COBBLESTONE TOP - bumpy rocks
-      let rockX = floor(uv.x * 3.0 + noise8 * 0.2);
-      let rockY = floor(uv.y * 3.0 + noise8 * 0.2);
-      let rockNoise = fract(sin(rockX * 127.1 + rockY * 311.7 + seed.x) * 43758.5);
+      // COBBLESTONE TOP - clean stone grid
+      let gridX = fract(uv.x * 2.0);
+      let gridY = fract(uv.y * 2.0);
+      let isMortar = gridX < 0.06 || gridX > 0.94 || gridY < 0.06 || gridY > 0.94;
       var rockColor = stoneMid;
-      if (rockNoise > 0.55) { rockColor = stoneLight; }
-      else if (rockNoise < 0.4) { rockColor = stoneDark; }
-      rockColor = rockColor * (0.9 + noise16 * 0.2);
-      let gapX = fract(uv.x * 3.0 + noise8 * 0.2);
-      let gapY = fract(uv.y * 3.0 + noise8 * 0.2);
-      if (gapX < 0.1 || gapY < 0.1) { rockColor = stoneDark * 0.5; }
-      albedo = rockColor;
+      if (isMortar) { rockColor = stoneDark * 0.7; }
+      albedo = rockColor * topWarmTint;
     }
   } else {
-    // BOTTOM FACE
-    if (blockType == 1) { albedo = dirtDark * 0.5; }
-    else if (blockType == 5) { albedo = rockDark * 0.4; }
-    else { albedo = stoneDark * 0.5; }
+    // BOTTOM FACE - subtle cool shadows
+    let bottomCoolTint = vec3f(0.82, 0.84, 0.90);
+    if (blockType == 1) { albedo = dirtDark * 0.4 * bottomCoolTint; }
+    else if (blockType == 5) { albedo = rockDark * 0.35 * bottomCoolTint; }
+    else { albedo = stoneDark * 0.4 * bottomCoolTint; }
   }
 
+  // CINEMATIC DIFFUSE - high contrast, warm/cool color separation
   let diffuse =
-    albedo * (bounce * 0.38 + sunCol * NdSun * 0.52 + skyFill * NdUp * 0.22) * streetAo;
-  let specCol = ${wgslVec3(PALETTE.spec)} * specAmt * 0.26;
-  let rim = pow(clamp(1.0 - dot(V, N), 0.0, 1.0), 3.8);
-  let rimLight = rim * ${wgslVec3(PALETTE.rim)} * 0.035;
+    albedo * (ambient + sunCol * NdSun * 0.72 + skyFill * NdUp * 0.32 + bounce * 0.28) * streetAo;
+  let specCol = ${wgslVec3(PALETTE.spec)} * specAmt * 0.28;
+  let rim = pow(clamp(1.0 - dot(V, N), 0.0, 1.0), 3.5);
+  let rimLight = rim * ${wgslVec3(PALETTE.rim)} * 0.042;
 
   var hdr = diffuse + specCol + rimLight + emissive;
-  hdr = mix(hdr, fogCol, aerial * 0.07 * (1.0 - p * 0.35));
-  hdr = acesFilm(hdr * 0.99);
-  hdr = pow(hdr, vec3f(1.0 / 2.06));
+
+  // Cinematic saturation boost
+  let luminance = dot(hdr, vec3f(0.299, 0.587, 0.114));
+  hdr = mix(vec3f(luminance), hdr, 1.25);
+
+  hdr = mix(hdr, fogCol, aerial * 0.06 * (1.0 - p * 0.4));
+  hdr = acesFilm(hdr * 1.02);
+  hdr = pow(hdr, vec3f(1.0 / 2.1));
   return vec4f(hdr, 1.0);
 }
 `;
@@ -997,7 +969,11 @@ fn main(input: SkyIn) -> @location(0) vec4f {
 // Structure: Stone rim + water pool + central pillar + water source + flowing water
 // 8 stone rim + 1 water pool surface + 3 pillar + 1 water source + 16 flowing water (4 sides × 4 levels)
 // Each cube = 36 vertices (6 faces × 6 verts)
-const FOUNTAIN_BLOCKS = 29; // 8 rim + 1 pool + 3 pillar + 1 source + 16 flowing
+// Multi-tiered fountain filling 7x7 finder pattern
+// Stone tiers + central pillar + water source + cascading water covering all tiers
+// Tier 0 (outer 5x5): 16 stone, Tier 1 (3x3): 8 stone, Pillar: 4 stone
+// Water: 1 source + pool (5x5=25) + cascade layers
+const FOUNTAIN_BLOCKS = 80;
 const FOUNTAIN_VERTS = FOUNTAIN_BLOCKS * 36;
 
 const fountainVertexShader = /* wgsl */ `
@@ -1054,75 +1030,112 @@ fn main(
   );
   let qv = quadVerts[vertIdx];
 
-  // Block positions in the fountain structure
-  // Blocks 0-7: Base ring (stone bricks) - arranged in a square pattern
-  // Blocks 8-11: Central pillar (4 stacked stone blocks)
-  // Block 12: Water source on top
+  // Fountain filling 7x7 finder pattern with cascading water
+  // Stone structure forms stepped pyramid, water cascades down all sides
 
   var blockX = 0.0;
   var blockY = 0.0;
   var blockZ = 0.0;
-  var blockType = 0.0; // 0 = stone, 1 = water
-  let cubeSize = blockSize * 0.9;
+  var blockType = 0.0; // 0 = stone, 1 = water source, 2.x = flowing water, 3 = pool
+  let cubeSize = blockSize * 0.95;
 
-  // Stone rim positions (8 blocks forming outer edge of basin)
-  let rimOffsets = array<vec2f, 8>(
-    vec2f(-1.0, -1.0), vec2f(0.0, -1.0), vec2f(1.0, -1.0),
-    vec2f(-1.0, 0.0),                    vec2f(1.0, 0.0),
-    vec2f(-1.0, 1.0),  vec2f(0.0, 1.0),  vec2f(1.0, 1.0)
-  );
+  // Layout:
+  // Blocks 0-15: Outer stone rim (4x4 hollow = 12, plus 4 corners = 16)
+  // Blocks 16-23: Second tier stone (8 blocks)
+  // Blocks 24-27: Third tier stone (4 blocks)
+  // Blocks 28-30: Central pillar (3 blocks)
+  // Block 31: Water source
+  // Blocks 32-55: Pool water grid (24 blocks, 5x5 minus center)
+  // Blocks 56-79: Cascading water (24 blocks covering tiers)
 
-  // Fountain at ground level (replaces finder pattern visually)
-  let finderTopY = 0.0;
-  let poolSurfaceY = finderTopY + cubeSize * 0.3; // Pool water level
+  let baseY = 0.0;
 
-  if (blockIdx < 8u) {
-    // Stone rim - raised edge around the pool
-    let offset = rimOffsets[blockIdx];
-    blockX = baseX + offset.x * blockSize;
-    blockZ = baseZ + offset.y * blockSize;
-    blockY = finderTopY;
-    blockType = 0.0; // Stone
-  } else if (blockIdx == 8u) {
-    // Water pool surface (flat water in the basin)
+  if (blockIdx < 16u) {
+    // Outer stone rim - 4x4 square edge
+    let idx = blockIdx;
+    var ox = 0.0;
+    var oz = 0.0;
+    if (idx < 4u) { ox = f32(idx) - 1.5; oz = -1.5; }
+    else if (idx < 8u) { ox = f32(idx - 4u) - 1.5; oz = 1.5; }
+    else if (idx < 12u) { ox = -1.5; oz = f32(idx - 8u) - 0.5; }
+    else { ox = 1.5; oz = f32(idx - 12u) - 0.5; }
+    blockX = baseX + ox * cubeSize;
+    blockZ = baseZ + oz * cubeSize;
+    blockY = baseY;
+    blockType = 0.0;
+  } else if (blockIdx < 24u) {
+    // Second tier - 8 blocks in ring
+    let idx = blockIdx - 16u;
+    let offsets = array<vec2f, 8>(
+      vec2f(-1.0, -1.0), vec2f(0.0, -1.0), vec2f(1.0, -1.0),
+      vec2f(-1.0, 0.0),                    vec2f(1.0, 0.0),
+      vec2f(-1.0, 1.0),  vec2f(0.0, 1.0),  vec2f(1.0, 1.0)
+    );
+    let off = offsets[idx];
+    blockX = baseX + off.x * cubeSize * 0.7;
+    blockZ = baseZ + off.y * cubeSize * 0.7;
+    blockY = baseY + cubeSize;
+    blockType = 0.0;
+  } else if (blockIdx < 28u) {
+    // Third tier - 4 cardinal blocks
+    let idx = blockIdx - 24u;
+    let offsets = array<vec2f, 4>(
+      vec2f(0.0, -0.5), vec2f(-0.5, 0.0), vec2f(0.5, 0.0), vec2f(0.0, 0.5)
+    );
+    let off = offsets[idx];
+    blockX = baseX + off.x * cubeSize;
+    blockZ = baseZ + off.y * cubeSize;
+    blockY = baseY + cubeSize * 2.0;
+    blockType = 0.0;
+  } else if (blockIdx < 31u) {
+    // Central pillar - 3 stacked
+    let level = blockIdx - 28u;
     blockX = baseX;
     blockZ = baseZ;
-    blockY = finderTopY;
-    blockType = 3.0; // Pool water (special - shorter height)
-  } else if (blockIdx < 12u) {
-    // Central pillar - 3 stacked stone blocks rising from pool
-    let stackLevel = blockIdx - 9u;
+    blockY = baseY + cubeSize * 2.5 + f32(level) * cubeSize;
+    blockType = 0.0;
+  } else if (blockIdx == 31u) {
+    // Water source on top
     blockX = baseX;
     blockZ = baseZ;
-    blockY = poolSurfaceY + f32(stackLevel) * cubeSize;
-    blockType = 0.0; // Stone
-  } else if (blockIdx == 12u) {
-    // Water source block on top of pillar
-    blockX = baseX;
-    blockZ = baseZ;
-    blockY = poolSurfaceY + 3.0 * cubeSize;
-    blockType = 1.0; // Water source
+    blockY = baseY + cubeSize * 5.5;
+    blockType = 1.0;
+  } else if (blockIdx < 56u) {
+    // Pool water - 24 blocks covering base (5x5 grid minus center)
+    let idx = blockIdx - 32u;
+    let px = i32(idx % 5u) - 2;
+    let pz = i32(idx / 5u) - 2;
+    // Skip center block (pillar is there)
+    var actualPx = px;
+    var actualPz = pz;
+    if (idx >= 12u) {
+      let adjusted = idx + 1u; // Skip center
+      actualPx = i32(adjusted % 5u) - 2;
+      actualPz = i32(adjusted / 5u) - 2;
+    }
+    blockX = baseX + f32(actualPx) * cubeSize * 0.75;
+    blockZ = baseZ + f32(actualPz) * cubeSize * 0.75;
+    blockY = baseY + cubeSize * 0.6;
+    blockType = 3.0;
   } else {
-    // Flowing water (blocks 13-28)
-    // 4 directions × 4 levels = 16 flowing water blocks
-    let flowIdx = blockIdx - 13u;
-    let direction = flowIdx / 4u;  // 0=+X, 1=-X, 2=+Z, 3=-Z
-    let level = flowIdx % 4u;      // 0=top (at source), 3=bottom (at pool)
+    // Cascading water - flows down from top, 24 blocks covering tiers
+    let idx = blockIdx - 56u;
+    let tier = idx / 8u;  // 0, 1, 2 = three cascade levels
+    let pos = idx % 8u;   // 8 positions around center
 
-    // Offset from center based on direction
-    var offsetX = 0.0;
-    var offsetZ = 0.0;
-    if (direction == 0u) { offsetX = cubeSize; }
-    else if (direction == 1u) { offsetX = -cubeSize; }
-    else if (direction == 2u) { offsetZ = cubeSize; }
-    else { offsetZ = -cubeSize; }
+    // 8 directions around center
+    let angles = array<vec2f, 8>(
+      vec2f(1.0, 0.0), vec2f(0.7, 0.7), vec2f(0.0, 1.0), vec2f(-0.7, 0.7),
+      vec2f(-1.0, 0.0), vec2f(-0.7, -0.7), vec2f(0.0, -1.0), vec2f(0.7, -0.7)
+    );
+    let dir = angles[pos];
 
-    blockX = baseX + offsetX;
-    blockZ = baseZ + offsetZ;
-    // Water flows from source level (3*cubeSize) down to pool level (0)
-    // level 0 = at source, level 3 = at pool surface
-    blockY = poolSurfaceY + f32(3u - level) * cubeSize;
-    blockType = 2.0 + f32(level) * 0.1; // 2.0-2.3 for flow animation
+    // Cascade expands outward as it flows down
+    let radius = 0.3 + f32(tier) * 0.4;
+    blockX = baseX + dir.x * radius * cubeSize;
+    blockZ = baseZ + dir.y * radius * cubeSize;
+    blockY = baseY + cubeSize * (4.5 - f32(tier) * 1.5);
+    blockType = 2.0 + f32(tier) * 0.1; // Different flow levels
   }
 
   // Build the cube faces (same as building blocks)
@@ -1130,57 +1143,66 @@ fn main(
   var localPos = vec3f(0.0);
   var faceType = 0.0;
 
-  // Pool water is rendered as a thin slab (only top face visible)
+  // Pool water blocks are thin, regular water/stone are full cubes
   let isPoolWater = blockType > 2.9 && blockType < 3.1;
-  let poolHeight = cubeSize * 0.15; // Thin water surface
-  let effectiveHeight = select(cubeSize, poolHeight, isPoolWater);
+  let isFlowingWater = blockType > 1.9 && blockType < 2.5;
+  let poolHeight = cubeSize * 0.15;
+  let flowHeight = cubeSize * 0.9;
+  var effectiveHeight = cubeSize;
+  if (isPoolWater) { effectiveHeight = poolHeight; }
+  else if (isFlowingWater) { effectiveHeight = flowHeight; }
+  let effectiveSize = cubeSize * 0.75; // All blocks same size
 
   if (faceIdx == 0u) {
     // Top face
     localPos = vec3f(
-      blockX + (qv.x - 0.5) * cubeSize,
+      blockX + (qv.x - 0.5) * effectiveSize,
       blockY + effectiveHeight,
-      blockZ + (qv.y - 0.5) * cubeSize
+      blockZ + (qv.y - 0.5) * effectiveSize
     );
     faceType = 0.0;
   } else if (faceIdx == 1u) {
     // Bottom face
     localPos = vec3f(
-      blockX + (qv.x - 0.5) * cubeSize,
+      blockX + (qv.x - 0.5) * effectiveSize,
       blockY,
-      blockZ + (0.5 - qv.y) * cubeSize
+      blockZ + (0.5 - qv.y) * effectiveSize
     );
     faceType = 0.0;
   } else if (faceIdx == 2u) {
     // Front face (+Z)
+    let halfSize = effectiveSize * 0.5;
     localPos = vec3f(
-      blockX + (qv.x - 0.5) * cubeSize,
+      blockX + (qv.x - 0.5) * effectiveSize,
       blockY + qv.y * effectiveHeight,
-      blockZ + hw
+      blockZ + halfSize
     );
     faceType = 1.0;
   } else if (faceIdx == 3u) {
     // Back face (-Z)
+    let halfSize = effectiveSize * 0.5;
     localPos = vec3f(
-      blockX + (0.5 - qv.x) * cubeSize,
+      blockX + (0.5 - qv.x) * effectiveSize,
       blockY + qv.y * effectiveHeight,
-      blockZ - hw
+      blockZ - halfSize
     );
     faceType = 1.0;
   } else if (faceIdx == 4u) {
     // Right face (+X)
+    let halfSize = effectiveSize * 0.5;
     localPos = vec3f(
-      blockX + hw,
+      blockX + halfSize,
       blockY + qv.y * effectiveHeight,
-      blockZ + (qv.x - 0.5) * cubeSize
+      blockZ + (qv.x - 0.5) * effectiveSize
     );
     faceType = 2.0;
   } else {
     // Left face (-X)
+    let halfSize = effectiveSize * 0.5;
     localPos = vec3f(
-      blockX - hw,
+      blockX - halfSize,
       blockY + qv.y * effectiveHeight,
-      blockZ + (0.5 - qv.x) * cubeSize
+      blockZ + (0.5 - qv.x) * effectiveSize
     );
     faceType = 2.0;
   }
@@ -1241,91 +1263,66 @@ fn main(input: FountainIn) -> @location(0) vec4f {
 
   var color = vec3f(0.0);
 
+  // Minecraft water colors - vibrant blue, semi-transparent
+  let waterBase = vec3f(0.2, 0.4, 0.9);
+  let waterLight = vec3f(0.4, 0.6, 1.0);
+  let waterDark = vec3f(0.1, 0.25, 0.7);
+  var alpha = 1.0;
+
   if (blockType > 2.5) {
-    // POOL WATER - calm water surface with ripples
-    let waterBase = vec3f(0.1, 0.3, 0.7);
-    let waterLight = vec3f(0.25, 0.45, 0.85);
+    // POOL WATER - Minecraft classic animated texture
+    let speed = 0.8;
+    // Diagonal flowing pattern (classic Minecraft)
+    let diag1 = fract((uv.x + uv.y) * 4.0 + time * speed);
+    let diag2 = fract((uv.x + uv.y) * 4.0 + time * speed + 0.5);
+    let wave = smoothstep(0.0, 0.3, diag1) * smoothstep(0.6, 0.3, diag1);
+    let wave2 = smoothstep(0.0, 0.3, diag2) * smoothstep(0.6, 0.3, diag2);
+    let pattern = max(wave, wave2 * 0.6);
 
-    // Gentle ripples spreading outward
-    let center = uv - 0.5;
-    let dist = length(center);
-    let ripple = sin(dist * 20.0 - time * 3.0) * 0.5 + 0.5;
-
-    color = mix(waterBase, waterLight, ripple * 0.3);
-
-    // Surface sparkles
-    let sparkle = smoothstep(0.95, 1.0, sin(uv.x * 15.0 + time * 2.0) * sin(uv.y * 15.0 + time * 1.5));
-    color += sparkle * 0.4;
+    color = mix(waterBase, waterLight, pattern * 0.5);
+    alpha = 0.75; // Semi-transparent
 
   } else if (blockType > 1.5) {
-    // FLOWING WATER - animated downward flow
-    let flowLevel = (blockType - 2.0) * 10.0;
-    let waterBase = vec3f(0.15, 0.35, 0.85);
-    let waterLight = vec3f(0.4, 0.6, 1.0);
-    let waterFoam = vec3f(0.7, 0.85, 1.0);
+    // FLOWING WATER - vertical cascade
+    let flowSpeed = 3.0;
+    let flow = fract(uv.y * 3.0 - time * flowSpeed);
+    let flowWave = smoothstep(0.0, 0.4, flow) * smoothstep(1.0, 0.4, flow);
 
-    // Downward flowing animation
-    let flowSpeed = 5.0;
-    let flowY = fract(uv.y - time * flowSpeed);
-
-    // Create vertical streaks for flowing effect
-    let streakX = floor(uv.x * 5.0);
-    let streakPhase = fract(sin(streakX * 127.1) * 43758.5);
-    let streak = fract(flowY + streakPhase);
-
-    // Wave pattern - brighter streaks
-    let wave = smoothstep(0.0, 0.4, streak) * smoothstep(1.0, 0.4, streak);
-
-    color = mix(waterBase, waterLight, wave * 0.7);
-
-    // Add foam/bubbles
-    let foam = smoothstep(0.85, 1.0, fract(uv.y * 4.0 - time * 3.0)) * 0.5;
-    color = mix(color, waterFoam, foam);
-
-    // Sparkle
-    let sparkle = smoothstep(0.95, 1.0, sin(uv.x * 15.0 + time * 6.0) * sin(flowY * 12.0));
-    color += sparkle * 0.4;
+    color = mix(waterDark, waterLight, flowWave * 0.7);
+    alpha = 0.7;
 
   } else if (blockType > 0.5) {
-    // WATER SOURCE BLOCK - Minecraft style animated water
-    let waterBase = vec3f(0.2, 0.4, 0.9);
-    let waterLight = vec3f(0.4, 0.6, 1.0);
+    // WATER SOURCE - bubbling top
+    let speed = 1.5;
+    let bubble1 = sin((uv.x + uv.y) * 8.0 + time * speed) * 0.5 + 0.5;
+    let bubble2 = sin((uv.x - uv.y) * 6.0 + time * speed * 1.2) * 0.5 + 0.5;
+    let pattern = bubble1 * 0.5 + bubble2 * 0.5;
 
-    // Simple animated pattern like Minecraft water
-    let px = floor(uv.x * 4.0);
-    let py = floor(uv.y * 4.0);
-    let wave = sin(time * 2.0 + px * 0.5 + py * 0.3) * 0.5 + 0.5;
-
-    color = mix(waterBase, waterLight, wave * 0.3);
-
-    // Slight transparency feel with lighter streaks
-    let streak = sin(uv.x * 8.0 + uv.y * 4.0 + time * 3.0) * 0.5 + 0.5;
-    color += vec3f(0.1, 0.15, 0.2) * streak * 0.3;
+    color = mix(waterBase, waterLight, pattern * 0.4);
+    alpha = 0.8;
 
   } else {
-    // STONE BRICK - Minecraft cobblestone/stone brick texture
-    let stoneBase = vec3f(0.45, 0.45, 0.45);
-    let stoneDark = vec3f(0.3, 0.3, 0.3);
-    let stoneLight = vec3f(0.55, 0.55, 0.55);
+    // STONE BRICK - clean Minecraft sandstone/quartz style
+    let stoneBase = vec3f(0.85, 0.82, 0.75);  // Light sandstone
+    let stoneDark = vec3f(0.72, 0.68, 0.62);  // Darker shade
 
-    // Create brick pattern (2x2 grid)
+    // Simple brick grid
     let brickX = fract(uv.x * 2.0);
-    let brickY = fract(uv.y * 2.0);
+    let brickY = fract(uv.y * 3.0);
+    let rowIdx = floor(uv.y * 3.0);
+    var offset = 0.0;
+    if (fract(rowIdx * 0.5) > 0.25) { offset = 0.5; }
+    let shiftedX = fract(uv.x * 2.0 + offset);
 
-    // Mortar lines between bricks
-    let mortarX = smoothstep(0.0, 0.08, brickX) * smoothstep(1.0, 0.92, brickX);
-    let mortarY = smoothstep(0.0, 0.08, brickY) * smoothstep(1.0, 0.92, brickY);
-    let mortar = mortarX * mortarY;
+    // Clean mortar lines
+    let isMortar = shiftedX < 0.05 || shiftedX > 0.95 || brickY < 0.06 || brickY > 0.94;
 
-    // Random variation per brick
-    let brickIdx = floor(uv.x * 2.0) + floor(uv.y * 2.0) * 2.0;
-    let variation = fract(sin(brickIdx * 127.1) * 43758.5) * 0.15 - 0.075;
-
-    color = mix(stoneDark, stoneBase + variation, mortar);
-
-    // Add some noise/texture
-    let noise = fract(sin(uv.x * 50.0 + uv.y * 37.0) * 43758.5) * 0.1 - 0.05;
-    color += noise;
+    if (isMortar) {
+      color = stoneDark * 0.8;
+    } else {
+      color = stoneBase;
+    }
+    alpha = 1.0; // Stone is fully opaque
   }
 
   // Minecraft-style face shading
@@ -1333,12 +1330,17 @@ fn main(input: FountainIn) -> @location(0) vec4f {
   if (face == 0) {
     shade = 1.0;  // Top - brightest
   } else if (face == 1) {
-    shade = 0.8;  // Front
+    shade = 0.85;  // Front
   } else {
-    shade = 0.6;  // Side - darkest
+    shade = 0.65;  // Side - darkest
   }
 
-  return vec4f(color * shade, 1.0);
+  // Water gets slightly brighter shading to look more translucent
+  if (blockType > 0.5) {
+    shade = shade * 0.9 + 0.1;
+  }
+
+  return vec4f(color * shade, alpha);
 }
 `;
 
@@ -1671,13 +1673,32 @@ fn main(input: CastleIn) -> @location(0) vec4f {
     color += noise;
   }
 
-  // Minecraft-style face shading
-  var shade = 1.0;
-  if (face == 0) { shade = 1.0; }      // Top
-  else if (face == 1) { shade = 0.8; } // Front
-  else { shade = 0.6; }                 // Side
+  // Golden hour face shading - subtle warm/cool
+  let warmTint = vec3f(1.10, 1.04, 0.92);   // Subtle golden light
+  let coolTint = vec3f(0.85, 0.88, 0.96);   // Subtle cool shadow
+  let neutralTint = vec3f(0.96, 0.96, 0.96);
 
-  return vec4f(color * shade, 1.0);
+  var shade = 1.0;
+  var tint = warmTint;
+  if (face == 0) {
+    shade = 1.05;  // Top - brightest, warmest
+    tint = warmTint;
+  } else if (face == 1) {
+    shade = 0.85;  // Front - slightly cooler
+    tint = neutralTint;
+  } else {
+    shade = 0.55;  // Side - cool shadows
+    tint = coolTint;
+  }
+
+  // Apply cinematic color grading
+  var finalColor = color * shade * tint;
+
+  // Slight saturation boost for vibrancy
+  let gray = dot(finalColor, vec3f(0.299, 0.587, 0.114));
+  finalColor = mix(vec3f(gray), finalColor, 1.2);
+
+  return vec4f(finalColor, 1.0);
 }
 `;
 
