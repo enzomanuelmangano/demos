@@ -87,8 +87,8 @@ function generateBlockData(qrMatrix: boolean[][]): {
   const blockSize = 0.0245; // Universal cube size - ALL blocks use this
   const cubeHeight = blockSize; // Same as width for perfect cubes
 
-  const trunkRadius = 2.5;
-  const trunkLayers = 8;
+  const trunkRadius = 2.5; // Trunk radius
+  const trunkLayers = 12; // Taller trunk
   const canopyBaseHeight = trunkLayers * cubeHeight; // Canopy sits on top of trunk
   const canopyOuterRadius = gridSize * 0.46;
 
@@ -132,7 +132,7 @@ function generateBlockData(qrMatrix: boolean[][]): {
     }
   }
 
-  // Second pass: trunk blocks - stacked cubes with variation
+  // Second pass: trunk blocks - only QR dark modules in trunk radius
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
       const isQrDark = qrMatrix[row][col];
@@ -167,13 +167,13 @@ function generateBlockData(qrMatrix: boolean[][]): {
       const dy = row - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      if (dist >= trunkRadius && dist < canopyOuterRadius) {
+      if (dist < canopyOuterRadius) {
         const t = 1 - dist / canopyOuterRadius; // 1 at center, 0 at edge
 
         // Dome shape: more layers near center, fewer at edges
         const layersHere = Math.max(3, Math.round(maxLayers * (0.25 + 0.75 * t * t)));
 
-        // Stack CUBIC blocks vertically with no gaps
+        // Stack CUBIC blocks vertically with no gaps - LEAVES ON TOP OF TRUNK TOO
         for (let layer = 0; layer < layersHere; layer++) {
           const layerY = canopyBaseHeight + layer * cubeHeight;
 
@@ -241,6 +241,7 @@ struct BlockOutput {
   @location(5) blockH: f32,
   @location(6) col: f32,
   @location(7) row: f32,
+  @location(8) layer: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -268,6 +269,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
   let row = posData.y;
   output.col = col;
   output.row = row;
+  output.layer = blockBaseY[blockIdx] / 0.0245; // Layer index for color variation
 
   let gridSize = uniforms.gridSize;
   let blockSize = 0.0245;
@@ -372,6 +374,7 @@ struct BlockInput {
   @location(5) blockH: f32,
   @location(6) col: f32,
   @location(7) row: f32,
+  @location(8) layer: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -399,30 +402,20 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtMid = vec3f(0.78, 0.70, 0.58);
   let dirtDark = vec3f(0.65, 0.55, 0.42);
 
-  // CHERRY BLOSSOM colors - wide tonal range like Japanese maple
-  let sakuraCream = vec3f(1.0, 0.85, 0.80);     // Light peachy cream
-  let sakuraPeach = vec3f(1.0, 0.70, 0.65);     // Soft peach
-  let sakuraLight = vec3f(1.0, 0.55, 0.58);     // Light coral pink
-  let sakuraMid = vec3f(0.98, 0.45, 0.52);      // Medium salmon pink
-  let sakuraCoral = vec3f(0.95, 0.38, 0.45);    // Coral
-  let sakuraDeep = vec3f(0.88, 0.30, 0.40);     // Deep coral
-  let sakuraRich = vec3f(0.80, 0.22, 0.35);     // Rich rose
-  let sakuraDark = vec3f(0.70, 0.18, 0.30);     // Dark accent
+  // CHERRY BLOSSOM colors - high contrast range
+  let sakuraLight = vec3f(1.0, 0.70, 0.78);     // Light pink (bright)
+  let sakuraMid = vec3f(0.95, 0.45, 0.55);      // Medium pink
+  let sakuraDeep = vec3f(0.82, 0.28, 0.42);     // Deep pink (darker)
+  let sakuraRich = vec3f(0.65, 0.18, 0.32);     // Rich dark pink
 
-  // Accent colors
-  let petalWhite = vec3f(1.0, 0.90, 0.92);      // Soft white petals
-  let greenLeaf = vec3f(0.30, 0.58, 0.25);      // Green leaf accents
-  let greenDark = vec3f(0.22, 0.48, 0.18);      // Darker green
+  // Accent colors (white only, no green)
+  let petalWhite = vec3f(1.0, 0.88, 0.90);      // Soft white petals
 
-  // TRUNK colors (QR dark modules) - wide range of brown bark tones
-  let barkCream = vec3f(0.55, 0.42, 0.32);     // Light cream bark
-  let barkTan = vec3f(0.48, 0.35, 0.25);       // Tan
-  let barkLight = vec3f(0.42, 0.28, 0.18);     // Light brown
-  let barkMid = vec3f(0.35, 0.22, 0.14);       // Medium brown
-  let barkChoco = vec3f(0.30, 0.18, 0.10);     // Chocolate
-  let barkDark = vec3f(0.24, 0.14, 0.08);      // Dark brown
-  let barkDeep = vec3f(0.18, 0.10, 0.06);      // Deep brown
-  let barkBlack = vec3f(0.12, 0.07, 0.04);     // Nearly black
+  // TRUNK colors - coherent brown range
+  let barkLight = vec3f(0.45, 0.32, 0.22);     // Light brown
+  let barkMid = vec3f(0.38, 0.26, 0.16);       // Medium brown
+  let barkDark = vec3f(0.32, 0.20, 0.12);      // Dark brown
+  let barkDeep = vec3f(0.28, 0.16, 0.09);      // Deep brown
 
   // GRASS colors (QR dark modules) - dark green
   let grassDark = vec3f(0.22, 0.38, 0.15);
@@ -442,8 +435,9 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let NdSun = max(dot(N, sunDir), 0.0);
   let NdUp = max(dot(N, vec3f(0.0, 1.0, 0.0)), 0.0);
 
-  // Per-block noise - cleaner look, less pixelation
-  let blockSeed = seed.x * 17.3 + seed.y * 31.1;
+  // Per-cube noise - includes layer for unique color per stacked cube
+  let layer = input.layer;
+  let blockSeed = seed.x * 17.3 + seed.y * 31.1 + layer * 73.7;
   let noise1 = fract(sin(blockSeed) * 43758.5);
   let noise2 = fract(sin(blockSeed * 1.7 + 127.1) * 43758.5);
   let noise3 = fract(sin(blockSeed * 2.3 + 311.7) * 43758.5);
@@ -472,66 +466,41 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       var cherryColor = sakuraMid;
       let t = noise1;
 
-      // 8-stop gradient for rich variation
-      if (t < 0.10) {
-        cherryColor = mix(sakuraCream, sakuraPeach, t / 0.10);
-      } else if (t < 0.25) {
-        cherryColor = mix(sakuraPeach, sakuraLight, (t - 0.10) / 0.15);
-      } else if (t < 0.40) {
-        cherryColor = mix(sakuraLight, sakuraMid, (t - 0.25) / 0.15);
-      } else if (t < 0.55) {
-        cherryColor = mix(sakuraMid, sakuraCoral, (t - 0.40) / 0.15);
-      } else if (t < 0.70) {
-        cherryColor = mix(sakuraCoral, sakuraDeep, (t - 0.55) / 0.15);
-      } else if (t < 0.85) {
-        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.70) / 0.15);
+      // Smooth 4-stop gradient - coherent pink tones
+      if (t < 0.33) {
+        cherryColor = mix(sakuraLight, sakuraMid, t / 0.33);
+      } else if (t < 0.66) {
+        cherryColor = mix(sakuraMid, sakuraDeep, (t - 0.33) / 0.33);
       } else {
-        cherryColor = mix(sakuraRich, sakuraDark, (t - 0.85) / 0.15);
+        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
       }
 
-      // Add secondary variation using noise2 for extra richness
-      let shift = (noise2 - 0.5) * 0.12;
+      // Strong variation for contrast
+      let shift = (noise2 - 0.5) * 0.25;
       cherryColor = cherryColor * (1.0 + shift);
 
-      // Occasional green leaf accents (4%)
-      if (noise2 > 0.96) {
-        cherryColor = mix(greenLeaf, greenDark, noise3);
-      }
-
-      // Rare white petal highlights (2%)
-      if (noise3 > 0.98 && noise2 <= 0.96) {
+      // White petal highlights (3%)
+      if (noise3 > 0.97) {
         cherryColor = petalWhite;
       }
 
-      // Saturation boost
-      let gray = dot(cherryColor, vec3f(0.299, 0.587, 0.114));
-      cherryColor = mix(vec3f(gray), cherryColor, 1.4) * 1.1;
-
       albedo = cherryColor * topWarmTint;
     } else if (blockType == 2) {
-      // TRUNK TOP - rich brown variation like cherry blossoms
+      // TRUNK TOP - coherent brown variation
       var barkColor = barkMid;
       let t = noise1;
 
-      // 8-stop gradient for rich bark variation
-      if (t < 0.08) {
-        barkColor = mix(barkCream, barkTan, t / 0.08);
-      } else if (t < 0.20) {
-        barkColor = mix(barkTan, barkLight, (t - 0.08) / 0.12);
-      } else if (t < 0.35) {
-        barkColor = mix(barkLight, barkMid, (t - 0.20) / 0.15);
-      } else if (t < 0.50) {
-        barkColor = mix(barkMid, barkChoco, (t - 0.35) / 0.15);
-      } else if (t < 0.65) {
-        barkColor = mix(barkChoco, barkDark, (t - 0.50) / 0.15);
-      } else if (t < 0.80) {
-        barkColor = mix(barkDark, barkDeep, (t - 0.65) / 0.15);
+      // Smooth 4-stop gradient
+      if (t < 0.33) {
+        barkColor = mix(barkLight, barkMid, t / 0.33);
+      } else if (t < 0.66) {
+        barkColor = mix(barkMid, barkDark, (t - 0.33) / 0.33);
       } else {
-        barkColor = mix(barkDeep, barkBlack, (t - 0.80) / 0.20);
+        barkColor = mix(barkDark, barkDeep, (t - 0.66) / 0.34);
       }
 
-      // Secondary variation
-      let shift = (noise2 - 0.5) * 0.15;
+      // Subtle variation
+      let shift = (noise2 - 0.5) * 0.08;
       barkColor = barkColor * (1.0 + shift);
 
       albedo = barkColor * topWarmTint;
@@ -556,63 +525,38 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       if (noise1 > 0.6) { dirtColor = dirtDark; }
       albedo = dirtColor * shade * tint;
     } else if (blockType == 1) {
-      // CHERRY BLOSSOM SIDE - same rich tonal variation
+      // CHERRY BLOSSOM SIDE - coherent pink tones
       var cherryColor = sakuraMid;
       let t = noise1;
 
-      if (t < 0.10) {
-        cherryColor = mix(sakuraCream, sakuraPeach, t / 0.10);
-      } else if (t < 0.25) {
-        cherryColor = mix(sakuraPeach, sakuraLight, (t - 0.10) / 0.15);
-      } else if (t < 0.40) {
-        cherryColor = mix(sakuraLight, sakuraMid, (t - 0.25) / 0.15);
-      } else if (t < 0.55) {
-        cherryColor = mix(sakuraMid, sakuraCoral, (t - 0.40) / 0.15);
-      } else if (t < 0.70) {
-        cherryColor = mix(sakuraCoral, sakuraDeep, (t - 0.55) / 0.15);
-      } else if (t < 0.85) {
-        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.70) / 0.15);
+      if (t < 0.33) {
+        cherryColor = mix(sakuraLight, sakuraMid, t / 0.33);
+      } else if (t < 0.66) {
+        cherryColor = mix(sakuraMid, sakuraDeep, (t - 0.33) / 0.33);
       } else {
-        cherryColor = mix(sakuraRich, sakuraDark, (t - 0.85) / 0.15);
+        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
       }
 
-      // Secondary variation
-      let shift = (noise2 - 0.5) * 0.12;
+      // Strong variation for contrast
+      let shift = (noise2 - 0.5) * 0.25;
       cherryColor = cherryColor * (1.0 + shift);
-
-      // Green accents (4%)
-      if (noise2 > 0.96) {
-        cherryColor = mix(greenLeaf, greenDark, noise3);
-      }
-
-      // Saturation boost
-      let gray = dot(cherryColor, vec3f(0.299, 0.587, 0.114));
-      cherryColor = mix(vec3f(gray), cherryColor, 1.4) * 1.1;
 
       albedo = cherryColor * shade * tint;
     } else if (blockType == 2) {
-      // TRUNK SIDE - rich brown variation
+      // TRUNK SIDE - coherent brown tones
       var barkColor = barkMid;
       let t = noise1;
 
-      if (t < 0.08) {
-        barkColor = mix(barkCream, barkTan, t / 0.08);
-      } else if (t < 0.20) {
-        barkColor = mix(barkTan, barkLight, (t - 0.08) / 0.12);
-      } else if (t < 0.35) {
-        barkColor = mix(barkLight, barkMid, (t - 0.20) / 0.15);
-      } else if (t < 0.50) {
-        barkColor = mix(barkMid, barkChoco, (t - 0.35) / 0.15);
-      } else if (t < 0.65) {
-        barkColor = mix(barkChoco, barkDark, (t - 0.50) / 0.15);
-      } else if (t < 0.80) {
-        barkColor = mix(barkDark, barkDeep, (t - 0.65) / 0.15);
+      if (t < 0.33) {
+        barkColor = mix(barkLight, barkMid, t / 0.33);
+      } else if (t < 0.66) {
+        barkColor = mix(barkMid, barkDark, (t - 0.33) / 0.33);
       } else {
-        barkColor = mix(barkDeep, barkBlack, (t - 0.80) / 0.20);
+        barkColor = mix(barkDark, barkDeep, (t - 0.66) / 0.34);
       }
 
-      // Secondary variation
-      let shift = (noise2 - 0.5) * 0.15;
+      // Subtle variation
+      let shift = (noise2 - 0.5) * 0.08;
       barkColor = barkColor * (1.0 + shift);
 
       albedo = barkColor * shade * tint;
@@ -636,7 +580,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     if (blockType == 0) {
       albedo = dirtDark * 0.5 * bottomTint;
     } else if (blockType == 1) {
-      albedo = sakuraCoral * 0.5 * bottomTint;
+      albedo = sakuraDeep * 0.5 * bottomTint;
     } else if (blockType == 2) {
       albedo = barkDark * 0.5 * bottomTint;
     } else {
