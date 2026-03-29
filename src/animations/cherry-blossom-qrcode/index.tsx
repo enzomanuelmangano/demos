@@ -460,6 +460,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let shadowT = 1.0 - smoothstep(trunkRadius, canopyRadius, distFromShadowCenter);
   let treeShadow = 1.0 - shadowT * 0.35; // Up to 35% darker under canopy
 
+  // Canopy self-shadowing - lower layers darker
+  let maxCanopyLayer = 15.0;
+  let layerRatio = min(layer / maxCanopyLayer, 1.0);
+  let canopyAO = 0.65 + layerRatio * 0.35; // Bottom 65%, top 100%
+
   if (input.faceNy > 0.5) {
     // TOP FACE - brightest, this is what QR scanner sees when flat
     let topWarmTint = vec3f(1.1, 1.08, 1.02);
@@ -502,7 +507,8 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.15;
       cherryColor = cherryColor * (1.0 + shift);
 
-      albedo = cherryColor * topWarmTint;
+      // Apply canopy self-shadowing
+      albedo = cherryColor * topWarmTint * canopyAO;
     } else if (blockType == 2) {
       // TRUNK TOP - coherent brown variation with realistic shadows
       var barkColor = barkMid;
@@ -621,7 +627,8 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.25;
       cherryColor = cherryColor * (1.0 + shift);
 
-      albedo = cherryColor * shade * tint;
+      // Apply canopy self-shadowing
+      albedo = cherryColor * shade * tint * canopyAO;
     } else if (blockType == 2) {
       // TRUNK SIDE - high contrast brown with realistic shadows
       var barkColor = barkMid;
