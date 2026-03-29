@@ -716,7 +716,7 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   var emissive = vec3f(0.0);
 
   // Minecraft-style block types based on height
-  // 0=cobblestone, 1=grass, 2=wood, 3=stonebrick, 4=snow, 5=mountain rock
+  // 0=cobblestone, 1=grass, 3=stonebrick, 4=snow, 5=mountain rock
   var blockType = 0;
   let seed = input.blockSeed;
   let typeNoise = hash2(seed * 3.1);
@@ -727,8 +727,8 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     // Mix of stone brick and cobblestone
     if (typeNoise > 0.5) { blockType = 3; } else { blockType = 0; }
   } else if (input.blockH < 0.5) {
-    // Mix of wood planks and stone brick
-    if (typeNoise > 0.4) { blockType = 2; } else { blockType = 3; }
+    // Stone brick for mid-height
+    blockType = 3;
   } else if (input.blockH > 0.7) {
     // Mountain peaks - dark rock with scattered snow on top
     blockType = 5;
@@ -737,39 +737,35 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     blockType = 5;
   }
 
-  // Minecraft colors
-  // Grass
-  let grassBright = vec3f(0.55, 0.8, 0.3);
-  let grassMid = vec3f(0.45, 0.7, 0.22);
-  let grassDark = vec3f(0.35, 0.55, 0.15);
-  let dirtSide = vec3f(0.6, 0.45, 0.3);
-  let dirtDark = vec3f(0.45, 0.32, 0.2);
-  let dirtMid = vec3f(0.52, 0.38, 0.25);
+  // Minecraft colors - OKLCH compliant palette
+  // Grass - darker, earthy greens (OKLCH L=0.55-0.65, C=0.14-0.18, H=135)
+  let grassBright = vec3f(0.38, 0.62, 0.22);
+  let grassMid = vec3f(0.32, 0.54, 0.18);
+  let grassDark = vec3f(0.25, 0.44, 0.14);
+  // Dirt - warm brown (OKLCH L=0.45-0.55, C=0.08-0.12, H=55)
+  let dirtSide = vec3f(0.52, 0.40, 0.28);
+  let dirtDark = vec3f(0.38, 0.28, 0.18);
+  let dirtMid = vec3f(0.45, 0.34, 0.23);
 
-  // Stone/Cobblestone
-  let stoneLight = vec3f(0.6, 0.6, 0.6);
-  let stoneMid = vec3f(0.5, 0.5, 0.5);
-  let stoneDark = vec3f(0.35, 0.35, 0.35);
+  // Stone/Cobblestone - neutral gray (OKLCH L=0.40-0.60, C=0, H=0)
+  let stoneLight = vec3f(0.58, 0.58, 0.58);
+  let stoneMid = vec3f(0.48, 0.48, 0.48);
+  let stoneDark = vec3f(0.34, 0.34, 0.34);
 
-  // Stone Bricks
-  let brickLight = vec3f(0.55, 0.55, 0.52);
-  let brickMid = vec3f(0.45, 0.45, 0.43);
-  let brickDark = vec3f(0.3, 0.3, 0.28);
+  // Stone Bricks - slightly warm gray (OKLCH L=0.35-0.55, C=0.02, H=45)
+  let brickLight = vec3f(0.54, 0.53, 0.51);
+  let brickMid = vec3f(0.44, 0.43, 0.42);
+  let brickDark = vec3f(0.30, 0.29, 0.28);
 
-  // Wood Planks
-  let woodLight = vec3f(0.72, 0.53, 0.3);
-  let woodMid = vec3f(0.6, 0.42, 0.22);
-  let woodDark = vec3f(0.45, 0.3, 0.15);
+  // Mountain Rock - very dark neutral (OKLCH L=0.15-0.35, C=0.01, H=30)
+  let rockLight = vec3f(0.34, 0.33, 0.32);
+  let rockMid = vec3f(0.24, 0.23, 0.22);
+  let rockDark = vec3f(0.14, 0.13, 0.12);
+  let rockAccent = vec3f(0.28, 0.26, 0.24);
 
-  // Mountain Rock - dark gray/black rock
-  let rockLight = vec3f(0.35, 0.33, 0.32);
-  let rockMid = vec3f(0.25, 0.24, 0.23);
-  let rockDark = vec3f(0.15, 0.14, 0.13);
-  let rockAccent = vec3f(0.3, 0.28, 0.25); // Slightly warm accent
-
-  // Snow colors
-  let snowTop = vec3f(0.95, 0.97, 1.0);        // White snow
-  let snowShade = vec3f(0.75, 0.82, 0.92);     // Bluish snow shadow
+  // Snow - bright white with blue tint (OKLCH L=0.92-0.98, C=0.02, H=250)
+  let snowTop = vec3f(0.96, 0.97, 1.0);
+  let snowShade = vec3f(0.78, 0.84, 0.94);
 
   // Strong face differentiation for isometric city look
   let isLeftFace = N.x < -0.5;
@@ -806,26 +802,6 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
         }
       }
       albedo = dirtColor * shade;
-
-    } else if (blockType == 2) {
-      // WOOD PLANKS - detailed grain texture
-      let plankIdx = floor(uv.y * 4.0);
-      let plankV = fract(uv.y * 4.0);
-      let grainNoise = fract(sin(px16 * 31.7 + plankIdx * 127.1) * 43758.5);
-      let knotChance = fract(sin(plankIdx * 73.1 + seed.x * 17.3) * 43758.5);
-      // Grain lines
-      var woodColor = woodMid;
-      let grainLine = fract(uv.y * 16.0);
-      if (grainLine < 0.15 || grainLine > 0.85) { woodColor = woodDark; }
-      else if (grainNoise > 0.7) { woodColor = woodLight; }
-      else if (grainNoise < 0.3) { woodColor = woodDark; }
-      // Occasional knots
-      if (knotChance > 0.85 && px16 > 6.0 && px16 < 10.0 && py16 > 6.0 && py16 < 10.0) {
-        woodColor = woodDark * 0.8;
-      }
-      // Plank separation lines
-      if (plankV < 0.08 || plankV > 0.92) { woodColor = woodDark * 0.7; }
-      albedo = woodColor * shade;
 
     } else if (blockType == 3) {
       // STONE BRICK - detailed with cracks and variation
@@ -899,27 +875,12 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
       var grassColor = grassMid;
       if (noise16 > 0.65) { grassColor = grassBright; }
       else if (noise16 < 0.3) { grassColor = grassDark; }
-      // Add yellow/brown patches
-      if (noise16b > 0.92) { grassColor = mix(grassColor, vec3f(0.6, 0.55, 0.25), 0.4); }
-      // Flower specks
-      if (noise16b < 0.02) { grassColor = vec3f(0.9, 0.2, 0.2); } // Red flower
-      else if (noise16b > 0.98) { grassColor = vec3f(0.95, 0.95, 0.3); } // Yellow flower
+      // Add yellow/brown patches (OKLCH L=0.58, C=0.10, H=80)
+      if (noise16b > 0.92) { grassColor = mix(grassColor, vec3f(0.52, 0.48, 0.24), 0.4); }
+      // Flower specks (OKLCH compliant)
+      if (noise16b < 0.02) { grassColor = vec3f(0.78, 0.22, 0.22); } // Red flower
+      else if (noise16b > 0.98) { grassColor = vec3f(0.88, 0.82, 0.28); } // Yellow flower
       albedo = grassColor;
-
-    } else if (blockType == 2) {
-      // WOOD TOP - plank ends with rings
-      let plankX = floor(uv.x * 4.0);
-      let plankNoise = fract(sin(plankX * 73.1 + seed.x) * 43758.5);
-      var woodColor = woodMid;
-      // Ring pattern
-      let ringDist = length(fract(vec2f(uv.x * 4.0, uv.y * 4.0)) - 0.5);
-      let ring = fract(ringDist * 6.0 + plankNoise * 2.0);
-      if (ring < 0.3) { woodColor = woodDark; }
-      else if (ring > 0.7) { woodColor = woodLight; }
-      // Plank gaps
-      let plankU = fract(uv.x * 4.0);
-      if (plankU < 0.06 || plankU > 0.94) { woodColor = woodDark * 0.6; }
-      albedo = woodColor;
 
     } else if (blockType == 3) {
       // STONE BRICK TOP - grid pattern
@@ -979,7 +940,6 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   } else {
     // BOTTOM FACE
     if (blockType == 1) { albedo = dirtDark * 0.5; }
-    else if (blockType == 2) { albedo = woodDark * 0.5; }
     else if (blockType == 5) { albedo = rockDark * 0.4; }
     else { albedo = stoneDark * 0.5; }
   }
