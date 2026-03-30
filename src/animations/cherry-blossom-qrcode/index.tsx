@@ -507,8 +507,18 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.15;
       cherryColor = cherryColor * (1.0 + shift);
 
+      // Rounded edge effect - darker at edges (only in 3D view)
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let cornerDist = length(vec2f(0.5 - abs(uv.x - 0.5), 0.5 - abs(uv.y - 0.5)));
+      let roundedEdge = smoothstep(0.0, 0.15, edgeDist) * smoothstep(0.3, 0.5, cornerDist);
+      let edgeDarken = mix(0.75, 1.0, roundedEdge);
+      // Fade out edge effect when going to 2D
+      let finalEdge = mix(edgeDarken, 1.0, progress);
+
       // Apply canopy self-shadowing
-      albedo = cherryColor * topWarmTint * canopyAO;
+      albedo = cherryColor * topWarmTint * canopyAO * finalEdge;
     } else if (blockType == 2) {
       // TRUNK TOP - coherent brown variation with realistic shadows
       var barkColor = barkMid;
@@ -627,8 +637,15 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.25;
       cherryColor = cherryColor * (1.0 + shift);
 
+      // Rounded edge effect on sides
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let roundedEdge = smoothstep(0.0, 0.12, edgeDist);
+      let edgeDarken = mix(0.7, 1.0, roundedEdge);
+
       // Apply canopy self-shadowing
-      albedo = cherryColor * shade * tint * canopyAO;
+      albedo = cherryColor * shade * tint * canopyAO * edgeDarken;
     } else if (blockType == 2) {
       // TRUNK SIDE - high contrast brown with realistic shadows
       var barkColor = barkMid;
