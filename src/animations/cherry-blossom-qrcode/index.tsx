@@ -402,11 +402,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtMid = vec3f(0.96, 0.94, 0.88);
   let dirtDark = vec3f(0.92, 0.88, 0.82);
 
-  // CHERRY BLOSSOM colors (QR DARK modules) - vivid but dark
-  let sakuraLight = vec3f(0.52, 0.18, 0.28);    // Light pink - more saturated
-  let sakuraMid = vec3f(0.42, 0.12, 0.22);      // Medium pink
-  let sakuraDeep = vec3f(0.32, 0.08, 0.16);     // Deep pink
-  let sakuraRich = vec3f(0.24, 0.04, 0.12);     // Dark pink
+  // CHERRY BLOSSOM colors (QR DARK modules) - lighter pink tones
+  let sakuraLight = vec3f(0.62, 0.28, 0.38);    // Light pink
+  let sakuraMid = vec3f(0.52, 0.20, 0.30);      // Medium pink
+  let sakuraDeep = vec3f(0.42, 0.14, 0.24);     // Deep pink
+  let sakuraRich = vec3f(0.32, 0.08, 0.18);     // Dark pink
 
   // TRUNK colors - richer browns
   let barkLight = vec3f(0.32, 0.18, 0.08);     // Light brown - warmer
@@ -507,13 +507,12 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let shift = (noise2 - 0.5) * 0.15;
       cherryColor = cherryColor * (1.0 + shift);
 
-      // Rounded edge effect - darker at edges (only in 3D view)
+      // Subtle rounded edge effect - softer for leaves (only in 3D view)
       let edgeX = min(uv.x, 1.0 - uv.x);
       let edgeY = min(uv.y, 1.0 - uv.y);
       let edgeDist = min(edgeX, edgeY);
-      let cornerDist = length(vec2f(0.5 - abs(uv.x - 0.5), 0.5 - abs(uv.y - 0.5)));
-      let roundedEdge = smoothstep(0.0, 0.15, edgeDist) * smoothstep(0.3, 0.5, cornerDist);
-      let edgeDarken = mix(0.75, 1.0, roundedEdge);
+      let roundedEdge = smoothstep(0.0, 0.12, edgeDist);
+      let edgeDarken = mix(0.88, 1.0, roundedEdge); // Subtle 12% darkening
       // Fade out edge effect when going to 2D
       let finalEdge = mix(edgeDarken, 1.0, progress);
 
@@ -542,9 +541,13 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let heightRatio = min(layer / trunkMaxLayer, 1.0);
       let aoShadow = 0.6 + heightRatio * 0.4; // 0.6 at base, 1.0 at top
 
-      // Edge darkening for ambient occlusion on each cube
-      let edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-      let edgeAO = 0.85 + smoothstep(0.0, 0.15, edgeDist) * 0.15;
+      // Strong rounded edge effect for trunk
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let cornerDist = length(vec2f(0.5 - abs(uv.x - 0.5), 0.5 - abs(uv.y - 0.5)));
+      let roundedEdge = smoothstep(0.0, 0.18, edgeDist) * smoothstep(0.25, 0.5, cornerDist);
+      let edgeAO = mix(0.55, 1.0, roundedEdge); // Strong edge darkening
 
       barkColor = barkColor * aoShadow * edgeAO;
 
@@ -668,12 +671,15 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let heightRatio = min(layer / trunkMaxLayer, 1.0);
       let aoShadow = 0.55 + heightRatio * 0.45; // Darker sides at base
 
-      // Vertical gradient on side faces - darker at bottom of each cube
-      let verticalAO = 0.75 + uv.y * 0.25;
+      // Strong rounded edge effect for trunk sides
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let roundedEdge = smoothstep(0.0, 0.15, edgeDist);
+      let edgeAO = mix(0.5, 1.0, roundedEdge); // Strong edge darkening
 
-      // Edge darkening for crevices between blocks
-      let edgeDist = min(uv.x, 1.0 - uv.x);
-      let edgeAO = 0.9 + smoothstep(0.0, 0.1, edgeDist) * 0.1;
+      // Vertical gradient on side faces - darker at bottom of each cube
+      let verticalAO = 0.8 + uv.y * 0.2;
 
       barkColor = barkColor * aoShadow * verticalAO * edgeAO;
 
@@ -836,19 +842,19 @@ fn main(@builtin(vertex_index) vi: u32) -> ShadowOut {
   var o: ShadowOut;
   o.uv = qv * 0.5 + 0.5; // 0-1 UV
 
-  // Shadow plane size - distant ground effect
+  // Shadow plane size - smaller for distant ground effect
   let gridSize = uniforms.gridSize;
   let blockSize = 0.0245;
   let halfGrid = gridSize * blockSize * 0.5;
-  let shadowScale = 1.0; // Match platform size
+  let shadowScale = 0.85; // Slightly smaller than platform
 
-  // Position in 3D space - FAR below the platform for levitation effect
+  // Position in 3D space - lower for more levitation
   // Light comes from (-0.5, 0.8, -0.5), so shadow offsets toward (+x, +z)
   let progress = uniforms.progress;
-  let shadowHeight = 0.45;
+  let shadowHeight = 0.55; // Lower down
   let lightDirXZ = vec2f(-0.5, -0.5); // XZ components of sun direction
   // Offset fades out when going flat (looking straight down)
-  let shadowOffset = -lightDirXZ * shadowHeight * 0.4 * (1.0 - progress);
+  let shadowOffset = -lightDirXZ * shadowHeight * 0.35 * (1.0 - progress);
 
   let localX = qv.x * halfGrid * shadowScale + shadowOffset.x;
   let localY = -shadowHeight;
