@@ -851,7 +851,7 @@ fn main(@builtin(vertex_index) vi: u32) -> ShadowOut {
   // Position in 3D space - lower for more levitation
   // Light comes from (-0.5, 0.8, -0.5), so shadow offsets toward (+x, +z)
   let progress = uniforms.progress;
-  let shadowHeight = 0.55; // Lower down
+  let shadowHeight = 0.48; // Slightly closer
   let lightDirXZ = vec2f(-0.5, -0.5); // XZ components of sun direction
   // Offset fades out when going flat (looking straight down)
   let shadowOffset = -lightDirXZ * shadowHeight * 0.35 * (1.0 - progress);
@@ -907,7 +907,7 @@ fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
   let dist = length(centered);
 
   // Gaussian-like falloff for very soft blur
-  let shadowStrength = 0.12;
+  let shadowStrength = 0.08; // Subtle shadow
   let falloff = exp(-dist * dist * 2.5); // Gaussian curve
   let alpha = shadowStrength * falloff;
 
