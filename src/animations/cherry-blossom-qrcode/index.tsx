@@ -424,21 +424,21 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtDark = vec3f(0.92, 0.88, 0.82);
 
   // CHERRY BLOSSOM colors (QR DARK modules)
-  let sakuraLight = vec3f(0.72, 0.28, 0.40);    // Light pink
-  let sakuraMid = vec3f(0.62, 0.20, 0.32);      // Medium pink
-  let sakuraDeep = vec3f(0.50, 0.14, 0.26);     // Deep pink
-  let sakuraRich = vec3f(0.39, 0.08, 0.19);     // Dark pink
+  let sakuraLight = vec3f(0.70, 0.25, 0.38);    // Light pink
+  let sakuraMid = vec3f(0.58, 0.18, 0.30);      // Medium pink
+  let sakuraDeep = vec3f(0.46, 0.12, 0.24);     // Deep pink
+  let sakuraRich = vec3f(0.36, 0.07, 0.18);     // Dark pink
 
   // TRUNK colors
-  let barkLight = vec3f(0.37, 0.19, 0.07);     // Light brown
-  let barkMid = vec3f(0.29, 0.14, 0.05);       // Medium brown
-  let barkDark = vec3f(0.23, 0.10, 0.03);      // Dark brown
-  let barkDeep = vec3f(0.17, 0.07, 0.02);      // Deep brown
+  let barkLight = vec3f(0.34, 0.18, 0.07);     // Light brown
+  let barkMid = vec3f(0.26, 0.13, 0.05);       // Medium brown
+  let barkDark = vec3f(0.20, 0.09, 0.03);      // Dark brown
+  let barkDeep = vec3f(0.14, 0.06, 0.02);      // Deep brown
 
   // GRASS colors (QR DARK modules)
-  let grassDark = vec3f(0.05, 0.21, 0.04);
-  let grassMid = vec3f(0.08, 0.32, 0.06);
-  let grassBright = vec3f(0.13, 0.42, 0.09);
+  let grassDark = vec3f(0.05, 0.18, 0.04);
+  let grassMid = vec3f(0.07, 0.28, 0.05);
+  let grassBright = vec3f(0.12, 0.38, 0.08);
 
   let seed = vec2f(input.col, input.row);
   var albedo = vec3f(0.5);
@@ -1394,7 +1394,7 @@ const styles = StyleSheet.create({
   canvas: { backgroundColor: 'transparent', flex: 1 },
   canvasWrapper: {
     flex: 1,
-    paddingTop: '14%',
+    paddingTop: '10%',
   },
   container: { backgroundColor: CONTAINER_BG, flex: 1 },
   input: {
