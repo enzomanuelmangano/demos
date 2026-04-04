@@ -29,3 +29,6 @@ mcp.json
 
 CLAUDE.md
 
+.agents/
+.claude/skills
+skills-lock.json
