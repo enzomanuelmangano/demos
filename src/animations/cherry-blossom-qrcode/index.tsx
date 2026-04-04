@@ -31,7 +31,7 @@ function wgslVec3(c: RGB): string {
 }
 
 const COLORS = {
-  background: '#e8f4e8',
+  background: '#f7f7f7',
 };
 
 const PALETTE = {
@@ -423,22 +423,22 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtMid = vec3f(0.96, 0.94, 0.88);
   let dirtDark = vec3f(0.92, 0.88, 0.82);
 
-  // CHERRY BLOSSOM colors (QR DARK modules) - lighter pink tones
-  let sakuraLight = vec3f(0.62, 0.28, 0.38);    // Light pink
-  let sakuraMid = vec3f(0.52, 0.20, 0.30);      // Medium pink
-  let sakuraDeep = vec3f(0.42, 0.14, 0.24);     // Deep pink
-  let sakuraRich = vec3f(0.32, 0.08, 0.18);     // Dark pink
+  // CHERRY BLOSSOM colors (QR DARK modules)
+  let sakuraLight = vec3f(0.72, 0.28, 0.40);    // Light pink
+  let sakuraMid = vec3f(0.62, 0.20, 0.32);      // Medium pink
+  let sakuraDeep = vec3f(0.50, 0.14, 0.26);     // Deep pink
+  let sakuraRich = vec3f(0.39, 0.08, 0.19);     // Dark pink
 
-  // TRUNK colors - richer browns
-  let barkLight = vec3f(0.32, 0.18, 0.08);     // Light brown - warmer
-  let barkMid = vec3f(0.26, 0.14, 0.05);       // Medium brown
-  let barkDark = vec3f(0.20, 0.10, 0.03);      // Dark brown
-  let barkDeep = vec3f(0.15, 0.07, 0.02);      // Deep brown
+  // TRUNK colors
+  let barkLight = vec3f(0.37, 0.19, 0.07);     // Light brown
+  let barkMid = vec3f(0.29, 0.14, 0.05);       // Medium brown
+  let barkDark = vec3f(0.23, 0.10, 0.03);      // Dark brown
+  let barkDeep = vec3f(0.17, 0.07, 0.02);      // Deep brown
 
-  // GRASS colors (QR DARK modules) - vivid but dark
-  let grassDark = vec3f(0.06, 0.18, 0.04);
-  let grassMid = vec3f(0.10, 0.28, 0.06);
-  let grassBright = vec3f(0.15, 0.38, 0.10);
+  // GRASS colors (QR DARK modules)
+  let grassDark = vec3f(0.05, 0.21, 0.04);
+  let grassMid = vec3f(0.08, 0.32, 0.06);
+  let grassBright = vec3f(0.13, 0.42, 0.09);
 
   let seed = vec2f(input.col, input.row);
   var albedo = vec3f(0.5);
@@ -818,16 +818,8 @@ struct Uniforms {
 
 @fragment
 fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
-  // Consistent soft greenish-gray background matching container
-  let bgColor = vec3f(0.91, 0.957, 0.91);
-
-  // Very subtle gradient for depth
-  let t = pow(uv.y, 0.5);
-  var sky = mix(bgColor * 0.98, bgColor, t);
-
-  sky = pow(sky, vec3f(1.0 / 2.2));
-
-  return vec4f(sky, 1.0);
+  // Match container background #f7f7f7 = rgb(247, 247, 247)
+  return vec4f(0.969, 0.969, 0.969, 1.0);
 }
 `;
 
@@ -959,6 +951,7 @@ export const CherryBlossomQRCode = () => {
   const canvasHeight = windowHeight * 0.6;
 
   const [qrContent, setQrContent] = useState(DEFAULT_QR_CONTENT);
+  const inputRef = useRef<TextInput>(null);
   const canvasRef = useRef<CanvasRef>(null);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -998,6 +991,15 @@ export const CherryBlossomQRCode = () => {
 
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
+    // Keep keyboard visible after pressing QR code
+    inputRef.current?.focus();
+  }, []);
+
+  const handleInputBlur = useCallback(() => {
+    // Immediately refocus to keep keyboard always visible
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   }, []);
 
   useEffect(() => {
@@ -1367,9 +1369,11 @@ export const CherryBlossomQRCode = () => {
       </Animated.View>
       <KeyboardStickyView style={styles.inputContainer}>
         <TextInput
+          ref={inputRef}
           style={styles.input}
           value={qrContent}
           onChangeText={setQrContent}
+          onBlur={handleInputBlur}
           placeholder="https://enzo.fyi"
           placeholderTextColor="#999"
           selectionColor="#4a7c4e"
@@ -1378,6 +1382,7 @@ export const CherryBlossomQRCode = () => {
           autoComplete="off"
           inputMode="url"
           keyboardAppearance="light"
+          showSoftInputOnFocus={true}
           autoFocus
         />
       </KeyboardStickyView>
@@ -1389,24 +1394,20 @@ const styles = StyleSheet.create({
   canvas: { backgroundColor: 'transparent', flex: 1 },
   canvasWrapper: {
     flex: 1,
-    paddingTop: '15%',
+    paddingTop: '14%',
   },
   container: { backgroundColor: CONTAINER_BG, flex: 1 },
   input: {
     backgroundColor: '#fff',
     borderCurve: 'continuous',
     borderRadius: 14,
+    boxShadow: '0px 1px 4px rgba(0, 0, 0, 0.03)',
     color: '#1a1a1a',
     fontSize: 16,
     fontWeight: '400',
     letterSpacing: 0.2,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
   inputContainer: {
     paddingBottom: 8,
