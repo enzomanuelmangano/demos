@@ -32,38 +32,26 @@ export const MosaicRenderer = ({
   canvasWidth,
   canvasHeight,
 }: MosaicRendererProps) => {
-  // Pre-render all images into a Picture with heavy blur
-  // Each image becomes a colored "pixel" when zoomed out
+  // Pre-render all cells as solid colored rectangles using each photo's average color
+  // This creates a clean mosaic effect where each cell is a single color "pixel"
   const picture = useMemo(() => {
     const recorder = Skia.PictureRecorder();
     const canvas = recorder.beginRecording(
       Skia.XYWHRect(0, 0, canvasWidth, canvasHeight),
     );
 
-    // No blur - let the small cell size create the mosaic effect naturally
     const paint = Skia.Paint();
 
     for (const cell of cells) {
       const dstRect = Skia.XYWHRect(cell.x, cell.y, cellWidth, cellHeight);
 
-      // Check if we have a photo for this cell
+      // Get the photo's average color, or fall back to the target color
       const info = cell.photoId !== null ? photoInfoMap.get(cell.photoId) : null;
+      const color = info?.averageColor ?? cell.placeholderColor;
 
-      if (info?.image) {
-        const srcRect = Skia.XYWHRect(
-          0,
-          0,
-          info.image.width(),
-          info.image.height(),
-        );
-        canvas.drawImageRect(info.image, srcRect, dstRect, paint);
-      } else {
-        // Fallback: draw colored rectangle using the target color
-        const fallbackPaint = Skia.Paint();
-        const { r, g, b } = cell.placeholderColor;
-        fallbackPaint.setColor(Skia.Color(`rgb(${r}, ${g}, ${b})`));
-        canvas.drawRect(dstRect, fallbackPaint);
-      }
+      const { r, g, b } = color;
+      paint.setColor(Skia.Color(`rgb(${r}, ${g}, ${b})`));
+      canvas.drawRect(dstRect, paint);
     }
 
     return recorder.finishRecordingAsPicture();
