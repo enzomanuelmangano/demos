@@ -8,7 +8,7 @@ import {
 
 import { memo, useMemo } from 'react';
 
-import { Canvas } from '@shopify/react-native-skia';
+import { Canvas, Fill } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
@@ -241,13 +241,16 @@ export function TheScreamMosaic() {
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={animatedStyle}>
           <Canvas style={{ width: canvasWidth, height: canvasHeight }}>
-            {atlas && (
+            {photoInfoMap.size > 0 ? (
               <MosaicRenderer
                 atlas={atlas}
                 cells={cells}
                 photoInfoMap={photoInfoMap}
                 cellWidth={cellWidth}
+                cellHeight={cellHeight}
               />
+            ) : (
+              <Fill color="blue" />
             )}
           </Canvas>
         </Animated.View>

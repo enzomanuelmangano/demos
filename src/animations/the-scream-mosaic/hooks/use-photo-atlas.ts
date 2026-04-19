@@ -28,6 +28,7 @@ export interface PhotoInfo {
   labColor: LAB;
   atlasX: number; // Position in atlas
   atlasY: number;
+  image: SkImage; // Keep reference to original image
 }
 
 interface UsePhotoAtlasResult {
@@ -85,19 +86,24 @@ const fetchPhoto = async (
 ): Promise<{ image: SkImage; color: RGB } | null> => {
   try {
     const url = getPhotoUrl(id, DISPLAY_SIZE);
+    console.log('[fetchPhoto] Fetching:', url);
     const response = await fetch(url);
 
     if (!response.ok) {
+      console.log('[fetchPhoto] Response not OK:', id, response.status);
       return null;
     }
 
     const arrayBuffer = await response.arrayBuffer();
+    console.log('[fetchPhoto] Got arrayBuffer size:', arrayBuffer.byteLength);
     const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
     const image = Skia.Image.MakeImageFromEncoded(data);
 
     if (!image) {
+      console.log('[fetchPhoto] Failed to create image from data:', id);
       return null;
     }
+    console.log('[fetchPhoto] Success:', id, image.width(), 'x', image.height());
 
     const width = image.width();
     const height = image.height();
@@ -173,16 +179,21 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
     }
 
     // Create atlas surface
+    console.log('[Atlas] Creating surface:', ATLAS_WIDTH, 'x', ATLAS_HEIGHT);
+    console.log('[Atlas] Loaded images:', loadedImages.length);
     const surface = Skia.Surface.MakeOffscreen(ATLAS_WIDTH, ATLAS_HEIGHT);
     if (!surface) {
+      console.error('[Atlas] Failed to create offscreen surface!');
       setIsLoading(false);
       return;
     }
+    console.log('[Atlas] Surface created successfully');
 
     const canvas = surface.getCanvas();
     canvas.clear(Skia.Color('black'));
 
     // Draw all images to atlas and build info map
+    console.log('[Atlas] Drawing', loadedImages.length, 'images to atlas');
     for (let i = 0; i < loadedImages.length; i++) {
       const { id, image, color } = loadedImages[i];
       const col = i % ATLAS_COLS;
@@ -195,6 +206,10 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
       const dstRect = Skia.XYWHRect(x, y, TILE_SIZE, TILE_SIZE);
       canvas.drawImageRect(image, srcRect, dstRect, Skia.Paint());
 
+      if (i < 3) {
+        console.log('[Atlas] Drew image', id, 'at', x, y, 'size', TILE_SIZE);
+      }
+
       // Store info
       infoMap.set(id, {
         id,
@@ -202,11 +217,19 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
         labColor: rgbToLab(color),
         atlasX: x,
         atlasY: y,
+        image, // Keep reference
       });
     }
+    console.log('[Atlas] Finished drawing, flushing...');
+    surface.flush();
 
     // Create atlas image from surface
     const atlasImage = surface.makeImageSnapshot();
+    console.log(
+      '[Atlas] Snapshot created:',
+      atlasImage ? `${atlasImage.width()}x${atlasImage.height()}` : 'null',
+    );
+    console.log('[Atlas] InfoMap size:', infoMap.size);
 
     cachedAtlas = atlasImage;
     cachedPhotoInfoMap = infoMap;

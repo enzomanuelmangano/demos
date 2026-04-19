@@ -1,12 +1,10 @@
 import { useMemo } from 'react';
 
-import { Atlas, Group, rect, Skia } from '@shopify/react-native-skia';
-
-import { ATLAS_TILE_SIZE } from '../hooks/use-photo-atlas';
+import { Group, Image } from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
-import type { SkImage, SkRSXform, SkRect } from '@shopify/react-native-skia';
+import type { SkImage } from '@shopify/react-native-skia';
 
 interface CellData {
   index: number;
@@ -17,51 +15,57 @@ interface CellData {
 }
 
 interface MosaicRendererProps {
-  atlas: SkImage;
+  atlas: SkImage | null;
   cells: CellData[];
   photoInfoMap: Map<number, PhotoInfo>;
   cellWidth: number;
+  cellHeight: number;
 }
 
 export const MosaicRenderer = ({
-  atlas,
   cells,
   photoInfoMap,
   cellWidth,
+  cellHeight,
 }: MosaicRendererProps) => {
-  // Build sprites and transforms together
-  const { sprites, transforms } = useMemo(() => {
-    const rects: SkRect[] = [];
-    const xforms: SkRSXform[] = [];
-
-    // Scale from atlas tile size to cell size
-    const scale = cellWidth / ATLAS_TILE_SIZE;
+  // Build list of images to render
+  const imagesToRender = useMemo(() => {
+    const images: { image: SkImage; x: number; y: number; key: number }[] = [];
 
     for (const cell of cells) {
       if (cell.photoId === null) continue;
       const info = photoInfoMap.get(cell.photoId);
-      if (!info) continue;
+      if (!info?.image) continue;
 
-      // Source rect in atlas
-      rects.push(
-        rect(info.atlasX, info.atlasY, ATLAS_TILE_SIZE, ATLAS_TILE_SIZE),
-      );
-
-      // Transform: scale and position
-      // RSXform(scos, ssin, tx, ty) - no rotation so scos=scale, ssin=0
-      xforms.push(Skia.RSXform(scale, 0, cell.x, cell.y));
+      images.push({
+        image: info.image,
+        x: cell.x,
+        y: cell.y,
+        key: cell.index,
+      });
     }
 
-    return { sprites: rects, transforms: xforms };
-  }, [cells, photoInfoMap, cellWidth]);
+    console.log('[MosaicRenderer] Rendering', images.length, 'images');
+    return images;
+  }, [cells, photoInfoMap]);
 
-  if (sprites.length === 0) {
+  if (imagesToRender.length === 0) {
     return null;
   }
 
   return (
     <Group>
-      <Atlas image={atlas} sprites={sprites} transforms={transforms} />
+      {imagesToRender.map(item => (
+        <Image
+          key={item.key}
+          image={item.image}
+          x={item.x}
+          y={item.y}
+          width={cellWidth}
+          height={cellHeight}
+          fit="cover"
+        />
+      ))}
     </Group>
   );
 };
