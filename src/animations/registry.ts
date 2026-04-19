@@ -123,6 +123,7 @@ import { Sudoku } from './sudoku';
 import { SwipeCards } from './swipe-cards';
 import { TabNavigation } from './tab-navigation';
 import { TelegramThemeSwitch } from './telegram-theme-switch';
+import { TheScreamMosaic } from './the-scream-mosaic';
 import { ThemeCanvasAnimation } from './theme-canvas-animation';
 import { ThreadsHoloTicket } from './threads-holo-ticket/src';
 import { TimeMachine } from './time-machine';
@@ -253,6 +254,7 @@ export const AnimationRegistry = {
   'notion-qrcode': NotionQRCode,
   'github-terrain': GitHubTerrain,
   'cherry-blossom-qrcode': CherryBlossomQRCode,
+  'the-scream-mosaic': TheScreamMosaic,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -856,6 +858,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Cherry Blossom QR',
     route: 'CherryBlossomQRCode',
     iconName: 'flower-outline',
+  },
+  'the-scream-mosaic': {
+    name: 'The Scream Mosaic',
+    route: 'TheScreamMosaic',
+    iconName: 'images-outline',
   },
 } as const;
 
