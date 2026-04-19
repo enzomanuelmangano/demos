@@ -44,19 +44,26 @@ export const MosaicRenderer = ({
     const paint = Skia.Paint();
 
     for (const cell of cells) {
-      if (cell.photoId === null) continue;
-      const info = photoInfoMap.get(cell.photoId);
-      if (!info?.image) continue;
-
-      const srcRect = Skia.XYWHRect(
-        0,
-        0,
-        info.image.width(),
-        info.image.height(),
-      );
       const dstRect = Skia.XYWHRect(cell.x, cell.y, cellWidth, cellHeight);
 
-      canvas.drawImageRect(info.image, srcRect, dstRect, paint);
+      // Check if we have a photo for this cell
+      const info = cell.photoId !== null ? photoInfoMap.get(cell.photoId) : null;
+
+      if (info?.image) {
+        const srcRect = Skia.XYWHRect(
+          0,
+          0,
+          info.image.width(),
+          info.image.height(),
+        );
+        canvas.drawImageRect(info.image, srcRect, dstRect, paint);
+      } else {
+        // Fallback: draw colored rectangle using the target color
+        const fallbackPaint = Skia.Paint();
+        const { r, g, b } = cell.placeholderColor;
+        fallbackPaint.setColor(Skia.Color(`rgb(${r}, ${g}, ${b})`));
+        canvas.drawRect(dstRect, fallbackPaint);
+      }
     }
 
     return recorder.finishRecordingAsPicture();

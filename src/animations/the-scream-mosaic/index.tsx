@@ -19,7 +19,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { MosaicRenderer } from './components/mosaic-renderer';
-import { GRID_COLS, GRID_ROWS, SPRING_CONFIG, ZOOM_LEVELS } from './constants';
+import { SPRING_CONFIG, ZOOM_LEVELS } from './constants';
 import { useMosaicMapping } from './hooks/use-mosaic-mapping';
 import { usePaintingAnalysis } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
@@ -28,8 +28,8 @@ import type { LoadingPhase } from './types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Import the painting asset
-const painting = require('./assets/b.jpg');
+// Import the painting asset - just change this to test different paintings!
+const painting = require('./assets/hopper.jpg');
 
 // Loading indicator component
 const LoadingOverlay = memo(
@@ -80,20 +80,24 @@ const LoadingOverlay = memo(
 );
 
 export function TheScreamMosaic() {
-  // Canvas dimensions - maintain painting aspect ratio (787/1052 ≈ 0.748)
-  const canvasWidth = SCREEN_WIDTH * 0.95;
-  const canvasHeight = canvasWidth / 0.748;
-
-  // Cell dimensions
-  const cellWidth = canvasWidth / GRID_COLS;
-  const cellHeight = canvasHeight / GRID_ROWS;
-
-  // Analysis hooks
+  // Analysis hooks - gridDimensions is calculated from the painting image
   const {
     gridCells,
+    gridDimensions,
     isAnalyzing: isAnalyzingPainting,
     progress: paintingProgress,
   } = usePaintingAnalysis(painting);
+
+  const { cols, rows, aspectRatio } = gridDimensions;
+
+  // Canvas dimensions - calculated from painting aspect ratio
+  const canvasWidth = SCREEN_WIDTH * 0.95;
+  const canvasHeight =
+    aspectRatio > 0 ? canvasWidth / aspectRatio : canvasWidth;
+
+  // Cell dimensions
+  const cellWidth = cols > 0 ? canvasWidth / cols : 0;
+  const cellHeight = rows > 0 ? canvasHeight / rows : 0;
 
   const {
     atlas,

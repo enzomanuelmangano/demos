@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useImage } from '@shopify/react-native-skia';
 
-import { GRID_COLS, GRID_ROWS, TOTAL_CELLS } from '../constants';
+import { TARGET_CELLS } from '../constants';
 import { rgbToLab } from '../utils/color-conversion';
 import { sampleRegionColor } from '../utils/pixel-sampling';
 
@@ -12,8 +12,16 @@ import type { GridCell, LAB, RGB } from '../types';
 let cachedPaintingAnalysis: GridCell[] | null = null;
 let cachedPaintingKey: string | null = null;
 
+interface GridDimensions {
+  cols: number;
+  rows: number;
+  totalCells: number;
+  aspectRatio: number;
+}
+
 interface UsePaintingAnalysisResult {
   gridCells: GridCell[];
+  gridDimensions: GridDimensions;
   isAnalyzing: boolean;
   progress: number;
   error: string | null;
@@ -29,15 +37,34 @@ export const usePaintingAnalysis = (
 
   const paintingImage = useImage(paintingSource);
 
-  const analyzePainting = useCallback(async () => {
+  // Calculate grid dimensions from image aspect ratio
+  const gridDimensions = useMemo((): GridDimensions => {
     if (!paintingImage) {
+      return { cols: 0, rows: 0, totalCells: 0, aspectRatio: 1 };
+    }
+
+    const width = paintingImage.width();
+    const height = paintingImage.height();
+    const aspectRatio = width / height;
+
+    // Calculate grid that maintains aspect ratio with ~TARGET_CELLS total
+    const rows = Math.round(Math.sqrt(TARGET_CELLS / aspectRatio));
+    const cols = Math.round(rows * aspectRatio);
+    const totalCells = cols * rows;
+
+    return { cols, rows, totalCells, aspectRatio };
+  }, [paintingImage]);
+
+  const analyzePainting = useCallback(async () => {
+    if (!paintingImage || gridDimensions.cols === 0) {
       return;
     }
 
+    const { cols, rows, totalCells } = gridDimensions;
     const imageWidth = paintingImage.width();
     const imageHeight = paintingImage.height();
-    const cellWidth = imageWidth / GRID_COLS;
-    const cellHeight = imageHeight / GRID_ROWS;
+    const cellWidth = imageWidth / cols;
+    const cellHeight = imageHeight / rows;
 
     // Sample a few spots to create a unique key that changes with image content
     const sampleSpots = [
@@ -51,7 +78,7 @@ export const usePaintingAnalysis = (
         return color ? `${color.r}-${color.g}-${color.b}` : '0';
       })
       .join('|');
-    const paintingKey = `${imageWidth}x${imageHeight}-${colorSig}`;
+    const paintingKey = `${imageWidth}x${imageHeight}-${cols}x${rows}-${colorSig}`;
 
     // Return cached result if available and key matches
     if (cachedPaintingAnalysis && cachedPaintingKey === paintingKey) {
@@ -75,11 +102,11 @@ export const usePaintingAnalysis = (
       return new Promise(resolve => {
         requestAnimationFrame(() => {
           const batchSize = 25;
-          const endIndex = Math.min(startIndex + batchSize, TOTAL_CELLS);
+          const endIndex = Math.min(startIndex + batchSize, totalCells);
 
           for (let i = startIndex; i < endIndex; i++) {
-            const col = i % GRID_COLS;
-            const row = Math.floor(i / GRID_COLS);
+            const col = i % cols;
+            const row = Math.floor(i / cols);
 
             const x = col * cellWidth;
             const y = row * cellHeight;
@@ -105,9 +132,9 @@ export const usePaintingAnalysis = (
             });
           }
 
-          setProgress(Math.round((endIndex / TOTAL_CELLS) * 100));
+          setProgress(Math.round((endIndex / totalCells) * 100));
 
-          if (endIndex < TOTAL_CELLS) {
+          if (endIndex < totalCells) {
             setTimeout(() => processBatch(endIndex).then(resolve), 0);
           } else {
             resolve();
@@ -128,7 +155,7 @@ export const usePaintingAnalysis = (
     } finally {
       setIsAnalyzing(false);
     }
-  }, [paintingImage]);
+  }, [paintingImage, gridDimensions]);
 
   useEffect(() => {
     if (paintingImage) {
@@ -138,6 +165,7 @@ export const usePaintingAnalysis = (
 
   return {
     gridCells,
+    gridDimensions,
     isAnalyzing,
     progress,
     error,

@@ -1,12 +1,10 @@
 // Grid configuration for photo mosaic
-// 85 × 113 = 9605 cells, matches painting aspect ratio (~0.75)
-export const GRID_COLS = 85;
-export const GRID_ROWS = 113;
-export const TOTAL_CELLS = GRID_COLS * GRID_ROWS; // 9605 cells
+// Target number of cells - actual grid dimensions calculated from painting aspect ratio
+export const TARGET_CELLS = 10000;
 
 // Photo loading configuration
 // Using seed-based URLs for unlimited unique photos
-export const PHOTO_COUNT = TOTAL_CELLS; // One unique photo per cell
+export const PHOTO_COUNT = TARGET_CELLS; // One unique photo per cell
 export const ANALYSIS_SIZE = 50; // 50x50 for color analysis (reduced for performance)
 export const DISPLAY_SIZE = 80; // 80x80 for rendering (reduced for 5k images)
 export const BATCH_SIZE = 100;
