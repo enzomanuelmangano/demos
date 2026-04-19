@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { findClosestPhotoFromAtlas } from '../utils/color-distance';
+import { colorDistance } from '../utils/color-distance';
 
 import type { PhotoInfo } from './use-photo-atlas';
 import type { GridCell } from '../types';
@@ -47,10 +47,29 @@ export const useMosaicMapping = (
       setProgress(0);
 
       const newMapping = new Map<number, number>();
-      const batchSize = 200; // Larger batches for 5k cells
+      const batchSize = 50;
 
-      // Convert map to array for faster iteration
+      // Convert map to array and track which photos are still available
       const photoArray = Array.from(photoInfoMap.values());
+      const usedPhotoIds = new Set<number>();
+
+      // Find closest UNUSED photo for a cell
+      const findClosestUnused = (cell: GridCell): number | null => {
+        let closestId: number | null = null;
+        let minDistance = Infinity;
+
+        for (const photo of photoArray) {
+          if (usedPhotoIds.has(photo.id)) continue;
+
+          const distance = colorDistance(cell.targetLab, photo.labColor);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestId = photo.id;
+          }
+        }
+
+        return closestId;
+      };
 
       const processBatch = (startIndex: number): Promise<void> => {
         return new Promise(resolve => {
@@ -59,12 +78,10 @@ export const useMosaicMapping = (
 
             for (let i = startIndex; i < endIndex; i++) {
               const cell = gridCells[i];
-              const photoId = findClosestPhotoFromAtlas(
-                cell.targetLab,
-                photoArray,
-              );
+              const photoId = findClosestUnused(cell);
               if (photoId !== null) {
                 newMapping.set(cell.index, photoId);
+                usedPhotoIds.add(photoId); // Mark as used - no duplicates!
               }
             }
 

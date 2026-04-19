@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Group, Image } from '@shopify/react-native-skia';
+import { Group, Picture, Skia } from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
@@ -20,6 +20,8 @@ interface MosaicRendererProps {
   photoInfoMap: Map<number, PhotoInfo>;
   cellWidth: number;
   cellHeight: number;
+  canvasWidth: number;
+  canvasHeight: number;
 }
 
 export const MosaicRenderer = ({
@@ -27,45 +29,44 @@ export const MosaicRenderer = ({
   photoInfoMap,
   cellWidth,
   cellHeight,
+  canvasWidth,
+  canvasHeight,
 }: MosaicRendererProps) => {
-  // Build list of images to render
-  const imagesToRender = useMemo(() => {
-    const images: { image: SkImage; x: number; y: number; key: number }[] = [];
+  // Pre-render all images into a Picture (no blur - just fast rendering)
+  const picture = useMemo(() => {
+    const recorder = Skia.PictureRecorder();
+    const canvas = recorder.beginRecording(
+      Skia.XYWHRect(0, 0, canvasWidth, canvasHeight),
+    );
+
+    const paint = Skia.Paint();
 
     for (const cell of cells) {
       if (cell.photoId === null) continue;
       const info = photoInfoMap.get(cell.photoId);
       if (!info?.image) continue;
 
-      images.push({
-        image: info.image,
-        x: cell.x,
-        y: cell.y,
-        key: cell.index,
-      });
+      const srcRect = Skia.XYWHRect(
+        0,
+        0,
+        info.image.width(),
+        info.image.height(),
+      );
+      const dstRect = Skia.XYWHRect(cell.x, cell.y, cellWidth, cellHeight);
+
+      canvas.drawImageRect(info.image, srcRect, dstRect, paint);
     }
 
-    console.log('[MosaicRenderer] Rendering', images.length, 'images');
-    return images;
-  }, [cells, photoInfoMap]);
+    return recorder.finishRecordingAsPicture();
+  }, [cells, photoInfoMap, cellWidth, cellHeight, canvasWidth, canvasHeight]);
 
-  if (imagesToRender.length === 0) {
+  if (!picture) {
     return null;
   }
 
   return (
     <Group>
-      {imagesToRender.map(item => (
-        <Image
-          key={item.key}
-          image={item.image}
-          x={item.x}
-          y={item.y}
-          width={cellWidth}
-          height={cellHeight}
-          fit="cover"
-        />
-      ))}
+      <Picture picture={picture} />
     </Group>
   );
 };
