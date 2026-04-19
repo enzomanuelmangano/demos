@@ -8,7 +8,7 @@ import {
 
 import { memo, useMemo } from 'react';
 
-import { Canvas, Group } from '@shopify/react-native-skia';
+import { Canvas } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
@@ -18,13 +18,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
-import { PhotoCell } from './components/photo-cell';
+import { MosaicRenderer } from './components/mosaic-renderer';
 import { GRID_COLS, GRID_ROWS, SPRING_CONFIG, ZOOM_LEVELS } from './constants';
 import { useMosaicMapping } from './hooks/use-mosaic-mapping';
 import { usePaintingAnalysis } from './hooks/use-painting-analysis';
-import { usePhotoDatabase } from './hooks/use-photo-database';
+import { usePhotoAtlas } from './hooks/use-photo-atlas';
 
-import type { LoadingPhase, RGB } from './types';
+import type { LoadingPhase } from './types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -55,7 +55,7 @@ const LoadingOverlay = memo(
         progress = paintingProgress;
         break;
       case 'loading-photos':
-        message = `Loading photos (${loadedPhotos})...`;
+        message = `Building atlas (${loadedPhotos} photos)...`;
         progress = photoProgress;
         break;
       case 'matching':
@@ -96,17 +96,18 @@ export function TheScreamMosaic() {
   } = usePaintingAnalysis(theScreamPainting);
 
   const {
-    photoDatabase,
+    atlas,
+    photoInfoMap,
     isLoading: isLoadingPhotos,
     progress: photoProgress,
     loadedCount,
-  } = usePhotoDatabase();
+  } = usePhotoAtlas();
 
   const {
     mapping,
     isMatching,
     progress: matchingProgress,
-  } = useMosaicMapping(gridCells, photoDatabase);
+  } = useMosaicMapping(gridCells, photoInfoMap);
 
   // Determine current loading phase
   const loadingPhase: LoadingPhase = useMemo(() => {
@@ -119,11 +120,11 @@ export function TheScreamMosaic() {
     if (isMatching) {
       return 'matching';
     }
-    if (mapping.size > 0) {
+    if (mapping.size > 0 && atlas) {
       return 'complete';
     }
     return 'idle';
-  }, [isAnalyzingPainting, isLoadingPhotos, isMatching, mapping.size]);
+  }, [isAnalyzingPainting, isLoadingPhotos, isMatching, mapping.size, atlas]);
 
   // Generate cells with their photo mappings
   const cells = useMemo(() => {
@@ -240,19 +241,14 @@ export function TheScreamMosaic() {
       <GestureDetector gesture={composedGesture}>
         <Animated.View style={animatedStyle}>
           <Canvas style={{ width: canvasWidth, height: canvasHeight }}>
-            <Group>
-              {cells.map(cell => (
-                <PhotoCell
-                  key={cell.index}
-                  photoId={cell.photoId}
-                  x={cell.x}
-                  y={cell.y}
-                  width={cellWidth}
-                  height={cellHeight}
-                  placeholderColor={cell.placeholderColor as RGB}
-                />
-              ))}
-            </Group>
+            {atlas && (
+              <MosaicRenderer
+                atlas={atlas}
+                cells={cells}
+                photoInfoMap={photoInfoMap}
+                cellWidth={cellWidth}
+              />
+            )}
           </Canvas>
         </Animated.View>
       </GestureDetector>

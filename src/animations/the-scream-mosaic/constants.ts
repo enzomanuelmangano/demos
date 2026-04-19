@@ -1,20 +1,22 @@
 // Grid configuration for "The Scream" mosaic
-export const GRID_COLS = 20;
-export const GRID_ROWS = 25;
-export const TOTAL_CELLS = GRID_COLS * GRID_ROWS; // 500 cells
+// 63 × 80 = 5040 cells, maintains ~4:5 aspect ratio
+export const GRID_COLS = 63;
+export const GRID_ROWS = 80;
+export const TOTAL_CELLS = GRID_COLS * GRID_ROWS; // 5040 cells
 
 // Photo loading configuration
-export const PHOTO_COUNT = 600;
-export const ANALYSIS_SIZE = 100; // 100x100 for color analysis
-export const DISPLAY_SIZE = 200; // 200x200 for rendering
-export const BATCH_SIZE = 25;
-export const BATCH_DELAY = 100; // ms between batches
+// Note: picsum.photos only has ~600-700 valid IDs, so photos will repeat
+export const PHOTO_COUNT = 700;
+export const ANALYSIS_SIZE = 50; // 50x50 for color analysis (reduced for performance)
+export const DISPLAY_SIZE = 100; // 100x100 for rendering (reduced for 5k images)
+export const BATCH_SIZE = 50;
+export const BATCH_DELAY = 50; // ms between batches
 
-// Zoom levels
+// Zoom levels (adjusted for 5k cell grid)
 export const ZOOM_LEVELS = {
   overview: 1,
-  grid: 3,
-  cell: 8,
+  grid: 4,
+  cell: 12,
 } as const;
 
 // Spring configuration - critically damped

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { findClosestPhoto } from '../utils/color-distance';
+import { findClosestPhotoFromAtlas } from '../utils/color-distance';
 
-import type { GridCell, PhotoData } from '../types';
+import type { PhotoInfo } from './use-photo-atlas';
+import type { GridCell } from '../types';
 
 // Module-level cache for mosaic mapping
 let cachedMosaicMapping: Map<number, number> | null = null;
@@ -15,7 +16,7 @@ interface UseMosaicMappingResult {
 
 export const useMosaicMapping = (
   gridCells: GridCell[],
-  photoDatabase: PhotoData[],
+  photoInfoMap: Map<number, PhotoInfo>,
 ): UseMosaicMappingResult => {
   const [mapping, setMapping] = useState<Map<number, number>>(new Map());
   const [isMatching, setIsMatching] = useState(false);
@@ -23,14 +24,14 @@ export const useMosaicMapping = (
 
   // Create a stable key for caching
   const cacheKey = useMemo(() => {
-    if (gridCells.length === 0 || photoDatabase.length === 0) {
+    if (gridCells.length === 0 || photoInfoMap.size === 0) {
       return null;
     }
-    return `${gridCells.length}-${photoDatabase.length}`;
-  }, [gridCells.length, photoDatabase.length]);
+    return `${gridCells.length}-${photoInfoMap.size}`;
+  }, [gridCells.length, photoInfoMap.size]);
 
   useEffect(() => {
-    if (gridCells.length === 0 || photoDatabase.length === 0) {
+    if (gridCells.length === 0 || photoInfoMap.size === 0) {
       return;
     }
 
@@ -46,7 +47,10 @@ export const useMosaicMapping = (
       setProgress(0);
 
       const newMapping = new Map<number, number>();
-      const batchSize = 50;
+      const batchSize = 200; // Larger batches for 5k cells
+
+      // Convert map to array for faster iteration
+      const photoArray = Array.from(photoInfoMap.values());
 
       const processBatch = (startIndex: number): Promise<void> => {
         return new Promise(resolve => {
@@ -55,7 +59,10 @@ export const useMosaicMapping = (
 
             for (let i = startIndex; i < endIndex; i++) {
               const cell = gridCells[i];
-              const photoId = findClosestPhoto(cell.targetLab, photoDatabase);
+              const photoId = findClosestPhotoFromAtlas(
+                cell.targetLab,
+                photoArray,
+              );
               if (photoId !== null) {
                 newMapping.set(cell.index, photoId);
               }
@@ -81,7 +88,7 @@ export const useMosaicMapping = (
     };
 
     computeMapping();
-  }, [gridCells, photoDatabase, cacheKey]);
+  }, [gridCells, photoInfoMap, cacheKey]);
 
   return {
     mapping,

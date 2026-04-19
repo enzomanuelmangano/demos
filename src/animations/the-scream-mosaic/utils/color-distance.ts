@@ -1,3 +1,4 @@
+import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { LAB } from '../types';
 
 // Delta E (CIE76) - perceptually accurate color distance
@@ -8,20 +9,20 @@ export const colorDistance = (lab1: LAB, lab2: LAB): number => {
   return Math.sqrt(dL * dL + dA * dA + dB * dB);
 };
 
-// Find the closest photo from a database for a given target color
-export const findClosestPhoto = (
+// Find the closest photo from atlas for a given target color
+export const findClosestPhotoFromAtlas = (
   targetLab: LAB,
-  photoDatabase: Array<{ id: number; labColor: LAB }>,
+  photoArray: PhotoInfo[],
 ): number | null => {
-  if (photoDatabase.length === 0) {
+  if (photoArray.length === 0) {
     return null;
   }
 
-  let closestId = photoDatabase[0].id;
-  let minDistance = colorDistance(targetLab, photoDatabase[0].labColor);
+  let closestId: number | null = null;
+  let minDistance = Infinity;
 
-  for (let i = 1; i < photoDatabase.length; i++) {
-    const photo = photoDatabase[i];
+  for (let i = 0; i < photoArray.length; i++) {
+    const photo = photoArray[i];
     const distance = colorDistance(targetLab, photo.labColor);
     if (distance < minDistance) {
       minDistance = distance;

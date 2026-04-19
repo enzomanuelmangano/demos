@@ -1,10 +1,11 @@
 import { memo } from 'react';
 
-import { Image, Rect, useImage } from '@shopify/react-native-skia';
+import { Blur, Group, Image, Rect, useImage } from '@shopify/react-native-skia';
 
 import { DISPLAY_SIZE, getPhotoUrl } from '../constants';
 
 import type { RGB } from '../types';
+import type { SharedValue } from 'react-native-reanimated';
 
 interface PhotoCellProps {
   photoId: number | null;
@@ -13,6 +14,7 @@ interface PhotoCellProps {
   width: number;
   height: number;
   placeholderColor: RGB;
+  blur: SharedValue<number>;
 }
 
 const PhotoCellInner = ({
@@ -22,6 +24,7 @@ const PhotoCellInner = ({
   width,
   height,
   placeholderColor,
+  blur,
 }: PhotoCellProps) => {
   const url = photoId !== null ? getPhotoUrl(photoId, DISPLAY_SIZE) : null;
   const image = useImage(url);
@@ -35,14 +38,16 @@ const PhotoCellInner = ({
   }
 
   return (
-    <Image
-      image={image}
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fit="cover"
-    />
+    <Group clip={{ x, y, width, height }} layer={<Blur blur={blur} />}>
+      <Image
+        image={image}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fit="cover"
+      />
+    </Group>
   );
 };
 
