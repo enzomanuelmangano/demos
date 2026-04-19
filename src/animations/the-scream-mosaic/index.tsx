@@ -29,7 +29,7 @@ import type { LoadingPhase } from './types';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Import the painting asset
-const painting = require('./assets/girl-with-pearl-earring.jpg');
+const painting = require('./assets/b.jpg');
 
 // Loading indicator component
 const LoadingOverlay = memo(

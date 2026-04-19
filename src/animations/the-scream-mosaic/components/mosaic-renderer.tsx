@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Group, Picture, Skia } from '@shopify/react-native-skia';
+import { ColorMatrix, Group, Picture, Skia } from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
@@ -40,16 +40,8 @@ export const MosaicRenderer = ({
       Skia.XYWHRect(0, 0, canvasWidth, canvasHeight),
     );
 
-    // Heavy blur - makes each image look like a solid color pixel
-    const blurRadius = Math.max(cellWidth, cellHeight) * 0.4;
+    // No blur - let the small cell size create the mosaic effect naturally
     const paint = Skia.Paint();
-    const blurFilter = Skia.ImageFilter.MakeBlur(
-      blurRadius,
-      blurRadius,
-      1, // TileMode.Clamp
-      null,
-    );
-    paint.setImageFilter(blurFilter);
 
     for (const cell of cells) {
       if (cell.photoId === null) continue;
@@ -74,9 +66,21 @@ export const MosaicRenderer = ({
     return null;
   }
 
+  // Contrast boost matrix: increases contrast by 1.4x, centered around 0.5
+  const contrast = 1.4;
+  const offset = 0.5 * (1 - contrast);
+  const contrastMatrix = [
+    contrast, 0, 0, 0, offset,
+    0, contrast, 0, 0, offset,
+    0, 0, contrast, 0, offset,
+    0, 0, 0, 1, 0,
+  ];
+
   return (
     <Group>
-      <Picture picture={picture} />
+      <Picture picture={picture}>
+        <ColorMatrix matrix={contrastMatrix} />
+      </Picture>
     </Group>
   );
 };

@@ -7,6 +7,7 @@ import type { GridCell } from '../types';
 
 // Module-level cache for mosaic mapping
 let cachedMosaicMapping: Map<number, number> | null = null;
+let cachedMosaicKey: string | null = null;
 
 interface UseMosaicMappingResult {
   mapping: Map<number, number>;
@@ -22,25 +23,38 @@ export const useMosaicMapping = (
   const [isMatching, setIsMatching] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Create a stable key for caching
+  // Create a stable key for caching - include color signature from first few cells
   const cacheKey = useMemo(() => {
     if (gridCells.length === 0 || photoInfoMap.size === 0) {
       return null;
     }
-    return `${gridCells.length}-${photoInfoMap.size}`;
-  }, [gridCells.length, photoInfoMap.size]);
+    // Sample a few cells' colors to create a signature
+    const sampleCells = [0, Math.floor(gridCells.length / 2), gridCells.length - 1];
+    const colorSig = sampleCells
+      .map(i => {
+        const cell = gridCells[i];
+        if (!cell) return '0';
+        return `${cell.targetColor.r}-${cell.targetColor.g}-${cell.targetColor.b}`;
+      })
+      .join('|');
+    return `${gridCells.length}-${photoInfoMap.size}-${colorSig}`;
+  }, [gridCells, photoInfoMap.size]);
 
   useEffect(() => {
     if (gridCells.length === 0 || photoInfoMap.size === 0) {
       return;
     }
 
-    // Check cache
-    if (cachedMosaicMapping && cachedMosaicMapping.size === gridCells.length) {
+    // Check cache - key includes color signature so it invalidates when painting changes
+    if (cachedMosaicMapping && cachedMosaicKey === cacheKey) {
       setMapping(cachedMosaicMapping);
       setProgress(100);
       return;
     }
+
+    // Clear stale cache
+    cachedMosaicMapping = null;
+    cachedMosaicKey = null;
 
     const computeMapping = async () => {
       setIsMatching(true);
@@ -99,6 +113,7 @@ export const useMosaicMapping = (
       await processBatch(0);
 
       cachedMosaicMapping = newMapping;
+      cachedMosaicKey = cacheKey;
       setMapping(newMapping);
       setIsMatching(false);
       setProgress(100);
@@ -117,4 +132,5 @@ export const useMosaicMapping = (
 // Clear the cache (useful for testing)
 export const clearMosaicMappingCache = (): void => {
   cachedMosaicMapping = null;
+  cachedMosaicKey = null;
 };

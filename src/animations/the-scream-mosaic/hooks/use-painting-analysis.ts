@@ -10,6 +10,7 @@ import type { GridCell, LAB, RGB } from '../types';
 
 // Module-level cache for painting analysis
 let cachedPaintingAnalysis: GridCell[] | null = null;
+let cachedPaintingKey: string | null = null;
 
 interface UsePaintingAnalysisResult {
   gridCells: GridCell[];
@@ -33,22 +34,41 @@ export const usePaintingAnalysis = (
       return;
     }
 
-    // Return cached result if available
-    if (cachedPaintingAnalysis) {
+    const imageWidth = paintingImage.width();
+    const imageHeight = paintingImage.height();
+    const cellWidth = imageWidth / GRID_COLS;
+    const cellHeight = imageHeight / GRID_ROWS;
+
+    // Sample a few spots to create a unique key that changes with image content
+    const sampleSpots = [
+      { x: 0, y: 0 },
+      { x: Math.floor(imageWidth / 2), y: Math.floor(imageHeight / 2) },
+      { x: imageWidth - 1, y: imageHeight - 1 },
+    ];
+    const colorSig = sampleSpots
+      .map(spot => {
+        const color = sampleRegionColor(paintingImage, spot.x, spot.y, 1, 1);
+        return color ? `${color.r}-${color.g}-${color.b}` : '0';
+      })
+      .join('|');
+    const paintingKey = `${imageWidth}x${imageHeight}-${colorSig}`;
+
+    // Return cached result if available and key matches
+    if (cachedPaintingAnalysis && cachedPaintingKey === paintingKey) {
       setGridCells(cachedPaintingAnalysis);
       setProgress(100);
       return;
     }
+
+    // Clear stale cache
+    cachedPaintingAnalysis = null;
+    cachedPaintingKey = null;
 
     setIsAnalyzing(true);
     setProgress(0);
     setError(null);
 
     const cells: GridCell[] = [];
-    const imageWidth = paintingImage.width();
-    const imageHeight = paintingImage.height();
-    const cellWidth = imageWidth / GRID_COLS;
-    const cellHeight = imageHeight / GRID_ROWS;
 
     // Process in batches to avoid blocking
     const processBatch = (startIndex: number): Promise<void> => {
@@ -99,6 +119,7 @@ export const usePaintingAnalysis = (
     try {
       await processBatch(0);
       cachedPaintingAnalysis = cells;
+      cachedPaintingKey = paintingKey;
       setGridCells(cells);
     } catch (err) {
       setError(
@@ -126,4 +147,5 @@ export const usePaintingAnalysis = (
 // Clear the cache (useful for testing)
 export const clearPaintingAnalysisCache = (): void => {
   cachedPaintingAnalysis = null;
+  cachedPaintingKey = null;
 };
