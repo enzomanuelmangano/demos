@@ -1,8 +1,8 @@
 // Grid configuration for photo mosaic
-// 65 × 77 = 5005 cells, matches Vermeer painting aspect ratio (~0.84)
-export const GRID_COLS = 65;
-export const GRID_ROWS = 77;
-export const TOTAL_CELLS = GRID_COLS * GRID_ROWS; // 5005 cells
+// 85 × 113 = 9605 cells, matches painting aspect ratio (~0.75)
+export const GRID_COLS = 85;
+export const GRID_ROWS = 113;
+export const TOTAL_CELLS = GRID_COLS * GRID_ROWS; // 9605 cells
 
 // Photo loading configuration
 // Using seed-based URLs for unlimited unique photos

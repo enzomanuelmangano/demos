@@ -80,9 +80,9 @@ const LoadingOverlay = memo(
 );
 
 export function TheScreamMosaic() {
-  // Canvas dimensions - maintain painting aspect ratio (~0.84 for Vermeer)
+  // Canvas dimensions - maintain painting aspect ratio (787/1052 ≈ 0.748)
   const canvasWidth = SCREEN_WIDTH * 0.95;
-  const canvasHeight = canvasWidth / 0.84;
+  const canvasHeight = canvasWidth / 0.748;
 
   // Cell dimensions
   const cellWidth = canvasWidth / GRID_COLS;
