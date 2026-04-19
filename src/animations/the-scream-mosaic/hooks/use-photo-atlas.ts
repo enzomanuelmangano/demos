@@ -15,20 +15,11 @@ import { rgbToLab } from '../utils/color-conversion';
 import type { LAB, RGB } from '../types';
 import type { SkImage } from '@shopify/react-native-skia';
 
-// Atlas configuration
-const ATLAS_COLS = 27; // 27 x 26 = 702 slots (enough for ~700 photos)
-const ATLAS_ROWS = 26;
-const TILE_SIZE = DISPLAY_SIZE;
-const ATLAS_WIDTH = ATLAS_COLS * TILE_SIZE;
-const ATLAS_HEIGHT = ATLAS_ROWS * TILE_SIZE;
-
 export interface PhotoInfo {
   id: number;
   averageColor: RGB;
   labColor: LAB;
-  atlasX: number; // Position in atlas
-  atlasY: number;
-  image: SkImage; // Keep reference to original image
+  image: SkImage;
 }
 
 interface UsePhotoAtlasResult {
@@ -40,7 +31,6 @@ interface UsePhotoAtlasResult {
 }
 
 // Module-level cache
-let cachedAtlas: SkImage | null = null;
 let cachedPhotoInfoMap: Map<number, PhotoInfo> | null = null;
 
 // Extract average color from raw image data
@@ -86,24 +76,19 @@ const fetchPhoto = async (
 ): Promise<{ image: SkImage; color: RGB } | null> => {
   try {
     const url = getPhotoUrl(id, DISPLAY_SIZE);
-    console.log('[fetchPhoto] Fetching:', url);
     const response = await fetch(url);
 
     if (!response.ok) {
-      console.log('[fetchPhoto] Response not OK:', id, response.status);
       return null;
     }
 
     const arrayBuffer = await response.arrayBuffer();
-    console.log('[fetchPhoto] Got arrayBuffer size:', arrayBuffer.byteLength);
     const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
     const image = Skia.Image.MakeImageFromEncoded(data);
 
     if (!image) {
-      console.log('[fetchPhoto] Failed to create image from data:', id);
       return null;
     }
-    console.log('[fetchPhoto] Success:', id, image.width(), 'x', image.height());
 
     const width = image.width();
     const height = image.height();
@@ -128,7 +113,6 @@ const fetchPhoto = async (
 };
 
 export const usePhotoAtlas = (): UsePhotoAtlasResult => {
-  const [atlas, setAtlas] = useState<SkImage | null>(null);
   const [photoInfoMap, setPhotoInfoMap] = useState<Map<number, PhotoInfo>>(
     new Map(),
   );
@@ -136,10 +120,9 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
   const [progress, setProgress] = useState(0);
   const [loadedCount, setLoadedCount] = useState(0);
 
-  const buildAtlas = useCallback(async () => {
+  const loadPhotos = useCallback(async () => {
     // Return cached if available
-    if (cachedAtlas && cachedPhotoInfoMap) {
-      setAtlas(cachedAtlas);
+    if (cachedPhotoInfoMap) {
       setPhotoInfoMap(cachedPhotoInfoMap);
       setLoadedCount(cachedPhotoInfoMap.size);
       setProgress(100);
@@ -151,9 +134,8 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
 
     const validIds = getValidPhotoIds(PHOTO_COUNT);
     const infoMap = new Map<number, PhotoInfo>();
-    const loadedImages: { id: number; image: SkImage; color: RGB }[] = [];
 
-    // Load all images
+    // Load all images in batches
     for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
       const batchIds = validIds.slice(i, i + BATCH_SIZE);
 
@@ -162,15 +144,17 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
       for (let j = 0; j < batchResults.length; j++) {
         const result = batchResults[j];
         if (result) {
-          loadedImages.push({
-            id: batchIds[j],
+          const id = batchIds[j];
+          infoMap.set(id, {
+            id,
+            averageColor: result.color,
+            labColor: rgbToLab(result.color),
             image: result.image,
-            color: result.color,
           });
         }
       }
 
-      setLoadedCount(loadedImages.length);
+      setLoadedCount(infoMap.size);
       setProgress(Math.round(((i + BATCH_SIZE) / validIds.length) * 100));
 
       if (i + BATCH_SIZE < validIds.length) {
@@ -178,74 +162,18 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
       }
     }
 
-    // Create atlas surface
-    console.log('[Atlas] Creating surface:', ATLAS_WIDTH, 'x', ATLAS_HEIGHT);
-    console.log('[Atlas] Loaded images:', loadedImages.length);
-    const surface = Skia.Surface.MakeOffscreen(ATLAS_WIDTH, ATLAS_HEIGHT);
-    if (!surface) {
-      console.error('[Atlas] Failed to create offscreen surface!');
-      setIsLoading(false);
-      return;
-    }
-    console.log('[Atlas] Surface created successfully');
-
-    const canvas = surface.getCanvas();
-    canvas.clear(Skia.Color('black'));
-
-    // Draw all images to atlas and build info map
-    console.log('[Atlas] Drawing', loadedImages.length, 'images to atlas');
-    for (let i = 0; i < loadedImages.length; i++) {
-      const { id, image, color } = loadedImages[i];
-      const col = i % ATLAS_COLS;
-      const row = Math.floor(i / ATLAS_COLS);
-      const x = col * TILE_SIZE;
-      const y = row * TILE_SIZE;
-
-      // Draw image to atlas
-      const srcRect = Skia.XYWHRect(0, 0, image.width(), image.height());
-      const dstRect = Skia.XYWHRect(x, y, TILE_SIZE, TILE_SIZE);
-      canvas.drawImageRect(image, srcRect, dstRect, Skia.Paint());
-
-      if (i < 3) {
-        console.log('[Atlas] Drew image', id, 'at', x, y, 'size', TILE_SIZE);
-      }
-
-      // Store info
-      infoMap.set(id, {
-        id,
-        averageColor: color,
-        labColor: rgbToLab(color),
-        atlasX: x,
-        atlasY: y,
-        image, // Keep reference
-      });
-    }
-    console.log('[Atlas] Finished drawing, flushing...');
-    surface.flush();
-
-    // Create atlas image from surface
-    const atlasImage = surface.makeImageSnapshot();
-    console.log(
-      '[Atlas] Snapshot created:',
-      atlasImage ? `${atlasImage.width()}x${atlasImage.height()}` : 'null',
-    );
-    console.log('[Atlas] InfoMap size:', infoMap.size);
-
-    cachedAtlas = atlasImage;
     cachedPhotoInfoMap = infoMap;
-
-    setAtlas(atlasImage);
     setPhotoInfoMap(infoMap);
     setIsLoading(false);
     setProgress(100);
   }, []);
 
   useEffect(() => {
-    buildAtlas();
-  }, [buildAtlas]);
+    loadPhotos();
+  }, [loadPhotos]);
 
   return {
-    atlas,
+    atlas: null, // Not using atlas anymore
     photoInfoMap,
     isLoading,
     progress,
@@ -253,11 +181,7 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
   };
 };
 
-// Export atlas tile size for rendering
-export const ATLAS_TILE_SIZE = TILE_SIZE;
-
 // Clear the cache
 export const clearPhotoAtlasCache = (): void => {
-  cachedAtlas = null;
   cachedPhotoInfoMap = null;
 };

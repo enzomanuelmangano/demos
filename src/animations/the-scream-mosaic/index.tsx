@@ -29,7 +29,7 @@ import type { LoadingPhase } from './types';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Import the painting asset
-const theScreamPainting = require('./assets/the-scream.jpg');
+const painting = require('./assets/girl-with-pearl-earring.jpg');
 
 // Loading indicator component
 const LoadingOverlay = memo(
@@ -51,7 +51,7 @@ const LoadingOverlay = memo(
 
     switch (phase) {
       case 'analyzing-painting':
-        message = 'Analyzing "The Scream"...';
+        message = 'Analyzing painting...';
         progress = paintingProgress;
         break;
       case 'loading-photos':
@@ -80,9 +80,9 @@ const LoadingOverlay = memo(
 );
 
 export function TheScreamMosaic() {
-  // Canvas dimensions - maintain painting aspect ratio (~4:5)
+  // Canvas dimensions - maintain painting aspect ratio (~0.84 for Vermeer)
   const canvasWidth = SCREEN_WIDTH * 0.95;
-  const canvasHeight = canvasWidth * 1.25;
+  const canvasHeight = canvasWidth / 0.84;
 
   // Cell dimensions
   const cellWidth = canvasWidth / GRID_COLS;
@@ -93,7 +93,7 @@ export function TheScreamMosaic() {
     gridCells,
     isAnalyzing: isAnalyzingPainting,
     progress: paintingProgress,
-  } = usePaintingAnalysis(theScreamPainting);
+  } = usePaintingAnalysis(painting);
 
   const {
     atlas,
@@ -248,6 +248,8 @@ export function TheScreamMosaic() {
                 photoInfoMap={photoInfoMap}
                 cellWidth={cellWidth}
                 cellHeight={cellHeight}
+                canvasWidth={canvasWidth}
+                canvasHeight={canvasHeight}
               />
             ) : (
               <Fill color="blue" />
