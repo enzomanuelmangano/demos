@@ -6,7 +6,7 @@ import {
   View,
 } from 'react-native';
 
-import { memo, useMemo } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 
 import { Canvas, Fill } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -24,66 +24,51 @@ import { useMosaicMapping } from './hooks/use-mosaic-mapping';
 import { usePaintingAnalysis } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
 
-import type { LoadingPhase } from './types';
-
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Import the painting asset - just change this to test different paintings!
-const painting = require('./assets/hopper4.jpg');
+const painting = require('./assets/hopper.jpg');
 
-// Loading indicator component
-const LoadingOverlay = memo(
-  ({
-    phase,
-    paintingProgress,
-    photoProgress,
-    matchingProgress,
-  }: {
-    phase: LoadingPhase;
-    paintingProgress: number;
-    photoProgress: number;
-    matchingProgress: number;
-  }) => {
-    let message = '';
-    let progress = 0;
+// Detailed loading phases
+type DetailedPhase =
+  | 'idle'
+  | 'analyzing-painting'
+  | 'loading-manifest'
+  | 'matching-colors'
+  | 'loading-atlas'
+  | 'complete';
 
-    switch (phase) {
-      case 'analyzing-painting':
-        message = 'Analyzing painting...';
-        progress = paintingProgress;
-        break;
-      case 'loading-photos':
-        message = 'Loading atlas...';
-        progress = photoProgress;
-        break;
-      case 'matching':
-        message = 'Matching colors...';
-        progress = matchingProgress;
-        break;
-      default:
-        return null;
-    }
+// Loading indicator component with detailed phases
+const LoadingOverlay = memo(({ phase }: { phase: DetailedPhase }) => {
+  const messages: Record<DetailedPhase, string> = {
+    idle: '',
+    'analyzing-painting': '1/4 Analyzing painting...',
+    'loading-manifest': '2/4 Loading photo colors...',
+    'matching-colors': '3/4 Matching colors (k-d tree)...',
+    'loading-atlas': '4/4 Decoding atlas image...',
+    complete: '',
+  };
 
-    return (
-      <View style={styles.loadingOverlay}>
-        <ActivityIndicator size="large" color="#fff" />
-        <Text style={styles.loadingText}>{message}</Text>
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBar, { width: `${progress}%` }]} />
-        </View>
-        <Text style={styles.progressText}>{progress}%</Text>
-      </View>
-    );
-  },
-);
+  if (phase === 'idle' || phase === 'complete') {
+    return null;
+  }
+
+  return (
+    <View style={styles.loadingOverlay}>
+      <ActivityIndicator size="large" color="#fff" />
+      <Text style={styles.loadingText}>{messages[phase]}</Text>
+    </View>
+  );
+});
 
 export function TheScreamMosaic() {
+  const startTime = useRef(Date.now());
+
   // Analysis hooks - gridDimensions is calculated from the painting image
   const {
     gridCells,
     gridDimensions,
     isAnalyzing: isAnalyzingPainting,
-    progress: paintingProgress,
   } = usePaintingAnalysis(painting);
 
   const { cols, rows, aspectRatio } = gridDimensions;
@@ -98,35 +83,35 @@ export function TheScreamMosaic() {
   const cellHeight = rows > 0 ? canvasHeight / rows : 0;
 
   // Load atlas and photo info
-  const {
-    atlas,
-    photoInfoMap,
-    isLoading: isLoadingAtlas,
-    progress: photoProgress,
-  } = usePhotoAtlas();
+  const { atlas, photoInfoMap } = usePhotoAtlas();
 
-  const {
-    mapping,
-    isMatching,
-    progress: matchingProgress,
-  } = useMosaicMapping(gridCells, photoInfoMap);
+  const { mapping, isMatching } = useMosaicMapping(gridCells, photoInfoMap);
 
-  // Determine current loading phase
-  const loadingPhase: LoadingPhase = useMemo(() => {
+  // Determine detailed loading phase
+  const loadingPhase: DetailedPhase = useMemo(() => {
     if (isAnalyzingPainting) {
       return 'analyzing-painting';
     }
-    if (isLoadingAtlas) {
-      return 'loading-photos';
+    if (photoInfoMap.size === 0) {
+      return 'loading-manifest';
     }
     if (isMatching) {
-      return 'matching';
+      return 'matching-colors';
+    }
+    if (mapping.size > 0 && !atlas) {
+      return 'loading-atlas';
     }
     if (mapping.size > 0 && atlas) {
       return 'complete';
     }
     return 'idle';
-  }, [isAnalyzingPainting, isLoadingAtlas, isMatching, mapping.size, atlas]);
+  }, [isAnalyzingPainting, photoInfoMap.size, isMatching, mapping.size, atlas]);
+
+  // Log timing
+  useEffect(() => {
+    const elapsed = Date.now() - startTime.current;
+    console.log(`[${elapsed}ms] Phase: ${loadingPhase}`);
+  }, [loadingPhase]);
 
   // Generate cells with their photo mappings
   const cells = useMemo(() => {
@@ -188,15 +173,11 @@ export function TheScreamMosaic() {
   const tapGesture = Gesture.Tap().onEnd(() => {
     const currentZoom = zoomLevel.get();
     if (currentZoom === 2) {
-      // Reset to overview
       zoomLevel.set(0);
       translateX.set(withSpring(0, SPRING_CONFIG));
       translateY.set(withSpring(0, SPRING_CONFIG));
     } else {
-      // Move to next zoom level
       zoomLevel.set(currentZoom + 1);
-
-      // When zooming to cell level, center on middle of canvas
       if (currentZoom + 1 === 2) {
         translateX.set(withSpring(0, SPRING_CONFIG));
         translateY.set(withSpring(0, SPRING_CONFIG));
@@ -222,7 +203,6 @@ export function TheScreamMosaic() {
     })
     .onFinalize(event => {
       if (zoomLevel.get() === 2) {
-        // Add velocity for natural feeling
         const { maxX, maxY } = getMaxTranslation(ZOOM_LEVELS.cell);
         const targetX = clamp(
           translateX.get() + event.velocityX * 0.1,
@@ -276,14 +256,7 @@ export function TheScreamMosaic() {
         </Animated.View>
       </GestureDetector>
 
-      {loadingPhase !== 'complete' && loadingPhase !== 'idle' && (
-        <LoadingOverlay
-          phase={loadingPhase}
-          paintingProgress={paintingProgress}
-          photoProgress={photoProgress}
-          matchingProgress={matchingProgress}
-        />
-      )}
+      <LoadingOverlay phase={loadingPhase} />
     </View>
   );
 }
@@ -297,7 +270,7 @@ const styles = StyleSheet.create({
   },
   loadingOverlay: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     borderCurve: 'continuous',
     borderRadius: 16,
     bottom: 40,
@@ -311,22 +284,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginTop: 12,
-  },
-  progressBar: {
-    backgroundColor: '#4CAF50',
-    height: '100%',
-  },
-  progressBarContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 4,
-    height: 8,
-    marginTop: 12,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  progressText: {
-    color: '#999',
-    fontSize: 14,
-    marginTop: 8,
   },
 });

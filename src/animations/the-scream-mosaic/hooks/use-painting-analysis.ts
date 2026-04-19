@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { AlphaType, ColorType, useImage } from '@shopify/react-native-skia';
+import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
+import { Image } from 'react-native';
 
 import { TARGET_CELLS } from '../constants';
 import { rgbToLab } from '../utils/color-conversion';
 
 import type { GridCell, LAB, RGB } from '../types';
+import type { SkImage } from '@shopify/react-native-skia';
 
-// Module-level cache for painting analysis
+// Module-level cache
 let cachedPaintingAnalysis: GridCell[] | null = null;
 let cachedPaintingKey: string | null = null;
 
@@ -35,10 +37,10 @@ const sampleRegionFromBuffer = (
   regionWidth: number,
   regionHeight: number,
 ): RGB => {
-  // Handle different buffer types
-  const data = pixels instanceof Uint8Array
-    ? pixels
-    : new Uint8Array(pixels as ArrayBufferLike);
+  const data =
+    pixels instanceof Uint8Array
+      ? pixels
+      : new Uint8Array(pixels as ArrayBufferLike);
   const bytesPerPixel = 4;
 
   let totalR = 0;
@@ -46,9 +48,7 @@ const sampleRegionFromBuffer = (
   let totalB = 0;
   let count = 0;
 
-  // Sample every 2nd pixel for speed
   const step = 2;
-
   const startX = Math.floor(regionX);
   const startY = Math.floor(regionY);
   const endX = Math.min(startX + Math.floor(regionWidth), imageWidth);
@@ -80,14 +80,48 @@ const sampleRegionFromBuffer = (
 export const usePaintingAnalysis = (
   paintingSource: ReturnType<typeof require>,
 ): UsePaintingAnalysisResult => {
+  const [paintingImage, setPaintingImage] = useState<SkImage | null>(null);
   const [gridCells, setGridCells] = useState<GridCell[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const paintingImage = useImage(paintingSource);
+  // Load painting image directly (faster than useImage)
+  useEffect(() => {
+    const loadPainting = async () => {
+      console.log('[Painting] Loading...');
+      const startTime = Date.now();
 
-  // Calculate grid dimensions from image aspect ratio
+      const resolved = Image.resolveAssetSource(paintingSource);
+      if (!resolved?.uri) {
+        setError('Failed to resolve painting');
+        setIsAnalyzing(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(resolved.uri);
+        const arrayBuffer = await response.arrayBuffer();
+        const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
+        const image = Skia.Image.MakeImageFromEncoded(data);
+
+        if (image) {
+          setPaintingImage(image);
+          console.log(`[Painting] Loaded in ${Date.now() - startTime}ms`);
+        } else {
+          setError('Failed to decode painting');
+          setIsAnalyzing(false);
+        }
+      } catch (e) {
+        setError('Failed to load painting');
+        setIsAnalyzing(false);
+      }
+    };
+
+    loadPainting();
+  }, [paintingSource]);
+
+  // Calculate grid dimensions
   const gridDimensions = useMemo((): GridDimensions => {
     if (!paintingImage) {
       return { cols: 0, rows: 0, totalCells: 0, aspectRatio: 1 };
@@ -97,7 +131,6 @@ export const usePaintingAnalysis = (
     const height = paintingImage.height();
     const aspectRatio = width / height;
 
-    // Calculate grid that maintains aspect ratio with ~TARGET_CELLS total
     const rows = Math.round(Math.sqrt(TARGET_CELLS / aspectRatio));
     const cols = Math.round(rows * aspectRatio);
     const totalCells = cols * rows;
@@ -105,6 +138,7 @@ export const usePaintingAnalysis = (
     return { cols, rows, totalCells, aspectRatio };
   }, [paintingImage]);
 
+  // Analyze painting when image loads
   useEffect(() => {
     if (!paintingImage || gridDimensions.cols === 0) {
       return;
@@ -116,21 +150,20 @@ export const usePaintingAnalysis = (
     const cellWidth = imageWidth / cols;
     const cellHeight = imageHeight / rows;
 
-    // Create a unique cache key
     const paintingKey = `${imageWidth}x${imageHeight}-${cols}x${rows}`;
 
-    // Return cached result if available
     if (cachedPaintingAnalysis && cachedPaintingKey === paintingKey) {
       setGridCells(cachedPaintingAnalysis);
       setProgress(100);
+      setIsAnalyzing(false);
       return;
     }
 
-    setIsAnalyzing(true);
+    console.log('[Painting] Analyzing...');
+    const startTime = Date.now();
     setProgress(0);
-    setError(null);
 
-    // Read ALL pixels once (this is the expensive operation)
+    // Read ALL pixels once
     const pixels = paintingImage.readPixels(0, 0, {
       width: imageWidth,
       height: imageHeight,
@@ -139,20 +172,19 @@ export const usePaintingAnalysis = (
     });
 
     if (!pixels) {
-      setError('Failed to read painting pixels');
+      setError('Failed to read pixels');
       setIsAnalyzing(false);
       return;
     }
 
     setProgress(10);
 
-    // Now sample from the buffer - this is fast!
+    // Sample from buffer - fast!
     const cells: GridCell[] = [];
 
     for (let i = 0; i < totalCells; i++) {
       const col = i % cols;
       const row = Math.floor(i / cols);
-
       const x = col * cellWidth;
       const y = row * cellHeight;
 
@@ -175,11 +207,6 @@ export const usePaintingAnalysis = (
         targetLab,
         photoId: null,
       });
-
-      // Update progress periodically
-      if (i % 1000 === 0) {
-        setProgress(10 + Math.round((i / totalCells) * 90));
-      }
     }
 
     cachedPaintingAnalysis = cells;
@@ -187,6 +214,7 @@ export const usePaintingAnalysis = (
     setGridCells(cells);
     setProgress(100);
     setIsAnalyzing(false);
+    console.log(`[Painting] Analyzed in ${Date.now() - startTime}ms`);
   }, [paintingImage, gridDimensions]);
 
   return {
@@ -198,7 +226,6 @@ export const usePaintingAnalysis = (
   };
 };
 
-// Clear the cache (useful for testing)
 export const clearPaintingAnalysisCache = (): void => {
   cachedPaintingAnalysis = null;
   cachedPaintingKey = null;
