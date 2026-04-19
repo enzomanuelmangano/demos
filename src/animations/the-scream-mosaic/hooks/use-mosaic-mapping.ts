@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { colorDistance } from '../utils/color-distance';
+import { buildKdTree } from '../utils/kd-tree';
 
 import type { PhotoInfo } from './use-photo-atlas';
 import type { GridCell } from '../types';
@@ -23,7 +23,7 @@ export const useMosaicMapping = (
   const [isMatching, setIsMatching] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Create a stable key for caching - include color signature from first few cells
+  // Create a stable key for caching
   const cacheKey = useMemo(() => {
     if (gridCells.length === 0 || photoInfoMap.size === 0) {
       return null;
@@ -31,9 +31,11 @@ export const useMosaicMapping = (
     // Sample a few cells' colors to create a signature
     const sampleCells = [0, Math.floor(gridCells.length / 2), gridCells.length - 1];
     const colorSig = sampleCells
-      .map(i => {
+      .map((i) => {
         const cell = gridCells[i];
-        if (!cell) return '0';
+        if (!cell) {
+          return '0';
+        }
         return `${cell.targetColor.r}-${cell.targetColor.g}-${cell.targetColor.b}`;
       })
       .join('|');
@@ -45,7 +47,7 @@ export const useMosaicMapping = (
       return;
     }
 
-    // Check cache - key includes color signature so it invalidates when painting changes
+    // Check cache
     if (cachedMosaicMapping && cachedMosaicKey === cacheKey) {
       setMapping(cachedMosaicMapping);
       setProgress(100);
@@ -56,70 +58,37 @@ export const useMosaicMapping = (
     cachedMosaicMapping = null;
     cachedMosaicKey = null;
 
-    const computeMapping = async () => {
-      setIsMatching(true);
-      setProgress(0);
+    setIsMatching(true);
+    setProgress(0);
 
-      const newMapping = new Map<number, number>();
-      const batchSize = 50;
+    // Convert map to array for k-d tree
+    const photoArray = Array.from(photoInfoMap.values()).map((photo) => ({
+      id: photo.id,
+      labColor: photo.labColor,
+    }));
 
-      // Convert map to array and track which photos are still available
-      const photoArray = Array.from(photoInfoMap.values());
-      const usedPhotoIds = new Set<number>();
+    // Build k-d tree - O(n log n), ~10ms for 10k photos
+    const kdTree = buildKdTree(photoArray);
+    setProgress(20);
 
-      // Find closest UNUSED photo for a cell
-      const findClosestUnused = (cell: GridCell): number | null => {
-        let closestId: number | null = null;
-        let minDistance = Infinity;
+    // Process ALL cells synchronously - k-d tree is fast!
+    // 10k findNearest calls at O(log n) each takes ~50ms
+    const newMapping = new Map<number, number>();
+    const totalCells = gridCells.length;
 
-        for (const photo of photoArray) {
-          if (usedPhotoIds.has(photo.id)) continue;
+    for (let i = 0; i < totalCells; i++) {
+      const cell = gridCells[i];
+      const photoId = kdTree.findNearest(cell.targetLab);
+      if (photoId !== null) {
+        newMapping.set(cell.index, photoId);
+      }
+    }
 
-          const distance = colorDistance(cell.targetLab, photo.labColor);
-          if (distance < minDistance) {
-            minDistance = distance;
-            closestId = photo.id;
-          }
-        }
-
-        return closestId;
-      };
-
-      const processBatch = (startIndex: number): Promise<void> => {
-        return new Promise(resolve => {
-          requestAnimationFrame(() => {
-            const endIndex = Math.min(startIndex + batchSize, gridCells.length);
-
-            for (let i = startIndex; i < endIndex; i++) {
-              const cell = gridCells[i];
-              const photoId = findClosestUnused(cell);
-              if (photoId !== null) {
-                newMapping.set(cell.index, photoId);
-                usedPhotoIds.add(photoId); // Mark as used - no duplicates!
-              }
-            }
-
-            setProgress(Math.round((endIndex / gridCells.length) * 100));
-
-            if (endIndex < gridCells.length) {
-              setTimeout(() => processBatch(endIndex).then(resolve), 0);
-            } else {
-              resolve();
-            }
-          });
-        });
-      };
-
-      await processBatch(0);
-
-      cachedMosaicMapping = newMapping;
-      cachedMosaicKey = cacheKey;
-      setMapping(newMapping);
-      setIsMatching(false);
-      setProgress(100);
-    };
-
-    computeMapping();
+    cachedMosaicMapping = newMapping;
+    cachedMosaicKey = cacheKey;
+    setMapping(newMapping);
+    setIsMatching(false);
+    setProgress(100);
   }, [gridCells, photoInfoMap, cacheKey]);
 
   return {
@@ -129,7 +98,7 @@ export const useMosaicMapping = (
   };
 };
 
-// Clear the cache (useful for testing)
+// Clear the cache
 export const clearMosaicMappingCache = (): void => {
   cachedMosaicMapping = null;
   cachedMosaicKey = null;

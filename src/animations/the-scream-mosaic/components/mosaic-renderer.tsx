@@ -1,10 +1,11 @@
 import { useMemo } from 'react';
 
-import { ColorMatrix, Group, Picture, Skia } from '@shopify/react-native-skia';
+import { Atlas, ColorMatrix, Group, Picture, rect, Skia } from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
-import type { SkImage } from '@shopify/react-native-skia';
+import type { SkImage, SkRSXform } from '@shopify/react-native-skia';
+import type { SharedValue } from 'react-native-reanimated';
 
 interface CellData {
   index: number;
@@ -22,19 +23,21 @@ interface MosaicRendererProps {
   cellHeight: number;
   canvasWidth: number;
   canvasHeight: number;
+  imageOpacity: SharedValue<number>;
 }
 
 export const MosaicRenderer = ({
+  atlas,
   cells,
   photoInfoMap,
   cellWidth,
   cellHeight,
   canvasWidth,
   canvasHeight,
+  imageOpacity,
 }: MosaicRendererProps) => {
-  // Pre-render all cells as solid colored rectangles using each photo's average color
-  // This creates a clean mosaic effect where each cell is a single color "pixel"
-  const picture = useMemo(() => {
+  // Picture with solid colored rectangles (visible when zoomed out)
+  const colorPicture = useMemo(() => {
     const recorder = Skia.PictureRecorder();
     const canvas = recorder.beginRecording(
       Skia.XYWHRect(0, 0, canvasWidth, canvasHeight),
@@ -44,8 +47,6 @@ export const MosaicRenderer = ({
 
     for (const cell of cells) {
       const dstRect = Skia.XYWHRect(cell.x, cell.y, cellWidth, cellHeight);
-
-      // Get the photo's average color, or fall back to the target color
       const info = cell.photoId !== null ? photoInfoMap.get(cell.photoId) : null;
       const color = info?.averageColor ?? cell.placeholderColor;
 
@@ -57,11 +58,45 @@ export const MosaicRenderer = ({
     return recorder.finishRecordingAsPicture();
   }, [cells, photoInfoMap, cellWidth, cellHeight, canvasWidth, canvasHeight]);
 
-  if (!picture) {
+  // Atlas sprites and transforms for efficient batch rendering
+  const { sprites, transforms } = useMemo(() => {
+    const spriteRects: ReturnType<typeof rect>[] = [];
+    const xforms: SkRSXform[] = [];
+
+    for (const cell of cells) {
+      if (cell.photoId === null) {
+        continue;
+      }
+
+      const info = photoInfoMap.get(cell.photoId);
+      if (!info) {
+        continue;
+      }
+
+      // Source rect from the atlas
+      spriteRects.push(
+        rect(info.atlasRect.x, info.atlasRect.y, info.atlasRect.width, info.atlasRect.height),
+      );
+
+      // Transform: scale from atlas size to cell size, then translate to position
+      const scale = cellWidth / info.atlasRect.width;
+
+      // RSXform: [scos, ssin, tx, ty]
+      // For scaling without rotation: scos = scale, ssin = 0
+      // tx/ty are the translation
+      xforms.push(
+        Skia.RSXform(scale, 0, cell.x, cell.y),
+      );
+    }
+
+    return { sprites: spriteRects, transforms: xforms };
+  }, [cells, photoInfoMap, cellWidth, cellHeight]);
+
+  if (!colorPicture) {
     return null;
   }
 
-  // Contrast boost matrix: increases contrast by 1.4x, centered around 0.5
+  // Contrast boost matrix
   const contrast = 1.4;
   const offset = 0.5 * (1 - contrast);
   const contrastMatrix = [
@@ -73,9 +108,23 @@ export const MosaicRenderer = ({
 
   return (
     <Group>
-      <Picture picture={picture}>
+      {/* Base layer: solid colors (always visible) */}
+      <Picture picture={colorPicture}>
         <ColorMatrix matrix={contrastMatrix} />
       </Picture>
+
+      {/* Top layer: atlas sprites (fades in when zoomed) */}
+      {atlas && sprites.length > 0 && (
+        <Group opacity={imageOpacity}>
+          <Atlas
+            image={atlas}
+            sprites={sprites}
+            transforms={transforms}
+          >
+            <ColorMatrix matrix={contrastMatrix} />
+          </Atlas>
+        </Group>
+      )}
     </Group>
   );
 };

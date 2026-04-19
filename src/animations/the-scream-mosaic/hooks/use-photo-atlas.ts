@@ -1,25 +1,49 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
 
-import { Skia } from '@shopify/react-native-skia';
+import { useImage } from '@shopify/react-native-skia';
 
-import {
-  BATCH_DELAY,
-  BATCH_SIZE,
-  DISPLAY_SIZE,
-  getPhotoUrl,
-  getValidPhotoIds,
-  PHOTO_COUNT,
-} from '../constants';
-import { rgbToLab } from '../utils/color-conversion';
+import manifest from '../assets/photos-manifest.json';
+import atlasInfo from '../assets/atlas-info.json';
 
 import type { LAB, RGB } from '../types';
-import type { SkImage } from '@shopify/react-native-skia';
+import type { SkImage, SkRect } from '@shopify/react-native-skia';
+
+// Type the manifest data
+interface PhotoManifestEntry {
+  id: number;
+  rgb: RGB;
+  lab: LAB;
+}
+
+interface Manifest {
+  photos: PhotoManifestEntry[];
+}
+
+interface AtlasPhotoEntry {
+  id: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface AtlasInfo {
+  atlasWidth: number;
+  atlasHeight: number;
+  photoSize: number;
+  cols: number;
+  rows: number;
+  photos: AtlasPhotoEntry[];
+}
+
+const typedManifest = manifest as Manifest;
+const typedAtlasInfo = atlasInfo as AtlasInfo;
 
 export interface PhotoInfo {
   id: number;
   averageColor: RGB;
   labColor: LAB;
-  image: SkImage;
+  atlasRect: SkRect; // Source rect in the atlas
 }
 
 interface UsePhotoAtlasResult {
@@ -30,158 +54,55 @@ interface UsePhotoAtlasResult {
   loadedCount: number;
 }
 
-// Module-level cache
-let cachedPhotoInfoMap: Map<number, PhotoInfo> | null = null;
+// Pre-build the photo info map from manifest + atlas info
+const buildPhotoInfoMap = (): Map<number, PhotoInfo> => {
+  const infoMap = new Map<number, PhotoInfo>();
 
-// Extract average color from raw image data
-const extractAverageColor = (
-  data: Uint8Array,
-  width: number,
-  height: number,
-): RGB => {
-  let totalR = 0;
-  let totalG = 0;
-  let totalB = 0;
-  let count = 0;
+  // Create lookup for atlas positions
+  const atlasPositions = new Map<number, AtlasPhotoEntry>();
+  for (const entry of typedAtlasInfo.photos) {
+    atlasPositions.set(entry.id, entry);
+  }
 
-  const step = 4;
-  const bytesPerPixel = 4;
-
-  for (let y = 0; y < height; y += step) {
-    for (let x = 0; x < width; x += step) {
-      const idx = (y * width + x) * bytesPerPixel;
-      if (idx + 3 < data.length) {
-        totalR += data[idx];
-        totalG += data[idx + 1];
-        totalB += data[idx + 2];
-        count++;
-      }
+  // Combine manifest colors with atlas positions
+  for (const photo of typedManifest.photos) {
+    const atlasEntry = atlasPositions.get(photo.id);
+    if (atlasEntry) {
+      infoMap.set(photo.id, {
+        id: photo.id,
+        averageColor: photo.rgb,
+        labColor: photo.lab,
+        atlasRect: {
+          x: atlasEntry.x,
+          y: atlasEntry.y,
+          width: atlasEntry.width,
+          height: atlasEntry.height,
+        },
+      });
     }
   }
 
-  if (count === 0) {
-    return { r: 128, g: 128, b: 128 };
-  }
-
-  return {
-    r: Math.round(totalR / count),
-    g: Math.round(totalG / count),
-    b: Math.round(totalB / count),
-  };
+  return infoMap;
 };
 
-// Fetch a single photo and return both image and color info
-const fetchPhoto = async (
-  id: number,
-): Promise<{ image: SkImage; color: RGB } | null> => {
-  try {
-    const url = getPhotoUrl(id, DISPLAY_SIZE);
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
-    const image = Skia.Image.MakeImageFromEncoded(data);
-
-    if (!image) {
-      return null;
-    }
-
-    const width = image.width();
-    const height = image.height();
-
-    const pixels = image.readPixels(0, 0, {
-      width,
-      height,
-      colorType: 4,
-      alphaType: 1,
-    });
-
-    if (!pixels) {
-      return null;
-    }
-
-    const color = extractAverageColor(new Uint8Array(pixels), width, height);
-
-    return { image, color };
-  } catch {
-    return null;
-  }
-};
+// Build once at module load - this is instant
+const cachedPhotoInfoMap = buildPhotoInfoMap();
 
 export const usePhotoAtlas = (): UsePhotoAtlasResult => {
-  const [photoInfoMap, setPhotoInfoMap] = useState<Map<number, PhotoInfo>>(
-    new Map(),
-  );
-  const [isLoading, setIsLoading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [loadedCount, setLoadedCount] = useState(0);
+  // Load the single atlas image
+  const atlas = useImage(require('../assets/photo-atlas.jpg'));
 
-  const loadPhotos = useCallback(async () => {
-    // Return cached if available
-    if (cachedPhotoInfoMap) {
-      setPhotoInfoMap(cachedPhotoInfoMap);
-      setLoadedCount(cachedPhotoInfoMap.size);
-      setProgress(100);
-      return;
-    }
-
-    setIsLoading(true);
-    setProgress(0);
-
-    const validIds = getValidPhotoIds(PHOTO_COUNT);
-    const infoMap = new Map<number, PhotoInfo>();
-
-    // Load all images in batches
-    for (let i = 0; i < validIds.length; i += BATCH_SIZE) {
-      const batchIds = validIds.slice(i, i + BATCH_SIZE);
-
-      const batchResults = await Promise.all(batchIds.map(fetchPhoto));
-
-      for (let j = 0; j < batchResults.length; j++) {
-        const result = batchResults[j];
-        if (result) {
-          const id = batchIds[j];
-          infoMap.set(id, {
-            id,
-            averageColor: result.color,
-            labColor: rgbToLab(result.color),
-            image: result.image,
-          });
-        }
-      }
-
-      setLoadedCount(infoMap.size);
-      setProgress(Math.round(((i + BATCH_SIZE) / validIds.length) * 100));
-
-      if (i + BATCH_SIZE < validIds.length) {
-        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY));
-      }
-    }
-
-    cachedPhotoInfoMap = infoMap;
-    setPhotoInfoMap(infoMap);
-    setIsLoading(false);
-    setProgress(100);
-  }, []);
-
-  useEffect(() => {
-    loadPhotos();
-  }, [loadPhotos]);
+  // photoInfoMap is pre-computed - no async needed
+  const photoInfoMap = useMemo(() => cachedPhotoInfoMap, []);
 
   return {
-    atlas: null, // Not using atlas anymore
+    atlas,
     photoInfoMap,
-    isLoading,
-    progress,
-    loadedCount,
+    isLoading: !atlas,
+    progress: atlas ? 100 : 0,
+    loadedCount: photoInfoMap.size,
   };
 };
 
-// Clear the cache
-export const clearPhotoAtlasCache = (): void => {
-  cachedPhotoInfoMap = null;
-};
+// Get atlas info for rendering
+export const getAtlasInfo = () => typedAtlasInfo;

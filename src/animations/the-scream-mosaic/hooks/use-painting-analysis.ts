@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-import { useImage } from '@shopify/react-native-skia';
+import { AlphaType, ColorType, useImage } from '@shopify/react-native-skia';
 
 import { TARGET_CELLS } from '../constants';
 import { rgbToLab } from '../utils/color-conversion';
-import { sampleRegionColor } from '../utils/pixel-sampling';
 
 import type { GridCell, LAB, RGB } from '../types';
 
@@ -26,6 +25,57 @@ interface UsePaintingAnalysisResult {
   progress: number;
   error: string | null;
 }
+
+// Sample average color from a region of a pixel buffer
+const sampleRegionFromBuffer = (
+  pixels: ArrayBufferLike | Uint8Array | Float32Array,
+  imageWidth: number,
+  regionX: number,
+  regionY: number,
+  regionWidth: number,
+  regionHeight: number,
+): RGB => {
+  // Handle different buffer types
+  const data = pixels instanceof Uint8Array
+    ? pixels
+    : new Uint8Array(pixels as ArrayBufferLike);
+  const bytesPerPixel = 4;
+
+  let totalR = 0;
+  let totalG = 0;
+  let totalB = 0;
+  let count = 0;
+
+  // Sample every 2nd pixel for speed
+  const step = 2;
+
+  const startX = Math.floor(regionX);
+  const startY = Math.floor(regionY);
+  const endX = Math.min(startX + Math.floor(regionWidth), imageWidth);
+  const endY = startY + Math.floor(regionHeight);
+
+  for (let y = startY; y < endY; y += step) {
+    for (let x = startX; x < endX; x += step) {
+      const idx = (y * imageWidth + x) * bytesPerPixel;
+      if (idx + 3 < data.length) {
+        totalR += data[idx];
+        totalG += data[idx + 1];
+        totalB += data[idx + 2];
+        count++;
+      }
+    }
+  }
+
+  if (count === 0) {
+    return { r: 128, g: 128, b: 128 };
+  }
+
+  return {
+    r: Math.round(totalR / count),
+    g: Math.round(totalG / count),
+    b: Math.round(totalB / count),
+  };
+};
 
 export const usePaintingAnalysis = (
   paintingSource: ReturnType<typeof require>,
@@ -55,7 +105,7 @@ export const usePaintingAnalysis = (
     return { cols, rows, totalCells, aspectRatio };
   }, [paintingImage]);
 
-  const analyzePainting = useCallback(async () => {
+  useEffect(() => {
     if (!paintingImage || gridDimensions.cols === 0) {
       return;
     }
@@ -66,102 +116,78 @@ export const usePaintingAnalysis = (
     const cellWidth = imageWidth / cols;
     const cellHeight = imageHeight / rows;
 
-    // Sample a few spots to create a unique key that changes with image content
-    const sampleSpots = [
-      { x: 0, y: 0 },
-      { x: Math.floor(imageWidth / 2), y: Math.floor(imageHeight / 2) },
-      { x: imageWidth - 1, y: imageHeight - 1 },
-    ];
-    const colorSig = sampleSpots
-      .map(spot => {
-        const color = sampleRegionColor(paintingImage, spot.x, spot.y, 1, 1);
-        return color ? `${color.r}-${color.g}-${color.b}` : '0';
-      })
-      .join('|');
-    const paintingKey = `${imageWidth}x${imageHeight}-${cols}x${rows}-${colorSig}`;
+    // Create a unique cache key
+    const paintingKey = `${imageWidth}x${imageHeight}-${cols}x${rows}`;
 
-    // Return cached result if available and key matches
+    // Return cached result if available
     if (cachedPaintingAnalysis && cachedPaintingKey === paintingKey) {
       setGridCells(cachedPaintingAnalysis);
       setProgress(100);
       return;
     }
 
-    // Clear stale cache
-    cachedPaintingAnalysis = null;
-    cachedPaintingKey = null;
-
     setIsAnalyzing(true);
     setProgress(0);
     setError(null);
 
+    // Read ALL pixels once (this is the expensive operation)
+    const pixels = paintingImage.readPixels(0, 0, {
+      width: imageWidth,
+      height: imageHeight,
+      colorType: ColorType.RGBA_8888,
+      alphaType: AlphaType.Unpremul,
+    });
+
+    if (!pixels) {
+      setError('Failed to read painting pixels');
+      setIsAnalyzing(false);
+      return;
+    }
+
+    setProgress(10);
+
+    // Now sample from the buffer - this is fast!
     const cells: GridCell[] = [];
 
-    // Process in batches to avoid blocking
-    const processBatch = (startIndex: number): Promise<void> => {
-      return new Promise(resolve => {
-        requestAnimationFrame(() => {
-          const batchSize = 25;
-          const endIndex = Math.min(startIndex + batchSize, totalCells);
+    for (let i = 0; i < totalCells; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
 
-          for (let i = startIndex; i < endIndex; i++) {
-            const col = i % cols;
-            const row = Math.floor(i / cols);
+      const x = col * cellWidth;
+      const y = row * cellHeight;
 
-            const x = col * cellWidth;
-            const y = row * cellHeight;
-
-            const rgb = sampleRegionColor(
-              paintingImage,
-              x,
-              y,
-              cellWidth,
-              cellHeight,
-            );
-
-            const targetColor: RGB = rgb || { r: 128, g: 128, b: 128 };
-            const targetLab: LAB = rgbToLab(targetColor);
-
-            cells.push({
-              index: i,
-              row,
-              col,
-              targetColor,
-              targetLab,
-              photoId: null,
-            });
-          }
-
-          setProgress(Math.round((endIndex / totalCells) * 100));
-
-          if (endIndex < totalCells) {
-            setTimeout(() => processBatch(endIndex).then(resolve), 0);
-          } else {
-            resolve();
-          }
-        });
-      });
-    };
-
-    try {
-      await processBatch(0);
-      cachedPaintingAnalysis = cells;
-      cachedPaintingKey = paintingKey;
-      setGridCells(cells);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to analyze painting',
+      const rgb = sampleRegionFromBuffer(
+        pixels,
+        imageWidth,
+        x,
+        y,
+        cellWidth,
+        cellHeight,
       );
-    } finally {
-      setIsAnalyzing(false);
-    }
-  }, [paintingImage, gridDimensions]);
 
-  useEffect(() => {
-    if (paintingImage) {
-      analyzePainting();
+      const targetLab: LAB = rgbToLab(rgb);
+
+      cells.push({
+        index: i,
+        row,
+        col,
+        targetColor: rgb,
+        targetLab,
+        photoId: null,
+      });
+
+      // Update progress periodically
+      if (i % 1000 === 0) {
+        setProgress(10 + Math.round((i / totalCells) * 90));
+      }
     }
-  }, [paintingImage, analyzePainting]);
+
+    cachedPaintingAnalysis = cells;
+    cachedPaintingKey = paintingKey;
+    setGridCells(cells);
+    setProgress(100);
+    setIsAnalyzing(false);
+  }, [paintingImage, gridDimensions]);
 
   return {
     gridCells,

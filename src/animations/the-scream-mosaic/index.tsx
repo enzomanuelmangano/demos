@@ -29,7 +29,7 @@ import type { LoadingPhase } from './types';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Import the painting asset - just change this to test different paintings!
-const painting = require('./assets/hopper.jpg');
+const painting = require('./assets/hopper4.jpg');
 
 // Loading indicator component
 const LoadingOverlay = memo(
@@ -38,13 +38,11 @@ const LoadingOverlay = memo(
     paintingProgress,
     photoProgress,
     matchingProgress,
-    loadedPhotos,
   }: {
     phase: LoadingPhase;
     paintingProgress: number;
     photoProgress: number;
     matchingProgress: number;
-    loadedPhotos: number;
   }) => {
     let message = '';
     let progress = 0;
@@ -55,7 +53,7 @@ const LoadingOverlay = memo(
         progress = paintingProgress;
         break;
       case 'loading-photos':
-        message = `Building atlas (${loadedPhotos} photos)...`;
+        message = 'Loading atlas...';
         progress = photoProgress;
         break;
       case 'matching':
@@ -99,12 +97,12 @@ export function TheScreamMosaic() {
   const cellWidth = cols > 0 ? canvasWidth / cols : 0;
   const cellHeight = rows > 0 ? canvasHeight / rows : 0;
 
+  // Load atlas and photo info
   const {
     atlas,
     photoInfoMap,
-    isLoading: isLoadingPhotos,
+    isLoading: isLoadingAtlas,
     progress: photoProgress,
-    loadedCount,
   } = usePhotoAtlas();
 
   const {
@@ -118,7 +116,7 @@ export function TheScreamMosaic() {
     if (isAnalyzingPainting) {
       return 'analyzing-painting';
     }
-    if (isLoadingPhotos) {
+    if (isLoadingAtlas) {
       return 'loading-photos';
     }
     if (isMatching) {
@@ -128,7 +126,7 @@ export function TheScreamMosaic() {
       return 'complete';
     }
     return 'idle';
-  }, [isAnalyzingPainting, isLoadingPhotos, isMatching, mapping.size, atlas]);
+  }, [isAnalyzingPainting, isLoadingAtlas, isMatching, mapping.size, atlas]);
 
   // Generate cells with their photo mappings
   const cells = useMemo(() => {
@@ -150,7 +148,7 @@ export function TheScreamMosaic() {
   const panContext = useSharedValue({ x: 0, y: 0 });
 
   // Derived scale value with spring animation
-  const scale = useDerivedValue(() => {
+  const scale = useDerivedValue((): number => {
     const targetScale =
       zoomLevel.get() === 0
         ? ZOOM_LEVELS.overview
@@ -159,6 +157,21 @@ export function TheScreamMosaic() {
           : ZOOM_LEVELS.cell;
 
     return withSpring(targetScale, SPRING_CONFIG);
+  });
+
+  // Image opacity based on zoom level - fades in images when zooming
+  const imageOpacity = useDerivedValue(() => {
+    const currentScale = scale.get();
+    const startFade = ZOOM_LEVELS.grid;
+    const endFade = ZOOM_LEVELS.cell;
+
+    if (currentScale <= startFade) {
+      return 0;
+    }
+    if (currentScale >= endFade) {
+      return 1;
+    }
+    return (currentScale - startFade) / (endFade - startFade);
   });
 
   // Calculate bounds for panning
@@ -254,6 +267,7 @@ export function TheScreamMosaic() {
                 cellHeight={cellHeight}
                 canvasWidth={canvasWidth}
                 canvasHeight={canvasHeight}
+                imageOpacity={imageOpacity}
               />
             ) : (
               <Fill color="blue" />
@@ -268,7 +282,6 @@ export function TheScreamMosaic() {
           paintingProgress={paintingProgress}
           photoProgress={photoProgress}
           matchingProgress={matchingProgress}
-          loadedPhotos={loadedCount}
         />
       )}
     </View>

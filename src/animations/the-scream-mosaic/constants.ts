@@ -2,15 +2,11 @@
 // Target number of cells - actual grid dimensions calculated from painting aspect ratio
 export const TARGET_CELLS = 10000;
 
-// Photo loading configuration
-// Using seed-based URLs for unlimited unique photos
-export const PHOTO_COUNT = TARGET_CELLS; // One unique photo per cell
-export const ANALYSIS_SIZE = 50; // 50x50 for color analysis (reduced for performance)
-export const DISPLAY_SIZE = 80; // 80x80 for rendering (reduced for 5k images)
-export const BATCH_SIZE = 100;
-export const BATCH_DELAY = 30; // ms between batches
+// Photo configuration
+// Photos are pre-downloaded and bundled with the app
+export const PHOTO_SIZE = 80; // 80x80 pixels per photo
 
-// Zoom levels (adjusted for 5k cell grid)
+// Zoom levels (adjusted for 10k cell grid)
 export const ZOOM_LEVELS = {
   overview: 1,
   grid: 4,
@@ -19,14 +15,3 @@ export const ZOOM_LEVELS = {
 
 // Spring configuration - critically damped
 export const SPRING_CONFIG = { dampingRatio: 1, duration: 400 };
-
-// Generate photo indices (0 to count-1)
-export const getValidPhotoIds = (count: number): number[] => {
-  return Array.from({ length: count }, (_, i) => i);
-};
-
-// Generate photo URL using seed for unique random photos
-export const getPhotoUrl = (id: number, size: number): string => {
-  // Using seed-based URL - each seed produces a unique random photo
-  return `https://picsum.photos/seed/mosaic-${id}/${size}/${size}`;
-};

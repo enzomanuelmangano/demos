@@ -1,0 +1,304 @@
+/**
+ * Download script for pre-computing photo colors
+ *
+ * This script:
+ * 1. Downloads 10,000 photos from picsum.photos (80x80)
+ * 2. Extracts average RGB color for each photo
+ * 3. Converts to LAB color space
+ * 4. Generates photos-manifest.json with pre-computed colors
+ * 5. Generates assets/photos/index.ts with static requires
+ *
+ * Run with: bun scripts/download-mosaic-photos.ts
+ */
+
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { PNG } from 'pngjs';
+import sharp from 'sharp';
+
+// Configuration
+const PHOTO_COUNT = 10000;
+const PHOTO_SIZE = 80;
+const BATCH_SIZE = 50;
+const BATCH_DELAY = 100; // ms between batches to avoid rate limiting
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
+
+const ASSETS_DIR = join(
+  __dirname,
+  '../src/animations/the-scream-mosaic/assets/photos',
+);
+const MANIFEST_PATH = join(ASSETS_DIR, '../photos-manifest.json');
+const INDEX_PATH = join(ASSETS_DIR, 'index.ts');
+
+// Types
+interface RGB {
+  r: number;
+  g: number;
+  b: number;
+}
+
+interface LAB {
+  l: number;
+  a: number;
+  b: number;
+}
+
+interface PhotoManifestEntry {
+  id: number;
+  rgb: RGB;
+  lab: LAB;
+}
+
+interface Manifest {
+  photos: PhotoManifestEntry[];
+  generatedAt: string;
+  photoCount: number;
+  photoSize: number;
+}
+
+// Color conversion functions
+function rgbToXyz(rgb: RGB): { x: number; y: number; z: number } {
+  let r = rgb.r / 255;
+  let g = rgb.g / 255;
+  let b = rgb.b / 255;
+
+  r = r > 0.04045 ? Math.pow((r + 0.055) / 1.055, 2.4) : r / 12.92;
+  g = g > 0.04045 ? Math.pow((g + 0.055) / 1.055, 2.4) : g / 12.92;
+  b = b > 0.04045 ? Math.pow((b + 0.055) / 1.055, 2.4) : b / 12.92;
+
+  r *= 100;
+  g *= 100;
+  b *= 100;
+
+  const x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375;
+  const y = r * 0.2126729 + g * 0.7151522 + b * 0.072175;
+  const z = r * 0.0193339 + g * 0.119192 + b * 0.9503041;
+
+  return { x, y, z };
+}
+
+const REF_X = 95.047;
+const REF_Y = 100.0;
+const REF_Z = 108.883;
+
+function xyzToLab(xyz: { x: number; y: number; z: number }): LAB {
+  let x = xyz.x / REF_X;
+  let y = xyz.y / REF_Y;
+  let z = xyz.z / REF_Z;
+
+  const epsilon = 0.008856;
+  const kappa = 903.3;
+
+  x = x > epsilon ? Math.pow(x, 1 / 3) : (kappa * x + 16) / 116;
+  y = y > epsilon ? Math.pow(y, 1 / 3) : (kappa * y + 16) / 116;
+  z = z > epsilon ? Math.pow(z, 1 / 3) : (kappa * z + 16) / 116;
+
+  const l = 116 * y - 16;
+  const a = 500 * (x - y);
+  const b = 200 * (y - z);
+
+  return { l, a, b };
+}
+
+function rgbToLab(rgb: RGB): LAB {
+  return xyzToLab(rgbToXyz(rgb));
+}
+
+// Extract average color from image buffer
+function extractAverageColor(buffer: Buffer, width: number, height: number): RGB {
+  const png = PNG.sync.read(buffer);
+  const data = png.data;
+
+  let totalR = 0;
+  let totalG = 0;
+  let totalB = 0;
+  let count = 0;
+
+  const step = 4; // Sample every 4th pixel for speed
+  const bytesPerPixel = 4;
+
+  for (let y = 0; y < height; y += step) {
+    for (let x = 0; x < width; x += step) {
+      const idx = (y * width + x) * bytesPerPixel;
+      if (idx + 3 < data.length) {
+        totalR += data[idx];
+        totalG += data[idx + 1];
+        totalB += data[idx + 2];
+        count++;
+      }
+    }
+  }
+
+  if (count === 0) {
+    return { r: 128, g: 128, b: 128 };
+  }
+
+  return {
+    r: Math.round(totalR / count),
+    g: Math.round(totalG / count),
+    b: Math.round(totalB / count),
+  };
+}
+
+// Download a single photo with retries
+async function downloadPhoto(
+  id: number,
+  retries = 0,
+): Promise<{ buffer: Buffer; rgb: RGB; lab: LAB } | null> {
+  const url = `https://picsum.photos/seed/mosaic-${id}/${PHOTO_SIZE}/${PHOTO_SIZE}`;
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const inputBuffer = Buffer.from(arrayBuffer);
+
+    // Convert to PNG for consistent pixel extraction
+    const pngBuffer = await sharp(inputBuffer).png().toBuffer();
+
+    // Also get JPEG for storage (smaller file size)
+    const jpegBuffer = await sharp(inputBuffer)
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    const rgb = extractAverageColor(pngBuffer, PHOTO_SIZE, PHOTO_SIZE);
+    const lab = rgbToLab(rgb);
+
+    return { buffer: jpegBuffer, rgb, lab };
+  } catch (error) {
+    if (retries < MAX_RETRIES) {
+      await sleep(RETRY_DELAY * (retries + 1));
+      return downloadPhoto(id, retries + 1);
+    }
+    console.error(`Failed to download photo ${id}:`, error);
+    return null;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Generate the index.ts file with static requires
+function generateIndexFile(successfulIds: number[]): string {
+  const imports = successfulIds
+    .map((id) => `  ${id}: require('./${id}.jpg'),`)
+    .join('\n');
+
+  return `// Auto-generated file - do not edit manually
+// Generated by scripts/download-mosaic-photos.ts
+
+import type { ImageSourcePropType } from 'react-native';
+
+export const photoImages: Record<number, ImageSourcePropType> = {
+${imports}
+};
+
+export const photoIds = [${successfulIds.join(', ')}] as const;
+`;
+}
+
+// Main download function
+async function main() {
+  console.log('🎨 Photo Mosaic Pre-computation Script');
+  console.log('=====================================');
+  console.log(`Target: ${PHOTO_COUNT} photos at ${PHOTO_SIZE}x${PHOTO_SIZE}`);
+  console.log(`Output: ${ASSETS_DIR}`);
+  console.log('');
+
+  // Create output directory
+  await mkdir(ASSETS_DIR, { recursive: true });
+
+  const manifestEntries: PhotoManifestEntry[] = [];
+  const successfulIds: number[] = [];
+  let completed = 0;
+  let failed = 0;
+
+  const startTime = Date.now();
+
+  // Process in batches
+  for (let i = 0; i < PHOTO_COUNT; i += BATCH_SIZE) {
+    const batchIds = Array.from(
+      { length: Math.min(BATCH_SIZE, PHOTO_COUNT - i) },
+      (_, idx) => i + idx,
+    );
+
+    const results = await Promise.all(
+      batchIds.map(async (id) => {
+        const result = await downloadPhoto(id);
+        if (result) {
+          // Save the image
+          const imagePath = join(ASSETS_DIR, `${id}.jpg`);
+          await writeFile(imagePath, result.buffer);
+          return { id, ...result };
+        }
+        return null;
+      }),
+    );
+
+    for (const result of results) {
+      if (result) {
+        manifestEntries.push({
+          id: result.id,
+          rgb: result.rgb,
+          lab: result.lab,
+        });
+        successfulIds.push(result.id);
+        completed++;
+      } else {
+        failed++;
+      }
+    }
+
+    const progress = Math.round(((i + batchIds.length) / PHOTO_COUNT) * 100);
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const rate = (completed / parseFloat(elapsed)).toFixed(1);
+    process.stdout.write(
+      `\r📸 Progress: ${progress}% (${completed}/${PHOTO_COUNT}) | Rate: ${rate}/s | Failed: ${failed}`,
+    );
+
+    // Rate limiting delay between batches
+    if (i + BATCH_SIZE < PHOTO_COUNT) {
+      await sleep(BATCH_DELAY);
+    }
+  }
+
+  console.log('\n');
+
+  // Sort entries by ID for consistent ordering
+  manifestEntries.sort((a, b) => a.id - b.id);
+  successfulIds.sort((a, b) => a - b);
+
+  // Generate manifest
+  const manifest: Manifest = {
+    photos: manifestEntries,
+    generatedAt: new Date().toISOString(),
+    photoCount: manifestEntries.length,
+    photoSize: PHOTO_SIZE,
+  };
+
+  await writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2));
+  console.log(`✅ Generated manifest: ${MANIFEST_PATH}`);
+
+  // Generate index.ts
+  const indexContent = generateIndexFile(successfulIds);
+  await writeFile(INDEX_PATH, indexContent);
+  console.log(`✅ Generated index: ${INDEX_PATH}`);
+
+  const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log('');
+  console.log('📊 Summary:');
+  console.log(`   Total time: ${totalTime}s`);
+  console.log(`   Successful: ${completed}`);
+  console.log(`   Failed: ${failed}`);
+  console.log(
+    `   Manifest size: ${(JSON.stringify(manifest).length / 1024).toFixed(1)}KB`,
+  );
+}
+
+main().catch(console.error);

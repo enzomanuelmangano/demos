@@ -29,6 +29,8 @@
     "generate-icons-set": "cd scripts/generate-app-icon && bun install && bun generate-icons",
     "eas-build-pre-install": "bun generate-icons-set --value=$(node scripts/utils/get-animations-count.js)",
     "clean": "rimraf node_modules ios android $TMPDIR/haste-map-* $TMPDIR/metro-cache .expo && bun pm cache clean && watchman watch-del-all",
+    "download-mosaic-photos": "bun scripts/download-mosaic-photos.ts",
+    "generate-sprite-atlas": "bun scripts/generate-sprite-atlas.ts",
     "update-expo-packages": "expo install --fix",
     "ota:dev": "eas update --channel development",
     "ota": "eas update --channel production"
@@ -115,7 +117,10 @@
     "expo-color-space-plugin": "^0.0.4",
     "prettier": "^3.1.1",
     "rimraf": "^6.0.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "sharp": "^0.33.5",
+    "pngjs": "^7.0.0",
+    "@types/pngjs": "^6.0.5"
   },
   "private": true,
   "packageManager": "bun@1.2.22",
