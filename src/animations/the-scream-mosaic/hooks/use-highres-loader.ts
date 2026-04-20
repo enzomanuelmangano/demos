@@ -4,84 +4,96 @@ import { Skia } from '@shopify/react-native-skia';
 
 import type { SkImage } from '@shopify/react-native-skia';
 
-const HIGHRES_SIZE = 800;
-const MAX_CACHED_IMAGES = 50; // Limit memory usage
-
-interface HighResCache {
-  [cellIndex: number]: SkImage;
-}
+const HIGHRES_SIZE = 1000;
+const MAX_CACHED = 25;
 
 interface UseHighResLoaderResult {
-  highResImages: HighResCache;
-  loadVisibleCells: (visibleCellIndices: number[], photoIdForCell: (index: number) => number | null) => void;
+  getHighResImage: (cellIndex: number) => SkImage | null;
+  isLoading: (cellIndex: number) => boolean;
+  loadCell: (cellIndex: number, photoId: number) => void;
+  loadedCells: Map<number, SkImage>;
+  version: number; // Triggers re-render when images load
 }
 
-export const useHighResLoader = (): UseHighResLoaderResult => {
-  const [highResImages, setHighResImages] = useState<HighResCache>({});
-  const loadingRef = useRef<Set<number>>(new Set());
-  const cacheOrderRef = useRef<number[]>([]); // Track order for LRU eviction
+// Module-level cache
+const imageCache = new Map<number, SkImage>();
+const loadingSet = new Set<number>();
+const cacheOrder: number[] = [];
 
-  const loadHighResImage = useCallback(async (cellIndex: number, photoId: number) => {
-    if (loadingRef.current.has(cellIndex)) return;
-    loadingRef.current.add(cellIndex);
+export const useHighResLoader = (): UseHighResLoaderResult => {
+  const [version, setVersion] = useState(0);
+  const pendingLoads = useRef<Map<number, Promise<void>>>(new Map());
+
+  const loadImage = useCallback(async (cellIndex: number, photoId: number): Promise<void> => {
+    if (imageCache.has(cellIndex) || loadingSet.has(cellIndex)) {
+      console.log(`[HighRes] Skipping cell ${cellIndex} - already cached or loading`);
+      return;
+    }
+
+    loadingSet.add(cellIndex);
+    setVersion(n => n + 1);
+
+    const url = `https://picsum.photos/seed/mosaic-${photoId}/${HIGHRES_SIZE}/${HIGHRES_SIZE}`;
+    console.log(`[HighRes] Loading cell ${cellIndex}, photoId ${photoId}: ${url}`);
 
     try {
-      // Use picsum.photos with seed for consistent image
-      const url = `https://picsum.photos/seed/mosaic-${photoId}/${HIGHRES_SIZE}/${HIGHRES_SIZE}`;
       const response = await fetch(url);
 
-      if (!response.ok) {
-        loadingRef.current.delete(cellIndex);
-        return;
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const arrayBuffer = await response.arrayBuffer();
+      console.log(`[HighRes] Fetched ${arrayBuffer.byteLength} bytes for cell ${cellIndex}`);
+
       const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
       const image = Skia.Image.MakeImageFromEncoded(data);
 
       if (image) {
-        setHighResImages(prev => {
-          const newCache = { ...prev, [cellIndex]: image };
+        console.log(`[HighRes] Decoded image for cell ${cellIndex}: ${image.width()}x${image.height()}`);
+        // Add to cache
+        imageCache.set(cellIndex, image);
 
-          // Update LRU order
-          cacheOrderRef.current = cacheOrderRef.current.filter(i => i !== cellIndex);
-          cacheOrderRef.current.push(cellIndex);
+        // Update LRU
+        const idx = cacheOrder.indexOf(cellIndex);
+        if (idx > -1) cacheOrder.splice(idx, 1);
+        cacheOrder.push(cellIndex);
 
-          // Evict oldest if over limit
-          while (cacheOrderRef.current.length > MAX_CACHED_IMAGES) {
-            const oldest = cacheOrderRef.current.shift()!;
-            delete newCache[oldest];
-          }
-
-          return newCache;
-        });
+        // Evict if over limit
+        while (cacheOrder.length > MAX_CACHED) {
+          const oldest = cacheOrder.shift()!;
+          imageCache.delete(oldest);
+        }
+      } else {
+        console.warn(`[HighRes] Failed to decode image for cell ${cellIndex}`);
       }
     } catch (e) {
-      console.warn(`Failed to load high-res for cell ${cellIndex}:`, e);
+      console.warn(`[HighRes] Failed to load cell ${cellIndex}:`, e);
     } finally {
-      loadingRef.current.delete(cellIndex);
+      loadingSet.delete(cellIndex);
+      pendingLoads.current.delete(cellIndex);
+      setVersion(n => n + 1);
     }
   }, []);
 
-  const loadVisibleCells = useCallback((
-    visibleCellIndices: number[],
-    photoIdForCell: (index: number) => number | null,
-  ) => {
-    for (const cellIndex of visibleCellIndices) {
-      // Skip if already loaded or loading
-      if (highResImages[cellIndex] || loadingRef.current.has(cellIndex)) {
-        continue;
-      }
-
-      const photoId = photoIdForCell(cellIndex);
-      if (photoId !== null) {
-        loadHighResImage(cellIndex, photoId);
-      }
+  const loadCell = useCallback((cellIndex: number, photoId: number) => {
+    if (!imageCache.has(cellIndex) && !pendingLoads.current.has(cellIndex)) {
+      const promise = loadImage(cellIndex, photoId);
+      pendingLoads.current.set(cellIndex, promise);
     }
-  }, [highResImages, loadHighResImage]);
+  }, [loadImage]);
+
+  const getHighResImage = useCallback((cellIndex: number): SkImage | null => {
+    return imageCache.get(cellIndex) ?? null;
+  }, []);
+
+  const isLoading = useCallback((cellIndex: number): boolean => {
+    return loadingSet.has(cellIndex);
+  }, []);
 
   return {
-    highResImages,
-    loadVisibleCells,
+    getHighResImage,
+    isLoading,
+    loadCell,
+    loadedCells: imageCache,
+    version,
   };
 };

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Atlas, ColorMatrix, Group, Image, Picture, rect, Skia } from '@shopify/react-native-skia';
+import { Atlas, ColorMatrix, Group, Picture, rect, Skia } from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
@@ -15,10 +15,6 @@ interface CellData {
   placeholderColor: RGB;
 }
 
-interface HighResCache {
-  [cellIndex: number]: SkImage;
-}
-
 interface MosaicRendererProps {
   atlas: SkImage | null;
   cells: CellData[];
@@ -28,7 +24,6 @@ interface MosaicRendererProps {
   canvasWidth: number;
   canvasHeight: number;
   imageOpacity: SharedValue<number>;
-  highResImages?: HighResCache;
 }
 
 export const MosaicRenderer = ({
@@ -40,7 +35,6 @@ export const MosaicRenderer = ({
   canvasWidth,
   canvasHeight,
   imageOpacity,
-  highResImages = {},
 }: MosaicRendererProps) => {
   // Picture with solid colored rectangles (visible when zoomed out)
   const colorPicture = useMemo(() => {
@@ -70,47 +64,25 @@ export const MosaicRenderer = ({
     const xforms: SkRSXform[] = [];
 
     for (const cell of cells) {
-      if (cell.photoId === null) {
-        continue;
-      }
+      if (cell.photoId === null) continue;
 
       const info = photoInfoMap.get(cell.photoId);
-      if (!info) {
-        continue;
-      }
+      if (!info) continue;
 
-      // Source rect from the atlas
       spriteRects.push(
         rect(info.atlasRect.x, info.atlasRect.y, info.atlasRect.width, info.atlasRect.height),
       );
 
-      // Transform: scale from atlas size to cell size, then translate to position
       const scale = cellWidth / info.atlasRect.width;
-
-      // RSXform: [scos, ssin, tx, ty]
-      // For scaling without rotation: scos = scale, ssin = 0
-      // tx/ty are the translation
-      xforms.push(
-        Skia.RSXform(scale, 0, cell.x, cell.y),
-      );
+      xforms.push(Skia.RSXform(scale, 0, cell.x, cell.y));
     }
 
     return { sprites: spriteRects, transforms: xforms };
-  }, [cells, photoInfoMap, cellWidth, cellHeight]);
+  }, [cells, photoInfoMap, cellWidth]);
 
   if (!colorPicture) {
     return null;
   }
-
-  // High-res images to render on top
-  const highResEntries = useMemo(() => {
-    return cells
-      .filter(cell => highResImages[cell.index])
-      .map(cell => ({
-        cell,
-        image: highResImages[cell.index],
-      }));
-  }, [cells, highResImages]);
 
   // Contrast boost matrix
   const contrast = 1.4;
@@ -129,7 +101,7 @@ export const MosaicRenderer = ({
         <ColorMatrix matrix={contrastMatrix} />
       </Picture>
 
-      {/* Middle layer: atlas sprites (low-res) */}
+      {/* Atlas layer: 80x80 photos */}
       {atlas && sprites.length > 0 && (
         <Group opacity={imageOpacity}>
           <Atlas
@@ -142,20 +114,6 @@ export const MosaicRenderer = ({
         </Group>
       )}
 
-      {/* Top layer: high-res images (loaded on demand) */}
-      {highResEntries.map(({ cell, image }) => (
-        <Image
-          key={cell.index}
-          image={image}
-          x={cell.x}
-          y={cell.y}
-          width={cellWidth}
-          height={cellHeight}
-          fit="cover"
-        >
-          <ColorMatrix matrix={contrastMatrix} />
-        </Image>
-      ))}
     </Group>
   );
 };

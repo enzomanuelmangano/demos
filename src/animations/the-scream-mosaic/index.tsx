@@ -7,7 +7,9 @@ import {
   View,
 } from 'react-native';
 
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { Image as ExpoImage } from 'expo-image';
+
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ReText } from 'react-native-redash';
 
@@ -16,6 +18,8 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
   interpolate,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -30,13 +34,13 @@ import { usePhotoAtlas } from './hooks/use-photo-atlas';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MIN_SCALE = 1;
-const MAX_SCALE = 150; // High enough for 100-col grid to reach grid mode
 const SPRING_CONFIG = { dampingRatio: 1, duration: 350 };
 const SNAP_SPRING = { dampingRatio: 0.9, duration: 300 }; // Snappier for grid nav
 
 // Grid mode: when a cell fills this fraction of screen width
-// With ~100 cols: need scale ~75 to fill 70%, or lower threshold
 const GRID_MODE_THRESHOLD = 0.5;
+// Ideal grid scale: cell fills 70% of screen width
+const GRID_MODE_TARGET = 0.7;
 
 // Import the painting asset
 const painting = require('./assets/starry.jpg');
@@ -98,6 +102,7 @@ export function TheScreamMosaic() {
   const { atlas, photoInfoMap } = usePhotoAtlas();
   const { mapping, isMatching } = useMosaicMapping(gridCells, photoInfoMap);
 
+
   // Loading phase
   const loadingPhase: DetailedPhase = useMemo(() => {
     if (isAnalyzingPainting) return 'analyzing-painting';
@@ -136,6 +141,19 @@ export function TheScreamMosaic() {
   const currentRow = useSharedValue(-1); // -1 means no cell selected
   const currentCol = useSharedValue(-1);
 
+  // React state mirror for triggering re-renders (for expo-image overlay)
+  const [gridPosition, setGridPosition] = useState({ row: -1, col: -1 });
+
+  // Sync shared values to React state
+  useAnimatedReaction(
+    () => ({ row: currentRow.value, col: currentCol.value }),
+    (current, previous) => {
+      if (current.row !== previous?.row || current.col !== previous?.col) {
+        runOnJS(setGridPosition)(current);
+      }
+    },
+  );
+
   // Derived: whether we're in grid mode
   const isInGridMode = useDerivedValue(() => {
     if (cellWidth === 0) return false;
@@ -143,13 +161,19 @@ export function TheScreamMosaic() {
     return cellScreenWidth >= SCREEN_WIDTH * GRID_MODE_THRESHOLD;
   });
 
-  // Snap to a specific cell (runs on UI thread)
+  // Ideal scale for grid mode: cell fills 70% of screen width
+  const idealGridScale = cellWidth > 0 ? (GRID_MODE_TARGET * SCREEN_WIDTH) / cellWidth : 1;
+
+  // Snap to a specific cell at ideal scale (runs on UI thread)
   const snapToCell = (row: number, col: number) => {
     'worklet';
+    // Snap scale to ideal grid scale
+    scale.value = withSpring(idealGridScale, SNAP_SPRING);
+
     const cellCenterX = (col + 0.5) * cellWidth;
     const cellCenterY = (row + 0.5) * cellHeight;
-    const targetTx = -(cellCenterX - canvasWidth / 2) * scale.value;
-    const targetTy = -(cellCenterY - canvasHeight / 2) * scale.value;
+    const targetTx = -(cellCenterX - canvasWidth / 2) * idealGridScale;
+    const targetTy = -(cellCenterY - canvasHeight / 2) * idealGridScale;
 
     translateX.value = withSpring(targetTx, SNAP_SPRING);
     translateY.value = withSpring(targetTy, SNAP_SPRING);
@@ -181,13 +205,15 @@ export function TheScreamMosaic() {
       savedScale.value = scale.value;
     })
     .onUpdate(event => {
-      const newScale = clamp(savedScale.value * event.scale, MIN_SCALE, MAX_SCALE);
+      // Allow scaling up to 1.2x beyond ideal for rubberbanding feel
+      const maxScale = idealGridScale * 1.2;
+      const newScale = clamp(savedScale.value * event.scale, MIN_SCALE, maxScale);
       scale.value = newScale;
     })
     .onEnd(() => {
       savedScale.value = scale.value;
 
-      // Snap to 1 if close
+      // Snap to 1 if close to minimum
       if (scale.value < 1.2) {
         scale.value = withSpring(1, SPRING_CONFIG);
         translateX.value = withSpring(0, SPRING_CONFIG);
@@ -208,6 +234,7 @@ export function TheScreamMosaic() {
           const clampedCol = Math.max(0, Math.min(cols - 1, col));
           const clampedRow = Math.max(0, Math.min(rows - 1, row));
 
+          // snapToCell will set scale to idealGridScale
           snapToCell(clampedRow, clampedCol);
         }
       }
@@ -314,11 +341,41 @@ export function TheScreamMosaic() {
     pointerEvents: isInGridMode.value && currentRow.value >= 0 ? 'auto' : 'none',
   }));
 
-  // Cell indicator text (need AnimatedText or useAnimatedReaction for this)
+  // Cell indicator text
   const cellText = useDerivedValue(() => {
     if (currentRow.value < 0 || currentCol.value < 0) return '';
     return `${currentRow.value + 1} × ${currentCol.value + 1}`;
   });
+
+
+  // Build visible cells list for high-res overlay (when in grid mode)
+  const visibleHighResCells = useMemo(() => {
+    const { row, col } = gridPosition;
+
+    if (row < 0 || col < 0 || cols === 0 || rows === 0) return [];
+
+    const result: { cellIndex: number; photoId: number; row: number; col: number }[] = [];
+
+    // Get 3x3 grid around current cell
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const r = row + dr;
+        const c = col + dc;
+        if (r >= 0 && r < rows && c >= 0 && c < cols) {
+          const cellIndex = r * cols + c;
+          const photoId = mapping.get(cellIndex);
+          if (photoId !== undefined) {
+            result.push({ cellIndex, photoId, row: r, col: c });
+          }
+        }
+      }
+    }
+
+    return result;
+  }, [gridPosition, cols, rows, mapping]);
+
+  // Calculate screen size for a cell in grid mode
+  const cellScreenSize = GRID_MODE_TARGET * SCREEN_WIDTH;
 
   return (
     <View style={styles.container}>
@@ -342,6 +399,39 @@ export function TheScreamMosaic() {
           </Canvas>
         </Animated.View>
       </GestureDetector>
+
+      {/* High-res overlay using expo-image (renders at full screen resolution) */}
+      {gridPosition.row >= 0 && visibleHighResCells.length > 0 && (
+        <View style={styles.highResOverlay} pointerEvents="none">
+          {visibleHighResCells.map(({ cellIndex, photoId, row, col }) => {
+            // Calculate position relative to center cell
+            const offsetRow = row - gridPosition.row;
+            const offsetCol = col - gridPosition.col;
+
+            // Screen position (center of screen + offset)
+            const screenX = (SCREEN_WIDTH - cellScreenSize) / 2 + offsetCol * cellScreenSize;
+            const screenY = (SCREEN_HEIGHT - cellScreenSize) / 2 + offsetRow * cellScreenSize;
+
+            const url = `https://picsum.photos/seed/mosaic-${photoId}/1000/1000`;
+
+            return (
+              <ExpoImage
+                key={cellIndex}
+                source={{ uri: url }}
+                style={{
+                  position: 'absolute',
+                  left: screenX,
+                  top: screenY,
+                  width: cellScreenSize,
+                  height: cellScreenSize,
+                }}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+              />
+            );
+          })}
+        </View>
+      )}
 
       {/* Cell indicator */}
       <Animated.View style={[styles.cellIndicator, cellIndicatorStyle]}>
@@ -395,8 +485,12 @@ const styles = StyleSheet.create({
   },
   container: {
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
+    backgroundColor: '#000',
     flex: 1,
+    justifyContent: 'center',
+  },
+  highResOverlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
   },
   loadingOverlay: {

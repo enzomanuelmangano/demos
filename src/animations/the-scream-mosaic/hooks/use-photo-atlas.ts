@@ -80,7 +80,7 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
     const loadData = async () => {
       const startTime = Date.now();
 
-      // Load compact manifest (270KB instead of 2.2MB)
+      // Load compact manifest
       if (!cachedPhotoInfoMap) {
         console.log('[Atlas] Loading compact manifest...');
         const compactData = require('../assets/photos-compact.json') as number[];

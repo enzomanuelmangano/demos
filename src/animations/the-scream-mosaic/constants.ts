@@ -3,8 +3,9 @@
 export const TARGET_CELLS = 10000;
 
 // Photo configuration
-// Photos are pre-downloaded and bundled with the app
-export const PHOTO_SIZE = 80; // 80x80 pixels per photo
+// Low-res atlas for overview, high-res loaded on demand
+export const PHOTO_SIZE = 80;
+export const HIGHRES_SIZE = 800;
 
 // Zoom levels (adjusted for 10k cell grid)
 export const ZOOM_LEVELS = {
