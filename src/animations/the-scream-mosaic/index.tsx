@@ -349,6 +349,7 @@ export function TheScreamMosaic() {
 
 
   // Build visible cells list for high-res overlay (when in grid mode)
+  // Use a larger window (8x8) to ensure smooth scrolling without gaps
   const visibleHighResCells = useMemo(() => {
     const { row, col } = gridPosition;
 
@@ -356,9 +357,9 @@ export function TheScreamMosaic() {
 
     const result: { cellIndex: number; photoId: number; row: number; col: number }[] = [];
 
-    // Get 3x3 grid around current cell
-    for (let dr = -1; dr <= 1; dr++) {
-      for (let dc = -1; dc <= 1; dc++) {
+    // Get 8x8 grid around current cell (larger buffer for smooth animation)
+    for (let dr = -4; dr <= 3; dr++) {
+      for (let dc = -4; dc <= 3; dc++) {
         const r = row + dr;
         const c = col + dc;
         if (r >= 0 && r < rows && c >= 0 && c < cols) {
@@ -376,6 +377,24 @@ export function TheScreamMosaic() {
 
   // Calculate screen size for a cell in grid mode
   const cellScreenSize = GRID_MODE_TARGET * SCREEN_WIDTH;
+
+  // Animated style for high-res overlay (follows canvas exactly)
+  const highResOverlayStyle = useAnimatedStyle(() => {
+    // Hide overlay when not at grid scale (during pinch out)
+    const isAtGridScale = scale.value >= idealGridScale * 0.9;
+
+    // Scale factor to adjust for current scale vs ideal scale
+    const scaleRatio = scale.value / idealGridScale;
+
+    return {
+      opacity: isAtGridScale ? 1 : 0,
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { scale: scaleRatio },
+      ],
+    };
+  });
 
   return (
     <View style={styles.container}>
@@ -402,15 +421,16 @@ export function TheScreamMosaic() {
 
       {/* High-res overlay using expo-image (renders at full screen resolution) */}
       {gridPosition.row >= 0 && visibleHighResCells.length > 0 && (
-        <View style={styles.highResOverlay} pointerEvents="none">
+        <Animated.View style={[styles.highResOverlay, highResOverlayStyle]} pointerEvents="none">
           {visibleHighResCells.map(({ cellIndex, photoId, row, col }) => {
-            // Calculate position relative to center cell
-            const offsetRow = row - gridPosition.row;
-            const offsetCol = col - gridPosition.col;
+            // Position based on canvas coordinates, scaled to screen
+            // This matches where the canvas cell would be after transform
+            const canvasX = col * cellWidth;
+            const canvasY = row * cellHeight;
 
-            // Screen position (center of screen + offset)
-            const screenX = (SCREEN_WIDTH - cellScreenSize) / 2 + offsetCol * cellScreenSize;
-            const screenY = (SCREEN_HEIGHT - cellScreenSize) / 2 + offsetRow * cellScreenSize;
+            // Scale to screen coordinates (matches canvas scale)
+            const screenX = canvasX * idealGridScale + (SCREEN_WIDTH - canvasWidth * idealGridScale) / 2;
+            const screenY = canvasY * idealGridScale + (SCREEN_HEIGHT - canvasHeight * idealGridScale) / 2;
 
             const url = `https://picsum.photos/seed/mosaic-${photoId}/1000/1000`;
 
@@ -430,7 +450,7 @@ export function TheScreamMosaic() {
               />
             );
           })}
-        </View>
+        </Animated.View>
       )}
 
       {/* Cell indicator */}
