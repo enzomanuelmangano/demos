@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Atlas, ColorMatrix, Group, Picture, rect, Skia } from '@shopify/react-native-skia';
+import { Atlas, ColorMatrix, Group, Image, Picture, rect, Skia } from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
@@ -15,6 +15,10 @@ interface CellData {
   placeholderColor: RGB;
 }
 
+interface HighResCache {
+  [cellIndex: number]: SkImage;
+}
+
 interface MosaicRendererProps {
   atlas: SkImage | null;
   cells: CellData[];
@@ -24,6 +28,7 @@ interface MosaicRendererProps {
   canvasWidth: number;
   canvasHeight: number;
   imageOpacity: SharedValue<number>;
+  highResImages?: HighResCache;
 }
 
 export const MosaicRenderer = ({
@@ -35,6 +40,7 @@ export const MosaicRenderer = ({
   canvasWidth,
   canvasHeight,
   imageOpacity,
+  highResImages = {},
 }: MosaicRendererProps) => {
   // Picture with solid colored rectangles (visible when zoomed out)
   const colorPicture = useMemo(() => {
@@ -96,6 +102,16 @@ export const MosaicRenderer = ({
     return null;
   }
 
+  // High-res images to render on top
+  const highResEntries = useMemo(() => {
+    return cells
+      .filter(cell => highResImages[cell.index])
+      .map(cell => ({
+        cell,
+        image: highResImages[cell.index],
+      }));
+  }, [cells, highResImages]);
+
   // Contrast boost matrix
   const contrast = 1.4;
   const offset = 0.5 * (1 - contrast);
@@ -113,7 +129,7 @@ export const MosaicRenderer = ({
         <ColorMatrix matrix={contrastMatrix} />
       </Picture>
 
-      {/* Top layer: atlas sprites (fades in when zoomed) */}
+      {/* Middle layer: atlas sprites (low-res) */}
       {atlas && sprites.length > 0 && (
         <Group opacity={imageOpacity}>
           <Atlas
@@ -125,6 +141,21 @@ export const MosaicRenderer = ({
           </Atlas>
         </Group>
       )}
+
+      {/* Top layer: high-res images (loaded on demand) */}
+      {highResEntries.map(({ cell, image }) => (
+        <Image
+          key={cell.index}
+          image={image}
+          x={cell.x}
+          y={cell.y}
+          width={cellWidth}
+          height={cellHeight}
+          fit="cover"
+        >
+          <ColorMatrix matrix={contrastMatrix} />
+        </Image>
+      ))}
     </Group>
   );
 };
