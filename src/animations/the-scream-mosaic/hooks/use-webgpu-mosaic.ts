@@ -10,16 +10,20 @@ import { mosaicVertexShader, mosaicFragmentShader } from '../shaders';
 import type { PhotoInfo } from './use-photo-atlas';
 import type { RGB } from '../types';
 
-// Atlas configuration
-const PHOTO_SIZE = 80;
-const ATLAS_COLS = 100;
+// Atlas configuration - 7 atlases, 40x40 photos each at 200px
+const PHOTO_SIZE = 200;
+const ATLAS_COLS = 40;
+const ATLAS_ROWS = 40;
+const ATLAS_COUNT = 7;
+const ATLAS_WIDTH = ATLAS_COLS * PHOTO_SIZE; // 8000px
+const ATLAS_HEIGHT = ATLAS_ROWS * PHOTO_SIZE; // 8000px
 const CONTRAST = 1.4;
 
 // Uniform buffer size (16 floats aligned)
 const UNIFORM_BUFFER_SIZE = 64;
 
-// Tile data: 8 floats per tile (removed high-res slot)
-const FLOATS_PER_TILE = 8;
+// Tile data: 12 floats per tile (padded for alignment)
+const FLOATS_PER_TILE = 12;
 
 interface CellData {
   index: number;
@@ -40,7 +44,7 @@ interface GPUResources {
   bindGroup: GPUBindGroup;
   uniformBuffer: GPUBuffer;
   tileBuffer: GPUBuffer;
-  atlasTexture: GPUTexture;
+  atlasTextures: GPUTexture[];
   buffers: GPUBuffer[];
   tileCount: number;
 }
@@ -68,7 +72,6 @@ export function useWebGPUMosaic(
   const isInitializedRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
 
-  // Pre-allocate uniform buffer to avoid GC during render
   const uniformDataRef = useRef(new Float32Array(16));
 
   const {
@@ -85,10 +88,6 @@ export function useWebGPUMosaic(
     translateY,
   } = options;
 
-  // Pre-compute atlas dimensions
-  const atlasWidth = ATLAS_COLS * PHOTO_SIZE;
-  const atlasHeight = Math.ceil(photoInfoMap.size / ATLAS_COLS) * PHOTO_SIZE;
-
   const cleanup = useCallback(() => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
@@ -96,16 +95,15 @@ export function useWebGPUMosaic(
     }
 
     if (resourcesRef.current) {
-      const { atlasTexture, buffers } = resourcesRef.current;
+      const { atlasTextures, buffers } = resourcesRef.current;
       buffers.forEach(buffer => buffer.destroy());
-      atlasTexture.destroy();
+      atlasTextures.forEach(texture => texture.destroy());
       resourcesRef.current = null;
     }
 
     isInitializedRef.current = false;
   }, []);
 
-  // Build tile data (simplified - no high-res slots)
   const buildTileData = useCallback((): {
     data: Float32Array;
     count: number;
@@ -116,9 +114,6 @@ export function useWebGPUMosaic(
 
     const data = new Float32Array(validCells.length * FLOATS_PER_TILE);
 
-    const aWidth = ATLAS_COLS * PHOTO_SIZE;
-    const aHeight = Math.ceil(photoInfoMap.size / ATLAS_COLS) * PHOTO_SIZE;
-
     validCells.forEach((cell, i) => {
       const info = photoInfoMap.get(cell.photoId!)!;
       const offset = i * FLOATS_PER_TILE;
@@ -127,28 +122,41 @@ export function useWebGPUMosaic(
       data[offset + 1] = cell.y;
       data[offset + 2] = cellWidth;
       data[offset + 3] = cellHeight;
-      data[offset + 4] = info.atlasRect.x / aWidth;
-      data[offset + 5] = info.atlasRect.y / aHeight;
-      data[offset + 6] = info.atlasRect.width / aWidth;
-      data[offset + 7] = info.atlasRect.height / aHeight;
+      data[offset + 4] = info.atlasRect.x / ATLAS_WIDTH;
+      data[offset + 5] = info.atlasRect.y / ATLAS_HEIGHT;
+      data[offset + 6] = info.atlasRect.width / ATLAS_WIDTH;
+      data[offset + 7] = info.atlasRect.height / ATLAS_HEIGHT;
+      data[offset + 8] = info.atlasIndex;
     });
 
     return { data, count: validCells.length };
   }, [cells, photoInfoMap, cellWidth, cellHeight]);
 
-  // Load atlas texture
   const loadAtlasTexture = useCallback(
-    async (device: GPUDevice): Promise<GPUTexture | null> => {
+    async (device: GPUDevice, atlasIndex: number): Promise<GPUTexture | null> => {
       try {
-        const resolved = Image.resolveAssetSource(
-          require('../assets/photo-atlas.jpg'),
-        );
+        console.log(`[WebGPU] Loading atlas ${atlasIndex}...`);
 
-        if (!resolved?.uri) return null;
+        let resolved;
+        switch (atlasIndex) {
+          case 0: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-0.jpg')); break;
+          case 1: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-1.jpg')); break;
+          case 2: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-2.jpg')); break;
+          case 3: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-3.jpg')); break;
+          case 4: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-4.jpg')); break;
+          case 5: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-5.jpg')); break;
+          case 6: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-6.jpg')); break;
+          default: return null;
+        }
+
+        if (!resolved?.uri) {
+          console.error(`[WebGPU] No URI for atlas ${atlasIndex}`);
+          return null;
+        }
 
         const response = await fetch(resolved.uri);
-        const arrayBuffer = await response.arrayBuffer();
-        const imageBitmap = await createImageBitmap(arrayBuffer);
+        const blob = await response.blob();
+        const imageBitmap = await createImageBitmap(blob);
 
         const texture = device.createTexture({
           size: [imageBitmap.width, imageBitmap.height],
@@ -162,16 +170,16 @@ export function useWebGPUMosaic(
           [imageBitmap.width, imageBitmap.height],
         );
 
+        console.log(`[WebGPU] Loaded atlas ${atlasIndex}: ${imageBitmap.width}x${imageBitmap.height}`);
         return texture;
       } catch (e) {
-        console.error('[WebGPU Mosaic] Failed to load atlas texture:', e);
+        console.error(`[WebGPU Mosaic] Failed to load atlas ${atlasIndex}:`, e);
         return null;
       }
     },
     [],
   );
 
-  // Render loop
   const render = useCallback(() => {
     if (!resourcesRef.current) {
       animationRef.current = requestAnimationFrame(render);
@@ -183,14 +191,13 @@ export function useWebGPUMosaic(
 
     const time = (Date.now() - startTimeRef.current) / 1000;
 
-    // Reuse pre-allocated buffer
     const uniformData = uniformDataRef.current;
     uniformData[0] = screenWidth;
     uniformData[1] = screenHeight;
     uniformData[2] = paintingWidth;
     uniformData[3] = paintingHeight;
-    uniformData[4] = atlasWidth;
-    uniformData[5] = atlasHeight;
+    uniformData[4] = ATLAS_WIDTH;
+    uniformData[5] = ATLAS_HEIGHT;
     uniformData[6] = CONTRAST;
     uniformData[7] = time;
     uniformData[8] = scale.value;
@@ -231,8 +238,6 @@ export function useWebGPUMosaic(
     screenHeight,
     paintingWidth,
     paintingHeight,
-    atlasWidth,
-    atlasHeight,
     scale,
     translateX,
     translateY,
@@ -261,8 +266,16 @@ export function useWebGPUMosaic(
 
       context.configure({ device, format, alphaMode: 'premultiplied' });
 
-      const atlasTexture = await loadAtlasTexture(device);
-      if (!atlasTexture) return;
+      // Load all 7 atlas textures
+      const atlasTextures: GPUTexture[] = [];
+      for (let i = 0; i < ATLAS_COUNT; i++) {
+        const texture = await loadAtlasTexture(device, i);
+        if (!texture) {
+          console.error(`[WebGPU] Failed to load atlas ${i}`);
+          return;
+        }
+        atlasTextures.push(texture);
+      }
 
       const buffers: GPUBuffer[] = [];
 
@@ -273,6 +286,7 @@ export function useWebGPUMosaic(
       buffers.push(uniformBuffer);
 
       const { data: tileData, count: tileCount } = buildTileData();
+      console.log(`[WebGPU] Built ${tileCount} tiles`);
 
       const tileBuffer = device.createBuffer({
         size: Math.max(tileData.byteLength, 32),
@@ -290,28 +304,19 @@ export function useWebGPUMosaic(
         minFilter: 'linear',
       });
 
+      // Bind group layout with 7 textures
       const bindGroupLayout = device.createBindGroupLayout({
         entries: [
-          {
-            binding: 0,
-            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
-            buffer: { type: 'uniform' },
-          },
-          {
-            binding: 1,
-            visibility: GPUShaderStage.VERTEX,
-            buffer: { type: 'read-only-storage' },
-          },
-          {
-            binding: 2,
-            visibility: GPUShaderStage.FRAGMENT,
-            texture: { sampleType: 'float' },
-          },
-          {
-            binding: 3,
-            visibility: GPUShaderStage.FRAGMENT,
-            sampler: { type: 'filtering' },
-          },
+          { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
+          { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+          { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 6, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 7, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 8, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
+          { binding: 9, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
         ],
       });
 
@@ -320,8 +325,14 @@ export function useWebGPUMosaic(
         entries: [
           { binding: 0, resource: { buffer: uniformBuffer } },
           { binding: 1, resource: { buffer: tileBuffer } },
-          { binding: 2, resource: atlasTexture.createView() },
-          { binding: 3, resource: sampler },
+          { binding: 2, resource: atlasTextures[0].createView() },
+          { binding: 3, resource: atlasTextures[1].createView() },
+          { binding: 4, resource: atlasTextures[2].createView() },
+          { binding: 5, resource: atlasTextures[3].createView() },
+          { binding: 6, resource: atlasTextures[4].createView() },
+          { binding: 7, resource: atlasTextures[5].createView() },
+          { binding: 8, resource: atlasTextures[6].createView() },
+          { binding: 9, resource: sampler },
         ],
       });
 
@@ -351,13 +362,14 @@ export function useWebGPUMosaic(
         bindGroup,
         uniformBuffer,
         tileBuffer,
-        atlasTexture,
+        atlasTextures,
         buffers,
         tileCount,
       };
 
       isInitializedRef.current = true;
       startTimeRef.current = Date.now();
+      console.log(`[WebGPU] Starting render loop with ${tileCount} tiles`);
       animationRef.current = requestAnimationFrame(render);
     } catch (e) {
       console.error('[WebGPU Mosaic] Initialization failed:', e);
@@ -371,7 +383,6 @@ export function useWebGPUMosaic(
     render,
   ]);
 
-  // Update tile buffer when cells change
   useEffect(() => {
     if (!resourcesRef.current || cells.length === 0) return;
 
@@ -386,7 +397,6 @@ export function useWebGPUMosaic(
     resourcesRef.current.tileCount = tileCount;
   }, [cells, buildTileData]);
 
-  // Initialize on mount
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       initWebGPU();

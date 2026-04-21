@@ -16,13 +16,14 @@ struct Uniforms {
 struct VertexOutput {
   @builtin(position) position: vec4f,
   @location(0) atlasUV: vec2f,
+  @location(1) @interpolate(flat) atlasIndex: u32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> tiles: array<f32>;
 
-// Tile data layout (8 floats per tile):
-// [posX, posY, width, height, uvX, uvY, uvW, uvH]
+// Tile data layout (12 floats per tile, padded for alignment):
+// [posX, posY, width, height, uvX, uvY, uvW, uvH, atlasIndex, pad, pad, pad]
 
 @vertex
 fn main(
@@ -31,10 +32,8 @@ fn main(
 ) -> VertexOutput {
   var output: VertexOutput;
 
-  // 6 vertices per quad (2 triangles)
   let quadIndex = vertexIndex % 6u;
 
-  // Local quad positions (0-1 range)
   var localPos: vec2f;
   var localUV: vec2f;
 
@@ -48,8 +47,7 @@ fn main(
     default: { localPos = vec2f(0.0, 0.0); localUV = vec2f(0.0, 0.0); }
   }
 
-  // Read tile data from storage buffer (8 floats per tile)
-  let tileOffset = instanceIndex * 8u;
+  let tileOffset = instanceIndex * 12u;
   let tileX = tiles[tileOffset + 0u];
   let tileY = tiles[tileOffset + 1u];
   let tileW = tiles[tileOffset + 2u];
@@ -58,34 +56,26 @@ fn main(
   let uvY = tiles[tileOffset + 5u];
   let uvW = tiles[tileOffset + 6u];
   let uvH = tiles[tileOffset + 7u];
+  let atlasIdx = u32(tiles[tileOffset + 8u]);
 
-  // Calculate world position within painting
   let worldX = tileX + localPos.x * tileW;
   let worldY = tileY + localPos.y * tileH;
 
-  // Position relative to painting center (for scaling around center)
   let centeredX = worldX - uniforms.paintingWidth / 2.0;
   let centeredY = worldY - uniforms.paintingHeight / 2.0;
 
-  // Apply scale around painting center
   let scaledX = centeredX * uniforms.scale;
   let scaledY = centeredY * uniforms.scale;
 
-  // Apply translation and move back to screen space
   let screenX = scaledX + uniforms.translateX + uniforms.screenWidth / 2.0;
   let screenY = scaledY + uniforms.translateY + uniforms.screenHeight / 2.0;
 
-  // Convert to NDC
   let ndcX = 2.0 * (screenX / uniforms.screenWidth) - 1.0;
   let ndcY = 1.0 - 2.0 * (screenY / uniforms.screenHeight);
 
   output.position = vec4f(ndcX, ndcY, 0.0, 1.0);
-
-  // Atlas UV coordinates
-  output.atlasUV = vec2f(
-    uvX + localUV.x * uvW,
-    uvY + localUV.y * uvH
-  );
+  output.atlasUV = vec2f(uvX + localUV.x * uvW, uvY + localUV.y * uvH);
+  output.atlasIndex = atlasIdx;
 
   return output;
 }

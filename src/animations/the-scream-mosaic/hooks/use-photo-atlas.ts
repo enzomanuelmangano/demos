@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import type { LAB, RGB } from '../types';
 
 // Atlas configuration - matches generate-sprite-atlas.ts
-const PHOTO_SIZE = 80;
-const ATLAS_COLS = 100;
+const PHOTO_SIZE = 200;
+const ATLAS_COLS = 40;
+const PHOTOS_PER_ATLAS = ATLAS_COLS * 40; // 1600
 
 interface Rect {
   x: number;
@@ -18,6 +19,7 @@ export interface PhotoInfo {
   averageColor: RGB;
   labColor: LAB;
   atlasRect: Rect;
+  atlasIndex: number;
 }
 
 interface UsePhotoAtlasResult {
@@ -25,15 +27,20 @@ interface UsePhotoAtlasResult {
   isLoading: boolean;
 }
 
-// Compute atlas position from photo ID
-const getAtlasRect = (id: number): Rect => {
-  const col = id % ATLAS_COLS;
-  const row = Math.floor(id / ATLAS_COLS);
+// Compute atlas index and position within atlas from photo ID
+const getAtlasInfo = (id: number): { atlasIndex: number; rect: Rect } => {
+  const atlasIndex = Math.floor(id / PHOTOS_PER_ATLAS);
+  const indexInAtlas = id % PHOTOS_PER_ATLAS;
+  const col = indexInAtlas % ATLAS_COLS;
+  const row = Math.floor(indexInAtlas / ATLAS_COLS);
   return {
-    x: col * PHOTO_SIZE,
-    y: row * PHOTO_SIZE,
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
+    atlasIndex,
+    rect: {
+      x: col * PHOTO_SIZE,
+      y: row * PHOTO_SIZE,
+      width: PHOTO_SIZE,
+      height: PHOTO_SIZE,
+    },
   };
 };
 
@@ -47,6 +54,7 @@ const parseCompactManifest = (data: number[]): Map<number, PhotoInfo> => {
 
   for (let i = 0; i < numPhotos; i++) {
     const offset = i * 6;
+    const { atlasIndex, rect } = getAtlasInfo(i);
     infoMap.set(i, {
       id: i,
       averageColor: {
@@ -59,7 +67,8 @@ const parseCompactManifest = (data: number[]): Map<number, PhotoInfo> => {
         a: data[offset + 4],
         b: data[offset + 5],
       },
-      atlasRect: getAtlasRect(i),
+      atlasRect: rect,
+      atlasIndex,
     });
   }
 

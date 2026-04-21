@@ -18,7 +18,7 @@ import sharp from 'sharp';
 
 // Configuration
 const PHOTO_COUNT = 10000;
-const PHOTO_SIZE = 80;
+const PHOTO_SIZE = 200;
 const BATCH_SIZE = 50;
 const BATCH_DELAY = 100; // ms between batches to avoid rate limiting
 const MAX_RETRIES = 3;
