@@ -9,7 +9,6 @@ import {
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Image as ExpoImage } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
@@ -112,16 +111,6 @@ export function TheScreamMosaic() {
     }));
   }, [gridCells, mapping, cellWidth, cellHeight]);
 
-  // Initialize WebGPU renderer
-  useWebGPUMosaic(canvasRef, {
-    cells,
-    photoInfoMap,
-    cellWidth,
-    cellHeight,
-    canvasWidth,
-    canvasHeight,
-  });
-
   // Loading phase (WebGPU loads atlas internally)
   const loadingPhase: DetailedPhase = useMemo(() => {
     if (isAnalyzingPainting) return 'analyzing-painting';
@@ -155,7 +144,7 @@ export function TheScreamMosaic() {
   const currentRow = useSharedValue(-1); // -1 means no cell selected
   const currentCol = useSharedValue(-1);
 
-  // React state mirror for triggering re-renders (for expo-image overlay)
+  // React state mirror for triggering re-renders
   const [gridPosition, setGridPosition] = useState({ row: -1, col: -1 });
 
   // Sync shared values to React state
@@ -167,6 +156,45 @@ export function TheScreamMosaic() {
       }
     },
   );
+
+  // Build visible cells for high-res loading (WebGPU handles this internally)
+  const visibleCellsForHighRes = useMemo(() => {
+    const { row, col } = gridPosition;
+    if (row < 0 || col < 0 || cols === 0 || rows === 0) return [];
+
+    const result: { row: number; col: number }[] = [];
+
+    // Get 8x8 grid around current cell for high-res loading
+    for (let dr = -4; dr <= 3; dr++) {
+      for (let dc = -4; dc <= 3; dc++) {
+        const r = row + dr;
+        const c = col + dc;
+        if (r >= 0 && r < rows && c >= 0 && c < cols) {
+          result.push({ row: r, col: c });
+        }
+      }
+    }
+
+    return result;
+  }, [gridPosition, cols, rows]);
+
+  // Initialize WebGPU renderer with transform applied in shader
+  // Pass SharedValues directly - they're read in the render loop
+  useWebGPUMosaic(canvasRef, {
+    cells,
+    photoInfoMap,
+    cellWidth,
+    cellHeight,
+    paintingWidth: canvasWidth,
+    paintingHeight: canvasHeight,
+    screenWidth: SCREEN_WIDTH,
+    screenHeight: SCREEN_HEIGHT,
+    visibleCells: visibleCellsForHighRes,
+    gridCols: cols,
+    scale,
+    translateX,
+    translateY,
+  });
 
   // Derived: whether we're in grid mode
   const isInGridMode = useDerivedValue(() => {
@@ -393,14 +421,6 @@ export function TheScreamMosaic() {
 
   const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-    ],
-  }));
-
   const backButtonStyle = useAnimatedStyle(() => ({
     opacity: backButtonOpacity.value,
     pointerEvents: backButtonOpacity.value > 0.5 ? 'auto' : 'none',
@@ -419,105 +439,13 @@ export function TheScreamMosaic() {
     return `${currentRow.value + 1} × ${currentCol.value + 1}`;
   });
 
-  // Build visible cells list for high-res overlay (when in grid mode)
-  // Use a larger window (8x8) to ensure smooth scrolling without gaps
-  const visibleHighResCells = useMemo(() => {
-    const { row, col } = gridPosition;
-
-    if (row < 0 || col < 0 || cols === 0 || rows === 0) return [];
-
-    const result: {
-      cellIndex: number;
-      photoId: number;
-      row: number;
-      col: number;
-    }[] = [];
-
-    // Get 8x8 grid around current cell (larger buffer for smooth animation)
-    for (let dr = -4; dr <= 3; dr++) {
-      for (let dc = -4; dc <= 3; dc++) {
-        const r = row + dr;
-        const c = col + dc;
-        if (r >= 0 && r < rows && c >= 0 && c < cols) {
-          const cellIndex = r * cols + c;
-          const photoId = mapping.get(cellIndex);
-          if (photoId !== undefined) {
-            result.push({ cellIndex, photoId, row: r, col: c });
-          }
-        }
-      }
-    }
-
-    return result;
-  }, [gridPosition, cols, rows, mapping]);
-
-  // Calculate screen size for a cell in grid mode
-  const cellScreenSize = GRID_MODE_TARGET * SCREEN_WIDTH;
-
-  // Animated style for high-res overlay (follows canvas exactly)
-  const highResOverlayStyle = useAnimatedStyle(() => {
-    // Fade out when not at grid scale (during pinch out)
-    const scaleRatio = scale.value / idealGridScale;
-    const opacity = interpolate(scaleRatio, [0.85, 1], [0, 1], 'clamp');
-
-    return {
-      opacity,
-      transform: [
-        { translateX: translateX.value },
-        { translateY: translateY.value },
-      ],
-    };
-  });
-
   return (
     <GestureDetector gesture={composedGesture}>
       <View style={styles.container}>
-        <Animated.View style={animatedStyle}>
-          <Canvas
-            ref={canvasRef}
-            style={{ width: canvasWidth, height: canvasHeight }}
-          />
-        </Animated.View>
-
-        {/* High-res overlay using expo-image (renders at full screen resolution) */}
-        {gridPosition.row >= 0 && visibleHighResCells.length > 0 && (
-          <Animated.View
-            style={[styles.highResOverlay, highResOverlayStyle]}
-            pointerEvents="none">
-            {visibleHighResCells.map(({ cellIndex, photoId, row, col }) => {
-              // Position based on canvas coordinates, scaled to screen
-              // This matches where the canvas cell would be after transform
-              const canvasX = col * cellWidth;
-              const canvasY = row * cellHeight;
-
-              // Scale to screen coordinates (matches canvas scale)
-              const screenX =
-                canvasX * idealGridScale +
-                (SCREEN_WIDTH - canvasWidth * idealGridScale) / 2;
-              const screenY =
-                canvasY * idealGridScale +
-                (SCREEN_HEIGHT - canvasHeight * idealGridScale) / 2;
-
-              const url = `https://picsum.photos/seed/mosaic-${photoId}/1000/1000`;
-
-              return (
-                <ExpoImage
-                  key={cellIndex}
-                  source={{ uri: url }}
-                  style={{
-                    position: 'absolute',
-                    left: screenX,
-                    top: screenY,
-                    width: cellScreenSize,
-                    height: cellScreenSize,
-                  }}
-                  contentFit="cover"
-                  cachePolicy="memory-disk"
-                />
-              );
-            })}
-          </Animated.View>
-        )}
+        <Canvas
+          ref={canvasRef}
+          style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
+        />
 
         {/* Cell indicator */}
         <Animated.View style={[styles.cellIndicator, cellIndicatorStyle]}>
@@ -575,10 +503,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#000',
     flex: 1,
-    justifyContent: 'center',
-  },
-  highResOverlay: {
-    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
   },
   loadingOverlay: {
