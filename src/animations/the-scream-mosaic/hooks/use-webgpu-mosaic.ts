@@ -37,6 +37,37 @@ const ATLAS_ASSETS = [
   require('../assets/atlases/photo-atlas-6.jpg'),
 ];
 
+// Prefetch cache - starts loading when component mounts
+let prefetchPromise: Promise<SkData[]> | null = null;
+let cachedSkData: SkData[] | null = null;
+
+type SkData = ReturnType<typeof Skia.Data.fromBytes>;
+
+export function startAtlasPrefetch(): Promise<SkData[]> {
+  if (cachedSkData) {
+    return Promise.resolve(cachedSkData);
+  }
+  if (prefetchPromise) {
+    return prefetchPromise;
+  }
+
+  console.log('[Prefetch] Starting Skia.Data.fromURI for all atlases...');
+  const startTime = Date.now();
+
+  prefetchPromise = Promise.all(
+    ATLAS_ASSETS.map(asset => {
+      const resolved = Image.resolveAssetSource(asset);
+      return Skia.Data.fromURI(resolved.uri);
+    }),
+  ).then(dataArray => {
+    cachedSkData = dataArray;
+    console.log(`[Prefetch] All atlas data loaded in ${Date.now() - startTime}ms`);
+    return dataArray;
+  });
+
+  return prefetchPromise;
+}
+
 interface CellData {
   index: number;
   x: number;
@@ -144,34 +175,16 @@ export function useWebGPUMosaic(
     return { data, count: validCells.length };
   }, [cells, photoInfoMap, cellWidth, cellHeight]);
 
-  // Fetch ArrayBuffer for an atlas
-  const fetchAtlasBuffer = useCallback(
-    async (atlasIndex: number): Promise<ArrayBuffer | null> => {
-      try {
-        const resolved = Image.resolveAssetSource(ATLAS_ASSETS[atlasIndex]);
-        if (!resolved?.uri) return null;
-
-        const response = await fetch(resolved.uri);
-        return response.arrayBuffer();
-      } catch {
-        return null;
-      }
-    },
-    [],
-  );
-
-  // Decode using Skia (potentially faster than createImageBitmap)
-  const decodeWithSkia = useCallback(
+  // Decode atlas from SkData and upload to GPU
+  const decodeAtlasToGPU = useCallback(
     async (
       device: GPUDevice,
       atlasIndex: number,
-      arrayBuffer: ArrayBuffer,
+      data: SkData,
     ): Promise<GPUTexture | null> => {
       try {
         const t0 = Date.now();
 
-        // Decode with Skia
-        const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
         const skImage = Skia.Image.MakeImageFromEncoded(data);
         if (!skImage) {
           console.error(`[Atlas ${atlasIndex}] Skia decode failed`);
@@ -211,7 +224,7 @@ export function useWebGPUMosaic(
         );
         const t3 = Date.now();
 
-        console.log(`[Atlas ${atlasIndex} Skia] decode=${t1-t0}ms pixels=${t2-t1}ms gpu=${t3-t2}ms total=${t3-t0}ms`);
+        console.log(`[Atlas ${atlasIndex}] decode=${t1-t0}ms pixels=${t2-t1}ms gpu=${t3-t2}ms total=${t3-t0}ms`);
         return texture;
       } catch (e) {
         console.error(`[Atlas ${atlasIndex}] Skia error:`, e);
@@ -307,58 +320,26 @@ export function useWebGPUMosaic(
 
       context.configure({ device, format, alphaMode: 'premultiplied' });
 
-      // Pipeline approach: fetch all in parallel, decode with Skia
+      // Wait for prefetched SkData (should already be loaded during analysis)
       const atlasStart = Date.now();
+      console.log('[WebGPU] Waiting for prefetched atlas data...');
+      const skDataArray = await startAtlasPrefetch();
+      console.log(`[WebGPU] Prefetch ready in ${Date.now() - atlasStart}ms`);
 
-      // Step 1: Start all fetches in parallel
-      console.log('[WebGPU] Starting parallel fetch...');
-      const fetchStart = Date.now();
-      const imageBufferPromises = Array.from({ length: ATLAS_COUNT }, (_, i) =>
-        fetchAtlasBuffer(i),
-      );
-      const imageBuffers = await Promise.all(imageBufferPromises);
-      console.log(`[WebGPU] All fetches complete: ${Date.now() - fetchStart}ms`);
-
-      // Step 2: Decode with Skia in parallel batches of 2
-      console.log('[WebGPU] Decoding with Skia (parallel x2)...');
+      // Decode all to GPU textures in parallel
       const decodeStart = Date.now();
-      const atlasTextures: (GPUTexture | null)[] = new Array(ATLAS_COUNT).fill(null);
+      const atlasResults = await Promise.all(
+        skDataArray.map((data, i) => decodeAtlasToGPU(device, i, data)),
+      );
 
-      const DECODE_BATCH = 7;
-      for (let batch = 0; batch < ATLAS_COUNT; batch += DECODE_BATCH) {
-        const batchIndices: number[] = [];
-        for (let i = batch; i < Math.min(batch + DECODE_BATCH, ATLAS_COUNT); i++) {
-          batchIndices.push(i);
-        }
-
-        const batchStart = Date.now();
-        const batchResults = await Promise.all(
-          batchIndices.map(async (i) => {
-            const imgBuffer = imageBuffers[i];
-            if (!imgBuffer) return null;
-            return decodeWithSkia(device, i, imgBuffer);
-          }),
-        );
-        console.log(`[Batch ${batch / DECODE_BATCH}] ${batchIndices.join(',')} done in ${Date.now() - batchStart}ms`);
-
-        for (let j = 0; j < batchResults.length; j++) {
-          if (!batchResults[j]) {
-            console.error(`[WebGPU] Failed to decode atlas ${batchIndices[j]}`);
-            return;
-          }
-          atlasTextures[batchIndices[j]] = batchResults[j];
-        }
-      }
-
-      // Filter out nulls and verify we have all textures
-      const validTextures = atlasTextures.filter((t): t is GPUTexture => t !== null);
+      // Verify all loaded successfully
+      const validTextures = atlasResults.filter((t): t is GPUTexture => t !== null);
       if (validTextures.length !== ATLAS_COUNT) {
         console.error('[WebGPU] Missing atlas textures');
         return;
       }
 
-      console.log(`[WebGPU] All decodes complete: ${Date.now() - decodeStart}ms`);
-      console.log(`[WebGPU] Total atlas loading: ${Date.now() - atlasStart}ms`);
+      console.log(`[WebGPU] All atlases decoded in ${Date.now() - decodeStart}ms`);
 
       const buffers: GPUBuffer[] = [];
 
@@ -445,7 +426,7 @@ export function useWebGPUMosaic(
         bindGroup,
         uniformBuffer,
         tileBuffer,
-        atlasTextures,
+        atlasTextures: validTextures,
         buffers,
         tileCount,
       };
@@ -460,8 +441,7 @@ export function useWebGPUMosaic(
   }, [
     canvasRef,
     buildTileData,
-    fetchAtlasBuffer,
-    decodeWithSkia,
+    decodeAtlasToGPU,
     cells.length,
     photoInfoMap.size,
     render,

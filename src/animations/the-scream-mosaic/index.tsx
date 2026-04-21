@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -21,10 +21,36 @@ import Animated, {
 import { ReText } from 'react-native-redash';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 
-import { useMosaicMapping } from './hooks/use-mosaic-mapping';
+import {
+  clearMosaicMappingCache,
+  useMosaicMapping,
+} from './hooks/use-mosaic-mapping';
 import { usePaintingAnalysis } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
-import { useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
+import { startAtlasPrefetch, useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
+
+// Available paintings
+const PAINTINGS = [
+  { id: 'starry', name: 'Starry Night', asset: require('./assets/starry.jpg') },
+  {
+    id: 'the-scream',
+    name: 'The Scream',
+    asset: require('./assets/the-scream.jpg'),
+  },
+  {
+    id: 'thelovers',
+    name: 'The Lovers',
+    asset: require('./assets/thelovers.jpg'),
+  },
+  { id: 'hopper', name: 'Nighthawks', asset: require('./assets/hopper.jpg') },
+  { id: 'hopper2', name: 'Automat', asset: require('./assets/hopper2.jpg') },
+  {
+    id: 'hopper3',
+    name: 'Morning Sun',
+    asset: require('./assets/hopper3.jpg'),
+  },
+  { id: 'hopper4', name: 'Office', asset: require('./assets/hopper4.jpg') },
+];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,9 +62,6 @@ const SNAP_SPRING = { dampingRatio: 0.9, duration: 300 };
 const GRID_MODE_THRESHOLD = 0.5;
 // Ideal grid scale: cell fills 70% of screen width
 const GRID_MODE_TARGET = 0.7;
-
-// Import the painting asset
-const painting = require('./assets/starry.jpg');
 
 // Detailed loading phases
 type DetailedPhase =
@@ -76,12 +99,32 @@ export function TheScreamMosaic() {
   const startTime = useRef(Date.now());
   const canvasRef = useRef<CanvasRef>(null);
 
+  // Painting selection
+  const [selectedPaintingId, setSelectedPaintingId] = useState(PAINTINGS[0].id);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  const selectedPainting = useMemo(
+    () => PAINTINGS.find(p => p.id === selectedPaintingId) ?? PAINTINGS[0],
+    [selectedPaintingId],
+  );
+
+  const handlePaintingChange = useCallback((paintingId: string) => {
+    clearMosaicMappingCache();
+    setSelectedPaintingId(paintingId);
+    setIsDropdownOpen(false);
+  }, []);
+
+  // Start prefetching atlases immediately (runs in parallel with analysis)
+  useEffect(() => {
+    startAtlasPrefetch();
+  }, []);
+
   // Analysis hooks
   const {
     gridCells,
     gridDimensions,
     isAnalyzing: isAnalyzingPainting,
-  } = usePaintingAnalysis(painting);
+  } = usePaintingAnalysis(selectedPainting.asset);
 
   const { cols, rows, aspectRatio } = gridDimensions;
 
@@ -396,6 +439,41 @@ export function TheScreamMosaic() {
           </Pressable>
         </Animated.View>
 
+        {/* Painting selector dropdown */}
+        <View style={styles.dropdownContainer}>
+          <Pressable
+            style={styles.dropdownButton}
+            onPress={() => setIsDropdownOpen(!isDropdownOpen)}>
+            <Text style={styles.dropdownButtonText}>
+              {selectedPainting.name} ▼
+            </Text>
+          </Pressable>
+
+          {isDropdownOpen && (
+            <View style={styles.dropdownMenu}>
+              {PAINTINGS.map(painting => (
+                <Pressable
+                  key={painting.id}
+                  style={[
+                    styles.dropdownItem,
+                    painting.id === selectedPaintingId &&
+                      styles.dropdownItemSelected,
+                  ]}
+                  onPress={() => handlePaintingChange(painting.id)}>
+                  <Text
+                    style={[
+                      styles.dropdownItemText,
+                      painting.id === selectedPaintingId &&
+                        styles.dropdownItemTextSelected,
+                    ]}>
+                    {painting.name}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
         <LoadingOverlay phase={loadingPhase} />
       </View>
     </GestureDetector>
@@ -406,7 +484,7 @@ const styles = StyleSheet.create({
   backButton: {
     left: 20,
     position: 'absolute',
-    top: 60,
+    top: 110,
   },
   backButtonPressable: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -419,6 +497,45 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  dropdownButton: {
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  dropdownButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dropdownContainer: {
+    left: 20,
+    position: 'absolute',
+    top: 60,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  dropdownItemSelected: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
+  dropdownItemText: {
+    color: '#fff',
+    fontSize: 14,
+  },
+  dropdownItemTextSelected: {
+    fontWeight: '600',
+  },
+  dropdownMenu: {
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    borderCurve: 'continuous',
+    borderRadius: 12,
+    marginTop: 4,
+    overflow: 'hidden',
   },
   cellIndicator: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',

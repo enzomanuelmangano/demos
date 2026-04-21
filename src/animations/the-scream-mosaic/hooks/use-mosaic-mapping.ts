@@ -124,9 +124,9 @@ export const useMosaicMapping = (
 
       // Sort cells by saturation (more saturated = harder to match, do first)
       const sortedCells = [...cells].sort((a, b) => {
-        const satA = Math.sqrt(a.targetLab.a * a.targetLab.a + a.targetLab.b * a.targetLab.b);
-        const satB = Math.sqrt(b.targetLab.a * b.targetLab.a + b.targetLab.b * b.targetLab.b);
-        return satB - satA; // Higher saturation first
+        const satA = a.targetLab.a * a.targetLab.a + a.targetLab.b * a.targetLab.b;
+        const satB = b.targetLab.a * b.targetLab.a + b.targetLab.b * b.targetLab.b;
+        return satB - satA; // Higher saturation first (using squared to avoid sqrt)
       });
 
       for (const cell of sortedCells) {
@@ -168,7 +168,6 @@ export const useMosaicMapping = (
         }
       }
     }
-
     console.log(`[Mapping] Completed in ${Date.now() - startTime}ms (${newMapping.size} unique photos)`);
 
     cachedMosaicMapping = newMapping;
