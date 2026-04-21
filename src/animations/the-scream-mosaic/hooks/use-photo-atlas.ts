@@ -21,6 +21,7 @@ interface UsePhotoAtlasResult {
   atlas: SkImage | null;
   photoInfoMap: Map<number, PhotoInfo>;
   isLoading: boolean;
+  atlasUri: string | null;
 }
 
 // Compute atlas position from photo ID
@@ -65,11 +66,15 @@ const parseCompactManifest = (data: number[]): Map<number, PhotoInfo> => {
   return infoMap;
 };
 
+// Cache the atlas URI for WebGPU loading
+let cachedAtlasUri: string | null = null;
+
 export const usePhotoAtlas = (): UsePhotoAtlasResult => {
   const [photoInfoMap, setPhotoInfoMap] = useState<Map<number, PhotoInfo>>(
     () => cachedPhotoInfoMap ?? new Map(),
   );
   const [atlas, setAtlas] = useState<SkImage | null>(cachedAtlas);
+  const [atlasUri, setAtlasUri] = useState<string | null>(cachedAtlasUri);
   const [isLoading, setIsLoading] = useState(!cachedPhotoInfoMap);
 
   useEffect(() => {
@@ -104,6 +109,10 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
         );
 
         if (resolved?.uri) {
+          // Cache the URI for WebGPU loading
+          cachedAtlasUri = resolved.uri;
+          setAtlasUri(resolved.uri);
+
           try {
             const response = await fetch(resolved.uri);
             const arrayBuffer = await response.arrayBuffer();
@@ -131,5 +140,6 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
     atlas,
     photoInfoMap,
     isLoading,
+    atlasUri,
   };
 };

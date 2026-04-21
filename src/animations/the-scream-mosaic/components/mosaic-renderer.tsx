@@ -2,11 +2,8 @@ import { useMemo } from 'react';
 
 import {
   Atlas,
-  Blur,
-  BlurMask,
   ColorMatrix,
   Group,
-  Picture,
   rect,
   Skia,
 } from '@shopify/react-native-skia';

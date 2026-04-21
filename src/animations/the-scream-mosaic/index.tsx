@@ -9,7 +9,6 @@ import {
 
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 
-import { Canvas, Fill } from '@shopify/react-native-skia';
 import { Image as ExpoImage } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -23,11 +22,12 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
+import { Canvas, CanvasRef } from 'react-native-wgpu';
 
-import { MosaicRenderer } from './components/mosaic-renderer';
 import { useMosaicMapping } from './hooks/use-mosaic-mapping';
 import { usePaintingAnalysis } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
+import { useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -77,6 +77,7 @@ const LoadingOverlay = memo(({ phase }: { phase: DetailedPhase }) => {
 
 export function TheScreamMosaic() {
   const startTime = useRef(Date.now());
+  const canvasRef = useRef<CanvasRef>(null);
 
   // Analysis hooks
   const {
@@ -97,23 +98,8 @@ export function TheScreamMosaic() {
   const cellHeight = rows > 0 ? canvasHeight / rows : 0;
 
   // Load atlas and photo info
-  const { atlas, photoInfoMap } = usePhotoAtlas();
+  const { photoInfoMap } = usePhotoAtlas();
   const { mapping, isMatching } = useMosaicMapping(gridCells, photoInfoMap);
-
-  // Loading phase
-  const loadingPhase: DetailedPhase = useMemo(() => {
-    if (isAnalyzingPainting) return 'analyzing-painting';
-    if (photoInfoMap.size === 0) return 'loading-manifest';
-    if (isMatching) return 'matching-colors';
-    if (mapping.size > 0 && !atlas) return 'loading-atlas';
-    if (mapping.size > 0 && atlas) return 'complete';
-    return 'idle';
-  }, [isAnalyzingPainting, photoInfoMap.size, isMatching, mapping.size, atlas]);
-
-  useEffect(() => {
-    const elapsed = Date.now() - startTime.current;
-    console.log(`[${elapsed}ms] Phase: ${loadingPhase}`);
-  }, [loadingPhase]);
 
   // Generate cells
   const cells = useMemo(() => {
@@ -125,6 +111,37 @@ export function TheScreamMosaic() {
       placeholderColor: cell.targetColor,
     }));
   }, [gridCells, mapping, cellWidth, cellHeight]);
+
+  // Initialize WebGPU renderer
+  useWebGPUMosaic(canvasRef, {
+    cells,
+    photoInfoMap,
+    cellWidth,
+    cellHeight,
+    canvasWidth,
+    canvasHeight,
+  });
+
+  // Loading phase (WebGPU loads atlas internally)
+  const loadingPhase: DetailedPhase = useMemo(() => {
+    if (isAnalyzingPainting) return 'analyzing-painting';
+    if (photoInfoMap.size === 0) return 'loading-manifest';
+    if (isMatching) return 'matching-colors';
+    if (mapping.size > 0 && cells.length === 0) return 'loading-atlas';
+    if (mapping.size > 0 && cells.length > 0) return 'complete';
+    return 'idle';
+  }, [
+    isAnalyzingPainting,
+    photoInfoMap.size,
+    isMatching,
+    mapping.size,
+    cells.length,
+  ]);
+
+  useEffect(() => {
+    const elapsed = Date.now() - startTime.current;
+    console.log(`[${elapsed}ms] Phase: ${loadingPhase}`);
+  }, [loadingPhase]);
 
   // Zoom and pan state
   const scale = useSharedValue(1);
@@ -188,9 +205,6 @@ export function TheScreamMosaic() {
     currentRow.value = -1;
     currentCol.value = -1;
   };
-
-  // Image opacity
-  const imageOpacity = useDerivedValue(() => 1);
 
   // Back button visibility
   const backButtonOpacity = useDerivedValue(() => {
@@ -459,22 +473,10 @@ export function TheScreamMosaic() {
     <GestureDetector gesture={composedGesture}>
       <View style={styles.container}>
         <Animated.View style={animatedStyle}>
-          <Canvas style={{ width: canvasWidth, height: canvasHeight }}>
-            {photoInfoMap.size > 0 ? (
-              <MosaicRenderer
-                atlas={atlas}
-                cells={cells}
-                photoInfoMap={photoInfoMap}
-                cellWidth={cellWidth}
-                cellHeight={cellHeight}
-                canvasWidth={canvasWidth}
-                canvasHeight={canvasHeight}
-                imageOpacity={imageOpacity}
-              />
-            ) : (
-              <Fill color="blue" />
-            )}
-          </Canvas>
+          <Canvas
+            ref={canvasRef}
+            style={{ width: canvasWidth, height: canvasHeight }}
+          />
         </Animated.View>
 
         {/* High-res overlay using expo-image (renders at full screen resolution) */}
