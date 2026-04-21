@@ -2,6 +2,7 @@ import { PixelRatio, Image } from 'react-native';
 
 import { useCallback, useEffect, useRef } from 'react';
 
+import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { SharedValue } from 'react-native-reanimated';
 import { CanvasRef } from 'react-native-wgpu';
 
@@ -24,6 +25,17 @@ const UNIFORM_BUFFER_SIZE = 64;
 
 // Tile data: 12 floats per tile (padded for alignment)
 const FLOATS_PER_TILE = 12;
+
+// Static atlas asset requires (must be at module level for Metro bundling)
+const ATLAS_ASSETS = [
+  require('../assets/atlases/photo-atlas-0.jpg'),
+  require('../assets/atlases/photo-atlas-1.jpg'),
+  require('../assets/atlases/photo-atlas-2.jpg'),
+  require('../assets/atlases/photo-atlas-3.jpg'),
+  require('../assets/atlases/photo-atlas-4.jpg'),
+  require('../assets/atlases/photo-atlas-5.jpg'),
+  require('../assets/atlases/photo-atlas-6.jpg'),
+];
 
 interface CellData {
   index: number;
@@ -132,48 +144,77 @@ export function useWebGPUMosaic(
     return { data, count: validCells.length };
   }, [cells, photoInfoMap, cellWidth, cellHeight]);
 
-  const loadAtlasTexture = useCallback(
-    async (device: GPUDevice, atlasIndex: number): Promise<GPUTexture | null> => {
+  // Fetch ArrayBuffer for an atlas
+  const fetchAtlasBuffer = useCallback(
+    async (atlasIndex: number): Promise<ArrayBuffer | null> => {
       try {
-        console.log(`[WebGPU] Loading atlas ${atlasIndex}...`);
+        const resolved = Image.resolveAssetSource(ATLAS_ASSETS[atlasIndex]);
+        if (!resolved?.uri) return null;
 
-        let resolved;
-        switch (atlasIndex) {
-          case 0: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-0.jpg')); break;
-          case 1: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-1.jpg')); break;
-          case 2: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-2.jpg')); break;
-          case 3: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-3.jpg')); break;
-          case 4: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-4.jpg')); break;
-          case 5: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-5.jpg')); break;
-          case 6: resolved = Image.resolveAssetSource(require('../assets/atlases/photo-atlas-6.jpg')); break;
-          default: return null;
+        const response = await fetch(resolved.uri);
+        return response.arrayBuffer();
+      } catch {
+        return null;
+      }
+    },
+    [],
+  );
+
+  // Decode using Skia (potentially faster than createImageBitmap)
+  const decodeWithSkia = useCallback(
+    async (
+      device: GPUDevice,
+      atlasIndex: number,
+      arrayBuffer: ArrayBuffer,
+    ): Promise<GPUTexture | null> => {
+      try {
+        const t0 = Date.now();
+
+        // Decode with Skia
+        const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
+        const skImage = Skia.Image.MakeImageFromEncoded(data);
+        if (!skImage) {
+          console.error(`[Atlas ${atlasIndex}] Skia decode failed`);
+          return null;
         }
+        const t1 = Date.now();
 
-        if (!resolved?.uri) {
-          console.error(`[WebGPU] No URI for atlas ${atlasIndex}`);
+        const width = skImage.width();
+        const height = skImage.height();
+
+        // Read pixels from Skia image
+        const pixels = skImage.readPixels(0, 0, {
+          width,
+          height,
+          colorType: ColorType.RGBA_8888,
+          alphaType: AlphaType.Unpremul,
+        });
+        const t2 = Date.now();
+
+        if (!pixels) {
+          console.error(`[Atlas ${atlasIndex}] Failed to read pixels`);
           return null;
         }
 
-        const response = await fetch(resolved.uri);
-        const blob = await response.blob();
-        const imageBitmap = await createImageBitmap(blob);
-
+        // Create GPU texture and upload
         const texture = device.createTexture({
-          size: [imageBitmap.width, imageBitmap.height],
+          size: [width, height],
           format: 'rgba8unorm',
           usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
         });
 
-        device.queue.copyExternalImageToTexture(
-          { source: imageBitmap },
+        device.queue.writeTexture(
           { texture },
-          [imageBitmap.width, imageBitmap.height],
+          pixels,
+          { bytesPerRow: width * 4, rowsPerImage: height },
+          [width, height],
         );
+        const t3 = Date.now();
 
-        console.log(`[WebGPU] Loaded atlas ${atlasIndex}: ${imageBitmap.width}x${imageBitmap.height}`);
+        console.log(`[Atlas ${atlasIndex} Skia] decode=${t1-t0}ms pixels=${t2-t1}ms gpu=${t3-t2}ms total=${t3-t0}ms`);
         return texture;
       } catch (e) {
-        console.error(`[WebGPU Mosaic] Failed to load atlas ${atlasIndex}:`, e);
+        console.error(`[Atlas ${atlasIndex}] Skia error:`, e);
         return null;
       }
     },
@@ -266,16 +307,58 @@ export function useWebGPUMosaic(
 
       context.configure({ device, format, alphaMode: 'premultiplied' });
 
-      // Load all 7 atlas textures
-      const atlasTextures: GPUTexture[] = [];
-      for (let i = 0; i < ATLAS_COUNT; i++) {
-        const texture = await loadAtlasTexture(device, i);
-        if (!texture) {
-          console.error(`[WebGPU] Failed to load atlas ${i}`);
-          return;
+      // Pipeline approach: fetch all in parallel, decode with Skia
+      const atlasStart = Date.now();
+
+      // Step 1: Start all fetches in parallel
+      console.log('[WebGPU] Starting parallel fetch...');
+      const fetchStart = Date.now();
+      const imageBufferPromises = Array.from({ length: ATLAS_COUNT }, (_, i) =>
+        fetchAtlasBuffer(i),
+      );
+      const imageBuffers = await Promise.all(imageBufferPromises);
+      console.log(`[WebGPU] All fetches complete: ${Date.now() - fetchStart}ms`);
+
+      // Step 2: Decode with Skia in parallel batches of 2
+      console.log('[WebGPU] Decoding with Skia (parallel x2)...');
+      const decodeStart = Date.now();
+      const atlasTextures: (GPUTexture | null)[] = new Array(ATLAS_COUNT).fill(null);
+
+      const DECODE_BATCH = 7;
+      for (let batch = 0; batch < ATLAS_COUNT; batch += DECODE_BATCH) {
+        const batchIndices: number[] = [];
+        for (let i = batch; i < Math.min(batch + DECODE_BATCH, ATLAS_COUNT); i++) {
+          batchIndices.push(i);
         }
-        atlasTextures.push(texture);
+
+        const batchStart = Date.now();
+        const batchResults = await Promise.all(
+          batchIndices.map(async (i) => {
+            const imgBuffer = imageBuffers[i];
+            if (!imgBuffer) return null;
+            return decodeWithSkia(device, i, imgBuffer);
+          }),
+        );
+        console.log(`[Batch ${batch / DECODE_BATCH}] ${batchIndices.join(',')} done in ${Date.now() - batchStart}ms`);
+
+        for (let j = 0; j < batchResults.length; j++) {
+          if (!batchResults[j]) {
+            console.error(`[WebGPU] Failed to decode atlas ${batchIndices[j]}`);
+            return;
+          }
+          atlasTextures[batchIndices[j]] = batchResults[j];
+        }
       }
+
+      // Filter out nulls and verify we have all textures
+      const validTextures = atlasTextures.filter((t): t is GPUTexture => t !== null);
+      if (validTextures.length !== ATLAS_COUNT) {
+        console.error('[WebGPU] Missing atlas textures');
+        return;
+      }
+
+      console.log(`[WebGPU] All decodes complete: ${Date.now() - decodeStart}ms`);
+      console.log(`[WebGPU] Total atlas loading: ${Date.now() - atlasStart}ms`);
 
       const buffers: GPUBuffer[] = [];
 
@@ -325,13 +408,13 @@ export function useWebGPUMosaic(
         entries: [
           { binding: 0, resource: { buffer: uniformBuffer } },
           { binding: 1, resource: { buffer: tileBuffer } },
-          { binding: 2, resource: atlasTextures[0].createView() },
-          { binding: 3, resource: atlasTextures[1].createView() },
-          { binding: 4, resource: atlasTextures[2].createView() },
-          { binding: 5, resource: atlasTextures[3].createView() },
-          { binding: 6, resource: atlasTextures[4].createView() },
-          { binding: 7, resource: atlasTextures[5].createView() },
-          { binding: 8, resource: atlasTextures[6].createView() },
+          { binding: 2, resource: validTextures[0].createView() },
+          { binding: 3, resource: validTextures[1].createView() },
+          { binding: 4, resource: validTextures[2].createView() },
+          { binding: 5, resource: validTextures[3].createView() },
+          { binding: 6, resource: validTextures[4].createView() },
+          { binding: 7, resource: validTextures[5].createView() },
+          { binding: 8, resource: validTextures[6].createView() },
           { binding: 9, resource: sampler },
         ],
       });
@@ -377,7 +460,8 @@ export function useWebGPUMosaic(
   }, [
     canvasRef,
     buildTileData,
-    loadAtlasTexture,
+    fetchAtlasBuffer,
+    decodeWithSkia,
     cells.length,
     photoInfoMap.size,
     render,
