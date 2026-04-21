@@ -1,6 +1,15 @@
 import { useMemo } from 'react';
 
-import { Atlas, ColorMatrix, Group, Picture, rect, Skia } from '@shopify/react-native-skia';
+import {
+  Atlas,
+  Blur,
+  BlurMask,
+  ColorMatrix,
+  Group,
+  Picture,
+  rect,
+  Skia,
+} from '@shopify/react-native-skia';
 
 import type { PhotoInfo } from '../hooks/use-photo-atlas';
 import type { RGB } from '../types';
@@ -47,7 +56,8 @@ export const MosaicRenderer = ({
 
     for (const cell of cells) {
       const dstRect = Skia.XYWHRect(cell.x, cell.y, cellWidth, cellHeight);
-      const info = cell.photoId !== null ? photoInfoMap.get(cell.photoId) : null;
+      const info =
+        cell.photoId !== null ? photoInfoMap.get(cell.photoId) : null;
       const color = info?.averageColor ?? cell.placeholderColor;
 
       const { r, g, b } = color;
@@ -70,7 +80,12 @@ export const MosaicRenderer = ({
       if (!info) continue;
 
       spriteRects.push(
-        rect(info.atlasRect.x, info.atlasRect.y, info.atlasRect.width, info.atlasRect.height),
+        rect(
+          info.atlasRect.x,
+          info.atlasRect.y,
+          info.atlasRect.width,
+          info.atlasRect.height,
+        ),
       );
 
       const scale = cellWidth / info.atlasRect.width;
@@ -88,32 +103,43 @@ export const MosaicRenderer = ({
   const contrast = 1.4;
   const offset = 0.5 * (1 - contrast);
   const contrastMatrix = [
-    contrast, 0, 0, 0, offset,
-    0, contrast, 0, 0, offset,
-    0, 0, contrast, 0, offset,
-    0, 0, 0, 1, 0,
+    contrast,
+    0,
+    0,
+    0,
+    offset,
+    0,
+    contrast,
+    0,
+    0,
+    offset,
+    0,
+    0,
+    contrast,
+    0,
+    offset,
+    0,
+    0,
+    0,
+    1,
+    0,
   ];
 
   return (
     <Group>
       {/* Base layer: solid colors (always visible) */}
-      <Picture picture={colorPicture}>
+      {/* <Picture picture={colorPicture}>
         <ColorMatrix matrix={contrastMatrix} />
-      </Picture>
+      </Picture> */}
 
       {/* Atlas layer: 80x80 photos */}
       {atlas && sprites.length > 0 && (
         <Group opacity={imageOpacity}>
-          <Atlas
-            image={atlas}
-            sprites={sprites}
-            transforms={transforms}
-          >
+          <Atlas image={atlas} sprites={sprites} transforms={transforms}>
             <ColorMatrix matrix={contrastMatrix} />
           </Atlas>
         </Group>
       )}
-
     </Group>
   );
 };
