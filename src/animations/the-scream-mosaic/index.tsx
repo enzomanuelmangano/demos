@@ -7,14 +7,12 @@ import {
   View,
 } from 'react-native';
 
-import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
   interpolate,
-  runOnJS,
-  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -32,7 +30,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MIN_SCALE = 1;
 const SPRING_CONFIG = { dampingRatio: 1, duration: 350 };
-const SNAP_SPRING = { dampingRatio: 0.9, duration: 300 }; // Snappier for grid nav
+const SNAP_SPRING = { dampingRatio: 0.9, duration: 300 };
 
 // Grid mode: when a cell fills this fraction of screen width
 const GRID_MODE_THRESHOLD = 0.5;
@@ -111,7 +109,7 @@ export function TheScreamMosaic() {
     }));
   }, [gridCells, mapping, cellWidth, cellHeight]);
 
-  // Loading phase (WebGPU loads atlas internally)
+  // Loading phase
   const loadingPhase: DetailedPhase = useMemo(() => {
     if (isAnalyzingPainting) return 'analyzing-painting';
     if (photoInfoMap.size === 0) return 'loading-manifest';
@@ -132,7 +130,7 @@ export function TheScreamMosaic() {
     console.log(`[${elapsed}ms] Phase: ${loadingPhase}`);
   }, [loadingPhase]);
 
-  // Zoom and pan state
+  // Zoom and pan state (all on UI thread via SharedValues)
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -140,46 +138,11 @@ export function TheScreamMosaic() {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
-  // Grid mode state (shared values for UI thread performance)
-  const currentRow = useSharedValue(-1); // -1 means no cell selected
+  // Grid mode state (UI thread only - no React state sync)
+  const currentRow = useSharedValue(-1);
   const currentCol = useSharedValue(-1);
 
-  // React state mirror for triggering re-renders
-  const [gridPosition, setGridPosition] = useState({ row: -1, col: -1 });
-
-  // Sync shared values to React state
-  useAnimatedReaction(
-    () => ({ row: currentRow.value, col: currentCol.value }),
-    (current, previous) => {
-      if (current.row !== previous?.row || current.col !== previous?.col) {
-        runOnJS(setGridPosition)(current);
-      }
-    },
-  );
-
-  // Build visible cells for high-res loading (WebGPU handles this internally)
-  const visibleCellsForHighRes = useMemo(() => {
-    const { row, col } = gridPosition;
-    if (row < 0 || col < 0 || cols === 0 || rows === 0) return [];
-
-    const result: { row: number; col: number }[] = [];
-
-    // Get 8x8 grid around current cell for high-res loading
-    for (let dr = -4; dr <= 3; dr++) {
-      for (let dc = -4; dc <= 3; dc++) {
-        const r = row + dr;
-        const c = col + dc;
-        if (r >= 0 && r < rows && c >= 0 && c < cols) {
-          result.push({ row: r, col: c });
-        }
-      }
-    }
-
-    return result;
-  }, [gridPosition, cols, rows]);
-
-  // Initialize WebGPU renderer with transform applied in shader
-  // Pass SharedValues directly - they're read in the render loop
+  // Initialize WebGPU renderer
   useWebGPUMosaic(canvasRef, {
     cells,
     photoInfoMap,
@@ -189,8 +152,6 @@ export function TheScreamMosaic() {
     paintingHeight: canvasHeight,
     screenWidth: SCREEN_WIDTH,
     screenHeight: SCREEN_HEIGHT,
-    visibleCells: visibleCellsForHighRes,
-    gridCols: cols,
     scale,
     translateX,
     translateY,
@@ -210,7 +171,6 @@ export function TheScreamMosaic() {
   // Snap to a specific cell at ideal scale (runs on UI thread)
   const snapToCell = (row: number, col: number) => {
     'worklet';
-    // Snap scale to ideal grid scale
     scale.value = withSpring(idealGridScale, SNAP_SPRING);
 
     const cellCenterX = (col + 0.5) * cellWidth;
@@ -239,11 +199,10 @@ export function TheScreamMosaic() {
     return interpolate(scale.value, [1, 1.5], [0, 1], 'clamp');
   });
 
-  // Track if we're actively pinching (to prevent pan interference)
+  // Track if we're actively pinching
   const isPinching = useSharedValue(false);
 
   // Pinch gesture with focal point zooming
-  // Store focal point in screen coordinates (relative to screen center)
   const focalScreenX = useSharedValue(0);
   const focalScreenY = useSharedValue(0);
 
@@ -253,7 +212,6 @@ export function TheScreamMosaic() {
       savedScale.value = scale.value;
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
-      // Store focal point relative to screen center
       focalScreenX.value = event.focalX - SCREEN_WIDTH / 2;
       focalScreenY.value = event.focalY - SCREEN_HEIGHT / 2;
     })
@@ -265,8 +223,6 @@ export function TheScreamMosaic() {
         maxScale,
       );
 
-      // Focal point zoom: keep the point under fingers stationary
-      // Formula: newTranslate = focal * (1 - scaleRatio) + savedTranslate * scaleRatio
       const scaleRatio = newScale / savedScale.value;
       const newTranslateX =
         focalScreenX.value * (1 - scaleRatio) +
@@ -282,7 +238,6 @@ export function TheScreamMosaic() {
     .onEnd(() => {
       savedScale.value = scale.value;
 
-      // Snap to 1 if close to minimum
       if (scale.value < 1.2) {
         scale.value = withSpring(1, SPRING_CONFIG);
         translateX.value = withSpring(0, SPRING_CONFIG);
@@ -290,13 +245,11 @@ export function TheScreamMosaic() {
         currentRow.value = -1;
         currentCol.value = -1;
       } else {
-        // Check if we're entering grid mode - auto-snap to nearest cell
         const cellScreenWidth = cellWidth * scale.value;
         const inGridMode =
           cellScreenWidth >= SCREEN_WIDTH * GRID_MODE_THRESHOLD;
 
         if (inGridMode && cols > 0 && rows > 0) {
-          // Calculate which cell is centered and snap to it
           const canvasCenterX =
             canvasWidth / 2 - translateX.value / scale.value;
           const canvasCenterY =
@@ -306,26 +259,22 @@ export function TheScreamMosaic() {
           const clampedCol = Math.max(0, Math.min(cols - 1, col));
           const clampedRow = Math.max(0, Math.min(rows - 1, row));
 
-          // snapToCell will set scale to idealGridScale
           snapToCell(clampedRow, clampedCol);
         }
       }
     })
     .onFinalize(() => {
-      // Always reset isPinching when gesture ends (handles cancellation too)
       isPinching.value = false;
     });
 
-  // Pan gesture - free pan or grid navigation depending on zoom level
+  // Pan gesture
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      // Don't save translate if pinching (pinch handles its own translate)
       if (isPinching.value) return;
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
     })
     .onUpdate(event => {
-      // Don't pan while pinching - pinch handles translate via focal point
       if (isPinching.value) return;
       if (scale.value <= 1) return;
 
@@ -354,36 +303,29 @@ export function TheScreamMosaic() {
       const inGridMode = cellScreenWidth >= SCREEN_WIDTH * GRID_MODE_THRESHOLD;
 
       if (inGridMode && cols > 0 && rows > 0) {
-        // Grid navigation: snap to nearest cell based on swipe direction
         const velocity = Math.max(
           Math.abs(event.velocityX),
           Math.abs(event.velocityY),
         );
         const swipeThreshold = 300;
 
-        // Calculate current centered cell
         const canvasCenterX = canvasWidth / 2 - translateX.value / scale.value;
         const canvasCenterY = canvasHeight / 2 - translateY.value / scale.value;
         let col = Math.round(canvasCenterX / cellWidth - 0.5);
         let row = Math.round(canvasCenterY / cellHeight - 0.5);
 
-        // Apply swipe direction
         if (velocity > swipeThreshold) {
           if (Math.abs(event.velocityX) > Math.abs(event.velocityY)) {
-            // Horizontal swipe
             col += event.velocityX > 0 ? -1 : 1;
           } else {
-            // Vertical swipe
             row += event.velocityY > 0 ? -1 : 1;
           }
         }
 
-        // Clamp to grid bounds and snap
         const clampedCol = Math.max(0, Math.min(cols - 1, col));
         const clampedRow = Math.max(0, Math.min(rows - 1, row));
         snapToCell(clampedRow, clampedCol);
       } else {
-        // Free pan with momentum
         const maxX = Math.max(
           0,
           (canvasWidth * scale.value - SCREEN_WIDTH) / 2,
@@ -413,7 +355,6 @@ export function TheScreamMosaic() {
           velocity: event.velocityY,
         });
 
-        // Clear grid cell selection when in free pan mode
         currentRow.value = -1;
         currentCol.value = -1;
       }
@@ -426,14 +367,12 @@ export function TheScreamMosaic() {
     pointerEvents: backButtonOpacity.value > 0.5 ? 'auto' : 'none',
   }));
 
-  // Cell indicator visibility
   const cellIndicatorStyle = useAnimatedStyle(() => ({
     opacity: isInGridMode.value && currentRow.value >= 0 ? 1 : 0,
     pointerEvents:
       isInGridMode.value && currentRow.value >= 0 ? 'auto' : 'none',
   }));
 
-  // Cell indicator text
   const cellText = useDerivedValue(() => {
     if (currentRow.value < 0 || currentCol.value < 0) return '';
     return `${currentRow.value + 1} × ${currentCol.value + 1}`;
@@ -447,12 +386,10 @@ export function TheScreamMosaic() {
           style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         />
 
-        {/* Cell indicator */}
         <Animated.View style={[styles.cellIndicator, cellIndicatorStyle]}>
           <ReText text={cellText} style={styles.cellIndicatorText} />
         </Animated.View>
 
-        {/* Back button */}
         <Animated.View style={[styles.backButton, backButtonStyle]}>
           <Pressable onPress={resetZoom} style={styles.backButtonPressable}>
             <Text style={styles.backButtonText}>← Back to painting</Text>

@@ -8,8 +8,6 @@ struct Uniforms {
   atlasHeight: f32,
   contrast: f32,
   time: f32,
-  highResCols: f32,
-  highResSize: f32,
   scale: f32,
   translateX: f32,
   translateY: f32,
@@ -18,15 +16,13 @@ struct Uniforms {
 struct VertexOutput {
   @builtin(position) position: vec4f,
   @location(0) atlasUV: vec2f,
-  @location(1) highResUV: vec2f,
-  @location(2) highResSlot: f32,  // -1 = no high-res, >= 0 = slot index
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> tiles: array<f32>;
 
-// Tile data layout (10 floats per tile):
-// [posX, posY, width, height, uvX, uvY, uvW, uvH, highResSlot, padding]
+// Tile data layout (8 floats per tile):
+// [posX, posY, width, height, uvX, uvY, uvW, uvH]
 
 @vertex
 fn main(
@@ -52,8 +48,8 @@ fn main(
     default: { localPos = vec2f(0.0, 0.0); localUV = vec2f(0.0, 0.0); }
   }
 
-  // Read tile data from storage buffer (10 floats per tile)
-  let tileOffset = instanceIndex * 10u;
+  // Read tile data from storage buffer (8 floats per tile)
+  let tileOffset = instanceIndex * 8u;
   let tileX = tiles[tileOffset + 0u];
   let tileY = tiles[tileOffset + 1u];
   let tileW = tiles[tileOffset + 2u];
@@ -62,7 +58,6 @@ fn main(
   let uvY = tiles[tileOffset + 5u];
   let uvW = tiles[tileOffset + 6u];
   let uvH = tiles[tileOffset + 7u];
-  let highResSlot = tiles[tileOffset + 8u];
 
   // Calculate world position within painting
   let worldX = tileX + localPos.x * tileW;
@@ -91,27 +86,6 @@ fn main(
     uvX + localUV.x * uvW,
     uvY + localUV.y * uvH
   );
-
-  // High-res UV coordinates (if slot >= 0)
-  output.highResSlot = highResSlot;
-  if (highResSlot >= 0.0) {
-    let slot = u32(highResSlot);
-    let cols = u32(uniforms.highResCols);
-    let slotCol = slot % cols;
-    let slotRow = slot / cols;
-
-    // Calculate UV within the high-res cache texture
-    let cacheSize = uniforms.highResCols * uniforms.highResSize;
-    let slotX = f32(slotCol) * uniforms.highResSize;
-    let slotY = f32(slotRow) * uniforms.highResSize;
-
-    output.highResUV = vec2f(
-      (slotX + localUV.x * uniforms.highResSize) / cacheSize,
-      (slotY + localUV.y * uniforms.highResSize) / cacheSize
-    );
-  } else {
-    output.highResUV = vec2f(0.0, 0.0);
-  }
 
   return output;
 }

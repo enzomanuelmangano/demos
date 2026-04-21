@@ -8,8 +8,6 @@ struct Uniforms {
   atlasHeight: f32,
   contrast: f32,
   time: f32,
-  highResCols: f32,
-  highResSize: f32,
   scale: f32,
   translateX: f32,
   translateY: f32,
@@ -18,15 +16,11 @@ struct Uniforms {
 struct FragmentInput {
   @builtin(position) fragCoord: vec4f,
   @location(0) atlasUV: vec2f,
-  @location(1) highResUV: vec2f,
-  @location(2) highResSlot: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(2) var atlasTexture: texture_2d<f32>;
 @group(0) @binding(3) var atlasSampler: sampler;
-@group(0) @binding(4) var highResTexture: texture_2d<f32>;
-@group(0) @binding(5) var highResSampler: sampler;
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
