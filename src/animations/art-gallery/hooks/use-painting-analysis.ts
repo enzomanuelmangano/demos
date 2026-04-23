@@ -80,18 +80,29 @@ const sampleRegionFromBuffer = (
 };
 
 export const usePaintingAnalysis = (
-  paintingSource: ReturnType<typeof require>,
+  paintingSource: ReturnType<typeof require> | null,
 ): UsePaintingAnalysisResult => {
   const [paintingImage, setPaintingImage] = useState<SkImage | null>(null);
   const [gridCells, setGridCells] = useState<GridCell[]>([]);
   // Store gridDimensions in state so it updates atomically with gridCells
   const [gridDimensions, setGridDimensions] = useState<GridDimensions>(EMPTY_DIMENSIONS);
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(paintingSource !== null);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   // Load painting image directly (faster than useImage)
   useEffect(() => {
+    // Skip if no painting source (atlas mode)
+    if (paintingSource === null) {
+      setPaintingImage(null);
+      setGridCells([]);
+      setGridDimensions(EMPTY_DIMENSIONS);
+      setIsAnalyzing(false);
+      return;
+    }
+
+    setIsAnalyzing(true);
+
     const loadPainting = async () => {
       console.log('[Painting] Loading...');
       const startTime = Date.now();

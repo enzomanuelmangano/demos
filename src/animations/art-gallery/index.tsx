@@ -92,8 +92,8 @@ const HeaderRight = memo(
     selectedPaintingId,
     onPaintingChange,
   }: {
-    selectedPaintingId: string;
-    onPaintingChange: (id: string) => void;
+    selectedPaintingId: string | null;
+    onPaintingChange: (id: string | null) => void;
   }) => (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
@@ -102,11 +102,13 @@ const HeaderRight = memo(
         </Pressable>
       </DropdownMenu.Trigger>
       <DropdownMenu.Content>
-        <DropdownMenu.Item
+        <DropdownMenu.CheckboxItem
           key="default"
-          onSelect={() => onPaintingChange(PAINTINGS[0].id)}>
+          value={selectedPaintingId === null ? 'on' : 'off'}
+          onValueChange={() => onPaintingChange(null)}>
           <DropdownMenu.ItemTitle>Default</DropdownMenu.ItemTitle>
-        </DropdownMenu.Item>
+          <DropdownMenu.ItemIndicator />
+        </DropdownMenu.CheckboxItem>
         {ART_MOVEMENTS.map(movement => (
           <DropdownMenu.Sub key={movement.id}>
             <DropdownMenu.SubTrigger key={`${movement.id}-trigger`}>
@@ -149,15 +151,20 @@ export function ArtGallery() {
   const startTime = useRef(Date.now());
   const canvasRef = useRef<CanvasRef>(null);
 
-  // Painting selection
-  const [selectedPaintingId, setSelectedPaintingId] = useState(PAINTINGS[0].id);
+  // Painting selection (null = show raw atlas grid)
+  const [selectedPaintingId, setSelectedPaintingId] = useState<string | null>(
+    null,
+  );
 
   const selectedPainting = useMemo(
-    () => PAINTINGS.find(p => p.id === selectedPaintingId) ?? PAINTINGS[0],
+    () =>
+      selectedPaintingId
+        ? PAINTINGS.find(p => p.id === selectedPaintingId) ?? null
+        : null,
     [selectedPaintingId],
   );
 
-  const handlePaintingChange = useCallback((paintingId: string) => {
+  const handlePaintingChange = useCallback((paintingId: string | null) => {
     clearMosaicMappingCache();
     setSelectedPaintingId(paintingId);
   }, []);
@@ -186,14 +193,22 @@ export function ArtGallery() {
     startAtlasPrefetch();
   }, []);
 
-  // Analysis hooks
-  const {
-    gridCells,
-    gridDimensions,
-    isAnalyzing: isAnalyzingPainting,
-  } = usePaintingAnalysis(selectedPainting.asset);
+  // Default grid for atlas view (100x100 = 10,000 photos)
+  const DEFAULT_GRID_COLS = 100;
+  const DEFAULT_GRID_ROWS = 100;
 
-  const { cols, rows, aspectRatio } = gridDimensions;
+  // Analysis hooks (only when painting selected)
+  const {
+    gridCells: paintingGridCells,
+    gridDimensions: paintingGridDimensions,
+    isAnalyzing: isAnalyzingPainting,
+  } = usePaintingAnalysis(selectedPainting?.asset ?? null);
+
+  // Use painting grid or default atlas grid
+  const isAtlasMode = selectedPainting === null;
+  const cols = isAtlasMode ? DEFAULT_GRID_COLS : paintingGridDimensions.cols;
+  const rows = isAtlasMode ? DEFAULT_GRID_ROWS : paintingGridDimensions.rows;
+  const aspectRatio = isAtlasMode ? 1 : paintingGridDimensions.aspectRatio;
 
   // Canvas dimensions
   const canvasWidth = SCREEN_WIDTH * 0.95;
@@ -207,36 +222,57 @@ export function ArtGallery() {
   // Load atlas and photo info
   const { photoInfoMap } = usePhotoAtlas();
   const { mapping, isMatching, mappedCellCount } = useMosaicMapping(
-    gridCells,
+    isAtlasMode ? [] : paintingGridCells,
     photoInfoMap,
   );
 
   // Generate cells with SCREEN-RELATIVE positions (centered)
   // This bakes the centering into the positions so the hook doesn't need paintingWidth/Height
   const cells = useMemo(() => {
-    // Guard: Don't generate cells if mapping hasn't caught up with gridCells yet
-    // This prevents a glitchy frame with mismatched data during painting transitions
-    const mappingIsStale = mappedCellCount !== gridCells.length;
+    const halfW = canvasWidth / 2;
+    const halfH = canvasHeight / 2;
+
+    // Atlas mode: sequential grid with sequential photo IDs
+    if (isAtlasMode) {
+      if (photoInfoMap.size === 0) return [];
+
+      const totalCells = cols * rows;
+      const result = [];
+      for (let i = 0; i < totalCells; i++) {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        result.push({
+          index: i,
+          x: col * cellWidth - halfW,
+          y: row * cellHeight - halfH,
+          photoId: i < photoInfoMap.size ? i : null,
+          placeholderColor: { r: 128, g: 128, b: 128 },
+        });
+      }
+      return result;
+    }
+
+    // Painting mode: use color-matched mapping
+    const mappingIsStale = mappedCellCount !== paintingGridCells.length;
     if (
       isMatching ||
       mapping.size === 0 ||
-      gridCells.length === 0 ||
+      paintingGridCells.length === 0 ||
       mappingIsStale
     ) {
       return [];
     }
 
-    const halfW = canvasWidth / 2;
-    const halfH = canvasHeight / 2;
-    return gridCells.map(cell => ({
+    return paintingGridCells.map(cell => ({
       index: cell.index,
-      x: cell.col * cellWidth - halfW, // Screen-relative (centered)
+      x: cell.col * cellWidth - halfW,
       y: cell.row * cellHeight - halfH,
       photoId: mapping.get(cell.index) ?? null,
       placeholderColor: cell.targetColor,
     }));
   }, [
-    gridCells,
+    isAtlasMode,
+    paintingGridCells,
     mapping,
     cellWidth,
     cellHeight,
@@ -244,10 +280,21 @@ export function ArtGallery() {
     canvasHeight,
     isMatching,
     mappedCellCount,
+    photoInfoMap.size,
+    cols,
+    rows,
   ]);
 
   // Loading phase
   const loadingPhase: DetailedPhase = useMemo(() => {
+    // Atlas mode: simpler loading flow
+    if (isAtlasMode) {
+      if (photoInfoMap.size === 0) return 'loading-manifest';
+      if (cells.length === 0) return 'loading-atlas';
+      return 'complete';
+    }
+
+    // Painting mode
     if (isAnalyzingPainting) return 'analyzing-painting';
     if (photoInfoMap.size === 0) return 'loading-manifest';
     if (isMatching) return 'matching-colors';
@@ -255,6 +302,7 @@ export function ArtGallery() {
     if (mapping.size > 0 && cells.length > 0) return 'complete';
     return 'idle';
   }, [
+    isAtlasMode,
     isAnalyzingPainting,
     photoInfoMap.size,
     isMatching,
