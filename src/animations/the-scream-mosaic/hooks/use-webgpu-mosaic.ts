@@ -3,7 +3,7 @@ import { PixelRatio, Image } from 'react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
-import { SharedValue } from 'react-native-reanimated';
+import { SharedValue, withSpring } from 'react-native-reanimated';
 import { CanvasRef } from 'react-native-wgpu';
 
 import { mosaicVertexShader, mosaicFragmentShader } from '../shaders';
@@ -115,6 +115,7 @@ interface UseWebGPUMosaicOptions {
   scale: SharedValue<number>;
   translateX: SharedValue<number>;
   translateY: SharedValue<number>;
+  animProgress: SharedValue<number>;
 }
 
 export function useWebGPUMosaic(
@@ -126,10 +127,6 @@ export function useWebGPUMosaic(
   const isInitializedRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
   const [gpuReady, setGpuReady] = useState(false);
-
-  // Animation state
-  const animStartTimeRef = useRef<number>(0);
-  const ANIM_DURATION = 5000; // ms (5 seconds for debugging)
 
   // Track where each photo was in the previous painting
   // Positions are stored as SCREEN-RELATIVE (centered, ready for display)
@@ -147,6 +144,7 @@ export function useWebGPUMosaic(
     scale,
     translateX,
     translateY,
+    animProgress,
   } = options;
 
   // Store dynamic values in refs to avoid recreating render callback
@@ -242,20 +240,6 @@ export function useWebGPUMosaic(
     const time = (Date.now() - startTimeRef.current) / 1000;
     const { screenWidth: sw, screenHeight: sh } = renderValuesRef.current;
 
-    // Animation progress: 1 = showing old positions, 0 = showing new positions
-    let animProgress = 0;
-    if (animStartTimeRef.current > 0) {
-      const elapsed = Date.now() - animStartTimeRef.current;
-      const t = Math.min(1, elapsed / ANIM_DURATION);
-      // Linear animation
-      animProgress = 1 - t;
-
-      // Reset when done
-      if (t >= 1) {
-        animStartTimeRef.current = 0;
-      }
-    }
-
     const uniformData = uniformDataRef.current;
     uniformData[0] = sw;
     uniformData[1] = sh;
@@ -268,7 +252,7 @@ export function useWebGPUMosaic(
     uniformData[8] = scale.value;
     uniformData[9] = translateX.value;
     uniformData[10] = translateY.value;
-    uniformData[11] = animProgress;
+    uniformData[11] = animProgress.value; // SharedValue: 1 = old positions, 0 = new positions
     uniformData[12] = 0; // unused
     uniformData[13] = 0; // unused
 
@@ -301,7 +285,7 @@ export function useWebGPUMosaic(
     context.present();
 
     animationRef.current = requestAnimationFrame(render);
-  }, [scale, translateX, translateY]);
+  }, [scale, translateX, translateY, animProgress]);
 
   const initWebGPU = useCallback(async () => {
     if (!canvasRef.current || isInitializedRef.current) return;
@@ -563,9 +547,15 @@ export function useWebGPUMosaic(
 
     if (hasAnimation) {
       console.log(`[WebGPU] Animation: ${movingCount} moving, ${appearingCount} appearing, ${disappearingCount} disappearing`);
-      animStartTimeRef.current = Date.now();
+      // Start animation: set to 1 (old positions) then animate to 0 (new positions)
+      animProgress.value = 1;
+      animProgress.value = withSpring(0, {
+        duration: 1000,
+        dampingRatio: 1,
+      });
     } else {
       console.log(`[WebGPU] First load: ${totalTileCount} tiles`);
+      animProgress.value = 0;
     }
 
     // Save current photo positions (already screen-relative)

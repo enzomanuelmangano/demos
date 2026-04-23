@@ -191,6 +191,9 @@ export function TheScreamMosaic() {
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
 
+  // Animation progress for painting transitions (1 = old positions, 0 = new positions)
+  const animProgress = useSharedValue(0);
+
   // Grid mode state (UI thread only - no React state sync)
   const currentRow = useSharedValue(-1);
   const currentCol = useSharedValue(-1);
@@ -206,6 +209,7 @@ export function TheScreamMosaic() {
     scale,
     translateX,
     translateY,
+    animProgress,
   });
 
   // Derived: whether we're in grid mode

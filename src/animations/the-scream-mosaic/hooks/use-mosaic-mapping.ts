@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { PhotoInfo } from './use-photo-atlas';
 import type { GridCell } from '../types';
@@ -24,7 +24,7 @@ export const useMosaicMapping = (
   const [mapping, setMapping] = useState<Map<number, number>>(new Map());
   const [isMatching, setIsMatching] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [mappedCellCount, setMappedCellCount] = useState(0);
+  const mappedCellCountRef = useRef(0);
 
   const cacheKey = useMemo(() => {
     if (gridCells.length === 0 || photoInfoMap.size === 0) {
@@ -49,8 +49,8 @@ export const useMosaicMapping = (
     }
 
     if (cachedMosaicMapping && cachedMosaicKey === cacheKey) {
+      mappedCellCountRef.current = gridCells.length;
       setMapping(cachedMosaicMapping);
-      setMappedCellCount(gridCells.length);
       setProgress(100);
       return;
     }
@@ -185,8 +185,8 @@ export const useMosaicMapping = (
 
     cachedMosaicMapping = newMapping;
     cachedMosaicKey = cacheKey;
+    mappedCellCountRef.current = gridCells.length;
     setMapping(newMapping);
-    setMappedCellCount(gridCells.length);
     setIsMatching(false);
     setProgress(100);
   }, [gridCells, photoInfoMap, cacheKey]);
@@ -195,7 +195,7 @@ export const useMosaicMapping = (
     mapping,
     isMatching,
     progress,
-    mappedCellCount,
+    mappedCellCount: mappedCellCountRef.current,
   };
 };
 
