@@ -41,6 +41,7 @@
     "@expo/vector-icons": "^15.0.3",
     "@legendapp/list": "^2.0.13",
     "@react-native-masked-view/masked-view": "0.3.2",
+    "@react-native-menu/menu": "^2.0.0",
     "@react-native-seoul/masonry-list": "^1.4.2",
     "@react-navigation/bottom-tabs": "^7.10.1",
     "@react-navigation/drawer": "^7.7.2",
@@ -80,6 +81,8 @@
     "react-native": "0.83.2",
     "react-native-fast-confetti": "^1.1.1",
     "react-native-gesture-handler": "~2.30.0",
+    "react-native-ios-context-menu": "^3.2.1",
+    "react-native-ios-utilities": "^5.2.0",
     "react-native-keyboard-controller": "1.20.7",
     "react-native-qrcode-skia": "^0.3.1",
     "react-native-reanimated": "4.2.1",
@@ -90,12 +93,14 @@
     "react-native-web": "^0.21.0",
     "react-native-wgpu": "^0.5.9",
     "react-native-worklets": "0.7.2",
-    "simplex-noise": "^4.0.3"
+    "simplex-noise": "^4.0.3",
+    "zeego": "^3.0.6"
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
     "@types/color": "^3.0.6",
     "@types/lodash.debounce": "^4",
+    "@types/pngjs": "^6.0.5",
     "@types/qrcode": "^1.5.5",
     "@types/react": "~19.2.10",
     "@typescript-eslint/eslint-plugin": "^8.0.0",
@@ -115,12 +120,11 @@
     "eslint-plugin-react-native": "^5.0.0",
     "eslint-plugin-refined": "^0.0.5",
     "expo-color-space-plugin": "^0.0.4",
+    "pngjs": "^7.0.0",
     "prettier": "^3.1.1",
     "rimraf": "^6.0.1",
-    "typescript": "~5.9.2",
     "sharp": "^0.33.5",
-    "pngjs": "^7.0.0",
-    "@types/pngjs": "^6.0.5"
+    "typescript": "~5.9.2"
   },
   "private": true,
   "packageManager": "bun@1.2.22",

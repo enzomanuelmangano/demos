@@ -7,8 +7,19 @@ import {
   View,
 } from 'react-native';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
@@ -19,7 +30,9 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
+import * as DropdownMenu from 'zeego/dropdown-menu';
 
 import {
   clearMosaicMappingCache,
@@ -48,6 +61,16 @@ const PAINTINGS = [
     id: 'hopper3',
     name: 'Morning Sun',
     asset: require('./assets/hopper3.jpg'),
+  },
+  {
+    id: 'botticelli',
+    name: 'Botticelli',
+    asset: require('./assets/botticelli.jpg'),
+  },
+  {
+    id: 'mona-lisa',
+    name: 'Mona Lisa',
+    asset: require('./assets/mona_lisa.jpg'),
   },
   { id: 'hopper4', name: 'Office', asset: require('./assets/hopper4.jpg') },
 ];
@@ -95,13 +118,56 @@ const LoadingOverlay = memo(({ phase }: { phase: DetailedPhase }) => {
   );
 });
 
+// Header right button component
+const HeaderRight = memo(
+  ({
+    selectedPaintingId,
+    onPaintingChange,
+  }: {
+    selectedPaintingId: string;
+    onPaintingChange: (id: string) => void;
+  }) => (
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        <Pressable style={styles.headerButton}>
+          <Ionicons name="ellipsis-horizontal-circle" size={28} color="#fff" />
+        </Pressable>
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Content>
+        <DropdownMenu.Item
+          key="default"
+          onSelect={() => onPaintingChange(PAINTINGS[0].id)}>
+          <DropdownMenu.ItemTitle>Default</DropdownMenu.ItemTitle>
+        </DropdownMenu.Item>
+        <DropdownMenu.Sub>
+          <DropdownMenu.SubTrigger key="paintings-trigger">
+            <DropdownMenu.ItemTitle>Paintings</DropdownMenu.ItemTitle>
+          </DropdownMenu.SubTrigger>
+          <DropdownMenu.SubContent>
+            {PAINTINGS.map(painting => (
+              <DropdownMenu.CheckboxItem
+                key={painting.id}
+                value={painting.id === selectedPaintingId ? 'on' : 'off'}
+                onValueChange={() => onPaintingChange(painting.id)}>
+                <DropdownMenu.ItemTitle>{painting.name}</DropdownMenu.ItemTitle>
+                <DropdownMenu.ItemIndicator />
+              </DropdownMenu.CheckboxItem>
+            ))}
+          </DropdownMenu.SubContent>
+        </DropdownMenu.Sub>
+      </DropdownMenu.Content>
+    </DropdownMenu.Root>
+  ),
+);
+
 export function TheScreamMosaic() {
+  const navigation = useNavigation();
+  const { top: safeTop } = useSafeAreaInsets();
   const startTime = useRef(Date.now());
   const canvasRef = useRef<CanvasRef>(null);
 
   // Painting selection
   const [selectedPaintingId, setSelectedPaintingId] = useState(PAINTINGS[0].id);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const selectedPainting = useMemo(
     () => PAINTINGS.find(p => p.id === selectedPaintingId) ?? PAINTINGS[0],
@@ -111,8 +177,26 @@ export function TheScreamMosaic() {
   const handlePaintingChange = useCallback((paintingId: string) => {
     clearMosaicMappingCache();
     setSelectedPaintingId(paintingId);
-    setIsDropdownOpen(false);
   }, []);
+
+  // Configure native header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      headerTransparent: true,
+      headerTitle: 'Gallery',
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: '600',
+      },
+      headerRight: () => (
+        <HeaderRight
+          selectedPaintingId={selectedPaintingId}
+          onPaintingChange={handlePaintingChange}
+        />
+      ),
+    });
+  }, [navigation, selectedPaintingId, handlePaintingChange]);
 
   // Start prefetching atlases immediately (runs in parallel with analysis)
   useEffect(() => {
@@ -139,7 +223,10 @@ export function TheScreamMosaic() {
 
   // Load atlas and photo info
   const { photoInfoMap } = usePhotoAtlas();
-  const { mapping, isMatching, mappedCellCount } = useMosaicMapping(gridCells, photoInfoMap);
+  const { mapping, isMatching, mappedCellCount } = useMosaicMapping(
+    gridCells,
+    photoInfoMap,
+  );
 
   // Generate cells with SCREEN-RELATIVE positions (centered)
   // This bakes the centering into the positions so the hook doesn't need paintingWidth/Height
@@ -147,7 +234,12 @@ export function TheScreamMosaic() {
     // Guard: Don't generate cells if mapping hasn't caught up with gridCells yet
     // This prevents a glitchy frame with mismatched data during painting transitions
     const mappingIsStale = mappedCellCount !== gridCells.length;
-    if (isMatching || mapping.size === 0 || gridCells.length === 0 || mappingIsStale) {
+    if (
+      isMatching ||
+      mapping.size === 0 ||
+      gridCells.length === 0 ||
+      mappingIsStale
+    ) {
       return [];
     }
 
@@ -155,12 +247,21 @@ export function TheScreamMosaic() {
     const halfH = canvasHeight / 2;
     return gridCells.map(cell => ({
       index: cell.index,
-      x: cell.col * cellWidth - halfW,  // Screen-relative (centered)
+      x: cell.col * cellWidth - halfW, // Screen-relative (centered)
       y: cell.row * cellHeight - halfH,
       photoId: mapping.get(cell.index) ?? null,
       placeholderColor: cell.targetColor,
     }));
-  }, [gridCells, mapping, cellWidth, cellHeight, canvasWidth, canvasHeight, isMatching, mappedCellCount]);
+  }, [
+    gridCells,
+    mapping,
+    cellWidth,
+    cellHeight,
+    canvasWidth,
+    canvasHeight,
+    isMatching,
+    mappedCellCount,
+  ]);
 
   // Loading phase
   const loadingPhase: DetailedPhase = useMemo(() => {
@@ -441,50 +542,22 @@ export function TheScreamMosaic() {
           style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}
         />
 
+        {/* Header gradient */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.4)', 'transparent']}
+          style={[styles.headerGradient, { height: safeTop + 140 }]}
+          pointerEvents="none"
+        />
+
         <Animated.View style={[styles.cellIndicator, cellIndicatorStyle]}>
           <ReText text={cellText} style={styles.cellIndicatorText} />
         </Animated.View>
 
         <Animated.View style={[styles.backButton, backButtonStyle]}>
           <Pressable onPress={resetZoom} style={styles.backButtonPressable}>
-            <Text style={styles.backButtonText}>← Back to painting</Text>
+            <Text style={styles.backButtonText}>Back to painting</Text>
           </Pressable>
         </Animated.View>
-
-        {/* Painting selector dropdown */}
-        <View style={styles.dropdownContainer}>
-          <Pressable
-            style={styles.dropdownButton}
-            onPress={() => setIsDropdownOpen(!isDropdownOpen)}>
-            <Text style={styles.dropdownButtonText}>
-              {selectedPainting.name} ▼
-            </Text>
-          </Pressable>
-
-          {isDropdownOpen && (
-            <View style={styles.dropdownMenu}>
-              {PAINTINGS.map(painting => (
-                <Pressable
-                  key={painting.id}
-                  style={[
-                    styles.dropdownItem,
-                    painting.id === selectedPaintingId &&
-                      styles.dropdownItemSelected,
-                  ]}
-                  onPress={() => handlePaintingChange(painting.id)}>
-                  <Text
-                    style={[
-                      styles.dropdownItemText,
-                      painting.id === selectedPaintingId &&
-                        styles.dropdownItemTextSelected,
-                    ]}>
-                    {painting.name}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </View>
 
         <LoadingOverlay phase={loadingPhase} />
       </View>
@@ -494,9 +567,9 @@ export function TheScreamMosaic() {
 
 const styles = StyleSheet.create({
   backButton: {
-    left: 20,
+    bottom: 40,
     position: 'absolute',
-    top: 110,
+    right: 16,
   },
   backButtonPressable: {
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -509,45 +582,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
-  },
-  dropdownButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderCurve: 'continuous',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  dropdownButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  dropdownContainer: {
-    left: 20,
-    position: 'absolute',
-    top: 60,
-    zIndex: 100,
-  },
-  dropdownItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  dropdownItemSelected: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  dropdownItemText: {
-    color: '#fff',
-    fontSize: 14,
-  },
-  dropdownItemTextSelected: {
-    fontWeight: '600',
-  },
-  dropdownMenu: {
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    borderCurve: 'continuous',
-    borderRadius: 12,
-    marginTop: 4,
-    overflow: 'hidden',
   },
   cellIndicator: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
@@ -570,6 +604,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  headerButton: {
+    marginRight: 8,
+    padding: 4,
+  },
+  headerGradient: {
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   loadingOverlay: {
     alignItems: 'center',
