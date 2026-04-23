@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { PhotoInfo } from './use-photo-atlas';
 import type { GridCell } from '../types';
-import type { LAB } from '../types';
 
 // Module-level cache
 let cachedMosaicMapping: Map<number, number> | null = null;
@@ -13,14 +12,6 @@ interface UseMosaicMappingResult {
   isMatching: boolean;
   progress: number;
 }
-
-// LAB color distance (squared, for performance)
-const labDistanceSq = (a: LAB, b: LAB): number => {
-  const dL = a.l - b.l;
-  const dA = a.a - b.a;
-  const dB = a.b - b.b;
-  return dL * dL + dA * dA + dB * dB;
-};
 
 // Get brightness bucket (0-19 for 20 buckets)
 const getBucket = (l: number): number => Math.min(19, Math.floor(l / 5));
@@ -112,62 +103,81 @@ export const useMosaicMapping = (
 
     console.log(`[Mapping] Redistributed in ${Date.now() - startTime}ms`);
 
-    // Step 3: Within each bucket, do greedy nearest-neighbor matching
+    // Step 3: Greedy nearest-neighbor matching with optimized inner loop
+    const matchStart = Date.now();
+
     for (let bucket = 0; bucket < 20; bucket++) {
       const cells = cellBuckets[bucket];
       const bucketPhotos = redistributedPhotoBuckets[bucket];
 
       if (cells.length === 0) continue;
 
-      // Create available photo set for this bucket
-      const available = new Set(bucketPhotos.map((_, i) => i));
+      // Use array + boolean flag for O(1) availability check
+      const available: boolean[] = new Array(bucketPhotos.length).fill(true);
+      let availableCount = bucketPhotos.length;
 
-      // Sort cells by saturation (more saturated = harder to match, do first)
+      // Sort cells by saturation squared (avoid sqrt)
       const sortedCells = [...cells].sort((a, b) => {
         const satA = a.targetLab.a * a.targetLab.a + a.targetLab.b * a.targetLab.b;
         const satB = b.targetLab.a * b.targetLab.a + b.targetLab.b * b.targetLab.b;
-        return satB - satA; // Higher saturation first (using squared to avoid sqrt)
+        return satB - satA;
       });
 
       for (const cell of sortedCells) {
-        if (available.size === 0) {
-          // Steal from adjacent buckets if needed
-          for (let offset = 1; offset < 20 && available.size === 0; offset++) {
-            const lowerBucket = bucket - offset;
-            const upperBucket = bucket + offset;
+        // Steal from adjacent buckets if needed
+        if (availableCount === 0) {
+          for (let offset = 1; offset < 20 && availableCount === 0; offset++) {
+            const lower = bucket - offset;
+            const upper = bucket + offset;
 
-            if (lowerBucket >= 0 && redistributedPhotoBuckets[lowerBucket].length > 0) {
-              const stolen = redistributedPhotoBuckets[lowerBucket].pop()!;
+            if (lower >= 0 && redistributedPhotoBuckets[lower].length > 0) {
+              const stolen = redistributedPhotoBuckets[lower].pop()!;
               bucketPhotos.push(stolen);
-              available.add(bucketPhotos.length - 1);
-            } else if (upperBucket < 20 && redistributedPhotoBuckets[upperBucket].length > 0) {
-              const stolen = redistributedPhotoBuckets[upperBucket].pop()!;
+              available.push(true);
+              availableCount++;
+            } else if (upper < 20 && redistributedPhotoBuckets[upper].length > 0) {
+              const stolen = redistributedPhotoBuckets[upper].pop()!;
               bucketPhotos.push(stolen);
-              available.add(bucketPhotos.length - 1);
+              available.push(true);
+              availableCount++;
             }
           }
         }
 
-        if (available.size === 0) continue;
+        if (availableCount === 0) continue;
 
-        // Find best matching photo in bucket
+        const targetL = cell.targetLab.l;
+        const targetA = cell.targetLab.a;
+        const targetB = cell.targetLab.b;
+
         let bestIdx = -1;
         let bestDist = Infinity;
 
-        for (const idx of available) {
-          const dist = labDistanceSq(cell.targetLab, bucketPhotos[idx].labColor);
+        // Optimized inner loop - inline distance calc, direct array access
+        for (let i = 0, len = bucketPhotos.length; i < len; i++) {
+          if (!available[i]) continue;
+
+          const lab = bucketPhotos[i].labColor;
+          const dL = targetL - lab.l;
+          const dA = targetA - lab.a;
+          const dB = targetB - lab.b;
+          const dist = dL * dL + dA * dA + dB * dB;
+
           if (dist < bestDist) {
             bestDist = dist;
-            bestIdx = idx;
+            bestIdx = i;
           }
         }
 
         if (bestIdx >= 0) {
           newMapping.set(cell.index, bucketPhotos[bestIdx].id);
-          available.delete(bestIdx);
+          available[bestIdx] = false;
+          availableCount--;
         }
       }
     }
+
+    console.log(`[Mapping] Matching in ${Date.now() - matchStart}ms`);
     console.log(`[Mapping] Completed in ${Date.now() - startTime}ms (${newMapping.size} unique photos)`);
 
     cachedMosaicMapping = newMapping;

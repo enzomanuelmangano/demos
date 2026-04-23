@@ -1,6 +1,6 @@
 import { PixelRatio, Image } from 'react-native';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { SharedValue } from 'react-native-reanimated';
@@ -114,6 +114,7 @@ export function useWebGPUMosaic(
   const animationRef = useRef<number | null>(null);
   const isInitializedRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
+  const [gpuReady, setGpuReady] = useState(false);
 
   const uniformDataRef = useRef(new Float32Array(16));
 
@@ -130,6 +131,10 @@ export function useWebGPUMosaic(
     translateX,
     translateY,
   } = options;
+
+  // Store dynamic values in refs to avoid recreating render callback
+  const renderValuesRef = useRef({ screenWidth, screenHeight, paintingWidth, paintingHeight });
+  renderValuesRef.current = { screenWidth, screenHeight, paintingWidth, paintingHeight };
 
   const cleanup = useCallback(() => {
     if (animationRef.current) {
@@ -244,12 +249,13 @@ export function useWebGPUMosaic(
       resourcesRef.current;
 
     const time = (Date.now() - startTimeRef.current) / 1000;
+    const { screenWidth: sw, screenHeight: sh, paintingWidth: pw, paintingHeight: ph } = renderValuesRef.current;
 
     const uniformData = uniformDataRef.current;
-    uniformData[0] = screenWidth;
-    uniformData[1] = screenHeight;
-    uniformData[2] = paintingWidth;
-    uniformData[3] = paintingHeight;
+    uniformData[0] = sw;
+    uniformData[1] = sh;
+    uniformData[2] = pw;
+    uniformData[3] = ph;
     uniformData[4] = ATLAS_WIDTH;
     uniformData[5] = ATLAS_HEIGHT;
     uniformData[6] = CONTRAST;
@@ -287,19 +293,11 @@ export function useWebGPUMosaic(
     context.present();
 
     animationRef.current = requestAnimationFrame(render);
-  }, [
-    screenWidth,
-    screenHeight,
-    paintingWidth,
-    paintingHeight,
-    scale,
-    translateX,
-    translateY,
-  ]);
+  }, [scale, translateX, translateY]);
 
   const initWebGPU = useCallback(async () => {
     if (!canvasRef.current || isInitializedRef.current) return;
-    if (cells.length === 0 || photoInfoMap.size === 0) return;
+    if (photoInfoMap.size === 0) return;
 
     const context = canvasRef.current.getContext(
       'webgpu',
@@ -349,18 +347,13 @@ export function useWebGPUMosaic(
       });
       buffers.push(uniformBuffer);
 
-      const { data: tileData, count: tileCount } = buildTileData();
-      console.log(`[WebGPU] Built ${tileCount} tiles`);
-
+      // Create buffer with max size to handle any painting (15000 tiles max)
+      // Tile data will be populated by the tile update effect
+      const MAX_TILES = 15000;
       const tileBuffer = device.createBuffer({
-        size: Math.max(tileData.byteLength, 32),
+        size: MAX_TILES * FLOATS_PER_TILE * 4, // 4 bytes per float
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
-      device.queue.writeBuffer(
-        tileBuffer,
-        0,
-        tileData as unknown as BufferSource,
-      );
       buffers.push(tileBuffer);
 
       const sampler = device.createSampler({
@@ -428,38 +421,33 @@ export function useWebGPUMosaic(
         tileBuffer,
         atlasTextures: validTextures,
         buffers,
-        tileCount,
+        tileCount: 0, // Will be set by tile update effect
       };
 
       isInitializedRef.current = true;
       startTimeRef.current = Date.now();
-      console.log(`[WebGPU] Starting render loop with ${tileCount} tiles`);
+      setGpuReady(true);
+      console.log('[WebGPU] Initialized, waiting for tiles...');
       animationRef.current = requestAnimationFrame(render);
     } catch (e) {
       console.error('[WebGPU Mosaic] Initialization failed:', e);
     }
-  }, [
-    canvasRef,
-    buildTileData,
-    decodeAtlasToGPU,
-    cells.length,
-    photoInfoMap.size,
-    render,
-  ]);
+  }, [canvasRef, decodeAtlasToGPU, photoInfoMap.size]);
 
   useEffect(() => {
-    if (!resourcesRef.current || cells.length === 0) return;
+    if (!gpuReady || !resourcesRef.current || cells.length === 0) return;
 
     const { device, tileBuffer } = resourcesRef.current;
     const { data: tileData, count: tileCount } = buildTileData();
 
+    console.log(`[WebGPU] Updating tiles: ${tileCount}`);
     device.queue.writeBuffer(
       tileBuffer,
       0,
       tileData as unknown as BufferSource,
     );
     resourcesRef.current.tileCount = tileCount;
-  }, [cells, buildTileData]);
+  }, [gpuReady, cells, buildTileData]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
