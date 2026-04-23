@@ -139,18 +139,28 @@ export function TheScreamMosaic() {
 
   // Load atlas and photo info
   const { photoInfoMap } = usePhotoAtlas();
-  const { mapping, isMatching } = useMosaicMapping(gridCells, photoInfoMap);
+  const { mapping, isMatching, mappedCellCount } = useMosaicMapping(gridCells, photoInfoMap);
 
-  // Generate cells
+  // Generate cells with SCREEN-RELATIVE positions (centered)
+  // This bakes the centering into the positions so the hook doesn't need paintingWidth/Height
   const cells = useMemo(() => {
+    // Guard: Don't generate cells if mapping hasn't caught up with gridCells yet
+    // This prevents a glitchy frame with mismatched data during painting transitions
+    const mappingIsStale = mappedCellCount !== gridCells.length;
+    if (isMatching || mapping.size === 0 || gridCells.length === 0 || mappingIsStale) {
+      return [];
+    }
+
+    const halfW = canvasWidth / 2;
+    const halfH = canvasHeight / 2;
     return gridCells.map(cell => ({
       index: cell.index,
-      x: cell.col * cellWidth,
-      y: cell.row * cellHeight,
+      x: cell.col * cellWidth - halfW,  // Screen-relative (centered)
+      y: cell.row * cellHeight - halfH,
       photoId: mapping.get(cell.index) ?? null,
       placeholderColor: cell.targetColor,
     }));
-  }, [gridCells, mapping, cellWidth, cellHeight]);
+  }, [gridCells, mapping, cellWidth, cellHeight, canvasWidth, canvasHeight, isMatching, mappedCellCount]);
 
   // Loading phase
   const loadingPhase: DetailedPhase = useMemo(() => {
@@ -191,8 +201,6 @@ export function TheScreamMosaic() {
     photoInfoMap,
     cellWidth,
     cellHeight,
-    paintingWidth: canvasWidth,
-    paintingHeight: canvasHeight,
     screenWidth: SCREEN_WIDTH,
     screenHeight: SCREEN_HEIGHT,
     scale,

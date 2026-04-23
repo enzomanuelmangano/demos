@@ -2,8 +2,8 @@ export const mosaicFragmentShader = /* wgsl */ `
 struct Uniforms {
   screenWidth: f32,
   screenHeight: f32,
-  paintingWidth: f32,
-  paintingHeight: f32,
+  _pad0: f32,
+  _pad1: f32,
   atlasWidth: f32,
   atlasHeight: f32,
   contrast: f32,
@@ -11,6 +11,9 @@ struct Uniforms {
   scale: f32,
   translateX: f32,
   translateY: f32,
+  animProgress: f32,
+  _pad2: f32,
+  _pad3: f32,
 }
 
 struct FragmentInput {

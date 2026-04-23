@@ -2,8 +2,8 @@ export const mosaicVertexShader = /* wgsl */ `
 struct Uniforms {
   screenWidth: f32,
   screenHeight: f32,
-  paintingWidth: f32,
-  paintingHeight: f32,
+  _pad0: f32,  // unused
+  _pad1: f32,  // unused
   atlasWidth: f32,
   atlasHeight: f32,
   contrast: f32,
@@ -11,6 +11,9 @@ struct Uniforms {
   scale: f32,
   translateX: f32,
   translateY: f32,
+  animProgress: f32,  // 1 = old positions, 0 = new positions
+  _pad2: f32,  // unused
+  _pad3: f32,  // unused
 }
 
 struct VertexOutput {
@@ -21,6 +24,7 @@ struct VertexOutput {
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 @group(0) @binding(1) var<storage, read> tiles: array<f32>;
+@group(0) @binding(10) var<storage, read> oldTiles: array<f32>;
 
 // Tile data layout (12 floats per tile, padded for alignment):
 // [posX, posY, width, height, uvX, uvY, uvW, uvH, atlasIndex, pad, pad, pad]
@@ -48,6 +52,8 @@ fn main(
   }
 
   let tileOffset = instanceIndex * 12u;
+
+  // New tile data
   let tileX = tiles[tileOffset + 0u];
   let tileY = tiles[tileOffset + 1u];
   let tileW = tiles[tileOffset + 2u];
@@ -58,14 +64,27 @@ fn main(
   let uvH = tiles[tileOffset + 7u];
   let atlasIdx = u32(tiles[tileOffset + 8u]);
 
-  let worldX = tileX + localPos.x * tileW;
-  let worldY = tileY + localPos.y * tileH;
+  // Old tile data
+  let oldX = oldTiles[tileOffset + 0u];
+  let oldY = oldTiles[tileOffset + 1u];
+  let oldW = oldTiles[tileOffset + 2u];
+  let oldH = oldTiles[tileOffset + 3u];
 
-  let centeredX = worldX - uniforms.paintingWidth / 2.0;
-  let centeredY = worldY - uniforms.paintingHeight / 2.0;
+  // Interpolate position based on animation progress
+  // Positions are SCREEN-RELATIVE (already centered when stored)
+  let t = uniforms.animProgress;
+  let posX = mix(tileX, oldX, t);
+  let posY = mix(tileY, oldY, t);
+  let sizeW = mix(tileW, oldW, t);
+  let sizeH = mix(tileH, oldH, t);
 
-  let scaledX = centeredX * uniforms.scale;
-  let scaledY = centeredY * uniforms.scale;
+  // Compute position (top-left of tile) - already screen-relative
+  let worldX = posX + localPos.x * sizeW;
+  let worldY = posY + localPos.y * sizeH;
+
+  // Apply scale and translation, then move to screen center
+  let scaledX = worldX * uniforms.scale;
+  let scaledY = worldY * uniforms.scale;
 
   let screenX = scaledX + uniforms.translateX + uniforms.screenWidth / 2.0;
   let screenY = scaledY + uniforms.translateY + uniforms.screenHeight / 2.0;

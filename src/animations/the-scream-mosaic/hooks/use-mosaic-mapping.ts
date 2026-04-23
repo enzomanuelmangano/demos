@@ -11,6 +11,7 @@ interface UseMosaicMappingResult {
   mapping: Map<number, number>;
   isMatching: boolean;
   progress: number;
+  mappedCellCount: number; // The gridCells.length this mapping was computed for
 }
 
 // Get brightness bucket (0-19 for 20 buckets)
@@ -23,6 +24,7 @@ export const useMosaicMapping = (
   const [mapping, setMapping] = useState<Map<number, number>>(new Map());
   const [isMatching, setIsMatching] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [mappedCellCount, setMappedCellCount] = useState(0);
 
   const cacheKey = useMemo(() => {
     if (gridCells.length === 0 || photoInfoMap.size === 0) {
@@ -48,6 +50,7 @@ export const useMosaicMapping = (
 
     if (cachedMosaicMapping && cachedMosaicKey === cacheKey) {
       setMapping(cachedMosaicMapping);
+      setMappedCellCount(gridCells.length);
       setProgress(100);
       return;
     }
@@ -183,6 +186,7 @@ export const useMosaicMapping = (
     cachedMosaicMapping = newMapping;
     cachedMosaicKey = cacheKey;
     setMapping(newMapping);
+    setMappedCellCount(gridCells.length);
     setIsMatching(false);
     setProgress(100);
   }, [gridCells, photoInfoMap, cacheKey]);
@@ -191,6 +195,7 @@ export const useMosaicMapping = (
     mapping,
     isMatching,
     progress,
+    mappedCellCount,
   };
 };
 

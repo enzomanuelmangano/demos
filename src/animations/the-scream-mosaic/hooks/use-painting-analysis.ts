@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { Image } from 'react-native';
@@ -19,6 +19,8 @@ interface GridDimensions {
   totalCells: number;
   aspectRatio: number;
 }
+
+const EMPTY_DIMENSIONS: GridDimensions = { cols: 0, rows: 0, totalCells: 0, aspectRatio: 1 };
 
 interface UsePaintingAnalysisResult {
   gridCells: GridCell[];
@@ -82,6 +84,8 @@ export const usePaintingAnalysis = (
 ): UsePaintingAnalysisResult => {
   const [paintingImage, setPaintingImage] = useState<SkImage | null>(null);
   const [gridCells, setGridCells] = useState<GridCell[]>([]);
+  // Store gridDimensions in state so it updates atomically with gridCells
+  const [gridDimensions, setGridDimensions] = useState<GridDimensions>(EMPTY_DIMENSIONS);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -121,38 +125,29 @@ export const usePaintingAnalysis = (
     loadPainting();
   }, [paintingSource]);
 
-  // Calculate grid dimensions
-  const gridDimensions = useMemo((): GridDimensions => {
+  // Analyze painting when image loads
+  // Dimensions and cells are computed together to ensure they're always consistent
+  useEffect(() => {
     if (!paintingImage) {
-      return { cols: 0, rows: 0, totalCells: 0, aspectRatio: 1 };
+      return;
     }
 
-    const width = paintingImage.width();
-    const height = paintingImage.height();
-    const aspectRatio = width / height;
+    const imageWidth = paintingImage.width();
+    const imageHeight = paintingImage.height();
+    const aspectRatio = imageWidth / imageHeight;
 
     const rows = Math.round(Math.sqrt(TARGET_CELLS / aspectRatio));
     const cols = Math.round(rows * aspectRatio);
     const totalCells = cols * rows;
-
-    return { cols, rows, totalCells, aspectRatio };
-  }, [paintingImage]);
-
-  // Analyze painting when image loads
-  useEffect(() => {
-    if (!paintingImage || gridDimensions.cols === 0) {
-      return;
-    }
-
-    const { cols, rows, totalCells } = gridDimensions;
-    const imageWidth = paintingImage.width();
-    const imageHeight = paintingImage.height();
     const cellWidth = imageWidth / cols;
     const cellHeight = imageHeight / rows;
 
     const paintingKey = `${imageWidth}x${imageHeight}-${cols}x${rows}`;
+    const newDimensions = { cols, rows, totalCells, aspectRatio };
 
     if (cachedPaintingAnalysis && cachedPaintingKey === paintingKey) {
+      // Update both together even from cache
+      setGridDimensions(newDimensions);
       setGridCells(cachedPaintingAnalysis);
       setProgress(100);
       setIsAnalyzing(false);
@@ -211,11 +206,15 @@ export const usePaintingAnalysis = (
 
     cachedPaintingAnalysis = cells;
     cachedPaintingKey = paintingKey;
+
+    // Update both dimensions and cells together to ensure consistency
+    // This prevents a frame where dimensions are new but cells are old
+    setGridDimensions(newDimensions);
     setGridCells(cells);
     setProgress(100);
     setIsAnalyzing(false);
     console.log(`[Painting] Analyzed in ${Date.now() - startTime}ms`);
-  }, [paintingImage, gridDimensions]);
+  }, [paintingImage]);
 
   return {
     gridCells,

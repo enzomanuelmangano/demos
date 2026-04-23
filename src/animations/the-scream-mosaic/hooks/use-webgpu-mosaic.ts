@@ -76,6 +76,18 @@ interface CellData {
   placeholderColor: RGB;
 }
 
+interface PhotoTileData {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  uvX: number;
+  uvY: number;
+  uvW: number;
+  uvH: number;
+  atlasIndex: number;
+}
+
 interface RNWebGPUContext extends GPUCanvasContext {
   present(): void;
 }
@@ -87,6 +99,7 @@ interface GPUResources {
   bindGroup: GPUBindGroup;
   uniformBuffer: GPUBuffer;
   tileBuffer: GPUBuffer;
+  oldTileBuffer: GPUBuffer;
   atlasTextures: GPUTexture[];
   buffers: GPUBuffer[];
   tileCount: number;
@@ -97,8 +110,6 @@ interface UseWebGPUMosaicOptions {
   photoInfoMap: Map<number, PhotoInfo>;
   cellWidth: number;
   cellHeight: number;
-  paintingWidth: number;
-  paintingHeight: number;
   screenWidth: number;
   screenHeight: number;
   scale: SharedValue<number>;
@@ -116,6 +127,14 @@ export function useWebGPUMosaic(
   const startTimeRef = useRef<number>(Date.now());
   const [gpuReady, setGpuReady] = useState(false);
 
+  // Animation state
+  const animStartTimeRef = useRef<number>(0);
+  const ANIM_DURATION = 5000; // ms (5 seconds for debugging)
+
+  // Track where each photo was in the previous painting
+  // Positions are stored as SCREEN-RELATIVE (centered, ready for display)
+  const previousPhotoPositionsRef = useRef<Map<number, PhotoTileData> | null>(null);
+
   const uniformDataRef = useRef(new Float32Array(16));
 
   const {
@@ -123,8 +142,6 @@ export function useWebGPUMosaic(
     photoInfoMap,
     cellWidth,
     cellHeight,
-    paintingWidth,
-    paintingHeight,
     screenWidth,
     screenHeight,
     scale,
@@ -133,8 +150,9 @@ export function useWebGPUMosaic(
   } = options;
 
   // Store dynamic values in refs to avoid recreating render callback
-  const renderValuesRef = useRef({ screenWidth, screenHeight, paintingWidth, paintingHeight });
-  renderValuesRef.current = { screenWidth, screenHeight, paintingWidth, paintingHeight };
+  // Note: paintingWidth/paintingHeight are no longer needed - centering is baked into tile positions
+  const renderValuesRef = useRef({ screenWidth, screenHeight });
+  renderValuesRef.current = { screenWidth, screenHeight };
 
   const cleanup = useCallback(() => {
     if (animationRef.current) {
@@ -152,33 +170,6 @@ export function useWebGPUMosaic(
     isInitializedRef.current = false;
   }, []);
 
-  const buildTileData = useCallback((): {
-    data: Float32Array;
-    count: number;
-  } => {
-    const validCells = cells.filter(
-      cell => cell.photoId !== null && photoInfoMap.has(cell.photoId),
-    );
-
-    const data = new Float32Array(validCells.length * FLOATS_PER_TILE);
-
-    validCells.forEach((cell, i) => {
-      const info = photoInfoMap.get(cell.photoId!)!;
-      const offset = i * FLOATS_PER_TILE;
-
-      data[offset + 0] = cell.x;
-      data[offset + 1] = cell.y;
-      data[offset + 2] = cellWidth;
-      data[offset + 3] = cellHeight;
-      data[offset + 4] = info.atlasRect.x / ATLAS_WIDTH;
-      data[offset + 5] = info.atlasRect.y / ATLAS_HEIGHT;
-      data[offset + 6] = info.atlasRect.width / ATLAS_WIDTH;
-      data[offset + 7] = info.atlasRect.height / ATLAS_HEIGHT;
-      data[offset + 8] = info.atlasIndex;
-    });
-
-    return { data, count: validCells.length };
-  }, [cells, photoInfoMap, cellWidth, cellHeight]);
 
   // Decode atlas from SkData and upload to GPU
   const decodeAtlasToGPU = useCallback(
@@ -249,13 +240,27 @@ export function useWebGPUMosaic(
       resourcesRef.current;
 
     const time = (Date.now() - startTimeRef.current) / 1000;
-    const { screenWidth: sw, screenHeight: sh, paintingWidth: pw, paintingHeight: ph } = renderValuesRef.current;
+    const { screenWidth: sw, screenHeight: sh } = renderValuesRef.current;
+
+    // Animation progress: 1 = showing old positions, 0 = showing new positions
+    let animProgress = 0;
+    if (animStartTimeRef.current > 0) {
+      const elapsed = Date.now() - animStartTimeRef.current;
+      const t = Math.min(1, elapsed / ANIM_DURATION);
+      // Linear animation
+      animProgress = 1 - t;
+
+      // Reset when done
+      if (t >= 1) {
+        animStartTimeRef.current = 0;
+      }
+    }
 
     const uniformData = uniformDataRef.current;
     uniformData[0] = sw;
     uniformData[1] = sh;
-    uniformData[2] = pw;
-    uniformData[3] = ph;
+    uniformData[2] = 0; // unused
+    uniformData[3] = 0; // unused
     uniformData[4] = ATLAS_WIDTH;
     uniformData[5] = ATLAS_HEIGHT;
     uniformData[6] = CONTRAST;
@@ -263,6 +268,9 @@ export function useWebGPUMosaic(
     uniformData[8] = scale.value;
     uniformData[9] = translateX.value;
     uniformData[10] = translateY.value;
+    uniformData[11] = animProgress;
+    uniformData[12] = 0; // unused
+    uniformData[13] = 0; // unused
 
     device.queue.writeBuffer(
       uniformBuffer,
@@ -347,21 +355,28 @@ export function useWebGPUMosaic(
       });
       buffers.push(uniformBuffer);
 
-      // Create buffer with max size to handle any painting (15000 tiles max)
-      // Tile data will be populated by the tile update effect
+      // Create buffers with max size to handle any painting (15000 tiles max)
       const MAX_TILES = 15000;
+      const tileBufferSize = MAX_TILES * FLOATS_PER_TILE * 4;
+
       const tileBuffer = device.createBuffer({
-        size: MAX_TILES * FLOATS_PER_TILE * 4, // 4 bytes per float
+        size: tileBufferSize,
         usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
       });
       buffers.push(tileBuffer);
+
+      const oldTileBuffer = device.createBuffer({
+        size: tileBufferSize,
+        usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+      });
+      buffers.push(oldTileBuffer);
 
       const sampler = device.createSampler({
         magFilter: 'linear',
         minFilter: 'linear',
       });
 
-      // Bind group layout with 7 textures
+      // Bind group layout with 7 textures + oldTileBuffer
       const bindGroupLayout = device.createBindGroupLayout({
         entries: [
           { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
@@ -374,6 +389,7 @@ export function useWebGPUMosaic(
           { binding: 7, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
           { binding: 8, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
           { binding: 9, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
+          { binding: 10, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
         ],
       });
 
@@ -390,6 +406,7 @@ export function useWebGPUMosaic(
           { binding: 7, resource: validTextures[5].createView() },
           { binding: 8, resource: validTextures[6].createView() },
           { binding: 9, resource: sampler },
+          { binding: 10, resource: { buffer: oldTileBuffer } },
         ],
       });
 
@@ -419,6 +436,7 @@ export function useWebGPUMosaic(
         bindGroup,
         uniformBuffer,
         tileBuffer,
+        oldTileBuffer,
         atlasTextures: validTextures,
         buffers,
         tileCount: 0, // Will be set by tile update effect
@@ -435,19 +453,141 @@ export function useWebGPUMosaic(
   }, [canvasRef, decodeAtlasToGPU, photoInfoMap.size]);
 
   useEffect(() => {
+    // Don't update buffers if cells is empty (waiting for consistent data)
+    // This prevents glitchy frames during painting transitions
     if (!gpuReady || !resourcesRef.current || cells.length === 0) return;
 
-    const { device, tileBuffer } = resourcesRef.current;
-    const { data: tileData, count: tileCount } = buildTileData();
+    const { device, tileBuffer, oldTileBuffer } = resourcesRef.current;
 
-    console.log(`[WebGPU] Updating tiles: ${tileCount}`);
-    device.queue.writeBuffer(
-      tileBuffer,
-      0,
-      tileData as unknown as BufferSource,
+    // Get valid cells (those with photos)
+    const validCells = cells.filter(
+      cell => cell.photoId !== null && photoInfoMap.has(cell.photoId),
     );
-    resourcesRef.current.tileCount = tileCount;
-  }, [gpuReady, cells, buildTileData]);
+
+    const prevPositions = previousPhotoPositionsRef.current;
+    const hasAnimation = prevPositions && prevPositions.size > 0;
+
+    // Find photos that are disappearing (in old but not in new)
+    const newPhotoIds = new Set(validCells.map(c => c.photoId!));
+    const disappearingPhotos: PhotoTileData[] = [];
+    if (hasAnimation) {
+      for (const [photoId, tileData] of prevPositions) {
+        if (!newPhotoIds.has(photoId)) {
+          disappearingPhotos.push(tileData);
+        }
+      }
+    }
+
+    // Total tiles = new painting tiles + disappearing tiles
+    const totalTileCount = validCells.length + disappearingPhotos.length;
+
+    // Build combined tile data arrays
+    const tileData = new Float32Array(totalTileCount * FLOATS_PER_TILE);
+    const oldTileData = new Float32Array(totalTileCount * FLOATS_PER_TILE);
+
+    let movingCount = 0;
+    let appearingCount = 0;
+    let disappearingCount = disappearingPhotos.length;
+
+    // Process new painting tiles
+    // Positions are ALREADY screen-relative (centered in index.tsx)
+    validCells.forEach((cell, i) => {
+      const offset = i * FLOATS_PER_TILE;
+      const photoId = cell.photoId!;
+      const info = photoInfoMap.get(photoId)!;
+
+      // Use position directly - already screen-relative
+      tileData[offset + 0] = cell.x;
+      tileData[offset + 1] = cell.y;
+      tileData[offset + 2] = cellWidth;
+      tileData[offset + 3] = cellHeight;
+      tileData[offset + 4] = info.atlasRect.x / ATLAS_WIDTH;
+      tileData[offset + 5] = info.atlasRect.y / ATLAS_HEIGHT;
+      tileData[offset + 6] = info.atlasRect.width / ATLAS_WIDTH;
+      tileData[offset + 7] = info.atlasRect.height / ATLAS_HEIGHT;
+      tileData[offset + 8] = info.atlasIndex;
+
+      // Old tile data - already screen-relative from when it was stored
+      const oldPos = hasAnimation ? prevPositions.get(photoId) : null;
+      if (oldPos) {
+        oldTileData[offset + 0] = oldPos.x;
+        oldTileData[offset + 1] = oldPos.y;
+        oldTileData[offset + 2] = oldPos.w;
+        oldTileData[offset + 3] = oldPos.h;
+        movingCount++;
+      } else {
+        // Photo is new - grow from size 0 at center of new position
+        oldTileData[offset + 0] = cell.x + cellWidth / 2;
+        oldTileData[offset + 1] = cell.y + cellHeight / 2;
+        oldTileData[offset + 2] = 0;
+        oldTileData[offset + 3] = 0;
+        appearingCount++;
+      }
+      oldTileData[offset + 4] = tileData[offset + 4];
+      oldTileData[offset + 5] = tileData[offset + 5];
+      oldTileData[offset + 6] = tileData[offset + 6];
+      oldTileData[offset + 7] = tileData[offset + 7];
+      oldTileData[offset + 8] = tileData[offset + 8];
+    });
+
+    // Process disappearing tiles - already screen-relative
+    disappearingPhotos.forEach((oldPos, i) => {
+      const offset = (validCells.length + i) * FLOATS_PER_TILE;
+
+      oldTileData[offset + 0] = oldPos.x;
+      oldTileData[offset + 1] = oldPos.y;
+      oldTileData[offset + 2] = oldPos.w;
+      oldTileData[offset + 3] = oldPos.h;
+      oldTileData[offset + 4] = oldPos.uvX;
+      oldTileData[offset + 5] = oldPos.uvY;
+      oldTileData[offset + 6] = oldPos.uvW;
+      oldTileData[offset + 7] = oldPos.uvH;
+      oldTileData[offset + 8] = oldPos.atlasIndex;
+
+      // Shrink to size 0 at center of old position
+      tileData[offset + 0] = oldPos.x + oldPos.w / 2;
+      tileData[offset + 1] = oldPos.y + oldPos.h / 2;
+      tileData[offset + 2] = 0;
+      tileData[offset + 3] = 0;
+      tileData[offset + 4] = oldPos.uvX;
+      tileData[offset + 5] = oldPos.uvY;
+      tileData[offset + 6] = oldPos.uvW;
+      tileData[offset + 7] = oldPos.uvH;
+      tileData[offset + 8] = oldPos.atlasIndex;
+    });
+
+    // Write buffers
+    device.queue.writeBuffer(oldTileBuffer, 0, oldTileData as unknown as BufferSource);
+    device.queue.writeBuffer(tileBuffer, 0, tileData as unknown as BufferSource);
+    resourcesRef.current.tileCount = totalTileCount;
+
+    if (hasAnimation) {
+      console.log(`[WebGPU] Animation: ${movingCount} moving, ${appearingCount} appearing, ${disappearingCount} disappearing`);
+      animStartTimeRef.current = Date.now();
+    } else {
+      console.log(`[WebGPU] First load: ${totalTileCount} tiles`);
+    }
+
+    // Save current photo positions (already screen-relative)
+    const currentPositions = new Map<number, PhotoTileData>();
+    validCells.forEach((cell) => {
+      if (cell.photoId !== null) {
+        const info = photoInfoMap.get(cell.photoId)!;
+        currentPositions.set(cell.photoId, {
+          x: cell.x,  // Already screen-relative
+          y: cell.y,
+          w: cellWidth,
+          h: cellHeight,
+          uvX: info.atlasRect.x / ATLAS_WIDTH,
+          uvY: info.atlasRect.y / ATLAS_HEIGHT,
+          uvW: info.atlasRect.width / ATLAS_WIDTH,
+          uvH: info.atlasRect.height / ATLAS_HEIGHT,
+          atlasIndex: info.atlasIndex,
+        });
+      }
+    });
+    previousPhotoPositionsRef.current = currentPositions;
+  }, [gpuReady, cells, photoInfoMap, cellWidth, cellHeight]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
