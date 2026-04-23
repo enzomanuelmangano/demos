@@ -44,27 +44,35 @@ import { startAtlasPrefetch, useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
 
 // Available paintings
 const PAINTINGS = [
-  { id: 'starry', name: 'Starry Night', asset: require('./assets/starry.jpg') },
+  {
+    id: 'starry-night',
+    name: 'Starry Night',
+    asset: require('./assets/starry-night.jpg'),
+  },
   {
     id: 'the-scream',
     name: 'The Scream',
     asset: require('./assets/the-scream.jpg'),
   },
   {
-    id: 'thelovers',
+    id: 'the-lovers',
     name: 'The Lovers',
-    asset: require('./assets/thelovers.jpg'),
+    asset: require('./assets/the-lovers.jpg'),
   },
-  { id: 'hopper', name: 'Morning Sun', asset: require('./assets/hopper.jpg') },
   {
-    id: 'botticelli',
+    id: 'morning-sun',
+    name: 'Morning Sun',
+    asset: require('./assets/morning-sun.jpg'),
+  },
+  {
+    id: 'birth-of-venus',
     name: 'Birth of Venus',
-    asset: require('./assets/botticelli.jpg'),
+    asset: require('./assets/birth-of-venus.jpg'),
   },
   {
     id: 'mona-lisa',
     name: 'Mona Lisa',
-    asset: require('./assets/mona_lisa.jpg'),
+    asset: require('./assets/mona-lisa.jpg'),
   },
 ];
 
