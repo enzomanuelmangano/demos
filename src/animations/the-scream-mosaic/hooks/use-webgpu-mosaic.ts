@@ -101,6 +101,7 @@ interface GPUResources {
   tileBuffer: GPUBuffer;
   oldTileBuffer: GPUBuffer;
   atlasTextures: GPUTexture[];
+  depthTexture: GPUTexture;
   buffers: GPUBuffer[];
   tileCount: number;
 }
@@ -159,9 +160,10 @@ export function useWebGPUMosaic(
     }
 
     if (resourcesRef.current) {
-      const { atlasTextures, buffers } = resourcesRef.current;
+      const { atlasTextures, buffers, depthTexture } = resourcesRef.current;
       buffers.forEach(buffer => buffer.destroy());
       atlasTextures.forEach(texture => texture.destroy());
+      depthTexture.destroy();
       resourcesRef.current = null;
     }
 
@@ -234,7 +236,7 @@ export function useWebGPUMosaic(
       return;
     }
 
-    const { device, context, pipeline, bindGroup, uniformBuffer, tileCount } =
+    const { device, context, pipeline, bindGroup, uniformBuffer, tileCount, depthTexture } =
       resourcesRef.current;
 
     const time = (Date.now() - startTimeRef.current) / 1000;
@@ -274,6 +276,12 @@ export function useWebGPUMosaic(
           storeOp: 'store',
         },
       ],
+      depthStencilAttachment: {
+        view: depthTexture.createView(),
+        depthClearValue: 1.0,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      },
     });
 
     renderPass.setPipeline(pipeline);
@@ -394,6 +402,13 @@ export function useWebGPUMosaic(
         ],
       });
 
+      // Create depth texture for 3D effect z-ordering
+      const depthTexture = device.createTexture({
+        size: [canvas.width, canvas.height],
+        format: 'depth24plus',
+        usage: GPUTextureUsage.RENDER_ATTACHMENT,
+      });
+
       const pipeline = device.createRenderPipeline({
         layout: device.createPipelineLayout({
           bindGroupLayouts: [bindGroupLayout],
@@ -411,6 +426,11 @@ export function useWebGPUMosaic(
           topology: 'triangle-list',
           cullMode: 'none',
         },
+        depthStencil: {
+          format: 'depth24plus',
+          depthWriteEnabled: true,
+          depthCompare: 'less',
+        },
       });
 
       resourcesRef.current = {
@@ -422,6 +442,7 @@ export function useWebGPUMosaic(
         tileBuffer,
         oldTileBuffer,
         atlasTextures: validTextures,
+        depthTexture,
         buffers,
         tileCount: 0, // Will be set by tile update effect
       };

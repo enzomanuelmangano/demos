@@ -70,29 +70,78 @@ fn main(
   let oldW = oldTiles[tileOffset + 2u];
   let oldH = oldTiles[tileOffset + 3u];
 
-  // Interpolate position based on animation progress
-  // Positions are SCREEN-RELATIVE (already centered when stored)
+  // Animation progress: t goes from 1 (old) to 0 (new)
+  // When t = 0, tiles are at rest with NO 3D effect
   let t = uniforms.animProgress;
+
+  // Interpolate position
   let posX = mix(tileX, oldX, t);
   let posY = mix(tileY, oldY, t);
   let sizeW = mix(tileW, oldW, t);
   let sizeH = mix(tileH, oldH, t);
 
-  // Compute position (top-left of tile) - already screen-relative
-  let worldX = posX + localPos.x * sizeW;
-  let worldY = posY + localPos.y * sizeH;
+  // Calculate movement for 3D intensity
+  let deltaX = tileX - oldX;
+  let deltaY = tileY - oldY;
+  let moveDistance = sqrt(deltaX * deltaX + deltaY * deltaY);
+  let normalizedMove = min(moveDistance / uniforms.screenWidth, 1.0);
 
-  // Apply scale and translation, then move to screen center
+  // 3D effect intensity - bell curve that peaks mid-animation, zero at rest
+  // sin(t * PI) = 0 when t=0, peaks at t=0.5, back to 0 at t=1
+  let effectIntensity = sin(t * 3.14159);
+
+  // Subtle Z depth toward camera (only during animation)
+  let zDepth = effectIntensity * (80.0 + normalizedMove * 120.0);
+
+  // Gentle rotation based on movement direction (only during animation)
+  let rotationAmount = effectIntensity * 0.15 * normalizedMove;
+
+  // Compute tile corner position relative to tile center
+  let cornerX = (localPos.x - 0.5) * sizeW;
+  let cornerY = (localPos.y - 0.5) * sizeH;
+
+  // Apply subtle Y-axis rotation (tilt)
+  let cosR = cos(rotationAmount);
+  let sinR = sin(rotationAmount);
+  let rotatedX = cornerX * cosR;
+  let rotatedZ = cornerX * sinR;
+
+  // World position (tile center + rotated corner)
+  let tileCenterX = posX + sizeW * 0.5;
+  let tileCenterY = posY + sizeH * 0.5;
+  let worldX = tileCenterX + rotatedX;
+  let worldY = tileCenterY + cornerY;
+  let worldZ = zDepth + rotatedZ * 20.0;
+
+  // Apply user scale and translation
   let scaledX = worldX * uniforms.scale;
   let scaledY = worldY * uniforms.scale;
 
-  let screenX = scaledX + uniforms.translateX + uniforms.screenWidth / 2.0;
-  let screenY = scaledY + uniforms.translateY + uniforms.screenHeight / 2.0;
+  // Convert to screen space (centered)
+  var screenX = scaledX + uniforms.translateX + uniforms.screenWidth / 2.0;
+  var screenY = scaledY + uniforms.translateY + uniforms.screenHeight / 2.0;
+
+  // Apply perspective projection only during animation
+  // When effectIntensity = 0, perspectiveFactor = 1.0 (no distortion)
+  let cameraZ = 800.0;
+  let perspectiveFactor = cameraZ / (cameraZ - worldZ);
+
+  // Blend between flat (1.0) and perspective based on effect intensity
+  let blendedPerspective = mix(1.0, perspectiveFactor, effectIntensity);
+
+  // Project toward screen center
+  let screenCenterX = uniforms.screenWidth / 2.0;
+  let screenCenterY = uniforms.screenHeight / 2.0;
+  screenX = screenCenterX + (screenX - screenCenterX) * blendedPerspective;
+  screenY = screenCenterY + (screenY - screenCenterY) * blendedPerspective;
 
   let ndcX = 2.0 * (screenX / uniforms.screenWidth) - 1.0;
   let ndcY = 1.0 - 2.0 * (screenY / uniforms.screenHeight);
 
-  output.position = vec4f(ndcX, ndcY, 0.0, 1.0);
+  // Z for depth sorting (only matters during animation)
+  let ndcZ = worldZ / 1000.0;
+
+  output.position = vec4f(ndcX, ndcY, clamp(ndcZ, 0.0, 1.0), 1.0);
   output.atlasUV = vec2f(uvX + localUV.x * uvW, uvY + localUV.y * uvH);
   output.atlasIndex = atlasIdx;
 
