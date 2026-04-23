@@ -26,7 +26,7 @@ const RETRY_DELAY = 1000;
 
 const ASSETS_DIR = join(
   __dirname,
-  '../src/animations/the-scream-mosaic/assets/photos',
+  '../src/animations/art-gallery/assets/photos',
 );
 const MANIFEST_PATH = join(ASSETS_DIR, '../photos-manifest.json');
 const INDEX_PATH = join(ASSETS_DIR, 'index.ts');

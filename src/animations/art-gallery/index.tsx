@@ -55,16 +55,10 @@ const PAINTINGS = [
     name: 'The Lovers',
     asset: require('./assets/thelovers.jpg'),
   },
-  { id: 'hopper', name: 'Nighthawks', asset: require('./assets/hopper.jpg') },
-  { id: 'hopper2', name: 'Automat', asset: require('./assets/hopper2.jpg') },
-  {
-    id: 'hopper3',
-    name: 'Morning Sun',
-    asset: require('./assets/hopper3.jpg'),
-  },
+  { id: 'hopper', name: 'Morning Sun', asset: require('./assets/hopper.jpg') },
   {
     id: 'botticelli',
-    name: 'Botticelli',
+    name: 'Birth of Venus',
     asset: require('./assets/botticelli.jpg'),
   },
   {
@@ -72,7 +66,6 @@ const PAINTINGS = [
     name: 'Mona Lisa',
     asset: require('./assets/mona_lisa.jpg'),
   },
-  { id: 'hopper4', name: 'Office', asset: require('./assets/hopper4.jpg') },
 ];
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -160,7 +153,7 @@ const HeaderRight = memo(
   ),
 );
 
-export function TheScreamMosaic() {
+export function ArtGallery() {
   const navigation = useNavigation();
   const { top: safeTop } = useSafeAreaInsets();
   const startTime = useRef(Date.now());
@@ -516,7 +509,45 @@ export function TheScreamMosaic() {
       }
     });
 
-  const composedGesture = Gesture.Simultaneous(pinchGesture, panGesture);
+  // Double tap gesture to zoom in/out
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .onEnd(event => {
+      if (scale.value > 1.2) {
+        // Zoomed in - zoom out
+        scale.value = withSpring(1, SPRING_CONFIG);
+        translateX.value = withSpring(0, SPRING_CONFIG);
+        translateY.value = withSpring(0, SPRING_CONFIG);
+        currentRow.value = -1;
+        currentCol.value = -1;
+      } else {
+        // Zoomed out - zoom in to tapped cell
+        if (cols > 0 && rows > 0 && cellWidth > 0 && cellHeight > 0) {
+          // Convert tap position to canvas coordinates
+          const tapX = event.x - SCREEN_WIDTH / 2;
+          const tapY = event.y - SCREEN_HEIGHT / 2;
+
+          // Account for current transform
+          const canvasX =
+            (tapX - translateX.value) / scale.value + canvasWidth / 2;
+          const canvasY =
+            (tapY - translateY.value) / scale.value + canvasHeight / 2;
+
+          // Find which cell was tapped
+          const col = Math.floor(canvasX / cellWidth);
+          const row = Math.floor(canvasY / cellHeight);
+          const clampedCol = Math.max(0, Math.min(cols - 1, col));
+          const clampedRow = Math.max(0, Math.min(rows - 1, row));
+
+          snapToCell(clampedRow, clampedCol);
+        }
+      }
+    });
+
+  const composedGesture = Gesture.Race(
+    doubleTapGesture,
+    Gesture.Simultaneous(pinchGesture, panGesture),
+  );
 
   const backButtonStyle = useAnimatedStyle(() => ({
     opacity: backButtonOpacity.value,
@@ -545,7 +576,7 @@ export function TheScreamMosaic() {
         {/* Header gradient */}
         <LinearGradient
           colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.4)', 'transparent']}
-          style={[styles.headerGradient, { height: safeTop + 140 }]}
+          style={[styles.headerGradient, { height: safeTop + 180 }]}
           pointerEvents="none"
         />
 

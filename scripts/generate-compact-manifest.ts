@@ -10,7 +10,7 @@ import { join } from 'node:path';
 
 const ASSETS_DIR = join(
   __dirname,
-  '../src/animations/the-scream-mosaic/assets',
+  '../src/animations/art-gallery/assets',
 );
 
 interface PhotoEntry {

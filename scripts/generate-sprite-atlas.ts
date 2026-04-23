@@ -22,11 +22,11 @@ const ATLAS_HEIGHT = ATLAS_ROWS * PHOTO_SIZE; // 8000px
 
 const PHOTOS_DIR = join(
   __dirname,
-  '../src/animations/the-scream-mosaic/assets/photos',
+  '../src/animations/art-gallery/assets/photos',
 );
 const ASSETS_DIR = join(
   __dirname,
-  '../src/animations/the-scream-mosaic/assets',
+  '../src/animations/art-gallery/assets',
 );
 const ATLASES_DIR = join(ASSETS_DIR, 'atlases');
 
