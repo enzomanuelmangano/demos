@@ -42,39 +42,103 @@ import { usePaintingAnalysis } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
 import { startAtlasPrefetch, useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
 
-// Available paintings
-const PAINTINGS = [
+// Paintings organized by artist
+const PAINTERS = [
   {
-    id: 'starry-night',
-    name: 'Starry Night',
-    asset: require('./assets/starry-night.jpg'),
+    id: 'van-gogh',
+    name: 'Vincent van Gogh',
+    paintings: [
+      {
+        id: 'starry-night',
+        name: 'Starry Night',
+        asset: require('./paintings/starry-night.jpg'),
+      },
+      {
+        id: 'sunflowers',
+        name: 'Sunflowers',
+        asset: require('./paintings/sunflowers.jpg'),
+      },
+      {
+        id: 'cafe-terrace',
+        name: 'Café Terrace at Night',
+        asset: require('./paintings/cafe-terrace.jpg'),
+      },
+    ],
   },
   {
-    id: 'the-scream',
-    name: 'The Scream',
-    asset: require('./assets/the-scream.jpg'),
+    id: 'munch',
+    name: 'Edvard Munch',
+    paintings: [
+      {
+        id: 'the-scream',
+        name: 'The Scream',
+        asset: require('./paintings/the-scream.jpg'),
+      },
+    ],
   },
   {
-    id: 'the-lovers',
-    name: 'The Lovers',
-    asset: require('./assets/the-lovers.jpg'),
+    id: 'magritte',
+    name: 'René Magritte',
+    paintings: [
+      {
+        id: 'the-lovers',
+        name: 'The Lovers',
+        asset: require('./paintings/the-lovers.jpg'),
+      },
+    ],
   },
   {
-    id: 'morning-sun',
-    name: 'Morning Sun',
-    asset: require('./assets/morning-sun.jpg'),
+    id: 'hopper',
+    name: 'Edward Hopper',
+    paintings: [
+      {
+        id: 'morning-sun',
+        name: 'Morning Sun',
+        asset: require('./paintings/morning-sun.jpg'),
+      },
+      {
+        id: 'nighthawks',
+        name: 'Nighthawks',
+        asset: require('./paintings/nighthawks.jpg'),
+      },
+    ],
   },
   {
-    id: 'birth-of-venus',
-    name: 'Birth of Venus',
-    asset: require('./assets/birth-of-venus.jpg'),
+    id: 'botticelli',
+    name: 'Sandro Botticelli',
+    paintings: [
+      {
+        id: 'birth-of-venus',
+        name: 'Birth of Venus',
+        asset: require('./paintings/birth-of-venus.jpg'),
+      },
+      {
+        id: 'primavera',
+        name: 'Primavera',
+        asset: require('./paintings/primavera.jpg'),
+      },
+    ],
   },
   {
-    id: 'mona-lisa',
-    name: 'Mona Lisa',
-    asset: require('./assets/mona-lisa.jpg'),
+    id: 'da-vinci',
+    name: 'Leonardo da Vinci',
+    paintings: [
+      {
+        id: 'mona-lisa',
+        name: 'Mona Lisa',
+        asset: require('./paintings/mona-lisa.jpg'),
+      },
+      {
+        id: 'last-supper',
+        name: 'The Last Supper',
+        asset: require('./paintings/last-supper.jpg'),
+      },
+    ],
   },
 ];
+
+// Flat list of all paintings for easy lookup
+const PAINTINGS = PAINTERS.flatMap(painter => painter.paintings);
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -141,18 +205,29 @@ const HeaderRight = memo(
           <DropdownMenu.ItemTitle>Default</DropdownMenu.ItemTitle>
         </DropdownMenu.Item>
         <DropdownMenu.Sub>
-          <DropdownMenu.SubTrigger key="paintings-trigger">
-            <DropdownMenu.ItemTitle>Paintings</DropdownMenu.ItemTitle>
+          <DropdownMenu.SubTrigger key="painters-trigger">
+            <DropdownMenu.ItemTitle>Painters</DropdownMenu.ItemTitle>
           </DropdownMenu.SubTrigger>
           <DropdownMenu.SubContent>
-            {PAINTINGS.map(painting => (
-              <DropdownMenu.CheckboxItem
-                key={painting.id}
-                value={painting.id === selectedPaintingId ? 'on' : 'off'}
-                onValueChange={() => onPaintingChange(painting.id)}>
-                <DropdownMenu.ItemTitle>{painting.name}</DropdownMenu.ItemTitle>
-                <DropdownMenu.ItemIndicator />
-              </DropdownMenu.CheckboxItem>
+            {PAINTERS.map(painter => (
+              <DropdownMenu.Sub key={painter.id}>
+                <DropdownMenu.SubTrigger key={`${painter.id}-trigger`}>
+                  <DropdownMenu.ItemTitle>{painter.name}</DropdownMenu.ItemTitle>
+                </DropdownMenu.SubTrigger>
+                <DropdownMenu.SubContent>
+                  {painter.paintings.map(painting => (
+                    <DropdownMenu.CheckboxItem
+                      key={painting.id}
+                      value={painting.id === selectedPaintingId ? 'on' : 'off'}
+                      onValueChange={() => onPaintingChange(painting.id)}>
+                      <DropdownMenu.ItemTitle>
+                        {painting.name}
+                      </DropdownMenu.ItemTitle>
+                      <DropdownMenu.ItemIndicator />
+                    </DropdownMenu.CheckboxItem>
+                  ))}
+                </DropdownMenu.SubContent>
+              </DropdownMenu.Sub>
             ))}
           </DropdownMenu.SubContent>
         </DropdownMenu.Sub>
