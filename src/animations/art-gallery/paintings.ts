@@ -247,6 +247,31 @@ export const ART_MOVEMENTS: ArtMovement[] = [
     ],
   },
   {
+    id: 'fauvism',
+    name: 'Fauvism',
+    painters: [
+      {
+        id: 'matisse',
+        name: 'Henri Matisse',
+        nationality: 'French',
+        paintings: [
+          {
+            id: 'the-dance',
+            name: 'The Dance',
+            asset: require('./paintings/the-dance.jpg'),
+            year: 1910,
+          },
+          {
+            id: 'the-music',
+            name: 'The Music',
+            asset: require('./paintings/the-music.jpg'),
+            year: 1910,
+          },
+        ],
+      },
+    ],
+  },
+  {
     id: 'expressionism',
     name: 'Expressionism',
     painters: [
