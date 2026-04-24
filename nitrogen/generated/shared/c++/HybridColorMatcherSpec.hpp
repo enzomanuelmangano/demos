@@ -48,7 +48,7 @@ namespace margelo::nitro::demos {
 
     public:
       // Methods
-      virtual std::vector<double> matchColors(const std::vector<double>& cellLAB, const std::vector<double>& cellIndices, const std::vector<double>& photoLAB, const std::vector<double>& photoIds) = 0;
+      virtual std::vector<double> matchColorsRGB(const std::vector<double>& cellRGB, const std::vector<double>& cellIndices, const std::vector<double>& photoRGB, const std::vector<double>& photoIds) = 0;
 
     protected:
       // Hybrid Setup

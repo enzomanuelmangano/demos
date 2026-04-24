@@ -14,7 +14,7 @@ namespace margelo::nitro::demos {
     HybridObject::loadHybridMethods();
     // load custom methods/properties
     registerHybrids(this, [](Prototype& prototype) {
-      prototype.registerHybridMethod("matchColors", &HybridColorMatcherSpec::matchColors);
+      prototype.registerHybridMethod("matchColorsRGB", &HybridColorMatcherSpec::matchColorsRGB);
     });
   }
 

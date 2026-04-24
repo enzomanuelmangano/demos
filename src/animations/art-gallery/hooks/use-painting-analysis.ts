@@ -2,9 +2,8 @@ import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { Image } from 'react-native';
 
 import { TARGET_CELLS } from '../constants';
-import { rgbToLab } from '../utils/color-conversion';
 
-import type { GridCell, LAB, RGB } from '../types';
+import type { GridCell, RGB } from '../types';
 import type { SkImage } from '@shopify/react-native-skia';
 
 // Module-level cache
@@ -127,9 +126,7 @@ const analyzeImage = (image: SkImage): AnalysisResult => {
     const y = row * cellHeight;
 
     const rgb = sampleRegionFromBuffer(pixels, imageWidth, x, y, cellWidth, cellHeight);
-    const targetLab: LAB = rgbToLab(rgb);
-
-    cells.push({ index: i, row, col, targetColor: rgb, targetLab, photoId: null });
+    cells.push({ index: i, row, col, targetColor: rgb, photoId: null });
   }
 
   cachedPaintingAnalysis = cells;

@@ -8,10 +8,10 @@ class HybridColorMatcher : public HybridColorMatcherSpec {
 public:
   HybridColorMatcher() : HybridObject(TAG) {}
 
-  std::vector<double> matchColors(
-    const std::vector<double>& cellLAB,
+  std::vector<double> matchColorsRGB(
+    const std::vector<double>& cellRGB,
     const std::vector<double>& cellIndices,
-    const std::vector<double>& photoLAB,
+    const std::vector<double>& photoRGB,
     const std::vector<double>& photoIds
   ) override;
 };

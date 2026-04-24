@@ -15,7 +15,7 @@
 #include <fbjni/fbjni.h>
 #include <NitroModules/HybridObjectRegistry.hpp>
 
-#include "HybridColorMatcher.hpp"
+
 
 namespace margelo::nitro::demos {
 
@@ -35,15 +35,7 @@ void registerAllNatives() {
   
 
   // Register Nitro Hybrid Objects
-  HybridObjectRegistry::registerHybridObjectConstructor(
-    "ColorMatcher",
-    []() -> std::shared_ptr<HybridObject> {
-      static_assert(std::is_default_constructible_v<HybridColorMatcher>,
-                    "The HybridObject \"HybridColorMatcher\" is not default-constructible! "
-                    "Create a public constructor that takes zero arguments to be able to autolink this HybridObject.");
-      return std::make_shared<HybridColorMatcher>();
-    }
-  );
+  
 }
 
 } // namespace margelo::nitro::demos

@@ -40,31 +40,31 @@ export const useMosaicMapping = (
       return cachedMosaicMapping;
     }
 
-    console.log('[Mapping] Computing with native C++ module...');
+    console.log('[Mapping] Computing with native C++ (parallel + RGB→LAB)...');
     const startTime = Date.now();
 
-    // Prepare flat arrays for native module
+    // Prepare flat RGB arrays for native module (LAB conversion happens in C++)
     const photos = Array.from(photoInfoMap.values());
 
-    const cellLAB: number[] = [];
+    const cellRGB: number[] = [];
     const cellIndices: number[] = [];
     for (const cell of gridCells) {
-      cellLAB.push(cell.targetLab.l, cell.targetLab.a, cell.targetLab.b);
+      cellRGB.push(cell.targetColor.r, cell.targetColor.g, cell.targetColor.b);
       cellIndices.push(cell.index);
     }
 
-    const photoLAB: number[] = [];
+    const photoRGB: number[] = [];
     const photoIds: number[] = [];
     for (const photo of photos) {
-      photoLAB.push(photo.labColor.l, photo.labColor.a, photo.labColor.b);
+      photoRGB.push(photo.averageColor.r, photo.averageColor.g, photo.averageColor.b);
       photoIds.push(photo.id);
     }
 
-    // Run native C++ color matching
+    // Run native C++ color matching (handles RGB→LAB + parallel matching)
     const newMapping = matchColorsNative(
-      cellLAB,
+      cellRGB,
       cellIndices,
-      photoLAB,
+      photoRGB,
       photoIds,
     );
 

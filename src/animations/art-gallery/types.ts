@@ -21,7 +21,6 @@ export interface GridCell {
   row: number;
   col: number;
   targetColor: RGB;
-  targetLab: LAB;
   photoId: number | null;
 }
 

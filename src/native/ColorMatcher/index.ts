@@ -7,17 +7,19 @@ export const ColorMatcherModule =
 
 /**
  * High-performance color matching using C++ via Nitro
+ * - Converts RGB to LAB in native code
+ * - Uses parallel processing for speed
  */
 export function matchColorsNative(
-  cellLAB: number[],
+  cellRGB: number[],
   cellIndices: number[],
-  photoLAB: number[],
+  photoRGB: number[],
   photoIds: number[],
 ): Map<number, number> {
-  const resultArray = ColorMatcherModule.matchColors(
-    cellLAB,
+  const resultArray = ColorMatcherModule.matchColorsRGB(
+    cellRGB,
     cellIndices,
-    photoLAB,
+    photoRGB,
     photoIds,
   );
 
