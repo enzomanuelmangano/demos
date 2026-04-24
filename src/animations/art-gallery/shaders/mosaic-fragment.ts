@@ -12,7 +12,7 @@ struct Uniforms {
   translateX: f32,
   translateY: f32,
   animProgress: f32,
-  _pad2: f32,
+  atlasReveal: f32,
   _pad3: f32,
 }
 

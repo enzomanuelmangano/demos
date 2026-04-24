@@ -12,7 +12,7 @@ struct Uniforms {
   translateX: f32,
   translateY: f32,
   animProgress: f32,  // 1 = old positions, 0 = new positions
-  _pad2: f32,  // unused
+  atlasReveal: f32,   // 0-7+: random tile reveal progress
   _pad3: f32,  // unused
 }
 
@@ -77,8 +77,23 @@ fn main(
   // Interpolate position
   let posX = mix(tileX, oldX, t);
   let posY = mix(tileY, oldY, t);
-  let sizeW = mix(tileW, oldW, t);
-  let sizeH = mix(tileH, oldH, t);
+  var sizeW = mix(tileW, oldW, t);
+  var sizeH = mix(tileH, oldH, t);
+
+  // Random tile reveal - each tile has a random threshold within its atlas band
+  let seed = f32(instanceIndex);
+  let randomDelay = fract(sin(seed * 12.9898 + 78.233) * 43758.5453);
+  let revealThreshold = f32(atlasIdx) + randomDelay * 0.95;
+
+  // Smooth pop-in: scale from 0 to 1 with overshoot
+  let revealDelta = uniforms.atlasReveal - revealThreshold;
+  let revealT = clamp(revealDelta * 8.0, 0.0, 1.0);
+  // Elastic ease-out for satisfying pop
+  let overshoot = 1.0 + sin(revealT * 3.14159) * 0.15;
+  let revealScale = revealT * overshoot;
+  sizeW *= revealScale;
+  sizeH *= revealScale;
+
 
   // Calculate movement for 3D intensity
   let deltaX = tileX - oldX;

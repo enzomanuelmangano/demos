@@ -97,6 +97,8 @@ interface GPUResources {
   context: RNWebGPUContext;
   pipeline: GPURenderPipeline;
   bindGroup: GPUBindGroup;
+  bindGroupLayout: GPUBindGroupLayout;
+  sampler: GPUSampler;
   uniformBuffer: GPUBuffer;
   tileBuffer: GPUBuffer;
   oldTileBuffer: GPUBuffer;
@@ -104,6 +106,7 @@ interface GPUResources {
   depthTexture: GPUTexture;
   buffers: GPUBuffer[];
   tileCount: number;
+  bindGroupVersion: number;
 }
 
 interface UseWebGPUMosaicOptions {
@@ -128,6 +131,9 @@ export function useWebGPUMosaic(
   const isInitializedRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
   const [gpuReady, setGpuReady] = useState(false);
+
+  // Atlas reveal animation (ref-based, updated in render loop)
+  const atlasRevealRef = useRef({ current: 0, target: 0 });
 
   // Track where each photo was in the previous painting
   // Positions are stored as SCREEN-RELATIVE (centered, ready for display)
@@ -170,6 +176,50 @@ export function useWebGPUMosaic(
     isInitializedRef.current = false;
   }, []);
 
+  // Create a 1x1 placeholder texture
+  const createPlaceholderTexture = useCallback((device: GPUDevice): GPUTexture => {
+    const texture = device.createTexture({
+      size: [1, 1],
+      format: 'rgba8unorm',
+      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+    });
+    device.queue.writeTexture(
+      { texture },
+      new Uint8Array([255, 0, 255, 255]), // Magenta placeholder (obvious)
+      { bytesPerRow: 4 },
+      [1, 1],
+    );
+    return texture;
+  }, []);
+
+  // Create bind group with current textures
+  const createBindGroup = useCallback((
+    device: GPUDevice,
+    layout: GPUBindGroupLayout,
+    uniformBuffer: GPUBuffer,
+    tileBuffer: GPUBuffer,
+    oldTileBuffer: GPUBuffer,
+    textures: GPUTexture[],
+    sampler: GPUSampler,
+  ): GPUBindGroup => {
+    return device.createBindGroup({
+      layout,
+      entries: [
+        { binding: 0, resource: { buffer: uniformBuffer } },
+        { binding: 1, resource: { buffer: tileBuffer } },
+        { binding: 2, resource: textures[0].createView() },
+        { binding: 3, resource: textures[1].createView() },
+        { binding: 4, resource: textures[2].createView() },
+        { binding: 5, resource: textures[3].createView() },
+        { binding: 6, resource: textures[4].createView() },
+        { binding: 7, resource: textures[5].createView() },
+        { binding: 8, resource: textures[6].createView() },
+        { binding: 9, resource: sampler },
+        { binding: 10, resource: { buffer: oldTileBuffer } },
+      ],
+    });
+  }, []);
+
 
   // Decode atlas from SkData and upload to GPU
   const decodeAtlasToGPU = useCallback(
@@ -180,6 +230,7 @@ export function useWebGPUMosaic(
     ): Promise<GPUTexture | null> => {
       try {
         const t0 = Date.now();
+        console.log(`[Atlas ${atlasIndex}] Starting decode...`);
 
         const skImage = Skia.Image.MakeImageFromEncoded(data);
         if (!skImage) {
@@ -187,11 +238,14 @@ export function useWebGPUMosaic(
           return null;
         }
         const t1 = Date.now();
+        console.log(`[Atlas ${atlasIndex}] MakeImageFromEncoded: ${t1-t0}ms`);
 
         const width = skImage.width();
         const height = skImage.height();
+        console.log(`[Atlas ${atlasIndex}] Image size: ${width}x${height}`);
 
         // Read pixels from Skia image
+        console.log(`[Atlas ${atlasIndex}] Starting readPixels...`);
         const pixels = skImage.readPixels(0, 0, {
           width,
           height,
@@ -199,19 +253,26 @@ export function useWebGPUMosaic(
           alphaType: AlphaType.Unpremul,
         });
         const t2 = Date.now();
+        console.log(`[Atlas ${atlasIndex}] readPixels: ${t2-t1}ms (${pixels ? 'success' : 'failed'})`);
 
         if (!pixels) {
           console.error(`[Atlas ${atlasIndex}] Failed to read pixels`);
           return null;
         }
 
-        // Create GPU texture and upload
+        // Create GPU texture
+        console.log(`[Atlas ${atlasIndex}] Creating GPU texture...`);
+        const t2b = Date.now();
         const texture = device.createTexture({
           size: [width, height],
           format: 'rgba8unorm',
           usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
         });
+        const t2c = Date.now();
+        console.log(`[Atlas ${atlasIndex}] createTexture: ${t2c-t2b}ms`);
 
+        // Upload to GPU
+        console.log(`[Atlas ${atlasIndex}] Starting writeTexture...`);
         device.queue.writeTexture(
           { texture },
           pixels,
@@ -219,8 +280,9 @@ export function useWebGPUMosaic(
           [width, height],
         );
         const t3 = Date.now();
+        console.log(`[Atlas ${atlasIndex}] writeTexture: ${t3-t2c}ms`);
 
-        console.log(`[Atlas ${atlasIndex}] decode=${t1-t0}ms pixels=${t2-t1}ms gpu=${t3-t2}ms total=${t3-t0}ms`);
+        console.log(`[Atlas ${atlasIndex}] TOTAL: decode=${t1-t0}ms readPixels=${t2-t1}ms createTex=${t2c-t2b}ms writeTex=${t3-t2c}ms total=${t3-t0}ms`);
         return texture;
       } catch (e) {
         console.error(`[Atlas ${atlasIndex}] Skia error:`, e);
@@ -240,6 +302,13 @@ export function useWebGPUMosaic(
       resourcesRef.current;
 
     const time = (Date.now() - startTimeRef.current) / 1000;
+
+    // Smoothly animate atlas reveal toward target (in render loop for smoothness)
+    const reveal = atlasRevealRef.current;
+    if (reveal.current < reveal.target) {
+      // ~0.03 per frame = ~1.8 units/sec, full reveal in ~4 seconds
+      reveal.current = Math.min(reveal.current + 0.03, reveal.target);
+    }
     const { screenWidth: sw, screenHeight: sh } = renderValuesRef.current;
 
     const uniformData = uniformDataRef.current;
@@ -255,7 +324,7 @@ export function useWebGPUMosaic(
     uniformData[9] = translateX.value;
     uniformData[10] = translateY.value;
     uniformData[11] = animProgress.value; // SharedValue: 1 = old positions, 0 = new positions
-    uniformData[12] = 0; // unused
+    uniformData[12] = reveal.current; // Atlas reveal progress for random tile pop-in
     uniformData[13] = 0; // unused
 
     device.queue.writeBuffer(
@@ -318,27 +387,6 @@ export function useWebGPUMosaic(
 
       context.configure({ device, format, alphaMode: 'premultiplied' });
 
-      // Wait for prefetched SkData (should already be loaded during analysis)
-      const atlasStart = Date.now();
-      console.log('[WebGPU] Waiting for prefetched atlas data...');
-      const skDataArray = await startAtlasPrefetch();
-      console.log(`[WebGPU] Prefetch ready in ${Date.now() - atlasStart}ms`);
-
-      // Decode all to GPU textures in parallel
-      const decodeStart = Date.now();
-      const atlasResults = await Promise.all(
-        skDataArray.map((data, i) => decodeAtlasToGPU(device, i, data)),
-      );
-
-      // Verify all loaded successfully
-      const validTextures = atlasResults.filter((t): t is GPUTexture => t !== null);
-      if (validTextures.length !== ATLAS_COUNT) {
-        console.error('[WebGPU] Missing atlas textures');
-        return;
-      }
-
-      console.log(`[WebGPU] All atlases decoded in ${Date.now() - decodeStart}ms`);
-
       const buffers: GPUBuffer[] = [];
 
       const uniformBuffer = device.createBuffer({
@@ -368,6 +416,12 @@ export function useWebGPUMosaic(
         minFilter: 'linear',
       });
 
+      // Create placeholder textures for immediate rendering
+      const atlasTextures: GPUTexture[] = [];
+      for (let i = 0; i < ATLAS_COUNT; i++) {
+        atlasTextures.push(createPlaceholderTexture(device));
+      }
+
       // Bind group layout with 7 textures + oldTileBuffer
       const bindGroupLayout = device.createBindGroupLayout({
         entries: [
@@ -385,22 +439,16 @@ export function useWebGPUMosaic(
         ],
       });
 
-      const bindGroup = device.createBindGroup({
-        layout: bindGroupLayout,
-        entries: [
-          { binding: 0, resource: { buffer: uniformBuffer } },
-          { binding: 1, resource: { buffer: tileBuffer } },
-          { binding: 2, resource: validTextures[0].createView() },
-          { binding: 3, resource: validTextures[1].createView() },
-          { binding: 4, resource: validTextures[2].createView() },
-          { binding: 5, resource: validTextures[3].createView() },
-          { binding: 6, resource: validTextures[4].createView() },
-          { binding: 7, resource: validTextures[5].createView() },
-          { binding: 8, resource: validTextures[6].createView() },
-          { binding: 9, resource: sampler },
-          { binding: 10, resource: { buffer: oldTileBuffer } },
-        ],
-      });
+      // Create initial bind group with placeholders
+      const bindGroup = createBindGroup(
+        device,
+        bindGroupLayout,
+        uniformBuffer,
+        tileBuffer,
+        oldTileBuffer,
+        atlasTextures,
+        sampler,
+      );
 
       // Create depth texture for 3D effect z-ordering
       const depthTexture = device.createTexture({
@@ -438,28 +486,75 @@ export function useWebGPUMosaic(
         context,
         pipeline,
         bindGroup,
+        bindGroupLayout,
+        sampler,
         uniformBuffer,
         tileBuffer,
         oldTileBuffer,
-        atlasTextures: validTextures,
+        atlasTextures,
         depthTexture,
         buffers,
-        tileCount: 0, // Will be set by tile update effect
+        tileCount: 0,
+        bindGroupVersion: 0,
       };
 
       isInitializedRef.current = true;
       startTimeRef.current = Date.now();
       setGpuReady(true);
-      console.log('[WebGPU] Initialized, waiting for tiles...');
+      console.log('[WebGPU] Initialized with placeholders, starting render...');
       animationRef.current = requestAnimationFrame(render);
+
+      // Load real atlases in background (sequential to avoid memory spikes)
+      const loadAtlasesProgressively = async () => {
+        console.log('[WebGPU] Starting progressive atlas loading...');
+        const totalStart = Date.now();
+
+        const skDataArray = await startAtlasPrefetch();
+        console.log(`[WebGPU] Prefetch complete, decoding atlases...`);
+
+        for (let i = 0; i < skDataArray.length; i++) {
+          if (!resourcesRef.current) return; // Component unmounted
+
+          const texture = await decodeAtlasToGPU(device, i, skDataArray[i]);
+          if (!texture || !resourcesRef.current) return;
+
+          // Destroy placeholder and swap in real texture
+          const oldPlaceholder = resourcesRef.current.atlasTextures[i];
+          resourcesRef.current.atlasTextures[i] = texture;
+          oldPlaceholder.destroy();
+
+          // Recreate bind group with updated texture
+          resourcesRef.current.bindGroup = createBindGroup(
+            device,
+            bindGroupLayout,
+            uniformBuffer,
+            tileBuffer,
+            oldTileBuffer,
+            resourcesRef.current.atlasTextures,
+            sampler,
+          );
+          resourcesRef.current.bindGroupVersion = i + 1;
+
+          console.log(`[WebGPU] Atlas ${i + 1}/${ATLAS_COUNT} ready`);
+
+          // Set reveal target - tiles will animate in the render loop
+          atlasRevealRef.current.target = i + 1;
+        }
+
+        console.log(`[WebGPU] All atlases loaded in ${Date.now() - totalStart}ms`);
+      };
+
+      // Start loading in background (don't await)
+      loadAtlasesProgressively();
     } catch (e) {
       console.error('[WebGPU Mosaic] Initialization failed:', e);
     }
-  }, [canvasRef, decodeAtlasToGPU, photoInfoMap.size]);
+  }, [canvasRef, createPlaceholderTexture, createBindGroup, decodeAtlasToGPU, photoInfoMap.size, render]);
 
   useEffect(() => {
     // Don't update buffers if cells is empty (waiting for consistent data)
     // This prevents glitchy frames during painting transitions
+    console.log(`[Tiles] Effect triggered: gpuReady=${gpuReady}, cells=${cells.length}`);
     if (!gpuReady || !resourcesRef.current || cells.length === 0) return;
 
     const { device, tileBuffer, oldTileBuffer } = resourcesRef.current;
