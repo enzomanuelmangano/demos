@@ -7,7 +7,6 @@ import {
   useLayoutEffect,
   useMemo,
   useRef,
-  useState,
 } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -36,11 +35,17 @@ import {
 import {
   EMPTY_ANALYSIS,
   loadAndAnalyzePainting,
-  type AnalysisResult,
 } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
 import { startAtlasPrefetch, useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
 import { ART_MOVEMENTS, PAINTINGS } from './paintings';
+import {
+  useAnalysis,
+  useIsAtlasMode,
+  useSelectedPaintingId,
+  useSetAnalysis,
+  useSetSelectedPaintingId,
+} from './state';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -53,63 +58,67 @@ const GRID_MODE_THRESHOLD = 0.5;
 // Ideal grid scale: cell fills 70% of screen width
 const GRID_MODE_TARGET = 0.7;
 
-// Header right button component
+// Header right button component - subscribes only to selectedPaintingId
 const HeaderRight = memo(
-  ({
-    selectedPaintingId,
-    onPaintingChange,
-  }: {
-    selectedPaintingId: string | null;
-    onPaintingChange: (id: string | null) => void;
-  }) => (
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger>
-        <Pressable style={styles.headerButton} hitSlop={12}>
-          <Ionicons name="ellipsis-horizontal-circle" size={28} color="#fff" />
-        </Pressable>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content>
-        <DropdownMenu.CheckboxItem
-          key="default"
-          value={selectedPaintingId === null ? 'on' : 'off'}
-          onValueChange={() => onPaintingChange(null)}>
-          <DropdownMenu.ItemTitle>Default</DropdownMenu.ItemTitle>
-          <DropdownMenu.ItemIndicator />
-        </DropdownMenu.CheckboxItem>
-        {ART_MOVEMENTS.map(movement => (
-          <DropdownMenu.Sub key={movement.id}>
-            <DropdownMenu.SubTrigger key={`${movement.id}-trigger`}>
-              <DropdownMenu.ItemTitle>{movement.name}</DropdownMenu.ItemTitle>
-            </DropdownMenu.SubTrigger>
-            <DropdownMenu.SubContent>
-              {movement.painters.map(painter => (
-                <DropdownMenu.Sub key={painter.id}>
-                  <DropdownMenu.SubTrigger key={`${painter.id}-trigger`}>
-                    <DropdownMenu.ItemTitle>
-                      {painter.name}
-                    </DropdownMenu.ItemTitle>
-                  </DropdownMenu.SubTrigger>
-                  <DropdownMenu.SubContent>
-                    {painter.paintings.map(painting => (
-                      <DropdownMenu.CheckboxItem
-                        key={painting.id}
-                        value={painting.id === selectedPaintingId ? 'on' : 'off'}
-                        onValueChange={() => onPaintingChange(painting.id)}>
-                        <DropdownMenu.ItemTitle>
-                          {painting.name}
-                        </DropdownMenu.ItemTitle>
-                        <DropdownMenu.ItemIndicator />
-                      </DropdownMenu.CheckboxItem>
-                    ))}
-                  </DropdownMenu.SubContent>
-                </DropdownMenu.Sub>
-              ))}
-            </DropdownMenu.SubContent>
-          </DropdownMenu.Sub>
-        ))}
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
-  ),
+  ({ onPaintingChange }: { onPaintingChange: (id: string | null) => void }) => {
+    const selectedPaintingId = useSelectedPaintingId();
+
+    return (
+      <DropdownMenu.Root>
+        <DropdownMenu.Trigger>
+          <Pressable style={styles.headerButton} hitSlop={12}>
+            <Ionicons
+              name="ellipsis-horizontal-circle"
+              size={28}
+              color="#fff"
+            />
+          </Pressable>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Content>
+          <DropdownMenu.CheckboxItem
+            key="default"
+            value={selectedPaintingId === null ? 'on' : 'off'}
+            onValueChange={() => onPaintingChange(null)}>
+            <DropdownMenu.ItemTitle>Default</DropdownMenu.ItemTitle>
+            <DropdownMenu.ItemIndicator />
+          </DropdownMenu.CheckboxItem>
+          {ART_MOVEMENTS.map(movement => (
+            <DropdownMenu.Sub key={movement.id}>
+              <DropdownMenu.SubTrigger key={`${movement.id}-trigger`}>
+                <DropdownMenu.ItemTitle>{movement.name}</DropdownMenu.ItemTitle>
+              </DropdownMenu.SubTrigger>
+              <DropdownMenu.SubContent>
+                {movement.painters.map(painter => (
+                  <DropdownMenu.Sub key={painter.id}>
+                    <DropdownMenu.SubTrigger key={`${painter.id}-trigger`}>
+                      <DropdownMenu.ItemTitle>
+                        {painter.name}
+                      </DropdownMenu.ItemTitle>
+                    </DropdownMenu.SubTrigger>
+                    <DropdownMenu.SubContent>
+                      {painter.paintings.map(painting => (
+                        <DropdownMenu.CheckboxItem
+                          key={painting.id}
+                          value={
+                            painting.id === selectedPaintingId ? 'on' : 'off'
+                          }
+                          onValueChange={() => onPaintingChange(painting.id)}>
+                          <DropdownMenu.ItemTitle>
+                            {painting.name}
+                          </DropdownMenu.ItemTitle>
+                          <DropdownMenu.ItemIndicator />
+                        </DropdownMenu.CheckboxItem>
+                      ))}
+                    </DropdownMenu.SubContent>
+                  </DropdownMenu.Sub>
+                ))}
+              </DropdownMenu.SubContent>
+            </DropdownMenu.Sub>
+          ))}
+        </DropdownMenu.Content>
+      </DropdownMenu.Root>
+    );
+  },
 );
 
 export function ArtGallery() {
@@ -117,9 +126,12 @@ export function ArtGallery() {
   const { top: safeTop } = useSafeAreaInsets();
   const canvasRef = useRef<CanvasRef>(null);
 
-  // Painting selection (null = show raw atlas grid)
-  const [selectedPaintingId, setSelectedPaintingId] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<AnalysisResult>(EMPTY_ANALYSIS);
+  // Painting selection via Jotai atoms (prevents full re-renders)
+  // Only subscribe to what this component needs - setters and derived isAtlasMode
+  const setSelectedPaintingId = useSetSelectedPaintingId();
+  const analysis = useAnalysis();
+  const setAnalysis = useSetAnalysis();
+  const isAtlasMode = useIsAtlasMode();
 
   // Start prefetching atlases immediately on mount
   useEffect(() => {
@@ -135,7 +147,6 @@ export function ArtGallery() {
   const paintingGridDimensions = analysis.gridDimensions;
 
   // Use painting grid or default atlas grid
-  const isAtlasMode = selectedPaintingId === null;
   const cols = isAtlasMode ? DEFAULT_GRID_COLS : paintingGridDimensions.cols;
   const rows = isAtlasMode ? DEFAULT_GRID_ROWS : paintingGridDimensions.rows;
   const aspectRatio = isAtlasMode ? 1 : paintingGridDimensions.aspectRatio;
@@ -207,7 +218,6 @@ export function ArtGallery() {
     rows,
   ]);
 
-
   // Zoom and pan state (all on UI thread via SharedValues)
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -254,10 +264,18 @@ export function ArtGallery() {
       setSelectedPaintingId(paintingId);
       setAnalysis(result);
     },
-    [scale, translateX, translateY, currentRow, currentCol],
+    [
+      scale,
+      translateX,
+      translateY,
+      currentRow,
+      currentCol,
+      setSelectedPaintingId,
+      setAnalysis,
+    ],
   );
 
-  // Configure native header
+  // Configure native header - only depends on handlePaintingChange, not on selectedPaintingId
   useLayoutEffect(() => {
     navigation.setOptions({
       headerShown: true,
@@ -268,13 +286,10 @@ export function ArtGallery() {
         fontWeight: '600',
       },
       headerRight: () => (
-        <HeaderRight
-          selectedPaintingId={selectedPaintingId}
-          onPaintingChange={handlePaintingChange}
-        />
+        <HeaderRight onPaintingChange={handlePaintingChange} />
       ),
     });
-  }, [navigation, selectedPaintingId, handlePaintingChange]);
+  }, [navigation, handlePaintingChange]);
 
   // Initialize WebGPU renderer
   useWebGPUMosaic(canvasRef, {
@@ -557,7 +572,6 @@ export function ArtGallery() {
         <Animated.View style={[styles.fab, backButtonStyle]}>
           <ZoomOutButton onPress={resetZoom} />
         </Animated.View>
-
       </View>
     </GestureDetector>
   );
@@ -570,14 +584,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  headerButton: {
-    marginRight: 8,
-    padding: 4,
-  },
   fab: {
     bottom: 40,
     position: 'absolute',
     right: 20,
+  },
+  headerButton: {
+    marginRight: 8,
+    padding: 4,
   },
   headerGradient: {
     left: 0,
