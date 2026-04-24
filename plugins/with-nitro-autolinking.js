@@ -36,7 +36,7 @@ function withNitroAndroid(config) {
       const androidDir = path.join(config.modRequest.projectRoot, 'android');
       const nativeAndroidDir = path.join(
         config.modRequest.projectRoot,
-        'native/android',
+        'plugins/nitro-android',
       );
 
       // Symlink native/android -> android/demosnitro
