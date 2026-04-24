@@ -38,7 +38,7 @@ import {
   loadAndAnalyzePainting,
 } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
-import { startAtlasPrefetch, useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
+import { useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
 import { ART_MOVEMENTS, PAINTINGS } from './paintings';
 import {
   useAnalysis,
@@ -143,10 +143,6 @@ export function ArtGallery() {
   const setAnalysis = useSetAnalysis();
   const isAtlasMode = useIsAtlasMode();
 
-  // Start prefetching atlases immediately on mount
-  useEffect(() => {
-    startAtlasPrefetch();
-  }, []);
 
   // Default grid for atlas view (100x100 = 10,000 photos)
   const DEFAULT_GRID_COLS = 100;

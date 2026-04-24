@@ -37,37 +37,12 @@ const ATLAS_ASSETS = [
   require('../assets/atlases/photo-atlas-6.jpg'),
 ];
 
-// Prefetch cache - starts loading when component mounts
-let prefetchPromise: Promise<SkData[]> | null = null;
-let cachedSkData: SkData[] | null = null;
-
 type SkData = ReturnType<typeof Skia.Data.fromBytes>;
 
-export function startAtlasPrefetch(): Promise<SkData[]> {
-  if (cachedSkData) {
-    return Promise.resolve(cachedSkData);
-  }
-  if (prefetchPromise) {
-    return prefetchPromise;
-  }
-
-  console.log('[Prefetch] Starting Skia.Data.fromURI for all atlases...');
-  const startTime = Date.now();
-
-  prefetchPromise = Promise.all(
-    ATLAS_ASSETS.map(asset => {
-      const resolved = Image.resolveAssetSource(asset);
-      return Skia.Data.fromURI(resolved.uri);
-    }),
-  ).then(dataArray => {
-    cachedSkData = dataArray;
-    console.log(
-      `[Prefetch] All atlas data loaded in ${Date.now() - startTime}ms`,
-    );
-    return dataArray;
-  });
-
-  return prefetchPromise;
+// Load a single atlas by index
+export async function loadAtlasData(index: number): Promise<SkData> {
+  const resolved = Image.resolveAssetSource(ATLAS_ASSETS[index]);
+  return Skia.Data.fromURI(resolved.uri);
 }
 
 interface CellData {
@@ -680,18 +655,20 @@ export function useWebGPUMosaic(
       console.log('[WebGPU] Initialized with placeholders, starting render...');
       animationRef.current = requestAnimationFrame(render);
 
-      // Load real atlases in background (sequential to avoid memory spikes)
+      // Load atlases sequentially (one at a time: fetch + decode)
       const loadAtlasesProgressively = async () => {
-        console.log('[WebGPU] Starting progressive atlas loading...');
+        console.log('[WebGPU] Starting sequential atlas loading...');
         const totalStart = Date.now();
 
-        const skDataArray = await startAtlasPrefetch();
-        console.log(`[WebGPU] Prefetch complete, decoding atlases...`);
-
-        for (let i = 0; i < skDataArray.length; i++) {
+        for (let i = 0; i < ATLAS_COUNT; i++) {
           if (!resourcesRef.current) return; // Component unmounted
 
-          const texture = await decodeAtlasToGPU(device, i, skDataArray[i]);
+          // Fetch this atlas
+          const skData = await loadAtlasData(i);
+          if (!resourcesRef.current) return;
+
+          // Decode and upload to GPU
+          const texture = await decodeAtlasToGPU(device, i, skData);
           if (!texture || !resourcesRef.current) return;
 
           // Destroy placeholder and swap in real texture
