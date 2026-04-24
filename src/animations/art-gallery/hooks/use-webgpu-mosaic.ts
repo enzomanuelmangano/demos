@@ -45,9 +45,13 @@ const ATLAS_ASSETS = [
 type SkData = ReturnType<typeof Skia.Data.fromBytes>;
 
 // Load a single atlas by index
-export async function loadAtlasData(index: number): Promise<SkData> {
-  const resolved = Image.resolveAssetSource(ATLAS_ASSETS[index]);
-  return Skia.Data.fromURI(resolved.uri);
+export async function loadAtlasData(index: number): Promise<SkData | null> {
+  try {
+    const resolved = Image.resolveAssetSource(ATLAS_ASSETS[index]);
+    return Skia.Data.fromURI(resolved.uri);
+  } catch {
+    return null;
+  }
 }
 
 interface CellData {
@@ -123,9 +127,6 @@ export function useWebGPUMosaic(
   const startTimeRef = useRef<number>(Date.now());
   const [gpuReady, setGpuReady] = useState(false);
 
-  // Atlas reveal animation (ref-based, updated in render loop)
-  const atlasRevealRef = useRef({ current: 0, target: 0 });
-
   // Focus overlay intensity (1 when focused, 0 when not)
   const focusIntensityRef = useRef(0);
   // Current interpolated focus position (sent to shader)
@@ -198,7 +199,7 @@ export function useWebGPUMosaic(
       });
       device.queue.writeTexture(
         { texture },
-        new Uint8Array([255, 0, 255, 255]), // Magenta placeholder (obvious)
+        new Uint8Array([0, 0, 0, 0]), // Transparent placeholder
         { bytesPerRow: 4 },
         [1, 1],
       );
@@ -242,7 +243,7 @@ export function useWebGPUMosaic(
   const decodeAtlasToGPU = useCallback(
     async (
       device: GPUDevice,
-      atlasIndex: number,
+      _atlasIndex: number,
       data: SkData,
     ): Promise<GPUTexture | null> => {
       try {
@@ -260,6 +261,11 @@ export function useWebGPUMosaic(
           colorType: ColorType.RGBA_8888,
           alphaType: AlphaType.Unpremul,
         });
+
+        // Dispose SkImage immediately after reading pixels to free memory
+        if ('dispose' in skImage && typeof skImage.dispose === 'function') {
+          skImage.dispose();
+        }
 
         if (!pixels) {
           return null;
@@ -307,12 +313,6 @@ export function useWebGPUMosaic(
 
     const time = (Date.now() - startTimeRef.current) / 1000;
 
-    // Smoothly animate atlas reveal toward target (in render loop for smoothness)
-    const reveal = atlasRevealRef.current;
-    if (reveal.current < reveal.target) {
-      // ~0.03 per frame = ~1.8 units/sec, full reveal in ~4 seconds
-      reveal.current = Math.min(reveal.current + 0.03, reveal.target);
-    }
     const {
       screenWidth: sw,
       screenHeight: sh,
@@ -415,7 +415,7 @@ export function useWebGPUMosaic(
     uniformData[9] = translateX.value;
     uniformData[10] = translateY.value;
     uniformData[11] = animProgress.value; // SharedValue: 1 = old positions, 0 = new positions
-    uniformData[12] = reveal.current; // Atlas reveal progress for random tile pop-in
+    uniformData[12] = ATLAS_COUNT; // All tiles visible immediately (no reveal animation)
     uniformData[13] = cw;
     uniformData[14] = ch;
     uniformData[15] = focusIntensityRef.current; // Smooth focus transition
@@ -726,11 +726,22 @@ export function useWebGPUMosaic(
 
           // Fetch this atlas (sequential - wait for completion)
           const skData = await loadAtlasData(i);
-          if (!resourcesRef.current) break;
+          if (!skData || !resourcesRef.current) {
+            // Skip this atlas if loading failed, continue with others
+            continue;
+          }
 
           // Decode and upload to GPU (sequential - wait for completion)
           const texture = await decodeAtlasToGPU(device, i, skData);
-          if (!texture || !resourcesRef.current) break;
+
+          // Explicitly dispose Skia data to free memory before next atlas
+          if ('dispose' in skData && typeof skData.dispose === 'function') {
+            skData.dispose();
+          }
+
+          if (!texture || !resourcesRef.current) {
+            continue;
+          }
 
           // Destroy placeholder and swap in real texture
           const oldPlaceholder = resourcesRef.current.atlasTextures[i];
@@ -749,10 +760,7 @@ export function useWebGPUMosaic(
           );
           resourcesRef.current.bindGroupVersion = i + 1;
 
-          // Set reveal target - tiles will animate in the render loop
-          atlasRevealRef.current.target = i + 1;
-
-          // Yield to allow render frames for the reveal animation
+          // Yield to allow render frames
           await new Promise<void>(resolve =>
             requestAnimationFrame(() => resolve()),
           );

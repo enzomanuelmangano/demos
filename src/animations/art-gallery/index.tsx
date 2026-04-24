@@ -1,13 +1,6 @@
 import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -18,7 +11,6 @@ import Animated, {
   cancelAnimation,
   clamp,
   interpolate,
-  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -26,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
+import { scheduleOnRN } from 'react-native-worklets';
 import * as DropdownMenu from 'zeego/dropdown-menu';
 
 import { ZoomOutButton } from './components/zoom-out-button';
@@ -143,7 +136,6 @@ export function ArtGallery() {
   const setAnalysis = useSetAnalysis();
   const isAtlasMode = useIsAtlasMode();
 
-
   // Default grid for atlas view (100x100 = 10,000 photos)
   const DEFAULT_GRID_COLS = 100;
   const DEFAULT_GRID_ROWS = 100;
@@ -242,7 +234,6 @@ export function ArtGallery() {
   // Handle painting change - load & analyze immediately, then update state once
   const handlePaintingChange = useCallback(
     async (paintingId: string | null) => {
-
       // Reset zoom immediately
       scale.value = withSpring(1, SPRING_CONFIG);
       translateX.value = withSpring(0, SPRING_CONFIG);
@@ -333,7 +324,7 @@ export function ArtGallery() {
     springConfig: { dampingRatio: number; duration: number },
   ) => {
     'worklet';
-    runOnJS(triggerHaptic)();
+    scheduleOnRN(triggerHaptic);
     scale.value = withSpring(idealGridScale, springConfig);
 
     const cellCenterX = (col + 0.5) * cellWidth;
@@ -467,10 +458,7 @@ export function ArtGallery() {
       if (scale.value <= 1) return;
 
       // Use cell-based bounds (same as snapToCell) to allow reaching edge cells
-      const maxX = Math.max(
-        0,
-        (canvasWidth / 2 - cellWidth / 2) * scale.value,
-      );
+      const maxX = Math.max(0, (canvasWidth / 2 - cellWidth / 2) * scale.value);
       const maxY = Math.max(
         0,
         (canvasHeight / 2 - cellHeight / 2) * scale.value,
@@ -559,7 +547,7 @@ export function ArtGallery() {
     .onEnd(event => {
       if (scale.value > 1.2) {
         // Zoomed in - zoom out
-        runOnJS(triggerHaptic)();
+        scheduleOnRN(triggerHaptic);
         scale.value = withSpring(1, { dampingRatio: 1, duration: 350 });
         translateX.value = withSpring(0, { dampingRatio: 1, duration: 350 });
         translateY.value = withSpring(0, { dampingRatio: 1, duration: 350 });
