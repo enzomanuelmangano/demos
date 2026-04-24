@@ -1,0 +1,19 @@
+{
+  "$schema": "https://nitro.margelo.com/nitro.schema.json",
+  "cxxNamespace": ["demos"],
+  "ios": {
+    "iosModuleName": "DemosNitro"
+  },
+  "android": {
+    "androidNamespace": ["demos"],
+    "androidCxxLibName": "DemosNitro"
+  },
+  "autolinking": {
+    "ColorMatcher": {
+      "ios": {
+        "language": "c++",
+        "implementationClassName": "HybridColorMatcher"
+      }
+    }
+  }
+}

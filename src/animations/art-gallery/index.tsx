@@ -195,7 +195,7 @@ export function ArtGallery() {
 
   // Load atlas and photo info
   const { photoInfoMap } = usePhotoAtlas();
-  const { mapping, isMatching, mappedCellCount } = useMosaicMapping(
+  const { mapping } = useMosaicMapping(
     isAtlasMode ? [] : paintingGridCells,
     photoInfoMap,
   );
@@ -226,14 +226,8 @@ export function ArtGallery() {
       return result;
     }
 
-    // Painting mode: use color-matched mapping
-    const mappingIsStale = mappedCellCount !== paintingGridCells.length;
-    if (
-      isMatching ||
-      mapping.size === 0 ||
-      paintingGridCells.length === 0 ||
-      mappingIsStale
-    ) {
+    // Painting mode: use color-matched mapping (computed synchronously on UI thread)
+    if (mapping.size === 0 || paintingGridCells.length === 0) {
       return [];
     }
 
@@ -252,8 +246,6 @@ export function ArtGallery() {
     cellHeight,
     canvasWidth,
     canvasHeight,
-    isMatching,
-    mappedCellCount,
     photoInfoMap.size,
     cols,
     rows,
@@ -268,10 +260,9 @@ export function ArtGallery() {
       return 'complete';
     }
 
-    // Painting mode
+    // Painting mode (matching is now synchronous on UI thread)
     if (isAnalyzingPainting) return 'analyzing-painting';
     if (photoInfoMap.size === 0) return 'loading-manifest';
-    if (isMatching) return 'matching-colors';
     if (mapping.size > 0 && cells.length === 0) return 'loading-atlas';
     if (mapping.size > 0 && cells.length > 0) return 'complete';
     return 'idle';
@@ -279,7 +270,6 @@ export function ArtGallery() {
     isAtlasMode,
     isAnalyzingPainting,
     photoInfoMap.size,
-    isMatching,
     mapping.size,
     cells.length,
   ]);
