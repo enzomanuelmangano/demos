@@ -2,8 +2,8 @@ export const mosaicFragmentShader = /* wgsl */ `
 struct Uniforms {
   screenWidth: f32,
   screenHeight: f32,
-  _pad0: f32,
-  _pad1: f32,
+  focusedX: f32,
+  focusedY: f32,
   atlasWidth: f32,
   atlasHeight: f32,
   contrast: f32,
@@ -13,13 +13,16 @@ struct Uniforms {
   translateY: f32,
   animProgress: f32,
   atlasReveal: f32,
-  _pad3: f32,
+  cellWidth: f32,
+  cellHeight: f32,
+  focusIntensity: f32,
 }
 
 struct FragmentInput {
   @builtin(position) fragCoord: vec4f,
   @location(0) atlasUV: vec2f,
   @location(1) @interpolate(flat) atlasIndex: u32,
+  @location(2) @interpolate(flat) focusDim: f32,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -64,7 +67,10 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   // Apply contrast boost
   let contrast = uniforms.contrast;
   let offset = 0.5 * (1.0 - contrast);
-  let boosted = color.rgb * contrast + vec3f(offset);
+  var boosted = color.rgb * contrast + vec3f(offset);
+
+  // Apply focus dimming (focusDim = 0 for focused cell, 0.8 for others)
+  boosted = boosted * (1.0 - input.focusDim);
 
   return vec4f(clamp(boosted, vec3f(0.0), vec3f(1.0)), 1.0);
 }

@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   clamp,
   interpolate,
   runOnJS,
@@ -49,9 +50,18 @@ import {
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+const playTransitionHaptics = async () => {
+  // Rapid light taps during the shuffle animation
+  for (let i = 0; i < 8; i++) {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  // Settle with a medium tap
+  await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+};
+
 const MIN_SCALE = 1;
 const SPRING_CONFIG = { dampingRatio: 1, duration: 350 };
-const SNAP_SPRING = { dampingRatio: 0.9, duration: 1000 };
 
 // Grid mode: when a cell fills this fraction of screen width
 const GRID_MODE_THRESHOLD = 0.5;
@@ -247,6 +257,9 @@ export function ArtGallery() {
 
       clearMosaicMappingCache();
 
+      // Play haptics during transition
+      playTransitionHaptics();
+
       if (paintingId === null) {
         // Atlas mode
         setSelectedPaintingId(null);
@@ -297,12 +310,16 @@ export function ArtGallery() {
     photoInfoMap,
     cellWidth,
     cellHeight,
+    cols,
+    rows,
     screenWidth: SCREEN_WIDTH,
     screenHeight: SCREEN_HEIGHT,
     scale,
     translateX,
     translateY,
     animProgress,
+    currentRow,
+    currentCol,
   });
 
   // Ideal scale for grid mode: cell fills 70% of screen width
@@ -315,18 +332,37 @@ export function ArtGallery() {
   };
 
   // Snap to a specific cell at ideal scale (runs on UI thread)
-  const snapToCell = (row: number, col: number) => {
+  const snapToCell = (
+    row: number,
+    col: number,
+    springConfig: { dampingRatio: number; duration: number },
+  ) => {
     'worklet';
     runOnJS(triggerHaptic)();
-    scale.value = withSpring(idealGridScale, SNAP_SPRING);
+    scale.value = withSpring(idealGridScale, springConfig);
 
     const cellCenterX = (col + 0.5) * cellWidth;
     const cellCenterY = (row + 0.5) * cellHeight;
-    const targetTx = -(cellCenterX - canvasWidth / 2) * idealGridScale;
-    const targetTy = -(cellCenterY - canvasHeight / 2) * idealGridScale;
+    let targetTx = -(cellCenterX - canvasWidth / 2) * idealGridScale;
+    let targetTy = -(cellCenterY - canvasHeight / 2) * idealGridScale;
 
-    translateX.value = withSpring(targetTx, SNAP_SPRING);
-    translateY.value = withSpring(targetTy, SNAP_SPRING);
+    // Clamp translation to allow centering any cell, but not beyond
+    // The range needed to center any cell from 0 to cols-1:
+    // col=0: targetTx = (canvasWidth/2 - 0.5*cellWidth) * scale
+    // col=cols-1: targetTx = -(canvasWidth/2 - 0.5*cellWidth) * scale
+    const maxTx = Math.max(
+      0,
+      (canvasWidth / 2 - cellWidth / 2) * idealGridScale,
+    );
+    const maxTy = Math.max(
+      0,
+      (canvasHeight / 2 - cellHeight / 2) * idealGridScale,
+    );
+    targetTx = clamp(targetTx, -maxTx, maxTx);
+    targetTy = clamp(targetTy, -maxTy, maxTy);
+
+    translateX.value = withSpring(targetTx, springConfig);
+    translateY.value = withSpring(targetTy, springConfig);
 
     currentRow.value = row;
     currentCol.value = col;
@@ -365,9 +401,11 @@ export function ArtGallery() {
     })
     .onUpdate(event => {
       const maxScale = idealGridScale * 1.2;
+      // Allow pinching below MIN_SCALE for fidgeting (rubber band effect)
+      const minScaleWithRubberBand = 0.5;
       const newScale = clamp(
         savedScale.value * event.scale,
-        MIN_SCALE,
+        minScaleWithRubberBand,
         maxScale,
       );
 
@@ -407,7 +445,10 @@ export function ArtGallery() {
           const clampedCol = Math.max(0, Math.min(cols - 1, col));
           const clampedRow = Math.max(0, Math.min(rows - 1, row));
 
-          snapToCell(clampedRow, clampedCol);
+          snapToCell(clampedRow, clampedCol, {
+            dampingRatio: 1,
+            duration: 350,
+          });
         }
       }
     })
@@ -419,6 +460,10 @@ export function ArtGallery() {
   const panGesture = Gesture.Pan()
     .onStart(() => {
       if (isPinching.value) return;
+      // Cancel any running snap animations
+      cancelAnimation(translateX);
+      cancelAnimation(translateY);
+      cancelAnimation(scale);
       savedTranslateX.value = translateX.value;
       savedTranslateY.value = translateY.value;
     })
@@ -426,10 +471,14 @@ export function ArtGallery() {
       if (isPinching.value) return;
       if (scale.value <= 1) return;
 
-      const maxX = Math.max(0, (canvasWidth * scale.value - SCREEN_WIDTH) / 2);
+      // Use cell-based bounds (same as snapToCell) to allow reaching edge cells
+      const maxX = Math.max(
+        0,
+        (canvasWidth / 2 - cellWidth / 2) * scale.value,
+      );
       const maxY = Math.max(
         0,
-        (canvasHeight * scale.value - SCREEN_HEIGHT) / 2,
+        (canvasHeight / 2 - cellHeight / 2) * scale.value,
       );
 
       translateX.value = clamp(
@@ -472,15 +521,16 @@ export function ArtGallery() {
 
         const clampedCol = Math.max(0, Math.min(cols - 1, col));
         const clampedRow = Math.max(0, Math.min(rows - 1, row));
-        snapToCell(clampedRow, clampedCol);
+        snapToCell(clampedRow, clampedCol, { dampingRatio: 1, duration: 350 });
       } else {
+        // Use cell-based bounds (same as snapToCell)
         const maxX = Math.max(
           0,
-          (canvasWidth * scale.value - SCREEN_WIDTH) / 2,
+          (canvasWidth / 2 - cellWidth / 2) * scale.value,
         );
         const maxY = Math.max(
           0,
-          (canvasHeight * scale.value - SCREEN_HEIGHT) / 2,
+          (canvasHeight / 2 - cellHeight / 2) * scale.value,
         );
 
         const targetX = clamp(
@@ -508,16 +558,16 @@ export function ArtGallery() {
       }
     });
 
-  // Double tap gesture to zoom in/out
+  // Double tap gesture to zoom in/out (uses slower spring for cinematic feel)
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(event => {
       if (scale.value > 1.2) {
         // Zoomed in - zoom out
         runOnJS(triggerHaptic)();
-        scale.value = withSpring(1, SPRING_CONFIG);
-        translateX.value = withSpring(0, SPRING_CONFIG);
-        translateY.value = withSpring(0, SPRING_CONFIG);
+        scale.value = withSpring(1, { dampingRatio: 1, duration: 350 });
+        translateX.value = withSpring(0, { dampingRatio: 1, duration: 350 });
+        translateY.value = withSpring(0, { dampingRatio: 1, duration: 350 });
         currentRow.value = -1;
         currentCol.value = -1;
       } else {
@@ -539,7 +589,10 @@ export function ArtGallery() {
           const clampedCol = Math.max(0, Math.min(cols - 1, col));
           const clampedRow = Math.max(0, Math.min(rows - 1, row));
 
-          snapToCell(clampedRow, clampedCol);
+          snapToCell(clampedRow, clampedCol, {
+            dampingRatio: 1,
+            duration: 350,
+          });
         }
       }
     });

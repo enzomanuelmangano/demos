@@ -863,6 +863,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Art Gallery',
     route: 'ArtGallery',
     iconName: 'images-outline',
+    hideDrawerIcon: true,
   },
 } as const;
 

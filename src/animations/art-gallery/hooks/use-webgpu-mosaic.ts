@@ -61,7 +61,9 @@ export function startAtlasPrefetch(): Promise<SkData[]> {
     }),
   ).then(dataArray => {
     cachedSkData = dataArray;
-    console.log(`[Prefetch] All atlas data loaded in ${Date.now() - startTime}ms`);
+    console.log(
+      `[Prefetch] All atlas data loaded in ${Date.now() - startTime}ms`,
+    );
     return dataArray;
   });
 
@@ -114,12 +116,16 @@ interface UseWebGPUMosaicOptions {
   photoInfoMap: Map<number, PhotoInfo>;
   cellWidth: number;
   cellHeight: number;
+  cols: number;
+  rows: number;
   screenWidth: number;
   screenHeight: number;
   scale: SharedValue<number>;
   translateX: SharedValue<number>;
   translateY: SharedValue<number>;
   animProgress: SharedValue<number>;
+  currentRow: SharedValue<number>;
+  currentCol: SharedValue<number>;
 }
 
 export function useWebGPUMosaic(
@@ -135,9 +141,26 @@ export function useWebGPUMosaic(
   // Atlas reveal animation (ref-based, updated in render loop)
   const atlasRevealRef = useRef({ current: 0, target: 0 });
 
+  // Focus overlay intensity (1 when focused, 0 when not)
+  const focusIntensityRef = useRef(0);
+  // Current interpolated focus position (sent to shader)
+  const focusPosRef = useRef({ x: -9999, y: -9999 });
+  // Start position for move animation
+  const startFocusPosRef = useRef({ x: -9999, y: -9999 });
+  // Target focus position (where we're animating to)
+  const targetFocusPosRef = useRef({ x: -9999, y: -9999 });
+  // Track if we were focused (to detect focus on/off transitions)
+  const wasFocusedRef = useRef(false);
+  // Timestamp when transition started
+  const transitionStartRef = useRef<number | null>(null);
+  // Animation type: 'move' for cell-to-cell, 'fade-in', 'fade-out'
+  const animTypeRef = useRef<'move' | 'fade-in' | 'fade-out' | null>(null);
+
   // Track where each photo was in the previous painting
   // Positions are stored as SCREEN-RELATIVE (centered, ready for display)
-  const previousPhotoPositionsRef = useRef<Map<number, PhotoTileData> | null>(null);
+  const previousPhotoPositionsRef = useRef<Map<number, PhotoTileData> | null>(
+    null,
+  );
 
   const uniformDataRef = useRef(new Float32Array(16));
 
@@ -146,18 +169,22 @@ export function useWebGPUMosaic(
     photoInfoMap,
     cellWidth,
     cellHeight,
+    cols,
+    rows,
     screenWidth,
     screenHeight,
     scale,
     translateX,
     translateY,
     animProgress,
+    currentRow,
+    currentCol,
   } = options;
 
   // Store dynamic values in refs to avoid recreating render callback
   // Note: paintingWidth/paintingHeight are no longer needed - centering is baked into tile positions
-  const renderValuesRef = useRef({ screenWidth, screenHeight });
-  renderValuesRef.current = { screenWidth, screenHeight };
+  const renderValuesRef = useRef({ screenWidth, screenHeight, cols, rows, cellWidth, cellHeight });
+  renderValuesRef.current = { screenWidth, screenHeight, cols, rows, cellWidth, cellHeight };
 
   const cleanup = useCallback(() => {
     if (animationRef.current) {
@@ -177,49 +204,54 @@ export function useWebGPUMosaic(
   }, []);
 
   // Create a 1x1 placeholder texture
-  const createPlaceholderTexture = useCallback((device: GPUDevice): GPUTexture => {
-    const texture = device.createTexture({
-      size: [1, 1],
-      format: 'rgba8unorm',
-      usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
-    });
-    device.queue.writeTexture(
-      { texture },
-      new Uint8Array([255, 0, 255, 255]), // Magenta placeholder (obvious)
-      { bytesPerRow: 4 },
-      [1, 1],
-    );
-    return texture;
-  }, []);
+  const createPlaceholderTexture = useCallback(
+    (device: GPUDevice): GPUTexture => {
+      const texture = device.createTexture({
+        size: [1, 1],
+        format: 'rgba8unorm',
+        usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
+      });
+      device.queue.writeTexture(
+        { texture },
+        new Uint8Array([255, 0, 255, 255]), // Magenta placeholder (obvious)
+        { bytesPerRow: 4 },
+        [1, 1],
+      );
+      return texture;
+    },
+    [],
+  );
 
   // Create bind group with current textures
-  const createBindGroup = useCallback((
-    device: GPUDevice,
-    layout: GPUBindGroupLayout,
-    uniformBuffer: GPUBuffer,
-    tileBuffer: GPUBuffer,
-    oldTileBuffer: GPUBuffer,
-    textures: GPUTexture[],
-    sampler: GPUSampler,
-  ): GPUBindGroup => {
-    return device.createBindGroup({
-      layout,
-      entries: [
-        { binding: 0, resource: { buffer: uniformBuffer } },
-        { binding: 1, resource: { buffer: tileBuffer } },
-        { binding: 2, resource: textures[0].createView() },
-        { binding: 3, resource: textures[1].createView() },
-        { binding: 4, resource: textures[2].createView() },
-        { binding: 5, resource: textures[3].createView() },
-        { binding: 6, resource: textures[4].createView() },
-        { binding: 7, resource: textures[5].createView() },
-        { binding: 8, resource: textures[6].createView() },
-        { binding: 9, resource: sampler },
-        { binding: 10, resource: { buffer: oldTileBuffer } },
-      ],
-    });
-  }, []);
-
+  const createBindGroup = useCallback(
+    (
+      device: GPUDevice,
+      layout: GPUBindGroupLayout,
+      uniformBuffer: GPUBuffer,
+      tileBuffer: GPUBuffer,
+      oldTileBuffer: GPUBuffer,
+      textures: GPUTexture[],
+      sampler: GPUSampler,
+    ): GPUBindGroup => {
+      return device.createBindGroup({
+        layout,
+        entries: [
+          { binding: 0, resource: { buffer: uniformBuffer } },
+          { binding: 1, resource: { buffer: tileBuffer } },
+          { binding: 2, resource: textures[0].createView() },
+          { binding: 3, resource: textures[1].createView() },
+          { binding: 4, resource: textures[2].createView() },
+          { binding: 5, resource: textures[3].createView() },
+          { binding: 6, resource: textures[4].createView() },
+          { binding: 7, resource: textures[5].createView() },
+          { binding: 8, resource: textures[6].createView() },
+          { binding: 9, resource: sampler },
+          { binding: 10, resource: { buffer: oldTileBuffer } },
+        ],
+      });
+    },
+    [],
+  );
 
   // Decode atlas from SkData and upload to GPU
   const decodeAtlasToGPU = useCallback(
@@ -238,7 +270,7 @@ export function useWebGPUMosaic(
           return null;
         }
         const t1 = Date.now();
-        console.log(`[Atlas ${atlasIndex}] MakeImageFromEncoded: ${t1-t0}ms`);
+        console.log(`[Atlas ${atlasIndex}] MakeImageFromEncoded: ${t1 - t0}ms`);
 
         const width = skImage.width();
         const height = skImage.height();
@@ -253,7 +285,9 @@ export function useWebGPUMosaic(
           alphaType: AlphaType.Unpremul,
         });
         const t2 = Date.now();
-        console.log(`[Atlas ${atlasIndex}] readPixels: ${t2-t1}ms (${pixels ? 'success' : 'failed'})`);
+        console.log(
+          `[Atlas ${atlasIndex}] readPixels: ${t2 - t1}ms (${pixels ? 'success' : 'failed'})`,
+        );
 
         if (!pixels) {
           console.error(`[Atlas ${atlasIndex}] Failed to read pixels`);
@@ -269,7 +303,7 @@ export function useWebGPUMosaic(
           usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
         });
         const t2c = Date.now();
-        console.log(`[Atlas ${atlasIndex}] createTexture: ${t2c-t2b}ms`);
+        console.log(`[Atlas ${atlasIndex}] createTexture: ${t2c - t2b}ms`);
 
         // Upload to GPU
         console.log(`[Atlas ${atlasIndex}] Starting writeTexture...`);
@@ -280,9 +314,11 @@ export function useWebGPUMosaic(
           [width, height],
         );
         const t3 = Date.now();
-        console.log(`[Atlas ${atlasIndex}] writeTexture: ${t3-t2c}ms`);
+        console.log(`[Atlas ${atlasIndex}] writeTexture: ${t3 - t2c}ms`);
 
-        console.log(`[Atlas ${atlasIndex}] TOTAL: decode=${t1-t0}ms readPixels=${t2-t1}ms createTex=${t2c-t2b}ms writeTex=${t3-t2c}ms total=${t3-t0}ms`);
+        console.log(
+          `[Atlas ${atlasIndex}] TOTAL: decode=${t1 - t0}ms readPixels=${t2 - t1}ms createTex=${t2c - t2b}ms writeTex=${t3 - t2c}ms total=${t3 - t0}ms`,
+        );
         return texture;
       } catch (e) {
         console.error(`[Atlas ${atlasIndex}] Skia error:`, e);
@@ -298,8 +334,15 @@ export function useWebGPUMosaic(
       return;
     }
 
-    const { device, context, pipeline, bindGroup, uniformBuffer, tileCount, depthTexture } =
-      resourcesRef.current;
+    const {
+      device,
+      context,
+      pipeline,
+      bindGroup,
+      uniformBuffer,
+      tileCount,
+      depthTexture,
+    } = resourcesRef.current;
 
     const time = (Date.now() - startTimeRef.current) / 1000;
 
@@ -309,13 +352,100 @@ export function useWebGPUMosaic(
       // ~0.03 per frame = ~1.8 units/sec, full reveal in ~4 seconds
       reveal.current = Math.min(reveal.current + 0.03, reveal.target);
     }
-    const { screenWidth: sw, screenHeight: sh } = renderValuesRef.current;
+    const {
+      screenWidth: sw,
+      screenHeight: sh,
+      cols: numCols,
+      rows: numRows,
+      cellWidth: cw,
+      cellHeight: ch,
+    } = renderValuesRef.current;
+
+    // Compute focused tile center in screen-relative coords
+    const focusRow = currentRow.value;
+    const focusCol = currentCol.value;
+    const hasFocus = focusRow >= 0;
+
+    const now = Date.now();
+    const ANIM_DURATION = 500; // 500ms for all animations
+
+    // Calculate target position for current focus
+    const newTargetX = hasFocus ? (focusCol + 0.5 - numCols / 2) * cw : -9999;
+    const newTargetY = hasFocus ? (focusRow + 0.5 - numRows / 2) * ch : -9999;
+
+    // Detect state changes
+    const wasFocused = wasFocusedRef.current;
+    const targetChanged =
+      newTargetX !== targetFocusPosRef.current.x ||
+      newTargetY !== targetFocusPosRef.current.y;
+
+    if (targetChanged) {
+      if (!wasFocused && hasFocus) {
+        // Unfocused → Focused: fade in
+        animTypeRef.current = 'fade-in';
+        focusPosRef.current = { x: newTargetX, y: newTargetY };
+        targetFocusPosRef.current = { x: newTargetX, y: newTargetY };
+        transitionStartRef.current = now;
+        wasFocusedRef.current = true;
+      } else if (wasFocused && !hasFocus) {
+        // Focused → Unfocused: fade out
+        animTypeRef.current = 'fade-out';
+        targetFocusPosRef.current = { x: -9999, y: -9999 };
+        transitionStartRef.current = now;
+        wasFocusedRef.current = false;
+      } else if (wasFocused && hasFocus) {
+        // Cell → Cell: interpolate position
+        animTypeRef.current = 'move';
+        startFocusPosRef.current = { ...focusPosRef.current }; // Save start position
+        targetFocusPosRef.current = { x: newTargetX, y: newTargetY };
+        transitionStartRef.current = now;
+      }
+    }
+
+    // Run animation
+    if (transitionStartRef.current !== null && animTypeRef.current) {
+      const elapsed = now - transitionStartRef.current;
+      const progress = Math.min(elapsed / ANIM_DURATION, 1);
+      // Ease-out curve for smoother animation
+      const eased = 1 - Math.pow(1 - progress, 2);
+
+      if (animTypeRef.current === 'fade-in') {
+        focusIntensityRef.current = eased;
+      } else if (animTypeRef.current === 'fade-out') {
+        focusIntensityRef.current = 1 - eased;
+      } else if (animTypeRef.current === 'move') {
+        // Interpolate position from start to target
+        const startX = startFocusPosRef.current.x;
+        const startY = startFocusPosRef.current.y;
+        const endX = targetFocusPosRef.current.x;
+        const endY = targetFocusPosRef.current.y;
+        focusPosRef.current = {
+          x: startX + (endX - startX) * eased,
+          y: startY + (endY - startY) * eased,
+        };
+      }
+
+      if (progress >= 1) {
+        transitionStartRef.current = null;
+        animTypeRef.current = null;
+        if (hasFocus) {
+          focusPosRef.current = targetFocusPosRef.current;
+          focusIntensityRef.current = 1;
+        } else {
+          focusPosRef.current = { x: -9999, y: -9999 };
+          focusIntensityRef.current = 0;
+        }
+      }
+    }
+
+    const focusedX = focusPosRef.current.x;
+    const focusedY = focusPosRef.current.y;
 
     const uniformData = uniformDataRef.current;
     uniformData[0] = sw;
     uniformData[1] = sh;
-    uniformData[2] = 0; // unused
-    uniformData[3] = 0; // unused
+    uniformData[2] = focusedX; // Focused tile center X (screen-relative, -9999 = none)
+    uniformData[3] = focusedY; // Focused tile center Y (screen-relative, -9999 = none)
     uniformData[4] = ATLAS_WIDTH;
     uniformData[5] = ATLAS_HEIGHT;
     uniformData[6] = CONTRAST;
@@ -325,7 +455,9 @@ export function useWebGPUMosaic(
     uniformData[10] = translateY.value;
     uniformData[11] = animProgress.value; // SharedValue: 1 = old positions, 0 = new positions
     uniformData[12] = reveal.current; // Atlas reveal progress for random tile pop-in
-    uniformData[13] = 0; // unused
+    uniformData[13] = cw;
+    uniformData[14] = ch;
+    uniformData[15] = focusIntensityRef.current; // Smooth focus transition
 
     device.queue.writeBuffer(
       uniformBuffer,
@@ -425,17 +557,61 @@ export function useWebGPUMosaic(
       // Bind group layout with 7 textures + oldTileBuffer
       const bindGroupLayout = device.createBindGroupLayout({
         entries: [
-          { binding: 0, visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT, buffer: { type: 'uniform' } },
-          { binding: 1, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
-          { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 3, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 4, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 5, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 6, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 7, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 8, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: 'float' } },
-          { binding: 9, visibility: GPUShaderStage.FRAGMENT, sampler: { type: 'filtering' } },
-          { binding: 10, visibility: GPUShaderStage.VERTEX, buffer: { type: 'read-only-storage' } },
+          {
+            binding: 0,
+            visibility: GPUShaderStage.VERTEX | GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' },
+          },
+          {
+            binding: 1,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
+          {
+            binding: 2,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 3,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 4,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 5,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 6,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 7,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 8,
+            visibility: GPUShaderStage.FRAGMENT,
+            texture: { sampleType: 'float' },
+          },
+          {
+            binding: 9,
+            visibility: GPUShaderStage.FRAGMENT,
+            sampler: { type: 'filtering' },
+          },
+          {
+            binding: 10,
+            visibility: GPUShaderStage.VERTEX,
+            buffer: { type: 'read-only-storage' },
+          },
         ],
       });
 
@@ -541,10 +717,14 @@ export function useWebGPUMosaic(
           atlasRevealRef.current.target = i + 1;
 
           // Yield to allow render frames for the reveal animation
-          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+          await new Promise<void>(resolve =>
+            requestAnimationFrame(() => resolve()),
+          );
         }
 
-        console.log(`[WebGPU] All atlases loaded in ${Date.now() - totalStart}ms`);
+        console.log(
+          `[WebGPU] All atlases loaded in ${Date.now() - totalStart}ms`,
+        );
       };
 
       // Start loading in background (don't await)
@@ -552,12 +732,21 @@ export function useWebGPUMosaic(
     } catch (e) {
       console.error('[WebGPU Mosaic] Initialization failed:', e);
     }
-  }, [canvasRef, createPlaceholderTexture, createBindGroup, decodeAtlasToGPU, photoInfoMap.size, render]);
+  }, [
+    canvasRef,
+    createPlaceholderTexture,
+    createBindGroup,
+    decodeAtlasToGPU,
+    photoInfoMap.size,
+    render,
+  ]);
 
   useEffect(() => {
     // Don't update buffers if cells is empty (waiting for consistent data)
     // This prevents glitchy frames during painting transitions
-    console.log(`[Tiles] Effect triggered: gpuReady=${gpuReady}, cells=${cells.length}`);
+    console.log(
+      `[Tiles] Effect triggered: gpuReady=${gpuReady}, cells=${cells.length}`,
+    );
     if (!gpuReady || !resourcesRef.current || cells.length === 0) return;
 
     const { device, tileBuffer, oldTileBuffer } = resourcesRef.current;
@@ -660,12 +849,22 @@ export function useWebGPUMosaic(
     });
 
     // Write buffers
-    device.queue.writeBuffer(oldTileBuffer, 0, oldTileData as unknown as BufferSource);
-    device.queue.writeBuffer(tileBuffer, 0, tileData as unknown as BufferSource);
+    device.queue.writeBuffer(
+      oldTileBuffer,
+      0,
+      oldTileData as unknown as BufferSource,
+    );
+    device.queue.writeBuffer(
+      tileBuffer,
+      0,
+      tileData as unknown as BufferSource,
+    );
     resourcesRef.current.tileCount = totalTileCount;
 
     if (hasAnimation) {
-      console.log(`[WebGPU] Animation: ${movingCount} moving, ${appearingCount} appearing, ${disappearingCount} disappearing`);
+      console.log(
+        `[WebGPU] Animation: ${movingCount} moving, ${appearingCount} appearing, ${disappearingCount} disappearing`,
+      );
       // Start animation: set to 1 (old positions) then animate to 0 (new positions)
       animProgress.value = 1;
       animProgress.value = withSpring(0, {
@@ -679,11 +878,11 @@ export function useWebGPUMosaic(
 
     // Save current photo positions (already screen-relative)
     const currentPositions = new Map<number, PhotoTileData>();
-    validCells.forEach((cell) => {
+    validCells.forEach(cell => {
       if (cell.photoId !== null) {
         const info = photoInfoMap.get(cell.photoId)!;
         currentPositions.set(cell.photoId, {
-          x: cell.x,  // Already screen-relative
+          x: cell.x, // Already screen-relative
           y: cell.y,
           w: cellWidth,
           h: cellHeight,

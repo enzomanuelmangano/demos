@@ -2,8 +2,8 @@ export const mosaicVertexShader = /* wgsl */ `
 struct Uniforms {
   screenWidth: f32,
   screenHeight: f32,
-  _pad0: f32,  // unused
-  _pad1: f32,  // unused
+  focusedX: f32,      // Focused tile center X (-9999 = none)
+  focusedY: f32,      // Focused tile center Y (-9999 = none)
   atlasWidth: f32,
   atlasHeight: f32,
   contrast: f32,
@@ -13,13 +13,16 @@ struct Uniforms {
   translateY: f32,
   animProgress: f32,  // 1 = old positions, 0 = new positions
   atlasReveal: f32,   // 0-7+: random tile reveal progress
-  _pad3: f32,  // unused
+  cellWidth: f32,
+  cellHeight: f32,
+  focusIntensity: f32,  // 0-1 smooth transition for focus overlay
 }
 
 struct VertexOutput {
   @builtin(position) position: vec4f,
   @location(0) atlasUV: vec2f,
   @location(1) @interpolate(flat) atlasIndex: u32,
+  @location(2) @interpolate(flat) focusDim: f32,  // 0 = focused, 1 = fully dimmed
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -159,6 +162,26 @@ fn main(
   output.position = vec4f(ndcX, ndcY, clamp(ndcZ, 0.0, 1.0), 1.0);
   output.atlasUV = vec2f(uvX + localUV.x * uvW, uvY + localUV.y * uvH);
   output.atlasIndex = atlasIdx;
+
+  // Compute focus dimming based on distance to focused position
+  var focusDim = 0.0;
+  if (uniforms.focusedX > -9000.0 && uniforms.focusIntensity > 0.001) {
+    // Tile center in screen-relative coords
+    let tileCenterX = posX + sizeW * 0.5;
+    let tileCenterY = posY + sizeH * 0.5;
+
+    // Distance to focused position (normalized by cell size)
+    let dx = (tileCenterX - uniforms.focusedX) / uniforms.cellWidth;
+    let dy = (tileCenterY - uniforms.focusedY) / uniforms.cellHeight;
+    let dist = sqrt(dx * dx + dy * dy);
+
+    // Smooth falloff: 0 at center, 1 at distance >= 1 cell
+    let falloff = clamp(dist, 0.0, 1.0);
+
+    // Apply dimming based on distance, scaled by intensity
+    focusDim = 0.8 * falloff * uniforms.focusIntensity;
+  }
+  output.focusDim = focusDim;
 
   return output;
 }
