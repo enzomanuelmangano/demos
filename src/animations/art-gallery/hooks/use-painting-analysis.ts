@@ -100,12 +100,8 @@ const analyzeImage = (image: SkImage): AnalysisResult => {
 
   // Return cached if available
   if (cachedPaintingAnalysis && cachedPaintingKey === paintingKey) {
-    console.log('[Painting] Using cached analysis');
     return { gridCells: cachedPaintingAnalysis, gridDimensions: dimensions };
   }
-
-  console.log('[Painting] Analyzing...');
-  const startTime = Date.now();
 
   const pixels = image.readPixels(0, 0, {
     width: imageWidth,
@@ -132,7 +128,6 @@ const analyzeImage = (image: SkImage): AnalysisResult => {
   cachedPaintingAnalysis = cells;
   cachedPaintingKey = paintingKey;
 
-  console.log(`[Painting] Analyzed in ${Date.now() - startTime}ms`);
   return { gridCells: cells, gridDimensions: dimensions };
 };
 
@@ -142,9 +137,6 @@ const analyzeImage = (image: SkImage): AnalysisResult => {
 export const loadAndAnalyzePainting = async (
   paintingSource: ReturnType<typeof require>,
 ): Promise<AnalysisResult> => {
-  console.log('[Painting] Loading...');
-  const startTime = Date.now();
-
   const resolved = Image.resolveAssetSource(paintingSource);
   if (!resolved?.uri) {
     return EMPTY_ANALYSIS;
@@ -155,7 +147,6 @@ export const loadAndAnalyzePainting = async (
     const image = Skia.Image.MakeImageFromEncoded(data);
 
     if (image) {
-      console.log(`[Painting] Loaded in ${Date.now() - startTime}ms`);
       return analyzeImage(image);
     }
   } catch {

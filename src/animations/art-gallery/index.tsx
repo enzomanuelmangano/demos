@@ -242,7 +242,6 @@ export function ArtGallery() {
   // Handle painting change - load & analyze immediately, then update state once
   const handlePaintingChange = useCallback(
     async (paintingId: string | null) => {
-      console.log(`[Selection] Changing to: ${paintingId ?? 'atlas'}`);
 
       // Reset zoom immediately
       scale.value = withSpring(1, SPRING_CONFIG);

@@ -86,17 +86,12 @@ export const usePhotoAtlas = (): UsePhotoAtlasResult => {
       return;
     }
 
-    const startTime = Date.now();
-    console.log('[Atlas] Loading compact manifest...');
-
     const compactData = require('../assets/photos-compact.json') as number[];
     const infoMap = parseCompactManifest(compactData);
 
     cachedPhotoInfoMap = infoMap;
     setPhotoInfoMap(infoMap);
     setIsLoading(false);
-
-    console.log(`[Atlas] PhotoInfoMap built in ${Date.now() - startTime}ms`);
   }, []);
 
   return {

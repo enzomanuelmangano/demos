@@ -119,6 +119,7 @@ export function useWebGPUMosaic(
   const resourcesRef = useRef<GPUResources | null>(null);
   const animationRef = useRef<number | null>(null);
   const isInitializedRef = useRef(false);
+  const isLoadingAtlasesRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
   const [gpuReady, setGpuReady] = useState(false);
 
@@ -245,67 +246,40 @@ export function useWebGPUMosaic(
       data: SkData,
     ): Promise<GPUTexture | null> => {
       try {
-        const t0 = Date.now();
-        console.log(`[Atlas ${atlasIndex}] Starting decode...`);
-
         const skImage = Skia.Image.MakeImageFromEncoded(data);
         if (!skImage) {
-          console.error(`[Atlas ${atlasIndex}] Skia decode failed`);
           return null;
         }
-        const t1 = Date.now();
-        console.log(`[Atlas ${atlasIndex}] MakeImageFromEncoded: ${t1 - t0}ms`);
 
         const width = skImage.width();
         const height = skImage.height();
-        console.log(`[Atlas ${atlasIndex}] Image size: ${width}x${height}`);
 
-        // Read pixels from Skia image
-        console.log(`[Atlas ${atlasIndex}] Starting readPixels...`);
         const pixels = skImage.readPixels(0, 0, {
           width,
           height,
           colorType: ColorType.RGBA_8888,
           alphaType: AlphaType.Unpremul,
         });
-        const t2 = Date.now();
-        console.log(
-          `[Atlas ${atlasIndex}] readPixels: ${t2 - t1}ms (${pixels ? 'success' : 'failed'})`,
-        );
 
         if (!pixels) {
-          console.error(`[Atlas ${atlasIndex}] Failed to read pixels`);
           return null;
         }
 
-        // Create GPU texture
-        console.log(`[Atlas ${atlasIndex}] Creating GPU texture...`);
-        const t2b = Date.now();
         const texture = device.createTexture({
           size: [width, height],
           format: 'rgba8unorm',
           usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
         });
-        const t2c = Date.now();
-        console.log(`[Atlas ${atlasIndex}] createTexture: ${t2c - t2b}ms`);
 
-        // Upload to GPU
-        console.log(`[Atlas ${atlasIndex}] Starting writeTexture...`);
         device.queue.writeTexture(
           { texture },
           pixels,
           { bytesPerRow: width * 4, rowsPerImage: height },
           [width, height],
         );
-        const t3 = Date.now();
-        console.log(`[Atlas ${atlasIndex}] writeTexture: ${t3 - t2c}ms`);
 
-        console.log(
-          `[Atlas ${atlasIndex}] TOTAL: decode=${t1 - t0}ms readPixels=${t2 - t1}ms createTex=${t2c - t2b}ms writeTex=${t3 - t2c}ms total=${t3 - t0}ms`,
-        );
         return texture;
-      } catch (e) {
-        console.error(`[Atlas ${atlasIndex}] Skia error:`, e);
+      } catch {
         return null;
       }
     },
@@ -512,10 +486,16 @@ export function useWebGPUMosaic(
     if (!canvasRef.current || isInitializedRef.current) return;
     if (photoInfoMap.size === 0) return;
 
+    // Mark as initialized immediately to prevent race conditions
+    isInitializedRef.current = true;
+
     const context = canvasRef.current.getContext(
       'webgpu',
     ) as RNWebGPUContext | null;
-    if (!context) return;
+    if (!context) {
+      isInitializedRef.current = false;
+      return;
+    }
 
     try {
       const adapter = await navigator.gpu?.requestAdapter();
@@ -731,27 +711,26 @@ export function useWebGPUMosaic(
         backgroundUniformBuffer,
       };
 
-      isInitializedRef.current = true;
       startTimeRef.current = Date.now();
       setGpuReady(true);
-      console.log('[WebGPU] Initialized with placeholders, starting render...');
       animationRef.current = requestAnimationFrame(render);
 
       // Load atlases sequentially (one at a time: fetch + decode)
       const loadAtlasesProgressively = async () => {
-        console.log('[WebGPU] Starting sequential atlas loading...');
-        const totalStart = Date.now();
+        // Ensure only one loading sequence runs
+        if (isLoadingAtlasesRef.current) return;
+        isLoadingAtlasesRef.current = true;
 
         for (let i = 0; i < ATLAS_COUNT; i++) {
-          if (!resourcesRef.current) return; // Component unmounted
+          if (!resourcesRef.current) break;
 
-          // Fetch this atlas
+          // Fetch this atlas (sequential - wait for completion)
           const skData = await loadAtlasData(i);
-          if (!resourcesRef.current) return;
+          if (!resourcesRef.current) break;
 
-          // Decode and upload to GPU
+          // Decode and upload to GPU (sequential - wait for completion)
           const texture = await decodeAtlasToGPU(device, i, skData);
-          if (!texture || !resourcesRef.current) return;
+          if (!texture || !resourcesRef.current) break;
 
           // Destroy placeholder and swap in real texture
           const oldPlaceholder = resourcesRef.current.atlasTextures[i];
@@ -770,8 +749,6 @@ export function useWebGPUMosaic(
           );
           resourcesRef.current.bindGroupVersion = i + 1;
 
-          console.log(`[WebGPU] Atlas ${i + 1}/${ATLAS_COUNT} ready`);
-
           // Set reveal target - tiles will animate in the render loop
           atlasRevealRef.current.target = i + 1;
 
@@ -781,15 +758,13 @@ export function useWebGPUMosaic(
           );
         }
 
-        console.log(
-          `[WebGPU] All atlases loaded in ${Date.now() - totalStart}ms`,
-        );
+        isLoadingAtlasesRef.current = false;
       };
 
       // Start loading in background (don't await)
       loadAtlasesProgressively();
-    } catch (e) {
-      console.error('[WebGPU Mosaic] Initialization failed:', e);
+    } catch {
+      isInitializedRef.current = false;
     }
   }, [
     canvasRef,
@@ -803,9 +778,6 @@ export function useWebGPUMosaic(
   useEffect(() => {
     // Don't update buffers if cells is empty (waiting for consistent data)
     // This prevents glitchy frames during painting transitions
-    console.log(
-      `[Tiles] Effect triggered: gpuReady=${gpuReady}, cells=${cells.length}`,
-    );
     if (!gpuReady || !resourcesRef.current || cells.length === 0) return;
 
     const { device, tileBuffer, oldTileBuffer } = resourcesRef.current;
@@ -921,9 +893,6 @@ export function useWebGPUMosaic(
     resourcesRef.current.tileCount = totalTileCount;
 
     if (hasAnimation) {
-      console.log(
-        `[WebGPU] Animation: ${movingCount} moving, ${appearingCount} appearing, ${disappearingCount} disappearing`,
-      );
       // Start animation: set to 1 (old positions) then animate to 0 (new positions)
       animProgress.value = 1;
       animProgress.value = withSpring(0, {
@@ -931,7 +900,6 @@ export function useWebGPUMosaic(
         dampingRatio: 1,
       });
     } else {
-      console.log(`[WebGPU] First load: ${totalTileCount} tiles`);
       animProgress.value = 0;
     }
 

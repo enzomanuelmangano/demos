@@ -40,9 +40,6 @@ export const useMosaicMapping = (
       return cachedMosaicMapping;
     }
 
-    console.log('[Mapping] Computing with native C++ (parallel + RGB→LAB)...');
-    const startTime = Date.now();
-
     // Prepare flat RGB arrays for native module (LAB conversion happens in C++)
     const photos = Array.from(photoInfoMap.values());
 
@@ -67,8 +64,6 @@ export const useMosaicMapping = (
       photoRGB,
       photoIds,
     );
-
-    console.log(`[Mapping] Completed in ${Date.now() - startTime}ms (${newMapping.size} unique photos)`);
 
     // Cache it
     cachedMosaicMapping = newMapping;
