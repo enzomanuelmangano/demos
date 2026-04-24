@@ -6,7 +6,12 @@ import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { SharedValue, withSpring } from 'react-native-reanimated';
 import { CanvasRef } from 'react-native-wgpu';
 
-import { mosaicVertexShader, mosaicFragmentShader } from '../shaders';
+import {
+  mosaicVertexShader,
+  mosaicFragmentShader,
+  backgroundVertexShader,
+  backgroundFragmentShader,
+} from '../shaders';
 
 import type { PhotoInfo } from './use-photo-atlas';
 import type { RGB } from '../types';
@@ -84,6 +89,10 @@ interface GPUResources {
   buffers: GPUBuffer[];
   tileCount: number;
   bindGroupVersion: number;
+  // Background rendering
+  backgroundPipeline: GPURenderPipeline;
+  backgroundBindGroup: GPUBindGroup;
+  backgroundUniformBuffer: GPUBuffer;
 }
 
 interface UseWebGPUMosaicOptions {
@@ -317,6 +326,9 @@ export function useWebGPUMosaic(
       uniformBuffer,
       tileCount,
       depthTexture,
+      backgroundPipeline,
+      backgroundBindGroup,
+      backgroundUniformBuffer,
     } = resourcesRef.current;
 
     const time = (Date.now() - startTimeRef.current) / 1000;
@@ -440,15 +452,40 @@ export function useWebGPUMosaic(
       uniformData as unknown as BufferSource,
     );
 
+    // Write background uniforms (actual canvas pixel dimensions for fragCoord)
+    const canvas = context.canvas as HTMLCanvasElement;
+    const bgUniformData = new Float32Array([canvas.width, canvas.height]);
+    device.queue.writeBuffer(
+      backgroundUniformBuffer,
+      0,
+      bgUniformData as unknown as BufferSource,
+    );
+
     const commandEncoder = device.createCommandEncoder();
     const textureView = context.getCurrentTexture().createView();
 
-    const renderPass = commandEncoder.beginRenderPass({
+    // First pass: render background gradient (no depth)
+    const bgPass = commandEncoder.beginRenderPass({
       colorAttachments: [
         {
           view: textureView,
           clearValue: { r: 0, g: 0, b: 0, a: 1 },
           loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+    });
+    bgPass.setPipeline(backgroundPipeline);
+    bgPass.setBindGroup(0, backgroundBindGroup);
+    bgPass.draw(3); // Fullscreen triangle
+    bgPass.end();
+
+    // Second pass: render tiles on top (with depth)
+    const renderPass = commandEncoder.beginRenderPass({
+      colorAttachments: [
+        {
+          view: textureView,
+          loadOp: 'load', // Keep the background
           storeOp: 'store',
         },
       ],
@@ -632,6 +669,48 @@ export function useWebGPUMosaic(
         },
       });
 
+      // Background pipeline (simpler - no depth, just fullscreen gradient)
+      const backgroundUniformBuffer = device.createBuffer({
+        size: 8, // 2 floats: screenWidth, screenHeight
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+      buffers.push(backgroundUniformBuffer);
+
+      const backgroundBindGroupLayout = device.createBindGroupLayout({
+        entries: [
+          {
+            binding: 0,
+            visibility: GPUShaderStage.FRAGMENT,
+            buffer: { type: 'uniform' },
+          },
+        ],
+      });
+
+      const backgroundBindGroup = device.createBindGroup({
+        layout: backgroundBindGroupLayout,
+        entries: [
+          { binding: 0, resource: { buffer: backgroundUniformBuffer } },
+        ],
+      });
+
+      const backgroundPipeline = device.createRenderPipeline({
+        layout: device.createPipelineLayout({
+          bindGroupLayouts: [backgroundBindGroupLayout],
+        }),
+        vertex: {
+          module: device.createShaderModule({ code: backgroundVertexShader }),
+          entryPoint: 'main',
+        },
+        fragment: {
+          module: device.createShaderModule({ code: backgroundFragmentShader }),
+          entryPoint: 'main',
+          targets: [{ format }],
+        },
+        primitive: {
+          topology: 'triangle-list',
+        },
+      });
+
       resourcesRef.current = {
         device,
         context,
@@ -647,6 +726,9 @@ export function useWebGPUMosaic(
         buffers,
         tileCount: 0,
         bindGroupVersion: 0,
+        backgroundPipeline,
+        backgroundBindGroup,
+        backgroundUniformBuffer,
       };
 
       isInitializedRef.current = true;
