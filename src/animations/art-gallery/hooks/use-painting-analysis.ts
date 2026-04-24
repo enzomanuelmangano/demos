@@ -151,9 +151,7 @@ export const loadAndAnalyzePainting = async (
   }
 
   try {
-    const response = await fetch(resolved.uri);
-    const arrayBuffer = await response.arrayBuffer();
-    const data = Skia.Data.fromBytes(new Uint8Array(arrayBuffer));
+    const data = await Skia.Data.fromURI(resolved.uri);
     const image = Skia.Image.MakeImageFromEncoded(data);
 
     if (image) {
