@@ -1,4 +1,4 @@
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 
 import {
   memo,
@@ -12,11 +12,13 @@ import {
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   clamp,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -26,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 import * as DropdownMenu from 'zeego/dropdown-menu';
 
+import { ZoomOutButton } from './components/zoom-out-button';
 import {
   clearMosaicMappingCache,
   useMosaicMapping,
@@ -43,7 +46,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const MIN_SCALE = 1;
 const SPRING_CONFIG = { dampingRatio: 1, duration: 350 };
-const SNAP_SPRING = { dampingRatio: 0.9, duration: 300 };
+const SNAP_SPRING = { dampingRatio: 0.9, duration: 1000 };
 
 // Grid mode: when a cell fills this fraction of screen width
 const GRID_MODE_THRESHOLD = 0.5;
@@ -61,7 +64,7 @@ const HeaderRight = memo(
   }) => (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger>
-        <Pressable style={styles.headerButton}>
+        <Pressable style={styles.headerButton} hitSlop={12}>
           <Ionicons name="ellipsis-horizontal-circle" size={28} color="#fff" />
         </Pressable>
       </DropdownMenu.Trigger>
@@ -291,9 +294,15 @@ export function ArtGallery() {
   const idealGridScale =
     cellWidth > 0 ? (GRID_MODE_TARGET * SCREEN_WIDTH) / cellWidth : 1;
 
+  // Haptic feedback helper
+  const triggerHaptic = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   // Snap to a specific cell at ideal scale (runs on UI thread)
   const snapToCell = (row: number, col: number) => {
     'worklet';
+    runOnJS(triggerHaptic)();
     scale.value = withSpring(idealGridScale, SNAP_SPRING);
 
     const cellCenterX = (col + 0.5) * cellWidth;
@@ -310,6 +319,7 @@ export function ArtGallery() {
 
   // Reset zoom
   const resetZoom = () => {
+    triggerHaptic();
     scale.value = withSpring(1, SPRING_CONFIG);
     translateX.value = withSpring(0, SPRING_CONFIG);
     translateY.value = withSpring(0, SPRING_CONFIG);
@@ -489,6 +499,7 @@ export function ArtGallery() {
     .onEnd(event => {
       if (scale.value > 1.2) {
         // Zoomed in - zoom out
+        runOnJS(triggerHaptic)();
         scale.value = withSpring(1, SPRING_CONFIG);
         translateX.value = withSpring(0, SPRING_CONFIG);
         translateY.value = withSpring(0, SPRING_CONFIG);
@@ -543,10 +554,8 @@ export function ArtGallery() {
           pointerEvents="none"
         />
 
-        <Animated.View style={[styles.backButton, backButtonStyle]}>
-          <Pressable onPress={resetZoom} style={styles.backButtonPressable}>
-            <Text style={styles.backButtonText}>Back to painting</Text>
-          </Pressable>
+        <Animated.View style={[styles.fab, backButtonStyle]}>
+          <ZoomOutButton onPress={resetZoom} />
         </Animated.View>
 
       </View>
@@ -555,23 +564,6 @@ export function ArtGallery() {
 }
 
 const styles = StyleSheet.create({
-  backButton: {
-    bottom: 40,
-    position: 'absolute',
-    right: 16,
-  },
-  backButtonPressable: {
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    borderCurve: 'continuous',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
   container: {
     alignItems: 'center',
     backgroundColor: '#000',
@@ -581,6 +573,11 @@ const styles = StyleSheet.create({
   headerButton: {
     marginRight: 8,
     padding: 4,
+  },
+  fab: {
+    bottom: 40,
+    position: 'absolute',
+    right: 20,
   },
   headerGradient: {
     left: 0,

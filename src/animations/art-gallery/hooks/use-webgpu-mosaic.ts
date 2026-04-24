@@ -539,6 +539,9 @@ export function useWebGPUMosaic(
 
           // Set reveal target - tiles will animate in the render loop
           atlasRevealRef.current.target = i + 1;
+
+          // Yield to allow render frames for the reveal animation
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
         }
 
         console.log(`[WebGPU] All atlases loaded in ${Date.now() - totalStart}ms`);
