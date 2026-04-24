@@ -127,6 +127,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-sqlite',
     './plugins/with-skia-webgpu-fix',
+    './plugins/with-nitro-autolinking',
   ],
   extra: {
     eas: {
