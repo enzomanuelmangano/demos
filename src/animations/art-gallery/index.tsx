@@ -1,11 +1,4 @@
-import {
-  ActivityIndicator,
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import {
   memo,
@@ -37,7 +30,11 @@ import {
   clearMosaicMappingCache,
   useMosaicMapping,
 } from './hooks/use-mosaic-mapping';
-import { usePaintingAnalysis } from './hooks/use-painting-analysis';
+import {
+  EMPTY_ANALYSIS,
+  loadAndAnalyzePainting,
+  type AnalysisResult,
+} from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
 import { startAtlasPrefetch, useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
 import { ART_MOVEMENTS, PAINTINGS } from './paintings';
@@ -52,38 +49,6 @@ const SNAP_SPRING = { dampingRatio: 0.9, duration: 300 };
 const GRID_MODE_THRESHOLD = 0.5;
 // Ideal grid scale: cell fills 70% of screen width
 const GRID_MODE_TARGET = 0.7;
-
-// Detailed loading phases
-type DetailedPhase =
-  | 'idle'
-  | 'analyzing-painting'
-  | 'loading-manifest'
-  | 'matching-colors'
-  | 'loading-atlas'
-  | 'complete';
-
-// Loading indicator component
-const LoadingOverlay = memo(({ phase }: { phase: DetailedPhase }) => {
-  const messages: Record<DetailedPhase, string> = {
-    idle: '',
-    'analyzing-painting': '1/4 Analyzing painting...',
-    'loading-manifest': '2/4 Loading photo colors...',
-    'matching-colors': '3/4 Matching colors (k-d tree)...',
-    'loading-atlas': '4/4 Decoding atlas image...',
-    complete: '',
-  };
-
-  if (phase === 'idle' || phase === 'complete') {
-    return null;
-  }
-
-  return (
-    <View style={styles.loadingOverlay}>
-      <ActivityIndicator size="large" color="#fff" />
-      <Text style={styles.loadingText}>{messages[phase]}</Text>
-    </View>
-  );
-});
 
 // Header right button component
 const HeaderRight = memo(
@@ -147,22 +112,13 @@ const HeaderRight = memo(
 export function ArtGallery() {
   const navigation = useNavigation();
   const { top: safeTop } = useSafeAreaInsets();
-  const startTime = useRef(Date.now());
   const canvasRef = useRef<CanvasRef>(null);
 
   // Painting selection (null = show raw atlas grid)
-  const [selectedPaintingId, setSelectedPaintingId] = useState<string | null>(
-    null,
-  );
+  const [selectedPaintingId, setSelectedPaintingId] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<AnalysisResult>(EMPTY_ANALYSIS);
 
-  const selectedPainting = useMemo(
-    () =>
-      selectedPaintingId
-        ? PAINTINGS.find(p => p.id === selectedPaintingId) ?? null
-        : null,
-    [selectedPaintingId],
-  );
-  // Start prefetching atlases immediately (runs in parallel with analysis)
+  // Start prefetching atlases immediately on mount
   useEffect(() => {
     startAtlasPrefetch();
   }, []);
@@ -171,15 +127,12 @@ export function ArtGallery() {
   const DEFAULT_GRID_COLS = 100;
   const DEFAULT_GRID_ROWS = 100;
 
-  // Analysis hooks (only when painting selected)
-  const {
-    gridCells: paintingGridCells,
-    gridDimensions: paintingGridDimensions,
-    isAnalyzing: isAnalyzingPainting,
-  } = usePaintingAnalysis(selectedPainting?.asset ?? null);
+  // Use painting grid or default atlas grid
+  const paintingGridCells = analysis.gridCells;
+  const paintingGridDimensions = analysis.gridDimensions;
 
   // Use painting grid or default atlas grid
-  const isAtlasMode = selectedPainting === null;
+  const isAtlasMode = selectedPaintingId === null;
   const cols = isAtlasMode ? DEFAULT_GRID_COLS : paintingGridDimensions.cols;
   const rows = isAtlasMode ? DEFAULT_GRID_ROWS : paintingGridDimensions.rows;
   const aspectRatio = isAtlasMode ? 1 : paintingGridDimensions.aspectRatio;
@@ -251,33 +204,6 @@ export function ArtGallery() {
     rows,
   ]);
 
-  // Loading phase
-  const loadingPhase: DetailedPhase = useMemo(() => {
-    // Atlas mode: simpler loading flow
-    if (isAtlasMode) {
-      if (photoInfoMap.size === 0) return 'loading-manifest';
-      if (cells.length === 0) return 'loading-atlas';
-      return 'complete';
-    }
-
-    // Painting mode (matching is now synchronous on UI thread)
-    if (isAnalyzingPainting) return 'analyzing-painting';
-    if (photoInfoMap.size === 0) return 'loading-manifest';
-    if (mapping.size > 0 && cells.length === 0) return 'loading-atlas';
-    if (mapping.size > 0 && cells.length > 0) return 'complete';
-    return 'idle';
-  }, [
-    isAtlasMode,
-    isAnalyzingPainting,
-    photoInfoMap.size,
-    mapping.size,
-    cells.length,
-  ]);
-
-  useEffect(() => {
-    const elapsed = Date.now() - startTime.current;
-    console.log(`[${elapsed}ms] Phase: ${loadingPhase}`);
-  }, [loadingPhase]);
 
   // Zoom and pan state (all on UI thread via SharedValues)
   const scale = useSharedValue(1);
@@ -294,17 +220,36 @@ export function ArtGallery() {
   const currentRow = useSharedValue(-1);
   const currentCol = useSharedValue(-1);
 
-  // Handle painting change with zoom reset
+  // Handle painting change - load & analyze immediately, then update state once
   const handlePaintingChange = useCallback(
-    (paintingId: string | null) => {
-      clearMosaicMappingCache();
-      setSelectedPaintingId(paintingId);
-      // Reset zoom
+    async (paintingId: string | null) => {
+      console.log(`[Selection] Changing to: ${paintingId ?? 'atlas'}`);
+
+      // Reset zoom immediately
       scale.value = withSpring(1, SPRING_CONFIG);
       translateX.value = withSpring(0, SPRING_CONFIG);
       translateY.value = withSpring(0, SPRING_CONFIG);
       currentRow.value = -1;
       currentCol.value = -1;
+
+      clearMosaicMappingCache();
+
+      if (paintingId === null) {
+        // Atlas mode
+        setSelectedPaintingId(null);
+        setAnalysis(EMPTY_ANALYSIS);
+        return;
+      }
+
+      // Find painting and load/analyze it
+      const painting = PAINTINGS.find(p => p.id === paintingId);
+      if (!painting) return;
+
+      const result = await loadAndAnalyzePainting(painting.asset);
+
+      // Update state once with both painting ID and analysis
+      setSelectedPaintingId(paintingId);
+      setAnalysis(result);
     },
     [scale, translateX, translateY, currentRow, currentCol],
   );
@@ -604,7 +549,6 @@ export function ArtGallery() {
           </Pressable>
         </Animated.View>
 
-        <LoadingOverlay phase={loadingPhase} />
       </View>
     </GestureDetector>
   );
@@ -643,22 +587,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-  },
-  loadingOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    borderCurve: 'continuous',
-    borderRadius: 16,
-    bottom: 40,
-    left: 20,
-    padding: 20,
-    position: 'absolute',
-    right: 20,
-  },
-  loadingText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginTop: 12,
   },
 });
