@@ -29,7 +29,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-wgpu';
 import * as DropdownMenu from 'zeego/dropdown-menu';
@@ -163,31 +162,6 @@ export function ArtGallery() {
         : null,
     [selectedPaintingId],
   );
-
-  const handlePaintingChange = useCallback((paintingId: string | null) => {
-    clearMosaicMappingCache();
-    setSelectedPaintingId(paintingId);
-  }, []);
-
-  // Configure native header
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      headerTransparent: true,
-      headerTitle: 'Gallery',
-      headerTintColor: '#fff',
-      headerTitleStyle: {
-        fontWeight: '600',
-      },
-      headerRight: () => (
-        <HeaderRight
-          selectedPaintingId={selectedPaintingId}
-          onPaintingChange={handlePaintingChange}
-        />
-      ),
-    });
-  }, [navigation, selectedPaintingId, handlePaintingChange]);
-
   // Start prefetching atlases immediately (runs in parallel with analysis)
   useEffect(() => {
     startAtlasPrefetch();
@@ -330,14 +304,39 @@ export function ArtGallery() {
   const currentRow = useSharedValue(-1);
   const currentCol = useSharedValue(-1);
 
-  // Reset zoom when painting changes
-  useEffect(() => {
-    scale.value = withSpring(1, SPRING_CONFIG);
-    translateX.value = withSpring(0, SPRING_CONFIG);
-    translateY.value = withSpring(0, SPRING_CONFIG);
-    currentRow.value = -1;
-    currentCol.value = -1;
-  }, [selectedPaintingId, scale, translateX, translateY, currentRow, currentCol]);
+  // Handle painting change with zoom reset
+  const handlePaintingChange = useCallback(
+    (paintingId: string | null) => {
+      clearMosaicMappingCache();
+      setSelectedPaintingId(paintingId);
+      // Reset zoom
+      scale.value = withSpring(1, SPRING_CONFIG);
+      translateX.value = withSpring(0, SPRING_CONFIG);
+      translateY.value = withSpring(0, SPRING_CONFIG);
+      currentRow.value = -1;
+      currentCol.value = -1;
+    },
+    [scale, translateX, translateY, currentRow, currentCol],
+  );
+
+  // Configure native header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerShown: true,
+      headerTransparent: true,
+      headerTitle: 'Gallery',
+      headerTintColor: '#fff',
+      headerTitleStyle: {
+        fontWeight: '600',
+      },
+      headerRight: () => (
+        <HeaderRight
+          selectedPaintingId={selectedPaintingId}
+          onPaintingChange={handlePaintingChange}
+        />
+      ),
+    });
+  }, [navigation, selectedPaintingId, handlePaintingChange]);
 
   // Initialize WebGPU renderer
   useWebGPUMosaic(canvasRef, {
@@ -351,13 +350,6 @@ export function ArtGallery() {
     translateX,
     translateY,
     animProgress,
-  });
-
-  // Derived: whether we're in grid mode
-  const isInGridMode = useDerivedValue(() => {
-    if (cellWidth === 0) return false;
-    const cellScreenWidth = cellWidth * scale.value;
-    return cellScreenWidth >= SCREEN_WIDTH * GRID_MODE_THRESHOLD;
   });
 
   // Ideal scale for grid mode: cell fills 70% of screen width
@@ -601,17 +593,6 @@ export function ArtGallery() {
     pointerEvents: backButtonOpacity.value > 0.5 ? 'auto' : 'none',
   }));
 
-  const cellIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: isInGridMode.value && currentRow.value >= 0 ? 1 : 0,
-    pointerEvents:
-      isInGridMode.value && currentRow.value >= 0 ? 'auto' : 'none',
-  }));
-
-  const cellText = useDerivedValue(() => {
-    if (currentRow.value < 0 || currentCol.value < 0) return '';
-    return `${currentRow.value + 1} × ${currentCol.value + 1}`;
-  });
-
   return (
     <GestureDetector gesture={composedGesture}>
       <View style={styles.container}>
@@ -626,10 +607,6 @@ export function ArtGallery() {
           style={[styles.headerGradient, { height: safeTop + 180 }]}
           pointerEvents="none"
         />
-
-        <Animated.View style={[styles.cellIndicator, cellIndicatorStyle]}>
-          <ReText text={cellText} style={styles.cellIndicatorText} />
-        </Animated.View>
 
         <Animated.View style={[styles.backButton, backButtonStyle]}>
           <Pressable onPress={resetZoom} style={styles.backButtonPressable}>
@@ -657,22 +634,6 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   backButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cellIndicator: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderCurve: 'continuous',
-    borderRadius: 12,
-    bottom: 100,
-    left: '50%',
-    marginLeft: -40,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    position: 'absolute',
-  },
-  cellIndicatorText: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
