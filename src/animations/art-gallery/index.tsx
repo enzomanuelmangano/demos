@@ -330,6 +330,15 @@ export function ArtGallery() {
   const currentRow = useSharedValue(-1);
   const currentCol = useSharedValue(-1);
 
+  // Reset zoom when painting changes
+  useEffect(() => {
+    scale.value = withSpring(1, SPRING_CONFIG);
+    translateX.value = withSpring(0, SPRING_CONFIG);
+    translateY.value = withSpring(0, SPRING_CONFIG);
+    currentRow.value = -1;
+    currentCol.value = -1;
+  }, [selectedPaintingId, scale, translateX, translateY, currentRow, currentCol]);
+
   // Initialize WebGPU renderer
   useWebGPUMosaic(canvasRef, {
     cells,
