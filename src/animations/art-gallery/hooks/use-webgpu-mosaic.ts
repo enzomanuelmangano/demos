@@ -826,9 +826,6 @@ export function useWebGPUMosaic(
     const tileData = new Float32Array(totalTileCount * FLOATS_PER_TILE);
     const oldTileData = new Float32Array(totalTileCount * FLOATS_PER_TILE);
 
-    let movingCount = 0;
-    let appearingCount = 0;
-
     // Process new painting tiles
     // Positions are ALREADY screen-relative (centered in index.tsx)
     validCells.forEach((cell, i) => {
@@ -854,14 +851,12 @@ export function useWebGPUMosaic(
         oldTileData[offset + 1] = oldPos.y;
         oldTileData[offset + 2] = oldPos.w;
         oldTileData[offset + 3] = oldPos.h;
-        movingCount++;
       } else {
         // Photo is new - grow from size 0 at center of new position
         oldTileData[offset + 0] = cell.x + cellWidth / 2;
         oldTileData[offset + 1] = cell.y + cellHeight / 2;
         oldTileData[offset + 2] = 0;
         oldTileData[offset + 3] = 0;
-        appearingCount++;
       }
       oldTileData[offset + 4] = tileData[offset + 4];
       oldTileData[offset + 5] = tileData[offset + 5];
