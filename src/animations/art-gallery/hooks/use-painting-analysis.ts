@@ -1,5 +1,6 @@
-import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { Image } from 'react-native';
+
+import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 
 import { TARGET_CELLS } from '../constants';
 
@@ -121,7 +122,14 @@ const analyzeImage = (image: SkImage): AnalysisResult => {
     const x = col * cellWidth;
     const y = row * cellHeight;
 
-    const rgb = sampleRegionFromBuffer(pixels, imageWidth, x, y, cellWidth, cellHeight);
+    const rgb = sampleRegionFromBuffer(
+      pixels,
+      imageWidth,
+      x,
+      y,
+      cellWidth,
+      cellHeight,
+    );
     cells.push({ index: i, row, col, targetColor: rgb, photoId: null });
   }
 

@@ -26,12 +26,14 @@ This project is a work in progress (almost by definition). Here are the current 
 
 ## Quick Start
 
-This is an Expo Go project. To get started:
+This is an Expo project. To get started:
 
 ```bash
 bun install
+bun prebuild
 bun ios     # for iOS
 # or
+bun prebuild
 bun android # for Android
 ```
 

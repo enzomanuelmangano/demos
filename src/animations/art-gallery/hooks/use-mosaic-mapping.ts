@@ -25,9 +25,13 @@ export const useMosaicMapping = (
     }
 
     // Generate cache key
-    const sampleCells = [0, Math.floor(gridCells.length / 2), gridCells.length - 1];
+    const sampleCells = [
+      0,
+      Math.floor(gridCells.length / 2),
+      gridCells.length - 1,
+    ];
     const colorSig = sampleCells
-      .map((i) => {
+      .map(i => {
         const cell = gridCells[i];
         if (!cell) return '0';
         return `${cell.targetColor.r}-${cell.targetColor.g}-${cell.targetColor.b}`;
@@ -53,7 +57,11 @@ export const useMosaicMapping = (
     const photoRGB: number[] = [];
     const photoIds: number[] = [];
     for (const photo of photos) {
-      photoRGB.push(photo.averageColor.r, photo.averageColor.g, photo.averageColor.b);
+      photoRGB.push(
+        photo.averageColor.r,
+        photo.averageColor.g,
+        photo.averageColor.b,
+      );
       photoIds.push(photo.id);
     }
 

@@ -53,13 +53,18 @@ const playTransitionHaptics = async () => {
   await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 };
 
-const MIN_SCALE = 1;
 const SPRING_CONFIG = { dampingRatio: 1, duration: 350 };
 
+// Canvas takes 95% of screen width
+const CANVAS_WIDTH_RATIO = 0.95;
 // Grid mode: when a cell fills this fraction of screen width
 const GRID_MODE_THRESHOLD = 0.5;
 // Ideal grid scale: cell fills 70% of screen width
 const GRID_MODE_TARGET = 0.7;
+// Scale threshold for snapping back to default zoom
+const SNAP_BACK_THRESHOLD = 1.2;
+// Minimum scale with rubber band effect during pinch
+const MIN_SCALE_RUBBER_BAND = 0.5;
 
 // Header right button component - subscribes only to selectedPaintingId
 const HeaderRight = memo(
@@ -150,7 +155,7 @@ export function ArtGallery() {
   const aspectRatio = isAtlasMode ? 1 : paintingGridDimensions.aspectRatio;
 
   // Canvas dimensions
-  const canvasWidth = SCREEN_WIDTH * 0.95;
+  const canvasWidth = SCREEN_WIDTH * CANVAS_WIDTH_RATIO;
   const canvasHeight =
     aspectRatio > 0 ? canvasWidth / aspectRatio : canvasWidth;
 
@@ -395,11 +400,10 @@ export function ArtGallery() {
     })
     .onUpdate(event => {
       const maxScale = idealGridScale * 1.2;
-      // Allow pinching below MIN_SCALE for fidgeting (rubber band effect)
-      const minScaleWithRubberBand = 0.5;
+      // Allow pinching below min scale for fidgeting (rubber band effect)
       const newScale = clamp(
         savedScale.value * event.scale,
-        minScaleWithRubberBand,
+        MIN_SCALE_RUBBER_BAND,
         maxScale,
       );
 
@@ -418,7 +422,7 @@ export function ArtGallery() {
     .onEnd(() => {
       savedScale.value = scale.value;
 
-      if (scale.value < 1.2) {
+      if (scale.value < SNAP_BACK_THRESHOLD) {
         scale.value = withSpring(1, SPRING_CONFIG);
         translateX.value = withSpring(0, SPRING_CONFIG);
         translateY.value = withSpring(0, SPRING_CONFIG);
@@ -553,7 +557,7 @@ export function ArtGallery() {
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(event => {
-      if (scale.value > 1.2) {
+      if (scale.value > SNAP_BACK_THRESHOLD) {
         // Zoomed in - zoom out
         scheduleOnRN(triggerHaptic);
         scale.value = withSpring(1, { dampingRatio: 1, duration: 350 });

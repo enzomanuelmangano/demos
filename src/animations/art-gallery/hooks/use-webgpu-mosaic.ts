@@ -169,8 +169,22 @@ export function useWebGPUMosaic(
 
   // Store dynamic values in refs to avoid recreating render callback
   // Note: paintingWidth/paintingHeight are no longer needed - centering is baked into tile positions
-  const renderValuesRef = useRef({ screenWidth, screenHeight, cols, rows, cellWidth, cellHeight });
-  renderValuesRef.current = { screenWidth, screenHeight, cols, rows, cellWidth, cellHeight };
+  const renderValuesRef = useRef({
+    screenWidth,
+    screenHeight,
+    cols,
+    rows,
+    cellWidth,
+    cellHeight,
+  });
+  renderValuesRef.current = {
+    screenWidth,
+    screenHeight,
+    cols,
+    rows,
+    cellWidth,
+    cellHeight,
+  };
 
   const cleanup = useCallback(() => {
     if (animationRef.current) {
@@ -241,11 +255,7 @@ export function useWebGPUMosaic(
 
   // Decode atlas from SkData and upload to GPU
   const decodeAtlasToGPU = useCallback(
-    async (
-      device: GPUDevice,
-      _atlasIndex: number,
-      data: SkData,
-    ): Promise<GPUTexture | null> => {
+    async (device: GPUDevice, data: SkData): Promise<GPUTexture | null> => {
       try {
         const skImage = Skia.Image.MakeImageFromEncoded(data);
         if (!skImage) {
@@ -279,7 +289,7 @@ export function useWebGPUMosaic(
 
         device.queue.writeTexture(
           { texture },
-          pixels,
+          pixels.buffer,
           { bytesPerRow: width * 4, rowsPerImage: height },
           [width, height],
         );
@@ -732,7 +742,7 @@ export function useWebGPUMosaic(
           }
 
           // Decode and upload to GPU (sequential - wait for completion)
-          const texture = await decodeAtlasToGPU(device, i, skData);
+          const texture = await decodeAtlasToGPU(device, skData);
 
           // Explicitly dispose Skia data to free memory before next atlas
           if ('dispose' in skData && typeof skData.dispose === 'function') {
@@ -818,7 +828,6 @@ export function useWebGPUMosaic(
 
     let movingCount = 0;
     let appearingCount = 0;
-    let disappearingCount = disappearingPhotos.length;
 
     // Process new painting tiles
     // Positions are ALREADY screen-relative (centered in index.tsx)

@@ -5,8 +5,10 @@ import type { HybridObject } from 'react-native-nitro-modules';
  * - RGB→LAB conversion in native code
  * - Parallel processing with multiple threads
  */
-export interface ColorMatcher
-  extends HybridObject<{ ios: 'c++'; android: 'c++' }> {
+export interface ColorMatcher extends HybridObject<{
+  ios: 'c++';
+  android: 'c++';
+}> {
   /**
    * Match cells to photos using RGB colors
    * Converts to LAB internally and uses parallel greedy matching
