@@ -288,6 +288,14 @@ export function ArtGallery() {
         <HeaderRight onPaintingChange={handlePaintingChange} />
       ),
     });
+
+    // Reset header when unmounting to prevent it persisting on other screens
+    return () => {
+      navigation.setOptions({
+        headerShown: false,
+        headerRight: undefined,
+      });
+    };
   }, [navigation, handlePaintingChange]);
 
   // Initialize WebGPU renderer
