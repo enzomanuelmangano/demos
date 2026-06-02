@@ -683,6 +683,7 @@ const styles = StyleSheet.create({
   },
   btnGhostText: {
     color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -691,6 +692,7 @@ const styles = StyleSheet.create({
   },
   btnPrimaryText: {
     color: theme.bg,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 16,
     fontWeight: '700',
   },
@@ -713,6 +715,7 @@ const styles = StyleSheet.create({
   hLabel: { flex: 1 },
   hName: {
     color: theme.textMuted,
+    fontFamily: 'SF-Compact-Rounded-Medium',
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
@@ -729,6 +732,7 @@ const styles = StyleSheet.create({
   hRowLabel: {
     color: theme.textMuted,
     flex: 1,
+    fontFamily: 'SF-Compact-Rounded-Medium',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -747,12 +751,14 @@ const styles = StyleSheet.create({
   },
   pillText: {
     color: theme.bg,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 15,
     fontVariant: ['tabular-nums'],
     fontWeight: '800',
   },
   pillTextWin: {
     color: theme.bg,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 15,
     fontVariant: ['tabular-nums'],
     fontWeight: '800',
@@ -761,6 +767,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.win,
   },
   qCount: {
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 17,
     fontVariant: ['tabular-nums'],
     fontWeight: '700',
@@ -785,6 +792,7 @@ const styles = StyleSheet.create({
   },
   qLabel: {
     flex: 1,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: -0.2,
@@ -796,12 +804,14 @@ const styles = StyleSheet.create({
   },
   recapKicker: {
     color: theme.textMuted,
+    fontFamily: 'SF-Pro-Rounded-Heavy',
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 2,
   },
   recapTitle: {
     color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Heavy',
     fontSize: 26,
     fontWeight: '800', // SF Heavy
     letterSpacing: -0.9,

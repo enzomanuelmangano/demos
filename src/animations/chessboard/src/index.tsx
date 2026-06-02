@@ -541,6 +541,7 @@ const styles = StyleSheet.create({
   },
   clockText: {
     color: theme.textMuted,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 16,
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
@@ -584,6 +585,7 @@ const styles = StyleSheet.create({
   },
   historyEmpty: {
     color: theme.textFaint,
+    fontFamily: 'SF-Compact-Rounded-Medium',
     fontSize: 13,
     letterSpacing: 0.1,
   },
@@ -609,12 +611,14 @@ const styles = StyleSheet.create({
   },
   moveNo: {
     color: theme.textFaint,
+    fontFamily: 'SF-Compact-Rounded-Medium',
     fontSize: 13,
     fontVariant: ['tabular-nums'],
     fontWeight: '500',
   },
   moveSan: {
     color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 14,
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
@@ -626,6 +630,7 @@ const styles = StyleSheet.create({
   },
   navSub: {
     color: theme.textMuted,
+    fontFamily: 'SF-Compact-Rounded-Medium',
     fontSize: 12,
     fontWeight: '500',
     letterSpacing: 0.1,
@@ -633,6 +638,7 @@ const styles = StyleSheet.create({
   },
   navTitle: {
     color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 17,
     fontWeight: '600',
     letterSpacing: -0.3,
@@ -658,6 +664,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: -0.1,
@@ -669,6 +676,7 @@ const styles = StyleSheet.create({
   },
   playerRating: {
     color: theme.textMuted,
+    fontFamily: 'SF-Compact-Rounded-Medium',
     fontSize: 13,
     fontVariant: ['tabular-nums'],
     fontWeight: '500',
@@ -680,6 +688,7 @@ const styles = StyleSheet.create({
   },
   replayText: {
     color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.1,
@@ -691,6 +700,7 @@ const styles = StyleSheet.create({
   resultTag: {
     borderCurve: 'continuous',
     borderRadius: 5,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,
@@ -718,6 +728,7 @@ const styles = StyleSheet.create({
   },
   trayLead: {
     color: theme.textMuted,
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 12,
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
