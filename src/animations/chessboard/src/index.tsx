@@ -236,8 +236,9 @@ function GameScreen() {
   const [flipped, setFlipped] = useState(false);
   const { width } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
-  // Board spans the full screen width — the hero. Chrome is inset to GUTTER.
-  const boardSize = width;
+  // Board and all chrome share the same GUTTER inset so every left/right edge
+  // lines up (avatar, board, move list, actions).
+  const boardSize = width - GUTTER * 2;
   const pieceSize = boardSize / 8;
 
   const playSequence = useCallback(async () => {
@@ -683,7 +684,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   playerWrap: {
-    paddingHorizontal: 0,
+    paddingHorizontal: GUTTER,
     width: '100%',
   },
   replayText: {
