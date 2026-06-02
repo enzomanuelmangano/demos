@@ -79,6 +79,7 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
+    "react-native-chessboard": "0.2.0-beta.1",
     "react-native-fast-confetti": "^1.1.1",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-ios-context-menu": "^3.2.1",
