@@ -1,0 +1,1 @@
+export { ChessboardGame } from './src';
