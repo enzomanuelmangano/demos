@@ -1,4 +1,5 @@
 import {
+  Image,
   StyleSheet,
   View,
   Text,
@@ -9,9 +10,11 @@ import {
 import React, { useRef, useEffect, useState, useCallback, memo } from 'react';
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import ColorLib from 'color';
 import { PressableScale } from 'pressto';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
 import Animated, {
+  interpolateColor,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -25,10 +28,22 @@ import {
   useCheckmateAura,
   type AnnotatedMove,
 } from './checkmate-aura';
-import { theme } from './theme';
+import { avatarUri, theme } from './theme';
 
 type Color = 'w' | 'b';
 type Side = 'w' | 'b';
+
+// Pre-resolved RGB triplets so the active/idle cross-fade animates ALPHA only
+// (rgb held constant) — pure opacity ramp, no hue path through interpolateColor,
+// which is what caused the flicker. The active tint fades in over the static
+// idle base instead of swapping the whole colour.
+const SURFACE_RGB = ColorLib(theme.surface).rgb().array();
+const BORDER_RGB = ColorLib(theme.border).rgb().array();
+const CLOCK_TINT = ColorLib(theme.accent).alpha(0.15).rgb().string();
+const toRgba = (rgb: number[], a: number) => {
+  'worklet';
+  return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${a})`;
+};
 
 const PLAYERS: Record<Side, { name: string; rating: number }> = {
   b: { name: 'nimzoknight', rating: 2218 },
@@ -68,9 +83,15 @@ const PlayerCard: React.FC<{
   const { name, rating } = PLAYERS[side];
   const foe: Side = side === 'w' ? 'b' : 'w';
 
-  // Active-turn indicator breathes so the screen has life between moves.
+  // Active-turn state drives every active/idle transition on one shared value
+  // so the card bg, border, clock bg and clock text all cross-fade together
+  // (instead of snapping) when the turn changes.
+  const active = useSharedValue(toMove ? 1 : 0);
+  // Indicator breathes while it's this side's turn, so the screen has life
+  // between moves.
   const pulse = useSharedValue(0);
   useEffect(() => {
+    active.value = withTiming(toMove ? 1 : 0, { duration: 280 });
     if (toMove) {
       pulse.value = withRepeat(
         withTiming(1, { duration: 950, easing: Easing.inOut(Easing.ease) }),
@@ -80,24 +101,36 @@ const PlayerCard: React.FC<{
     } else {
       pulse.value = withTiming(0, { duration: 200 });
     }
-  }, [toMove, pulse]);
+  }, [toMove, active, pulse]);
+
+  // Card bg + border: fade the active surface/border IN (alpha 0 → 1) over the
+  // transparent idle base — rgb is constant, so it's a clean opacity ramp.
+  const cardStyle = useAnimatedStyle(() => ({
+    backgroundColor: toRgba(SURFACE_RGB, active.value),
+    borderColor: toRgba(BORDER_RGB, active.value),
+  }));
+  // Clock keeps its static surfaceHi base; the green tint just fades in on top.
+  const clockTintStyle = useAnimatedStyle(() => ({ opacity: active.value }));
+  const clockTextStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(
+      active.value,
+      [0, 1],
+      [theme.textMuted, theme.text],
+    ),
+  }));
+  // Dot stays mounted at all times — its width/margin animate from 0, so the
+  // clock grows/shrinks smoothly per-frame on the UI thread (no mount/unmount,
+  // no layout transition, no flicker).
   const dotStyle = useAnimatedStyle(() => ({
-    opacity: 0.45 + pulse.value * 0.55,
+    width: active.value * 6,
+    marginRight: active.value * 6,
+    opacity: active.value * (0.45 + pulse.value * 0.55),
     transform: [{ scale: 0.8 + pulse.value * 0.5 }],
   }));
 
   return (
-    <View style={[styles.player, toMove && styles.playerActive]}>
-      <View
-        style={[styles.avatar, side === 'w' ? styles.avatarW : styles.avatarB]}>
-        <Text
-          style={[
-            styles.avatarGlyph,
-            { color: side === 'w' ? theme.bg : theme.text },
-          ]}>
-          ♚
-        </Text>
-      </View>
+    <Animated.View style={[styles.player, cardStyle]}>
+      <Image source={{ uri: avatarUri[side] }} style={styles.avatar} />
       <View style={styles.playerInfo}>
         <View style={styles.playerNameRow}>
           <Text style={styles.playerName}>{name}</Text>
@@ -114,13 +147,17 @@ const PlayerCard: React.FC<{
         </View>
         <CaptureTray pieces={captured} lead={lead} foe={foe} />
       </View>
-      <View style={[styles.clock, toMove && styles.clockActive]}>
-        {toMove ? <Animated.View style={[styles.clockDot, dotStyle]} /> : null}
-        <Text style={[styles.clockText, toMove && styles.clockTextActive]}>
+      <View style={styles.clock}>
+        <Animated.View
+          style={[styles.clockTint, clockTintStyle]}
+          pointerEvents="none"
+        />
+        <Animated.View style={[styles.clockDot, dotStyle]} />
+        <Animated.Text style={[styles.clockText, clockTextStyle]}>
           {clock}
-        </Text>
+        </Animated.Text>
       </View>
-    </View>
+    </Animated.View>
   );
 };
 
@@ -236,9 +273,8 @@ function GameScreen() {
   const [flipped, setFlipped] = useState(false);
   const { width } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
-  // Board and all chrome share the same GUTTER inset so every left/right edge
-  // lines up (avatar, board, move list, actions).
-  const boardSize = width - GUTTER * 2;
+  // Board spans the full screen width — the hero. Chrome is inset to GUTTER.
+  const boardSize = width;
   const pieceSize = boardSize / 8;
 
   const playSequence = useCallback(async () => {
@@ -328,10 +364,25 @@ function GameScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Group SAN into numbered "1. f3 e5" tokens for the history strip.
-  const moveTokens: { no: number; white: string; black?: string }[] = [];
+  // Group SAN into numbered "1. f3 e5" tokens for the history strip. Track each
+  // SAN's flat index so the latest (active) move can be shown full-white while
+  // earlier moves dim to a low-opacity white.
+  const lastMoveIdx = moves.length - 1;
+  const moveTokens: {
+    no: number;
+    white: string;
+    whiteIdx: number;
+    black?: string;
+    blackIdx: number;
+  }[] = [];
   for (let i = 0; i < moves.length; i += 2) {
-    moveTokens.push({ no: i / 2 + 1, white: moves[i], black: moves[i + 1] });
+    moveTokens.push({
+      no: i / 2 + 1,
+      white: moves[i],
+      whiteIdx: i,
+      black: moves[i + 1],
+      blackIdx: i + 1,
+    });
   }
 
   // Derived game info for the player cards.
@@ -375,6 +426,7 @@ function GameScreen() {
           {/* Opponent (black) — top */}
           <View style={styles.playerWrap}>
             <PlayerCard
+              key="b"
               side="b"
               captured={captured.b}
               lead={leadB}
@@ -398,6 +450,7 @@ function GameScreen() {
           {/* You (white) — bottom */}
           <View style={styles.playerWrap}>
             <PlayerCard
+              key="w"
               side="w"
               captured={captured.w}
               lead={leadW}
@@ -406,8 +459,11 @@ function GameScreen() {
               result={resultFor('w')}
             />
           </View>
+        </View>
 
-          {/* Move history — hugs the board */}
+        {/* Bottom group — move history sits directly above the actions. */}
+        <View style={styles.bottomGroup}>
+          {/* Move history */}
           <View style={styles.moveListWrap}>
             <View style={[styles.glass, styles.historyCard]}>
               <ScrollView
@@ -420,9 +476,21 @@ function GameScreen() {
                   moveTokens.map(t => (
                     <View key={t.no} style={styles.moveToken}>
                       <Text style={styles.moveNo}>{t.no}.</Text>
-                      <Text style={styles.moveSan}>{t.white}</Text>
+                      <Text
+                        style={[
+                          styles.moveSan,
+                          t.whiteIdx !== lastMoveIdx && styles.moveSanPast,
+                        ]}>
+                        {t.white}
+                      </Text>
                       {t.black ? (
-                        <Text style={styles.moveSan}>{t.black}</Text>
+                        <Text
+                          style={[
+                            styles.moveSan,
+                            t.blackIdx !== lastMoveIdx && styles.moveSanPast,
+                          ]}>
+                          {t.black}
+                        </Text>
                       ) : null}
                     </View>
                   ))
@@ -430,31 +498,31 @@ function GameScreen() {
               </ScrollView>
             </View>
           </View>
-        </View>
 
-        {/* Actions — a compact replay icon + the primary Rematch button. */}
-        <View style={styles.actionRow}>
-          <PressableScale onPress={playSequence} style={styles.iconButton}>
-            <MaterialCommunityIcons
-              name="replay"
-              size={22}
-              color={theme.text}
-            />
-          </PressableScale>
-          <PressableScale
-            onPress={rematch}
-            style={[
-              styles.actionButton,
-              styles.actionSecondary,
-              styles.actionFill,
-            ]}>
-            <MaterialCommunityIcons
-              name="sword-cross"
-              size={18}
-              color={theme.text}
-            />
-            <Text style={styles.replayText}>Rematch</Text>
-          </PressableScale>
+          {/* Actions — a compact replay icon + the primary Rematch button. */}
+          <View style={styles.actionRow}>
+            <PressableScale onPress={playSequence} style={styles.iconButton}>
+              <MaterialCommunityIcons
+                name="replay"
+                size={22}
+                color={theme.text}
+              />
+            </PressableScale>
+            <PressableScale
+              onPress={rematch}
+              style={[
+                styles.actionButton,
+                styles.actionSecondary,
+                styles.actionFill,
+              ]}>
+              <MaterialCommunityIcons
+                name="sword-cross"
+                size={18}
+                color={theme.text}
+              />
+              <Text style={styles.replayText}>Rematch</Text>
+            </PressableScale>
+          </View>
         </View>
       </View>
     </View>
@@ -498,28 +566,21 @@ const styles = StyleSheet.create({
   },
   avatar: {
     alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.14)',
     borderCurve: 'continuous',
     borderRadius: 12,
     borderWidth: HAIRLINE,
     height: 40,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 40,
-  },
-  avatarB: {
-    backgroundColor: theme.surfaceHi,
-    borderColor: theme.border,
-  },
-  avatarGlyph: {
-    fontSize: 26,
-    lineHeight: 30,
-  },
-  avatarW: {
-    backgroundColor: theme.boardLight,
-    borderColor: 'rgba(255,255,255,0.5)',
   },
   boardHero: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bottomGroup: {
+    gap: 10,
   },
   clock: {
     alignItems: 'center',
@@ -527,18 +588,14 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 9,
     flexDirection: 'row',
-    gap: 6,
+    overflow: 'hidden',
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  clockActive: {
-    backgroundColor: 'rgba(95,225,158,0.15)',
-  },
   clockDot: {
-    backgroundColor: theme.win,
+    backgroundColor: theme.accent,
     borderRadius: 3,
     height: 6,
-    width: 6,
   },
   clockText: {
     color: theme.textMuted,
@@ -548,8 +605,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.3,
   },
-  clockTextActive: {
-    color: theme.text,
+  clockTint: {
+    backgroundColor: CLOCK_TINT,
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   content: {
     flex: 1,
@@ -624,6 +686,9 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
   },
+  moveSanPast: {
+    color: 'rgba(240,242,245,0.4)',
+  },
   moveToken: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -652,12 +717,9 @@ const styles = StyleSheet.create({
     borderWidth: HAIRLINE,
     flexDirection: 'row',
     gap: 12,
+    paddingHorizontal: 6,
     paddingVertical: 6,
     width: '100%',
-  },
-  playerActive: {
-    backgroundColor: theme.surface,
-    borderColor: theme.border,
   },
   playerInfo: {
     flex: 1,
@@ -684,7 +746,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   playerWrap: {
-    paddingHorizontal: GUTTER,
+    paddingHorizontal: 10,
     width: '100%',
   },
   replayText: {
@@ -710,8 +772,8 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   resultWin: {
-    backgroundColor: 'rgba(95,225,158,0.15)',
-    color: theme.win,
+    backgroundColor: 'rgba(58,145,248,0.15)',
+    color: theme.accent,
   },
   root: {
     backgroundColor: theme.bg,

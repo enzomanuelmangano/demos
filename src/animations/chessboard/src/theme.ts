@@ -22,17 +22,25 @@ export const theme = {
   boardDark: '#818895', //  oklch(0.625 0.022 265)
 };
 
-// Move-quality colours (chess.com-style review). All OKLCH-derived, same
-// convention as the palette above.
+// Move-quality colours (chess.com-style review). Pastel — soft and low-chroma —
+// and hue-aligned with the main palette: `great` shares the accent hue (255),
+// the positive greens share the win hue (158), the warnings sweep toward the
+// lose hue (18), so the review reads as the same colour family as the app.
 export const quality = {
-  brilliant: '#39bab4', //  oklch(0.720 0.110 190)
-  great: '#5188cd', //      oklch(0.620 0.120 255)
-  book: '#968368', //       oklch(0.620 0.045 75)
-  best: '#67d283', //       oklch(0.780 0.150 150)
-  excellent: '#8bd28d', //  oklch(0.800 0.120 145)
-  good: '#87be92', //       oklch(0.750 0.085 150)
-  inaccuracy: '#e6c45a', // oklch(0.830 0.130 92)
-  mistake: '#ee9b58', //    oklch(0.760 0.130 58)
-  miss: '#e36650', //       oklch(0.660 0.160 32)
-  blunder: '#ed4952', //    oklch(0.640 0.200 22)
+  brilliant: '#84d5d1', //  oklch(0.820 0.080 192)
+  great: '#90baf1', //      oklch(0.780 0.090 255)  // accent hue
+  book: '#cebb9e', //       oklch(0.800 0.045 78)
+  best: '#93d8b0', //       oklch(0.825 0.090 158)  // win hue
+  excellent: '#a6dbb6', //  oklch(0.845 0.075 154)
+  good: '#a6d2b6', //       oklch(0.825 0.060 157)
+  inaccuracy: '#e9cf87', // oklch(0.860 0.095 90)
+  mistake: '#ebaf86', //    oklch(0.800 0.090 55)
+  miss: '#e79287', //       oklch(0.745 0.105 28)
+  blunder: '#e18083', //    oklch(0.705 0.120 18)  // lose hue
 };
+
+// Profile photos — one per side (stable pravatar portraits).
+export const avatarUri = {
+  w: 'https://i.pravatar.cc/120?img=68',
+  b: 'https://i.pravatar.cc/120?img=15',
+} as const;

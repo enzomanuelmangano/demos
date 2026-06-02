@@ -1,4 +1,10 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import React, {
   createContext,
@@ -31,7 +37,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { theme, quality } from './theme';
+import { theme, quality, avatarUri } from './theme';
 
 import type { SkImage } from '@shopify/react-native-skia';
 
@@ -518,19 +524,11 @@ export const CheckmateAuraProvider: React.FC<{
               <Animated.View entering={enter(95)} style={styles.hRow}>
                 <Text style={styles.hRowLabel}>Players</Text>
                 <View style={styles.col}>
-                  <View style={[styles.avatar, styles.avatarYou]}>
-                    <Text style={[styles.avatarGlyph, { color: theme.bg }]}>
-                      ♚
-                    </Text>
-                  </View>
+                  <Image source={{ uri: avatarUri.w }} style={styles.avatar} />
                 </View>
                 <View style={styles.iconCol} />
                 <View style={styles.col}>
-                  <View style={[styles.avatar, styles.avatarOpp]}>
-                    <Text style={[styles.avatarGlyph, { color: theme.text }]}>
-                      ♚
-                    </Text>
-                  </View>
+                  <Image source={{ uri: avatarUri.b }} style={styles.avatar} />
                 </View>
               </Animated.View>
 
@@ -647,24 +645,14 @@ const HAIRLINE = StyleSheet.hairlineWidth;
 const styles = StyleSheet.create({
   avatar: {
     alignItems: 'center',
+    borderColor: 'rgba(255,255,255,0.14)',
     borderCurve: 'continuous',
     borderRadius: 11,
     borderWidth: HAIRLINE,
     height: 38,
     justifyContent: 'center',
+    overflow: 'hidden',
     width: 38,
-  },
-  avatarGlyph: {
-    fontSize: 23,
-    lineHeight: 28,
-  },
-  avatarOpp: {
-    backgroundColor: theme.surfaceHi,
-    borderColor: theme.border,
-  },
-  avatarYou: {
-    backgroundColor: theme.boardLight,
-    borderColor: theme.boardLight,
   },
   btn: {
     alignItems: 'center',
@@ -743,14 +731,14 @@ const styles = StyleSheet.create({
   },
   pill: {
     alignItems: 'center',
-    backgroundColor: theme.text,
+    backgroundColor: 'rgba(240,242,245,0.10)',
     borderCurve: 'continuous',
     borderRadius: 9,
     paddingVertical: 8,
     width: 56,
   },
   pillText: {
-    color: theme.bg,
+    color: theme.text,
     fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 15,
     fontVariant: ['tabular-nums'],
@@ -764,7 +752,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   pillWin: {
-    backgroundColor: theme.win,
+    backgroundColor: theme.accent,
   },
   qCount: {
     fontFamily: 'SF-Pro-Rounded-Bold',
