@@ -1,0 +1,183 @@
+diff --git a/node_modules/react-native-chessboard/.bun-tag-184266e0922a7c45 b/.bun-tag-184266e0922a7c45
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/node_modules/react-native-chessboard/.bun-tag-1fab3dcfc761a0ef b/.bun-tag-1fab3dcfc761a0ef
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/lib/typescript/hooks/use-chessboard-ref.d.ts b/lib/typescript/hooks/use-chessboard-ref.d.ts
+index 6daaa6dffb2c698d898b015c2afa93b015ac824a..65adf0d8cefb3ff912d954eb67400dd3ab04d65e 100644
+--- a/lib/typescript/hooks/use-chessboard-ref.d.ts
++++ b/lib/typescript/hooks/use-chessboard-ref.d.ts
+@@ -16,7 +16,7 @@ export interface ChessboardRef {
+         color?: string;
+     }) => void;
+     resetAllHighlightedSquares: () => void;
+-    resetBoard: (fen?: string) => void;
++    resetBoard: (fen?: string, opts?: { slide?: { from: string; to: string }; lastMove?: { from: string; to: string } | null }) => void;
+     getState: () => ChessboardState;
+ }
+ interface UseChessboardRefProps {
+diff --git a/lib/typescript/state/move-executor.d.ts b/lib/typescript/state/move-executor.d.ts
+index 946d1c2de40f1ebed1a129035be95c4e13dd0cd0..9c9597856864f8b01d50670187cd10fd33da0a43 100644
+--- a/lib/typescript/state/move-executor.d.ts
++++ b/lib/typescript/state/move-executor.d.ts
+@@ -31,7 +31,7 @@ export declare const createMoveExecutor: (chess: Chess, boardState: BoardState,
+     tryMove: (from: Square, to: Square, promotionPiece?: PieceSymbol) => Promise<Move | undefined>;
+     selectPiece: (square: Square) => void;
+     isPromotionMove: (from: Square, to: Square) => boolean;
+-    resetBoard: (fen?: string) => void;
++    resetBoard: (fen?: string, opts?: { slide?: { from: string; to: string }; lastMove?: { from: string; to: string } | null }) => void;
+     undo: () => Move | null;
+ };
+ export type MoveExecutor = ReturnType<typeof createMoveExecutor>;
+diff --git a/src/hooks/use-chessboard-ref.ts b/src/hooks/use-chessboard-ref.ts
+index 3fcebc01f3ec01ec1c40eea5114e2a18301acd10..2c6dabb8b45c8bed870c2d73d6c59a4864b3fa34 100644
+--- a/src/hooks/use-chessboard-ref.ts
++++ b/src/hooks/use-chessboard-ref.ts
+@@ -19,7 +19,7 @@ export interface ChessboardRef {
+   undo: () => Move | null;
+   highlight: (params: { square: Square; color?: string }) => void;
+   resetAllHighlightedSquares: () => void;
+-  resetBoard: (fen?: string) => void;
++  resetBoard: (fen?: string, opts?: { slide?: { from: string; to: string }; lastMove?: { from: string; to: string } | null }) => void;
+   getState: () => ChessboardState;
+ }
+ 
+@@ -76,8 +76,8 @@ export const useChessboardRef = ({
+   ]);
+ 
+   const resetBoard = useCallback(
+-    (fen?: string) => {
+-      moveExecutor.resetBoard(fen);
++    (fen?: string, opts?: { slide?: { from: string; to: string }; lastMove?: { from: string; to: string } | null }) => {
++      moveExecutor.resetBoard(fen, opts);
+     },
+     [moveExecutor]
+   );
+diff --git a/src/state/move-executor.ts b/src/state/move-executor.ts
+index e46eb80631ac3c72cbbe9bbca3d7e89345442b4c..f7077ac0168d4f2bf94f7adc73720d8df42ef59c 100644
+--- a/src/state/move-executor.ts
++++ b/src/state/move-executor.ts
+@@ -1,5 +1,9 @@
+-import { withSpring } from 'react-native-reanimated';
++import { Easing, withSpring, withTiming } from 'react-native-reanimated';
+ import type { SharedValue } from 'react-native-reanimated';
++
++// Scrub steps animate fast (snappy) rather than with the slower move spring, so
++// stepping through history feels near-instant.
++const SCRUB_SLIDE = { duration: 150, easing: Easing.out(Easing.cubic) };
+ import type { Chess, Move, Square, PieceSymbol } from 'chess.js';
+ import type { BoardState, PieceCode } from './types';
+ import { squareToPosition } from './use-board-state';
+@@ -236,7 +240,21 @@ export const createMoveExecutor = (
+     boardState.validMoves.set(moves.map((m) => m.to));
+   };
+ 
+-  const resetBoard = (fen?: string) => {
++  // Tracks the square whose piece is currently displaced by a scrub slide, so
++  // the next resetBoard can return just that one piece home (instead of
++  // rewriting every square's position).
++  let prevSlideTo: Square | null = null;
++
++  const resetBoard = (
++    fen?: string,
++    opts?: {
++      // Animate this piece sliding from `from` to `to` (the square it occupies
++      // in the new FEN). Single moves only — caller decides.
++      slide?: { from: string; to: string };
++      // From/to squares to highlight (the move that produced this position).
++      lastMove?: { from: string; to: string } | null;
++    }
++  ) => {
+     if (fen) {
+       try {
+         chess.load(fen);
+@@ -249,37 +267,75 @@ export const createMoveExecutor = (
+       chess.reset();
+     }
+ 
+-    // Update all square pieces
++    const slide = opts?.slide;
+     const board = chess.board();
++
++    // Only WRITE squares whose piece actually changed — a normal step touches
++    // ~2-4 squares, so this avoids 256 shared-value writes per jump (the source
++    // of the lag). Invariant: every square sits at its home position except the
++    // one currently sliding (`prevSlideTo`), which we reset below.
+     for (let row = 0; row < 8; row++) {
+       for (let col = 0; col < 8; col++) {
+         const colChar = String.fromCharCode('a'.charCodeAt(0) + col);
+         const rowNum = 8 - row;
+         const square = `${colChar}${rowNum}` as Square;
+-
+         const piece = board[row][col];
+         const pieceCode = piece
+           ? (`${piece.color}${piece.type}` as PieceCode)
+           : null;
++        if (boardState.squares[square].piece.get() !== pieceCode) {
++          boardState.squares[square].piece.set(pieceCode);
++        }
++      }
++    }
+ 
+-        boardState.squares[square].piece.set(pieceCode);
++    // Return the previously-slid piece to its home square (unless it's the new
++    // slide target, handled just below).
++    if (prevSlideTo && prevSlideTo !== slide?.to) {
++      const home = squareToPosition(prevSlideTo, pieceSize, flipped);
++      boardState.squares[prevSlideTo].translateX.set(home.x);
++      boardState.squares[prevSlideTo].translateY.set(home.y);
++      boardState.squares[prevSlideTo].zIndex.set(0);
++    }
+ 
+-        // Reset position
+-        const pos = squareToPosition(square, pieceSize, flipped);
+-        boardState.squares[square].translateX.set(pos.x);
+-        boardState.squares[square].translateY.set(pos.y);
+-        boardState.squares[square].scale.set(1);
+-        boardState.squares[square].zIndex.set(0);
+-      }
++    if (slide) {
++      // Start the arriving piece at its source square, then spring it home.
++      const to = slide.to as Square;
++      const pos = squareToPosition(to, pieceSize, flipped);
++      const fromPos = squareToPosition(slide.from as Square, pieceSize, flipped);
++      boardState.squares[to].zIndex.set(100);
++      boardState.squares[to].translateX.set(fromPos.x);
++      boardState.squares[to].translateY.set(fromPos.y);
++      boardState.squares[to].translateX.set(withTiming(pos.x, SCRUB_SLIDE));
++      boardState.squares[to].translateY.set(
++        withTiming(pos.y, SCRUB_SLIDE, () => {
++          'worklet';
++          boardState.squares[to].zIndex.set(0);
++        })
++      );
++      prevSlideTo = to;
++    } else {
++      prevSlideTo = null;
+     }
+ 
+     // Reset other state
+     boardState.turn.set(chess.turn());
+     boardState.selectedSquare.set(null);
+     boardState.validMoves.set([]);
+-    boardState.lastMove.set(null);
+-    boardState.isCheck.set(false);
+-    boardState.kingInCheckSquare.set(null);
++    // Highlight the move that produced this position, and the king when the
++    // position is check/mate, so scrubbing keeps the live-move colour cues.
++    boardState.lastMove.set(
++      opts?.lastMove
++        ? { from: opts.lastMove.from as Square, to: opts.lastMove.to as Square }
++        : null
++    );
++    const inCheck = chess.isCheck();
++    boardState.isCheck.set(inCheck);
++    boardState.kingInCheckSquare.set(
++      inCheck || chess.isCheckmate()
++        ? findKingSquare(chess, chess.turn())
++        : null
++    );
+ 
+     // Clear highlights
+     for (const square of Object.keys(boardState.highlights) as Square[]) {

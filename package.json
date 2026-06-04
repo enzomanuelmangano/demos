@@ -133,5 +133,8 @@
   "packageManager": "bun@1.2.22",
   "trustedDependencies": [
     "@shopify/react-native-skia"
-  ]
+  ],
+  "patchedDependencies": {
+    "react-native-chessboard@0.2.0-beta.1": "patches/react-native-chessboard@0.2.0-beta.1.patch"
+  }
 }
