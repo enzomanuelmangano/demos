@@ -46,6 +46,8 @@ import {
 } from './state';
 import { avatarUri, theme } from './theme';
 
+import type { Square } from 'chess.js';
+
 const START_FEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 type Color = 'w' | 'b';
@@ -310,28 +312,39 @@ const HistorySync: React.FC<{
   const plies = useAtomValue(pliesAtom);
   const running = useAtomValue(runningAtom);
   const prevPly = useRef(selectedPly);
+  const prevLen = useRef(plies.length);
   // Layout effect (not passive) so the board is driven before paint — one frame
   // snappier on tap.
   useLayoutEffect(() => {
     const from = prevPly.current;
     const to = selectedPly;
+    const grew = plies.length > prevLen.current;
     prevPly.current = to;
+    prevLen.current = plies.length;
     if (running) return; // the replay owns the board while it plays
+    // A newly-played move (drag or programmatic) already moved the board via
+    // its own animation and just advanced the selection — don't re-drive it.
+    if (grew) return;
     if (to === from) return;
 
     // Highlight the move that produced the target position (canonical review
     // highlight), regardless of which way we stepped.
     const lastMove =
-      to >= 0 ? { from: plies[to].from, to: plies[to].to } : null;
+      to >= 0
+        ? { from: plies[to].from as Square, to: plies[to].to as Square }
+        : null;
 
     // Slide the piece that physically changed squares between the two
     // positions — forward plays the target move, backward reverses the move
     // we're leaving. Only single-ply steps animate; bigger jumps snap.
-    let slide: { from: string; to: string } | undefined;
+    let slide: { from: Square; to: Square } | undefined;
     if (to === from + 1 && to >= 0) {
-      slide = { from: plies[to].from, to: plies[to].to };
+      slide = { from: plies[to].from as Square, to: plies[to].to as Square };
     } else if (to === from - 1 && from >= 0) {
-      slide = { from: plies[from].to, to: plies[from].from };
+      slide = {
+        from: plies[from].to as Square,
+        to: plies[from].from as Square,
+      };
     }
 
     boardRef.current?.resetBoard(to < 0 ? START_FEN : plies[to].fen, {
