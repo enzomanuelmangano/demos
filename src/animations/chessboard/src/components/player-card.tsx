@@ -200,7 +200,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderColor: 'transparent',
     borderCurve: 'continuous',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: HAIRLINE,
     flexDirection: 'row',
     gap: 12,

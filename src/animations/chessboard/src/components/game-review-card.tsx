@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   btn: {
     alignItems: 'center',
     borderCurve: 'continuous',
-    borderRadius: 14,
+    borderRadius: 18,
     flex: 1,
     flexDirection: 'row',
     gap: 8,

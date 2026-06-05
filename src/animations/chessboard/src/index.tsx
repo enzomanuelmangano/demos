@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
     borderCurve: 'continuous',
-    borderRadius: 14,
+    borderRadius: 18,
     flexDirection: 'row',
     gap: 9,
     justifyContent: 'center',
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderColor: theme.border,
     borderCurve: 'continuous',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: HAIRLINE,
     justifyContent: 'center',
     paddingVertical: 15,

@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
     borderColor: theme.border,
     borderCurve: 'continuous',
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: HAIRLINE,
     height: 52,
     justifyContent: 'center',
