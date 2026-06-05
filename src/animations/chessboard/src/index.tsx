@@ -106,11 +106,11 @@ function GameScreen() {
     setRunning(true);
     ref.current?.resetBoard();
     resetGame();
-    await delay(700);
+    await delay(300);
     for (const [from, to] of FOOLS_MATE) {
       if (!alive.current) return;
       await ref.current?.move({ from: from as any, to: to as any });
-      await delay(450);
+      await delay(260);
     }
     runningRef.current = false;
     setRunning(false);
