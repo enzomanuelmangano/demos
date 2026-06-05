@@ -133,7 +133,7 @@ export const MoveHistory: React.FC = () => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.surface,
+    backgroundColor: theme.surfaceHi,
     borderColor: theme.border,
     borderCurve: 'continuous',
     borderRadius: 18,

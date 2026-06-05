@@ -175,7 +175,7 @@ export const GameReviewCard: React.FC<{
             card.onReview();
           }}
           style={[styles.btn, styles.btnGhost]}>
-          <Ionicons name="eye-outline" size={18} color={theme.text} />
+          <Ionicons name="search" size={18} color={theme.text} />
           <Text style={styles.btnGhostText}>Review</Text>
         </PressableScale>
         <PressableScale
