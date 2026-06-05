@@ -2,7 +2,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { Provider, useAtomValue, useSetAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
@@ -265,15 +265,9 @@ function GameScreen() {
             <MoveHistory />
           </View>
 
-          {/* Actions — a compact replay icon + the primary Rematch button. */}
+          {/* Actions — the primary Rematch button, with a compact "watch
+              again" icon at the bottom-right. */}
           <View style={styles.actionRow}>
-            <PressableScale onPress={playSequence} style={styles.iconButton}>
-              <MaterialCommunityIcons
-                name="replay"
-                size={22}
-                color={theme.text}
-              />
-            </PressableScale>
             <PressableScale
               onPress={rematch}
               style={[
@@ -281,12 +275,11 @@ function GameScreen() {
                 styles.actionSecondary,
                 styles.actionFill,
               ]}>
-              <MaterialCommunityIcons
-                name="sword-cross"
-                size={18}
-                color={theme.text}
-              />
+              <Ionicons name="refresh" size={20} color={theme.text} />
               <Text style={styles.replayText}>Rematch</Text>
+            </PressableScale>
+            <PressableScale onPress={playSequence} style={styles.iconButton}>
+              <Ionicons name="play" size={22} color={theme.text} />
             </PressableScale>
           </View>
         </View>

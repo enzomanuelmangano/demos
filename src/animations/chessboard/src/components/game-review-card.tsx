@@ -2,7 +2,7 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 
 import React from 'react';
 
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 import Animated, {
   Easing,
@@ -175,11 +175,7 @@ export const GameReviewCard: React.FC<{
             card.onReview();
           }}
           style={[styles.btn, styles.btnGhost]}>
-          <MaterialCommunityIcons
-            name="eye-outline"
-            size={18}
-            color={theme.text}
-          />
+          <Ionicons name="eye-outline" size={18} color={theme.text} />
           <Text style={styles.btnGhostText}>Review</Text>
         </PressableScale>
         <PressableScale
@@ -188,11 +184,7 @@ export const GameReviewCard: React.FC<{
             card.onRematch();
           }}
           style={[styles.btn, styles.btnPrimary]}>
-          <MaterialCommunityIcons
-            name="sword-cross"
-            size={18}
-            color={theme.bg}
-          />
+          <Ionicons name="refresh" size={20} color={theme.bg} />
           <Text style={styles.btnPrimaryText}>Rematch</Text>
         </PressableScale>
       </Animated.View>
