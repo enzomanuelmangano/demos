@@ -113,7 +113,14 @@ export const CheckmateAuraProvider: React.FC<{
     filter: [{ blur: blurIn.value * 16 }],
   }));
 
-  const clearCard = useCallback(() => setCard(null), []);
+  // Runs on the JS thread (via scheduleOnRN) once the overlay is fully hidden —
+  // clears the card and releases the busy latch. `busy` must only be mutated
+  // here, never inside the reaction worklet (mutating a ref captured by a
+  // worklet triggers a "modified key of an object passed to a worklet" warning).
+  const clearCard = useCallback(() => {
+    busy.current = false;
+    setCard(null);
+  }, []);
 
   // Free the snapshot + card once fully hidden.
   useAnimatedReaction(
@@ -123,7 +130,6 @@ export const CheckmateAuraProvider: React.FC<{
         snapshot.value = null;
         progress.value = 0;
         blurIn.value = 0;
-        busy.current = false;
         scheduleOnRN(clearCard);
       }
     },

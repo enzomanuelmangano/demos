@@ -1,7 +1,8 @@
 import { LayoutRectangle } from 'react-native';
 
 import { atom } from 'jotai';
-import { atomFamily } from 'jotai/utils';
+
+import type { Atom, PrimitiveAtom } from 'jotai';
 
 // One ply of the game — enough to render the history, jump the board to the
 // resulting position, and animate the moving piece in either direction.
@@ -29,18 +30,32 @@ export const statusAtom = atom('White to move');
 // Derived: just the SAN strings, for the move-history strip.
 export const movesAtom = atom(get => get(pliesAtom).map(p => p.san));
 
+// Per-ply atom factories. A plain Map cache keyed by ply gives each ply its own
+// stable atom (created once, reused across renders) — same role as jotai's
+// atomFamily, but without the deprecated `jotai/utils` import.
+const memoizePerPly = <T>(create: (ply: number) => T): ((ply: number) => T) => {
+  const cache = new Map<number, T>();
+  return (ply: number) => {
+    let entry = cache.get(ply);
+    if (!entry) {
+      entry = create(ply);
+      cache.set(ply, entry);
+    }
+    return entry;
+  };
+};
+
 // Per-ply "am I selected?" — a move token subscribes only to its own slice, so
 // changing the selection re-renders just the two toggling tokens (not the list).
-// eslint-disable-next-line deprecation/deprecation -- atomFamily is stable in jotai 2.x
-export const isPlySelectedFamily = atomFamily((ply: number) =>
-  atom(get => get(selectedPlyAtom) === ply),
+export const isPlySelectedFamily = memoizePerPly(
+  (ply: number): Atom<boolean> => atom(get => get(selectedPlyAtom) === ply),
 );
 
 // Per-ply measured frame, written on layout — the highlight pill reads only the
 // frame of the currently-selected ply.
-// eslint-disable-next-line deprecation/deprecation -- atomFamily is stable in jotai 2.x
-export const plyFrameFamily = atomFamily((_ply: number) =>
-  atom<LayoutRectangle | null>(null),
+export const plyFrameFamily = memoizePerPly(
+  (_ply: number): PrimitiveAtom<LayoutRectangle | null> =>
+    atom<LayoutRectangle | null>(null),
 );
 
 // True once the user has tapped a move — the highlight pill stays hidden until

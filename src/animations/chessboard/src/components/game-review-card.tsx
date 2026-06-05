@@ -93,7 +93,7 @@ export const GameReviewCard: React.FC<{
       {/* Player names */}
       <Animated.View entering={enter(55)} style={styles.hRow}>
         <View style={styles.hLabel} />
-        <Text style={styles.hName}>you</Text>
+        <Text style={styles.hName}>enzo</Text>
         <View style={styles.iconCol} />
         <Text style={styles.hName} numberOfLines={1}>
           {card.oppName}

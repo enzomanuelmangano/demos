@@ -6,8 +6,8 @@ export const START_FEN =
   'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
 export const PLAYERS: Record<Side, { name: string; rating: number }> = {
-  b: { name: 'nimzoknight', rating: 2218 },
-  w: { name: 'you', rating: 2190 },
+  b: { name: 'magnus', rating: 2218 },
+  w: { name: 'enzo', rating: 2190 },
 };
 
 export const CLOCKS: Record<Side, string> = { w: '3:09', b: '2:46' };
