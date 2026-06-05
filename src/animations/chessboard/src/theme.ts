@@ -1,3 +1,5 @@
+import ColorLib from 'color';
+
 // Colour system.
 //
 // Neutrals are one OKLCH ramp — fixed hue 265 (leans cool, toward the blue
@@ -39,8 +41,15 @@ export const quality = {
   blunder: '#e18083', //    oklch(0.705 0.120 18)  // lose hue
 };
 
-// Profile photos — one per side (stable pravatar portraits).
-export const avatarUri = {
-  w: 'https://i.pravatar.cc/120?img=68',
-  b: 'https://i.pravatar.cc/120?img=15',
+// Derive an rgba() string from a theme hex at a given alpha — keeps tinted
+// fills (last-move, result tags, the history pill) sourced from the palette
+// instead of hand-written rgba literals that can drift out of sync.
+export const withAlpha = (hex: string, alpha: number): string =>
+  ColorLib(hex).alpha(alpha).rgb().string();
+
+// Profile photos — one per side. Bundled locally so the demo renders fully
+// offline (no runtime dependency on a third-party image host).
+export const avatar = {
+  w: require('../assets/avatar-w.jpg'),
+  b: require('../assets/avatar-b.jpg'),
 } as const;

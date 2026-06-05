@@ -26,12 +26,12 @@ import {
   selectedPlyAtom,
   selectMoveAtom,
 } from './state';
-import { theme } from './theme';
+import { theme, withAlpha } from './theme';
 
 const HAIRLINE = StyleSheet.hairlineWidth;
 const SPRING = { duration: 200, easing: Easing.out(Easing.cubic) };
 const FADE = { duration: 180, easing: Easing.out(Easing.cubic) };
-const SAN_DIM = 'rgba(240,242,245,0.4)';
+const SAN_DIM = withAlpha(theme.text, 0.4);
 
 const MoveCell = memo<{ ply: number; san: string }>(({ ply, san }) => {
   const selected = useAtomValue(isPlySelectedFamily(ply));
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   pill: {
-    backgroundColor: 'rgba(58,145,248,0.18)',
+    backgroundColor: withAlpha(theme.accent, 0.18),
     borderCurve: 'continuous',
     borderRadius: 8,
     left: 0,
