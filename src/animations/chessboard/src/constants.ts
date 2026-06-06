@@ -1,6 +1,7 @@
 import { theme, withAlpha } from './theme';
 
 import type { AnnotatedMove, Side } from './types';
+import type { ImageSourcePropType } from 'react-native';
 
 export const START_FEN =
   'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
@@ -12,10 +13,26 @@ export const PLAYERS: Record<Side, { name: string; rating: number }> = {
 
 export const CLOCKS: Record<Side, string> = { w: '3:09', b: '2:46' };
 
-// Solid glyphs per colour, indexed by piece type — used in capture trays.
-export const GLYPH: Record<Side, Record<string, string>> = {
-  w: { p: '♙', n: '♘', b: '♗', r: '♖', q: '♕', k: '♔' },
-  b: { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' },
+// Mini piece images for the capture trays — the exact artwork the board draws,
+// so captured pieces read in the board's visual language instead of thin
+// font glyphs.
+export const PIECE_IMG: Record<Side, Record<string, ImageSourcePropType>> = {
+  w: {
+    p: require('react-native-chessboard/src/assets/wp.png'),
+    n: require('react-native-chessboard/src/assets/wn.png'),
+    b: require('react-native-chessboard/src/assets/wb.png'),
+    r: require('react-native-chessboard/src/assets/wr.png'),
+    q: require('react-native-chessboard/src/assets/wq.png'),
+    k: require('react-native-chessboard/src/assets/wk.png'),
+  },
+  b: {
+    p: require('react-native-chessboard/src/assets/bp.png'),
+    n: require('react-native-chessboard/src/assets/bn.png'),
+    b: require('react-native-chessboard/src/assets/bb.png'),
+    r: require('react-native-chessboard/src/assets/br.png'),
+    q: require('react-native-chessboard/src/assets/bq.png'),
+    k: require('react-native-chessboard/src/assets/bk.png'),
+  },
 };
 
 export const VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9 };

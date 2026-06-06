@@ -13,7 +13,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
-import { CLOCKS, GLYPH, PLAYERS, VALUE } from '../constants';
+import { CLOCKS, PIECE_IMG, PLAYERS, VALUE } from '../constants';
 import { capturedAtom, pliesAtom, statusAtom } from '../state';
 import { avatar, theme, withAlpha } from '../theme';
 import { toRgba } from '../utils';
@@ -33,16 +33,27 @@ const CaptureTray: React.FC<{ pieces: string[]; lead: number; foe: Side }> = ({
   pieces,
   lead,
   foe,
-}) => (
-  <View style={styles.tray}>
-    {pieces.length > 0 ? (
-      <Text style={styles.trayPieces}>
-        {pieces.map(p => GLYPH[foe][p]).join('')}
-      </Text>
-    ) : null}
-    {lead > 0 ? <Text style={styles.trayLead}>+{lead}</Text> : null}
-  </View>
-);
+}) => {
+  // Value-sorted so the tray reads pawns → minors → majors, with a slight
+  // chess.com-style overlap. Images are the board's own piece artwork.
+  const sorted = [...pieces].sort((a, b) => (VALUE[a] ?? 0) - (VALUE[b] ?? 0));
+  return (
+    <View style={styles.tray}>
+      {sorted.length > 0 ? (
+        <View style={styles.trayPieces}>
+          {sorted.map((p, i) => (
+            <Image
+              key={`${p}-${i}`}
+              source={PIECE_IMG[foe][p]}
+              style={[styles.trayPiece, i > 0 && styles.trayPieceOverlap]}
+            />
+          ))}
+        </View>
+      ) : null}
+      {lead > 0 ? <Text style={styles.trayLead}>+{lead}</Text> : null}
+    </View>
+  );
+};
 
 export const PlayerCard: React.FC<{ side: Side; clock?: string }> = ({
   side,
@@ -264,9 +275,15 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
   },
+  trayPiece: {
+    height: 16,
+    width: 16,
+  },
+  trayPieceOverlap: {
+    marginLeft: -5,
+  },
   trayPieces: {
-    color: theme.textMuted,
-    fontSize: 15,
-    lineHeight: 17,
+    alignItems: 'center',
+    flexDirection: 'row',
   },
 });
