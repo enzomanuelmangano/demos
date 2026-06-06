@@ -36,22 +36,37 @@ const SAN_DIM = withAlpha(theme.text, 0.4);
 const FADE_SOLID = theme.surfaceHi;
 const FADE_CLEAR = withAlpha(theme.surfaceHi, 0);
 
+// Reanimated entering builder: each token fades in with a whisper of a slide
+// from the right (8px — the stock FadeInRight's 25px is too loud here).
+const enterToken = () => {
+  'worklet';
+  return {
+    initialValues: {
+      opacity: 0,
+      transform: [{ translateX: 8 }],
+    },
+    animations: {
+      opacity: withTiming(1, {
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+      }),
+      transform: [
+        {
+          translateX: withTiming(0, {
+            duration: 220,
+            easing: Easing.out(Easing.cubic),
+          }),
+        },
+      ],
+    },
+  };
+};
+
 const MoveCell = memo<{ ply: number; san: string }>(({ ply, san }) => {
   const selected = useAtomValue(isPlySelectedFamily(ply));
   const select = useSetAtom(selectMoveAtom);
   const setFrame = useSetAtom(plyFrameFamily(ply));
   const isWhite = ply % 2 === 0;
-
-  // Gentle mount: each token fades/rises in as its move lands, instead of
-  // popping into the row.
-  const mount = useSharedValue(0);
-  useEffect(() => {
-    mount.set(withTiming(1, FADE));
-  }, [mount]);
-  const mountStyle = useAnimatedStyle(() => ({
-    opacity: mount.get(),
-    transform: [{ translateY: (1 - mount.get()) * 3 }],
-  }));
 
   // Plain colour fade dim↔bright (rgb constant, alpha ramps — no flicker).
   const sel = useSharedValue(selected ? 1 : 0);
@@ -65,12 +80,12 @@ const MoveCell = memo<{ ply: number; san: string }>(({ ply, san }) => {
   return (
     <>
       {isWhite ? (
-        <Animated.Text style={[styles.no, mountStyle]}>
+        <Animated.Text entering={enterToken} style={styles.no}>
           {ply / 2 + 1}.
         </Animated.Text>
       ) : null}
       <Animated.View
-        style={mountStyle}
+        entering={enterToken}
         onLayout={(e: LayoutChangeEvent) => setFrame(e.nativeEvent.layout)}>
         <PressableScale onPress={() => select(ply)} style={styles.sanHit}>
           <Animated.Text style={[styles.san, textStyle]}>{san}</Animated.Text>
