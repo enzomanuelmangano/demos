@@ -48,7 +48,7 @@
         "react": "19.2.0",
         "react-dom": "19.2.0",
         "react-native": "0.83.2",
-        "react-native-chessboard": "0.2.0-beta.2",
+        "react-native-chessboard": "0.2.0",
         "react-native-fast-confetti": "^1.1.1",
         "react-native-gesture-handler": "~2.30.0",
         "react-native-ios-context-menu": "^3.2.1",
@@ -1617,7 +1617,7 @@
 
     "react-native": ["react-native@0.83.2", "", { "dependencies": { "@jest/create-cache-key-function": "^29.7.0", "@react-native/assets-registry": "0.83.2", "@react-native/codegen": "0.83.2", "@react-native/community-cli-plugin": "0.83.2", "@react-native/gradle-plugin": "0.83.2", "@react-native/js-polyfills": "0.83.2", "@react-native/normalize-colors": "0.83.2", "@react-native/virtualized-lists": "0.83.2", "abort-controller": "^3.0.0", "anser": "^1.4.9", "ansi-regex": "^5.0.0", "babel-jest": "^29.7.0", "babel-plugin-syntax-hermes-parser": "0.32.0", "base64-js": "^1.5.1", "commander": "^12.0.0", "flow-enums-runtime": "^0.0.6", "glob": "^7.1.1", "hermes-compiler": "0.14.1", "invariant": "^2.2.4", "jest-environment-node": "^29.7.0", "memoize-one": "^5.0.0", "metro-runtime": "^0.83.3", "metro-source-map": "^0.83.3", "nullthrows": "^1.1.1", "pretty-format": "^29.7.0", "promise": "^8.3.0", "react-devtools-core": "^6.1.5", "react-refresh": "^0.14.0", "regenerator-runtime": "^0.13.2", "scheduler": "0.27.0", "semver": "^7.1.3", "stacktrace-parser": "^0.1.10", "whatwg-fetch": "^3.0.0", "ws": "^7.5.10", "yargs": "^17.6.2" }, "peerDependencies": { "@types/react": "^19.1.1", "react": "^19.2.0" }, "optionalPeers": ["@types/react"], "bin": { "react-native": "cli.js" } }, "sha512-ZDma3SLkRN2U2dg0/EZqxNBAx4of/oTnPjXAQi299VLq2gdnbZowGy9hzqv+O7sTA62g+lM1v+2FM5DUnJ/6hg=="],
 
-    "react-native-chessboard": ["react-native-chessboard@0.2.0-beta.2", "", { "dependencies": { "chess.js": "^1.0.0" }, "peerDependencies": { "@shopify/react-native-skia": ">= 1.0.0", "react": ">= 18.0.0", "react-native": ">= 0.71.0", "react-native-gesture-handler": ">= 2.14.0", "react-native-reanimated": ">= 3.6.0", "react-native-worklets": ">= 0.3.0" }, "bin": { "react-native-chessboard-generate-sprite": "scripts/generate-sprite.js" } }, "sha512-q5NwR/o+ziJLJttvl8aGr+jJIfPQiTdOe6/x4L1lyW2zni8i1F0H4grehN0Ob+2VSRHdvc5uv9qWBIoyaNsJVw=="],
+    "react-native-chessboard": ["react-native-chessboard@0.2.0", "", { "dependencies": { "chess.js": "^1.0.0" }, "peerDependencies": { "@shopify/react-native-skia": ">= 1.0.0", "react": ">= 18.0.0", "react-native": ">= 0.71.0", "react-native-gesture-handler": ">= 2.14.0", "react-native-reanimated": ">= 3.6.0", "react-native-worklets": ">= 0.3.0" }, "bin": { "react-native-chessboard-generate-sprite": "scripts/generate-sprite.js" } }, "sha512-Yln05kbty9/MsN22DWS1Sw7SGST1yuCjxyyTOrMGmhaswDVC2HqWGyjnf2hbEhMSM6BTEW5YUe7s2ow4Wt1wiQ=="],
 
     "react-native-drawer-layout": ["react-native-drawer-layout@4.2.2", "", { "dependencies": { "color": "^4.2.3", "use-latest-callback": "^0.2.4" }, "peerDependencies": { "react": ">= 18.2.0", "react-native": "*", "react-native-gesture-handler": ">= 2.0.0", "react-native-reanimated": ">= 2.0.0" } }, "sha512-UG/PTTeyyr43KahbgoGyXri8LMO5USHY3/RUpeKBKwCc7xLVGnDLOVNSRrJw0dDc7YmPbmAyJ4oxp8nKboKKuw=="],
 
