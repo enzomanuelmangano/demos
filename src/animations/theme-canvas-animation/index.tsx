@@ -60,12 +60,12 @@ const ThemeScreen = () => {
   const radius = useSharedValue(0);
 
   const clipPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
     const x = coordinates.value[selectedIndex.value]?.cx ?? 0;
     const y = coordinates.value[selectedIndex.value]?.cy ?? 0;
-    path.addCircle(x + SQUARE_SIZE / 2, y + SQUARE_SIZE / 2, radius.value);
-    return path;
+    builder.addCircle(x + SQUARE_SIZE / 2, y + SQUARE_SIZE / 2, radius.value);
+    return builder.build();
   }, [selectedIndex, coordinates, radius]);
 
   const onSelectSquare = useCallback(

@@ -52,10 +52,10 @@ export const RecordButton: FC<RecordButtonProps> = ({
   }, [borderRadius, height, strokeWidth, width]);
 
   const leftLinePath = useMemo(() => {
-    const skPath = Skia.Path.Make();
-    skPath.addPath(rightLinePath);
-    skPath.transform(Skia.Matrix().translate(width, 0).scale(-1, 1));
-    return skPath;
+    const builder = Skia.PathBuilder.Make();
+    builder.addPath(rightLinePath);
+    builder.transform(Skia.Matrix().translate(width, 0).scale(-1, 1));
+    return builder.build();
   }, [rightLinePath, width]);
 
   const activated = useDerivedValue(() => {

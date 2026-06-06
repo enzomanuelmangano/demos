@@ -158,9 +158,9 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
     const maxCircleRadius = Math.sqrt(yPosition ** 2 + xPosition ** 2);
     const minCircleRadius = 2;
 
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    path.addCircle(
+    builder.addCircle(
       center.value.x + center.value.width / 2,
       center.value.y + center.value.height / 2,
       interpolate(
@@ -169,7 +169,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         [minCircleRadius, maxCircleRadius],
       ),
     );
-    return path;
+    return builder.build();
   }, [center]);
 
   const animatedProps = useAnimatedProps(() => {

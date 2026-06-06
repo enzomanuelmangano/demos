@@ -53,9 +53,9 @@ export const useAnimatedPathData = ({
   });
 
   const skPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    path.addRRect(
+    builder.addRRect(
       rrect(
         rect(
           getPreviousBoxWidth(index) +
@@ -70,7 +70,7 @@ export const useAnimatedPathData = ({
       ),
     );
 
-    return path;
+    return builder.build();
   }, [borderRadius, pathHeight, index]);
 
   return {

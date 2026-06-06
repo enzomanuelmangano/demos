@@ -66,14 +66,14 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
   }, [status, rotation]);
 
   const arcPath = useMemo(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const inset = strokeWidth / 2;
-    path.addArc(
+    builder.addArc(
       rect(inset, inset, size - strokeWidth, size - strokeWidth),
       0,
       90,
     );
-    return path;
+    return builder.build();
   }, [size, strokeWidth]);
 
   const transform = useDerivedValue(() => [{ rotate: rotation.value }]);

@@ -106,26 +106,26 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
     const panGesture = Gesture.Pan().onBegin(touchEvent).onUpdate(touchEvent);
 
     const squarePaths = useMemo(() => {
-      const skPath = Skia.Path.Make();
+      const builder = Skia.PathBuilder.Make();
       for (let i = 0; i < GRID_SIZE; i++) {
         for (let j = 0; j < GRID_SIZE; j++) {
-          skPath.addRect(createSquarePath(i, j));
+          builder.addRect(createSquarePath(i, j));
         }
       }
-      return skPath;
+      return builder.build();
     }, []);
 
     const touchedSquarePaths = useDerivedValue(() => {
-      const skPath = Skia.Path.Make();
+      const builder = Skia.PathBuilder.Make();
       touchedSquares.value.forEach(square => {
         const [i, j] = square.split(',').map(Number);
-        skPath.addRect(createSquarePath(i, j));
+        builder.addRect(createSquarePath(i, j));
       });
-      return skPath;
+      return builder.build();
     }, [touchedSquares]);
 
     const surroundingSquarePaths = useDerivedValue(() => {
-      const skPath = Skia.Path.Make();
+      const builder = Skia.PathBuilder.Make();
       surroundingSquareCoords.value.forEach(coord => {
         for (const c of coord) {
           const [x, y] = c.split(',').map(Number);
@@ -133,11 +133,11 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
             isWithinBounds(x, y) &&
             !touchedSquares.value.includes(`${x},${y}`)
           ) {
-            skPath.addRect(createSquarePath(x, y));
+            builder.addRect(createSquarePath(x, y));
           }
         }
       });
-      return skPath;
+      return builder.build();
     }, [surroundingSquareCoords]);
 
     return (

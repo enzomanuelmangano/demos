@@ -68,8 +68,8 @@ const BottomSheet: FC<BottomSheetProps> = memo(
     // 1. The backdrop blur's clip path: This will ensure that the blur is only applied to the bottom sheet
     // 2. The touchable path's path: This will ensure that just this area is touchable
     const roundedRectPath = useDerivedValue(() => {
-      const path = Skia.Path.Make();
-      path.addRRect(
+      const builder = Skia.PathBuilder.Make();
+      builder.addRRect(
         rrect(
           rect(
             0,
@@ -81,7 +81,7 @@ const BottomSheet: FC<BottomSheetProps> = memo(
           cardRadius,
         ),
       );
-      return path;
+      return builder.build();
     }, [size, clampedTranslateY]);
 
     const context = useSharedValue({

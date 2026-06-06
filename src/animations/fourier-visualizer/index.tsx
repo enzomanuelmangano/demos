@@ -21,7 +21,7 @@ import type { FourierVisualizerRefType } from './components/fourier-visualizer';
 // The main App component.
 const App = () => {
   // Shared value to represent the drawn path.
-  const drawPath = useSharedValue(Skia.Path.Make());
+  const drawPath = useSharedValue(Skia.PathBuilder.Make().build());
 
   // Ref for the FourierVisualizer component.
   const ref = useRef<FourierVisualizerRefType>({
@@ -61,19 +61,16 @@ const App = () => {
     .onStart(({ x, y }) => {
       scheduleOnRN(clear);
       isDrawing.value = false;
-      drawPath.value.reset();
       opacity.value = withTiming(1);
-      drawPath.value.moveTo(x, y);
-      drawPath.value.lineTo(x, y);
-      drawPath.value = Skia.Path.MakeFromSVGString(
-        drawPath.value.toSVGString(),
-      )!;
+      const builder = Skia.PathBuilder.Make();
+      builder.moveTo(x, y);
+      builder.lineTo(x, y);
+      drawPath.value = builder.build();
     })
     .onChange(({ x, y }) => {
-      drawPath.value.lineTo(x, y);
-      drawPath.value = Skia.Path.MakeFromSVGString(
-        drawPath.value.toSVGString(),
-      )!;
+      const builder = Skia.PathBuilder.MakeFromPath(drawPath.value);
+      builder.lineTo(x, y);
+      drawPath.value = builder.build();
     })
     .onEnd(() => {
       opacity.value = withTiming(0);

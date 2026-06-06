@@ -38,8 +38,8 @@ export const getLinesPath = (params: {
     scrollOffset,
   } = params;
 
-  // Creating a new Skia path
-  const skPath = Skia.Path.Make();
+  // Creating a new Skia path builder
+  const skPath = Skia.PathBuilder.Make();
 
   // Looping through linesAmount + 1 times to generate paths for lines
   for (let i = 0; i < linesAmount + 1; i++) {
@@ -81,5 +81,5 @@ export const getLinesPath = (params: {
   }
 
   // Returning the generated Skia path
-  return skPath;
+  return skPath.build();
 };

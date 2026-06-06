@@ -21,10 +21,10 @@ export const BezierOutline = ({ onPathUpdate }: BezierOutlineProps) => {
   const controlPoints = [first, second, third, fourth];
 
   const bezierPath = useDerivedValue(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    skPath.moveTo(first.cx.value, first.cy.value);
-    skPath.cubicTo(
+    builder.moveTo(first.cx.value, first.cy.value);
+    builder.cubicTo(
       second.cx.value,
       second.cy.value,
       third.cx.value,
@@ -32,20 +32,21 @@ export const BezierOutline = ({ onPathUpdate }: BezierOutlineProps) => {
       fourth.cx.value,
       fourth.cy.value,
     );
+    const skPath = builder.build();
     onPathUpdate(skPath);
     return skPath;
   }, []);
 
   const bezierPathVisualization = useDerivedValue(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    skPath.moveTo(first.cx.value, first.cy.value);
-    skPath.lineTo(second.cx.value, second.cy.value);
+    builder.moveTo(first.cx.value, first.cy.value);
+    builder.lineTo(second.cx.value, second.cy.value);
 
-    skPath.moveTo(third.cx.value, third.cy.value);
-    skPath.lineTo(fourth.cx.value, fourth.cy.value);
+    builder.moveTo(third.cx.value, third.cy.value);
+    builder.lineTo(fourth.cx.value, fourth.cy.value);
 
-    return skPath;
+    return builder.build();
   }, []);
 
   return (

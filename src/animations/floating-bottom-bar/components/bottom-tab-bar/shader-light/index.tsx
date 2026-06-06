@@ -21,15 +21,15 @@ export const ShaderLight: React.FC<HighlightedPathProps> = ({
   const canvasWidth = width - internalCanvasHorizontalPadding * 2;
 
   const path = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    skPath.moveTo(internalCanvasHorizontalPadding * 3, 0);
-    skPath.lineTo(width - internalCanvasHorizontalPadding * 3, 0);
-    skPath.lineTo(width, height);
-    skPath.lineTo(0, height);
-    skPath.close();
+    builder.moveTo(internalCanvasHorizontalPadding * 3, 0);
+    builder.lineTo(width - internalCanvasHorizontalPadding * 3, 0);
+    builder.lineTo(width, height);
+    builder.lineTo(0, height);
+    builder.close();
 
-    return skPath;
+    return builder.build();
   }, [height, width]);
 
   return (

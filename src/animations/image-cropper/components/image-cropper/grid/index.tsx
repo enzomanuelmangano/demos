@@ -37,16 +37,16 @@ const Grid: React.FC<GridProps> = ({
   minHeight,
 }) => {
   const path = useDerivedValue(() => {
-    const area = Skia.Path.Make();
+    const area = Skia.PathBuilder.Make();
     area.addRect(rect(x.value, y.value, gridWidth.value, gridHeight.value));
-    return area;
+    return area.build();
   }, [x, y, gridWidth, gridHeight]);
 
   // Here I'm manually building the grid path.
   // The code could have been much simpler if I used a loop, but I wanted to
   // visualize the grid and the path it creates while I was building it.
   const grid = useDerivedValue(() => {
-    const gridPath = Skia.Path.Make();
+    const gridPath = Skia.PathBuilder.Make();
 
     const width = gridWidth.value;
     const height = gridHeight.value;
@@ -75,7 +75,7 @@ const Grid: React.FC<GridProps> = ({
     gridPath.moveTo(x.value, y.value);
     gridPath.lineTo(width + x.value, y.value);
 
-    return gridPath;
+    return gridPath.build();
   }, [x, y, gridWidth, gridHeight]);
 
   const ctx = useSharedValue({ x: 0, y: 0 });

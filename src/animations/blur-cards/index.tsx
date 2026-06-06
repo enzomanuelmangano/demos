@@ -32,14 +32,14 @@ const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const clipPath = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const x = windowWidth / 2 - 150;
     const y = windowHeight / 2 - 100;
     const width = 300;
     const height = 200;
     const r = 20;
-    skPath.addRRect(rrect(rect(x, y, width, height), r, r));
-    return skPath;
+    builder.addRRect(rrect(rect(x, y, width, height), r, r));
+    return builder.build();
   }, [windowWidth, windowHeight]);
 
   const blur = useDerivedValue(() => {

@@ -18,7 +18,7 @@ export const getRightLinePath = ({
   const realWidth = width - internalPadding * 2;
   const realHeight = height - internalPadding * 2;
 
-  const skPath = Skia.Path.Make();
+  const skPath = Skia.PathBuilder.Make();
   skPath.moveTo(realWidth / 2, realHeight);
   skPath.lineTo(realWidth - borderRadius, realHeight);
   skPath.rArcTo(
@@ -42,5 +42,5 @@ export const getRightLinePath = ({
   );
   skPath.lineTo(realWidth / 2, internalPadding);
 
-  return skPath;
+  return skPath.build();
 };

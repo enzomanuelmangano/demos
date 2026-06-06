@@ -59,23 +59,23 @@ export const Picker: React.FC<PickerProps> = ({
   }, [translateX.value, translateY.value]);
 
   const pickerPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
-    path.addCircle(
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(
       radius * Math.cos(theta.value) + cx,
       radius * Math.sin(theta.value) + cy,
       strokeWidth / 2,
     );
-    return path;
+    return builder.build();
   }, [cx, radius, strokeWidth, theta.value]);
 
   const internalPickerPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
-    path.addCircle(
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(
       radius * Math.cos(theta.value) + cx,
       radius * Math.sin(theta.value) + cy,
       strokeWidth / 2 - 10,
     );
-    return path;
+    return builder.build();
   }, [cx, radius, strokeWidth, theta.value]);
 
   return (

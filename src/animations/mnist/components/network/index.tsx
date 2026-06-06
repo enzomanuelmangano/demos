@@ -9,7 +9,7 @@ import { useDerivedValue } from 'react-native-reanimated';
 import { NetworkNode } from './node';
 
 import type { NeuralNetworkWeights, PredictResult } from '../../neural-network';
-import type { SkPath } from '@shopify/react-native-skia';
+import type { SkPathBuilder } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 
 type NeuralNetworkProps = {
@@ -41,7 +41,7 @@ const drawLayerConnections = ({
   fromCoords: Array<{ x: number; y: number }>;
   toCoords: Array<{ x: number; y: number }>;
   layerWeights: number[][];
-  path: SkPath;
+  path: SkPathBuilder;
   weightThreshold: number;
   type: 'positive' | 'negative';
 }) => {
@@ -124,12 +124,12 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
     useLayerCoordinates(width, weights, predictions);
 
   const positiveWeightLines = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     drawLayerConnections({
       fromCoords: firstLayerCoords,
       toCoords: secondLayerCoords,
       layerWeights: weights.hiddenLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'positive',
     });
@@ -137,20 +137,20 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       fromCoords: secondLayerCoords,
       toCoords: outputLayerCoords,
       layerWeights: weights.outputLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'positive',
     });
-    return skPath;
+    return builder.build();
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
   const negativeWeightLines = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     drawLayerConnections({
       fromCoords: firstLayerCoords,
       toCoords: secondLayerCoords,
       layerWeights: weights.hiddenLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'negative',
     });
@@ -158,11 +158,11 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       fromCoords: secondLayerCoords,
       toCoords: outputLayerCoords,
       layerWeights: weights.outputLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'negative',
     });
-    return skPath;
+    return builder.build();
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
   return (

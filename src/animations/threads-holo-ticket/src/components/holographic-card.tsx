@@ -116,10 +116,10 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
   // Create clip area with circular cutouts at top and bottom
   const clipArea = useMemo(() => {
-    const skPath = Skia.Path.Make();
-    skPath.addCircle(width / 2, 0, DotSize);
-    skPath.addCircle(width / 2, height, DotSize);
-    return skPath;
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(width / 2, 0, DotSize);
+    builder.addCircle(width / 2, height, DotSize);
+    return builder.build();
   }, [height, width]);
 
   // Calculate grid dimensions for the pattern
@@ -129,17 +129,17 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
   // Create the grid pattern of circles
   const GridPath = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     for (let i = 0; i < LogoAmountHorizontal; i++) {
       for (let j = 0; j < LogoAmountVertical; j++) {
-        skPath.addCircle(
+        builder.addCircle(
           LogoSize / 2 + i * LogoSize,
           LogoSize / 2 + j * LogoSize,
           LogoSize / 2,
         );
       }
     }
-    return skPath;
+    return builder.build();
   }, [LogoAmountVertical, LogoSize]);
 
   // Gradient positions influenced by device tilt - subtle effect

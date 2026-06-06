@@ -27,8 +27,8 @@ const usePolygonGrid = ({
     // Calculating the angle step between each point on the polygon
     const angleStep = (2 * Math.PI) / n;
 
-    // Creating a Skia path for the chart canvas
-    const chartCanvas = Skia.Path.Make();
+    // Creating a Skia path builder for the chart canvas
+    const chartCanvas = Skia.PathBuilder.Make();
 
     // Iterating over each external point
     externalPoints.forEach((value, index) => {
@@ -50,7 +50,7 @@ const usePolygonGrid = ({
     chartCanvas.close();
 
     // Returning the chart canvas path
-    return chartCanvas;
+    return chartCanvas.build();
   }, [centerX, centerY, radius, n]);
 
   // Returning the internal connected lines from the center

@@ -63,9 +63,9 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
   }, [translateX.value, translateY.value]);
 
   const circlePath = useMemo(() => {
-    const path = Skia.Path.Make();
-    path.addCircle(cx, cy, radius + strokeWidth / 2);
-    return path;
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(cx, cy, radius + strokeWidth / 2);
+    return builder.build();
   }, [cx, cy, radius, strokeWidth]);
 
   const animatedValue = useDerivedValue(() => {

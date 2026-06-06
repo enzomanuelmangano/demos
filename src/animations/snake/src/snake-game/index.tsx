@@ -128,9 +128,9 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     );
 
     const snakePath = useDerivedValue(() => {
-      const skPath = Skia.Path.Make();
+      const builder = Skia.PathBuilder.Make();
       gameState.value.snake.forEach(segment => {
-        skPath.addRRect(
+        builder.addRRect(
           rrect(
             rect(segment.x, segment.y, squareSize, squareSize),
             squareSize / 2,
@@ -138,12 +138,12 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
           ),
         );
       });
-      return skPath;
+      return builder.build();
     }, [gameState.value.snake, squareSize]);
 
     const foodPath = useDerivedValue(() => {
-      const skPath = Skia.Path.Make();
-      skPath.addRRect(
+      const builder = Skia.PathBuilder.Make();
+      builder.addRRect(
         rrect(
           rect(
             gameState.value.food?.x ?? 0,
@@ -155,7 +155,7 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
           squareSize,
         ),
       );
-      return skPath;
+      return builder.build();
     }, [gameState.value.food?.x, gameState.value.food?.y, squareSize]);
 
     const gameOverBlurMask = useDerivedValue(() => {

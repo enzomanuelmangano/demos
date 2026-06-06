@@ -63,13 +63,13 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
 
     // Derived value for animated circles path
     const animatedCircles = useDerivedValue(() => {
-      // Create a new path using Skia
-      const path = Skia.Path.Make();
+      // Create a new path builder using Skia
+      const builder = Skia.PathBuilder.Make();
 
       // Loop through the number of circles specified
       for (let i = 0; i < circles; i++) {
-        // Create a new circle path using Skia
-        const circle = Skia.Path.Make();
+        // Create a new circle path builder using Skia
+        const circle = Skia.PathBuilder.Make();
 
         // Calculate the rotation angle for each circle
         const rotation = (i * 2 * Math.PI) / circles;
@@ -92,11 +92,11 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
         );
 
         // Add the transformed circle path to the main path
-        path.addPath(circle);
+        builder.addPath(circle.build());
       }
 
       // Return the main path containing all the animated circles
-      return path;
+      return builder.build();
     }, [progress.value, size]);
 
     const canvasSize = size * 2;

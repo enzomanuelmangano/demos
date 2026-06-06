@@ -63,15 +63,15 @@ const Graph: FC<GraphProps> = memo(
     const rGraphPath = useDerivedValue(() => {
       const distance = canvasWidth / (rScores.value.length - 1);
 
-      const path = Skia.Path.Make();
+      const builder = Skia.PathBuilder.Make();
 
-      path.moveTo(padding, (1 - rScores.value[0]) * canvasHeight);
+      builder.moveTo(padding, (1 - rScores.value[0]) * canvasHeight);
       for (let i = 0; i < rScores.value.length; i++) {
         const score = rScores.value[i];
 
-        path.lineTo(padding + distance * i, canvasHeight * (1 - score));
+        builder.lineTo(padding + distance * i, canvasHeight * (1 - score));
       }
-      return path;
+      return builder.build();
     }, [padding, rScores, scores]);
 
     // Load a custom font for displaying text
