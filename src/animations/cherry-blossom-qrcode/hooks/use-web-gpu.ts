@@ -2,7 +2,7 @@ import { PixelRatio } from 'react-native';
 
 import { useCallback, useEffect, useRef } from 'react';
 
-import { CanvasRef } from 'react-native-wgpu';
+import { CanvasRef } from 'react-native-webgpu';
 
 import { LERP_SPEED, MAX_BLOCKS } from '../constants';
 import {

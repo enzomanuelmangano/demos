@@ -6,7 +6,7 @@ import {
   Canvas,
   LinearGradient,
   Path,
-  SkPath,
+  SkPathBuilder,
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
@@ -36,7 +36,7 @@ const createEnhancedFibonacciPath = (
   magicalMul: number,
   iTime: number,
   distance: number,
-  skPath: SkPath,
+  skPath: SkPathBuilder,
 ) => {
   'worklet';
   const centerX = CANVAS_WIDTH / 2;

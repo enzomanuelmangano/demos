@@ -16,7 +16,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { Canvas, CanvasRef } from 'react-native-wgpu';
+import { Canvas, CanvasRef } from 'react-native-webgpu';
 
 import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
 import { useWebGPU } from './hooks';

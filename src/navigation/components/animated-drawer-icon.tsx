@@ -2,14 +2,15 @@ import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { useCallback, useMemo, type FC } from 'react';
 
-import { useDrawerProgress } from '@react-navigation/drawer';
 import { useNavigation } from 'expo-router';
 // @@TODO: restore once available in pressto
 // import { PressableGlass } from 'pressto/glass';
 import { PressableScale } from 'pressto';
+import { useDrawerProgress } from 'react-native-drawer-layout';
 import Animated, {
   interpolate,
   useAnimatedStyle,
+  type AnimatedStyle,
 } from 'react-native-reanimated';
 
 const ICON_HEIGHT = 14;
@@ -18,7 +19,7 @@ const LINE_HEIGHT = 1.5;
 type AnimatedDrawerIconProps = {
   tintColor?: string;
   size?: number;
-  containerStyle?: StyleProp<ViewStyle>;
+  containerStyle?: StyleProp<AnimatedStyle<ViewStyle>>;
 };
 
 export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({

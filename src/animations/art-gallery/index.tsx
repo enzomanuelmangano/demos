@@ -3,9 +3,9 @@ import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
 import { memo, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -17,7 +17,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Canvas, CanvasRef } from 'react-native-wgpu';
+import { Canvas, CanvasRef } from 'react-native-webgpu';
 import { scheduleOnRN } from 'react-native-worklets';
 import * as DropdownMenu from 'zeego/dropdown-menu';
 

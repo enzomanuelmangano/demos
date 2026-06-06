@@ -2,7 +2,15 @@ import { View } from 'react-native';
 
 import { useCallback } from 'react';
 
+// SDK 56: expo-router vendors its own react-navigation, so this demo's
+// standalone navigator can no longer nest into the router's container —
+// it runs as an independent tree instead.
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  DarkTheme,
+  NavigationContainer,
+  NavigationIndependentTree,
+} from '@react-navigation/native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
 import { ScreenNames } from './constants/screens';
@@ -17,12 +25,16 @@ export const FloatingBottomBar = () => {
   }, []);
 
   return (
-    <BottomTab.Navigator tabBar={tabBar}>
-      <BottomTab.Screen name={ScreenNames.Home} component={View} />
-      <BottomTab.Screen name={ScreenNames.Bookmark} component={View} />
-      <BottomTab.Screen name={ScreenNames.Add} component={View} />
-      <BottomTab.Screen name={ScreenNames.Profile} component={View} />
-      <BottomTab.Screen name={ScreenNames.Settings} component={View} />
-    </BottomTab.Navigator>
+    <NavigationIndependentTree>
+      <NavigationContainer theme={DarkTheme}>
+        <BottomTab.Navigator tabBar={tabBar}>
+          <BottomTab.Screen name={ScreenNames.Home} component={View} />
+          <BottomTab.Screen name={ScreenNames.Bookmark} component={View} />
+          <BottomTab.Screen name={ScreenNames.Add} component={View} />
+          <BottomTab.Screen name={ScreenNames.Profile} component={View} />
+          <BottomTab.Screen name={ScreenNames.Settings} component={View} />
+        </BottomTab.Navigator>
+      </NavigationContainer>
+    </NavigationIndependentTree>
   );
 };

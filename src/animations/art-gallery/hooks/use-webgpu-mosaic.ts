@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { SharedValue, withSpring } from 'react-native-reanimated';
-import { CanvasRef } from 'react-native-wgpu';
+import { CanvasRef } from 'react-native-webgpu';
 
 import {
   mosaicVertexShader,

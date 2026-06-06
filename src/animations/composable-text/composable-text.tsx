@@ -8,10 +8,11 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
+import type { AnimatedStyle } from 'react-native-reanimated';
 
 type ComposableTextProps = {
   text: string;
-  style?: StyleProp<TextStyle>;
+  style?: StyleProp<AnimatedStyle<TextStyle>>;
   containerStyle?: StyleProp<ViewStyle>;
 };
 

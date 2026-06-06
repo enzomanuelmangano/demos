@@ -13,9 +13,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Palette } from '../../constants/palette';
 
+import type { AnimatedStyle } from 'react-native-reanimated';
+
 type BottomFloatingButtonProps = {
   progress: SharedValue<number>;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<AnimatedStyle<ViewStyle>>;
   onSelect?: (option: 'message' | 'default') => void;
 };
 

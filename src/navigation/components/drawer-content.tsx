@@ -15,7 +15,6 @@ import {
   LegendListRef,
   LegendListRenderItemProps,
 } from '@legendapp/list';
-import { DrawerContentComponentProps } from '@react-navigation/drawer';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtomValue, useSetAtom } from 'jotai';
@@ -38,7 +37,10 @@ export const DrawerContentWidth = Dimensions.get('window').width * 0.35;
 
 const GradientColors = ['#030303', '#03030300'] as const;
 
-export function DrawerContent(_props: DrawerContentComponentProps) {
+// Props intentionally ignored — and untyped: expo-router bundles its own
+// copy of the drawer types, which is nominally incompatible with
+// @react-navigation/drawer. A zero-arg component satisfies both.
+export function DrawerContent() {
   const router = useRouter();
   const { top, bottom } = useSafeAreaInsets();
   const setSearchFilter = useSetAtom(SearchFilterAtom);
