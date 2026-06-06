@@ -23,7 +23,21 @@ type AnimatedNumberProps = {
 // the digits stranded mid-flight.
 export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
   const characters = useMemo(() => {
-    return value.toLocaleString('en-US').split('');
+    // Separate key namespaces for digits and separators, each keyed by its
+    // stable left-to-right ordinal: typing appends on the right, so existing
+    // digits keep their identity, and a comma can never collide with a digit
+    // that lands on the same string index (which made React recycle the
+    // wrong element and "overwrite" digits with commas).
+    let digitCount = 0;
+    let commaCount = 0;
+    return value
+      .toLocaleString('en-US')
+      .split('')
+      .map(char =>
+        char === ','
+          ? { char, key: `comma-${commaCount++}` }
+          : { char, key: `digit-${digitCount++}` },
+      );
   }, [value]);
 
   const rContainerStyle = useAnimatedStyle(() => {
@@ -40,14 +54,14 @@ export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
     <Animated.View
       layout={LinearTransition}
       style={[styles.row, rContainerStyle]}>
-      {characters.map((character, index) => (
+      {characters.map(({ char, key }) => (
         <Animated.Text
-          key={character + index}
+          key={key}
           layout={LinearTransition}
           entering={FadeInDown}
           exiting={FadeOutDown}
           style={styles.character}>
-          {character}
+          {char}
         </Animated.Text>
       ))}
     </Animated.View>
