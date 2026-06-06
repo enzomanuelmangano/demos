@@ -9,9 +9,10 @@ import {
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import { Provider, useAtomValue, useSetAtom } from 'jotai';
+import { Provider, useSetAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
+import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckmateAuraProvider, useCheckmateAura } from './checkmate-aura';
@@ -28,11 +29,14 @@ import { HistorySync } from './history-sync';
 import { MoveHistory } from './move-history';
 import {
   capturedAtom,
+  gameOverSv,
   pliesAtom,
   resetGameAtom,
   runningAtom,
   selectedPlyAtom,
   statusAtom,
+  statusSv,
+  turnSv,
 } from './state';
 import { theme } from './theme';
 import { delay, kingFromFen, measureInWindow } from './utils';
@@ -72,15 +76,11 @@ const Board = memo(function Board({
   );
 });
 
-// Live status caption — isolated so it updates without re-rendering GameScreen.
-const StatusCaption: React.FC = () => {
-  const caption = useAtomValue(statusAtom);
-  return (
-    <Text style={styles.navSub} numberOfLines={1}>
-      {caption}
-    </Text>
-  );
-};
+// Live status caption — a ReText fed straight from the status shared value, so
+// per-move updates never touch React at all.
+const StatusCaption: React.FC = () => (
+  <ReText text={statusSv} style={styles.navSub} />
+);
 
 function GameScreen() {
   const ref = useRef<ChessboardRef>(null);
@@ -199,6 +199,11 @@ function GameScreen() {
               ? 'Black to move'
               : 'White to move';
       setStatus(nextStatus);
+      // Mirror the hot state onto shared values — the cards' turn treatment and
+      // the status caption animate from these without re-rendering.
+      turnSv.set(result.move.color === 'w' ? 'b' : 'w');
+      gameOverSv.set(isCheckmate || isStalemate);
+      statusSv.set(nextStatus);
 
       // Only checkmate earns the aura — check/stalemate just update the status.
       if (isCheckmate) {

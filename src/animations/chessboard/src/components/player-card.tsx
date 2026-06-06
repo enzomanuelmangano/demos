@@ -1,12 +1,13 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import React, { useEffect } from 'react';
+import React from 'react';
 
 import ColorLib from 'color';
 import { useAtomValue } from 'jotai';
 import Animated, {
   Easing,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
@@ -14,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { CLOCKS, PIECE_IMG, PLAYERS, VALUE } from '../constants';
-import { capturedAtom, pliesAtom, statusAtom } from '../state';
+import { capturedAtom, gameOverSv, gameResultAtom, turnSv } from '../state';
 import { avatar, theme, withAlpha } from '../theme';
 import { toRgba } from '../utils';
 
@@ -62,61 +63,64 @@ export const PlayerCard: React.FC<{ side: Side; clock?: string }> = ({
   const { name, rating } = PLAYERS[side];
   const foe: Side = side === 'w' ? 'b' : 'w';
 
-  // Everything that drives the card is read straight from the atoms, so the
-  // card only re-renders when captures/status actually change (during the
-  // replay) — never when the user scrubs the move history.
+  // React subscriptions are limited to what actually needs a re-render:
+  // captures (rare) and the end-of-game result (fires exactly once, at mate).
+  // The per-move turn treatment runs entirely on shared values below.
   const capturedAll = useAtomValue(capturedAtom);
-  const gameStatus = useAtomValue(statusAtom);
-  const plyCount = useAtomValue(pliesAtom).length;
+  const winner = useAtomValue(gameResultAtom);
 
   const captured = capturedAll[side];
-  const gameOver = gameStatus === 'Checkmate' || gameStatus === 'Stalemate';
-  const toMove =
-    !gameOver && (plyCount % 2 === 0 ? side === 'w' : side === 'b');
   const matW = capturedAll.w.reduce((s, p) => s + (VALUE[p] ?? 0), 0);
   const matB = capturedAll.b.reduce((s, p) => s + (VALUE[p] ?? 0), 0);
   const lead =
     side === 'w' ? Math.max(0, matW - matB) : Math.max(0, matB - matW);
-  // On checkmate the side to move is the one mated; the mover wins.
-  const matedSide: Side | null =
-    gameStatus === 'Checkmate' ? (plyCount % 2 === 0 ? 'w' : 'b') : null;
-  const result: 'win' | 'lose' | null = matedSide
-    ? matedSide === side
-      ? 'lose'
-      : 'win'
+  const result: 'win' | 'lose' | null = winner
+    ? winner === side
+      ? 'win'
+      : 'lose'
     : null;
 
   // Active-turn state drives every active/idle transition on one shared value
   // so the card bg, border, clock bg and clock text all cross-fade together
-  // (instead of snapping) when the turn changes.
-  const active = useSharedValue(toMove ? 1 : 0);
+  // (instead of snapping) when the turn changes. The whole chain reacts to the
+  // turn/game-over shared values on the UI thread — no React involved.
+  const active = useSharedValue(0);
   // Indicator breathes while it's this side's turn, so the screen has life
   // between moves.
   const pulse = useSharedValue(0);
-  useEffect(() => {
-    active.value = withTiming(toMove ? 1 : 0, { duration: 280 });
-    if (toMove) {
-      pulse.value = withRepeat(
-        withTiming(1, { duration: 950, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true,
-      );
-    } else {
-      pulse.value = withTiming(0, { duration: 200 });
-    }
-  }, [toMove, active, pulse]);
+  useAnimatedReaction(
+    () => !gameOverSv.get() && turnSv.get() === side,
+    (toMove, prev) => {
+      if (prev !== null && toMove === prev) return;
+      active.set(withTiming(toMove ? 1 : 0, { duration: 280 }));
+      if (toMove) {
+        pulse.set(
+          withRepeat(
+            withTiming(1, {
+              duration: 950,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            -1,
+            true,
+          ),
+        );
+      } else {
+        pulse.set(withTiming(0, { duration: 200 }));
+      }
+    },
+  );
 
   // Card bg + border: fade the active surface/border IN (alpha 0 → 1) over the
   // transparent idle base — rgb is constant, so it's a clean opacity ramp.
   const cardStyle = useAnimatedStyle(() => ({
-    backgroundColor: toRgba(SURFACE_RGB, active.value),
-    borderColor: toRgba(BORDER_RGB, active.value),
+    backgroundColor: toRgba(SURFACE_RGB, active.get()),
+    borderColor: toRgba(BORDER_RGB, active.get()),
   }));
   // Clock keeps its static surfaceHi base; the green tint just fades in on top.
-  const clockTintStyle = useAnimatedStyle(() => ({ opacity: active.value }));
+  const clockTintStyle = useAnimatedStyle(() => ({ opacity: active.get() }));
   const clockTextStyle = useAnimatedStyle(() => ({
     color: interpolateColor(
-      active.value,
+      active.get(),
       [0, 1],
       [theme.textMuted, theme.text],
     ),
@@ -125,10 +129,10 @@ export const PlayerCard: React.FC<{ side: Side; clock?: string }> = ({
   // clock grows/shrinks smoothly per-frame on the UI thread (no mount/unmount,
   // no layout transition, no flicker).
   const dotStyle = useAnimatedStyle(() => ({
-    width: active.value * 6,
-    marginRight: active.value * 6,
-    opacity: active.value * (0.45 + pulse.value * 0.55),
-    transform: [{ scale: 0.8 + pulse.value * 0.5 }],
+    width: active.get() * 6,
+    marginRight: active.get() * 6,
+    opacity: active.get() * (0.45 + pulse.get() * 0.55),
+    transform: [{ scale: 0.8 + pulse.get() * 0.5 }],
   }));
 
   return (
