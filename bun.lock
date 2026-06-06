@@ -55,6 +55,7 @@
         "react-native-ios-utilities": "^5.2.0",
         "react-native-keyboard-controller": "1.20.7",
         "react-native-nitro-modules": "^0.35.5",
+        "react-native-pulsar": "^1.6.1",
         "react-native-qrcode-skia": "^0.3.1",
         "react-native-reanimated": "4.2.1",
         "react-native-redash": "^18.1.4",
@@ -1633,6 +1634,8 @@
     "react-native-keyboard-controller": ["react-native-keyboard-controller@1.20.7", "", { "dependencies": { "react-native-is-edge-to-edge": "^1.2.1" }, "peerDependencies": { "react": "*", "react-native": "*", "react-native-reanimated": ">=3.0.0" } }, "sha512-G8S5jz1FufPrcL1vPtReATx+jJhT/j+sTqxMIb30b1z7cYEfMlkIzOCyaHgf6IMB2KA9uBmnA5M6ve2A9Ou4kw=="],
 
     "react-native-nitro-modules": ["react-native-nitro-modules@0.35.5", "", { "peerDependencies": { "react": "*", "react-native": "*" } }, "sha512-aa03UzC5dLg5qFfyBkVK+JGSwHTjmK7jUZzyRz11r1Yk9C/nJTFe59EeHPxxNNTagkiwQTM6p3sySgD/TDRC7Q=="],
+
+    "react-native-pulsar": ["react-native-pulsar@1.6.1", "", { "peerDependencies": { "react": "*", "react-native": "*", "react-native-worklets": "*" } }, "sha512-udkiErku1aIjjtfB48e+5+4D3OdksTn0XfIyyZUcREINJ7NlnU+l/oDqOjJ3rC4+GrLQch27uHqnA5DQIegxXw=="],
 
     "react-native-qrcode-skia": ["react-native-qrcode-skia@0.3.1", "", { "dependencies": { "qrcode": "^1.5.3" }, "peerDependencies": { "@shopify/react-native-skia": ">=0.1.221", "react": "*", "react-native": "*" } }, "sha512-bD97s78PkYhwf0rMSORd+GWLEaXu7nB7rqNBwKBVRBFt3PtjXCMIMTI/9rzbCoxanDNofVrleVwP8vWrAnMpaQ=="],
 

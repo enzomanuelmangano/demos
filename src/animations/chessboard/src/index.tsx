@@ -9,10 +9,10 @@ import {
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import { Provider, useAtomValue, useSetAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
+import { Presets, usePatternComposer } from 'react-native-pulsar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CheckmateAuraProvider, useCheckmateAura } from './checkmate-aura';
@@ -41,10 +41,39 @@ import { theme } from './theme';
 import { delay, kingFromFen, measureInWindow } from './utils';
 
 import type { Side } from './types';
+import type { Pattern } from 'react-native-pulsar';
 
 // Single horizontal gutter shared by the board and all chrome, so every
 // left/right edge lines up.
 const GUTTER = 16;
+
+// Checkmate haptic crescendo, synced to the aura timeline: the mating strike,
+// a continuous amplitude swell while the board settles (snapshot at ~580ms), a
+// low detonation as the wave launches (~700ms), the rumble decaying with the
+// expanding ring, and a bright double accent when the recap lands. One native
+// Core Haptics pattern — real envelopes instead of stacked discrete ticks.
+const MATE_PATTERN: Pattern = {
+  discretePattern: [
+    { time: 0, amplitude: 1, frequency: 0.6 }, // the strike
+    { time: 700, amplitude: 1, frequency: 0.35 }, // wave detonation
+    { time: 1600, amplitude: 0.8, frequency: 0.7 }, // recap accent
+    { time: 1680, amplitude: 0.6, frequency: 0.9 },
+  ],
+  continuousPattern: {
+    amplitude: [
+      { time: 0, value: 0 },
+      { time: 120, value: 0.15 }, // drumroll swell begins
+      { time: 650, value: 1 }, // peaks into the launch
+      { time: 900, value: 0.5 }, // shockwave decays
+      { time: 1300, value: 0 },
+    ],
+    frequency: [
+      { time: 0, value: 0.4 },
+      { time: 650, value: 0.8 }, // tension rises with the swell
+      { time: 1300, value: 0.3 }, // settles low
+    ],
+  },
+};
 
 // The board is isolated behind React.memo so the chrome's per-move state
 // updates (status / moves / captured) never reconcile the Chessboard
@@ -116,42 +145,9 @@ function GameScreen() {
   // after every await and bails when it no longer matches.
   const replayGen = useRef(0);
 
-  // Checkmate haptic crescendo — a choreographed pattern synced to the aura:
-  // the mating strike, a rising drumroll while the board settles, a heavy
-  // detonation as the wave launches, decaying shockwave ticks as the ring
-  // expands, and a success note when the recap lands. Cancellable, so a reset
-  // mid-sequence doesn't keep buzzing.
-  const hapticTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
-  const cancelMateHaptics = useCallback(() => {
-    hapticTimers.current.forEach(clearTimeout);
-    hapticTimers.current = [];
-  }, []);
-  const playMateHaptics = useCallback(() => {
-    cancelMateHaptics();
-    const at = (t: number, fn: () => void) =>
-      hapticTimers.current.push(setTimeout(fn, t));
-    const impact = (style: Haptics.ImpactFeedbackStyle) => () =>
-      Haptics.impactAsync(style);
-    // The strike.
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    // Drumroll crescendo while the mating piece settles (snapshot at ~580ms).
-    at(130, impact(Haptics.ImpactFeedbackStyle.Soft));
-    at(240, impact(Haptics.ImpactFeedbackStyle.Light));
-    at(340, impact(Haptics.ImpactFeedbackStyle.Light));
-    at(430, impact(Haptics.ImpactFeedbackStyle.Medium));
-    at(510, impact(Haptics.ImpactFeedbackStyle.Medium));
-    at(570, impact(Haptics.ImpactFeedbackStyle.Rigid));
-    // The wave detonates (~580ms timer + snapshot + a frame).
-    at(700, impact(Haptics.ImpactFeedbackStyle.Heavy));
-    // Shockwave decays with the expanding ring.
-    at(850, impact(Haptics.ImpactFeedbackStyle.Medium));
-    at(1000, impact(Haptics.ImpactFeedbackStyle.Light));
-    at(1200, impact(Haptics.ImpactFeedbackStyle.Soft));
-    // The recap settles in.
-    at(1600, () =>
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
-    );
-  }, [cancelMateHaptics]);
+  // The mate crescendo as a single native pattern — play() schedules it on the
+  // haptic engine, stop() cancels it (reset / unmount mid-sequence).
+  const mateHaptic = usePatternComposer(MATE_PATTERN);
 
   const playSequence = useCallback(async () => {
     if (runningRef.current) return;
@@ -179,11 +175,11 @@ function GameScreen() {
     runningRef.current = false;
     setRunning(false);
     if (auraTimer.current != null) clearTimeout(auraTimer.current);
-    cancelMateHaptics();
+    mateHaptic.stop();
     hide();
     ref.current?.resetBoard();
     resetGame();
-  }, [resetGame, setRunning, hide, cancelMateHaptics]);
+  }, [resetGame, setRunning, hide, mateHaptic]);
 
   // New Game: confirm before clearing the current board (native alert). Works
   // mid-replay too — confirming aborts the replay and resets.
@@ -263,13 +259,13 @@ function GameScreen() {
       // Tactile read of the game: a soft tick per move, firmer on captures,
       // sharp on checks — and the full crescendo on mate.
       if (isCheckmate) {
-        playMateHaptics();
+        mateHaptic.play();
       } else if (taken) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Presets.System.impactMedium();
       } else if (isCheck) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid);
+        Presets.System.impactRigid();
       } else {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        Presets.System.impactLight();
       }
 
       // Only checkmate earns the aura — check/stalemate just update the status.
@@ -284,14 +280,7 @@ function GameScreen() {
         );
       }
     },
-    [
-      showAura,
-      playMateHaptics,
-      setPlies,
-      setSelectedPly,
-      setCaptured,
-      setStatus,
-    ],
+    [showAura, mateHaptic, setPlies, setSelectedPly, setCaptured, setStatus],
   );
 
   useEffect(() => {
@@ -300,7 +289,7 @@ function GameScreen() {
     return () => {
       alive.current = false;
       if (auraTimer.current != null) clearTimeout(auraTimer.current);
-      cancelMateHaptics();
+      mateHaptic.stop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
