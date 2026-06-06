@@ -1,4 +1,10 @@
-import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Keyboard,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { memo, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
@@ -72,7 +78,15 @@ const HeaderRight = memo(
     const selectedPaintingId = useSelectedPaintingId();
 
     return (
-      <DropdownMenu.Root>
+      <DropdownMenu.Root
+        onOpenChange={open => {
+          // iOS 26's menu embeds hidden "Forward" text fields for submenu
+          // typeahead; one grabs first responder when the menu opens and
+          // summons the soft keyboard over the gallery. Dismiss it.
+          if (open) {
+            requestAnimationFrame(() => Keyboard.dismiss());
+          }
+        }}>
         <DropdownMenu.Trigger>
           <Pressable style={styles.headerButton} hitSlop={12}>
             <Ionicons
