@@ -1,6 +1,7 @@
 import type { Side } from './types';
 import type React from 'react';
 import type { View } from 'react-native';
+import type { MoveResult } from 'react-native-chessboard';
 
 export const delay = (ms: number) =>
   new Promise<void>(resolve => setTimeout(resolve, ms));
@@ -48,4 +49,13 @@ export const toRgba = (rgb: number[], a: number) => {
   'worklet';
   const alpha = Math.max(0, Math.min(1, a)).toFixed(3);
   return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`;
+};
+
+// Human status line for a just-played move.
+export const statusFor = (result: MoveResult): string => {
+  const { isCheckmate, isStalemate, isCheck } = result.state;
+  if (isCheckmate) return 'Checkmate';
+  if (isStalemate) return 'Stalemate';
+  if (isCheck) return 'Check';
+  return result.move.color === 'w' ? 'Black to move' : 'White to move';
 };

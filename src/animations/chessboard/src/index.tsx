@@ -1,203 +1,31 @@
-import {
-  Alert,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import { Provider, useAtomValue, useSetAtom } from 'jotai';
+import { Provider } from 'jotai';
 import { PressableScale } from 'pressto';
-import Chessboard, { ChessboardRef, MoveResult } from 'react-native-chessboard';
-import { Presets, usePatternComposer } from 'react-native-pulsar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CheckmateAuraProvider, useCheckmateAura } from './checkmate-aura';
+import { CheckmateAuraProvider } from './checkmate-aura';
+import { Board } from './components/board';
+import { PlayPauseButton } from './components/play-pause-button';
 import { PlayerCard } from './components/player-card';
-import {
-  BOARD_COLORS,
-  FATAL_ATTRACTION,
-  PLAYERS,
-  REVIEW_ACCURACY,
-  REVIEW_MOVES,
-} from './constants';
+import { StatusCaption } from './components/status-caption';
 import { HistorySync } from './history-sync';
 import { MoveHistory } from './move-history';
-import {
-  capturedAtom,
-  clockSv,
-  gameOverSv,
-  pausedAtom,
-  pliesAtom,
-  resetGameAtom,
-  runningAtom,
-  selectedPlyAtom,
-  startedSv,
-  statusAtom,
-  turnSv,
-} from './state';
 import { theme } from './theme';
-import { delay, kingFromFen, measureInWindow } from './utils';
+import { useChessGame } from './use-chess-game';
 
 import type { Side } from './types';
-import type { Pattern } from 'react-native-pulsar';
 
 // Single horizontal gutter shared by the board and all chrome, so every
 // left/right edge lines up.
 const GUTTER = 16;
 
-// Checkmate haptic crescendo, synced to the REAL on-screen timeline (t=0 is
-// onMove, which fires as the mating piece STARTS its ~400ms slide; the aura
-// snapshot runs at 580ms and the wave launches ~700ms; the recap card mounts
-// ~1480ms and blurs into focus by ~1900ms):
-//   t=0     a subtle tick as the mating move launches
-//   t≈400   THE STRIKE — the piece lands on the board
-//   400→680 tension swells out of the landing into the launch
-//   t≈700   low detonation as the wave fires
-//   →2000   the rumble decays with the expanding ring
-//   t≈1950  bright double accent as the recap becomes readable
-// One native Core Haptics pattern — scheduled on the engine up front, so the
-// main-thread snapshot at 580ms can't delay it.
-const MATE_PATTERN: Pattern = {
-  discretePattern: [
-    // Heartbeat while the mating piece is in flight — lub-dub, lub-dub.
-    { time: 0, amplitude: 0.45, frequency: 0.6 },
-    { time: 90, amplitude: 0.25, frequency: 0.5 },
-    { time: 240, amplitude: 0.55, frequency: 0.6 },
-    { time: 330, amplitude: 0.3, frequency: 0.5 },
-    // THE STRIKE — the piece lands, and the board rings from the blow.
-    { time: 400, amplitude: 1, frequency: 0.55 },
-    { time: 470, amplitude: 0.5, frequency: 0.5 },
-    { time: 540, amplitude: 0.3, frequency: 0.45 },
-    // Wave detonation — a double hit: the crack and the sub-thump under it.
-    { time: 700, amplitude: 1, frequency: 0.35 },
-    { time: 760, amplitude: 0.9, frequency: 0.2 },
-    // Debris falling with the expanding ring — descending in force and pitch.
-    { time: 900, amplitude: 0.55, frequency: 0.5 },
-    { time: 1080, amplitude: 0.4, frequency: 0.4 },
-    { time: 1280, amplitude: 0.3, frequency: 0.35 },
-    { time: 1500, amplitude: 0.2, frequency: 0.3 },
-    // Recap focuses — ascending triple, the triumph sting.
-    { time: 1900, amplitude: 0.6, frequency: 0.6 },
-    { time: 1975, amplitude: 0.75, frequency: 0.8 },
-    { time: 2060, amplitude: 0.9, frequency: 1 },
-  ],
-  continuousPattern: {
-    amplitude: [
-      { time: 0, value: 0 },
-      { time: 380, value: 0.1 }, // near-silent flight under the heartbeat
-      { time: 450, value: 0.3 }, // tension out of the landing
-      { time: 680, value: 1 }, // peak at the detonation
-      { time: 850, value: 0.55 }, // first aftershock trough
-      { time: 950, value: 0.7 }, // wobble — the ring still shaking
-      { time: 1150, value: 0.4 },
-      { time: 1300, value: 0.5 },
-      { time: 1700, value: 0.12 }, // tail as the front clears the screen
-      { time: 2150, value: 0 },
-    ],
-    frequency: [
-      { time: 0, value: 0.5 },
-      { time: 400, value: 0.4 }, // drops low after the strike
-      { time: 680, value: 0.9 }, // screams into the detonation
-      { time: 800, value: 0.25 }, // collapses into the sub-rumble
-      { time: 1400, value: 0.35 },
-      { time: 2150, value: 0.3 },
-    ],
-  },
-};
-
-// The board is isolated behind React.memo so the chrome's per-move state
-// updates (status / moves / captured) never reconcile the Chessboard
-// subtree. Its props are all stable — it re-renders only on flip / resize.
-const Board = memo(function Board({
-  chessRef,
-  boxRef,
-  boardSize,
-  flipped,
-  onMove,
-}: {
-  chessRef: React.RefObject<ChessboardRef | null>;
-  boxRef: React.RefObject<View | null>;
-  boardSize: number;
-  flipped: boolean;
-  onMove: (result: MoveResult) => void;
-}) {
-  return (
-    <View ref={boxRef} collapsable={false}>
-      <Chessboard
-        ref={chessRef}
-        boardSize={boardSize}
-        flipped={flipped}
-        onMove={onMove}
-        colors={BOARD_COLORS}
-      />
-    </View>
-  );
-});
-
-// Play/pause control for the replay — isolated so the icon toggle only
-// re-renders this leaf. Shows pause while the replay is actively running,
-// play when idle or held.
-const PlayPauseButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
-  const running = useAtomValue(runningAtom);
-  const paused = useAtomValue(pausedAtom);
-  const showPause = running && !paused;
-  return (
-    <PressableScale onPress={onPress} style={styles.iconButton}>
-      <Ionicons
-        name={showPause ? 'pause' : 'play'}
-        size={22}
-        color={theme.text}
-      />
-    </PressableScale>
-  );
-};
-
-// Live status caption — a plain atom-driven Text. A ReText (TextInput-based)
-// would avoid the re-render, but on the new architecture its native text
-// updates occasionally flash unstyled (black) and clip to the previous width;
-// an isolated leaf re-rendering once per move is the better trade.
-const StatusCaption: React.FC = () => {
-  const caption = useAtomValue(statusAtom);
-  return (
-    <Text style={styles.navSub} numberOfLines={1}>
-      {caption}
-    </Text>
-  );
-};
-
+// Pure layout — every behaviour (replay, pause, clocks, haptics, the
+// checkmate aura) lives in useChessGame.
 function GameScreen() {
-  const ref = useRef<ChessboardRef>(null);
-  const boardBoxRef = useRef<View>(null);
-  const runningRef = useRef(false);
-  // False once unmounted, so the async replay / aura timer bail instead of
-  // driving a torn-down tree.
-  const alive = useRef(true);
-  const auraTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { show, hide } = useCheckmateAura();
-
-  const setPlies = useSetAtom(pliesAtom);
-  const setSelectedPly = useSetAtom(selectedPlyAtom);
-  const setRunning = useSetAtom(runningAtom);
-  const setPausedAtom = useSetAtom(pausedAtom);
-  const setCaptured = useSetAtom(capturedAtom);
-  const setStatus = useSetAtom(statusAtom);
-  const resetGame = useSetAtom(resetGameAtom);
-
-  // Pause is read by the replay loop between moves; the atom mirror drives the
-  // play/pause icon.
-  const pausedRef = useRef(false);
-  const setPaused = useCallback(
-    (value: boolean) => {
-      pausedRef.current = value;
-      setPausedAtom(value);
-    },
-    [setPausedAtom],
-  );
-
   // setFlipped is only referenced by the commented-out flip control — restore
   // the destructured setter together with the button.
   const [flipped] = useState(false);
@@ -207,189 +35,8 @@ function GameScreen() {
   const boardSize = width;
   const pieceSize = boardSize / 8;
 
-  // Bumping the generation cancels any in-flight replay: the loop re-checks it
-  // after every await and bails when it no longer matches.
-  const replayGen = useRef(0);
-
-  // The mate crescendo as a single native pattern — play() schedules it on the
-  // haptic engine, stop() cancels it (reset / unmount mid-sequence).
-  const mateHaptic = usePatternComposer(MATE_PATTERN);
-
-  const playSequence = useCallback(async () => {
-    if (runningRef.current) return;
-    const gen = ++replayGen.current;
-    runningRef.current = true;
-    setRunning(true);
-    setPaused(false);
-    ref.current?.resetBoard();
-    resetGame();
-    await delay(300);
-    for (const [from, to] of FATAL_ATTRACTION) {
-      if (!alive.current || replayGen.current !== gen) return;
-      // Hold here while paused — the position freezes between moves and the
-      // loop picks back up exactly where it stopped.
-      while (pausedRef.current) {
-        if (!alive.current || replayGen.current !== gen) return;
-        await delay(120);
-      }
-      await ref.current?.move({ from: from as any, to: to as any });
-      if (!alive.current || replayGen.current !== gen) return;
-      await delay(260);
-    }
-    if (replayGen.current !== gen) return;
-    runningRef.current = false;
-    setRunning(false);
-  }, [resetGame, setRunning, setPaused]);
-
-  // Play toggles between starting the replay, holding it, and resuming it.
-  const togglePlay = useCallback(() => {
-    if (!runningRef.current) {
-      playSequence();
-      return;
-    }
-    setPaused(!pausedRef.current);
-  }, [playSequence, setPaused]);
-
-  // Rematch: cancel whatever is in flight (replay, pending aura) and reset to
-  // a fresh, playable board.
-  const rematch = useCallback(() => {
-    replayGen.current++;
-    runningRef.current = false;
-    setRunning(false);
-    setPaused(false);
-    if (auraTimer.current != null) clearTimeout(auraTimer.current);
-    mateHaptic.stop();
-    hide();
-    ref.current?.resetBoard();
-    resetGame();
-  }, [resetGame, setRunning, setPaused, hide, mateHaptic]);
-
-  // New Game: confirm before clearing the current board (native alert). Works
-  // mid-replay too — confirming aborts the replay and resets.
-  const confirmNewGame = useCallback(() => {
-    Alert.alert(
-      'New Game?',
-      'This clears the current board and starts fresh.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'New Game', style: 'destructive', onPress: rematch },
-      ],
-    );
-  }, [rematch]);
-
-  // Checkmate → settle the board into a blurred haze with a breathing
-  // accent-blue aurora centred on the mated king, and raise a calm result
-  // card. Atmosphere, not a shockwave.
-  const showAura = useCallback(
-    async (fen: string, moverColor: Side) => {
-      const kingColor: Side = moverColor === 'w' ? 'b' : 'w';
-      const king = kingFromFen(fen, kingColor);
-      if (!king) return;
-      const box = await measureInWindow(boardBoxRef);
-      if (!box || !alive.current) return;
-      const col = flipped ? 7 - king.file : king.file;
-      const row = flipped ? 7 - king.rowFromTop : king.rowFromTop;
-      // The mover delivered mate, so the mover wins.
-      const winner = PLAYERS[moverColor].name;
-      show({
-        x: box.x + col * pieceSize + pieceSize / 2,
-        y: box.y + row * pieceSize + pieceSize / 2,
-        subtitle: `${winner} wins`,
-        oppName: PLAYERS.b.name,
-        accuracy: REVIEW_ACCURACY,
-        moves: REVIEW_MOVES,
-        onRematch: rematch,
-        onReview: () => {}, // dismiss to inspect the final board
-      });
-    },
-    [flipped, pieceSize, show, rematch],
-  );
-
-  const handleMove = useCallback(
-    (result: MoveResult) => {
-      setPlies(prev => [
-        ...prev,
-        {
-          san: result.move.san,
-          fen: result.state.fen,
-          from: result.move.from,
-          to: result.move.to,
-        },
-      ]);
-      // Each landing move becomes the selected ply (-1 → 0 → 1 → …).
-      setSelectedPly(s => s + 1);
-      const taken = (result.move as { captured?: string }).captured;
-      if (taken) {
-        const by = result.move.color as Side;
-        setCaptured(prev => ({ ...prev, [by]: [...prev[by], taken] }));
-      }
-      const { isCheckmate, isStalemate, isCheck } = result.state;
-      const nextStatus = isCheckmate
-        ? 'Checkmate'
-        : isStalemate
-          ? 'Stalemate'
-          : isCheck
-            ? 'Check'
-            : result.move.color === 'w'
-              ? 'Black to move'
-              : 'White to move';
-      setStatus(nextStatus);
-      // Mirror the hot state onto shared values — the cards' turn treatment
-      // animates from these without re-rendering.
-      turnSv.set(result.move.color === 'w' ? 'b' : 'w');
-      gameOverSv.set(isCheckmate || isStalemate);
-      startedSv.set(true);
-
-      // Tactile read of the game: a soft tick per move, firmer on captures,
-      // sharp on checks — and the full crescendo on mate.
-      if (isCheckmate) {
-        mateHaptic.play();
-      } else if (taken) {
-        Presets.System.impactMedium();
-      } else if (isCheck) {
-        Presets.System.impactRigid();
-      } else {
-        Presets.System.impactLight();
-      }
-
-      // Only checkmate earns the aura — check/stalemate just update the status.
-      if (isCheckmate) {
-        // makeImageFromView rasterizes the whole view hierarchy on the main
-        // thread, so it inevitably eats a frame — schedule it past the move
-        // spring (~430ms) and the history scroll settle, when the screen is
-        // fully static and the dropped frame can't be seen.
-        auraTimer.current = setTimeout(
-          () => showAura(result.state.fen, result.move.color as Side),
-          580,
-        );
-      }
-    },
-    [showAura, mateHaptic, setPlies, setSelectedPly, setCaptured, setStatus],
-  );
-
-  useEffect(() => {
-    alive.current = true;
-    playSequence();
-    return () => {
-      alive.current = false;
-      if (auraTimer.current != null) clearTimeout(auraTimer.current);
-      mateHaptic.stop();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Chess clocks: once per second, burn a second from whoever is to move —
-  // only while a live game is on the board and not held on pause. Pure shared
-  // values, so the ticking never renders anything.
-  useEffect(() => {
-    const id = setInterval(() => {
-      if (pausedRef.current) return;
-      if (!startedSv.get() || gameOverSv.get()) return;
-      const sv = clockSv[turnSv.get()];
-      sv.set(Math.max(0, sv.get() - 1));
-    }, 1000);
-    return () => clearInterval(id);
-  }, []);
+  const { boardRef, boardBoxRef, onMove, togglePlay, confirmNewGame } =
+    useChessGame({ flipped, pieceSize });
 
   // flipped=false shows white at the bottom (standard); flipped swaps it. Keep
   // the player cards on the same side as their pieces.
@@ -415,7 +62,7 @@ function GameScreen() {
       </View>
 
       {/* Drives the board off the selected ply, isolated from this tree. */}
-      <HistorySync boardRef={ref} />
+      <HistorySync boardRef={boardRef} />
 
       <View style={styles.content}>
         {/* The cards + board centre in the space above the bottom group, so the
@@ -431,11 +78,11 @@ function GameScreen() {
             {/* Board */}
             <View style={styles.boardHero}>
               <Board
-                chessRef={ref}
+                chessRef={boardRef}
                 boxRef={boardBoxRef}
                 boardSize={boardSize}
                 flipped={flipped}
-                onMove={handleMove}
+                onMove={onMove}
               />
             </View>
 
@@ -453,8 +100,8 @@ function GameScreen() {
             <MoveHistory />
           </View>
 
-          {/* Actions — the primary Rematch button, with a compact "watch
-              again" icon at the bottom-right. */}
+          {/* Actions — the primary New Game button, with the play/pause
+              control at the bottom-right. */}
           <View style={styles.actionRow}>
             <PressableScale
               onPress={confirmNewGame}
@@ -464,7 +111,7 @@ function GameScreen() {
                 styles.actionFill,
               ]}>
               <Ionicons name="refresh" size={20} color={theme.text} />
-              <Text style={styles.replayText}>New Game</Text>
+              <Text style={styles.actionText}>New Game</Text>
             </PressableScale>
             <PlayPauseButton onPress={togglePlay} />
           </View>
@@ -511,6 +158,13 @@ const styles = StyleSheet.create({
     borderColor: theme.border,
     borderWidth: HAIRLINE,
   },
+  actionText: {
+    color: theme.text,
+    fontFamily: 'SF-Pro-Rounded-Bold',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
   boardHero: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -545,28 +199,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  iconButton: {
-    alignItems: 'center',
-    backgroundColor: theme.surface,
-    borderColor: theme.border,
-    borderCurve: 'continuous',
-    borderRadius: 18,
-    borderWidth: HAIRLINE,
-    height: 52,
-    justifyContent: 'center',
-    width: 54,
-  },
   moveListWrap: {
     paddingHorizontal: GUTTER,
     width: '100%',
-  },
-  navSub: {
-    color: theme.textMuted,
-    fontFamily: 'SF-Compact-Rounded-Medium',
-    fontSize: 12,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-    marginTop: 2,
   },
   navTitle: {
     color: theme.text,
@@ -578,13 +213,6 @@ const styles = StyleSheet.create({
   playerWrap: {
     paddingHorizontal: GUTTER,
     width: '100%',
-  },
-  replayText: {
-    color: theme.text,
-    fontFamily: 'SF-Pro-Rounded-Bold',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.1,
   },
   root: {
     backgroundColor: theme.bg,

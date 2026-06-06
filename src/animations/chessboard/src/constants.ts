@@ -1,6 +1,7 @@
 import { theme, withAlpha } from './theme';
 
 import type { AnnotatedMove, Side } from './types';
+import type { Square } from 'chess.js';
 import type { ImageSourcePropType } from 'react-native';
 
 export const START_FEN =
@@ -47,10 +48,24 @@ export const BOARD_COLORS = {
   checkmateHighlight: theme.lose,
 };
 
+// Replay pacing + the choreography around checkmate, all in ms.
+export const REPLAY = {
+  // Pause on the start position before the first move plays.
+  START_DELAY: 300,
+  // Gap between a move's spring settling and the next move firing.
+  MOVE_GAP: 260,
+  // Poll cadence while the replay is held on pause.
+  PAUSE_POLL: 120,
+  // Mate → aura snapshot: past the move spring (~430ms) and the history
+  // scroll settle, so makeImageFromView's inevitable main-thread frame cost
+  // lands on a static screen where it can't be seen.
+  AURA_DELAY: 580,
+} as const;
+
 // "Fatal Attraction" — Edward Lasker vs George Alan Thomas, London 1912.
 // 11.Qxh7+!! sacrifices the queen and Black's king is dragged the full length
 // of the board (h7 → g1), mated in White's own camp by 18.Kd2#.
-export const FATAL_ATTRACTION: Array<[string, string]> = [
+export const FATAL_ATTRACTION: [Square, Square][] = [
   ['d2', 'd4'], // 1. d4
   ['e7', 'e6'], //    e6
   ['g1', 'f3'], // 2. Nf3
