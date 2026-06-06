@@ -151,11 +151,14 @@ const SortableItem: FC<SortableListItemProps> = ({
 
       const translateY = contextY.get() + translationY;
 
-      positions.get()[index] = translateY + scrollContentOffsetY.get();
+      // Build the next positions immutably — mutating the object returned by
+      // get() modifies a value already shared with the worklet runtime.
+      positions.set({
+        ...positions.get(),
+        [index]: translateY + scrollContentOffsetY.get(),
+      });
 
       scrollLogic({ absoluteY });
-
-      positions.set(Object.assign({}, positions.get()));
     })
     .onFinalize(() => {
       translateX.set(
@@ -179,8 +182,7 @@ const SortableItem: FC<SortableListItemProps> = ({
     if (isGestureActive.get()) return positions.get()[index];
 
     const nextPosition = getPosition(index);
-    positions.get()[index] = nextPosition;
-    positions.set(Object.assign({}, positions.get()));
+    positions.set({ ...positions.get(), [index]: nextPosition });
 
     return withTiming(nextPosition, {
       duration: 200,

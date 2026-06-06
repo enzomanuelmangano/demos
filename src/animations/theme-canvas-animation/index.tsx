@@ -28,19 +28,22 @@ const colors = [
   { background: '#902D41', text: '#DEDEDE' },
 ];
 
+// Fixed grid layout — hoisted so the render can map over it without reading
+// the derived coordinates shared value during render.
+const SQUARE_OFFSETS = [
+  { offsetX: -1, offsetY: 0 },
+  { offsetX: 0, offsetY: 0 },
+  { offsetX: 1, offsetY: 0 },
+  { offsetX: 0, offsetY: 1 },
+  { offsetX: -1, offsetY: 1 },
+  { offsetX: 1, offsetY: 1 },
+];
+
 const ThemeScreen = () => {
   const { height: canvasHeight, width: canvasWidth } = useWindowDimensions();
 
   const coordinates = useDerivedValue(() => {
-    const squares = [
-      { offsetX: -1, offsetY: 0 },
-      { offsetX: 0, offsetY: 0 },
-      { offsetX: 1, offsetY: 0 },
-      { offsetX: 0, offsetY: 1 },
-      { offsetX: -1, offsetY: 1 },
-      { offsetX: 1, offsetY: 1 },
-    ];
-    return squares.map(({ offsetX, offsetY }) => ({
+    return SQUARE_OFFSETS.map(({ offsetX, offsetY }) => ({
       cx: canvasWidth / 2 - SQUARE_SIZE / 2 + offsetX * SQUARE_SIZE * 2,
       cy: canvasHeight / 2 - SQUARE_SIZE / 2 + offsetY * SQUARE_SIZE * 2,
     }));
@@ -160,7 +163,7 @@ const ThemeScreen = () => {
           textColor: selectedTextColor,
         })}
       </Group>
-      {coordinates.get().map((_, index) => (
+      {SQUARE_OFFSETS.map((_, index) => (
         <SelectableSquareContainer
           color={colors[index]?.background || 'black'}
           key={index}

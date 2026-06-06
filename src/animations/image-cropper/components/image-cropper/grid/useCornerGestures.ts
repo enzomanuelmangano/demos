@@ -23,12 +23,9 @@ const useCornerGestures = ({
   minHeight,
   maxHeight,
 }: UseCornerGesturesParams) => {
-  const ctx = useSharedValue({
-    x: x.get(),
-    y: y.get(),
-    width: gridWidth.get(),
-    height: gridHeight.get(),
-  });
+  // Initialized empty — updateContext fills it at every gesture start, and
+  // reading the shared values here would run during component render.
+  const ctx = useSharedValue({ x: 0, y: 0, width: 0, height: 0 });
 
   const updateContext = () => {
     'worklet';

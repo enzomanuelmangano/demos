@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Canvas, Group, Path, Points, Text } from '@shopify/react-native-skia';
 import Color from 'color';
@@ -86,10 +86,22 @@ function RadarChart<K extends string>({
 
   // Text Skills Positions
 
-  const textSkills = useMemo(() => {
-    const isSharedValue = typeof data === 'object' && 'value' in data;
-    const dataArray = isSharedValue ? data.get() : (data as RadarDataType<K>);
-    return Object.keys(dataArray[0]?.values ?? {});
+  // The category labels come from the data's shape. For shared-value data the
+  // read happens in an effect — reading a shared value during render trips
+  // reanimated's strict mode.
+  const isSharedValueData = typeof data === 'object' && 'value' in data;
+  const [textSkills, setTextSkills] = useState<string[]>(() =>
+    isSharedValueData
+      ? []
+      : Object.keys((data as RadarDataType<K>)[0]?.values ?? {}),
+  );
+  useEffect(() => {
+    if (!isSharedValueData) {
+      setTextSkills(Object.keys((data as RadarDataType<K>)[0]?.values ?? {}));
+      return;
+    }
+    setTextSkills(Object.keys(data.get()[0]?.values ?? {}));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
   const transformOrigin = useDerivedValue(() => {
