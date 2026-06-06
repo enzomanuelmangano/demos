@@ -11,7 +11,8 @@ export const PLAYERS: Record<Side, { name: string; rating: string }> = {
   w: { name: 'magnus', rating: '2841' },
 };
 
-export const CLOCKS: Record<Side, string> = { w: '3:09', b: '2:46' };
+// Starting clock time in seconds — both sides get 3:00.
+export const CLOCK_START: Record<Side, number> = { w: 180, b: 180 };
 
 // Mini piece images for the capture trays — the exact artwork the board draws,
 // so captured pieces read in the board's visual language instead of thin

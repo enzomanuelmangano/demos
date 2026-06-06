@@ -3,6 +3,8 @@ import { LayoutRectangle } from 'react-native';
 import { atom } from 'jotai';
 import { makeMutable } from 'react-native-reanimated';
 
+import { CLOCK_START } from './constants';
+
 import type { Side } from './types';
 import type { Atom, PrimitiveAtom } from 'jotai';
 
@@ -48,6 +50,16 @@ export const gameResultAtom = atom<Side | null>(get => {
 
 // Derived: just the SAN strings, for the move-history strip.
 export const movesAtom = atom(get => get(pliesAtom).map(p => p.san));
+
+// Chess clocks, in remaining seconds per side, as shared values: the ticking
+// second writes the SV and the clock readouts are ReTexts deriving from it —
+// time burns with zero React re-renders.
+export const clockSv: Record<Side, ReturnType<typeof makeMutable<number>>> = {
+  w: makeMutable(CLOCK_START.w),
+  b: makeMutable(CLOCK_START.b),
+};
+// True once the first move of a game lands — clocks only burn in a live game.
+export const startedSv = makeMutable(false);
 
 // Per-ply atom factories. A plain Map cache keyed by ply gives each ply its own
 // stable atom (created once, reused across renders) — same role as jotai's
@@ -99,4 +111,7 @@ export const resetGameAtom = atom(null, (_get, set) => {
   set(interactedAtom, false);
   turnSv.set('w');
   gameOverSv.set(false);
+  startedSv.set(false);
+  clockSv.w.set(CLOCK_START.w);
+  clockSv.b.set(CLOCK_START.b);
 });

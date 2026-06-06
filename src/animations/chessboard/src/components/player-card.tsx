@@ -9,13 +9,21 @@ import Animated, {
   interpolateColor,
   useAnimatedReaction,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { ReText } from 'react-native-redash';
 
-import { CLOCKS, PIECE_IMG, PLAYERS, VALUE } from '../constants';
-import { capturedAtom, gameOverSv, gameResultAtom, turnSv } from '../state';
+import { PIECE_IMG, PLAYERS, VALUE } from '../constants';
+import {
+  capturedAtom,
+  clockSv,
+  gameOverSv,
+  gameResultAtom,
+  turnSv,
+} from '../state';
 import { avatar, theme, withAlpha } from '../theme';
 import { toRgba } from '../utils';
 
@@ -56,10 +64,7 @@ const CaptureTray: React.FC<{ pieces: string[]; lead: number; foe: Side }> = ({
   );
 };
 
-export const PlayerCard: React.FC<{ side: Side; clock?: string }> = ({
-  side,
-  clock = CLOCKS[side],
-}) => {
+export const PlayerCard: React.FC<{ side: Side }> = ({ side }) => {
   const { name, rating } = PLAYERS[side];
   const foe: Side = side === 'w' ? 'b' : 'w';
 
@@ -125,6 +130,15 @@ export const PlayerCard: React.FC<{ side: Side; clock?: string }> = ({
       [theme.textMuted, theme.text],
     ),
   }));
+  // Live clock readout — a ReText deriving m:ss from the side's clock shared
+  // value, so the per-second tick never touches React. Fixed width + centred
+  // text is the ReText contract (the underlying TextInput can't reflow).
+  const clockText = useDerivedValue(() => {
+    const seconds = clockSv[side].get();
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  });
   // Dot stays mounted at all times — its width/margin animate from 0, so the
   // clock grows/shrinks smoothly per-frame on the UI thread (no mount/unmount,
   // no layout transition, no flicker).
@@ -160,9 +174,7 @@ export const PlayerCard: React.FC<{ side: Side; clock?: string }> = ({
           pointerEvents="none"
         />
         <Animated.View style={[styles.clockDot, dotStyle]} />
-        <Animated.Text style={[styles.clockText, clockTextStyle]}>
-          {clock}
-        </Animated.Text>
+        <ReText text={clockText} style={[styles.clockText, clockTextStyle]} />
       </View>
     </Animated.View>
   );
@@ -204,6 +216,11 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     fontWeight: '600',
     letterSpacing: 0.3,
+    // ReText contract: the underlying TextInput can't reflow, so pin the width
+    // (tabular m:ss never exceeds it) and kill the input's default padding.
+    padding: 0,
+    textAlign: 'center',
+    width: 44,
   },
   clockTint: {
     backgroundColor: withAlpha(theme.accent, 0.15),

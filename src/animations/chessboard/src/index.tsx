@@ -19,7 +19,6 @@ import { CheckmateAuraProvider, useCheckmateAura } from './checkmate-aura';
 import { PlayerCard } from './components/player-card';
 import {
   BOARD_COLORS,
-  CLOCKS,
   FATAL_ATTRACTION,
   PLAYERS,
   REVIEW_ACCURACY,
@@ -29,12 +28,14 @@ import { HistorySync } from './history-sync';
 import { MoveHistory } from './move-history';
 import {
   capturedAtom,
+  clockSv,
   gameOverSv,
   pausedAtom,
   pliesAtom,
   resetGameAtom,
   runningAtom,
   selectedPlyAtom,
+  startedSv,
   statusAtom,
   turnSv,
 } from './state';
@@ -335,6 +336,7 @@ function GameScreen() {
       // animates from these without re-rendering.
       turnSv.set(result.move.color === 'w' ? 'b' : 'w');
       gameOverSv.set(isCheckmate || isStalemate);
+      startedSv.set(true);
 
       // Tactile read of the game: a soft tick per move, firmer on captures,
       // sharp on checks — and the full crescendo on mate.
@@ -374,6 +376,19 @@ function GameScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Chess clocks: once per second, burn a second from whoever is to move —
+  // only while a live game is on the board and not held on pause. Pure shared
+  // values, so the ticking never renders anything.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (pausedRef.current) return;
+      if (!startedSv.get() || gameOverSv.get()) return;
+      const sv = clockSv[turnSv.get()];
+      sv.set(Math.max(0, sv.get() - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
+
   // flipped=false shows white at the bottom (standard); flipped swaps it. Keep
   // the player cards on the same side as their pieces.
   const topSide: Side = flipped ? 'w' : 'b';
@@ -407,11 +422,7 @@ function GameScreen() {
             {/* Top card = whoever's pieces sit at the top of the board, so it
               stays coherent when the board is flipped. */}
             <View style={styles.playerWrap}>
-              <PlayerCard
-                key={topSide}
-                side={topSide}
-                clock={CLOCKS[topSide]}
-              />
+              <PlayerCard key={topSide} side={topSide} />
             </View>
 
             {/* Board */}
@@ -427,11 +438,7 @@ function GameScreen() {
 
             {/* Bottom card = pieces at the bottom of the board. */}
             <View style={styles.playerWrap}>
-              <PlayerCard
-                key={bottomSide}
-                side={bottomSide}
-                clock={CLOCKS[bottomSide]}
-              />
+              <PlayerCard key={bottomSide} side={bottomSide} />
             </View>
           </View>
         </View>
