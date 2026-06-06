@@ -31,11 +31,9 @@ export const statusAtom = atom('White to move');
 
 // UI-thread mirrors of the hot per-move state. The move handler writes these
 // alongside the atoms; animated styles read them directly, so the player-card
-// turn treatment and the status caption update with ZERO React re-renders
-// during the replay.
+// turn treatment updates with ZERO React re-renders during the replay.
 export const turnSv = makeMutable<Side>('w');
 export const gameOverSv = makeMutable(false);
-export const statusSv = makeMutable('White to move');
 
 // Derived: the winner once (and only once) the game ends in mate — `null` the
 // whole game, so subscribers (the WON/LOST tags) render exactly once, at the
@@ -99,5 +97,4 @@ export const resetGameAtom = atom(null, (_get, set) => {
   set(interactedAtom, false);
   turnSv.set('w');
   gameOverSv.set(false);
-  statusSv.set('White to move');
 });

@@ -184,11 +184,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.surfaceHi,
     borderCurve: 'continuous',
-    borderRadius: 9,
+    // Concentric with the card: outer radius 18 − 6 inset = 12 (same rule as
+    // the avatar), so the nested corners share a centre and never look broken.
+    borderRadius: 12,
     flexDirection: 'row',
     overflow: 'hidden',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 9,
+    paddingVertical: 9,
   },
   clockDot: {
     backgroundColor: theme.accent,
