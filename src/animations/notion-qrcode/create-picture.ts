@@ -29,7 +29,7 @@ import {
   CENTER_Y,
   DISTANCE,
 } from './constants';
-import { reusableClipPath, reusablePaint, reusableWhiteBgPaint } from './data';
+import { reusablePaint, reusableWhiteBgPaint } from './data';
 import { ColorConfig, Point3D, ShapeData } from './types';
 import { rotateX, rotateY, smoothstep } from './utils';
 
@@ -268,13 +268,14 @@ export const createPicture = (
     if (t.imageOpacity > 0) {
       reusablePaint.setAlphaf(t.imageOpacity);
 
-      // Clip to rounded rectangle
+      // Clip to rounded rectangle — clipRRect avoids the deprecated mutable
+      // SkPath (reset/addRRect) entirely.
       canvas.save();
-      reusableClipPath.reset();
-      reusableClipPath.addRRect(
+      canvas.clipRRect(
         Skia.RRectXY(dstRect, t.cornerRadius, t.cornerRadius),
+        ClipOp.Intersect,
+        true,
       );
-      canvas.clipPath(reusableClipPath, ClipOp.Intersect, true);
       canvas.drawImageRect(spriteSheet, srcRect, dstRect, reusablePaint);
       canvas.restore();
     }
