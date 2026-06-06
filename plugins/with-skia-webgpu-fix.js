@@ -38,12 +38,16 @@ const withSkiaWebGPUFix = config => {
     # Drop the codegen entry for skia's removed WebGPUView: RN 0.85's generated
     # RCTThirdPartyComponentsProvider lists every codegen'd component, and a nil
     # class (its sources were removed above) crashes the Fabric components
-    # dictionary at startup.
-    provider_path = File.join(installer.sandbox.root.parent.to_s, 'build', 'generated', 'ios', 'ReactCodegen', 'RCTThirdPartyComponentsProvider.mm')
-    if File.exist?(provider_path)
-      provider = File.read(provider_path)
-      patched = provider.gsub(/^\\s*@"SkiaWebGPUView":.*\\n/, '')
-      File.write(provider_path, patched) if patched != provider
+    # dictionary at startup. Codegen runs as an Xcode build phase on RN 0.85,
+    # so the strip must run inside that phase — patching the file from
+    # post_install gets overwritten on the next build.
+    installer.pods_project.targets.each do |target|
+      next unless target.name == 'ReactCodegen'
+      target.shell_script_build_phases.each do |phase|
+        next unless phase.name&.include?('Generate Specs')
+        next if phase.shell_script.include?('SkiaWebGPUView')
+        phase.shell_script += "\\n# Strip skia's WebGPUView codegen entry (its sources are removed by the skia-webgpu fix)\\n/usr/bin/sed -i '' '/@\\"SkiaWebGPUView\\"/d' \\"$PODS_ROOT/../build/generated/ios/ReactCodegen/RCTThirdPartyComponentsProvider.mm\\" || true\\n"
+      end
     end
   end
 end`;
