@@ -1,6 +1,4 @@
-import { StyleSheet, Text } from 'react-native';
-
-import { useMemo } from 'react';
+import { StyleSheet } from 'react-native';
 
 import Animated, {
   useAnimatedStyle,
@@ -30,35 +28,17 @@ export const TextLabel: React.FC<TextLabelProps> = ({
   height,
   shifted,
 }) => {
-  const text = useDerivedValue(() => {
+  // The percentage animates on the UI thread through a ReText. A ReText is a
+  // TextInput underneath, and a TextInput never shares an exact baseline with
+  // a regular Text across RN versions — so the static label is a ReText too:
+  // two identical TextInputs are level by construction.
+  const percentageText = useDerivedValue(() => {
     const percentage =
       type === 'left' ? xPercentage.get() : 1 - xPercentage.get();
     return `${Math.round(percentage * 100)}%`;
   }, []);
 
-  const percentageLabel = useMemo(() => {
-    return (
-      <Animated.View>
-        {/* 
-          We're using the ReText component to animate the PercentageText on the UI Thread.
-          There are a lot of other ways to do this, but this is the simplest.
-          You can use for instance the Text from Skia or the Text from react-native-animateable-text :)
-        */}
-        <ReText
-          text={text}
-          style={[
-            {
-              textAlign: type,
-              color: color.percentage,
-              top: 2.5,
-              marginHorizontal: 6,
-            },
-            styles.label,
-          ]}
-        />
-      </Animated.View>
-    );
-  }, [color.percentage, text, type]);
+  const labelText = useDerivedValue(() => label, [label]);
 
   const rContainerStyle = useAnimatedStyle(() => {
     const baseHeight = -height / 2 + 10;
@@ -73,6 +53,17 @@ export const TextLabel: React.FC<TextLabelProps> = ({
     };
   }, []);
 
+  const percentage = (
+    <ReText
+      text={percentageText}
+      style={[
+        styles.text,
+        styles.percentage,
+        { color: color.percentage, textAlign: type },
+      ]}
+    />
+  );
+
   return (
     <Animated.View
       style={[
@@ -82,41 +73,19 @@ export const TextLabel: React.FC<TextLabelProps> = ({
         styles.labelContainer,
         rContainerStyle,
       ]}>
-      <Animated.View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'center',
-          alignItems: 'center',
-        }}>
-        {type === 'right' && (
-          <Text style={styles.labelPercentage}>{percentageLabel}</Text>
-        )}
-        <Text
-          style={[
-            {
-              color: color.label,
-            },
-            styles.label,
-          ]}>
-          {label}
-        </Text>
-        {type === 'left' && (
-          <Text style={styles.labelPercentage}>{percentageLabel}</Text>
-        )}
+      <Animated.View style={styles.row}>
+        {type === 'right' && percentage}
+        <ReText
+          text={labelText}
+          style={[styles.text, { color: color.label }]}
+        />
+        {type === 'left' && percentage}
       </Animated.View>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  label: {
-    fontFamily: 'FiraCodeMedium',
-    fontSize: 16,
-    height: 20,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    textTransform: 'uppercase',
-  },
   labelContainer: {
     alignItems: 'flex-start',
     bottom: 0,
@@ -124,11 +93,21 @@ const styles = StyleSheet.create({
     position: 'absolute',
     zIndex: 10,
   },
-  labelPercentage: {
+  percentage: {
+    // The value swings between "0%" and "100%" — pin the width so the
+    // underlying TextInput never has to reflow (the ReText contract).
+    marginHorizontal: 4,
+    width: 44,
+  },
+  row: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  text: {
     fontFamily: 'FiraCodeMedium',
     fontSize: 16,
-    height: 20,
-    marginBottom: 4,
+    padding: 0,
     textTransform: 'uppercase',
   },
 });
