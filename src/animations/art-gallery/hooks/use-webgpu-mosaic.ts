@@ -321,6 +321,14 @@ export function useWebGPUMosaic(
       backgroundUniformBuffer,
     } = resourcesRef.current;
 
+    // Don't present until the tile buffers are populated: early frames would
+    // flash the bare background gradient (and issue draws with an instance
+    // count of 0) before the mosaic pops in — the first-frame flicker.
+    if (tileCount === 0) {
+      animationRef.current = requestAnimationFrame(render);
+      return;
+    }
+
     const time = (Date.now() - startTimeRef.current) / 1000;
 
     const {
