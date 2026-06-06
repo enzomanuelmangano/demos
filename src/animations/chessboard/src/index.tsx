@@ -198,7 +198,9 @@ function GameScreen() {
     [setPausedAtom],
   );
 
-  const [flipped, setFlipped] = useState(false);
+  // setFlipped is only referenced by the commented-out flip control — restore
+  // the destructured setter together with the button.
+  const [flipped] = useState(false);
   const { width } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
   // Board spans the full screen width — the hero. Chrome is inset to GUTTER.
@@ -396,19 +398,20 @@ function GameScreen() {
 
   return (
     <View style={styles.root}>
-      {/* In-app header — title, live status caption, flip action (top-right,
-          clear of the drawer icon that overlays the top-left corner). */}
+      {/* In-app header — title and live status caption. */}
       <View style={[styles.header, { paddingTop: safeTop + 6 }]}>
         <View style={styles.headerTitleWrap}>
           <Text style={styles.navTitle}>Chessboard</Text>
           <StatusCaption />
         </View>
+        {/* Board flip — hidden for the demo; re-enable by uncommenting.
         <PressableScale
           hitSlop={16}
           onPress={() => setFlipped(f => !f)}
           style={styles.flipBtn}>
           <Ionicons name="swap-vertical" size={23} color={theme.text} />
         </PressableScale>
+        */}
       </View>
 
       {/* Drives the board off the selected ply, isolated from this tree. */}
@@ -524,6 +527,8 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
     paddingTop: 12,
   },
+  // Used by the commented-out flip control in the header.
+  // eslint-disable-next-line react-native/no-unused-styles
   flipBtn: {
     bottom: 8,
     padding: 4,
