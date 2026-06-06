@@ -64,9 +64,12 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
     useAnimatedReaction(
       () => touchedSquares.get(),
       updatedTouchedSquares => {
-        const baseSquares = Array.from({ length: GRID_SIZE }, () =>
-          Array(GRID_SIZE).fill(0),
-        );
+        // Plain loop: Array.from's callback isn't workletized inside this
+        // reaction and crashes the UI thread (same as staggered-card-number).
+        const baseSquares: number[][] = [];
+        for (let i = 0; i < GRID_SIZE; i++) {
+          baseSquares.push(new Array(GRID_SIZE).fill(0));
+        }
         if (!onUpdate) {
           return;
         }
