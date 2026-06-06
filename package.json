@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "main": "expo-router/entry",
   "reanimated": {
     "staticFeatureFlags": {
@@ -79,12 +79,14 @@
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.2",
+    "react-native-chessboard": "0.2.0",
     "react-native-fast-confetti": "^1.1.1",
     "react-native-gesture-handler": "~2.30.0",
     "react-native-ios-context-menu": "^3.2.1",
     "react-native-ios-utilities": "^5.2.0",
     "react-native-keyboard-controller": "1.20.7",
     "react-native-nitro-modules": "^0.35.5",
+    "react-native-pulsar": "^1.6.1",
     "react-native-qrcode-skia": "^0.3.1",
     "react-native-reanimated": "4.2.1",
     "react-native-redash": "^18.1.4",

@@ -39,6 +39,7 @@ import { CalendarDays } from './calendar-days';
 import { CardShaderReflections } from './card-shader-reflections';
 import { CheckboxInteractions } from './checkbox-interactions';
 import { CherryBlossomQRCode } from './cherry-blossom-qrcode';
+import { ChessboardGame } from './chessboard';
 import { CircularCarousel } from './circular-carousel';
 import { ClerkToast } from './clerk-toast';
 import { ClockTimePicker } from './clock-time-picker';
@@ -255,6 +256,7 @@ export const AnimationRegistry = {
   'github-terrain': GitHubTerrain,
   'cherry-blossom-qrcode': CherryBlossomQRCode,
   'art-gallery': ArtGallery,
+  chessboard: ChessboardGame,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -864,6 +866,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'ArtGallery',
     iconName: 'images-outline',
     hideDrawerIcon: true,
+  },
+  chessboard: {
+    name: 'Chessboard',
+    route: 'Chessboard',
+    iconName: 'grid-outline',
   },
 } as const;
 
