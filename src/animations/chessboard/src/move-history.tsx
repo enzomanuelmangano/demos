@@ -46,20 +46,20 @@ const MoveCell = memo<{ ply: number; san: string }>(({ ply, san }) => {
   // popping into the row.
   const mount = useSharedValue(0);
   useEffect(() => {
-    mount.value = withTiming(1, FADE);
+    mount.set(withTiming(1, FADE));
   }, [mount]);
   const mountStyle = useAnimatedStyle(() => ({
-    opacity: mount.value,
-    transform: [{ translateY: (1 - mount.value) * 3 }],
+    opacity: mount.get(),
+    transform: [{ translateY: (1 - mount.get()) * 3 }],
   }));
 
   // Plain colour fade dim↔bright (rgb constant, alpha ramps — no flicker).
   const sel = useSharedValue(selected ? 1 : 0);
   useEffect(() => {
-    sel.value = withTiming(selected ? 1 : 0, FADE);
+    sel.set(withTiming(selected ? 1 : 0, FADE));
   }, [selected, sel]);
   const textStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(sel.value, [0, 1], [SAN_DIM, theme.text]),
+    color: interpolateColor(sel.get(), [0, 1], [SAN_DIM, theme.text]),
   }));
 
   return (
@@ -98,26 +98,26 @@ const HighlightPill: React.FC = () => {
 
   useEffect(() => {
     if (!interacted || selectedPly < 0 || !frame) {
-      shown.value = withTiming(0, { duration: 120 });
-      ready.value = false;
+      shown.set(withTiming(0, { duration: 120 }));
+      ready.set(false);
       return;
     }
     // Snap into place on first appearance (fade the opacity in), then slide
     // between subsequent selections.
-    const animate = ready.value;
-    x.value = animate ? withTiming(frame.x, SPRING) : frame.x;
-    y.value = animate ? withTiming(frame.y, SPRING) : frame.y;
-    w.value = animate ? withTiming(frame.width, SPRING) : frame.width;
-    h.value = animate ? withTiming(frame.height, SPRING) : frame.height;
-    shown.value = withTiming(1, { duration: 220 });
-    ready.value = true;
+    const animate = ready.get();
+    x.set(animate ? withTiming(frame.x, SPRING) : frame.x);
+    y.set(animate ? withTiming(frame.y, SPRING) : frame.y);
+    w.set(animate ? withTiming(frame.width, SPRING) : frame.width);
+    h.set(animate ? withTiming(frame.height, SPRING) : frame.height);
+    shown.set(withTiming(1, { duration: 220 }));
+    ready.set(true);
   }, [interacted, selectedPly, frame, x, y, w, h, shown, ready]);
 
   const style = useAnimatedStyle(() => ({
-    opacity: shown.value,
-    width: w.value,
-    height: h.value,
-    transform: [{ translateX: x.value }, { translateY: y.value }],
+    opacity: shown.get(),
+    width: w.get(),
+    height: h.get(),
+    transform: [{ translateX: x.get() }, { translateY: y.get() }],
   }));
 
   return <Animated.View style={[styles.pill, style]} pointerEvents="none" />;
@@ -138,9 +138,9 @@ export const MoveHistory: React.FC = () => {
   const contentW = useSharedValue(0);
   const viewW = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler(e => {
-    offsetX.value = e.contentOffset.x;
-    contentW.value = e.contentSize.width;
-    viewW.value = e.layoutMeasurement.width;
+    offsetX.set(e.contentOffset.x);
+    contentW.set(e.contentSize.width);
+    viewW.set(e.layoutMeasurement.width);
   });
 
   // Cross-fade between the empty caption and the move row — no branch swap.
@@ -150,25 +150,25 @@ export const MoveHistory: React.FC = () => {
   const shown = useSharedValue(hasMoves ? 1 : 0);
   const emptyShown = useSharedValue(0);
   useEffect(() => {
-    shown.value = withTiming(hasMoves ? 1 : 0, FADE);
-    emptyShown.value = hasMoves
-      ? withTiming(0, FADE)
-      : withDelay(600, withTiming(1, FADE));
+    shown.set(withTiming(hasMoves ? 1 : 0, FADE));
+    emptyShown.set(
+      hasMoves ? withTiming(0, FADE) : withDelay(600, withTiming(1, FADE)),
+    );
   }, [hasMoves, shown, emptyShown]);
 
-  const listStyle = useAnimatedStyle(() => ({ opacity: shown.value }));
-  const emptyStyle = useAnimatedStyle(() => ({ opacity: emptyShown.value }));
+  const listStyle = useAnimatedStyle(() => ({ opacity: shown.get() }));
+  const emptyStyle = useAnimatedStyle(() => ({ opacity: emptyShown.get() }));
   // Fades ramp in over the first ~16px of hidden content on either side —
   // always mounted, opacity-only, gated by the list being visible at all.
   const leftFadeStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(1, Math.max(0, offsetX.value / 16)) * shown.value,
+    opacity: Math.min(1, Math.max(0, offsetX.get() / 16)) * shown.get(),
   }));
   const rightFadeStyle = useAnimatedStyle(() => ({
     opacity:
       Math.min(
         1,
-        Math.max(0, (contentW.value - viewW.value - offsetX.value) / 16),
-      ) * shown.value,
+        Math.max(0, (contentW.get() - viewW.get() - offsetX.get()) / 16),
+      ) * shown.get(),
   }));
 
   return (
@@ -187,13 +187,13 @@ export const MoveHistory: React.FC = () => {
           // moves don't change the content size, so scrubbing never fights
           // the user.
           onContentSizeChange={w => {
-            contentW.value = w;
-            if (w > viewW.value) {
+            contentW.set(w);
+            if (w > viewW.get()) {
               scrollRef.current?.scrollToEnd({ animated: true });
             }
           }}
           onLayout={(e: LayoutChangeEvent) => {
-            viewW.value = e.nativeEvent.layout.width;
+            viewW.set(e.nativeEvent.layout.width);
           }}>
           <HighlightPill />
           {moves.map((san, ply) => (

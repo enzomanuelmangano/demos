@@ -71,8 +71,8 @@ export const CheckmateAuraProvider: React.FC<{
   }, []);
 
   const maxRadius = useDerivedValue(() => {
-    const ox = origin.value.x;
-    const oy = origin.value.y;
+    const ox = origin.get().x;
+    const oy = origin.get().y;
     return (
       Math.max(
         Math.hypot(ox, oy),
@@ -85,16 +85,16 @@ export const CheckmateAuraProvider: React.FC<{
 
   const uniforms = useDerivedValue(() => ({
     u_res: [width, height],
-    u_origin: [origin.value.x, origin.value.y],
-    u_progress: progress.value,
-    u_maxRadius: maxRadius.value,
+    u_origin: [origin.get().x, origin.get().y],
+    u_progress: progress.get(),
+    u_maxRadius: maxRadius.get(),
     u_band: 64,
     u_amplitude: 50,
     u_chroma: 0.28,
     u_glowStrength: 0.55,
     u_wobble: 0.04,
     u_maxBlur: 24,
-    u_breath: breath.value,
+    u_breath: breath.get(),
     u_tint: 0.8,
     u_glow: GLOW,
     u_deep: DEEP,
@@ -102,15 +102,15 @@ export const CheckmateAuraProvider: React.FC<{
   }));
 
   const overlayStyle = useAnimatedStyle(() => ({
-    opacity: vis.value,
-    pointerEvents: vis.value > 0.5 ? 'auto' : 'none',
+    opacity: vis.get(),
+    pointerEvents: vis.get() > 0.5 ? 'auto' : 'none',
   }));
 
   // Container gates visibility + a real Gaussian blur that clears as the recap
   // reveals (RN `filter`, new arch). The stagger handles the per-section motion.
   const cardStyle = useAnimatedStyle(() => ({
-    opacity: vis.value,
-    filter: [{ blur: blurIn.value * 16 }],
+    opacity: vis.get(),
+    filter: [{ blur: blurIn.get() * 16 }],
   }));
 
   // Runs on the JS thread (via scheduleOnRN) once the overlay is fully hidden —
@@ -124,12 +124,12 @@ export const CheckmateAuraProvider: React.FC<{
 
   // Free the snapshot + card once fully hidden.
   useAnimatedReaction(
-    () => vis.value,
+    () => vis.get(),
     (v, prev) => {
       if (prev !== null && prev > 0.01 && v <= 0.01) {
-        snapshot.value = null;
-        progress.value = 0;
-        blurIn.value = 0;
+        snapshot.set(null);
+        progress.set(0);
+        blurIn.set(0);
         scheduleOnRN(clearCard);
       }
     },
@@ -139,7 +139,7 @@ export const CheckmateAuraProvider: React.FC<{
     async (opts: ShowOpts) => {
       if (busy.current) return;
       busy.current = true;
-      origin.value = { x: opts.x, y: opts.y };
+      origin.set({ x: opts.x, y: opts.y });
       // Snapshot the board content ONLY — not the root (which contains the Skia
       // Canvas). Capturing a view that holds a Canvas forces a synchronous
       // Canvas flush on iOS → a one-frame flicker.
@@ -148,8 +148,8 @@ export const CheckmateAuraProvider: React.FC<{
         busy.current = false;
         return;
       }
-      snapshot.value = image;
-      progress.value = 0;
+      snapshot.set(image);
+      progress.set(0);
       // Reveal on the NEXT frame: this gives the Canvas one frame to paint the
       // new SkImage (while the overlay is still invisible) so its texture is
       // uploaded to the GPU before we show it. Flipping vis in the same frame
@@ -159,20 +159,24 @@ export const CheckmateAuraProvider: React.FC<{
         if (!alive.current) return;
         // Overlay covers — at progress 0 it is identical to the live board
         // (invisible cut), then the wave sweeps the blur across it.
-        vis.value = 1;
+        vis.set(1);
         // Linear time — the drama lives in the dome's expansion SHAPE (an
         // ease-out shockwave, in the shader), not in the global clock. So the
         // gather/flash pace evenly while the dome still detonates.
-        progress.value = withTiming(1, {
-          duration: WAVE_MS,
-          easing: Easing.linear,
-        });
+        progress.set(
+          withTiming(1, { duration: WAVE_MS, easing: Easing.linear }),
+        );
         // Slow breathing for the settled glow — shared value + withRepeat.
-        breath.value = 0;
-        breath.value = withRepeat(
-          withTiming(1, { duration: 4200, easing: Easing.inOut(Easing.ease) }),
-          -1,
-          true,
+        breath.set(0);
+        breath.set(
+          withRepeat(
+            withTiming(1, {
+              duration: 4200,
+              easing: Easing.inOut(Easing.ease),
+            }),
+            -1,
+            true,
+          ),
         );
       });
       // Mount the recap once the wave has swept the board — it cascades in
@@ -182,11 +186,10 @@ export const CheckmateAuraProvider: React.FC<{
           cardTimer.current = null;
           if (!alive.current) return;
           setCard(opts);
-          blurIn.value = 1;
-          blurIn.value = withTiming(0, {
-            duration: 650,
-            easing: Easing.out(Easing.cubic),
-          });
+          blurIn.set(1);
+          blurIn.set(
+            withTiming(0, { duration: 650, easing: Easing.out(Easing.cubic) }),
+          );
         },
         Math.round(WAVE_MS * 0.55) - 750,
       );
@@ -195,10 +198,9 @@ export const CheckmateAuraProvider: React.FC<{
   );
 
   const hide = useCallback(() => {
-    vis.value = withTiming(0, {
-      duration: EXIT_MS,
-      easing: Easing.in(Easing.cubic),
-    });
+    vis.set(
+      withTiming(0, { duration: EXIT_MS, easing: Easing.in(Easing.cubic) }),
+    );
   }, [vis]);
 
   const api = useMemo(() => ({ show, hide }), [show, hide]);
