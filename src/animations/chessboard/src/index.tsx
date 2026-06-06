@@ -90,7 +90,7 @@ function GameScreen() {
   // driving a torn-down tree.
   const alive = useRef(true);
   const auraTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { show } = useCheckmateAura();
+  const { show, hide } = useCheckmateAura();
 
   const setPlies = useSetAtom(pliesAtom);
   const setSelectedPly = useSetAtom(selectedPlyAtom);
@@ -106,32 +106,44 @@ function GameScreen() {
   const boardSize = width;
   const pieceSize = boardSize / 8;
 
+  // Bumping the generation cancels any in-flight replay: the loop re-checks it
+  // after every await and bails when it no longer matches.
+  const replayGen = useRef(0);
+
   const playSequence = useCallback(async () => {
     if (runningRef.current) return;
+    const gen = ++replayGen.current;
     runningRef.current = true;
     setRunning(true);
     ref.current?.resetBoard();
     resetGame();
     await delay(300);
     for (const [from, to] of FATAL_ATTRACTION) {
-      if (!alive.current) return;
+      if (!alive.current || replayGen.current !== gen) return;
       await ref.current?.move({ from: from as any, to: to as any });
+      if (!alive.current || replayGen.current !== gen) return;
       await delay(260);
     }
+    if (replayGen.current !== gen) return;
     runningRef.current = false;
     setRunning(false);
   }, [resetGame, setRunning]);
 
-  // Rematch: reset to a fresh, playable board — no canned replay.
+  // Rematch: cancel whatever is in flight (replay, pending aura) and reset to
+  // a fresh, playable board.
   const rematch = useCallback(() => {
-    if (runningRef.current) return;
+    replayGen.current++;
+    runningRef.current = false;
+    setRunning(false);
+    if (auraTimer.current != null) clearTimeout(auraTimer.current);
+    hide();
     ref.current?.resetBoard();
     resetGame();
-  }, [resetGame]);
+  }, [resetGame, setRunning, hide]);
 
-  // New Game: confirm before clearing the current board (native alert).
+  // New Game: confirm before clearing the current board (native alert). Works
+  // mid-replay too — confirming aborts the replay and resets.
   const confirmNewGame = useCallback(() => {
-    if (runningRef.current) return;
     Alert.alert(
       'New Game?',
       'This clears the current board and starts fresh.',
