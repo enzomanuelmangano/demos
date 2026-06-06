@@ -50,6 +50,6 @@ export const withAlpha = (hex: string, alpha: number): string =>
 // Profile photos — one per side. Bundled locally so the demo renders fully
 // offline (no runtime dependency on a third-party image host).
 export const avatar = {
-  w: require('../assets/avatar-w.jpg'),
-  b: require('../assets/avatar-b.jpg'),
+  w: require('../assets/avatar-magnus.jpg'),
+  b: require('../assets/avatar-enzo.jpg'),
 } as const;

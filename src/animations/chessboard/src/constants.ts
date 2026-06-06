@@ -6,9 +6,9 @@ import type { ImageSourcePropType } from 'react-native';
 export const START_FEN =
   'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-export const PLAYERS: Record<Side, { name: string; rating: number }> = {
-  b: { name: 'magnus', rating: 2218 },
-  w: { name: 'enzo', rating: 2190 },
+export const PLAYERS: Record<Side, { name: string; rating: string }> = {
+  b: { name: 'enzo', rating: '???' },
+  w: { name: 'magnus', rating: '2841' },
 };
 
 export const CLOCKS: Record<Side, string> = { w: '3:09', b: '2:46' };

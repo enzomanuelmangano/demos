@@ -10,6 +10,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { PLAYERS } from '../constants';
 import { avatar, quality, theme } from '../theme';
 
 import type { Quality, ShowOpts } from '../types';
@@ -93,7 +94,7 @@ export const GameReviewCard: React.FC<{
       {/* Player names */}
       <Animated.View entering={enter(55)} style={styles.hRow}>
         <View style={styles.hLabel} />
-        <Text style={styles.hName}>enzo</Text>
+        <Text style={styles.hName}>{PLAYERS.w.name}</Text>
         <View style={styles.iconCol} />
         <Text style={styles.hName} numberOfLines={1}>
           {card.oppName}
