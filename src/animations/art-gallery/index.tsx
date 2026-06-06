@@ -230,7 +230,6 @@ export function ArtGallery() {
   const savedTranslateY = useSharedValue(0);
 
   // Animation progress for painting transitions (1 = old positions, 0 = new positions)
-  const animProgress = useSharedValue(0);
 
   // Grid mode state (UI thread only - no React state sync)
   const currentRow = useSharedValue(-1);
@@ -316,7 +315,6 @@ export function ArtGallery() {
     scale,
     translateX,
     translateY,
-    animProgress,
     currentRow,
     currentCol,
   });
