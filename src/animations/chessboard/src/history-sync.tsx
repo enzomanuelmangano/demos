@@ -36,6 +36,7 @@ export const HistorySync: React.FC<{
       // its own animation and just advanced the selection — don't re-drive it.
       if (grew) return;
       if (to === from) return;
+      if (to >= plies.length) return; // selection points past the game
 
       // Highlight the move that produced the target position (canonical review
       // highlight), regardless of which way we stepped.
@@ -46,11 +47,14 @@ export const HistorySync: React.FC<{
 
       // Slide the piece that physically changed squares between the two
       // positions — forward plays the target move, backward reverses the move
-      // we're leaving. Only single-ply steps animate; bigger jumps snap.
+      // we're leaving. Only single-ply steps animate; bigger jumps snap. Both
+      // sides bounds-check against the CURRENT plies: on a reset the list is
+      // already empty when the selection snaps back to -1, so `from` may point
+      // at a ply that no longer exists.
       let slide: { from: Square; to: Square } | undefined;
       if (to === from + 1 && to >= 0) {
         slide = { from: plies[to].from as Square, to: plies[to].to as Square };
-      } else if (to === from - 1 && from >= 0) {
+      } else if (to === from - 1 && from >= 0 && from < plies.length) {
         slide = {
           from: plies[from].to as Square,
           to: plies[from].from as Square,
