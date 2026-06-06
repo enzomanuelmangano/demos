@@ -137,6 +137,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     './plugins/with-skia-webgpu-fix',
     './plugins/with-nitro-autolinking',
   ],
+  experiments: {
+    // React Compiler (babel-plugin-react-compiler) — automatic memoization.
+    reactCompiler: true,
+  },
   extra: {
     eas: {
       projectId: 'eb1bbf17-5fb9-4743-bccf-3fbcbc95176a',
