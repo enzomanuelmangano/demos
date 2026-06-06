@@ -19,7 +19,7 @@ const withSkiaWebGPUFix = config => {
       }
 
       const skiaWebGPUFix = `
-    # Fix duplicate WebGPUView symbol between react-native-skia and react-native-wgpu
+    # Fix duplicate WebGPUView symbol between react-native-skia and react-native-webgpu
     # Remove WebGPUView source files from react-native-skia since SK_GRAPHITE isn't enabled
     installer.pods_project.targets.each do |target|
       if target.name == 'react-native-skia'
@@ -33,6 +33,17 @@ const withSkiaWebGPUFix = config => {
         end
         files_to_remove.each { |f| target.source_build_phase.remove_file_reference(f.file_ref) }
       end
+    end
+
+    # Drop the codegen entry for skia's removed WebGPUView: RN 0.85's generated
+    # RCTThirdPartyComponentsProvider lists every codegen'd component, and a nil
+    # class (its sources were removed above) crashes the Fabric components
+    # dictionary at startup.
+    provider_path = File.join(installer.sandbox.root.parent.to_s, 'build', 'generated', 'ios', 'ReactCodegen', 'RCTThirdPartyComponentsProvider.mm')
+    if File.exist?(provider_path)
+      provider = File.read(provider_path)
+      patched = provider.gsub(/^\\s*@"SkiaWebGPUView":.*\\n/, '')
+      File.write(provider_path, patched) if patched != provider
     end
   end
 end`;
