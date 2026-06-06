@@ -24,25 +24,25 @@ const { width, height } = Dimensions.get('window');
 export const TimeMachineListItem = memo(
   ({ progress, index, activeIndex, target }: TimeMachineListItemProps) => {
     const itemOpacity = useDerivedValue(() => {
-      if (activeIndex.value === index) {
+      if (activeIndex.get() === index) {
         return 1;
       }
 
-      return progress.value ** 3;
+      return progress.get() ** 3;
     }, [activeIndex, index]);
 
     const rStyle = useAnimatedStyle(() => {
       return {
         width: width,
         height: height,
-        opacity: itemOpacity.value,
-        pointerEvents: progress.value > 0.1 ? 'none' : 'auto',
+        opacity: itemOpacity.get(),
+        pointerEvents: progress.get() > 0.1 ? 'none' : 'auto',
         transform: [
           {
-            scale: interpolate(progress.value, [0, 1], [1, 0.7]),
+            scale: interpolate(progress.get(), [0, 1], [1, 0.7]),
           },
           {
-            translateX: interpolate(progress.value, [0, 1], [0, -30]),
+            translateX: interpolate(progress.get(), [0, 1], [0, -30]),
           },
         ],
       };

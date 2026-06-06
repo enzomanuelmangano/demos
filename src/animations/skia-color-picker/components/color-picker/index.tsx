@@ -65,10 +65,10 @@ const ColorPicker: FC<ColorPickerProps> = ({
   const pickerTransform = useDerivedValue(() => {
     return [
       {
-        translateX: pickerX.value - pickerBounds.width / 2,
+        translateX: pickerX.get() - pickerBounds.width / 2,
       },
       {
-        translateY: pickerY.value - pickerBounds.height,
+        translateY: pickerY.get() - pickerBounds.height,
       },
     ];
   }, [pickerBounds]);
@@ -82,8 +82,8 @@ const ColorPicker: FC<ColorPickerProps> = ({
       centerY: center.y,
       radius: maxColorPickerSize / 2,
     });
-    pickerX.value = clamped.x;
-    pickerY.value = clamped.y;
+    pickerX.set(clamped.x);
+    pickerY.set(clamped.y);
   };
 
   const gesture = Gesture.Pan()
@@ -98,10 +98,10 @@ const ColorPicker: FC<ColorPickerProps> = ({
   // Compute the RGBA color value based on the picker's current position on the canvas
   const rgba = useDerivedValue(() => {
     // Calculate the horizontal distance (dx) between the current picker position and the center of the canvas.
-    const dx = pickerX.value - center.x;
+    const dx = pickerX.get() - center.x;
 
     // Calculate the vertical distance (dy) between the current picker position and the center of the canvas.
-    const dy = pickerY.value - center.y;
+    const dy = pickerY.get() - center.y;
 
     // Determine the hue (color shade) based on the picker's position relative to the canvas's center.
     // This function likely converts the picker's polar coordinates to a hue value.
@@ -130,7 +130,7 @@ const ColorPicker: FC<ColorPickerProps> = ({
 
   // Effect to update the color value
   useAnimatedReaction(
-    () => rgba.value,
+    () => rgba.get(),
     color => {
       if (onColorUpdate) {
         scheduleOnRN(onColorUpdate, color);

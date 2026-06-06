@@ -42,11 +42,11 @@ const App = () => {
   const drawPathWrapper = useCallback(
     (svgString: string) => {
       const newPath = Skia.Path.MakeFromSVGString(svgString)!;
-      isDrawing.value = true;
+      isDrawing.set(true);
       ref.current?.draw({
         path: newPath,
         onComplete: () => {
-          isDrawing.value = false;
+          isDrawing.set(false);
         },
       });
     },
@@ -60,28 +60,28 @@ const App = () => {
   const panGesture = Gesture.Pan()
     .onStart(({ x, y }) => {
       scheduleOnRN(clear);
-      isDrawing.value = false;
-      opacity.value = withTiming(1);
+      isDrawing.set(false);
+      opacity.set(withTiming(1));
       const builder = Skia.PathBuilder.Make();
       builder.moveTo(x, y);
       builder.lineTo(x, y);
-      drawPath.value = builder.build();
+      drawPath.set(builder.build());
     })
     .onChange(({ x, y }) => {
-      const builder = Skia.PathBuilder.MakeFromPath(drawPath.value);
+      const builder = Skia.PathBuilder.MakeFromPath(drawPath.get());
       builder.lineTo(x, y);
-      drawPath.value = builder.build();
+      drawPath.set(builder.build());
     })
     .onEnd(() => {
-      opacity.value = withTiming(0);
-      const svgString = drawPath.value.toSVGString();
+      opacity.set(withTiming(0));
+      const svgString = drawPath.get().toSVGString();
       scheduleOnRN(drawPathWrapper, svgString);
     });
 
   const rClearButton = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(isDrawing.value ? 1 : 0),
-      bottom: withSpring(isDrawing.value ? 65 : 0),
+      opacity: withTiming(isDrawing.get() ? 1 : 0),
+      bottom: withSpring(isDrawing.get() ? 65 : 0),
     };
   });
 
@@ -110,7 +110,7 @@ const App = () => {
       <PressableScale
         style={[styles.clearButton, rClearButton]}
         onPress={() => {
-          isDrawing.value = false;
+          isDrawing.set(false);
           ref.current?.clear();
         }}>
         <MaterialIcons name="clear" size={24} color="white" />

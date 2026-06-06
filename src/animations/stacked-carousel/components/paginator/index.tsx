@@ -39,7 +39,7 @@ export const Paginator: FC<PaginatorProps> = memo(
     const dots = useMemo(() => new Array(pagesAmount).fill(0), [pagesAmount]);
 
     const visibleDotsIndices = useDerivedValue(() => {
-      const currentIndex = Math.round(currentPageIndex.value);
+      const currentIndex = Math.round(currentPageIndex.get());
       const halfVisible = Math.floor(visibleDots / 2);
       let start = Math.max(currentIndex - halfVisible, 0);
       const end = Math.min(start + visibleDots, pagesAmount);
@@ -52,7 +52,7 @@ export const Paginator: FC<PaginatorProps> = memo(
     });
 
     const containerAnimatedStyle = useAnimatedStyle(() => {
-      const { currentIndex } = visibleDotsIndices.value;
+      const { currentIndex } = visibleDotsIndices.get();
       const dotFullWidth = dotSize * 2.5; // Maximum width of an active dot
       const regularDotWidth = dotSize;
       const totalSpacing = spacing * (pagesAmount - 1);
@@ -116,16 +116,16 @@ const AnimatedDot = memo(
   }: AnimatedDotProps) => {
     const isVisible = useDerivedValue(() => {
       return (
-        index >= visibleDotsIndices.value.start &&
-        index < visibleDotsIndices.value.end
+        index >= visibleDotsIndices.get().start &&
+        index < visibleDotsIndices.get().end
       );
     });
 
     const visibility = useDerivedValue(() => {
-      const isActive = currentPageIndex.value === index;
+      const isActive = currentPageIndex.get() === index;
 
       // eslint-disable-next-line no-nested-ternary
-      const opacity = isActive ? 1 : isVisible.value ? 0.75 : 0;
+      const opacity = isActive ? 1 : isVisible.get() ? 0.75 : 0;
 
       return withTiming(opacity, {
         duration: 500,
@@ -135,11 +135,11 @@ const AnimatedDot = memo(
 
     const rContainerStyle = useAnimatedStyle(() => {
       const scale = withSpring(
-        currentPageIndex.value !== index ? 0.75 : 1,
+        currentPageIndex.get() !== index ? 0.75 : 1,
         SpringConfig,
       );
       return {
-        opacity: visibility.value,
+        opacity: visibility.get(),
         marginRight: spacing,
         transform: [{ scale }],
       };

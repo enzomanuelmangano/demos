@@ -43,7 +43,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 
   const animatedProps = useAnimatedProps(() => {
     return {
-      value: sliderProgress.value,
+      value: sliderProgress.get(),
     };
   }, []);
 

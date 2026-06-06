@@ -33,17 +33,17 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
   const viewRef = useAnimatedRef<Reanimated.View>();
 
   const reanimatedProgressValue = useDerivedValue(() => {
-    return animationProgress.value;
+    return animationProgress.get();
   });
 
   const isInvisible = useDerivedValue(() => {
     return (
-      reanimatedProgressValue.value > 0 && reanimatedProgressValue.value < 1
+      reanimatedProgressValue.get() > 0 && reanimatedProgressValue.get() < 1
     );
   });
 
   const rAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = isInvisible.value ? 0 : 1;
+    const opacity = isInvisible.get() ? 0 : 1;
     return {
       opacity,
     };
@@ -68,7 +68,7 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
     return {
       transform: [
         {
-          scale: withSpring(scale.value),
+          scale: withSpring(scale.get()),
         },
       ],
     };
@@ -76,7 +76,7 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
 
   const animatedProps = useAnimatedProps(() => {
     return {
-      progress: animationProgress.value,
+      progress: animationProgress.get(),
     };
   });
 

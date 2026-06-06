@@ -34,12 +34,12 @@ export const CherryBlossomQRCode = () => {
   useKeyboardHandler({
     onMove: e => {
       'worklet';
-      keyboardHeight.value = e.height;
+      keyboardHeight.set(e.height);
     },
   });
 
   const canvasWrapperStyle = useAnimatedStyle(() => ({
-    marginBottom: keyboardHeight.value,
+    marginBottom: keyboardHeight.get(),
   }));
 
   // Lift the input above the keyboard from the same shared value. This used
@@ -47,7 +47,7 @@ export const CherryBlossomQRCode = () => {
   // new architecture (kirillzyusko/react-native-keyboard-controller#1411) —
   // the input stayed hidden behind the keyboard.
   const inputContainerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: -keyboardHeight.value }],
+    transform: [{ translateY: -keyboardHeight.get() }],
   }));
 
   // Initialize WebGPU rendering

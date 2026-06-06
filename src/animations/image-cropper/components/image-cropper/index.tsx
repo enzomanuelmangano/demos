@@ -60,18 +60,18 @@ const ImageCropper = forwardRef<ImageCropperRef, ImageCropperProps>(
     useImperativeHandle(ref, () => ({
       expand: () => {
         'worklet';
-        x.value = withTiming(0, TimingConfig);
-        y.value = withTiming(0, TimingConfig);
-        gridWidth.value = withTiming(width, TimingConfig);
-        gridHeight.value = withTiming(height, TimingConfig);
+        x.set(withTiming(0, TimingConfig));
+        y.set(withTiming(0, TimingConfig));
+        gridWidth.set(withTiming(width, TimingConfig));
+        gridHeight.set(withTiming(height, TimingConfig));
       },
       collapse: () => {
         'worklet';
-        gridWidth.value = withTiming(minWidth, TimingConfig);
-        gridHeight.value = withTiming(minHeight, TimingConfig);
+        gridWidth.set(withTiming(minWidth, TimingConfig));
+        gridHeight.set(withTiming(minHeight, TimingConfig));
       },
       getGridRect: () => {
-        return rect(x.value, y.value, gridWidth.value, gridHeight.value);
+        return rect(x.get(), y.get(), gridWidth.get(), gridHeight.get());
       },
     }));
 

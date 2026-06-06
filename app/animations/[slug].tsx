@@ -51,7 +51,7 @@ export default function AnimationScreen() {
   }, []);
 
   useAnimatedReaction(
-    () => rDrawerProgress.value,
+    () => rDrawerProgress.get(),
     (value, prevValue) => {
       if (value < 0.5 && prevValue && prevValue !== value && prevValue > 0.5) {
         scheduleOnRN(dismissKeyboard);
@@ -65,7 +65,7 @@ export default function AnimationScreen() {
   // intensity static and fade the whole blur layer with native opacity
   // instead — visually equivalent for this overlay.
   const rBlurStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(rDrawerProgress.value, [0, 1], [0, 1]),
+    opacity: interpolate(rDrawerProgress.get(), [0, 1], [0, 1]),
   }));
 
   const { top: safeTop } = useSafeAreaInsets();
@@ -80,11 +80,11 @@ export default function AnimationScreen() {
   const rDrawerIconStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
-        rDrawerProgress.value,
+        rDrawerProgress.get(),
         [0, 0.5, 1],
         [
-          0.5 * rHideDrawerIconProgress.value,
-          1 * rHideDrawerIconProgress.value,
+          0.5 * rHideDrawerIconProgress.get(),
+          1 * rHideDrawerIconProgress.get(),
           0,
         ],
       ),

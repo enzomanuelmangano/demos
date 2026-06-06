@@ -39,35 +39,39 @@ const AddToCart = () => {
   const onTap = useCallback(
     ({ index, layout }: { index: number; layout: MeasuredDimensions }) => {
       cancelAnimation(animationProgress);
-      animationProgress.value = 0;
-      layoutData.value = { ...layout };
-      selectedIndex.value = index;
-      animationProgress.value = withSpring(1, {
-        dampingRatio: 1,
-        duration: 500,
-      });
+      animationProgress.set(0);
+      layoutData.set({ ...layout });
+      selectedIndex.set(index);
+      animationProgress.set(
+        withSpring(1, {
+          dampingRatio: 1,
+          duration: 500,
+        }),
+      );
     },
     [animationProgress, layoutData, selectedIndex],
   );
 
   const onDismiss = useCallback(() => {
-    animationProgress.value = withSpring(
-      0,
-      {
-        dampingRatio: 1,
-        duration: 500,
-      },
-      hasCompleted => {
-        if (hasCompleted) {
-          layoutData.value = null;
-          selectedIndex.value = null;
-        }
-      },
+    animationProgress.set(
+      withSpring(
+        0,
+        {
+          dampingRatio: 1,
+          duration: 500,
+        },
+        hasCompleted => {
+          if (hasCompleted) {
+            layoutData.set(null);
+            selectedIndex.set(null);
+          }
+        },
+      ),
     );
   }, [animationProgress, layoutData, selectedIndex]);
 
   const onConfirm = useCallback(() => {
-    const index = selectedIndex.value;
+    const index = selectedIndex.get();
     if (index === null) {
       return;
     }
@@ -83,18 +87,18 @@ const AddToCart = () => {
       });
     });
     onDismiss();
-  }, [onDismiss, selectedIndex.value]);
+  }, [onDismiss, selectedIndex.get()]);
 
   const rConfirmTextStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
-        animationProgress.value,
+        animationProgress.get(),
         [0.5, 1],
         [0, 1],
         Extrapolation.CLAMP,
       ),
       flex: interpolate(
-        animationProgress.value,
+        animationProgress.get(),
         [0, 1],
         [0, 4],
         Extrapolation.CLAMP,

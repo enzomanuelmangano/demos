@@ -24,7 +24,7 @@ function RadarChart<K extends string>({
 
   const dotStrokeWidth = strokeWidth * 4;
   const radius = useDerivedValue(
-    () => Math.min(centerX.value, centerY.value) * 0.82 - dotStrokeWidth / 2,
+    () => Math.min(centerX.get(), centerY.get()) * 0.82 - dotStrokeWidth / 2,
     [centerX, centerY, dotStrokeWidth],
   );
 
@@ -33,9 +33,9 @@ function RadarChart<K extends string>({
       'worklet';
       return getScaledPolygonPath({
         values: pathValues,
-        centerX: centerX.value,
-        centerY: centerY.value,
-        radius: radius.value,
+        centerX: centerX.get(),
+        centerY: centerY.get(),
+        radius: radius.get(),
       });
     },
     [centerX, centerY, radius],
@@ -70,15 +70,15 @@ function RadarChart<K extends string>({
 
   // Radar Paths
   const internalPaths = useDerivedValue(() => {
-    return allValues.value.map((values: number[]) => getPolygonPath(values));
+    return allValues.get().map((values: number[]) => getPolygonPath(values));
   }, [centerX, centerY, radius, allValues]);
 
   const internalPoints = useDerivedValue(() => {
-    return allValues.value.map((values: number[]) => {
+    return allValues.get().map((values: number[]) => {
       return values.map((value: number, index: number) => {
         const angle = index * ((2 * Math.PI) / values.length);
-        const pointX = centerX.value + Math.sin(angle) * radius.value * value;
-        const pointY = centerY.value - Math.cos(angle) * radius.value * value;
+        const pointX = centerX.get() + Math.sin(angle) * radius.get() * value;
+        const pointY = centerY.get() - Math.cos(angle) * radius.get() * value;
         return { x: pointX, y: pointY };
       });
     });
@@ -88,14 +88,14 @@ function RadarChart<K extends string>({
 
   const textSkills = useMemo(() => {
     const isSharedValue = typeof data === 'object' && 'value' in data;
-    const dataArray = isSharedValue ? data.value : (data as RadarDataType<K>);
+    const dataArray = isSharedValue ? data.get() : (data as RadarDataType<K>);
     return Object.keys(dataArray[0]?.values ?? {});
   }, [data]);
 
   const transformOrigin = useDerivedValue(() => {
     return {
-      x: centerX.value,
-      y: centerY.value,
+      x: centerX.get(),
+      y: centerY.get(),
     };
   }, [centerX, centerY]);
 
@@ -113,7 +113,7 @@ function RadarChart<K extends string>({
         {layerIntensities.map((_, index) => {
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const path = useDerivedValue(() => {
-            return pathByIntensity.value[index];
+            return pathByIntensity.get()[index];
           }, [pathByIntensity, index]);
 
           return (
@@ -134,7 +134,7 @@ function RadarChart<K extends string>({
             if (!font) {
               return 0;
             }
-            return centerX.value - font.measureText(item).width / 2;
+            return centerX.get() - font.measureText(item).width / 2;
           }, [centerX, font]);
           return (
             <Group
@@ -159,15 +159,15 @@ function RadarChart<K extends string>({
           );
         })}
 
-        {allValues.value.map((_: number[], index: number) => {
+        {allValues.get().map((_: number[], index: number) => {
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const internalPath = useDerivedValue(() => {
-            return internalPaths.value[index];
+            return internalPaths.get()[index];
           }, [internalPaths, index]);
 
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const internalPointsData = useDerivedValue(() => {
-            return internalPoints.value[index];
+            return internalPoints.get()[index];
           }, [internalPoints, index]);
 
           const isSharedValue = typeof data === 'object' && 'value' in data;
@@ -178,7 +178,7 @@ function RadarChart<K extends string>({
                     RadarDataType<K>
                   >
                 >
-              ).value
+              ).get()
             : (data as RadarDataType<K>);
           const pathColor = dataArray[index].color;
           const pathStrokeColor = Color(pathColor).darken(0.1).hex();

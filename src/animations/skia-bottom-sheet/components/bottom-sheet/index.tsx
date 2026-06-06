@@ -58,8 +58,8 @@ const BottomSheet: FC<BottomSheetProps> = memo(
     // Set up a clamped translateY value that is bound by the minimum and maximum values
     const clampedTranslateY = useDerivedValue(() => {
       return Math.max(
-        translateY.value,
-        -(size.value.height - cardInitialOffset),
+        translateY.get(),
+        -(size.get().height - cardInitialOffset),
       );
     }, [translateY, size]);
 
@@ -73,9 +73,9 @@ const BottomSheet: FC<BottomSheetProps> = memo(
         rrect(
           rect(
             0,
-            size.value.height - cardInitialOffset + clampedTranslateY.value,
-            size.value.width,
-            size.value.height,
+            size.get().height - cardInitialOffset + clampedTranslateY.get(),
+            size.get().width,
+            size.get().height,
           ),
           cardRadius,
           cardRadius,
@@ -93,19 +93,19 @@ const BottomSheet: FC<BottomSheetProps> = memo(
       // Set the initial context value of y to the current clampedTranslateY
       onStart: _ => {
         'worklet';
-        context.value.y = clampedTranslateY.value;
+        context.get().y = clampedTranslateY.get();
       },
       // Update the translateY value based on the gesture's translation
       onActive: event => {
         'worklet';
-        translateY.value = event.translationY + context.value.y;
+        translateY.set(event.translationY + context.get().y);
       },
       // Determine if the sheet should snap to open or closed based on its current position
       onEnd: () => {
         'worklet';
         // Here we need to consider the initial offset of the card
         const currentTranslation =
-          Math.abs(translateY.value) + cardInitialOffset;
+          Math.abs(translateY.get()) + cardInitialOffset;
 
         // Feel free to choose your own thresholds
         const snapThreshold = height / 3;
@@ -113,22 +113,22 @@ const BottomSheet: FC<BottomSheetProps> = memo(
         const closedCard = 0;
 
         if (currentTranslation > snapThreshold) {
-          translateY.value = withSpring(openedCard);
+          translateY.set(withSpring(openedCard));
           return;
         }
-        translateY.value = withSpring(closedCard);
+        translateY.set(withSpring(closedCard));
       },
     });
 
     // Calculate the y position of the "sheet handle"
     const y = useDerivedValue(() => {
       return (
-        size.value.height - cardInitialOffset + clampedTranslateY.value + 10 // some padding
+        size.get().height - cardInitialOffset + clampedTranslateY.get() + 10 // some padding
       );
     }, [size, clampedTranslateY]);
 
     const x = useDerivedValue(() => {
-      return size.value.width / 2 - SHEET_HANDLE_WIDTH / 2;
+      return size.get().width / 2 - SHEET_HANDLE_WIDTH / 2;
     }, [size]);
 
     return (

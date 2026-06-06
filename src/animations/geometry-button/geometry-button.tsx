@@ -33,18 +33,18 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
     const tapGesture = Gesture.Tap()
       .maxDuration(20000)
       .onBegin(() => {
-        isActive.value = true;
+        isActive.set(true);
         scheduleOnRN(Haptics.impactAsync, Haptics.ImpactFeedbackStyle.Heavy);
       })
       .onTouchesUp(() => {
         if (onPress) scheduleOnRN(onPress);
       })
       .onFinalize(() => {
-        isActive.value = false;
+        isActive.set(false);
       });
 
     const progress = useDerivedValue(() => {
-      return withSpring(isActive.value ? 1 : 0, {
+      return withSpring(isActive.get() ? 1 : 0, {
         duration: 600,
         dampingRatio: 1,
       });
@@ -56,7 +56,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
       // When progress is 0, stroke width is 3
       // When progress is 0.5, stroke width is 0.6
       // When progress is 1, stroke width is 0.2
-      return interpolate(progress.value, [0, 0.5, 1], [3, 0.6, 0.2]);
+      return interpolate(progress.get(), [0, 0.5, 1], [3, 0.6, 0.2]);
     }, []);
 
     const radius = size / 2;
@@ -85,9 +85,9 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
         circle.transform(
           Skia.Matrix().translate(
             // Translate the circle along the x-axis based on the progress value and the cosine of the rotation angle
-            radius * Math.cos(rotation) * progress.value,
+            radius * Math.cos(rotation) * progress.get(),
             // Translate the circle along the y-axis based on the progress value and the sine of the rotation angle
-            radius * Math.sin(rotation) * progress.value,
+            radius * Math.sin(rotation) * progress.get(),
           ),
         );
 
@@ -97,7 +97,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
 
       // Return the main path containing all the animated circles
       return builder.build();
-    }, [progress.value, size]);
+    }, [progress.get(), size]);
 
     const canvasSize = size * 2;
     const baseStyle = useMemo(() => {
@@ -132,7 +132,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
       return {
         transform: [
           {
-            scale: withSpring(isActive.value ? 1 : 0.5),
+            scale: withSpring(isActive.get() ? 1 : 0.5),
           },
         ],
       };

@@ -55,24 +55,24 @@ const PopupHandler = () => {
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      context.value = {
-        x: translateX.value,
-        y: translateY.value,
-      };
+      context.set({
+        x: translateX.get(),
+        y: translateY.get(),
+      });
     })
     .onUpdate(event => {
-      translateX.value = event.translationX + context.value.x;
-      translateY.value = event.translationY + context.value.y;
+      translateX.set(event.translationX + context.get().x);
+      translateY.set(event.translationY + context.get().y);
     });
 
   const rStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
         {
-          translateY: translateY.value,
+          translateY: translateY.get(),
         },
       ],
     };
@@ -112,7 +112,7 @@ const PopupHandler = () => {
       ),
       onPress: () => {
         setTimeout(() => {
-          selectedAngle.value = angle;
+          selectedAngle.set(angle);
         }, 800);
       },
     }));
@@ -120,7 +120,7 @@ const PopupHandler = () => {
 
   useAnimatedReaction(
     () => {
-      return selectedAngle.value;
+      return selectedAngle.get();
     },
     angle => {
       if (angle == null) {
@@ -130,8 +130,8 @@ const PopupHandler = () => {
         ? width - internalPadding
         : internalPadding;
       const y = angle.includes('bottom') ? height - size : internalPadding * 2;
-      translateX.value = withSpring(x);
-      translateY.value = withSpring(y);
+      translateX.set(withSpring(x));
+      translateY.set(withSpring(y));
     },
   );
 

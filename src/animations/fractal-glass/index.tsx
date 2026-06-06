@@ -46,12 +46,12 @@ const App = () => {
 
   const panGesture = Gesture.Pan()
     .onBegin(() => {
-      prevCx.value = cx.value;
-      prevCy.value = cy.value;
+      prevCx.set(cx.get());
+      prevCy.set(cy.get());
     })
     .onUpdate(event => {
-      cx.value = prevCx.value + event.translationX;
-      cy.value = prevCy.value + event.translationY;
+      cx.set(prevCx.get() + event.translationX);
+      cy.set(prevCy.get() + event.translationY);
     });
 
   const rBackgroundStyle = useAnimatedStyle(() => {
@@ -66,14 +66,14 @@ const App = () => {
 
   const rFloatingBackgroundStyle = useAnimatedStyle(() => {
     return {
-      backgroundColor: circleColor.value,
+      backgroundColor: circleColor.get(),
     };
   }, [theme]);
 
   const rFakeCircleStyle = useAnimatedStyle(() => {
     return {
-      left: cx.value - CircleRadius,
-      top: cy.value - CircleRadius,
+      left: cx.get() - CircleRadius,
+      top: cy.get() - CircleRadius,
     };
   }, []);
 

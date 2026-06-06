@@ -59,12 +59,14 @@ const StackedToast: React.FC<StackedToastProps> = ({
   // right bottom value.
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
-    bottom.value = withSpring(BaseSafeArea + bottomHeight, {
-      mass: 1,
-      damping: 100,
-      stiffness: 80,
-      overshootClamping: false,
-    });
+    bottom.set(
+      withSpring(BaseSafeArea + bottomHeight, {
+        mass: 1,
+        damping: 100,
+        stiffness: 80,
+        overshootClamping: false,
+      }),
+    );
   }, [bottom, bottomHeight]);
 
   const translateX = useSharedValue(0);
@@ -72,43 +74,45 @@ const StackedToast: React.FC<StackedToastProps> = ({
 
   const dismissItem = useCallback(() => {
     'worklet';
-    translateX.value = withSpring(
-      -windowWidth,
-      {
-        dampingRatio: 1,
-        duration: 350,
-      },
-      isFinished => {
-        if (isFinished) {
-          scheduleOnRN(onDismiss, stackedToastId);
-        }
-      },
+    translateX.set(
+      withSpring(
+        -windowWidth,
+        {
+          dampingRatio: 1,
+          duration: 350,
+        },
+        isFinished => {
+          if (isFinished) {
+            scheduleOnRN(onDismiss, stackedToastId);
+          }
+        },
+      ),
     );
   }, [onDismiss, stackedToastId, translateX, windowWidth]);
 
   const gesture = Gesture.Pan()
     // .enabled(isActiveStackedToast)
     .onBegin(() => {
-      isSwiping.value = true;
+      isSwiping.set(true);
     })
     .onUpdate(event => {
       if (event.translationX > 0) return;
-      translateX.value = event.translationX;
+      translateX.set(event.translationX);
     })
     .onEnd(event => {
       if (event.translationX < -50) {
         dismissItem();
       } else {
-        translateX.value = withSpring(0);
+        translateX.set(withSpring(0));
       }
     })
     .onFinalize(() => {
-      isSwiping.value = false;
+      isSwiping.set(false);
     });
 
   const rStackedToastStyle = useAnimatedStyle(() => {
     return {
-      bottom: bottom.value,
+      bottom: bottom.get(),
       zIndex: 100 - stackedToastId,
       shadowRadius: withTiming(Math.max(10 - stackedToastId * 2.5, 2)),
       shadowOpacity: withTiming(
@@ -121,7 +125,7 @@ const StackedToast: React.FC<StackedToastProps> = ({
     return {
       transform: [
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
       ],
     };

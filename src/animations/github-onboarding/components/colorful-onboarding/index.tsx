@@ -32,7 +32,7 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
   const currentOffset = useSharedValue(0);
 
   const progress = useDerivedValue(() => {
-    return currentOffset.value / width;
+    return currentOffset.get() / width;
   }, [width]);
 
   const indexes = useMemo(() => data.map((_, i) => i), [data]);
@@ -46,11 +46,11 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
 
   const gradientColors = useDerivedValue(() => {
     const nextBaseColor = convertToRGBA(
-      interpolateColor(progress.value, indexes, colors),
+      interpolateColor(progress.get(), indexes, colors),
     );
 
     const nextDarkenColor = convertToRGBA(
-      interpolateColor(progress.value, indexes, darkenColors),
+      interpolateColor(progress.get(), indexes, darkenColors),
     );
 
     return [nextBaseColor, nextDarkenColor];
@@ -58,7 +58,7 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { x } }) => {
-      currentOffset.value = x;
+      currentOffset.set(x);
     },
   });
 

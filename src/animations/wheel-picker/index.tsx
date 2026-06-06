@@ -35,7 +35,7 @@ export const WheelPicker = () => {
     // At the beginning I was planning to add it in the demo
     // But the final video was too long for Twitter :)
     const multiplier = 1;
-    return Math.ceil(progress.value * LinesAmount * multiplier);
+    return Math.ceil(progress.get() * LinesAmount * multiplier);
   }, [progress]);
 
   return (
@@ -72,12 +72,12 @@ export const WheelPicker = () => {
           const currentLineIndex = Math.floor(sliderProgress * LinesAmount);
 
           // Only trigger haptics when crossing a line
-          if (currentLineIndex !== previousLineIndex.value) {
+          if (currentLineIndex !== previousLineIndex.get()) {
             scheduleOnRN(Haptics.selectionAsync);
-            previousLineIndex.value = currentLineIndex;
+            previousLineIndex.set(currentLineIndex);
           }
 
-          progress.value = sliderProgress;
+          progress.set(sliderProgress);
         }}
       />
       <PressableScale

@@ -49,40 +49,40 @@ const AnimatedSlider: React.FC<AnimatedSliderProps> = ({
   const scale = useSharedValue(defaultScale);
 
   const clampedTranslateX = useDerivedValue(() => {
-    return clamp(translateX.value, 0, sliderWidth);
+    return clamp(translateX.get(), 0, sliderWidth);
   }, [sliderWidth]);
 
   // Update progress based on slider position
   useDerivedValue(() => {
-    progress.value = clampedTranslateX.value / sliderWidth;
+    progress.set(clampedTranslateX.get() / sliderWidth);
   }, [sliderWidth]);
 
   const gesture = Gesture.Pan()
     .hitSlop(20)
     .onBegin(() => {
-      scale.value = withSpring(1);
-      contextX.value = clampedTranslateX.value;
+      scale.set(withSpring(1));
+      contextX.set(clampedTranslateX.get());
     })
     .onUpdate(event => {
-      translateX.value = contextX.value + event.translationX;
+      translateX.set(contextX.get() + event.translationX);
     })
     .onFinalize(() => {
-      scale.value = withSpring(defaultScale);
+      scale.set(withSpring(defaultScale));
     });
 
   const rPickerStyle = useAnimatedStyle(() => {
     return {
       borderRadius: defaultPickerBorderRadius,
       transform: [
-        { translateX: clampedTranslateX.value - pickerSize / 2 },
-        { scale: scale.value },
+        { translateX: clampedTranslateX.get() - pickerSize / 2 },
+        { scale: scale.get() },
       ],
     };
   }, []);
 
   const rProgressBarStyle = useAnimatedStyle(() => {
     return {
-      width: clampedTranslateX.value,
+      width: clampedTranslateX.get(),
     };
   }, []);
 

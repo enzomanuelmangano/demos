@@ -58,7 +58,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
   // right bottom value.
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
-    bottom.value = withSpring(BaseSafeArea + bottomHeight);
+    bottom.set(withSpring(BaseSafeArea + bottomHeight));
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomHeight]);
@@ -68,45 +68,47 @@ const StackedSheet: FC<StackedSheetProps> = ({
 
   const dismissItem = useCallback(() => {
     'worklet';
-    translateY.value = withSpring(
-      stackedSheet.componentHeight + BaseSafeArea,
-      {
-        duration: 250,
-        dampingRatio: 1,
-      },
-      isFinished => {
-        if (isFinished) {
-          scheduleOnRN(onDismiss, stackedSheetId);
-        }
-      },
+    translateY.set(
+      withSpring(
+        stackedSheet.componentHeight + BaseSafeArea,
+        {
+          duration: 250,
+          dampingRatio: 1,
+        },
+        isFinished => {
+          if (isFinished) {
+            scheduleOnRN(onDismiss, stackedSheetId);
+          }
+        },
+      ),
     );
   }, [onDismiss, stackedSheet.componentHeight, stackedSheetId, translateY]);
 
   const gesture = Gesture.Pan()
     .enabled(isActiveStackedSheet)
     .onBegin(() => {
-      isSwiping.value = true;
+      isSwiping.set(true);
     })
     .onUpdate(event => {
       if (event.translationY < 0) return;
-      translateY.value = event.translationY;
+      translateY.set(event.translationY);
     })
     .onEnd(event => {
       if (event.translationY > -50) {
         dismissItem();
       } else {
-        translateY.value = withSpring(0);
+        translateY.set(withSpring(0));
       }
     })
     .onFinalize(() => {
-      isSwiping.value = false;
+      isSwiping.set(false);
     });
 
   const rStackedSheetStyle = useAnimatedStyle(() => {
     const scale = 1 - stackedSheetId * 0.05;
 
     return {
-      bottom: bottom.value,
+      bottom: bottom.get(),
       zIndex: 100 - stackedSheetId,
       shadowRadius: withTiming(Math.max(10 - stackedSheetId * 2.5, 2)),
       shadowOpacity: withTiming(Math.max(0.1 - stackedSheetId * 0.025, 0.05)),
@@ -115,7 +117,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
           scale: withSpring(scale),
         },
         {
-          translateY: translateY.value,
+          translateY: translateY.get(),
         },
       ],
     };

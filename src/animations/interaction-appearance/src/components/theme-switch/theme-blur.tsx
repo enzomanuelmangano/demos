@@ -7,7 +7,7 @@ import { AnimatedBlurView } from '../animated-blur-view';
 
 export const ThemeBlurView = () => {
   const intensity = useDerivedValue<number | undefined>(() => {
-    return withTiming(isSwitchingThemeShared.value ? 15 : 0, {
+    return withTiming(isSwitchingThemeShared.get() ? 15 : 0, {
       duration: 350,
     });
   }, []);

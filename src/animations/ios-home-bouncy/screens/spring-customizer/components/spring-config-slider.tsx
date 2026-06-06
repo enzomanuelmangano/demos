@@ -36,7 +36,7 @@ export const SpringConfigSlider: FC<SpringConfigSliderProps> = ({
 }) => {
   const translateX = useDerivedValue(() => {
     return (
-      ((valueSharedValue.value - minimumValue) /
+      ((valueSharedValue.get() - minimumValue) /
         (maximumValue - minimumValue)) *
       (SLIDER_WIDTH - THUMB_SIZE)
     );
@@ -45,17 +45,17 @@ export const SpringConfigSlider: FC<SpringConfigSliderProps> = ({
   const startValue = useSharedValue(0);
 
   const displayText = useDerivedValue(() => {
-    return valueSharedValue.value.toFixed(1);
+    return valueSharedValue.get().toFixed(1);
   });
 
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      startX.value = translateX.value;
-      startValue.value = valueSharedValue.value;
+      startX.set(translateX.get());
+      startValue.set(valueSharedValue.get());
     })
     .onUpdate(event => {
       const newX = clamp(
-        startX.value + event.translationX,
+        startX.get() + event.translationX,
         0,
         SLIDER_WIDTH - THUMB_SIZE,
       );
@@ -64,18 +64,18 @@ export const SpringConfigSlider: FC<SpringConfigSliderProps> = ({
       const newValue = minimumValue + progress * (maximumValue - minimumValue);
       const steppedValue = Math.round(newValue / step) * step;
 
-      valueSharedValue.value = steppedValue;
+      valueSharedValue.set(steppedValue);
     });
 
   const thumbStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: translateX.value }],
+      transform: [{ translateX: translateX.get() }],
     };
   });
 
   const trackFillStyle = useAnimatedStyle(() => {
     return {
-      width: translateX.value + THUMB_SIZE / 2,
+      width: translateX.get() + THUMB_SIZE / 2,
     };
   });
 

@@ -41,28 +41,28 @@ const SlideToReveal: FC<SlideToRevealProps> = memo(
 
     const gesture = Gesture.Pan()
       .onBegin(event => {
-        isMaskActive.value = true;
-        x.value = event.x;
-        y.value = event.y;
+        isMaskActive.set(true);
+        x.set(event.x);
+        y.set(event.y);
       })
       .onUpdate(event => {
-        x.value = event.x;
-        y.value = event.y;
+        x.set(event.x);
+        y.set(event.y);
       })
       .onFinalize(() => {
-        isMaskActive.value = false;
+        isMaskActive.set(false);
       });
 
     const maskOpacity = useDerivedValue(() => {
-      return withTiming(isMaskActive.value ? 1 : 0);
+      return withTiming(isMaskActive.get() ? 1 : 0);
     }, []);
 
     const highlightedPoint = useDerivedValue(() => {
       // Return null if the mask is not active
-      if (!isMaskActive.value) return null;
+      if (!isMaskActive.get()) return null;
       return {
-        x: x.value,
-        y: y.value,
+        x: x.get(),
+        y: y.get(),
       };
     });
 

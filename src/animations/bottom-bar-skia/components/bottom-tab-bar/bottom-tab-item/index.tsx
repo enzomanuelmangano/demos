@@ -47,7 +47,7 @@ const BottomTabItem: FC<BottomTabIconProps> = memo(
 
     const iconColor = useDerivedValue(() => {
       return interpolateColor(
-        iconColorProgress.value,
+        iconColorProgress.get(),
         [0, 1],
         ['#7E6CE2', '#FFFFFF'],
       );
@@ -57,7 +57,7 @@ const BottomTabItem: FC<BottomTabIconProps> = memo(
       return [
         { translateX: x + width / 2 - iconSize / 2 },
         {
-          translateY: translateY.value,
+          translateY: translateY.get(),
         },
       ];
     }, [translateY]);

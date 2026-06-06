@@ -47,23 +47,25 @@ export const Ticket: FC<TicketProps> = memo(
       .minDistance(10)
       .hitSlop({ top: 50, bottom: 50, left: 50, right: 50 })
       .onStart(() => {
-        contextX.value = translateX.value;
+        contextX.set(translateX.get());
       })
       .onUpdate(event => {
-        translateX.value = event.translationX + contextX.value;
+        translateX.set(event.translationX + contextX.get());
       })
       .onEnd(event => {
         // Apply decay animation with better deceleration
-        translateX.value = withDecay({
-          velocity: event.velocityX * 0.7,
-          deceleration: 0.998,
-          clamp: [translateX.value - 1080, translateX.value + 1080],
-        });
+        translateX.set(
+          withDecay({
+            velocity: event.velocityX * 0.7,
+            deceleration: 0.998,
+            clamp: [translateX.get() - 1080, translateX.get() + 1080],
+          }),
+        );
       });
 
     // Derived value for Y-axis rotation based on translation
     const rotateY = useDerivedValue(() => {
-      return translateX.value % 360;
+      return translateX.get() % 360;
     });
 
     // Tap gesture handler for flipping the ticket
@@ -77,19 +79,21 @@ export const Ticket: FC<TicketProps> = memo(
         cancelAnimation(translateX);
         scheduleOnRN(Haptics.selectionAsync);
         // Normalize to nearest 180-degree increment and flip to opposite side
-        const normalizedRotation = Math.round(translateX.value / 180) * 180;
+        const normalizedRotation = Math.round(translateX.get() / 180) * 180;
         const targetRotation = normalizedRotation + 180;
-        translateX.value = withSpring(targetRotation, {
-          dampingRatio: 1.5,
-          duration: 500,
-        });
+        translateX.set(
+          withSpring(targetRotation, {
+            dampingRatio: 1.5,
+            duration: 500,
+          }),
+        );
       });
 
     // Combine gestures with Race - only one gesture can win
     const gesture = Gesture.Race(tapGesture, panGesture);
 
     const rTicketStyle = useAnimatedStyle(() => {
-      const rotateYValue = `${rotateY.value}deg`;
+      const rotateYValue = `${rotateY.get()}deg`;
 
       return {
         transform: [{ perspective: 1000 }, { rotateY: rotateYValue }],
@@ -98,21 +102,21 @@ export const Ticket: FC<TicketProps> = memo(
 
     // Determine which side is currently visible
     const isFront = useDerivedValue(() => {
-      const absRotate = Math.abs(rotateY.value);
+      const absRotate = Math.abs(rotateY.get());
       return absRotate < 90 || absRotate > 270;
     });
 
     const rFrontStyle = useAnimatedStyle(() => {
       return {
-        opacity: isFront.value ? 1 : 0,
-        zIndex: isFront.value ? 1 : 0,
+        opacity: isFront.get() ? 1 : 0,
+        zIndex: isFront.get() ? 1 : 0,
       };
     });
 
     const rBackStyle = useAnimatedStyle(() => {
       return {
-        opacity: isFront.value ? 0 : 1,
-        zIndex: isFront.value ? 0 : 1,
+        opacity: isFront.get() ? 0 : 1,
+        zIndex: isFront.get() ? 0 : 1,
       };
     });
 

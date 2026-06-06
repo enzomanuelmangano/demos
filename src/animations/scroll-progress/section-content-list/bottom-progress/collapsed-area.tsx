@@ -22,31 +22,31 @@ const CollapsedArea: FC<CollapsedAreaProps> = memo(
   ({ state, readingTime, onReset }) => {
     const rCollapsedAreaStyle = useAnimatedStyle(() => {
       const isCollapsed =
-        state.value === BottomProgressState.INITIAL ||
-        state.value === BottomProgressState.END;
+        state.get() === BottomProgressState.INITIAL ||
+        state.get() === BottomProgressState.END;
       return {
         opacity: withTiming(isCollapsed ? 1 : 0),
       };
     }, []);
 
     const rMinContainerStyle = useAnimatedStyle(() => {
-      const isVisible = state.value === BottomProgressState.INITIAL;
+      const isVisible = state.get() === BottomProgressState.INITIAL;
       return {
         opacity: withTiming(isVisible ? 1 : 0),
       };
     }, []);
 
     const rUpArrowContainerStyle = useAnimatedStyle(() => {
-      const isVisible = state.value === BottomProgressState.END;
+      const isVisible = state.get() === BottomProgressState.END;
       return {
         opacity: withTiming(isVisible ? 1 : 0),
       };
     }, []);
 
     const onPressArrow = useCallback(() => {
-      if (state.value !== BottomProgressState.END) return;
+      if (state.get() !== BottomProgressState.END) return;
       return onReset();
-    }, [onReset, state.value]);
+    }, [onReset, state.get()]);
 
     return (
       <Animated.View

@@ -58,7 +58,7 @@ export const AnimatedCount = memo(
     );
 
     const animatedProps = useAnimatedProps(() => {
-      const currentCount = count.value;
+      const currentCount = count.get();
       return {
         text: currentCount.toString(),
         modifiers: [

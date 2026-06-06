@@ -68,12 +68,12 @@ const Slider: FC<SliderProps> = ({
   const pickerBorderWidth = useSharedValue(defaultPickerBorderWidth);
 
   const clampedTranslateX = useDerivedValue(() => {
-    return clamp(translateX.value, 0, sliderWidth);
+    return clamp(translateX.get(), 0, sliderWidth);
   }, []);
 
   useAnimatedReaction(
     () => {
-      return clampedTranslateX.value;
+      return clampedTranslateX.get();
     },
     translation => {
       const progress = interpolate(
@@ -88,31 +88,33 @@ const Slider: FC<SliderProps> = ({
   const gesture = Gesture.Pan()
     .onBegin(() => {
       // @@TODO: prefer one shared value and animate
-      pickerBorderRadius.value = withSpring(pickerSize / 2);
-      pickerBorderWidth.value = withSpring(4, {
-        dampingRatio: 1,
-        duration: 500,
-      });
-      scale.value = withSpring(1);
-      contextX.value = clampedTranslateX.value;
+      pickerBorderRadius.set(withSpring(pickerSize / 2));
+      pickerBorderWidth.set(
+        withSpring(4, {
+          dampingRatio: 1,
+          duration: 500,
+        }),
+      );
+      scale.set(withSpring(1));
+      contextX.set(clampedTranslateX.get());
     })
     .onUpdate(event => {
-      translateX.value = contextX.value + event.translationX;
+      translateX.set(contextX.get() + event.translationX);
     })
     .onTouchesUp(() => {
-      scale.value = withSpring(defaultScale);
-      pickerBorderRadius.value = withSpring(defaultPickerBorderRadius);
-      pickerBorderWidth.value = withSpring(defaultPickerBorderWidth);
+      scale.set(withSpring(defaultScale));
+      pickerBorderRadius.set(withSpring(defaultPickerBorderRadius));
+      pickerBorderWidth.set(withSpring(defaultPickerBorderWidth));
     });
 
   const rPickerStyle = useAnimatedStyle(() => {
     return {
-      borderWidth: pickerBorderWidth.value,
-      borderRadius: pickerBorderRadius.value,
+      borderWidth: pickerBorderWidth.get(),
+      borderRadius: pickerBorderRadius.get(),
       transform: [
-        { translateX: clampedTranslateX.value - pickerSize / 2 },
+        { translateX: clampedTranslateX.get() - pickerSize / 2 },
         {
-          scale: scale.value,
+          scale: scale.get(),
         },
       ],
     };
@@ -120,7 +122,7 @@ const Slider: FC<SliderProps> = ({
 
   const rProgressBarStyle = useAnimatedStyle(() => {
     return {
-      width: clampedTranslateX.value,
+      width: clampedTranslateX.get(),
     };
   }, []);
 

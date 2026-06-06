@@ -32,7 +32,7 @@ export const TextLabel: React.FC<TextLabelProps> = ({
 }) => {
   const text = useDerivedValue(() => {
     const percentage =
-      type === 'left' ? xPercentage.value : 1 - xPercentage.value;
+      type === 'left' ? xPercentage.get() : 1 - xPercentage.get();
     return `${Math.round(percentage * 100)}%`;
   }, []);
 
@@ -63,7 +63,7 @@ export const TextLabel: React.FC<TextLabelProps> = ({
   const rContainerStyle = useAnimatedStyle(() => {
     const baseHeight = -height / 2 + 10;
 
-    const translateY = shifted.value ? baseHeight - height / 5 : baseHeight;
+    const translateY = shifted.get() ? baseHeight - height / 5 : baseHeight;
     return {
       transform: [
         {

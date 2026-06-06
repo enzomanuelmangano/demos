@@ -39,7 +39,7 @@ export const TwodosSlide = () => {
             realProgress: rProgress,
           }) => {
             'worklet';
-            if (progress.value >= 1) {
+            if (progress.get() >= 1) {
               // This is going to be called every time the progress changes
               // So the idea is to call the haptic feedback only once when the progress is 1
               // With a debounce (leading: true, trailing: false)
@@ -50,8 +50,8 @@ export const TwodosSlide = () => {
               // });
             }
 
-            progress.value = rProgress;
-            clampedProgress.value = cProgress;
+            progress.set(rProgress);
+            clampedProgress.set(cProgress);
           }}>
           <Text style={styles.slideActionLabel}>Slide to Unlock</Text>
           <AntDesign name="arrow-right" size={20} color="gray" />

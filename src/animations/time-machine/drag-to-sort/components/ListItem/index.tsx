@@ -36,7 +36,7 @@ export const ListItem: FC<ListItemProps> = ({
   const rStyle = useAnimatedStyle(() => {
     return {
       borderRadius: withTiming(
-        activeIndex.value === index ? maxBorderRadius : 5,
+        activeIndex.get() === index ? maxBorderRadius : 5,
       ),
     };
   }, [maxBorderRadius, index]);

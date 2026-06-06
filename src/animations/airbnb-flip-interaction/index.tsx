@@ -127,7 +127,7 @@ const App = () => {
 
   const blurProps = useAnimatedProps(() => ({
     intensity: interpolate(
-      progress.value,
+      progress.get(),
       [0, 0.2, 0.5, 0.8, 1],
       [0, 10, 20, 10, 0],
     ),

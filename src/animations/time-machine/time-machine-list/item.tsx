@@ -24,7 +24,7 @@ export const StoryListItem: React.FC<StoryListItemProps> = ({
   scrollOffset,
 }) => {
   const rContainerStyle = useAnimatedStyle(() => {
-    const activeIndex = scrollOffset.value / StoryListItemWidth;
+    const activeIndex = scrollOffset.get() / StoryListItemWidth;
 
     const translateX = interpolate(
       activeIndex,
@@ -43,7 +43,7 @@ export const StoryListItem: React.FC<StoryListItemProps> = ({
     return {
       transform: [
         {
-          translateX: scrollOffset.value + translateX,
+          translateX: scrollOffset.get() + translateX,
         },
         { scale },
       ],

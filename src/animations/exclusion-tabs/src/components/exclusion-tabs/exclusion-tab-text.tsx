@@ -33,7 +33,7 @@ export const ExclusionTabText: React.FC<ExclusionTabTextProps> = ({
   });
 
   const transform = useDerivedValue(() => {
-    const bounds = skPath.value.getBounds();
+    const bounds = skPath.get().getBounds();
 
     return [
       {

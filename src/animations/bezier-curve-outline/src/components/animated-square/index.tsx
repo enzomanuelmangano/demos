@@ -27,20 +27,20 @@ export const AnimatedSquare = ({
   height,
 }: AnimatedSquareProps) => {
   const blurIntensity = useDerivedValue<number | undefined>(() => {
-    return interpolate(progress.value, [0, 0.7, 1], [0, 40, 0]);
+    return interpolate(progress.get(), [0, 0.7, 1], [0, 40, 0]);
   }, [progress]);
 
   const rContainerStyle = useAnimatedStyle(
     () => ({
-      width: width.value,
-      height: height.value,
+      width: width.get(),
+      height: height.get(),
     }),
     [progress],
   );
 
   const rIconStyle = useAnimatedStyle(
     () => ({
-      opacity: 1 - progress.value,
+      opacity: 1 - progress.get(),
     }),
     [progress],
   );

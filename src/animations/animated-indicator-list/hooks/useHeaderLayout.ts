@@ -36,7 +36,7 @@ const useHeaderLayout = ({
     // The trick is that we wait few milliseconds before getting the layout of the headers.
     // Otherwise the layout isn't correct.
     // The interesting thing is that we're doing even that on the Main thread. (since mounted is a SharedValue).
-    if (!mounted.value) {
+    if (!mounted.get()) {
       return {};
     }
 
@@ -67,10 +67,10 @@ const useHeaderLayout = ({
   >(() => {
     'worklet';
 
-    const parsedHeaderData = Object.keys(headersLayoutX.value)
+    const parsedHeaderData = Object.keys(headersLayoutX.get())
       .map(key => ({
         header: key,
-        value: headersLayoutX.value[key],
+        value: headersLayoutX.get()[key],
       }))
       .filter(({ value }) => value != null)
 

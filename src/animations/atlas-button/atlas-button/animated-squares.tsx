@@ -36,7 +36,7 @@ export const AnimatedSquares: FC<AnimatedSquaresProps> = memo(
     const maxRadius = Math.sqrt(width ** 2 + height ** 2) / 2;
 
     const activeRadius = useDerivedValue(() => {
-      return progress.value * maxRadius;
+      return progress.get() * maxRadius;
     }, [maxRadius]);
 
     const texture = useTexture(<Fill color={'white'} />, {
@@ -65,7 +65,7 @@ export const AnimatedSquares: FC<AnimatedSquaresProps> = memo(
         (tx - width / 2) ** 2 + (ty - height / 2) ** 2,
       );
 
-      const scale = Math.max(0, 1.5 - distance / activeRadius.value);
+      const scale = Math.max(0, 1.5 - distance / activeRadius.get());
 
       const randomValue = randomValues[i] || 1;
 

@@ -31,7 +31,7 @@ export const PullToDismissGesture: FC<PullToDismissGestureProps> = ({
   const hasTriggeredMainAnimation = useSharedValue(false);
 
   const triggerMainAnimation = useCallback(() => {
-    if (!hasTriggeredMainAnimation.value) {
+    if (!hasTriggeredMainAnimation.get()) {
       startAnimation();
       hasTriggeredMainAnimation.set(true);
     }
@@ -52,7 +52,7 @@ export const PullToDismissGesture: FC<PullToDismissGestureProps> = ({
       if (event.translationY > 0) {
         translateY.set(event.translationY);
 
-        if (translateY.value > 120) {
+        if (translateY.get() > 120) {
           scheduleOnRN(triggerMainAnimation);
         }
       }

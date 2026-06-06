@@ -55,12 +55,12 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
   const translateY = useSharedValue(0);
 
   const progress = useDerivedValue(() => {
-    const x = translateX.value - cx;
-    const y = translateY.value - cy;
+    const x = translateX.get() - cx;
+    const y = translateY.get() - cy;
     let theta = Math.atan2(y, x) + initialAngleRad;
     if (theta < 0) theta += 2 * Math.PI;
     return theta / (2 * Math.PI);
-  }, [translateX.value, translateY.value]);
+  }, [translateX.get(), translateY.get()]);
 
   const circlePath = useMemo(() => {
     const builder = Skia.PathBuilder.Make();
@@ -69,19 +69,19 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
   }, [cx, cy, radius, strokeWidth]);
 
   const animatedValue = useDerivedValue(() => {
-    return Math.min(Math.round(progress.value * maxVal) + minVal, maxVal);
-  }, [progress.value]);
+    return Math.min(Math.round(progress.get() * maxVal) + minVal, maxVal);
+  }, [progress.get()]);
 
   const currentTextValue = useDerivedValue(() => {
-    return animatedValue.value.toString();
-  }, [animatedValue.value]);
+    return animatedValue.get().toString();
+  }, [animatedValue.get()]);
 
   const textPositionX = useDerivedValue(() => {
-    return cx - font.measureText(currentTextValue.value).width / 2 - 2;
+    return cx - font.measureText(currentTextValue.get()).width / 2 - 2;
   }, [font, cx]);
 
   useAnimatedReaction(
-    () => animatedValue.value,
+    () => animatedValue.get(),
     (curr, prev) => {
       if (prev == null) return;
       if (onValueChange) scheduleOnRN(onValueChange, curr);

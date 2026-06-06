@@ -44,11 +44,11 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
   const r = useSharedValue(initialRadius);
 
   const progress = useDerivedValue(() => {
-    return clamp(r.value / (boxWidth / 3), 0, 1);
+    return clamp(r.get() / (boxWidth / 3), 0, 1);
   }, []);
 
   const rStyle = useAnimatedStyle(() => {
-    const color = interpolateColor(progress.value, [0, 1], ['black', 'white']);
+    const color = interpolateColor(progress.get(), [0, 1], ['black', 'white']);
     return {
       color: color,
     };
@@ -58,18 +58,22 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
     <View style={style}>
       <PressableOpacity
         onPressIn={() => {
-          r.value = withSpring(boxWidth, {
-            damping: 20,
-            mass: 1,
-            stiffness: 80,
-          });
+          r.set(
+            withSpring(boxWidth, {
+              damping: 20,
+              mass: 1,
+              stiffness: 80,
+            }),
+          );
         }}
         onPressOut={() => {
-          r.value = withSpring(30, {
-            damping: 25,
-            mass: 1.2,
-            stiffness: 120,
-          });
+          r.set(
+            withSpring(30, {
+              damping: 25,
+              mass: 1.2,
+              stiffness: 120,
+            }),
+          );
         }}
         style={{
           overflow: 'hidden',

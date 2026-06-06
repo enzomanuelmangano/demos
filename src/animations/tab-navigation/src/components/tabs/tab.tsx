@@ -40,27 +40,27 @@ export const Tab = ({
   // Animate the tab width between minWidth and maxWidth based on the progress
   const rTabStyle = useAnimatedStyle(() => {
     return {
-      width: interpolate(progress.value, [0, 1], [minWidth, maxWidth]),
+      width: interpolate(progress.get(), [0, 1], [minWidth, maxWidth]),
     };
   }, [isActive]);
 
   // Animate the gap between icon and text from 0 to 15 based on the progress
   const gap = useDerivedValue(() => {
-    return interpolate(progress.value, [0, 1], [0, 15]);
+    return interpolate(progress.get(), [0, 1], [0, 15]);
   }, []);
 
   // Animate the text opacity and left margin based on the progress
   const rTextStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value ** 3, // Cubic easing for opacity
-      marginLeft: gap.value, // Dynamic left margin
+      opacity: progress.get() ** 3, // Cubic easing for opacity
+      marginLeft: gap.get(), // Dynamic left margin
     };
   }, [isActive]);
 
   // Animate the icon's horizontal position based on the progress
   const rIconStyle = useAnimatedStyle(() => {
     const translateX = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [(minWidth - IconSize) / 2, IconSize], // Move from center to left
     );

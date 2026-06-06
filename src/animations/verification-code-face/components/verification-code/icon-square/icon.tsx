@@ -54,14 +54,14 @@ export const InternalIcon = forwardRef<InternalIconRef, InternalIconProps>(
     }));
 
     const animatedGap = useAnimatedStyle(() => ({
-      gap: interpolate(progress.value, PROGRESS_INPUT_RANGE, GAP_OUTPUT_RANGE),
+      gap: interpolate(progress.get(), PROGRESS_INPUT_RANGE, GAP_OUTPUT_RANGE),
     }));
 
     const animatedEyebrowStyle = useAnimatedStyle(() => ({
       flexDirection: 'row' as const,
-      gap: interpolate(progress.value, PROGRESS_INPUT_RANGE, GAP_OUTPUT_RANGE),
+      gap: interpolate(progress.get(), PROGRESS_INPUT_RANGE, GAP_OUTPUT_RANGE),
       marginBottom: interpolate(
-        progress.value,
+        progress.get(),
         PROGRESS_INPUT_RANGE,
         GAP_OUTPUT_RANGE,
       ),
@@ -69,7 +69,7 @@ export const InternalIcon = forwardRef<InternalIconRef, InternalIconProps>(
 
     const animatedEyeStyle = useAnimatedStyle(() => ({
       flexDirection: 'row' as const,
-      gap: interpolate(progress.value, PROGRESS_INPUT_RANGE, GAP_OUTPUT_RANGE),
+      gap: interpolate(progress.get(), PROGRESS_INPUT_RANGE, GAP_OUTPUT_RANGE),
     }));
 
     return (

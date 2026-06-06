@@ -123,13 +123,13 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
 
   const rBaseIconStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
-      progress.value,
+      progress.get(),
       [0, 0.5],
       [0, 45],
       Extrapolation.CLAMP,
     );
     return {
-      opacity: interpolate(progress.value, [0, 0.5], [1, 0]),
+      opacity: interpolate(progress.get(), [0, 0.5], [1, 0]),
       transform: [
         {
           rotate: `${rotate}deg`,
@@ -140,13 +140,13 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
 
   const rActiveIconStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [-45, 0],
       Extrapolation.CLAMP,
     );
     return {
-      opacity: interpolate(progress.value, [0, 1], [0, 1]),
+      opacity: interpolate(progress.get(), [0, 1], [0, 1]),
       transform: [
         {
           rotate: `${rotate}deg`,
@@ -177,17 +177,21 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
     cancelAnimation(progress);
     isAnimating.set(true);
 
-    progress.value = withSpring(1, BlastCurveConfig, isFinished => {
-      if (autoReset && isFinished) {
-        progress.value = withSpring(0, FastResetConfig, resetFinished => {
-          if (resetFinished) {
-            isAnimating.set(false);
-          }
-        });
-      } else {
-        isAnimating.set(false);
-      }
-    });
+    progress.set(
+      withSpring(1, BlastCurveConfig, isFinished => {
+        if (autoReset && isFinished) {
+          progress.set(
+            withSpring(0, FastResetConfig, resetFinished => {
+              if (resetFinished) {
+                isAnimating.set(false);
+              }
+            }),
+          );
+        } else {
+          isAnimating.set(false);
+        }
+      }),
+    );
     blastEffectRef.current?.blast(BlastEffectConfig, 100);
   }, [autoReset, blastEffectRef, onPress, progress, isAnimating]);
 

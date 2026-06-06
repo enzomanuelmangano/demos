@@ -26,7 +26,7 @@ type BackgroundGradientProps = {
 export const BackgroundGradient: FC<BackgroundGradientProps> = memo(
   ({ mainColor }) => {
     const sweepGradientColors = useDerivedValue(() => {
-      return [DEFAULT_WHITE, mainColor.value, mainColor.value];
+      return [DEFAULT_WHITE, mainColor.get(), mainColor.get()];
     }, []);
 
     return (

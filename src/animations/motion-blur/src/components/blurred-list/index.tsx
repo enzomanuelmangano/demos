@@ -75,14 +75,18 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   const top = calculateTop(index, currentListLength, maxVisibleItems);
 
   useEffect(() => {
-    progress.value = withTiming(isOffVisibleArea ? 0 : 1, {
-      duration: 350,
-      easing: Easing.linear,
-    });
-    blurIntensity.value = withTiming(isOffVisibleArea ? 50 : 0, {
-      duration: isOffVisibleArea ? 150 : 500,
-      easing: Easing.linear,
-    });
+    progress.set(
+      withTiming(isOffVisibleArea ? 0 : 1, {
+        duration: 350,
+        easing: Easing.linear,
+      }),
+    );
+    blurIntensity.set(
+      withTiming(isOffVisibleArea ? 50 : 0, {
+        duration: isOffVisibleArea ? 150 : 500,
+        easing: Easing.linear,
+      }),
+    );
   }, [isOffVisibleArea, progress, blurIntensity]);
 
   const containerStyle = useAnimatedStyle(
@@ -100,10 +104,10 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
     shadowColor: 'black',
     shadowOffset: {
       width: 0,
-      height: interpolate(isLastItemProgress.value, [0, 1], [20, 10]),
+      height: interpolate(isLastItemProgress.get(), [0, 1], [20, 10]),
     },
-    shadowOpacity: interpolate(isLastItemProgress.value, [0, 1], [0.03, 0.02]),
-    shadowRadius: interpolate(isLastItemProgress.value, [0, 1], [10, 5]),
+    shadowOpacity: interpolate(isLastItemProgress.get(), [0, 1], [0.03, 0.02]),
+    shadowRadius: interpolate(isLastItemProgress.get(), [0, 1], [10, 5]),
   }));
 
   if (isOffVisibleArea) {

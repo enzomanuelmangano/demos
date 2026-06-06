@@ -86,11 +86,11 @@ export const StaggeredText = forwardRef(
     useImperativeHandle(ref, () => ({
       animate: () => {
         setTimeout(() => {
-          progress.value = 1;
+          progress.set(1);
         }, 0);
       },
       reset: () => {
-        progress.value = 0;
+        progress.set(0);
       },
       toggleAnimate: () => {
         if (!enableReverse) {
@@ -99,7 +99,7 @@ export const StaggeredText = forwardRef(
           );
           return;
         }
-        progress.value = progress.value === 0 ? 1 : 0;
+        progress.set(progress.get() === 0 ? 1 : 0);
       },
     }));
 
@@ -110,14 +110,14 @@ export const StaggeredText = forwardRef(
           const delayedProgress = useDerivedValue(() => {
             'worklet';
 
-            if (progress.value === 0 && !enableReverse) {
+            if (progress.get() === 0 && !enableReverse) {
               return 0;
             }
 
             const delayMs = index * 40 + delay;
             return withDelay(
               delayMs,
-              withSpring(progress.value, {
+              withSpring(progress.get(), {
                 duration: 350,
                 dampingRatio: 2.8,
               }),

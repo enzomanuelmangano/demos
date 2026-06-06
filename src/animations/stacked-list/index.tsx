@@ -58,7 +58,7 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
     // Calculate the distance between the top of the item and the bottom of the screen after scrolling
 
     const distanceFromTop =
-      scrollOffset.value + BottomThreshold - baseTranslateY;
+      scrollOffset.get() + BottomThreshold - baseTranslateY;
 
     // Map the distance to the visible amount within the range of [0, FullListItemHeight]
     // If the item is fully visible, the output will be FullListItemHeight, otherwise, it will be less.
@@ -82,10 +82,10 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
   // Derived value for the real translateY of the item
   const realTranslateY = useDerivedValue(() => {
     return interpolate(
-      visibleAmount.value,
+      visibleAmount.get(),
       [0, FullListItemHeight],
       [
-        scrollOffset.value + BottomThreshold - FullListItemHeight,
+        scrollOffset.get() + BottomThreshold - FullListItemHeight,
         baseTranslateY,
       ],
       Extrapolation.CLAMP,
@@ -95,7 +95,7 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
   // Derived value for the scale of the item
   const scale = useDerivedValue(() => {
     return interpolate(
-      visibleAmount.value,
+      visibleAmount.get(),
       [0, FullListItemHeight],
       [0.6, 1],
       Extrapolation.CLAMP,
@@ -106,7 +106,7 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
   const rContainerStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
-        visibleAmount.value,
+        visibleAmount.get(),
         [0, FullListItemHeight / 3, FullListItemHeight],
         // The opacity will be 0.7 when the item is fully visible
         // That's why I'm multiplying the "NiceOffset" by 1.5 (look at the FlatList contentContainerStyle)
@@ -117,10 +117,10 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
       ),
       transform: [
         {
-          translateY: realTranslateY.value,
+          translateY: realTranslateY.get(),
         },
         {
-          scale: scale.value,
+          scale: scale.get(),
         },
       ],
     };
@@ -152,7 +152,7 @@ export const StackedList = () => {
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = event.contentOffset.y;
+      scrollOffset.set(event.contentOffset.y);
     },
   });
 

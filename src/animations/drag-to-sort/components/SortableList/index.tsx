@@ -49,12 +49,12 @@ function SortableList<T>({
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { y } }) => {
-      scrollContentOffsetY.value = y;
+      scrollContentOffsetY.set(y);
     },
   });
 
   useAnimatedReaction(
-    () => animatedIndex.value,
+    () => animatedIndex.get(),
     currentIndex => {
       if (onAnimatedIndexChange)
         scheduleOnRN(onAnimatedIndexChange, currentIndex);

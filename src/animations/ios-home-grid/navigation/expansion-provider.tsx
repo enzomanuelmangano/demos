@@ -108,32 +108,38 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
 
       if (!dimensions) return;
       const { width, height, x, y, pageX, pageY } = dimensions;
-      componentConfig.value = {
+      componentConfig.set({
         borderRadius: borderRadius ?? 10,
         color: color ?? 'rgba(0, 0, 0, 1)',
-      };
-      transitionId.value = id;
-      dimensionsSharedValue.value = { width, height, x, y, pageX, pageY };
+      });
+      transitionId.set(id);
+      dimensionsSharedValue.set({ width, height, x, y, pageX, pageY });
       cancelAnimation(transitionOpacityProgress);
       cancelAnimation(transitionProgress);
       cancelAnimation(springIconProgress);
       cancelAnimation(transitionScale);
-      transitionScale.value = 1;
-      transitionOpacityProgress.value = 0;
-      transitionProgress.value = 0;
-      transitionOpacityProgress.value = withTiming(1, {
-        duration: 100,
-      });
-      springIconProgress.value = withSpring(1, SpringIconProgressConfig);
-      transitionProgress.value = withSpring(1, SpringConfig, isFinished => {
-        if (isFinished && onComplete) {
-          onComplete();
-          transitionOpacityProgress.value = withTiming(0, {
-            duration: 300,
-            easing: Easing.in(Easing.ease),
-          });
-        }
-      });
+      transitionScale.set(1);
+      transitionOpacityProgress.set(0);
+      transitionProgress.set(0);
+      transitionOpacityProgress.set(
+        withTiming(1, {
+          duration: 100,
+        }),
+      );
+      springIconProgress.set(withSpring(1, SpringIconProgressConfig));
+      transitionProgress.set(
+        withSpring(1, SpringConfig, isFinished => {
+          if (isFinished && onComplete) {
+            onComplete();
+            transitionOpacityProgress.set(
+              withTiming(0, {
+                duration: 300,
+                easing: Easing.in(Easing.ease),
+              }),
+            );
+          }
+        }),
+      );
     },
     [
       componentConfig,
@@ -155,20 +161,24 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
     'worklet';
     scheduleOnRN(Haptics.selectionAsync);
     scheduleOnRN(debouncedBackNavigation);
-    transitionOpacityProgress.value = withSequence(
-      withTiming(1, { duration: 0 }),
-      withTiming(0, { duration: 700, easing: Easing.in(Easing.ease) }),
+    transitionOpacityProgress.set(
+      withSequence(
+        withTiming(1, { duration: 0 }),
+        withTiming(0, { duration: 700, easing: Easing.in(Easing.ease) }),
+      ),
     );
     cancelAnimation(transitionProgress);
     cancelAnimation(springIconProgress);
-    springIconProgress.value = 1;
-    transitionProgress.value = 1;
-    springIconProgress.value = withSpring(0, SpringIconProgressConfig);
-    transitionProgress.value = withSpring(0, {
-      mass: 0.1,
-      stiffness: 42,
-      damping: 4,
-    });
+    springIconProgress.set(1);
+    transitionProgress.set(1);
+    springIconProgress.set(withSpring(0, SpringIconProgressConfig));
+    transitionProgress.set(
+      withSpring(0, {
+        mass: 0.1,
+        stiffness: 42,
+        damping: 4,
+      }),
+    );
   }, [
     debouncedBackNavigation,
     springIconProgress,
@@ -178,40 +188,41 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
 
   const resetTransition = useCallback(() => {
     'worklet';
-    dimensionsSharedValue.value = null;
+    dimensionsSharedValue.set(null);
   }, [dimensionsSharedValue]);
 
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const rStyle = useAnimatedStyle(() => {
-    if (!dimensionsSharedValue.value) return { width: 0, height: 0 };
-    const { width, height, pageX, pageY } = dimensionsSharedValue.value;
+    const dimensionsValue = dimensionsSharedValue.get();
+    if (!dimensionsValue) return { width: 0, height: 0 };
+    const { width, height, pageX, pageY } = dimensionsValue;
     const animatedWidth = interpolate(
-      transitionProgress.value,
+      transitionProgress.get(),
       [0, 1],
-      [width, windowWidth * transitionScale.value],
+      [width, windowWidth * transitionScale.get()],
     );
     const animatedHeight = interpolate(
-      transitionProgress.value,
+      transitionProgress.get(),
       [0, 1],
-      [height, windowHeight * transitionScale.value],
+      [height, windowHeight * transitionScale.get()],
     );
 
     const translateX = interpolate(
-      transitionProgress.value,
+      transitionProgress.get(),
       [0, 1],
-      [pageX, (windowWidth * (1 - transitionScale.value)) / 2],
+      [pageX, (windowWidth * (1 - transitionScale.get())) / 2],
     );
     const translateY = interpolate(
-      transitionProgress.value,
+      transitionProgress.get(),
       [0, 1],
-      [pageY, (windowHeight * (1 - transitionScale.value)) / 2],
+      [pageY, (windowHeight * (1 - transitionScale.get())) / 2],
     );
 
     const borderRadius = interpolate(
-      transitionProgress.value,
+      transitionProgress.get(),
       [0, 1],
-      [componentConfig.value?.borderRadius ?? 10, 50],
+      [componentConfig.get()?.borderRadius ?? 10, 50],
     );
 
     return {
@@ -220,8 +231,8 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
       transform: [{ translateX }, { translateY }],
       borderRadius,
       borderCurve: 'continuous',
-      backgroundColor: componentConfig.value?.color,
-      opacity: transitionOpacityProgress.value,
+      backgroundColor: componentConfig.get()?.color,
+      opacity: transitionOpacityProgress.get(),
     };
   }, []);
 

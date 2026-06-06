@@ -74,8 +74,8 @@ const BaseInfiniteCircularCarousel = <T,>(
   const findClosestIndexPosition = useCallback(
     (index: number) => {
       // Calculate fixed translateX value and base translation
-      const fixedTranslateX = translateX.value % listOffset;
-      const baseTranslation = translateX.value - fixedTranslateX;
+      const fixedTranslateX = translateX.get() % listOffset;
+      const baseTranslation = translateX.get() - fixedTranslateX;
 
       // Calculate possible destinations for the given index
       const destinations = [
@@ -87,7 +87,7 @@ const BaseInfiniteCircularCarousel = <T,>(
       // Find the destination with the shortest distance from the current translateX value
       const { destination } = destinations.reduce(
         (acc, dest) => {
-          const distance = Math.abs(translateX.value - dest);
+          const distance = Math.abs(translateX.get() - dest);
           if (distance < acc.distance) {
             return { distance, destination: dest };
           }
@@ -98,23 +98,25 @@ const BaseInfiniteCircularCarousel = <T,>(
 
       return destination;
     },
-    [listItemWidth, listOffset, translateX.value],
+    [listItemWidth, listOffset, translateX.get()],
   );
 
   const scrollToIndex = useCallback(
     (index: number, animated = true) => {
       if (!animated) {
-        translateX.value = -index * listItemWidth;
+        translateX.set(-index * listItemWidth);
         return;
       }
 
       const destination = findClosestIndexPosition(index);
 
-      translateX.value = withSpring(destination, {
-        mass: 0.25,
-        damping: 10,
-        stiffness: 100,
-      });
+      translateX.set(
+        withSpring(destination, {
+          mass: 0.25,
+          damping: 10,
+          stiffness: 100,
+        }),
+      );
     },
     [findClosestIndexPosition, translateX, listItemWidth],
   );
@@ -129,7 +131,7 @@ const BaseInfiniteCircularCarousel = <T,>(
 
   useAnimatedReaction(
     () => {
-      const scrolledAmount = (translateX.value % listOffset) / listItemWidth;
+      const scrolledAmount = (translateX.get() % listOffset) / listItemWidth;
       return Math.abs(Math.round(scrolledAmount)) % data.length;
     },
     (newIndex, prevIndex) => {
@@ -155,10 +157,10 @@ const BaseInfiniteCircularCarousel = <T,>(
   const gesture = Gesture.Pan()
     .onBegin(() => {
       cancelAnimation(translateX);
-      contextX.value = translateX.value;
+      contextX.set(translateX.get());
     })
     .onUpdate(({ translationX }) => {
-      translateX.value = contextX.value + translationX;
+      translateX.set(contextX.get() + translationX);
     })
     .onEnd(event => {
       if (!snapEnabled) {
@@ -166,18 +168,20 @@ const BaseInfiniteCircularCarousel = <T,>(
         // to simulate the scroll momentum
         // That's not needed for our specific use-case
         // But I think it's really cool to have it 😎
-        translateX.value = withDecay({
-          velocity: event.velocityX,
-        });
+        translateX.set(
+          withDecay({
+            velocity: event.velocityX,
+          }),
+        );
         return;
       }
-      const fixedTranslateX = translateX.value % listOffset;
+      const fixedTranslateX = translateX.get() % listOffset;
 
-      const baseTranslation = translateX.value - fixedTranslateX;
+      const baseTranslation = translateX.get() - fixedTranslateX;
 
       const snapTo = snapPoint(fixedTranslateX, event.velocityX, snapIntervals);
 
-      translateX.value = withSpring(baseTranslation + snapTo);
+      translateX.set(withSpring(baseTranslation + snapTo));
     });
 
   const selectedInterpolateConfig = useInterpolateConfig({

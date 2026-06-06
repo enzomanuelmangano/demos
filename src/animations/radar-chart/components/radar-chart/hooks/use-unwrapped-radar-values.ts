@@ -17,7 +17,7 @@ const useUnwrappedValues = <K extends string>({
   // Handle both SharedValue and regular array data
   const isSharedValue = typeof data === 'object' && 'value' in data;
   const dataArray = isSharedValue
-    ? (data as Readonly<SharedValue<RadarDataType<K>>>).value
+    ? (data as Readonly<SharedValue<RadarDataType<K>>>).get()
     : (data as RadarDataType<K>);
 
   const currentData = useSharedValue(dataArray);
@@ -26,17 +26,17 @@ const useUnwrappedValues = <K extends string>({
 
   useEffect(() => {
     const newData = isSharedValue
-      ? (data as Readonly<SharedValue<RadarDataType<K>>>).value
+      ? (data as Readonly<SharedValue<RadarDataType<K>>>).get()
       : (data as RadarDataType<K>);
 
     // Cancel any existing animation before starting a new one
     cancelAnimation(progress);
 
     // When the animation is interrupted, set current data to the interpolated position
-    if (progress.value < 1) {
+    if (progress.get() < 1) {
       // Update current data to the current interpolated state before starting new animation
-      const currentInterpolated = currentData.value.map((dataItem, index) => {
-        const targetItem = targetData.value[index];
+      const currentInterpolated = currentData.get().map((dataItem, index) => {
+        const targetItem = targetData.get()[index];
         if (!targetItem) return dataItem;
 
         const interpolatedValues = Object.keys(dataItem.values).reduce(
@@ -48,7 +48,7 @@ const useUnwrappedValues = <K extends string>({
               key
             ];
             const interpolatedValue = interpolate(
-              progress.value,
+              progress.get(),
               [0, 1],
               [currentValue, targetValue],
               Extrapolate.CLAMP,
@@ -61,26 +61,30 @@ const useUnwrappedValues = <K extends string>({
         return { ...dataItem, values: interpolatedValues };
       });
 
-      currentData.value = currentInterpolated;
+      currentData.set(currentInterpolated);
     }
 
-    targetData.value = newData;
-    progress.value = 0;
-    progress.value = withSpring(1, { duration: 500, dampingRatio: 1 });
+    targetData.set(newData);
+    progress.set(0);
+    progress.set(withSpring(1, { duration: 500, dampingRatio: 1 }));
   }, [data, isSharedValue, targetData, progress, currentData]);
 
   const allValues = useDerivedValue(() => {
-    const current = currentData.value.map(
-      (item: RadarDataType<K>[number]) =>
-        Object.values(item.values) as number[],
-    );
-    const target = targetData.value.map(
-      (item: RadarDataType<K>[number]) =>
-        Object.values(item.values) as number[],
-    );
+    const current = currentData
+      .get()
+      .map(
+        (item: RadarDataType<K>[number]) =>
+          Object.values(item.values) as number[],
+      );
+    const target = targetData
+      .get()
+      .map(
+        (item: RadarDataType<K>[number]) =>
+          Object.values(item.values) as number[],
+      );
 
-    if (progress.value === 1) {
-      currentData.value = targetData.value;
+    if (progress.get() === 1) {
+      currentData.set(targetData.get());
       return target;
     }
 
@@ -89,7 +93,7 @@ const useUnwrappedValues = <K extends string>({
       return currentValues.map((currentValue: number, valueIndex: number) => {
         const targetValue = targetValues[valueIndex] || currentValue;
         return interpolate(
-          progress.value,
+          progress.get(),
           [0, 1],
           [currentValue, targetValue],
           Extrapolate.CLAMP,
@@ -100,7 +104,7 @@ const useUnwrappedValues = <K extends string>({
 
   const valuesLength = useMemo(() => {
     const currentDataArray = isSharedValue
-      ? (data as Readonly<SharedValue<RadarDataType<K>>>).value
+      ? (data as Readonly<SharedValue<RadarDataType<K>>>).get()
       : (data as RadarDataType<K>);
     return currentDataArray.reduce(
       (acc: number, item: RadarDataType<K>[number]) => {

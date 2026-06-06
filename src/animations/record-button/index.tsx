@@ -32,7 +32,7 @@ export const RecordButton = () => {
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = event.contentOffset.y;
+      scrollOffset.set(event.contentOffset.y);
     },
   });
 
@@ -44,7 +44,7 @@ export const RecordButton = () => {
     return {
       borderCurve: 'continuous',
       borderRadius: interpolate(
-        scrollOffset.value,
+        scrollOffset.get(),
         [0, 0.1],
         [0, 35],
         Extrapolation.CLAMP,
@@ -58,7 +58,7 @@ export const RecordButton = () => {
     const outputRange = [0, 1];
 
     return interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       outputRange,
       Extrapolation.CLAMP,
@@ -71,11 +71,11 @@ export const RecordButton = () => {
   const shouldEnableSnapping = useSharedValue(false);
 
   const onScrollBeginDrag = useCallback(() => {
-    shouldEnableSnapping.value = progress.value < 0.9;
+    shouldEnableSnapping.set(progress.get() < 0.9);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const onScrollEndDrag = useCallback(() => {
-    if (progress.value > 0.97 && shouldEnableSnapping.value) {
+    if (progress.get() > 0.97 && shouldEnableSnapping.get()) {
       scrollRef.current?.scrollToIndex({ index: 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

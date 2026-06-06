@@ -77,26 +77,28 @@ export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
   // Callback to prepare transition
   const prepareTransition = useCallback(async () => {
     // Capture the current screen as a snapshot
-    firstScreenSnapshot.value = await makeImageFromView(containerRef);
+    firstScreenSnapshot.set(await makeImageFromView(containerRef));
     // Reset the transition progress to 0
-    progress.value = 0;
+    progress.set(0);
   }, [firstScreenSnapshot, progress]);
 
   // Callback to run transition
   const runTransition = useCallback(
     async (timingConfig?: WithTimingConfig, onCompleted?: () => void) => {
       // Capture the next screen as a snapshot
-      secondScreenSnapshot.value = await makeImageFromView(containerRef);
+      secondScreenSnapshot.set(await makeImageFromView(containerRef));
       // Start the transition animation
-      progress.value = withTiming(1, timingConfig, isFinished => {
-        if (isFinished) {
-          // Reset all values after the transition completes
-          firstScreenSnapshot.value = null;
-          secondScreenSnapshot.value = null;
-          progress.value = 0;
-          if (onCompleted) scheduleOnRN(onCompleted);
-        }
-      });
+      progress.set(
+        withTiming(1, timingConfig, isFinished => {
+          if (isFinished) {
+            // Reset all values after the transition completes
+            firstScreenSnapshot.set(null);
+            secondScreenSnapshot.set(null);
+            progress.set(0);
+            if (onCompleted) scheduleOnRN(onCompleted);
+          }
+        }),
+      );
     },
     [firstScreenSnapshot, progress, secondScreenSnapshot],
   );
@@ -110,8 +112,8 @@ export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
 
   const rCanvasStyle = useAnimatedStyle(() => {
     return {
-      zIndex: progress.value === 0 ? -10 : 10,
-      pointerEvents: progress.value === 0 ? 'none' : 'auto',
+      zIndex: progress.get() === 0 ? -10 : 10,
+      pointerEvents: progress.get() === 0 ? 'none' : 'auto',
     };
   }, []);
 
@@ -123,7 +125,7 @@ export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
 
   const uniforms = useDerivedValue(() => {
     return {
-      progress: progress.value,
+      progress: progress.get(),
       resolution: [width, height],
     };
   }, [width, height]);

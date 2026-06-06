@@ -20,7 +20,7 @@ const BOTTOM_SHEET_HEIGHT = 200 + BOTTOM_SHEET_OFFSET;
 const BottomSheet: FC<BottomSheetProps> = memo(({ animationProgress }) => {
   const rBottomSheetStyle = useAnimatedStyle(() => {
     const translateY = interpolate(
-      animationProgress.value,
+      animationProgress.get(),
       [0, 1],
       [BOTTOM_SHEET_HEIGHT, BOTTOM_SHEET_OFFSET],
       Extrapolation.EXTEND,
@@ -36,7 +36,7 @@ const BottomSheet: FC<BottomSheetProps> = memo(({ animationProgress }) => {
 
   const rTextStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
-      animationProgress.value,
+      animationProgress.get(),
       [0.2, 1],
       [0, 1],
       Extrapolation.CLAMP,

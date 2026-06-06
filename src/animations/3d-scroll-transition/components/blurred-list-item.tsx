@@ -54,7 +54,7 @@ export const BlurredListItem: FC<{
     // this will improve the performance because the blur effect is very expensive
     const outputRange = [0, 6, 0, 6, 0];
     return interpolate(
-      scrollY.value,
+      scrollY.get(),
       inputRange,
       outputRange,
       Extrapolation.CLAMP,
@@ -64,7 +64,7 @@ export const BlurredListItem: FC<{
   const opacity = useDerivedValue(() => {
     const outputRange = [0, 0.5, 1, 0.5, 0];
     return interpolate(
-      scrollY.value,
+      scrollY.get(),
       inputRange,
       outputRange,
       Extrapolation.CLAMP,
@@ -72,7 +72,7 @@ export const BlurredListItem: FC<{
   }, [inputRange, scrollY]);
 
   const rItemStyle = useAnimatedStyle(() => {
-    const rotateX = interpolate(scrollY.value, inputRange, [
+    const rotateX = interpolate(scrollY.get(), inputRange, [
       -Math.PI / 2,
       -Math.PI / 2,
       0,
@@ -80,7 +80,7 @@ export const BlurredListItem: FC<{
       -Math.PI / 2,
     ]);
     return {
-      opacity: opacity.value,
+      opacity: opacity.get(),
       transform: [
         {
           perspective: 200,

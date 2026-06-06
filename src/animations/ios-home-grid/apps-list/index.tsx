@@ -57,9 +57,9 @@ export const AppsList = () => {
   const rStyle = useAnimatedStyle(() => {
     return {
       transform: [
-        { scale: 1 - springProgress.value * 0.05 },
+        { scale: 1 - springProgress.get() * 0.05 },
         {
-          translateY: springProgress.value * 5,
+          translateY: springProgress.get() * 5,
         },
       ],
     };

@@ -19,19 +19,19 @@ const useSwipeControls = () => {
 
   const swipeRight = useCallback(() => {
     // check if current ref exists
-    if (!refs[activeIndex.value]) {
+    if (!refs[activeIndex.get()]) {
       return;
     }
-    refs[activeIndex.value].current?.swipeRight();
-  }, [activeIndex.value, refs]);
+    refs[activeIndex.get()].current?.swipeRight();
+  }, [activeIndex.get(), refs]);
 
   const swipeLeft = useCallback(() => {
     // check if current ref exists
-    if (!refs[activeIndex.value]) {
+    if (!refs[activeIndex.get()]) {
       return;
     }
-    refs[activeIndex.value].current?.swipeLeft();
-  }, [activeIndex.value, refs]);
+    refs[activeIndex.get()].current?.swipeLeft();
+  }, [activeIndex.get(), refs]);
 
   const timeouts = useRef<NodeJS.Timeout[]>([]);
 

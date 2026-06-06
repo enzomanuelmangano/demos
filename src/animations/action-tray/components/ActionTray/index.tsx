@@ -48,9 +48,9 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
     const scrollTo = useCallback(
       (destination: number) => {
         'worklet';
-        active.value = destination !== maxHeight;
+        active.set(destination !== maxHeight);
 
-        translateY.value = withSpring(destination);
+        translateY.set(withSpring(destination));
       },
       [active, maxHeight, translateY],
     );
@@ -68,21 +68,21 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
         },
         close,
         isActive: () => {
-          return active.value;
+          return active.get();
         },
       }),
-      [close, scrollTo, active.value],
+      [close, scrollTo, active.get()],
     );
 
     const context = useSharedValue({ y: 0 });
 
     const gesture = Gesture.Pan()
       .onStart(() => {
-        context.value = { y: translateY.value };
+        context.set({ y: translateY.get() });
       })
       .onUpdate(event => {
         if (event.translationY > -50) {
-          translateY.value = event.translationY + context.value.y;
+          translateY.set(event.translationY + context.get().y);
         }
       })
       .onEnd(event => {
@@ -91,13 +91,13 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
             scheduleOnRN(onClose);
           } else close();
         } else {
-          scrollTo(context.value.y);
+          scrollTo(context.get().y);
         }
       });
 
     const rActionTrayStyle = useAnimatedStyle(() => {
       const borderRadius = interpolate(
-        translateY.value,
+        translateY.get(),
         [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
         [25, 5],
         Extrapolation.CLAMP,
@@ -105,7 +105,7 @@ const ActionTray = forwardRef<ActionTrayRef, ActionTrayProps>(
 
       return {
         borderRadius,
-        transform: [{ translateY: translateY.value }],
+        transform: [{ translateY: translateY.get() }],
       };
     });
 

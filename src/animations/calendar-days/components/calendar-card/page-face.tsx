@@ -36,7 +36,7 @@ export const PageFace = ({
   const isFront = variant === 'front';
 
   const rVisibilityStyle = useAnimatedStyle(() => {
-    const progress = pageFlipProgress.value;
+    const progress = pageFlipProgress.get();
     return {
       opacity: isFront ? (progress < 0.5 ? 1 : 0) : progress >= 0.5 ? 1 : 0,
     };

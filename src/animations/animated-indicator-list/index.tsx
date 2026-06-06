@@ -46,7 +46,7 @@ export const AnimatedIndicatorList = () => {
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      contentOffsetY.value = event.contentOffset.y;
+      contentOffsetY.set(event.contentOffset.y);
     },
   });
 

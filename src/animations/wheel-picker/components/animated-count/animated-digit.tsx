@@ -76,7 +76,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
     const digit = useDerivedValue(() => {
       return getDigitByIndex({
         digitIndex: index,
-        count: count.value,
+        count: count.get(),
         maxDigits: maxDigits,
       });
     }, [index]);
@@ -85,15 +85,15 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
     // for instance, if the maxDigits is 5 and the count is 123, then the invisible digits are 2.
     // Since count -> 00123
     const invisibleDigitsAmount = useDerivedValue(() => {
-      return maxDigits - count.value.toString().length;
+      return maxDigits - count.get().toString().length;
     }, [maxDigits]);
 
     const isVisible = useDerivedValue(() => {
-      const isZero = digit.value === 0;
+      const isZero = digit.get() === 0;
 
       if (!isZero) return true;
 
-      return index < maxDigits - invisibleDigitsAmount.value;
+      return index < maxDigits - invisibleDigitsAmount.get();
     }, [index, maxDigits]);
 
     const flattenedTextStyle = useMemo(() => {
@@ -106,7 +106,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
 
     const resetIsChanging = useCallback(() => {
       setTimeout(() => {
-        isChanging.value = false;
+        isChanging.set(false);
         // We can improve by far this logic
         // But honestly, it's good enough for me :)
       }, 200);
@@ -114,10 +114,10 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
 
     useAnimatedReaction(
       () => {
-        return digit.value;
+        return digit.get();
       },
       (curr, prev) => {
-        isChanging.value = curr !== prev;
+        isChanging.set(curr !== prev);
         scheduleOnRN(resetIsChanging);
       },
     );
@@ -126,40 +126,40 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
       return {
         transform: [
           {
-            translateY: withSpring(-height * digit.value, {
+            translateY: withSpring(-height * digit.get(), {
               mass: 0.25,
               damping: 10,
               stiffness: 100,
             }),
           },
           {
-            scaleX: withSpring(isChanging.value ? 0.7 : 1),
+            scaleX: withSpring(isChanging.get() ? 0.7 : 1),
           },
         ],
       };
     }, [height]);
 
     const opacity = useDerivedValue(() => {
-      return withTiming(isVisible.value ? 1 : 0);
+      return withTiming(isVisible.get() ? 1 : 0);
     }, []);
 
     const rContainerStyle = useAnimatedStyle(() => {
       return {
-        opacity: opacity.value,
+        opacity: opacity.get(),
         transform: [
           {
-            translateX: withSpring((-width * invisibleDigitsAmount.value) / 2),
+            translateX: withSpring((-width * invisibleDigitsAmount.get()) / 2),
           },
         ],
       };
     });
 
     const isChangingProgress = useDerivedValue(() => {
-      return withTiming(isChanging.value ? 1 : 0);
+      return withTiming(isChanging.get() ? 1 : 0);
     }, []);
 
     const blurIntensity = useDerivedValue<number | undefined>(() => {
-      return isChangingProgress.value * 17;
+      return isChangingProgress.get() * 17;
     }, []);
 
     return (

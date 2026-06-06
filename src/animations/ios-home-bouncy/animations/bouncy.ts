@@ -45,16 +45,18 @@ export const ClosingSpringConfigShared = makeMutable<SpringConfig>({
 export const startAnimation = () => {
   'worklet';
   cancelAnimation(BouncyProgressShared);
-  BouncyProgressShared.value = withSequence(
-    withSpring(0, { mass: 80, damping: 120, stiffness: 240 }),
-    withDelay(
-      800,
-      withSequence(
-        withSpring(1, {
-          ...OpeningSpringConfigShared.get(),
-          energyThreshold: 10,
-        }),
-        withSpring(2, ClosingSpringConfigShared.value),
+  BouncyProgressShared.set(
+    withSequence(
+      withSpring(0, { mass: 80, damping: 120, stiffness: 240 }),
+      withDelay(
+        800,
+        withSequence(
+          withSpring(1, {
+            ...OpeningSpringConfigShared.get(),
+            energyThreshold: 10,
+          }),
+          withSpring(2, ClosingSpringConfigShared.get()),
+        ),
       ),
     ),
   );

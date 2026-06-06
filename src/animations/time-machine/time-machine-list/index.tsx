@@ -21,7 +21,7 @@ export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
   const scrollOffset = useSharedValue(0);
   const onScrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = event.contentOffset.y;
+      scrollOffset.set(event.contentOffset.y);
     },
   });
 
@@ -34,7 +34,7 @@ export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
   }, [data.length, ListPadding]);
 
   useAnimatedReaction(
-    () => scrollOffset.value,
+    () => scrollOffset.get(),
     (offset, prevOffset) => {
       if (onScroll && offset !== prevOffset) {
         onScroll(offset);

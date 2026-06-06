@@ -43,7 +43,7 @@ function StoryList<T>({
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = event.contentOffset.x;
+      scrollOffset.set(event.contentOffset.x);
     },
   });
 

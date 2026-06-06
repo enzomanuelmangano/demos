@@ -67,19 +67,21 @@ export const ContributionSquare = forwardRef<
     const delay = 45 * (weekIndex + (6 - dayIndex));
     cancelAnimation(progress);
 
-    progress.value = withDelay(delay, withSpring(1, SpringConfig));
+    progress.set(withDelay(delay, withSpring(1, SpringConfig)));
   }, [weekIndex, dayIndex, progress]);
 
   const resetAnimation = useCallback(() => {
     cancelAnimation(progress);
 
-    progress.value = withDelay(
-      Math.random() * 500,
-      withSpring(0, {
-        mass: 0.9,
-        damping: 10,
-        stiffness: 60,
-      }),
+    progress.set(
+      withDelay(
+        Math.random() * 500,
+        withSpring(0, {
+          mass: 0.9,
+          damping: 10,
+          stiffness: 60,
+        }),
+      ),
     );
   }, [progress]);
 
@@ -97,7 +99,7 @@ export const ContributionSquare = forwardRef<
     const endColor = getColorForLevel(level, colorScheme);
 
     const animatedColor = interpolateColor(
-      progress.value,
+      progress.get(),
       [0, 1],
       [startColor, endColor],
       'RGB',
@@ -105,7 +107,7 @@ export const ContributionSquare = forwardRef<
 
     return {
       transform: [
-        { scale: interpolate(progress.value, [0, 0.5, 1], [1, 0.4, 1]) },
+        { scale: interpolate(progress.get(), [0, 0.5, 1], [1, 0.4, 1]) },
       ],
       backgroundColor: animatedColor,
     };

@@ -27,35 +27,35 @@ export const useCloseButtonAnimations = ({
 
   const closeIconCircleX = useDerivedValue(() => {
     return withSpring(
-      isToggled.value
+      isToggled.get()
         ? width + additionalWidth / 2
         : width / 2 + additionalWidth / 2,
     );
   }, []);
 
   const closeButtonOpacity = useDerivedValue(() => {
-    return withTiming(isToggled.value ? 1 : 0);
+    return withTiming(isToggled.get() ? 1 : 0);
   }, []);
 
   const gestureHandlerClose = useGestureHandler({
     onStart: () => {
       'worklet';
-      isCloseButtonPressed.value = true;
+      isCloseButtonPressed.set(true);
     },
     onTap: () => {
       'worklet';
-      isCloseButtonPressed.value = false;
-      isToggled.value = false;
+      isCloseButtonPressed.set(false);
+      isToggled.set(false);
       scheduleOnRN(Haptics.selectionAsync);
     },
   });
 
   const closeButtonScale = useDerivedValue(() => {
-    return withSpring(isCloseButtonPressed.value ? 0.95 : 1);
+    return withSpring(isCloseButtonPressed.get() ? 0.95 : 1);
   }, []);
 
   const closeButtonTransform = useDerivedValue(() => {
-    return [{ scale: closeButtonScale.value }];
+    return [{ scale: closeButtonScale.get() }];
   }, []);
 
   // Create a shared Skia Paint object for opacity updates
@@ -63,9 +63,9 @@ export const useCloseButtonAnimations = ({
   // See: https://github.com/Shopify/react-native-skia/issues/1709
   const paint = useSharedValue(Skia.Paint());
   useAnimatedReaction(
-    () => closeButtonOpacity.value,
+    () => closeButtonOpacity.get(),
     opacity => {
-      paint.value.setAlphaf(opacity);
+      paint.get().setAlphaf(opacity);
     },
   );
 

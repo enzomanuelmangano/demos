@@ -72,29 +72,29 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
     // I'm going to release a tutorial about the detailed usage of the interpolate function :)
     // However the idea is fairly simple. We map the progress value from 0 to 1 to the desired values
     // for each property of the card style object. The interpolate function will take care of the rest!
-    const top = interpolate(progress.value, [0, 1], [initialTop, expandedTop]);
+    const top = interpolate(progress.get(), [0, 1], [initialTop, expandedTop]);
 
-    const left = interpolate(progress.value, inputRange, [
+    const left = interpolate(progress.get(), inputRange, [
       initialLeft,
       expandedLeft,
     ]);
 
-    const cardHeight = interpolate(progress.value, inputRange, [
+    const cardHeight = interpolate(progress.get(), inputRange, [
       initialCardHeight,
       expandedCardHeight,
     ]);
 
-    const cardWidth = interpolate(progress.value, inputRange, [
+    const cardWidth = interpolate(progress.get(), inputRange, [
       initialCardWidth,
       expandedCardWidth,
     ]);
 
-    const rotate = interpolate(progress.value, inputRange, [
+    const rotate = interpolate(progress.get(), inputRange, [
       initialRotate,
       expandedRotate,
     ]);
 
-    const borderRadius = interpolate(progress.value, inputRange, [
+    const borderRadius = interpolate(progress.get(), inputRange, [
       initialBorderRadius,
       expandedBorderRadius,
     ]);
@@ -114,8 +114,8 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   }, []);
 
   const rTextInputStyle = useAnimatedStyle(() => {
-    const marginTop = interpolate(progress.value, inputRange, [16, 24]);
-    const fontSize = interpolate(progress.value, inputRange, [14, 24]);
+    const marginTop = interpolate(progress.get(), inputRange, [16, 24]);
+    const fontSize = interpolate(progress.get(), inputRange, [14, 24]);
 
     return {
       marginTop: marginTop,
@@ -125,7 +125,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
 
   const rBackIconStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value,
+      opacity: progress.get(),
     };
   }, []);
 
@@ -150,7 +150,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
       <Animated.View
         style={[rCardStyle, styles.card]}
         onTouchEnd={() => {
-          if (progress.value === 0) {
+          if (progress.get() === 0) {
             animatedTextInput.current?.focus();
           }
         }}>
@@ -158,11 +158,11 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
           ref={animatedTextInput}
           onFocus={() => {
             // Here's the magic, we animate the progress value in a reactive way
-            progress.value = withSpring(1, { duration: 800, dampingRatio: 1 });
+            progress.set(withSpring(1, { duration: 800, dampingRatio: 1 }));
           }}
           onBlur={() => {
             // When the input is unfocused, we animate the progress value back to 0
-            progress.value = withSpring(0, { duration: 800, dampingRatio: 1 });
+            progress.set(withSpring(0, { duration: 800, dampingRatio: 1 }));
           }}
           style={[styles.input, rTextInputStyle]}
           autoCorrect={false}

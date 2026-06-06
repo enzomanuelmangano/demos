@@ -45,22 +45,26 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
   const floatingProgress = useSharedValue(0);
 
   useEffect(() => {
-    focusedIndex.value = activeTabIndex;
+    focusedIndex.set(activeTabIndex);
   }, [activeTabIndex, focusedIndex]);
 
   const onTapIcon = useCallback(
     (selectedIndex: keyof typeof screensMap) => {
       const nextScreen = screensMap[selectedIndex];
 
-      isActive.value = true;
+      isActive.set(true);
       if (nextScreen === 'Message') {
-        floatingProgress.value = withTiming(1, {
-          duration: 500,
-        });
+        floatingProgress.set(
+          withTiming(1, {
+            duration: 500,
+          }),
+        );
       } else {
-        floatingProgress.value = withTiming(0, {
-          duration: 500,
-        });
+        floatingProgress.set(
+          withTiming(0, {
+            duration: 500,
+          }),
+        );
       }
 
       onTabPress(nextScreen);
@@ -75,7 +79,7 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
       transform: [
         {
           translateY: withSpring(
-            isActive.value ? 0 : BOTTOM_BAR_HEIGHT + safeBottom,
+            isActive.get() ? 0 : BOTTOM_BAR_HEIGHT + safeBottom,
             {
               dampingRatio: 1,
               duration: 500,
@@ -90,7 +94,7 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
     return {
       transform: [
         {
-          scale: withSpring(isActive.value ? 1 : 0, {
+          scale: withSpring(isActive.get() ? 1 : 0, {
             overshootClamping: true,
           }),
         },
@@ -138,7 +142,7 @@ const BottomTabBar: FC<CustomBottomTabBarProps> = ({
               textColor={colors.text}
               onPress={() => {
                 onTapIcon(index);
-                focusedIndex.value = index;
+                focusedIndex.set(index);
               }}
             />
           );
@@ -160,12 +164,12 @@ type TabBarItemProps = {
 const TabBarItem: FC<TabBarItemProps> = memo(
   ({ onPress, focusedIndex, index, iconName, textColor }) => {
     const isFocused = useDerivedValue(() => {
-      return focusedIndex.value === index;
+      return focusedIndex.get() === index;
     }, [index]);
 
     const rStyle = useAnimatedStyle(() => {
       return {
-        opacity: withTiming(isFocused.value ? 1 : 0.3),
+        opacity: withTiming(isFocused.get() ? 1 : 0.3),
       };
     }, []);
 

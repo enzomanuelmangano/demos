@@ -38,7 +38,7 @@ const Grid: React.FC<GridProps> = ({
 }) => {
   const path = useDerivedValue(() => {
     const area = Skia.PathBuilder.Make();
-    area.addRect(rect(x.value, y.value, gridWidth.value, gridHeight.value));
+    area.addRect(rect(x.get(), y.get(), gridWidth.get(), gridHeight.get()));
     return area.build();
   }, [x, y, gridWidth, gridHeight]);
 
@@ -48,32 +48,32 @@ const Grid: React.FC<GridProps> = ({
   const grid = useDerivedValue(() => {
     const gridPath = Skia.PathBuilder.Make();
 
-    const width = gridWidth.value;
-    const height = gridHeight.value;
+    const width = gridWidth.get();
+    const height = gridHeight.get();
 
-    gridPath.moveTo(x.value, height / 3 + y.value);
-    gridPath.lineTo(width + x.value, height / 3 + y.value);
+    gridPath.moveTo(x.get(), height / 3 + y.get());
+    gridPath.lineTo(width + x.get(), height / 3 + y.get());
 
-    gridPath.moveTo(x.value, (height / 3) * 2 + y.value);
-    gridPath.lineTo(width + x.value, (height / 3) * 2 + y.value);
+    gridPath.moveTo(x.get(), (height / 3) * 2 + y.get());
+    gridPath.lineTo(width + x.get(), (height / 3) * 2 + y.get());
 
-    gridPath.moveTo(x.value, height + y.value);
-    gridPath.lineTo(width + x.value, height + y.value);
+    gridPath.moveTo(x.get(), height + y.get());
+    gridPath.lineTo(width + x.get(), height + y.get());
 
-    gridPath.moveTo(width / 3 + x.value, y.value);
-    gridPath.lineTo(width / 3 + x.value, height + y.value);
+    gridPath.moveTo(width / 3 + x.get(), y.get());
+    gridPath.lineTo(width / 3 + x.get(), height + y.get());
 
-    gridPath.moveTo((width / 3) * 2 + x.value, y.value);
-    gridPath.lineTo((width / 3) * 2 + x.value, height + y.value);
+    gridPath.moveTo((width / 3) * 2 + x.get(), y.get());
+    gridPath.lineTo((width / 3) * 2 + x.get(), height + y.get());
 
-    gridPath.moveTo(width + x.value, y.value);
-    gridPath.lineTo(width + x.value, height + y.value);
+    gridPath.moveTo(width + x.get(), y.get());
+    gridPath.lineTo(width + x.get(), height + y.get());
 
-    gridPath.moveTo(x.value, y.value);
-    gridPath.lineTo(x.value, height + y.value);
+    gridPath.moveTo(x.get(), y.get());
+    gridPath.lineTo(x.get(), height + y.get());
 
-    gridPath.moveTo(x.value, y.value);
-    gridPath.lineTo(width + x.value, y.value);
+    gridPath.moveTo(x.get(), y.get());
+    gridPath.lineTo(width + x.get(), y.get());
 
     return gridPath.build();
   }, [x, y, gridWidth, gridHeight]);
@@ -83,22 +83,24 @@ const Grid: React.FC<GridProps> = ({
   const gesture = useGestureHandler({
     onStart: () => {
       'worklet';
-      ctx.value = { x: x.value, y: y.value };
+      ctx.set({ x: x.get(), y: y.get() });
     },
     onActive: event => {
       'worklet';
-      x.value =
+      x.set(
         clamp(
           event.translationX,
-          -ctx.value.x,
-          maxWidth - gridWidth.value - ctx.value.x,
-        ) + ctx.value.x;
-      y.value =
+          -ctx.get().x,
+          maxWidth - gridWidth.get() - ctx.get().x,
+        ) + ctx.get().x,
+      );
+      y.set(
         clamp(
           event.translationY,
-          -ctx.value.y,
-          maxHeight - gridHeight.value - ctx.value.y,
-        ) + ctx.value.y;
+          -ctx.get().y,
+          maxHeight - gridHeight.get() - ctx.get().y,
+        ) + ctx.get().y,
+      );
     },
   });
 
@@ -115,19 +117,19 @@ const Grid: React.FC<GridProps> = ({
     });
 
   const topRightX = useDerivedValue(() => {
-    return gridWidth.value + x.value;
+    return gridWidth.get() + x.get();
   }, [gridWidth, x]);
 
   const bottomLeftY = useDerivedValue(() => {
-    return gridHeight.value + y.value;
+    return gridHeight.get() + y.get();
   }, [gridHeight, y]);
 
   const bottomRightX = useDerivedValue(() => {
-    return gridWidth.value + x.value;
+    return gridWidth.get() + x.get();
   }, [gridWidth, x]);
 
   const bottomRightY = useDerivedValue(() => {
-    return gridHeight.value + y.value;
+    return gridHeight.get() + y.get();
   }, [gridHeight, y]);
 
   return (

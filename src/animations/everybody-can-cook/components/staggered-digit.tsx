@@ -44,15 +44,15 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
   textStyle,
 }) => {
   const rStyle = useAnimatedStyle(() => {
-    const rotateX = `${progress.value * 90}deg`;
+    const rotateX = `${progress.get() * 90}deg`;
     return {
-      opacity: 1 - progress.value,
+      opacity: 1 - progress.get(),
       transform: [
         {
           perspective: 1000,
         },
         {
-          translateY: (-progress.value * fontHeight) / 2,
+          translateY: (-progress.get() * fontHeight) / 2,
         },
         {
           rotateX,
@@ -62,10 +62,10 @@ export const StaggeredDigit: React.FC<StaggeredDigitProps> = ({
   });
 
   const rBottomDigitStyle = useAnimatedStyle(() => {
-    const rotateX = interpolate(progress.value, [0, 1], [-90, 0]);
-    const translateY = interpolate(progress.value, [0, 1], [fontHeight / 2, 0]);
+    const rotateX = interpolate(progress.get(), [0, 1], [-90, 0]);
+    const translateY = interpolate(progress.get(), [0, 1], [fontHeight / 2, 0]);
     return {
-      opacity: progress.value,
+      opacity: progress.get(),
       transform: [
         {
           translateY,

@@ -62,7 +62,7 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
 
   const updateInitialIndicator = useCallback(
     (layout: LayoutRectangle) => {
-      indicatorLayout.value = layout;
+      indicatorLayout.set(layout);
     },
     [indicatorLayout],
   );
@@ -75,8 +75,8 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
       if (inputRange.length > 0 && xOutputRange.length > 0) {
         const contentOffsetX = event.contentOffset.x;
 
-        indicatorLayout.value = {
-          ...indicatorLayout.value,
+        indicatorLayout.set({
+          ...indicatorLayout.get(),
           x: interpolate(
             contentOffsetX,
             inputRange,
@@ -89,7 +89,7 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
             widthOutputRange,
             Extrapolation.CLAMP,
           ),
-        };
+        });
       }
     },
   });

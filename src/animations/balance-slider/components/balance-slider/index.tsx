@@ -67,56 +67,58 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
   );
 
   const xPercentage = useDerivedValue(() => {
-    return clamp((x.value - pickerWidth / 2) / width, 0, 1);
+    return clamp((x.get() - pickerWidth / 2) / width, 0, 1);
   });
 
   // This is a hacky way to prevent the slider from shifting when it reaches the right limit
   // This value is going to be used by components in order to fix the styling
   const uiXPercentage = useDerivedValue(() => {
-    return xPercentage.value * (1 - PICKER_WIDTH_PERCENTAGE);
+    return xPercentage.get() * (1 - PICKER_WIDTH_PERCENTAGE);
   }, []);
 
   const gesture = Gesture.Pan()
     .onBegin(event => {
-      x.value = withSpring(event.x + pickerWidth / 2, {
-        overshootClamping: true,
-      });
+      x.set(
+        withSpring(event.x + pickerWidth / 2, {
+          overshootClamping: true,
+        }),
+      );
     })
     .onUpdate(event => {
-      x.value = event.x + pickerWidth / 2;
-      scheduleOnRN(onChangeWrapper, xPercentage.value);
+      x.set(event.x + pickerWidth / 2);
+      scheduleOnRN(onChangeWrapper, xPercentage.get());
     });
 
   const hasReachedBoundaries = useDerivedValue(() => {
     return (
-      xPercentage.value < leftPercentageLimitBeforeShift ||
-      xPercentage.value > rightPercentageLimitBeforeShift
+      xPercentage.get() < leftPercentageLimitBeforeShift ||
+      xPercentage.get() > rightPercentageLimitBeforeShift
     );
   }, [leftPercentageLimitBeforeShift, rightPercentageLimitBeforeShift]);
 
   const boxHeightPercentage = useDerivedValue(() => {
     // if the slider has reached its boundaries, we want to shrink the box height
     // of the left, right, and picker containers!
-    return withSpring(hasReachedBoundaries.value ? 0.3 : 1);
+    return withSpring(hasReachedBoundaries.get() ? 0.3 : 1);
   }, []);
 
   const rFirstContainerStyle = useAnimatedStyle(() => {
     return {
-      width: `${uiXPercentage.value * 100}%`,
-      height: `${boxHeightPercentage.value * 100}%`,
+      width: `${uiXPercentage.get() * 100}%`,
+      height: `${boxHeightPercentage.get() * 100}%`,
     };
   }, []);
 
   const rSecondContainerStyle = useAnimatedStyle(() => {
     return {
-      width: `${(1 - uiXPercentage.value - PICKER_WIDTH_PERCENTAGE) * 100}%`,
-      height: `${boxHeightPercentage.value * 100}%`,
+      width: `${(1 - uiXPercentage.get() - PICKER_WIDTH_PERCENTAGE) * 100}%`,
+      height: `${boxHeightPercentage.get() * 100}%`,
     };
   }, []);
 
   const rPickerContainerStyle = useAnimatedStyle(() => {
     return {
-      height: `${boxHeightPercentage.value * 100}%`,
+      height: `${boxHeightPercentage.get() * 100}%`,
     };
   }, []);
 

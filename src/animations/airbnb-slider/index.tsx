@@ -25,7 +25,7 @@ const App = () => {
 
   const rCurrencyStyle = useAnimatedStyle(() => {
     // Calculate the number of digits in the price.
-    const digitCount = price.value.toString().length;
+    const digitCount = price.get().toString().length;
     // Calculate the number of missing digits.
     // For instance, if the maxDigits is 5 and the count is 123, then the missing digits are 2.
     const missingDigits = maxDigits - digitCount;
@@ -71,14 +71,14 @@ const App = () => {
       </View>
 
       <AnimatedSlider
-        initialProgress={price.value}
+        initialProgress={price.get()}
         style={{
           width: windowWidth - 90,
         }}
         minValue={0}
         maxValue={maxValue}
         onUpdate={prog => {
-          price.value = Math.round(prog);
+          price.set(Math.round(prog));
         }}
       />
     </View>

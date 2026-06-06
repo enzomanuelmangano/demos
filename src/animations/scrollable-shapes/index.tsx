@@ -50,7 +50,7 @@ const ScrollableShapes = () => {
   // Scroll handler for the invisible ScrollView
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollX.value = event.contentOffset.x;
+      scrollX.set(event.contentOffset.x);
     },
   });
 
@@ -65,8 +65,8 @@ const ScrollableShapes = () => {
       Skia.XYWHRect(0, 0, windowWidth, windowHeight),
     );
 
-    const scroll = scrollX.value;
-    const time = iTime.value;
+    const scroll = scrollX.get();
+    const time = iTime.get();
 
     // Pre-compute rotation values once per frame
     const cosT = Math.cos(time);
@@ -157,10 +157,12 @@ const ScrollableShapes = () => {
 
   // Rotation animation
   useEffect(() => {
-    iTime.value = withRepeat(
-      withTiming(Math.PI * 2, { duration: 10000, easing: Easing.linear }),
-      -1,
-      false,
+    iTime.set(
+      withRepeat(
+        withTiming(Math.PI * 2, { duration: 10000, easing: Easing.linear }),
+        -1,
+        false,
+      ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

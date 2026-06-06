@@ -68,9 +68,9 @@ const CircularListItem: FC<{
     // The output range is the corresponding scale values based on whether scaling is enabled.
     // Extrapolation.CLAMP ensures that the scale value stays within the defined output range.
     const interpolatedScale = interpolate(
-      contentOffset.value, // Current content offset value from the shared value
+      contentOffset.get(), // Current content offset value from the shared value
       inputRange, // Input range array based on the list item's position
-      scaleOutputRange.value, // Output range array for scale values
+      scaleOutputRange.get(), // Output range array for scale values
       Extrapolation.CLAMP, // Clamp the interpolated value within the output range
     );
 
@@ -91,12 +91,12 @@ const CircularListItem: FC<{
 
     // Interpolate translateY and opacity based on content offset
     const translateY = interpolate(
-      contentOffset.value,
+      contentOffset.get(),
       inputRange,
       translateOutputRange,
     );
     const opacity = interpolate(
-      contentOffset.value,
+      contentOffset.get(),
       inputRange,
       opacityOutputRange,
       Extrapolation.CLAMP,
@@ -112,7 +112,7 @@ const CircularListItem: FC<{
         {
           translateY,
         },
-        { scale: scale.value },
+        { scale: scale.get() },
       ],
     };
   }, []);

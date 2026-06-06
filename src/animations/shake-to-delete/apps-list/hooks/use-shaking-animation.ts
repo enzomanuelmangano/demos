@@ -78,7 +78,7 @@ export const useShakingAnimation = (id = 0) => {
     }
 
     // Return to neutral position when not shaking
-    if (!isShaking.value) {
+    if (!isShaking.get()) {
       return withTiming(0, { duration: 150 });
     }
 
@@ -98,14 +98,14 @@ export const useShakingAnimation = (id = 0) => {
   const rShakingStyle = useAnimatedStyle(() => {
     // Map progress to horizontal movement
     const translateX = interpolate(
-      progress.value,
+      progress.get(),
       [-1, 0, 1],
       [-params.amplitude, 0, params.amplitude],
     );
 
     // Map progress to rotation angle
     const rotate = interpolate(
-      progress.value,
+      progress.get(),
       [-1, 0, 1],
       [
         params.baseRotation - params.rotationAmplitude,

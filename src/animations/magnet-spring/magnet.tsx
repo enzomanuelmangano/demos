@@ -89,8 +89,8 @@ const useMagnetDrag = (initialPosition: Position, magnets: Position[]) => {
   const isActive = useSharedValue(false);
   const context = useSharedValue<Position>({ x: 0, y: 0 });
   const position = useDerivedValue(() => ({
-    x: positionX.value,
-    y: positionY.value,
+    x: positionX.get(),
+    y: positionY.get(),
   }));
 
   const getNearestMagnet = (currentPosition: Position): Position => {
@@ -117,10 +117,10 @@ const useMagnetDrag = (initialPosition: Position, magnets: Position[]) => {
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
-      { translateX: positionX.value },
-      { translateY: positionY.value },
+      { translateX: positionX.get() },
+      { translateY: positionY.get() },
       {
-        scale: withSpring(isActive.value ? 1.2 : 1, {
+        scale: withSpring(isActive.get() ? 1.2 : 1, {
           mass: 0.5,
           damping: 10,
           stiffness: 100,
@@ -131,32 +131,36 @@ const useMagnetDrag = (initialPosition: Position, magnets: Position[]) => {
 
   const panGesture = Gesture.Pan()
     .onBegin(() => {
-      isActive.value = true;
-      context.value = {
-        x: positionX.value,
-        y: positionY.value,
-      };
+      isActive.set(true);
+      context.set({
+        x: positionX.get(),
+        y: positionY.get(),
+      });
     })
     .onUpdate(event => {
-      positionX.value = context.value.x + event.translationX;
-      positionY.value = context.value.y + event.translationY;
+      positionX.set(context.get().x + event.translationX);
+      positionY.set(context.get().y + event.translationY);
     })
     .onEnd(({ velocityX, velocityY }) => {
       const nearestMagnetPosition = getNearestMagnet({
-        x: positionX.value,
-        y: positionY.value,
+        x: positionX.get(),
+        y: positionY.get(),
       });
-      positionX.value = withSpring(nearestMagnetPosition.x, {
-        velocity: velocityX,
-        ...SPRING_CONFIG,
-      });
-      positionY.value = withSpring(nearestMagnetPosition.y, {
-        velocity: velocityY,
-        ...SPRING_CONFIG,
-      });
+      positionX.set(
+        withSpring(nearestMagnetPosition.x, {
+          velocity: velocityX,
+          ...SPRING_CONFIG,
+        }),
+      );
+      positionY.set(
+        withSpring(nearestMagnetPosition.y, {
+          velocity: velocityY,
+          ...SPRING_CONFIG,
+        }),
+      );
     })
     .onFinalize(() => {
-      isActive.value = false;
+      isActive.set(false);
     });
 
   return {
@@ -173,7 +177,7 @@ const Magnet: React.FC<MagnetProps> = ({
   objectPosition,
 }) => {
   const rAnimatedStyle = useAnimatedStyle(() => {
-    const distance = getDistance(objectPosition.value, position);
+    const distance = getDistance(objectPosition.get(), position);
     const scale = interpolate(
       distance,
       [0, CHEESE_RADIUS * 2],

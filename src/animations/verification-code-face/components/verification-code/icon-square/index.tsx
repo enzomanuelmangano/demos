@@ -30,7 +30,7 @@ export const IconSquare = forwardRef<InternalIconRef, IconSquareProps>(
 
     const rotationY = useDerivedValue(() => {
       return interpolate(
-        codeProgressPercentage.value,
+        codeProgressPercentage.get(),
         [0, 1],
         [-Math.PI / 8, Math.PI / 8],
       );
@@ -43,7 +43,7 @@ export const IconSquare = forwardRef<InternalIconRef, IconSquareProps>(
             perspective: 300,
           },
           {
-            rotateY: `${rotationY.value}rad`,
+            rotateY: `${rotationY.get()}rad`,
           },
           {
             rotateX: `${-Math.PI / 8}rad`,
@@ -63,7 +63,7 @@ export const IconSquare = forwardRef<InternalIconRef, IconSquareProps>(
           },
           {
             translateX: interpolate(
-              codeProgressPercentage.value,
+              codeProgressPercentage.get(),
               [0, 1],
               [-10, 10],
             ),

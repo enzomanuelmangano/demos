@@ -72,15 +72,16 @@ const ScaleableCharacter: React.FC<
   }
 > = ({ highlightedPoint, x, y, ...rest }) => {
   const distance = useDerivedValue(() => {
-    if (highlightedPoint.value === null) return withTiming(80);
-    const dx = x - highlightedPoint.value.x;
-    const dy = y - highlightedPoint.value.y;
+    const point = highlightedPoint.get();
+    if (point === null) return withTiming(80);
+    const dx = x - point.x;
+    const dy = y - point.y;
     return Math.sqrt(dx * dx + dy * dy);
   });
 
   const transform = useDerivedValue(() => {
     const scale = interpolate(
-      distance.value,
+      distance.get(),
       [0, 80],
       [1, 0.5],
       Extrapolation.CLAMP,

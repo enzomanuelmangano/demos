@@ -55,7 +55,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
         const rCardStyle = useAnimatedStyle(() => {
           // Interpolate translateY based on progress
           const translateY = interpolate(
-            progress.value,
+            progress.get(),
             [0, 1],
             [height / 2 - foldHeight / 2, 0],
           );
@@ -76,7 +76,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
             { translateY: -foldHeight / 2 },
             {
               rotateX:
-                interpolate(progress.value, [0, 1], [-Math.PI, 0]) + 'rad',
+                interpolate(progress.get(), [0, 1], [-Math.PI, 0]) + 'rad',
             },
             { translateY: foldHeight / 2 },
           ];
@@ -95,7 +95,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
               { translateY: foldHeight / 2 },
               {
                 rotateX:
-                  interpolate(progress.value, [0, 1], [Math.PI, 0]) + 'rad',
+                  interpolate(progress.get(), [0, 1], [Math.PI, 0]) + 'rad',
               },
               { translateY: -foldHeight / 2 },
               { translateY: height / 3 },
@@ -111,7 +111,7 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
             return '#ffffff';
           }
           return interpolateColor(
-            progress.value,
+            progress.get(),
             [0, 1],
             ['#b1b1b1', '#ffffff'],
           );

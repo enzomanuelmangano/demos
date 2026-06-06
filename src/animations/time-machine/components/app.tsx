@@ -35,11 +35,11 @@ export const App = () => {
   const previousActiveItemKey = usePreviousRef(activeItemKey);
 
   const activeIndex = useDerivedValue(() => {
-    return Math.round(scrollOffset.value / StoryListItemWidth);
+    return Math.round(scrollOffset.get() / StoryListItemWidth);
   }, [scrollOffset]);
 
   const progress = useDerivedValue(() => {
-    return withSpring(timeMachineProgress.value, {
+    return withSpring(timeMachineProgress.get(), {
       mass: 0.2,
       damping: 15,
       stiffness: 300,
@@ -47,7 +47,7 @@ export const App = () => {
   });
 
   const onTimeMachineClose = useCallback(() => {
-    const newActiveItemKey = target[activeIndex.value].key;
+    const newActiveItemKey = target[activeIndex.get()].key;
 
     if (previousActiveItemKey.current === newActiveItemKey) {
       return;
@@ -86,7 +86,7 @@ export const App = () => {
         <TimeMachineList
           onScroll={offset => {
             'worklet';
-            scrollOffset.value = offset;
+            scrollOffset.set(offset);
           }}
           data={target.map((item, index) => {
             return (

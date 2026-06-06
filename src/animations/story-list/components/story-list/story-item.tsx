@@ -27,7 +27,7 @@ function StoryListItem<T>({
   renderItem,
 }: StoryListItemProps<T>) {
   const rStyle = useAnimatedStyle(() => {
-    const activeIndex = scrollOffset.value / itemWidth;
+    const activeIndex = scrollOffset.get() / itemWidth;
 
     const translateX = interpolate(
       activeIndex,

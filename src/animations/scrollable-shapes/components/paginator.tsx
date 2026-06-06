@@ -22,7 +22,7 @@ const PaginatorDot: React.FC<PaginatorDotProps> = ({
 }) => {
   const animatedStyle = useAnimatedStyle(() => {
     'worklet';
-    const progress = (scrollX.value - (index - 1) * windowWidth) / windowWidth;
+    const progress = (scrollX.get() - (index - 1) * windowWidth) / windowWidth;
     const clampedProgress = Math.max(0, Math.min(2, progress));
 
     // Manual interpolation

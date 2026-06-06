@@ -29,10 +29,10 @@ const useHeaderStyle = ({
   headersLayoutY,
 }: UseHeaderStyleParams) => {
   const rIndicatorStyle = useAnimatedStyle(() => {
-    const headersData = headersLayoutX.value;
+    const headersData = headersLayoutX.get();
 
     const width = interpolate(
-      contentOffsetY.value,
+      contentOffsetY.get(),
       headersLayoutY.map(({ value }) => value),
       headersData.map(({ value }) => value?.width ?? 0),
       Extrapolation.CLAMP,
@@ -46,10 +46,10 @@ const useHeaderStyle = ({
   }, [headersLayoutY]);
 
   const rHeaderListStyle = useAnimatedStyle(() => {
-    const headersData = headersLayoutX.value;
+    const headersData = headersLayoutX.get();
 
     const translateX = interpolate(
-      contentOffsetY.value,
+      contentOffsetY.get(),
       headersLayoutY.map(({ value }) => value),
 
       headersData.map(({ value }) => value!.x),

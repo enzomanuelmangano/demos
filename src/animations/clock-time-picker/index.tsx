@@ -45,7 +45,7 @@ export const ClockTimePicker = () => {
 
   const clockDate = useDerivedValue(() => {
     'worklet';
-    return date.value + TimezoneOffsetMs;
+    return date.get() + TimezoneOffsetMs;
   });
 
   return (
@@ -57,7 +57,7 @@ export const ClockTimePicker = () => {
           dates={dates}
           onDateChange={updatedDate => {
             'worklet';
-            date.value = updatedDate;
+            date.set(updatedDate);
           }}
         />
       </View>

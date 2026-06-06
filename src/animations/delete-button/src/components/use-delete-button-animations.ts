@@ -21,35 +21,35 @@ export const useDeleteButtonAnimations = ({
   const isButtonPressed = useSharedValue(false);
 
   const deleteButtonRectX = useDerivedValue(() => {
-    return withSpring(isToggled.value ? 0 : additionalWidth / 2);
+    return withSpring(isToggled.get() ? 0 : additionalWidth / 2);
   }, []);
 
   const deleteButtonColor = useDerivedValue(() => {
-    return withTiming(isToggled.value ? 'black' : 'red');
+    return withTiming(isToggled.get() ? 'black' : 'red');
   }, []);
 
   const gestureHandler = useGestureHandler({
     onStart: () => {
       'worklet';
-      isButtonPressed.value = true;
+      isButtonPressed.set(true);
     },
     onTap: () => {
       'worklet';
-      isButtonPressed.value = false;
+      isButtonPressed.set(false);
       scheduleOnRN(Haptics.selectionAsync);
-      if (isToggled.value) {
+      if (isToggled.get()) {
         return scheduleOnRN(onDelete);
       }
-      isToggled.value = true;
+      isToggled.set(true);
     },
   });
 
   const scale = useDerivedValue(() => {
-    return withSpring(isButtonPressed.value ? 0.95 : 1);
+    return withSpring(isButtonPressed.get() ? 0.95 : 1);
   }, []);
 
   const buttonTransform = useDerivedValue(() => {
-    return [{ scale: scale.value }];
+    return [{ scale: scale.get() }];
   }, []);
 
   return {

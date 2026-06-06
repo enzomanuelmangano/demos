@@ -29,7 +29,7 @@ const usePickerLayout = ({
 
   const pickerY = useDerivedValue(() => {
     return withSpring(
-      isSliding.value ? sliderSize.height / 2 - 25 : closedPickerY.value,
+      isSliding.get() ? sliderSize.height / 2 - 25 : closedPickerY.get(),
       {
         stiffness: 200,
         damping: 20,
@@ -40,8 +40,8 @@ const usePickerLayout = ({
 
   const clampedPickerX = useDerivedValue(() => {
     return Math.max(
-      radius.value,
-      Math.min(pickerX.value, sliderSize.width - radius.value),
+      radius.get(),
+      Math.min(pickerX.get(), sliderSize.width - radius.get()),
     );
   }, [pickerX, sliderSize, radius]);
 

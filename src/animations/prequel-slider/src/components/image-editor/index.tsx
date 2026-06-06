@@ -41,7 +41,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({
   // Derived value for shader uniforms
   const uniforms = useDerivedValue(() => {
     return {
-      progress: progress.value,
+      progress: progress.get(),
       resolution: [width, height],
     };
   }, [width, height]);

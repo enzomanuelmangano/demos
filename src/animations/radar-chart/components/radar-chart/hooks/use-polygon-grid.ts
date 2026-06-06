@@ -36,11 +36,11 @@ const usePolygonGrid = ({
       const angle = index * angleStep;
 
       // Calculating the coordinates of the current point based on the center, angle, and radius
-      const pointX = centerX.value + Math.sin(angle) * radius.value * value;
-      const pointY = centerY.value - Math.cos(angle) * radius.value * value;
+      const pointX = centerX.get() + Math.sin(angle) * radius.get() * value;
+      const pointY = centerY.get() - Math.cos(angle) * radius.get() * value;
 
       // Moving the path to the center point
-      chartCanvas.moveTo(centerX.value, centerY.value);
+      chartCanvas.moveTo(centerX.get(), centerY.get());
 
       // Drawing a line from the center to the current point
       chartCanvas.lineTo(pointX, pointY);

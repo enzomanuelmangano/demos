@@ -333,8 +333,8 @@ export function useWebGPUMosaic(
     } = renderValuesRef.current;
 
     // Compute focused tile center in screen-relative coords
-    const focusRow = currentRow.value;
-    const focusCol = currentCol.value;
+    const focusRow = currentRow.get();
+    const focusCol = currentCol.get();
     const hasFocus = focusRow >= 0;
 
     const now = Date.now();
@@ -421,10 +421,10 @@ export function useWebGPUMosaic(
     uniformData[5] = ATLAS_HEIGHT;
     uniformData[6] = CONTRAST;
     uniformData[7] = time;
-    uniformData[8] = scale.value;
-    uniformData[9] = translateX.value;
-    uniformData[10] = translateY.value;
-    uniformData[11] = animProgress.value; // SharedValue: 1 = old positions, 0 = new positions
+    uniformData[8] = scale.get();
+    uniformData[9] = translateX.get();
+    uniformData[10] = translateY.get();
+    uniformData[11] = animProgress.get(); // SharedValue: 1 = old positions, 0 = new positions
     uniformData[12] = ATLAS_COUNT; // All tiles visible immediately (no reveal animation)
     uniformData[13] = cw;
     uniformData[14] = ch;
@@ -906,13 +906,15 @@ export function useWebGPUMosaic(
 
     if (hasAnimation) {
       // Start animation: set to 1 (old positions) then animate to 0 (new positions)
-      animProgress.value = 1;
-      animProgress.value = withSpring(0, {
-        duration: 1000,
-        dampingRatio: 1,
-      });
+      animProgress.set(1);
+      animProgress.set(
+        withSpring(0, {
+          duration: 1000,
+          dampingRatio: 1,
+        }),
+      );
     } else {
-      animProgress.value = 0;
+      animProgress.set(0);
     }
 
     // Save current photo positions (already screen-relative)

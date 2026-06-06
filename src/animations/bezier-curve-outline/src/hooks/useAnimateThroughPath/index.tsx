@@ -52,11 +52,11 @@ export const useAnimateThroughPath = ({
   const progress = useSharedValue(0);
   const points = useSharedValue<Point[]>([]);
   const assignPathPoints = useCallback(() => {
-    points.value = getPathPoints(pathReference.value);
+    points.set(getPathPoints(pathReference.get()));
   }, [points, pathReference]);
 
   useAnimatedReaction(
-    () => pathReference.value,
+    () => pathReference.get(),
     () => {
       scheduleOnRN(assignPathPoints);
     },
@@ -64,33 +64,33 @@ export const useAnimateThroughPath = ({
   );
 
   const startAnimation = useCallback(() => {
-    points.value = getPathPoints(pathReference.value);
+    points.set(getPathPoints(pathReference.get()));
     cancelAnimation(progress);
-    progress.value = 0;
-    progress.value = withCustomSpring(1);
+    progress.set(0);
+    progress.set(withCustomSpring(1));
   }, [points, progress, pathReference]);
 
   const reverseAnimation = useCallback(() => {
     cancelAnimation(progress);
-    progress.value = withCustomSpring(0);
+    progress.set(withCustomSpring(0));
   }, [progress]);
 
   const cx = useDerivedValue(() => {
-    if (points.value.length <= 1) return 0;
-    const inputRange = points.value.map(
-      (_, index) => index / points.value.length,
-    );
-    const pointsX = points.value.map(point => point.x);
-    return interpolate(progress.value, inputRange, pointsX);
+    if (points.get().length <= 1) return 0;
+    const inputRange = points
+      .get()
+      .map((_, index) => index / points.get().length);
+    const pointsX = points.get().map(point => point.x);
+    return interpolate(progress.get(), inputRange, pointsX);
   }, [points]);
 
   const cy = useDerivedValue(() => {
-    if (points.value.length <= 1) return 0;
-    const inputRange = points.value.map(
-      (_, index) => index / points.value.length,
-    );
-    const pointsY = points.value.map(point => point.y);
-    return interpolate(progress.value, inputRange, pointsY);
+    if (points.get().length <= 1) return 0;
+    const inputRange = points
+      .get()
+      .map((_, index) => index / points.get().length);
+    const pointsY = points.get().map(point => point.y);
+    return interpolate(progress.get(), inputRange, pointsY);
   }, [points]);
 
   return { progress, startAnimation, cx, cy, reverseAnimation };

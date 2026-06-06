@@ -91,7 +91,7 @@ const useLayerCoordinates = (
   }, [weights, width]);
 
   const outputLayerCoords = useMemo(() => {
-    const layer3 = predictions.value.finalOutput;
+    const layer3 = predictions.get().finalOutput;
     const layer2 = weights.outputLayerWeights;
     const totalWidth = layer2.length * marginLayers;
     const paddingHorizontal = (width - totalWidth) / 2;
@@ -187,19 +187,19 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
         <NetworkLayer
           coords={firstLayerCoords}
           getOpacity={i =>
-            useDerivedValue(() => predictions.value.hidden1Output[i])
+            useDerivedValue(() => predictions.get().hidden1Output[i])
           }
         />
         <NetworkLayer
           coords={secondLayerCoords}
           getOpacity={i =>
-            useDerivedValue(() => predictions.value.hidden2Output[i])
+            useDerivedValue(() => predictions.get().hidden2Output[i])
           }
         />
         <NetworkLayer
           coords={outputLayerCoords}
           getOpacity={i =>
-            useDerivedValue(() => predictions.value.finalOutput[i])
+            useDerivedValue(() => predictions.get().finalOutput[i])
           }
         />
       </Canvas>

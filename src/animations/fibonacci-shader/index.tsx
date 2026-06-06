@@ -49,8 +49,8 @@ const FibonacciShader = () => {
     // This guy is amazing and honestly without his code this animation wouldn't exist.
     return Skia.RuntimeEffect.Make(`
       const vec2 iResolution = vec2(${CANVAS_SIZE}, ${CANVAS_SIZE});
-      const float iTime = ${iTime.value};
-      const float N = ${N.value};
+      const float iTime = ${iTime.get()};
+      const float N = ${N.get()};
 
       vec4 main(vec2 FC) {
         vec4 o = vec4(0, 0, 0, 1); 
@@ -62,7 +62,7 @@ const FibonacciShader = () => {
         for (float i = 0.0; i < N; i++) {
 
           a = i / (N * 0.5) - 1.0;
-          p = cos(i * ${magicalMul.value} + iTime + vec2(0, 11)) * sqrt(1.0 - a * a);
+          p = cos(i * ${magicalMul.get()} + iTime + vec2(0, 11)) * sqrt(1.0 - a * a);
           c = u / iResolution.y + vec2(p.x, a) / (p.y + 2.0); 
           o += (cos(i + vec4(0, 2, 4, 0)) + 1.0) / dot(c, c) * (1.0 - p.y) / (N * 75.0); // Play with this 75.0
         }
@@ -71,10 +71,12 @@ const FibonacciShader = () => {
   }, []);
 
   useEffect(() => {
-    iTime.value = withRepeat(
-      withTiming(15, { duration: 20000, easing: Easing.linear }),
-      -1,
-      true,
+    iTime.set(
+      withRepeat(
+        withTiming(15, { duration: 20000, easing: Easing.linear }),
+        -1,
+        true,
+      ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -123,7 +125,7 @@ const FibonacciShader = () => {
           maxValue={MAX_CIRCLES_AMOUNT}
           onUpdate={value => {
             'worklet';
-            N.value = value;
+            N.set(value);
           }}
           color="white"
           style={{
@@ -133,7 +135,7 @@ const FibonacciShader = () => {
       </View>
       <PressableScale
         onPress={() => {
-          magicalMul.value = Math.random() * 100;
+          magicalMul.set(Math.random() * 100);
         }}
         style={styles.floatingButton}>
         <Text style={styles.floatingContent}>🪄</Text>

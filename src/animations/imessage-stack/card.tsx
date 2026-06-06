@@ -121,7 +121,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     } = ANIMATION_CONFIG;
 
     const scale = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       [
         scaleConfig.min,
@@ -136,7 +136,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     );
 
     const rotate = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       [
         -rotation.maxAngle,
@@ -151,7 +151,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     );
 
     const translateX = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       [
         -CARD_WIDTH * translation.xMultiplier.large,
@@ -166,7 +166,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     );
 
     const translateY = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       [
         -CARD_HEIGHT * translation.yMultiplier.active,
@@ -181,7 +181,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     );
 
     const perspectiveRotateY = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       [
         (index - 3) * CARD_WIDTH,
         (index - 2) * CARD_WIDTH,
@@ -208,7 +208,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     );
 
     const additionalTranslateX = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       [
         (index - 3) * CARD_WIDTH,
         (index - 2) * CARD_WIDTH,
@@ -250,7 +250,7 @@ export const Card: React.FC<CardProps> = ({ index, color, scrollOffset }) => {
     const { zIndex: zIndexConfig } = ANIMATION_CONFIG;
 
     const zIndex = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       [
         (index - 3) * CARD_WIDTH,
         (index - 2) * CARD_WIDTH,

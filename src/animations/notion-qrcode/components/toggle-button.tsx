@@ -20,7 +20,7 @@ interface ToggleButtonProps {
 export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
   const teamIconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
-      progress.value,
+      progress.get(),
       [0, 0.25],
       [1, 0],
       Extrapolation.CLAMP,
@@ -29,7 +29,7 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
 
   const scanIconStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
-      progress.value,
+      progress.get(),
       [0.2, 0.45],
       [0, 1],
       Extrapolation.CLAMP,
@@ -37,11 +37,11 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
   }));
 
   const labelConnectStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 0.2], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(progress.get(), [0, 0.2], [1, 0], Extrapolation.CLAMP),
     transform: [
       {
         translateY: interpolate(
-          progress.value,
+          progress.get(),
           [0, 0.2],
           [0, 8],
           Extrapolation.CLAMP,
@@ -52,7 +52,7 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
 
   const labelShareStyle = useAnimatedStyle(() => ({
     opacity: interpolate(
-      progress.value,
+      progress.get(),
       [0.25, 0.5],
       [0, 1],
       Extrapolation.CLAMP,
@@ -60,7 +60,7 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
     transform: [
       {
         translateY: interpolate(
-          progress.value,
+          progress.get(),
           [0.25, 0.5],
           [8, 0],
           Extrapolation.CLAMP,
@@ -71,7 +71,7 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
 
   const buttonPulseStyle = useAnimatedStyle(() => {
     const pulse =
-      progress.value > 0.95
+      progress.get() > 0.95
         ? withRepeat(
             withSequence(
               withTiming(1.05, { duration: 1000 }),

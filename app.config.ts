@@ -125,9 +125,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       'expo-splash-screen',
       {
         // SDK 56 removed the top-level `splash` config — it lives here now.
+        // splash.png is a full-screen design (1284×2778), not a logo: without
+        // the legacy flag the plugin squeezes it into a ~100pt logo slot.
         image: './assets/splash.png',
         resizeMode: 'contain',
         backgroundColor: '#111111',
+        enableFullScreenImage_legacy: true,
       },
     ],
     'expo-status-bar',

@@ -33,7 +33,7 @@ export const BouncyView = ({ children }: BouncyViewProps) => {
   // Measure component dimensions after layout
   useLayoutEffect(() => {
     scheduleOnUI(() => {
-      dimensions.value = measure(aRef);
+      dimensions.set(measure(aRef));
     });
   }, [aRef, dimensions]);
 
@@ -42,12 +42,13 @@ export const BouncyView = ({ children }: BouncyViewProps) => {
   );
 
   const rStyle = useAnimatedStyle(() => {
-    if (!dimensions.value) {
+    const dimensionsValue = dimensions.get();
+    if (!dimensionsValue) {
       return {};
     }
 
-    const elementCenterX = dimensions.value.x + dimensions.value.width / 2;
-    const elementCenterY = dimensions.value.pageY + dimensions.value.height / 2;
+    const elementCenterX = dimensionsValue.x + dimensionsValue.width / 2;
+    const elementCenterY = dimensionsValue.pageY + dimensionsValue.height / 2;
     const translateX = WindowWidth / 2 - elementCenterX;
     const translateY = WindowHeight / 2 - elementCenterY;
 
@@ -62,7 +63,7 @@ export const BouncyView = ({ children }: BouncyViewProps) => {
     );
 
     const scale = interpolate(
-      BouncyProgressShared.value,
+      BouncyProgressShared.get(),
       [0, 1, 2],
       [12, secondExpectedScale, 1],
     );

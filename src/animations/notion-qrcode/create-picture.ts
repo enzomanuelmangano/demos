@@ -86,10 +86,10 @@ export const createPicture = (
   );
 
   // Current animation state
-  const progressValue = progress.value; // 0 = torus, 1 = QR
-  const timeValue = iTime.value % (Math.PI * 2); // Current rotation (wrapped)
-  const staggerTime = staggerBaseTime.value; // Frozen rotation for wave
-  const frozenRotation = frozenRotationTime.value; // Rotation to lerp from
+  const progressValue = progress.get(); // 0 = torus, 1 = QR
+  const timeValue = iTime.get() % (Math.PI * 2); // Current rotation (wrapped)
+  const staggerTime = staggerBaseTime.get(); // Frozen rotation for wave
+  const frozenRotation = frozenRotationTime.get(); // Rotation to lerp from
 
   // Shape data
   const { allShapes, nPoints, qrModuleSize, avatarAssignments, spriteCoords } =

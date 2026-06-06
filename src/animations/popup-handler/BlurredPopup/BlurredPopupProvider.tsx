@@ -51,13 +51,13 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
 
   const menuVisible = useSharedValue(false);
   const menuOpacity = useDerivedValue(() => {
-    return withTiming(menuVisible.value ? 1 : 0, {
+    return withTiming(menuVisible.get() ? 1 : 0, {
       duration: 200,
     });
   });
 
   const menuScale = useDerivedValue(() => {
-    return withTiming(menuVisible.value ? 1 : 0.95, {
+    return withTiming(menuVisible.get() ? 1 : 0.95, {
       duration: 200,
     });
   });
@@ -80,10 +80,12 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
       options: PopupOptionType[];
     }) => {
       setParams({ node, layout, options: popupOptions });
-      menuVisible.value = true;
-      blurOpacity.value = withTiming(1, {
-        duration: 300,
-      });
+      menuVisible.set(true);
+      blurOpacity.set(
+        withTiming(1, {
+          duration: 300,
+        }),
+      );
     },
     [menuVisible, blurOpacity],
   );
@@ -91,9 +93,11 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
   const canvasSize = useWindowDimensions();
 
   const dismissBlurredPopup = useCallback(() => {
-    blurOpacity.value = withTiming(0, {
-      duration: 300,
-    });
+    blurOpacity.set(
+      withTiming(0, {
+        duration: 300,
+      }),
+    );
   }, [blurOpacity]);
 
   const resetParams = useCallback(() => {
@@ -102,7 +106,7 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
 
   useAnimatedReaction(
     () => {
-      return blurOpacity.value;
+      return blurOpacity.get();
     },
     (value, prevValue) => {
       if (value === 0 && prevValue && prevValue > value) {
@@ -112,7 +116,7 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
   );
 
   const close = useCallback(() => {
-    menuVisible.value = false;
+    menuVisible.set(false);
     setTimeout(() => {
       dismissBlurredPopup();
     }, 100);
@@ -147,7 +151,7 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
 
   const rBlurViewStyle = useAnimatedStyle(() => {
     return {
-      opacity: blurOpacity.value,
+      opacity: blurOpacity.get(),
     };
   });
 
@@ -185,8 +189,8 @@ const BlurredPopupProvider: FC<BlurredPopupProviderProps> = ({
 
   const rMenuPopupStyle = useAnimatedStyle(() => {
     return {
-      opacity: menuOpacity.value,
-      transform: [{ scale: menuScale.value }],
+      opacity: menuOpacity.get(),
+      transform: [{ scale: menuScale.get() }],
     };
   });
 

@@ -69,13 +69,13 @@ const App = () => {
           }
 
           // Only trigger haptics when crossing a line (when tick value changes)
-          if (sliderProgress !== previousTick.value) {
+          if (sliderProgress !== previousTick.get()) {
             scheduleOnRN(hapticLight);
-            previousTick.value = sliderProgress;
+            previousTick.set(sliderProgress);
           }
 
           // Bind the progress value to the animated number
-          animatedNumber.value = sliderProgress;
+          animatedNumber.set(sliderProgress);
         }}
       />
       <View style={styles.buttonsContainer}>
@@ -84,7 +84,7 @@ const App = () => {
           onPress={() => {
             toggleTimer();
             if (!isTimerEnabled) {
-              return circularSliderRef.current?.runTimer(animatedNumber.value);
+              return circularSliderRef.current?.runTimer(animatedNumber.get());
             }
 
             circularSliderRef.current?.stopTimer();

@@ -14,7 +14,7 @@ type DotProps = {
 
 const Dot: FC<DotProps> = memo(({ index, activeDots }) => {
   const rStyle = useAnimatedStyle(() => {
-    const isActive = activeDots.value > index;
+    const isActive = activeDots.get() > index;
     const opacity = withTiming(isActive ? 1 : 0.4);
 
     const scale = withSpring(isActive ? 1.4 : 1);

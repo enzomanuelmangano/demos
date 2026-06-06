@@ -42,35 +42,37 @@ const NumberPadButton = memo<NumberPadButtonProps>(
     const scale = useSharedValue(1);
 
     const isHighlighted = useDerivedValue(() => {
-      return typeof value === 'number' && value === highlightedNumber.value;
+      return typeof value === 'number' && value === highlightedNumber.get();
     }, [value, highlightedNumber]);
 
     const numpadAnimatedStyle = useAnimatedStyle(() => {
       return {
-        transform: [{ scale: scale.value }],
-        backgroundColor: isHighlighted.value
+        transform: [{ scale: scale.get() }],
+        backgroundColor: isHighlighted.get()
           ? COLORS.highlightStrong
           : 'transparent',
-        borderColor: isHighlighted.value ? COLORS.primary : COLORS.border,
+        borderColor: isHighlighted.get() ? COLORS.primary : COLORS.border,
       };
     }, [isHighlighted, scale]);
 
     const rHighlightedStyle = useAnimatedStyle(() => {
       return {
-        color: isHighlighted.value ? COLORS.primaryLight : COLORS.userInput,
+        color: isHighlighted.get() ? COLORS.primaryLight : COLORS.userInput,
       };
     }, [isHighlighted]);
 
     const handlePressIn = useCallback(() => {
-      scale.value = withSpring(0.95, {
-        mass: 0.3,
-        damping: 10,
-        stiffness: 100,
-      });
+      scale.set(
+        withSpring(0.95, {
+          mass: 0.3,
+          damping: 10,
+          stiffness: 100,
+        }),
+      );
     }, [scale]);
 
     const handlePressOut = useCallback(() => {
-      scale.value = withSpring(1, { mass: 0.3, damping: 10, stiffness: 100 });
+      scale.set(withSpring(1, { mass: 0.3, damping: 10, stiffness: 100 }));
     }, [scale]);
 
     const handlePress = useCallback(() => {

@@ -17,7 +17,7 @@ const App = () => {
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      contentOffsetY.value = event.contentOffset.y;
+      contentOffsetY.set(event.contentOffset.y);
     },
   });
 

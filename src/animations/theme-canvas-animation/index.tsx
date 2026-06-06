@@ -50,11 +50,11 @@ const ThemeScreen = () => {
   const previousSelectedIndex = useSharedValue(0);
 
   const selectedBackgroundColor = useDerivedValue(() => {
-    return colors[selectedIndex.value]?.background || 'black';
+    return colors[selectedIndex.get()]?.background || 'black';
   }, [colors, selectedIndex]);
 
   const previousSelectedBackgroundColor = useDerivedValue(() => {
-    return colors[previousSelectedIndex.value]?.background || 'black';
+    return colors[previousSelectedIndex.get()]?.background || 'black';
   }, [colors, previousSelectedIndex]);
 
   const radius = useSharedValue(0);
@@ -62,35 +62,37 @@ const ThemeScreen = () => {
   const clipPath = useDerivedValue(() => {
     const builder = Skia.PathBuilder.Make();
 
-    const x = coordinates.value[selectedIndex.value]?.cx ?? 0;
-    const y = coordinates.value[selectedIndex.value]?.cy ?? 0;
-    builder.addCircle(x + SQUARE_SIZE / 2, y + SQUARE_SIZE / 2, radius.value);
+    const x = coordinates.get()[selectedIndex.get()]?.cx ?? 0;
+    const y = coordinates.get()[selectedIndex.get()]?.cy ?? 0;
+    builder.addCircle(x + SQUARE_SIZE / 2, y + SQUARE_SIZE / 2, radius.get());
     return builder.build();
   }, [selectedIndex, coordinates, radius]);
 
   const onSelectSquare = useCallback(
     (index: number) => {
-      if (index === selectedIndex.value) return;
+      if (index === selectedIndex.get()) return;
 
-      radius.value = 0;
+      radius.set(0);
       scheduleOnRN(Haptics.selectionAsync);
 
-      radius.value = withSpring(
-        canvasHeight,
-        {
-          duration: 1000,
-          dampingRatio: 1,
-        },
-        isFinished => {
-          if (isFinished) {
-            previousSelectedIndex.value = index;
-            radius.value = 0;
-          }
-        },
+      radius.set(
+        withSpring(
+          canvasHeight,
+          {
+            duration: 1000,
+            dampingRatio: 1,
+          },
+          isFinished => {
+            if (isFinished) {
+              previousSelectedIndex.set(index);
+              radius.set(0);
+            }
+          },
+        ),
       );
 
-      previousSelectedIndex.value = selectedIndex.value;
-      selectedIndex.value = index;
+      previousSelectedIndex.set(selectedIndex.get());
+      selectedIndex.set(index);
     },
     [selectedIndex, previousSelectedIndex, canvasHeight, radius],
   );
@@ -107,11 +109,11 @@ const ThemeScreen = () => {
   }, [canvasWidth, font]);
 
   const selectedTextColor = useDerivedValue(() => {
-    return colors[selectedIndex.value]?.text || 'black';
+    return colors[selectedIndex.get()]?.text || 'black';
   }, [colors, selectedIndex]);
 
   const previousSelectedTextColor = useDerivedValue(() => {
-    return colors[previousSelectedIndex.value]?.text || 'black';
+    return colors[previousSelectedIndex.get()]?.text || 'black';
   }, [colors, previousSelectedIndex]);
 
   const BackgroundComponent = useCallback(
@@ -158,7 +160,7 @@ const ThemeScreen = () => {
           textColor: selectedTextColor,
         })}
       </Group>
-      {coordinates.value.map((_, index) => (
+      {coordinates.get().map((_, index) => (
         <SelectableSquareContainer
           color={colors[index]?.background || 'black'}
           key={index}

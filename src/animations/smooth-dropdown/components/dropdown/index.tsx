@@ -37,7 +37,7 @@ const Dropdown: FC<DropdownProps> = memo(
     const isToggled = useSharedValue(false);
 
     const progress = useDerivedValue<number>(() => {
-      return withSpring(isToggled.value ? 1 : 0);
+      return withSpring(isToggled.get() ? 1 : 0);
     }, []);
 
     const fullDropDownExpandedHeight =
@@ -46,7 +46,7 @@ const Dropdown: FC<DropdownProps> = memo(
     const onPickDropdownItem = useCallback(
       (option: DropdownOptionType & { isHeader: boolean }) => {
         if (option.isHeader) {
-          isToggled.value = !isToggled.value;
+          isToggled.set(!isToggled.get());
           return;
         }
         onPick && onPick(option);

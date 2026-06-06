@@ -32,7 +32,7 @@ const CircleStroke = memo(() => {
   }, [size]);
 
   const sweepGradientCenter = useDerivedValue(() => {
-    return vec(cx.value, cy.value);
+    return vec(cx.get(), cy.get());
   }, [cx, cy]);
 
   const r = useDerivedValue(() => {
@@ -42,10 +42,12 @@ const CircleStroke = memo(() => {
   const blur = useSharedValue(0);
 
   useEffect(() => {
-    blur.value = withSequence(
-      withTiming(10, { duration: 4000 }),
-      withTiming(45, { duration: 4000 }),
-      withTiming(10, { duration: 4000 }),
+    blur.set(
+      withSequence(
+        withTiming(10, { duration: 4000 }),
+        withTiming(45, { duration: 4000 }),
+        withTiming(10, { duration: 4000 }),
+      ),
     );
   }, [blur]);
 

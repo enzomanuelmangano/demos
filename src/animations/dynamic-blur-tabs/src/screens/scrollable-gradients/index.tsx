@@ -42,7 +42,7 @@ export const ScrollableGradients = () => {
 
   const scroll = useAnimatedScrollHandler({
     onScroll: event => {
-      IsTabBarActive.value = event.contentOffset.y <= 0;
+      IsTabBarActive.set(event.contentOffset.y <= 0);
     },
   });
 

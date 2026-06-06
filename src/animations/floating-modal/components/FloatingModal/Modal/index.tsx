@@ -24,7 +24,7 @@ const ModalContent: FC<ModalProps> = memo(
   ({ children, isVisible, contentContainerStyle }) => {
     const rAnimatedStyle = useAnimatedStyle(() => {
       return {
-        opacity: withTiming(isVisible.value ? 1 : 0, {
+        opacity: withTiming(isVisible.get() ? 1 : 0, {
           duration: 100,
         }),
       };
@@ -32,7 +32,7 @@ const ModalContent: FC<ModalProps> = memo(
 
     const rAnimatedProps = useAnimatedProps(() => {
       return {
-        pointerEvents: isVisible.value ? 'auto' : 'none',
+        pointerEvents: isVisible.get() ? 'auto' : 'none',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
     }, [isVisible]);

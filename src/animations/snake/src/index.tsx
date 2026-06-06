@@ -27,10 +27,10 @@ const App = () => {
 
   const rRestartButtonViewStyle = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(isGameOver.value ? 1 : 0, {
+      opacity: withTiming(isGameOver.get() ? 1 : 0, {
         duration: 250,
       }),
-      pointerEvents: isGameOver.value ? 'auto' : 'none',
+      pointerEvents: isGameOver.get() ? 'auto' : 'none',
     };
   }, [isGameOver]);
 
@@ -59,10 +59,10 @@ const App = () => {
             boardSize={boardSize}
             ref={snakeGameRef}
             onScoreChange={newScore => {
-              score.value = newScore;
+              score.set(newScore);
             }}
             onGameOver={() => {
-              isGameOver.value = true;
+              isGameOver.set(true);
             }}
             onDirectionChange={() => {
               Haptics.selectionAsync();
@@ -89,7 +89,7 @@ const App = () => {
                 borderCurve: 'continuous',
               }}
               onPress={() => {
-                isGameOver.value = false;
+                isGameOver.set(false);
                 snakeGameRef.current?.restart();
               }}>
               <Text style={{ color: 'white', fontSize: 16, fontWeight: '500' }}>

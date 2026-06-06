@@ -43,32 +43,32 @@ const SwipeableCard = forwardRef<
 >(({ image, index, activeIndex, onSwipeLeft, onSwipeRight }, ref) => {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  const currentActiveIndex = useSharedValue(Math.floor(activeIndex.value));
-  const nextActiveIndex = useSharedValue(Math.floor(activeIndex.value));
+  const currentActiveIndex = useSharedValue(Math.floor(activeIndex.get()));
+  const nextActiveIndex = useSharedValue(Math.floor(activeIndex.get()));
 
   const { width } = useWindowDimensions();
   const maxCardTranslation = width * 1.5;
 
   const swipeRight = useCallback(() => {
     onSwipeRight?.();
-    translateX.value = withSpring(maxCardTranslation);
-    activeIndex.value = activeIndex.value + 1;
+    translateX.set(withSpring(maxCardTranslation));
+    activeIndex.set(activeIndex.get() + 1);
   }, [activeIndex, maxCardTranslation, onSwipeRight, translateX]);
 
   const swipeLeft = useCallback(() => {
     onSwipeLeft?.();
-    translateX.value = withSpring(-maxCardTranslation);
-    activeIndex.value = activeIndex.value + 1;
+    translateX.set(withSpring(-maxCardTranslation));
+    activeIndex.set(activeIndex.get() + 1);
   }, [activeIndex, maxCardTranslation, onSwipeLeft, translateX]);
 
   const reset = useCallback(() => {
-    if (translateX.value !== 0) {
+    if (translateX.get() !== 0) {
       cancelAnimation(translateX);
-      translateX.value = withSpring(0);
+      translateX.set(withSpring(0));
     }
-    if (translateX.value !== 0) {
+    if (translateX.get() !== 0) {
       cancelAnimation(translateY);
-      translateY.value = withSpring(0);
+      translateY.set(withSpring(0));
     }
   }, [translateX, translateY]);
 
@@ -96,7 +96,7 @@ const SwipeableCard = forwardRef<
 
   const rotate = useDerivedValue(() => {
     return interpolate(
-      translateX.value,
+      translateX.get(),
       inputTranslationRange,
       [-Math.PI / 20, 0, Math.PI / 20],
       Extrapolation.CLAMP,
@@ -105,15 +105,15 @@ const SwipeableCard = forwardRef<
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      currentActiveIndex.value = Math.floor(activeIndex.value);
+      currentActiveIndex.set(Math.floor(activeIndex.get()));
     })
     .onUpdate(event => {
-      if (currentActiveIndex.value !== index) return;
-      translateX.value = event.translationX;
-      translateY.value = event.translationY;
+      if (currentActiveIndex.get() !== index) return;
+      translateX.set(event.translationX);
+      translateY.set(event.translationY);
 
       const normalizedTranslationX = interpolate(
-        translateX.value,
+        translateX.get(),
         inputTranslationRange,
         SIGNED_NORMALIZED_INPUT_RANGE,
         Extrapolation.EXTEND,
@@ -133,25 +133,27 @@ const SwipeableCard = forwardRef<
       // and a slow drag (high distance, low velocity) are treated equivalently, while both
       // contribute always. Math.sign() preserves swipe direction.
       const signedNormalizedDecisionRadius =
-        Math.sign(translateX.value) *
+        Math.sign(translateX.get()) *
         (normalizedTranslationX * normalizedTranslationX +
           normalizedVelocityX * normalizedVelocityX);
 
-      nextActiveIndex.value = interpolate(
-        signedNormalizedDecisionRadius,
-        SIGNED_NORMALIZED_INPUT_RANGE,
-        [
-          currentActiveIndex.value + 1,
-          currentActiveIndex.value,
-          currentActiveIndex.value + 1,
-        ],
-        Extrapolation.CLAMP,
+      nextActiveIndex.set(
+        interpolate(
+          signedNormalizedDecisionRadius,
+          SIGNED_NORMALIZED_INPUT_RANGE,
+          [
+            currentActiveIndex.get() + 1,
+            currentActiveIndex.get(),
+            currentActiveIndex.get() + 1,
+          ],
+          Extrapolation.CLAMP,
+        ),
       );
     })
     .onFinalize(event => {
-      if (currentActiveIndex.value !== index) return;
+      if (currentActiveIndex.get() !== index) return;
 
-      if (nextActiveIndex.value === activeIndex.value + 1) {
+      if (nextActiveIndex.get() === activeIndex.get() + 1) {
         const sign = Math.sign(event.translationX);
         if (sign === 1) {
           scheduleOnRN(swipeRight);
@@ -159,26 +161,26 @@ const SwipeableCard = forwardRef<
           scheduleOnRN(swipeLeft);
         }
       } else {
-        translateX.value = withSpring(0);
-        translateY.value = withSpring(0);
+        translateX.set(withSpring(0));
+        translateY.set(withSpring(0));
       }
     });
 
   const rCardStyle = useAnimatedStyle(() => {
-    const opacity = withTiming(index - activeIndex.value < 5 ? 1 : 0);
-    const transY = withTiming((index - activeIndex.value) * 23);
-    const scale = withTiming(1 - 0.07 * (index - activeIndex.value));
+    const opacity = withTiming(index - activeIndex.get() < 5 ? 1 : 0);
+    const transY = withTiming((index - activeIndex.get()) * 23);
+    const scale = withTiming(1 - 0.07 * (index - activeIndex.get()));
     return {
       opacity,
       transform: [
-        { rotate: `${rotate.value}rad` },
+        { rotate: `${rotate.get()}rad` },
         { translateY: transY },
         { scale: scale },
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
         {
-          translateY: translateY.value,
+          translateY: translateY.get(),
         },
       ],
     };

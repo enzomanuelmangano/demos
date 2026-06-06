@@ -31,16 +31,16 @@ const ExpandedCircle: React.FC<ExpandedCircleProps> = ({
 
   const rMainCircleStyle = useAnimatedStyle(() => {
     return {
-      height: r.value * 2,
-      left: circleCenter - r.value / 2 - circleMargin / 2,
-      top: circleCenter - r.value / 2 - circleMargin / 2,
+      height: r.get() * 2,
+      left: circleCenter - r.get() / 2 - circleMargin / 2,
+      top: circleCenter - r.get() / 2 - circleMargin / 2,
     };
   }, []);
 
   const rSecondaryCircleStyle = useAnimatedStyle(() => {
     return {
       backgroundColor: interpolateColor(
-        r.value,
+        r.get(),
         [initialR, maxRadius],
         [primaryColor, highlightColor],
       ),

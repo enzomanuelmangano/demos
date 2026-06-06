@@ -14,11 +14,11 @@ const CanvasContainer = () => {
   const image = useImage(DEFAULT_IMAGE_URL);
 
   const imageWidth = useDerivedValue(() => {
-    return size.value.width;
+    return size.get().width;
   }, [size]);
 
   const imageHeight = useDerivedValue(() => {
-    return size.value.height;
+    return size.get().height;
   }, [size]);
 
   return (

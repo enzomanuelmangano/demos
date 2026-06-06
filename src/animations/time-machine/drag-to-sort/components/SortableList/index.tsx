@@ -48,7 +48,7 @@ function SortableList<T>({
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { y } }) => {
-      scrollContentOffsetY.value = y;
+      scrollContentOffsetY.set(y);
     },
   });
 

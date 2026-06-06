@@ -17,7 +17,7 @@ const AnimatedOpacityView: FC<{
   children?: ReactNode;
 }> = ({ index, activeIndex, style, onPress, ...viewProps }) => {
   const rStyle = useAnimatedStyle(() => {
-    const opacity = withTiming(activeIndex.value === index ? 1 : 0.5);
+    const opacity = withTiming(activeIndex.get() === index ? 1 : 0.5);
 
     return {
       opacity,

@@ -43,7 +43,7 @@ const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
   }, [windowWidth, windowHeight]);
 
   const blur = useDerivedValue(() => {
-    return Math.max(5 * blurredProgress.value, 0);
+    return Math.max(5 * blurredProgress.get(), 0);
   });
 
   return (
@@ -82,17 +82,17 @@ export const BlurCards = () => {
           const transform = useDerivedValue(() => {
             return [
               {
-                rotate: (-Math.PI / 2) * progress.value,
+                rotate: (-Math.PI / 2) * progress.get(),
               },
               {
-                translateX: 25 * index * progress.value,
+                translateX: 25 * index * progress.get(),
               },
               { perspective: 10000 },
               {
-                rotateY: (Math.PI / 3) * progress.value,
+                rotateY: (Math.PI / 3) * progress.get(),
               },
               {
-                rotate: (Math.PI / 4) * progress.value,
+                rotate: (Math.PI / 4) * progress.get(),
               },
             ];
           }, [index]);
@@ -110,10 +110,12 @@ export const BlurCards = () => {
       <PressableOpacity
         style={StyleSheet.absoluteFill}
         onPress={() => {
-          progress.value = withSpring(progress.value > 0.5 ? 0 : 1, {
-            duration: 1500,
-            dampingRatio: 0.7,
-          });
+          progress.set(
+            withSpring(progress.get() > 0.5 ? 0 : 1, {
+              duration: 1500,
+              dampingRatio: 0.7,
+            }),
+          );
         }}
       />
     </View>

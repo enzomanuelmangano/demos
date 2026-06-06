@@ -22,12 +22,12 @@ type TabBarItemProps = {
 export const TabBarItem: FC<TabBarItemProps> = memo(
   ({ onPress, focusedIndex, index, screenName }) => {
     const isFocused = useDerivedValue(() => {
-      return focusedIndex.value === index;
+      return focusedIndex.get() === index;
     }, [index]);
 
     const rStyle = useAnimatedStyle(() => {
       return {
-        opacity: withTiming(isFocused.value ? 1 : 0.3),
+        opacity: withTiming(isFocused.get() ? 1 : 0.3),
       };
     }, []);
 

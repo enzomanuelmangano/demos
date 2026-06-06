@@ -11,7 +11,7 @@ const MainScreenWrapper = ({ children }: { children: React.ReactNode }) => {
   const { springProgress } = useCustomNavigation();
 
   const intensity = useDerivedValue<number | undefined>(() => {
-    return springProgress.value * 50;
+    return springProgress.get() * 50;
   });
 
   return (

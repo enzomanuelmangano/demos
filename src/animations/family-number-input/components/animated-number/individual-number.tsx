@@ -60,16 +60,16 @@ export const AnimatedSingleNumber: FC<AnimatedSingleNumberProps> = ({
   }, [itemWidth, scale]);
 
   useEffect(() => {
-    bottom.value = withSpring(0);
-    opacity.value = withTiming(1);
+    bottom.set(withSpring(0));
+    opacity.set(withTiming(1));
   }, [bottom, opacity]);
 
   const rStyle = useAnimatedStyle(() => {
-    const left = (index - totalNumbersLength / 2) * scaledItemWidth.value;
+    const left = (index - totalNumbersLength / 2) * scaledItemWidth.get();
 
     return {
-      bottom: bottom.value,
-      opacity: opacity.value,
+      bottom: bottom.get(),
+      opacity: opacity.get(),
       left: withTiming(left + (rightSpace ?? 0), {
         duration: 200,
       }),

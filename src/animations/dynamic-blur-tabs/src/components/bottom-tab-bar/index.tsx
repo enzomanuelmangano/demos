@@ -74,35 +74,35 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const bottomBarSafeHeight = useSafeBottomBarHeight();
   const progress = useDerivedValue(() => {
-    return withSpring(IsTabBarActive.value ? 1 : 0);
-  }, [IsTabBarActive.value]);
+    return withSpring(IsTabBarActive.get() ? 1 : 0);
+  }, [IsTabBarActive.get()]);
 
   const paddingBottom = useDerivedValue(() => {
-    return interpolate(progress.value, [0, 1], [safeBottom + 15, 0]);
+    return interpolate(progress.get(), [0, 1], [safeBottom + 15, 0]);
   }, [safeBottom]);
 
   const rBarStyle = useAnimatedStyle(() => {
     const leftRight = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [0.15 * SCREEN_WIDTH, 0],
     );
     const height = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [BOTTOM_BAR_HEIGHT, BOTTOM_BAR_HEIGHT + safeBottom + 15],
     );
     const borderRadius = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [0.15 * SCREEN_WIDTH, 20],
     );
-    const borderWidth = interpolate(progress.value, [0, 1], [1, 0.6]);
+    const borderWidth = interpolate(progress.get(), [0, 1], [1, 0.6]);
 
     return {
       left: leftRight,
       right: leftRight,
-      bottom: paddingBottom.value - 2,
+      bottom: paddingBottom.get() - 2,
       height: height,
       borderRadius: borderRadius,
       borderWidth: borderWidth,
@@ -111,15 +111,15 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const rBottomViewStyle = useAnimatedStyle(() => {
     return {
-      height: interpolate(progress.value, [0, 1], [0, safeBottom + 15]),
+      height: interpolate(progress.get(), [0, 1], [0, safeBottom + 15]),
     };
   }, [safeBottom]);
 
   const rBlurStyle = useAnimatedStyle(() => {
     return {
-      paddingHorizontal: interpolate(progress.value, [0, 1], [0, 15]),
+      paddingHorizontal: interpolate(progress.get(), [0, 1], [0, 15]),
     };
-  }, [progress.value]);
+  }, [progress.get()]);
 
   return (
     <>
@@ -148,7 +148,7 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
                     index={index}
                     onPress={() => {
                       onTapIcon(index);
-                      focusedIndex.value = index;
+                      focusedIndex.set(index);
                     }}
                   />
                 );

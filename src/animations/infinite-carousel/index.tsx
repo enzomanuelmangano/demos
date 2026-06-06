@@ -23,7 +23,7 @@ export const InfiniteCarousel = () => {
   const activeIndex = useSharedValue(0);
 
   const backgroundPrimaryColor = useDerivedValue(() => {
-    return withTiming(ThemeData[activeIndex.value].primary, {
+    return withTiming(ThemeData[activeIndex.get()].primary, {
       duration: 500,
       easing: Easing.linear,
     });
@@ -48,7 +48,7 @@ export const InfiniteCarousel = () => {
           snapEnabled
           onActiveIndexChanged={index => {
             'worklet';
-            activeIndex.value = index;
+            activeIndex.set(index);
           }}
           // You can configure the interpolation here
           // This will determing how the progress (in the renderItem)

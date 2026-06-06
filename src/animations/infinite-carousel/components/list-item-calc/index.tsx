@@ -38,7 +38,7 @@ export const ListItemCard = ({
 }) => {
   const rStyle = useAnimatedStyle(() => {
     const rotateY = interpolate(
-      progress.value,
+      progress.get(),
       [-1, 1],
       [-MAX_ROTATE_Y, MAX_ROTATE_Y],
       Extrapolation.CLAMP,
@@ -51,10 +51,10 @@ export const ListItemCard = ({
       transform: [
         { perspective: 500 },
         {
-          translateX: -progress.value * 8,
+          translateX: -progress.get() * 8,
         },
         {
-          scale: 1 - Math.abs(progress.value) * 0.025,
+          scale: 1 - Math.abs(progress.get()) * 0.025,
         },
         {
           rotateY: `${rotateY}deg`,

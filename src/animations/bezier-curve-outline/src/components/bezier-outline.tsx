@@ -23,14 +23,14 @@ export const BezierOutline = ({ onPathUpdate }: BezierOutlineProps) => {
   const bezierPath = useDerivedValue(() => {
     const builder = Skia.PathBuilder.Make();
 
-    builder.moveTo(first.cx.value, first.cy.value);
+    builder.moveTo(first.cx.get(), first.cy.get());
     builder.cubicTo(
-      second.cx.value,
-      second.cy.value,
-      third.cx.value,
-      third.cy.value,
-      fourth.cx.value,
-      fourth.cy.value,
+      second.cx.get(),
+      second.cy.get(),
+      third.cx.get(),
+      third.cy.get(),
+      fourth.cx.get(),
+      fourth.cy.get(),
     );
     const skPath = builder.build();
     onPathUpdate(skPath);
@@ -40,11 +40,11 @@ export const BezierOutline = ({ onPathUpdate }: BezierOutlineProps) => {
   const bezierPathVisualization = useDerivedValue(() => {
     const builder = Skia.PathBuilder.Make();
 
-    builder.moveTo(first.cx.value, first.cy.value);
-    builder.lineTo(second.cx.value, second.cy.value);
+    builder.moveTo(first.cx.get(), first.cy.get());
+    builder.lineTo(second.cx.get(), second.cy.get());
 
-    builder.moveTo(third.cx.value, third.cy.value);
-    builder.lineTo(fourth.cx.value, fourth.cy.value);
+    builder.moveTo(third.cx.get(), third.cy.get());
+    builder.lineTo(fourth.cx.get(), fourth.cy.get());
 
     return builder.build();
   }, []);
@@ -70,7 +70,7 @@ export const BezierOutline = ({ onPathUpdate }: BezierOutlineProps) => {
         {controlPoints.map(({ cx, cy, controlPoint }, index) => {
           const onUpdate = (event: { x: number; y: number }) => {
             'worklet';
-            controlPoint.value = { x: event.x, y: event.y };
+            controlPoint.set({ x: event.x, y: event.y });
           };
 
           const isStartOrEnd = index === 0 || index === 3;

@@ -20,13 +20,13 @@ const PressableScale: FC<PressableScaleProps> = memo(
 
     const tapGesture = Gesture.Tap()
       .onTouchesDown(() => {
-        scale.value = withSpring(0.9, { overshootClamping: true });
+        scale.set(withSpring(0.9, { overshootClamping: true }));
       })
       .onTouchesUp(() => {
         onPress();
       })
       .onFinalize(() => {
-        scale.value = withSpring(1, { overshootClamping: true });
+        scale.set(withSpring(1, { overshootClamping: true }));
       });
 
     tapGesture.maxDuration(5000);
@@ -34,7 +34,7 @@ const PressableScale: FC<PressableScaleProps> = memo(
 
     const rStyle = useAnimatedStyle(() => {
       return {
-        transform: [{ scale: scale.value }],
+        transform: [{ scale: scale.get() }],
       };
     });
 

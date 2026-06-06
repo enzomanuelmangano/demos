@@ -81,7 +81,7 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
     'worklet';
 
     for (let index = 0; index < spiralCircleCount; index++) {
-      const { x, y } = spiralCoordinates[index].value;
+      const { x, y } = spiralCoordinates[index].get();
 
       const distanceFromCenter = Math.sqrt(x ** 2 + y ** 2);
 

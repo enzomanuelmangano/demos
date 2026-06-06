@@ -30,13 +30,13 @@ function App() {
 
   const close = useCallback(() => {
     ref.current?.close();
-    isActionTrayOpened.value = false;
+    isActionTrayOpened.set(false);
     setStep(0);
   }, [isActionTrayOpened]);
 
   const toggleActionTray = useCallback(() => {
     const isActive = ref.current?.isActive() ?? false;
-    isActionTrayOpened.value = !isActive;
+    isActionTrayOpened.set(!isActive);
     isActive ? close() : ref.current?.open();
   }, [close, isActionTrayOpened]);
 
@@ -46,7 +46,7 @@ function App() {
 
   const rContentStyle = useAnimatedStyle(() => {
     return {
-      height: withSpring(rContentHeight.value),
+      height: withSpring(rContentHeight.get()),
     };
   }, []);
   const title = useMemo(() => {
@@ -76,7 +76,7 @@ function App() {
   }, [step]);
 
   const rotate = useDerivedValue(() => {
-    return withSpring(isActionTrayOpened.value ? 45 : 0, {
+    return withSpring(isActionTrayOpened.get() ? 45 : 0, {
       dampingRatio: 0.8,
       duration: 500,
     });
@@ -86,7 +86,7 @@ function App() {
     return {
       transform: [
         {
-          rotate: `${rotate.value}deg`,
+          rotate: `${rotate.get()}deg`,
         },
       ],
     };

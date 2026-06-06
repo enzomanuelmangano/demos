@@ -20,7 +20,7 @@ export const DepthShadow = ({
   variant,
 }: DepthShadowProps) => {
   const rShadowStyle = useAnimatedStyle(() => {
-    const progress = pageFlipProgress.value;
+    const progress = pageFlipProgress.get();
 
     const shadowOpacity =
       variant === 'front'

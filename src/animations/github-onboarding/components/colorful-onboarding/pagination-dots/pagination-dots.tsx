@@ -33,7 +33,7 @@ export function PaginationDot({
 }: PaginationDotProps): ReactElement {
   const animatedDotStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
-      progress.value,
+      progress.get(),
       [index - OPACITY_THRESHOLD, index, index + OPACITY_THRESHOLD],
       [DISABLED_OPACITY, ENABLED_OPACITY, DISABLED_OPACITY],
       {

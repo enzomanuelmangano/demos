@@ -44,7 +44,7 @@ export const useAnimatedPathData = ({
   }, [activeTabIndex, index]);
 
   const animatedTranslateX = useDerivedValue(() => {
-    return withTiming(translateX.value);
+    return withTiming(translateX.get());
   }, [translateX]);
 
   const { textWidths, getPreviousBoxWidth } = useBoxWidths({
@@ -59,14 +59,14 @@ export const useAnimatedPathData = ({
       rrect(
         rect(
           getPreviousBoxWidth(index) +
-            animatedTranslateX.value +
+            animatedTranslateX.get() +
             horizontalTabsPadding,
           0,
           textWidths[index] + internalBoxPadding * 2,
           pathHeight,
         ),
-        borderRadius.value,
-        borderRadius.value,
+        borderRadius.get(),
+        borderRadius.get(),
       ),
     );
 

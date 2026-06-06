@@ -66,8 +66,8 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
     const handleCellPress = useCallback(
       (row: number, col: number) => {
         game.selectCell(row, col);
-        selectedCell.value = game.getSelectedCell();
-        highlightedNumber.value = game.getHighlightedNumber();
+        selectedCell.set(game.getSelectedCell());
+        highlightedNumber.set(game.getHighlightedNumber());
       },
       [game, selectedCell, highlightedNumber],
     );

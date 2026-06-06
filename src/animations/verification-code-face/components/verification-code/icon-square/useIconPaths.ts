@@ -36,7 +36,7 @@ export const useIconPaths = () => {
 
   // Derived value to animate the progress with timing
   const animatedProgress = useDerivedValue(() => {
-    return withTiming(progress.value);
+    return withTiming(progress.get());
   }, [progress]);
 
   // Interpolate the mouth path based on the animated progress
@@ -55,17 +55,17 @@ export const useIconPaths = () => {
 
   // Callback to set the animation type to Happy
   const happy = useCallback(() => {
-    progress.value = AnimationType.Happy;
+    progress.set(AnimationType.Happy);
   }, [progress]);
 
   // Callback to set the animation type to Sad
   const sad = useCallback(() => {
-    progress.value = AnimationType.Sad;
+    progress.set(AnimationType.Sad);
   }, [progress]);
 
   // Callback to set the animation type to Normal
   const normal = useCallback(() => {
-    progress.value = AnimationType.Normal;
+    progress.set(AnimationType.Normal);
   }, [progress]);
 
   return {

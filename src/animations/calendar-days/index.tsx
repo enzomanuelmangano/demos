@@ -20,7 +20,7 @@ const App = () => {
   // Each page handles its own spring animation independently
   // This allows multiple pages to flip simultaneously when scrolling fast
   useAnimatedReaction(
-    () => Math.round(progress.value * TOTAL_PAGES),
+    () => Math.round(progress.get() * TOTAL_PAGES),
     (currentPage, prevPage) => {
       if (prevPage !== null && currentPage !== prevPage) {
         scheduleOnRN(Haptics.selectionAsync);

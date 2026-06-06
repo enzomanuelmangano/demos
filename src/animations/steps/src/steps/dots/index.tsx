@@ -28,8 +28,8 @@ export const Dots: FC<DotsProps> = memo(({ count, activeIndex, dotSize }) => {
     // So by knowing the maxWidth, we can easily replace the count with (activeIndex + 1)
     // and get the general formula for the activeWidth
     const activeWidth =
-      (activeIndex.value + 1) * dotSize +
-      activeIndex.value * dotSpacing +
+      (activeIndex.get() + 1) * dotSize +
+      activeIndex.get() * dotSpacing +
       externalSpacing;
 
     return {

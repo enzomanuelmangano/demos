@@ -41,7 +41,7 @@ export const DeleteButton = ({
   } = useDeleteButtonAnimations({
     additionalWidth,
     onDelete: () => {
-      isToggled.value = !closeOnConfirm;
+      isToggled.set(!closeOnConfirm);
       onConfirmDeletion?.();
     },
   });

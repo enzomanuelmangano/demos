@@ -78,17 +78,18 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
   // We'll need to do that because we wan't to check if each square is contained in a Text
   // But we can't do that with a regular text, we need to convert it to a Path (which provides the "contains" method)
   const animatedText = useDerivedValue(() => {
-    if (!text.value || !font) {
+    const textValue = text.get();
+    if (!textValue || !font) {
       return null;
     }
-    const textDim = font?.measureText(text.value) ?? {
+    const textDim = font?.measureText(textValue) ?? {
       width: 0,
       height: 0,
     };
     const x = canvasWidth / 2 - textDim.width / 2;
     const y = canvasHeight / 2 + textDim.height / 2;
 
-    const t = Skia.Path.MakeFromText(text.value, x, y, font);
+    const t = Skia.Path.MakeFromText(textValue, x, y, font);
 
     return t;
   }, [font]);
@@ -102,10 +103,9 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
       const ty =
         Math.floor(i / HSquares) * YSpacing + (YSpacing + scaleFactor) / 2;
 
-      return animatedText.value?.contains(
-        tx + squareSize / 2,
-        ty + squareSize / 2,
-      );
+      return animatedText
+        .get()
+        ?.contains(tx + squareSize / 2, ty + squareSize / 2);
     });
   }, []);
 
@@ -147,7 +147,7 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
   // Use animated reaction to update each individual shared value when activeRects changes
   // This mimics the spiral's pattern of updating individual shared values
   useAnimatedReaction(
-    () => activeRects.value,
+    () => activeRects.get(),
     newActiveRects => {
       // First update delay values
       for (let i = 0; i < SquaresAmount; i++) {
@@ -219,7 +219,7 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
     const scaledTy = Math.floor(i / HSquares) * ScaledYSpacing + yScaledOffset;
 
     // Read from individual shared value instead of shared value array
-    const prog = progressValues[i].value;
+    const prog = progressValues[i].get();
     const tx = interpolate(prog, [0, 1], [shrinkedTx, scaledTx]);
     const ty = interpolate(prog, [0, 1], [shrinkedTy, scaledTy]);
 

@@ -82,39 +82,43 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
 
   const gesture = Gesture.Pan()
     .onBegin(event => {
-      isActive.value = true;
+      isActive.set(true);
 
       const interpolatedX = remapXcoord(event.x);
       const interpolatedY = remapYcoord(event.y);
 
-      x.value = withSpring(interpolatedX, {
-        mass: 0.5,
-        damping: 10,
-        stiffness: 100,
-      });
-      y.value = withSpring(interpolatedY, {
-        mass: 0.5,
-        damping: 10,
-        stiffness: 100,
-      });
+      x.set(
+        withSpring(interpolatedX, {
+          mass: 0.5,
+          damping: 10,
+          stiffness: 100,
+        }),
+      );
+      y.set(
+        withSpring(interpolatedY, {
+          mass: 0.5,
+          damping: 10,
+          stiffness: 100,
+        }),
+      );
     })
     .onUpdate(event => {
       const interpolatedX = remapXcoord(event.x);
       const interpolatedY = remapYcoord(event.y);
 
-      x.value = interpolatedX;
-      y.value = interpolatedY;
+      x.set(interpolatedX);
+      y.set(interpolatedY);
     })
     .onFinalize(() => {
-      isActive.value = false;
+      isActive.set(false);
     });
 
   const rPointerStyle = useAnimatedStyle(() => {
-    const translateX = mapXvalue(x.value) - BUTTON_RADIUS;
-    const translateY = mapYvalue(y.value) - BUTTON_RADIUS;
+    const translateX = mapXvalue(x.get()) - BUTTON_RADIUS;
+    const translateY = mapYvalue(y.get()) - BUTTON_RADIUS;
 
     return {
-      opacity: withTiming(isActive.value ? 0.6 : 1),
+      opacity: withTiming(isActive.get() ? 0.6 : 1),
       transform: [
         {
           translateX,
@@ -123,7 +127,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           translateY,
         },
         {
-          scale: withSpring(isActive.value ? 1.2 : 1),
+          scale: withSpring(isActive.get() ? 1.2 : 1),
         },
       ],
     };

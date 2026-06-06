@@ -35,25 +35,25 @@ const BottomSheet: FC<BottomSheetProps> = ({
 
   const gesture = Gesture.Pan()
     .onStart(() => {
-      context.value = { y: translateY.value };
+      context.set({ y: translateY.get() });
     })
     .onUpdate(event => {
       if (event.translationY > 0) {
-        translateY.value = event.translationY + context.value.y;
-        translateY.value = Math.max(translateY.value, MAX_TRANSLATE_Y);
+        translateY.set(event.translationY + context.get().y);
+        translateY.set(Math.max(translateY.get(), MAX_TRANSLATE_Y));
       }
     })
     .onEnd(event => {
       if (event.translationY > 100) {
         scrollTo(0);
       } else {
-        scrollTo(context.value.y);
+        scrollTo(context.get().y);
       }
     });
 
   const rBottomSheetStyle = useAnimatedStyle(() => {
     const borderRadius = interpolate(
-      translateY.value,
+      translateY.get(),
       [MAX_TRANSLATE_Y + 50, MAX_TRANSLATE_Y],
       [25, 5],
       Extrapolation.CLAMP,
@@ -61,19 +61,19 @@ const BottomSheet: FC<BottomSheetProps> = ({
 
     return {
       borderRadius,
-      transform: [{ translateY: translateY.value }],
+      transform: [{ translateY: translateY.get() }],
     };
   });
 
   const rSpacerViewStyle = useAnimatedStyle(() => {
     return {
-      height: Math.max(SCREEN_HEIGHT + translateY.value, 0),
+      height: Math.max(SCREEN_HEIGHT + translateY.get(), 0),
     };
   }, []);
 
   const rChildrenStyle = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(active.value ? 1 : 0, { duration: 150 }),
+      opacity: withTiming(active.get() ? 1 : 0, { duration: 150 }),
     };
   }, []);
 

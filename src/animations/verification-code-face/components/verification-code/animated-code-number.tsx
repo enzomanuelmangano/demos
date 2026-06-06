@@ -52,15 +52,15 @@ export const AnimatedCodeNumber: React.FC<AnimatedCodeNumberProps> = ({
 
   const rBoxStyle = useAnimatedStyle(() => {
     const isActive =
-      status.value === 'inProgress' ||
-      status.value === 'correct' ||
-      status.value === 'wrong';
+      status.get() === 'inProgress' ||
+      status.get() === 'correct' ||
+      status.get() === 'wrong';
     return {
       // We rely on the getColorByStatus to retrieve the color based on the status
       // Then we wrap it with the withTiming function to animate the color change
       // in a smooth way
       borderWidth: withTiming(isActive ? 2.1 : 0),
-      borderColor: withTiming(getColorByStatus(status.value)),
+      borderColor: withTiming(getColorByStatus(status.get())),
     };
   }, [getColorByStatus]);
 

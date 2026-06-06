@@ -63,18 +63,18 @@ const DropdownItem: FC<DropdownItemProps> = memo(
       // That's useful in order to make the items stack on top of each other (when the dropdown is collapsed)
       // and to make them spread out (when the dropdown is expanded)
       const bottom = interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [index * 15, maxDropDownHeight / 2 - index * (itemHeight + 10)],
       );
 
       // Calculating the scale of the item based on its index (note that this will only be applied when the dropdown is collapsed)
-      const scale = interpolate(progress.value, [0, 1], [1 - index * 0.05, 1]);
+      const scale = interpolate(progress.get(), [0, 1], [1 - index * 0.05, 1]);
 
       // if progress.value < 0.5, the dropdown is collapsed, so we use the collapsedBackgroundColor
       // otherwise, the dropdown is expanded, so we use the expandedBackgroundColor (which is the same as the main color)
       const backgroundColor =
-        progress.value < 0.5
+        progress.get() < 0.5
           ? collapsedBackgroundColor
           : expandedBackgroundColor;
 
@@ -92,7 +92,7 @@ const DropdownItem: FC<DropdownItemProps> = memo(
 
     const rContentStyle = useAnimatedStyle(() => {
       const opacity = interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [isHeader ? 1 : 0, 1],
       );
@@ -103,7 +103,7 @@ const DropdownItem: FC<DropdownItemProps> = memo(
 
     const rArrowContainerStyle = useAnimatedStyle(() => {
       const rotation = interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [0, Math.PI / 2],
         Extrapolation.CLAMP,

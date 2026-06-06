@@ -48,13 +48,13 @@ const NavigationItem = ({
 
   const gesture = Gesture.Tap()
     .onBegin(() => {
-      active.value = true;
+      active.set(true);
     })
     .onFinalize(() => {
-      active.value = false;
+      active.set(false);
     })
     .onEnd(() => {
-      active.value = false;
+      active.set(false);
       scheduleOnRN(Haptics.selectionAsync);
       startTransition(ref as AnimatedRef<any>, {
         id,
@@ -68,21 +68,21 @@ const NavigationItem = ({
     });
 
   const opacity = useDerivedValue(() => {
-    if (active.value) {
+    if (active.get()) {
       return 0.85;
     }
-    if (transitionId.value !== id) {
+    if (transitionId.get() !== id) {
       return 1;
     }
 
-    return withTiming(timingProgress.value > 0.9 ? 0 : 1, {
+    return withTiming(timingProgress.get() > 0.9 ? 0 : 1, {
       easing: Easing.bezier(0.19, 1, 0.22, 1),
     });
   });
 
   const rStyle = useAnimatedStyle(() => {
     return {
-      opacity: opacity.value,
+      opacity: opacity.get(),
     };
   });
 

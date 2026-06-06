@@ -41,7 +41,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const animatedCircleCx = useDerivedValue(() => {
     return (
-      (screenWidth / tabBarScreens) * animatedIndex.value +
+      (screenWidth / tabBarScreens) * animatedIndex.get() +
       screenWidth / (tabBarScreens * 2)
     );
   }, [screenWidth, animatedIndex, tabBarScreens]);
@@ -57,7 +57,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
       ),
     );
     builder.addCircle(
-      animatedCircleCx.value,
+      animatedCircleCx.get(),
       BOTTOM_BAR_HEIGHT_OFFSET,
       BOTTOM_BAR_HEIGHT_OFFSET,
     );

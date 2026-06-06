@@ -43,17 +43,17 @@ function AnimatedLayoutList<T>({
 
   const onScrollEnd = useCallback(() => {
     'worklet';
-    isScrolling.value = false;
-    direction.value = Direction.None;
+    isScrolling.set(false);
+    direction.set(Direction.None);
   }, [direction, isScrolling]);
 
   const onScroll = useAnimatedScrollHandler({
     onBeginDrag: ({ contentOffset: { y } }) => {
-      lastOffset.value = y;
+      lastOffset.set(y);
     },
     onScroll: ({ contentOffset: { y } }) => {
-      isScrolling.value = true;
-      direction.value = y > lastOffset.value ? Direction.Down : Direction.Up;
+      isScrolling.set(true);
+      direction.set(y > lastOffset.get() ? Direction.Down : Direction.Up);
     },
     onEndDrag: event => {
       if (event.velocity?.y === 0 && event.velocity?.x === 0) {
@@ -68,8 +68,8 @@ function AnimatedLayoutList<T>({
   const rotation = useDerivedValue(() => {
     'worklet';
 
-    if (isScrolling.value && direction.value !== Direction.None) {
-      return direction.value === Direction.Up
+    if (isScrolling.get() && direction.get() !== Direction.None) {
+      return direction.get() === Direction.Up
         ? `${MAX_ROTATE_DEG}deg`
         : `${MIN_ROTATE_DEG}deg`;
     }
@@ -77,7 +77,7 @@ function AnimatedLayoutList<T>({
   }, []);
 
   const rAnimatedStyle = useAnimatedStyle(() => {
-    const rotate = withSpring(rotation.value, {
+    const rotate = withSpring(rotation.get(), {
       dampingRatio: 1,
       duration: 500,
     });

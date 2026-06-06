@@ -44,37 +44,37 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
     (windowWidth - PADDING_HORIZONTAL * 2 - GAP) * BACK_BUTTON_WIDTH_RATIO;
 
   const backButtonProgress = useDerivedValue(() => {
-    return withSpring(activeIndex.value > 0 ? 1 : 0, SPRING_CONFIG);
+    return withSpring(activeIndex.get() > 0 ? 1 : 0, SPRING_CONFIG);
   });
 
   const iconProgress = useDerivedValue(() => {
-    return withSpring(activeIndex.value === 2 ? 1 : 0, SPRING_CONFIG);
+    return withSpring(activeIndex.get() === 2 ? 1 : 0, SPRING_CONFIG);
   });
 
   const rBackButtonStyle = useAnimatedStyle(() => {
     return {
       width: interpolate(
-        backButtonProgress.value,
+        backButtonProgress.get(),
         [0, 1],
         [0, backButtonWidth],
       ),
-      marginRight: interpolate(backButtonProgress.value, [0, 1], [0, GAP]),
+      marginRight: interpolate(backButtonProgress.get(), [0, 1], [0, GAP]),
       overflow: 'hidden',
     };
   }, [backButtonWidth]);
 
   const rBackButtonInnerStyle = useAnimatedStyle(() => {
     return {
-      opacity: interpolate(backButtonProgress.value, [0, 1], [0, 1]),
+      opacity: interpolate(backButtonProgress.get(), [0, 1], [0, 1]),
     };
   });
 
   const rIconStyle = useAnimatedStyle(() => {
     return {
-      width: interpolate(iconProgress.value, [0, 1], [0, ICON_WIDTH]),
-      opacity: interpolate(iconProgress.value, [0, 1], [0, 1]),
+      width: interpolate(iconProgress.get(), [0, 1], [0, ICON_WIDTH]),
+      opacity: interpolate(iconProgress.get(), [0, 1], [0, 1]),
       marginRight: interpolate(
-        iconProgress.value,
+        iconProgress.get(),
         [0, 1],
         [0, ICON_MARGIN_RIGHT],
       ),

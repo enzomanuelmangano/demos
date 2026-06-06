@@ -18,7 +18,7 @@ export const SwipeCards = () => {
   const disliked = useRef(0);
 
   const onReset = useCallback(() => {
-    activeIndex.value = 0;
+    activeIndex.set(0);
     liked.current = 0;
     disliked.current = 0;
 

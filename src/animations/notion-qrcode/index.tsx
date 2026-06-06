@@ -109,20 +109,22 @@ const QRCodeAnimation = ({
    * Toggle between torus and QR code modes.
    */
   const toggle = () => {
-    const showQR = !isShowingQR.value;
-    isShowingQR.value = showQR;
-    lastHapticIndex.value = -1;
+    const showQR = !isShowingQR.get();
+    isShowingQR.set(showQR);
+    lastHapticIndex.set(-1);
 
     // Freeze rotation for consistent wave pattern
-    const currentRotation = iTime.value % (2 * Math.PI);
-    staggerBaseTime.value = currentRotation;
-    frozenRotationTime.value = currentRotation;
+    const currentRotation = iTime.get() % (2 * Math.PI);
+    staggerBaseTime.set(currentRotation);
+    frozenRotationTime.set(currentRotation);
 
     // Spring animation (longer for forward direction)
-    progress.value = withSpring(showQR ? 1 : 0, {
-      duration: showQR ? 6000 : 4000,
-      dampingRatio: 1,
-    });
+    progress.set(
+      withSpring(showQR ? 1 : 0, {
+        duration: showQR ? 6000 : 4000,
+        dampingRatio: 1,
+      }),
+    );
   };
 
   // Expose toggle via ref (React 19 pattern)
@@ -132,7 +134,7 @@ const QRCodeAnimation = ({
 
   // ─── HAPTIC FEEDBACK ───
   useAnimatedReaction(
-    () => progress.value,
+    () => progress.get(),
     (current, previous) => {
       if (previous === null) return;
 
@@ -142,16 +144,16 @@ const QRCodeAnimation = ({
           if (
             previous < HAPTIC_THRESHOLDS[i] &&
             current >= HAPTIC_THRESHOLDS[i] &&
-            i > lastHapticIndex.value
+            i > lastHapticIndex.get()
           ) {
-            lastHapticIndex.value = i;
+            lastHapticIndex.set(i);
             scheduleOnRN(hapticSoft);
             break;
           }
         }
       } else if (current < 0.05) {
         // Reset when reversing
-        lastHapticIndex.value = -1;
+        lastHapticIndex.set(-1);
       }
     },
   );
@@ -160,10 +162,12 @@ const QRCodeAnimation = ({
   useEffect(() => {
     const duration = 40000; // 40s per rotation
     const rotations = 1000; // Effectively infinite
-    iTime.value = withTiming(Math.PI * 2 * rotations, {
-      duration: duration * rotations,
-      easing: Easing.linear,
-    });
+    iTime.set(
+      withTiming(Math.PI * 2 * rotations, {
+        duration: duration * rotations,
+        easing: Easing.linear,
+      }),
+    );
   }, [iTime]);
 
   // ─── RENDER FRAME ───

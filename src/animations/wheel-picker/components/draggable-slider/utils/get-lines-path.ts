@@ -57,7 +57,7 @@ export const getLinesPath = (params: {
     const offsetX = i * spacePerLine;
 
     // Determining the base scroll view position
-    const baseScrollView = -scrollOffset.value + ScreenWidth / 2;
+    const baseScrollView = -scrollOffset.get() + ScreenWidth / 2;
 
     // Skipping iteration if line is outside the visible area
     if (
@@ -68,7 +68,7 @@ export const getLinesPath = (params: {
     }
 
     // Calculating the scroll offset for current line
-    const scrollOffsetX = offsetX + scrollOffset.value;
+    const scrollOffsetX = offsetX + scrollOffset.get();
 
     // Creating a rounded rectangle representing the line
     const roundedRect = rrect(

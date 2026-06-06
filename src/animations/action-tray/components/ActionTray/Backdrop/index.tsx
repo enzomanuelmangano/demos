@@ -18,13 +18,13 @@ type BackdropProps = {
 const Backdrop: FC<BackdropProps> = memo(({ isActive, onTap }) => {
   const rBackdropStyle = useAnimatedStyle(() => {
     return {
-      opacity: withTiming(isActive.value ? 1 : 0),
+      opacity: withTiming(isActive.get() ? 1 : 0),
     };
   }, []);
 
   const rBackdropProps = useAnimatedProps(() => {
     return {
-      pointerEvents: isActive.value ? 'auto' : 'none',
+      pointerEvents: isActive.get() ? 'auto' : 'none',
     } as any;
   }, []);
   return (

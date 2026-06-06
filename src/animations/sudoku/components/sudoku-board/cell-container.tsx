@@ -35,10 +35,10 @@ export const CellContainer = memo<CellContainerProps>(
   }) => {
     const isSelected = useDerivedValue(() => {
       return (
-        selectedCell.value.row === rowIndex &&
-        selectedCell.value.col === colIndex &&
+        selectedCell.get().row === rowIndex &&
+        selectedCell.get().col === colIndex &&
         board[rowIndex][colIndex] === value &&
-        highlightedNumber.value === 0
+        highlightedNumber.get() === 0
       );
     }, [rowIndex, colIndex, value, board, selectedCell, highlightedNumber]);
 

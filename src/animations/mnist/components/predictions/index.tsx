@@ -14,7 +14,7 @@ const Square = ({
   size: number;
 }) => {
   const rColor = useDerivedValue(() => {
-    return withTiming(isActive.value ? '#5cd1ff' : 'white');
+    return withTiming(isActive.get() ? '#5cd1ff' : 'white');
   });
 
   return (
@@ -36,10 +36,10 @@ const PredictionItem = ({
   index: number;
   finalOutput: SharedValue<number[]>;
 }) => {
-  const progress = useDerivedValue(() => finalOutput.value[index]);
+  const progress = useDerivedValue(() => finalOutput.get()[index]);
   const isActive = useDerivedValue(() => {
     return (
-      finalOutput.value.findIndex((val, idx) => val > 0.5 && idx === index) !==
+      finalOutput.get().findIndex((val, idx) => val > 0.5 && idx === index) !==
       -1
     );
   });
@@ -59,7 +59,7 @@ export const Predictions = ({
 }) => {
   return (
     <View style={styles.predictionsContainer}>
-      {finalOutput.value.map((_, i) => (
+      {finalOutput.get().map((_, i) => (
         <PredictionItem key={i} index={i} finalOutput={finalOutput} />
       ))}
     </View>

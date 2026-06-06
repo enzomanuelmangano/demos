@@ -28,79 +28,79 @@ export const ExpandedSheet = () => {
 
   const tapGesture = Gesture.Tap()
     .onBegin(() => {
-      if (progress.value >= progressThreshold) {
+      if (progress.get() >= progressThreshold) {
         return;
       }
-      isTapped.value = true;
+      isTapped.set(true);
     })
     .onTouchesUp(() => {
-      if (progress.value >= progressThreshold) {
+      if (progress.get() >= progressThreshold) {
         return;
       }
       scheduleOnRN(Haptics.selectionAsync);
 
-      progress.value = withSpring(1, {
-        dampingRatio: 1,
-        duration: 600,
-      });
+      progress.set(
+        withSpring(1, {
+          dampingRatio: 1,
+          duration: 600,
+        }),
+      );
     })
     .onFinalize(() => {
-      isTapped.value = false;
+      isTapped.set(false);
     });
 
   const panEnabled = useSharedValue(false);
   const panGesture = Gesture.Pan()
     .onBegin(() => {
-      if (progress.value === 0) return;
-      panEnabled.value = true;
+      if (progress.get() === 0) return;
+      panEnabled.set(true);
     })
     .onUpdate(event => {
-      if (!panEnabled.value) return;
-      progress.value = interpolate(
-        event.translationY,
-        [0, windowHeight],
-        [1, 0],
-      );
+      if (!panEnabled.get()) return;
+      progress.set(interpolate(event.translationY, [0, windowHeight], [1, 0]));
     })
     .onFinalize(() => {
-      if (!panEnabled.value) return;
-      panEnabled.value = false;
-      progress.value = withSpring(progress.value > progressThreshold ? 1 : 0, {
-        dampingRatio: 1,
-        duration: 600,
-      });
+      if (!panEnabled.get()) return;
+      panEnabled.set(false);
+      progress.set(
+        withSpring(progress.get() > progressThreshold ? 1 : 0, {
+          dampingRatio: 1,
+          duration: 600,
+        }),
+      );
     });
 
   const rSheetStyle = useAnimatedStyle(() => {
     return {
       height: interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [MiniPlayerHeight, windowHeight],
       ),
-      bottom: interpolate(progress.value, [0, 1], [TabBarHeight, 0]),
-      left: interpolate(progress.value, [0, 1], [16, 0]),
-      right: interpolate(progress.value, [0, 1], [16, 0]),
+      bottom: interpolate(progress.get(), [0, 1], [TabBarHeight, 0]),
+      left: interpolate(progress.get(), [0, 1], [16, 0]),
+      right: interpolate(progress.get(), [0, 1], [16, 0]),
       backgroundColor: interpolateColor(
-        progress.value,
+        progress.get(),
         [0, 1],
         [Palette.card, Palette.background],
       ),
       borderColor: interpolateColor(
-        progress.value,
+        progress.get(),
         [0, 0.9, 1],
         ['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.1)', 'transparent'],
       ),
-      borderRadius: interpolate(progress.value, [0, 0.9, 1], [16, 48, 0]),
+      borderRadius: interpolate(progress.get(), [0, 0.9, 1], [16, 48, 0]),
       borderWidth: interpolate(
-        progress.value,
+        progress.get(),
         [0, 0.9, 1],
         [StyleSheet.hairlineWidth, StyleSheet.hairlineWidth, 0],
       ),
-      shadowOpacity: interpolate(progress.value, [0, 1], [0.2, 0.5]),
+      shadowOpacity: interpolate(progress.get(), [0, 1], [0.2, 0.5]),
       transform: [
         {
-          scale: withSpring(isTapped.value ? 0.98 : 1),
+          scale: withSpring(isTapped.get() ? 0.98 : 1),
         },
       ],
     };
@@ -109,7 +109,7 @@ export const ExpandedSheet = () => {
   const rKnobStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
-        progress.value,
+        progress.get(),
         [0, progressThreshold / 2, 1],
         [0, 0, 1],
       ),

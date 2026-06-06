@@ -41,7 +41,7 @@ const BlurredItem: React.FC<BlurredItemProps> = ({
 
   const blur = useDerivedValue<number>(() => {
     return interpolate(
-      contentOffsetY.value,
+      contentOffsetY.get(),
       inputRange,
       blurOutputRange,
       Extrapolate.CLAMP,
@@ -50,7 +50,7 @@ const BlurredItem: React.FC<BlurredItemProps> = ({
 
   const rContainerStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
-      contentOffsetY.value,
+      contentOffsetY.get(),
       inputRange,
       [0, 0, Math.PI / 20, 0],
       Extrapolate.CLAMP,
@@ -67,7 +67,7 @@ const BlurredItem: React.FC<BlurredItemProps> = ({
 
   const transformGroup = useDerivedValue(() => {
     const scale = interpolate(
-      contentOffsetY.value,
+      contentOffsetY.get(),
       inputRange,
       [0.8, 1, 0.8, 1],
       Extrapolate.CLAMP,
