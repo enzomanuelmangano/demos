@@ -70,7 +70,11 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   currentListLength,
 }) => {
   const progress = useSharedValue(0);
-  const blurIntensity = useSharedValue<number | undefined>(50);
+  // Reanimated 4.3 no longer applies animated updates to JS props, so driving
+  // BlurView's `intensity` froze every row at its mount value (fully
+  // blurred). Keep the intensity static and fade the blur layer with native
+  // opacity instead — visually equivalent.
+  const blurOpacity = useSharedValue(1);
   const isOffVisibleArea = index - (currentListLength - maxVisibleItems) < 0;
   const top = calculateTop(index, currentListLength, maxVisibleItems);
 
@@ -81,13 +85,13 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
         easing: Easing.linear,
       }),
     );
-    blurIntensity.set(
-      withTiming(isOffVisibleArea ? 50 : 0, {
+    blurOpacity.set(
+      withTiming(isOffVisibleArea ? 1 : 0, {
         duration: isOffVisibleArea ? 150 : 500,
         easing: Easing.linear,
       }),
     );
-  }, [isOffVisibleArea, progress, blurIntensity]);
+  }, [isOffVisibleArea, progress, blurOpacity]);
 
   const containerStyle = useAnimatedStyle(
     () => ({
@@ -99,6 +103,10 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   const isLastItemProgress = useDerivedValue(() =>
     withTiming(index === currentListLength - 1 ? 1 : 0),
   );
+
+  const blurStyle = useAnimatedStyle(() => ({
+    opacity: blurOpacity.get(),
+  }));
 
   const contentStyle = useAnimatedStyle(() => ({
     shadowColor: 'black',
@@ -122,8 +130,8 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
       </Animated.View>
       <AnimatedBlurView
         tint={'extraLight'}
-        intensity={blurIntensity}
-        style={styles.blurView}
+        intensity={50}
+        style={[styles.blurView, blurStyle]}
       />
     </Animated.View>
   );
