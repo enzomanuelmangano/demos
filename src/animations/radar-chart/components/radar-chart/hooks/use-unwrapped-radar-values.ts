@@ -70,18 +70,18 @@ const useUnwrappedValues = <K extends string>({
   }, [data, isSharedValue, targetData, progress, currentData]);
 
   const allValues = useDerivedValue(() => {
-    const current = currentData
-      .get()
-      .map(
-        (item: RadarDataType<K>[number]) =>
-          Object.values(item.values) as number[],
-      );
-    const target = targetData
-      .get()
-      .map(
-        (item: RadarDataType<K>[number]) =>
-          Object.values(item.values) as number[],
-      );
+    // Explicit 'worklet' directives on the nested callbacks: the React
+    // Compiler hoists them out of the surrounding worklet (as `_temp`), and
+    // without the directive the hoisted function isn't workletized — the UI
+    // thread then throws "Tried to synchronously call a non-worklet function".
+    const current = currentData.get().map((item: RadarDataType<K>[number]) => {
+      'worklet';
+      return Object.values(item.values) as number[];
+    });
+    const target = targetData.get().map((item: RadarDataType<K>[number]) => {
+      'worklet';
+      return Object.values(item.values) as number[];
+    });
 
     if (progress.get() === 1) {
       currentData.set(targetData.get());
@@ -89,8 +89,10 @@ const useUnwrappedValues = <K extends string>({
     }
 
     return current.map((currentValues: number[], dataIndex: number) => {
+      'worklet';
       const targetValues = target[dataIndex] || currentValues;
       return currentValues.map((currentValue: number, valueIndex: number) => {
+        'worklet';
         const targetValue = targetValues[valueIndex] || currentValue;
         return interpolate(
           progress.get(),

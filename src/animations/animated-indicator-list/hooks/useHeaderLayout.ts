@@ -41,6 +41,7 @@ const useHeaderLayout = ({
     }
 
     return headers.reduce((acc, { header }, i) => {
+      'worklet';
       const ref = headersLayoutXRefs[i];
 
       if (
@@ -67,27 +68,44 @@ const useHeaderLayout = ({
   >(() => {
     'worklet';
 
+    // Explicit 'worklet' directives on the nested callbacks: the React
+    // Compiler hoists them out of the surrounding worklet, and without the
+    // directive the hoisted function isn't workletized.
     const parsedHeaderData = Object.keys(headersLayoutX.get())
-      .map(key => ({
-        header: key,
-        value: headersLayoutX.get()[key],
-      }))
-      .filter(({ value }) => value != null)
-
-      .sort((a, b) => a.value!.x - b.value!.x);
+      .map(key => {
+        'worklet';
+        return {
+          header: key,
+          value: headersLayoutX.get()[key],
+        };
+      })
+      .filter(({ value }) => {
+        'worklet';
+        return value != null;
+      })
+      .sort((a, b) => {
+        'worklet';
+        return a.value!.x - b.value!.x;
+      });
 
     if (parsedHeaderData.length !== headers.length) {
       return headers
-        .map(({ header }, i) => ({
-          header: header,
-          value: {
-            x: i,
-            width: 0,
-            y: 0,
-            height: 0,
-          },
-        }))
-        .sort((a, b) => a.value.x - b.value.x);
+        .map(({ header }, i) => {
+          'worklet';
+          return {
+            header: header,
+            value: {
+              x: i,
+              width: 0,
+              y: 0,
+              height: 0,
+            },
+          };
+        })
+        .sort((a, b) => {
+          'worklet';
+          return a.value.x - b.value.x;
+        });
     }
     return parsedHeaderData;
   }, []);
