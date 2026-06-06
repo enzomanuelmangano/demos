@@ -1,4 +1,5 @@
 import {
+  Keyboard,
   Pressable,
   StyleSheet,
   TextInput,
@@ -6,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Animated, {
@@ -64,8 +65,21 @@ export const CherryBlossomQRCode = () => {
     inputRef.current?.focus();
   }, []);
 
+  // Keep the keyboard up while the demo is on screen — but only then: an
+  // unconditional refocus runs after the unmount blur too, leaking the
+  // keyboard onto whatever screen comes next.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      Keyboard.dismiss();
+    };
+  }, []);
+
   const handleInputBlur = useCallback(() => {
     requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
       inputRef.current?.focus();
     });
   }, []);
