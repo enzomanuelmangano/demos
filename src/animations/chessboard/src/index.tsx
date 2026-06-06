@@ -1,4 +1,10 @@
-import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Alert,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
 
@@ -13,7 +19,7 @@ import { PlayerCard } from './components/player-card';
 import {
   BOARD_COLORS,
   CLOCKS,
-  FOOLS_MATE,
+  FATAL_ATTRACTION,
   PLAYERS,
   REVIEW_ACCURACY,
   REVIEW_MOVES,
@@ -107,7 +113,7 @@ function GameScreen() {
     ref.current?.resetBoard();
     resetGame();
     await delay(300);
-    for (const [from, to] of FOOLS_MATE) {
+    for (const [from, to] of FATAL_ATTRACTION) {
       if (!alive.current) return;
       await ref.current?.move({ from: from as any, to: to as any });
       await delay(260);
@@ -122,6 +128,19 @@ function GameScreen() {
     ref.current?.resetBoard();
     resetGame();
   }, [resetGame]);
+
+  // New Game: confirm before clearing the current board (native alert).
+  const confirmNewGame = useCallback(() => {
+    if (runningRef.current) return;
+    Alert.alert(
+      'New Game?',
+      'This clears the current board and starts fresh.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'New Game', style: 'destructive', onPress: rematch },
+      ],
+    );
+  }, [rematch]);
 
   // Checkmate → settle the board into a blurred haze with a breathing
   // accent-blue aurora centred on the mated king, and raise a calm result
@@ -183,11 +202,13 @@ function GameScreen() {
 
       // Only checkmate earns the aura — check/stalemate just update the status.
       if (isCheckmate) {
-        // Wait out the move spring (~300ms) so the captured frame shows the
-        // piece landed.
+        // makeImageFromView rasterizes the whole view hierarchy on the main
+        // thread, so it inevitably eats a frame — schedule it past the move
+        // spring (~430ms) and the history scroll settle, when the screen is
+        // fully static and the dropped frame can't be seen.
         auraTimer.current = setTimeout(
           () => showAura(result.state.fen, result.move.color as Side),
-          480,
+          580,
         );
       }
     },
@@ -230,31 +251,39 @@ function GameScreen() {
       <HistorySync boardRef={ref} />
 
       <View style={styles.content}>
-        <View style={styles.topGroup}>
-          {/* Top card = whoever's pieces sit at the top of the board, so it
+        {/* The cards + board centre in the space above the bottom group, so the
+            slack splits evenly instead of pooling under the bottom card. */}
+        <View style={styles.boardZone}>
+          <View style={styles.topGroup}>
+            {/* Top card = whoever's pieces sit at the top of the board, so it
               stays coherent when the board is flipped. */}
-          <View style={styles.playerWrap}>
-            <PlayerCard key={topSide} side={topSide} clock={CLOCKS[topSide]} />
-          </View>
+            <View style={styles.playerWrap}>
+              <PlayerCard
+                key={topSide}
+                side={topSide}
+                clock={CLOCKS[topSide]}
+              />
+            </View>
 
-          {/* Board */}
-          <View style={styles.boardHero}>
-            <Board
-              chessRef={ref}
-              boxRef={boardBoxRef}
-              boardSize={boardSize}
-              flipped={flipped}
-              onMove={handleMove}
-            />
-          </View>
+            {/* Board */}
+            <View style={styles.boardHero}>
+              <Board
+                chessRef={ref}
+                boxRef={boardBoxRef}
+                boardSize={boardSize}
+                flipped={flipped}
+                onMove={handleMove}
+              />
+            </View>
 
-          {/* Bottom card = pieces at the bottom of the board. */}
-          <View style={styles.playerWrap}>
-            <PlayerCard
-              key={bottomSide}
-              side={bottomSide}
-              clock={CLOCKS[bottomSide]}
-            />
+            {/* Bottom card = pieces at the bottom of the board. */}
+            <View style={styles.playerWrap}>
+              <PlayerCard
+                key={bottomSide}
+                side={bottomSide}
+                clock={CLOCKS[bottomSide]}
+              />
+            </View>
           </View>
         </View>
 
@@ -269,14 +298,14 @@ function GameScreen() {
               again" icon at the bottom-right. */}
           <View style={styles.actionRow}>
             <PressableScale
-              onPress={rematch}
+              onPress={confirmNewGame}
               style={[
                 styles.actionButton,
                 styles.actionSecondary,
                 styles.actionFill,
               ]}>
               <Ionicons name="refresh" size={20} color={theme.text} />
-              <Text style={styles.replayText}>Rematch</Text>
+              <Text style={styles.replayText}>New Game</Text>
             </PressableScale>
             <PressableScale onPress={playSequence} style={styles.iconButton}>
               <Ionicons name="play" size={22} color={theme.text} />
@@ -308,8 +337,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     flexDirection: 'row',
     gap: 9,
+    height: 52,
     justifyContent: 'center',
-    paddingVertical: 15,
   },
   actionFill: {
     flex: 1,
@@ -329,12 +358,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  boardZone: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   bottomGroup: {
     gap: 10,
   },
   content: {
     flex: 1,
-    justifyContent: 'space-between',
     paddingBottom: 28,
     paddingTop: 12,
   },
@@ -361,8 +393,8 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     borderRadius: 18,
     borderWidth: HAIRLINE,
+    height: 52,
     justifyContent: 'center',
-    paddingVertical: 15,
     width: 54,
   },
   moveListWrap: {
@@ -385,7 +417,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   playerWrap: {
-    paddingHorizontal: 10,
+    paddingHorizontal: GUTTER,
     width: '100%',
   },
   replayText: {
