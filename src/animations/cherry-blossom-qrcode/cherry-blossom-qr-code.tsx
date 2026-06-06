@@ -8,10 +8,7 @@ import {
 
 import React, { useCallback, useRef, useState } from 'react';
 
-import {
-  KeyboardStickyView,
-  useKeyboardHandler,
-} from 'react-native-keyboard-controller';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -45,6 +42,14 @@ export const CherryBlossomQRCode = () => {
     marginBottom: keyboardHeight.value,
   }));
 
+  // Lift the input above the keyboard from the same shared value. This used
+  // to be a KeyboardStickyView, but its translation no longer applies on the
+  // new architecture (kirillzyusko/react-native-keyboard-controller#1411) —
+  // the input stayed hidden behind the keyboard.
+  const inputContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -keyboardHeight.value }],
+  }));
+
   // Initialize WebGPU rendering
   useWebGPU({
     canvasRef,
@@ -75,7 +80,7 @@ export const CherryBlossomQRCode = () => {
           <Canvas ref={canvasRef} style={styles.canvas} />
         </Pressable>
       </Animated.View>
-      <KeyboardStickyView style={styles.inputContainer}>
+      <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
           ref={inputRef}
           style={styles.input}
@@ -93,7 +98,7 @@ export const CherryBlossomQRCode = () => {
           showSoftInputOnFocus={true}
           autoFocus
         />
-      </KeyboardStickyView>
+      </Animated.View>
     </View>
   );
 };
