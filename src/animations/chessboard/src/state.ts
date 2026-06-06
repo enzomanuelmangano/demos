@@ -22,6 +22,8 @@ export const selectedPlyAtom = atom(-1);
 // True while the canned replay is auto-playing — history navigation is locked
 // and the board is driven by the replay, not by the selection.
 export const runningAtom = atom(false);
+// True while a running replay is held at the current position (play/pause).
+export const pausedAtom = atom(false);
 // Captured pieces per side + live status caption (drive the player cards).
 export const capturedAtom = atom<{ w: string[]; b: string[] }>({
   w: [],

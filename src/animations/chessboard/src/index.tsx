@@ -30,6 +30,7 @@ import { MoveHistory } from './move-history';
 import {
   capturedAtom,
   gameOverSv,
+  pausedAtom,
   pliesAtom,
   resetGameAtom,
   runningAtom,
@@ -104,6 +105,24 @@ const Board = memo(function Board({
   );
 });
 
+// Play/pause control for the replay — isolated so the icon toggle only
+// re-renders this leaf. Shows pause while the replay is actively running,
+// play when idle or held.
+const PlayPauseButton: React.FC<{ onPress: () => void }> = ({ onPress }) => {
+  const running = useAtomValue(runningAtom);
+  const paused = useAtomValue(pausedAtom);
+  const showPause = running && !paused;
+  return (
+    <PressableScale onPress={onPress} style={styles.iconButton}>
+      <Ionicons
+        name={showPause ? 'pause' : 'play'}
+        size={22}
+        color={theme.text}
+      />
+    </PressableScale>
+  );
+};
+
 // Live status caption — a plain atom-driven Text. A ReText (TextInput-based)
 // would avoid the re-render, but on the new architecture its native text
 // updates occasionally flash unstyled (black) and clip to the previous width;
@@ -130,9 +149,21 @@ function GameScreen() {
   const setPlies = useSetAtom(pliesAtom);
   const setSelectedPly = useSetAtom(selectedPlyAtom);
   const setRunning = useSetAtom(runningAtom);
+  const setPausedAtom = useSetAtom(pausedAtom);
   const setCaptured = useSetAtom(capturedAtom);
   const setStatus = useSetAtom(statusAtom);
   const resetGame = useSetAtom(resetGameAtom);
+
+  // Pause is read by the replay loop between moves; the atom mirror drives the
+  // play/pause icon.
+  const pausedRef = useRef(false);
+  const setPaused = useCallback(
+    (value: boolean) => {
+      pausedRef.current = value;
+      setPausedAtom(value);
+    },
+    [setPausedAtom],
+  );
 
   const [flipped, setFlipped] = useState(false);
   const { width } = useWindowDimensions();
@@ -154,11 +185,18 @@ function GameScreen() {
     const gen = ++replayGen.current;
     runningRef.current = true;
     setRunning(true);
+    setPaused(false);
     ref.current?.resetBoard();
     resetGame();
     await delay(300);
     for (const [from, to] of FATAL_ATTRACTION) {
       if (!alive.current || replayGen.current !== gen) return;
+      // Hold here while paused — the position freezes between moves and the
+      // loop picks back up exactly where it stopped.
+      while (pausedRef.current) {
+        if (!alive.current || replayGen.current !== gen) return;
+        await delay(120);
+      }
       await ref.current?.move({ from: from as any, to: to as any });
       if (!alive.current || replayGen.current !== gen) return;
       await delay(260);
@@ -166,7 +204,16 @@ function GameScreen() {
     if (replayGen.current !== gen) return;
     runningRef.current = false;
     setRunning(false);
-  }, [resetGame, setRunning]);
+  }, [resetGame, setRunning, setPaused]);
+
+  // Play toggles between starting the replay, holding it, and resuming it.
+  const togglePlay = useCallback(() => {
+    if (!runningRef.current) {
+      playSequence();
+      return;
+    }
+    setPaused(!pausedRef.current);
+  }, [playSequence, setPaused]);
 
   // Rematch: cancel whatever is in flight (replay, pending aura) and reset to
   // a fresh, playable board.
@@ -174,12 +221,13 @@ function GameScreen() {
     replayGen.current++;
     runningRef.current = false;
     setRunning(false);
+    setPaused(false);
     if (auraTimer.current != null) clearTimeout(auraTimer.current);
     mateHaptic.stop();
     hide();
     ref.current?.resetBoard();
     resetGame();
-  }, [resetGame, setRunning, hide, mateHaptic]);
+  }, [resetGame, setRunning, setPaused, hide, mateHaptic]);
 
   // New Game: confirm before clearing the current board (native alert). Works
   // mid-replay too — confirming aborts the replay and resets.
@@ -376,9 +424,7 @@ function GameScreen() {
               <Ionicons name="refresh" size={20} color={theme.text} />
               <Text style={styles.replayText}>New Game</Text>
             </PressableScale>
-            <PressableScale onPress={playSequence} style={styles.iconButton}>
-              <Ionicons name="play" size={22} color={theme.text} />
-            </PressableScale>
+            <PlayPauseButton onPress={togglePlay} />
           </View>
         </View>
       </View>
