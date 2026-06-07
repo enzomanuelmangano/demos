@@ -4,6 +4,7 @@ import { type FC, type ReactNode, useCallback, useEffect } from 'react';
 
 import { BlurView } from 'expo-blur';
 import Animated, {
+  useAnimatedProps,
   Easing,
   FadeOutUp,
   interpolate,
@@ -70,11 +71,7 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   currentListLength,
 }) => {
   const progress = useSharedValue(0);
-  // Reanimated 4.3 no longer applies animated updates to JS props, so driving
-  // BlurView's `intensity` froze every row at its mount value (fully
-  // blurred). Keep the intensity static and fade the blur layer with native
-  // opacity instead — visually equivalent.
-  const blurOpacity = useSharedValue(1);
+  const blurIntensity = useSharedValue(50);
   const isOffVisibleArea = index - (currentListLength - maxVisibleItems) < 0;
   const top = calculateTop(index, currentListLength, maxVisibleItems);
 
@@ -85,13 +82,13 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
         easing: Easing.linear,
       }),
     );
-    blurOpacity.set(
-      withTiming(isOffVisibleArea ? 1 : 0, {
+    blurIntensity.set(
+      withTiming(isOffVisibleArea ? 50 : 0, {
         duration: isOffVisibleArea ? 150 : 500,
         easing: Easing.linear,
       }),
     );
-  }, [isOffVisibleArea, progress, blurOpacity]);
+  }, [isOffVisibleArea, progress, blurIntensity]);
 
   const containerStyle = useAnimatedStyle(
     () => ({
@@ -104,8 +101,14 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
     withTiming(index === currentListLength - 1 ? 1 : 0),
   );
 
-  const blurStyle = useAnimatedStyle(() => ({
-    opacity: blurOpacity.get(),
+  // Animated intensity must go through useAnimatedProps: passing a shared
+  // value directly as the prop only forwards its value on the FIRST render
+  // (reanimated's PropsFilter) — any re-render drops the prop, the React
+  // commit falls back to BlurView's default intensity (50) and clobbers
+  // whatever the UI-thread mapper applied. useAnimatedProps re-sends its
+  // values on every render, so commits and UI updates agree.
+  const animatedProps = useAnimatedProps(() => ({
+    intensity: blurIntensity.get(),
   }));
 
   const contentStyle = useAnimatedStyle(() => ({
@@ -130,8 +133,8 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
       </Animated.View>
       <AnimatedBlurView
         tint={'extraLight'}
-        intensity={50}
-        style={[styles.blurView, blurStyle]}
+        animatedProps={animatedProps}
+        style={styles.blurView}
       />
     </Animated.View>
   );

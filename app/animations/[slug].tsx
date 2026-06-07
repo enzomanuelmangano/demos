@@ -14,6 +14,7 @@ import { useAtomValue } from 'jotai';
 import { useDrawerProgress } from 'react-native-drawer-layout';
 import Animated, {
   Easing,
+  useAnimatedProps,
   interpolate,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -60,12 +61,12 @@ export default function AnimationScreen() {
     },
   );
 
-  // Reanimated 4.3 no longer applies animated updates to JS props, so driving
-  // BlurView's `intensity` leaves the blur frozen at its last value. Keep the
-  // intensity static and fade the whole blur layer with native opacity
-  // instead — visually equivalent for this overlay.
-  const rBlurStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(rDrawerProgress.get(), [0, 1], [0, 1]),
+  // Animated intensity must go through useAnimatedProps: a shared value passed
+  // directly as the prop only forwards its value on the FIRST render
+  // (reanimated's PropsFilter) — re-renders drop the prop and the React commit
+  // clobbers UI-thread updates with the component default.
+  const blurAnimatedProps = useAnimatedProps(() => ({
+    intensity: interpolate(rDrawerProgress.get(), [0, 1], [0, 40]),
   }));
 
   const { top: safeTop } = useSafeAreaInsets();
@@ -123,8 +124,8 @@ export default function AnimationScreen() {
       <AnimationComponent {...(dimensions as any)} />
       <AnimatedBlurView
         tint="default"
-        intensity={40}
-        style={[styles.blurView, rBlurStyle]}
+        animatedProps={blurAnimatedProps}
+        style={styles.blurView}
       />
       <AnimatedDrawerIcon
         containerStyle={[

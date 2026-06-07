@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import Animated, {
+  useAnimatedProps,
   Easing,
   interpolate,
   interpolateColor,
@@ -49,12 +50,19 @@ const App = () => {
     };
   });
 
-  const animatedBlurIntensity = useDerivedValue<number | undefined>(() => {
-    return withTiming(blurIntensity.get(), {
-      duration: 300,
-      easing: Easing.linear,
-    });
-  }, []);
+  // Animated intensity must go through useAnimatedProps: a shared value passed
+  // directly as the prop only forwards its value on the FIRST render
+  // (reanimated's PropsFilter) — re-renders drop the prop and the React commit
+  // clobbers UI-thread updates with the component default.
+  const blurAnimatedProps = useAnimatedProps(
+    () => ({
+      intensity: withTiming(blurIntensity.get(), {
+        duration: 300,
+        easing: Easing.linear,
+      }),
+    }),
+    [],
+  );
 
   const skiaPath = useSharedValue(Skia.Path.Make());
 
@@ -92,7 +100,7 @@ const App = () => {
           zIndex: 100,
           pointerEvents: 'none',
         }}
-        intensity={animatedBlurIntensity}
+        animatedProps={blurAnimatedProps}
         tint={'systemUltraThinMaterialLight'}
       />
       <Animated.View style={[StyleSheet.absoluteFill, rBezierOutlineStyle]}>

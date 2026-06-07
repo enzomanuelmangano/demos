@@ -11,6 +11,7 @@ import { type FC, memo, useCallback, useMemo } from 'react';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
+  useAnimatedProps,
   type SharedValue,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -172,9 +173,16 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
       return withTiming(isChanging.get() ? 1 : 0);
     }, []);
 
-    const blurIntensity = useDerivedValue<number | undefined>(() => {
-      return isChangingProgress.get() * 17;
-    }, []);
+    // Animated intensity must go through useAnimatedProps: a shared value passed
+    // directly as the prop only forwards its value on the FIRST render
+    // (reanimated's PropsFilter) — re-renders drop the prop and the React commit
+    // clobbers UI-thread updates with the component default.
+    const blurAnimatedProps = useAnimatedProps(
+      () => ({
+        intensity: isChangingProgress.get() * 17,
+      }),
+      [],
+    );
 
     return (
       <Animated.View
@@ -195,7 +203,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
                 zIndex: 10,
               },
             ]}
-            intensity={blurIntensity}
+            animatedProps={blurAnimatedProps}
           />
         )}
         <LinearGradient

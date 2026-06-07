@@ -3,9 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 import { PressableScale } from 'pressto';
 import Animated, {
+  useAnimatedProps,
   interpolate,
   useAnimatedStyle,
-  useDerivedValue,
 } from 'react-native-reanimated';
 
 import { AnimatedBlurView } from '../animated-blur-view';
@@ -26,9 +26,16 @@ export const AnimatedSquare = ({
   width,
   height,
 }: AnimatedSquareProps) => {
-  const blurIntensity = useDerivedValue<number | undefined>(() => {
-    return interpolate(progress.get(), [0, 0.7, 1], [0, 40, 0]);
-  }, [progress]);
+  // Animated intensity must go through useAnimatedProps: a shared value passed
+  // directly as the prop only forwards its value on the FIRST render
+  // (reanimated's PropsFilter) — re-renders drop the prop and the React commit
+  // clobbers UI-thread updates with the component default.
+  const blurAnimatedProps = useAnimatedProps(
+    () => ({
+      intensity: interpolate(progress.get(), [0, 0.7, 1], [0, 40, 0]),
+    }),
+    [progress],
+  );
 
   const rContainerStyle = useAnimatedStyle(
     () => ({
@@ -50,7 +57,10 @@ export const AnimatedSquare = ({
       onPress={onPress}
       style={[styles.container, rContainerStyle]}>
       <View style={styles.content}>
-        <AnimatedBlurView intensity={blurIntensity} style={styles.blurView} />
+        <AnimatedBlurView
+          animatedProps={blurAnimatedProps}
+          style={styles.blurView}
+        />
         <ChessboardLayout blackColor="#AD8969" whiteColor="#ECD9B9" />
         <Animated.View style={[styles.iconContainer, rIconStyle]}>
           <Image
