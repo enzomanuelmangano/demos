@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "main": "expo-router/entry",
   "reanimated": {
     "staticFeatureFlags": {
@@ -39,7 +39,7 @@
     "@expo/metro-runtime": "~56.0.14",
     "@expo/ui": "~56.0.16",
     "@expo/vector-icons": "^15.0.3",
-    "@legendapp/list": "^2.0.13",
+    "@legendapp/list": "3.0.3",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-native-menu/menu": "^2.0.0",
     "@react-native-seoul/masonry-list": "^1.4.2",

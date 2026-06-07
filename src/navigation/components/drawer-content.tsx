@@ -14,7 +14,7 @@ import {
   LegendList,
   LegendListRef,
   LegendListRenderItemProps,
-} from '@legendapp/list';
+} from '@legendapp/list/react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useAtomValue, useSetAtom } from 'jotai';
@@ -116,7 +116,6 @@ export function DrawerContent() {
         <PressablesGroup>
           <LegendList
             recycleItems={false}
-            waitForInitialLayout
             ref={listRef}
             renderItem={renderItem}
             scrollEventThrottle={16}
