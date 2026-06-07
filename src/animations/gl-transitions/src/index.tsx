@@ -4,7 +4,7 @@ import { View } from 'react-native';
 // standalone navigator can no longer nest into the router's container —
 // it runs as an independent tree instead.
 import {
-  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   NavigationIndependentTree,
 } from '@react-navigation/native';
@@ -46,7 +46,7 @@ const App = () => {
            */}
           <GLTransitionsProvider transition={DirectionalWarp}>
             <NavigationIndependentTree>
-              <NavigationContainer theme={DarkTheme}>
+              <NavigationContainer theme={DefaultTheme}>
                 <Stack.Navigator
                   initialRouteName="Home"
                   screenOptions={{

@@ -5,7 +5,7 @@ import { useCallback } from 'react';
 // it runs as an independent tree instead.
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   NavigationIndependentTree,
 } from '@react-navigation/native';
@@ -33,7 +33,7 @@ export function Navigation() {
 
   return (
     <NavigationIndependentTree>
-      <NavigationContainer theme={DarkTheme}>
+      <NavigationContainer theme={DefaultTheme}>
         <Tab.Navigator
           tabBar={tabBar}
           screenOptions={{

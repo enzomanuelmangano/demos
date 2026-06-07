@@ -2,7 +2,7 @@
 // standalone navigator can no longer nest into the router's container —
 // it runs as an independent tree instead.
 import {
-  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   NavigationIndependentTree,
 } from '@react-navigation/native';
@@ -20,7 +20,7 @@ const iOSHomeGrid = () => {
   return (
     <ExpansionProvider>
       <NavigationIndependentTree>
-        <NavigationContainer theme={DarkTheme}>
+        <NavigationContainer theme={DefaultTheme}>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,

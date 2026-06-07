@@ -4,7 +4,7 @@ import { memo } from 'react';
 // standalone navigator can no longer nest into the router's container —
 // it runs as an independent tree instead.
 import {
-  DarkTheme,
+  DefaultTheme,
   NavigationContainer,
   NavigationIndependentTree,
 } from '@react-navigation/native';
@@ -22,7 +22,7 @@ export const SharedTransitions = memo(() => {
   return (
     <>
       <NavigationIndependentTree>
-        <NavigationContainer theme={DarkTheme}>
+        <NavigationContainer theme={DefaultTheme}>
           <Stack.Navigator
             initialRouteName={ScreenNames.Home}
             screenOptions={{
