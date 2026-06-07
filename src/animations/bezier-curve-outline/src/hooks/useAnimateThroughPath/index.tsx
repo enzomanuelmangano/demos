@@ -76,20 +76,28 @@ export const useAnimateThroughPath = ({
   }, [progress]);
 
   const cx = useDerivedValue(() => {
-    if (points.get().length <= 1) return 0;
-    const inputRange = points
-      .get()
-      .map((_, index) => index / points.get().length);
-    const pointsX = points.get().map(point => point.x);
+    const pts = points.get();
+    if (pts.length <= 1) return 0;
+    const len = pts.length;
+    const inputRange: number[] = [];
+    const pointsX: number[] = [];
+    for (let i = 0; i < len; i++) {
+      inputRange.push(i / len);
+      pointsX.push(pts[i].x);
+    }
     return interpolate(progress.get(), inputRange, pointsX);
   }, [points]);
 
   const cy = useDerivedValue(() => {
-    if (points.get().length <= 1) return 0;
-    const inputRange = points
-      .get()
-      .map((_, index) => index / points.get().length);
-    const pointsY = points.get().map(point => point.y);
+    const pts = points.get();
+    if (pts.length <= 1) return 0;
+    const len = pts.length;
+    const inputRange: number[] = [];
+    const pointsY: number[] = [];
+    for (let i = 0; i < len; i++) {
+      inputRange.push(i / len);
+      pointsY.push(pts[i].y);
+    }
     return interpolate(progress.get(), inputRange, pointsY);
   }, [points]);
 
