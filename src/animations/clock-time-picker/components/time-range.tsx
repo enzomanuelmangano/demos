@@ -44,6 +44,14 @@ export const TimeRange: React.FC<TimePickerProps> = ({
 }) => {
   const datesMs = useMemo(() => dates.map(date => date.getTime()), [dates]);
 
+  // Hoisted out of the scroll worklet: the React Compiler extracts inline
+  // callbacks from worklets ("_temp" crash), and mapping on every scroll
+  // frame was wasted work anyway. Shared with snapToOffsets below.
+  const itemOffsets = useMemo(
+    () => datesMs.map((_, i) => i * ITEM_HEIGHT),
+    [datesMs],
+  );
+
   const formattedDates = useMemo(
     () => dates.map(date => format(date, 'h:mm aaa').toLowerCase()),
     [dates],
@@ -72,7 +80,7 @@ export const TimeRange: React.FC<TimePickerProps> = ({
       const { contentOffset } = event;
       const interpolatedDate = interpolate(
         contentOffset.y,
-        datesMs.map((_, i) => i * ITEM_HEIGHT),
+        itemOffsets,
         datesMs,
       );
       onDateChange?.(interpolatedDate);
@@ -85,7 +93,7 @@ export const TimeRange: React.FC<TimePickerProps> = ({
         onScroll={onScroll}
         decelerationRate="fast"
         snapToAlignment="center"
-        snapToOffsets={datesMs.map((_, i) => i * ITEM_HEIGHT)}
+        snapToOffsets={itemOffsets}
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
         style={{ width: 100 }}
