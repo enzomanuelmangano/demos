@@ -31,7 +31,7 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
   ({ number, hiddenIndexes, index }) => {
     // Check if this number is hidden
     const isHidden = useDerivedValue(
-      () => hiddenIndexes.value.includes(index),
+      () => hiddenIndexes.get().includes(index),
       [hiddenIndexes, index],
     );
 
@@ -42,7 +42,7 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
         // based on its index (i.e. 0.1s delay for each number)
         withDelay(
           index * HideableNumberHeight,
-          withSpring(isHidden.value ? 1 : 0, {
+          withSpring(isHidden.get() ? 1 : 0, {
             duration: 700,
             dampingRatio: 1,
           }),
@@ -52,28 +52,28 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
 
     // Interpolate the Y position for the dot and text based on animation progress
     const dotPositionY = useDerivedValue(() =>
-      interpolate(animationProgress.value, [0, 1], [-HideableNumberHeight, 0]),
+      interpolate(animationProgress.get(), [0, 1], [-HideableNumberHeight, 0]),
     );
     const textPositionY = useDerivedValue(() =>
-      interpolate(animationProgress.value, [0, 1], [0, HideableNumberHeight]),
+      interpolate(animationProgress.get(), [0, 1], [0, HideableNumberHeight]),
     );
 
     // Define animated styles for dot and text
     const rDotNumberStyle = useAnimatedStyle(() => ({
-      opacity: animationProgress.value ** 3,
-      transform: [{ translateY: dotPositionY.value }],
+      opacity: animationProgress.get() ** 3,
+      transform: [{ translateY: dotPositionY.get() }],
     }));
     const rTextNumberStyle = useAnimatedStyle(() => ({
-      opacity: (1 - animationProgress.value) ** 3,
-      transform: [{ translateY: textPositionY.value }],
+      opacity: (1 - animationProgress.get()) ** 3,
+      transform: [{ translateY: textPositionY.get() }],
     }));
 
     // Define animated blur intensity for dot and text
     const animatedTextBlur = useAnimatedProps(() => ({
-      intensity: MaxBlurIntensity * animationProgress.value,
+      intensity: MaxBlurIntensity * animationProgress.get(),
     }));
     const animatedDotBlur = useAnimatedProps(() => ({
-      intensity: MaxBlurIntensity * (1 - animationProgress.value),
+      intensity: MaxBlurIntensity * (1 - animationProgress.get()),
     }));
 
     return (

@@ -118,11 +118,10 @@ export const BlastCircleEffect = forwardRef<
       () => ({
         blast: (springAnimationConfig?: WithSpringConfig, delay?: number) => {
           cancelAnimation(progress);
-          baseRandomness.value = Math.random();
-          progress.value = 0;
-          progress.value = withDelay(
-            delay ?? 0,
-            withSpring(1, springAnimationConfig),
+          baseRandomness.set(Math.random());
+          progress.set(0);
+          progress.set(
+            withDelay(delay ?? 0, withSpring(1, springAnimationConfig)),
           );
         },
       }),
@@ -138,13 +137,13 @@ export const BlastCircleEffect = forwardRef<
       (seed: number) => {
         'worklet';
         const x = Math.sin(seed++) * 10000;
-        return Math.sqrt((x - Math.floor(x)) * baseRandomness.value);
+        return Math.sqrt((x - Math.floor(x)) * baseRandomness.get());
       },
       [baseRandomness],
     );
 
     const progressRadius = useDerivedValue(() => {
-      return interpolate(progress.value, [0, 1], [0, blastRadius]);
+      return interpolate(progress.get(), [0, 1], [0, blastRadius]);
     }, [progress]);
 
     const transforms = useRSXformBuffer(count, (val, i) => {
@@ -153,7 +152,7 @@ export const BlastCircleEffect = forwardRef<
       const initialX = origin.x + circleRadius;
       const initialY = origin.y - circleRadius;
 
-      const progressAnimation = progressRadius.value ** (i % 2 ? 1.02 : 1);
+      const progressAnimation = progressRadius.get() ** (i % 2 ? 1.02 : 1);
 
       const xRandom = interpolate(seededRandom(i), [0, 1], [-0.5, 0.5]);
       const randomAngle = (xRandom * Math.PI * 2) / count;
@@ -166,7 +165,7 @@ export const BlastCircleEffect = forwardRef<
     });
 
     const opacity = useDerivedValue(() => {
-      const baseOpacity = interpolate(progress.value, [0.8, 1], [1, 0]);
+      const baseOpacity = interpolate(progress.get(), [0.8, 1], [1, 0]);
       return baseOpacity ** 2;
     }, [progress]);
 

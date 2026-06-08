@@ -43,21 +43,21 @@ export const Cell = memo<CellProps>(
     onPress,
   }) => {
     const isHighlighted = useDerivedValue(() => {
-      return value === highlightedNumber.value && highlightedNumber.value !== 0;
+      return value === highlightedNumber.get() && highlightedNumber.get() !== 0;
     }, [value, highlightedNumber]);
 
     const scale = useDerivedValue(() => {
-      return withSpring(isHighlighted.value ? 1 : 0);
+      return withSpring(isHighlighted.get() ? 1 : 0);
     }, [isHighlighted]);
 
     const cellAnimatedStyle = useAnimatedStyle(() => {
       return {
-        transform: [{ scale: scale.value }],
-        opacity: withTiming(isHighlighted.value ? 1 : 0, {
+        transform: [{ scale: scale.get() }],
+        opacity: withTiming(isHighlighted.get() ? 1 : 0, {
           duration: 150,
         }),
         backgroundColor: withSpring(
-          isHighlighted.value
+          isHighlighted.get()
             ? COLORS.highlightStrong
             : COLORS.highlightTransparent,
         ),
@@ -66,7 +66,7 @@ export const Cell = memo<CellProps>(
 
     const rHighlightedStyle = useAnimatedStyle(() => {
       return {
-        backgroundColor: isSelected.value ? COLORS.highlight : COLORS.surface,
+        backgroundColor: isSelected.get() ? COLORS.highlight : COLORS.surface,
       };
     }, [isSelected]);
 

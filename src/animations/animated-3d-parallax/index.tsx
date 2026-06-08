@@ -29,33 +29,33 @@ export const Animated3DParallax = () => {
     .onBegin(({ x, y }) => {
       // I like to catch the interaction from the first touch,
       // That's why I set the value of the shared values also here (in the onBegin callback)
-      touchX.value = x;
-      touchY.value = y;
+      touchX.set(x);
+      touchY.set(y);
     })
     .onUpdate(({ x, y }) => {
-      touchX.value = x;
-      touchY.value = y;
+      touchX.set(x);
+      touchY.set(y);
     })
     .onFinalize(() => {
-      touchX.value = CARD_SIZE / 2;
-      touchY.value = CARD_SIZE / 2;
+      touchX.set(CARD_SIZE / 2);
+      touchY.set(CARD_SIZE / 2);
     })
     // @@TODO: on finalize should handle both afaik 🤔
     .onTouchesUp(() => {
-      touchX.value = CARD_SIZE / 2;
-      touchY.value = CARD_SIZE / 2;
+      touchX.set(CARD_SIZE / 2);
+      touchY.set(CARD_SIZE / 2);
     })
     .onTouchesCancelled(() => {
-      touchX.value = CARD_SIZE / 2;
-      touchY.value = CARD_SIZE / 2;
+      touchX.set(CARD_SIZE / 2);
+      touchY.set(CARD_SIZE / 2);
     });
 
   const touchCardX = useDerivedValue(() => {
-    return withSpring(touchX.value);
+    return withSpring(touchX.get());
   });
 
   const touchCardY = useDerivedValue(() => {
-    return withSpring(touchY.value);
+    return withSpring(touchY.get());
   });
 
   // The trick is to delay the animation of the content
@@ -64,11 +64,11 @@ export const Animated3DParallax = () => {
   // I prefer to delay the animation of the content by using different options for the "withSpring" function:
   // In my case I use a "stiffness" of 80 and a "mass" of 2 (but you can play with these values to get the best result)
   const touchCardContentX = useDerivedValue(() => {
-    return withSpring(touchX.value, delayedSpringConfig);
+    return withSpring(touchX.get(), delayedSpringConfig);
   });
 
   const touchCardContentY = useDerivedValue(() => {
-    return withSpring(touchY.value, delayedSpringConfig);
+    return withSpring(touchY.get(), delayedSpringConfig);
   });
 
   const { rRotationStyle: rStyle } = use3DRotationStyle({

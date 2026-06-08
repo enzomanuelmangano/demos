@@ -68,8 +68,8 @@ function SelectableGridList<T>({
   const currentActiveIndexesSet = useSharedValue<Set<number>>(new Set());
 
   const totalActiveIndexes = useDerivedValue(() => {
-    const combined = new Set([...currentActiveIndexes.value]);
-    for (const idx of pendingIndexes.value) {
+    const combined = new Set([...currentActiveIndexes.get()]);
+    for (const idx of pendingIndexes.get()) {
       combined.add(idx);
     }
     return Array.from(combined);
@@ -96,10 +96,10 @@ function SelectableGridList<T>({
   const reset = useCallback(() => {
     // We don't need to update the totalActiveIndexes here because
     // its value is derived from the currentActiveIndexes and pendingIndexes
-    currentActiveIndexes.value = [];
-    pendingIndexes.value = [];
-    currentActiveIndexesSet.value = new Set();
-    pendingIndexesSet.value = new Set();
+    currentActiveIndexes.set([]);
+    pendingIndexes.set([]);
+    currentActiveIndexesSet.set(new Set());
+    pendingIndexesSet.set(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -121,7 +121,7 @@ function SelectableGridList<T>({
   // will return true if the arrays have the same elements, even if they are in different order.
   useAnimatedReaction(
     () => {
-      return totalActiveIndexes.value;
+      return totalActiveIndexes.get();
     },
     (updatedActiveIndexes, prevActiveIndexes) => {
       if (
@@ -137,75 +137,73 @@ function SelectableGridList<T>({
 
   const toggleIndex = useCallback((index: number) => {
     'worklet';
-    const currentSet = new Set(currentActiveIndexes.value);
+    const currentSet = new Set(currentActiveIndexes.get());
     if (currentSet.has(index)) {
       currentSet.delete(index);
     } else {
       currentSet.add(index);
     }
-    currentActiveIndexes.value = Array.from(currentSet);
-    currentActiveIndexesSet.value = currentSet;
+    currentActiveIndexes.set(Array.from(currentSet));
+    currentActiveIndexesSet.set(currentSet);
 
-    pendingIndexes.value = [];
-    pendingIndexesSet.value = new Set();
+    pendingIndexes.set([]);
+    pendingIndexesSet.set(new Set());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {
-      initialSelectedIndex.value = calculateGridItemPosition({
-        x: event.x,
-        y: event.y + contentOffsetY.value,
-      });
+      initialSelectedIndex.set(
+        calculateGridItemPosition({
+          x: event.x,
+          y: event.y + contentOffsetY.get(),
+        }),
+      );
     })
     .onUpdate(event => {
-      if (initialSelectedIndex.value == null) return;
+      const startIndex = initialSelectedIndex.get();
+      if (startIndex == null) return;
 
       const pendingFinalIndex = calculateGridItemPosition({
         x: event.x,
-        y: event.y + contentOffsetY.value,
+        y: event.y + contentOffsetY.get(),
       });
 
-      const newPending = generateNumbersInRange(
-        initialSelectedIndex.value,
-        pendingFinalIndex,
-      );
-      pendingIndexes.value = newPending;
+      const newPending = generateNumbersInRange(startIndex, pendingFinalIndex);
+      pendingIndexes.set(newPending);
       const pendingSet = new Set(newPending);
-      pendingIndexesSet.value = pendingSet;
+      pendingIndexesSet.set(pendingSet);
 
       const filteredCurrent = [];
-      for (const idx of currentActiveIndexes.value) {
+      for (const idx of currentActiveIndexes.get()) {
         if (!pendingSet.has(idx)) {
           filteredCurrent.push(idx);
         }
       }
-      currentActiveIndexes.value = filteredCurrent;
-      currentActiveIndexesSet.value = new Set(filteredCurrent);
+      currentActiveIndexes.set(filteredCurrent);
+      currentActiveIndexesSet.set(new Set(filteredCurrent));
 
-      const lowerBound = contentOffsetY.value + itemSize;
+      const lowerBound = contentOffsetY.get() + itemSize;
       const upperBound = lowerBound + containerHeight - 2 * itemSize;
 
       const scrollSpeed = itemSize * 0.15;
-      if (event.y + contentOffsetY.value <= lowerBound) {
-        scrollTo(flatListRef, 0, contentOffsetY.value - scrollSpeed, false);
-      } else if (event.y + contentOffsetY.value >= upperBound) {
-        scrollTo(flatListRef, 0, contentOffsetY.value + scrollSpeed, false);
+      if (event.y + contentOffsetY.get() <= lowerBound) {
+        scrollTo(flatListRef, 0, contentOffsetY.get() - scrollSpeed, false);
+      } else if (event.y + contentOffsetY.get() >= upperBound) {
+        scrollTo(flatListRef, 0, contentOffsetY.get() + scrollSpeed, false);
       }
     })
     .onEnd(event => {
-      if (initialSelectedIndex.value == null) return;
+      const startIndex = initialSelectedIndex.get();
+      if (startIndex == null) return;
 
       const finalIndex = calculateGridItemPosition({
         x: event.x,
-        y: event.y + contentOffsetY.value,
+        y: event.y + contentOffsetY.get(),
       });
 
-      const finalPending = generateNumbersInRange(
-        initialSelectedIndex.value,
-        finalIndex,
-      );
-      pendingIndexes.value = finalPending;
+      const finalPending = generateNumbersInRange(startIndex, finalIndex);
+      pendingIndexes.set(finalPending);
 
       if (finalPending.length === 1) {
         const index = finalPending[0]!;
@@ -213,32 +211,34 @@ function SelectableGridList<T>({
         return;
       }
 
-      const combined = new Set(currentActiveIndexes.value);
+      const combined = new Set(currentActiveIndexes.get());
       for (const idx of finalPending) {
         combined.add(idx);
       }
-      currentActiveIndexes.value = Array.from(combined);
-      currentActiveIndexesSet.value = combined;
+      currentActiveIndexes.set(Array.from(combined));
+      currentActiveIndexesSet.set(combined);
     })
     .onFinalize(() => {
-      pendingIndexes.value = [];
-      pendingIndexesSet.value = new Set();
-      initialSelectedIndex.value = null;
+      pendingIndexes.set([]);
+      pendingIndexesSet.set(new Set());
+      initialSelectedIndex.set(null);
     });
 
   const tapGesture = Gesture.Tap()
     .maxDeltaY(5)
     .maxDeltaX(5)
     .onStart(event => {
-      initialSelectedIndex.value = calculateGridItemPosition({
-        x: event.x,
-        y: event.y + contentOffsetY.value,
-      });
+      initialSelectedIndex.set(
+        calculateGridItemPosition({
+          x: event.x,
+          y: event.y + contentOffsetY.get(),
+        }),
+      );
     })
     .onEnd(event => {
       const index = calculateGridItemPosition({
         x: event.x,
-        y: event.y + contentOffsetY.value,
+        y: event.y + contentOffsetY.get(),
       });
       toggleIndex(index);
     });
@@ -268,7 +268,7 @@ function SelectableGridList<T>({
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      contentOffsetY.value = event.contentOffset.y;
+      contentOffsetY.set(event.contentOffset.y);
     },
   });
 

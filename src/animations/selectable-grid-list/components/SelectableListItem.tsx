@@ -31,33 +31,33 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
     activeIndexes,
   }) => {
     const isActive = useDerivedValue(() => {
-      return activeIndexes.value.includes(index);
+      return activeIndexes.get().includes(index);
     }, [index]);
 
     const externalBorderRadius = 10;
 
     const activeBorderWidth = useDerivedValue(() => {
-      return withTiming(isActive.value ? 4 : 0);
+      return withTiming(isActive.get() ? 4 : 0);
     }, []);
 
     const internalBorderRadius = useDerivedValue(() => {
-      return externalBorderRadius + activeBorderWidth.value;
+      return externalBorderRadius + activeBorderWidth.get();
     }, [externalBorderRadius]);
 
     const rImageStyle = useAnimatedStyle(() => {
       return {
-        borderRadius: internalBorderRadius.value,
-        borderWidth: activeBorderWidth.value,
-        borderColor: isActive.value ? Palette.primary : Palette.background,
+        borderRadius: internalBorderRadius.get(),
+        borderWidth: activeBorderWidth.get(),
+        borderColor: isActive.get() ? Palette.primary : Palette.background,
       };
     }, [internalBorderRadius]);
 
     const rBadgeStyle = useAnimatedStyle(() => {
       return {
-        opacity: withTiming(isActive.value ? 1 : 0),
+        opacity: withTiming(isActive.get() ? 1 : 0),
         transform: [
           {
-            scale: withSpring(isActive.value ? 1 : 0),
+            scale: withSpring(isActive.get() ? 1 : 0),
           },
         ],
       };

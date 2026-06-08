@@ -21,7 +21,7 @@ export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: ({ contentOffset: { x } }) => {
-      scrollOffset.value = x;
+      scrollOffset.set(x);
     },
   });
 

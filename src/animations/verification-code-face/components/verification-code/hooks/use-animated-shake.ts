@@ -15,21 +15,23 @@ const useAnimatedShake = () => {
   const shake = useCallback(() => {
     cancelAnimation(shakeTranslateX);
 
-    shakeTranslateX.value = 0;
+    shakeTranslateX.set(0);
 
-    shakeTranslateX.value = withRepeat(
-      withTiming(10, {
-        duration: 120,
-        easing: Easing.bezier(0.35, 0.7, 0.5, 0.7),
-      }),
-      6,
-      true,
+    shakeTranslateX.set(
+      withRepeat(
+        withTiming(10, {
+          duration: 120,
+          easing: Easing.bezier(0.35, 0.7, 0.5, 0.7),
+        }),
+        6,
+        true,
+      ),
     );
   }, [shakeTranslateX]);
 
   const rShakeStyle = useAnimatedStyle(() => {
     return {
-      transform: [{ translateX: shakeTranslateX.value }],
+      transform: [{ translateX: shakeTranslateX.get() }],
     };
   }, []);
 

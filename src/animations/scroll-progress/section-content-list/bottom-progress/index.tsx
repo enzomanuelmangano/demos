@@ -25,21 +25,21 @@ type BottomProgressProps = {
 const BottomProgress: FC<BottomProgressProps> = memo(
   ({ style, progress, readingTime, onReset }) => {
     const state = useDerivedValue(() => {
-      if (progress.value === 0) {
+      if (progress.get() === 0) {
         return BottomProgressState.INITIAL;
       }
-      if (progress.value === 1) {
+      if (progress.get() === 1) {
         return BottomProgressState.END;
       }
       return BottomProgressState.EXPANDED;
     }, []);
 
     const isExpanded = useDerivedValue(() => {
-      return state.value === BottomProgressState.EXPANDED;
+      return state.get() === BottomProgressState.EXPANDED;
     }, []);
 
     const rAnimatedStyle = useAnimatedStyle(() => {
-      const width = withTiming(isExpanded.value ? 200 : 70, {
+      const width = withTiming(isExpanded.get() ? 200 : 70, {
         duration: 500,
       });
 

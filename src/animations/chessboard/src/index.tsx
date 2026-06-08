@@ -23,6 +23,10 @@ import type { Side } from './types';
 // left/right edge lines up.
 const GUTTER = 16;
 
+// Chrome (header + move history + action buttons) hidden for the demo
+// recording — flip back to true to restore both sections.
+const SHOW_CHROME = false;
+
 // Pure layout — every behaviour (replay, pause, clocks, haptics, the
 // checkmate aura) lives in useChessGame.
 function GameScreen() {
@@ -46,20 +50,22 @@ function GameScreen() {
   return (
     <View style={styles.root}>
       {/* In-app header — title and live status caption. */}
-      <View style={[styles.header, { paddingTop: safeTop + 6 }]}>
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.navTitle}>Chessboard</Text>
-          <StatusCaption />
+      {SHOW_CHROME && (
+        <View style={[styles.header, { paddingTop: safeTop + 6 }]}>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.navTitle}>Chessboard</Text>
+            <StatusCaption />
+          </View>
+          {/* Board flip — hidden for the demo; re-enable by uncommenting.
+          <PressableScale
+            hitSlop={16}
+            onPress={() => setFlipped(f => !f)}
+            style={styles.flipBtn}>
+            <Ionicons name="swap-vertical" size={23} color={theme.text} />
+          </PressableScale>
+          */}
         </View>
-        {/* Board flip — hidden for the demo; re-enable by uncommenting.
-        <PressableScale
-          hitSlop={16}
-          onPress={() => setFlipped(f => !f)}
-          style={styles.flipBtn}>
-          <Ionicons name="swap-vertical" size={23} color={theme.text} />
-        </PressableScale>
-        */}
-      </View>
+      )}
 
       {/* Drives the board off the selected ply, isolated from this tree. */}
       <HistorySync boardRef={boardRef} />
@@ -94,28 +100,30 @@ function GameScreen() {
         </View>
 
         {/* Bottom group — move history sits directly above the actions. */}
-        <View style={styles.bottomGroup}>
-          {/* Move history — tap a move to inspect that position. */}
-          <View style={styles.moveListWrap}>
-            <MoveHistory />
-          </View>
+        {SHOW_CHROME && (
+          <View style={styles.bottomGroup}>
+            {/* Move history — tap a move to inspect that position. */}
+            <View style={styles.moveListWrap}>
+              <MoveHistory />
+            </View>
 
-          {/* Actions — the primary New Game button, with the play/pause
+            {/* Actions — the primary New Game button, with the play/pause
               control at the bottom-right. */}
-          <View style={styles.actionRow}>
-            <PressableScale
-              onPress={confirmNewGame}
-              style={[
-                styles.actionButton,
-                styles.actionSecondary,
-                styles.actionFill,
-              ]}>
-              <Ionicons name="refresh" size={20} color={theme.text} />
-              <Text style={styles.actionText}>New Game</Text>
-            </PressableScale>
-            <PlayPauseButton onPress={togglePlay} />
+            <View style={styles.actionRow}>
+              <PressableScale
+                onPress={confirmNewGame}
+                style={[
+                  styles.actionButton,
+                  styles.actionSecondary,
+                  styles.actionFill,
+                ]}>
+                <Ionicons name="refresh" size={20} color={theme.text} />
+                <Text style={styles.actionText}>New Game</Text>
+              </PressableScale>
+              <PlayPauseButton onPress={togglePlay} />
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </View>
   );

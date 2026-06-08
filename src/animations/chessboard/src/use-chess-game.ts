@@ -7,7 +7,7 @@ import { usePatternComposer } from 'react-native-pulsar';
 
 import { useCheckmateAura } from './checkmate-aura';
 import {
-  FATAL_ATTRACTION,
+  FOOLS_MATE,
   PLAYERS,
   REPLAY,
   REVIEW_ACCURACY,
@@ -89,7 +89,7 @@ export const useChessGame = ({
     boardRef.current?.resetBoard();
     resetGame();
     await delay(REPLAY.START_DELAY);
-    for (const [from, to] of FATAL_ATTRACTION) {
+    for (const [from, to] of FOOLS_MATE) {
       if (!alive.current || replayGen.current !== gen) return;
       // Hold here while paused — the position freezes between moves and the
       // loop picks back up exactly where it stopped.

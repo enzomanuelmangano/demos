@@ -31,12 +31,12 @@ export const DonutCircularProgress: React.FC<DonutCircularProgressProps> = ({
 
   // Memoizing the path for the donut
   const path = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
     // Adding a circle path to represent the donut
-    skPath.addCircle(size / 2, size / 2, radius);
+    builder.addCircle(size / 2, size / 2, radius);
 
-    return skPath;
+    return builder.build();
   }, [radius, size]);
 
   // Rendering the DonutCircularProgress component

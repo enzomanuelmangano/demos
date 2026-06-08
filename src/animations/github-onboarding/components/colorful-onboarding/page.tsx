@@ -28,12 +28,12 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
   const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
 
   const rBadgeStyle = useAnimatedStyle(() => {
-    const rotateY = interpolate(currentOffset.value, inputRange, [
+    const rotateY = interpolate(currentOffset.get(), inputRange, [
       Math.PI / 4,
       Math.PI * 2,
       Math.PI / 4,
     ]);
-    const scale = interpolate(currentOffset.value, inputRange, [0.5, 1, 0.5]);
+    const scale = interpolate(currentOffset.get(), inputRange, [0.5, 1, 0.5]);
 
     return {
       transform: [
@@ -49,7 +49,7 @@ const OnboardingPage: React.FC<OnboardingPageProps> = ({
 
   const rTitleStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
-      currentOffset.value,
+      currentOffset.get(),
       inputRange,
       [-1, 1, -1],
       Extrapolation.CLAMP,

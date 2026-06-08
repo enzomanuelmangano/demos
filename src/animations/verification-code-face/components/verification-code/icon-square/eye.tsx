@@ -9,11 +9,11 @@ import type { SharedValue } from 'react-native-reanimated';
 
 export const Eye = ({ progress }: { progress: SharedValue<number> }) => {
   const rStyle = useAnimatedStyle(() => {
-    const scale = interpolate(progress.value, [0, 1], [0.4, 0.8]);
+    const scale = interpolate(progress.get(), [0, 1], [0.4, 0.8]);
     const width = scale * 10;
     const height = scale * 10;
-    const translateX = interpolate(progress.value, [0, 1], [-4, 4]);
-    const translateY = interpolate(progress.value, [0, 1], [3, 3]);
+    const translateX = interpolate(progress.get(), [0, 1], [-4, 4]);
+    const translateY = interpolate(progress.get(), [0, 1], [3, 3]);
 
     // Initially I was using scale, but it was causing a blur on the
     // Eye Resolution for some very weird reason (after upgrading React Native)

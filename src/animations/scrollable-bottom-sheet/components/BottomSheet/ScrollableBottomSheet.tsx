@@ -66,16 +66,18 @@ const ScrollableBottomSheet = forwardRef<
 
   const scrollToY = useCallback((destination: number) => {
     'worklet';
-    active.value = destination !== 0;
+    active.set(destination !== 0);
 
     if (destination === 0) {
       scheduleOnRN(scrollToX, 0, 500);
     }
-    translateY.value = withSpring(destination, {
-      damping: 25,
-      stiffness: 180,
-      mass: 0.9,
-    });
+    translateY.set(
+      withSpring(destination, {
+        damping: 25,
+        stiffness: 180,
+        mass: 0.9,
+      }),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -93,10 +95,10 @@ const ScrollableBottomSheet = forwardRef<
         return scrollViewRef.current?.scrollTo({ x: destination });
       },
       isActive: () => {
-        return active.value;
+        return active.get();
       },
     }),
-    [scrollToY, close, active.value],
+    [scrollToY, close, active.get()],
   );
 
   const { width: windowWidth } = useWindowDimensions();
@@ -111,7 +113,7 @@ const ScrollableBottomSheet = forwardRef<
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      if (!active.value) return;
+      if (!active.get()) return;
 
       const interpolatedHeight = interpolate(
         event.contentOffset.x,

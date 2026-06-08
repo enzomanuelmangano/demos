@@ -30,14 +30,14 @@ export const SheetContent = ({
 }: SheetContentProps) => {
   const rImageStyle = useAnimatedStyle(() => {
     const imageSize = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [ImageHeight, ExpandedImageHeight],
     );
     return {
       height: imageSize,
       width: imageSize,
-      borderRadius: interpolate(progress.value, [0, 1], [8, 24]),
+      borderRadius: interpolate(progress.get(), [0, 1], [8, 24]),
       borderCurve: 'continuous',
       overflow: 'hidden',
     };
@@ -46,23 +46,23 @@ export const SheetContent = ({
   const rContentStyle = useAnimatedStyle(() => {
     return {
       marginTop: interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [BaseOffset, BaseOffset + 120],
       ),
-      marginLeft: interpolate(progress.value, [0, 1], [BaseOffset, 24]),
+      marginLeft: interpolate(progress.get(), [0, 1], [BaseOffset, 24]),
     };
   });
 
   const rTitleStyle = useAnimatedStyle(() => {
     return {
-      fontSize: interpolate(progress.value, [0, 1], [14, 28]),
+      fontSize: interpolate(progress.get(), [0, 1], [14, 28]),
     };
   });
 
   const rSubtitleStyle = useAnimatedStyle(() => {
     return {
-      fontSize: interpolate(progress.value, [0, 1], [12, 24]),
+      fontSize: interpolate(progress.get(), [0, 1], [12, 24]),
     };
   });
 
@@ -70,9 +70,9 @@ export const SheetContent = ({
     return {
       position: 'absolute',
       top: 0,
-      left: interpolate(progress.value, [0, 1], [ImageHeight + 10, 0]),
+      left: interpolate(progress.get(), [0, 1], [ImageHeight + 10, 0]),
       marginTop: interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [5, ExpandedImageHeight + 24],
       ),

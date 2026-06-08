@@ -1,97 +1,82 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { type FC, useCallback, useMemo } from 'react';
+import { type FC, useMemo } from 'react';
 
-import { AnimatedSingleNumber } from './individual-number';
-import { getCommasArray } from '../../utils/get-commas-array';
-
-import type { StyleProp, ViewStyle } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeOutDown,
+  LinearTransition,
+  useAnimatedStyle,
+  withTiming,
+} from 'react-native-reanimated';
 
 type AnimatedNumberProps = {
   value: number;
 };
 
+// Row of digits driven entirely by Reanimated layout transitions: each digit
+// (and thousands separator) is its own Animated.Text that fades in from
+// below, fades out downwards, and slides into place via LinearTransition,
+// while the whole row scales down as the number grows. The previous
+// implementation hand-computed absolute `left` offsets per digit inside an
+// animated style wrapped in nested layout transitions — reanimated 4.3 left
+// the digits stranded mid-flight.
 export const AnimatedNumber: FC<AnimatedNumberProps> = ({ value }) => {
-  const splittedValue = useMemo(() => {
-    return value.toString().split('');
-  }, [value]);
-
-  const commas = useMemo(() => {
-    return getCommasArray(value);
-  }, [value]);
-
-  const ITEM_WIDTH = 55;
-  const ITEM_HEIGHT = 100;
-  const SCALE = 1 - splittedValue.length * 0.05;
-  const SCALE_WIDTH_OFFSET = 0.08;
-  const SCALED_WIDTH = ITEM_WIDTH * (SCALE + SCALE_WIDTH_OFFSET);
-  const COMMA_SPACE = 10 * (1 - splittedValue.length * 0.025);
-
-  const buildIndividualNumber = useCallback(
-    (params: {
-      index: number;
-      item: string;
-      containerStyle?: StyleProp<ViewStyle>;
-    }) => {
-      return (
-        <AnimatedSingleNumber
-          index={params.index}
-          value={params.item}
-          scale={SCALE}
-          scaleWidthOffset={SCALE_WIDTH_OFFSET}
-          key={params.index + params.item.toString()}
-          rightSpace={
-            commas.slice(0, params.index).filter(v => v === ',').length *
-            COMMA_SPACE
-          }
-          totalNumbersLength={splittedValue.length}
-          itemWidth={ITEM_WIDTH}
-          itemHeight={ITEM_HEIGHT}
-          containerStyle={[styles.itemContainer, params.containerStyle ?? {}]}
-          style={styles.item}
-        />
+  const characters = useMemo(() => {
+    // Separate key namespaces for digits and separators, each keyed by its
+    // stable left-to-right ordinal: typing appends on the right, so existing
+    // digits keep their identity, and a comma can never collide with a digit
+    // that lands on the same string index (which made React recycle the
+    // wrong element and "overwrite" digits with commas).
+    let digitCount = 0;
+    let commaCount = 0;
+    return value
+      .toLocaleString('en-US')
+      .split('')
+      .map(char =>
+        char === ','
+          ? { char, key: `comma-${commaCount++}` }
+          : { char, key: `digit-${digitCount++}` },
       );
-    },
-    [COMMA_SPACE, SCALE, commas, splittedValue.length],
-  );
+  }, [value]);
+
+  const rContainerStyle = useAnimatedStyle(() => {
+    return {
+      transform: [
+        {
+          scale: withTiming(Math.max(1.05 - 0.05 * characters.length, 0.45)),
+        },
+      ],
+    };
+  }, [characters.length]);
 
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        right: commas.filter(v => v === ',').length * COMMA_SPACE,
-        top: 10,
-        backgroundColor: 'transparent',
-      }}>
-      {splittedValue.map((item, index) => {
-        return buildIndividualNumber({ index, item });
-      })}
-      {commas.map((item, index) => {
-        if (item === '') return null;
-
-        return buildIndividualNumber({
-          index,
-          item,
-          containerStyle: {
-            marginLeft: SCALED_WIDTH / 2 + COMMA_SPACE / 2,
-          },
-        });
-      })}
-    </View>
+    <Animated.View
+      layout={LinearTransition}
+      style={[styles.row, rContainerStyle]}>
+      {characters.map(({ char, key }) => (
+        <Animated.Text
+          key={key}
+          layout={LinearTransition}
+          entering={FadeInDown}
+          exiting={FadeOutDown}
+          style={styles.character}>
+          {char}
+        </Animated.Text>
+      ))}
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  item: {
+  character: {
     color: 'white',
     fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 90,
     fontWeight: 'bold',
-    textAlign: 'center',
-    width: 60,
+    marginHorizontal: 2,
   },
-  itemContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  row: {
+    flexDirection: 'row',
   },
 });

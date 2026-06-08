@@ -36,11 +36,11 @@ const SelectableSquare: FC<SelectableSquareProps> = ({
   const touchableHandler = useGestureHandler({
     onStart: () => {
       'worklet';
-      scale.value = withSpring(0.9);
+      scale.set(withSpring(0.9));
     },
     onTap: () => {
       'worklet';
-      scale.value = withSpring(1);
+      scale.set(withSpring(1));
       if (onSelect) {
         scheduleOnRN(onSelect);
       }
@@ -48,18 +48,18 @@ const SelectableSquare: FC<SelectableSquareProps> = ({
   });
 
   const transform = useDerivedValue(() => {
-    return [{ scale: scale.value }];
+    return [{ scale: scale.get() }];
   }, [scale]);
 
   const origin = useDerivedValue(() => {
     return {
-      x: cx.value + size / 2,
-      y: cy.value + size / 2,
+      x: cx.get() + size / 2,
+      y: cy.get() + size / 2,
     };
   }, [cx, cy]);
 
   const animatedColor = useDerivedValue(() => {
-    return selectedIndex.value === index ? borderColor : color;
+    return selectedIndex.get() === index ? borderColor : color;
   }, [color, borderColor, selectedIndex, index]);
 
   return (
@@ -100,11 +100,11 @@ const SelectableSquareContainer: FC<SelectableSquareContainerProps> = ({
   ...props
 }) => {
   const cx = useDerivedValue(
-    () => coordinates.value[index]?.cx || 0,
+    () => coordinates.get()[index]?.cx || 0,
     [coordinates, index],
   );
   const cy = useDerivedValue(
-    () => coordinates.value[index]?.cy || 0,
+    () => coordinates.get()[index]?.cy || 0,
     [coordinates, index],
   );
 

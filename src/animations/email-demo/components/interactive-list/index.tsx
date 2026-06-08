@@ -55,7 +55,7 @@ const AnimatedListItem = ({
   itemHeight,
 }: AnimatedListItemProps) => {
   const rStyle = useAnimatedStyle(() => {
-    const shiftedAmount = amountToShift?.value ?? 0;
+    const shiftedAmount = amountToShift?.get() ?? 0;
 
     return {
       backgroundColor: withSpring(

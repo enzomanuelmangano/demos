@@ -2,7 +2,7 @@ import { PixelRatio } from 'react-native';
 
 import { useCallback, useEffect, useRef } from 'react';
 
-import { CanvasRef } from 'react-native-wgpu';
+import { CanvasRef } from 'react-native-webgpu';
 
 import { NUM_BLOCKS, SURFACE_RGB, UNIFORM_BUFFER_SIZE } from '../constants';
 import { getContributionGrid } from '../contribution-data';

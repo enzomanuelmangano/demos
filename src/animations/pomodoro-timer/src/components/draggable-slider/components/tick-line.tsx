@@ -28,14 +28,14 @@ export const TickLine: React.FC<TickLineProps> = ({
 }) => {
   const rStyle = useAnimatedStyle(() => {
     const angle =
-      ((2 * Math.PI) / linesAmount) * index - progressRadiants.value;
+      ((2 * Math.PI) / linesAmount) * index - progressRadiants.get();
     const x = Math.cos(angle) * radius;
     const y = Math.sin(angle) * radius;
     const rotation = -Math.atan2(x, y);
 
     return {
       backgroundColor: withTiming(
-        disabled.value ? 'rgba(222, 208, 208, 0.525)' : color,
+        disabled.get() ? 'rgba(222, 208, 208, 0.525)' : color,
       ),
       transform: [
         {

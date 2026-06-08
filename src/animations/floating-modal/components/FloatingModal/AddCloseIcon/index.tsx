@@ -19,7 +19,7 @@ type AddCloseIconProps = {
 const AddCloseIcon: FC<AddCloseIconProps> = memo(({ onPress, progress }) => {
   const rIconStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [0, Math.PI / 4],
       Extrapolation.CLAMP,

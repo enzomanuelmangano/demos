@@ -27,10 +27,10 @@ const useCanvasLayout = (canvasStyle: StyleProp<ViewStyle>) => {
   const size = useSharedValue({ width: canvasSize, height: canvasSize });
 
   // Calculating the center X coordinate of the canvas using the `useComputedValue` hook
-  const centerX = useDerivedValue(() => size.value.width / 2, [size]);
+  const centerX = useDerivedValue(() => size.get().width / 2, [size]);
 
   // Calculating the center Y coordinate of the canvas using the `useComputedValue` hook
-  const centerY = useDerivedValue(() => size.value.height / 2, [size]);
+  const centerY = useDerivedValue(() => size.get().height / 2, [size]);
 
   // Returning an object with the canvas size, center X, and center Y
   return {

@@ -5,7 +5,7 @@ export const useKeyboardOffset = () => {
   const { height } = useReanimatedKeyboardAnimation();
 
   const keyboardAnimatedOffset = useDerivedValue(() => {
-    return withSpring(height.value, {
+    return withSpring(height.get(), {
       damping: 15,
       stiffness: 150,
       mass: 0.6,

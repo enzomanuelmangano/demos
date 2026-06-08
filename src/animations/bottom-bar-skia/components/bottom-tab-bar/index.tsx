@@ -41,14 +41,14 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const animatedCircleCx = useDerivedValue(() => {
     return (
-      (screenWidth / tabBarScreens) * animatedIndex.value +
+      (screenWidth / tabBarScreens) * animatedIndex.get() +
       screenWidth / (tabBarScreens * 2)
     );
   }, [screenWidth, animatedIndex, tabBarScreens]);
 
   const bottomTabPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
-    path.addRect(
+    const builder = Skia.PathBuilder.Make();
+    builder.addRect(
       rect(
         -10,
         45,
@@ -56,13 +56,13 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
         bottomTabBarHeight + BOTTOM_BAR_HEIGHT_OFFSET,
       ),
     );
-    path.addCircle(
-      animatedCircleCx.value,
+    builder.addCircle(
+      animatedCircleCx.get(),
       BOTTOM_BAR_HEIGHT_OFFSET,
       BOTTOM_BAR_HEIGHT_OFFSET,
     );
 
-    return path;
+    return builder.build();
   }, [screenWidth, bottomTabBarHeight, animatedCircleCx]);
 
   const paint = useMemo(() => {

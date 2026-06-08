@@ -52,28 +52,28 @@ export const RecordButton: FC<RecordButtonProps> = ({
   }, [borderRadius, height, strokeWidth, width]);
 
   const leftLinePath = useMemo(() => {
-    const skPath = Skia.Path.Make();
-    skPath.addPath(rightLinePath);
-    skPath.transform(Skia.Matrix().translate(width, 0).scale(-1, 1));
-    return skPath;
+    const builder = Skia.PathBuilder.Make();
+    builder.addPath(rightLinePath);
+    builder.transform(Skia.Matrix().translate(width, 0).scale(-1, 1));
+    return builder.build();
   }, [rightLinePath, width]);
 
   const activated = useDerivedValue(() => {
-    return progress.value > 0.98;
+    return progress.get() > 0.98;
   }, [progress]);
 
   const rContainerStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          scale: withSpring(!activated.value ? 1 : 1.1),
+          scale: withSpring(!activated.get() ? 1 : 1.1),
         },
       ],
     };
   }, []);
 
   useAnimatedReaction(
-    () => activated.value,
+    () => activated.get(),
     (currentlyActivated, prevActivated) => {
       if (currentlyActivated && !prevActivated) {
         scheduleOnRN(hapticFeedback);
@@ -82,15 +82,15 @@ export const RecordButton: FC<RecordButtonProps> = ({
   );
 
   const internalRoundedRectOpacity = useDerivedValue(() => {
-    return withTiming(activated.value ? 1 : 0);
+    return withTiming(activated.get() ? 1 : 0);
   }, []);
 
   const rTextStyle = useAnimatedStyle(() => {
     return {
       fontSize,
-      color: activated.value ? 'white' : color,
-      opacity: progress.value,
-      fontWeight: activated.value ? '600' : '500',
+      color: activated.get() ? 'white' : color,
+      opacity: progress.get(),
+      fontWeight: activated.get() ? '600' : '500',
     };
   }, [color]);
 

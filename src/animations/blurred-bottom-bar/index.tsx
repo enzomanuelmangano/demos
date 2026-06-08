@@ -2,7 +2,15 @@ import { View, Image, StyleSheet, Dimensions } from 'react-native';
 
 import { useCallback } from 'react';
 
+// SDK 56: expo-router vendors its own react-navigation, so this demo's
+// standalone navigator can no longer nest into the router's container —
+// it runs as an independent tree instead.
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {
+  DefaultTheme,
+  NavigationContainer,
+  NavigationIndependentTree,
+} from '@react-navigation/native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
 
@@ -36,23 +44,27 @@ const App = () => {
   }, []);
 
   return (
-    <BottomTab.Navigator
-      initialRouteName="Home"
-      screenOptions={{
-        headerShown: false,
-      }}
-      tabBar={tabBar}>
-      {screens.map(({ name, component }) => (
-        <BottomTab.Screen
-          key={name}
-          name={name}
-          component={component}
-          options={{
-            freezeOnBlur: true,
+    <NavigationIndependentTree>
+      <NavigationContainer theme={DefaultTheme}>
+        <BottomTab.Navigator
+          initialRouteName="Home"
+          screenOptions={{
+            headerShown: false,
           }}
-        />
-      ))}
-    </BottomTab.Navigator>
+          tabBar={tabBar}>
+          {screens.map(({ name, component }) => (
+            <BottomTab.Screen
+              key={name}
+              name={name}
+              component={component}
+              options={{
+                freezeOnBlur: true,
+              }}
+            />
+          ))}
+        </BottomTab.Navigator>
+      </NavigationContainer>
+    </NavigationIndependentTree>
   );
 };
 

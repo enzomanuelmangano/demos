@@ -51,11 +51,11 @@ const getNextScaleY = ({
 const WaveformScrubberSample: FC<WaveformScrubberSampleProps> = memo(
   ({ position, currentX, isDragging, value }) => {
     const rStyle = useAnimatedStyle(() => {
-      const isActive = currentX.value > position;
-      const isNearCurrentX = Math.abs(currentX.value - position) < 20;
+      const isActive = currentX.get() > position;
+      const isNearCurrentX = Math.abs(currentX.get() - position) < 20;
 
       const scaleY = getNextScaleY({
-        isDragging: isDragging.value,
+        isDragging: isDragging.get(),
         isActive,
         isNearCurrentX,
       });

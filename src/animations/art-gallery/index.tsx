@@ -1,11 +1,17 @@
-import { Dimensions, Pressable, StyleSheet, View } from 'react-native';
+import {
+  Keyboard,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { memo, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -17,7 +23,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Canvas, CanvasRef } from 'react-native-wgpu';
+import { Canvas, CanvasRef } from 'react-native-webgpu';
 import { scheduleOnRN } from 'react-native-worklets';
 import * as DropdownMenu from 'zeego/dropdown-menu';
 
@@ -72,7 +78,15 @@ const HeaderRight = memo(
     const selectedPaintingId = useSelectedPaintingId();
 
     return (
-      <DropdownMenu.Root>
+      <DropdownMenu.Root
+        onOpenChange={open => {
+          // iOS 26's menu embeds hidden "Forward" text fields for submenu
+          // typeahead; one grabs first responder when the menu opens and
+          // summons the soft keyboard over the gallery. Dismiss it.
+          if (open) {
+            requestAnimationFrame(() => Keyboard.dismiss());
+          }
+        }}>
         <DropdownMenu.Trigger>
           <Pressable style={styles.headerButton} hitSlop={12}>
             <Ionicons
@@ -230,7 +244,6 @@ export function ArtGallery() {
   const savedTranslateY = useSharedValue(0);
 
   // Animation progress for painting transitions (1 = old positions, 0 = new positions)
-  const animProgress = useSharedValue(0);
 
   // Grid mode state (UI thread only - no React state sync)
   const currentRow = useSharedValue(-1);
@@ -240,11 +253,11 @@ export function ArtGallery() {
   const handlePaintingChange = useCallback(
     async (paintingId: string | null) => {
       // Reset zoom immediately
-      scale.value = withSpring(1, SPRING_CONFIG);
-      translateX.value = withSpring(0, SPRING_CONFIG);
-      translateY.value = withSpring(0, SPRING_CONFIG);
-      currentRow.value = -1;
-      currentCol.value = -1;
+      scale.set(withSpring(1, SPRING_CONFIG));
+      translateX.set(withSpring(0, SPRING_CONFIG));
+      translateY.set(withSpring(0, SPRING_CONFIG));
+      currentRow.set(-1);
+      currentCol.set(-1);
 
       clearMosaicMappingCache();
 
@@ -316,7 +329,6 @@ export function ArtGallery() {
     scale,
     translateX,
     translateY,
-    animProgress,
     currentRow,
     currentCol,
   });
@@ -338,7 +350,7 @@ export function ArtGallery() {
   ) => {
     'worklet';
     scheduleOnRN(triggerHaptic);
-    scale.value = withSpring(idealGridScale, springConfig);
+    scale.set(withSpring(idealGridScale, springConfig));
 
     const cellCenterX = (col + 0.5) * cellWidth;
     const cellCenterY = (row + 0.5) * cellHeight;
@@ -360,26 +372,26 @@ export function ArtGallery() {
     targetTx = clamp(targetTx, -maxTx, maxTx);
     targetTy = clamp(targetTy, -maxTy, maxTy);
 
-    translateX.value = withSpring(targetTx, springConfig);
-    translateY.value = withSpring(targetTy, springConfig);
+    translateX.set(withSpring(targetTx, springConfig));
+    translateY.set(withSpring(targetTy, springConfig));
 
-    currentRow.value = row;
-    currentCol.value = col;
+    currentRow.set(row);
+    currentCol.set(col);
   };
 
   // Reset zoom
   const resetZoom = () => {
     triggerHaptic();
-    scale.value = withSpring(1, SPRING_CONFIG);
-    translateX.value = withSpring(0, SPRING_CONFIG);
-    translateY.value = withSpring(0, SPRING_CONFIG);
-    currentRow.value = -1;
-    currentCol.value = -1;
+    scale.set(withSpring(1, SPRING_CONFIG));
+    translateX.set(withSpring(0, SPRING_CONFIG));
+    translateY.set(withSpring(0, SPRING_CONFIG));
+    currentRow.set(-1);
+    currentCol.set(-1);
   };
 
   // Back button visibility
   const backButtonOpacity = useDerivedValue(() => {
-    return interpolate(scale.value, [1, 1.5], [0, 1], 'clamp');
+    return interpolate(scale.get(), [1, 1.5], [0, 1], 'clamp');
   });
 
   // Track if we're actively pinching
@@ -391,53 +403,53 @@ export function ArtGallery() {
 
   const pinchGesture = Gesture.Pinch()
     .onStart(event => {
-      isPinching.value = true;
-      savedScale.value = scale.value;
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
-      focalScreenX.value = event.focalX - SCREEN_WIDTH / 2;
-      focalScreenY.value = event.focalY - SCREEN_HEIGHT / 2;
+      isPinching.set(true);
+      savedScale.set(scale.get());
+      savedTranslateX.set(translateX.get());
+      savedTranslateY.set(translateY.get());
+      focalScreenX.set(event.focalX - SCREEN_WIDTH / 2);
+      focalScreenY.set(event.focalY - SCREEN_HEIGHT / 2);
     })
     .onUpdate(event => {
       const maxScale = idealGridScale * 1.2;
       // Allow pinching below min scale for fidgeting (rubber band effect)
       const newScale = clamp(
-        savedScale.value * event.scale,
+        savedScale.get() * event.scale,
         MIN_SCALE_RUBBER_BAND,
         maxScale,
       );
 
-      const scaleRatio = newScale / savedScale.value;
+      const scaleRatio = newScale / savedScale.get();
       const newTranslateX =
-        focalScreenX.value * (1 - scaleRatio) +
-        savedTranslateX.value * scaleRatio;
+        focalScreenX.get() * (1 - scaleRatio) +
+        savedTranslateX.get() * scaleRatio;
       const newTranslateY =
-        focalScreenY.value * (1 - scaleRatio) +
-        savedTranslateY.value * scaleRatio;
+        focalScreenY.get() * (1 - scaleRatio) +
+        savedTranslateY.get() * scaleRatio;
 
-      scale.value = newScale;
-      translateX.value = newTranslateX;
-      translateY.value = newTranslateY;
+      scale.set(newScale);
+      translateX.set(newTranslateX);
+      translateY.set(newTranslateY);
     })
     .onEnd(() => {
-      savedScale.value = scale.value;
+      savedScale.set(scale.get());
 
-      if (scale.value < SNAP_BACK_THRESHOLD) {
-        scale.value = withSpring(1, SPRING_CONFIG);
-        translateX.value = withSpring(0, SPRING_CONFIG);
-        translateY.value = withSpring(0, SPRING_CONFIG);
-        currentRow.value = -1;
-        currentCol.value = -1;
+      if (scale.get() < SNAP_BACK_THRESHOLD) {
+        scale.set(withSpring(1, SPRING_CONFIG));
+        translateX.set(withSpring(0, SPRING_CONFIG));
+        translateY.set(withSpring(0, SPRING_CONFIG));
+        currentRow.set(-1);
+        currentCol.set(-1);
       } else {
-        const cellScreenWidth = cellWidth * scale.value;
+        const cellScreenWidth = cellWidth * scale.get();
         const inGridMode =
           cellScreenWidth >= SCREEN_WIDTH * GRID_MODE_THRESHOLD;
 
         if (inGridMode && cols > 0 && rows > 0) {
           const canvasCenterX =
-            canvasWidth / 2 - translateX.value / scale.value;
+            canvasWidth / 2 - translateX.get() / scale.get();
           const canvasCenterY =
-            canvasHeight / 2 - translateY.value / scale.value;
+            canvasHeight / 2 - translateY.get() / scale.get();
           const col = Math.round(canvasCenterX / cellWidth - 0.5);
           const row = Math.round(canvasCenterY / cellHeight - 0.5);
           const clampedCol = Math.max(0, Math.min(cols - 1, col));
@@ -451,47 +463,43 @@ export function ArtGallery() {
       }
     })
     .onFinalize(() => {
-      isPinching.value = false;
+      isPinching.set(false);
     });
 
   // Pan gesture
   const panGesture = Gesture.Pan()
     .onStart(() => {
-      if (isPinching.value) return;
+      if (isPinching.get()) return;
       // Cancel any running snap animations
       cancelAnimation(translateX);
       cancelAnimation(translateY);
       cancelAnimation(scale);
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      savedTranslateX.set(translateX.get());
+      savedTranslateY.set(translateY.get());
     })
     .onUpdate(event => {
-      if (isPinching.value) return;
-      if (scale.value <= 1) return;
+      if (isPinching.get()) return;
+      if (scale.get() <= 1) return;
 
       // Use cell-based bounds (same as snapToCell) to allow reaching edge cells
-      const maxX = Math.max(0, (canvasWidth / 2 - cellWidth / 2) * scale.value);
+      const maxX = Math.max(0, (canvasWidth / 2 - cellWidth / 2) * scale.get());
       const maxY = Math.max(
         0,
-        (canvasHeight / 2 - cellHeight / 2) * scale.value,
+        (canvasHeight / 2 - cellHeight / 2) * scale.get(),
       );
 
-      translateX.value = clamp(
-        savedTranslateX.value + event.translationX,
-        -maxX,
-        maxX,
+      translateX.set(
+        clamp(savedTranslateX.get() + event.translationX, -maxX, maxX),
       );
-      translateY.value = clamp(
-        savedTranslateY.value + event.translationY,
-        -maxY,
-        maxY,
+      translateY.set(
+        clamp(savedTranslateY.get() + event.translationY, -maxY, maxY),
       );
     })
     .onEnd(event => {
-      if (isPinching.value) return;
-      if (scale.value <= 1) return;
+      if (isPinching.get()) return;
+      if (scale.get() <= 1) return;
 
-      const cellScreenWidth = cellWidth * scale.value;
+      const cellScreenWidth = cellWidth * scale.get();
       const inGridMode = cellScreenWidth >= SCREEN_WIDTH * GRID_MODE_THRESHOLD;
 
       if (inGridMode && cols > 0 && rows > 0) {
@@ -501,8 +509,8 @@ export function ArtGallery() {
         );
         const swipeThreshold = 300;
 
-        const canvasCenterX = canvasWidth / 2 - translateX.value / scale.value;
-        const canvasCenterY = canvasHeight / 2 - translateY.value / scale.value;
+        const canvasCenterX = canvasWidth / 2 - translateX.get() / scale.get();
+        const canvasCenterY = canvasHeight / 2 - translateY.get() / scale.get();
         let col = Math.round(canvasCenterX / cellWidth - 0.5);
         let row = Math.round(canvasCenterY / cellHeight - 0.5);
 
@@ -521,35 +529,39 @@ export function ArtGallery() {
         // Use cell-based bounds (same as snapToCell)
         const maxX = Math.max(
           0,
-          (canvasWidth / 2 - cellWidth / 2) * scale.value,
+          (canvasWidth / 2 - cellWidth / 2) * scale.get(),
         );
         const maxY = Math.max(
           0,
-          (canvasHeight / 2 - cellHeight / 2) * scale.value,
+          (canvasHeight / 2 - cellHeight / 2) * scale.get(),
         );
 
         const targetX = clamp(
-          translateX.value + event.velocityX * 0.1,
+          translateX.get() + event.velocityX * 0.1,
           -maxX,
           maxX,
         );
         const targetY = clamp(
-          translateY.value + event.velocityY * 0.1,
+          translateY.get() + event.velocityY * 0.1,
           -maxY,
           maxY,
         );
 
-        translateX.value = withSpring(targetX, {
-          ...SPRING_CONFIG,
-          velocity: event.velocityX,
-        });
-        translateY.value = withSpring(targetY, {
-          ...SPRING_CONFIG,
-          velocity: event.velocityY,
-        });
+        translateX.set(
+          withSpring(targetX, {
+            ...SPRING_CONFIG,
+            velocity: event.velocityX,
+          }),
+        );
+        translateY.set(
+          withSpring(targetY, {
+            ...SPRING_CONFIG,
+            velocity: event.velocityY,
+          }),
+        );
 
-        currentRow.value = -1;
-        currentCol.value = -1;
+        currentRow.set(-1);
+        currentCol.set(-1);
       }
     });
 
@@ -557,14 +569,14 @@ export function ArtGallery() {
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(event => {
-      if (scale.value > SNAP_BACK_THRESHOLD) {
+      if (scale.get() > SNAP_BACK_THRESHOLD) {
         // Zoomed in - zoom out
         scheduleOnRN(triggerHaptic);
-        scale.value = withSpring(1, { dampingRatio: 1, duration: 350 });
-        translateX.value = withSpring(0, { dampingRatio: 1, duration: 350 });
-        translateY.value = withSpring(0, { dampingRatio: 1, duration: 350 });
-        currentRow.value = -1;
-        currentCol.value = -1;
+        scale.set(withSpring(1, { dampingRatio: 1, duration: 350 }));
+        translateX.set(withSpring(0, { dampingRatio: 1, duration: 350 }));
+        translateY.set(withSpring(0, { dampingRatio: 1, duration: 350 }));
+        currentRow.set(-1);
+        currentCol.set(-1);
       } else {
         // Zoomed out - zoom in to tapped cell
         if (cols > 0 && rows > 0 && cellWidth > 0 && cellHeight > 0) {
@@ -574,9 +586,9 @@ export function ArtGallery() {
 
           // Account for current transform
           const canvasX =
-            (tapX - translateX.value) / scale.value + canvasWidth / 2;
+            (tapX - translateX.get()) / scale.get() + canvasWidth / 2;
           const canvasY =
-            (tapY - translateY.value) / scale.value + canvasHeight / 2;
+            (tapY - translateY.get()) / scale.get() + canvasHeight / 2;
 
           // Find which cell was tapped
           const col = Math.floor(canvasX / cellWidth);
@@ -598,8 +610,8 @@ export function ArtGallery() {
   );
 
   const backButtonStyle = useAnimatedStyle(() => ({
-    opacity: backButtonOpacity.value,
-    pointerEvents: backButtonOpacity.value > 0.5 ? 'auto' : 'none',
+    opacity: backButtonOpacity.get(),
+    pointerEvents: backButtonOpacity.get() > 0.5 ? 'auto' : 'none',
   }));
 
   return (

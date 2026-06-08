@@ -30,19 +30,20 @@ export const useActiveLetterAnimation = ({
   useEffect(() => {
     const interval = setInterval(() => {
       // Update the active letter index based on the time interval and the length of letters and colors arrays
-      activeLetterIndex.value =
-        (activeLetterIndex.value + 1) % Math.min(letters.length, colors.length);
+      activeLetterIndex.set(
+        (activeLetterIndex.get() + 1) % Math.min(letters.length, colors.length),
+      );
     }, timeInterval);
 
     return () => clearInterval(interval);
   }, [activeLetterIndex, colors.length, letters.length, timeInterval]);
 
   const activeLetter = useDerivedValue(
-    () => letters[activeLetterIndex.value],
+    () => letters[activeLetterIndex.get()],
     [letters],
   );
   const activeColors = useDerivedValue(
-    () => colors[activeLetterIndex.value],
+    () => colors[activeLetterIndex.get()],
     [colors],
   );
 

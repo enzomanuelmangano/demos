@@ -38,28 +38,30 @@ export const BackgroundCanvas = ({
   }, [isTimeMachineActive]);
 
   useEffect(() => {
-    progress.value = withPause(
-      withRepeat(
-        withTiming(10, {
-          easing: Easing.linear,
-          duration: 100000,
-        }),
-        -1,
-        true,
+    progress.set(
+      withPause(
+        withRepeat(
+          withTiming(10, {
+            easing: Easing.linear,
+            duration: 100000,
+          }),
+          -1,
+          true,
+        ),
+        isTimeMachinePaused,
       ),
-      isTimeMachinePaused,
     );
   }, [progress, timeMachineProgress, isTimeMachinePaused]);
 
   const uniforms = useDerivedValue(() => {
     return {
       iResolution: vec(width, height),
-      iTime: progress.value,
+      iTime: progress.get(),
     };
   }, [width, height, progress]);
 
   const blur = useDerivedValue(() => {
-    return interpolate(timeMachineProgress.value, [1, 0], [0, 15]);
+    return interpolate(timeMachineProgress.get(), [1, 0], [0, 15]);
   }, [timeMachineProgress]);
 
   return (

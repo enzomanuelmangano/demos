@@ -92,12 +92,12 @@ export const Clock = ({ date, size }: ClockProps) => {
   }, [center, tickLength, ticks]);
 
   const hourAngle = useDerivedValue(() => {
-    const hours = convertMsToHours(date.value);
+    const hours = convertMsToHours(date.get());
     return (hours * (Math.PI * 2)) / 12;
   }, []);
 
   const minuteAngle = useDerivedValue(() => {
-    const minutes = convertMsToMinutes(date.value);
+    const minutes = convertMsToMinutes(date.get());
     return (minutes * (Math.PI * 2)) / 60;
   }, [date]);
 
@@ -106,15 +106,15 @@ export const Clock = ({ date, size }: ClockProps) => {
 
   const hourHandPath = useDerivedValue(() => {
     return {
-      x: center + hourHandLength * Math.sin(hourAngle.value),
-      y: center - hourHandLength * Math.cos(hourAngle.value),
+      x: center + hourHandLength * Math.sin(hourAngle.get()),
+      y: center - hourHandLength * Math.cos(hourAngle.get()),
     };
   }, [hourAngle]);
 
   const minuteHandPath = useDerivedValue(() => {
     return {
-      x: center + minuteHandLength * Math.sin(minuteAngle.value),
-      y: center - minuteHandLength * Math.cos(minuteAngle.value),
+      x: center + minuteHandLength * Math.sin(minuteAngle.get()),
+      y: center - minuteHandLength * Math.cos(minuteAngle.get()),
     };
   }, [minuteAngle]);
 

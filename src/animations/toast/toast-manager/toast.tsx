@@ -56,7 +56,7 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
     if (!toast) return;
-    bottom.value = withSpring(BaseSafeArea + toast.id * ToastOffset);
+    bottom.set(withSpring(BaseSafeArea + toast.id * ToastOffset));
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toast?.id]);
@@ -67,31 +67,33 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
   const dismissItem = useCallback(() => {
     'worklet';
     if (!toast) return;
-    translateX.value = withTiming(-windowWidth, undefined, isFinished => {
-      if (isFinished) {
-        scheduleOnRN(onDismiss, toast.id);
-      }
-    });
+    translateX.set(
+      withTiming(-windowWidth, undefined, isFinished => {
+        if (isFinished) {
+          scheduleOnRN(onDismiss, toast.id);
+        }
+      }),
+    );
   }, [onDismiss, toast, translateX, windowWidth]);
 
   const gesture = Gesture.Pan()
     .enabled(isActiveToast)
     .onBegin(() => {
-      isSwiping.value = true;
+      isSwiping.set(true);
     })
     .onUpdate(event => {
       if (event.translationX > 0) return;
-      translateX.value = event.translationX;
+      translateX.set(event.translationX);
     })
     .onEnd(event => {
       if (event.translationX < -50) {
         dismissItem();
       } else {
-        translateX.value = withSpring(0);
+        translateX.set(withSpring(0));
       }
     })
     .onFinalize(() => {
-      isSwiping.value = false;
+      isSwiping.set(false);
     });
 
   useEffect(() => {
@@ -107,17 +109,17 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
   const rToastStyle = useAnimatedStyle(() => {
     if (!toast) return {};
     const baseScale = 1 - toast.id * 0.05;
-    const scale = isSwiping.value ? baseScale * 0.96 : baseScale;
+    const scale = isSwiping.get() ? baseScale * 0.96 : baseScale;
 
     return {
-      bottom: bottom.value,
+      bottom: bottom.get(),
       zIndex: 1000 - toast.id,
       transform: [
         {
           scale: withTiming(scale),
         },
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
       ],
     };

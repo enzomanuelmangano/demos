@@ -21,9 +21,9 @@ export const SpringSliderContainer: FC<SpringSliderContainerProps> = ({
 
   useAnimatedReaction(
     () => ({
-      mass: mass.value,
-      damping: damping.value,
-      stiffness: stiffness.value,
+      mass: mass.get(),
+      damping: damping.get(),
+      stiffness: stiffness.get(),
     }),
     config => {
       mutableConfig.set(config);

@@ -7,5 +7,3 @@ export const reusableBlackPaint = Skia.Paint();
 reusableBlackPaint.setColor(Skia.Color('#1a1a1a'));
 
 export const reusableWhiteBgPaint = Skia.Paint();
-
-export const reusableClipPath = Skia.Path.Make();

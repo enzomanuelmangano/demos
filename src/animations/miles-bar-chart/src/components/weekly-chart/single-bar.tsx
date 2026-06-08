@@ -26,7 +26,7 @@ export const Bar: React.FC<BarProps> = ({
   letter,
 }) => {
   const animatedProgress = useDerivedValue(() => {
-    return withSpring(progress.value, {
+    return withSpring(progress.get(), {
       dampingRatio: 1,
       duration: 500,
     });
@@ -34,13 +34,13 @@ export const Bar: React.FC<BarProps> = ({
 
   const rAnimatedStyle = useAnimatedStyle(() => {
     const height = interpolate(
-      animatedProgress.value,
+      animatedProgress.get(),
       [0, 1],
       [minHeight, maxHeight],
     );
 
     const backgroundColor = interpolateColor(
-      animatedProgress.value,
+      animatedProgress.get(),
       [0, 1],
       ['rgba(255, 255, 255, 0.3)', 'rgba(255, 255, 255, 1)'],
     );

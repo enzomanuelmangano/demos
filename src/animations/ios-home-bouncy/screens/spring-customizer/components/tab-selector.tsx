@@ -52,7 +52,7 @@ export function TabSelector<T extends string>({
       transform: [
         {
           translateX: interpolate(
-            indicatorPosition.value,
+            indicatorPosition.get(),
             [0, options.length - 1],
             [0, tabWidth * (options.length - 1)],
           ),

@@ -51,32 +51,34 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
   useEffect(() => {
     if (status !== 'loading') {
       cancelAnimation(rotation);
-      rotation.value = 0;
+      rotation.set(0);
       return;
     }
 
-    rotation.value = withRepeat(
-      withTiming(4 * Math.PI, {
-        duration: 800,
-        easing: Easing.linear,
-      }),
-      -1,
-      false,
+    rotation.set(
+      withRepeat(
+        withTiming(4 * Math.PI, {
+          duration: 800,
+          easing: Easing.linear,
+        }),
+        -1,
+        false,
+      ),
     );
   }, [status, rotation]);
 
   const arcPath = useMemo(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const inset = strokeWidth / 2;
-    path.addArc(
+    builder.addArc(
       rect(inset, inset, size - strokeWidth, size - strokeWidth),
       0,
       90,
     );
-    return path;
+    return builder.build();
   }, [size, strokeWidth]);
 
-  const transform = useDerivedValue(() => [{ rotate: rotation.value }]);
+  const transform = useDerivedValue(() => [{ rotate: rotation.get() }]);
   const loadingOpacity = useDerivedValue(() =>
     withTiming(status === 'loading' ? 1 : 0, { duration: 200 }),
   );
@@ -112,9 +114,9 @@ const ActivityIndicator: React.FC<ActivityIndicatorProps> = ({
   });
 
   const containerStyle = useAnimatedStyle(() => ({
-    height: interpolate(progress.value, [0, 1], [0, size]),
-    width: interpolate(progress.value, [0, 1], [0, size]),
-    marginRight: interpolate(progress.value, [0, 1], [0, 6]),
+    height: interpolate(progress.get(), [0, 1], [0, size]),
+    width: interpolate(progress.get(), [0, 1], [0, size]),
+    marginRight: interpolate(progress.get(), [0, 1], [0, 6]),
     overflow: 'hidden',
   }));
 

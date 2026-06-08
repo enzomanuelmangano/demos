@@ -23,21 +23,18 @@ const useCornerGestures = ({
   minHeight,
   maxHeight,
 }: UseCornerGesturesParams) => {
-  const ctx = useSharedValue({
-    x: x.value,
-    y: y.value,
-    width: gridWidth.value,
-    height: gridHeight.value,
-  });
+  // Initialized empty — updateContext fills it at every gesture start, and
+  // reading the shared values here would run during component render.
+  const ctx = useSharedValue({ x: 0, y: 0, width: 0, height: 0 });
 
   const updateContext = () => {
     'worklet';
-    ctx.value = {
-      x: x.value,
-      y: y.value,
-      width: gridWidth.value,
-      height: gridHeight.value,
-    };
+    ctx.set({
+      x: x.get(),
+      y: y.get(),
+      width: gridWidth.get(),
+      height: gridHeight.get(),
+    });
   };
 
   const calculateNewDimensions = (
@@ -48,14 +45,14 @@ const useCornerGestures = ({
   ) => {
     'worklet';
     const newWidth = clamp(
-      (isNegativeX ? -translationX : translationX) + ctx.value.width,
+      (isNegativeX ? -translationX : translationX) + ctx.get().width,
       minWidth,
-      maxWidth - x.value,
+      maxWidth - x.get(),
     );
     const newHeight = clamp(
-      (isNegativeY ? -translationY : translationY) + ctx.value.height,
+      (isNegativeY ? -translationY : translationY) + ctx.get().height,
       minHeight,
-      maxHeight - y.value,
+      maxHeight - y.get(),
     );
     return { newWidth, newHeight };
   };
@@ -78,20 +75,16 @@ const useCornerGestures = ({
           isNegativeX,
           isNegativeY,
         );
-        gridWidth.value = newWidth;
-        gridHeight.value = newHeight;
+        gridWidth.set(newWidth);
+        gridHeight.set(newHeight);
         if (updateX) {
-          x.value = clamp(
-            event.translationX + ctx.value.x,
-            0,
-            maxWidth - newWidth,
+          x.set(
+            clamp(event.translationX + ctx.get().x, 0, maxWidth - newWidth),
           );
         }
         if (updateY) {
-          y.value = clamp(
-            event.translationY + ctx.value.y,
-            0,
-            maxHeight - newHeight,
+          y.set(
+            clamp(event.translationY + ctx.get().y, 0, maxHeight - newHeight),
           );
         }
       },

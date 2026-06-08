@@ -15,6 +15,7 @@ import { avatar, quality, theme } from '../theme';
 
 import type { Quality, ShowOpts } from '../types';
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { AnimatedStyle } from 'react-native-reanimated';
 
 const HAIRLINE = StyleSheet.hairlineWidth;
 
@@ -75,7 +76,7 @@ const enter = (delay: number) => () => {
 // container's blur-into-focus is driven by the parent through `style`.
 export const GameReviewCard: React.FC<{
   card: ShowOpts;
-  style: StyleProp<ViewStyle>;
+  style: StyleProp<AnimatedStyle<ViewStyle>>;
   onHide: () => void;
 }> = ({ card, style, onHide }) => {
   const rows = TABLE_ORDER.map(q => ({

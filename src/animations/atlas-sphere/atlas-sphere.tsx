@@ -64,14 +64,14 @@ export const AtlasSphere = () => {
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {
-      progress.value = withSpring(1, { ...SpringConfig, duration: 600 });
-      touchedPoint.value = { x: event.x, y: event.y };
+      progress.set(withSpring(1, { ...SpringConfig, duration: 600 }));
+      touchedPoint.set({ x: event.x, y: event.y });
     })
     .onUpdate(event => {
-      touchedPoint.value = { x: event.x, y: event.y };
+      touchedPoint.set({ x: event.x, y: event.y });
     })
     .onTouchesUp(() => {
-      progress.value = withSpring(0, SpringConfig);
+      progress.set(withSpring(0, SpringConfig));
     });
 
   const sprites = useMemo(() => {
@@ -90,8 +90,8 @@ export const AtlasSphere = () => {
       Math.floor(index / SQUARES_AMOUNT_HORIZONTAL) * SQUARE_CONTAINER_SIZE;
 
     // scale according to the distance from the touched point
-    const touchedPointX = touchedPoint.value?.x ?? tx;
-    const touchedPointY = touchedPoint.value?.y ?? ty;
+    const touchedPointX = touchedPoint.get()?.x ?? tx;
+    const touchedPointY = touchedPoint.get()?.y ?? ty;
 
     const distanceX = touchedPointX - tx;
     const distanceY = touchedPointY - ty;
@@ -99,7 +99,7 @@ export const AtlasSphere = () => {
     // calculate the distance from the touched point
     const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
-    const progressiveDistance = distance * progress.value;
+    const progressiveDistance = distance * progress.get();
 
     // calculate the scaling factor based on distance
     const scale = interpolate(
@@ -117,8 +117,8 @@ export const AtlasSphere = () => {
     }
 
     // calculate the translation values with respect to the touched point
-    const translatedX = tx + distanceX * (1 - scale) * progress.value ** 2;
-    const translatedY = ty + distanceY * (1 - scale) * progress.value ** 2;
+    const translatedX = tx + distanceX * (1 - scale) * progress.get() ** 2;
+    const translatedY = ty + distanceY * (1 - scale) * progress.get() ** 2;
 
     val.set(scale, 0, translatedX, translatedY);
   });

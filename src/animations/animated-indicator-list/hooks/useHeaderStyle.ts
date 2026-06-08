@@ -29,12 +29,21 @@ const useHeaderStyle = ({
   headersLayoutY,
 }: UseHeaderStyleParams) => {
   const rIndicatorStyle = useAnimatedStyle(() => {
-    const headersData = headersLayoutX.value;
+    const headersData = headersLayoutX.get();
 
+    // 'worklet' directives on the nested callbacks: the React Compiler
+    // hoists them out of the animated style worklet, and without the
+    // directive the hoisted function isn't workletized.
     const width = interpolate(
-      contentOffsetY.value,
-      headersLayoutY.map(({ value }) => value),
-      headersData.map(({ value }) => value?.width ?? 0),
+      contentOffsetY.get(),
+      headersLayoutY.map(({ value }) => {
+        'worklet';
+        return value;
+      }),
+      headersData.map(({ value }) => {
+        'worklet';
+        return value?.width ?? 0;
+      }),
       Extrapolation.CLAMP,
     );
 
@@ -46,13 +55,18 @@ const useHeaderStyle = ({
   }, [headersLayoutY]);
 
   const rHeaderListStyle = useAnimatedStyle(() => {
-    const headersData = headersLayoutX.value;
+    const headersData = headersLayoutX.get();
 
     const translateX = interpolate(
-      contentOffsetY.value,
-      headersLayoutY.map(({ value }) => value),
-
-      headersData.map(({ value }) => value!.x),
+      contentOffsetY.get(),
+      headersLayoutY.map(({ value }) => {
+        'worklet';
+        return value;
+      }),
+      headersData.map(({ value }) => {
+        'worklet';
+        return value!.x;
+      }),
       Extrapolation.CLAMP,
     );
 

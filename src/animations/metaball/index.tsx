@@ -34,15 +34,15 @@ export function Metaball() {
   const circleGesture = useGestureHandler({
     onStart: _ => {
       'worklet';
-      context.value = {
-        x: firstCx.value,
-        y: firstCy.value,
-      };
+      context.set({
+        x: firstCx.get(),
+        y: firstCy.get(),
+      });
     },
     onActive: ({ translationX, translationY }) => {
       'worklet';
-      firstCx.value = context.value.x + translationX;
-      firstCy.value = context.value.y + translationY;
+      firstCx.set(context.get().x + translationX);
+      firstCy.set(context.get().y + translationY);
     },
   });
 
@@ -52,27 +52,27 @@ export function Metaball() {
   const secondCircleGesture = useGestureHandler({
     onStart: _ => {
       'worklet';
-      context.value = {
-        x: secondCx.value,
-        y: secondCy.value,
-      };
+      context.set({
+        x: secondCx.get(),
+        y: secondCy.get(),
+      });
     },
     onActive: ({ translationX, translationY }) => {
       'worklet';
-      secondCx.value = context.value.x + translationX;
-      secondCy.value = context.value.y + translationY;
+      secondCx.set(context.get().x + translationX);
+      secondCy.set(context.get().y + translationY);
     },
     onEnd: () => {
       'worklet';
-      secondCx.value = withSpring(width / 2);
-      secondCy.value = withSpring(height / 2);
+      secondCx.set(withSpring(width / 2));
+      secondCy.set(withSpring(height / 2));
     },
   });
 
   const path = useDerivedValue(() => {
     const circles = Skia.Path.Make();
-    circles.addCircle(firstCx.value, firstCy.value, RADIUS);
-    circles.addCircle(secondCx.value, secondCy.value, RADIUS);
+    circles.addCircle(firstCx.get(), firstCy.get(), RADIUS);
+    circles.addCircle(secondCx.get(), secondCy.get(), RADIUS);
     circles.simplify();
     return circles;
   }, [firstCx, firstCy, secondCx, secondCy]);

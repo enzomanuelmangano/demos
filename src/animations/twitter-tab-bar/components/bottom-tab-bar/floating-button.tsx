@@ -13,9 +13,11 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { Palette } from '../../constants/palette';
 
+import type { AnimatedStyle } from 'react-native-reanimated';
+
 type BottomFloatingButtonProps = {
   progress: SharedValue<number>;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<AnimatedStyle<ViewStyle>>;
   onSelect?: (option: 'message' | 'default') => void;
 };
 
@@ -26,7 +28,7 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
 }) => {
   const rFloatingIconStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
-      floatingProgress.value,
+      floatingProgress.get(),
       [0, 1],
       [0, 2 * Math.PI],
     );
@@ -38,7 +40,7 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
           rotate: rotateRad,
         },
         {
-          scale: interpolate(floatingProgress.value, [0, 0.5, 1], [1, 1.2, 1]),
+          scale: interpolate(floatingProgress.get(), [0, 0.5, 1], [1, 1.2, 1]),
         },
       ],
     };
@@ -46,13 +48,13 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
 
   const rMessageIconStyle = useAnimatedStyle(() => {
     return {
-      opacity: floatingProgress.value <= 0.5 ? 0 : 1,
+      opacity: floatingProgress.get() <= 0.5 ? 0 : 1,
     };
   }, []);
 
   const rEditIconStyle = useAnimatedStyle(() => {
     return {
-      opacity: floatingProgress.value > 0.5 ? 0 : 1,
+      opacity: floatingProgress.get() > 0.5 ? 0 : 1,
     };
   }, []);
 
@@ -61,21 +63,21 @@ const BottomFloatingButton: React.FC<BottomFloatingButtonProps> = ({
   const gesture = Gesture.Tap()
     .maxDuration(10000)
     .onBegin(() => {
-      highlighted.value = true;
+      highlighted.set(true);
     })
     .onTouchesUp(() => {
-      const option = floatingProgress.value > 0.5 ? 'default' : 'message';
+      const option = floatingProgress.get() > 0.5 ? 'default' : 'message';
       if (onSelect) scheduleOnRN(onSelect, option);
     })
     .onFinalize(() => {
-      highlighted.value = false;
+      highlighted.set(false);
     });
 
   const rHighlightedStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          scale: withSpring(highlighted.value ? 0.8 : 1),
+          scale: withSpring(highlighted.get() ? 0.8 : 1),
         },
       ],
     };

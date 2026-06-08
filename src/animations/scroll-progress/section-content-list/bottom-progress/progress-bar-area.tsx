@@ -21,13 +21,13 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
   ({ isVisible, progress }) => {
     const rAnimatedStyle = useAnimatedStyle(() => {
       return {
-        opacity: withTiming(isVisible.value ? 1 : 0),
+        opacity: withTiming(isVisible.get() ? 1 : 0),
       };
     });
 
     const rProgressBarAnimatedStyle = useAnimatedStyle(() => {
       const width = interpolate(
-        progress.value,
+        progress.get(),
         [0, 1],
         [0, 100],
         Extrapolation.CLAMP,
@@ -39,7 +39,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
     });
 
     const animatedPercentage = useDerivedValue(() => {
-      return `${Math.round(progress.value * 100)}%`;
+      return `${Math.round(progress.get() * 100)}%`;
     });
 
     return (

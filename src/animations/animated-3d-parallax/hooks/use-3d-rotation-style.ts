@@ -19,17 +19,17 @@ const use3DRotationStyle = ({
   maxRotation,
   perspective = 500,
 }: Use3DRotationStyleParams) => {
-  // NOTE: We use x.value instead of y.value
+  // NOTE: We use x.get() instead of y.get()
   const rStyle = useAnimatedStyle(() => {
     const rotateX = interpolate(
-      y.value,
+      y.get(),
       [0, maxSize],
       [maxRotation, -maxRotation],
     );
 
-    // NOTE: We use x.value instead of y.value
+    // NOTE: We use x.get() instead of y.get()
     const rotateY = interpolate(
-      x.value,
+      x.get(),
       [0, maxSize],
       [-maxRotation, maxRotation],
     );

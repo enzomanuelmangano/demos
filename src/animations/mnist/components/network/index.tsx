@@ -9,7 +9,7 @@ import { useDerivedValue } from 'react-native-reanimated';
 import { NetworkNode } from './node';
 
 import type { NeuralNetworkWeights, PredictResult } from '../../neural-network';
-import type { SkPath } from '@shopify/react-native-skia';
+import type { SkPathBuilder } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 
 type NeuralNetworkProps = {
@@ -41,7 +41,7 @@ const drawLayerConnections = ({
   fromCoords: Array<{ x: number; y: number }>;
   toCoords: Array<{ x: number; y: number }>;
   layerWeights: number[][];
-  path: SkPath;
+  path: SkPathBuilder;
   weightThreshold: number;
   type: 'positive' | 'negative';
 }) => {
@@ -91,7 +91,7 @@ const useLayerCoordinates = (
   }, [weights, width]);
 
   const outputLayerCoords = useMemo(() => {
-    const layer3 = predictions.value.finalOutput;
+    const layer3 = predictions.get().finalOutput;
     const layer2 = weights.outputLayerWeights;
     const totalWidth = layer2.length * marginLayers;
     const paddingHorizontal = (width - totalWidth) / 2;
@@ -124,12 +124,12 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
     useLayerCoordinates(width, weights, predictions);
 
   const positiveWeightLines = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     drawLayerConnections({
       fromCoords: firstLayerCoords,
       toCoords: secondLayerCoords,
       layerWeights: weights.hiddenLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'positive',
     });
@@ -137,20 +137,20 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       fromCoords: secondLayerCoords,
       toCoords: outputLayerCoords,
       layerWeights: weights.outputLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'positive',
     });
-    return skPath;
+    return builder.build();
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
   const negativeWeightLines = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     drawLayerConnections({
       fromCoords: firstLayerCoords,
       toCoords: secondLayerCoords,
       layerWeights: weights.hiddenLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'negative',
     });
@@ -158,11 +158,11 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
       fromCoords: secondLayerCoords,
       toCoords: outputLayerCoords,
       layerWeights: weights.outputLayerWeights,
-      path: skPath,
+      path: builder,
       weightThreshold: WEIGHT_THRESHOLD,
       type: 'negative',
     });
-    return skPath;
+    return builder.build();
   }, [firstLayerCoords, secondLayerCoords, outputLayerCoords, weights]);
 
   return (
@@ -187,19 +187,19 @@ export const NeuralNetwork = ({ weights, predictions }: NeuralNetworkProps) => {
         <NetworkLayer
           coords={firstLayerCoords}
           getOpacity={i =>
-            useDerivedValue(() => predictions.value.hidden1Output[i])
+            useDerivedValue(() => predictions.get().hidden1Output[i])
           }
         />
         <NetworkLayer
           coords={secondLayerCoords}
           getOpacity={i =>
-            useDerivedValue(() => predictions.value.hidden2Output[i])
+            useDerivedValue(() => predictions.get().hidden2Output[i])
           }
         />
         <NetworkLayer
           coords={outputLayerCoords}
           getOpacity={i =>
-            useDerivedValue(() => predictions.value.finalOutput[i])
+            useDerivedValue(() => predictions.get().finalOutput[i])
           }
         />
       </Canvas>

@@ -25,7 +25,7 @@ export const ScrollTransition3D = memo(() => {
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
       'worklet';
-      scrollY.value = event.contentOffset.y;
+      scrollY.set(event.contentOffset.y);
     },
   });
 

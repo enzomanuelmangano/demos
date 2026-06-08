@@ -24,16 +24,20 @@ const TouchableFeedback = createAnimatedPressable(progress => {
   };
 });
 
+// Hoisted: Array.from's callback inside a worklet isn't workletized by
+// react-native-worklets 0.8 and crashes the UI thread ("Tried to
+// synchronously call a non-worklet function `_temp`"). The toggled set is
+// static anyway — the first 12 digits.
+const HIDDEN_INDEXES = Array.from({ length: 12 }, (_, index) => index);
+const NO_HIDDEN_INDEXES: number[] = [];
+
 export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
   const splittedNumber = cardNumber.toString().split('');
 
   const [toggled, setToggled] = useState(false);
 
   const hiddenIndexes = useDerivedValue(() => {
-    if (toggled) {
-      return Array.from({ length: 12 }, (_, index) => index);
-    }
-    return [];
+    return toggled ? HIDDEN_INDEXES : NO_HIDDEN_INDEXES;
   }, [toggled]);
 
   const onToggle = useCallback(() => {

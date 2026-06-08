@@ -2,14 +2,15 @@ import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 import { useCallback, useMemo, type FC } from 'react';
 
-import { useDrawerProgress } from '@react-navigation/drawer';
 import { useNavigation } from 'expo-router';
 // @@TODO: restore once available in pressto
 // import { PressableGlass } from 'pressto/glass';
 import { PressableScale } from 'pressto';
+import { useDrawerProgress } from 'react-native-drawer-layout';
 import Animated, {
   interpolate,
   useAnimatedStyle,
+  type AnimatedStyle,
 } from 'react-native-reanimated';
 
 const ICON_HEIGHT = 14;
@@ -18,7 +19,7 @@ const LINE_HEIGHT = 1.5;
 type AnimatedDrawerIconProps = {
   tintColor?: string;
   size?: number;
-  containerStyle?: StyleProp<ViewStyle>;
+  containerStyle?: StyleProp<AnimatedStyle<ViewStyle>>;
 };
 
 export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
@@ -31,7 +32,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
 
   const topBarStyle = useAnimatedStyle(() => {
     const rotateInterpolation = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [0, -Math.PI / 4],
     );
@@ -39,7 +40,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
     return {
       transform: [
         {
-          translateY: (progress.value * (ICON_HEIGHT - LINE_HEIGHT)) / 2,
+          translateY: (progress.get() * (ICON_HEIGHT - LINE_HEIGHT)) / 2,
         },
         { rotate: `${rotateInterpolation}rad` },
       ],
@@ -48,7 +49,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
 
   const middleBarStyle = useAnimatedStyle(() => {
     const opacityInterpolation = interpolate(
-      progress.value,
+      progress.get(),
       [0, 0.5],
       [1, 0],
       'clamp',
@@ -61,7 +62,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
 
   const bottomBarStyle = useAnimatedStyle(() => {
     const rotateInterpolation = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [0, Math.PI / 4],
     );
@@ -69,7 +70,7 @@ export const AnimatedDrawerIcon: FC<AnimatedDrawerIconProps> = ({
     return {
       transform: [
         {
-          translateY: -(progress.value * (ICON_HEIGHT - LINE_HEIGHT)) / 2,
+          translateY: -(progress.get() * (ICON_HEIGHT - LINE_HEIGHT)) / 2,
         },
         { rotate: `${rotateInterpolation}rad` },
       ],

@@ -90,7 +90,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
 
   // Reactions to scroll offset changes
   useAnimatedReaction(
-    () => scrollOffset.value,
+    () => scrollOffset.get(),
     (offset, prev) => {
       if (prev === null) return;
       // Interpolating progress based on scroll offset
@@ -108,27 +108,28 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   const gesture = Gesture.Pan()
     .onBegin(() => {
       // Storing current scroll offset
-      scrollContext.value = scrollOffset.value;
+      scrollContext.set(scrollOffset.get());
       // Cancelling any ongoing animations
       cancelAnimation(scrollOffset);
     })
     .onUpdate(event => {
       // Updating scroll offset based on pan gesture
-      scrollOffset.value = clamp(
-        scrollContext.value + event.translationX,
-        -ProgressWidth + ScreenWidth / 2,
-        ScreenWidth / 2,
+      scrollOffset.set(
+        clamp(
+          scrollContext.get() + event.translationX,
+          -ProgressWidth + ScreenWidth / 2,
+          ScreenWidth / 2,
+        ),
       );
     })
     .onEnd(event => {
       // Applying spring animation for snapping
-      scrollOffset.value = withSpring(
-        snapPoint(scrollOffset.value, event.velocityX, spacings),
-        {
+      scrollOffset.set(
+        withSpring(snapPoint(scrollOffset.get(), event.velocityX, spacings), {
           mass: 0.45,
           damping: 10,
           stiffness: 100,
-        },
+        }),
       );
       // If you don't like snapping, you can use decay animation instead
       // I personally prefer snapping for this use case but this is also an option
@@ -171,7 +172,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   // Animated style for indicator line
   const rIndicatorStyle = useAnimatedStyle(() => {
     return {
-      backgroundColor: indicatorColor?.value ?? 'orange',
+      backgroundColor: indicatorColor?.get() ?? 'orange',
     };
   }, []);
 

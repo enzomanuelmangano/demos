@@ -18,7 +18,7 @@ export const Dot: React.FC<DotProps> = ({ index, activeIndex, dotSize }) => {
     return {
       backgroundColor: withTiming(
         // Change background color based on whether the dot is active
-        activeIndex.value >= index ? 'white' : 'rgba(0,0,0,0.15)',
+        activeIndex.get() >= index ? 'white' : 'rgba(0,0,0,0.15)',
         {
           duration: 200, // Animation duration in milliseconds
         },

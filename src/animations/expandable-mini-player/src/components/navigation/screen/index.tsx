@@ -20,14 +20,14 @@ export function Screen({ children, title }: ScreenProps) {
 
   const rScreenStyle = useAnimatedStyle(() => {
     return {
-      borderRadius: interpolate(progress.value, [0, 1], [0, 48]),
+      borderRadius: interpolate(progress.get(), [0, 1], [0, 48]),
       borderCurve: 'continuous',
       transform: [
         {
-          translateY: interpolate(progress.value, [0, 1], [0, 64]),
+          translateY: interpolate(progress.get(), [0, 1], [0, 64]),
         },
         {
-          scale: interpolate(progress.value, [0, 1], [1, 0.95]),
+          scale: interpolate(progress.get(), [0, 1], [1, 0.95]),
         },
       ],
     };

@@ -36,13 +36,13 @@ export const Picker: React.FC<PickerProps> = ({
   const gesture = useGestureHandler({
     onStart: event => {
       'worklet';
-      translateX.value = event.x;
-      translateY.value = event.y;
+      translateX.set(event.x);
+      translateY.set(event.y);
     },
     onActive: event => {
       'worklet';
-      translateX.value = event.x;
-      translateY.value = event.y;
+      translateX.set(event.x);
+      translateY.set(event.y);
     },
   });
 
@@ -53,30 +53,30 @@ export const Picker: React.FC<PickerProps> = ({
   };
 
   const theta = useDerivedValue(() => {
-    const x = translateX.value - cx;
-    const y = translateY.value - cy;
+    const x = translateX.get() - cx;
+    const y = translateY.get() - cy;
     return normalizeAngle(Math.atan2(y, x));
-  }, [translateX.value, translateY.value]);
+  }, [translateX.get(), translateY.get()]);
 
   const pickerPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
-    path.addCircle(
-      radius * Math.cos(theta.value) + cx,
-      radius * Math.sin(theta.value) + cy,
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(
+      radius * Math.cos(theta.get()) + cx,
+      radius * Math.sin(theta.get()) + cy,
       strokeWidth / 2,
     );
-    return path;
-  }, [cx, radius, strokeWidth, theta.value]);
+    return builder.build();
+  }, [cx, radius, strokeWidth, theta.get()]);
 
   const internalPickerPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
-    path.addCircle(
-      radius * Math.cos(theta.value) + cx,
-      radius * Math.sin(theta.value) + cy,
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(
+      radius * Math.cos(theta.get()) + cx,
+      radius * Math.sin(theta.get()) + cy,
       strokeWidth / 2 - 10,
     );
-    return path;
-  }, [cx, radius, strokeWidth, theta.value]);
+    return builder.build();
+  }, [cx, radius, strokeWidth, theta.get()]);
 
   return (
     <Group>

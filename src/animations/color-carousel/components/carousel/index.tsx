@@ -40,7 +40,7 @@ const Carousel: FC<CarouselProps> = memo(
     // https://youtu.be/OT-73hpwxXQ
     const onScroll = useAnimatedScrollHandler({
       onScroll: ({ contentOffset: { x } }) => {
-        translateX.value = -x;
+        translateX.set(-x);
       },
     });
 

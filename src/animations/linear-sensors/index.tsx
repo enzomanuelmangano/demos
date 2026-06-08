@@ -40,7 +40,7 @@ const App = () => {
   });
 
   const rotateY = useDerivedValue(() => {
-    const { roll } = deviceRotation.sensor.value;
+    const { roll } = deviceRotation.sensor.get();
 
     return interpolate(
       roll,
@@ -55,7 +55,7 @@ const App = () => {
   });
 
   const rotateX = useDerivedValue(() => {
-    const { z } = rotationGravity.sensor.value;
+    const { z } = rotationGravity.sensor.get();
 
     return interpolate(
       z,
@@ -68,14 +68,14 @@ const App = () => {
   const rTransform = useDerivedValue(() => {
     return [
       { perspective: 200 },
-      { rotateY: rotateY.value },
-      { rotateX: rotateX.value },
+      { rotateY: rotateY.get() },
+      { rotateX: rotateX.get() },
     ];
   });
 
   const shadowDx = useDerivedValue(() => {
     return interpolate(
-      rotateY.value,
+      rotateY.get(),
       [-Math.PI / 8, 0, Math.PI / 8],
       [10, 0, -10],
       Extrapolation.CLAMP,
@@ -84,7 +84,7 @@ const App = () => {
 
   const shadowDy = useDerivedValue(() => {
     return interpolate(
-      rotateX.value,
+      rotateX.get(),
       [-Math.PI / 8, 0, Math.PI / 8],
       // Exception instead of (-10 use 7) that's because the "light source" is on the top
       [7, 0, 10],

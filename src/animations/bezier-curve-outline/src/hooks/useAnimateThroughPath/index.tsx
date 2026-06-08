@@ -52,11 +52,11 @@ export const useAnimateThroughPath = ({
   const progress = useSharedValue(0);
   const points = useSharedValue<Point[]>([]);
   const assignPathPoints = useCallback(() => {
-    points.value = getPathPoints(pathReference.value);
+    points.set(getPathPoints(pathReference.get()));
   }, [points, pathReference]);
 
   useAnimatedReaction(
-    () => pathReference.value,
+    () => pathReference.get(),
     () => {
       scheduleOnRN(assignPathPoints);
     },
@@ -64,33 +64,41 @@ export const useAnimateThroughPath = ({
   );
 
   const startAnimation = useCallback(() => {
-    points.value = getPathPoints(pathReference.value);
+    points.set(getPathPoints(pathReference.get()));
     cancelAnimation(progress);
-    progress.value = 0;
-    progress.value = withCustomSpring(1);
+    progress.set(0);
+    progress.set(withCustomSpring(1));
   }, [points, progress, pathReference]);
 
   const reverseAnimation = useCallback(() => {
     cancelAnimation(progress);
-    progress.value = withCustomSpring(0);
+    progress.set(withCustomSpring(0));
   }, [progress]);
 
   const cx = useDerivedValue(() => {
-    if (points.value.length <= 1) return 0;
-    const inputRange = points.value.map(
-      (_, index) => index / points.value.length,
-    );
-    const pointsX = points.value.map(point => point.x);
-    return interpolate(progress.value, inputRange, pointsX);
+    const pts = points.get();
+    if (pts.length <= 1) return 0;
+    const len = pts.length;
+    const inputRange: number[] = [];
+    const pointsX: number[] = [];
+    for (let i = 0; i < len; i++) {
+      inputRange.push(i / len);
+      pointsX.push(pts[i].x);
+    }
+    return interpolate(progress.get(), inputRange, pointsX);
   }, [points]);
 
   const cy = useDerivedValue(() => {
-    if (points.value.length <= 1) return 0;
-    const inputRange = points.value.map(
-      (_, index) => index / points.value.length,
-    );
-    const pointsY = points.value.map(point => point.y);
-    return interpolate(progress.value, inputRange, pointsY);
+    const pts = points.get();
+    if (pts.length <= 1) return 0;
+    const len = pts.length;
+    const inputRange: number[] = [];
+    const pointsY: number[] = [];
+    for (let i = 0; i < len; i++) {
+      inputRange.push(i / len);
+      pointsY.push(pts[i].y);
+    }
+    return interpolate(progress.get(), inputRange, pointsY);
   }, [points]);
 
   return { progress, startAnimation, cx, cy, reverseAnimation };

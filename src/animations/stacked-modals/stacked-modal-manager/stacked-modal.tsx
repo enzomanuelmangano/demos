@@ -51,8 +51,8 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
   // right bottom value.
   // To be honest that's not an easy solution, but it seems to work fine
   useEffect(() => {
-    bottom.value = withCustomSpring(
-      initialBottomPosition + bottomOffset + bottomHeight,
+    bottom.set(
+      withCustomSpring(initialBottomPosition + bottomOffset + bottomHeight),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bottomHeight]);
@@ -60,12 +60,12 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
   const baseOpacity = useSharedValue(0);
 
   useEffect(() => {
-    baseOpacity.value = withCustomSpring(1);
+    baseOpacity.set(withCustomSpring(1));
   }, [baseOpacity]);
 
   const rStackedModalStyle = useAnimatedStyle(() => {
     return {
-      bottom: bottom.value,
+      bottom: bottom.get(),
       zIndex: 100 - stackedModalId,
       shadowRadius: withCustomSpring(Math.max(10 - stackedModalId * 1, 2)),
       shadowOpacity: withCustomSpring(
@@ -82,7 +82,7 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
     return {
       // The content of the first two StackedModals is visible
       // The content of the other StackedModals is hidden
-      opacity: baseOpacity.value * derivedOpacity.value,
+      opacity: baseOpacity.get() * derivedOpacity.get(),
 
       transform: [
         {
@@ -101,7 +101,7 @@ const StackedModal: React.FC<StackedModalProps> = ({ stackedSheet, index }) => {
 
   const rContentStyle = useAnimatedStyle(() => {
     return {
-      opacity: isActiveStackedModalProgress.value ** 1.5,
+      opacity: isActiveStackedModalProgress.get() ** 1.5,
     };
   }, [stackedModalId]);
 

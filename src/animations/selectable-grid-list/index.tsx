@@ -33,7 +33,7 @@ const SelectableGridListContainer = () => {
   const itemSize = width / GridConfig.itemsPerRow;
   const selectedIndexesAmount = useSharedValue(0);
   const selectedIndexesAmountText = useDerivedValue(() => {
-    return selectedIndexesAmount.value.toString();
+    return selectedIndexesAmount.get().toString();
   });
 
   const gridListRef = useRef<GridListRefType>(null);
@@ -42,7 +42,7 @@ const SelectableGridListContainer = () => {
     return {
       transform: [
         {
-          translateY: withSpring(selectedIndexesAmount.value === 0 ? 150 : 0),
+          translateY: withSpring(selectedIndexesAmount.get() === 0 ? 150 : 0),
         },
       ],
     };
@@ -77,7 +77,7 @@ const SelectableGridListContainer = () => {
   );
   const onSelectionChange = useCallback(
     (indexes: number[]) => {
-      selectedIndexesAmount.value = indexes.length;
+      selectedIndexesAmount.set(indexes.length);
     },
     [selectedIndexesAmount],
   );

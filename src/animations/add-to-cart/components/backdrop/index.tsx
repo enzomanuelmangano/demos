@@ -17,13 +17,13 @@ type BackdropProps = {
 const Backdrop: FC<BackdropProps> = memo(({ animationProgress, onPress }) => {
   const animatedProps = useAnimatedProps(() => {
     return {
-      pointerEvents: animationProgress.value ? 'auto' : 'none',
+      pointerEvents: animationProgress.get() ? 'auto' : 'none',
     } as any;
   }, []);
 
   const rStyle = useAnimatedStyle(() => {
     return {
-      opacity: animationProgress.value,
+      opacity: animationProgress.get(),
     };
   }, []);
 

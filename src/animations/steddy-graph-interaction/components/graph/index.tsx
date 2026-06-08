@@ -56,22 +56,22 @@ const Graph: FC<GraphProps> = memo(
 
     // Normalize the scores for drawing the graph
     const rScores = useDerivedValue(() => {
-      return rRawScores.value.map(score => score / refactoredMax);
+      return rRawScores.get().map(score => score / refactoredMax);
     }, []);
 
     // Create a derived value for generating the graph path
     const rGraphPath = useDerivedValue(() => {
-      const distance = canvasWidth / (rScores.value.length - 1);
+      const distance = canvasWidth / (rScores.get().length - 1);
 
-      const path = Skia.Path.Make();
+      const builder = Skia.PathBuilder.Make();
 
-      path.moveTo(padding, (1 - rScores.value[0]) * canvasHeight);
-      for (let i = 0; i < rScores.value.length; i++) {
-        const score = rScores.value[i];
+      builder.moveTo(padding, (1 - rScores.get()[0]) * canvasHeight);
+      for (let i = 0; i < rScores.get().length; i++) {
+        const score = rScores.get()[i];
 
-        path.lineTo(padding + distance * i, canvasHeight * (1 - score));
+        builder.lineTo(padding + distance * i, canvasHeight * (1 - score));
       }
-      return path;
+      return builder.build();
     }, [padding, rScores, scores]);
 
     // Load a custom font for displaying text

@@ -29,7 +29,7 @@ export const useTimeMachineGesture = ({
   );
 
   useAnimatedReaction(
-    () => timeMachineProgress.value,
+    () => timeMachineProgress.get(),
     value => {
       if (value > 0.5) {
         scheduleOnRN(updateTimeMachineActiveWrapper, true);
@@ -45,7 +45,7 @@ export const useTimeMachineGesture = ({
     .failOffsetX([-20, 20])
     .onBegin(() => {
       // Store the current progress as the starting point
-      prevPosition.value = timeMachineProgress.value;
+      prevPosition.set(timeMachineProgress.get());
     })
     .onUpdate(({ translationY }) => {
       // Calculate progress relative to the starting position
@@ -53,27 +53,27 @@ export const useTimeMachineGesture = ({
       const rawProgress = translationY / maxPanDistance;
 
       // Add the translation to the previous position
-      const newProgress = prevPosition.value + rawProgress;
+      const newProgress = prevPosition.get() + rawProgress;
 
-      timeMachineProgress.value = Math.max(0, Math.min(1, newProgress));
+      timeMachineProgress.set(Math.max(0, Math.min(1, newProgress)));
     })
     .onEnd(({ translationY, velocityY }) => {
       // Simple threshold-based snapping
       if (translationY > 100 || velocityY > 500) {
         // Snap to fully open
-        timeMachineProgress.value = 1;
+        timeMachineProgress.set(1);
       } else if (translationY < -50 || velocityY < -300) {
         // Snap to closed
-        timeMachineProgress.value = 0;
+        timeMachineProgress.set(0);
         scheduleOnRN(onClose);
       } else {
         // Snap to nearest state
-        const currentProgress = timeMachineProgress.value;
+        const currentProgress = timeMachineProgress.get();
         const targetProgress = currentProgress > 0.5 ? 1 : 0;
         if (targetProgress === 0) {
           scheduleOnRN(onClose);
         }
-        timeMachineProgress.value = targetProgress;
+        timeMachineProgress.set(targetProgress);
       }
     });
 

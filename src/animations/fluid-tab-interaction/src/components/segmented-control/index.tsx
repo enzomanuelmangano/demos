@@ -53,7 +53,7 @@ function SegmentedControl<T extends { name: string; icon: string }>({
 
   const animatedBlurProps = useAnimatedProps(() => {
     return {
-      intensity: interpolate(blurProgress.value, [0, 0.5, 1], [0, 15, 0]),
+      intensity: interpolate(blurProgress.get(), [0, 0.5, 1], [0, 15, 0]),
     };
   }, [blurProgress]);
 
@@ -99,7 +99,7 @@ function SegmentedControl<T extends { name: string; icon: string }>({
         const internalBlurProps = useAnimatedProps(() => {
           return {
             intensity: interpolate(
-              activeIndexes.value.includes(index) ? blurProgress.value : 0,
+              activeIndexes.get().includes(index) ? blurProgress.get() : 0,
               [0, 0.5, 1],
               [0, 10, 0],
             ),
@@ -130,12 +130,14 @@ function SegmentedControl<T extends { name: string; icon: string }>({
               if (prevIndex === index) {
                 return;
               }
-              activeIndexes.value = [prevIndex, index];
+              activeIndexes.set([prevIndex, index]);
               cancelAnimation(blurProgress);
-              blurProgress.value = withTiming(1, TimingConfig, () => {
-                blurProgress.value = 0;
-                activeIndexes.value = [];
-              });
+              blurProgress.set(
+                withTiming(1, TimingConfig, () => {
+                  blurProgress.set(0);
+                  activeIndexes.set([]);
+                }),
+              );
             }}>
             <AnimatedIcon
               name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap}

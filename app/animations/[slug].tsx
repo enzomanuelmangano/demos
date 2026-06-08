@@ -8,12 +8,13 @@ import {
 
 import { useCallback } from 'react';
 
-import { useDrawerProgress } from '@react-navigation/drawer';
 import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
 import { useAtomValue } from 'jotai';
+import { useDrawerProgress } from 'react-native-drawer-layout';
 import Animated, {
   Easing,
+  useAnimatedProps,
   interpolate,
   useAnimatedReaction,
   useAnimatedStyle,
@@ -51,7 +52,7 @@ export default function AnimationScreen() {
   }, []);
 
   useAnimatedReaction(
-    () => rDrawerProgress.value,
+    () => rDrawerProgress.get(),
     (value, prevValue) => {
       if (value < 0.5 && prevValue && prevValue !== value && prevValue > 0.5) {
         scheduleOnRN(dismissKeyboard);
@@ -60,9 +61,13 @@ export default function AnimationScreen() {
     },
   );
 
-  const rBlurIntensity = useDerivedValue<number | undefined>(() => {
-    return interpolate(rDrawerProgress.value, [0, 1], [0, 40]);
-  });
+  // Animated intensity must go through useAnimatedProps: a shared value passed
+  // directly as the prop only forwards its value on the FIRST render
+  // (reanimated's PropsFilter) — re-renders drop the prop and the React commit
+  // clobbers UI-thread updates with the component default.
+  const blurAnimatedProps = useAnimatedProps(() => ({
+    intensity: interpolate(rDrawerProgress.get(), [0, 1], [0, 40]),
+  }));
 
   const { top: safeTop } = useSafeAreaInsets();
 
@@ -76,11 +81,11 @@ export default function AnimationScreen() {
   const rDrawerIconStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
-        rDrawerProgress.value,
+        rDrawerProgress.get(),
         [0, 0.5, 1],
         [
-          0.5 * rHideDrawerIconProgress.value,
-          1 * rHideDrawerIconProgress.value,
+          0.5 * rHideDrawerIconProgress.get(),
+          1 * rHideDrawerIconProgress.get(),
           0,
         ],
       ),
@@ -119,7 +124,7 @@ export default function AnimationScreen() {
       <AnimationComponent {...(dimensions as any)} />
       <AnimatedBlurView
         tint="default"
-        intensity={rBlurIntensity}
+        animatedProps={blurAnimatedProps}
         style={styles.blurView}
       />
       <AnimatedDrawerIcon
@@ -137,8 +142,13 @@ export default function AnimationScreen() {
 
 const styles = StyleSheet.create({
   blurView: {
-    ...StyleSheet.absoluteFillObject,
+    // RN 0.85 removed StyleSheet.absoluteFillObject — spell it out.
+    bottom: 0,
+    left: 0,
     pointerEvents: 'none',
+    position: 'absolute',
+    right: 0,
+    top: 0,
     zIndex: 100000,
   },
   errorContainer: {

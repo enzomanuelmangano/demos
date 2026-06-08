@@ -78,21 +78,21 @@ export const GitHubContributionCalendar = forwardRef<
   }, [weeks, startDate, endDate]);
 
   const startAnimation = useCallback(() => {
-    isAnimating.value = true;
+    isAnimating.set(true);
     squareRefs.current.forEach(squareRef => {
       squareRef?.startAnimation();
     });
   }, [isAnimating]);
 
   const resetAnimation = useCallback(() => {
-    isAnimating.value = false;
+    isAnimating.set(false);
     squareRefs.current.forEach(squareRef => {
       squareRef?.resetAnimation();
     });
   }, [isAnimating]);
 
   const toggleAnimation = useCallback(() => {
-    if (isAnimating.value) {
+    if (isAnimating.get()) {
       return resetAnimation();
     }
     return startAnimation();

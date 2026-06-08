@@ -12,19 +12,19 @@ export const useActiveQRCode = () => {
 
   const rStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: withSpring(showQRCode.value ? 1.4 : 1) },
+      { scale: withSpring(showQRCode.get() ? 1.4 : 1) },
       {
-        rotate: withSpring(showQRCode.value ? '0deg' : '-10deg'),
+        rotate: withSpring(showQRCode.get() ? '0deg' : '-10deg'),
       },
     ],
   }));
 
   const rLogoContainerStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(showQRCode.value ? 0 : 1),
+    opacity: withTiming(showQRCode.get() ? 0 : 1),
   }));
 
   const toggleQRCodeVisibility = useCallback(() => {
-    showQRCode.value = !showQRCode.value;
+    showQRCode.set(!showQRCode.get());
   }, [showQRCode]);
 
   return { rStyle, rLogoContainerStyle, toggleQRCodeVisibility };

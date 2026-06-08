@@ -35,11 +35,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
   scheme: env.scheme,
-  splash: {
-    image: './assets/splash.png',
-    resizeMode: 'contain',
-    backgroundColor: '#111111',
-  },
   updates: {
     url: 'https://u.expo.dev/eb1bbf17-5fb9-4743-bccf-3fbcbc95176a',
     enabled: true,
@@ -126,9 +121,26 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-sqlite',
+    [
+      'expo-splash-screen',
+      {
+        // SDK 56 removed the top-level `splash` config — it lives here now.
+        // splash.png is a full-screen design (1284×2778), not a logo: without
+        // the legacy flag the plugin squeezes it into a ~100pt logo slot.
+        image: './assets/splash.png',
+        resizeMode: 'contain',
+        backgroundColor: '#111111',
+        enableFullScreenImage_legacy: true,
+      },
+    ],
+    'expo-status-bar',
     './plugins/with-skia-webgpu-fix',
     './plugins/with-nitro-autolinking',
   ],
+  experiments: {
+    // React Compiler (babel-plugin-react-compiler) — automatic memoization.
+    reactCompiler: true,
+  },
   extra: {
     eas: {
       projectId: 'eb1bbf17-5fb9-4743-bccf-3fbcbc95176a',

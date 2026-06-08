@@ -85,14 +85,14 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
   const isExpanded = useSharedValue(false);
 
   const progress = useDerivedValue(() =>
-    withSpring(isExpanded.value ? 1 : 0, { dampingRatio: 1, duration: 400 }),
+    withSpring(isExpanded.get() ? 1 : 0, { dampingRatio: 1, duration: 400 }),
   );
 
-  const delayedProgress = useDerivedValue(() => progress.value ** 2);
+  const delayedProgress = useDerivedValue(() => progress.get() ** 2);
 
   const padding = useDerivedValue(() =>
     interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [0, (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2],
     ),
@@ -100,34 +100,34 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
 
   const rCardContainerStyle = useAnimatedStyle(() => ({
     left: interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [(EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2, 0],
     ),
     width: interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [BUTTON_WIDTH, EXPANDED_CARD_WIDTH],
     ),
     height: interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [BUTTON_HEIGHT, EXPANDED_CARD_HEIGHT],
     ),
-    borderRadius: interpolate(progress.value, [0, 1], [50, 50 - padding.value]),
-    padding: padding.value,
-    paddingTop: padding.value + delayedProgress.value * 10,
+    borderRadius: interpolate(progress.get(), [0, 1], [50, 50 - padding.get()]),
+    padding: padding.get(),
+    paddingTop: padding.get() + delayedProgress.get() * 10,
     backgroundColor: interpolateColor(
-      progress.value,
+      progress.get(),
       [0, 1],
       ['#FFFFFF00', '#FFFFFF'],
     ),
   }));
 
   const rButtonStyle = useAnimatedStyle(() => ({
-    bottom: padding.value,
+    bottom: padding.get(),
     width: interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [BUTTON_WIDTH, MIN_BUTTON_WIDTH],
     ),
@@ -135,18 +135,18 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
   }));
 
   const rCardContentStyle = useAnimatedStyle(() => ({
-    opacity: delayedProgress.value,
+    opacity: delayedProgress.get(),
   }));
 
   const toggleExpansion = useCallback(() => {
-    isExpanded.value = !isExpanded.value;
+    isExpanded.set(!isExpanded.get());
   }, [isExpanded]);
 
   return (
     <Animated.View style={styles.container}>
       <PressableScale
         onPress={() => {
-          if (isExpanded.value && onConfirm) {
+          if (isExpanded.get() && onConfirm) {
             return scheduleOnRN(onConfirm);
           }
           toggleExpansion();

@@ -25,7 +25,7 @@ export function PaginationDots({
   ...props
 }: PaginationDotsProps): ReactElement {
   const effectiveProgress = useDerivedValue(() => {
-    return reversed ? count - 1 - progress.value : progress.value;
+    return reversed ? count - 1 - progress.get() : progress.get();
   }, [reversed, count]);
 
   return (

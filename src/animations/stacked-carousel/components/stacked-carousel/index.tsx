@@ -57,7 +57,7 @@ const AnimatedCard = ({
   const animatedStyle = useAnimatedStyle(() => {
     // Scale animation - your organic scaling
     const scale = interpolate(
-      scrollX.value,
+      scrollX.get(),
       extendedInputRange,
       [0.7, 0.8, 1, 1.5, 1.5],
       Extrapolation.CLAMP,
@@ -65,7 +65,7 @@ const AnimatedCard = ({
 
     // Organic fade to the top - cards move upward and fade
     const translateY = interpolate(
-      scrollX.value,
+      scrollX.get(),
       extendedInputRange,
       [65, 35, 0, -100, -100],
       Extrapolation.CLAMP,
@@ -73,7 +73,7 @@ const AnimatedCard = ({
 
     // Organic fade - cards fade as they move up
     const opacity = interpolate(
-      scrollX.value,
+      scrollX.get(),
       extendedInputRange,
       [0.2, 0.8, 1, -1, -2],
       Extrapolation.EXTEND,
@@ -87,7 +87,7 @@ const AnimatedCard = ({
 
   const rRotateStyle = useAnimatedStyle(() => {
     const rotateX = interpolate(
-      scrollX.value,
+      scrollX.get(),
       extendedInputRange,
       [45, 30, 0, 0, 0],
       Extrapolation.CLAMP,
@@ -149,17 +149,17 @@ export const StackedCarousel = <T,>({
   // Scroll handler
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollX.value = event.contentOffset.x;
+      scrollX.set(event.contentOffset.x);
     },
   });
 
   // Calculate current page index for paginator
   const currentPageIndex = useDerivedValue(() => {
-    return scrollX.value / cardWidth;
+    return scrollX.get() / cardWidth;
   });
 
   useAnimatedReaction(
-    () => Math.round(currentPageIndex.value),
+    () => Math.round(currentPageIndex.get()),
     (curr, prev) => {
       if (curr !== prev && prev !== null) {
         scheduleOnRN(Haptics.selectionAsync);

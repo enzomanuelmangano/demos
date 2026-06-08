@@ -32,7 +32,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   const singleTabWidth = (tabBarWidth - 0.1 * tabBarWidth) / 5;
 
   const rShaderLightStyle = useAnimatedStyle(() => {
-    const translateX = selectedAnimatedIndex.value * singleTabWidth;
+    const translateX = selectedAnimatedIndex.get() * singleTabWidth;
     return {
       transform: [{ translateX: translateX }],
     };

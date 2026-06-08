@@ -22,7 +22,7 @@ export function Playground() {
       // Apply friction to make dragging feel more natural
       const dampedTranslation =
         event.translationY * HAPTIC_CONFIG.DRAG_FRICTION;
-      translateY.value = dampedTranslation;
+      translateY.set(dampedTranslation);
 
       handleProgressiveHaptics(
         dampedTranslation,
@@ -32,14 +32,16 @@ export function Playground() {
     })
     .onEnd(() => {
       // Reset haptic tracking
-      lastHapticPosition.value = 0;
-      hasReachedMaxIntensity.value = false;
+      lastHapticPosition.set(0);
+      hasReachedMaxIntensity.set(false);
 
       // Animate glass view back to original position
-      translateY.value = withSpring(0, {
-        duration: 600,
-        dampingRatio: 1,
-      });
+      translateY.set(
+        withSpring(0, {
+          duration: 600,
+          dampingRatio: 1,
+        }),
+      );
     });
 
   return (

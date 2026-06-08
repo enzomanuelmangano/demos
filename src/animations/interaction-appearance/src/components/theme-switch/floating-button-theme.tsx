@@ -16,13 +16,13 @@ export const FloatingButtonTheme: React.FC = () => {
       onPressIn={() => {
         // Here we keep track that we are switching the theme
         // This is going to impact the Rescaler and the Theme Blur component
-        isSwitchingThemeShared.value = true;
+        isSwitchingThemeShared.set(true);
       }}
       onPress={toggleTheme}
       onPressOut={() => {
         // We have probably finished switching the theme or the animation has been cancelled.
         // We need to reset the shared value.
-        isSwitchingThemeShared.value = false;
+        isSwitchingThemeShared.set(false);
       }}
       style={[
         styles.button,

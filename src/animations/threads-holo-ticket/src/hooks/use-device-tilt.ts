@@ -12,12 +12,12 @@ export const useDeviceTilt = () => {
 
   // Raw pitch value (tilting forward/backward)
   const pitch = useDerivedValue(() => {
-    return animatedSensor.sensor.value.pitch || 0;
+    return animatedSensor.sensor.get().pitch || 0;
   });
 
   // Raw roll value (tilting left/right)
   const roll = useDerivedValue(() => {
-    return animatedSensor.sensor.value.roll || 0;
+    return animatedSensor.sensor.get().roll || 0;
   });
 
   return {

@@ -51,7 +51,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, [height]);
 
   const pickerCircleTextContainerRadius = useDerivedValue(() => {
-    return metaballRadius.value * 0.8;
+    return metaballRadius.get() * 0.8;
   }, [metaballRadius]);
 
   const layer = useMemo(() => {
@@ -79,16 +79,16 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   const gestureHandler = useGestureHandler({
     onStart: ({ x }) => {
       'worklet';
-      pickerX.value = x;
-      isSliding.value = true;
+      pickerX.set(x);
+      isSliding.set(true);
     },
     onActive: ({ x }) => {
       'worklet';
-      pickerX.value = x;
+      pickerX.set(x);
     },
     onEnd: () => {
       'worklet';
-      isSliding.value = false;
+      isSliding.set(false);
     },
   });
 
@@ -103,8 +103,8 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   const pickerCircleText = useDerivedValue(() => {
     return Math.round(
       interpolate(
-        clampedPickerX.value,
-        [metaballRadius.value, sliderSize.width - metaballRadius.value],
+        clampedPickerX.get(),
+        [metaballRadius.get(), sliderSize.width - metaballRadius.get()],
         [0, 100],
         Extrapolate.CLAMP,
       ),
@@ -114,7 +114,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   const pickerTextX = useDerivedValue(() => {
     if (!font) return 0;
     return (
-      clampedPickerX.value - font.measureText(pickerCircleText.value).width / 2
+      clampedPickerX.get() - font.measureText(pickerCircleText.get()).width / 2
     );
   }, [clampedPickerX, pickerCircleTextContainerRadius, font, pickerCircleText]);
 
@@ -123,11 +123,11 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, [height]);
 
   const textY = useDerivedValue(() => {
-    return pickerY.value + fontSize / 3;
+    return pickerY.get() + fontSize / 3;
   }, [derivedPickerY, fontSize]);
 
   const roundedRectY = useDerivedValue(() => {
-    return derivedPickerY.value - sliderHeight.value / 2 + 1;
+    return derivedPickerY.get() - sliderHeight.get() / 2 + 1;
   }, [derivedPickerY, sliderHeight]);
 
   return (

@@ -18,7 +18,7 @@ const AnimatedBackdrop: FC<AnimatedBackdropProps> = memo(
   ({ onBackdropPress, isVisible }) => {
     const rAnimatedStyle = useAnimatedStyle(() => {
       return {
-        opacity: withTiming(isVisible.value ? 1 : 0),
+        opacity: withTiming(isVisible.get() ? 1 : 0),
       };
     }, [isVisible]);
 
@@ -29,7 +29,7 @@ const AnimatedBackdrop: FC<AnimatedBackdropProps> = memo(
 
         // Note: I'm going to release a YouTube video
         //       with the same trick (for the BottomSheet) :)
-        pointerEvents: isVisible.value ? 'auto' : 'none',
+        pointerEvents: isVisible.get() ? 'auto' : 'none',
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any;
     }, [isVisible]);

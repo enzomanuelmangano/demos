@@ -28,7 +28,7 @@ export const usePageFlipAnimation = ({
   totalPages,
 }: UsePageFlipAnimationParams): UsePageFlipAnimationReturn => {
   const pageFlipProgress = useDerivedValue<number>(() => {
-    const currentPage = progress.value * totalPages;
+    const currentPage = progress.get() * totalPages;
     const targetFlip = currentPage > index ? 1 : 0;
 
     return withSpring(targetFlip, {
@@ -38,7 +38,7 @@ export const usePageFlipAnimation = ({
   }, [index, totalPages]);
 
   const rFlipStyle = useAnimatedStyle(() => {
-    const pageProgress = pageFlipProgress.value;
+    const pageProgress = pageFlipProgress.get();
 
     const zIndex =
       pageProgress < 0.5 ? totalPages - index : index + totalPages + 1;

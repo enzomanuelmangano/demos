@@ -47,7 +47,7 @@ const App = () => {
     // Few years ago I made a YouTube tutorial about it:
     // - Interpolate Colors like a pro with React Native Reanimated 2 https://youtu.be/U_V9pHnTXjA
     return interpolateColor(
-      progressPercentage.value,
+      progressPercentage.get(),
       [0, 1],
       ['#6d9bf1', 'orange'],
     );
@@ -104,16 +104,16 @@ const App = () => {
 
             // Only trigger haptics when crossing a line
             if (
-              currentLineIndex !== previousLineIndex.value &&
+              currentLineIndex !== previousLineIndex.get() &&
               currentLineIndex >= 0
             ) {
               scheduleOnRN(Haptics.selectionAsync);
-              previousLineIndex.value = currentLineIndex;
+              previousLineIndex.set(currentLineIndex);
             }
 
             // And then I bind the percentage to the progress of the transition
             // The progress is then passed both to the ImageEditor and the DonutCircularProgress
-            progressPercentage.value = progress;
+            progressPercentage.set(progress);
           }}
           indicatorColor={color}
         />

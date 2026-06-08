@@ -71,16 +71,16 @@ const ListItem = <
   }, [index, item, onTap, viewRef]);
 
   const rButtonContainerStyle = useAnimatedStyle(() => {
-    const isAnimating = selectedIndex.value === index;
+    const isAnimating = selectedIndex.get() === index;
     return {
       opacity: isAnimating ? 0 : 1,
     };
   }, [index]);
 
   const rCounterStyle = useAnimatedStyle(() => {
-    const isAnimating = selectedIndex.value === index;
+    const isAnimating = selectedIndex.get() === index;
     return {
-      opacity: isAnimating ? (1 - animationProgress.value) ** 2 : 1,
+      opacity: isAnimating ? (1 - animationProgress.get()) ** 2 : 1,
     };
   }, [index]);
 

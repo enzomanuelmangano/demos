@@ -65,13 +65,13 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   }, []);
 
   const realProgress = useDerivedValue(() => {
-    return convertScrollToProgress(scrollOffset.value);
+    return convertScrollToProgress(scrollOffset.get());
   }, []);
 
   const clampedProgress = useDerivedValue(() => {
     // Clamp to -1..1 for visual feedback (path drawing)
     return interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       [-ScreenWidth / 4, 0, ScreenWidth / 4],
       [-1, 0, 1],
       Extrapolation.CLAMP,
@@ -80,21 +80,21 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = -event.contentOffset.x;
+      scrollOffset.set(-event.contentOffset.x);
     },
   });
 
   // This is a reaction that triggers when the progress value changes
   // It's a kind of "useEffect" but for Reanimated values
   useAnimatedReaction(
-    () => realProgress.value,
+    () => realProgress.get(),
     (curr, prev) => {
       if (prev !== curr) {
         onProgressChange?.({
           // The clampedProgress is the one that will be used to update the Path
           // The realProgress includes the native scroll bounce effect
-          clampedProgress: clampedProgress.value,
-          realProgress: realProgress.value,
+          clampedProgress: clampedProgress.get(),
+          realProgress: realProgress.get(),
         });
       }
     },
@@ -149,20 +149,20 @@ const FrictionSliderPanGesture: React.FC<FrictionSliderProps> = ({
   }, []);
 
   const clampedProgress = useDerivedValue(() => {
-    return convertTranslationToProgress(progressTranslateX.value);
+    return convertTranslationToProgress(progressTranslateX.get());
   }, []);
 
   const realProgress = useDerivedValue(() => {
-    return convertTranslationToProgress(translateX.value);
+    return convertTranslationToProgress(translateX.get());
   }, []);
 
   useAnimatedReaction(
-    () => realProgress.value,
+    () => realProgress.get(),
     (curr, prev) => {
       if (prev !== curr) {
         onProgressChange?.({
-          clampedProgress: clampedProgress.value,
-          realProgress: realProgress.value,
+          clampedProgress: clampedProgress.get(),
+          realProgress: realProgress.get(),
         });
       }
     },
@@ -171,10 +171,10 @@ const FrictionSliderPanGesture: React.FC<FrictionSliderProps> = ({
   const gesture = Gesture.Pan()
     .onBegin(() => {
       cancelAnimation(translateX);
-      contextX.value = translateX.value;
+      contextX.set(translateX.get());
     })
     .onUpdate(event => {
-      const baseTranslation = event.translationX + contextX.value;
+      const baseTranslation = event.translationX + contextX.get();
 
       const incrementalFriction = interpolate(
         Math.abs(baseTranslation),
@@ -184,28 +184,32 @@ const FrictionSliderPanGesture: React.FC<FrictionSliderProps> = ({
       );
 
       const translationWithFriction = baseTranslation * incrementalFriction;
-      translateX.value = translationWithFriction;
-      progressTranslateX.value = translationWithFriction;
+      translateX.set(translationWithFriction);
+      progressTranslateX.set(translationWithFriction);
     })
     .onFinalize(() => {
-      translateX.value = withSpring(0, {
-        mass: SpringMass,
-        damping: 10,
-        stiffness: 100,
-      });
-      progressTranslateX.value = withSpring(0, {
-        mass: SpringMass,
-        overshootClamping: true,
-        damping: 10,
-        stiffness: 100,
-      });
+      translateX.set(
+        withSpring(0, {
+          mass: SpringMass,
+          damping: 10,
+          stiffness: 100,
+        }),
+      );
+      progressTranslateX.set(
+        withSpring(0, {
+          mass: SpringMass,
+          overshootClamping: true,
+          damping: 10,
+          stiffness: 100,
+        }),
+      );
     });
 
   const rTextStyle = useAnimatedStyle(() => {
     return {
       transform: [
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
       ],
     };

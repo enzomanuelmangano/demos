@@ -40,9 +40,9 @@ export function GridVisualizer() {
   const generateRandomText = useCallback(() => {
     // This is a hack to force to clear the grid before changing again the text
     // Try to comment this line and tap the screen multiple times to see what happens
-    text.value = null;
+    text.set(null);
     setTimeout(() => {
-      text.value = Math.floor(Math.random() * 100).toString();
+      text.set(Math.floor(Math.random() * 100).toString());
     }, 700);
   }, [text]);
 

@@ -23,7 +23,7 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
       (index + 1) * CARD_WIDTH,
     ];
 
-    const rotate = interpolate(scrollX.value, input, [180, 0, -180], 'clamp');
+    const rotate = interpolate(scrollX.get(), input, [180, 0, -180], 'clamp');
 
     const fullInput = [
       (index - 1) * CARD_WIDTH,
@@ -33,14 +33,14 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
       (index + 1) * CARD_WIDTH,
     ];
     const translateY = interpolate(
-      scrollX.value,
+      scrollX.get(),
       fullInput,
       [0, -6, 0, -6, 0],
       'clamp',
     );
 
     // Fade cards based on their position relative to the center
-    const opacity = interpolate(scrollX.value, input, [0.5, 1, 0.5], 'clamp');
+    const opacity = interpolate(scrollX.get(), input, [0.5, 1, 0.5], 'clamp');
 
     return {
       transform: [
@@ -64,7 +64,7 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
       (index + 1) * CARD_WIDTH,
     ];
 
-    const opacity = interpolate(scrollX.value, input, [0.2, 0.6, 0.2], 'clamp');
+    const opacity = interpolate(scrollX.get(), input, [0.2, 0.6, 0.2], 'clamp');
 
     return {
       opacity,
@@ -78,7 +78,7 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
       (index + 1) * CARD_WIDTH,
     ];
 
-    const opacity = interpolate(scrollX.value, input, [0, 1, 0], 'clamp');
+    const opacity = interpolate(scrollX.get(), input, [0, 1, 0], 'clamp');
 
     return {
       opacity: Math.round(opacity),
@@ -92,7 +92,7 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
       (index + 1) * CARD_WIDTH,
     ];
 
-    return interpolate(scrollX.value, input, [-Math.PI, 0, Math.PI], 'clamp');
+    return interpolate(scrollX.get(), input, [-Math.PI, 0, Math.PI], 'clamp');
   });
 
   return (

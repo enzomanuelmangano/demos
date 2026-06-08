@@ -3,8 +3,8 @@ import { PixelRatio, Image } from 'react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
-import { SharedValue, withSpring } from 'react-native-reanimated';
-import { CanvasRef } from 'react-native-wgpu';
+import { SharedValue } from 'react-native-reanimated';
+import { CanvasRef } from 'react-native-webgpu';
 
 import {
   mosaicVertexShader,
@@ -111,7 +111,6 @@ interface UseWebGPUMosaicOptions {
   scale: SharedValue<number>;
   translateX: SharedValue<number>;
   translateY: SharedValue<number>;
-  animProgress: SharedValue<number>;
   currentRow: SharedValue<number>;
   currentCol: SharedValue<number>;
 }
@@ -125,6 +124,12 @@ export function useWebGPUMosaic(
   const isInitializedRef = useRef(false);
   const isLoadingAtlasesRef = useRef(false);
   const startTimeRef = useRef<number>(Date.now());
+  // Mosaic rearrange animation clock. Lives on the JS side, set in the same
+  // synchronous block that swaps the tile buffers: driving this through a
+  // reanimated shared value let the render loop read a stale 0 ("new
+  // positions") for one frame after the swap — the destination painting
+  // flashed fully formed before snapping back and animating.
+  const mosaicAnimStartRef = useRef<number | null>(null);
   const [gpuReady, setGpuReady] = useState(false);
 
   // Focus overlay intensity (1 when focused, 0 when not)
@@ -162,7 +167,6 @@ export function useWebGPUMosaic(
     scale,
     translateX,
     translateY,
-    animProgress,
     currentRow,
     currentCol,
   } = options;
@@ -321,6 +325,14 @@ export function useWebGPUMosaic(
       backgroundUniformBuffer,
     } = resourcesRef.current;
 
+    // Don't present until the tile buffers are populated: early frames would
+    // flash the bare background gradient (and issue draws with an instance
+    // count of 0) before the mosaic pops in — the first-frame flicker.
+    if (tileCount === 0) {
+      animationRef.current = requestAnimationFrame(render);
+      return;
+    }
+
     const time = (Date.now() - startTimeRef.current) / 1000;
 
     const {
@@ -333,8 +345,8 @@ export function useWebGPUMosaic(
     } = renderValuesRef.current;
 
     // Compute focused tile center in screen-relative coords
-    const focusRow = currentRow.value;
-    const focusCol = currentCol.value;
+    const focusRow = currentRow.get();
+    const focusCol = currentCol.get();
     const hasFocus = focusRow >= 0;
 
     const now = Date.now();
@@ -421,10 +433,22 @@ export function useWebGPUMosaic(
     uniformData[5] = ATLAS_HEIGHT;
     uniformData[6] = CONTRAST;
     uniformData[7] = time;
-    uniformData[8] = scale.value;
-    uniformData[9] = translateX.value;
-    uniformData[10] = translateY.value;
-    uniformData[11] = animProgress.value; // SharedValue: 1 = old positions, 0 = new positions
+    uniformData[8] = scale.get();
+    uniformData[9] = translateX.get();
+    uniformData[10] = translateY.get();
+    // Rearrange progress: 1 = old positions, 0 = new positions. Critically
+    // damped spring response, matching the previous withSpring(0,
+    // { duration: 1000, dampingRatio: 1 }).
+    let mosaicProgress = 0;
+    if (mosaicAnimStartRef.current != null) {
+      const tNorm = (Date.now() - mosaicAnimStartRef.current) / 1000;
+      if (tNorm >= 1) {
+        mosaicAnimStartRef.current = null;
+      } else {
+        mosaicProgress = (1 + 9 * tNorm) * Math.exp(-9 * tNorm);
+      }
+    }
+    uniformData[11] = mosaicProgress;
     uniformData[12] = ATLAS_COUNT; // All tiles visible immediately (no reveal animation)
     uniformData[13] = cw;
     uniformData[14] = ch;
@@ -490,7 +514,7 @@ export function useWebGPUMosaic(
     context.present();
 
     animationRef.current = requestAnimationFrame(render);
-  }, [scale, translateX, translateY, animProgress]);
+  }, [scale, translateX, translateY]);
 
   const initWebGPU = useCallback(async () => {
     if (!canvasRef.current || isInitializedRef.current) return;
@@ -905,14 +929,12 @@ export function useWebGPUMosaic(
     resourcesRef.current.tileCount = totalTileCount;
 
     if (hasAnimation) {
-      // Start animation: set to 1 (old positions) then animate to 0 (new positions)
-      animProgress.value = 1;
-      animProgress.value = withSpring(0, {
-        duration: 1000,
-        dampingRatio: 1,
-      });
+      // Start the rearrange clock in the same synchronous block as the buffer
+      // writes above — the next rendered frame starts exactly at progress 1
+      // (old positions, i.e. what is already on screen).
+      mosaicAnimStartRef.current = Date.now();
     } else {
-      animProgress.value = 0;
+      mosaicAnimStartRef.current = null;
     }
 
     // Save current photo positions (already screen-relative)

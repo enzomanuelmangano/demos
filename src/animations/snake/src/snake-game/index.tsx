@@ -61,7 +61,7 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     useImperativeHandle(ref, () => ({
       restart: () => {
         snakeGame.clear();
-        gameState.value = snakeGame.getState();
+        gameState.set(snakeGame.getState());
       },
     }));
 
@@ -82,19 +82,19 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     const updateGame = useCallback(() => {
       snakeGame.move();
 
-      gameState.value = snakeGame.getState();
+      gameState.set(snakeGame.getState());
     }, [gameState, snakeGame]);
 
     const lastTimestamp = useSharedValue(0);
     useFrameCallback(frameInfo => {
-      if (!frameInfo.timeSincePreviousFrame || gameState.value.isGameOver) {
+      if (!frameInfo.timeSincePreviousFrame || gameState.get().isGameOver) {
         return;
       }
 
       const { timestamp } = frameInfo;
-      if (timestamp - lastTimestamp.value > 120) {
+      if (timestamp - lastTimestamp.get() > 120) {
         scheduleOnRN(updateGame);
-        lastTimestamp.value = timestamp;
+        lastTimestamp.set(timestamp);
       }
     });
 
@@ -103,7 +103,7 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     }, [onGameOver]);
 
     useAnimatedReaction(
-      () => gameState.value.isGameOver,
+      () => gameState.get().isGameOver,
       isGameOver => {
         if (isGameOver) {
           scheduleOnRN(onGameOverWrapper);
@@ -119,7 +119,7 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     );
 
     useAnimatedReaction(
-      () => gameState.value.score,
+      () => gameState.get().score,
       (score, prevScore) => {
         if (prevScore !== score) {
           scheduleOnRN(onScoreChangeWrapper, score);
@@ -128,9 +128,9 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
     );
 
     const snakePath = useDerivedValue(() => {
-      const skPath = Skia.Path.Make();
-      gameState.value.snake.forEach(segment => {
-        skPath.addRRect(
+      const builder = Skia.PathBuilder.Make();
+      gameState.get().snake.forEach(segment => {
+        builder.addRRect(
           rrect(
             rect(segment.x, segment.y, squareSize, squareSize),
             squareSize / 2,
@@ -138,16 +138,16 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
           ),
         );
       });
-      return skPath;
-    }, [gameState.value.snake, squareSize]);
+      return builder.build();
+    }, [gameState.get().snake, squareSize]);
 
     const foodPath = useDerivedValue(() => {
-      const skPath = Skia.Path.Make();
-      skPath.addRRect(
+      const builder = Skia.PathBuilder.Make();
+      builder.addRRect(
         rrect(
           rect(
-            gameState.value.food?.x ?? 0,
-            gameState.value.food?.y ?? 0,
+            gameState.get().food?.x ?? 0,
+            gameState.get().food?.y ?? 0,
             squareSize,
             squareSize,
           ),
@@ -155,11 +155,11 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
           squareSize,
         ),
       );
-      return skPath;
-    }, [gameState.value.food?.x, gameState.value.food?.y, squareSize]);
+      return builder.build();
+    }, [gameState.get().food?.x, gameState.get().food?.y, squareSize]);
 
     const gameOverBlurMask = useDerivedValue(() => {
-      return withTiming(gameState.value.isGameOver ? 50 : 0, {
+      return withTiming(gameState.get().isGameOver ? 50 : 0, {
         duration: 1000,
       });
     }, []);

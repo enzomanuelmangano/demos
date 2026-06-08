@@ -53,21 +53,21 @@ const SortableItem: FC<SortableListItemProps> = ({
   const wasLastActiveIndex = useSharedValue(false);
 
   useAnimatedReaction(
-    () => animatedIndex.value,
+    () => animatedIndex.get(),
     currentActiveIndex => {
       if (currentActiveIndex) {
-        wasLastActiveIndex.value = currentActiveIndex === index;
+        wasLastActiveIndex.set(currentActiveIndex === index);
       }
     },
   );
 
   const isGestureActive = useDerivedValue(() => {
-    return animatedIndex.value === index;
+    return animatedIndex.get() === index;
   }, [index]);
 
   // Callback to get the position of a list item
   // The idea is very simple here:
-  // Imagine to have the positions.value map built as follows:
+  // Imagine to have the positions.get() map built as follows:
   // {
   //   0: 0,
   //   1: ITEM_HEIGHT,
@@ -85,8 +85,8 @@ const SortableItem: FC<SortableListItemProps> = ({
     (itemIndex: number) => {
       'worklet';
 
-      const itemPosition = positions.value[itemIndex];
-      const indexInOrderedPositions = Object.values(positions.value)
+      const itemPosition = positions.get()[itemIndex];
+      const indexInOrderedPositions = Object.values(positions.get())
         .sort((a, b) => a - b)
         .indexOf(itemPosition);
 
@@ -102,22 +102,22 @@ const SortableItem: FC<SortableListItemProps> = ({
     ({ absoluteY }: { absoluteY: number }) => {
       'worklet';
       const lowerBound = 1.5 * itemHeight;
-      const upperBound = scrollContentOffsetY.value + containerHeight;
+      const upperBound = scrollContentOffsetY.get() + containerHeight;
 
       // scroll speed is proportional to the item height (the bigger the item, the faster it scrolls)
       const scrollSpeed = itemHeight * 0.1;
 
       if (absoluteY <= lowerBound) {
         // while scrolling to the top of the list
-        const nextPosition = scrollContentOffsetY.value - scrollSpeed;
+        const nextPosition = scrollContentOffsetY.get() - scrollSpeed;
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
-      } else if (absoluteY + scrollContentOffsetY.value >= upperBound) {
+      } else if (absoluteY + scrollContentOffsetY.get() >= upperBound) {
         // while scrolling to the bottom of the list
-        const nextPosition = scrollContentOffsetY.value + scrollSpeed;
+        const nextPosition = scrollContentOffsetY.get() + scrollSpeed;
         scrollTo(scrollViewRef, 0, Math.max(nextPosition, 0), false);
       }
     },
-    [containerHeight, itemHeight, scrollContentOffsetY.value, scrollViewRef],
+    [containerHeight, itemHeight, scrollContentOffsetY.get(), scrollViewRef],
   );
 
   // Need to keep track of the previous positions to check if the positions have changed
@@ -128,57 +128,61 @@ const SortableItem: FC<SortableListItemProps> = ({
     .activateAfterLongPress(500)
     .onStart(({ translationX }) => {
       // Store the previous positions (before the gesture starts)
-      prevPositions.value = Object.assign({}, positions.value);
+      prevPositions.set(Object.assign({}, positions.get()));
 
-      animatedIndex.value = index;
+      animatedIndex.set(index);
       // Keep the reference of the initialContentOffset
-      // At the beginning I was missing the -scrollContentOffsetY.value.
+      // At the beginning I was missing the -scrollContentOffsetY.get().
       // But that's extremely important to handle the edge cases while scrolling
       // Notice:
-      // 1. In the context we subtract the scrollContentOffsetY.value
-      // 2. In the onUpdate we add the scrollContentOffsetY.value
-      // In the common case the contribution of the scrollContentOffsetY.value will be 0
-      // But in the edge cases the scrollContentOffsetY.value will be updated during the onUpdate
+      // 1. In the context we subtract the scrollContentOffsetY.get()
+      // 2. In the onUpdate we add the scrollContentOffsetY.get()
+      // In the common case the contribution of the scrollContentOffsetY.get() will be 0
+      // But in the edge cases the scrollContentOffsetY.get() will be updated during the onUpdate
       // and that's why we need to keep track of the initialContentOffset
       // That sounds trivial but it took me a lot of time to figure it out 😅
-      contextY.value = positions.value[index] - scrollContentOffsetY.value;
+      contextY.set(positions.get()[index] - scrollContentOffsetY.get());
 
-      translateX.value = translationX;
+      translateX.set(translationX);
       scheduleOnRN(lightHapticFeedback);
     })
     .onUpdate(({ translationY, translationX, absoluteY }) => {
-      translateX.value = translationX;
+      translateX.set(translationX);
 
-      const translateY = contextY.value + translationY;
+      const translateY = contextY.get() + translationY;
 
-      positions.value[index] = translateY + scrollContentOffsetY.value;
+      // Build the next positions immutably — mutating the object returned by
+      // get() modifies a value already shared with the worklet runtime.
+      positions.set({
+        ...positions.get(),
+        [index]: translateY + scrollContentOffsetY.get(),
+      });
 
       scrollLogic({ absoluteY });
-
-      positions.value = Object.assign({}, positions.value);
     })
     .onFinalize(() => {
-      translateX.value = withTiming(0, undefined, isFinished => {
-        const positionsHaveChanged = Object.entries(prevPositions.value).some(
-          ([key, value]) => {
-            return positions.value[+key] !== value;
-          },
-        );
+      translateX.set(
+        withTiming(0, undefined, isFinished => {
+          const positionsHaveChanged = Object.entries(prevPositions.get()).some(
+            ([key, value]) => {
+              return positions.get()[+key] !== value;
+            },
+          );
 
-        if (isFinished && onDragEnd && positionsHaveChanged) {
-          scheduleOnRN(onDragEnd, positions.value);
-        }
-      });
-      wasLastActiveIndex.value = true;
-      animatedIndex.value = null;
+          if (isFinished && onDragEnd && positionsHaveChanged) {
+            scheduleOnRN(onDragEnd, positions.get());
+          }
+        }),
+      );
+      wasLastActiveIndex.set(true);
+      animatedIndex.set(null);
     });
 
   const top = useDerivedValue(() => {
-    if (isGestureActive.value) return positions.value[index];
+    if (isGestureActive.get()) return positions.get()[index];
 
     const nextPosition = getPosition(index);
-    positions.value[index] = nextPosition;
-    positions.value = Object.assign({}, positions.value);
+    positions.set({ ...positions.get(), [index]: nextPosition });
 
     return withTiming(nextPosition, {
       duration: 200,
@@ -188,28 +192,28 @@ const SortableItem: FC<SortableListItemProps> = ({
   const getZIndex = useCallback(() => {
     'worklet';
     // If it's the active item, it should be on top of the other items
-    if (isGestureActive.value) return 100;
+    if (isGestureActive.get()) return 100;
 
     // After we have released the item, we want to keep it on top of the other items
     // until the animation is finished.
     // This is needed to avoid flickering of the item while the animation is running :)
-    if (wasLastActiveIndex.value) return 50;
+    if (wasLastActiveIndex.get()) return 50;
 
     return 0;
-  }, [isGestureActive.value, wasLastActiveIndex.value]);
+  }, [isGestureActive.get(), wasLastActiveIndex.get()]);
 
   const rStyle = useAnimatedStyle(() => {
     const zIndex = getZIndex();
 
     return {
-      top: top.value,
+      top: top.get(),
       transform: [
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
       ],
       zIndex: zIndex,
-      borderRadius: withTiming(isGestureActive.value ? 20 : 0, {
+      borderRadius: withTiming(isGestureActive.get() ? 20 : 0, {
         duration: 200,
       }),
     };

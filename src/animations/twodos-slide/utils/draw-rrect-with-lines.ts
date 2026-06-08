@@ -17,7 +17,7 @@ export const drawRRectWithLines = ({
   innerBorderRadius,
   internalSquarePathPadding,
 }: DrawRRectWithLinesParams) => {
-  const recreatedRoundedRectWithLines = Skia.Path.Make();
+  const recreatedRoundedRectWithLines = Skia.PathBuilder.Make();
   recreatedRoundedRectWithLines.moveTo(size / 2, internalSquarePathPadding);
   recreatedRoundedRectWithLines.lineTo(
     size - internalSquarePathPadding - innerBorderRadius,
@@ -72,5 +72,5 @@ export const drawRRectWithLines = ({
     -innerBorderRadius,
   );
   recreatedRoundedRectWithLines.close();
-  return recreatedRoundedRectWithLines;
+  return recreatedRoundedRectWithLines.build();
 };

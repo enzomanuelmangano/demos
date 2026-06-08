@@ -6,7 +6,7 @@ import {
   Canvas,
   LinearGradient,
   Path,
-  SkPath,
+  SkPathBuilder,
   usePathValue,
   vec,
 } from '@shopify/react-native-skia';
@@ -36,7 +36,7 @@ const createEnhancedFibonacciPath = (
   magicalMul: number,
   iTime: number,
   distance: number,
-  skPath: SkPath,
+  skPath: SkPathBuilder,
 ) => {
   'worklet';
   const centerX = CANVAS_WIDTH / 2;
@@ -113,19 +113,19 @@ const SphereWaves = () => {
       );
       historyRef.current.push(newValue);
       historyIndexRef.current = historyRef.current.length - 1;
-      magicalMul.value = newValue;
+      magicalMul.set(newValue);
       return;
     }
     // Go back in history
     if (historyIndexRef.current > 0) {
       historyIndexRef.current -= 1;
-      magicalMul.value = historyRef.current[historyIndexRef.current];
+      magicalMul.set(historyRef.current[historyIndexRef.current]);
     }
   });
 
   const pinchGesture = Gesture.Pinch()
     .onStart(() => {
-      savedDistance.value = distance.value;
+      savedDistance.set(distance.get());
     })
     .onUpdate(event => {
       if (event.scale < 0.3) {
@@ -138,26 +138,26 @@ const SphereWaves = () => {
         [80, 25, 2, 1, 0.05],
         Extrapolation.CLAMP,
       );
-      distance.value = savedDistance.value * multiplier;
+      distance.set(savedDistance.get() * multiplier);
     })
     .onEnd(() => {
-      distance.value = withSpring(300);
+      distance.set(withSpring(300));
     });
 
   const fibonacciPath = usePathValue(skPath => {
     'worklet';
     return createEnhancedFibonacciPath(
       N_ITEMS,
-      magicalMul.value,
-      iTime.value,
-      distance.value,
+      magicalMul.get(),
+      iTime.get(),
+      distance.get(),
       skPath,
     );
   });
 
   const animatedColors = useDerivedValue(() => {
     'worklet';
-    const time = iTime.value;
+    const time = iTime.get();
     const hueShift = (time * 40) % 360;
 
     return [
@@ -170,10 +170,12 @@ const SphereWaves = () => {
   }, [iTime]);
 
   useEffect(() => {
-    iTime.value = withRepeat(
-      withTiming(15, { duration: 50000, easing: Easing.linear }),
-      -1,
-      true,
+    iTime.set(
+      withRepeat(
+        withTiming(15, { duration: 50000, easing: Easing.linear }),
+        -1,
+        true,
+      ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

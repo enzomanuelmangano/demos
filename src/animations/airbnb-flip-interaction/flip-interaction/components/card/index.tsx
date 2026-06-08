@@ -47,8 +47,8 @@ export const FlipCard: FC<FlipCardProps> = memo(
       return withSpring(isFlipped ? 1 : 0, SPRING_CONFIG);
     }, [isFlipped]);
     const frontAnimatedStyle = useAnimatedStyle(() => {
-      const rotateY = interpolate(progress.value, [0, 1], [0, 180]);
-      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.95, 1]);
+      const rotateY = interpolate(progress.get(), [0, 1], [0, 180]);
+      const scale = interpolate(progress.get(), [0, 0.5, 1], [1, 0.95, 1]);
 
       return {
         transform: [
@@ -61,8 +61,8 @@ export const FlipCard: FC<FlipCardProps> = memo(
     }, [progress]);
 
     const backAnimatedStyle = useAnimatedStyle(() => {
-      const rotateY = interpolate(progress.value, [0, 1], [180, 360]);
-      const scale = interpolate(progress.value, [0, 0.5, 1], [1, 0.95, 1]);
+      const rotateY = interpolate(progress.get(), [0, 1], [180, 360]);
+      const scale = interpolate(progress.get(), [0, 0.5, 1], [1, 0.95, 1]);
 
       return {
         transform: [

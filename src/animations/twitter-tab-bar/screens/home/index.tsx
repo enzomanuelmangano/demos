@@ -18,13 +18,13 @@ const HomeScreen = () => {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
       const positiveOffsetY = Math.max(event.contentOffset.y, 0);
-      const positivePrevOffsetY = Math.max(prevContentOffsetY.value, 0);
+      const positivePrevOffsetY = Math.max(prevContentOffsetY.get(), 0);
 
       const isScrollingUp = positivePrevOffsetY - positiveOffsetY >= 0;
 
-      isActive.value = isScrollingUp;
+      isActive.set(isScrollingUp);
 
-      prevContentOffsetY.value = event.contentOffset.y;
+      prevContentOffsetY.set(event.contentOffset.y);
     },
   });
 

@@ -1,4 +1,5 @@
 import {
+  Keyboard,
   Pressable,
   StyleSheet,
   TextInput,
@@ -6,17 +7,14 @@ import {
   View,
 } from 'react-native';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import {
-  KeyboardStickyView,
-  useKeyboardHandler,
-} from 'react-native-keyboard-controller';
+import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { Canvas, CanvasRef } from 'react-native-wgpu';
+import { Canvas, CanvasRef } from 'react-native-webgpu';
 
 import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
 import { useWebGPU } from './hooks';
@@ -37,12 +35,20 @@ export const CherryBlossomQRCode = () => {
   useKeyboardHandler({
     onMove: e => {
       'worklet';
-      keyboardHeight.value = e.height;
+      keyboardHeight.set(e.height);
     },
   });
 
   const canvasWrapperStyle = useAnimatedStyle(() => ({
-    marginBottom: keyboardHeight.value,
+    marginBottom: keyboardHeight.get(),
+  }));
+
+  // Lift the input above the keyboard from the same shared value. This used
+  // to be a KeyboardStickyView, but its translation no longer applies on the
+  // new architecture (kirillzyusko/react-native-keyboard-controller#1411) —
+  // the input stayed hidden behind the keyboard.
+  const inputContainerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -keyboardHeight.get() }],
   }));
 
   // Initialize WebGPU rendering
@@ -59,8 +65,21 @@ export const CherryBlossomQRCode = () => {
     inputRef.current?.focus();
   }, []);
 
+  // Keep the keyboard up while the demo is on screen — but only then: an
+  // unconditional refocus runs after the unmount blur too, leaking the
+  // keyboard onto whatever screen comes next.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      Keyboard.dismiss();
+    };
+  }, []);
+
   const handleInputBlur = useCallback(() => {
     requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
       inputRef.current?.focus();
     });
   }, []);
@@ -75,7 +94,7 @@ export const CherryBlossomQRCode = () => {
           <Canvas ref={canvasRef} style={styles.canvas} />
         </Pressable>
       </Animated.View>
-      <KeyboardStickyView style={styles.inputContainer}>
+      <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
           ref={inputRef}
           style={styles.input}
@@ -93,7 +112,7 @@ export const CherryBlossomQRCode = () => {
           showSoftInputOnFocus={true}
           autoFocus
         />
-      </KeyboardStickyView>
+      </Animated.View>
     </View>
   );
 };

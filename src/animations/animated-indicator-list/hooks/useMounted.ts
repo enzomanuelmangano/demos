@@ -12,11 +12,11 @@ const useMounted = () => {
 
   useEffect(() => {
     runTimeout(() => {
-      mounted.value = true;
+      mounted.set(true);
     }, 100);
 
     return () => {
-      mounted.value = false;
+      mounted.set(false);
     };
   }, [mounted, runTimeout]);
   return mounted;

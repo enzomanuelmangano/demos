@@ -19,11 +19,11 @@ export const ColorCarousel = () => {
   const activeIndex = useSharedValue(INITIAL_ACTIVE_INDEX);
 
   const radialBackgroundActiveColor = useDerivedValue(() => {
-    return withTiming(data[activeIndex.value]?.accentColor ?? BACKGROUND_COLOR);
+    return withTiming(data[activeIndex.get()]?.accentColor ?? BACKGROUND_COLOR);
   }, []);
 
   const radialGradientColors = useDerivedValue(() => {
-    return [radialBackgroundActiveColor.value, BACKGROUND_COLOR];
+    return [radialBackgroundActiveColor.get(), BACKGROUND_COLOR];
   }, [radialBackgroundActiveColor]);
 
   return (

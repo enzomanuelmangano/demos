@@ -1,6 +1,6 @@
 import { Skia } from '@shopify/react-native-skia';
 
-import type { SkPath } from '@shopify/react-native-skia';
+import type { SkPathBuilder } from '@shopify/react-native-skia';
 
 // Just to be clear, I have no idea how this code works
 // I just copied it from it: https://github.com/samuel-rl/react-native-squircle/blob/main/src/utils/functions.ts
@@ -29,7 +29,7 @@ export interface SquirclePathParams extends SquircleParams {
 }
 
 export interface DrawSquirclePathParams extends SquirclePathParams {
-  path: SkPath;
+  path: SkPathBuilder;
   borderRadius: number;
 }
 
@@ -222,7 +222,7 @@ export const drawSquirclePath = ({
   width,
   height,
 }: SquircleParams) => {
-  const path = Skia.Path.Make();
+  const path = Skia.PathBuilder.Make();
   const defaultPathParams = getPathParamsForBorder({
     borderSmoothing,
     borderRadius,
@@ -246,5 +246,5 @@ export const drawSquirclePath = ({
     ...defaultPathParams,
   });
 
-  return path;
+  return path.build();
 };

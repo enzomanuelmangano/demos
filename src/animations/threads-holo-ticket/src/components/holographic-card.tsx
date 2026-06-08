@@ -45,7 +45,7 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
   // Calculate the center of the mask based on rotation AND device tilt
   const maskCenterX = useDerivedValue(() => {
-    const normalizedRotation = rotateY.value % 360;
+    const normalizedRotation = rotateY.get() % 360;
     const rotation =
       normalizedRotation < 0 ? normalizedRotation + 360 : normalizedRotation;
 
@@ -55,7 +55,7 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
     // Add offset based on device pitch (tilting forward/backward)
     const tiltOffsetX = interpolate(
-      smoothPitch.value,
+      smoothPitch.get(),
       [-Math.PI / 4, Math.PI / 4],
       [-width / 3, width / 3],
       Extrapolation.CLAMP,
@@ -67,7 +67,7 @@ export const HolographicCard: FC<HolographicCardProps> = ({
   const maskCenterY = useDerivedValue(() => {
     // Use device roll (tilting left/right) to shift Y position
     const tiltOffsetY = interpolate(
-      smoothRoll.value,
+      smoothRoll.get(),
       [-Math.PI / 4, Math.PI / 4],
       [-height / 3, height / 3],
       Extrapolation.CLAMP,
@@ -79,7 +79,7 @@ export const HolographicCard: FC<HolographicCardProps> = ({
   // Calculate mask opacity based on rotation angle
   const maskOpacity = useDerivedValue(() => {
     const normalizedRotation = interpolate(
-      Math.abs(rotateY.value),
+      Math.abs(rotateY.get()),
       [0, 90, 180, 270, 360],
       [0, 0.5, 0, 0.5, 0],
       Extrapolation.CLAMP,
@@ -116,10 +116,10 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
   // Create clip area with circular cutouts at top and bottom
   const clipArea = useMemo(() => {
-    const skPath = Skia.Path.Make();
-    skPath.addCircle(width / 2, 0, DotSize);
-    skPath.addCircle(width / 2, height, DotSize);
-    return skPath;
+    const builder = Skia.PathBuilder.Make();
+    builder.addCircle(width / 2, 0, DotSize);
+    builder.addCircle(width / 2, height, DotSize);
+    return builder.build();
   }, [height, width]);
 
   // Calculate grid dimensions for the pattern
@@ -129,29 +129,29 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
   // Create the grid pattern of circles
   const GridPath = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     for (let i = 0; i < LogoAmountHorizontal; i++) {
       for (let j = 0; j < LogoAmountVertical; j++) {
-        skPath.addCircle(
+        builder.addCircle(
           LogoSize / 2 + i * LogoSize,
           LogoSize / 2 + j * LogoSize,
           LogoSize / 2,
         );
       }
     }
-    return skPath;
+    return builder.build();
   }, [LogoAmountVertical, LogoSize]);
 
   // Gradient positions influenced by device tilt - subtle effect
   const gradientStart = useDerivedValue(() => {
     const x = interpolate(
-      smoothRoll.value,
+      smoothRoll.get(),
       [-Math.PI / 4, Math.PI / 4],
       [width * 0.1, width * 0.25],
       Extrapolation.CLAMP,
     );
     const y = interpolate(
-      smoothPitch.value,
+      smoothPitch.get(),
       [-Math.PI / 4, Math.PI / 4],
       [height * 0.1, height * 0.25],
       Extrapolation.CLAMP,
@@ -162,13 +162,13 @@ export const HolographicCard: FC<HolographicCardProps> = ({
 
   const gradientEnd = useDerivedValue(() => {
     const x = interpolate(
-      smoothRoll.value,
+      smoothRoll.get(),
       [-Math.PI / 4, Math.PI / 4],
       [width * 0.9, width * 0.75],
       Extrapolation.CLAMP,
     );
     const y = interpolate(
-      smoothPitch.value,
+      smoothPitch.get(),
       [-Math.PI / 4, Math.PI / 4],
       [height * 0.9, height * 0.75],
       Extrapolation.CLAMP,

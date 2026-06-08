@@ -45,14 +45,14 @@ function App() {
       'worklet';
 
       const result = nn.predict(ModelWeightsFlat, squaresGrid);
-      predictions.value = result;
+      predictions.set(result);
     },
     [predictions],
   );
 
   const gridRef = useRef<GridHandleRef>(null);
 
-  const finalOutput = useDerivedValue(() => predictions.value.finalOutput);
+  const finalOutput = useDerivedValue(() => predictions.get().finalOutput);
 
   return (
     <View style={styles.container}>

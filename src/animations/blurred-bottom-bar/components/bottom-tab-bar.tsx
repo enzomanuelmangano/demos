@@ -114,7 +114,7 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
                 index={index}
                 onPress={() => {
                   onTapIcon(index);
-                  focusedIndex.value = index;
+                  focusedIndex.set(index);
                 }}
               />
             );

@@ -38,15 +38,15 @@ const FourierVisualizer = forwardRef<
 
   const baseEpicycles = useSharedValue<ReturnType<typeof extractEpicycles>>([]);
 
-  const resultPath = useSharedValue(Skia.Path.Make());
-  const circlesPath = useSharedValue(Skia.Path.Make());
+  const resultPath = useSharedValue(Skia.PathBuilder.Make().build());
+  const circlesPath = useSharedValue(Skia.PathBuilder.Make().build());
 
   const opacity = useSharedValue(1);
 
   const draw = useCallback(
     ({ path, onComplete }: { path: SkPath; onComplete?: () => void }) => {
       'worklet';
-      opacity.value = withTiming(1);
+      opacity.set(withTiming(1));
 
       const points = getPoints(path);
 
@@ -58,25 +58,27 @@ const FourierVisualizer = forwardRef<
         (a, b) => b.amplitude - a.amplitude,
       );
 
-      baseEpicycles.value = extractedEpicycles;
+      baseEpicycles.set(extractedEpicycles);
 
-      resultPath.value.reset();
-      time.value = 0;
+      resultPath.set(Skia.PathBuilder.Make().build());
+      time.set(0);
 
-      time.value = withTiming(
-        2 * Math.PI - 0.05,
-        {
-          duration: 20000,
-          easing: Easing.linear,
-        },
-        finished => {
-          if (finished) {
-            opacity.value = withTiming(0);
-            if (onComplete) {
-              scheduleOnRN(onComplete);
+      time.set(
+        withTiming(
+          2 * Math.PI - 0.05,
+          {
+            duration: 20000,
+            easing: Easing.linear,
+          },
+          finished => {
+            if (finished) {
+              opacity.set(withTiming(0));
+              if (onComplete) {
+                scheduleOnRN(onComplete);
+              }
             }
-          }
-        },
+          },
+        ),
       );
     },
     [baseEpicycles, time, opacity, resultPath],
@@ -85,7 +87,7 @@ const FourierVisualizer = forwardRef<
   const epicyclePositions = useSharedValue<{ x: number; y: number }[]>([]);
 
   useAnimatedReaction(
-    () => [time.value, baseEpicycles.value] as const,
+    () => [time.get(), baseEpicycles.get()] as const,
     ([newTime, epicycles]) => {
       if (epicycles.length === 0) return;
 
@@ -107,18 +109,18 @@ const FourierVisualizer = forwardRef<
         cumulativeY = y;
       }
 
-      epicyclePositions.value = positions;
+      epicyclePositions.set(positions);
     },
   );
 
   const clear = useCallback(() => {
     'worklet';
-    opacity.value = 0;
-    baseEpicycles.value = [];
-    epicyclePositions.value = [];
-    resultPath.value.reset();
+    opacity.set(0);
+    baseEpicycles.set([]);
+    epicyclePositions.set([]);
+    resultPath.set(Skia.PathBuilder.Make().build());
     cancelAnimation(time);
-    time.value = 0;
+    time.set(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opacity, baseEpicycles, epicyclePositions, time]);
 
@@ -132,14 +134,15 @@ const FourierVisualizer = forwardRef<
   );
 
   const drawPath = useDerivedValue(() => {
-    const skPath = Skia.Path.Make();
-    circlesPath.value.reset();
+    const skPathBuilder = Skia.PathBuilder.Make();
+    const circlesBuilder = Skia.PathBuilder.Make();
 
-    const positions = epicyclePositions.value;
-    const epicycles = baseEpicycles.value;
+    const positions = epicyclePositions.get();
+    const epicycles = baseEpicycles.get();
 
     if (positions.length === 0 || epicycles.length === 0) {
-      return skPath;
+      circlesPath.set(circlesBuilder.build());
+      return skPathBuilder.build();
     }
 
     let finalX = 0;
@@ -151,30 +154,32 @@ const FourierVisualizer = forwardRef<
 
       if (index > 0) {
         const { x: prevX, y: prevY } = positions[index - 1];
-        circlesPath.value.addCircle(prevX, prevY, amplitude);
+        circlesBuilder.addCircle(prevX, prevY, amplitude);
       }
 
-      const lastSkiaPathPt = skPath.getLastPt();
-      if (lastSkiaPathPt.x === 0 && lastSkiaPathPt.y === 0) {
-        skPath.moveTo(x, y);
+      if (skPathBuilder.isEmpty()) {
+        skPathBuilder.moveTo(x, y);
       } else {
-        skPath.lineTo(x, y);
+        skPathBuilder.lineTo(x, y);
       }
 
       finalX = x;
       finalY = y;
     }
 
+    circlesPath.set(circlesBuilder.build());
+
     if (finalX !== 0 || finalY !== 0) {
-      const lastResultPathPt = resultPath.value.getLastPt();
-      if (lastResultPathPt.x === 0 && lastResultPathPt.y === 0) {
-        resultPath.value.moveTo(finalX, finalY);
+      const resultBuilder = Skia.PathBuilder.MakeFromPath(resultPath.get());
+      if (resultBuilder.isEmpty()) {
+        resultBuilder.moveTo(finalX, finalY);
       } else {
-        resultPath.value.lineTo(finalX, finalY);
+        resultBuilder.lineTo(finalX, finalY);
       }
+      resultPath.set(resultBuilder.build());
     }
 
-    return skPath;
+    return skPathBuilder.build();
   });
 
   return (

@@ -34,19 +34,19 @@ const EmailDemo = () => {
     useAnimatedShake();
 
   const onDelete = useCallback(() => {
-    if (erasedItems.value >= INITIAL_ITEMS.length) {
+    if (erasedItems.get() >= INITIAL_ITEMS.length) {
       shakeDelete();
       return;
     }
-    erasedItems.value = erasedItems.value + 1;
+    erasedItems.set(erasedItems.get() + 1);
   }, [erasedItems, shakeDelete]);
 
   const onRestore = useCallback(() => {
-    if (erasedItems.value <= 0) {
+    if (erasedItems.get() <= 0) {
       shakeRestore();
       return;
     }
-    erasedItems.value = erasedItems.value - 1;
+    erasedItems.set(erasedItems.get() - 1);
   }, [erasedItems, shakeRestore]);
 
   return (

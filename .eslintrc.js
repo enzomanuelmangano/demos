@@ -17,6 +17,7 @@ module.exports = {
     'prettier',
     'pressto',
     'refined',
+    'local-rules',
   ],
   ignorePatterns: [
     'node_modules/',
@@ -45,6 +46,8 @@ module.exports = {
     'refined/avoid-touchable-opacity': 'warn',
 
     'pressto/require-worklet-directive': 'error',
+    // Shared values: enforce .get()/.set() over .value (type-aware local rule)
+    'local-rules/no-shared-value-dot-value': 'error',
     '@typescript-eslint/explicit-module-boundary-types': 'off',
     'import/no-useless-path-segments': 'off',
     'no-unused-vars': 'off',

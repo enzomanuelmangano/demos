@@ -2,9 +2,9 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useCallback, useRef } from 'react';
 
-import { DrawerActions, useNavigation } from '@react-navigation/native';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useNavigation } from 'expo-router';
 import { Drawer } from 'expo-router/drawer';
+import { DrawerActions } from 'expo-router/react-navigation';
 import { PressableScale, PressableWithoutFeedback } from 'pressto';
 
 import {

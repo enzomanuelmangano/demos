@@ -39,7 +39,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
      * Interpolates the scaleX value based on the scrollOffset and inputRange.
      *
      * interpolate function:
-     * - The first argument is the animated value that drives the interpolation, scrollOffset.value in this case.
+     * - The first argument is the animated value that drives the interpolation, scrollOffset.get() in this case.
      * - The second argument is the input range, which specifies the points at which the output values should change.
      * - The third argument is the output range, which specifies the values that should correspond to the points in the input range.
      * - The optional fourth argument is the extrapolation type, which determines how values outside the input range are handled.
@@ -51,7 +51,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
      * - Beyond the center, scaleX decreases again, making the images smaller.
      */
     const scaleX = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       [0.1, 0.125, 0.2, 1, 0.2, 0.125, 0.1],
       Extrapolation.CLAMP,
@@ -62,7 +62,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
      * This changes the vertical scale of the image as it moves through the carousel.
      */
     const scaleY = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       inputRange,
       [0.6, 0.8, 0.9, 1, 0.9, 0.8, 0.6],
     );
@@ -71,7 +71,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
      * Interpolates the translateX value to move the images horizontally.
      * This shifts the images left and right as the carousel scrolls.
      */
-    const translateX = interpolate(scrollOffset.value, inputRange, [
+    const translateX = interpolate(scrollOffset.get(), inputRange, [
       -itemWidth * 1.9,
       -itemWidth / 0.93,
       -itemWidth / 3.3,
@@ -86,7 +86,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
      * The images have a smaller border radius when they are the center item.
      */
     const maxBorderRadius = 25;
-    const borderRadius = interpolate(scrollOffset.value, inputRange, [
+    const borderRadius = interpolate(scrollOffset.get(), inputRange, [
       maxBorderRadius,
       maxBorderRadius,
       maxBorderRadius,
@@ -101,7 +101,7 @@ export const CarouselItem: React.FC<CarouselItemProps> = ({
      * The opacity decreases as the images move further away from the center item.
      */
     const opacity = interpolate(
-      scrollOffset.value,
+      scrollOffset.get(),
       [
         (index - 3) * itemWidth - 100,
         ...inputRange,

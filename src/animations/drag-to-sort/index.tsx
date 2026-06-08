@@ -70,7 +70,7 @@ const App = () => {
           paddingTop: safeTop,
         }}
         onAnimatedIndexChange={index => {
-          currentActiveIndex.value = index;
+          currentActiveIndex.set(index);
         }}
         onDragEnd={onDragEnd}
         backgroundItem={

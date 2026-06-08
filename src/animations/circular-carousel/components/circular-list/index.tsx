@@ -19,7 +19,7 @@ const CircularList: FC<CircularListProps> = ({ data, scaleEnabled }) => {
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      contentOffset.value = event.contentOffset.x;
+      contentOffset.set(event.contentOffset.x);
     },
   });
 

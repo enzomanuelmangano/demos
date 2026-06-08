@@ -32,18 +32,18 @@ const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const clipPath = useMemo(() => {
-    const skPath = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
     const x = windowWidth / 2 - 150;
     const y = windowHeight / 2 - 100;
     const width = 300;
     const height = 200;
     const r = 20;
-    skPath.addRRect(rrect(rect(x, y, width, height), r, r));
-    return skPath;
+    builder.addRRect(rrect(rect(x, y, width, height), r, r));
+    return builder.build();
   }, [windowWidth, windowHeight]);
 
   const blur = useDerivedValue(() => {
-    return Math.max(5 * blurredProgress.value, 0);
+    return Math.max(5 * blurredProgress.get(), 0);
   });
 
   return (
@@ -82,17 +82,17 @@ export const BlurCards = () => {
           const transform = useDerivedValue(() => {
             return [
               {
-                rotate: (-Math.PI / 2) * progress.value,
+                rotate: (-Math.PI / 2) * progress.get(),
               },
               {
-                translateX: 25 * index * progress.value,
+                translateX: 25 * index * progress.get(),
               },
               { perspective: 10000 },
               {
-                rotateY: (Math.PI / 3) * progress.value,
+                rotateY: (Math.PI / 3) * progress.get(),
               },
               {
-                rotate: (Math.PI / 4) * progress.value,
+                rotate: (Math.PI / 4) * progress.get(),
               },
             ];
           }, [index]);
@@ -110,10 +110,12 @@ export const BlurCards = () => {
       <PressableOpacity
         style={StyleSheet.absoluteFill}
         onPress={() => {
-          progress.value = withSpring(progress.value > 0.5 ? 0 : 1, {
-            duration: 1500,
-            dampingRatio: 0.7,
-          });
+          progress.set(
+            withSpring(progress.get() > 0.5 ? 0 : 1, {
+              duration: 1500,
+              dampingRatio: 0.7,
+            }),
+          );
         }}
       />
     </View>

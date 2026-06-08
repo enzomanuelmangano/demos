@@ -36,9 +36,9 @@ const SectionTabs: FC<SectionTabsProps> = memo(
     const rIndicatorLayoutStyle = useAnimatedStyle(() => {
       return {
         position: 'absolute',
-        top: indicatorLayout.value.y + height - 35,
-        left: indicatorLayout.value.x,
-        width: indicatorLayout.value.width,
+        top: indicatorLayout.get().y + height - 35,
+        left: indicatorLayout.get().x,
+        width: indicatorLayout.get().width,
         height: 2,
         backgroundColor: 'black',
         zIndex: 10,

@@ -40,44 +40,46 @@ const useCurrentPlayingValue = ({
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {
-      touchedX.value = event.x;
-      isDragging.value = true;
+      touchedX.set(event.x);
+      isDragging.set(true);
     })
     .onUpdate(event => {
-      touchedX.value = event.x;
+      touchedX.set(event.x);
     })
     .onFinalize(() => {
-      isDragging.value = false;
+      isDragging.set(false);
     });
 
   // At the beginning, the animation is runned.
   useEffect(() => {
-    currentX.value = withTiming(waveformContentWidth, {
-      duration: DURATION * 1000,
-      easing: Easing.linear,
-    });
+    currentX.set(
+      withTiming(waveformContentWidth, {
+        duration: DURATION * 1000,
+        easing: Easing.linear,
+      }),
+    );
   }, [currentX, waveformContentWidth]);
 
   useAnimatedReaction(
     () => {
-      return touchedX.value;
+      return touchedX.get();
     },
     // eslint-disable-next-line @typescript-eslint/no-shadow
     (touchedX, prevTouchedX) => {
-      if (touchedX === prevTouchedX || !isDragging.value) {
+      if (touchedX === prevTouchedX || !isDragging.get()) {
         return;
       }
       // If we interact with the waveform scrubber,
       // we want to cancel the animation
       // started in the useEffect above
       cancelAnimation(currentX);
-      currentX.value = touchedX;
+      currentX.set(touchedX);
     },
   );
 
   useAnimatedReaction(
     () => {
-      return isDragging.value;
+      return isDragging.get();
     },
     (isTouching, prevIsTouching) => {
       if (isTouching === prevIsTouching) {
@@ -90,12 +92,14 @@ const useCurrentPlayingValue = ({
         // from the current value of the scrubber (not from 0)
         // So we need to calculate the remaining seconds
         const remainingSeconds =
-          DURATION * (1 - currentX.value / waveformContentWidth);
+          DURATION * (1 - currentX.get() / waveformContentWidth);
 
-        currentX.value = withTiming(waveformContentWidth, {
-          duration: remainingSeconds * 1000,
-          easing: Easing.linear,
-        });
+        currentX.set(
+          withTiming(waveformContentWidth, {
+            duration: remainingSeconds * 1000,
+            easing: Easing.linear,
+          }),
+        );
       }
     },
     [waveformContentWidth],

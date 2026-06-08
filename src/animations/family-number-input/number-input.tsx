@@ -72,7 +72,7 @@ const styles = StyleSheet.create({
   },
   gradient: {
     bottom: 0,
-    height: '50%',
+    height: '38%',
     left: 0,
     position: 'absolute',
     right: 0,

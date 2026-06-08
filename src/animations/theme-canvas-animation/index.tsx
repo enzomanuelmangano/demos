@@ -28,19 +28,22 @@ const colors = [
   { background: '#902D41', text: '#DEDEDE' },
 ];
 
+// Fixed grid layout — hoisted so the render can map over it without reading
+// the derived coordinates shared value during render.
+const SQUARE_OFFSETS = [
+  { offsetX: -1, offsetY: 0 },
+  { offsetX: 0, offsetY: 0 },
+  { offsetX: 1, offsetY: 0 },
+  { offsetX: 0, offsetY: 1 },
+  { offsetX: -1, offsetY: 1 },
+  { offsetX: 1, offsetY: 1 },
+];
+
 const ThemeScreen = () => {
   const { height: canvasHeight, width: canvasWidth } = useWindowDimensions();
 
   const coordinates = useDerivedValue(() => {
-    const squares = [
-      { offsetX: -1, offsetY: 0 },
-      { offsetX: 0, offsetY: 0 },
-      { offsetX: 1, offsetY: 0 },
-      { offsetX: 0, offsetY: 1 },
-      { offsetX: -1, offsetY: 1 },
-      { offsetX: 1, offsetY: 1 },
-    ];
-    return squares.map(({ offsetX, offsetY }) => ({
+    return SQUARE_OFFSETS.map(({ offsetX, offsetY }) => ({
       cx: canvasWidth / 2 - SQUARE_SIZE / 2 + offsetX * SQUARE_SIZE * 2,
       cy: canvasHeight / 2 - SQUARE_SIZE / 2 + offsetY * SQUARE_SIZE * 2,
     }));
@@ -50,47 +53,49 @@ const ThemeScreen = () => {
   const previousSelectedIndex = useSharedValue(0);
 
   const selectedBackgroundColor = useDerivedValue(() => {
-    return colors[selectedIndex.value]?.background || 'black';
+    return colors[selectedIndex.get()]?.background || 'black';
   }, [colors, selectedIndex]);
 
   const previousSelectedBackgroundColor = useDerivedValue(() => {
-    return colors[previousSelectedIndex.value]?.background || 'black';
+    return colors[previousSelectedIndex.get()]?.background || 'black';
   }, [colors, previousSelectedIndex]);
 
   const radius = useSharedValue(0);
 
   const clipPath = useDerivedValue(() => {
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    const x = coordinates.value[selectedIndex.value]?.cx ?? 0;
-    const y = coordinates.value[selectedIndex.value]?.cy ?? 0;
-    path.addCircle(x + SQUARE_SIZE / 2, y + SQUARE_SIZE / 2, radius.value);
-    return path;
+    const x = coordinates.get()[selectedIndex.get()]?.cx ?? 0;
+    const y = coordinates.get()[selectedIndex.get()]?.cy ?? 0;
+    builder.addCircle(x + SQUARE_SIZE / 2, y + SQUARE_SIZE / 2, radius.get());
+    return builder.build();
   }, [selectedIndex, coordinates, radius]);
 
   const onSelectSquare = useCallback(
     (index: number) => {
-      if (index === selectedIndex.value) return;
+      if (index === selectedIndex.get()) return;
 
-      radius.value = 0;
+      radius.set(0);
       scheduleOnRN(Haptics.selectionAsync);
 
-      radius.value = withSpring(
-        canvasHeight,
-        {
-          duration: 1000,
-          dampingRatio: 1,
-        },
-        isFinished => {
-          if (isFinished) {
-            previousSelectedIndex.value = index;
-            radius.value = 0;
-          }
-        },
+      radius.set(
+        withSpring(
+          canvasHeight,
+          {
+            duration: 1000,
+            dampingRatio: 1,
+          },
+          isFinished => {
+            if (isFinished) {
+              previousSelectedIndex.set(index);
+              radius.set(0);
+            }
+          },
+        ),
       );
 
-      previousSelectedIndex.value = selectedIndex.value;
-      selectedIndex.value = index;
+      previousSelectedIndex.set(selectedIndex.get());
+      selectedIndex.set(index);
     },
     [selectedIndex, previousSelectedIndex, canvasHeight, radius],
   );
@@ -107,11 +112,11 @@ const ThemeScreen = () => {
   }, [canvasWidth, font]);
 
   const selectedTextColor = useDerivedValue(() => {
-    return colors[selectedIndex.value]?.text || 'black';
+    return colors[selectedIndex.get()]?.text || 'black';
   }, [colors, selectedIndex]);
 
   const previousSelectedTextColor = useDerivedValue(() => {
-    return colors[previousSelectedIndex.value]?.text || 'black';
+    return colors[previousSelectedIndex.get()]?.text || 'black';
   }, [colors, previousSelectedIndex]);
 
   const BackgroundComponent = useCallback(
@@ -158,7 +163,7 @@ const ThemeScreen = () => {
           textColor: selectedTextColor,
         })}
       </Group>
-      {coordinates.value.map((_, index) => (
+      {SQUARE_OFFSETS.map((_, index) => (
         <SelectableSquareContainer
           color={colors[index]?.background || 'black'}
           key={index}

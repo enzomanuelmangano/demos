@@ -38,8 +38,8 @@ export const getLinesPath = (params: {
     scrollOffset,
   } = params;
 
-  // Creating a new Skia path
-  const skPath = Skia.Path.Make();
+  // Creating a new Skia path builder
+  const skPath = Skia.PathBuilder.Make();
 
   // Looping through linesAmount + 1 times to generate paths for lines
   for (let i = 0; i < linesAmount + 1; i++) {
@@ -57,7 +57,7 @@ export const getLinesPath = (params: {
     const offsetX = i * spacePerLine;
 
     // Determining the base scroll view position
-    const baseScrollView = -scrollOffset.value + ScreenWidth / 2;
+    const baseScrollView = -scrollOffset.get() + ScreenWidth / 2;
 
     // Skipping iteration if line is outside the visible area
     if (
@@ -68,7 +68,7 @@ export const getLinesPath = (params: {
     }
 
     // Calculating the scroll offset for current line
-    const scrollOffsetX = offsetX + scrollOffset.value;
+    const scrollOffsetX = offsetX + scrollOffset.get();
 
     // Creating a rounded rectangle representing the line
     const roundedRect = rrect(
@@ -82,5 +82,5 @@ export const getLinesPath = (params: {
   }
 
   // Returning the generated Skia path
-  return skPath;
+  return skPath.build();
 };

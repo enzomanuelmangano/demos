@@ -46,8 +46,8 @@ const getScaledPolygonPath = ({
   radius,
 }: GetScaledPolygonPath) => {
   'worklet';
-  // Creating a Skia path for the chart canvas
-  const chartCanvas = Skia.Path.Make();
+  // Creating a Skia path builder for the chart canvas
+  const chartCanvas = Skia.PathBuilder.Make();
 
   // Calculating the angle step between each point on the polygon
   const angleStep = (2 * Math.PI) / values.length;
@@ -73,7 +73,7 @@ const getScaledPolygonPath = ({
   chartCanvas.close();
 
   // Returning the chart canvas path
-  return chartCanvas;
+  return chartCanvas.build();
 };
 
 // Exporting the function

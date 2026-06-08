@@ -56,8 +56,8 @@ export const AppItem: React.FC<AppItemProps> = ({
 
   // Controls visibility and interactivity of delete button based on shaking state
   const rDeleteButtonContainerStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(isShaking.value ? 1 : 0),
-    pointerEvents: isShaking.value ? 'auto' : 'none',
+    opacity: withTiming(isShaking.get() ? 1 : 0),
+    pointerEvents: isShaking.get() ? 'auto' : 'none',
   }));
 
   return (

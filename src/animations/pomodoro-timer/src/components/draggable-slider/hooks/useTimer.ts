@@ -42,8 +42,8 @@ export const useTimer = ({
       }
 
       // Enable the timer and reset progress
-      isTimerEnabled.value = true;
-      progress.value = withTiming(0, { duration: 500 });
+      isTimerEnabled.set(true);
+      progress.set(withTiming(0, { duration: 500 }));
 
       // Wait for a short delay before starting the timer
       await new Promise(resolve => setTimeout(resolve, 300));
@@ -56,7 +56,7 @@ export const useTimer = ({
       // package link: https://github.com/ocetnik/react-native-background-timer
       timerRef.current = setInterval(() => {
         counter.current += 1;
-        progress.value -= incrementOffset;
+        progress.set(progress.get() - incrementOffset);
 
         // Check if timer has reached the target value
         if (counter.current >= toValue) {
@@ -71,7 +71,7 @@ export const useTimer = ({
   );
 
   const stopTimer = useCallback(() => {
-    isTimerEnabled.value = false;
+    isTimerEnabled.set(false);
     if (!timerRef.current) {
       return;
     }
@@ -79,8 +79,8 @@ export const useTimer = ({
   }, [clearCounter, isTimerEnabled]);
 
   const resetTimer = useCallback(() => {
-    isTimerEnabled.value = false;
-    progress.value = withTiming(0, { duration: 500 });
+    isTimerEnabled.set(false);
+    progress.set(withTiming(0, { duration: 500 }));
     clearCounter();
   }, [clearCounter, isTimerEnabled, progress]);
 

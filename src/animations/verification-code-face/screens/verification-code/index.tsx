@@ -40,7 +40,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
     return {
       transform: [
         {
-          translateY: keyboardHeight.value / 2,
+          translateY: keyboardHeight.get() / 2,
         },
       ],
     };
@@ -62,7 +62,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 
   const resetCode = useCallback(() => {
     setTimeout(() => {
-      verificationStatus.value = 'inProgress';
+      verificationStatus.set('inProgress');
       setCode([]);
       invisibleTextInputRef.current?.clear();
       iconSquareRef.current?.normal();
@@ -70,7 +70,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
   }, [verificationStatus]);
 
   const onWrongCodeWrapper = useCallback(() => {
-    verificationStatus.value = 'wrong';
+    verificationStatus.set('wrong');
     shake();
     resetCode();
     onWrongCode?.();
@@ -78,7 +78,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
   }, [onWrongCode, resetCode, shake, verificationStatus]);
 
   const onCorrectCodeWrapper = useCallback(() => {
-    verificationStatus.value = 'correct';
+    verificationStatus.set('correct');
     resetCode();
     onCorrectCode?.();
     iconSquareRef.current?.happy();
@@ -137,7 +137,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
             onWrongCodeWrapper();
             return;
           }
-          verificationStatus.value = 'inProgress';
+          verificationStatus.set('inProgress');
         }}
         keyboardType="number-pad"
         autoFocus

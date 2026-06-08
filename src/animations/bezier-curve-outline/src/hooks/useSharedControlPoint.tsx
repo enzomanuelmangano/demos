@@ -8,11 +8,11 @@ type Point = {
 export const useSharedControlPoint = (initialPoint: Point) => {
   const controlPoint = useSharedValue(initialPoint);
   const cx = useDerivedValue(() => {
-    return controlPoint.value.x;
+    return controlPoint.get().x;
   });
 
   const cy = useDerivedValue(() => {
-    return controlPoint.value.y;
+    return controlPoint.get().y;
   });
 
   return { controlPoint, cx, cy };

@@ -33,10 +33,12 @@ export const PaperFolding = () => {
         globalHandlers={{}}
         onPress={() => {
           paperFoldingHaptics();
-          progress.value = withSpring(progress.value > 0.5 ? 0 : 1, {
-            duration: 1000,
-            dampingRatio: 1.5,
-          });
+          progress.set(
+            withSpring(progress.get() > 0.5 ? 0 : 1, {
+              duration: 1000,
+              dampingRatio: 1.5,
+            }),
+          );
         }}
       />
     </View>

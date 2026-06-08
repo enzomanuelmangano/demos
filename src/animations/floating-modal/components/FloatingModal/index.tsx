@@ -26,7 +26,7 @@ const FloatingModal: FC = memo(() => {
   // This derived value is responsible to handle the modal progress
   // That's super useful in order to interpolate things nicely
   const progress = useDerivedValue<number>(() => {
-    return withTiming(isOpened.value ? 1 : 0);
+    return withTiming(isOpened.get() ? 1 : 0);
   }, []);
 
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -35,7 +35,7 @@ const FloatingModal: FC = memo(() => {
 
   const maxDistance = Math.sqrt(screenWidth ** 2 + screenHeight ** 2);
   const scale = useDerivedValue(() => {
-    const distance = Math.sqrt(translateX.value ** 2 + translateY.value ** 2);
+    const distance = Math.sqrt(translateX.get() ** 2 + translateY.get() ** 2);
     // The purpose of this is to normalize the distance
     // In order to get a proper scale (0 ~ 1)
     const normalizedDistance = distance / maxDistance; // 0 ~ 1
@@ -47,28 +47,32 @@ const FloatingModal: FC = memo(() => {
   const panGesture = Gesture.Pan()
     .onUpdate(({ translationX, translationY }) => {
       // Ignore if the modal is closed
-      if (!isOpened.value) return;
+      if (!isOpened.get()) return;
 
-      translateX.value = translationX;
-      translateY.value = translationY;
+      translateX.set(translationX);
+      translateY.set(translationY);
     })
     .onFinalize(event => {
       // Ignore if the modal is closed
-      if (!isOpened.value) return;
+      if (!isOpened.get()) return;
 
       const isDraggingDown = event.translationY > 0;
-      const isDraggingDownEnoughToClose = isDraggingDown && scale.value < 0.95;
+      const isDraggingDownEnoughToClose = isDraggingDown && scale.get() < 0.95;
 
       if (isDraggingDownEnoughToClose) {
-        isOpened.value = false;
+        isOpened.set(false);
       }
 
-      translateX.value = withSpring(0, {
-        overshootClamping: true,
-      });
-      translateY.value = withSpring(0, {
-        overshootClamping: true,
-      });
+      translateX.set(
+        withSpring(0, {
+          overshootClamping: true,
+        }),
+      );
+      translateY.set(
+        withSpring(0, {
+          overshootClamping: true,
+        }),
+      );
     });
 
   // This style has the responsability to animate the modal
@@ -81,26 +85,26 @@ const FloatingModal: FC = memo(() => {
   // The translations and the scale are handled by the panGesture
   const rOpenedModalStyle = useAnimatedStyle(() => {
     const size = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [FLOATING_BUTTON_SIZE, screenWidth * 0.9],
       Extrapolation.CLAMP,
     );
     const rightDistance = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [FLOATING_BUTTON_SIZE / 2, screenWidth * 0.05],
       Extrapolation.CLAMP,
     );
     const bottomDistance = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [FLOATING_BUTTON_SIZE / 2, screenHeight / 2 - size / 2],
       Extrapolation.CLAMP,
     );
 
     const borderRadius = interpolate(
-      progress.value,
+      progress.get(),
       [0, 1],
       [32, 15],
       Extrapolation.CLAMP,
@@ -114,13 +118,13 @@ const FloatingModal: FC = memo(() => {
       borderRadius: borderRadius,
       transform: [
         {
-          scale: scale.value,
+          scale: scale.get(),
         },
         {
-          translateX: translateX.value,
+          translateX: translateX.get(),
         },
         {
-          translateY: translateY.value,
+          translateY: translateY.get(),
         },
       ],
     };
@@ -129,7 +133,7 @@ const FloatingModal: FC = memo(() => {
   // That's a derived value that is responsible to handle
   // the backdrop and modal interactions/visibility
   const isModalVisible = useDerivedValue(() => {
-    return progress.value === 1;
+    return progress.get() === 1;
   }, []);
 
   return (
@@ -137,7 +141,7 @@ const FloatingModal: FC = memo(() => {
       <AnimatedBackdrop
         isVisible={isModalVisible}
         onBackdropPress={() => {
-          isOpened.value = !isOpened.value;
+          isOpened.set(!isOpened.get());
         }}
       />
       <GestureDetector gesture={panGesture}>
@@ -154,7 +158,7 @@ const FloatingModal: FC = memo(() => {
           <AddCloseIcon
             progress={progress}
             onPress={() => {
-              isOpened.value = !isOpened.value;
+              isOpened.set(!isOpened.get());
             }}
           />
           <Animated.View />

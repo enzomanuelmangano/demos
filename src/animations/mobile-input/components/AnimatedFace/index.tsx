@@ -44,23 +44,23 @@ const AnimatedFace = forwardRef<AnimatedFaceRefType>((_, ref) => {
   };
 
   const happy = useCallback(() => {
-    mouthProgress.value = withSpring(1, runTimingConfig);
+    mouthProgress.set(withSpring(1, runTimingConfig));
   }, [mouthProgress]);
 
   const sad = useCallback(() => {
-    mouthProgress.value = withSpring(0, runTimingConfig);
+    mouthProgress.set(withSpring(0, runTimingConfig));
   }, [mouthProgress]);
 
   const closeEyes = useCallback(() => {
-    eyesProgress.value = withSpring(0, runTimingConfig);
+    eyesProgress.set(withSpring(0, runTimingConfig));
   }, [eyesProgress]);
 
   const openEyes = useCallback(() => {
-    eyesProgress.value = withSpring(1, runTimingConfig);
+    eyesProgress.set(withSpring(1, runTimingConfig));
   }, [eyesProgress]);
 
   const reset = useCallback(() => {
-    mouthProgress.value = withSpring(0.5, runTimingConfig);
+    mouthProgress.set(withSpring(0.5, runTimingConfig));
     closeEyes();
   }, [mouthProgress, closeEyes]);
 
@@ -73,15 +73,15 @@ const AnimatedFace = forwardRef<AnimatedFaceRefType>((_, ref) => {
   ]);
 
   const eyeRadius = useDerivedValue(() => {
-    return interpolate(eyesProgress.value, [0, 1], [4, 6]);
+    return interpolate(eyesProgress.get(), [0, 1], [4, 6]);
   }, [eyesProgress]);
 
   const path = useDerivedValue(() => {
-    return happyMouth!.interpolate(sadMouth!, mouthProgress.value)!;
+    return happyMouth!.interpolate(sadMouth!, mouthProgress.get())!;
   }, [happyMouth, mouthProgress, sadMouth]);
 
   const centerX = useDerivedValue(() => {
-    return size.current.width / 4 - path.value.getBounds().width / 2;
+    return size.current.width / 4 - path.get().getBounds().width / 2;
   }, [size, path]);
 
   const centerY = useDerivedValue(() => {
@@ -90,24 +90,24 @@ const AnimatedFace = forwardRef<AnimatedFaceRefType>((_, ref) => {
 
   const origin = useDerivedValue(() => {
     return {
-      x: centerX.value + path.value.getBounds().width / 2 + eyeRadius.value,
-      y: centerY.value - 5,
+      x: centerX.get() + path.get().getBounds().width / 2 + eyeRadius.get(),
+      y: centerY.get() - 5,
     };
   }, [centerX, centerY, eyeRadius]);
 
   const transform = useDerivedValue(() => {
     return [
       { scale: 1.8 },
-      { translateX: centerX.value },
-      { translateY: centerY.value },
+      { translateX: centerX.get() },
+      { translateY: centerY.get() },
     ];
   }, [centerX, centerY]);
 
   const firstEyeCx = useDerivedValue(() => {
-    return eyeRadius.value / 2;
+    return eyeRadius.get() / 2;
   }, [eyeRadius]);
   const secondEyeCx = useDerivedValue(() => {
-    return path.value.getBounds().width + eyeRadius.value / 2;
+    return path.get().getBounds().width + eyeRadius.get() / 2;
   }, [path, eyeRadius]);
 
   return (

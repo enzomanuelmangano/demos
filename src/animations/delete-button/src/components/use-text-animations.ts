@@ -22,20 +22,20 @@ export const useTextAnimations = ({
 }: UseTextAnimationsParams) => {
   const deleteTextX = useDerivedValue(() => {
     const textWidth = font.measureText(initialText).width;
-    return deleteButtonRectX.value + width / 2 - textWidth / 2;
+    return deleteButtonRectX.get() + width / 2 - textWidth / 2;
   }, [font, deleteButtonRectX, width]);
 
   const deleteTextOpacity = useDerivedValue(() => {
-    return withTiming(isToggled.value ? 0 : 1);
+    return withTiming(isToggled.get() ? 0 : 1);
   }, []);
 
   const confirmTextX = useDerivedValue(() => {
     const textWidth = font.measureText(confirmText).width;
-    return deleteButtonRectX.value + width / 2 - textWidth / 2;
+    return deleteButtonRectX.get() + width / 2 - textWidth / 2;
   }, [font, deleteButtonRectX, width]);
 
   const confirmTextOpacity = useDerivedValue(() => {
-    return withTiming(isToggled.value ? 1 : 0);
+    return withTiming(isToggled.get() ? 1 : 0);
   }, []);
 
   return {

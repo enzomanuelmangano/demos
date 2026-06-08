@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 
+import { useNavigation } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedReaction,
@@ -8,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -17,6 +19,7 @@ export const DetailScreenWrapper = ({
   children: React.ReactNode;
 }) => {
   const { backTransition, transitionScale } = useCustomNavigation();
+  const stackNavigation = useNavigation();
   const trigger = useSharedValue(false);
   const scale = transitionScale;
 
@@ -32,40 +35,43 @@ export const DetailScreenWrapper = ({
         maxScale,
         Math.min(1, 1 - Math.pow(resistanceY / 400, 1.2)),
       );
-      scale.value = scaleValue;
+      scale.set(scaleValue);
 
       if (translationY > 300) {
-        trigger.value = true;
+        trigger.set(true);
       }
     })
     .onEnd(event => {
-      const shouldReset = !trigger.value || Math.abs(event.velocityY) < 300;
+      const shouldReset = !trigger.get() || Math.abs(event.velocityY) < 300;
 
       if (shouldReset) {
-        trigger.value = false;
-        scale.value = withSpring(1, {
-          mass: 0.3,
-          stiffness: 46,
-          damping: 2,
-        });
+        trigger.set(false);
+        scale.set(
+          withSpring(1, {
+            mass: 0.3,
+            stiffness: 46,
+            damping: 2,
+          }),
+        );
       }
     });
 
   useAnimatedReaction(
-    () => trigger.value,
+    () => trigger.get(),
     (current, previous) => {
       if (current && !previous) {
         backTransition();
+        scheduleOnRN(stackNavigation.goBack);
       }
     },
   );
 
   const rStyle = useAnimatedStyle(() => {
     return {
-      borderRadius: interpolate(scale.value, [1, 0.8], [50, 30]),
+      borderRadius: interpolate(scale.get(), [1, 0.8], [50, 30]),
       overflow: 'hidden',
       borderCurve: 'continuous',
-      transform: [{ scale: scale.value }],
+      transform: [{ scale: scale.get() }],
     };
   });
 

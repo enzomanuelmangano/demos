@@ -16,7 +16,7 @@ export const ThemeRescaler: React.FC<ThemeRescalerProps> = ({ children }) => {
     return {
       transform: [
         {
-          scale: withSpring(isSwitchingThemeShared.value ? 0.95 : 1, {
+          scale: withSpring(isSwitchingThemeShared.get() ? 0.95 : 1, {
             dampingRatio: 1,
             duration: 600,
           }),

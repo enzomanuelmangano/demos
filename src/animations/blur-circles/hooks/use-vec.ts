@@ -29,13 +29,13 @@ const useVec = ({ clock, frequency, amplitude, noise }: UseVecParams) => {
   const vecNoise = useSharedValue(vec(0, 0));
 
   const updateVecNoise = useCallback(() => {
-    const x = noise(clock.value / frequency, 0);
-    const y = noise(0, clock.value / frequency);
-    vecNoise.value = vec(amplitude * x, amplitude * y);
+    const x = noise(clock.get() / frequency, 0);
+    const y = noise(0, clock.get() / frequency);
+    vecNoise.set(vec(amplitude * x, amplitude * y));
   }, [clock, frequency, amplitude, noise, vecNoise]);
 
   useAnimatedReaction(
-    () => clock.value,
+    () => clock.get(),
     () => {
       scheduleOnRN(updateVecNoise);
     },
@@ -50,11 +50,11 @@ const useVec = ({ clock, frequency, amplitude, noise }: UseVecParams) => {
   // to the center of the screen to create a vector that is centered
   // on the screen.
   const cx = useDerivedValue(() => {
-    return vecNoise.value.x + center.x;
+    return vecNoise.get().x + center.x;
   }, [vecNoise]);
 
   const cy = useDerivedValue(() => {
-    return vecNoise.value.y + center.y;
+    return vecNoise.get().y + center.y;
   }, [vecNoise]);
 
   return {

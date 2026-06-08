@@ -83,7 +83,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   }, [spacePerLineProp]);
 
   const progressWidth = useDerivedValue(() => {
-    return Math.round(linesAmount * spacePerLine.value);
+    return Math.round(linesAmount * spacePerLine.get());
   }, [linesAmount, spacePerLine]);
 
   const linesArray = useMemo(() => {
@@ -92,17 +92,17 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
 
   const spacings = useDerivedValue(() => {
     return linesArray.map(
-      (_, i) => ScreenWidth / 2 - i * spacePerLine.value * snapEach,
+      (_, i) => ScreenWidth / 2 - i * spacePerLine.get() * snapEach,
     );
   }, [linesArray, snapEach, spacePerLine]);
 
   useAnimatedReaction(
-    () => clampedScrollOffset.value,
+    () => clampedScrollOffset.get(),
     (offset, prev) => {
       if (prev === null) return;
       const progress = interpolate(
         offset,
-        [ScreenWidth / 2, -progressWidth.value + ScreenWidth / 2],
+        [ScreenWidth / 2, -progressWidth.get() + ScreenWidth / 2],
         [0, 1],
       );
       if (onProgressChange) onProgressChange(progress);
@@ -111,31 +111,37 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
 
   const gesture = Gesture.Pan()
     .onBegin(() => {
-      scrollContext.value = scrollOffset.value;
+      scrollContext.set(scrollOffset.get());
       cancelAnimation(scrollOffset);
     })
     .onUpdate(event => {
-      scrollOffset.value = clamp(
-        scrollContext.value + event.translationX,
-        -progressWidth.value + ScreenWidth / 2,
-        ScreenWidth / 2,
+      scrollOffset.set(
+        clamp(
+          scrollContext.get() + event.translationX,
+          -progressWidth.get() + ScreenWidth / 2,
+          ScreenWidth / 2,
+        ),
       );
-      clampedScrollOffset.value = scrollOffset.value;
+      clampedScrollOffset.set(scrollOffset.get());
     })
     .onEnd(event => {
-      scrollOffset.value = withSpring(
-        snapPoint(scrollOffset.value, event.velocityX, spacings.value),
-        {
-          mass: 0.45,
-          damping: 10,
-          stiffness: 100,
-        },
+      scrollOffset.set(
+        withSpring(
+          snapPoint(scrollOffset.get(), event.velocityX, spacings.get()),
+          {
+            mass: 0.45,
+            damping: 10,
+            stiffness: 100,
+          },
+        ),
       );
-      clampedScrollOffset.value = withTiming(
-        snapPoint(clampedScrollOffset.value, event.velocityX, spacings.value),
-        {
-          duration: 50,
-        },
+      clampedScrollOffset.set(
+        withTiming(
+          snapPoint(clampedScrollOffset.get(), event.velocityX, spacings.get()),
+          {
+            duration: 50,
+          },
+        ),
       );
       // If you don't like snapping, you can use decay animation instead
       // I personally prefer snapping for this use case but this is also an option
@@ -147,15 +153,15 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
 
   useAnimatedReaction(
     () => {
-      return spacePerLine.value;
+      return spacePerLine.get();
     },
     (curr, prev) => {
       if (curr !== prev) {
-        scrollOffset.value = withTiming(
-          snapPoint(clampedScrollOffset.value, 10, spacings.value),
+        scrollOffset.set(
+          withTiming(snapPoint(clampedScrollOffset.get(), 10, spacings.get())),
         );
-        clampedScrollOffset.value = withTiming(
-          snapPoint(clampedScrollOffset.value, 10, spacings.value),
+        clampedScrollOffset.set(
+          withTiming(snapPoint(clampedScrollOffset.get(), 10, spacings.get())),
         );
       }
     },
@@ -164,7 +170,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   const bigLinesPath = useDerivedValue(() => {
     return getLinesPath({
       linesAmount,
-      spacePerLine: spacePerLine.value,
+      spacePerLine: spacePerLine.get(),
       maxLineHeight,
       minLineHeight,
       type: 'bigLines',
@@ -176,7 +182,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   const smallLinesPath = useDerivedValue(() => {
     return getLinesPath({
       linesAmount,
-      spacePerLine: spacePerLine.value,
+      spacePerLine: spacePerLine.get(),
       maxLineHeight,
       minLineHeight,
       type: 'smallLines',
@@ -190,7 +196,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
 
   const rIndicatorStyle = useAnimatedStyle(() => {
     return {
-      backgroundColor: indicatorColor?.value ?? 'orange',
+      backgroundColor: indicatorColor?.get() ?? 'orange',
     };
   }, []);
 

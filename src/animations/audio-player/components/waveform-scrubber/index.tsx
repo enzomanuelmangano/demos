@@ -27,7 +27,7 @@ const WaveformScrubber: React.FC<WaveformScrubberProps> = ({
   });
 
   const currentTime = useDerivedValue(() => {
-    const seconds = (currentX.value / waveformContentWidth) * DURATION;
+    const seconds = (currentX.get() / waveformContentWidth) * DURATION;
 
     return `0:${zeroPad(Math.min(Math.floor(seconds), DURATION), 2)}`;
   }, []);

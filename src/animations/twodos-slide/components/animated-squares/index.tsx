@@ -39,7 +39,7 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = ({
   }, [size]);
 
   const baseRotation = useDerivedValue(() => {
-    return 5 * progress.value + 5;
+    return 5 * progress.get() + 5;
   }, []);
 
   // Here we're rotating the squares in opposite directions
@@ -64,7 +64,7 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = ({
         { translateX: size / 2 },
         { scale: 1.04 },
         {
-          rotate: `${baseRotation.value}deg`,
+          rotate: `${baseRotation.get()}deg`,
         },
         { translateX: -size / 2 },
         { translateY: -size / 2 },
@@ -78,7 +78,7 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = ({
         { translateY: size / 2 },
         { translateX: size / 2 },
         {
-          rotate: `${-1.2 * baseRotation.value}deg`,
+          rotate: `${-1.2 * baseRotation.get()}deg`,
         },
         { translateX: -size / 2 },
         { translateY: -size / 2 },
@@ -122,7 +122,7 @@ export const AnimatedSquares: React.FC<AnimatedSquaresProps> = ({
   }, [size]);
 
   const pathProgress = useDerivedValue(() => {
-    return clamp(clampedProgress.value, 0, 1);
+    return clamp(clampedProgress.get(), 0, 1);
   }, []);
 
   return (

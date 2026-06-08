@@ -42,11 +42,11 @@ const AnimatedWeeklyBar = ({
   const barWidth = (width - internalPaddingHorizontal * 2 - gap * 6) / 7;
 
   const letter = useMemo(() => {
-    return data.value[index].day;
+    return data.get()[index].day;
   }, [data, index]);
 
   const progress = useDerivedValue(() => {
-    return data.value[index].value;
+    return data.get()[index].value;
   }, [data, index]);
 
   return (
@@ -68,7 +68,7 @@ export const WeeklyChart: React.FC<WeeklyChartProps> = ({
 }) => {
   const internalPaddingHorizontal = 48;
   const gap = 20;
-  const initialData = useMemo(() => data.value, [data]);
+  const initialData = useMemo(() => data.get(), [data]);
 
   return (
     <View

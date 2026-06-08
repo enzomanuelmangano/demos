@@ -35,7 +35,7 @@ const CarouselItem: FC<CarouselItemProps> = memo(
     activeIndex,
   }) => {
     const rItemListStyle = useAnimatedStyle(() => {
-      const position = index * itemWidth + translateX.value;
+      const position = index * itemWidth + translateX.get();
       const center = carouselWidth / 2;
 
       const distanceFromCenter = Math.abs(
@@ -54,10 +54,10 @@ const CarouselItem: FC<CarouselItemProps> = memo(
       const initialActiveIndex = Math.floor(maxRenderedItems / 2);
       const preciseActiveIndex =
         initialActiveIndex +
-        (-translateX.value + itemWidth / 2) /
+        (-translateX.get() + itemWidth / 2) /
           (carouselWidth / maxRenderedItems);
 
-      activeIndex.value = Math.floor(preciseActiveIndex);
+      activeIndex.set(Math.floor(preciseActiveIndex));
 
       const rotateY = interpolate(
         preciseActiveIndex - index - 0.5,
@@ -78,7 +78,7 @@ const CarouselItem: FC<CarouselItemProps> = memo(
     }, []);
 
     const rZIndexStyle = useAnimatedStyle(() => {
-      const position = index * itemWidth + translateX.value;
+      const position = index * itemWidth + translateX.get();
       const center = carouselWidth / 2;
 
       const distanceFromCenter = Math.abs(

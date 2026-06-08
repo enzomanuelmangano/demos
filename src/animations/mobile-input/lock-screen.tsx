@@ -39,7 +39,7 @@ const LockScreen: FC<LockScreenProps> = ({
 
   const pin = useSharedValue<number[]>([]);
   const activeDots = useDerivedValue(() => {
-    return pin.value.length;
+    return pin.get().length;
   }, []);
 
   const correct = useCallback(() => {
@@ -49,23 +49,23 @@ const LockScreen: FC<LockScreenProps> = ({
 
   const wrong = useCallback(() => {
     shake();
-    onError?.(pin.value.join(''));
+    onError?.(pin.get().join(''));
     animatedFaceRef.current?.sad();
-  }, [onError, pin.value, shake]);
+  }, [onError, pin.get(), shake]);
 
   const activate = useCallback(() => {
     animatedFaceRef.current?.openEyes();
   }, []);
 
   const reset = useCallback(() => {
-    pin.value = [];
+    pin.set([]);
     animatedFaceRef.current?.reset();
     onClear?.();
   }, [onClear, pin]);
 
   useAnimatedReaction(
     () => {
-      return pin.value;
+      return pin.get();
     },
     currentPin => {
       const active = currentPin.length > 0;

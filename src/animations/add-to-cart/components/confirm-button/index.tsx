@@ -27,38 +27,38 @@ const ConfirmButton: FC<ConfirmButtonProps> = memo(
 
     const animatedTop = useDerivedValue(() => {
       return interpolate(
-        animationProgress.value,
+        animationProgress.get(),
         [0, 1],
-        [layoutData.value?.pageY ?? 0, SCREEN_HEIGHT - 100],
+        [layoutData.get()?.pageY ?? 0, SCREEN_HEIGHT - 100],
       );
     }, []);
 
     const animatedWidth = useDerivedValue(() => {
       return interpolate(
-        animationProgress.value,
+        animationProgress.get(),
         [0, 1],
-        [layoutData.value?.width ?? 0, SCREEN_WIDTH * 0.9],
+        [layoutData.get()?.width ?? 0, SCREEN_WIDTH * 0.9],
       );
     }, []);
 
     const animatedHeight = useDerivedValue(() => {
       return interpolate(
-        animationProgress.value,
+        animationProgress.get(),
         [0, 1],
-        [layoutData.value?.height ?? 0, 45],
+        [layoutData.get()?.height ?? 0, 45],
       );
     }, []);
 
     const animatedLeft = useDerivedValue(() => {
       return interpolate(
-        animationProgress.value,
+        animationProgress.get(),
         [0, 1],
-        [layoutData.value?.pageX ?? 0, SCREEN_WIDTH * 0.05],
+        [layoutData.get()?.pageX ?? 0, SCREEN_WIDTH * 0.05],
       );
     }, []);
 
     const rStyle = useAnimatedStyle(() => {
-      if (!layoutData.value) {
+      if (!layoutData.get()) {
         return {
           height: 0,
           width: 0,
@@ -66,11 +66,11 @@ const ConfirmButton: FC<ConfirmButtonProps> = memo(
       }
 
       return {
-        height: animatedHeight.value,
-        width: animatedWidth.value,
+        height: animatedHeight.get(),
+        width: animatedWidth.get(),
         zIndex: 10,
-        top: animatedTop.value,
-        left: animatedLeft.value,
+        top: animatedTop.get(),
+        left: animatedLeft.get(),
       };
     }, []);
 

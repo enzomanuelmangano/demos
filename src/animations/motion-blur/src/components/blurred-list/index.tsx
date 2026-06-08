@@ -4,6 +4,7 @@ import { type FC, type ReactNode, useCallback, useEffect } from 'react';
 
 import { BlurView } from 'expo-blur';
 import Animated, {
+  useAnimatedProps,
   Easing,
   FadeOutUp,
   interpolate,
@@ -70,19 +71,23 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
   currentListLength,
 }) => {
   const progress = useSharedValue(0);
-  const blurIntensity = useSharedValue<number | undefined>(50);
+  const blurIntensity = useSharedValue(50);
   const isOffVisibleArea = index - (currentListLength - maxVisibleItems) < 0;
   const top = calculateTop(index, currentListLength, maxVisibleItems);
 
   useEffect(() => {
-    progress.value = withTiming(isOffVisibleArea ? 0 : 1, {
-      duration: 350,
-      easing: Easing.linear,
-    });
-    blurIntensity.value = withTiming(isOffVisibleArea ? 50 : 0, {
-      duration: isOffVisibleArea ? 150 : 500,
-      easing: Easing.linear,
-    });
+    progress.set(
+      withTiming(isOffVisibleArea ? 0 : 1, {
+        duration: 350,
+        easing: Easing.linear,
+      }),
+    );
+    blurIntensity.set(
+      withTiming(isOffVisibleArea ? 50 : 0, {
+        duration: isOffVisibleArea ? 150 : 500,
+        easing: Easing.linear,
+      }),
+    );
   }, [isOffVisibleArea, progress, blurIntensity]);
 
   const containerStyle = useAnimatedStyle(
@@ -96,14 +101,24 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
     withTiming(index === currentListLength - 1 ? 1 : 0),
   );
 
+  // Animated intensity must go through useAnimatedProps: passing a shared
+  // value directly as the prop only forwards its value on the FIRST render
+  // (reanimated's PropsFilter) — any re-render drops the prop, the React
+  // commit falls back to BlurView's default intensity (50) and clobbers
+  // whatever the UI-thread mapper applied. useAnimatedProps re-sends its
+  // values on every render, so commits and UI updates agree.
+  const animatedProps = useAnimatedProps(() => ({
+    intensity: blurIntensity.get(),
+  }));
+
   const contentStyle = useAnimatedStyle(() => ({
     shadowColor: 'black',
     shadowOffset: {
       width: 0,
-      height: interpolate(isLastItemProgress.value, [0, 1], [20, 10]),
+      height: interpolate(isLastItemProgress.get(), [0, 1], [20, 10]),
     },
-    shadowOpacity: interpolate(isLastItemProgress.value, [0, 1], [0.03, 0.02]),
-    shadowRadius: interpolate(isLastItemProgress.value, [0, 1], [10, 5]),
+    shadowOpacity: interpolate(isLastItemProgress.get(), [0, 1], [0.03, 0.02]),
+    shadowRadius: interpolate(isLastItemProgress.get(), [0, 1], [10, 5]),
   }));
 
   if (isOffVisibleArea) {
@@ -118,7 +133,7 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
       </Animated.View>
       <AnimatedBlurView
         tint={'extraLight'}
-        intensity={blurIntensity}
+        animatedProps={animatedProps}
         style={styles.blurView}
       />
     </Animated.View>

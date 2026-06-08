@@ -39,7 +39,7 @@ export const MovieImage: React.FC<MovieImageProps> = ({
       return 1;
     }
 
-    if (isSwitchingThemeShared.value) {
+    if (isSwitchingThemeShared.get()) {
       return withTiming(0, {
         duration: 350,
       });

@@ -75,7 +75,7 @@ export const CircularDraggableSlider = forwardRef<
       progress,
       incrementOffset: distanceBetweenTwoTicks,
       onCompletion: () => {
-        isTimerEnabled.value = false;
+        isTimerEnabled.set(false);
         onCompletion?.();
       },
     });
@@ -90,43 +90,45 @@ export const CircularDraggableSlider = forwardRef<
 
     const panGesture = Gesture.Pan()
       .onBegin(() => {
-        if (isTimerEnabled.value) {
+        if (isTimerEnabled.get()) {
           return;
         }
         cancelAnimation(progress);
-        previousProgress.value = progress.value;
+        previousProgress.set(progress.get());
       })
       .onUpdate(event => {
-        if (isTimerEnabled.value) {
+        if (isTimerEnabled.get()) {
           return;
         }
-        progress.value = event.translationX + previousProgress.value;
+        progress.set(event.translationX + previousProgress.get());
       })
       .onFinalize(event => {
-        if (isTimerEnabled.value) {
+        if (isTimerEnabled.get()) {
           return;
         }
-        if (progress.value > 0) {
+        if (progress.get() > 0) {
           cancelAnimation(progress);
-          progress.value = withTiming(0, { duration: 500 });
+          progress.set(withTiming(0, { duration: 500 }));
           return;
         }
-        progress.value = withDecay({
-          velocity: event.velocityX,
-        });
+        progress.set(
+          withDecay({
+            velocity: event.velocityX,
+          }),
+        );
       });
 
     const offset = Math.PI / 2;
     const progressRadiants = useDerivedValue(() => {
       return interpolate(
-        -progress.value,
+        -progress.get(),
         [0, listWidth],
         [offset, 2 * Math.PI + offset],
       );
     }, [listWidth]);
 
     useAnimatedReaction(
-      () => progressRadiants.value,
+      () => progressRadiants.get(),
       radiants => {
         const amountOfSeconds = Math.round(
           (radiants - offset) / distanceBetweenTwoTicksRad,

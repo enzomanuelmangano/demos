@@ -37,7 +37,7 @@ export function handleProgressiveHaptics(
   'worklet';
 
   const dragDistance = Math.abs(translation);
-  const distanceSinceLastHaptic = Math.abs(dragDistance - lastPosition.value);
+  const distanceSinceLastHaptic = Math.abs(dragDistance - lastPosition.get());
 
   // Only trigger haptic if we've moved enough distance
   if (distanceSinceLastHaptic < HAPTIC_CONFIG.DISTANCE_THRESHOLD) {
@@ -53,20 +53,20 @@ export function handleProgressiveHaptics(
   const isAtMaxIntensity = easedProgress >= 1;
 
   // Prevent haptic spam when at max intensity
-  if (hasReachedMax.value && isAtMaxIntensity) {
+  if (hasReachedMax.get() && isAtMaxIntensity) {
     return;
   }
 
   // Update max intensity state
   if (isAtMaxIntensity) {
-    hasReachedMax.value = true;
-  } else if (hasReachedMax.value && easedProgress < 1) {
-    hasReachedMax.value = false;
+    hasReachedMax.set(true);
+  } else if (hasReachedMax.get() && easedProgress < 1) {
+    hasReachedMax.set(false);
   }
 
   // Trigger haptic feedback
   scheduleOnRN(triggerHapticFeedback, easedProgress);
 
   // Update last position for next comparison
-  lastPosition.value = dragDistance;
+  lastPosition.set(dragDistance);
 }

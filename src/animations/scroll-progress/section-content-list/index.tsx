@@ -56,7 +56,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (event: any) => {
         const { height } = event.nativeEvent.layout;
-        scrollHeight.value = height;
+        scrollHeight.set(height);
       },
       [scrollHeight],
     );
@@ -69,14 +69,14 @@ const SectionContentList: FC<SectionContentListProps> = memo(
     }, [scrollViewProps.contentContainerStyle]);
 
     const scrollableHeight = useDerivedValue(() => {
-      return scrollHeight.value - viewHeight.value + paddingBottom;
+      return scrollHeight.get() - viewHeight.get() + paddingBottom;
     }, [paddingBottom]);
 
     const onScroll = useAnimatedScrollHandler({
       onScroll: ({ contentOffset: { y } }) => {
-        currentScroll.value = y;
-        if (isResetting.value) return; // ignore scroll events while resetting
-        progress.value = clamp(y / scrollableHeight.value, 0, 1);
+        currentScroll.set(y);
+        if (isResetting.get()) return; // ignore scroll events while resetting
+        progress.set(clamp(y / scrollableHeight.get(), 0, 1));
       },
     });
 
@@ -91,7 +91,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
     const scrollRef = useRef<Animated.ScrollView>(null);
 
     const onReset = useCallback(() => {
-      isResetting.value = true;
+      isResetting.set(true);
       scrollRef.current?.scrollTo({
         y: 0,
         animated: true,
@@ -99,10 +99,10 @@ const SectionContentList: FC<SectionContentListProps> = memo(
     }, [isResetting]);
 
     useAnimatedReaction(
-      () => isResetting.value && currentScroll.value === 0,
+      () => isResetting.get() && currentScroll.get() === 0,
       hasCompleteReset => {
         if (hasCompleteReset) {
-          isResetting.value = false;
+          isResetting.set(false);
         }
       },
       [isResetting],
@@ -110,7 +110,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
 
     const onViewLayout = useCallback(
       (event: LayoutChangeEvent) => {
-        viewHeight.value = event.nativeEvent.layout.height;
+        viewHeight.set(event.nativeEvent.layout.height);
       },
       [viewHeight],
     );

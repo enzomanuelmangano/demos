@@ -48,7 +48,7 @@ export const CarouselItem = <T,>({
   // We're just shifting the view based on the index and list size
   // That means 0 re-renders and no performance hit for large data sets
   const derivedTranslate = useDerivedValue(() => {
-    const translation = translateX.value % listSize;
+    const translation = translateX.get() % listSize;
 
     const isInitialIndex = index <= Math.round(maxVisibleItems / 2);
     const hasPassedCenter = Math.abs(translation) > listSize / 2;
@@ -66,7 +66,7 @@ export const CarouselItem = <T,>({
 
   const progress = useDerivedValue(() => {
     const evaluatedProgress = interpolate(
-      -derivedTranslate.value,
+      -derivedTranslate.get(),
       interpolateConfig.inputRange(index),
       interpolateConfig.outputRange(index),
       interpolateConfig.extrapolationType,
@@ -76,7 +76,7 @@ export const CarouselItem = <T,>({
   }, [index]);
 
   const rStyle = useAnimatedStyle(() => {
-    const translatedAmount = derivedTranslate.value;
+    const translatedAmount = derivedTranslate.get();
 
     return {
       transform: [
@@ -87,7 +87,7 @@ export const CarouselItem = <T,>({
       // Set zIndex based on progress for layering
       // This might not be necessary for all use cases and can be removed
       // It's a bit tricky to parametrize this style, but it can be done
-      zIndex: Math.floor(Math.abs(progress.value * 100)),
+      zIndex: Math.floor(Math.abs(progress.get() * 100)),
     };
   }, []);
 

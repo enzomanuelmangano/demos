@@ -82,20 +82,20 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         style: StyleProp<ViewStyle>;
       }) => {
         // If an animation is currently in progress, don't initiate a new one
-        if (isAnimating.value) return;
+        if (isAnimating.get()) return;
 
         // Indicate that the theme toggle animation is starting
-        isAnimating.value = true;
+        isAnimating.set(true);
 
         // Set `invertClip` to true if the current theme is not 'light'
-        invertClip.value = theme !== 'light';
+        invertClip.set(theme !== 'light');
 
         // Create an image representation of the current view (snapshot)
         const image = await makeImageFromView(viewRef);
-        skImage.value = image;
+        skImage.set(image);
 
         // Update the `center` shared value with the provided center for the toggled item
-        center.value = { ...toggledItemCenter };
+        center.set({ ...toggledItemCenter });
 
         // Determine the end value for the animation based on the current theme
         const toValue = theme !== 'light' ? 1 : 0;
@@ -104,25 +104,27 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         setTheme(theme === 'light' ? 'dark' : 'light');
 
         // Set and initiate the animation progress
-        animationProgress.value = 1 - toValue;
-        animationProgress.value = withSpring(
-          toValue,
-          {
-            duration: SWITCH_THEME_ANIMATION_DURATION,
-            dampingRatio: 1,
-          },
-          finished => {
-            // Reset certain values after the animation is complete
-            isAnimating.value = false;
-            if (finished) {
-              skImage.value = null;
-              switchThemeStyle.value = {};
-            }
-          },
+        animationProgress.set(1 - toValue);
+        animationProgress.set(
+          withSpring(
+            toValue,
+            {
+              duration: SWITCH_THEME_ANIMATION_DURATION,
+              dampingRatio: 1,
+            },
+            finished => {
+              // Reset certain values after the animation is complete
+              isAnimating.set(false);
+              if (finished) {
+                skImage.set(null);
+                switchThemeStyle.set({});
+              }
+            },
+          ),
         );
 
         // Set the style for the theme switch based on the provided style
-        switchThemeStyle.value = { ...StyleSheet.flatten(toggledItemStyle) };
+        switchThemeStyle.set({ ...StyleSheet.flatten(toggledItemStyle) });
       },
     };
     // Dependency array for `useMemo`: Only recalculate the value if any of these values change
@@ -138,13 +140,13 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
 
   const rStyle = useAnimatedStyle(() => {
     return {
-      left: center.value.x,
-      top: center.value.y,
-      width: center.value.width,
-      height: center.value.height,
-      ...switchThemeStyle.value,
+      left: center.get().x,
+      top: center.get().y,
+      width: center.get().width,
+      height: center.get().height,
+      ...switchThemeStyle.get(),
       backgroundColor: 'transparent',
-      opacity: isAnimating.value ? 1 : 0,
+      opacity: isAnimating.get() ? 1 : 0,
       pointerEvents: 'none',
     };
   }, []);
@@ -152,29 +154,29 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const clipPath = useDerivedValue(() => {
-    const yPosition = Math.max(windowHeight - center.value.y, center.value.y);
-    const xPosition = Math.max(windowWidth - center.value.x, center.value.x);
+    const yPosition = Math.max(windowHeight - center.get().y, center.get().y);
+    const xPosition = Math.max(windowWidth - center.get().x, center.get().x);
 
     const maxCircleRadius = Math.sqrt(yPosition ** 2 + xPosition ** 2);
     const minCircleRadius = 2;
 
-    const path = Skia.Path.Make();
+    const builder = Skia.PathBuilder.Make();
 
-    path.addCircle(
-      center.value.x + center.value.width / 2,
-      center.value.y + center.value.height / 2,
+    builder.addCircle(
+      center.get().x + center.get().width / 2,
+      center.get().y + center.get().height / 2,
       interpolate(
-        clipPathRadiusScale.value,
+        clipPathRadiusScale.get(),
         [0, 0.9],
         [minCircleRadius, maxCircleRadius],
       ),
     );
-    return path;
+    return builder.build();
   }, [center]);
 
   const animatedProps = useAnimatedProps(() => {
     return {
-      progress: animationProgress.value,
+      progress: animationProgress.get(),
     };
   });
 

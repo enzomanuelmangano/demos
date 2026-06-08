@@ -22,7 +22,7 @@ export const CardCanvas: FC<CardCanvasProps> = ({
 }) => {
   const uniforms = useDerivedValue(
     () => ({
-      rotate: rotation.value,
+      rotate: rotation.get(),
       resolution: [width, height],
       cardType,
     }),

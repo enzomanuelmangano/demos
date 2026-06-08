@@ -25,12 +25,14 @@ export const BlurCircles = () => {
   const clock = useSharedValue(0);
 
   useEffect(() => {
-    clock.value = withRepeat(
-      withTiming(20000, {
-        duration: 20000,
-      }),
-      -1,
-      true,
+    clock.set(
+      withRepeat(
+        withTiming(20000, {
+          duration: 20000,
+        }),
+        -1,
+        true,
+      ),
     );
   }, [clock]);
   //
@@ -60,7 +62,7 @@ export const BlurCircles = () => {
   // with the shape of the blurred circle.
   const clipCircle = useDerivedValue(() => {
     return rrect(
-      rect(cx2.value - RADIUS, cy2.value - RADIUS, RADIUS * 2, RADIUS * 2),
+      rect(cx2.get() - RADIUS, cy2.get() - RADIUS, RADIUS * 2, RADIUS * 2),
       RADIUS,
       RADIUS,
     );

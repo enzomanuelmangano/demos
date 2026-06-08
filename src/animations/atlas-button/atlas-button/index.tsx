@@ -53,7 +53,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
   const tapGesture = Gesture.Tap()
     .maxDuration(10000)
     .onTouchesDown(() => {
-      isActive.value = true;
+      isActive.set(true);
     })
     .onTouchesUp(() => {
       if (onPress) {
@@ -61,11 +61,11 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
       }
     })
     .onFinalize(() => {
-      isActive.value = false;
+      isActive.set(false);
     });
 
   const progress = useDerivedValue<number>(() => {
-    return withSpring(isActive.value ? 1 : 0, {
+    return withSpring(isActive.get() ? 1 : 0, {
       duration: 1200,
       dampingRatio: 1,
     });
@@ -75,7 +75,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
     return {
       transform: [
         {
-          scale: interpolate(progress.value, [0, 1], [1, 0.95]),
+          scale: interpolate(progress.get(), [0, 1], [1, 0.95]),
         },
       ],
     };
@@ -85,9 +85,9 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
 
   const textStyle = useAnimatedStyle(() => {
     return {
-      opacity: progress.value * 3,
+      opacity: progress.get() * 3,
       top: interpolate(
-        progress.value * 3,
+        progress.get() * 3,
         [0, 1],
         [50, 25],
         Extrapolation.CLAMP,
@@ -98,7 +98,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
   const iconStyle = useAnimatedStyle(() => {
     return {
       top: interpolate(
-        progress.value * 3,
+        progress.get() * 3,
         [0, 1],
         [0, -25],
         Extrapolation.CLAMP,

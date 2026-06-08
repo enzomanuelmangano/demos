@@ -21,15 +21,15 @@ const App = () => {
   const scrollOffset = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.value = event.contentOffset.x;
+      scrollOffset.set(event.contentOffset.x);
     },
   });
   const activeIndex = useDerivedValue(() => {
-    return Math.floor((scrollOffset.value + windowWidth / 2) / windowWidth);
+    return Math.floor((scrollOffset.get() + windowWidth / 2) / windowWidth);
   }, [scrollOffset]);
 
   useAnimatedReaction(
-    () => activeIndex.value,
+    () => activeIndex.get(),
     (curr, prev) => {
       if (curr !== prev && prev !== null) {
         scheduleOnRN(Haptics.selectionAsync);
@@ -37,7 +37,7 @@ const App = () => {
     },
   );
   const animatedData = useDerivedValue(() => {
-    return data[activeIndex.value];
+    return data[activeIndex.get()];
   }, [activeIndex, data]);
 
   const renderItem = useCallback(

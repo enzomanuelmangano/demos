@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { BlurView } from 'expo-blur';
-import Animated, { useDerivedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedProps } from 'react-native-reanimated';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -10,15 +10,18 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 const MainScreenWrapper = ({ children }: { children: React.ReactNode }) => {
   const { springProgress } = useCustomNavigation();
 
-  const intensity = useDerivedValue<number | undefined>(() => {
-    return springProgress.value * 50;
-  });
+  // Animated intensity must go through useAnimatedProps on reanimated 4.3 —
+  // passing a shared/derived value directly as the prop stopped applying
+  // updates (the blur froze at BlurView's default 50, veiling the screen).
+  const animatedProps = useAnimatedProps(() => ({
+    intensity: springProgress.get() * 50,
+  }));
 
   return (
     <View style={styles.container}>
       <AnimatedBlurView
         style={styles.blurView}
-        intensity={intensity}
+        animatedProps={animatedProps}
         tint="light"
       />
       {children}
