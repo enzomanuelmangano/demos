@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 
+import { useNavigation } from '@react-navigation/native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedReaction,
@@ -8,6 +9,7 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -17,6 +19,7 @@ export const DetailScreenWrapper = ({
   children: React.ReactNode;
 }) => {
   const { backTransition, transitionScale } = useCustomNavigation();
+  const stackNavigation = useNavigation();
   const trigger = useSharedValue(false);
   const scale = transitionScale;
 
@@ -58,6 +61,7 @@ export const DetailScreenWrapper = ({
     (current, previous) => {
       if (current && !previous) {
         backTransition();
+        scheduleOnRN(stackNavigation.goBack);
       }
     },
   );

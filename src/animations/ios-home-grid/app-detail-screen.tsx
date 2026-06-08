@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableOpacity } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,9 +34,11 @@ export const AppDetailScreen: React.FC<AppDetailScreenProps> = ({ route }) => {
   const { item } = route.params;
   const { top: safeTop } = useSafeAreaInsets();
   const navigation = useCustomNavigation();
+  const stackNavigation = useNavigation();
 
   const handleGoBack = () => {
     navigation.backTransition();
+    stackNavigation.goBack();
   };
 
   return (

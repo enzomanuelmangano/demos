@@ -52,13 +52,22 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
     const touchedSquares = useSharedValue<string[]>(initialTouchedSquares);
 
     const surroundingSquareCoords = useDerivedValue(() => {
-      'worklet';
-      return touchedSquares.get().map(square => {
-        const [i, j] = square.split(',').map(Number);
-        return getSurroundingCoords(i, j)
-          .map(coord => coord.join(','))
-          .flat();
-      });
+      // Plain loops: inline .map callbacks get hoisted out of the worklet by
+      // React Compiler (as `_temp`) and crash the UI thread when called.
+      const squares = touchedSquares.get();
+      const result: string[][] = [];
+      for (let s = 0; s < squares.length; s++) {
+        const parts = squares[s].split(',');
+        const i = Number(parts[0]);
+        const j = Number(parts[1]);
+        const surrounding = getSurroundingCoords(i, j);
+        const coords: string[] = [];
+        for (let k = 0; k < surrounding.length; k++) {
+          coords.push(`${surrounding[k][0]},${surrounding[k][1]}`);
+        }
+        result.push(coords);
+      }
+      return result;
     });
 
     useAnimatedReaction(
@@ -120,26 +129,31 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
 
     const touchedSquarePaths = useDerivedValue(() => {
       const builder = Skia.PathBuilder.Make();
-      touchedSquares.get().forEach(square => {
-        const [i, j] = square.split(',').map(Number);
+      const squares = touchedSquares.get();
+      for (let s = 0; s < squares.length; s++) {
+        const parts = squares[s].split(',');
+        const i = Number(parts[0]);
+        const j = Number(parts[1]);
         builder.addRect(createSquarePath(i, j));
-      });
+      }
       return builder.build();
     }, [touchedSquares]);
 
     const surroundingSquarePaths = useDerivedValue(() => {
       const builder = Skia.PathBuilder.Make();
-      surroundingSquareCoords.get().forEach(coord => {
-        for (const c of coord) {
-          const [x, y] = c.split(',').map(Number);
-          if (
-            isWithinBounds(x, y) &&
-            !touchedSquares.get().includes(`${x},${y}`)
-          ) {
+      const groups = surroundingSquareCoords.get();
+      const touched = touchedSquares.get();
+      for (let g = 0; g < groups.length; g++) {
+        const coords = groups[g];
+        for (let c = 0; c < coords.length; c++) {
+          const parts = coords[c].split(',');
+          const x = Number(parts[0]);
+          const y = Number(parts[1]);
+          if (isWithinBounds(x, y) && !touched.includes(`${x},${y}`)) {
             builder.addRect(createSquarePath(x, y));
           }
         }
-      });
+      }
       return builder.build();
     }, [surroundingSquareCoords]);
 

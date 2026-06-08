@@ -88,7 +88,10 @@ const NavigationItem = ({
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View ref={ref} style={[style, rStyle]}>
+      {/* collapsable={false} keeps a backing native view on Fabric so
+          measure() returns dimensions instead of null (the expand
+          transition silently no-op'd without it). */}
+      <Animated.View collapsable={false} ref={ref} style={[style, rStyle]}>
         {children}
       </Animated.View>
     </GestureDetector>

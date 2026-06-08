@@ -9,8 +9,6 @@ import {
 } from 'react';
 
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import debounce from 'lodash.debounce';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -152,15 +150,12 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
     ],
   );
 
-  const navigation = useRouter();
-  const debouncedBackNavigation = useMemo(
-    () => debounce(navigation.back, 1000, { leading: true, trailing: false }),
-    [navigation.back],
-  );
+  // Back navigation is owned by the screens (they sit inside the independent
+  // NavigationContainer); this only drives the collapse animation. Using
+  // expo-router's back() here popped the OUTER tree and exited the demo.
   const backTransition = useCallback(() => {
     'worklet';
     scheduleOnRN(Haptics.selectionAsync);
-    scheduleOnRN(debouncedBackNavigation);
     transitionOpacityProgress.set(
       withSequence(
         withTiming(1, { duration: 0 }),
@@ -179,12 +174,7 @@ export const ExpansionProvider = ({ children }: { children: ReactNode }) => {
         damping: 4,
       }),
     );
-  }, [
-    debouncedBackNavigation,
-    springIconProgress,
-    transitionOpacityProgress,
-    transitionProgress,
-  ]);
+  }, [springIconProgress, transitionOpacityProgress, transitionProgress]);
 
   const resetTransition = useCallback(() => {
     'worklet';
