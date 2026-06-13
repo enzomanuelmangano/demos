@@ -1,7 +1,7 @@
 [
   {
     "slug": "mobile-input",
-    "summary": "PIN lock-screen with a numeric keypad; correct pin is 11111 so tapping the '1' key five times completes the animated-face unlock.",
+    "summary": "PIN lock screen; entering the correct PIN 11111 unlocks it. Taps key 1 five times, then ASSERTS the unlock outcome (mobile-input-status reads \"unlocked\").",
     "steps": [
       {
         "tapOn": {
@@ -30,22 +30,19 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "unlocked"
         }
       }
     ],
     "testids": [
-      "mobile-input-key-1",
-      "mobile-input-key-2",
-      "mobile-input-key-3",
-      "mobile-input-key-4",
-      "mobile-input-key-5",
-      "mobile-input-key-6",
-      "mobile-input-key-7",
-      "mobile-input-key-8",
-      "mobile-input-key-9",
-      "mobile-input-key-0",
-      "mobile-input-key-backspace"
+      "mobile-input-key-0..9",
+      "mobile-input-key-backspace",
+      "mobile-input-status"
     ]
   },
   {
