@@ -1,4 +1,4 @@
-import { type FC, memo, useMemo } from 'react';
+import { type FC, memo, useMemo, useState } from 'react';
 
 import {
   Canvas,
@@ -12,12 +12,15 @@ import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+
+import { StyleSheet, Text } from 'react-native';
 
 type GeometryButtonProps = {
   onPress?: () => void;
@@ -29,6 +32,17 @@ type GeometryButtonProps = {
 export const GeometryButton: FC<GeometryButtonProps> = memo(
   ({ circles = 50, size = 100, onPress, color = '#FFF' }) => {
     const isActive = useSharedValue(false);
+
+    // e2e outcome probe: exposes whether the button has been pressed at least
+    // once (the morph is a Skia path with no inspectable RN state). Near-
+    // invisible (alpha ~0.012) but on-screen for the accessibility tree.
+    const [status, setStatus] = useState<'idle' | 'pressed'>('idle');
+    useAnimatedReaction(
+      () => isActive.get(),
+      active => {
+        if (active) scheduleOnRN(setStatus, 'pressed');
+      },
+    );
 
     const tapGesture = Gesture.Tap()
       .maxDuration(20000)
@@ -140,7 +154,10 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
 
     return (
       <GestureDetector gesture={tapGesture}>
-        <Animated.View style={rCanvasStyle}>
+        <Animated.View testID="geometry-button" style={rCanvasStyle}>
+          <Text testID="geometry-button-status" style={probeStyles.statusProbe}>
+            {status}
+          </Text>
           <Canvas style={baseStyle}>
             <Group transform={center}>
               <Path
@@ -156,3 +173,16 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
     );
   },
 );
+
+// Near-invisible to the eye, but on-screen + opaque enough for the
+// accessibility/view tree to expose it to e2e (alpha >= 0.01).
+const probeStyles = StyleSheet.create({
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+  },
+});

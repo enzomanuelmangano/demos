@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { Canvas } from '@shopify/react-native-skia';
 import Animated, {
@@ -37,6 +37,11 @@ const LockScreen: FC<LockScreenProps> = ({
   const animatedFaceRef = useRef<AnimatedFaceRefType>(null);
   const { shake, rShakeStyle: rPinContainerStyle } = useAnimatedShake();
 
+  // e2e outcome probe: exposes the lock result as an assertable value so a
+  // test can verify the PIN actually unlocked (the visible feedback is a Skia
+  // face, which has no inspectable state). Visually negligible (alpha ~0.01).
+  const [status, setStatus] = useState<'locked' | 'unlocked' | 'wrong'>('locked');
+
   const pin = useSharedValue<number[]>([]);
   const activeDots = useDerivedValue(() => {
     return pin.get().length;
@@ -44,6 +49,7 @@ const LockScreen: FC<LockScreenProps> = ({
 
   const correct = useCallback(() => {
     animatedFaceRef.current?.happy();
+    setStatus('unlocked');
     onCompleted?.();
   }, [onCompleted]);
 
@@ -51,6 +57,7 @@ const LockScreen: FC<LockScreenProps> = ({
     shake();
     onError?.(pin.get().join(''));
     animatedFaceRef.current?.sad();
+    setStatus('wrong');
   }, [onError, pin.get(), shake]);
 
   const activate = useCallback(() => {
@@ -93,6 +100,9 @@ const LockScreen: FC<LockScreenProps> = ({
 
   return (
     <View style={styles.container}>
+      <Text testID="mobile-input-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <Canvas style={{ width: '200%', position: 'absolute', aspectRatio: 1 }}>
         <CircleStroke />
         <AnimatedFace ref={animatedFaceRef} />
@@ -128,6 +138,16 @@ const styles = StyleSheet.create({
   },
   fill: {
     flex: 1,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#1C274D',
+    opacity: 0.012,
   },
 });
 

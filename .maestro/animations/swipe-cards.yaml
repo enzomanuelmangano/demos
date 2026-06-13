@@ -1,0 +1,29 @@
+# e2e: Tinder-style swipeable card deck driven by three bottom buttons; tap like (heart) then dislike (close) to fly two cards off, then ASSERT the deck advanced (swipe-cards-status reads "swiped:2").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/swipe-cards"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/swipe-cards--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "swipe-cards-like"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "swipe-cards-dislike"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "swiped:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/swipe-cards--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

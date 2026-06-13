@@ -12,6 +12,7 @@ import Animated, {
 type PressableScaleProps = PropsWithChildren<{
   onPress: () => void;
   style: StyleProp<ViewStyle>;
+  testID?: string;
 }>;
 
 const PressableScale: FC<PressableScaleProps> = memo(

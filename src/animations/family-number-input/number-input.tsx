@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { type FC, useCallback, useState } from 'react';
 
@@ -22,6 +22,13 @@ const NumberInput: FC = () => {
         styles.container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
+      {/* e2e outcome probe: exposes the current keypad value as an assertable
+          string so a test can verify the typed digits actually drive the
+          display (the visible number is an animated Skia/transform widget).
+          Near-invisible (alpha ~0.01). */}
+      <Text testID="family-number-input-status" style={styles.statusProbe}>
+        {String(input)}
+      </Text>
       <View style={styles.fillCenter}>
         <View
           style={[
@@ -76,6 +83,14 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
+  },
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });
 

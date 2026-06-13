@@ -1,0 +1,29 @@
+# e2e: Tap the pill to open the popup, then pick 'Bottom Right' to spring the pill to that corner; ASSERTS the pick outcome (popup-handler-status reads "angle:bottom-right").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/popup-handler"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/popup-handler--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "popup-handler-pill"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    text: "Bottom Right"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "angle:bottom-right"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/popup-handler--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

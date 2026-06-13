@@ -1,0 +1,35 @@
+# e2e: A centered row of 4 tabs (Accounts/Home/Payments/Transfers) where the active tab expands its label. Tap different tabs to move the active indicator.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/tab-navigation"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/tab-navigation--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "tab-navigation-tab-2"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "tab-navigation-tab-3"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "tab-navigation-tab-0"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:0"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/tab-navigation--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

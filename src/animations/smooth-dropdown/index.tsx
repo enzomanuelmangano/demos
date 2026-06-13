@@ -1,4 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import { Dropdown } from './components/dropdown';
 
@@ -14,12 +16,20 @@ const options: DropdownOptionType[] = [
 ];
 
 export const SmoothDropdown = () => {
+  // e2e outcome probe: surfaces the picked option as an assertable value so a
+  // test can verify the dropdown selection actually fired. Visually negligible.
+  const [picked, setPicked] = useState('none');
+
   return (
     <View style={styles.container}>
+      <Text testID="smooth-dropdown-status" style={styles.statusProbe}>
+        {`picked:${picked}`}
+      </Text>
       <Dropdown
         options={options}
         header={{ label: 'Header', iconName: 'ellipsis' }}
         onPick={val => {
+          setPicked(val.label.toLowerCase());
           console.log({
             val,
           });
@@ -35,5 +45,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });

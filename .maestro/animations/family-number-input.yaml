@@ -1,0 +1,33 @@
+# e2e: Family-style large animated number display fed by a custom on-screen numeric keypad. Taps 1,2,3,0 then backspace and ASSERTS the resulting value (family-number-input-status reads "123").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/family-number-input"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/family-number-input--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "family-number-input-key-1"
+- tapOn:
+    id: "family-number-input-key-2"
+- tapOn:
+    id: "family-number-input-key-3"
+- tapOn:
+    id: "family-number-input-key-0"
+- tapOn:
+    id: "family-number-input-key-backspace"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "123"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/family-number-input--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

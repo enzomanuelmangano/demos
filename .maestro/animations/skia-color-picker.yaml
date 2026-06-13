@@ -1,0 +1,33 @@
+# e2e: A full-width circular Skia color wheel with a draggable picker knob; dragging across the wheel updates the selected color. Tests dragging across the picker area.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/skia-color-picker"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/skia-color-picker--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "skia-color-picker-canvas"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- swipe:
+    from:
+      id: "skia-color-picker-canvas"
+    direction: "UP"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/skia-color-picker--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

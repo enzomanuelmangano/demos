@@ -1,0 +1,35 @@
+# e2e: A centered horizontal segmented control (Accounts/Deposits/Funds) with a fluid liquid-blur selector. Tap different segments to trigger the fluid blur transition.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/fluid-tab-interaction"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/fluid-tab-interaction--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "fluid-tab-interaction-tab-funds"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "fluid-tab-interaction-tab-deposits"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "fluid-tab-interaction-tab-accounts"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:accounts"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/fluid-tab-interaction--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

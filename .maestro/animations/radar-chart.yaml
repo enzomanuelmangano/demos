@@ -1,0 +1,29 @@
+# e2e: Tap Shuffle twice to re-randomize the chart data; ASSERTS the shuffle outcome (radar-chart-status reads "shuffled:2").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/radar-chart"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/radar-chart--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "radar-chart-shuffle"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "radar-chart-shuffle"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "shuffled:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/radar-chart--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

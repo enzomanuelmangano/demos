@@ -1,0 +1,33 @@
+# e2e: An Airbnb-style price slider with an animated rolling-digit count and currency symbol above a horizontal track. Tests dragging the slider knob along its track to drive the price counter.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/airbnb-slider"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/airbnb-slider--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "airbnb-slider-knob"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- swipe:
+    from:
+      id: "airbnb-slider-knob"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/airbnb-slider--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

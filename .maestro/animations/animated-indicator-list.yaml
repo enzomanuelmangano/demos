@@ -1,0 +1,29 @@
+# e2e: Scroll the list, then tap the second section tab to jump; ASSERTS the jump outcome (animated-indicator-list-status reads "tab:Al Pacino").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/animated-indicator-list"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-indicator-list--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- scroll:
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "animated-indicator-list-tab-1"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:Al Pacino"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-indicator-list--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

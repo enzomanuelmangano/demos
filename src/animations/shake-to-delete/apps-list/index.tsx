@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 import { useState, useMemo } from 'react';
 
@@ -57,10 +57,16 @@ export const AppsList = () => {
         },
       ]}
       layout={LinearTransition}>
-      {items.map(item => (
+      {/* e2e outcome probe: flips to 'deleted' once a tile has actually been
+          removed from the grid. Near-invisible (alpha ~0.01). */}
+      <Text testID="shake-to-delete-status" style={styles.statusProbe}>
+        {items.length < APPS_DATA.length ? 'deleted' : 'intact'}
+      </Text>
+      {items.map((item, index) => (
         <AppItem
           key={item.id}
           item={item}
+          testID={`shake-to-delete-item-${index}`}
           style={{
             width: layoutConfig.itemSize,
             marginRight: layoutConfig.spacing,
@@ -90,5 +96,13 @@ const styles = StyleSheet.create({
   rowWrapper: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+  },
+  statusProbe: {
+    color: '#000000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });

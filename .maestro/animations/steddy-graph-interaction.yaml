@@ -1,0 +1,29 @@
+# e2e: A segmented control (Light / Standard / Pro) that switches between datasets and animates a Skia line graph re-drawing between them. Tests tapping the segments to morph the graph.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/steddy-graph-interaction"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/steddy-graph-interaction--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "steddy-graph-interaction-segment-Pro"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "steddy-graph-interaction-segment-Light"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "segment-Light"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/steddy-graph-interaction--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

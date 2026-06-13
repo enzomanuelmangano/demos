@@ -1,0 +1,33 @@
+# e2e: PIN lock screen; entering the correct PIN 11111 unlocks it. Taps key 1 five times, then ASSERTS the unlock outcome (mobile-input-status reads "unlocked").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/mobile-input"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/mobile-input--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "mobile-input-key-1"
+- tapOn:
+    id: "mobile-input-key-1"
+- tapOn:
+    id: "mobile-input-key-1"
+- tapOn:
+    id: "mobile-input-key-1"
+- tapOn:
+    id: "mobile-input-key-1"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "unlocked"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/mobile-input--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

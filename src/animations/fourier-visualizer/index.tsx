@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
@@ -57,6 +57,11 @@ const App = () => {
   const clear = () => {
     ref.current?.clear();
   };
+
+  // e2e outcome probe: flips from "idle" to "drawn" once a stroke is committed
+  // on the canvas, so a test can assert the draw gesture actually registered.
+  const [drawState, setDrawState] = useState<'idle' | 'drawn'>('idle');
+
   const panGesture = Gesture.Pan()
     .onStart(({ x, y }) => {
       scheduleOnRN(clear);
@@ -76,6 +81,7 @@ const App = () => {
       opacity.set(withTiming(0));
       const svgString = drawPath.get().toSVGString();
       scheduleOnRN(drawPathWrapper, svgString);
+      scheduleOnRN(setDrawState, 'drawn');
     });
 
   const rClearButton = useAnimatedStyle(() => {
@@ -87,8 +93,13 @@ const App = () => {
 
   return (
     <>
+      <Text testID="fourier-visualizer-status" style={styles.statusProbe}>
+        {drawState}
+      </Text>
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={styles.container}>
+        <Animated.View
+          testID="fourier-visualizer-canvas"
+          style={styles.container}>
           <Canvas style={styles.canvas}>
             <Path
               path={drawPath}
@@ -133,6 +144,14 @@ const styles = StyleSheet.create({
     right: 30,
   },
   container: { flex: 1 },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
+  },
 });
 
 export { App as FourierVisualizer };

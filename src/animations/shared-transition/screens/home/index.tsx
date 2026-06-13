@@ -1,6 +1,6 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { memo } from 'react';
+import { memo, useEffect, useState } from 'react';
 
 import MasonryList from '@react-native-seoul/masonry-list';
 import { useNavigation } from '@react-navigation/native';
@@ -15,8 +15,23 @@ import type { MainStackNavigationProp } from '../../typings';
 const HomeScreen = memo(() => {
   const navigation = useNavigation<MainStackNavigationProp>();
 
+  // e2e outcome probe: counts how many times the Home screen has gained focus.
+  // It starts at 1 on mount and becomes 2 after navigating to Details and back,
+  // so a test can verify the shared-element navigation round-trip actually
+  // happened. Visually negligible (alpha ~0.01).
+  const [focusCount, setFocusCount] = useState(0);
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setFocusCount(count => count + 1);
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <>
+      <Text testID="shared-transitions-status" style={styles.statusProbe}>
+        {`home-visits:${focusCount}`}
+      </Text>
       <MasonryList
         numColumns={2}
         data={dataSources}
@@ -25,6 +40,7 @@ const HomeScreen = memo(() => {
           const heroTag = 'heroTag' + i;
           return (
             <PressableOpacity
+              testID={`shared-transitions-card-${i}`}
               onPress={() => {
                 navigation.navigate(ScreenNames.Details, {
                   source,
@@ -72,6 +88,15 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingBottom: 100,
+  },
+  statusProbe: {
+    color: '#ffffff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });
 

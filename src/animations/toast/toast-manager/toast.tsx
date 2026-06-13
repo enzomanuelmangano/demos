@@ -138,6 +138,7 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
     <GestureDetector gesture={gesture}>
       <Animated.View
         key={index}
+        testID={isActiveToast ? 'toast-active' : undefined}
         style={[
           {
             width: windowWidth * 0.9,

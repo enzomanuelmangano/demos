@@ -1,0 +1,33 @@
+# e2e: A draggable metallic puck spring-snaps to the nearest magnet point; swipe the puck to fling it and watch it snap to a new magnet.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/magnet-spring"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/magnet-spring--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "magnet-spring-puck"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "magnet-spring-puck"
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/magnet-spring--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

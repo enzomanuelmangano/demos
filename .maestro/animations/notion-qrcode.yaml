@@ -1,0 +1,32 @@
+# e2e: 3D torus of avatar sprites that morphs into a scannable QR code; the bottom floating toggle button springs between the torus and QR modes. Probe bridges the morph 'progress' (>0.5) back to JS so the test asserts the toggle actually switched into QR mode.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/notion-qrcode"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/notion-qrcode--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "notion-qrcode-toggle"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "qr"
+    timeout: 4000
+- tapOn:
+    id: "notion-qrcode-toggle"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "torus"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/notion-qrcode--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

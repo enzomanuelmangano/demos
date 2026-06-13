@@ -1,0 +1,26 @@
+# e2e: Verification code entry: tapping the code boxes focuses an invisible number-pad TextInput; typing the correct code 11111 triggers the success animation. Focuses the field, enters 11111, then ASSERTS validation succeeded (verification-code-status latches "correct").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/verification-code"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/verification-code--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "verification-code-input"
+- inputText: "11111"
+- waitForAnimationToEnd:
+    timeout: 2500
+- assertVisible:
+    text: "correct"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/verification-code--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

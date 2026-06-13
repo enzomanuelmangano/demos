@@ -20,6 +20,7 @@ type ButtonProps = {
   entering?: AnimatedProps<ViewStyle>['entering'];
   exiting?: AnimatedProps<ViewStyle>['exiting'];
   disabled?: boolean;
+  testID?: string;
 };
 
 export const Button: FC<ButtonProps> = ({
@@ -32,6 +33,7 @@ export const Button: FC<ButtonProps> = ({
   entering,
   exiting,
   disabled = false,
+  testID,
 }) => {
   const isPrimary = variant === 'primary';
 
@@ -39,6 +41,7 @@ export const Button: FC<ButtonProps> = ({
     <Animated.View
       style={[styles.container, isPrimary && styles.primaryContainer, style]}>
       <PressableScale
+        testID={testID}
         entering={entering || FadeIn.duration(400)}
         exiting={exiting || FadeOut.duration(200)}
         onPress={onPress}

@@ -40,7 +40,7 @@ const Body = ({ progress, totalPages }: BodyProps) => (
 
 export const CalendarCard = ({ progress, totalPages }: CalendarCardProps) => {
   return (
-    <View style={styles.container}>
+    <View testID="calendar-days-card" style={styles.container}>
       <View style={styles.cardShadow}>
         <View>
           <Header />

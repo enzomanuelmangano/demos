@@ -1,4 +1,4 @@
-import { Dimensions, Platform, StyleSheet, View } from 'react-native';
+import { Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { type FC, useCallback } from 'react';
 
@@ -75,9 +75,16 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   const bottomBarSafeHeight = BOTTOM_BAR_HEIGHT + safeBottom + 30;
 
+  // e2e outcome probe: exposes the active tab route as an assertable token so a
+  // test can verify navigation actually moved to the tapped tab.
+  const activeRoute = state.routes[state.index]?.name ?? '';
+
   // Render the BottomTabBar component
   return (
     <>
+      <Text testID="blurred-bottom-bar-status" style={localStyles.statusProbe}>
+        {`tab-${activeRoute}`}
+      </Text>
       <LinearGradient
         pointerEvents="none"
         colors={LINEAR_GRADIENT_COLORS}
@@ -145,6 +152,15 @@ const localStyles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
+  },
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

@@ -1,6 +1,6 @@
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   Blur,
@@ -14,11 +14,13 @@ import {
 import { PressableScale } from 'pressto';
 import {
   Easing,
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedSlider } from './components/animated-slider';
 
@@ -32,6 +34,20 @@ const FibonacciShader = () => {
   const magicalMul = useSharedValue(2.4);
 
   const iTime = useSharedValue(0.0);
+
+  // e2e outcome probe: the shader is a worklet-driven Skia canvas with no
+  // inspectable RN state, so we bridge a CHANGED flag from the slider's N value
+  // to prove the drag actually altered the shader. Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => N.get(),
+    (current, previous) => {
+      if (previous != null && current !== previous) {
+        scheduleOnRN(setStatus, 'moved');
+      }
+    },
+    [],
+  );
 
   const dynamicSource = useDerivedValue(() => {
     // WHAT IS THIS!!!
@@ -83,6 +99,9 @@ const FibonacciShader = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="fibonacci-shader-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <View
         style={{
           marginTop: 100,
@@ -120,6 +139,7 @@ const FibonacciShader = () => {
 
       <View style={styles.animatedSlider}>
         <AnimatedSlider
+          testID="fibonacci-shader-slider"
           sliderHeight={40}
           minValue={5}
           maxValue={MAX_CIRCLES_AMOUNT}
@@ -134,6 +154,7 @@ const FibonacciShader = () => {
         />
       </View>
       <PressableScale
+        testID="fibonacci-shader-magic"
         onPress={() => {
           magicalMul.set(Math.random() * 100);
         }}
@@ -166,6 +187,15 @@ const styles = StyleSheet.create({
     width: 64,
   },
   floatingContent: { fontSize: 32 },
+  statusProbe: {
+    color: '#FFF',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
+  },
 });
 
 export { FibonacciShader };

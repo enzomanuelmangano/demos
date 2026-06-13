@@ -1,0 +1,29 @@
+# e2e: Product list where a buy button morphs into a confirm bottom-sheet; tap an item to open then confirm 'Add to cart', then ASSERT the cart total (add-to-cart-status reads "cart:1").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/add-to-cart"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/add-to-cart--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "add-to-cart-buy-0"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "add-to-cart-confirm"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "cart:1"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/add-to-cart--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

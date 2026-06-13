@@ -75,6 +75,7 @@ function SegmentedControl<T extends string>({
         return (
           <PressableScale
             key={difficulty}
+            testID={`steddy-graph-interaction-segment-${difficulty}`}
             style={[localStyles.labelContainer]}
             onPress={() => {
               // Call the provided onPress function with the selected item

@@ -1,3 +1,5 @@
+import { StyleSheet, View } from 'react-native';
+
 import { useEffect, useMemo } from 'react';
 
 import {
@@ -78,44 +80,55 @@ export const BlurCircles = () => {
   }, []);
 
   return (
-    <Canvas style={{ flex: 1, backgroundColor: 'white' }}>
-      {/* Note:  
+    // testID wrapper: this is a passive auto-animation with no user input, so
+    // the e2e outcome is simply that the Skia canvas renders. The wrapping View
+    // gives the test a stable element to assert on.
+    <View testID="blur-circles-canvas" style={styles.container}>
+      <Canvas style={{ flex: 1, backgroundColor: 'white' }}>
+        {/* Note:  
           I've used two groups here, both for the colored circle,
           both are clipped with the blurred circle's clip path.
           The first group has a blur effect applied to it.
           The second group is inverted in order to get the part that isn't blurred.
       */}
-      <Group clip={clipCircle}>
-        <Circle cx={cx} cy={cy} r={RADIUS}>
-          {sweepGradient}
+        <Group clip={clipCircle}>
+          <Circle cx={cx} cy={cy} r={RADIUS}>
+            {sweepGradient}
+          </Circle>
+          <Blur blur={10} />
+        </Group>
+        <Group clip={clipCircle} invertClip>
+          <Circle cx={cx} cy={cy} r={RADIUS}>
+            {sweepGradient}
+          </Circle>
+        </Group>
+        {/* The "Glass Circle" */}
+        <Circle
+          cx={cx2}
+          cy={cy2}
+          r={RADIUS}
+          color={'rgba(0,0,0,0.08)'}
+          strokeWidth={10}
+          strokeCap={'round'}>
+          <BlurMask blur={20} style="inner" />
         </Circle>
-        <Blur blur={10} />
-      </Group>
-      <Group clip={clipCircle} invertClip>
-        <Circle cx={cx} cy={cy} r={RADIUS}>
-          {sweepGradient}
-        </Circle>
-      </Group>
-      {/* The "Glass Circle" */}
-      <Circle
-        cx={cx2}
-        cy={cy2}
-        r={RADIUS}
-        color={'rgba(0,0,0,0.08)'}
-        strokeWidth={10}
-        strokeCap={'round'}>
-        <BlurMask blur={20} style="inner" />
-      </Circle>
-      {/* That's a very simple white stroke added to the blurred circle. 
+        {/* That's a very simple white stroke added to the blurred circle. 
           Feel free to remove it :)  */}
-      <Circle
-        cx={cx2}
-        cy={cy2}
-        r={RADIUS}
-        color={'rgba(255,255,255,0.25)'}
-        strokeWidth={1}
-        style={'stroke'}
-      />
-    </Canvas>
+        <Circle
+          cx={cx2}
+          cy={cy2}
+          r={RADIUS}
+          color={'rgba(255,255,255,0.25)'}
+          strokeWidth={1}
+          style={'stroke'}
+        />
+      </Canvas>
+    </View>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+});

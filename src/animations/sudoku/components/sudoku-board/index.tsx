@@ -5,7 +5,7 @@
  * and visual feedback. It handles cell selection, number input, and game state management.
  */
 
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   forwardRef,
@@ -49,6 +49,8 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
     const [board, setBoard] = useState(() => game.getBoard());
     const selectedCell = useSharedValue(game.getSelectedCell());
     const highlightedNumber = useSharedValue(game.getHighlightedNumber());
+    // e2e outcome probe: the most recent number the player wrote into a cell.
+    const [lastEntered, setLastEntered] = useState<number | null>(null);
 
     const solve = useCallback(() => {
       if (game.solve()) {
@@ -76,6 +78,7 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
       (number: number) => {
         if (game.setNumber(number)) {
           setBoard(game.getBoard());
+          setLastEntered(number);
           if (game.isComplete()) {
             onComplete?.();
           }
@@ -141,6 +144,11 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
 
     return (
       <View style={styles.boardContainer}>
+        {/* e2e outcome probe: 'cell:<n>' once a number is written into a cell.
+            Near-invisible (alpha ~0.01). */}
+        <Text testID="sudoku-status" style={styles.statusProbe}>
+          {lastEntered != null ? `cell:${lastEntered}` : 'empty'}
+        </Text>
         <Animated.View style={styles.board} entering={FadeInDown.duration(200)}>
           {boardContent}
         </Animated.View>
@@ -185,5 +193,14 @@ export const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+  },
+  statusProbe: {
+    color: COLORS.primary,
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

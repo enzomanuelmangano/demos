@@ -76,6 +76,7 @@ const ConfirmButton: FC<ConfirmButtonProps> = memo(
 
     return (
       <PressableScale
+        testID="add-to-cart-confirm"
         onPress={onConfirm}
         style={[
           style,

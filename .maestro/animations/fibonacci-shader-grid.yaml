@@ -1,0 +1,33 @@
+# e2e: Animated Skia Fibonacci shader disc controlled by a 2D draggable control panel (X = circle count, Y = magical multiplier). Drags across the pad, then ASSERTS the shader was altered (fibonacci-shader-grid-status reads "moved", bridged from the worklet n/magicalMul values).
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/fibonacci-shader-grid"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/fibonacci-shader-grid--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "fibonacci-shader-grid-pad"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "fibonacci-shader-grid-pad"
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/fibonacci-shader-grid--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

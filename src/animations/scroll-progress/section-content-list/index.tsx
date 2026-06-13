@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import {
   type FC,
@@ -7,6 +7,7 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +18,7 @@ import Animated, {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { BottomProgress } from './bottom-progress';
 import { clamp, getReadingTime } from './utils';
@@ -51,6 +53,19 @@ const SectionContentList: FC<SectionContentListProps> = memo(
 
     const isResetting = useSharedValue(false);
     const currentScroll = useSharedValue(0);
+
+    // e2e outcome probe: flips to "scrolled" once the reader scrolls past the
+    // top, exposed as an assertable token so a test can verify the scroll
+    // actually drove the progress indicator. Visually negligible (alpha ~0.01).
+    const [scrollState, setScrollState] = useState<'idle' | 'scrolled'>('idle');
+    useAnimatedReaction(
+      () => progress.get() > 0.01,
+      hasScrolled => {
+        if (hasScrolled) {
+          scheduleOnRN(setScrollState, 'scrolled');
+        }
+      },
+    );
 
     const onLayout = useCallback(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,8 +140,12 @@ const SectionContentList: FC<SectionContentListProps> = memo(
 
     return (
       <View onLayout={onViewLayout}>
+        <Text testID="scroll-progress-status" style={styles.statusProbe}>
+          {scrollState}
+        </Text>
         <Animated.ScrollView
           {...scrollViewProps}
+          testID="scroll-progress-list"
           contentContainerStyle={contentContainerStyle}
           ref={scrollRef}
           onScroll={onScroll}
@@ -172,6 +191,15 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 10,
+  },
+  statusProbe: {
+    color: '#111111',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });
 export { SectionContentList };

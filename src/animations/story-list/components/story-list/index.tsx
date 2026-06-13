@@ -1,11 +1,13 @@
-import { useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { type ReactNode, useMemo } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 
 import Animated, {
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { StoryListItem } from './story-item';
 
@@ -25,6 +27,19 @@ function StoryList<T>({
 }: StoryListProps<T>) {
   const scrollOffset = useSharedValue(0);
   const { width: windowWidth } = useWindowDimensions();
+
+  // e2e outcome probe: flips to "paged" once the carousel is scrolled away from
+  // the first story, exposed as an assertable token so a test can verify the
+  // swipe actually paged the carousel. Visually negligible (alpha ~0.01).
+  const [pageState, setPageState] = useState<'idle' | 'paged'>('idle');
+  useAnimatedReaction(
+    () => scrollOffset.get() > 1,
+    hasPaged => {
+      if (hasPaged) {
+        scheduleOnRN(setPageState, 'paged');
+      }
+    },
+  );
 
   // Match GitHub formula exactly: paddingLeft = (WindowWidth - StoryListItemWidth) / 4
   const paddingLeft = useMemo(() => {
@@ -49,12 +64,16 @@ function StoryList<T>({
 
   return (
     <>
+      <Text testID="story-list-status" style={styles.statusProbe}>
+        {pageState}
+      </Text>
       {/*
        * The beauty of this approach is that we're not coordinating custom gesture detectors.
        * Instead we're using just one ScrollView for the gesture handling.
        * The actual story items are rendered separately and animated based on the scroll offset.
        */}
       <Animated.ScrollView
+        testID="story-list"
         horizontal
         snapToInterval={storyItemDimensions.width}
         decelerationRate="fast"
@@ -108,5 +127,17 @@ function StoryList<T>({
     </>
   );
 }
+
+const styles = StyleSheet.create({
+  statusProbe: {
+    color: '#2D3045',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
+  },
+});
 
 export { StoryList };

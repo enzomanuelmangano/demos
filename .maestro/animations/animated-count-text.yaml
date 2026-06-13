@@ -1,0 +1,29 @@
+# e2e: Tap the shuffle FAB twice to roll the count to new values; ASSERTS the roll outcome (animated-count-text-status reads "rolled:2").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/animated-count-text"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-count-text--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "animated-count-text-shuffle"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "animated-count-text-shuffle"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "rolled:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-count-text--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

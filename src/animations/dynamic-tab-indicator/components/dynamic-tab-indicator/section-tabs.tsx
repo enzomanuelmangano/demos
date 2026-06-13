@@ -73,6 +73,7 @@ const SectionTabs: FC<SectionTabsProps> = memo(
           return (
             <PressableOpacity
               key={index}
+              testID={`dynamic-tab-indicator-tab-${title.toLowerCase()}`}
               onPress={() => onSelectSection?.(index)}
               style={[styles.container, { width: width / data.length }]}>
               <Text

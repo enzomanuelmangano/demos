@@ -1,0 +1,33 @@
+# e2e: Two-sided balance slider (Coffee vs Milk); dragging the central handle redistributes the left/right percentages. Drags the handle right and left, then ASSERTS the slider moved (balance-slider-status reads "moved", bridged from onChange via scheduleOnRN).
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/balance-slider"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/balance-slider--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "balance-slider-knob"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- swipe:
+    from:
+      id: "balance-slider-knob"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/balance-slider--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

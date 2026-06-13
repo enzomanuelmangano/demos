@@ -1,4 +1,4 @@
-import { useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 import {
   forwardRef,
@@ -7,11 +7,13 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 
 import Animated, {
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useSharedValue,
   withSpring,
@@ -101,6 +103,18 @@ const ScrollableBottomSheet = forwardRef<
     [scrollToY, close, active.get()],
   );
 
+  // e2e outcome probe: bridge the sheet's open state (a worklet value) to JS so
+  // a test can assert the bottom sheet is actually open at the end of the flow.
+  const [isOpen, setIsOpen] = useState(false);
+  useAnimatedReaction(
+    () => active.get(),
+    (next, prev) => {
+      if (next !== prev) {
+        scheduleOnRN(setIsOpen, next);
+      }
+    },
+  );
+
   const { width: windowWidth } = useWindowDimensions();
 
   const pagesHeight = useMemo(() => {
@@ -128,6 +142,11 @@ const ScrollableBottomSheet = forwardRef<
 
   return (
     <BottomSheet translateY={translateY} active={active} scrollTo={scrollToY}>
+      <Text
+        testID="scrollable-bottom-sheet-status"
+        style={probeStyles.statusProbe}>
+        {isOpen ? 'sheet-open' : 'sheet-closed'}
+      </Text>
       <Animated.ScrollView
         ref={scrollViewRef}
         scrollEventThrottle={16}
@@ -139,6 +158,18 @@ const ScrollableBottomSheet = forwardRef<
       </Animated.ScrollView>
     </BottomSheet>
   );
+});
+
+const probeStyles = StyleSheet.create({
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
+  },
 });
 
 export { ScrollableBottomSheet };

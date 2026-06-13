@@ -1,6 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { PressableWithoutFeedback } from 'pressto';
 
@@ -13,11 +13,20 @@ const App = () => {
   const everybodyStaggeredTextRef = useRef<StaggeredTextRef>(null);
   const canCookStaggeredTextRef = useRef<StaggeredTextRef>(null);
 
+  // e2e outcome probe: counts replays so a test can verify the press handler
+  // actually fired and retriggered the stagger. Visually negligible.
+  const [replays, setReplays] = useState(0);
+
   return (
     <View style={styles.fill}>
+      <Text testID="everybody-can-cook-status" style={styles.statusProbe}>
+        {`replays:${replays}`}
+      </Text>
       <PressableWithoutFeedback
+        testID="everybody-can-cook"
         style={styles.container}
         onPress={() => {
+          setReplays(prev => prev + 1);
           // Reset and animate both text components in sequence
           // Note: If enableReverse prop is used, you can use toggleAnimate instead:
           // everybodyStaggeredTextRef.current?.toggleAnimate();
@@ -63,6 +72,15 @@ const styles = StyleSheet.create({
   },
   text: {
     fontFamily: 'Honk-Regular', // Custom font for the animated text
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: 'white',
+    opacity: 0.012,
+    zIndex: 9999,
   },
 });
 

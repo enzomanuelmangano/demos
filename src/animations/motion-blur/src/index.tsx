@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { type FC, memo, useCallback, useState } from 'react';
 
@@ -12,7 +12,10 @@ import { ListItem } from './components/list-item';
 import { generateRandomItem, type Item } from './utils/generate-random-item';
 
 const AddButton: FC<{ onPress: () => void }> = memo(({ onPress }) => (
-  <PressableScale onPress={onPress} style={styles.addButton}>
+  <PressableScale
+    testID="motion-blur-add"
+    onPress={onPress}
+    style={styles.addButton}>
     <Entypo name="plus" size={40} color="white" />
   </PressableScale>
 ));
@@ -31,6 +34,11 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: exposes the live item count so a test can verify
+          the Add button actually inserted items. Visually negligible. */}
+      <Text testID="motion-blur-status" style={styles.statusProbe}>
+        {`items:${items.length}`}
+      </Text>
       <View style={styles.listContainer}>
         <BlurredList
           data={items}
@@ -66,6 +74,13 @@ const styles = StyleSheet.create({
   listContainer: {
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
   },
 });
 

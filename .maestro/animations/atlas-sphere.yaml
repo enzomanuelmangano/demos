@@ -1,0 +1,35 @@
+# e2e: Skia Atlas sphere of squares scaled by distance from the touch point; a Pan gesture moves the focal point.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/atlas-sphere"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/atlas-sphere--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "atlas-sphere"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- swipe:
+    from:
+      id: "atlas-sphere"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/atlas-sphere--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

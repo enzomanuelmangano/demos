@@ -1,0 +1,33 @@
+# e2e: A floating control panel that can be dragged around the screen and spring-snaps to the nearest corner; swipe the panel to fling it to another corner.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/draggable-panel"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/draggable-panel--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "draggable-panel-handle"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "draggable-panel-handle"
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/draggable-panel--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

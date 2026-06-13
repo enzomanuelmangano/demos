@@ -1,0 +1,33 @@
+# e2e: Grid of wrapped checkboxes (all labeled 'Italian'); each tap toggles a spring-animated checkmark + label color.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/checkbox-interactions"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/checkbox-interactions--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "checkbox-interactions-item-0"
+- tapOn:
+    id: "checkbox-interactions-item-2"
+- tapOn:
+    id: "checkbox-interactions-item-4"
+- tapOn:
+    id: "checkbox-interactions-item-6"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "checked:4"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/checkbox-interactions--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

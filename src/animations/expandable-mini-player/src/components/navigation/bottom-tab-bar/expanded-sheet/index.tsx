@@ -1,10 +1,13 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+
+import { useState } from 'react';
 
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -25,6 +28,17 @@ export const ExpandedSheet = () => {
   const isTapped = useSharedValue(false);
   const progressThreshold = 0.8;
   const safeTop = useSafeAreaInsets().top;
+
+  // e2e outcome probe: bridges the worklet expansion progress to an assertable
+  // value so a test can verify the tap actually expanded the sheet. Visually
+  // negligible.
+  const [status, setStatus] = useState<'collapsed' | 'expanded'>('collapsed');
+  useAnimatedReaction(
+    () => progress.get() >= progressThreshold,
+    expanded => {
+      scheduleOnRN(setStatus, expanded ? 'expanded' : 'collapsed');
+    },
+  );
 
   const tapGesture = Gesture.Tap()
     .onBegin(() => {
@@ -120,7 +134,12 @@ export const ExpandedSheet = () => {
 
   return (
     <GestureDetector gesture={gestures}>
-      <Animated.View style={[rSheetStyle, styles.container]}>
+      <Animated.View
+        testID="expandable-mini-player"
+        style={[rSheetStyle, styles.container]}>
+        <Text testID="expandable-mini-player-status" style={styles.statusProbe}>
+          {status}
+        </Text>
         <Animated.View
           style={[
             rKnobStyle,
@@ -163,5 +182,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'absolute',
     width: '100%',
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#767676',
+    opacity: 0.012,
+    zIndex: 9999,
   },
 });

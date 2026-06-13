@@ -86,6 +86,7 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
       <Animated.View style={rBackButtonStyle}>
         <Animated.View style={rBackButtonInnerStyle}>
           <PressableScale
+            testID="steps-back"
             onPress={onBack}
             style={[
               styles.button,
@@ -100,6 +101,7 @@ export const StepButtons: React.FC<StepButtonsProps> = ({
       </Animated.View>
       <Animated.View style={styles.fill}>
         <PressableScale
+          testID="steps-continue"
           onPress={onContinue}
           style={[styles.button, styles.continueButton]}>
           <View style={styles.labelContainer}>

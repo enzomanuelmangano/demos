@@ -3,6 +3,7 @@ import {
   Pressable,
   StyleSheet,
   Switch,
+  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -32,12 +33,19 @@ export const GitHubTerrain = () => {
   // Track switch UI state separately for controlled component
   const [switchValue, setSwitchValue] = useState(true);
 
+  // e2e outcome probe: terrain flat/raised and data source live in a ref to
+  // avoid re-renders, so they are invisible to the view tree. Mirror them into
+  // state purely for assertion. Visually negligible (alpha ~0.01).
+  const [isFlat, setIsFlat] = useState(true);
+
   // Initialize WebGPU renderer
   useWebGPURenderer(canvasRef, stateRef, layoutRef);
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    stateRef.current.isFlat = !stateRef.current.isFlat;
+    const next = !stateRef.current.isFlat;
+    stateRef.current.isFlat = next;
+    setIsFlat(next);
   }, []);
 
   const handleDataToggle = useCallback((value: boolean) => {
@@ -54,7 +62,13 @@ export const GitHubTerrain = () => {
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress}>
+      <Text testID="github-terrain-status" style={styles.statusProbe}>
+        {`${isFlat ? 'flat' : 'raised'}-${switchValue ? 'real' : 'demo'}`}
+      </Text>
+      <Pressable
+        testID="github-terrain-canvas"
+        style={StyleSheet.absoluteFill}
+        onPress={handlePress}>
         <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} />
       </Pressable>
 
@@ -62,6 +76,7 @@ export const GitHubTerrain = () => {
         pointerEvents="box-none"
         style={[styles.switchContainer, { bottom: safeBottom + 14 }]}>
         <Switch
+          testID="github-terrain-switch"
           accessibilityLabel="Toggle real GitHub contribution data"
           trackColor={{ false: '#C8CCC9', true: '#34D399' }}
           ios_backgroundColor="#C8CCC9"
@@ -82,5 +97,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     zIndex: 10,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: SURFACE_HEX,
+    opacity: 0.012,
+    zIndex: 20,
   },
 });

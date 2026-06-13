@@ -22,6 +22,8 @@ type ClipBoxButtonProps = {
   description: string;
   actionTitle: string;
   onPress?: () => void;
+  onReveal?: () => void;
+  testID?: string;
 };
 
 const clamp = (value: number, lowerBound: number, upperBound: number) => {
@@ -37,6 +39,8 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
   actionTitle,
   description,
   onPress,
+  onReveal,
+  testID,
 }) => {
   const boxWidth = StyleSheet.flatten(style ?? {}).width as number;
   const circleMargin = boxWidth * 0.12;
@@ -57,7 +61,9 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
   return (
     <View style={style}>
       <PressableOpacity
+        testID={testID}
         onPressIn={() => {
+          onReveal?.();
           r.set(
             withSpring(boxWidth, {
               damping: 20,

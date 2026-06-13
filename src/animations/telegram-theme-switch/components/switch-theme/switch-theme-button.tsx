@@ -82,7 +82,9 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
 
   return (
     <GestureDetector gesture={tapGesture}>
-      <Reanimated.View style={[contentContainerStyle, rContainerStyle]}>
+      <Reanimated.View
+        testID="telegram-theme-switch"
+        style={[contentContainerStyle, rContainerStyle]}>
         <Reanimated.View
           ref={viewRef}
           style={[

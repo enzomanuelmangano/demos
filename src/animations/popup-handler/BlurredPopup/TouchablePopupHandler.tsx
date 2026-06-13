@@ -17,6 +17,7 @@ type TouchablePopupHandlerProps = {
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   options: PopupOptionType[];
+  testID?: string;
 };
 
 /**
@@ -31,6 +32,7 @@ const TouchablePopupHandler: FC<TouchablePopupHandlerProps> = ({
   onPress,
   highlightedChildren,
   options,
+  testID,
 }) => {
   // We use an Animated Ref to measure the node dimensions on the UI Thread
   const viewRef = useAnimatedRef<Animated.View>();
@@ -70,7 +72,7 @@ const TouchablePopupHandler: FC<TouchablePopupHandlerProps> = ({
 
   return (
     <GestureDetector gesture={tapGesture}>
-      <Animated.View ref={viewRef} style={style}>
+      <Animated.View testID={testID} ref={viewRef} style={style}>
         {children}
       </Animated.View>
     </GestureDetector>

@@ -27,6 +27,7 @@ type SliderProps = {
   >;
   onUpdate?: (progress: number) => void;
   initialProgress?: number;
+  testID?: string;
 };
 
 /**
@@ -45,6 +46,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
   style,
   onUpdate,
   initialProgress = 0,
+  testID,
 }) => {
   const flattenedStyle = useMemo(() => {
     return StyleSheet.flatten(style);
@@ -110,6 +112,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 
   return (
     <Animated.View
+      testID={testID}
       style={{
         borderRadius: 5,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',

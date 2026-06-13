@@ -16,7 +16,7 @@
 
 import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import { format } from 'date-fns';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,6 +24,7 @@ import Animated, {
   interpolate,
   useAnimatedScrollHandler,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 /**
  * Props for the TimeRange component
@@ -75,6 +76,9 @@ export const TimeRange: React.FC<TimePickerProps> = ({
    * Handles scroll events and interpolates the selected time
    * Uses Reanimated worklet for smooth performance
    */
+  // e2e outcome probe: bridge a 'moved' flag once the wheel actually scrolls.
+  const [moved, setMoved] = useState(false);
+
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
       const { contentOffset } = event;
@@ -84,12 +88,20 @@ export const TimeRange: React.FC<TimePickerProps> = ({
         datesMs,
       );
       onDateChange?.(interpolatedDate);
+      if (contentOffset.y > 1) {
+        scheduleOnRN(setMoved, true);
+      }
     },
   });
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+      <Text testID="clock-time-picker-status" style={styles.statusProbe}>
+        {moved ? 'moved' : 'idle'}
+      </Text>
       <Animated.FlatList
+        testID="clock-time-picker-wheel"
         onScroll={onScroll}
         decelerationRate="fast"
         snapToAlignment="center"
@@ -135,6 +147,15 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     paddingVertical: TimeRangeHeight / 2 - ITEM_HEIGHT / 2,
+  },
+  statusProbe: {
+    color: '#111111',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 200,
   },
   timeItem: {
     alignItems: 'center',

@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 import { useState } from 'react';
 
@@ -14,11 +14,13 @@ import {
 import { PressableScale } from 'pressto';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { FractalGlassMask } from './components/fractal-glass-mask';
 
@@ -41,6 +43,18 @@ const App = () => {
   const cy = useSharedValue(270);
   const prevCx = useSharedValue(0);
   const prevCy = useSharedValue(0);
+
+  // e2e outcome probe: flips to "moved" once the refracted circle is dragged
+  // from its initial position, so a test can assert the drag registered.
+  const [circleMoved, setCircleMoved] = useState(false);
+  useAnimatedReaction(
+    () => cx.get() !== 180 || cy.get() !== 270,
+    (moved, prev) => {
+      if (moved && moved !== prev) {
+        scheduleOnRN(setCircleMoved, true);
+      }
+    },
+  );
 
   const fractalGlassMaskPath = rect(x, y, width, height);
 
@@ -79,8 +93,12 @@ const App = () => {
 
   return (
     <Animated.View style={[styles.fill, rBackgroundStyle]}>
+      <Text testID="fractal-glass-status" style={styles.statusProbe}>
+        {`${theme}-${circleMoved ? 'moved' : 'still'}`}
+      </Text>
       <GestureDetector gesture={panGesture}>
         <Animated.View
+          testID="fractal-glass-circle"
           style={[
             rFakeCircleStyle,
             {
@@ -132,6 +150,7 @@ const App = () => {
       </Canvas>
 
       <PressableScale
+        testID="fractal-glass-fab"
         style={styles.floatingButton}
         onPress={() => {
           setTheme(theme === 'light' ? 'dark' : 'light');
@@ -167,6 +186,14 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

@@ -1,0 +1,29 @@
+# e2e: Top country tabs over a paged ScrollView; tap a tab to scroll the pager and slide the underline indicator. Tap Italy then Japan, then ASSERT the active tab (dynamic-tab-indicator-status reads "tab:japan").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/dynamic-tab-indicator"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/dynamic-tab-indicator--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "dynamic-tab-indicator-tab-italy"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "dynamic-tab-indicator-tab-japan"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:japan"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/dynamic-tab-indicator--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

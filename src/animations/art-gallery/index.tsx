@@ -616,7 +616,7 @@ export function ArtGallery() {
 
   return (
     <GestureDetector gesture={composedGesture}>
-      <View style={styles.container}>
+      <View testID="art-gallery-canvas" style={styles.container}>
         <Canvas
           ref={canvasRef}
           style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }}

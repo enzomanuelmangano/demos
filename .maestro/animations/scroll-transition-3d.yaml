@@ -1,0 +1,39 @@
+# e2e: Inverted vertical FlatList of large blurred numbers with a 3D depth/blur transition keyed to scroll position. Performs paged vertical swipes, then ASSERTS the list actually scrolled (scroll-transition-3d-status reads "moved", bridged from the worklet scrollY value).
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/scroll-transition-3d"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/scroll-transition-3d--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "scroll-transition-3d-list"
+    direction: "UP"
+- waitForAnimationToEnd:
+    timeout: 1200
+- swipe:
+    from:
+      id: "scroll-transition-3d-list"
+    direction: "UP"
+- waitForAnimationToEnd:
+    timeout: 1200
+- swipe:
+    from:
+      id: "scroll-transition-3d-list"
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 1200
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/scroll-transition-3d--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

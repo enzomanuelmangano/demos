@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
@@ -93,6 +93,11 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: exposes the mutation status (idle/loading/
+          success/error) as an assertable token. Near-invisible. */}
+      <Text testID="loading-button-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <LoadingButton
         status={status}
         onPress={handlePress}
@@ -132,6 +137,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });
 

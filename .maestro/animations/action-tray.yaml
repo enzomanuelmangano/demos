@@ -1,0 +1,33 @@
+# e2e: A rotating + FAB opens a bottom action tray; the Continue button advances through its steps. Tap the FAB, then the Continue button twice, ending on the open tray.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/action-tray"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/action-tray--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "action-tray-fab"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "action-tray-continue"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "action-tray-continue"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tray-open-2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/action-tray--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

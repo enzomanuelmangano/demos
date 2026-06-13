@@ -1,0 +1,33 @@
+# e2e: Full-screen Skia fibonacci sphere of 2000 circles that auto-pulses; a tap/drag on the canvas re-randomizes the spiral multiplier (magicalMul). Probe bridges the first change of magicalMul off its initial value (2.4) back to JS so the test asserts the perturbation actually registered.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/sphere-waves"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/sphere-waves--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "sphere-waves-canvas"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- swipe:
+    from:
+      id: "sphere-waves-canvas"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/sphere-waves--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

@@ -1,0 +1,33 @@
+# e2e: Collapse the crop region, drag a corner, then tap Crop to open the cropped detail; ASSERTS the open outcome (image-cropper-status reads "cropped:shown").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/image-cropper"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/image-cropper--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "image-cropper-collapse"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "image-cropper-canvas"
+    direction: "DOWN"
+- tapOn:
+    id: "image-cropper-crop"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "cropped:shown"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/image-cropper--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"
