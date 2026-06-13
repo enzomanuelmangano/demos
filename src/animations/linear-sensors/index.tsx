@@ -1,4 +1,4 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
 import { useCallback } from 'react';
 
@@ -110,7 +110,14 @@ const App = () => {
   );
 
   return (
-    <View style={styles.fill}>
+    <View testID="linear-sensors" style={styles.fill}>
+      {/* e2e probe: this demo is driven entirely by device ROTATION/GRAVITY
+          sensors (no touch), which do not fire on a simulator — so there is no
+          interaction outcome to assert. The static testID lets a test confirm
+          the screen at least mounted. Visually negligible. */}
+      <Text testID="linear-sensors-status" style={styles.statusProbe}>
+        mounted
+      </Text>
       <Canvas style={StyleSheet.absoluteFill}>
         <Fill>
           <RadialGradient
@@ -157,6 +164,15 @@ const styles = StyleSheet.create({
   },
   fill: {
     flex: 1,
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#fff',
+    opacity: 0.012,
+    zIndex: 9999,
   },
 });
 

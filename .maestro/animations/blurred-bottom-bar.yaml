@@ -24,6 +24,8 @@ appId: com.reactiive.app
     id: "blurred-bottom-bar-tab-settings"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "tab-Settings"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/blurred-bottom-bar--after"

@@ -24,7 +24,8 @@ appId: com.reactiive.app
     direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/skia-color-picker--picked"
+- assertVisible:
+    text: "moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/skia-color-picker--after"

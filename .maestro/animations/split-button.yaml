@@ -16,11 +16,12 @@ appId: com.reactiive.app
     id: "split-button"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/split-button--split-open"
 - tapOn:
     id: "split-button"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "split-open"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/split-button--after"

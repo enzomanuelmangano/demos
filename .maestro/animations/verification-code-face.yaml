@@ -19,7 +19,10 @@ appId: com.reactiive.app
 - inputText: "1111"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/verification-code-face--entered"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "drawn"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/verification-code-face--after"

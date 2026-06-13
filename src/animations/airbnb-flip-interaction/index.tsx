@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useState } from 'react';
 
@@ -139,6 +139,10 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+      <Text testID="airbnb-flip-status" style={styles.statusProbe}>
+        {isFlipped ? 'flipped' : 'front'}
+      </Text>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
@@ -225,6 +229,15 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 10,
+  },
+  statusProbe: {
+    color: '#ffffff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

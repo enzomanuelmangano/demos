@@ -16,11 +16,12 @@ appId: com.reactiive.app
     id: "steddy-graph-interaction-segment-Pro"
 - waitForAnimationToEnd:
     timeout: 2000
-- takeScreenshot: ".maestro/artifacts/steddy--pro"
 - tapOn:
     id: "steddy-graph-interaction-segment-Light"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "segment-Light"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/steddy-graph-interaction--after"

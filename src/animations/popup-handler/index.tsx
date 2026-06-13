@@ -1,6 +1,6 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { FontAwesome } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -15,6 +15,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { BlurredPopupProvider, TouchablePopupHandler } from './BlurredPopup';
 
@@ -44,6 +45,10 @@ const PopupHandler = () => {
   const height = windowHeight - internalPadding * 2;
 
   const selectedAngle = useSharedValue<Angle>('top-left');
+
+  // e2e outcome probe: surfaces the picked direction as an assertable value so
+  // a test can verify the popup option actually sprung the pill to that corner.
+  const [status, setStatus] = useState<Angle>('top-left');
 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -126,6 +131,7 @@ const PopupHandler = () => {
       if (angle == null) {
         return;
       }
+      scheduleOnRN(setStatus, angle);
       const x = angle.includes('right')
         ? width - internalPadding
         : internalPadding;
@@ -143,6 +149,9 @@ const PopupHandler = () => {
           backgroundColor: '#111',
         },
       ]}>
+      <Text testID="popup-handler-status" style={styles.statusProbe}>
+        {`angle:${status}`}
+      </Text>
       <Image
         source={{
           uri,
@@ -194,6 +203,17 @@ const PopupHandlerContainer = () => {
 const styles = StyleSheet.create({
   fill: {
     flex: 1,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
   },
 });
 

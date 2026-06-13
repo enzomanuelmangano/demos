@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { AntDesign } from '@expo/vector-icons';
 import debounce from 'lodash.debounce';
@@ -15,6 +15,12 @@ export const TwodosSlide = () => {
   const progress = useSharedValue(0);
   const clampedProgress = useSharedValue(0);
 
+  // e2e outcome probe: the unlock is a worklet event (haptic + visual) with no
+  // inspectable RN state. We latch "unlocked" once the drag reaches full
+  // progress, so the assertion proves the slider actually unlocked.
+  // Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'locked' | 'unlocked'>('locked');
+
   const debouncedHapticFeedback = useMemo(
     // This is super helpful to avoid calling the haptic feedback multiple times
     // Try to remove the debounce and see how many times the haptic feedback is called
@@ -24,6 +30,9 @@ export const TwodosSlide = () => {
 
   return (
     <View style={styles.fill}>
+      <Text testID="twodos-slide-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <View style={styles.squaresContainer}>
         <AnimatedSquares
           clampedProgress={clampedProgress}
@@ -45,6 +54,7 @@ export const TwodosSlide = () => {
               // So the idea is to call the haptic feedback only once when the progress is 1
               // With a debounce (leading: true, trailing: false)
               scheduleOnRN(debouncedHapticFeedback);
+              scheduleOnRN(setStatus, 'unlocked');
               // unlock with Burnt
               // Burnt.toast({
               //   title: 'Unlocked 🎉',
@@ -84,5 +94,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });

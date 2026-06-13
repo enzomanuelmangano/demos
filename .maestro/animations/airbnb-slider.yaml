@@ -18,13 +18,14 @@ appId: com.reactiive.app
     direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/airbnb-slider--high"
 - swipe:
     from:
       id: "airbnb-slider-knob"
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/airbnb-slider--after"

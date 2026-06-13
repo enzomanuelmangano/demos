@@ -43,11 +43,12 @@
       "mobile-input-key-0..9",
       "mobile-input-key-backspace",
       "mobile-input-status"
-    ]
+    ],
+    "probe": "unlocked"
   },
   {
     "slug": "swipe-cards",
-    "summary": "Tinder-style swipeable card deck driven by three bottom buttons; tap like (heart) then dislike (close) to fly cards off, then reset.",
+    "summary": "Tinder-style swipeable card deck driven by three bottom buttons; tap like (heart) then dislike (close) to fly two cards off, then ASSERT the deck advanced (swipe-cards-status reads \"swiped:2\").",
     "steps": [
       {
         "tapOn": {
@@ -66,29 +67,26 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
         }
       },
       {
-        "tapOn": {
-          "id": "swipe-cards-reset"
-        }
-      },
-      {
-        "waitForAnimationToEnd": {
-          "timeout": 2000
+        "assertVisible": {
+          "text": "swiped:2"
         }
       }
     ],
     "testids": [
       "swipe-cards-like",
       "swipe-cards-dislike",
-      "swipe-cards-reset"
-    ]
+      "swipe-cards-reset",
+      "swipe-cards-status"
+    ],
+    "probe": "swiped:2"
   },
   {
     "slug": "spiral",
-    "summary": "Full-screen Skia logarithmic spiral; a full-screen invisible pressable re-randomizes the spiral angle on each tap, springing all circles to new positions.",
+    "summary": "Full-screen Skia logarithmic spiral; a full-screen invisible pressable re-randomizes the spiral angle on each tap. Tap twice, then ASSERT the tap counter (spiral-status reads \"spiral-taps:2\").",
     "steps": [
       {
         "tapOn": {
@@ -107,17 +105,24 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "spiral-taps:2"
         }
       }
     ],
     "testids": [
-      "spiral-canvas"
-    ]
+      "spiral-canvas",
+      "spiral-status"
+    ],
+    "probe": "spiral-taps:2"
   },
   {
     "slug": "scroll-progress",
-    "summary": "Vertical sectioned content list with a scroll-driven progress indicator; scroll DOWN through sections then back UP to drive the progress animation.",
+    "summary": "Vertical sectioned content list with a scroll-driven progress indicator; scroll DOWN through sections then back UP, then ASSERT the scroll drove the progress (scroll-progress-status latches to \"scrolled\").",
     "steps": [
       {
         "scroll": {
@@ -138,15 +143,27 @@
         "scroll": {
           "direction": "UP"
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "scrolled"
+        }
       }
     ],
     "testids": [
-      "scroll-progress-list"
-    ]
+      "scroll-progress-list",
+      "scroll-progress-status"
+    ],
+    "probe": "scrolled"
   },
   {
     "slug": "animated-grid-list",
-    "summary": "Grid/list layout toggle; a floating FAB at bottom-right morphs the layout between grid and list with shared LinearTransition image animations.",
+    "summary": "Grid/list layout toggle; a floating FAB morphs the layout. Tap the FAB twice, then ASSERT the toggle count (animated-grid-list-status reads \"grid:2\").",
     "steps": [
       {
         "tapOn": {
@@ -165,17 +182,24 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "grid:2"
         }
       }
     ],
     "testids": [
-      "animated-grid-list-fab"
-    ]
+      "animated-grid-list-fab",
+      "animated-grid-list-status"
+    ],
+    "probe": "grid:2"
   },
   {
     "slug": "floating-bottom-bar",
-    "summary": "Floating bottom tab bar (Home/Bookmark/Add/Profile/Settings, icon tabs — no text labels); tap the rightmost then second tab to slide the floating indicator.",
+    "summary": "Floating bottom tab bar (icon tabs); tap the rightmost (settings) then second (bookmark) tab, then ASSERT the active tab (floating-bottom-bar-status reads \"tab:bookmark\").",
     "steps": [
       {
         "tapOn": {
@@ -196,6 +220,11 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:bookmark"
+        }
       }
     ],
     "testids": [
@@ -203,12 +232,14 @@
       "floating-bottom-bar-tab-bookmark",
       "floating-bottom-bar-tab-add",
       "floating-bottom-bar-tab-profile",
-      "floating-bottom-bar-tab-settings"
-    ]
+      "floating-bottom-bar-tab-settings",
+      "floating-bottom-bar-status"
+    ],
+    "probe": "tab:bookmark"
   },
   {
     "slug": "animated-clip-box",
-    "summary": "Two cards with a clip-path reveal on press; pressing 'Explore Demos' then 'Learn More' triggers the expanding-circle clip animation revealing the description.",
+    "summary": "Two cards with a clip-path reveal on press; press 'Explore Demos' then 'Learn More', then ASSERT both reveals fired (animated-clip-box-status reads \"revealed:2\").",
     "steps": [
       {
         "tapOn": {
@@ -227,18 +258,25 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "revealed:2"
         }
       }
     ],
     "testids": [
       "animated-clip-box-explore",
-      "animated-clip-box-learn-more"
-    ]
+      "animated-clip-box-learn-more",
+      "animated-clip-box-status"
+    ],
+    "probe": "revealed:2"
   },
   {
     "slug": "theme-canvas-animation",
-    "summary": "Skia theme switcher: six selectable color squares around the screen center; tapping a square flood-fills the background via an expanding clip circle. Squares are pure Skia touchables (no per-square RN view), so the interaction drags across the canvas rect to sweep over multiple squares.",
+    "summary": "Skia theme switcher: six selectable color squares around the center; swiping across the canvas sweeps over squares and flood-fills the background. Swipe LEFT then DOWN, then ASSERT the theme changed (theme-canvas-animation-status latches to \"theme-changed\").",
     "steps": [
       {
         "swipe": {
@@ -265,15 +303,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "theme-changed"
+        }
       }
     ],
     "testids": [
-      "theme-canvas-animation-canvas"
-    ]
+      "theme-canvas-animation-canvas",
+      "theme-canvas-animation-status"
+    ],
+    "probe": "theme-changed"
   },
   {
     "slug": "add-to-cart",
-    "summary": "Product list where tapping a row's buy button morphs it into a confirm bottom-sheet; tap an item to open, confirm 'Add to cart', then dismiss.",
+    "summary": "Product list where a buy button morphs into a confirm bottom-sheet; tap an item to open then confirm 'Add to cart', then ASSERT the cart total (add-to-cart-status reads \"cart:1\").",
     "steps": [
       {
         "tapOn": {
@@ -292,18 +337,25 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "cart:1"
         }
       }
     ],
     "testids": [
       "add-to-cart-buy-0",
-      "add-to-cart-confirm"
-    ]
+      "add-to-cart-confirm",
+      "add-to-cart-status"
+    ],
+    "probe": "cart:1"
   },
   {
     "slug": "bottom-bar-skia",
-    "summary": "Skia-rendered bottom tab bar (Home/Search/User as icons). Tabs are pure Skia touchables inside a single Touchable.Canvas (no per-tab RN view), so tapping the tab-bar rect center activates the centered Search tab.",
+    "summary": "Skia-rendered bottom tab bar (Home/Search/User); tapping the tab-bar rect center activates the centered Search tab. Tap the tab bar, then ASSERT the active tab (bottom-bar-skia-status reads \"tab:search\").",
     "steps": [
       {
         "tapOn": {
@@ -324,15 +376,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:search"
+        }
       }
     ],
     "testids": [
-      "bottom-bar-skia-tabbar"
-    ]
+      "bottom-bar-skia-tabbar",
+      "bottom-bar-skia-status"
+    ],
+    "probe": "tab:search"
   },
   {
     "slug": "cuberto-slider",
-    "summary": "Cuberto-style balloon slider: a 300px horizontal track centered on screen; dragging the picker along the track pops up the balloon value indicator.",
+    "summary": "Cuberto-style balloon slider: a 300px horizontal track; drag the picker along the track, then ASSERT the drag took effect (cuberto-slider-status latches to \"moved\").",
     "steps": [
       {
         "swipe": {
@@ -357,17 +416,24 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "cuberto-knob"
-    ]
+      "cuberto-knob",
+      "cuberto-slider-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "metaball",
-    "summary": "Skia metaball: two blurred circles stacked at screen center; dragging one circle away stretches the gooey metaball connection, springing back on release. Circles are Skia touchables, so the drag is performed across the canvas rect.",
+    "summary": "Skia metaball: two blurred circles stacked at center; drag one circle to stretch the gooey connection. Drag across the canvas, then ASSERT the drag took effect (metaball-status latches to \"moved\").",
     "steps": [
       {
         "swipe": {
@@ -392,17 +458,24 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "metaball-canvas"
-    ]
+      "metaball-canvas",
+      "metaball-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "shared-transitions",
-    "summary": "Two-column image grid; tapping a card navigates to a details screen with a shared-element transition, then back returns with the reverse transition.",
+    "summary": "Two-column image grid; tap a card to navigate to a details screen with a shared-element transition, then back. ASSERT the Home screen re-focused after the round-trip (shared-transitions-status reads \"home-visits:2\").",
     "steps": [
       {
         "tapOn": {
@@ -421,17 +494,24 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "home-visits:2"
         }
       }
     ],
     "testids": [
-      "shared-transitions-card-0"
-    ]
+      "shared-transitions-card-0",
+      "shared-transitions-status"
+    ],
+    "probe": "home-visits:2"
   },
   {
     "slug": "story-list",
-    "summary": "Horizontal paged story carousel (cards 70% screen width) with snapToInterval; swiping LEFT pages through stories with a coverflow-style transform.",
+    "summary": "Horizontal paged story carousel with snapToInterval; swipe LEFT to page through stories with a coverflow transform. ASSERT the carousel paged (story-list-status latches to \"paged\").",
     "steps": [
       {
         "swipe": {
@@ -458,15 +538,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "paged"
+        }
       }
     ],
     "testids": [
-      "story-list"
-    ]
+      "story-list",
+      "story-list-status"
+    ],
+    "probe": "paged"
   },
   {
     "slug": "dynamic-tab-indicator",
-    "summary": "Top country tabs (France/Italy/Iceland/Norway/Japan) over a paged ScrollView; tapping a tab scrolls the pager and slides the dynamic underline indicator.",
+    "summary": "Top country tabs over a paged ScrollView; tap a tab to scroll the pager and slide the underline indicator. Tap Italy then Japan, then ASSERT the active tab (dynamic-tab-indicator-status reads \"tab:japan\").",
     "steps": [
       {
         "tapOn": {
@@ -487,6 +574,11 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:japan"
+        }
       }
     ],
     "testids": [
@@ -494,25 +586,35 @@
       "dynamic-tab-indicator-tab-italy",
       "dynamic-tab-indicator-tab-iceland",
       "dynamic-tab-indicator-tab-norway",
-      "dynamic-tab-indicator-tab-japan"
-    ]
+      "dynamic-tab-indicator-tab-japan",
+      "dynamic-tab-indicator-status"
+    ],
+    "probe": "tab:japan"
   },
   {
     "slug": "blur-circles",
-    "summary": "Passive Skia animation: two noise-driven gradient circles drift and blur on an infinite looping clock with no user input.",
+    "summary": "Passive Skia animation: two noise-driven gradient circles drift and blur on an infinite loop with no user input. The outcome is simply that the canvas renders; ASSERT the canvas wrapper is visible.",
     "passive": true,
     "steps": [
       {
         "waitForAnimationToEnd": {
           "timeout": 3000
         }
+      },
+      {
+        "assertVisible": {
+          "id": "blur-circles-canvas"
+        }
       }
     ],
-    "testids": []
+    "testids": [
+      "blur-circles-canvas"
+    ],
+    "probe": "blur-circles-canvas"
   },
   {
     "slug": "smooth-dropdown",
-    "summary": "Vertically-centered dropdown with a 'Header' row that expands 4 icon options on tap. Open the dropdown via the header trigger, then pick the Calendar option.",
+    "summary": "Open the dropdown via the header trigger, then pick the Calendar option; ASSERTS the picked outcome (smooth-dropdown-status reads \"picked:calendar\").",
     "steps": [
       {
         "tapOn": {
@@ -525,7 +627,9 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/smooth-dropdown--open"
+        "assertVisible": {
+          "id": "smooth-dropdown-item-calendar"
+        }
       },
       {
         "tapOn": {
@@ -534,7 +638,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "picked:calendar"
         }
       }
     ],
@@ -544,11 +653,12 @@
       "smooth-dropdown-item-book",
       "smooth-dropdown-item-calendar",
       "smooth-dropdown-item-camera"
-    ]
+    ],
+    "probe": "picked:calendar"
   },
   {
     "slug": "skia-bottom-sheet",
-    "summary": "Skia image with a draggable bottom sheet handle near the bottom. Pan up on the canvas to open the sheet (snaps open), then pan back down to close.",
+    "summary": "Pan up on the canvas to open the sheet (snaps open) — ASSERTS the open outcome (skia-bottom-sheet-status reads \"sheet:open\") — then pan back down to close.",
     "steps": [
       {
         "swipe": {
@@ -564,7 +674,9 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/skia-bottom-sheet--open"
+        "assertVisible": {
+          "text": "sheet:open"
+        }
       },
       {
         "swipe": {
@@ -582,11 +694,12 @@
     ],
     "testids": [
       "skia-bottom-sheet-canvas"
-    ]
+    ],
+    "probe": "sheet:open"
   },
   {
     "slug": "floating-modal",
-    "summary": "Floating action button (bottom-right) that morphs into a centered modal on tap; tapping the trigger opens it, ending on the open modal state.",
+    "summary": "Tap the floating action button to morph it into the centered modal; ASSERTS the open outcome (floating-modal-status reads \"shown\").",
     "steps": [
       {
         "tapOn": {
@@ -599,16 +712,19 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/floating-modal--open"
+        "assertVisible": {
+          "text": "shown"
+        }
       }
     ],
     "testids": [
       "floating-modal-trigger"
-    ]
+    ],
+    "probe": "shown"
   },
   {
     "slug": "audio-player",
-    "summary": "Audio waveform scrubber with a pan-draggable playhead and a live time readout. Drag across the waveform to scrub forward, then back.",
+    "summary": "Drag across the waveform to scrub the playhead, then back; ASSERTS the scrub outcome (audio-player-status reads \"audio:scrubbed\").",
     "steps": [
       {
         "swipe": {
@@ -633,17 +749,23 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "audio:scrubbed"
         }
       }
     ],
     "testids": [
       "audio-player-waveform"
-    ]
+    ],
+    "probe": "audio:scrubbed"
   },
   {
     "slug": "color-carousel",
-    "summary": "Full-width paged color carousel backed by a radial-gradient Skia canvas; the active index drives the background color. Swipe horizontally to page through items.",
+    "summary": "Swipe horizontally to page through the carousel; ASSERTS the page outcome (color-carousel-status reads \"carousel:moved\").",
     "steps": [
       {
         "swipe": {
@@ -668,17 +790,23 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "carousel:moved"
         }
       }
     ],
     "testids": [
       "color-carousel"
-    ]
+    ],
+    "probe": "carousel:moved"
   },
   {
     "slug": "animated-3d-parallax",
-    "summary": "300px centered 3D card that tilts toward the touch point with a delayed-parallax logo. Drag across the card to drive the rotation, then release to recenter.",
+    "summary": "Drag across the card to drive the 3D rotation, then back; ASSERTS the tilt outcome (animated-3d-parallax-status reads \"card:tilted\").",
     "steps": [
       {
         "swipe": {
@@ -703,17 +831,23 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "card:tilted"
         }
       }
     ],
     "testids": [
       "animated-3d-parallax-card"
-    ]
+    ],
+    "probe": "card:tilted"
   },
   {
     "slug": "fluid-slider",
-    "summary": "Full-width fluid slider with a metaball value bubble. Drag along the horizontal track to change the value.",
+    "summary": "Drag along the track to change the value, then back; ASSERTS the change outcome (fluid-slider-status reads \"slider:moved\").",
     "steps": [
       {
         "swipe": {
@@ -738,17 +872,23 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "slider:moved"
         }
       }
     ],
     "testids": [
       "fluid-slider-knob"
-    ]
+    ],
+    "probe": "slider:moved"
   },
   {
     "slug": "animated-indicator-list",
-    "summary": "Sectioned movie list with a sliding tab indicator over a scrollable FlatList. Scroll the list to move the indicator, then tap a section tab to jump.",
+    "summary": "Scroll the list, then tap the second section tab to jump; ASSERTS the jump outcome (animated-indicator-list-status reads \"tab:Al Pacino\").",
     "steps": [
       {
         "scroll": {
@@ -767,7 +907,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:Al Pacino"
         }
       }
     ],
@@ -777,11 +922,12 @@
       "animated-indicator-list-tab-2",
       "animated-indicator-list-tab-3",
       "animated-indicator-list-tab-4"
-    ]
+    ],
+    "probe": "tab:Al Pacino"
   },
   {
     "slug": "radar-chart",
-    "summary": "Skia radar chart with a 'Shuffle' button that re-randomizes the data and animates the polygons. Tap Shuffle twice to trigger the animation.",
+    "summary": "Tap Shuffle twice to re-randomize the chart data; ASSERTS the shuffle outcome (radar-chart-status reads \"shuffled:2\").",
     "steps": [
       {
         "tapOn": {
@@ -800,17 +946,23 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "shuffled:2"
         }
       }
     ],
     "testids": [
       "radar-chart-shuffle"
-    ]
+    ],
+    "probe": "shuffled:2"
   },
   {
     "slug": "image-cropper",
-    "summary": "Skia image cropper with draggable grid corners and Expand/Collapse/Crop buttons. Collapse the crop region, drag a corner, then tap Crop to open the cropped detail.",
+    "summary": "Collapse the crop region, drag a corner, then tap Crop to open the cropped detail; ASSERTS the open outcome (image-cropper-status reads \"cropped:shown\").",
     "steps": [
       {
         "tapOn": {
@@ -837,7 +989,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "cropped:shown"
         }
       }
     ],
@@ -846,11 +1003,12 @@
       "image-cropper-expand",
       "image-cropper-collapse",
       "image-cropper-crop"
-    ]
+    ],
+    "probe": "cropped:shown"
   },
   {
     "slug": "selectable-grid-list",
-    "summary": "4-column grid of 50 cells; tapping cells toggles selection and reveals a floating counter button. Tap several cells to select them.",
+    "summary": "Tap three grid cells to select them; ASSERTS the selection count outcome (selectable-grid-list-status reads \"selected:3\").",
     "steps": [
       {
         "tapOn": {
@@ -869,11 +1027,13 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/selectable-grid-list--selected"
+        "assertVisible": {
+          "text": "selected:3"
+        }
       }
     ],
     "testids": [
@@ -881,11 +1041,12 @@
       "selectable-grid-list-item-2",
       "selectable-grid-list-item-5",
       "selectable-grid-list-counter"
-    ]
+    ],
+    "probe": "selected:3"
   },
   {
     "slug": "animated-count-text",
-    "summary": "Large animated rolling number with a shuffle FAB at the bottom-right. Tap the FAB twice to roll the count to new random values.",
+    "summary": "Tap the shuffle FAB twice to roll the count to new values; ASSERTS the roll outcome (animated-count-text-status reads \"rolled:2\").",
     "steps": [
       {
         "tapOn": {
@@ -904,17 +1065,23 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "rolled:2"
         }
       }
     ],
     "testids": [
       "animated-count-text-shuffle"
-    ]
+    ],
+    "probe": "rolled:2"
   },
   {
     "slug": "qr-code-generator",
-    "summary": "QR generator (qrcode demo): a TextInput drives a live Skia QR code, plus a 'Deviation' slider. Type new text to regenerate the QR, then drag the slider to change the deviation.",
+    "summary": "Type new text to regenerate the QR code, then drag the deviation slider; ASSERTS the content outcome (qr-code-generator-status reads \"qr:reactiive\").",
     "steps": [
       {
         "tapOn": {
@@ -930,7 +1097,9 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/qr-code-generator--typed"
+        "assertVisible": {
+          "text": "qr:reactiive"
+        }
       },
       {
         "swipe": {
@@ -949,11 +1118,12 @@
     "testids": [
       "qr-code-generator-input",
       "qr-code-generator-slider"
-    ]
+    ],
+    "probe": "qr:reactiive"
   },
   {
     "slug": "popup-handler",
-    "summary": "Draggable white pill over a photo; tapping it opens a blurred context popup with four direction options. Tap the pill to open the popup, then pick 'Bottom Right' to spring the pill to that corner.",
+    "summary": "Tap the pill to open the popup, then pick 'Bottom Right' to spring the pill to that corner; ASSERTS the pick outcome (popup-handler-status reads \"angle:bottom-right\").",
     "steps": [
       {
         "tapOn": {
@@ -966,26 +1136,29 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/popup-handler--open"
-      },
-      {
         "tapOn": {
           "text": "Bottom Right"
         }
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "angle:bottom-right"
         }
       }
     ],
     "testids": [
       "popup-handler-pill"
-    ]
+    ],
+    "probe": "angle:bottom-right"
   },
   {
     "slug": "twitter-tab-bar",
-    "summary": "Twitter-style bottom tab bar (Home, Search, Notifications, Message) with an animated active indicator and a contextual floating button. Tap different tabs to move the indicator.",
+    "summary": "Tap different tabs to move the active indicator, ending on Message; ASSERTS the active-tab outcome (twitter-tab-bar-status reads \"tab:message\").",
     "steps": [
       {
         "tapOn": {
@@ -1004,7 +1177,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:message"
         }
       }
     ],
@@ -1013,11 +1191,12 @@
       "twitter-tab-bar-tab-search",
       "twitter-tab-bar-tab-notifications",
       "twitter-tab-bar-tab-message"
-    ]
+    ],
+    "probe": "tab:message"
   },
   {
     "slug": "circular-carousel",
-    "summary": "Horizontal paged image wheel (snaps per item) with a 'Scale' Switch near the top. Swipe the carousel to page through, then toggle the Scale switch to enable the scaling effect.",
+    "summary": "Swipe the carousel to page through, then toggle the Scale switch on; ASSERTS the toggle outcome (circular-carousel-status reads \"scale:on\").",
     "steps": [
       {
         "swipe": {
@@ -1052,14 +1231,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "scale:on"
         }
       }
     ],
     "testids": [
       "circular-carousel",
       "circular-carousel-switch"
-    ]
+    ],
+    "probe": "scale:on"
   },
   {
     "slug": "split-button",
@@ -1076,9 +1261,6 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/split-button--split-open"
-      },
-      {
         "tapOn": {
           "id": "split-button"
         }
@@ -1087,12 +1269,19 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "split-open"
+        }
       }
     ],
     "testids": [
       "split-button",
-      "split-button-left"
-    ]
+      "split-button-left",
+      "split-button-status"
+    ],
+    "probe": "split-open"
   },
   {
     "slug": "telegram-theme-switch",
@@ -1109,22 +1298,26 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/telegram-theme-switch--toggled"
-      },
-      {
         "tapOn": {
           "id": "telegram-theme-switch"
         }
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "dark"
         }
       }
     ],
     "testids": [
-      "telegram-theme-switch"
-    ]
+      "telegram-theme-switch",
+      "telegram-theme-switch-status"
+    ],
+    "probe": "dark"
   },
   {
     "slug": "fourier-visualizer",
@@ -1148,16 +1341,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/fourier-visualizer--drawn"
+        "assertVisible": {
+          "text": "drawn"
+        }
       }
     ],
     "testids": [
-      "fourier-visualizer-canvas"
-    ]
+      "fourier-visualizer-canvas",
+      "fourier-visualizer-status"
+    ],
+    "probe": "drawn"
   },
   {
     "slug": "github-onboarding",
@@ -1191,16 +1388,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/github-onboarding--page3"
+        "assertVisible": {
+          "text": "page-2"
+        }
       }
     ],
     "testids": [
-      "github-onboarding-carousel"
-    ]
+      "github-onboarding-carousel",
+      "github-onboarding-status"
+    ],
+    "probe": "page-2"
   },
   {
     "slug": "loading-button",
@@ -1213,16 +1414,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/loading-button--result"
+        "assertVisible": {
+          "text": "success"
+        }
       }
     ],
     "testids": [
-      "loading-button"
-    ]
+      "loading-button",
+      "loading-button-status"
+    ],
+    "probe": "success"
   },
   {
     "slug": "scrollable-bottom-sheet",
@@ -1246,14 +1451,21 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "sheet-open"
         }
       }
     ],
     "testids": [
       "scrollable-bottom-sheet-fab",
-      "scrollable-bottom-sheet-next"
-    ]
+      "scrollable-bottom-sheet-next",
+      "scrollable-bottom-sheet-status"
+    ],
+    "probe": "sheet-open"
   },
   {
     "slug": "skia-color-picker",
@@ -1286,12 +1498,16 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/skia-color-picker--picked"
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "skia-color-picker-canvas"
-    ]
+      "skia-color-picker-canvas",
+      "skia-color-picker-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "blurred-scroll",
@@ -1326,11 +1542,18 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "scrolled"
+        }
       }
     ],
     "testids": [
-      "blurred-scroll-list"
-    ]
+      "blurred-scroll-list",
+      "blurred-scroll-status"
+    ],
+    "probe": "scrolled"
   },
   {
     "slug": "airbnb-slider",
@@ -1350,9 +1573,6 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/airbnb-slider--high"
-      },
-      {
         "swipe": {
           "from": {
             "id": "airbnb-slider-knob"
@@ -1364,12 +1584,19 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
       "airbnb-slider-knob",
-      "airbnb-slider-track"
-    ]
+      "airbnb-slider-track",
+      "airbnb-slider-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "steddy-graph-interaction",
@@ -1386,24 +1613,28 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/steddy--pro"
-      },
-      {
         "tapOn": {
           "id": "steddy-graph-interaction-segment-Light"
         }
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "segment-Light"
         }
       }
     ],
     "testids": [
       "steddy-graph-interaction-segment-Light",
       "steddy-graph-interaction-segment-Standard",
-      "steddy-graph-interaction-segment-Pro"
-    ]
+      "steddy-graph-interaction-segment-Pro",
+      "steddy-graph-interaction-status"
+    ],
+    "probe": "segment-Light"
   },
   {
     "slug": "action-tray",
@@ -1438,12 +1669,19 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "tray-open-2"
+        }
       }
     ],
     "testids": [
       "action-tray-fab",
-      "action-tray-continue"
-    ]
+      "action-tray-continue",
+      "action-tray-status"
+    ],
+    "probe": "tray-open-2"
   },
   {
     "slug": "toast",
@@ -1481,12 +1719,19 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "toasts-1"
+        }
       }
     ],
     "testids": [
       "toast-trigger",
-      "toast-active"
-    ]
+      "toast-active",
+      "toast-status"
+    ],
+    "probe": "toasts-1"
   },
   {
     "slug": "slide-to-reveal",
@@ -1519,12 +1764,16 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/slide-to-reveal--revealed"
+        "assertVisible": {
+          "text": "revealed"
+        }
       }
     ],
     "testids": [
-      "slide-to-reveal-panel"
-    ]
+      "slide-to-reveal-panel",
+      "slide-to-reveal-status"
+    ],
+    "probe": "revealed"
   },
   {
     "slug": "blurred-bottom-bar",
@@ -1559,14 +1808,21 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "tab-Settings"
+        }
       }
     ],
     "testids": [
       "blurred-bottom-bar-tab-home",
       "blurred-bottom-bar-tab-explore",
       "blurred-bottom-bar-tab-camera",
-      "blurred-bottom-bar-tab-settings"
-    ]
+      "blurred-bottom-bar-tab-settings",
+      "blurred-bottom-bar-status"
+    ],
+    "probe": "tab-Settings"
   },
   {
     "slug": "fractal-glass",
@@ -1607,12 +1863,19 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "dark-moved"
+        }
       }
     ],
     "testids": [
       "fractal-glass-circle",
-      "fractal-glass-fab"
-    ]
+      "fractal-glass-fab",
+      "fractal-glass-status"
+    ],
+    "probe": "dark-moved"
   },
   {
     "slug": "drag-to-sort",
@@ -1632,9 +1895,6 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/drag-to-sort--reordered"
-      },
-      {
         "swipe": {
           "from": {
             "id": "drag-to-sort-item-0"
@@ -1644,19 +1904,26 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "reordered"
         }
       }
     ],
     "testids": [
       "drag-to-sort-item-0",
       "drag-to-sort-item-1",
-      "drag-to-sort-item-2"
-    ]
+      "drag-to-sort-item-2",
+      "drag-to-sort-status"
+    ],
+    "probe": "reordered"
   },
   {
     "slug": "fibonacci-shader",
-    "summary": "Animated Skia Fibonacci shader disc driven by a horizontal AnimatedSlider (controls circle count N) plus a floating magic button that randomizes the pattern. Tests dragging the slider and pressing the magic button.",
+    "summary": "Animated Skia Fibonacci shader disc driven by a horizontal AnimatedSlider (controls circle count N) plus a floating magic button that randomizes the pattern. Drags the slider and presses the magic button, then ASSERTS the shader was actually altered (fibonacci-shader-status reads \"moved\", bridged from the worklet-driven N value).",
     "steps": [
       {
         "swipe": {
@@ -1688,16 +1955,23 @@
         "waitForAnimationToEnd": {
           "timeout": 2000
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
       "fibonacci-shader-slider",
-      "fibonacci-shader-magic"
-    ]
+      "fibonacci-shader-magic",
+      "fibonacci-shader-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "family-number-input",
-    "summary": "Family-style large animated number display fed by a custom on-screen numeric keypad (3x4 grid in the lower half). Tests tapping the on-screen digit buttons and the backspace key.",
+    "summary": "Family-style large animated number display fed by a custom on-screen numeric keypad. Taps 1,2,3,0 then backspace and ASSERTS the resulting value (family-number-input-status reads \"123\").",
     "steps": [
       {
         "tapOn": {
@@ -1728,6 +2002,11 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "123"
+        }
       }
     ],
     "testids": [
@@ -1741,12 +2020,14 @@
       "family-number-input-key-7",
       "family-number-input-key-8",
       "family-number-input-key-9",
-      "family-number-input-key-backspace"
-    ]
+      "family-number-input-key-backspace",
+      "family-number-input-status"
+    ],
+    "probe": "123"
   },
   {
     "slug": "balance-slider",
-    "summary": "Two-sided balance slider (Coffee vs Milk) centered on screen; dragging the central handle redistributes the left/right percentages. Tests horizontal drag across the slider track at its real vertical center.",
+    "summary": "Two-sided balance slider (Coffee vs Milk); dragging the central handle redistributes the left/right percentages. Drags the handle right and left, then ASSERTS the slider moved (balance-slider-status reads \"moved\", bridged from onChange via scheduleOnRN).",
     "steps": [
       {
         "swipe": {
@@ -1773,15 +2054,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "balance-slider-knob"
-    ]
+      "balance-slider-knob",
+      "balance-slider-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "fibonacci-shader-grid",
-    "summary": "Animated Skia Fibonacci shader disc controlled by a 2D draggable control panel (X = circle count, Y = magical multiplier). Tests dragging across the square control pad to alter the shader.",
+    "summary": "Animated Skia Fibonacci shader disc controlled by a 2D draggable control panel (X = circle count, Y = magical multiplier). Drags across the pad, then ASSERTS the shader was altered (fibonacci-shader-grid-status reads \"moved\", bridged from the worklet n/magicalMul values).",
     "steps": [
       {
         "swipe": {
@@ -1808,15 +2096,22 @@
         "waitForAnimationToEnd": {
           "timeout": 2000
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "fibonacci-shader-grid-pad"
-    ]
+      "fibonacci-shader-grid-pad",
+      "fibonacci-shader-grid-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "verification-code",
-    "summary": "Verification code entry: tapping the code boxes focuses an invisible number-pad TextInput; typing fills the animated digit cells (correct code 11111 triggers the success animation). Tests focusing the field and entering the code.",
+    "summary": "Verification code entry: tapping the code boxes focuses an invisible number-pad TextInput; typing the correct code 11111 triggers the success animation. Focuses the field, enters 11111, then ASSERTS validation succeeded (verification-code-status latches \"correct\").",
     "steps": [
       {
         "tapOn": {
@@ -1830,16 +2125,23 @@
         "waitForAnimationToEnd": {
           "timeout": 2500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "correct"
+        }
       }
     ],
     "testids": [
       "verification-code-input",
-      "verification-code-field"
-    ]
+      "verification-code-field",
+      "verification-code-status"
+    ],
+    "probe": "correct"
   },
   {
     "slug": "email-demo",
-    "summary": "Email-style stacked list with two floating action buttons at the bottom (green restore, red delete) that animate cards in/out and shake at the limits. Tests pressing delete several times then restore.",
+    "summary": "Email-style stacked list with floating restore/delete FABs that animate cards in/out. Presses delete twice then restore (net erased = 1), then ASSERTS the erased count (email-demo-status reads \"erased:1\", bridged from the erasedItems shared value).",
     "steps": [
       {
         "tapOn": {
@@ -1870,16 +2172,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1200
         }
+      },
+      {
+        "assertVisible": {
+          "text": "erased:1"
+        }
       }
     ],
     "testids": [
       "email-demo-delete",
-      "email-demo-restore"
-    ]
+      "email-demo-restore",
+      "email-demo-status"
+    ],
+    "probe": "erased:1"
   },
   {
     "slug": "scroll-transition-3d",
-    "summary": "Inverted vertical FlatList of large blurred numbers with a 3D depth/blur transition keyed to scroll position and snap-to-interval. Tests vertical paged swipes that snap between number items.",
+    "summary": "Inverted vertical FlatList of large blurred numbers with a 3D depth/blur transition keyed to scroll position. Performs paged vertical swipes, then ASSERTS the list actually scrolled (scroll-transition-3d-status reads \"moved\", bridged from the worklet scrollY value).",
     "steps": [
       {
         "swipe": {
@@ -1919,15 +2228,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1200
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "scroll-transition-3d-list"
-    ]
+      "scroll-transition-3d-list",
+      "scroll-transition-3d-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "staggered-card-number",
-    "summary": "Centered credit-card row showing a 16-digit number with an eye toggle button on the card's right edge; toggling staggers the first 12 digits between hidden and revealed. Tests tapping the eye button to reveal then hide.",
+    "summary": "Centered credit-card row with an eye toggle that staggers the first 12 digits between hidden and revealed. Taps the eye twice (reveal then hide), then ASSERTS the reveal actually fired (staggered-card-number-status latches \"revealed\").",
     "steps": [
       {
         "tapOn": {
@@ -1948,15 +2264,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "revealed"
+        }
       }
     ],
     "testids": [
-      "staggered-card-number-eye"
-    ]
+      "staggered-card-number-eye",
+      "staggered-card-number-status"
+    ],
+    "probe": "revealed"
   },
   {
     "slug": "stacked-bottom-sheet",
-    "summary": "A single centered 'Show stacked tray' button that presents a bottom sheet; pressing again pushes additional sheets onto the stack, which can then be swiped down to dismiss. Tests presenting stacked sheets then dismissing.",
+    "summary": "A 'Show stacked tray' button presents a bottom sheet; pressing again pushes more sheets, which can be swiped down to dismiss. Presents stacked sheets then dismisses, and ASSERTS a sheet was actually shown (stacked-bottom-sheet-status latches \"shown\").",
     "steps": [
       {
         "tapOn": {
@@ -1991,16 +2314,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "shown"
+        }
       }
     ],
     "testids": [
       "stacked-bottom-sheet-show",
-      "stacked-bottom-sheet-sheet"
-    ]
+      "stacked-bottom-sheet-sheet",
+      "stacked-bottom-sheet-status"
+    ],
+    "probe": "shown"
   },
   {
     "slug": "gl-transitions",
-    "summary": "Notes app whose 'Add Note' (+) header button navigates to an AddNote screen via a GLSL DirectionalWarp transition. Tests tapping the + button to trigger the GL transition into the add-note screen.",
+    "summary": "Notes app whose 'Add Note' (+) header button navigates to an AddNote screen via a GLSL DirectionalWarp transition. Taps + to trigger the transition, then ASSERTS the add-note screen actually mounted (gl-transitions-status reads \"addnote\").",
     "steps": [
       {
         "tapOn": {
@@ -2011,15 +2341,22 @@
         "waitForAnimationToEnd": {
           "timeout": 2500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "addnote"
+        }
       }
     ],
     "testids": [
-      "gl-transitions-add"
-    ]
+      "gl-transitions-add",
+      "gl-transitions-status"
+    ],
+    "probe": "addnote"
   },
   {
     "slug": "prequel-slider",
-    "summary": "Skia image editor whose ButterflyWaveScrawler GL transition progress is driven by a horizontal ruler/scrubber slider near the bottom of the screen. Tests dragging the bottom scrubber left and right to scrub the transition.",
+    "summary": "Skia image editor whose ButterflyWaveScrawler GL transition progress is driven by a horizontal ruler/scrubber. Drags the scrubber left and right, then ASSERTS the transition progress moved (prequel-slider-status reads \"moved\", bridged from the worklet progressPercentage value).",
     "steps": [
       {
         "swipe": {
@@ -2046,15 +2383,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1800
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "prequel-slider-scrubber"
-    ]
+      "prequel-slider-scrubber",
+      "prequel-slider-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "empty-qr-code",
-    "summary": "A centered QR code that assembles/disassembles its modules with a staggered animation each time it is pressed (PressableScale toggle). Tests tapping the QR code to toggle the assemble/disassemble animation.",
+    "summary": "A centered QR code that assembles/disassembles its modules with a staggered animation each time it is pressed. Taps to toggle assemble then disassemble, and ASSERTS it actually assembled (empty-qr-code-status latches \"assembled\").",
     "steps": [
       {
         "tapOn": {
@@ -2075,15 +2419,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1800
         }
+      },
+      {
+        "assertVisible": {
+          "text": "assembled"
+        }
       }
     ],
     "testids": [
-      "empty-qr-code-toggle"
-    ]
+      "empty-qr-code-toggle",
+      "empty-qr-code-status"
+    ],
+    "probe": "assembled"
   },
   {
     "slug": "infinite-carousel",
-    "summary": "Infinite circular horizontal carousel of theme cards with snap + a background gradient that animates to the active card's color. Tests horizontal paged swipes that advance the active card.",
+    "summary": "Infinite circular horizontal carousel of theme cards with snap + a background gradient that animates to the active card's color. Performs paged swipes, then ASSERTS the active card advanced (infinite-carousel-status reads \"moved\", bridged from the worklet activeIndex value).",
     "steps": [
       {
         "swipe": {
@@ -2123,15 +2474,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1200
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "infinite-carousel"
-    ]
+      "infinite-carousel",
+      "infinite-carousel-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "twodos-slide",
-    "summary": "A 'Slide to Unlock' friction slider whose horizontal drag drives animated squares and a haptic unlock at full progress. Tests dragging the slider thumb across the track from left to right.",
+    "summary": "A 'Slide to Unlock' friction slider whose horizontal drag drives animated squares and a haptic unlock at full progress. Drags the thumb across the track, then ASSERTS the unlock fired (twodos-slide-status latches \"unlocked\" when progress reaches 1).",
     "steps": [
       {
         "swipe": {
@@ -2158,15 +2516,22 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "assertVisible": {
+          "text": "unlocked"
+        }
       }
     ],
     "testids": [
-      "twodos-slide-slider"
-    ]
+      "twodos-slide-slider",
+      "twodos-slide-status"
+    ],
+    "probe": "unlocked"
   },
   {
     "slug": "wheel-picker",
-    "summary": "Animated count display driven by a vertical draggable ruler/wheel in the center; a bottom-right button toggles expanded (wider) line spacing. Tests vertical swipes on the wheel to change the value, then tapping expand.",
+    "summary": "Animated count display driven by a vertical draggable ruler/wheel; a button toggles expanded line spacing. Swipes the wheel up and down then taps expand, and ASSERTS the picked value changed (wheel-picker-status reads \"changed\", bridged from the worklet count value).",
     "steps": [
       {
         "swipe": {
@@ -2198,16 +2563,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1200
         }
+      },
+      {
+        "assertVisible": {
+          "text": "changed"
+        }
       }
     ],
     "testids": [
       "wheel-picker-wheel",
-      "wheel-picker-expand"
-    ]
+      "wheel-picker-expand",
+      "wheel-picker-status"
+    ],
+    "probe": "changed"
   },
   {
     "slug": "stacked-list",
-    "summary": "A long vertical scroll list (50 cards) where items scale and fade into a stacked deck at the bottom as you scroll. Tests scrolling the list down so items stack at the bottom.",
+    "summary": "A long vertical scroll list (50 cards) where items scale and fade into a stacked deck at the bottom as you scroll. Performs several up-swipes, then ASSERTS the list actually scrolled (stacked-list-status reads \"moved\", bridged from the worklet scrollOffset value).",
     "steps": [
       {
         "swipe": {
@@ -2247,11 +2619,18 @@
         "waitForAnimationToEnd": {
           "timeout": 1000
         }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "stacked-list-list"
-    ]
+      "stacked-list-list",
+      "stacked-list-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "geometry-button",
@@ -2278,12 +2657,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/geometry-button--pressed"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "pressed"
+        }
       }
     ],
     "testids": [
-      "geometry-button"
-    ]
+      "geometry-button",
+      "geometry-button-status"
+    ],
+    "probe": "pressed"
   },
   {
     "slug": "record-button",
@@ -2316,13 +2704,22 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/record-button--morphed"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "morphed"
+        }
       }
     ],
     "testids": [
       "record-button-scroll",
-      "record-button"
-    ]
+      "record-button",
+      "record-button-status"
+    ],
+    "probe": "morphed"
   },
   {
     "slug": "grid-visualizer",
@@ -2347,11 +2744,23 @@
         "waitForAnimationToEnd": {
           "timeout": 2000
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "renders:2"
+        }
       }
     ],
     "testids": [
-      "grid-visualizer"
-    ]
+      "grid-visualizer",
+      "grid-visualizer-status"
+    ],
+    "probe": "renders:2"
   },
   {
     "slug": "imessage-stack",
@@ -2395,11 +2804,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "imessage-stack"
-    ]
+      "imessage-stack",
+      "imessage-stack-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "atlas-button",
@@ -2426,12 +2847,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/atlas-button--pressed"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "pressed"
+        }
       }
     ],
     "testids": [
-      "atlas-button"
-    ]
+      "atlas-button",
+      "atlas-button-status"
+    ],
+    "probe": "pressed"
   },
   {
     "slug": "atlas-sphere",
@@ -2464,12 +2894,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/atlas-sphere--focus"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "atlas-sphere"
-    ]
+      "atlas-sphere",
+      "atlas-sphere-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "checkbox-interactions",
@@ -2499,6 +2938,16 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "checked:4"
+        }
       }
     ],
     "testids": [
@@ -2508,8 +2957,10 @@
       "checkbox-interactions-item-3",
       "checkbox-interactions-item-4",
       "checkbox-interactions-item-5",
-      "checkbox-interactions-item-6"
-    ]
+      "checkbox-interactions-item-6",
+      "checkbox-interactions-status"
+    ],
+    "probe": "checked:4"
   },
   {
     "slug": "interaction-appearance",
@@ -2536,12 +2987,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/interaction-appearance--toggled"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "light#2"
+        }
       }
     ],
     "testids": [
-      "interaction-appearance-toggle"
-    ]
+      "interaction-appearance-toggle",
+      "interaction-appearance-status"
+    ],
+    "probe": "light#2"
   },
   {
     "slug": "dot-sheet",
@@ -2566,12 +3026,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/dot-sheet--sheet-open"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "sheet:open"
+        }
       }
     ],
     "testids": [
-      "dot-sheet-start"
-    ]
+      "dot-sheet-start",
+      "dot-sheet-status"
+    ],
+    "probe": "sheet:open"
   },
   {
     "slug": "coverflow-carousel",
@@ -2615,11 +3084,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "coverflow-carousel"
-    ]
+      "coverflow-carousel",
+      "coverflow-carousel-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "paper-folding",
@@ -2646,12 +3127,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/paper-folding--folded"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "folds:2"
+        }
       }
     ],
     "testids": [
-      "paper-folding"
-    ]
+      "paper-folding",
+      "paper-folding-status"
+    ],
+    "probe": "folds:2"
   },
   {
     "slug": "miles-bar-chart",
@@ -2695,11 +3185,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "miles-bar-chart-weeks"
-    ]
+      "miles-bar-chart-weeks",
+      "miles-bar-chart-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "steps",
@@ -2734,12 +3236,24 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "step:1"
+        }
       }
     ],
     "testids": [
       "steps-continue",
-      "steps-back"
-    ]
+      "steps-back",
+      "steps-status"
+    ],
+    "probe": "step:1"
   },
   {
     "slug": "pomodoro-timer",
@@ -2780,12 +3294,24 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
       "pomodoro-timer-slider",
-      "pomodoro-timer-start"
-    ]
+      "pomodoro-timer-start",
+      "pomodoro-timer-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "exclusion-tabs",
@@ -2802,12 +3328,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/exclusion-tabs--selected"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "tabchanged:1"
+        }
       }
     ],
     "testids": [
-      "exclusion-tabs"
-    ]
+      "exclusion-tabs",
+      "exclusion-tabs-status"
+    ],
+    "probe": "tabchanged:1"
   },
   {
     "slug": "clerk-toast",
@@ -2844,7 +3379,14 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/clerk-toast--stacked"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "toasts:3"
+        }
       }
     ],
     "testids": [
@@ -2857,8 +3399,10 @@
       "clerk-toast-item-6",
       "clerk-toast-item-7",
       "clerk-toast-item-8",
-      "clerk-toast-item-9"
-    ]
+      "clerk-toast-item-9",
+      "clerk-toast-status"
+    ],
+    "probe": "toasts:3"
   },
   {
     "slug": "duration-slider",
@@ -2891,12 +3435,21 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/duration-slider--after"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "duration-slider-knob"
-    ]
+      "duration-slider-knob",
+      "duration-slider-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "alert-drawer",
@@ -2913,6 +3466,11 @@
         }
       },
       {
+        "assertVisible": {
+          "text": "open"
+        }
+      },
+      {
         "tapOn": {
           "text": "Cancel",
           "optional": true
@@ -2925,8 +3483,10 @@
       }
     ],
     "testids": [
-      "alert-drawer-trigger"
-    ]
+      "alert-drawer-trigger",
+      "alert-drawer-status"
+    ],
+    "probe": "open"
   },
   {
     "slug": "motion-blur",
@@ -2961,11 +3521,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "items:3"
+        }
       }
     ],
     "testids": [
-      "motion-blur-add"
-    ]
+      "motion-blur-add",
+      "motion-blur-status"
+    ],
+    "probe": "items:3"
   },
   {
     "slug": "delete-button",
@@ -2990,11 +3562,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "deleted"
+        }
       }
     ],
     "testids": [
-      "delete-button"
-    ]
+      "delete-button",
+      "delete-button-status"
+    ],
+    "probe": "deleted"
   },
   {
     "slug": "dynamic-blur-tabs",
@@ -3029,6 +3613,16 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:2"
+        }
       }
     ],
     "testids": [
@@ -3036,8 +3630,10 @@
       "dynamic-blur-tabs-tab-1",
       "dynamic-blur-tabs-tab-2",
       "dynamic-blur-tabs-tab-3",
-      "dynamic-blur-tabs-tab-4"
-    ]
+      "dynamic-blur-tabs-tab-4",
+      "dynamic-blur-tabs-status"
+    ],
+    "probe": "tab:2"
   },
   {
     "slug": "snake",
@@ -3094,11 +3690,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1000
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
+        }
       }
     ],
     "testids": [
-      "snake-board"
-    ]
+      "snake-board",
+      "snake-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "expandable-mini-player",
@@ -3112,6 +3720,11 @@
       {
         "waitForAnimationToEnd": {
           "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "expanded"
         }
       },
       {
@@ -3129,8 +3742,10 @@
       }
     ],
     "testids": [
-      "expandable-mini-player"
-    ]
+      "expandable-mini-player",
+      "expandable-mini-player-status"
+    ],
+    "probe": "expanded"
   },
   {
     "slug": "bezier-curve-outline",
@@ -3150,11 +3765,23 @@
         "waitForAnimationToEnd": {
           "timeout": 2000
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "on"
+        }
       }
     ],
     "testids": [
-      "bezier-curve-outline-toggle"
-    ]
+      "bezier-curve-outline-toggle",
+      "bezier-curve-outline-status"
+    ],
+    "probe": "on"
   },
   {
     "slug": "tab-navigation",
@@ -3189,14 +3816,26 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:0"
+        }
       }
     ],
     "testids": [
       "tab-navigation-tab-0",
       "tab-navigation-tab-1",
       "tab-navigation-tab-2",
-      "tab-navigation-tab-3"
-    ]
+      "tab-navigation-tab-3",
+      "tab-navigation-status"
+    ],
+    "probe": "tab:0"
   },
   {
     "slug": "mnist",
@@ -3242,13 +3881,22 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/mnist--drawn"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "drawn"
+        }
       }
     ],
     "testids": [
       "mnist-canvas",
-      "mnist-clear"
-    ]
+      "mnist-clear",
+      "mnist-status"
+    ],
+    "probe": "drawn"
   },
   {
     "slug": "stacked-modals",
@@ -3284,11 +3932,23 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "count:3"
+        }
       }
     ],
     "testids": [
-      "stacked-modals-trigger"
-    ]
+      "stacked-modals-trigger",
+      "stacked-modals-status"
+    ],
+    "probe": "count:3"
   },
   {
     "slug": "linear-sensors",
@@ -3299,9 +3959,22 @@
         "waitForAnimationToEnd": {
           "timeout": 3000
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "mounted"
+        }
       }
     ],
-    "testids": []
+    "testids": [
+      "linear-sensors-status"
+    ],
+    "probe": "mounted"
   },
   {
     "slug": "verification-code-face",
@@ -3326,13 +3999,22 @@
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/verification-code-face--entered"
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "drawn"
+        }
       }
     ],
     "testids": [
       "verification-code-face-trigger",
-      "verification-code-face-input"
-    ]
+      "verification-code-face-input",
+      "verification-code-face-status"
+    ],
+    "probe": "drawn"
   },
   {
     "slug": "everybody-can-cook",
@@ -3357,11 +4039,23 @@
         "waitForAnimationToEnd": {
           "timeout": 2000
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "replays:2"
+        }
       }
     ],
     "testids": [
-      "everybody-can-cook"
-    ]
+      "everybody-can-cook",
+      "everybody-can-cook-status"
+    ],
+    "probe": "replays:2"
   },
   {
     "slug": "threads-holo-ticket",
@@ -3386,11 +4080,23 @@
         "waitForAnimationToEnd": {
           "timeout": 2000
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "flipped"
+        }
       }
     ],
     "testids": [
-      "threads-holo-ticket"
-    ]
+      "threads-holo-ticket",
+      "threads-holo-ticket-status"
+    ],
+    "probe": "flipped"
   },
   {
     "slug": "fluid-tab-interaction",
@@ -3425,13 +4131,25 @@
         "waitForAnimationToEnd": {
           "timeout": 1500
         }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "tab:accounts"
+        }
       }
     ],
     "testids": [
       "fluid-tab-interaction-tab-accounts",
       "fluid-tab-interaction-tab-deposits",
-      "fluid-tab-interaction-tab-funds"
-    ]
+      "fluid-tab-interaction-tab-funds",
+      "fluid-tab-interaction-status"
+    ],
+    "probe": "tab:accounts"
   },
   {
     "slug": "shake-to-delete",
@@ -3454,14 +4172,21 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "deleted"
         }
       }
     ],
     "testids": [
       "shake-to-delete-item-0",
-      "shake-to-delete-item-0-delete"
-    ]
+      "shake-to-delete-item-0-delete",
+      "shake-to-delete-status"
+    ],
+    "probe": "deleted"
   },
   {
     "slug": "composable-text",
@@ -3474,23 +4199,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
         }
       },
       {
-        "tapOn": {
-          "id": "composable-text-pill"
-        }
-      },
-      {
-        "waitForAnimationToEnd": {
-          "timeout": 2000
+        "assertVisible": {
+          "text": "Using Max"
         }
       }
     ],
     "testids": [
-      "composable-text-pill"
-    ]
+      "composable-text-pill",
+      "composable-text-status"
+    ],
+    "probe": "Using Max"
   },
   {
     "slug": "card-shader-reflections",
@@ -3499,11 +4221,19 @@
     "steps": [
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "ready"
         }
       }
     ],
-    "testids": []
+    "testids": [
+      "card-shader-reflections-status"
+    ],
+    "probe": "ready"
   },
   {
     "slug": "clock-time-picker",
@@ -3519,26 +4249,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
         }
       },
       {
-        "swipe": {
-          "from": {
-            "id": "clock-time-picker-wheel"
-          },
-          "direction": "UP"
-        }
-      },
-      {
-        "waitForAnimationToEnd": {
-          "timeout": 2000
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "clock-time-picker-wheel"
-    ]
+      "clock-time-picker-wheel",
+      "clock-time-picker-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "sudoku",
@@ -3571,15 +4295,22 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "cell:5"
         }
       }
     ],
     "testids": [
       "sudoku-start",
       "sudoku-cell-0-0",
-      "sudoku-key-5"
-    ]
+      "sudoku-key-5",
+      "sudoku-status"
+    ],
+    "probe": "cell:5"
   },
   {
     "slug": "particles-button",
@@ -3592,13 +4323,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "blasted"
         }
       }
     ],
     "testids": [
-      "particles-button"
-    ]
+      "particles-button",
+      "particles-button-status"
+    ],
+    "probe": "blasted"
   },
   {
     "slug": "magnet-spring",
@@ -3627,13 +4365,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "magnet-spring-puck"
-    ]
+      "magnet-spring-puck",
+      "magnet-spring-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "ios-home-grid",
@@ -3646,13 +4391,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "expanded"
         }
       }
     ],
     "testids": [
-      "ios-home-grid-icon-0"
-    ]
+      "ios-home-grid-icon-0",
+      "ios-home-grid-status"
+    ],
+    "probe": "expanded"
   },
   {
     "slug": "time-machine",
@@ -3681,13 +4433,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "time-machine-surface"
-    ]
+      "time-machine-surface",
+      "time-machine-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "ios-home-bouncy",
@@ -3705,16 +4464,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/ios-home-bouncy--settled"
+        "assertVisible": {
+          "text": "ready"
+        }
       }
     ],
     "testids": [
-      "ios-home-bouncy-screen"
-    ]
+      "ios-home-bouncy-screen",
+      "ios-home-bouncy-status"
+    ],
+    "probe": "ready"
   },
   {
     "slug": "online-offline",
@@ -3737,13 +4500,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "migrated"
         }
       }
     ],
     "testids": [
-      "online-offline-surface"
-    ]
+      "online-offline-surface",
+      "online-offline-status"
+    ],
+    "probe": "migrated"
   },
   {
     "slug": "draggable-panel",
@@ -3772,13 +4542,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "draggable-panel-handle"
-    ]
+      "draggable-panel-handle",
+      "draggable-panel-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "github-contributions",
@@ -3787,13 +4564,20 @@
     "steps": [
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "ready"
         }
       }
     ],
     "testids": [
-      "github-contributions-surface"
-    ]
+      "github-contributions-surface",
+      "github-contributions-status"
+    ],
+    "probe": "ready"
   },
   {
     "slug": "stacked-carousel",
@@ -3822,13 +4606,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       }
     ],
     "testids": [
-      "stacked-carousel-scroller"
-    ]
+      "stacked-carousel-scroller",
+      "stacked-carousel-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "airbnb-flip-interaction",
@@ -3841,16 +4632,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2000
+          "timeout": 1500
         }
       },
       {
-        "takeScreenshot": ".maestro/artifacts/airbnb-flip-interaction--flipped"
+        "assertVisible": {
+          "text": "flipped"
+        }
       }
     ],
     "testids": [
-      "airbnb-flip-card"
-    ]
+      "airbnb-flip-card",
+      "airbnb-flip-status"
+    ],
+    "probe": "flipped"
   },
   {
     "slug": "liquid-glass-playground",
@@ -3859,17 +4654,24 @@
     "steps": [
       {
         "waitForAnimationToEnd": {
-          "timeout": 3000
+          "timeout": 1500
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "ready"
         }
       }
     ],
     "testids": [
-      "liquid-glass-playground-surface"
-    ]
+      "liquid-glass-playground-surface",
+      "liquid-glass-playground-status"
+    ],
+    "probe": "ready"
   },
   {
     "slug": "blur-cards",
-    "summary": "Full-screen Skia blurred card fan; an absolute-fill PressableOpacity over the canvas toggles the cards between collapsed and the spring-fanned blurred layout on each tap.",
+    "summary": "Full-screen Skia blurred card fan; an absolute-fill PressableOpacity over the canvas toggles the cards between collapsed and the spring-fanned blurred layout on each tap. Probe bridges the worklet 'progress' (>0.5) back to JS so the test asserts the cards actually fanned out.",
     "steps": [
       {
         "tapOn": {
@@ -3882,23 +4684,35 @@
         }
       },
       {
+        "assertVisible": {
+          "text": "fanned"
+        }
+      },
+      {
         "tapOn": {
           "id": "blur-cards-canvas"
         }
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "collapsed"
         }
       }
     ],
     "testids": [
-      "blur-cards-canvas"
-    ]
+      "blur-cards-canvas",
+      "blur-cards-status"
+    ],
+    "probe": "fanned"
   },
   {
     "slug": "calendar-days",
-    "summary": "Page-flip 'tear-off' calendar driven by a draggable slider (pan gesture); dragging the slider RIGHT flips through the days while the card animates each page. Note: there is NO tappable day grid — the only control is the slider, so a day-tap is impossible; we swipe the slider track instead.",
+    "summary": "Page-flip 'tear-off' calendar driven by a draggable slider (pan gesture); dragging the slider RIGHT flips through the days. Probe bridges the slider's page index (round(progress*31) > 0) back to JS so the test asserts the slider actually moved off the first page. NOTE: there is no tappable day grid, only the slider.",
     "steps": [
       {
         "swipe": {
@@ -3910,7 +4724,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       },
       {
@@ -3923,18 +4742,20 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
         }
       }
     ],
     "testids": [
       "calendar-days-slider",
-      "calendar-days-card"
-    ]
+      "calendar-days-card",
+      "calendar-days-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "sphere-waves",
-    "summary": "Full-screen Skia fibonacci sphere of 2000 circles that auto-pulses; a tap on the RIGHT half re-randomizes the spiral multiplier and a pinch zooms. We swipe across the canvas (which the Pan/Tap detector resolves) to perturb it, then let the pulse animation settle.",
+    "summary": "Full-screen Skia fibonacci sphere of 2000 circles that auto-pulses; a tap/drag on the canvas re-randomizes the spiral multiplier (magicalMul). Probe bridges the first change of magicalMul off its initial value (2.4) back to JS so the test asserts the perturbation actually registered.",
     "steps": [
       {
         "swipe": {
@@ -3946,7 +4767,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "moved"
         }
       },
       {
@@ -3959,17 +4785,19 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
         }
       }
     ],
     "testids": [
-      "sphere-waves-canvas"
-    ]
+      "sphere-waves-canvas",
+      "sphere-waves-status"
+    ],
+    "probe": "moved"
   },
   {
     "slug": "scrollable-shapes",
-    "summary": "Skia point-cloud 3D shape that morphs as you scroll a full-screen invisible horizontal pager; swiping the pager LEFT advances to the next shape, RIGHT goes back.",
+    "summary": "Skia point-cloud 3D shape that morphs as you scroll a full-screen invisible horizontal pager; swiping LEFT advances to the next shape. Probe bridges the pager page index (round(scrollX/width)) back to JS so the test asserts the pager actually advanced to page 1.",
     "steps": [
       {
         "swipe": {
@@ -3981,7 +4809,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "page-1"
         }
       },
       {
@@ -3994,7 +4827,7 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
         }
       },
       {
@@ -4007,17 +4840,19 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
         }
       }
     ],
     "testids": [
-      "scrollable-shapes-pager"
-    ]
+      "scrollable-shapes-pager",
+      "scrollable-shapes-status"
+    ],
+    "probe": "page-1"
   },
   {
     "slug": "notion-qrcode",
-    "summary": "3D torus of avatar sprites that morphs into a scannable QR code; the bottom floating toggle button (scan/qr icon) springs between the torus and QR modes. No TextInput exists — content is hardcoded — so we drive the toggle button.",
+    "summary": "3D torus of avatar sprites that morphs into a scannable QR code; the bottom floating toggle button springs between the torus and QR modes. Probe bridges the morph 'progress' (>0.5) back to JS so the test asserts the toggle actually switched into QR mode.",
     "steps": [
       {
         "tapOn": {
@@ -4026,7 +4861,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "qr"
         }
       },
       {
@@ -4036,17 +4876,24 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "torus"
         }
       }
     ],
     "testids": [
-      "notion-qrcode-toggle"
-    ]
+      "notion-qrcode-toggle",
+      "notion-qrcode-status"
+    ],
+    "probe": "qr"
   },
   {
     "slug": "github-terrain",
-    "summary": "WebGPU GitHub-contributions terrain; tapping the full-screen canvas toggles between flat and raised 3D terrain, and a bottom-right Switch toggles real vs demo data.",
+    "summary": "WebGPU GitHub-contributions terrain; tapping the canvas toggles flat<->raised 3D terrain, and a bottom-right Switch toggles real vs demo data. Probe mirrors the (ref-held) flat/raised + real/demo state into a '<flat|raised>-<real|demo>' token so the test asserts the data switch actually flipped to demo.",
     "steps": [
       {
         "tapOn": {
@@ -4055,7 +4902,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "raised-real"
         }
       },
       {
@@ -4065,7 +4917,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "raised-demo"
         }
       },
       {
@@ -4075,18 +4932,25 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "flat-demo"
         }
       }
     ],
     "testids": [
       "github-terrain-canvas",
-      "github-terrain-switch"
-    ]
+      "github-terrain-switch",
+      "github-terrain-status"
+    ],
+    "probe": "flat-demo"
   },
   {
     "slug": "cherry-blossom-qrcode",
-    "summary": "WebGPU cherry-blossom tree whose canopy encodes a QR code; a TextInput (auto-focused) drives the QR content live. We type a URL into the input, then tap the canvas to toggle the flat/3D view.",
+    "summary": "WebGPU cherry-blossom tree whose canopy encodes a QR code; an auto-focused TextInput drives the QR content live. Probe exposes the live qrContent string so the test asserts the typed text actually reached the QR encoder (default 'https://enzo.fyi' + typed 'hello').",
     "steps": [
       {
         "tapOn": {
@@ -4098,7 +4962,12 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
+        }
+      },
+      {
+        "assertVisible": {
+          "text": "hello"
         }
       },
       {
@@ -4108,43 +4977,57 @@
       },
       {
         "waitForAnimationToEnd": {
-          "timeout": 2500
+          "timeout": 2000
         }
       }
     ],
     "testids": [
       "cherry-blossom-qrcode-input",
-      "cherry-blossom-qrcode-canvas"
-    ]
+      "cherry-blossom-qrcode-canvas",
+      "cherry-blossom-qrcode-status"
+    ],
+    "probe": "hello"
   },
   {
     "slug": "art-gallery",
-    "summary": "WebGPU photo-mosaic gallery (10,000 photos) with double-tap-to-zoom into a cell, pinch and pan. Marked passive: a prior run rendered BLANK (WebGPU did not paint) on this build, so input cannot be reliably validated — we only assert the gallery canvas mounts.",
+    "summary": "WebGPU photo-mosaic gallery (10,000 photos) with double-tap-to-zoom, pinch and pan. PASSIVE: a prior run rendered BLANK (WebGPU did not paint) on this build, so interaction outcome cannot be reliably validated; we only assert the gallery canvas mounts. No source probe added.",
     "passive": true,
     "steps": [
       {
         "waitForAnimationToEnd": {
           "timeout": 3000
+        }
+      },
+      {
+        "assertVisible": {
+          "id": "art-gallery-canvas"
         }
       }
     ],
     "testids": [
       "art-gallery-canvas"
-    ]
+    ],
+    "probe": "art-gallery-canvas"
   },
   {
     "slug": "chessboard",
-    "summary": "react-native-chessboard that auto-replays a full game to a 'Game Review' end screen regardless of input; the New Game button and move history are hidden (SHOW_CHROME=false), so there is no clean tappable control and the auto-replay overrides any manual move. Marked passive — validate the board renders.",
+    "summary": "react-native-chessboard that auto-replays a full game to a 'Game Review' end screen regardless of input; the New Game button and move history are hidden (SHOW_CHROME=false) and the auto-replay overrides any manual move. PASSIVE: no clean tappable control / deterministic input outcome; we only assert the board renders. No source probe added.",
     "passive": true,
     "steps": [
       {
         "waitForAnimationToEnd": {
           "timeout": 3000
         }
+      },
+      {
+        "assertVisible": {
+          "id": "chessboard-board"
+        }
       }
     ],
     "testids": [
       "chessboard-board"
-    ]
+    ],
+    "probe": "chessboard-board"
   }
 ]

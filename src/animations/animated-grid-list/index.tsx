@@ -19,6 +19,10 @@ const AnimatedImage = Animated.createAnimatedComponent(Image);
 
 export function AnimatedGridList() {
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  // e2e outcome probe: layout mode + how many times it has been toggled,
+  // exposed as an assertable token so a test can verify the FAB actually
+  // morphed the layout. Visually negligible (alpha ~0.01).
+  const [toggleCount, setToggleCount] = useState(0);
   const insets = useSafeAreaInsets();
 
   const renderItem: AnimatedLayoutListProps<(typeof data)[0]>['renderItem'] =
@@ -77,6 +81,9 @@ export function AnimatedGridList() {
         styles.container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
+      <Text testID="animated-grid-list-status" style={styles.statusProbe}>
+        {`${layout}:${toggleCount}`}
+      </Text>
       <AnimatedLayoutList data={data} layout={layout} renderItem={renderItem} />
       <FloatingButton
         style={{
@@ -88,6 +95,7 @@ export function AnimatedGridList() {
           setLayout(currentLayout =>
             currentLayout === 'grid' ? 'list' : 'grid',
           );
+          setToggleCount(count => count + 1);
         }}
         layout={layout}
       />
@@ -99,5 +107,14 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#EEEEEE',
     flex: 1,
+  },
+  statusProbe: {
+    color: '#EEEEEE',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });

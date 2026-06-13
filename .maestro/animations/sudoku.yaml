@@ -23,7 +23,9 @@ appId: com.reactiive.app
 - tapOn:
     id: "sudoku-key-5"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "cell:5"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/sudoku--after"

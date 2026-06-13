@@ -1,6 +1,6 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
 // @@TODO: restore once available in pressto
@@ -37,6 +37,10 @@ const SelectableGridListContainer = () => {
   });
 
   const gridListRef = useRef<GridListRefType>(null);
+
+  // e2e outcome probe: surfaces the live selected-cell count as an assertable
+  // value so a test can verify the taps actually toggled selection.
+  const [selectedCount, setSelectedCount] = useState(0);
 
   const rFloatingButtonStyle = useAnimatedStyle(() => {
     return {
@@ -78,6 +82,7 @@ const SelectableGridListContainer = () => {
   const onSelectionChange = useCallback(
     (indexes: number[]) => {
       selectedIndexesAmount.set(indexes.length);
+      setSelectedCount(indexes.length);
     },
     [selectedIndexesAmount],
   );
@@ -89,6 +94,9 @@ const SelectableGridListContainer = () => {
         backgroundColor: Palette.background,
         paddingTop: safeTop,
       }}>
+      <Text testID="selectable-grid-list-status" style={styles.statusProbe}>
+        {`selected:${selectedCount}`}
+      </Text>
       <SelectableGridList
         data={new Array(50).fill(0) as number[]}
         gridListRef={gridListRef}
@@ -141,6 +149,17 @@ const styles = StyleSheet.create({
     right: 20,
     width: 96,
     zIndex: 1000,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: Palette.primary,
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 2000,
   },
 });
 

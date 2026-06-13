@@ -16,6 +16,8 @@ appId: com.reactiive.app
     id: "expandable-mini-player"
 - waitForAnimationToEnd:
     timeout: 2000
+- assertVisible:
+    text: "expanded"
 - swipe:
     from:
       id: "expandable-mini-player"

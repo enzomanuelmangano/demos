@@ -1,11 +1,12 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 import { PressableScale } from 'pressto';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import NoneMatrix from '../find-weights/examples/none.json';
 import ModelWeights from '../find-weights/model_weights.json';
@@ -40,9 +41,28 @@ function App() {
     nn.predict(ModelWeightsFlat, NoneMatrix.matrix),
   );
 
+  // e2e outcome probe: flips to "drawn" once any cell is painted on the Skia
+  // canvas, so a test can verify the drag actually drew a digit (the canvas
+  // state is otherwise un-inspectable). Visually negligible.
+  const [status, setStatus] = useState<'idle' | 'drawn'>('idle');
+
   const onUpdate = useCallback(
     (squaresGrid: number[][]) => {
       'worklet';
+
+      let painted = false;
+      for (let i = 0; i < squaresGrid.length; i++) {
+        for (let j = 0; j < squaresGrid[i].length; j++) {
+          if (squaresGrid[i][j] === 1) {
+            painted = true;
+            break;
+          }
+        }
+        if (painted) break;
+      }
+      if (painted) {
+        scheduleOnRN(setStatus, 'drawn');
+      }
 
       const result = nn.predict(ModelWeightsFlat, squaresGrid);
       predictions.set(result);
@@ -56,6 +76,9 @@ function App() {
 
   return (
     <View style={styles.container}>
+      <Text testID="mnist-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <StatusBar style="light" />
       <View style={styles.fillCenter}>
         <NeuralNetwork weights={ModelWeightsFlat} predictions={predictions} />
@@ -101,6 +124,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 40,
     width: 64,
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#fff',
+    opacity: 0.012,
+    zIndex: 9999,
   },
 });
 

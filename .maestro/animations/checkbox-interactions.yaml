@@ -23,6 +23,10 @@ appId: com.reactiive.app
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "checked:4"
+- waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/checkbox-interactions--after"
 # still on the demo (didn't bounce to not-found) and not crashed

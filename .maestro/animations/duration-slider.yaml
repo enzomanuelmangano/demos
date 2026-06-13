@@ -24,7 +24,10 @@ appId: com.reactiive.app
     direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/duration-slider--after"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/duration-slider--after"

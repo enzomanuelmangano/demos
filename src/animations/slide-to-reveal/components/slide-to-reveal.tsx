@@ -1,6 +1,6 @@
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { type FC, memo, useMemo } from 'react';
+import { type FC, memo, useMemo, useState } from 'react';
 
 import {
   BlurMask,
@@ -17,6 +17,7 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { TextCode } from './text-code';
 
@@ -40,6 +41,13 @@ const SlideToReveal: FC<SlideToRevealProps> = memo(
     const x = useSharedValue(0);
     const y = useSharedValue(0);
     const isMaskActive = useSharedValue(false);
+    const hasRevealed = useSharedValue(false);
+
+    // e2e outcome probe: latches to "revealed" once the spotlight is dragged
+    // across the panel, so a test can assert the reveal gesture registered.
+    const [revealState, setRevealState] = useState<'hidden' | 'revealed'>(
+      'hidden',
+    );
 
     const gesture = Gesture.Pan()
       .onBegin(event => {
@@ -50,6 +58,10 @@ const SlideToReveal: FC<SlideToRevealProps> = memo(
       .onUpdate(event => {
         x.set(event.x);
         y.set(event.y);
+        if (!hasRevealed.get()) {
+          hasRevealed.set(true);
+          scheduleOnRN(setRevealState, 'revealed');
+        }
       })
       .onFinalize(() => {
         isMaskActive.set(false);
@@ -96,62 +108,77 @@ const SlideToReveal: FC<SlideToRevealProps> = memo(
     return (
       <GestureDetector gesture={gesture}>
         <View testID="slide-to-reveal-panel" style={{ width, height }}>
-        <Canvas
-          style={[
-            {
-              width,
-              height,
-            },
-          ]}>
-          {/* Background rounded rectangle */}
-          <RoundedRect
-            x={0}
-            y={0}
-            width={width}
-            height={height}
-            color={'#0F0F0F'}
-            r={20}
-          />
-          {/* HERE: Uncomment the next few lines to reveal the magic 🪄 */}
-          {/* Start by uncommenting this one: */}
-          {/* {defaultContentMask} */}
-          {/* Uncomment this one separately: */}
-          {/* {blurredContentMask} */}
-          {/* That's beautiful, isn't it? 🥹 */}
+          <Text testID="slide-to-reveal-status" style={probeStyles.statusProbe}>
+            {revealState}
+          </Text>
+          <Canvas
+            style={[
+              {
+                width,
+                height,
+              },
+            ]}>
+            {/* Background rounded rectangle */}
+            <RoundedRect
+              x={0}
+              y={0}
+              width={width}
+              height={height}
+              color={'#0F0F0F'}
+              r={20}
+            />
+            {/* HERE: Uncomment the next few lines to reveal the magic 🪄 */}
+            {/* Start by uncommenting this one: */}
+            {/* {defaultContentMask} */}
+            {/* Uncomment this one separately: */}
+            {/* {blurredContentMask} */}
+            {/* That's beautiful, isn't it? 🥹 */}
 
-          {/* Group containing masked elements */}
-          <Group opacity={rContentOpacity}>
-            {/* Alpha mask with two blurred circles */}
-            <Mask mode="alpha" mask={blurredContentMask}>
-              {/* Display the code text with a blur effect */}
-              <TextCode
-                code={text}
-                textY={textY - 5}
-                containerWidth={width}
-                font={font}
-                highlightedPoint={highlightedPoint}>
-                <BlurMask blur={7} />
-              </TextCode>
-            </Mask>
+            {/* Group containing masked elements */}
+            <Group opacity={rContentOpacity}>
+              {/* Alpha mask with two blurred circles */}
+              <Mask mode="alpha" mask={blurredContentMask}>
+                {/* Display the code text with a blur effect */}
+                <TextCode
+                  code={text}
+                  textY={textY - 5}
+                  containerWidth={width}
+                  font={font}
+                  highlightedPoint={highlightedPoint}>
+                  <BlurMask blur={7} />
+                </TextCode>
+              </Mask>
 
-            {/* Luminance mask with a blurred circle */}
-            <Mask mode="luminance" mask={defaultContentMask}>
-              {/* Display the code text without a blur effect */}
-              <TextCode
-                containerWidth={width}
-                code={text}
-                textY={textY - 5}
-                font={font}
-                highlightedPoint={highlightedPoint}
-              />
-            </Mask>
-          </Group>
-        </Canvas>
+              {/* Luminance mask with a blurred circle */}
+              <Mask mode="luminance" mask={defaultContentMask}>
+                {/* Display the code text without a blur effect */}
+                <TextCode
+                  containerWidth={width}
+                  code={text}
+                  textY={textY - 5}
+                  font={font}
+                  highlightedPoint={highlightedPoint}
+                />
+              </Mask>
+            </Group>
+          </Canvas>
         </View>
       </GestureDetector>
     );
   },
 );
+
+const probeStyles = StyleSheet.create({
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
+  },
+});
 
 // Export the SlideToReveal component
 export { SlideToReveal };

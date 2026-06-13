@@ -16,7 +16,10 @@ appId: com.reactiive.app
     id: "exclusion-tabs"
 - waitForAnimationToEnd:
     timeout: 1200
-- takeScreenshot: ".maestro/artifacts/exclusion-tabs--selected"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tabchanged:1"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/exclusion-tabs--after"

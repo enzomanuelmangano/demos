@@ -24,6 +24,8 @@ appId: com.reactiive.app
     id: "action-tray-continue"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "tray-open-2"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/action-tray--after"

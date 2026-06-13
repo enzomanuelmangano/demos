@@ -21,8 +21,9 @@ appId: com.reactiive.app
       id: "fourier-visualizer-canvas"
     direction: "DOWN"
 - waitForAnimationToEnd:
-    timeout: 3000
-- takeScreenshot: ".maestro/artifacts/fourier-visualizer--drawn"
+    timeout: 1500
+- assertVisible:
+    text: "drawn"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/fourier-visualizer--after"

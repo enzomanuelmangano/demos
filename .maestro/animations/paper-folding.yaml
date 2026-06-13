@@ -20,7 +20,10 @@ appId: com.reactiive.app
     id: "paper-folding"
 - waitForAnimationToEnd:
     timeout: 2000
-- takeScreenshot: ".maestro/artifacts/paper-folding--folded"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "folds:2"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/paper-folding--after"

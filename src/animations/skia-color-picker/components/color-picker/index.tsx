@@ -1,3 +1,7 @@
+import { StyleSheet, Text } from 'react-native';
+
+import { useState } from 'react';
+
 import {
   BlurMask,
   Canvas,
@@ -138,9 +142,24 @@ const ColorPicker: FC<ColorPickerProps> = ({
     },
   );
 
+  // e2e outcome probe: flips to "moved" once the picker knob leaves its initial
+  // center position, so a test can assert the drag updated the selected color.
+  const [pickState, setPickState] = useState<'initial' | 'moved'>('initial');
+  useAnimatedReaction(
+    () => pickerX.get() !== center.x || pickerY.get() !== center.y,
+    (moved, prev) => {
+      if (moved && moved !== prev) {
+        scheduleOnRN(setPickState, 'moved');
+      }
+    },
+  );
+
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View testID="skia-color-picker-canvas">
+        <Text testID="skia-color-picker-status" style={probeStyles.statusProbe}>
+          {pickState}
+        </Text>
         <Canvas
           style={{
             width: canvasSize,
@@ -200,5 +219,16 @@ const ColorPicker: FC<ColorPickerProps> = ({
     </GestureDetector>
   );
 };
+
+const probeStyles = StyleSheet.create({
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
+  },
+});
 
 export { ColorPicker };

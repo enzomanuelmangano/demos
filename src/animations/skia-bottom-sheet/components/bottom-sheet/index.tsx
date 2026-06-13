@@ -12,11 +12,13 @@ import {
   Skia,
 } from '@shopify/react-native-skia';
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -38,6 +40,9 @@ type BottomSheetProps = {
   cardRadius?: number;
   cardInitialOffset?: number;
   color?: string;
+  // e2e outcome probe hook: invoked when the sheet crosses the open/closed
+  // threshold so the container can surface an assertable status.
+  onStateChange?: (state: 'open' | 'closed') => void;
 };
 
 // Define the BottomSheet component
@@ -48,12 +53,25 @@ const BottomSheet: FC<BottomSheetProps> = memo(
     cardRadius = DEFAULT_CARD_RADIUS,
     cardInitialOffset = DEFAULT_CARD_INITIAL_OFFSET,
     color = DEFAULT_CARD_COLOR,
+    onStateChange,
   }) => {
     // Set up animated translateY value with default value of 0
     const translateY = useSharedValue(0);
 
     // Get the device height using useWindowDimensions
     const { height } = useWindowDimensions();
+
+    // e2e outcome probe: report when the sheet is meaningfully open (handle
+    // dragged/snapped up past a threshold) vs resting closed.
+    useAnimatedReaction(
+      () => translateY.get() < -100,
+      (open, prev) => {
+        if (open !== prev && onStateChange) {
+          scheduleOnRN(onStateChange, open ? 'open' : 'closed');
+        }
+      },
+      [onStateChange],
+    );
 
     // Set up a clamped translateY value that is bound by the minimum and maximum values
     const clampedTranslateY = useDerivedValue(() => {

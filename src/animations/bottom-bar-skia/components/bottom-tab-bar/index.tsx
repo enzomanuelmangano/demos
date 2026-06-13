@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useMemo } from 'react';
 
@@ -38,6 +38,11 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   const animatedIndex = useDerivedValue(() => {
     return withSpring(currentIndex);
   }, [currentIndex]);
+
+  // e2e outcome probe: the currently selected tab name, exposed as an assertable
+  // token so a test can verify a tap on the Skia tab bar actually switched the
+  // active route. Visually negligible (alpha ~0.01).
+  const activeTabName = state.routes[currentIndex]?.name.toLowerCase() ?? '';
 
   const animatedCircleCx = useDerivedValue(() => {
     return (
@@ -94,6 +99,9 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   return (
     <>
+      <Text testID="bottom-bar-skia-status" style={styles.statusProbe}>
+        {`tab:${activeTabName}`}
+      </Text>
       <Touchable.Canvas
         testID="bottom-bar-skia-tabbar"
         style={[
@@ -157,6 +165,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 25,
     width: '100%',
+  },
+  statusProbe: {
+    color: '#888888',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });
 

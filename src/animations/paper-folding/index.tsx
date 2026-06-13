@@ -1,4 +1,6 @@
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import * as Haptics from 'expo-haptics';
 import { PressableWithoutFeedback } from 'pressto';
@@ -23,8 +25,15 @@ export const PaperFolding = () => {
 
   const progress = useSharedValue(0);
 
+  // e2e outcome probe: counts how many times the paper has folded/unfolded (the
+  // fold is a Skia path driven by a shared value). Near-invisible.
+  const [foldCount, setFoldCount] = useState(0);
+
   return (
     <View style={styles.container}>
+      <Text testID="paper-folding-status" style={styles.statusProbe}>
+        {`folds:${foldCount}`}
+      </Text>
       <BackgroundGradient />
       <Paper width={PaperWidth} height={PaperHeight} progress={progress} />
       {/* @@TODO: wtf why is this needed? */}
@@ -40,6 +49,7 @@ export const PaperFolding = () => {
               dampingRatio: 1.5,
             }),
           );
+          setFoldCount(count => count + 1);
         }}
       />
     </View>
@@ -58,5 +68,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#808080',
+    opacity: 0.012,
+    zIndex: 1000,
   },
 });

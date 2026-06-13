@@ -1,5 +1,6 @@
 import {
   StyleSheet,
+  Text,
   TextInput,
   TouchableWithoutFeedback,
   View,
@@ -33,6 +34,11 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
   onWrongCode,
 }) => {
   const [code, setCode] = useState<number[]>([]);
+  // e2e outcome probe: sticky flag that flips to "drawn" once any digit is
+  // typed, so a test can verify typing actually drove the input (the visible
+  // feedback is an animated face with no inspectable state, and the code resets
+  // after 1s). Visually negligible.
+  const [hasTyped, setHasTyped] = useState(false);
   const verificationStatus = useSharedValue<StatusType>('inProgress');
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
 
@@ -88,6 +94,9 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 
   return (
     <View style={styles.container}>
+      <Text testID="verification-code-face-status" style={styles.statusProbe}>
+        {hasTyped ? 'drawn' : 'idle'}
+      </Text>
       <Animated.View style={rKeyboardAvoidingViewStyle}>
         <View
           style={{
@@ -129,6 +138,9 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
           if (newCode.length > maxCodeLength) {
             return;
           }
+          if (newCode.length > 0) {
+            setHasTyped(true);
+          }
           setCode(newCode);
 
           if (newCode.join('') === correctCode.toString()) {
@@ -162,5 +174,12 @@ const styles = StyleSheet.create({
   invisibleInput: {
     bottom: -50,
     position: 'absolute',
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
   },
 });

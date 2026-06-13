@@ -1,4 +1,6 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
+import { useState } from 'react';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -7,12 +9,21 @@ import { BalanceSlider as BalanceSliderComponent } from './components/balance-sl
 const App = () => {
   const { width: windowWidth } = useWindowDimensions();
 
+  // e2e outcome probe: the slider's only feedback is a continuous worklet-driven
+  // layout, so we bridge a CHANGED flag from onChange (fired via scheduleOnRN)
+  // to prove the drag actually moved the handle. Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+
   return (
     <View style={styles.container}>
+      <Text testID="balance-slider-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <BalanceSliderComponent
         width={windowWidth * 0.9}
         height={50}
         onChange={({ leftPercentage, rightPercentage }) => {
+          setStatus('moved');
           console.log({ leftPercentage, rightPercentage });
         }}
         leftLabel="Coffee"
@@ -53,6 +64,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });
 

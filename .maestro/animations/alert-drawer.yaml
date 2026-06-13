@@ -16,6 +16,8 @@ appId: com.reactiive.app
     id: "alert-drawer-trigger"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "open"
 - tapOn:
     text: "Cancel"
     optional: true

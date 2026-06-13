@@ -1,8 +1,14 @@
 import { Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 
+import { useState } from 'react';
+
 import { GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useDerivedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedReaction,
+  useDerivedValue,
+} from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { WaveformScrubberSample } from './waveform-sample';
 import { DURATION, Palette } from '../../constants';
@@ -32,8 +38,24 @@ const WaveformScrubber: React.FC<WaveformScrubberProps> = ({
     return `0:${zeroPad(Math.min(Math.floor(seconds), DURATION), 2)}`;
   }, []);
 
+  // e2e outcome probe: flips to "scrubbed" once the playhead moves off the
+  // start, so a test can assert the drag actually moved the scrubber position.
+  const [status, setStatus] = useState<'idle' | 'scrubbed'>('idle');
+  useAnimatedReaction(
+    () => currentX.get() > 1,
+    moved => {
+      if (moved) {
+        scheduleOnRN(setStatus, 'scrubbed');
+      }
+    },
+    [],
+  );
+
   return (
     <View>
+      <Text testID="audio-player-status" style={styles.statusProbe}>
+        {`audio:${status}`}
+      </Text>
       <View style={{ flexDirection: 'row' }}>
         <View style={styles.timeContainer}>
           <ReText text={currentTime} style={styles.timeText} />
@@ -78,6 +100,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     height: 80,
     paddingHorizontal: 18,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: Palette.body,
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
   timeContainer: {
     alignItems: 'center',

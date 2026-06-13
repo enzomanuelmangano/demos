@@ -1,6 +1,6 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import * as Haptics from 'expo-haptics';
 import { PressableScale } from 'pressto';
@@ -25,6 +25,11 @@ const App = () => {
 
   const isGameOver = useSharedValue(false);
 
+  // e2e outcome probe: flips to "moved" once the snake heading actually changes
+  // in response to a fling, so a test can verify the gesture steered the snake
+  // (the board renders in Skia and is otherwise un-inspectable).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+
   const rRestartButtonViewStyle = useAnimatedStyle(() => {
     return {
       opacity: withTiming(isGameOver.get() ? 1 : 0, {
@@ -36,6 +41,9 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="snake-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <View style={styles.boardContainer}>
         <View style={styles.statsContainer}>
           <Text style={styles.scoreText}>Score</Text>
@@ -66,6 +74,7 @@ const App = () => {
               isGameOver.set(true);
             }}
             onDirectionChange={() => {
+              setStatus('moved');
               Haptics.selectionAsync();
             }}
           />
@@ -127,6 +136,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statsContainer: { alignItems: 'center', marginBottom: 8 },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
+  },
 });
 
 export { App };

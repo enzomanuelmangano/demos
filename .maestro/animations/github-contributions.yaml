@@ -13,7 +13,9 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/github-contributions--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 1500
+- assertVisible:
+    text: "ready"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/github-contributions--after"

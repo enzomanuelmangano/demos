@@ -1,4 +1,4 @@
-import { useWindowDimensions, StyleSheet } from 'react-native';
+import { useWindowDimensions, StyleSheet, Text } from 'react-native';
 
 import { useCallback } from 'react';
 
@@ -18,6 +18,11 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   const currentIndex = state.index;
+
+  // e2e outcome probe: the currently selected tab name, exposed as an
+  // assertable token so a test can verify a tab tap actually switched the
+  // active route. Visually negligible (alpha ~0.01).
+  const activeTabName = state.routes[currentIndex]?.name.toLowerCase() ?? '';
   const selectedAnimatedIndex = useDerivedValue(() => {
     return withSpring(currentIndex);
   }, [currentIndex]);
@@ -65,6 +70,9 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
         },
         styles.container,
       ]}>
+      <Text testID="floating-bottom-bar-status" style={styles.statusProbe}>
+        {`tab:${activeTabName}`}
+      </Text>
       <>
         <Animated.View
           style={[
@@ -114,6 +122,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#000000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });
 

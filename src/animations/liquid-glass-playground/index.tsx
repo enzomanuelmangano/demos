@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -46,6 +46,11 @@ export function Playground() {
 
   return (
     <View style={styles.container}>
+      {/* e2e probe: passive refraction surface; assert it mounted.
+          Near-invisible (alpha ~0.01). */}
+      <Text testID="liquid-glass-playground-status" style={styles.statusProbe}>
+        ready
+      </Text>
       <GestureDetector gesture={panGesture}>
         <Animated.View
           testID="liquid-glass-playground-surface"
@@ -82,5 +87,14 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     width: '100%',
     zIndex: 2,
+  },
+  statusProbe: {
+    color: '#ffffff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

@@ -16,11 +16,12 @@ appId: com.reactiive.app
     id: "telegram-theme-switch"
 - waitForAnimationToEnd:
     timeout: 2500
-- takeScreenshot: ".maestro/artifacts/telegram-theme-switch--toggled"
 - tapOn:
     id: "telegram-theme-switch"
 - waitForAnimationToEnd:
-    timeout: 2500
+    timeout: 1500
+- assertVisible:
+    text: "dark"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/telegram-theme-switch--after"

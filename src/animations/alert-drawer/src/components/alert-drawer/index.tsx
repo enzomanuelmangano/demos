@@ -1,12 +1,13 @@
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { FontAwesome, Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 import Animated, {
   interpolate,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -84,6 +85,16 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
 }) => {
   const isExpanded = useSharedValue(false);
 
+  // e2e outcome probe: bridge the worklet-only expansion state to an assertable
+  // value so a test can verify the drawer actually opened (vs. just mounting).
+  const [status, setStatus] = useState<'closed' | 'open'>('closed');
+  useAnimatedReaction(
+    () => isExpanded.get(),
+    open => {
+      scheduleOnRN(setStatus, open ? 'open' : 'closed');
+    },
+  );
+
   const progress = useDerivedValue(() =>
     withSpring(isExpanded.get() ? 1 : 0, { dampingRatio: 1, duration: 400 }),
   );
@@ -144,6 +155,9 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
 
   return (
     <Animated.View style={styles.container}>
+      <Text testID="alert-drawer-status" style={probeStyles.statusProbe}>
+        {status}
+      </Text>
       <PressableScale
         testID="alert-drawer-trigger"
         onPress={() => {
@@ -174,3 +188,15 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
     </Animated.View>
   );
 };
+
+// Near-invisible to the eye, but on-screen + opaque enough for the
+// accessibility/view tree to expose it to e2e (alpha >= 0.01).
+const probeStyles = StyleSheet.create({
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
+  },
+});

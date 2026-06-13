@@ -24,7 +24,8 @@ appId: com.reactiive.app
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/slide-to-reveal--revealed"
+- assertVisible:
+    text: "revealed"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/slide-to-reveal--after"

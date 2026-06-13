@@ -18,13 +18,14 @@ appId: com.reactiive.app
     direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 2000
-- takeScreenshot: ".maestro/artifacts/drag-to-sort--reordered"
 - swipe:
     from:
       id: "drag-to-sort-item-0"
     direction: "UP"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "reordered"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/drag-to-sort--after"

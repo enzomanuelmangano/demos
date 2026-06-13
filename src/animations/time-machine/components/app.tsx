@@ -1,14 +1,16 @@
-import { Dimensions, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useAtom } from 'jotai';
 import { GestureDetector } from 'react-native-gesture-handler';
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { ActiveItemKeyAtom, HistoryAtom } from '../atoms/history-atom';
 import { useTimeMachineGesture } from '../hooks/use-time-machine-gesture';
@@ -73,11 +75,26 @@ export const App = () => {
     onClose: onTimeMachineClose,
   });
 
+  // e2e outcome probe: bridge a 'moved' flag once the history stack opens.
+  const [moved, setMoved] = useState(false);
+  useAnimatedReaction(
+    () => timeMachineProgress.get() > 0.05,
+    (opened, prev) => {
+      if (opened && !prev) {
+        scheduleOnRN(setMoved, true);
+      }
+    },
+  );
+
   return (
     <GestureDetector gesture={panGesture}>
       <View
         testID="time-machine-surface"
         style={{ flex: 1, justifyContent: 'center', backgroundColor: '#000' }}>
+        {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+        <Text testID="time-machine-status" style={styles.statusProbe}>
+          {moved ? 'moved' : 'idle'}
+        </Text>
         <BackgroundCanvas
           timeMachineProgress={timeMachineProgress}
           width={width}
@@ -105,3 +122,15 @@ export const App = () => {
     </GestureDetector>
   );
 };
+
+const styles = StyleSheet.create({
+  statusProbe: {
+    color: '#000000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
+  },
+});

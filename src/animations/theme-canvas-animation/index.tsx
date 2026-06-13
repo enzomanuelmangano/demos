@@ -1,10 +1,16 @@
-import { useWindowDimensions, View } from 'react-native';
+import {
+  StyleSheet,
+  Text as RNText,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { Group, Rect, Skia, Text, useFont } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
@@ -39,7 +45,11 @@ const SQUARE_OFFSETS = [
   { offsetX: 1, offsetY: 1 },
 ];
 
-const ThemeScreen = () => {
+const ThemeScreen = ({
+  onSelectionChange,
+}: {
+  onSelectionChange?: (index: number) => void;
+}) => {
   const { height: canvasHeight, width: canvasWidth } = useWindowDimensions();
 
   const coordinates = useDerivedValue(() => {
@@ -51,6 +61,17 @@ const ThemeScreen = () => {
 
   const selectedIndex = useSharedValue(0);
   const previousSelectedIndex = useSharedValue(0);
+
+  // e2e outcome probe bridge: surface the selected theme index to RN whenever it
+  // changes so the wrapper can expose it as an assertable token.
+  useAnimatedReaction(
+    () => selectedIndex.get(),
+    (current, prev) => {
+      if (prev !== null && current !== prev && onSelectionChange) {
+        scheduleOnRN(onSelectionChange, current);
+      }
+    },
+  );
 
   const selectedBackgroundColor = useDerivedValue(() => {
     return colors[selectedIndex.get()]?.background || 'black';
@@ -182,11 +203,35 @@ const ThemeScreen = () => {
 };
 
 export const ThemeCanvasAnimation = () => {
+  // e2e outcome probe: flips to "theme-changed" once a different theme square is
+  // selected, exposed as an assertable token so a test can verify the swipe
+  // across the Skia canvas actually changed the theme. Visually negligible.
+  const [themeStatus, setThemeStatus] = useState<
+    'theme-initial' | 'theme-changed'
+  >('theme-initial');
+
   return (
     <View testID="theme-canvas-animation-canvas" style={{ flex: 1 }}>
+      <RNText testID="theme-canvas-animation-status" style={styles.statusProbe}>
+        {themeStatus}
+      </RNText>
       <Touchable.Canvas style={{ flex: 1 }}>
-        <ThemeScreen />
+        <ThemeScreen
+          onSelectionChange={() => setThemeStatus('theme-changed')}
+        />
       </Touchable.Canvas>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  statusProbe: {
+    color: '#373737',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
+  },
+});

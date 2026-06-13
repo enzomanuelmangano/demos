@@ -37,6 +37,10 @@ appId: com.reactiive.app
 - waitForAnimationToEnd:
     timeout: 1000
 - waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+- waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/snake--after"
 # still on the demo (didn't bounce to not-found) and not crashed

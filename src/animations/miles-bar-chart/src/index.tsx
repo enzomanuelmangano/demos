@@ -1,6 +1,6 @@
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -28,11 +28,16 @@ const App = () => {
     return Math.floor((scrollOffset.get() + windowWidth / 2) / windowWidth);
   }, [scrollOffset]);
 
+  // e2e outcome probe: flips to "moved" once paging changes the active week so
+  // a test can assert the selection actually changed (the bars are Skia-only).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+
   useAnimatedReaction(
     () => activeIndex.get(),
     (curr, prev) => {
       if (curr !== prev && prev !== null) {
         scheduleOnRN(Haptics.selectionAsync);
+        scheduleOnRN(setStatus, 'moved');
       }
     },
   );
@@ -60,6 +65,9 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="miles-bar-chart-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <WeeklyChart width={windowWidth} height={150} data={animatedData} />
       <View
         style={{
@@ -101,6 +109,16 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingTop: 20,
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });
 

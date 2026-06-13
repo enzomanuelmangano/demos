@@ -15,7 +15,9 @@ appId: com.reactiive.app
 - tapOn:
     id: "ios-home-grid-icon-0"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "expanded"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/ios-home-grid--after"

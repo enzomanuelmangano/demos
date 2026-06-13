@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useState } from 'react';
 
@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { PressableScale } from 'pressto';
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
@@ -38,8 +39,25 @@ export const WheelPicker = () => {
     return Math.ceil(progress.get() * LinesAmount * multiplier);
   }, [progress]);
 
+  // e2e outcome probe: the picked count is a worklet value (Skia AnimatedCount)
+  // with no inspectable RN state, so we bridge a CHANGED flag to prove the wheel
+  // drag actually moved the value. Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'changed'>('idle');
+  useAnimatedReaction(
+    () => animatedNumber.get(),
+    (current, previous) => {
+      if (previous != null && current !== previous) {
+        scheduleOnRN(setStatus, 'changed');
+      }
+    },
+    [],
+  );
+
   return (
     <View style={styles.container}>
+      <Text testID="wheel-picker-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <AnimatedCount
         count={animatedNumber}
         maxDigits={10}
@@ -114,5 +132,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });

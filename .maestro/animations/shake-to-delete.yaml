@@ -19,7 +19,9 @@ appId: com.reactiive.app
 - tapOn:
     id: "shake-to-delete-item-0-delete"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "deleted"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/shake-to-delete--after"

@@ -1,11 +1,13 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 
 import Animated, {
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { BlurredListItem } from './components/blurred-list-item';
 
@@ -29,6 +31,20 @@ export const ScrollTransition3D = memo(() => {
     },
   });
 
+  // e2e outcome probe: the 3D transition is keyed off scrollY (a worklet value
+  // with no inspectable RN state), so we bridge a CHANGED flag to prove the
+  // paged swipes actually scrolled the list. Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => scrollY.get(),
+    (current, previous) => {
+      if (previous != null && Math.abs(current - previous) > 1) {
+        scheduleOnRN(setStatus, 'moved');
+      }
+    },
+    [],
+  );
+
   const itemSize = windowWidth * 0.55;
 
   const contentContainerStyle = useMemo(() => {
@@ -47,6 +63,9 @@ export const ScrollTransition3D = memo(() => {
 
   return (
     <View style={styles.container}>
+      <Text testID="scroll-transition-3d-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <Animated.FlatList
         testID="scroll-transition-3d-list"
         inverted
@@ -77,5 +96,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#FFF',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });

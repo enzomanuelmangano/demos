@@ -17,13 +17,9 @@ appId: com.reactiive.app
       id: "clock-time-picker-wheel"
     direction: "UP"
 - waitForAnimationToEnd:
-    timeout: 2000
-- swipe:
-    from:
-      id: "clock-time-picker-wheel"
-    direction: "UP"
-- waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/clock-time-picker--after"

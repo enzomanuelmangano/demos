@@ -28,6 +28,8 @@ appId: com.reactiive.app
     id: "fractal-glass-fab"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "dark-moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/fractal-glass--after"

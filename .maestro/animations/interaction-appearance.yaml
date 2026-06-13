@@ -20,7 +20,10 @@ appId: com.reactiive.app
     id: "interaction-appearance-toggle"
 - waitForAnimationToEnd:
     timeout: 2000
-- takeScreenshot: ".maestro/artifacts/interaction-appearance--toggled"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "light#2"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/interaction-appearance--after"

@@ -1,6 +1,9 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import Animated, {
+  runOnJS,
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -27,14 +30,24 @@ const VerticalListPadding = 25;
 export const IMessageStack = () => {
   const scrollOffset = useSharedValue(0);
 
+  // e2e outcome probe: flips to "moved" once the stack has actually scrolled
+  // (cards are offset-driven with no inspectable RN state). Near-invisible.
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
       scrollOffset.set(event.contentOffset.x);
+      if (Math.abs(event.contentOffset.x) > 1) {
+        runOnJS(setStatus)('moved');
+      }
     },
   });
 
   return (
     <View style={styles.container}>
+      <Text testID="imessage-stack-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <View
         style={{
           marginBottom: CARD_HEIGHT,
@@ -113,5 +126,15 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT + VerticalListPadding * 2,
     justifyContent: 'center',
     paddingHorizontal: CARD_WIDTH,
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });

@@ -1,12 +1,16 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PressableScale } from 'pressto';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedReaction,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { InteractiveList } from './components/interactive-list';
 import { ListItem } from './components/list-item';
@@ -24,6 +28,19 @@ const EmailDemo = () => {
   // shared value is a better option to handle the animation
   // since we're going to avoid useless re-renders
   const erasedItems = useSharedValue(0);
+
+  // e2e outcome probe: bridges the erased-items count (a shared value driving
+  // worklet list animations, with no inspectable RN state) to an assertable
+  // string so a test can verify delete/restore actually changed the count.
+  // Near-invisible (alpha ~0.01).
+  const [erasedCount, setErasedCount] = useState(0);
+  useAnimatedReaction(
+    () => erasedItems.get(),
+    current => {
+      scheduleOnRN(setErasedCount, current);
+    },
+    [],
+  );
 
   // Custom hook to handle animation logic for restore and delete buttons
   // This hook is EXTREMELY useful (and reusable) to handle shake animations
@@ -51,6 +68,9 @@ const EmailDemo = () => {
 
   return (
     <>
+      <Text testID="email-demo-status" style={styles.statusProbe}>
+        {`erased:${erasedCount}`}
+      </Text>
       <View style={styles.container}>
         <LinearGradient
           colors={['rgba(248,250,252,1)', 'rgba(248,250,252,0)']}
@@ -156,6 +176,15 @@ const styles = StyleSheet.create({
     boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.15)',
     height: 64,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 3,
   },
   listContainerItem: {
     backgroundColor: 'white',

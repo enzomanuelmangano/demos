@@ -27,7 +27,9 @@ appId: com.reactiive.app
       id: "time-machine-surface"
     direction: "UP"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/time-machine--after"

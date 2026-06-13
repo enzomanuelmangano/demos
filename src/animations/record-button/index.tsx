@@ -1,16 +1,18 @@
-import { Dimensions, StyleSheet, Text } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedRef,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { RecordButton as RecordButtonComponent } from './components/record-button';
 
@@ -64,6 +66,16 @@ export const RecordButton = () => {
       Extrapolation.CLAMP,
     );
   }, [scrollOffset]);
+
+  // e2e outcome probe: flips to "morphed" once the scroll-driven progress has
+  // crossed the morph threshold (the button is a Skia path). Near-invisible.
+  const [status, setStatus] = useState<'idle' | 'morphed'>('idle');
+  useAnimatedReaction(
+    () => progress.get(),
+    value => {
+      if (value > 0.5) scheduleOnRN(setStatus, 'morphed');
+    },
+  );
 
   // These values are used to handle the snapping behavior
   // Honestly, I'm really unhappy with this code
@@ -122,22 +134,27 @@ export const RecordButton = () => {
   );
 
   return (
-    <Animated.FlatList
-      testID="record-button-scroll"
-      style={styles.list}
-      inverted
-      bounces={false}
-      showsVerticalScrollIndicator={false}
-      onScrollBeginDrag={onScrollBeginDrag}
-      onScrollEndDrag={onScrollEndDrag}
-      onScroll={onScroll}
-      ref={scrollRef}
-      overScrollMode="never"
-      decelerationRate={'fast'}
-      snapToInterval={WindowHeight}
-      data={['HomeScreen', 'TopScreen'] as const}
-      renderItem={renderItem}
-    />
+    <View style={styles.list}>
+      <Text testID="record-button-status" style={styles.statusProbe}>
+        {status}
+      </Text>
+      <Animated.FlatList
+        testID="record-button-scroll"
+        style={styles.list}
+        inverted
+        bounces={false}
+        showsVerticalScrollIndicator={false}
+        onScrollBeginDrag={onScrollBeginDrag}
+        onScrollEndDrag={onScrollEndDrag}
+        onScroll={onScroll}
+        ref={scrollRef}
+        overScrollMode="never"
+        decelerationRate={'fast'}
+        snapToInterval={WindowHeight}
+        data={['HomeScreen', 'TopScreen'] as const}
+        renderItem={renderItem}
+      />
+    </View>
   );
 };
 
@@ -150,4 +167,14 @@ const styles = StyleSheet.create({
     width: WindowWidth,
   },
   list: { backgroundColor: '#252525', flex: 1 },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 1000,
+  },
 });

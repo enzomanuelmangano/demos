@@ -21,6 +21,10 @@ appId: com.reactiive.app
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "replays:2"
+- waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/everybody-can-cook--after"
 # still on the demo (didn't bounce to not-found) and not crashed

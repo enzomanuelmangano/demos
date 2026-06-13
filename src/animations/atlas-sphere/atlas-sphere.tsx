@@ -1,6 +1,6 @@
-import { StyleSheet, View, Dimensions } from 'react-native';
+import { StyleSheet, View, Dimensions, Text } from 'react-native';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import {
   Atlas,
@@ -14,6 +14,7 @@ import {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   interpolate,
+  runOnJS,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
@@ -62,6 +63,10 @@ export const AtlasSphere = () => {
 
   const progress = useSharedValue(0);
 
+  // e2e outcome probe: flips to "moved" once the focal point has been dragged
+  // (the sphere is Skia-only with no inspectable RN state). Near-invisible.
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+
   const panGesture = Gesture.Pan()
     .onBegin(event => {
       progress.set(withSpring(1, { ...SpringConfig, duration: 600 }));
@@ -69,6 +74,7 @@ export const AtlasSphere = () => {
     })
     .onUpdate(event => {
       touchedPoint.set({ x: event.x, y: event.y });
+      runOnJS(setStatus)('moved');
     })
     .onTouchesUp(() => {
       progress.set(withSpring(0, SpringConfig));
@@ -127,6 +133,9 @@ export const AtlasSphere = () => {
     <View style={styles.container}>
       <GestureDetector gesture={panGesture}>
         <Animated.View testID="atlas-sphere">
+          <Text testID="atlas-sphere-status" style={styles.statusProbe}>
+            {status}
+          </Text>
           <Canvas
             style={{
               width: CANVAS_WIDTH,
@@ -147,5 +156,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingTop: 70,
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });

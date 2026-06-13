@@ -24,7 +24,10 @@ appId: com.reactiive.app
     id: "clerk-toast-item-2"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/clerk-toast--stacked"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "toasts:3"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/clerk-toast--after"

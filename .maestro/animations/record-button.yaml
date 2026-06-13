@@ -24,7 +24,10 @@ appId: com.reactiive.app
     direction: "UP"
 - waitForAnimationToEnd:
     timeout: 2000
-- takeScreenshot: ".maestro/artifacts/record-button--morphed"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "morphed"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/record-button--after"

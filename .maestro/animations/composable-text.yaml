@@ -15,11 +15,9 @@ appId: com.reactiive.app
 - tapOn:
     id: "composable-text-pill"
 - waitForAnimationToEnd:
-    timeout: 2000
-- tapOn:
-    id: "composable-text-pill"
-- waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "Using Max"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/composable-text--after"

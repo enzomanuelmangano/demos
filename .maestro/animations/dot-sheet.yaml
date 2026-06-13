@@ -19,7 +19,10 @@ appId: com.reactiive.app
 - inputText: "4242"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/dot-sheet--sheet-open"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "sheet:open"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/dot-sheet--after"

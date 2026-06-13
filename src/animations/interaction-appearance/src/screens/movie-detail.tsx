@@ -1,6 +1,6 @@
-import { ScrollView, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet, Text as RNText } from 'react-native';
 
-import { type FC } from 'react';
+import { type FC, useEffect, useRef, useState } from 'react';
 
 import { useImage } from '@shopify/react-native-skia';
 
@@ -24,13 +24,29 @@ export const MovieDetail: FC<MovieDetailProps> = ({
   description,
   image,
 }) => {
-  const { colors } = useTheme();
+  const { colors, theme } = useTheme();
   const skImage = useImage(image);
 
   const imageHeight = 250;
 
+  // e2e outcome probe: exposes the current appearance plus how many times it
+  // has toggled, so a test can assert the transition actually ran (the visible
+  // change is a Skia rescaler/blur). Near-invisible (alpha ~0.012).
+  const [toggleCount, setToggleCount] = useState(0);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setToggleCount(count => count + 1);
+  }, [theme]);
+
   return (
     <>
+      <RNText testID="interaction-appearance-status" style={styles.statusProbe}>
+        {`${theme}#${toggleCount}`}
+      </RNText>
       <FloatingButtonTheme />
       <ThemeBlurView />
 
@@ -72,5 +88,15 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#808080',
+    opacity: 0.012,
+    zIndex: 1000,
   },
 });

@@ -23,7 +23,9 @@ appId: com.reactiive.app
       id: "magnet-spring-puck"
     direction: "DOWN"
 - waitForAnimationToEnd:
-    timeout: 2000
+    timeout: 1500
+- assertVisible:
+    text: "moved"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/magnet-spring--after"

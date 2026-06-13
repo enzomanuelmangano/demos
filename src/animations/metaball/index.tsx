@@ -1,6 +1,6 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Blur,
@@ -13,11 +13,13 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 const RADIUS = 80;
 
@@ -26,6 +28,19 @@ export function Metaball() {
 
   const firstCx = useSharedValue(width / 2);
   const firstCy = useSharedValue(height / 2);
+
+  // e2e outcome probe: flips to "moved" once a metaball circle has been dragged
+  // off its resting center, so a test can verify the drag gesture took effect
+  // (the metaball is pure Skia and exposes no state). Visually negligible.
+  const [dragState, setDragState] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => firstCx.get() !== width / 2 || firstCy.get() !== height / 2,
+    hasMoved => {
+      if (hasMoved) {
+        scheduleOnRN(setDragState, 'moved');
+      }
+    },
+  );
 
   const context = useSharedValue({
     x: width / 2,
@@ -100,6 +115,9 @@ export function Metaball() {
 
   return (
     <View testID="metaball-canvas" style={styles.container}>
+      <Text testID="metaball-status" style={styles.statusProbe}>
+        {dragState}
+      </Text>
       <Touchable.Canvas style={{ flex: 1 }}>
         <Group layer={paint}>
           <Path path={path}>
@@ -129,5 +147,14 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#0A0A0A',
     flex: 1,
+  },
+  statusProbe: {
+    color: '#0A0A0A',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });

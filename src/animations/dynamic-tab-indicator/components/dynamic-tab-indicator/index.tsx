@@ -1,4 +1,4 @@
-import { Image, useWindowDimensions } from 'react-native';
+import { Image, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 import { type FC, memo, useCallback, useMemo, useRef, useState } from 'react';
 
@@ -96,18 +96,27 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
 
   const sectionTitles = useMemo(() => data.map(item => item.title), [data]);
 
+  // e2e outcome probe: the currently selected tab title, exposed as an
+  // assertable token so a test can verify a tab tap actually changed the active
+  // section. Visually negligible (alpha ~0.01).
+  const [activeTab, setActiveTab] = useState(sectionTitles[0] ?? '');
+
   const handleSelectSection = useCallback(
     (index: number) => {
+      setActiveTab(sectionTitles[index] ?? '');
       scrollRef.current?.scrollTo({
         x: index * width,
         animated: true,
       });
     },
-    [width],
+    [width, sectionTitles],
   );
 
   return (
     <>
+      <Text testID="dynamic-tab-indicator-status" style={styles.statusProbe}>
+        {`tab:${activeTab.toLowerCase()}`}
+      </Text>
       <SectionTabs
         height={INDICATOR_CONTAINER_HEIGHT}
         width={width}
@@ -139,6 +148,18 @@ const DynamicTabIndicator: FC<DynamicTabIndicatorProps> = memo(({ data }) => {
       </Animated.ScrollView>
     </>
   );
+});
+
+const styles = StyleSheet.create({
+  statusProbe: {
+    color: '#000000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
+  },
 });
 
 export { DynamicTabIndicator };

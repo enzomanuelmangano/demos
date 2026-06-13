@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useState } from 'react';
 
@@ -10,6 +10,11 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: exposes the active tab index so a test can verify
+          the tap actually moved the selection. Visually negligible. */}
+      <Text testID="tab-navigation-status" style={styles.statusProbe}>
+        {`tab:${activeTabIndex}`}
+      </Text>
       <Tabs
         tabs={TABS_DATA}
         activeTabIndex={activeTabIndex}
@@ -25,6 +30,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
   },
 });
 

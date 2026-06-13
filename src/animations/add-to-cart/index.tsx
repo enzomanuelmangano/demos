@@ -110,8 +110,19 @@ const AddToCart = () => {
     return <Feather name="shopping-cart" size={18} color="white" />;
   }, []);
 
+  // e2e outcome probe: total items added to the cart, exposed as an assertable
+  // token so a test can verify the confirm button actually added an item.
+  // Visually negligible (alpha ~0.01).
+  const cartCount = useMemo(
+    () => listItems.reduce((acc, item) => acc + item.count, 0),
+    [listItems],
+  );
+
   return (
     <View style={[styles.container, { flex: 1 }]}>
+      <Text testID="add-to-cart-status" style={styles.statusProbe}>
+        {`cart:${cartCount}`}
+      </Text>
       <FlatList
         data={listItems}
         contentContainerStyle={{
@@ -204,6 +215,15 @@ const styles = StyleSheet.create({
     paddingLeft: 15,
     paddingRight: 20,
     width: '90%',
+  },
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });
 

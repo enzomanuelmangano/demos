@@ -1,5 +1,8 @@
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
+
 import { useImage, Image } from '@shopify/react-native-skia';
-import { View } from 'react-native';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
 
@@ -10,6 +13,10 @@ const DEFAULT_IMAGE_URL =
 
 const CanvasContainer = () => {
   const size = useSharedValue({ width: 0, height: 0 });
+
+  // e2e outcome probe: reflects the sheet open/closed state as an assertable
+  // value (the sheet is rendered entirely in Skia, with no inspectable view).
+  const [status, setStatus] = useState<'closed' | 'open'>('closed');
 
   // generated from this link: 'https://picsum.photos/2000/2000' :)
   const image = useImage(DEFAULT_IMAGE_URL);
@@ -24,6 +31,9 @@ const CanvasContainer = () => {
 
   return (
     <View testID="skia-bottom-sheet-canvas" style={{ flex: 1 }}>
+      <Text testID="skia-bottom-sheet-status" style={styles.statusProbe}>
+        {`sheet:${status}`}
+      </Text>
       <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
         {image && (
           <Image
@@ -35,10 +45,24 @@ const CanvasContainer = () => {
             image={image}
           />
         )}
-        <BottomSheet size={size} />
+        <BottomSheet size={size} onStateChange={setStatus} />
       </Touchable.Canvas>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
+  },
+});
 
 export { CanvasContainer as SkiaBottomSheet };

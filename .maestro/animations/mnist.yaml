@@ -30,7 +30,10 @@ appId: com.reactiive.app
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
-- takeScreenshot: ".maestro/artifacts/mnist--drawn"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "drawn"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/mnist--after"

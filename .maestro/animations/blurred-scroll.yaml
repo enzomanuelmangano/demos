@@ -24,6 +24,8 @@ appId: com.reactiive.app
     direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1500
+- assertVisible:
+    text: "scrolled"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/blurred-scroll--after"

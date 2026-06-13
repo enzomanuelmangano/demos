@@ -1,4 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
@@ -7,12 +9,14 @@ import Animated, {
   Easing,
   interpolate,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedBlurView } from './components/animated-blur-view';
 import { AnimatedSquare } from './components/animated-square';
@@ -22,6 +26,16 @@ import { useAnimateThroughPath } from './hooks/useAnimateThroughPath';
 const App = () => {
   const outlineMode = useSharedValue(false);
   const blurIntensity = useSharedValue(0);
+
+  // e2e outcome probe: bridge the worklet-only outline toggle to an assertable
+  // value so a test can verify the toggle actually switched modes.
+  const [status, setStatus] = useState<'off' | 'on'>('off');
+  useAnimatedReaction(
+    () => outlineMode.get(),
+    on => {
+      scheduleOnRN(setStatus, on ? 'on' : 'off');
+    },
+  );
   const outlineModeProgress = useDerivedValue(() => {
     return withSpring(outlineMode.get() ? 1 : 0);
   }, []);
@@ -94,6 +108,9 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="bezier-curve-outline-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <AnimatedBlurView
         style={{
           ...StyleSheet.absoluteFill,
@@ -158,6 +175,14 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
+    zIndex: 3000,
   },
   text: {
     color: 'white',

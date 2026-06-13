@@ -1,4 +1,4 @@
-import { Dimensions, Platform, StyleSheet, View } from 'react-native';
+import { Dimensions, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { type FC, useCallback } from 'react';
 
@@ -123,6 +123,11 @@ const BottomTabBar: FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   return (
     <>
+      {/* e2e outcome probe: exposes the focused tab index so a test can verify
+          the tap actually switched tabs. Visually negligible. */}
+      <Text testID="dynamic-blur-tabs-status" style={localStyles.statusProbe}>
+        {`tab:${currentIndex}`}
+      </Text>
       <LinearGradient
         pointerEvents="none"
         colors={LINEAR_GRADIENT_COLORS}
@@ -185,6 +190,15 @@ const localStyles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: 'white',
+    opacity: 0.012,
+    zIndex: 9999,
   },
 });
 

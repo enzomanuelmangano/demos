@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { StyleSheet, Text as RNText, View } from 'react-native';
 
-import { View } from 'react-native';
+import { useMemo, useState } from 'react';
+
 import {
   Blur,
   Circle,
@@ -12,8 +13,9 @@ import {
   interpolate,
   useFont,
 } from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+import { useAnimatedReaction, useDerivedValue } from 'react-native-reanimated';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { usePickerLayout } from './hooks/use-picker-layout';
 
@@ -131,45 +133,81 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
     return derivedPickerY.get() - sliderHeight.get() / 2 + 1;
   }, [derivedPickerY, sliderHeight]);
 
+  // e2e outcome probe: bridges the worklet-driven slider value to a JS flag so
+  // a test can assert the drag actually changed the value (Skia has no
+  // inspectable state). Flips to "moved" once sliding begins.
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => isSliding.get(),
+    sliding => {
+      if (sliding) {
+        scheduleOnRN(setStatus, 'moved');
+      }
+    },
+    [],
+  );
+
   return (
     <View testID="fluid-slider-knob" style={size}>
-    <Touchable.Canvas
-      style={{
-        ...size,
-        height: size.height,
-        transform: [{ translateX: (size.width - sliderSize.width) / 2 }],
-      }}>
-      <Group>
-        <Group layer={layer}>
-          <Touchable.RoundedRect
-            x={0}
-            y={roundedRectY}
-            width={sliderSize.width}
-            height={sliderHeight}
-            r={6}
-            color={color}
-            {...gestureHandler}
-          />
+      <RNText testID="fluid-slider-status" style={localStyles.statusProbe}>
+        {`slider:${status}`}
+      </RNText>
+      <Touchable.Canvas
+        style={{
+          ...size,
+          height: size.height,
+          transform: [{ translateX: (size.width - sliderSize.width) / 2 }],
+        }}>
+        <Group>
+          <Group layer={layer}>
+            <Touchable.RoundedRect
+              x={0}
+              y={roundedRectY}
+              width={sliderSize.width}
+              height={sliderHeight}
+              r={6}
+              color={color}
+              {...gestureHandler}
+            />
+            <Circle
+              cx={clampedPickerX}
+              cy={pickerY}
+              r={metaballRadius}
+              color={color}
+            />
+          </Group>
           <Circle
             cx={clampedPickerX}
             cy={pickerY}
-            r={metaballRadius}
-            color={color}
+            r={pickerCircleTextContainerRadius}
+            color={'white'}
           />
+          {font && (
+            <Text
+              x={pickerTextX}
+              y={textY}
+              text={pickerCircleText}
+              font={font}
+            />
+          )}
         </Group>
-        <Circle
-          cx={clampedPickerX}
-          cy={pickerY}
-          r={pickerCircleTextContainerRadius}
-          color={'white'}
-        />
-        {font && (
-          <Text x={pickerTextX} y={textY} text={pickerCircleText} font={font} />
-        )}
-      </Group>
-    </Touchable.Canvas>
+      </Touchable.Canvas>
     </View>
   );
 };
+
+const localStyles = StyleSheet.create({
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
+  },
+});
 
 export { FluidSlider };

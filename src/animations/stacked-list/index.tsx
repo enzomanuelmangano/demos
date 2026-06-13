@@ -1,13 +1,17 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import Animated, {
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -156,9 +160,26 @@ export const StackedList = () => {
     },
   });
 
+  // e2e outcome probe: the stacked effect is keyed off scrollOffset (a worklet
+  // value with no inspectable RN state), so we bridge a CHANGED flag to prove
+  // the swipes actually scrolled the list. Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => scrollOffset.get(),
+    (current, previous) => {
+      if (previous != null && Math.abs(current - previous) > 1) {
+        scheduleOnRN(setStatus, 'moved');
+      }
+    },
+    [],
+  );
+
   // Render the app
   return (
     <View style={styles.container}>
+      <Text testID="stacked-list-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <Animated.FlatList
         testID="stacked-list-list"
         onScroll={onScroll}
@@ -187,5 +208,14 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
     flex: 1,
+  },
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });

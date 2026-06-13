@@ -1,6 +1,6 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   Blur,
@@ -13,11 +13,13 @@ import {
 } from '@shopify/react-native-skia';
 import {
   Easing,
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { ControlPanel } from './components/control-panel';
 
@@ -44,6 +46,24 @@ const FibonacciShaderGrid = () => {
   const magicalMul = useSharedValue(INITIAL_MAGICAL_MUL);
 
   const iTime = useSharedValue(0.0);
+
+  // e2e outcome probe: the shader is a worklet-driven Skia canvas with no
+  // inspectable RN state, so we bridge a CHANGED flag from the control pad's
+  // n/magicalMul values to prove the drag actually altered the shader.
+  // Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => [n.get(), magicalMul.get()] as const,
+    (current, previous) => {
+      if (
+        previous != null &&
+        (current[0] !== previous[0] || current[1] !== previous[1])
+      ) {
+        scheduleOnRN(setStatus, 'moved');
+      }
+    },
+    [],
+  );
 
   const dynamicSource = useDerivedValue(() => {
     // WHAT IS THIS!!!
@@ -95,6 +115,9 @@ const FibonacciShaderGrid = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="fibonacci-shader-grid-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <View
         style={{
           marginTop: 50,
@@ -156,6 +179,15 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     flex: 1,
+  },
+  statusProbe: {
+    color: '#FFF',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });
 

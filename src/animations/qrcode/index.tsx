@@ -42,6 +42,11 @@ const QRCodeGenerator = () => {
       }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View>
+          {/* e2e outcome probe: mirrors the live QR content so a test can
+              verify typing actually regenerated the code. Visually negligible. */}
+          <Text testID="qr-code-generator-status" style={styles.statusProbe}>
+            {`qr:${qrText}`}
+          </Text>
           <TextInput
             testID="qr-code-generator-input"
             style={styles.textInput}
@@ -101,6 +106,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   sliderContainer: { marginLeft: 25, marginTop: 30 },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: 'white',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+  },
   textInput: {
     borderColor: 'white',
     borderCurve: 'continuous',

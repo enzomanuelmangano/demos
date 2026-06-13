@@ -1,4 +1,4 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { useMemo, useState } from 'react';
 
@@ -37,6 +37,11 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: exposes the selected segment as an assertable token
+          so a test can verify the dataset/graph actually switched. */}
+      <Text testID="steddy-graph-interaction-status" style={styles.statusProbe}>
+        {`segment-${scoringDifficulty}`}
+      </Text>
       {/* SegmentedControl component for selecting scoring difficulty */}
       <SegmentedControl
         data={ScoringDifficultyData}
@@ -68,6 +73,14 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.background,
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

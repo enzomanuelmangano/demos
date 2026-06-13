@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -43,6 +43,11 @@ export const AppDetailScreen: React.FC<AppDetailScreenProps> = ({ route }) => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: this screen only mounts after the icon expands
+          into the shared-element detail. Near-invisible (alpha ~0.01). */}
+      <Text testID="ios-home-grid-status" style={styles.statusProbe}>
+        expanded
+      </Text>
       {/* Gradient background */}
       <LinearGradient
         colors={item.colors}
@@ -79,5 +84,14 @@ const styles = StyleSheet.create({
   },
   gradient: {
     flex: 1,
+  },
+  statusProbe: {
+    color: '#000000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

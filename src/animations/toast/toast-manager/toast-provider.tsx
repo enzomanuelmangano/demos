@@ -1,3 +1,5 @@
+import { StyleSheet, Text } from 'react-native';
+
 import {
   useCallback,
   useMemo,
@@ -105,6 +107,11 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
     <ToastContext.Provider value={value}>
       <InternalToastContext.Provider value={internalToastValue}>
         {children}
+        {/* e2e outcome probe: exposes the current toast count as an assertable
+            token so a test can verify toasts were actually shown/dismissed. */}
+        <Text testID="toast-status" style={probeStyles.statusProbe}>
+          {`toasts-${toasts.length}`}
+        </Text>
         {sortedToasts.map((toast, index) => {
           return renderToast(toast, index);
         })}
@@ -112,3 +119,14 @@ export const ToastProvider: FC<PropsWithChildren> = ({ children }) => {
     </ToastContext.Provider>
   );
 };
+
+const probeStyles = StyleSheet.create({
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
+  },
+});

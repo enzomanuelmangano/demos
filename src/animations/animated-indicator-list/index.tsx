@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import Animated, {
   type SharedValue,
@@ -44,6 +44,10 @@ export const AnimatedIndicatorList = () => {
 
   const flatlistRef = useRef<FlatList<ListItem | HeaderListItem>>(null);
 
+  // e2e outcome probe: surfaces the last tab the user jumped to as an
+  // assertable value so a test can verify the tab tap actually fired.
+  const [selectedHeader, setSelectedHeader] = useState('none');
+
   const onScroll = useAnimatedScrollHandler({
     onScroll: event => {
       contentOffsetY.set(event.contentOffset.y);
@@ -51,6 +55,7 @@ export const AnimatedIndicatorList = () => {
   });
 
   const onSelectHeaderItem = useCallback((headerItem: string) => {
+    setSelectedHeader(headerItem);
     const headerIndex = data.findIndex(
       _item => (_item as HeaderListItem).header === headerItem,
     );
@@ -65,6 +70,9 @@ export const AnimatedIndicatorList = () => {
         styles.container,
         { paddingTop: insets.top, paddingBottom: insets.bottom },
       ]}>
+      <Text testID="animated-indicator-list-status" style={styles.statusProbe}>
+        {`tab:${selectedHeader}`}
+      </Text>
       <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
         {headers.map(({ header }, index) => {
           return (
@@ -123,5 +131,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     flex: 1,
     overflow: 'hidden',
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
   },
 });

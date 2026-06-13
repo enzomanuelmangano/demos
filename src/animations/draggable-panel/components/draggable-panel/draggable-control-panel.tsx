@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 
 import { type FC, useCallback, useMemo, useState, ReactNode } from 'react';
 
@@ -8,11 +8,13 @@ import Animated, {
   FadeOut,
   interpolate,
   LinearTransition,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   snapToCorner,
@@ -173,6 +175,19 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
     springConfig,
   ]);
 
+  // e2e outcome probe: bridge a 'moved' flag once the panel leaves its start.
+  const [moved, setMoved] = useState(false);
+  useAnimatedReaction(
+    () =>
+      Math.abs(translateX.get() - initialPosition.x) > 1 ||
+      Math.abs(translateY.get() - initialPosition.y) > 1,
+    (hasMoved, prev) => {
+      if (hasMoved && !prev) {
+        scheduleOnRN(setMoved, true);
+      }
+    },
+  );
+
   const panelStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -205,6 +220,10 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
       <Animated.View
         testID="draggable-panel-handle"
         style={[styles.controls, panelStyle]}>
+        {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+        <Text testID="draggable-panel-status" style={styles.statusProbe}>
+          {moved ? 'moved' : 'idle'}
+        </Text>
         <Animated.View
           style={[
             styles.controlPanel,
@@ -252,5 +271,14 @@ const styles = StyleSheet.create({
   },
   controls: {
     position: 'absolute',
+  },
+  statusProbe: {
+    color: '#ffffff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

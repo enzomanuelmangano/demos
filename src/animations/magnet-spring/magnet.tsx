@@ -1,15 +1,19 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -93,6 +97,19 @@ const useMagnetDrag = (initialPosition: Position, magnets: Position[]) => {
     y: positionY.get(),
   }));
 
+  // e2e outcome probe: bridge a 'moved' flag once the puck leaves its start.
+  const [moved, setMoved] = useState(false);
+  useAnimatedReaction(
+    () =>
+      Math.abs(positionX.get() - initialPosition.x) > 1 ||
+      Math.abs(positionY.get() - initialPosition.y) > 1,
+    (hasMoved, prev) => {
+      if (hasMoved && !prev) {
+        scheduleOnRN(setMoved, true);
+      }
+    },
+  );
+
   const getNearestMagnet = (currentPosition: Position): Position => {
     'worklet';
 
@@ -167,6 +184,7 @@ const useMagnetDrag = (initialPosition: Position, magnets: Position[]) => {
     animatedStyle,
     panGesture,
     position,
+    moved,
   };
 };
 
@@ -233,13 +251,17 @@ export const Magnets: React.FC<MagnetsProps> = ({
   objectRadius = CHEESE_RADIUS,
   objectColor = MAIN_MAGNET_COLOR,
 }) => {
-  const { animatedStyle, panGesture, position } = useMagnetDrag(
+  const { animatedStyle, panGesture, position, moved } = useMagnetDrag(
     initialPosition,
     magnets,
   );
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+      <Text testID="magnet-spring-status" style={styles.statusProbe}>
+        {moved ? 'moved' : 'idle'}
+      </Text>
       <GestureDetector gesture={panGesture}>
         <Animated.View
           testID="magnet-spring-puck"
@@ -286,5 +308,14 @@ const styles = StyleSheet.create({
   },
   magnet: {
     position: 'absolute',
+  },
+  statusProbe: {
+    color: '#f5f5f5',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 2000,
   },
 });
