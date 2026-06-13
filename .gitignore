@@ -27,6 +27,11 @@ build/node_modules
 
 mcp.json
 
+# ennio e2e screenshot artifacts
+.maestro/artifacts/
+/*--mounted.png
+/*--after.png
+
 CLAUDE.md
 
 .agents/

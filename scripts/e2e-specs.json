@@ -1,0 +1,3655 @@
+[
+  {
+    "slug": "mobile-input",
+    "summary": "PIN lock-screen with a numeric keypad; correct pin is 11111 so tapping the '1' key five times completes the animated-face unlock.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "1"
+        }
+      },
+      {
+        "tapOn": {
+          "text": "1"
+        }
+      },
+      {
+        "tapOn": {
+          "text": "1"
+        }
+      },
+      {
+        "tapOn": {
+          "text": "1"
+        }
+      },
+      {
+        "tapOn": {
+          "text": "1"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "swipe-cards",
+    "summary": "Tinder-style swipeable card deck driven by three bottom buttons; tap like (heart) then dislike (close) to fly cards off, then reset.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "82%,80%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "18%,80%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,80%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "spiral",
+    "summary": "Full-screen Skia logarithmic spiral; a full-screen invisible pressable re-randomizes the spiral angle on each tap, springing all circles to new positions.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "40%,60%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "scroll-progress",
+    "summary": "Vertical sectioned content list with a scroll-driven progress indicator; scroll DOWN through sections then back UP to drive the progress animation.",
+    "steps": [
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "scroll": {
+          "direction": "UP"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "animated-grid-list",
+    "summary": "Grid/list layout toggle; a floating FAB at bottom-right morphs the layout between grid and list with shared LinearTransition image animations.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "88%,92%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "88%,92%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "floating-bottom-bar",
+    "summary": "Floating bottom tab bar (Home/Bookmark/Add/Profile/Settings, icon tabs — no text labels); tap the rightmost then second tab to slide the floating indicator.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "88%,93%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "31%,93%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "animated-clip-box",
+    "summary": "Two cards with a clip-path reveal on press; pressing 'Explore Demos' then 'Learn More' triggers the expanding-circle clip animation revealing the description.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Explore Demos"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Learn More"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "theme-canvas-animation",
+    "summary": "Skia theme switcher: six selectable color squares around the screen center; tapping a square flood-fills the background via an expanding clip circle.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "33%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "67%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "67%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "add-to-cart",
+    "summary": "Product list where tapping a row's buy button morphs it into a confirm bottom-sheet; tap an item to open, confirm 'Add to cart', then dismiss via backdrop.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Item 0"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Add to cart",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "bottom-bar-skia",
+    "summary": "Skia-rendered bottom tab bar (Home/Search/User as icons, ~94% height). Tap the Search tab (center) then the User tab (right) to slide the Skia indicator blob.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "85%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "cuberto-slider",
+    "summary": "Cuberto-style balloon slider: a 300px horizontal track centered on screen; dragging the picker along the track pops up the balloon value indicator.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "20%,50%",
+          "end": "78%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "78%,50%",
+          "end": "40%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "metaball",
+    "summary": "Skia metaball: two blurred circles stacked at screen center; dragging one circle away stretches the gooey metaball connection, springing back on release.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,50%",
+          "end": "82%,32%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,50%",
+          "end": "20%,70%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "shared-transitions",
+    "summary": "Two-column image grid; tapping a card navigates to a details screen with a shared-element transition, then back returns with the reverse transition.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "28%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "direction": "RIGHT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "story-list",
+    "summary": "Horizontal paged story carousel (cards 70% screen width) with snapToInterval; swiping LEFT pages through stories with a coverflow-style transform.",
+    "steps": [
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "dynamic-tab-indicator",
+    "summary": "Top country tabs (France/Italy/Iceland/Norway/Japan) over a paged ScrollView; tapping a tab scrolls the pager and slides the dynamic underline indicator.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Italy"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Japan"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "blur-circles",
+    "summary": "Passive Skia animation: two noise-driven gradient circles drift and blur on an infinite looping clock with no user input.",
+    "passive": true,
+    "steps": [
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "smooth-dropdown",
+    "summary": "Vertically-centered dropdown with a 'Header' row that expands 4 icon options on tap. Tests open the dropdown then pick an option.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Header"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Calendar"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "skia-bottom-sheet",
+    "summary": "Skia image with a draggable bottom sheet handle near the bottom. Pan up to open the sheet (snaps open past 1/3 screen), then pan back down to close.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,82%",
+          "end": "50%,35%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,40%",
+          "end": "50%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "floating-modal",
+    "summary": "Floating action button (bottom-right) that morphs into a centered modal on tap; the open modal is dragged down to dismiss it.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "90%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,45%",
+          "end": "50%,92%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "audio-player",
+    "summary": "Audio waveform scrubber (centered, ~80px tall) with a pan-draggable playhead and a live time readout. Drag across the waveform to scrub.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "10%,50%",
+          "end": "90%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "90%,50%",
+          "end": "40%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "color-carousel",
+    "summary": "Full-width paged color carousel (square, centered) backed by a radial-gradient Skia canvas; the active index drives the background color. Swipe horizontally to page through items.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "82%,50%",
+          "end": "18%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "82%,50%",
+          "end": "18%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "animated-3d-parallax",
+    "summary": "300px centered 3D card that tilts toward the touch point with a delayed-parallax logo. Drag inside the card to drive the rotation, then release to recenter.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "30%,42%",
+          "end": "70%,58%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "70%,58%",
+          "end": "30%,42%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "fluid-slider",
+    "summary": "Full-width fluid slider (centered, with a metaball value bubble). Drag along the horizontal track to change the value.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "12%,50%",
+          "end": "88%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "88%,50%",
+          "end": "35%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "animated-indicator-list",
+    "summary": "Sectioned movie list with a sliding tab indicator at the top (header labels) over a scrollable FlatList. Scroll the list to move the indicator, then tap a different section tab to jump.",
+    "steps": [
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Al Pacino"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "radar-chart",
+    "summary": "Skia radar chart with a 'Shuffle' button that re-randomizes the data and animates the polygons. Tap Shuffle to trigger the animation.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Shuffle"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Shuffle"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "image-cropper",
+    "summary": "Skia image cropper with draggable grid corners and Expand/Collapse/Crop buttons. Drag a corner to resize the crop region, then tap Crop to open the cropped detail modal.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Collapse"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "30%,30%",
+          "end": "50%,45%"
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Crop"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Back",
+          "optional": true
+        }
+      }
+    ]
+  },
+  {
+    "slug": "selectable-grid-list",
+    "summary": "4-column grid of 50 cells; tapping cells toggles selection and reveals a floating counter button. Tap several cells to select them.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "20%,25%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,25%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "80%,40%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "animated-count-text",
+    "summary": "Large animated rolling number with a shuffle FAB at the bottom-right. Tap the FAB to roll the count to a new random value.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "90%,88%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "90%,88%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "qr-code-generator",
+    "summary": "QR generator (qrcode demo): a TextInput at top drives a live Skia QR code, plus a 'Deviation' slider. Type new text to regenerate the QR, then drag the slider to change the discrete-path deviation.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,12%"
+        }
+      },
+      {
+        "inputText": "reactiive"
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "15%,90%",
+          "end": "80%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "popup-handler",
+    "summary": "Draggable white pill over a photo; tapping it opens a blurred context popup with four direction options. Tap the pill to open the popup, then pick an option to spring the pill to that corner.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "13%,12%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Bottom Right"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "twitter-tab-bar",
+    "summary": "Twitter-style bottom tab bar (Home, Search, Notifications, Message) with an animated active indicator and a contextual floating button. Tap different tabs to move the indicator.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "38%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "88%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "circular-carousel",
+    "summary": "Horizontal paged image wheel (snaps per item) with a 'Scale' Switch near the top. Swipe the carousel to page through, then toggle the Scale switch to enable the scaling effect.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "80%,55%",
+          "end": "20%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "swipe": {
+          "start": "80%,55%",
+          "end": "20%,55%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,16%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "split-button",
+    "summary": "A single centered 'Start' chip that splits into two icon buttons (Google left / Apple right) on tap, then commits on a second tap. Tests the split-open then select interaction.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/split-button--split-open"
+      },
+      {
+        "tapOn": {
+          "point": "62%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "telegram-theme-switch",
+    "summary": "Telegram-style app shell where an 80x80 Lottie switch button (bottom-right, above the tab bar) triggers a full-screen circular reveal that swaps light/dark theme. Tests tapping the switch to toggle the theme twice.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "88%,82%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2500
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/telegram-theme-switch--toggled"
+      },
+      {
+        "tapOn": {
+          "point": "88%,82%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "fourier-visualizer",
+    "summary": "Full-screen Skia drawing canvas: the user draws a freehand path with a pan gesture, then on release the Fourier series animates epicycles redrawing that path. Tests drawing a stroke across the canvas.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "30%,40%",
+          "end": "70%,60%"
+        }
+      },
+      {
+        "swipe": {
+          "start": "70%,60%",
+          "end": "40%,70%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/fourier-visualizer--drawn"
+      }
+    ]
+  },
+  {
+    "slug": "github-onboarding",
+    "summary": "Horizontal paging onboarding carousel of cat photos with an interpolated gradient background and per-page titles. Tests swiping LEFT through pages to advance the carousel.",
+    "steps": [
+      {
+        "assertVisible": {
+          "text": "Lazy Day Lounger"
+        }
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/github-onboarding--page3"
+      }
+    ]
+  },
+  {
+    "slug": "loading-button",
+    "summary": "A status-morphing button ('Check Transaction') that animates idle -> loading -> success/error with color and label transitions. Tests tapping to run the 2s mutation and observe the state change.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Check Transaction"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/loading-button--result"
+      }
+    ]
+  },
+  {
+    "slug": "scrollable-bottom-sheet",
+    "summary": "A gradient FAB opens a multi-page scrollable bottom sheet; the sheet pages advance via a 'Next Page' button and the sheet can be dragged. Tests opening the sheet, advancing a page, then dragging the sheet down.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Next Page",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,55%",
+          "end": "50%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "skia-color-picker",
+    "summary": "A full-width circular Skia color wheel with a draggable picker knob; dragging across the wheel updates the selected color. Tests dragging the knob across the picker area.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "30%,40%",
+          "end": "70%,60%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "70%,60%",
+          "end": "45%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/skia-color-picker--picked"
+      }
+    ]
+  },
+  {
+    "slug": "blurred-scroll",
+    "summary": "A vertical FlatList of cards where items blur and scale based on their distance from the screen center as you scroll. Tests scrolling down then back up to drive the focus-blur effect.",
+    "steps": [
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "scroll": {
+          "direction": "UP"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "airbnb-slider",
+    "summary": "An Airbnb-style price slider with an animated rolling-digit count and currency symbol above a horizontal track. Tests dragging the slider knob along its track to drive the price counter.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "8%,52%",
+          "end": "80%,52%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/airbnb-slider--high"
+      },
+      {
+        "swipe": {
+          "start": "80%,52%",
+          "end": "30%,52%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "steddy-graph-interaction",
+    "summary": "A segmented control (Light / Standard / Pro) that switches between datasets and animates a Skia line graph re-drawing between them. Tests tapping the segments to morph the graph.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Pro"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/steddy--pro"
+      },
+      {
+        "tapOn": {
+          "text": "Light"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "action-tray",
+    "summary": "A rotating + FAB (center, ~61% height) opens a bottom action tray; the Continue button advances through its steps. Tap the FAB, then the Continue button at the tray bottom twice.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,61%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,91%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,91%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "toast",
+    "summary": "A 'Toast!' button that stacks animated toast notifications; toasts can be swiped left to dismiss. Tests spawning toasts and swiping one away to the left.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Toast!"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Toast!"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "70%,14%",
+          "end": "10%,14%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "slide-to-reveal",
+    "summary": "A centered dark Skia panel hiding a numeric code; dragging a finger across it reveals the digits under a moving spotlight lens that scales nearby characters. Tests dragging across the panel to reveal the code.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "25%,50%",
+          "end": "75%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "75%,50%",
+          "end": "25%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/slide-to-reveal--revealed"
+      }
+    ]
+  },
+  {
+    "slug": "blurred-bottom-bar",
+    "summary": "A bottom-tab navigator (Home / Explore / Camera / Settings) with a blurred glass tab bar and an animated active indicator over full-screen images. Tests tapping tabs to move the indicator.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "37%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "63%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "88%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "fractal-glass",
+    "summary": "A draggable colored circle behind a Skia fractal-glass mask that refracts the circle into vertical glass strips; a FAB toggles light/dark theme. Tests dragging the circle across the glass and toggling the theme.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "45%,70%",
+          "end": "55%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "55%,30%",
+          "end": "30%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "83%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "drag-to-sort",
+    "summary": "A vertical sortable list where a long-press-drag reorders items with animated reflow and border-radius feedback on the active row. Tests dragging the top item down past others to reorder.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,18%",
+          "end": "50%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/drag-to-sort--reordered"
+      },
+      {
+        "swipe": {
+          "start": "50%,55%",
+          "end": "50%,22%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "fibonacci-shader",
+    "summary": "Animated Skia Fibonacci shader disc driven by a horizontal AnimatedSlider (controls circle count N) plus a floating magic button that randomizes the pattern. Tests dragging the slider and pressing the magic button.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "12%,72%",
+          "end": "88%,72%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "88%,72%",
+          "end": "40%,72%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "80%,82%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "family-number-input",
+    "summary": "Family-style large animated number display fed by a custom on-screen numeric keypad (3x4 grid in the lower half). Tests tapping the on-screen digit buttons and the backspace key.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "18%,62%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,62%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "82%,71%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,80%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "82%,89%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "balance-slider",
+    "summary": "Two-sided balance slider (Coffee vs Milk) centered on screen; dragging the central handle redistributes the left/right percentages. Tests horizontal drag across the slider track at its real vertical center.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,50%",
+          "end": "80%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "60%,50%",
+          "end": "22%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "fibonacci-shader-grid",
+    "summary": "Animated Skia Fibonacci shader disc controlled by a 2D draggable control panel (X = circle count, Y = magical multiplier). Tests dragging across the square control pad to alter the shader.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "30%,72%",
+          "end": "70%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "70%,55%",
+          "end": "40%,80%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "verification-code",
+    "summary": "Verification code entry: tapping the code boxes focuses an invisible number-pad TextInput; typing fills the animated digit cells (correct code 11111 triggers the success animation). Tests focusing the field and entering the code.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,40%"
+        }
+      },
+      {
+        "inputText": "11111"
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "email-demo",
+    "summary": "Email-style stacked list with two floating action buttons at the bottom (green restore, red delete) that animate cards in/out and shake at the limits. Tests pressing delete several times then restore.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "70%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "tapOn": {
+          "point": "70%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "tapOn": {
+          "point": "30%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      }
+    ]
+  },
+  {
+    "slug": "scroll-transition-3d",
+    "summary": "Inverted vertical FlatList of large blurred numbers with a 3D depth/blur transition keyed to scroll position and snap-to-interval. Tests vertical paged swipes that snap between number items.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,65%",
+          "end": "50%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,65%",
+          "end": "50%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,30%",
+          "end": "50%,65%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      }
+    ]
+  },
+  {
+    "slug": "staggered-card-number",
+    "summary": "Centered credit-card row showing a 16-digit number with an eye toggle button on the card's right edge; toggling staggers the first 12 digits between hidden and revealed. Tests tapping the eye button to reveal then hide.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "85%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "85%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "stacked-bottom-sheet",
+    "summary": "A single centered 'Show stacked tray' button that presents a bottom sheet; pressing again pushes additional sheets onto the stack, which can then be swiped down to dismiss. Tests presenting stacked sheets then dismissing.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Show stacked tray"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Show stacked tray",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,80%",
+          "end": "50%,98%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "gl-transitions",
+    "summary": "Notes app whose 'Add Note' (+) header button navigates to an AddNote screen via a GLSL DirectionalWarp transition. Tests tapping the + button to trigger the GL transition into the add-note screen.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "88%,10%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "prequel-slider",
+    "summary": "Skia image editor whose ButterflyWaveScrawler GL transition progress is driven by a horizontal ruler/scrubber slider near the bottom of the screen. Tests dragging the bottom scrubber left and right to scrub the transition.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "75%,86%",
+          "end": "25%,86%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1800
+        }
+      },
+      {
+        "swipe": {
+          "start": "25%,86%",
+          "end": "78%,86%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1800
+        }
+      }
+    ]
+  },
+  {
+    "slug": "empty-qr-code",
+    "summary": "A centered QR code that assembles/disassembles its modules with a staggered animation each time it is pressed (PressableScale toggle). Tests tapping the QR code to toggle the assemble/disassemble animation.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1800
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1800
+        }
+      }
+    ]
+  },
+  {
+    "slug": "infinite-carousel",
+    "summary": "Infinite circular horizontal carousel of theme cards with snap + a background gradient that animates to the active card's color. Tests horizontal paged swipes that advance the active card.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "82%,50%",
+          "end": "18%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "swipe": {
+          "start": "82%,50%",
+          "end": "18%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "swipe": {
+          "start": "18%,50%",
+          "end": "82%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      }
+    ]
+  },
+  {
+    "slug": "twodos-slide",
+    "summary": "A 'Slide to Unlock' friction slider whose horizontal drag drives animated squares and a haptic unlock at full progress. Tests dragging the slider thumb across the track from left to right.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "15%,62%",
+          "end": "90%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "90%,62%",
+          "end": "40%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "wheel-picker",
+    "summary": "Animated count display driven by a vertical draggable ruler/wheel in the center; a bottom-right button toggles expanded (wider) line spacing. Tests vertical swipes on the wheel to change the value, then tapping expand.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,60%",
+          "end": "50%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,30%",
+          "end": "50%,60%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "85%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      }
+    ]
+  },
+  {
+    "slug": "stacked-list",
+    "summary": "A long vertical scroll list (50 cards) where items scale and fade into a stacked deck at the bottom as you scroll. Tests scrolling the list down so items stack at the bottom.",
+    "steps": [
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      },
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      },
+      {
+        "scroll": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "geometry-button",
+    "summary": "Skia geometry button (concentric circles) centered on black screen; tapping/holding morphs the stroke width with a spring + haptic. Test: tap the button to trigger the active-state animation.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "record-button",
+    "summary": "Inverted FlatList; scrolling up morphs a record button via scroll-driven progress interpolation. Test: scroll/swipe up to drive the button morph and trigger the snap.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,75%",
+          "end": "50%,20%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,75%",
+          "end": "50%,20%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "grid-visualizer",
+    "summary": "Skia dot-grid that renders a number; tapping the grid clears it then renders a new random number (700ms delayed). Test: tap the canvas to regenerate, waiting for the clear+redraw.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "imessage-stack",
+    "summary": "Horizontal paged ScrollView (inverted) driving a stack of iMessage-style cards animated off scroll offset. Test: horizontal paged swipes to cycle through the card stack.",
+    "steps": [
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "direction": "RIGHT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "atlas-button",
+    "summary": "Skia Atlas button ('React Native' label) centered; tapping animates the square atlas + scales the button with a spring. Test: tap the button to trigger the press animation.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "atlas-sphere",
+    "summary": "Skia Atlas sphere of squares scaled by distance from the touch point; a Pan gesture moves the focal point. Test: drag across the canvas to move the sphere focus.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "25%,45%",
+          "end": "75%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "75%,55%",
+          "end": "30%,40%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "checkbox-interactions",
+    "summary": "Grid of wrapped checkboxes (all labeled 'Italian'); each tap toggles a spring-animated checkmark + label color. Test: tap several checkboxes at different positions to toggle them.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "20%,40%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,40%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "30%,55%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "65%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "interaction-appearance",
+    "summary": "Movie-detail screen with a floating theme toggle (bottom-right, ~32px from edges); tapping it runs a rescaler/blur light-dark appearance transition. Test: tap the floating button to toggle appearance.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "88%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "88%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "dot-sheet",
+    "summary": "Onboarding screen with a 'Start your Journey' button that focuses a hidden card input, raising the Dot-style sheet/keyboard. Test: tap the button to trigger the sheet/focus animation.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Start your Journey",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "inputText": "4242"
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "coverflow-carousel",
+    "summary": "Horizontal paged FlatList of images with cover-flow rotation/scale driven by scroll offset. Test: horizontal paged swipes to flip through the carousel.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "80%,50%",
+          "end": "20%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "80%,50%",
+          "end": "20%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "20%,50%",
+          "end": "80%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "paper-folding",
+    "summary": "Centered Skia paper that folds/unfolds via a spring; a full-screen pressable toggles the fold progress between 0 and 1. Test: tap the screen to fold, tap again to unfold.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "miles-bar-chart",
+    "summary": "Weekly Skia bar chart synced to a horizontal paged week list; paging changes the active week and animates the bars (with haptics). Test: horizontal paged swipes to switch weeks and re-animate the bars.",
+    "steps": [
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "direction": "RIGHT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "steps",
+    "summary": "3-step onboarding with animated dots and Back/Continue buttons; the Continue button advances the active step (label becomes 'Finish' on the last). Test: tap Continue repeatedly to advance steps, then Back.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Continue",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Continue",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Back",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "pomodoro-timer",
+    "summary": "Circular draggable ruler slider that sets a count (with haptics), plus a start/stop button bottom-right. Test: drag across the slider to set the value, then tap the timer button to start.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "20%,62%",
+          "end": "80%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "80%,62%",
+          "end": "30%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "82%,87%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "exclusion-tabs",
+    "summary": "Skia canvas pill of 4 tabs (Home/Changelog/Career/About) with an exclusion-blend selection indicator that slides between tabs; text is canvas-drawn so target by coordinates. Test: tap tabs left-to-right to slide the indicator.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "40%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "tapOn": {
+          "point": "62%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      },
+      {
+        "tapOn": {
+          "point": "85%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1200
+        }
+      }
+    ]
+  },
+  {
+    "slug": "clerk-toast",
+    "summary": "Scroll list of dark cards; tapping any card spawns a Clerk-style stacked toast that animates in/stacks. Test: tap list items to push multiple stacked toasts.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,25%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,65%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "duration-slider",
+    "summary": "Circular (donut) Skia slider centered on screen; the picker handle starts at the top of the donut and is dragged around the ring to change the 1..12 value. Tested by dragging the handle along the ring arc.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,30%",
+          "end": "72%,42%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "72%,42%",
+          "end": "70%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "alert-drawer",
+    "summary": "A centered 'Continue' button that expands into an alert drawer/card with title, description and a Cancel button. Tested by tapping Continue to open the drawer, then dismissing via Cancel.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Continue"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Cancel",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "motion-blur",
+    "summary": "A vertical stacked list with a black '+' Add button below center; tapping it inserts a new list item with a motion-blur entrance animation. Tested by tapping Add several times to trigger the blur animation.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,58%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,58%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,58%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "delete-button",
+    "summary": "A centered Skia 'Delete' button with a gooey morph; first tap morphs it to 'Confirm' and reveals an X close circle to its right, second tap confirms. Tested by tapping the button twice to morph then confirm.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "dynamic-blur-tabs",
+    "summary": "A bottom tab navigator (home/search/favorite/person/settings) with a dynamic blur tab bar over a scrollable gradient screen. Tested by tapping different bottom-bar tabs to trigger the blur transition.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "70%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "30%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,94%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "snake",
+    "summary": "A playable Skia Snake board centered on screen, steered with directional fling gestures (UP/DOWN/LEFT/RIGHT). Tested by swiping in several directions to change the snake's heading.",
+    "steps": [
+      {
+        "swipe": {
+          "direction": "RIGHT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      },
+      {
+        "swipe": {
+          "direction": "DOWN"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      },
+      {
+        "swipe": {
+          "direction": "UP"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "expandable-mini-player",
+    "summary": "A bottom tab bar with a mini player docked just above it; tapping the mini player expands it into a full sheet (tap gesture), and swiping/panning down collapses it. Tested by tapping to expand then swiping down to collapse.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,85%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,25%",
+          "end": "50%,85%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "bezier-curve-outline",
+    "summary": "A passive Skia demo that animates a stroke tracing along a bezier-curve outline; no user input drives it. Tested by letting the animation play and a confirming tap.",
+    "passive": true,
+    "steps": [
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "tab-navigation",
+    "summary": "A centered row of 4 tabs (Accounts/Home/Payments/Transfers) where the active tab expands its label with an animated gap. Tested by tapping different tab labels to move the active indicator.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Payments"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Transfers"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Accounts"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "mnist",
+    "summary": "A neural-network MNIST demo: top half shows the network + live predictions, bottom half is a 28x28 Skia drawing canvas, with an eraser button at bottom-right. Tested by drawing a digit (a '7') across the canvas with a couple of strokes to drive live prediction.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "32%,62%",
+          "end": "68%,62%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 800
+        }
+      },
+      {
+        "swipe": {
+          "start": "68%,62%",
+          "end": "42%,85%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "stacked-modals",
+    "summary": "A '+' FAB at bottom-right that pushes a stack of modals, each with title/message and Confirm/Dismiss buttons; Confirm advances to the next stacked modal. Tested by opening the stack then confirming to push subsequent modals.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "88%,90%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Confirm"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Confirm",
+          "optional": true
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "linear-sensors",
+    "summary": "A passive demo driven entirely by device ROTATION/GRAVITY sensors (no touch handlers); a React logo reacts to tilt. On a simulator there is no input to exercise. Tested by letting it render and a confirming tap.",
+    "passive": true,
+    "steps": [
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      }
+    ]
+  },
+  {
+    "slug": "verification-code-face",
+    "summary": "An OTP code-entry screen with an animated face that reacts to typing; tapping the code area focuses a hidden TextInput and opens the number pad, and entering the code (1111) drives the face animation. Tested by focusing the field and typing the code.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,38%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1000
+        }
+      },
+      {
+        "inputText": "1111"
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "everybody-can-cook",
+    "summary": "A full-screen pressable that plays a staggered 'Everybody / can cook.' text reveal; tapping anywhere resets and replays the animation. Tested by tapping the screen to retrigger the stagger.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "threads-holo-ticket",
+    "summary": "A centered holographic ticket; a tap flips it front/back (the holo tilt is device-motion driven, not touch). Tap the ticket to flip it.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "fluid-tab-interaction",
+    "summary": "A centered horizontal segmented control (Accounts/Deposits/Funds) with a fluid liquid-blur selector that morphs between cells. Tested by tapping different segments to trigger the fluid blur transition.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Funds"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Deposits"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "text": "Accounts"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "shake-to-delete",
+    "summary": "iOS-style app grid where long-pressing an icon enters wiggle/edit mode and a delete (X) badge appears top-left of each icon. Tests entering shake mode via long-press, then tapping the delete badge to remove an app.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "20%,22%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "20%,22%"
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/shake-to-delete--wiggling"
+      },
+      {
+        "tapOn": {
+          "point": "13%,16%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "composable-text",
+    "summary": "A centered pill button whose per-character spring-animated label morphs between Use Max / Using Max on tap (text is per-char, not a single node). Tap the pill twice to toggle the morph.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "card-shader-reflections",
+    "summary": "A horizontal snap card carousel of credit-card style cards with a Skia shader reflection that reacts to scroll position. Tests advancing the carousel with horizontal swipes.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "80%,45%",
+          "end": "20%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "80%,45%",
+          "end": "20%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "20%,45%",
+          "end": "80%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "clock-time-picker",
+    "summary": "A centered card with an analog Skia clock on the left and a vertical snap-scrolling time-slot list on the right; scrolling the list animates the clock hands. Tests driving the clock by swiping the time list vertically.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "62%,58%",
+          "end": "62%,40%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "62%,58%",
+          "end": "62%,40%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "62%,42%",
+          "end": "62%,58%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "sudoku",
+    "summary": "Animated Sudoku: tap Start Game to reveal the 9x9 board, tap an empty cell to select it, then tap a digit on the number pad below the board to fill it. Tests the core start -> select cell -> enter number flow.",
+    "steps": [
+      {
+        "tapOn": {
+          "text": "Start Game"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "12%,30%"
+        }
+      },
+      {
+        "tapOn": {
+          "text": "5"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "particles-button",
+    "summary": "A centered circular button that fires a Skia particle blast and morphs its icon when pressed. Tests triggering the blast effect by tapping the button repeatedly.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "magnet-spring",
+    "summary": "A draggable graphite 'cheese' puck on a field of fibonacci-placed magnets; dragging it snaps to the nearest magnet with a metallic spring and magnets scale/recolor as it nears. Tests dragging the centered puck across the field so it springs to a magnet.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,50%",
+          "end": "75%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "75%,30%",
+          "end": "30%,70%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "ios-home-grid",
+    "summary": "An iOS home screen 4-column app grid; tapping an icon runs a shared-element expansion transition into a full-screen app detail. Tests tapping an icon to expand into detail then returning.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "20%,18%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/ios-home-grid--detail"
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "time-machine",
+    "summary": "A 3D 'time machine' priority list driven by a vertical pan gesture over a Skia background; dragging scrolls items through a perspective wheel. Tests scrubbing the list with vertical swipes.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,65%",
+          "end": "50%,35%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,65%",
+          "end": "50%,35%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,35%",
+          "end": "50%,65%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "ios-home-bouncy",
+    "summary": "An iOS home grid whose icons cascade in with a staggered bouncy spring; tapping anywhere replays the entrance animation (long-press opens a spring customizer). Tests re-triggering the bouncy cascade via tap.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,55%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "online-offline",
+    "summary": "Two avatar groups (online / offline); tapping anywhere moves one avatar between groups with a shared layout-transition flight. Tests the tap-to-migrate layout animation across several taps.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "draggable-panel",
+    "summary": "A floating 64x64 settings button (bottom-right) that, when dragged, springs and snaps to the nearest screen corner. Tests dragging the floating control from its bottom-right home to the top-left corner so it snaps.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "87%,86%",
+          "end": "15%,18%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "15%,18%",
+          "end": "87%,86%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "github-contributions",
+    "summary": "A GitHub contribution heatmap grid with a sweeping wave animation across the squares; tapping anywhere toggles the wave animation on/off. Tests toggling the calendar animation via tap.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "stacked-carousel",
+    "summary": "A 3D stacked card carousel with a paginator; horizontal scroll snaps through cards while stacked cards behind translate/scale. Tests advancing the stack with horizontal swipes and swiping back.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "80%,45%",
+          "end": "20%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "80%,45%",
+          "end": "20%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "swipe": {
+          "start": "20%,45%",
+          "end": "80%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "airbnb-flip-interaction",
+    "summary": "An Airbnb-style profile card that flips 3D between a front (MainPage) and back (SecondPage) when tapped, with the front content fading via keyframes. Tests the tap-to-flip and tap-to-flip-back interaction.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/airbnb-flip-interaction--flipped"
+      },
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 1500
+        }
+      }
+    ]
+  },
+  {
+    "slug": "liquid-glass-playground",
+    "summary": "A full-screen liquid-glass overlay over a photo that follows a vertical drag with friction and progressive haptics, then springs back to center on release (horizontal drags are rejected via failOffsetX). Tests dragging the glass vertically.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "50%,40%",
+          "end": "50%,75%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      },
+      {
+        "swipe": {
+          "start": "50%,60%",
+          "end": "50%,25%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 2000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "blur-cards",
+    "summary": "Skia radial-gradient scene with 5 stacked frosted cards; a full-screen PressableOpacity toggles a spring that fans the cards out and blurs them in/out. Interaction tested: tap to fan out, tap again to collapse.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/blur-cards--fanned"
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "calendar-days",
+    "summary": "Flip-clock style calendar card driven by a custom AnimatedSlider at the bottom; dragging the slider flips through 31 day pages with haptics. Interaction tested: drag the slider across its track to flip days.",
+    "steps": [
+      {
+        "swipe": {
+          "start": "12%,82%",
+          "end": "88%,82%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/calendar-days--end"
+      },
+      {
+        "swipe": {
+          "start": "60%,82%",
+          "end": "30%,82%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "sphere-waves",
+    "summary": "Skia fibonacci-sphere particle field with continuous color cycling; tapping the right half generates a new random pattern (magicalMul), tapping the left half steps back through history. Interaction tested: tap right to mutate, tap left to undo.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "80%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "tapOn": {
+          "point": "80%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/sphere-waves--mutated"
+      },
+      {
+        "tapOn": {
+          "point": "20%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "scrollable-shapes",
+    "summary": "3D point-cloud that morphs between shapes, driven by an invisible full-screen horizontal paged ScrollView (snapToInterval = page width). Interaction tested: horizontal swipes to page through and morph the shapes.",
+    "steps": [
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/scrollable-shapes--page2"
+      },
+      {
+        "swipe": {
+          "direction": "LEFT"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "notion-qrcode",
+    "summary": "3D torus of avatar sprites that morphs into a scannable QR code; a centered bottom ToggleButton drives the torus<->QR spring transition. Interaction tested: tap the toggle to morph to QR, tap again to morph back.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,92%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/notion-qrcode--qr"
+      },
+      {
+        "tapOn": {
+          "point": "50%,92%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "github-terrain",
+    "summary": "WebGPU 3D terrain built from GitHub contribution data; tapping the full-screen canvas toggles flat<->raised terrain, and a bottom-right Switch toggles real vs sample data. Interaction tested: tap canvas to raise terrain, then flip the data switch.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,45%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/github-terrain--raised"
+      },
+      {
+        "tapOn": {
+          "id": "Toggle real GitHub contribution data",
+          "optional": true
+        }
+      },
+      {
+        "tapOn": {
+          "point": "92%,93%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "cherry-blossom-qrcode",
+    "summary": "WebGPU cherry-blossom tree whose canopy encodes a QR code; an autofocused TextInput at the bottom feeds the QR content live, and tapping the tree toggles flat<->3D. Interaction tested: type new QR content into the field, then tap the tree to toggle depth.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,90%"
+        }
+      },
+      {
+        "inputText": "https://reactiive.io"
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/cherry-blossom-qrcode--typed"
+      },
+      {
+        "tapOn": {
+          "point": "50%,30%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "art-gallery",
+    "summary": "WebGPU photo-mosaic that reconstructs paintings from thousands of tiny photos; double-tap zooms into the tapped cell (grid mode), pinch/pan navigate, double-tap again zooms out. Interaction tested: double-tap to zoom into a cell, then double-tap to zoom back out.",
+    "steps": [
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/art-gallery--zoomed"
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "tapOn": {
+          "point": "50%,50%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      }
+    ]
+  },
+  {
+    "slug": "chessboard",
+    "summary": "Full-width react-native-chessboard (white at bottom, vertically centered) with an auto-replay plus drag-to-move pieces. Interaction tested: drag the e-file white pawn forward two squares (e2->e4 style move).",
+    "steps": [
+      {
+        "swipe": {
+          "start": "56%,64%",
+          "end": "56%,53%"
+        }
+      },
+      {
+        "waitForAnimationToEnd": {
+          "timeout": 3000
+        }
+      },
+      {
+        "takeScreenshot": ".maestro/artifacts/chessboard--pawn-moved"
+      }
+    ]
+  }
+]
