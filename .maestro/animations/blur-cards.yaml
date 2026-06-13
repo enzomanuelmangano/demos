@@ -18,12 +18,14 @@ appId: com.reactiive.app
     timeout: 2500
 - assertVisible:
     text: "fanned"
+    timeout: 4000
 - tapOn:
     id: "blur-cards-canvas"
 - waitForAnimationToEnd:
     timeout: 2000
 - assertVisible:
     text: "collapsed"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/blur-cards--after"

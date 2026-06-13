@@ -18,12 +18,14 @@ appId: com.reactiive.app
     timeout: 2000
 - assertVisible:
     text: "qr"
+    timeout: 4000
 - tapOn:
     id: "notion-qrcode-toggle"
 - waitForAnimationToEnd:
     timeout: 2000
 - assertVisible:
     text: "torus"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/notion-qrcode--after"

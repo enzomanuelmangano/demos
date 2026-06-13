@@ -32,6 +32,7 @@ appId: com.reactiive.app
     timeout: 1200
 - assertVisible:
     text: "moved"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/scroll-transition-3d--after"

@@ -24,6 +24,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "pressed"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/atlas-button--after"

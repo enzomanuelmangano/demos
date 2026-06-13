@@ -24,6 +24,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "flipped"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/threads-holo-ticket--after"

@@ -16,6 +16,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "ready"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/github-contributions--after"

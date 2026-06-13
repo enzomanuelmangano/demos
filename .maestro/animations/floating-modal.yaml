@@ -18,6 +18,7 @@ appId: com.reactiive.app
     timeout: 3000
 - assertVisible:
     text: "shown"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/floating-modal--after"

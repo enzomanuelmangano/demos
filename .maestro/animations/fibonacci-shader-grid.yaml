@@ -26,6 +26,7 @@ appId: com.reactiive.app
     timeout: 2000
 - assertVisible:
     text: "moved"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/fibonacci-shader-grid--after"

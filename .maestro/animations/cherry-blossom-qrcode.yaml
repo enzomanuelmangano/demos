@@ -19,6 +19,7 @@ appId: com.reactiive.app
     timeout: 2000
 - assertVisible:
     text: "hello"
+    timeout: 4000
 - tapOn:
     id: "cherry-blossom-qrcode-canvas"
 - waitForAnimationToEnd:

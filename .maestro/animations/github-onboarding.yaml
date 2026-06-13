@@ -14,6 +14,7 @@ appId: com.reactiive.app
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - assertVisible:
     text: "Lazy Day Lounger"
+    timeout: 4000
 - swipe:
     from:
       id: "github-onboarding-carousel"
@@ -28,6 +29,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "page-2"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/github-onboarding--after"

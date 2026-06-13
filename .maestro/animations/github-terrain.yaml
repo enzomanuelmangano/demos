@@ -18,18 +18,21 @@ appId: com.reactiive.app
     timeout: 2000
 - assertVisible:
     text: "raised-real"
+    timeout: 4000
 - tapOn:
     id: "github-terrain-switch"
 - waitForAnimationToEnd:
     timeout: 2000
 - assertVisible:
     text: "raised-demo"
+    timeout: 4000
 - tapOn:
     id: "github-terrain-canvas"
 - waitForAnimationToEnd:
     timeout: 2000
 - assertVisible:
     text: "flat-demo"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/github-terrain--after"

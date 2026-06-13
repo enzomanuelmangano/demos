@@ -16,6 +16,7 @@ appId: com.reactiive.app
     timeout: 3000
 - assertVisible:
     id: "chessboard-board"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/chessboard--after"

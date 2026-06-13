@@ -26,6 +26,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "slider:moved"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/fluid-slider--after"

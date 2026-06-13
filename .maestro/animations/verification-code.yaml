@@ -19,6 +19,7 @@ appId: com.reactiive.app
     timeout: 2500
 - assertVisible:
     text: "correct"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/verification-code--after"

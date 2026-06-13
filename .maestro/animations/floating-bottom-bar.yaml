@@ -22,6 +22,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "tab:bookmark"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/floating-bottom-bar--after"

@@ -28,6 +28,7 @@ appId: com.reactiive.app
     timeout: 1200
 - assertVisible:
     text: "changed"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/wheel-picker--after"

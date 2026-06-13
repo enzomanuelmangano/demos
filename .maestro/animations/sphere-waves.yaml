@@ -20,6 +20,7 @@ appId: com.reactiive.app
     timeout: 2000
 - assertVisible:
     text: "moved"
+    timeout: 4000
 - swipe:
     from:
       id: "sphere-waves-canvas"

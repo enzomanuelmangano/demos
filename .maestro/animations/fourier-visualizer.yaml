@@ -24,6 +24,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "drawn"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/fourier-visualizer--after"

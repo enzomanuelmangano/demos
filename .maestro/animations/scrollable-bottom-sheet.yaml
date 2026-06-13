@@ -23,6 +23,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "sheet-open"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/scrollable-bottom-sheet--after"

@@ -19,6 +19,7 @@ appId: com.reactiive.app
     timeout: 2000
 - assertVisible:
     text: "qr:reactiive"
+    timeout: 4000
 - swipe:
     from:
       id: "qr-code-generator-slider"

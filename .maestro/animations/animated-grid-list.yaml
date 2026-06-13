@@ -22,6 +22,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "grid:2"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/animated-grid-list--after"

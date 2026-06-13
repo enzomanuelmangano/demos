@@ -29,6 +29,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "count:3"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/stacked-modals--after"

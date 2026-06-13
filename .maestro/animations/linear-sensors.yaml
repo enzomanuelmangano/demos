@@ -18,6 +18,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "mounted"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/linear-sensors--after"

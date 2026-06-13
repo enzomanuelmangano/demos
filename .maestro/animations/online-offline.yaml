@@ -22,6 +22,7 @@ appId: com.reactiive.app
     timeout: 1500
 - assertVisible:
     text: "migrated"
+    timeout: 4000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/online-offline--after"

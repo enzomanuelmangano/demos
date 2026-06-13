@@ -20,6 +20,7 @@ appId: com.reactiive.app
     timeout: 3000
 - assertVisible:
     text: "sheet:open"
+    timeout: 4000
 - swipe:
     from:
       id: "skia-bottom-sheet-canvas"
