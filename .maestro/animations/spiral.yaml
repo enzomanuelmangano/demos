@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/spiral--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "50%,50%"
+    id: "spiral-canvas"
 - waitForAnimationToEnd:
     timeout: 3000
 - tapOn:
-    point: "40%,60%"
+    id: "spiral-canvas"
 - waitForAnimationToEnd:
     timeout: 3000
 - waitForAnimationToEnd:

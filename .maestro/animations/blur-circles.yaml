@@ -14,8 +14,6 @@ appId: com.reactiive.app
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - waitForAnimationToEnd:
     timeout: 3000
-- tapOn:
-    point: "50%,50%"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/blur-circles--after"

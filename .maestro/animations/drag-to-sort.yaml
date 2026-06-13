@@ -13,14 +13,16 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/drag-to-sort--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "50%,18%"
-    end: "50%,55%"
+    from:
+      id: "drag-to-sort-item-0"
+    direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: ".maestro/artifacts/drag-to-sort--reordered"
 - swipe:
-    start: "50%,55%"
-    end: "50%,22%"
+    from:
+      id: "drag-to-sort-item-0"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:

@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/floating-bottom-bar--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "88%,93%"
+    id: "floating-bottom-bar-tab-settings"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    point: "31%,93%"
+    id: "floating-bottom-bar-tab-bookmark"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

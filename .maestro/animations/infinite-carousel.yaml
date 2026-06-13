@@ -13,18 +13,21 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/infinite-carousel--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "82%,50%"
-    end: "18%,50%"
+    from:
+      id: "infinite-carousel"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1200
 - swipe:
-    start: "82%,50%"
-    end: "18%,50%"
+    from:
+      id: "infinite-carousel"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1200
 - swipe:
-    start: "18%,50%"
-    end: "82%,50%"
+    from:
+      id: "infinite-carousel"
+    direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 1200
 - waitForAnimationToEnd:

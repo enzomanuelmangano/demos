@@ -17,7 +17,7 @@ appId: com.reactiive.app
     optional: true
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "28%,30%"
+    id: "shared-transitions-card-0"
 - waitForAnimationToEnd:
     timeout: 2000
 - swipe:

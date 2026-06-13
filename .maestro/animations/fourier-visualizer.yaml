@@ -13,11 +13,13 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/fourier-visualizer--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "30%,40%"
-    end: "70%,60%"
+    from:
+      id: "fourier-visualizer-canvas"
+    direction: "RIGHT"
 - swipe:
-    start: "70%,60%"
-    end: "40%,70%"
+    from:
+      id: "fourier-visualizer-canvas"
+    direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: ".maestro/artifacts/fourier-visualizer--drawn"

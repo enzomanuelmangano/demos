@@ -13,15 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/swipe-cards--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "82%,80%"
+    id: "swipe-cards-like"
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
-    point: "18%,80%"
+    id: "swipe-cards-dislike"
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
-    point: "50%,80%"
+    id: "swipe-cards-reset"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:

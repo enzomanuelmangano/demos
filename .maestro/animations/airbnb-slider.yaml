@@ -13,14 +13,16 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/airbnb-slider--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "8%,52%"
-    end: "80%,52%"
+    from:
+      id: "airbnb-slider-knob"
+    direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 1500
 - takeScreenshot: ".maestro/artifacts/airbnb-slider--high"
 - swipe:
-    start: "80%,52%"
-    end: "30%,52%"
+    from:
+      id: "airbnb-slider-knob"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

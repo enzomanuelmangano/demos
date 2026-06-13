@@ -13,13 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/prequel-slider--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "75%,86%"
-    end: "25%,86%"
+    from:
+      id: "prequel-slider-scrubber"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1800
 - swipe:
-    start: "25%,86%"
-    end: "78%,86%"
+    from:
+      id: "prequel-slider-scrubber"
+    direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 1800
 - waitForAnimationToEnd:

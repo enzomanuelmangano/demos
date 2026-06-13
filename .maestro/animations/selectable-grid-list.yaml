@@ -13,13 +13,14 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/selectable-grid-list--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "20%,25%"
+    id: "selectable-grid-list-item-0"
 - tapOn:
-    point: "50%,25%"
+    id: "selectable-grid-list-item-2"
 - tapOn:
-    point: "80%,40%"
+    id: "selectable-grid-list-item-5"
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 2000
+- takeScreenshot: ".maestro/artifacts/selectable-grid-list--selected"
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/selectable-grid-list--after"

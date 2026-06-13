@@ -12,16 +12,22 @@ appId: com.reactiive.app
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/stacked-list--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
-- scroll:
-    direction: "DOWN"
+- swipe:
+    from:
+      id: "stacked-list-list"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1000
-- scroll:
-    direction: "DOWN"
+- swipe:
+    from:
+      id: "stacked-list-list"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1000
-- scroll:
-    direction: "DOWN"
+- swipe:
+    from:
+      id: "stacked-list-list"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1000
 - waitForAnimationToEnd:

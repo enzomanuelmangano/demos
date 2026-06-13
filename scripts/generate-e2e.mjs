@@ -89,7 +89,21 @@ if (missing.length || orphan.length) {
 
 // --- minimal Maestro-step YAML emitter for our step shapes ----------------
 // A step is a single-key object; the value is a scalar (inputText,
-// takeScreenshot) or a flat map (tapOn/swipe/scroll/assertVisible/…).
+// takeScreenshot) or a (possibly nested) map — e.g. swipe: { from: { id },
+// direction }. Emit YAML recursively so nested selectors render correctly.
+function emitMap(obj, indent) {
+  const pad = ' '.repeat(indent);
+  const lines = [];
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== null && typeof v === 'object') {
+      lines.push(`${pad}${k}:`);
+      lines.push(emitMap(v, indent + 2));
+    } else {
+      lines.push(`${pad}${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`);
+    }
+  }
+  return lines.join('\n');
+}
 function emitStep(step) {
   const entries = Object.entries(step);
   if (entries.length !== 1) throw new Error(`bad step: ${JSON.stringify(step)}`);
@@ -97,11 +111,7 @@ function emitStep(step) {
   if (val === null || typeof val !== 'object') {
     return `- ${key}: ${JSON.stringify(val)}`;
   }
-  const lines = [`- ${key}:`];
-  for (const [k, v] of Object.entries(val)) {
-    lines.push(`    ${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`);
-  }
-  return lines.join('\n');
+  return `- ${key}:\n${emitMap(val, 4)}`;
 }
 
 const ALLOWED = new Set([

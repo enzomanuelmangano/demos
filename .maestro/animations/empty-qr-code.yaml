@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/empty-qr-code--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "50%,50%"
+    id: "empty-qr-code-toggle"
 - waitForAnimationToEnd:
     timeout: 1800
 - tapOn:
-    point: "50%,50%"
+    id: "empty-qr-code-toggle"
 - waitForAnimationToEnd:
     timeout: 1800
 - waitForAnimationToEnd:

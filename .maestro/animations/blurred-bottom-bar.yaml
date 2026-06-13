@@ -13,15 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/blurred-bottom-bar--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "37%,94%"
+    id: "blurred-bottom-bar-tab-explore"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    point: "63%,94%"
+    id: "blurred-bottom-bar-tab-camera"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    point: "88%,94%"
+    id: "blurred-bottom-bar-tab-settings"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

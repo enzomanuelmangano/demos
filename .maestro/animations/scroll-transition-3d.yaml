@@ -13,18 +13,21 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/scroll-transition-3d--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "50%,65%"
-    end: "50%,30%"
+    from:
+      id: "scroll-transition-3d-list"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1200
 - swipe:
-    start: "50%,65%"
-    end: "50%,30%"
+    from:
+      id: "scroll-transition-3d-list"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1200
 - swipe:
-    start: "50%,30%"
-    end: "50%,65%"
+    from:
+      id: "scroll-transition-3d-list"
+    direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 1200
 - waitForAnimationToEnd:

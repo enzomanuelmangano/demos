@@ -13,17 +13,19 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/fractal-glass--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "45%,70%"
-    end: "55%,30%"
+    from:
+      id: "fractal-glass-circle"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1500
 - swipe:
-    start: "55%,30%"
-    end: "30%,55%"
+    from:
+      id: "fractal-glass-circle"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    point: "83%,90%"
+    id: "fractal-glass-fab"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

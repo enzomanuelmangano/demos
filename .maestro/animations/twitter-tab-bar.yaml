@@ -13,13 +13,13 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/twitter-tab-bar--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "38%,94%"
+    id: "twitter-tab-bar-tab-search"
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 2000
 - tapOn:
-    point: "88%,94%"
+    id: "twitter-tab-bar-tab-message"
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 2000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/twitter-tab-bar--after"

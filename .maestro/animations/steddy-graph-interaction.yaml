@@ -13,12 +13,12 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/steddy-graph-interaction--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    text: "Pro"
+    id: "steddy-graph-interaction-segment-Pro"
 - waitForAnimationToEnd:
     timeout: 2000
 - takeScreenshot: ".maestro/artifacts/steddy--pro"
 - tapOn:
-    text: "Light"
+    id: "steddy-graph-interaction-segment-Light"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:

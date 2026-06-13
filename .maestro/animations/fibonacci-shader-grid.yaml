@@ -13,13 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/fibonacci-shader-grid--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "30%,72%"
-    end: "70%,55%"
+    from:
+      id: "fibonacci-shader-grid-pad"
+    direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 2000
 - swipe:
-    start: "70%,55%"
-    end: "40%,80%"
+    from:
+      id: "fibonacci-shader-grid-pad"
+    direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:

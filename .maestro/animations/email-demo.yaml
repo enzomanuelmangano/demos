@@ -13,15 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/email-demo--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "70%,90%"
+    id: "email-demo-delete"
 - waitForAnimationToEnd:
     timeout: 1200
 - tapOn:
-    point: "70%,90%"
+    id: "email-demo-delete"
 - waitForAnimationToEnd:
     timeout: 1200
 - tapOn:
-    point: "30%,90%"
+    id: "email-demo-restore"
 - waitForAnimationToEnd:
     timeout: 1200
 - waitForAnimationToEnd:

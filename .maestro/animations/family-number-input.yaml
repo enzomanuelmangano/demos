@@ -13,15 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/family-number-input--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "18%,62%"
+    id: "family-number-input-key-1"
 - tapOn:
-    point: "50%,62%"
+    id: "family-number-input-key-2"
 - tapOn:
-    point: "82%,71%"
+    id: "family-number-input-key-3"
 - tapOn:
-    point: "50%,80%"
+    id: "family-number-input-key-0"
 - tapOn:
-    point: "82%,89%"
+    id: "family-number-input-key-backspace"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

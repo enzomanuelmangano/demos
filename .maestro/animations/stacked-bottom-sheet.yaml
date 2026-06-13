@@ -13,17 +13,18 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/stacked-bottom-sheet--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    text: "Show stacked tray"
+    id: "stacked-bottom-sheet-show"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    text: "Show stacked tray"
+    id: "stacked-bottom-sheet-show"
     optional: true
 - waitForAnimationToEnd:
     timeout: 1500
 - swipe:
-    start: "50%,80%"
-    end: "50%,98%"
+    from:
+      id: "stacked-bottom-sheet-sheet"
+    direction: "DOWN"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

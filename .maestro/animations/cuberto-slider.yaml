@@ -13,13 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/cuberto-slider--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "20%,50%"
-    end: "78%,50%"
+    from:
+      id: "cuberto-knob"
+    direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 2000
 - swipe:
-    start: "78%,50%"
-    end: "40%,50%"
+    from:
+      id: "cuberto-knob"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:

@@ -15,10 +15,14 @@ appId: com.reactiive.app
 - assertVisible:
     text: "Lazy Day Lounger"
 - swipe:
+    from:
+      id: "github-onboarding-carousel"
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 2000
 - swipe:
+    from:
+      id: "github-onboarding-carousel"
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 2000

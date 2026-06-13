@@ -13,7 +13,7 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/loading-button--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    text: "Check Transaction"
+    id: "loading-button"
 - waitForAnimationToEnd:
     timeout: 3000
 - takeScreenshot: ".maestro/artifacts/loading-button--result"

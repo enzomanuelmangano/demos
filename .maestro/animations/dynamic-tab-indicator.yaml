@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/dynamic-tab-indicator--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    text: "Italy"
+    id: "dynamic-tab-indicator-tab-italy"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    text: "Japan"
+    id: "dynamic-tab-indicator-tab-japan"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

@@ -13,15 +13,17 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/wheel-picker--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "50%,60%"
-    end: "50%,30%"
+    from:
+      id: "wheel-picker-wheel"
+    direction: "UP"
 - waitForAnimationToEnd:
     timeout: 1200
 - swipe:
-    start: "50%,30%"
-    end: "50%,60%"
+    from:
+      id: "wheel-picker-wheel"
+    direction: "DOWN"
 - tapOn:
-    point: "85%,90%"
+    id: "wheel-picker-expand"
 - waitForAnimationToEnd:
     timeout: 1200
 - waitForAnimationToEnd:

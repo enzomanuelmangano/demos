@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/staggered-card-number--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "85%,50%"
+    id: "staggered-card-number-eye"
 - waitForAnimationToEnd:
     timeout: 1500
 - tapOn:
-    point: "85%,50%"
+    id: "staggered-card-number-eye"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

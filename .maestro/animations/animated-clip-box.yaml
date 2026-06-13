@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/animated-clip-box--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    text: "Explore Demos"
+    id: "animated-clip-box-explore"
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
-    text: "Learn More"
+    id: "animated-clip-box-learn-more"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:

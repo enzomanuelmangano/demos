@@ -13,12 +13,12 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/split-button--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "50%,50%"
+    id: "split-button"
 - waitForAnimationToEnd:
     timeout: 1500
 - takeScreenshot: ".maestro/artifacts/split-button--split-open"
 - tapOn:
-    point: "62%,50%"
+    id: "split-button"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

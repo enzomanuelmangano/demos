@@ -13,7 +13,7 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/verification-code--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "50%,40%"
+    id: "verification-code-input"
 - inputText: "11111"
 - waitForAnimationToEnd:
     timeout: 2500

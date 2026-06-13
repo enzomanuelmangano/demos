@@ -13,10 +13,14 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/story-list--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
+    from:
+      id: "story-list"
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
 - swipe:
+    from:
+      id: "story-list"
     direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500

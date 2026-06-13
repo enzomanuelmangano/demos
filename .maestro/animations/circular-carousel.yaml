@@ -13,17 +13,21 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/circular-carousel--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "80%,55%"
-    end: "20%,55%"
+    from:
+      id: "circular-carousel"
+    direction: "LEFT"
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 2000
 - swipe:
-    start: "80%,55%"
-    end: "20%,55%"
-- tapOn:
-    point: "50%,16%"
+    from:
+      id: "circular-carousel"
+    direction: "LEFT"
 - waitForAnimationToEnd:
-    timeout: 3000
+    timeout: 2000
+- tapOn:
+    id: "circular-carousel-switch"
+- waitForAnimationToEnd:
+    timeout: 2000
 - waitForAnimationToEnd:
     timeout: 4000
 - takeScreenshot: ".maestro/artifacts/circular-carousel--after"

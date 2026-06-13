@@ -13,13 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/twodos-slide--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - swipe:
-    start: "15%,62%"
-    end: "90%,62%"
+    from:
+      id: "twodos-slide-slider"
+    direction: "RIGHT"
 - waitForAnimationToEnd:
     timeout: 1500
 - swipe:
-    start: "90%,62%"
-    end: "40%,62%"
+    from:
+      id: "twodos-slide-slider"
+    direction: "LEFT"
 - waitForAnimationToEnd:
     timeout: 1500
 - waitForAnimationToEnd:

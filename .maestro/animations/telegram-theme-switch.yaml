@@ -13,12 +13,12 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/telegram-theme-switch--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "88%,82%"
+    id: "telegram-theme-switch"
 - waitForAnimationToEnd:
     timeout: 2500
 - takeScreenshot: ".maestro/artifacts/telegram-theme-switch--toggled"
 - tapOn:
-    point: "88%,82%"
+    id: "telegram-theme-switch"
 - waitForAnimationToEnd:
     timeout: 2500
 - waitForAnimationToEnd:

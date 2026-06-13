@@ -13,15 +13,15 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/mobile-input--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    text: "1"
+    id: "mobile-input-key-1"
 - tapOn:
-    text: "1"
+    id: "mobile-input-key-1"
 - tapOn:
-    text: "1"
+    id: "mobile-input-key-1"
 - tapOn:
-    text: "1"
+    id: "mobile-input-key-1"
 - tapOn:
-    text: "1"
+    id: "mobile-input-key-1"
 - waitForAnimationToEnd:
     timeout: 3000
 - waitForAnimationToEnd:

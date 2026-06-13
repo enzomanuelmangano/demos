@@ -13,7 +13,7 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/gl-transitions--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "88%,10%"
+    id: "gl-transitions-add"
 - waitForAnimationToEnd:
     timeout: 2500
 - waitForAnimationToEnd:

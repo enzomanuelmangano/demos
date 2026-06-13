@@ -13,11 +13,11 @@ appId: com.reactiive.app
 - takeScreenshot: ".maestro/artifacts/animated-grid-list--mounted"
 # --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
 - tapOn:
-    point: "88%,92%"
+    id: "animated-grid-list-fab"
 - waitForAnimationToEnd:
     timeout: 2000
 - tapOn:
-    point: "88%,92%"
+    id: "animated-grid-list-fab"
 - waitForAnimationToEnd:
     timeout: 2000
 - waitForAnimationToEnd:
