@@ -56,7 +56,7 @@ export function GridVisualizer() {
        * Honestly there was no need to use a GestureDetector for such a simple tap gesture
        */}
       <GestureDetector gesture={tapGesture}>
-        <Animated.View>
+        <Animated.View testID="grid-visualizer">
           <GridVisualizerComponent
             text={text}
             width={CanvasWidth}

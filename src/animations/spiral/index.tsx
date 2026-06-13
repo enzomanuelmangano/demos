@@ -119,6 +119,7 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
         </Group>
       </Canvas>
       <PressableWithoutFeedback
+        testID="spiral-canvas"
         onPress={() => {
           angle.set(Math.PI * 2 * Math.random());
         }}

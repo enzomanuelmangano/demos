@@ -19,6 +19,7 @@ const App = () => {
         {new Array(10).fill(null).map((_, index) => (
           <PressableScale
             key={index}
+            testID={`clerk-toast-item-${index}`}
             onPress={onPress}
             style={styles.listItem}
           />

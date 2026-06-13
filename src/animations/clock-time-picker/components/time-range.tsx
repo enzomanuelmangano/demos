@@ -90,6 +90,7 @@ export const TimeRange: React.FC<TimePickerProps> = ({
   return (
     <View style={styles.container}>
       <Animated.FlatList
+        testID="clock-time-picker-wheel"
         onScroll={onScroll}
         decelerationRate="fast"
         snapToAlignment="center"

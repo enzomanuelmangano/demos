@@ -197,6 +197,7 @@ const ScrollableShapes = () => {
 
       {/* Invisible ScrollView to control the morph */}
       <Animated.ScrollView
+        testID="scrollable-shapes-pager"
         horizontal
         showsHorizontalScrollIndicator={false}
         onScroll={scrollHandler}

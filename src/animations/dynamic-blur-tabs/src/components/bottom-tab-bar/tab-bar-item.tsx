@@ -44,7 +44,10 @@ export const TabBarItem: FC<TabBarItemProps> = memo(
 
     return (
       <Animated.View style={[localStyles.fill, rStyle]}>
-        <PressableScale style={localStyles.fillCenter} onPress={onPress}>
+        <PressableScale
+          testID={`dynamic-blur-tabs-tab-${index}`}
+          style={localStyles.fillCenter}
+          onPress={onPress}>
           {getIconByScreenName(screenName)}
         </PressableScale>
       </Animated.View>

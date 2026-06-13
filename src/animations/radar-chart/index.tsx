@@ -81,6 +81,7 @@ export const RadarChartContainer = () => {
         style={{ width: width, aspectRatio: 1 }}
       />
       <PressableScale
+        testID="radar-chart-shuffle"
         onPress={() => {
           setData(generateRandomDataChart());
         }}

@@ -37,6 +37,11 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(
           return (
             <InputButton
               key={index}
+              testID={
+                label != null
+                  ? `family-number-input-key-${label}`
+                  : undefined
+              }
               style={styles.input}
               onLongPress={() => {
                 if (label === 'backspace') {

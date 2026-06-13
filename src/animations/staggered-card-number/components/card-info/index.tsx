@@ -67,7 +67,10 @@ export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
         </View>
       </View>
       <View style={{ flex: 1 }} />
-      <TouchableFeedback onPress={onToggle} style={styles.button}>
+      <TouchableFeedback
+        testID="staggered-card-number-eye"
+        onPress={onToggle}
+        style={styles.button}>
         <Feather name={toggled ? 'eye' : 'eye-off'} size={24} color="#38a27b" />
       </TouchableFeedback>
     </View>

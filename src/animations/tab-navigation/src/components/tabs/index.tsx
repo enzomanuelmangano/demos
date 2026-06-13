@@ -44,6 +44,7 @@ export const Tabs = ({
           icon={tab.icon}
           key={index}
           label={tab.label}
+          testID={`tab-navigation-tab-${index}`}
           maxWidth={maxTabWidth}
           minWidth={minTabWidth}
           isActive={index === activeTabIndex}

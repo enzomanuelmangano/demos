@@ -48,6 +48,7 @@ export const ScrollTransition3D = memo(() => {
   return (
     <View style={styles.container}>
       <Animated.FlatList
+        testID="scroll-transition-3d-list"
         inverted
         contentContainerStyle={contentContainerStyle}
         onScroll={onScroll}

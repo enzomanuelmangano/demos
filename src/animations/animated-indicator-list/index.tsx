@@ -70,6 +70,7 @@ export const AnimatedIndicatorList = () => {
           return (
             <MeasureableAnimatedView
               key={header}
+              testID={`animated-indicator-list-tab-${index}`}
               onTouchStart={() => {
                 onSelectHeaderItem(header);
               }}

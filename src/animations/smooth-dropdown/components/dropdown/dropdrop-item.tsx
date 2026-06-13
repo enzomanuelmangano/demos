@@ -121,6 +121,11 @@ const DropdownItem: FC<DropdownItemProps> = memo(
 
     return (
       <PressableScale
+        testID={
+          isHeader
+            ? 'smooth-dropdown-trigger'
+            : `smooth-dropdown-item-${label.toLowerCase()}`
+        }
         onPress={onPressWrapper}
         style={[styles.item, { height: itemHeight }, rItemStyle]}>
         <Animated.View style={[styles.content, rContentStyle]}>

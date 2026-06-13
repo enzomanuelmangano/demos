@@ -30,6 +30,7 @@ export const IosHomeBouncy = () => {
   return (
     <SafeAreaProvider>
       <Pressable
+        testID="ios-home-bouncy-screen"
         style={{ flex: 1 }}
         onPress={startAnimation}
         onLongPress={handleLongPress}>

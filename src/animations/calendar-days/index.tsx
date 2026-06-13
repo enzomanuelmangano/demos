@@ -31,7 +31,7 @@ const App = () => {
   return (
     <View style={styles.container}>
       <CalendarCard progress={progress} totalPages={TOTAL_PAGES} />
-      <View style={styles.sliderWrapper}>
+      <View testID="calendar-days-slider" style={styles.sliderWrapper}>
         <AnimatedSlider
           progress={progress}
           style={{ width: sliderWidth }}

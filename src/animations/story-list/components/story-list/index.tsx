@@ -55,6 +55,7 @@ function StoryList<T>({
        * The actual story items are rendered separately and animated based on the scroll offset.
        */}
       <Animated.ScrollView
+        testID="story-list"
         horizontal
         snapToInterval={storyItemDimensions.width}
         decelerationRate="fast"

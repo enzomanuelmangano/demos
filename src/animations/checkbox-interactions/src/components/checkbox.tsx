@@ -17,6 +17,7 @@ type CheckboxProps = {
   onPress: () => void;
   activeColor?: string;
   inactiveColor?: string;
+  testID?: string;
 };
 
 const Layout = LinearTransition.springify().mass(1).damping(30).stiffness(250);
@@ -32,6 +33,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
   onPress,
   activeColor = '#EF8E52',
   inactiveColor = '#B3B1B4',
+  testID,
 }) => {
   const fadedActiveColor = Color(activeColor).alpha(0.1).rgb().toString();
   const fadedInactiveColor = Color(inactiveColor).alpha(0.1).rgb().toString();
@@ -53,6 +55,7 @@ export const Checkbox: React.FC<CheckboxProps> = ({
 
   return (
     <PressableScale
+      testID={testID}
       layout={Layout}
       onPress={onPress}
       style={[styles.container, rContainerStyle]}>

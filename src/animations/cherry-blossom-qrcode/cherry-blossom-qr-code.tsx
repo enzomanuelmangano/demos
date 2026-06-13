@@ -88,6 +88,7 @@ export const CherryBlossomQRCode = () => {
     <View style={styles.container}>
       <Animated.View style={[styles.canvasWrapper, canvasWrapperStyle]}>
         <Pressable
+          testID="cherry-blossom-qrcode-canvas"
           accessibilityLabel="Cherry blossom tree QR code"
           onPress={handlePress}
           style={{ width: canvasWidth, height: canvasHeight }}>
@@ -97,6 +98,7 @@ export const CherryBlossomQRCode = () => {
       <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
           ref={inputRef}
+          testID="cherry-blossom-qrcode-input"
           style={styles.input}
           value={qrContent}
           onChangeText={setQrContent}

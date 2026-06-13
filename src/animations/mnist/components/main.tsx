@@ -61,11 +61,12 @@ function App() {
         <NeuralNetwork weights={ModelWeightsFlat} predictions={predictions} />
         <Predictions finalOutput={finalOutput} />
       </View>
-      <View style={styles.fill}>
+      <View testID="mnist-canvas" style={styles.fill}>
         <Grid ref={gridRef} onUpdate={onUpdate} />
       </View>
 
       <PressableScale
+        testID="mnist-clear"
         style={styles.floatingButton}
         onPress={() => {
           gridRef.current?.clear();

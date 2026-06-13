@@ -25,6 +25,7 @@ const HomeScreen = memo(() => {
           const heroTag = 'heroTag' + i;
           return (
             <PressableOpacity
+              testID={`shared-transitions-card-${i}`}
               onPress={() => {
                 navigation.navigate(ScreenNames.Details, {
                   source,

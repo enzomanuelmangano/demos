@@ -79,6 +79,7 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         ref={ref}
+        testID="github-onboarding-carousel"
         data={data}
         keyExtractor={(_, index) => index.toString()}
         renderItem={({ item, index }) => (

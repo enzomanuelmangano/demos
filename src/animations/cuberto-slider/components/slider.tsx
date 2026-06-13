@@ -170,6 +170,7 @@ const Slider: React.FC<SliderProps> = ({
       />
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="cuberto-knob"
           style={[
             {
               height: pickerSize,

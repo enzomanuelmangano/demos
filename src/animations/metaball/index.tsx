@@ -99,7 +99,7 @@ export function Metaball() {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <View testID="metaball-canvas" style={styles.container}>
       <Touchable.Canvas style={{ flex: 1 }}>
         <Group layer={paint}>
           <Path path={path}>

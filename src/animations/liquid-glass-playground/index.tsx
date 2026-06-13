@@ -48,6 +48,7 @@ export function Playground() {
     <View style={styles.container}>
       <GestureDetector gesture={panGesture}>
         <Animated.View
+          testID="liquid-glass-playground-surface"
           style={[
             styles.glassView,
             {

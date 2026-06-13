@@ -63,6 +63,7 @@ export const CellContainer = memo<CellContainerProps>(
 
     return (
       <Cell
+        testID={`sudoku-cell-${rowIndex}-${colIndex}`}
         value={value}
         isSelected={isSelected}
         highlightedNumber={highlightedNumber}

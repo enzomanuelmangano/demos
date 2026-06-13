@@ -124,7 +124,7 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
 
   return (
     <GestureDetector gesture={tapGesture}>
-      <Animated.View style={[rStyle, styles.center]}>
+      <Animated.View testID="atlas-button" style={[rStyle, styles.center]}>
         <Canvas
           style={{
             width,

@@ -95,6 +95,7 @@ function App() {
   return (
     <View style={styles.container}>
       <PressableScale
+        testID="action-tray-fab"
         style={[styles.button, rToggleButtonStyle]}
         onPress={toggleActionTray}>
         <MaterialCommunityIcons
@@ -171,6 +172,7 @@ function App() {
         </Animated.View>
 
         <PressableScale
+          testID="action-tray-continue"
           style={styles.continueButton}
           onPress={() => {
             if (step === 2) {

@@ -11,7 +11,10 @@ const StackedModals = () => {
 
   return (
     <View style={styles.container}>
-      <PressableScale onPress={onPress} style={styles.button}>
+      <PressableScale
+        testID="stacked-modals-trigger"
+        onPress={onPress}
+        style={styles.button}>
         <Ionicons name="add" size={28} color="white" />
       </PressableScale>
     </View>

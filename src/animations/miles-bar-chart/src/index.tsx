@@ -67,6 +67,7 @@ const App = () => {
           width: windowWidth,
         }}>
         <Animated.FlatList
+          testID="miles-bar-chart-weeks"
           onScroll={onScroll}
           horizontal
           snapToInterval={windowWidth}

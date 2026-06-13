@@ -12,15 +12,17 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <ExclusionTabs
-        tabs={tabs}
-        activeTabIndex={activeTabIndex}
-        onTabChange={tab => {
-          setActiveTabIndex(tabs.indexOf(tab));
-        }}
-        containerWidth={windowWidth}
-        height={45}
-      />
+      <View testID="exclusion-tabs">
+        <ExclusionTabs
+          tabs={tabs}
+          activeTabIndex={activeTabIndex}
+          onTabChange={tab => {
+            setActiveTabIndex(tabs.indexOf(tab));
+          }}
+          containerWidth={windowWidth}
+          height={45}
+        />
+      </View>
     </View>
   );
 };

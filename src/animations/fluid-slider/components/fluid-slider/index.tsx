@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { View } from 'react-native';
 import {
   Blur,
   Circle,
@@ -131,6 +132,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
   }, [derivedPickerY, sliderHeight]);
 
   return (
+    <View testID="fluid-slider-knob" style={size}>
     <Touchable.Canvas
       style={{
         ...size,
@@ -166,6 +168,7 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
         )}
       </Group>
     </Touchable.Canvas>
+    </View>
   );
 };
 

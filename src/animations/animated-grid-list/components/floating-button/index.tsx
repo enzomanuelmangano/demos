@@ -23,7 +23,10 @@ const FloatingButton: React.FC<FloatingButtonProps> = ({
   const isExpanded = layout === 'list';
 
   return (
-    <PressableScale style={[styles.container, style]} onPress={onPress}>
+    <PressableScale
+      testID="animated-grid-list-fab"
+      style={[styles.container, style]}
+      onPress={onPress}>
       <Animated.View
         layout={LinearTransition}
         style={{

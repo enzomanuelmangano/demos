@@ -120,6 +120,7 @@ const FibonacciShader = () => {
 
       <View style={styles.animatedSlider}>
         <AnimatedSlider
+          testID="fibonacci-shader-slider"
           sliderHeight={40}
           minValue={5}
           maxValue={MAX_CIRCLES_AMOUNT}
@@ -134,6 +135,7 @@ const FibonacciShader = () => {
         />
       </View>
       <PressableScale
+        testID="fibonacci-shader-magic"
         onPress={() => {
           magicalMul.set(Math.random() * 100);
         }}

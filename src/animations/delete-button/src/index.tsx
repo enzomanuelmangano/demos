@@ -5,12 +5,14 @@ import { DeleteButton } from './components/delete-button';
 const App = () => {
   return (
     <View style={styles.container}>
-      <DeleteButton
-        onConfirmDeletion={() => {}}
-        height={50}
-        width={150}
-        additionalWidth={80}
-      />
+      <View testID="delete-button">
+        <DeleteButton
+          onConfirmDeletion={() => {}}
+          height={50}
+          width={150}
+          additionalWidth={80}
+        />
+      </View>
     </View>
   );
 };

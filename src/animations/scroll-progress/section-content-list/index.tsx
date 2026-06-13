@@ -127,6 +127,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
       <View onLayout={onViewLayout}>
         <Animated.ScrollView
           {...scrollViewProps}
+          testID="scroll-progress-list"
           contentContainerStyle={contentContainerStyle}
           ref={scrollRef}
           onScroll={onScroll}

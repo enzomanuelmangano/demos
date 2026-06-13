@@ -140,7 +140,7 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
 
     return (
       <GestureDetector gesture={tapGesture}>
-        <Animated.View style={rCanvasStyle}>
+        <Animated.View testID="geometry-button" style={rCanvasStyle}>
           <Canvas style={baseStyle}>
             <Group transform={center}>
               <Path

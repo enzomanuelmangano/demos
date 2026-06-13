@@ -45,6 +45,7 @@ export const IMessageStack = () => {
          * The actual cards are rendered separately and animated based on the scroll offset.
          */}
         <Animated.FlatList
+          testID="imessage-stack"
           horizontal
           snapToInterval={CARD_WIDTH}
           disableIntervalMomentum

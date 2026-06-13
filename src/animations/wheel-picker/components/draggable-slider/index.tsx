@@ -57,6 +57,8 @@ type DraggableSliderProps = {
   lineColor?: string;
   // Optional: The color of the big lines (default is #c6c6c6)
   bigLineColor?: string;
+  // Optional: testID forwarded to the draggable touch area
+  testID?: string;
 };
 
 export const DraggableSlider: React.FC<DraggableSliderProps> = ({
@@ -73,6 +75,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   showBoundaryGradient = true,
   lineColor = '#c6c6c6',
   bigLineColor = '#c6c6c6',
+  testID,
 }) => {
   const scrollContext = useSharedValue(0);
   const scrollOffset = useSharedValue(ScreenWidth / 2);
@@ -204,6 +207,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     <View>
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID={testID}
           style={{
             height: scrollableAreaHeight,
           }}>

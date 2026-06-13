@@ -33,6 +33,7 @@ export const TwodosSlide = () => {
       </View>
       <View style={styles.fill}>
         <FrictionSlider
+          testID="twodos-slide-slider"
           containerStyle={styles.frictionSliderContainer}
           onProgressChange={({
             clampedProgress: cProgress,

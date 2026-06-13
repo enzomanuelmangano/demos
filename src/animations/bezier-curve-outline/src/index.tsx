@@ -130,6 +130,7 @@ const App = () => {
         </Animated.View>
       </Animated.View>
       <PressableScale
+        testID="bezier-curve-outline-toggle"
         style={styles.button}
         onPressIn={() => {
           blurIntensity.set(65);

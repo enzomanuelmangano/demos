@@ -174,6 +174,7 @@ export const Sudoku = () => {
             ) : (
               <View style={styles.startContainer}>
                 <Button
+                  testID="sudoku-start"
                   title="Start Game"
                   onPress={() => setHasStarted(true)}
                   size="large"

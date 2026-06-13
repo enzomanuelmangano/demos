@@ -1,3 +1,5 @@
+import { View } from 'react-native';
+
 import { type FC, memo, useMemo } from 'react';
 
 import {
@@ -93,6 +95,7 @@ const SlideToReveal: FC<SlideToRevealProps> = memo(
     // Render the component
     return (
       <GestureDetector gesture={gesture}>
+        <View testID="slide-to-reveal-panel" style={{ width, height }}>
         <Canvas
           style={[
             {
@@ -144,6 +147,7 @@ const SlideToReveal: FC<SlideToRevealProps> = memo(
             </Mask>
           </Group>
         </Canvas>
+        </View>
       </GestureDetector>
     );
   },

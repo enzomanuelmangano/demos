@@ -85,6 +85,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
           <Text style={styles.headerText}>Enter Code</Text>
         </View>
         <Animated.View
+          testID="verification-code-input"
           style={[styles.codeContainer, rShakeStyle]}
           onTouchEnd={() => {
             invisibleTextInputRef.current?.focus();
@@ -106,6 +107,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
           VerificationCode component.
        */}
       <TextInput
+        testID="verification-code-field"
         keyboardAppearance="default"
         autoFocus
         ref={invisibleTextInputRef}

@@ -242,6 +242,7 @@ export const Magnets: React.FC<MagnetsProps> = ({
     <View style={styles.container}>
       <GestureDetector gesture={panGesture}>
         <Animated.View
+          testID="magnet-spring-puck"
           style={[
             styles.cheese,
             {

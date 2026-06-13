@@ -83,6 +83,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
           return (
             <AnimatedOpacityView
               key={index}
+              testID={`floating-bottom-bar-tab-${screenName.toLowerCase()}`}
               style={styles.iconContainer}
               onPress={() => {
                 navigation.navigate(screenName);

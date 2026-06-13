@@ -120,7 +120,9 @@ export const ExpandedSheet = () => {
 
   return (
     <GestureDetector gesture={gestures}>
-      <Animated.View style={[rSheetStyle, styles.container]}>
+      <Animated.View
+        testID="expandable-mini-player"
+        style={[rSheetStyle, styles.container]}>
         <Animated.View
           style={[
             rKnobStyle,

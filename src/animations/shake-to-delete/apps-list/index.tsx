@@ -57,10 +57,11 @@ export const AppsList = () => {
         },
       ]}
       layout={LinearTransition}>
-      {items.map(item => (
+      {items.map((item, index) => (
         <AppItem
           key={item.id}
           item={item}
+          testID={`shake-to-delete-item-${index}`}
           style={{
             width: layoutConfig.itemSize,
             marginRight: layoutConfig.spacing,

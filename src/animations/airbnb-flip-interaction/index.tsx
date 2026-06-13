@@ -147,7 +147,7 @@ const App = () => {
         }}>
         {/* Main Card Section */}
         <View style={styles.cardSection}>
-          <PressableOpacity onPress={toggleCard}>
+          <PressableOpacity testID="airbnb-flip-card" onPress={toggleCard}>
             <FlipCard
               profile={sampleProfile}
               isFlipped={isFlipped}

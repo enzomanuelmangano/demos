@@ -106,6 +106,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
             invisibleTextInputRef.current?.focus();
           }}>
           <Animated.View
+            testID="verification-code-face-trigger"
             style={[styles.codeContainer, rShakeStyle]}
             onTouchEnd={() => {
               invisibleTextInputRef.current?.focus();
@@ -120,6 +121,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
       </Animated.View>
 
       <TextInput
+        testID="verification-code-face-input"
         keyboardAppearance="light"
         ref={invisibleTextInputRef}
         onChangeText={text => {

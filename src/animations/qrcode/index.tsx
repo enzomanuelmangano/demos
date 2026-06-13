@@ -43,6 +43,7 @@ const QRCodeGenerator = () => {
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View>
           <TextInput
+            testID="qr-code-generator-input"
             style={styles.textInput}
             autoCapitalize="none"
             autoComplete="off"

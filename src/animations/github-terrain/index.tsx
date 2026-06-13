@@ -54,7 +54,10 @@ export const GitHubTerrain = () => {
 
   return (
     <View style={styles.container} onLayout={handleLayout}>
-      <Pressable style={StyleSheet.absoluteFill} onPress={handlePress}>
+      <Pressable
+        testID="github-terrain-canvas"
+        style={StyleSheet.absoluteFill}
+        onPress={handlePress}>
         <Canvas ref={canvasRef} style={StyleSheet.absoluteFill} />
       </Pressable>
 
@@ -62,6 +65,7 @@ export const GitHubTerrain = () => {
         pointerEvents="box-none"
         style={[styles.switchContainer, { bottom: safeBottom + 14 }]}>
         <Switch
+          testID="github-terrain-switch"
           accessibilityLabel="Toggle real GitHub contribution data"
           trackColor={{ false: '#C8CCC9', true: '#34D399' }}
           ios_backgroundColor="#C8CCC9"

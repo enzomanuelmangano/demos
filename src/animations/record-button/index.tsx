@@ -123,6 +123,7 @@ export const RecordButton = () => {
 
   return (
     <Animated.FlatList
+      testID="record-button-scroll"
       style={styles.list}
       inverted
       bounces={false}

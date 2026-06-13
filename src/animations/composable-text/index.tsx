@@ -35,6 +35,7 @@ export const ComposableTextScreen = () => {
   return (
     <View style={styles.container}>
       <PressableScale
+        testID="composable-text-pill"
         layout={LinearTransition.springify()
           .mass(0.4)
           .damping(12)

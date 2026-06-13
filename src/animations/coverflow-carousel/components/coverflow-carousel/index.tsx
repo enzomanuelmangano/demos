@@ -43,6 +43,7 @@ export const CoverFlowCarousel: React.FC<CoverFlowCarouselProps> = ({
 
   return (
     <Animated.FlatList
+      testID="coverflow-carousel"
       scrollEventThrottle={16}
       horizontal
       pagingEnabled

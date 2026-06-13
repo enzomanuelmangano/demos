@@ -13,6 +13,7 @@ export const EmptyQRCode = memo(() => {
   return (
     <View style={styles.container}>
       <PressableScale
+        testID="empty-qr-code-toggle"
         onPress={() => {
           qrCodeShareRef.current?.toggle();
         }}>

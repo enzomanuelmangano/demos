@@ -1,4 +1,5 @@
 import { useImage, Image } from '@shopify/react-native-skia';
+import { View } from 'react-native';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 import Touchable from 'react-native-skia-gesture';
 
@@ -22,19 +23,21 @@ const CanvasContainer = () => {
   }, [size]);
 
   return (
-    <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
-      {image && (
-        <Image
-          x={0}
-          y={0}
-          width={imageWidth}
-          height={imageHeight}
-          fit="cover"
-          image={image}
-        />
-      )}
-      <BottomSheet size={size} />
-    </Touchable.Canvas>
+    <View testID="skia-bottom-sheet-canvas" style={{ flex: 1 }}>
+      <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
+        {image && (
+          <Image
+            x={0}
+            y={0}
+            width={imageWidth}
+            height={imageHeight}
+            fit="cover"
+            image={image}
+          />
+        )}
+        <BottomSheet size={size} />
+      </Touchable.Canvas>
+    </View>
   );
 };
 

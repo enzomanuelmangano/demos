@@ -59,15 +59,22 @@ export const SwipeCards = () => {
 
       {/* Define the buttons container */}
       <View style={styles.buttonsContainer}>
-        <PressableScale style={styles.button} onPress={swipeLeft}>
+        <PressableScale
+          testID="swipe-cards-dislike"
+          style={styles.button}
+          onPress={swipeLeft}>
           <AntDesign name="close" size={32} color="white" />
         </PressableScale>
         <PressableScale
+          testID="swipe-cards-reset"
           style={[styles.button, { height: 60, marginHorizontal: 10 }]}
           onPress={onReset}>
           <AntDesign name="reload" size={24} color="white" />
         </PressableScale>
-        <PressableScale style={styles.button} onPress={swipeRight}>
+        <PressableScale
+          testID="swipe-cards-like"
+          style={styles.button}
+          onPress={swipeRight}>
           <AntDesign name="heart" size={32} color="white" />
         </PressableScale>
       </View>

@@ -138,6 +138,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
     <GestureDetector gesture={gesture}>
       <Animated.View
         key={index}
+        testID="stacked-bottom-sheet-sheet"
         style={[
           {
             width: windowWidth * 0.9,

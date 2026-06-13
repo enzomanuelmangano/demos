@@ -24,6 +24,7 @@ const App = () => {
   return (
     <View style={styles.container}>
       <Animated.FlatList
+        testID="blurred-scroll-list"
         layout={LinearTransition}
         entering={FadeIn}
         onScroll={scrollHandler}

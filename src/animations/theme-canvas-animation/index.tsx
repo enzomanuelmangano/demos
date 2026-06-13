@@ -1,4 +1,4 @@
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 
 import { useCallback } from 'react';
 
@@ -183,8 +183,10 @@ const ThemeScreen = () => {
 
 export const ThemeCanvasAnimation = () => {
   return (
-    <Touchable.Canvas style={{ flex: 1 }}>
-      <ThemeScreen />
-    </Touchable.Canvas>
+    <View testID="theme-canvas-animation-canvas" style={{ flex: 1 }}>
+      <Touchable.Canvas style={{ flex: 1 }}>
+        <ThemeScreen />
+      </Touchable.Canvas>
+    </View>
   );
 };

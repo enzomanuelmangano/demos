@@ -161,6 +161,7 @@ const PopupHandler = () => {
             rStyle,
           ]}>
           <TouchablePopupHandler
+            testID="popup-handler-pill"
             style={{
               flex: 1,
             }}

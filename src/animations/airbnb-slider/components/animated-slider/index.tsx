@@ -115,6 +115,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 
   return (
     <Animated.View
+      testID="airbnb-slider-track"
       style={{
         borderRadius: 5,
         backgroundColor: Palette.secondary,
@@ -134,6 +135,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
       />
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="airbnb-slider-knob"
           style={[
             {
               height: pickerSize,

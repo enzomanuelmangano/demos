@@ -126,7 +126,7 @@ export const AtlasSphere = () => {
   return (
     <View style={styles.container}>
       <GestureDetector gesture={panGesture}>
-        <Animated.View>
+        <Animated.View testID="atlas-sphere">
           <Canvas
             style={{
               width: CANVAS_WIDTH,

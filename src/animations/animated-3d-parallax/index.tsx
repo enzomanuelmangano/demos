@@ -89,7 +89,7 @@ export const Animated3DParallax = () => {
   return (
     <View style={styles.container}>
       <GestureDetector gesture={gesture}>
-        <Animated.View style={styles.cardContainer}>
+        <Animated.View testID="animated-3d-parallax-card" style={styles.cardContainer}>
           <Animated.View
             style={[
               StyleSheet.absoluteFill,

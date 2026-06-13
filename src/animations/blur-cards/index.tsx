@@ -108,6 +108,7 @@ export const BlurCards = () => {
         })}
       </Canvas>
       <PressableOpacity
+        testID="blur-cards-canvas"
         style={StyleSheet.absoluteFill}
         onPress={() => {
           progress.set(

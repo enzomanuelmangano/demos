@@ -206,7 +206,10 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
           circleRadius={2}
         />
       </View>
-      <PressableScale style={boxStyle} onPress={onPressHandler}>
+      <PressableScale
+        testID="particles-button"
+        style={boxStyle}
+        onPress={onPressHandler}>
         <Animated.View style={[styles.iconContainer, rBaseIconStyle]}>
           {baseIcon}
         </Animated.View>

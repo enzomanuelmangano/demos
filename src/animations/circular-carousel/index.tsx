@@ -28,6 +28,7 @@ export const CircularCarousel = () => {
       <Text style={styles.label}>Scale</Text>
       <View>
         <Switch
+          testID="circular-carousel-switch"
           trackColor={{
             false: '#ccc',
             true: '#111',

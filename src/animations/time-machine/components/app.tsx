@@ -76,6 +76,7 @@ export const App = () => {
   return (
     <GestureDetector gesture={panGesture}>
       <View
+        testID="time-machine-surface"
         style={{ flex: 1, justifyContent: 'center', backgroundColor: '#000' }}>
         <BackgroundCanvas
           timeMachineProgress={timeMachineProgress}

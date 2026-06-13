@@ -8,11 +8,13 @@ export const AnimatedClipBox = () => {
   return (
     <View style={[styles.container, { flex: 1 }]}>
       <ClipBoxButton
+        testID="animated-clip-box-explore"
         style={[styles.button, { marginBottom: 30 }]}
         actionTitle="Explore Demos"
         description="Perfect for learning how React Native Reanimated works, prototyping a new idea, or creating a demo to share online."
       />
       <ClipBoxButton
+        testID="animated-clip-box-learn-more"
         style={styles.button}
         primaryColor="#ED7D3A"
         highlightColor="#E39264"

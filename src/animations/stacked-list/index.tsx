@@ -160,6 +160,7 @@ export const StackedList = () => {
   return (
     <View style={styles.container}>
       <Animated.FlatList
+        testID="stacked-list-list"
         onScroll={onScroll}
         data={Items}
         showsVerticalScrollIndicator={true}

@@ -184,6 +184,7 @@ export const StackedCarousel = <T,>({
 
       {/* Invisible horizontal scroll view positioned over the cards */}
       <Animated.FlatList
+        testID="stacked-carousel-scroller"
         data={data}
         renderItem={() => (
           <View

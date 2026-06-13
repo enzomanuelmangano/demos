@@ -117,7 +117,10 @@ export const OnlineOffline = () => {
   return (
     <LayoutAnimationConfig skipEntering>
       <View style={styles.container}>
-        <PressableScale style={styles.container} onPress={handleTouchEnd}>
+        <PressableScale
+          testID="online-offline-surface"
+          style={styles.container}
+          onPress={handleTouchEnd}>
           <OnlineToOffline
             offline={offlineItems.map(item => item.uri)}
             online={onlineItems.map(item => item.uri)}

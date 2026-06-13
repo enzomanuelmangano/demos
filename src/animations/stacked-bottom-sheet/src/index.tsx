@@ -10,7 +10,10 @@ const App = () => {
 
   return (
     <View style={styles.container}>
-      <PressableScale style={styles.button} onPress={onPress}>
+      <PressableScale
+        testID="stacked-bottom-sheet-show"
+        style={styles.button}
+        onPress={onPress}>
         <Text style={styles.textButton}>Show stacked tray</Text>
       </PressableScale>
     </View>

@@ -184,7 +184,7 @@ const SphereWaves = () => {
 
   return (
     <GestureDetector gesture={combinedGesture}>
-      <View style={styles.container}>
+      <View testID="sphere-waves-canvas" style={styles.container}>
         <Canvas
           style={{
             width: CANVAS_WIDTH,

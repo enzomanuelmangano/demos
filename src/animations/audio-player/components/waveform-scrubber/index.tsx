@@ -46,6 +46,7 @@ const WaveformScrubber: React.FC<WaveformScrubberProps> = ({
 
       <GestureDetector gesture={panGesture}>
         <Animated.View
+          testID="audio-player-waveform"
           style={[
             {
               width: waveformScrubberWidth,

@@ -121,6 +121,7 @@ function SegmentedControl<T extends { name: string; icon: string }>({
         return (
           <PressableScale
             key={item.name}
+            testID={`fluid-tab-interaction-tab-${item.name.toLowerCase()}`}
             style={localStyles.labelContainer}
             onPress={() => {
               onPress(item);

@@ -81,7 +81,10 @@ function App() {
   return (
     <View style={styles.container}>
       {/* Button for opening/closing the bottom sheet */}
-      <PressableScale style={styles.button} onPress={onPress}>
+      <PressableScale
+        testID="scrollable-bottom-sheet-fab"
+        style={styles.button}
+        onPress={onPress}>
         <LinearGradient style={{ flex: 1 }} colors={['#4E65FF', '#92EFFD']} />
       </PressableScale>
       {/* ScrollableBottomSheet with memoized pages */}

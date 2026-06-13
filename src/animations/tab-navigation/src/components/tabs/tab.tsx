@@ -16,6 +16,7 @@ type TabProps = {
   isActive: boolean;
   onPress: () => void;
   icon: keyof typeof AntDesign.glyphMap;
+  testID?: string;
 };
 
 const IconSize = 20;
@@ -27,6 +28,7 @@ export const Tab = ({
   isActive,
   onPress,
   icon,
+  testID,
 }: TabProps) => {
   // Create an animated progress value that transitions between 0 and 1
   // based on whether the tab is active or not
@@ -71,7 +73,7 @@ export const Tab = ({
   }, []);
 
   return (
-    <PressableScale onPress={onPress}>
+    <PressableScale testID={testID} onPress={onPress}>
       <Animated.View style={[rTabStyle, styles.container]}>
         <View style={styles.innerContainer}>
           <Animated.View style={[styles.iconContainer, rIconStyle]}>

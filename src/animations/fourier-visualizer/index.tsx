@@ -88,7 +88,9 @@ const App = () => {
   return (
     <>
       <GestureDetector gesture={panGesture}>
-        <Animated.View style={styles.container}>
+        <Animated.View
+          testID="fourier-visualizer-canvas"
+          style={styles.container}>
           <Canvas style={styles.canvas}>
             <Path
               path={drawPath}

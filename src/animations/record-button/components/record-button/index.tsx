@@ -104,7 +104,7 @@ export const RecordButton: FC<RecordButtonProps> = ({
   }, [color, strokeWidth]);
 
   return (
-    <PressableScale onPress={onPress} style={style}>
+    <PressableScale testID="record-button" onPress={onPress} style={style}>
       <Animated.View style={rContainerStyle}>
         <Canvas
           style={{

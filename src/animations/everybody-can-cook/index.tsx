@@ -16,6 +16,7 @@ const App = () => {
   return (
     <View style={styles.fill}>
       <PressableWithoutFeedback
+        testID="everybody-can-cook"
         style={styles.container}
         onPress={() => {
           // Reset and animate both text components in sequence

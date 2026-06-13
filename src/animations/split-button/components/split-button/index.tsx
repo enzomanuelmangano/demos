@@ -84,6 +84,7 @@ const SplitButton: FC<SplitButtonProps> = memo(
         {/* Left Button */}
         <Animated.View style={rLeftStyle}>
           <PressableScale
+            testID="split-button-left"
             onPress={() => {
               onLeft?.(); // Call the provided onLeft function if available
               setActive(false); // Deactivate the button
@@ -105,6 +106,7 @@ const SplitButton: FC<SplitButtonProps> = memo(
         {/* Right Button */}
         <Animated.View style={[styles.rightChipContainer, rRightStyle]}>
           <PressableScale
+            testID="split-button"
             onPress={() => {
               if (!activated) {
                 setActive(true); // Activate the button

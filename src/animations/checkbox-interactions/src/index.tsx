@@ -13,9 +13,10 @@ const App = () => {
     <View style={[styles.container, { paddingTop: safeTop + 24 }]}>
       <Text style={styles.sectionTitle}>What are your favorite cuisines?</Text>
       <View style={styles.contentWrap}>
-        {cuisines.map(cuisine => (
+        {cuisines.map((cuisine, index) => (
           <Checkbox
             key={cuisine.id}
+            testID={`checkbox-interactions-item-${index}`}
             label={cuisine.name}
             checked={cuisine.selected}
             onPress={() => {

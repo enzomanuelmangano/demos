@@ -22,6 +22,7 @@ export const AnimatedCountText = () => {
       <AnimatedCount number={number} />
 
       <PressableScale
+        testID="animated-count-text-shuffle"
         style={styles.floatingBottomButton}
         onPress={() => {
           const num = getRandomNumber(Math.floor(6 * Math.random() + 1));

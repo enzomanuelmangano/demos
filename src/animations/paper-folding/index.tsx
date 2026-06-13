@@ -29,6 +29,7 @@ export const PaperFolding = () => {
       <Paper width={PaperWidth} height={PaperHeight} progress={progress} />
       {/* @@TODO: wtf why is this needed? */}
       <PressableWithoutFeedback
+        testID="paper-folding"
         style={styles.canvasContainer}
         globalHandlers={{}}
         onPress={() => {

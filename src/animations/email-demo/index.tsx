@@ -98,6 +98,7 @@ const EmailDemo = () => {
         ]}>
         <Animated.View style={rShakeRestoreStyle}>
           <PressableScale
+            testID="email-demo-restore"
             onPress={onRestore}
             style={[
               styles.floatingButton,
@@ -111,6 +112,7 @@ const EmailDemo = () => {
 
         <Animated.View style={rShakeDeleteStyle}>
           <PressableScale
+            testID="email-demo-delete"
             onPress={onDelete}
             style={[
               styles.floatingButton,

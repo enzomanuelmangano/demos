@@ -112,7 +112,10 @@ const ListItem = <
           </Text>
         </View>
       </View>
-      <PressableScale onPress={onPress} style={{ overflow: 'visible' }}>
+      <PressableScale
+        testID={`add-to-cart-buy-${index}`}
+        onPress={onPress}
+        style={{ overflow: 'visible' }}>
         {Boolean(item.count) && (
           <Animated.View style={[styles.badge, rCounterStyle]}>
             <Text

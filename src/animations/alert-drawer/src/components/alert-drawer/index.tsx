@@ -145,6 +145,7 @@ export const AlertDrawer: React.FC<AlertDrawerProps> = ({
   return (
     <Animated.View style={styles.container}>
       <PressableScale
+        testID="alert-drawer-trigger"
         onPress={() => {
           if (isExpanded.get() && onConfirm) {
             return scheduleOnRN(onConfirm);

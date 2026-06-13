@@ -102,6 +102,7 @@ const SelectableGridListContainer = () => {
         }}
       />
       <PressableScale
+        testID="selectable-grid-list-counter"
         onPress={() => {
           gridListRef.current?.reset();
         }}

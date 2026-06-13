@@ -46,8 +46,8 @@ const Carousel: FC<CarouselProps> = memo(
 
     // Render the carousel using the Animated ScrollView and the CarouselItem component
     return (
-      <Animated.View style={{ flex: 1 }}>
-        {/* 
+      <Animated.View testID="color-carousel" style={{ flex: 1 }}>
+        {/*
             I've used a ScrollView since there's an issue with the zIndex while using FlatList. 
             ScrollDown to give a try with it, to check out the differences.
         */}

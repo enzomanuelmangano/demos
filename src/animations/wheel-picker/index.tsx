@@ -55,6 +55,7 @@ export const WheelPicker = () => {
        *   is independent from the rebound effect (since it's decoupled from the withSpring function)
        */}
       <DraggableSlider
+        testID="wheel-picker-wheel"
         scrollableAreaHeight={150}
         spacePerLine={animatedSpacePerLine}
         showBoundaryGradient
@@ -81,6 +82,7 @@ export const WheelPicker = () => {
         }}
       />
       <PressableScale
+        testID="wheel-picker-expand"
         style={styles.button}
         onPress={() => {
           setIsExpanded(prev => !prev);

@@ -202,7 +202,9 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
 
   return (
     <GestureDetector gesture={panelGesture}>
-      <Animated.View style={[styles.controls, panelStyle]}>
+      <Animated.View
+        testID="draggable-panel-handle"
+        style={[styles.controls, panelStyle]}>
         <Animated.View
           style={[
             styles.controlPanel,

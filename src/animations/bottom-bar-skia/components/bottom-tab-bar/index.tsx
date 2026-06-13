@@ -95,6 +95,7 @@ const BottomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   return (
     <>
       <Touchable.Canvas
+        testID="bottom-bar-skia-tabbar"
         style={[
           styles.container,
           {

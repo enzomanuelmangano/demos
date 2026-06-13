@@ -80,6 +80,7 @@ const App = () => {
       />
       <View style={styles.buttonsContainer}>
         <PressableScale
+          testID="pomodoro-timer-start"
           style={styles.button}
           onPress={() => {
             toggleTimer();

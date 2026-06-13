@@ -81,6 +81,7 @@ const App = () => {
     <Animated.View style={[styles.fill, rBackgroundStyle]}>
       <GestureDetector gesture={panGesture}>
         <Animated.View
+          testID="fractal-glass-circle"
           style={[
             rFakeCircleStyle,
             {
@@ -132,6 +133,7 @@ const App = () => {
       </Canvas>
 
       <PressableScale
+        testID="fractal-glass-fab"
         style={styles.floatingButton}
         onPress={() => {
           setTheme(theme === 'light' ? 'dark' : 'light');

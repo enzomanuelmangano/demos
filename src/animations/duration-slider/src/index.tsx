@@ -16,17 +16,19 @@ const App = () => {
   return (
     <View style={styles.container}>
       {font && (
-        <CircularSlider
-          minVal={1}
-          maxVal={12}
-          onValueChange={value => {
-            console.log({ value });
-            Haptics.selectionAsync();
-          }}
-          width={size}
-          height={size}
-          font={font}
-        />
+        <View testID="duration-slider-knob">
+          <CircularSlider
+            minVal={1}
+            maxVal={12}
+            onValueChange={value => {
+              console.log({ value });
+              Haptics.selectionAsync();
+            }}
+            width={size}
+            height={size}
+            font={font}
+          />
+        </View>
       )}
     </View>
   );

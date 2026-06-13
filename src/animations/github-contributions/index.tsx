@@ -27,6 +27,7 @@ export const GitHubContributions = () => {
   return (
     <View style={styles.appContainer}>
       <PressableScale
+        testID="github-contributions-surface"
         style={styles.appContainer}
         onPress={handleToggleAnimation}>
         <GitHubContributionCalendar

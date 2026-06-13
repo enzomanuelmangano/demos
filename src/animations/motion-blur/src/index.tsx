@@ -12,7 +12,10 @@ import { ListItem } from './components/list-item';
 import { generateRandomItem, type Item } from './utils/generate-random-item';
 
 const AddButton: FC<{ onPress: () => void }> = memo(({ onPress }) => (
-  <PressableScale onPress={onPress} style={styles.addButton}>
+  <PressableScale
+    testID="motion-blur-add"
+    onPress={onPress}
+    style={styles.addButton}>
     <Entypo name="plus" size={40} color="white" />
   </PressableScale>
 ));

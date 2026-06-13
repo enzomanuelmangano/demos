@@ -49,6 +49,7 @@ const App = () => {
         </View>
 
         <View
+          testID="snake-board"
           style={{
             position: 'relative',
             width: boardSize,

@@ -123,6 +123,7 @@ export const Ticket: FC<TicketProps> = memo(
     return (
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="threads-holo-ticket"
           style={[
             {
               width,

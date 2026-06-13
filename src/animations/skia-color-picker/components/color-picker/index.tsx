@@ -140,7 +140,7 @@ const ColorPicker: FC<ColorPickerProps> = ({
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View>
+      <Animated.View testID="skia-color-picker-canvas">
         <Canvas
           style={{
             width: canvasSize,
