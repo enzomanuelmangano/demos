@@ -1,47 +1,65 @@
-// Crane crease pattern + fold sequence (built incrementally, tuned on device).
+// Crane crease pattern + fold sequence (layer-aware origami simulator).
 //
-// The square sits in the XZ plane as a diamond (corners front/right/back/left),
-// cut by its two diagonals and two midlines into eight triangles. Each step
-// rotates a subset of facets about a world-space fold line.
+// AXIS-ALIGNED square in the XZ plane. Creases: the two midlines (x=0, z=0) and
+// the two diagonals (z=±x). Folding the square in half along the midlines twice
+// gives the classic preliminary (square) base — a clean quarter square — which
+// is the foundation for the petal folds → bird base → crane.
+//
+// Each fold step rotates a subset of facets about a world-space fold line
+// (optionally carried by an earlier fold), composing on the prior pose.
 
-import type { Vec3 } from './math';
+import type { Transform, Vec3 } from './math';
 
-// Diamond corners, centre, edge midpoints (flat, y = 0).
-const N: Vec3 = [0, 0, 1.4]; // front
-const E: Vec3 = [1.4, 0, 0]; // right
-const S: Vec3 = [0, 0, -1.4]; // back
-const W: Vec3 = [-1.4, 0, 0]; // left
+const S = 1.4; // half-side
+
+// Corners, centre, edge midpoints.
+const A: Vec3 = [-S, 0, -S];
+const B: Vec3 = [S, 0, -S];
+const C: Vec3 = [S, 0, S];
+const D: Vec3 = [-S, 0, S];
 const O: Vec3 = [0, 0, 0];
-const NE: Vec3 = [0.7, 0, 0.7];
-const SE: Vec3 = [0.7, 0, -0.7];
-const SW: Vec3 = [-0.7, 0, -0.7];
-const NW: Vec3 = [-0.7, 0, 0.7];
+const mAB: Vec3 = [0, 0, -S]; // front mid
+const mBC: Vec3 = [S, 0, 0]; // right mid
+const mCD: Vec3 = [0, 0, S]; // back mid
+const mDA: Vec3 = [-S, 0, 0]; // left mid
+
+export type Part = 'neck' | 'head' | 'tail' | 'wingL' | 'wingR' | 'body';
 
 export interface Facet {
   v: [Vec3, Vec3, Vec3];
-  tag: string; // octant id: a..h
-  xSign: number; // sign of rest centroid x
-  zSign: number; // sign of rest centroid z
-  layer: number; // stacking order for z-offset
+  tag: string;
+  part: Part;
+  xSign: number;
+  zSign: number;
+  layer: number;
 }
 
-const mk = (a: Vec3, b: Vec3, c: Vec3, tag: string, layer: number): Facet => ({
+const mk = (
+  a: Vec3,
+  b: Vec3,
+  c: Vec3,
+  tag: string,
+  part: Part,
+  layer: number,
+): Facet => ({
   v: [a, b, c],
   tag,
-  xSign: Math.sign((a[0] + b[0] + c[0]) / 3),
-  zSign: Math.sign((a[2] + b[2] + c[2]) / 3),
+  part,
+  xSign: Math.sign((a[0] + b[0] + c[0]) / 3) || 0,
+  zSign: Math.sign((a[2] + b[2] + c[2]) / 3) || 0,
   layer,
 });
 
+// Eight triangles fanning from O, split by both midlines and both diagonals.
 export const buildFacets = (): Facet[] => [
-  mk(O, N, NE, 'a', 0),
-  mk(O, NE, E, 'b', 1),
-  mk(O, E, SE, 'c', 2),
-  mk(O, SE, S, 'd', 3),
-  mk(O, S, SW, 'e', 4),
-  mk(O, SW, W, 'f', 5),
-  mk(O, W, NW, 'g', 6),
-  mk(O, NW, N, 'h', 7),
+  mk(O, mBC, C, 't1', 'wingR', 0), // x>0, 0<z<x
+  mk(O, C, mCD, 't2', 'tail', 1), // x>0, z>x
+  mk(O, mCD, D, 't3', 'tail', 2), // x<0, z>|x|
+  mk(O, D, mDA, 't4', 'wingL', 3), // x<0, |z|<|x|, z>0
+  mk(O, mDA, A, 't5', 'wingL', 4), // x<0, z<0
+  mk(O, A, mAB, 't6', 'neck', 5), // x<0, z<-|x|
+  mk(O, mAB, B, 't7', 'neck', 6), // x>0, z<-|x|
+  mk(O, B, mBC, 't8', 'wingR', 7), // x>0, z<0
 ];
 
 export interface Fold {
@@ -49,7 +67,8 @@ export interface Fold {
   point: Vec3;
   dir: Vec3;
   angle: number;
-  carrier?: import('./math').Transform;
+  carrier?: Transform | ((pose: Transform[], facets: Facet[]) => Transform);
+  target?: (f: Facet) => Transform;
 }
 
 const PI = Math.PI;
@@ -58,10 +77,8 @@ const Z_AXIS: Vec3 = [0, 0, 1];
 
 export const STEP_COUNT = 2;
 
-// Steps, in order.
+// Stage 1-2: fold in half along the midlines twice → preliminary (square) base.
 export const STEPS: Fold[][] = [
-  // 1 — fold the left (west) half onto the right about the N–S diagonal.
   [{ pick: f => f.xSign < 0, point: O, dir: Z_AXIS, angle: -PI }],
-  // 2 — fold the front (north) half onto the back about the E–W diagonal.
   [{ pick: f => f.zSign > 0, point: O, dir: X_AXIS, angle: -PI }],
 ];

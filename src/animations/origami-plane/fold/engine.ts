@@ -46,7 +46,21 @@ const applyStep = (
 ): Transform[] => {
   const out = base.map(tr => ({ q: tr.q, t: tr.t }));
   for (const fold of folds) {
-    const carrier = fold.carrier;
+    // Target-blend mode: ease each picked facet toward a precomputed pose.
+    if (fold.target) {
+      const target = fold.target;
+      facets.forEach((f, i) => {
+        if (fold.pick(f)) out[i] = transform.lerp(out[i], target(f), fraction);
+      });
+      continue;
+    }
+    // Hinge mode: rotate picked facets about a world-space fold line. The
+    // carrier (a fixed transform or one derived from the current pose, e.g. a
+    // reverse fold riding on the already-folded neck) moves the crease.
+    const carrier =
+      typeof fold.carrier === 'function'
+        ? fold.carrier(out, facets)
+        : fold.carrier;
     const p = carrier ? transform.apply(carrier, fold.point) : fold.point;
     const d = carrier ? quat.rotate(carrier.q, fold.dir) : fold.dir;
     const dn = v3.normalize(d);
