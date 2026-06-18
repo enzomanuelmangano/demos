@@ -91,6 +91,7 @@ import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
 import { NotionQRCode } from './notion-qrcode';
 import { OnlineOffline } from './online-offline';
+import { OrigamiPlane } from './origami-plane';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
 import { PomodoroTimer } from './pomodoro-timer';
@@ -257,6 +258,7 @@ export const AnimationRegistry = {
   'cherry-blossom-qrcode': CherryBlossomQRCode,
   'art-gallery': ArtGallery,
   chessboard: ChessboardGame,
+  'origami-plane': OrigamiPlane,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -871,6 +873,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Chessboard',
     route: 'Chessboard',
     iconName: 'grid-outline',
+  },
+  'origami-plane': {
+    name: 'Origami Plane',
+    route: 'OrigamiPlane',
+    iconName: 'paper-plane-outline',
   },
 } as const;
 
