@@ -17,7 +17,7 @@ import { BG_HEX } from './constants';
 import { STEP_COUNT } from './fold/engine';
 import { RendererState, useWebGPURenderer } from './hooks/use-webgpu-renderer';
 
-const STEP_LABELS = ['Square sheet', 'Preliminary base'];
+const STEP_LABELS = ['Square sheet', 'Fold in half', 'Fold in half again'];
 
 export const OrigamiPlane = () => {
   const { width, height } = useWindowDimensions();
