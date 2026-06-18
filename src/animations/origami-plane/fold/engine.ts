@@ -1,81 +1,70 @@
-// Builds an interleaved vertex buffer (position + flat normal) for the crane by
-// running the origami spring solver toward a fold fraction derived from
-// `progress`. The mesh state persists across frames so the physics relaxes.
+// Plays back the origami crane fold animation that was baked offline by the
+// origuide spring solver (real traditional-crane crease pattern, folded from a
+// flat square). Pre-computed frames → no runtime physics → no jitter/flicker.
 
-import { buildMesh, resetMesh, step } from './solver';
+import frames from './crane-frames.json';
 
-import type { OrigamiMesh } from './solver';
+const FRAMES = frames.frames as number[][]; // each: nV*3 flat positions
+const TRIS = frames.tris as number[][]; // triangle vertex indices
+const NV = frames.nV as number;
+const NUM_FRAMES = FRAMES.length;
 
-export const STEP_COUNT = 1; // single continuous fold (square → crane)
+export const STEP_COUNT = 1; // continuous fold (square → crane)
 export const FLOATS_PER_VERTEX = 6;
 
-const MAX_FOLD = 0.92; // leave the crane open (3D), not fully flattened
-const SUBSTEPS = 40; // solver iterations per frame
-const RAMP = 0.006; // max fold-fraction change per frame (solver must track it)
-
 export interface FoldGeometry {
-  mesh: OrigamiMesh;
   vertexCount: number;
   vertexData: Float32Array;
-  foldCurrent: number;
+  scratch: Float32Array; // interpolated vertex positions (NV*3)
 }
 
-export const createGeometry = (): FoldGeometry => {
-  const mesh = buildMesh();
-  return {
-    mesh,
-    vertexCount: mesh.triCount * 3,
-    vertexData: new Float32Array(mesh.triCount * 3 * FLOATS_PER_VERTEX),
-    foldCurrent: 0,
-  };
-};
+export const createGeometry = (): FoldGeometry => ({
+  vertexCount: TRIS.length * 3,
+  vertexData: new Float32Array(TRIS.length * 3 * FLOATS_PER_VERTEX),
+  scratch: new Float32Array(NV * 3),
+});
 
-export const resetGeometry = (geo: FoldGeometry) => {
-  resetMesh(geo.mesh);
-  geo.foldCurrent = 0;
-};
+export const resetGeometry = (_geo: FoldGeometry) => {};
 
 export const writeVertices = (geo: FoldGeometry, progress: number): void => {
-  const { mesh, vertexData } = geo;
-  // Ease the fold fraction slowly so the solver tracks the rigid-foldable path
-  // instead of tangling when the target jumps.
-  const target = Math.max(0, Math.min(1, progress / STEP_COUNT)) * MAX_FOLD;
-  const d = target - geo.foldCurrent;
-  geo.foldCurrent += Math.max(-RAMP, Math.min(RAMP, d));
-  step(mesh, geo.foldCurrent, SUBSTEPS);
+  const p = Math.max(0, Math.min(1, progress / STEP_COUNT));
+  const OPEN_END = 0.8; // stop before the crane flattens fully (keep it 3D)
+  const fp = p * (NUM_FRAMES - 1) * OPEN_END;
+  const i0 = Math.floor(fp);
+  const i1 = Math.min(NUM_FRAMES - 1, i0 + 1);
+  const t = fp - i0;
+  const a = FRAMES[i0];
+  const b = FRAMES[i1];
 
-  const { pos, tris } = mesh;
+  // Interpolate the (smooth, pre-settled) frames — no physics, no flicker.
+  const s = geo.scratch;
+  for (let k = 0; k < NV * 3; k++) s[k] = a[k] + (b[k] - a[k]) * t;
+
+  const out = geo.vertexData;
   let o = 0;
-  for (let t = 0; t < mesh.triCount; t++) {
-    const ia = tris[t * 3];
-    const ib = tris[t * 3 + 1];
-    const ic = tris[t * 3 + 2];
-    const ax = pos[ia * 3];
-    const ay = pos[ia * 3 + 1];
-    const az = pos[ia * 3 + 2];
-    const bx = pos[ib * 3];
-    const by = pos[ib * 3 + 1];
-    const bz = pos[ib * 3 + 2];
-    const cx = pos[ic * 3];
-    const cy = pos[ic * 3 + 1];
-    const cz = pos[ic * 3 + 2];
-    // flat normal
-    const ux = bx - ax;
-    const uy = by - ay;
-    const uz = bz - az;
-    const vx = cx - ax;
-    const vy = cy - ay;
-    const vz = cz - az;
-    let nx = uy * vz - uz * vy;
-    let ny = uz * vx - ux * vz;
-    let nz = ux * vy - uy * vx;
+  for (let tr = 0; tr < TRIS.length; tr++) {
+    const ia = TRIS[tr][0] * 3;
+    const ib = TRIS[tr][1] * 3;
+    const ic = TRIS[tr][2] * 3;
+    const ax = s[ia];
+    const ay = s[ia + 1];
+    const az = s[ia + 2];
+    const bx = s[ib];
+    const by = s[ib + 1];
+    const bz = s[ib + 2];
+    const cx = s[ic];
+    const cy = s[ic + 1];
+    const cz = s[ic + 2];
+    let nx = (by - ay) * (cz - az) - (bz - az) * (cy - ay);
+    let ny = (bz - az) * (cx - ax) - (bx - ax) * (cz - az);
+    let nz = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
     const nl = Math.hypot(nx, ny, nz) || 1;
     nx /= nl;
     ny /= nl;
     nz /= nl;
-    o = push(vertexData, o, ax, ay, az, nx, ny, nz);
-    o = push(vertexData, o, bx, by, bz, nx, ny, nz);
-    o = push(vertexData, o, cx, cy, cz, nx, ny, nz);
+    o = push(out, o, ax, ay, az, nx, ny, nz);
+    o = push(out, o, bx, by, bz, nx, ny, nz);
+    o = push(out, o, cx, cy, cz, nx, ny, nz);
   }
 };
 

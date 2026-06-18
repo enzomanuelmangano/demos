@@ -17,6 +17,8 @@ const DT = 0.012;
 const MIN_H = 0.05; // clamp triangle height to tame the 1/h crease term
 const MAX_F = 6; // clamp per-node force magnitude for stability
 
+export const NUM_STAGES = 5;
+
 interface CreaseEntry {
   a: number; // crease edge endpoints
   b: number;
@@ -25,6 +27,7 @@ interface CreaseEntry {
   k: number; // stiffness
   signedTarget: number; // ±π for M/V, 0 for facet; scaled by foldPct
   folds: boolean; // true for M/V creases (scaled by foldPct), false for facets
+  stage: number; // which fold wave this crease belongs to (0..NUM_STAGES-1)
 }
 
 export interface OrigamiMesh {
@@ -116,7 +119,12 @@ export const buildMesh = (): OrigamiMesh => {
   }
 
   // Crease constraints: interior edges shared by exactly two triangles.
-  const creases: CreaseEntry[] = [];
+  const raw: { c: CreaseEntry; r: number }[] = [];
+  const midR = (i: number, j: number) => {
+    const mx = (rest[i * 3] + rest[j * 3]) / 2;
+    const mz = (rest[i * 3 + 2] + rest[j * 3 + 2]) / 2;
+    return Math.hypot(mx, mz); // distance of crease midpoint from centre
+  };
   for (const [k, [i, j]] of axialSet) {
     const apexes = edgeApex.get(k)!;
     if (apexes.length !== 2) continue; // boundary edge → no crease
@@ -124,16 +132,30 @@ export const buildMesh = (): OrigamiMesh => {
     if (a === 'B') continue;
     const isFold = a === 'M' || a === 'V';
     const target = a === 'M' ? -Math.PI : a === 'V' ? Math.PI : 0;
-    creases.push({
-      a: i,
-      b: j,
-      c: apexes[0],
-      d: apexes[1],
-      k: isFold ? CREASE_K : FACET_K,
-      signedTarget: target,
-      folds: isFold,
+    raw.push({
+      c: {
+        a: i,
+        b: j,
+        c: apexes[0],
+        d: apexes[1],
+        k: isFold ? CREASE_K : FACET_K,
+        signedTarget: target,
+        folds: isFold,
+        stage: 0,
+      },
+      r: midR(i, j),
     });
   }
+  // Stage fold creases by distance from centre (base creases fold first,
+  // neck/tail/wing creases last). Facet creases stay at stage 0.
+  const folding = raw.filter(x => x.c.folds).sort((p, q) => p.r - q.r);
+  folding.forEach((x, idx) => {
+    x.c.stage = Math.min(
+      NUM_STAGES - 1,
+      Math.floor((idx / folding.length) * NUM_STAGES),
+    );
+  });
+  const creases = raw.map(x => x.c);
 
   return {
     n,
@@ -182,7 +204,10 @@ const addF = (f: Float32Array, i: number, x: number, y: number, z: number) => {
   f[i * 3 + 2] += z;
 };
 
-export const step = (m: OrigamiMesh, foldPct: number, substeps: number) => {
+const STAGE_MAX = 0.92; // per-crease final fold fraction (leave crane open)
+
+// `progress` ∈ [0, NUM_STAGES]: crease at stage s folds during [s, s+1].
+export const step = (m: OrigamiMesh, progress: number, substeps: number) => {
   const { pos, vel, force, axA, axB, axRest, creases } = m;
   for (let s = 0; s < substeps; s++) {
     force.fill(0);
@@ -239,7 +264,10 @@ export const step = (m: OrigamiMesh, foldPct: number, substeps: number) => {
           tmp.cr[2] * tmp.ab[2]) /
         lab;
       const theta = Math.atan2(sinT, cosT);
-      const target = cr.folds ? cr.signedTarget * foldPct : 0;
+      const frac = cr.folds
+        ? Math.max(0, Math.min(1, progress - cr.stage)) * STAGE_MAX
+        : 0;
+      const target = cr.signedTarget * frac;
       const coef = cr.k * (theta - target);
 
       // cotangents of the base angles in each face
