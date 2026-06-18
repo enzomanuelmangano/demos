@@ -21,7 +21,8 @@ const STEP_LABELS = [
   'Square sheet',
   'Fold in half',
   'Preliminary base',
-  'Petal fold',
+  'Front petal',
+  'Bird base',
 ];
 
 export const OrigamiPlane = () => {

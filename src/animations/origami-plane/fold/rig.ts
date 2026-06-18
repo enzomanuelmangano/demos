@@ -26,6 +26,10 @@ const mAB: Vec3 = [0, 0, -S];
 const gC: Vec3 = [0.84, 0, 0.84];
 const e1: Vec3 = [S, 0, 0.28]; // on edge mBC–C
 const e2: Vec3 = [0.28, 0, S]; // on edge mCD–C
+// Bottom-quadrant (B) petal subdivision, mirror across z = 0.
+const gB: Vec3 = [0.84, 0, -0.84];
+const e3: Vec3 = [S, 0, -0.28]; // on edge mBC–B
+const e4: Vec3 = [0.28, 0, -S]; // on edge mAB–B
 
 export type Part = 'neck' | 'head' | 'tail' | 'wingL' | 'wingR' | 'body';
 
@@ -54,22 +58,27 @@ const mk = (
   layer,
 });
 
-// Order matters: petal carriers reference t1b (idx 1) and t2b (idx 4).
+// Order matters: petal carriers reference the inner neighbours by index.
 export const buildFacets = (): Facet[] => [
-  // Top quadrant (C), split for the petal fold.
+  // Top quadrant (C), split for the front petal fold. idx 0..5
   mk(O, mBC, e1, 't1a', 'body', 0),
   mk(O, e1, gC, 't1b', 'body', 0),
-  mk(gC, e1, C, 't1c', 'neck', 8), // outer, lifts in petal
+  mk(gC, e1, C, 't1c', 'neck', 8), // outer, lifts in front petal
   mk(O, e2, mCD, 't2a', 'body', 0),
   mk(O, gC, e2, 't2b', 'body', 0),
-  mk(gC, C, e2, 't2c', 'neck', 8), // outer, lifts in petal
-  // Remaining three quadrants.
-  mk(O, mCD, D, 't3', 'tail', 2),
+  mk(gC, C, e2, 't2c', 'neck', 8), // outer, lifts in front petal
+  // Side quadrants (D, A) → wings. idx 6..9
+  mk(O, mCD, D, 't3', 'wingL', 2),
   mk(O, D, mDA, 't4', 'wingL', 3),
-  mk(O, mDA, A, 't5', 'wingL', 4),
-  mk(O, A, mAB, 't6', 'tail', 5),
-  mk(O, mAB, B, 't7', 'wingR', 6),
-  mk(O, B, mBC, 't8', 'wingR', 7),
+  mk(O, mDA, A, 't5', 'wingR', 4),
+  mk(O, A, mAB, 't6', 'wingR', 5),
+  // Bottom quadrant (B), split for the back petal fold. idx 10..15
+  mk(O, mAB, e4, 't7a', 'body', 1),
+  mk(O, e4, gB, 't7b', 'body', 1),
+  mk(gB, e4, B, 't7c', 'tail', 9), // outer, lifts in back petal
+  mk(O, e3, mBC, 't8a', 'body', 1),
+  mk(O, gB, e3, 't8b', 'body', 1),
+  mk(gB, B, e3, 't8c', 'tail', 9), // outer, lifts in back petal
 ];
 
 export interface Fold {
@@ -93,15 +102,14 @@ const tagIs =
 
 const PETAL = 2.9;
 
-export const STEP_COUNT = 3;
+export const STEP_COUNT = 4;
 
 export const STEPS: Fold[][] = [
   // 1 — fold the left half onto the right.
   [{ pick: f => f.xSign < 0, point: O, dir: Z_AXIS, angle: -PI }],
   // 2 — fold the front half onto the back → preliminary (square) base.
   [{ pick: f => f.zSign > 0, point: O, dir: X_AXIS, angle: -PI }],
-  // 3 — petal: lift the top layer's two open-corner triangles about the gusset
-  // creases (carried by their inner neighbours, which stay put).
+  // 3 — front petal: lift the top layer's open-corner triangles.
   [
     {
       pick: tagIs('t1c'),
@@ -116,6 +124,23 @@ export const STEPS: Fold[][] = [
       dir: sub(e2, gC),
       angle: -PETAL,
       carrier: pose => pose[4],
+    },
+  ],
+  // 4 — back petal: lift the bottom layer's open-corner triangles → bird base.
+  [
+    {
+      pick: tagIs('t7c'),
+      point: gB,
+      dir: sub(e4, gB),
+      angle: -PETAL,
+      carrier: pose => pose[11],
+    },
+    {
+      pick: tagIs('t8c'),
+      point: gB,
+      dir: sub(e3, gB),
+      angle: PETAL,
+      carrier: pose => pose[14],
     },
   ],
 ];
