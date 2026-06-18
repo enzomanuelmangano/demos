@@ -233,6 +233,9 @@ export function useWebGPURenderer(
           depthWriteEnabled: true,
           depthCompare: 'less',
           format: 'depth24plus',
+          // Bias pulls coincident paper layers apart in depth → no z-fighting.
+          depthBias: 1,
+          depthBiasSlopeScale: 2,
         },
       });
 
