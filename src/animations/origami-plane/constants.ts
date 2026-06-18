@@ -1,5 +1,5 @@
-// Light, paper-desk theme. Flat 2D origami look (KAMI-style): white paper with
-// soft crease shading on a calm tinted background.
+// Light, paper theme: white paper with soft crease shading on a calm teal
+// background.
 export const BG_RGB = { r: 0.243, g: 0.682, b: 0.682 } as const; // soft teal
 export const BG_HEX = '#3EAEAE';
 
@@ -7,7 +7,7 @@ export const BG_HEX = '#3EAEAE';
 // Rounded up to the 256-byte minimum.
 export const UNIFORM_BUFFER_SIZE = 256;
 
-// Fixed orthographic camera, looking straight down with a tiny tilt so the
-// flat sheet reads as flat paper while folds stay legible. No orbit.
-export const VIEW_HALF_HEIGHT = 1.5; // world units mapped to half the screen height
-export const CAMERA_TILT = 0.18; // radians off vertical (subtle)
+// Fixed 3/4 perspective camera so the crane reads in 3D. No orbit.
+export const CAMERA_EYE: [number, number, number] = [2.2, 2.4, 3.0];
+export const CAMERA_TARGET: [number, number, number] = [0, 0.25, 0];
+export const CAMERA_FOV = (40 * Math.PI) / 180;

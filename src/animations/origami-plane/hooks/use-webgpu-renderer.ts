@@ -6,9 +6,10 @@ import { CanvasRef } from 'react-native-webgpu';
 
 import {
   BG_RGB,
-  CAMERA_TILT,
+  CAMERA_EYE,
+  CAMERA_FOV,
+  CAMERA_TARGET,
   UNIFORM_BUFFER_SIZE,
-  VIEW_HALF_HEIGHT,
 } from '../constants';
 import {
   createGeometry,
@@ -109,20 +110,11 @@ export function useWebGPURenderer(
       geo.vertexData as unknown as BufferSource,
     );
 
-    // Fixed orthographic camera: top-down with a tiny forward tilt, no orbit.
-    // The paper reads as flat 2D; folds stay legible through shading.
-    const dist = 6;
-    const eye: Vec3 = [
-      0,
-      Math.cos(CAMERA_TILT) * dist,
-      Math.sin(CAMERA_TILT) * dist,
-    ];
+    // Fixed 3/4 perspective camera, no orbit.
+    const eye: Vec3 = CAMERA_EYE;
     const aspect = layout.height > 0 ? layout.width / layout.height : 1;
-    const halfH = VIEW_HALF_HEIGHT;
-    const halfW = halfH * aspect;
-    const proj = mat4.orthoZO(-halfW, halfW, -halfH, halfH, 0.1, 50);
-    // up = +Z so the nose (+Z) points toward the top of the screen.
-    const view = mat4.lookAt(eye, [0, 0, 0], [0, 0, 1]);
+    const proj = mat4.perspectiveZO(CAMERA_FOV, aspect, 0.1, 50);
+    const view = mat4.lookAt(eye, CAMERA_TARGET, [0, 1, 0]);
     const viewProj = mat4.multiply(proj, view);
 
     const uniformData = new Float32Array(UNIFORM_BUFFER_SIZE / 4);

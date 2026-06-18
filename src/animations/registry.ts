@@ -875,7 +875,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     iconName: 'grid-outline',
   },
   'origami-plane': {
-    name: 'Origami Plane',
+    name: 'Origami Crane',
     route: 'OrigamiPlane',
     iconName: 'paper-plane-outline',
   },

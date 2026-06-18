@@ -19,9 +19,10 @@ import { RendererState, useWebGPURenderer } from './hooks/use-webgpu-renderer';
 
 const STEP_LABELS = [
   'Flat sheet',
-  'Fold the nose',
-  'Fold the body',
-  'Wings out',
+  'Spread the wings',
+  'Raise the neck',
+  'Lift the tail',
+  'Fold the head',
 ];
 
 export const OrigamiPlane = () => {
@@ -64,7 +65,7 @@ export const OrigamiPlane = () => {
       </View>
 
       <View style={[styles.header, { top: safeTop + 8 }]} pointerEvents="none">
-        <Text style={styles.title}>Origami</Text>
+        <Text style={styles.title}>Origami Crane</Text>
         <Text style={styles.subtitle}>{STEP_LABELS[step]}</Text>
       </View>
 

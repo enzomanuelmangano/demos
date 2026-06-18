@@ -1,148 +1,134 @@
-// Origami paper-plane fold rig.
+// Origami crane fold rig (stylized).
 //
-// The sheet lives flat in the XZ plane (y up), nose toward +Z. It is cut into
-// triangle facets along every crease we use, so each fold is a rigid rotation
-// of a facet subset about a hinge line — no runtime polygon clipping.
+// A true crane (bird base + petal/reverse folds) can't be expressed with rigid
+// single-hinge folds, so this is a recognizable stylization: a central body
+// with two wings, a raised neck ending in a folded head, and a raised tail.
 //
-// Folds are grouped into "steps". Each Next press advances one step; we
-// precompute every facet's rigid transform at each step boundary and the
-// renderer slerps between adjacent steps for a smooth fold.
+// The sheet lies flat in the XZ plane (y up). +Z is the front (head), -Z the
+// back (tail). It's cut along every crease so each fold is a rigid rotation of
+// a facet subset about a hinge line — no runtime polygon clipping.
 
-import { quat, transform, v3 } from './math';
+import { quat, transform } from './math';
 
 import type { Transform, Vec3 } from './math';
 
-// Paper half-width and nose/tail extents (rest space).
-const W = 0.6; // x in [-W, W]
-const NOSE_Z = 1.0; // +Z edge
-const TAIL_Z = -1.0; // -Z edge
-const SHOULDER_Z = NOSE_Z - W; // where the nose corner creases meet the side
-const WING_X = 0.32; // wing crease offset from centre line
+// Sheet extents (rest space).
+const HALF_W = 1.0; // x in [-1, 1]
+const FRONT_Z = 1.5; // +Z edge (head end)
+const BACK_Z = -1.3; // -Z edge (tail end)
 
-// Key points.
-const M: Vec3 = [0, 0, NOSE_Z]; // nose tip (top-edge midpoint)
-const MC: Vec3 = [0, 0, SHOULDER_Z]; // centre point at the shoulder line
-const AL: Vec3 = [-W, 0, NOSE_Z]; // top-left corner
-const AR: Vec3 = [W, 0, NOSE_Z]; // top-right corner
-const EL: Vec3 = [-W, 0, SHOULDER_Z]; // left shoulder
-const ER: Vec3 = [W, 0, SHOULDER_Z]; // right shoulder
+// Central body band: |x| < BODY_HALF carries neck/body/tail; the sides are
+// wings. Kept thin so the neck and tail read as slender bird parts.
+const BODY_HALF = 0.1;
+const NECK_Z = 0.3; // neck hinge (front of body)
+const TAIL_Z = -0.35; // tail hinge (back of body)
+const HEAD_Z = 1.05; // head hinge (near the neck tip)
 
 export interface Facet {
   v: [Vec3, Vec3, Vec3]; // rest-space vertices
-  centroidX: number; // for the body (centre-line) split
-  wing: 'L' | 'R' | null; // belongs to a wing flap?
-  nose: 'L' | 'R' | null; // belongs to a folding nose corner?
+  part: 'wingL' | 'wingR' | 'neck' | 'head' | 'tail' | 'body';
 }
 
-const facet = (
-  a: Vec3,
-  b: Vec3,
-  c: Vec3,
-  opts: { wing?: 'L' | 'R'; nose?: 'L' | 'R' } = {},
-): Facet => ({
+const facet = (a: Vec3, b: Vec3, c: Vec3, part: Facet['part']): Facet => ({
   v: [a, b, c],
-  centroidX: (a[0] + b[0] + c[0]) / 3,
-  wing: opts.wing ?? null,
-  nose: opts.nose ?? null,
+  part,
 });
 
 // Two triangles for an axis-aligned quad x∈[x0,x1], z∈[z0,z1].
-const quadStrip = (
+const quad = (
   x0: number,
   x1: number,
   z0: number,
   z1: number,
-  opts: { wing?: 'L' | 'R' } = {},
+  part: Facet['part'],
 ): Facet[] => [
-  facet([x0, 0, z0], [x1, 0, z0], [x1, 0, z1], opts),
-  facet([x0, 0, z0], [x1, 0, z1], [x0, 0, z1], opts),
+  facet([x0, 0, z0], [x1, 0, z0], [x1, 0, z1], part),
+  facet([x0, 0, z0], [x1, 0, z1], [x0, 0, z1], part),
 ];
+
+const B = BODY_HALF;
 
 export const buildFacets = (): Facet[] => [
-  // Nose corner triangles (fold inward to the centre line).
-  facet(M, AL, EL, { nose: 'L' }),
-  facet(M, AR, ER, { nose: 'R' }),
-  // Central nose triangle, split at the centre line so each half tents cleanly.
-  facet(M, EL, MC),
-  facet(M, MC, ER),
-  // Rectangular body, four vertical strips: left wing / left body / right body
-  // / right wing.
-  ...quadStrip(-W, -WING_X, TAIL_Z, SHOULDER_Z, { wing: 'L' }),
-  ...quadStrip(-WING_X, 0, TAIL_Z, SHOULDER_Z),
-  ...quadStrip(0, WING_X, TAIL_Z, SHOULDER_Z),
-  ...quadStrip(WING_X, W, TAIL_Z, SHOULDER_Z, { wing: 'R' }),
+  // Wings: the full side columns.
+  ...quad(-HALF_W, -B, BACK_Z, FRONT_Z, 'wingL'),
+  ...quad(B, HALF_W, BACK_Z, FRONT_Z, 'wingR'),
+  // Central column, split along z into tail / body / neck / head.
+  ...quad(-B, B, BACK_Z, TAIL_Z, 'tail'),
+  ...quad(-B, B, TAIL_Z, NECK_Z, 'body'),
+  ...quad(-B, B, NECK_Z, HEAD_Z, 'neck'),
+  ...quad(-B, B, HEAD_Z, FRONT_Z, 'head'),
 ];
 
-// --- Fold parameters (radians). Tunable; signs chosen so folds lift toward +Y
-// (toward the camera) before laying over — i.e. the paper folds "toward you".
-const THETA_NOSE = 2.7; // nose corners fold in to the centre
-// Negative so the left half lifts toward the camera (+Y) and lays over the
-// right — the paper folds "toward you", not away/under.
-const BETA_BODY = -2.9; // fold in half about the centre line
-const GAMMA_WING = 1.25; // wing flaps lift back out
+// --- Fold parameters (radians). Signs chosen so flaps lift toward +Y (the
+// camera). Tunable.
+const WING_ANGLE = 0.45; // wings spread gently up from flat
+const NECK_ANGLE = -1.7; // neck stands up, leaning slightly forward
+const TAIL_ANGLE = 1.7; // tail swings up at the back
+const HEAD_ANGLE = 2.3; // head/beak folds forward at the neck tip
 
-// A single fold: rotate every facet matching `pick` about a hinge line.
 interface Fold {
   pick: (f: Facet) => boolean;
-  // World-space hinge is `carrier` applied to the rest line (point + dir).
   point: Vec3;
   dir: Vec3;
   angle: number;
   carrier?: Transform;
 }
 
+const X_AXIS: Vec3 = [1, 0, 0];
 const Z_AXIS: Vec3 = [0, 0, 1];
 
-// Body fold transform (left half rotating about the centre line through the
-// origin). Reused as the carrier for the left wing crease, which now rides on
-// top of the folded-over half.
-const bodyL: Transform = {
-  q: quat.fromAxisAngle(Z_AXIS, BETA_BODY),
-  t: [0, 0, 0],
-};
+// The neck's rigid transform, used as the carrier for the head crease (which
+// rides on the already-raised neck).
+const neckCarrier: Transform = transform.rotateAboutLine(
+  transform.identity(),
+  [0, 0, NECK_Z],
+  X_AXIS,
+  NECK_ANGLE,
+);
 
 // Steps, in order. Each is a list of folds applied at the same keyframe.
 const STEPS: Fold[][] = [
-  // 1 — nose corners to the centre.
+  // 1 — spread the wings up.
   [
     {
-      pick: f => f.nose === 'L',
-      point: M,
-      dir: v3.normalize(v3.sub(EL, M)),
-      angle: THETA_NOSE,
+      pick: f => f.part === 'wingL',
+      point: [-B, 0, 0],
+      dir: Z_AXIS,
+      angle: -WING_ANGLE,
     },
     {
-      pick: f => f.nose === 'R',
-      point: M,
-      dir: v3.normalize(v3.sub(ER, M)),
-      angle: -THETA_NOSE,
+      pick: f => f.part === 'wingR',
+      point: [B, 0, 0],
+      dir: Z_AXIS,
+      angle: WING_ANGLE,
     },
   ],
-  // 2 — fold in half: the left half lifts toward the camera and lays over the
-  // right half, about the centre line.
+  // 2 — raise the neck (carries the head with it).
   [
     {
-      pick: f => f.centroidX < 0,
-      point: [0, 0, 0],
-      dir: Z_AXIS,
-      angle: BETA_BODY,
+      pick: f => f.part === 'neck' || f.part === 'head',
+      point: [0, 0, NECK_Z],
+      dir: X_AXIS,
+      angle: NECK_ANGLE,
     },
   ],
-  // 3 — lift the wings back out. The right wing is the bottom layer; the left
-  // wing rides on the folded-over half (carried by the body fold).
+  // 3 — raise the tail.
   [
     {
-      pick: f => f.wing === 'R',
-      point: [WING_X, 0, 0],
-      dir: Z_AXIS,
-      angle: GAMMA_WING,
+      pick: f => f.part === 'tail',
+      point: [0, 0, TAIL_Z],
+      dir: X_AXIS,
+      angle: TAIL_ANGLE,
     },
+  ],
+  // 4 — fold the head down at the neck tip.
+  [
     {
-      pick: f => f.wing === 'L',
-      point: [-WING_X, 0, 0],
-      dir: Z_AXIS,
-      angle: -GAMMA_WING,
-      carrier: bodyL,
+      pick: f => f.part === 'head',
+      point: [0, 0, HEAD_Z],
+      dir: X_AXIS,
+      angle: HEAD_ANGLE,
+      carrier: neckCarrier,
     },
   ],
 ];
@@ -150,9 +136,9 @@ const STEPS: Fold[][] = [
 export const STEP_COUNT = STEPS.length; // states are 0..STEP_COUNT
 
 // Apply one step's folds to a base pose, each crease at `fraction` of its
-// angle. Because every facet matches at most one fold per step, scaling that
-// single hinge rotation reproduces real paper motion — the flap pivots on its
-// crease while everything folded earlier stays rigid.
+// angle. Every facet matches at most one fold per step, so scaling that single
+// hinge rotation reproduces real paper motion — the flap pivots on its crease
+// while everything folded earlier stays rigid.
 const applyStepFolds = (
   base: Transform[],
   folds: Fold[],
