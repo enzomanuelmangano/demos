@@ -73,10 +73,13 @@ export const buildFacets = (): Facet[] => [
   ...quadStrip(WING_X, W, TAIL_Z, SHOULDER_Z, { wing: 'R' }),
 ];
 
-// --- Fold parameters (radians). Tunable; signs chosen so folds lift toward +Y.
-const THETA_NOSE = 2.7; // nose corners fold in/up
-const BETA_BODY = 1.15; // each half tents up about the centre line
-const GAMMA_WING = 1.55; // wing flaps fold back toward horizontal
+// --- Fold parameters (radians). Tunable; signs chosen so folds lift toward +Y
+// (toward the camera) before laying over — i.e. the paper folds "toward you".
+const THETA_NOSE = 2.7; // nose corners fold in to the centre
+// Negative so the left half lifts toward the camera (+Y) and lays over the
+// right — the paper folds "toward you", not away/under.
+const BETA_BODY = -2.9; // fold in half about the centre line
+const GAMMA_WING = 1.25; // wing flaps lift back out
 
 // A single fold: rotate every facet matching `pick` about a hinge line.
 interface Fold {
@@ -90,15 +93,11 @@ interface Fold {
 
 const Z_AXIS: Vec3 = [0, 0, 1];
 
-// Body-fold transforms for each half (rotation about the centre line through
-// the origin). Reused as the carrier for the wing creases, which ride on top
-// of the already-tented halves.
+// Body fold transform (left half rotating about the centre line through the
+// origin). Reused as the carrier for the left wing crease, which now rides on
+// top of the folded-over half.
 const bodyL: Transform = {
   q: quat.fromAxisAngle(Z_AXIS, BETA_BODY),
-  t: [0, 0, 0],
-};
-const bodyR: Transform = {
-  q: quat.fromAxisAngle(Z_AXIS, -BETA_BODY),
   t: [0, 0, 0],
 };
 
@@ -119,7 +118,8 @@ const STEPS: Fold[][] = [
       angle: -THETA_NOSE,
     },
   ],
-  // 2 — fold the body: each half tents up about the centre line.
+  // 2 — fold in half: the left half lifts toward the camera and lays over the
+  // right half, about the centre line.
   [
     {
       pick: f => f.centroidX < 0,
@@ -127,28 +127,22 @@ const STEPS: Fold[][] = [
       dir: Z_AXIS,
       angle: BETA_BODY,
     },
-    {
-      pick: f => f.centroidX > 0,
-      point: [0, 0, 0],
-      dir: Z_AXIS,
-      angle: -BETA_BODY,
-    },
   ],
-  // 3 — fold the wings back down (hinges ride on the tented halves).
+  // 3 — lift the wings back out. The right wing is the bottom layer; the left
+  // wing rides on the folded-over half (carried by the body fold).
   [
+    {
+      pick: f => f.wing === 'R',
+      point: [WING_X, 0, 0],
+      dir: Z_AXIS,
+      angle: GAMMA_WING,
+    },
     {
       pick: f => f.wing === 'L',
       point: [-WING_X, 0, 0],
       dir: Z_AXIS,
       angle: -GAMMA_WING,
       carrier: bodyL,
-    },
-    {
-      pick: f => f.wing === 'R',
-      point: [WING_X, 0, 0],
-      dir: Z_AXIS,
-      angle: GAMMA_WING,
-      carrier: bodyR,
     },
   ],
 ];

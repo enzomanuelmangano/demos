@@ -121,8 +121,8 @@ export function useWebGPURenderer(
     const halfH = VIEW_HALF_HEIGHT;
     const halfW = halfH * aspect;
     const proj = mat4.orthoZO(-halfW, halfW, -halfH, halfH, 0.1, 50);
-    // up = -Z so the nose (+Z) points toward the top of the screen.
-    const view = mat4.lookAt(eye, [0, 0, 0], [0, 0, -1]);
+    // up = +Z so the nose (+Z) points toward the top of the screen.
+    const view = mat4.lookAt(eye, [0, 0, 0], [0, 0, 1]);
     const viewProj = mat4.multiply(proj, view);
 
     const uniformData = new Float32Array(UNIFORM_BUFFER_SIZE / 4);
