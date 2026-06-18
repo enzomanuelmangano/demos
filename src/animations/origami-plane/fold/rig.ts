@@ -12,17 +12,16 @@ import { quat, transform } from './math';
 
 import type { Transform, Vec3 } from './math';
 
-// Sheet extents (rest space).
-const HALF_W = 1.0; // x in [-1, 1]
-const FRONT_Z = 1.5; // +Z edge (head end)
-const BACK_Z = -1.3; // -Z edge (tail end)
-
-// Central body band: |x| < BODY_HALF carries neck/body/tail; the sides are
-// wings. Kept thin so the neck and tail read as slender bird parts.
-const BODY_HALF = 0.1;
-const NECK_Z = 0.3; // neck hinge (front of body)
-const TAIL_Z = -0.35; // tail hinge (back of body)
-const HEAD_Z = 1.05; // head hinge (near the neck tip)
+// A small central body square with four tapered flaps hinged to its edges:
+// a pointed neck (+ folded head) at the front, a pointed tail at the back, and
+// two broad triangular wings on the sides. The flat layout is a 4-pointed
+// star that folds up into the crane silhouette.
+const B = 0.18; // body half-size
+const NECK_NECK_Z = 1.0; // head crease along the neck
+const NECK_TIP_Z = 1.55; // neck/head tip (front)
+const TAIL_TIP_Z = -1.35; // tail tip (back)
+const HEAD_HW = 0.06; // half-width of the neck at the head crease
+const WING_TIP_X = 1.45; // wing span
 
 export interface Facet {
   v: [Vec3, Vec3, Vec3]; // rest-space vertices
@@ -34,37 +33,37 @@ const facet = (a: Vec3, b: Vec3, c: Vec3, part: Facet['part']): Facet => ({
   part,
 });
 
-// Two triangles for an axis-aligned quad x∈[x0,x1], z∈[z0,z1].
-const quad = (
-  x0: number,
-  x1: number,
-  z0: number,
-  z1: number,
-  part: Facet['part'],
-): Facet[] => [
-  facet([x0, 0, z0], [x1, 0, z0], [x1, 0, z1], part),
-  facet([x0, 0, z0], [x1, 0, z1], [x0, 0, z1], part),
-];
-
-const B = BODY_HALF;
+// Body corners.
+const BFL: Vec3 = [-B, 0, B]; // front-left
+const BFR: Vec3 = [B, 0, B]; // front-right
+const BBR: Vec3 = [B, 0, -B]; // back-right
+const BBL: Vec3 = [-B, 0, -B]; // back-left
+// Neck crease ends (where the head folds).
+const NL: Vec3 = [-HEAD_HW, 0, NECK_NECK_Z];
+const NR: Vec3 = [HEAD_HW, 0, NECK_NECK_Z];
 
 export const buildFacets = (): Facet[] => [
-  // Wings: the full side columns.
-  ...quad(-HALF_W, -B, BACK_Z, FRONT_Z, 'wingL'),
-  ...quad(B, HALF_W, BACK_Z, FRONT_Z, 'wingR'),
-  // Central column, split along z into tail / body / neck / head.
-  ...quad(-B, B, BACK_Z, TAIL_Z, 'tail'),
-  ...quad(-B, B, TAIL_Z, NECK_Z, 'body'),
-  ...quad(-B, B, NECK_Z, HEAD_Z, 'neck'),
-  ...quad(-B, B, HEAD_Z, FRONT_Z, 'head'),
+  // Body square.
+  facet(BFL, BFR, BBR, 'body'),
+  facet(BFL, BBR, BBL, 'body'),
+  // Neck: trapezoid from the body front edge up to the head crease.
+  facet(BFL, BFR, NR, 'neck'),
+  facet(BFL, NR, NL, 'neck'),
+  // Head: triangle from the head crease to the tip.
+  facet(NL, NR, [0, 0, NECK_TIP_Z], 'head'),
+  // Tail: triangle from the body back edge to the tip.
+  facet(BBR, BBL, [0, 0, TAIL_TIP_Z], 'tail'),
+  // Wings: broad triangles from the body side edges out to the tips.
+  facet(BFR, BBR, [WING_TIP_X, 0, 0], 'wingR'),
+  facet(BBL, BFL, [-WING_TIP_X, 0, 0], 'wingL'),
 ];
 
 // --- Fold parameters (radians). Signs chosen so flaps lift toward +Y (the
 // camera). Tunable.
-const WING_ANGLE = 0.45; // wings spread gently up from flat
-const NECK_ANGLE = -1.7; // neck stands up, leaning slightly forward
-const TAIL_ANGLE = 1.7; // tail swings up at the back
-const HEAD_ANGLE = 2.3; // head/beak folds forward at the neck tip
+const WING_ANGLE = 0.35; // wings spread gently up from flat
+const NECK_ANGLE = -1.75; // neck stands up, leaning slightly forward
+const TAIL_ANGLE = 1.5; // tail swings up at the back
+const HEAD_ANGLE = 2.2; // head/beak folds forward at the neck tip
 
 interface Fold {
   pick: (f: Facet) => boolean;
@@ -78,10 +77,10 @@ const X_AXIS: Vec3 = [1, 0, 0];
 const Z_AXIS: Vec3 = [0, 0, 1];
 
 // The neck's rigid transform, used as the carrier for the head crease (which
-// rides on the already-raised neck).
+// rides on the already-raised neck). The neck hinges on the body front edge.
 const neckCarrier: Transform = transform.rotateAboutLine(
   transform.identity(),
-  [0, 0, NECK_Z],
+  [0, 0, B],
   X_AXIS,
   NECK_ANGLE,
 );
@@ -103,29 +102,29 @@ const STEPS: Fold[][] = [
       angle: WING_ANGLE,
     },
   ],
-  // 2 — raise the neck (carries the head with it).
+  // 2 — raise the neck (carries the head with it), hinged on the front edge.
   [
     {
       pick: f => f.part === 'neck' || f.part === 'head',
-      point: [0, 0, NECK_Z],
+      point: [0, 0, B],
       dir: X_AXIS,
       angle: NECK_ANGLE,
     },
   ],
-  // 3 — raise the tail.
+  // 3 — raise the tail, hinged on the back edge.
   [
     {
       pick: f => f.part === 'tail',
-      point: [0, 0, TAIL_Z],
+      point: [0, 0, -B],
       dir: X_AXIS,
       angle: TAIL_ANGLE,
     },
   ],
-  // 4 — fold the head down at the neck tip.
+  // 4 — fold the head/beak forward at the neck crease.
   [
     {
       pick: f => f.part === 'head',
-      point: [0, 0, HEAD_Z],
+      point: [0, 0, NECK_NECK_Z],
       dir: X_AXIS,
       angle: HEAD_ANGLE,
       carrier: neckCarrier,
