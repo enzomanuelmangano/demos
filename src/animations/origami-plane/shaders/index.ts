@@ -40,9 +40,9 @@ fn main(
 `;
 
 // Planar projected shadow: flatten the same mesh onto a ground plane along the
-// light direction, drawn dark + translucent so the crane reads as grounded.
-export const GROUND_Y = -0.66;
-
+// SAME light direction used to shade the paper, so the shadow is consistent
+// with the lighting. The ground height rides just under the model (lightDir.w),
+// so it stays a contact shadow at every step instead of floating far below.
 export const shadowVertexShader = /* wgsl */ `
 struct Uniforms {
   viewProj: mat4x4f,
@@ -57,11 +57,9 @@ fn main(
   @location(0) position: vec3f,
   @location(1) normal: vec3f,
 ) -> @builtin(position) vec4f {
-  let h = ${GROUND_Y};
-  // Near-vertical light for the shadow so it tucks directly under the crane as
-  // a contact shadow (a steep angle keeps it from drifting off like a twin).
-  let L = normalize(vec3f(0.12, 1.0, 0.08));
-  let t = (position.y - h) / L.y;
+  let h = uniforms.lightDir.w;
+  let L = normalize(uniforms.lightDir.xyz);
+  let t = (position.y - h) / max(L.y, 0.2);
   let s = vec3f(position.x - L.x * t, h, position.z - L.z * t);
   return uniforms.viewProj * vec4f(s, 1.0);
 }
@@ -144,8 +142,9 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   albedo = albedo + (mottle - 0.5) * vec3f(0.05, 0.045, 0.05);
   albedo = albedo - (fibre - 0.5) * 0.05;
   albedo = albedo - (speck - 0.5) * 0.02;
-  // Underside reads a touch cooler/darker, like the back of a sheet.
-  albedo = select(albedo * vec3f(0.9, 0.92, 0.94), albedo, isFront);
+  // Same white sheet on both sides — the back is only a hair cooler, so a fold
+  // never reads as grey cardboard. Real separation comes from the lighting.
+  albedo = select(albedo * vec3f(0.965, 0.975, 0.985), albedo, isFront);
 
   // Crease memory: the preliminary-base creases live in sheet space, so they
   // fold with the paper and show on every facet. Each crease is revealed only
@@ -182,8 +181,10 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   // light still pick up a soft warm glow instead of going flat/dark.
   let trans = pow(max(dot(-nb, lightDir), 0.0), 2.0) * 0.12;
 
-  let ambient = 0.46;
-  let shade = ambient + 0.5 * key + 0.15 * fill + trans;
+  // Bright matte white paper: high ambient floor so no facet crushes to grey,
+  // with a gentle key for form.
+  let ambient = 0.62;
+  let shade = ambient + 0.34 * key + 0.12 * fill + trans;
 
   var lit = albedo * shade;
 

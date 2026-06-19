@@ -124,9 +124,14 @@ export function useWebGPURenderer(
     const view = mat4.lookAt(eye, CAMERA_TARGET, [0, 1, 0]);
     const viewProj = mat4.multiply(proj, view);
 
+    // Ground plane rides just under the model's lowest point so the projected
+    // shadow stays a contact shadow at every step (carried in lightDir.w).
+    const groundY = geo.minY - 0.03;
+
     const uniformData = new Float32Array(UNIFORM_BUFFER_SIZE / 4);
     uniformData.set(viewProj, 0);
-    uniformData.set([0.4, 0.85, 0.35, 0], 16); // lightDir
+    // Single light, shared by the paper shading and the projected shadow.
+    uniformData.set([0.32, 1.0, 0.24, groundY], 16); // lightDir.xyz + groundY
     // Pass raw fold progress so the shader can reveal each crease only at the
     // step that actually creates it.
     uniformData.set([eye[0], eye[1], eye[2], prog.position], 20);

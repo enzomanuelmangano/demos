@@ -50,6 +50,198 @@ export const STEP_DESCS = (frames.descs as string[]).map(d =>
 export const STEP_COUNT = NUM_FRAMES - 1; // one Next per fold step
 export const FLOATS_PER_VERTEX = 8; // pos(3) + normal(3) + paperUV(2)
 
+// ---------------------------------------------------------------------------
+// Rigid hinge folding.
+//
+// A straight vertex lerp between two coplanar poses warps the moving flap (the
+// facets bend, the triangulation shows). Real paper folds rigidly: the flap
+// stays flat and swings about the crease. For each consecutive pose pair we fit
+// the single best rotation that carries the moving vertices from a→b (Horn's
+// quaternion method). When the fit is good the step is a single rigid fold, so
+// we rotate the flap rigidly through the transition. When it isn't (the
+// coupled collapse / petal folds move several flaps at once) we fall back to
+// the lerped arc.
+// ---------------------------------------------------------------------------
+
+interface Hinge {
+  rigid: boolean;
+  moving: Uint8Array; // per-vertex: 1 if part of the rotating flap
+  ax: number; // rotation axis (unit)
+  ay: number;
+  az: number;
+  angle: number; // total rotation angle a→b
+  cax: number; // moving-flap centroid in pose a
+  cay: number;
+  caz: number;
+  cbx: number; // moving-flap centroid in pose b
+  cby: number;
+  cbz: number;
+}
+
+const buildHinge = (a: number[], b: number[]): Hinge => {
+  const moving = new Uint8Array(NV);
+  let n = 0;
+  let cax = 0;
+  let cay = 0;
+  let caz = 0;
+  let cbx = 0;
+  let cby = 0;
+  let cbz = 0;
+  for (let i = 0; i < NV; i++) {
+    const k = i * 3;
+    const dx = b[k] - a[k];
+    const dy = b[k + 1] - a[k + 1];
+    const dz = b[k + 2] - a[k + 2];
+    if (dx * dx + dy * dy + dz * dz > 0.02 * 0.02) {
+      moving[i] = 1;
+      n++;
+      cax += a[k];
+      cay += a[k + 1];
+      caz += a[k + 2];
+      cbx += b[k];
+      cby += b[k + 1];
+      cbz += b[k + 2];
+    }
+  }
+  const flat: Hinge = {
+    rigid: false,
+    moving,
+    ax: 0,
+    ay: 1,
+    az: 0,
+    angle: 0,
+    cax: 0,
+    cay: 0,
+    caz: 0,
+    cbx: 0,
+    cby: 0,
+    cbz: 0,
+  };
+  if (n < 3) return flat;
+  cax /= n;
+  cay /= n;
+  caz /= n;
+  cbx /= n;
+  cby /= n;
+  cbz /= n;
+
+  // Cross-covariance H = Σ (a_i - ca) (b_i - cb)^T over moving vertices.
+  const H = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (let i = 0; i < NV; i++) {
+    if (!moving[i]) continue;
+    const k = i * 3;
+    const px = a[k] - cax;
+    const py = a[k + 1] - cay;
+    const pz = a[k + 2] - caz;
+    const qx = b[k] - cbx;
+    const qy = b[k + 1] - cby;
+    const qz = b[k + 2] - cbz;
+    H[0] += px * qx;
+    H[1] += px * qy;
+    H[2] += px * qz; // prettier-ignore
+    H[3] += py * qx;
+    H[4] += py * qy;
+    H[5] += py * qz; // prettier-ignore
+    H[6] += pz * qx;
+    H[7] += pz * qy;
+    H[8] += pz * qz; // prettier-ignore
+  }
+
+  // Horn's 4x4 symmetric matrix; its largest eigenvector is the rotation
+  // quaternion (w, x, y, z).
+  const [Sxx, Sxy, Sxz, Syx, Syy, Syz, Szx, Szy, Szz] = H;
+  const N = [
+    [Sxx + Syy + Szz, Syz - Szy, Szx - Sxz, Sxy - Syx],
+    [Syz - Szy, Sxx - Syy - Szz, Sxy + Syx, Szx + Sxz],
+    [Szx - Sxz, Sxy + Syx, -Sxx + Syy - Szz, Syz + Szy],
+    [Sxy - Syx, Szx + Sxz, Syz + Szy, -Sxx - Syy + Szz],
+  ];
+  // Power-iterate on N + sI (shifted positive) for the dominant eigenvector.
+  let shift = 1;
+  for (let r = 0; r < 4; r++)
+    for (let c = 0; c < 4; c++) shift += Math.abs(N[r][c]);
+  for (let r = 0; r < 4; r++) N[r][r] += shift;
+  let v = [1, 0, 0, 0];
+  for (let it = 0; it < 64; it++) {
+    const nv = [0, 0, 0, 0];
+    for (let r = 0; r < 4; r++)
+      nv[r] = N[r][0] * v[0] + N[r][1] * v[1] + N[r][2] * v[2] + N[r][3] * v[3];
+    const len = Math.hypot(nv[0], nv[1], nv[2], nv[3]) || 1;
+    v = [nv[0] / len, nv[1] / len, nv[2] / len, nv[3] / len];
+  }
+  let [qw, qx, qy, qz] = v;
+  if (qw < 0) {
+    qw = -qw;
+    qx = -qx;
+    qy = -qy;
+    qz = -qz;
+  }
+  const angle = 2 * Math.acos(Math.max(-1, Math.min(1, qw)));
+  const sh = Math.sqrt(Math.max(0, 1 - qw * qw)) || 1;
+  const ax = qx / sh;
+  const ay = qy / sh;
+  const az = qz / sh;
+
+  // Residual: how well one rigid rotation about (ca→cb) explains the motion.
+  let res = 0;
+  for (let i = 0; i < NV; i++) {
+    if (!moving[i]) continue;
+    const k = i * 3;
+    const px = a[k] - cax;
+    const py = a[k + 1] - cay;
+    const pz = a[k + 2] - caz;
+    const r = rotAxis(px, py, pz, ax, ay, az, angle);
+    const ex = r[0] + cbx - b[k];
+    const ey = r[1] + cby - b[k + 1];
+    const ez = r[2] + cbz - b[k + 2];
+    res += Math.hypot(ex, ey, ez);
+  }
+  res /= n;
+
+  return {
+    rigid: res < 0.06 && angle > 0.05,
+    moving,
+    ax,
+    ay,
+    az,
+    angle,
+    cax,
+    cay,
+    caz,
+    cbx,
+    cby,
+    cbz,
+  };
+};
+
+// Rotate (x,y,z) about unit axis (ax,ay,az) by `angle` (Rodrigues).
+const rotAxis = (
+  x: number,
+  y: number,
+  z: number,
+  ax: number,
+  ay: number,
+  az: number,
+  angle: number,
+): [number, number, number] => {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  const dot = x * ax + y * ay + z * az;
+  // v*c + (axis×v)*s + axis*(axis·v)*(1-c)
+  const cx = ay * z - az * y;
+  const cy = az * x - ax * z;
+  const cz = ax * y - ay * x;
+  return [
+    x * c + cx * s + ax * dot * (1 - c),
+    y * c + cy * s + ay * dot * (1 - c),
+    z * c + cz * s + az * dot * (1 - c),
+  ];
+};
+
+const HINGES: Hinge[] = [];
+for (let i = 0; i < NUM_FRAMES - 1; i++)
+  HINGES.push(buildHinge(FRAMES[i], FRAMES[i + 1]));
+
 // Per-vertex paper UV, locked to the flat rest sheet (frame 0). Because it
 // comes from the unfolded square, the fiber/grain texture stays glued to the
 // paper through every fold — so it reads as real paper even when folded.
@@ -61,12 +253,14 @@ export interface FoldGeometry {
   vertexCount: number;
   vertexData: Float32Array;
   scratch: Float32Array; // interpolated vertex positions (NV*3)
+  minY: number; // lowest point this frame (for the contact shadow plane)
 }
 
 export const createGeometry = (): FoldGeometry => ({
   vertexCount: TRIS.length * 3,
   vertexData: new Float32Array(TRIS.length * 3 * FLOATS_PER_VERTEX),
   scratch: new Float32Array(NV * 3),
+  minY: 0,
 });
 
 export const resetGeometry = (_geo: FoldGeometry) => {};
@@ -79,24 +273,62 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
   const a = FRAMES[i0];
   const b = FRAMES[i1];
 
-  // Both endpoints of a flat fold are coplanar, so a straight vertex lerp just
-  // slides the flap across the plane (it looks like the paper melts, not
-  // folds). Add a hinge arc: while a step is in progress, lift each moving
-  // vertex out of the paper plane by sin(pi*t) * half its travel — the chord
-  // becomes a swing up and over. It's zero at t=0 and t=1, so the baked poses
-  // are reproduced exactly; only the in-between motion gains the fold arc.
   const s = geo.scratch;
-  const arc = Math.sin(Math.PI * t);
-  for (let i = 0; i < NV; i++) {
-    const k = i * 3;
-    const dx = b[k] - a[k];
-    const dy = b[k + 1] - a[k + 1];
-    const dz = b[k + 2] - a[k + 2];
-    const lift = arc * 0.5 * Math.hypot(dx, dy, dz);
-    s[k] = (a[k] + dx * t) * MODEL_SCALE;
-    s[k + 1] = (a[k + 1] + dy * t + lift) * MODEL_SCALE;
-    s[k + 2] = (a[k + 2] + dz * t) * MODEL_SCALE;
+  const hinge = HINGES[i0];
+  let minY = Infinity;
+  if (hinge && hinge.rigid && t > 0 && t < 1) {
+    // Rigid fold: rotate the moving flap as one flat panel about the crease,
+    // by angle*t, while its centroid eases along a→b. The static sheet just
+    // holds its pose. Facets stay flat → no warping, no triangulation showing.
+    const at = hinge.angle * t;
+    const lcx = hinge.cax + (hinge.cbx - hinge.cax) * t;
+    const lcy = hinge.cay + (hinge.cby - hinge.cay) * t;
+    const lcz = hinge.caz + (hinge.cbz - hinge.caz) * t;
+    for (let i = 0; i < NV; i++) {
+      const k = i * 3;
+      let x: number;
+      let y: number;
+      let z: number;
+      if (hinge.moving[i]) {
+        const r = rotAxis(
+          a[k] - hinge.cax,
+          a[k + 1] - hinge.cay,
+          a[k + 2] - hinge.caz,
+          hinge.ax,
+          hinge.ay,
+          hinge.az,
+          at,
+        );
+        x = r[0] + lcx;
+        y = r[1] + lcy;
+        z = r[2] + lcz;
+      } else {
+        x = a[k];
+        y = a[k + 1];
+        z = a[k + 2];
+      }
+      s[k] = x * MODEL_SCALE;
+      s[k + 1] = y * MODEL_SCALE;
+      s[k + 2] = z * MODEL_SCALE;
+      if (s[k + 1] < minY) minY = s[k + 1];
+    }
+  } else {
+    // Coupled / non-rigid step (or an exact endpoint): lerp the poses and add a
+    // hinge arc so moving parts swing out of plane instead of sliding across it.
+    const arc = Math.sin(Math.PI * t);
+    for (let i = 0; i < NV; i++) {
+      const k = i * 3;
+      const dx = b[k] - a[k];
+      const dy = b[k + 1] - a[k + 1];
+      const dz = b[k + 2] - a[k + 2];
+      const lift = arc * 0.5 * Math.hypot(dx, dy, dz);
+      s[k] = (a[k] + dx * t) * MODEL_SCALE;
+      s[k + 1] = (a[k + 1] + dy * t + lift) * MODEL_SCALE;
+      s[k + 2] = (a[k + 2] + dz * t) * MODEL_SCALE;
+      if (s[k + 1] < minY) minY = s[k + 1];
+    }
   }
+  geo.minY = minY;
 
   const out = geo.vertexData;
   let o = 0;
