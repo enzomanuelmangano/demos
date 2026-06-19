@@ -28,7 +28,7 @@ export const resetGeometry = (_geo: FoldGeometry) => {};
 
 export const writeVertices = (geo: FoldGeometry, progress: number): void => {
   const p = Math.max(0, Math.min(1, progress / STEP_COUNT));
-  const OPEN_END = 0.8; // stop before the crane flattens fully (keep it 3D)
+  const OPEN_END = 1.0; // fully folded (flat crane silhouette)
   const fp = p * (NUM_FRAMES - 1) * OPEN_END;
   const i0 = Math.floor(fp);
   const i1 = Math.min(NUM_FRAMES - 1, i0 + 1);
