@@ -124,14 +124,12 @@ export function useWebGPURenderer(
     const view = mat4.lookAt(eye, CAMERA_TARGET, [0, 1, 0]);
     const viewProj = mat4.multiply(proj, view);
 
-    // Crease reveal: fade fold lines in across the pre-creasing phase (the
-    // first 8 steps), so the flat sheet starts blank then earns its creases.
-    const crease = Math.max(0, Math.min(1, prog.position / 8));
-
     const uniformData = new Float32Array(UNIFORM_BUFFER_SIZE / 4);
     uniformData.set(viewProj, 0);
     uniformData.set([0.4, 0.85, 0.35, 0], 16); // lightDir
-    uniformData.set([eye[0], eye[1], eye[2], crease], 20); // camPos.xyz + crease
+    // Pass raw fold progress so the shader can reveal each crease only at the
+    // step that actually creates it.
+    uniformData.set([eye[0], eye[1], eye[2], prog.position], 20);
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
     const commandEncoder = device.createCommandEncoder();

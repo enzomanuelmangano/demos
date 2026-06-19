@@ -145,18 +145,23 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   // Underside reads a touch cooler/darker, like the back of a sheet.
   albedo = select(albedo * vec3f(0.9, 0.92, 0.94), albedo, isFront);
 
-  // Crease memory: the preliminary-base creases (vertical, horizontal, both
-  // diagonals) live in sheet space, so they fold with the paper and show on
-  // every facet. camPos.w fades them in across the pre-creasing phase.
-  let reveal = uniforms.camPos.w;
+  // Crease memory: the preliminary-base creases live in sheet space, so they
+  // fold with the paper and show on every facet. Each crease is revealed only
+  // once the fold that creates it happens — camPos.w carries raw fold progress
+  // and each line fades in over its own step (so you never see a crease before
+  // making it). Once formed, it persists.
+  let p = uniforms.camPos.w;
   let cw = 0.006;
-  var crease = 0.0;
-  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.x - 0.5)));
-  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.y - 0.5)));
-  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.x - uv.y) * 0.7071));
-  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.x + uv.y - 1.0) * 0.7071));
-  // A crease is a darker valley with a faint lit ridge on one side.
-  albedo = albedo * (1.0 - crease * 0.10 * reveal);
+  // step 1: fold in half vertically  → vertical crease (u = 0.5)
+  let cV = (1.0 - smoothstep(0.0, cw, abs(uv.x - 0.5))) * smoothstep(0.0, 1.0, p);
+  // step 3: fold in half horizontally → horizontal crease (v = 0.5)
+  let cH = (1.0 - smoothstep(0.0, cw, abs(uv.y - 0.5))) * smoothstep(2.0, 3.0, p);
+  // step 5: bottom-left → top-right    → diagonal u + v = 1
+  let cD1 = (1.0 - smoothstep(0.0, cw, abs(uv.x + uv.y - 1.0) * 0.7071)) * smoothstep(4.0, 5.0, p);
+  // step 7: bottom-right → top-left    → diagonal u = v
+  let cD2 = (1.0 - smoothstep(0.0, cw, abs(uv.x - uv.y) * 0.7071)) * smoothstep(6.0, 7.0, p);
+  let crease = max(max(cV, cH), max(cD1, cD2));
+  albedo = albedo * (1.0 - crease * 0.10);
 
   // Perturb the normal slightly with the fibre so light catches the grain.
   let grad = vec2f(
