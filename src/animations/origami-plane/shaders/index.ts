@@ -145,6 +145,19 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   // Underside reads a touch cooler/darker, like the back of a sheet.
   albedo = select(albedo * vec3f(0.9, 0.92, 0.94), albedo, isFront);
 
+  // Crease memory: the preliminary-base creases (vertical, horizontal, both
+  // diagonals) live in sheet space, so they fold with the paper and show on
+  // every facet. camPos.w fades them in across the pre-creasing phase.
+  let reveal = uniforms.camPos.w;
+  let cw = 0.006;
+  var crease = 0.0;
+  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.x - 0.5)));
+  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.y - 0.5)));
+  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.x - uv.y) * 0.7071));
+  crease = max(crease, 1.0 - smoothstep(0.0, cw, abs(uv.x + uv.y - 1.0) * 0.7071));
+  // A crease is a darker valley with a faint lit ridge on one side.
+  albedo = albedo * (1.0 - crease * 0.10 * reveal);
+
   // Perturb the normal slightly with the fibre so light catches the grain.
   let grad = vec2f(
     fbm(uv * 7.0 + vec2f(0.04, 0.0)) - mottle,

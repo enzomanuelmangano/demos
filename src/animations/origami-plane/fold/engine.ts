@@ -6,12 +6,47 @@
 
 import frames from './crane-frames.json';
 
-const FRAMES = frames.frames as number[][]; // each: nV*3 flat positions
+const RAW_FRAMES = frames.frames as number[][]; // each: nV*3 flat positions
 const TRIS = frames.tris as number[][]; // triangle vertex indices
 const NV = frames.nV as number;
-const NUM_FRAMES = FRAMES.length;
+const NUM_FRAMES = RAW_FRAMES.length;
 
-export const STEP_DESCS = frames.descs as string[];
+// Folding about an edge shifts a pose's mass off-origin, so each raw frame
+// drifts to a different corner of the screen. Re-center every frame on its own
+// horizontal (x,z) bounding-box centre so the paper stays framed at every step.
+// Endpoints are centred before interpolation, so transitions glide to centre
+// instead of sliding off-screen.
+const FRAMES = RAW_FRAMES.map(f => {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+  for (let i = 0; i < NV; i++) {
+    const x = f[i * 3];
+    const z = f[i * 3 + 2];
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (z < minZ) minZ = z;
+    if (z > maxZ) maxZ = z;
+  }
+  const cx = (minX + maxX) / 2;
+  const cz = (minZ + maxZ) / 2;
+  const g = f.slice();
+  for (let i = 0; i < NV; i++) {
+    g[i * 3] -= cx;
+    g[i * 3 + 2] -= cz;
+  }
+  return g;
+});
+
+// Tidy the raw instruction descriptions for display (drop solver annotations
+// like "[NOT SHOWN]" and the literal quotes around fold names).
+export const STEP_DESCS = (frames.descs as string[]).map(d =>
+  d
+    .replace(/\s*\[NOT SHOWN\]\s*/g, '')
+    .replace(/"/g, '')
+    .trim(),
+);
 export const STEP_COUNT = NUM_FRAMES - 1; // one Next per fold step
 export const FLOATS_PER_VERTEX = 8; // pos(3) + normal(3) + paperUV(2)
 
