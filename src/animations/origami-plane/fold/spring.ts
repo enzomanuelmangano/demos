@@ -1,6 +1,6 @@
 // Critically damped spring used to ease `progress` toward the target step.
 
-const SETTLE_DURATION = 0.55; // seconds to ~99% settle
+const SETTLE_DURATION = 0.85; // seconds to ~99% settle (let the fold arc read)
 const OMEGA = -Math.log(0.01) / SETTLE_DURATION;
 
 export interface SpringState {

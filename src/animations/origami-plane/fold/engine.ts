@@ -79,11 +79,24 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
   const a = FRAMES[i0];
   const b = FRAMES[i1];
 
-  // Interpolate the (smooth, pre-settled) frames — no physics, no flicker.
-  // Scale the whole model down a touch so the paper doesn't crowd the frame.
+  // Both endpoints of a flat fold are coplanar, so a straight vertex lerp just
+  // slides the flap across the plane (it looks like the paper melts, not
+  // folds). Add a hinge arc: while a step is in progress, lift each moving
+  // vertex out of the paper plane by sin(pi*t) * half its travel — the chord
+  // becomes a swing up and over. It's zero at t=0 and t=1, so the baked poses
+  // are reproduced exactly; only the in-between motion gains the fold arc.
   const s = geo.scratch;
-  for (let k = 0; k < NV * 3; k++)
-    s[k] = (a[k] + (b[k] - a[k]) * t) * MODEL_SCALE;
+  const arc = Math.sin(Math.PI * t);
+  for (let i = 0; i < NV; i++) {
+    const k = i * 3;
+    const dx = b[k] - a[k];
+    const dy = b[k + 1] - a[k + 1];
+    const dz = b[k + 2] - a[k + 2];
+    const lift = arc * 0.5 * Math.hypot(dx, dy, dz);
+    s[k] = (a[k] + dx * t) * MODEL_SCALE;
+    s[k + 1] = (a[k + 1] + dy * t + lift) * MODEL_SCALE;
+    s[k + 2] = (a[k + 2] + dz * t) * MODEL_SCALE;
+  }
 
   const out = geo.vertexData;
   let o = 0;

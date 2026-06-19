@@ -23,12 +23,14 @@ fn main(
 ) -> VertexOutput {
   var out: VertexOutput;
   var clip = uniforms.viewProj * vec4f(position, 1.0);
-  // Stacked paper layers are coincident in depth → z-fighting. Pull each
-  // triangle a hair toward the camera by its draw order (later faces win),
-  // perspective-correct via *w. This is pure depth — no screen-space motion,
-  // so coplanar facets never split open into cracks.
+  // Stacked paper layers sit at nearly the same depth and z-fight. Resolve by
+  // the real stacking height: a layer that is physically higher (greater y)
+  // wins, which matches how a folded flap rests on the sheet beneath it. A
+  // tiny per-triangle term only breaks exact ties (e.g. the flat bird base,
+  // where every layer is coplanar). Pure depth, perspective-correct via *w, so
+  // no screen-space motion and no cracks.
   let tri = f32(vid / 3u);
-  clip.z = clip.z - tri * 1.5e-5 * clip.w;
+  clip.z = clip.z - (position.y * 0.06 + tri * 2.0e-6) * clip.w;
   out.position = clip;
   out.worldPos = position;
   out.normal = normal;
