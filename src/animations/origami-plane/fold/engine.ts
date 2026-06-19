@@ -38,8 +38,10 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
   const b = FRAMES[i1];
 
   // Interpolate the (smooth, pre-settled) frames — no physics, no flicker.
+  // Scale the whole model down a touch so the paper doesn't crowd the frame.
   const s = geo.scratch;
-  for (let k = 0; k < NV * 3; k++) s[k] = a[k] + (b[k] - a[k]) * t;
+  for (let k = 0; k < NV * 3; k++)
+    s[k] = (a[k] + (b[k] - a[k]) * t) * MODEL_SCALE;
 
   const out = geo.vertexData;
   let o = 0;
@@ -63,24 +65,16 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
     nx /= nl;
     ny /= nl;
     nz /= nl;
-    // Folded crane stacks many sheets at identical depth → z-fighting. A
-    // GPU depth bias can't separate truly coincident planes, so nudge each
-    // triangle along its normal by a tiny draw-order-indexed amount. This
-    // gives every layer a unique, stable depth (later faces sit on top) while
-    // staying invisibly small at model scale.
-    const d = tr * LAYER_EPS;
-    const dx = nx * d;
-    const dy = ny * d;
-    const dz = nz * d;
-    o = push(out, o, ax + dx, ay + dy, az + dz, nx, ny, nz);
-    o = push(out, o, bx + dx, by + dy, bz + dz, nx, ny, nz);
-    o = push(out, o, cx + dx, cy + dy, cz + dz, nx, ny, nz);
+    // Layer separation (stacked coincident sheets) is done in clip space by
+    // the vertex shader using the triangle index, so it doesn't open lateral
+    // gaps between coplanar facets here.
+    o = push(out, o, ax, ay, az, nx, ny, nz);
+    o = push(out, o, bx, by, bz, nx, ny, nz);
+    o = push(out, o, cx, cy, cz, nx, ny, nz);
   }
 };
 
-// Per-triangle depth separation step. 136 tris × this ≈ 0.04 max offset —
-// negligible against the ~2-unit crane, decisive against z-fighting.
-const LAYER_EPS = 0.0003;
+const MODEL_SCALE = 0.85;
 
 const push = (
   out: Float32Array,

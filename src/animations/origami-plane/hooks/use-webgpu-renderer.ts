@@ -19,7 +19,12 @@ import {
 } from '../fold/engine';
 import { mat4 } from '../fold/math';
 import { isSettled, springStep } from '../fold/spring';
-import { fragmentShader, vertexShader } from '../shaders';
+import {
+  fragmentShader,
+  shadowFragmentShader,
+  shadowVertexShader,
+  vertexShader,
+} from '../shaders';
 
 import type { FoldGeometry } from '../fold/engine';
 import type { Vec3 } from '../fold/math';
@@ -36,6 +41,7 @@ interface GPUResources {
   device: GPUDevice;
   context: RNWebGPUContext;
   pipeline: GPURenderPipeline;
+  shadowPipeline: GPURenderPipeline;
   bindGroup: GPUBindGroup;
   uniformBuffer: GPUBuffer;
   vertexBuffer: GPUBuffer;
@@ -80,6 +86,7 @@ export function useWebGPURenderer(
       device,
       context,
       pipeline,
+      shadowPipeline,
       bindGroup,
       uniformBuffer,
       vertexBuffer,
@@ -141,9 +148,12 @@ export function useWebGPURenderer(
         depthStoreOp: 'store',
       },
     });
-    renderPass.setPipeline(pipeline);
+    // Ground shadow first (no depth write), then the crane over it.
     renderPass.setBindGroup(0, bindGroup);
     renderPass.setVertexBuffer(0, vertexBuffer);
+    renderPass.setPipeline(shadowPipeline);
+    renderPass.draw(geo.vertexCount);
+    renderPass.setPipeline(pipeline);
     renderPass.draw(geo.vertexCount);
     renderPass.end();
 
@@ -233,9 +243,54 @@ export function useWebGPURenderer(
           depthWriteEnabled: true,
           depthCompare: 'less',
           format: 'depth24plus',
-          // Bias pulls coincident paper layers apart in depth → no z-fighting.
-          depthBias: 1,
-          depthBiasSlopeScale: 2,
+        },
+      });
+
+      // Translucent planar shadow projected onto the ground plane. Shares the
+      // vertex buffer + uniforms; alpha-blends and does not write depth.
+      const shadowPipeline = device.createRenderPipeline({
+        layout: device.createPipelineLayout({
+          bindGroupLayouts: [bindGroupLayout],
+        }),
+        vertex: {
+          module: device.createShaderModule({ code: shadowVertexShader }),
+          entryPoint: 'main',
+          buffers: [
+            {
+              arrayStride: FLOATS_PER_VERTEX * 4,
+              attributes: [
+                { shaderLocation: 0, offset: 0, format: 'float32x3' },
+                { shaderLocation: 1, offset: 12, format: 'float32x3' },
+              ],
+            },
+          ],
+        },
+        fragment: {
+          module: device.createShaderModule({ code: shadowFragmentShader }),
+          entryPoint: 'main',
+          targets: [
+            {
+              format,
+              blend: {
+                color: {
+                  srcFactor: 'src-alpha',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+                alpha: {
+                  srcFactor: 'one',
+                  dstFactor: 'one-minus-src-alpha',
+                  operation: 'add',
+                },
+              },
+            },
+          ],
+        },
+        primitive: { topology: 'triangle-list', cullMode: 'none' },
+        depthStencil: {
+          depthWriteEnabled: false,
+          depthCompare: 'less',
+          format: 'depth24plus',
         },
       });
 
@@ -249,6 +304,7 @@ export function useWebGPURenderer(
         device,
         context,
         pipeline,
+        shadowPipeline,
         bindGroup,
         uniformBuffer,
         vertexBuffer,

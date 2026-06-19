@@ -15,14 +15,59 @@ struct VertexOutput {
 
 @vertex
 fn main(
+  @builtin(vertex_index) vid: u32,
   @location(0) position: vec3f,
   @location(1) normal: vec3f,
 ) -> VertexOutput {
   var out: VertexOutput;
-  out.position = uniforms.viewProj * vec4f(position, 1.0);
+  var clip = uniforms.viewProj * vec4f(position, 1.0);
+  // Stacked paper layers are coincident in depth → z-fighting. Pull each
+  // triangle a hair toward the camera by its draw order (later faces win),
+  // perspective-correct via *w. This is pure depth — no screen-space motion,
+  // so coplanar facets never split open into cracks.
+  let tri = f32(vid / 3u);
+  clip.z = clip.z - tri * 1.5e-5 * clip.w;
+  out.position = clip;
   out.worldPos = position;
   out.normal = normal;
   return out;
+}
+`;
+
+// Planar projected shadow: flatten the same mesh onto a ground plane along the
+// light direction, drawn dark + translucent so the crane reads as grounded.
+export const GROUND_Y = -0.66;
+
+export const shadowVertexShader = /* wgsl */ `
+struct Uniforms {
+  viewProj: mat4x4f,
+  lightDir: vec4f,
+  camPos: vec4f,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@vertex
+fn main(
+  @location(0) position: vec3f,
+  @location(1) normal: vec3f,
+) -> @builtin(position) vec4f {
+  let h = ${GROUND_Y};
+  // Near-vertical light for the shadow so it tucks directly under the crane as
+  // a contact shadow (a steep angle keeps it from drifting off like a twin).
+  let L = normalize(vec3f(0.12, 1.0, 0.08));
+  let t = (position.y - h) / L.y;
+  let s = vec3f(position.x - L.x * t, h, position.z - L.z * t);
+  return uniforms.viewProj * vec4f(s, 1.0);
+}
+`;
+
+export const shadowFragmentShader = /* wgsl */ `
+@fragment
+fn main() -> @location(0) vec4f {
+  // Low alpha: overlapping projected layers accumulate, so the shadow is
+  // naturally denser under the body and soft at the edges.
+  return vec4f(0.05, 0.13, 0.13, 0.05);
 }
 `;
 
