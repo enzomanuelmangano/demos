@@ -12,11 +12,13 @@ const NV = frames.nV as number;
 const NUM_FRAMES = RAW_FRAMES.length;
 
 // Folding about an edge shifts a pose's mass off-origin, so each raw frame
-// drifts to a different corner of the screen. Re-center every frame on its own
-// horizontal (x,z) bounding-box centre so the paper stays framed at every step.
-// Endpoints are centred before interpolation, so transitions glide to centre
-// instead of sliding off-screen.
-const FRAMES = RAW_FRAMES.map(f => {
+// drifts to a different corner of the screen. Rather than bake the offset into
+// the geometry (which would corrupt the rigid-fold fit below — the "static"
+// sheet would appear to move between frames), keep the RAW frames and store the
+// per-frame horizontal (x,z) bounding-box centre. The centre is subtracted as
+// a single translation at render time, interpolated across the step, so the
+// paper stays framed while every rigid relationship between poses is preserved.
+const CENTERS = RAW_FRAMES.map(f => {
   let minX = Infinity;
   let maxX = -Infinity;
   let minZ = Infinity;
@@ -29,14 +31,7 @@ const FRAMES = RAW_FRAMES.map(f => {
     if (z < minZ) minZ = z;
     if (z > maxZ) maxZ = z;
   }
-  const cx = (minX + maxX) / 2;
-  const cz = (minZ + maxZ) / 2;
-  const g = f.slice();
-  for (let i = 0; i < NV; i++) {
-    g[i * 3] -= cx;
-    g[i * 3 + 2] -= cz;
-  }
-  return g;
+  return { cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2 };
 });
 
 // Tidy the raw instruction descriptions for display (drop solver annotations
@@ -70,12 +65,11 @@ interface Hinge {
   ay: number;
   az: number;
   angle: number; // total rotation angle a→b
-  cax: number; // moving-flap centroid in pose a
-  cay: number;
-  caz: number;
-  cbx: number; // moving-flap centroid in pose b
-  cby: number;
-  cbz: number;
+  // A point on the crease line (the fixed axis of the rotation). The flap
+  // rotates about this line, so the crease edge stays pinned to the sheet.
+  px: number;
+  py: number;
+  pz: number;
 }
 
 const buildHinge = (a: number[], b: number[]): Hinge => {
@@ -110,12 +104,9 @@ const buildHinge = (a: number[], b: number[]): Hinge => {
     ay: 1,
     az: 0,
     angle: 0,
-    cax: 0,
-    cay: 0,
-    caz: 0,
-    cbx: 0,
-    cby: 0,
-    cbz: 0,
+    px: 0,
+    py: 0,
+    pz: 0,
   };
   if (n < 3) return flat;
   cax /= n;
@@ -198,20 +189,71 @@ const buildHinge = (a: number[], b: number[]): Hinge => {
   }
   res /= n;
 
+  // Pivot = a point on the rotation's fixed line (the crease). The rigid motion
+  // is b = R·a + T with T = cb - R·ca; fixed points solve (I - R) x = T. (I-R)
+  // is singular along the axis, so add axis⊗axis to make it invertible and
+  // solve — this yields the crease point closest to the origin.
+  const rca = rotAxis(cax, cay, caz, ax, ay, az, angle);
+  const tx = cbx - rca[0];
+  const ty = cby - rca[1];
+  const tz = cbz - rca[2];
+  // Columns of A' = (I - R) + axis⊗axis, computed by applying it to e_x,e_y,e_z.
+  const col = (
+    ex: number,
+    ey: number,
+    ez: number,
+  ): [number, number, number] => {
+    const r = rotAxis(ex, ey, ez, ax, ay, az, angle);
+    const d = ax * ex + ay * ey + az * ez;
+    return [ex - r[0] + ax * d, ey - r[1] + ay * d, ez - r[2] + az * d];
+  };
+  const c0 = col(1, 0, 0);
+  const c1 = col(0, 1, 0);
+  const c2 = col(0, 0, 1);
+  const pivot = solve3(c0, c1, c2, tx, ty, tz);
+
   return {
-    rigid: res < 0.06 && angle > 0.05,
+    rigid: res < 0.06 && angle > 0.05 && pivot !== null,
     moving,
     ax,
     ay,
     az,
     angle,
-    cax,
-    cay,
-    caz,
-    cbx,
-    cby,
-    cbz,
+    px: pivot ? pivot[0] : 0,
+    py: pivot ? pivot[1] : 0,
+    pz: pivot ? pivot[2] : 0,
   };
+};
+
+// Solve a 3x3 system [c0 c1 c2]·x = t (columns given). Returns null if singular.
+const solve3 = (
+  c0: [number, number, number],
+  c1: [number, number, number],
+  c2: [number, number, number],
+  tx: number,
+  ty: number,
+  tz: number,
+): [number, number, number] | null => {
+  const det =
+    c0[0] * (c1[1] * c2[2] - c1[2] * c2[1]) -
+    c1[0] * (c0[1] * c2[2] - c0[2] * c2[1]) +
+    c2[0] * (c0[1] * c1[2] - c0[2] * c1[1]);
+  if (Math.abs(det) < 1e-6) return null;
+  const id = 1 / det;
+  // Cramer's rule.
+  const dx =
+    tx * (c1[1] * c2[2] - c1[2] * c2[1]) -
+    c1[0] * (ty * c2[2] - tz * c2[1]) +
+    c2[0] * (ty * c1[2] - tz * c1[1]);
+  const dy =
+    c0[0] * (ty * c2[2] - tz * c2[1]) -
+    tx * (c0[1] * c2[2] - c0[2] * c2[1]) +
+    c2[0] * (c0[1] * tz - c0[2] * ty);
+  const dz =
+    c0[0] * (c1[1] * tz - c1[2] * ty) -
+    c1[0] * (c0[1] * tz - c0[2] * ty) +
+    tx * (c0[1] * c1[2] - c0[2] * c1[1]);
+  return [dx * id, dy * id, dz * id];
 };
 
 // Rotate (x,y,z) about unit axis (ax,ay,az) by `angle` (Rodrigues).
@@ -240,12 +282,12 @@ const rotAxis = (
 
 const HINGES: Hinge[] = [];
 for (let i = 0; i < NUM_FRAMES - 1; i++)
-  HINGES.push(buildHinge(FRAMES[i], FRAMES[i + 1]));
+  HINGES.push(buildHinge(RAW_FRAMES[i], RAW_FRAMES[i + 1]));
 
 // Per-vertex paper UV, locked to the flat rest sheet (frame 0). Because it
 // comes from the unfolded square, the fiber/grain texture stays glued to the
 // paper through every fold — so it reads as real paper even when folded.
-const REST = FRAMES[0];
+const REST = RAW_FRAMES[0];
 const restU = (vi: number) => REST[vi * 3] * 0.5 + 0.5; // x in ±1 → 0..1
 const restV = (vi: number) => REST[vi * 3 + 2] * 0.5 + 0.5; // z in ±1 → 0..1
 
@@ -270,20 +312,23 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
   const i0 = Math.floor(fp);
   const i1 = Math.min(NUM_FRAMES - 1, i0 + 1);
   const t = fp - i0;
-  const a = FRAMES[i0];
-  const b = FRAMES[i1];
+  const a = RAW_FRAMES[i0];
+  const b = RAW_FRAMES[i1];
+
+  // Re-centring is applied here as one interpolated translation (x,z), so the
+  // raw geometry keeps its rigid relationships for the fold while staying framed.
+  const ox = CENTERS[i0].cx + (CENTERS[i1].cx - CENTERS[i0].cx) * t;
+  const oz = CENTERS[i0].cz + (CENTERS[i1].cz - CENTERS[i0].cz) * t;
 
   const s = geo.scratch;
   const hinge = HINGES[i0];
   let minY = Infinity;
   if (hinge && hinge.rigid && t > 0 && t < 1) {
-    // Rigid fold: rotate the moving flap as one flat panel about the crease,
-    // by angle*t, while its centroid eases along a→b. The static sheet just
-    // holds its pose. Facets stay flat → no warping, no triangulation showing.
+    // Rigid fold: rotate the moving flap as one flat panel about the crease
+    // LINE by angle*t. Vertices on the crease are fixed, so the flap's hinge
+    // edge stays pinned to the sheet for the whole motion — no detaching, no
+    // warping, no triangulation showing. The static sheet holds its pose.
     const at = hinge.angle * t;
-    const lcx = hinge.cax + (hinge.cbx - hinge.cax) * t;
-    const lcy = hinge.cay + (hinge.cby - hinge.cay) * t;
-    const lcz = hinge.caz + (hinge.cbz - hinge.caz) * t;
     for (let i = 0; i < NV; i++) {
       const k = i * 3;
       let x: number;
@@ -291,25 +336,25 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
       let z: number;
       if (hinge.moving[i]) {
         const r = rotAxis(
-          a[k] - hinge.cax,
-          a[k + 1] - hinge.cay,
-          a[k + 2] - hinge.caz,
+          a[k] - hinge.px,
+          a[k + 1] - hinge.py,
+          a[k + 2] - hinge.pz,
           hinge.ax,
           hinge.ay,
           hinge.az,
           at,
         );
-        x = r[0] + lcx;
-        y = r[1] + lcy;
-        z = r[2] + lcz;
+        x = r[0] + hinge.px;
+        y = r[1] + hinge.py;
+        z = r[2] + hinge.pz;
       } else {
         x = a[k];
         y = a[k + 1];
         z = a[k + 2];
       }
-      s[k] = x * MODEL_SCALE;
+      s[k] = (x - ox) * MODEL_SCALE;
       s[k + 1] = y * MODEL_SCALE;
-      s[k + 2] = z * MODEL_SCALE;
+      s[k + 2] = (z - oz) * MODEL_SCALE;
       if (s[k + 1] < minY) minY = s[k + 1];
     }
   } else {
@@ -322,9 +367,9 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
       const dy = b[k + 1] - a[k + 1];
       const dz = b[k + 2] - a[k + 2];
       const lift = arc * 0.5 * Math.hypot(dx, dy, dz);
-      s[k] = (a[k] + dx * t) * MODEL_SCALE;
+      s[k] = (a[k] + dx * t - ox) * MODEL_SCALE;
       s[k + 1] = (a[k + 1] + dy * t + lift) * MODEL_SCALE;
-      s[k + 2] = (a[k + 2] + dz * t) * MODEL_SCALE;
+      s[k + 2] = (a[k + 2] + dz * t - oz) * MODEL_SCALE;
       if (s[k + 1] < minY) minY = s[k + 1];
     }
   }
