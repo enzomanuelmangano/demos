@@ -8,6 +8,6 @@ export const BG_HEX = '#3EAEAE';
 export const UNIFORM_BUFFER_SIZE = 256;
 
 // Fixed 3/4 perspective camera so the crane reads in 3D. No orbit.
-export const CAMERA_EYE: [number, number, number] = [0.45, 4.3, 1.35];
+export const CAMERA_EYE: [number, number, number] = [0.52, 4.95, 1.55];
 export const CAMERA_TARGET: [number, number, number] = [0, 0, 0];
 export const CAMERA_FOV = (32 * Math.PI) / 180;

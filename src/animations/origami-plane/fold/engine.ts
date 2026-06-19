@@ -1,6 +1,8 @@
-// Plays back the origami crane fold animation that was baked offline by the
-// origuide spring solver (real traditional-crane crease pattern, folded from a
-// flat square). Pre-computed frames → no runtime physics → no jitter/flicker.
+// Discrete-step origami crane tutorial. Each baked frame is a real folded state
+// (flat → preliminary base → bird base → … → crane), computed offline by a port
+// of origamiodyssey's fold engine on the traditional-crane instruction tree.
+// Next advances one step; we morph between consecutive states. No runtime
+// physics → no flicker.
 
 import frames from './crane-frames.json';
 
@@ -9,7 +11,8 @@ const TRIS = frames.tris as number[][]; // triangle vertex indices
 const NV = frames.nV as number;
 const NUM_FRAMES = FRAMES.length;
 
-export const STEP_COUNT = 5; // Next advances through the baked fold in waves
+export const STEP_DESCS = frames.descs as string[];
+export const STEP_COUNT = NUM_FRAMES - 1; // one Next per fold step
 export const FLOATS_PER_VERTEX = 6;
 
 export interface FoldGeometry {
@@ -27,9 +30,7 @@ export const createGeometry = (): FoldGeometry => ({
 export const resetGeometry = (_geo: FoldGeometry) => {};
 
 export const writeVertices = (geo: FoldGeometry, progress: number): void => {
-  const p = Math.max(0, Math.min(1, progress / STEP_COUNT));
-  const OPEN_END = 1.0; // fully folded (flat crane silhouette)
-  const fp = p * (NUM_FRAMES - 1) * OPEN_END;
+  const fp = Math.max(0, Math.min(NUM_FRAMES - 1, progress));
   const i0 = Math.floor(fp);
   const i1 = Math.min(NUM_FRAMES - 1, i0 + 1);
   const t = fp - i0;
@@ -62,11 +63,24 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
     nx /= nl;
     ny /= nl;
     nz /= nl;
-    o = push(out, o, ax, ay, az, nx, ny, nz);
-    o = push(out, o, bx, by, bz, nx, ny, nz);
-    o = push(out, o, cx, cy, cz, nx, ny, nz);
+    // Folded crane stacks many sheets at identical depth → z-fighting. A
+    // GPU depth bias can't separate truly coincident planes, so nudge each
+    // triangle along its normal by a tiny draw-order-indexed amount. This
+    // gives every layer a unique, stable depth (later faces sit on top) while
+    // staying invisibly small at model scale.
+    const d = tr * LAYER_EPS;
+    const dx = nx * d;
+    const dy = ny * d;
+    const dz = nz * d;
+    o = push(out, o, ax + dx, ay + dy, az + dz, nx, ny, nz);
+    o = push(out, o, bx + dx, by + dy, bz + dz, nx, ny, nz);
+    o = push(out, o, cx + dx, cy + dy, cz + dz, nx, ny, nz);
   }
 };
+
+// Per-triangle depth separation step. 136 tris × this ≈ 0.04 max offset —
+// negligible against the ~2-unit crane, decisive against z-fighting.
+const LAYER_EPS = 0.0003;
 
 const push = (
   out: Float32Array,

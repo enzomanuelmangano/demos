@@ -14,17 +14,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
 
 import { BG_HEX } from './constants';
-import { STEP_COUNT } from './fold/engine';
+import { STEP_COUNT, STEP_DESCS } from './fold/engine';
 import { RendererState, useWebGPURenderer } from './hooks/use-webgpu-renderer';
 
-const STEP_LABELS = [
-  'Square sheet',
-  'Collapse',
-  'Bird base',
-  'Shape body',
-  'Neck & tail',
-  'Crane',
-];
+const STEP_LABELS = STEP_DESCS;
 
 export const OrigamiPlane = () => {
   const { width, height } = useWindowDimensions();
