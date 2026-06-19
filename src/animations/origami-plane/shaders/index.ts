@@ -153,10 +153,12 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   // making it). Once formed, it persists.
   let p = uniforms.camPos.w;
   let cw = 0.006;
-  // step 1: fold in half vertically  → vertical crease (u = 0.5)
-  let cV = (1.0 - smoothstep(0.0, cw, abs(uv.x - 0.5))) * smoothstep(0.0, 1.0, p);
-  // step 3: fold in half horizontally → horizontal crease (v = 0.5)
-  let cH = (1.0 - smoothstep(0.0, cw, abs(uv.y - 0.5))) * smoothstep(2.0, 3.0, p);
+  // Crease orientation follows the fold's rotation axis (verified from the
+  // geometry), not the label wording:
+  // step 1 folds about the x-axis  → crease runs along x, i.e. the v = 0.5 line
+  let cH = (1.0 - smoothstep(0.0, cw, abs(uv.y - 0.5))) * smoothstep(0.0, 1.0, p);
+  // step 3 folds about the z-axis  → crease runs along z, i.e. the u = 0.5 line
+  let cV = (1.0 - smoothstep(0.0, cw, abs(uv.x - 0.5))) * smoothstep(2.0, 3.0, p);
   // step 5: bottom-left → top-right    → diagonal u + v = 1
   let cD1 = (1.0 - smoothstep(0.0, cw, abs(uv.x + uv.y - 1.0) * 0.7071)) * smoothstep(4.0, 5.0, p);
   // step 7: bottom-right → top-left    → diagonal u = v
