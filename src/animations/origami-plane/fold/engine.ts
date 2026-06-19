@@ -9,7 +9,7 @@ const TRIS = frames.tris as number[][]; // triangle vertex indices
 const NV = frames.nV as number;
 const NUM_FRAMES = FRAMES.length;
 
-export const STEP_COUNT = 1; // continuous fold (square → crane)
+export const STEP_COUNT = 5; // Next advances through the baked fold in waves
 export const FLOATS_PER_VERTEX = 6;
 
 export interface FoldGeometry {
