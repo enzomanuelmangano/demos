@@ -52,23 +52,30 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
     n = -n;
   }
 
-  // Soft directional sheen gives flat paper a gentle gradient; folded flaps,
-  // whose normals tilt, pick up a clear shade step at each crease.
+  // Key light + soft fill from the opposite side, so each folded facet reads
+  // with clear but gentle form shading (paper-like, never crushed to black).
   let lightDir = normalize(uniforms.lightDir.xyz);
-  let diffuse = max(dot(n, lightDir), 0.0);
-  let shade = 0.82 + 0.18 * diffuse;
+  let fillDir = normalize(vec3f(-lightDir.x, 0.35, -lightDir.z));
+  let key = max(dot(n, lightDir), 0.0);
+  let fill = max(dot(n, fillDir), 0.0);
+  let ambient = 0.42;
+  let shade = ambient + 0.5 * key + 0.16 * fill;
 
-  // White paper on top, a slightly cooler grey underside.
-  let frontPaper = vec3f(0.985, 0.985, 0.975);
-  let backPaper = vec3f(0.86, 0.88, 0.89);
+  // White paper on the lit side, a slightly cooler grey underside.
+  let frontPaper = vec3f(0.98, 0.98, 0.97);
+  let backPaper = vec3f(0.88, 0.90, 0.92);
   let isFront = facingCam >= 0.0;
   let paper = select(backPaper, frontPaper, isFront);
 
   var lit = paper * shade;
 
+  // Gentle rim to separate overlapping layers against the background.
+  let rim = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
+  lit = lit + rim * 0.06;
+
   // Very subtle paper grain.
   let g = fract(sin(dot(input.fragCoord.xy, vec2f(12.9898, 78.233))) * 43758.5453);
-  lit = lit + (g - 0.5) * 0.012;
+  lit = lit + (g - 0.5) * 0.015;
 
   return vec4f(clamp(lit, vec3f(0.0), vec3f(1.0)), 1.0);
 }
