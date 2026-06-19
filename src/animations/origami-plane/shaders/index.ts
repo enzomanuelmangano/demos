@@ -39,45 +39,38 @@ fn main(
 }
 `;
 
-// Soft contact-shadow blob: a single ground quad sized to the model's current
-// horizontal footprint (shadow.xy = centre, shadow.zw = x/z half-extents,
-// lightDir.w = ground height). A radial falloff makes it a soft ellipse that
-// always sits under the paper and grows/shrinks with it — no floating slabs.
-// `shadow` is the 4th vec4 in the uniform (float offset 24).
+// Planar projected shadow: flatten the same mesh onto a ground plane along the
+// SAME light direction used to shade the paper, so the shadow is consistent
+// with the lighting. The ground height rides just under the model (lightDir.w),
+// so it stays a contact shadow at every step instead of floating far below.
 export const shadowVertexShader = /* wgsl */ `
 struct Uniforms {
   viewProj: mat4x4f,
   lightDir: vec4f,
   camPos: vec4f,
-  shadow: vec4f,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
-struct VOut {
-  @builtin(position) position: vec4f,
-  @location(0) quad: vec2f,
-}
-
 @vertex
-fn main(@location(0) corner: vec2f) -> VOut {
-  var out: VOut;
+fn main(
+  @location(0) position: vec3f,
+  @location(1) normal: vec3f,
+) -> @builtin(position) vec4f {
   let h = uniforms.lightDir.w;
-  let c = uniforms.shadow.xy;
-  let world = vec3f(c.x + corner.x * uniforms.shadow.z, h, c.y + corner.y * uniforms.shadow.w);
-  out.position = uniforms.viewProj * vec4f(world, 1.0);
-  out.quad = corner;
-  return out;
+  let L = normalize(uniforms.lightDir.xyz);
+  let t = (position.y - h) / max(L.y, 0.2);
+  let s = vec3f(position.x - L.x * t, h, position.z - L.z * t);
+  return uniforms.viewProj * vec4f(s, 1.0);
 }
 `;
 
 export const shadowFragmentShader = /* wgsl */ `
 @fragment
-fn main(@location(0) quad: vec2f) -> @location(0) vec4f {
-  let d = length(quad);
-  // Soft radial falloff; darkest under the centre, fading to nothing at the rim.
-  let a = (1.0 - smoothstep(0.35, 1.0, d)) * 0.32;
-  return vec4f(0.05, 0.13, 0.13, a);
+fn main() -> @location(0) vec4f {
+  // Low alpha: overlapping projected layers accumulate, so the shadow is
+  // naturally denser under the body and soft at the edges.
+  return vec4f(0.05, 0.13, 0.13, 0.05);
 }
 `;
 
