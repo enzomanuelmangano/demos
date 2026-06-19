@@ -45,6 +45,7 @@ interface GPUResources {
   bindGroup: GPUBindGroup;
   uniformBuffer: GPUBuffer;
   vertexBuffer: GPUBuffer;
+  shadowQuadBuffer: GPUBuffer;
   depthTexture: GPUTexture;
 }
 
@@ -66,9 +67,10 @@ export function useWebGPURenderer(
       animationRef.current = null;
     }
     if (resourcesRef.current) {
-      const { depthTexture, vertexBuffer, uniformBuffer } =
+      const { depthTexture, vertexBuffer, shadowQuadBuffer, uniformBuffer } =
         resourcesRef.current;
       vertexBuffer.destroy();
+      shadowQuadBuffer.destroy();
       uniformBuffer.destroy();
       depthTexture.destroy();
       resourcesRef.current = null;
@@ -90,6 +92,7 @@ export function useWebGPURenderer(
       bindGroup,
       uniformBuffer,
       vertexBuffer,
+      shadowQuadBuffer,
       depthTexture,
     } = resources;
 
@@ -124,17 +127,20 @@ export function useWebGPURenderer(
     const view = mat4.lookAt(eye, CAMERA_TARGET, [0, 1, 0]);
     const viewProj = mat4.multiply(proj, view);
 
-    // Ground plane rides just under the model's lowest point so the projected
-    // shadow stays a contact shadow at every step (carried in lightDir.w).
-    const groundY = geo.minY - 0.03;
+    // Contact-shadow ground rides just under the model's lowest point.
+    const groundY = geo.minY - 0.02;
 
     const uniformData = new Float32Array(UNIFORM_BUFFER_SIZE / 4);
     uniformData.set(viewProj, 0);
-    // Single light, shared by the paper shading and the projected shadow.
-    uniformData.set([0.32, 1.0, 0.24, groundY], 16); // lightDir.xyz + groundY
-    // Pass raw fold progress so the shader can reveal each crease only at the
-    // step that actually creates it.
+    // Light; w carries the shadow ground height.
+    uniformData.set([0.32, 1.0, 0.24, groundY], 16);
+    // camPos.xyz + raw fold progress (w) for the per-step crease reveal.
     uniformData.set([eye[0], eye[1], eye[2], prog.position], 20);
+    // Shadow blob: footprint centre (xy) + x/z half-extents (zw), padded out.
+    uniformData.set(
+      [geo.cx, geo.cz, geo.rx * 1.3 + 0.12, geo.rz * 1.3 + 0.12],
+      24,
+    );
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
     const commandEncoder = device.createCommandEncoder();
@@ -155,12 +161,13 @@ export function useWebGPURenderer(
         depthStoreOp: 'store',
       },
     });
-    // Ground shadow first (no depth write), then the crane over it.
+    // Soft contact-shadow blob first (quad, no depth write), then the crane.
     renderPass.setBindGroup(0, bindGroup);
-    renderPass.setVertexBuffer(0, vertexBuffer);
     renderPass.setPipeline(shadowPipeline);
-    renderPass.draw(geo.vertexCount);
+    renderPass.setVertexBuffer(0, shadowQuadBuffer);
+    renderPass.draw(6);
     renderPass.setPipeline(pipeline);
+    renderPass.setVertexBuffer(0, vertexBuffer);
     renderPass.draw(geo.vertexCount);
     renderPass.end();
 
@@ -208,6 +215,18 @@ export function useWebGPURenderer(
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       });
 
+      // Static unit quad ([-1,1]^2, two triangles) for the contact-shadow blob.
+      const quad = new Float32Array([-1, -1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1]);
+      const shadowQuadBuffer = device.createBuffer({
+        size: quad.byteLength,
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+      });
+      device.queue.writeBuffer(
+        shadowQuadBuffer,
+        0,
+        quad as unknown as BufferSource,
+      );
+
       const bindGroupLayout = device.createBindGroupLayout({
         entries: [
           {
@@ -254,8 +273,8 @@ export function useWebGPURenderer(
         },
       });
 
-      // Translucent planar shadow projected onto the ground plane. Shares the
-      // vertex buffer + uniforms; alpha-blends and does not write depth.
+      // Soft contact-shadow blob: a unit quad scaled to the footprint, alpha
+      // blended, no depth write.
       const shadowPipeline = device.createRenderPipeline({
         layout: device.createPipelineLayout({
           bindGroupLayouts: [bindGroupLayout],
@@ -265,10 +284,9 @@ export function useWebGPURenderer(
           entryPoint: 'main',
           buffers: [
             {
-              arrayStride: FLOATS_PER_VERTEX * 4,
+              arrayStride: 2 * 4,
               attributes: [
-                { shaderLocation: 0, offset: 0, format: 'float32x3' },
-                { shaderLocation: 1, offset: 12, format: 'float32x3' },
+                { shaderLocation: 0, offset: 0, format: 'float32x2' },
               ],
             },
           ],
@@ -316,6 +334,7 @@ export function useWebGPURenderer(
         bindGroup,
         uniformBuffer,
         vertexBuffer,
+        shadowQuadBuffer,
         depthTexture,
       };
 
