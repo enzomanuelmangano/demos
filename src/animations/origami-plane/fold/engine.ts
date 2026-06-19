@@ -13,7 +13,14 @@ const NUM_FRAMES = FRAMES.length;
 
 export const STEP_DESCS = frames.descs as string[];
 export const STEP_COUNT = NUM_FRAMES - 1; // one Next per fold step
-export const FLOATS_PER_VERTEX = 6;
+export const FLOATS_PER_VERTEX = 8; // pos(3) + normal(3) + paperUV(2)
+
+// Per-vertex paper UV, locked to the flat rest sheet (frame 0). Because it
+// comes from the unfolded square, the fiber/grain texture stays glued to the
+// paper through every fold — so it reads as real paper even when folded.
+const REST = FRAMES[0];
+const restU = (vi: number) => REST[vi * 3] * 0.5 + 0.5; // x in ±1 → 0..1
+const restV = (vi: number) => REST[vi * 3 + 2] * 0.5 + 0.5; // z in ±1 → 0..1
 
 export interface FoldGeometry {
   vertexCount: number;
@@ -68,9 +75,9 @@ export const writeVertices = (geo: FoldGeometry, progress: number): void => {
     // Layer separation (stacked coincident sheets) is done in clip space by
     // the vertex shader using the triangle index, so it doesn't open lateral
     // gaps between coplanar facets here.
-    o = push(out, o, ax, ay, az, nx, ny, nz);
-    o = push(out, o, bx, by, bz, nx, ny, nz);
-    o = push(out, o, cx, cy, cz, nx, ny, nz);
+    o = push(out, o, ax, ay, az, nx, ny, nz, restU(TRIS[tr][0]), restV(TRIS[tr][0])); // prettier-ignore
+    o = push(out, o, bx, by, bz, nx, ny, nz, restU(TRIS[tr][1]), restV(TRIS[tr][1])); // prettier-ignore
+    o = push(out, o, cx, cy, cz, nx, ny, nz, restU(TRIS[tr][2]), restV(TRIS[tr][2])); // prettier-ignore
   }
 };
 
@@ -85,6 +92,8 @@ const push = (
   nx: number,
   ny: number,
   nz: number,
+  u: number,
+  v: number,
 ): number => {
   out[off] = x;
   out[off + 1] = y;
@@ -92,5 +101,7 @@ const push = (
   out[off + 3] = nx;
   out[off + 4] = ny;
   out[off + 5] = nz;
+  out[off + 6] = u;
+  out[off + 7] = v;
   return off + FLOATS_PER_VERTEX;
 };

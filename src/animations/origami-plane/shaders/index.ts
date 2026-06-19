@@ -11,6 +11,7 @@ struct VertexOutput {
   @builtin(position) position: vec4f,
   @location(0) worldPos: vec3f,
   @location(1) normal: vec3f,
+  @location(2) uv: vec2f,
 }
 
 @vertex
@@ -18,6 +19,7 @@ fn main(
   @builtin(vertex_index) vid: u32,
   @location(0) position: vec3f,
   @location(1) normal: vec3f,
+  @location(2) uv: vec2f,
 ) -> VertexOutput {
   var out: VertexOutput;
   var clip = uniforms.viewProj * vec4f(position, 1.0);
@@ -30,6 +32,7 @@ fn main(
   out.position = clip;
   out.worldPos = position;
   out.normal = normal;
+  out.uv = uv;
   return out;
 }
 `;
@@ -83,9 +86,36 @@ struct FragmentInput {
   @builtin(front_facing) frontFacing: bool,
   @location(0) worldPos: vec3f,
   @location(1) normal: vec3f,
+  @location(2) uv: vec2f,
 }
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+// --- value noise + fbm in paper-UV space (stays glued to the sheet) ---
+fn hash2(p: vec2f) -> f32 {
+  return fract(sin(dot(p, vec2f(127.1, 311.7))) * 43758.5453);
+}
+fn vnoise(p: vec2f) -> f32 {
+  let i = floor(p);
+  let f = fract(p);
+  let u = f * f * (3.0 - 2.0 * f);
+  let a = hash2(i);
+  let b = hash2(i + vec2f(1.0, 0.0));
+  let c = hash2(i + vec2f(0.0, 1.0));
+  let d = hash2(i + vec2f(1.0, 1.0));
+  return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+}
+fn fbm(p: vec2f) -> f32 {
+  var v = 0.0;
+  var a = 0.5;
+  var q = p;
+  for (var i = 0; i < 4; i = i + 1) {
+    v = v + a * vnoise(q);
+    q = q * 2.02;
+    a = a * 0.5;
+  }
+  return v;
+}
 
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
@@ -96,31 +126,55 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   if (facingCam < 0.0) {
     n = -n;
   }
+  let isFront = facingCam >= 0.0;
 
-  // Key light + soft fill from the opposite side, so each folded facet reads
-  // with clear but gentle form shading (paper-like, never crushed to black).
+  // ---- paper material in sheet space ----
+  let uv = input.uv;
+  // Soft cloudy thickness variation (low frequency mottle).
+  let mottle = fbm(uv * 7.0);
+  // Directional fibre streaks: stretch the noise along one axis so it reads as
+  // pressed paper grain, not random speckle.
+  let fibre = fbm(vec2f(uv.x * 220.0, uv.y * 26.0));
+  let speck = vnoise(uv * 900.0);
+
+  // Warm off-white paper, tinted very slightly by the mottle.
+  var albedo = vec3f(0.955, 0.945, 0.915);
+  albedo = albedo + (mottle - 0.5) * vec3f(0.05, 0.045, 0.05);
+  albedo = albedo - (fibre - 0.5) * 0.05;
+  albedo = albedo - (speck - 0.5) * 0.02;
+  // Underside reads a touch cooler/darker, like the back of a sheet.
+  albedo = select(albedo * vec3f(0.9, 0.92, 0.94), albedo, isFront);
+
+  // Perturb the normal slightly with the fibre so light catches the grain.
+  let grad = vec2f(
+    fbm(uv * 7.0 + vec2f(0.04, 0.0)) - mottle,
+    fbm(uv * 7.0 + vec2f(0.0, 0.04)) - mottle,
+  );
+  var nb = normalize(n + vec3f(grad.x, 0.0, grad.y) * 0.6);
+
+  // Key light + soft fill, gentle so facets read as matte paper, never glossy.
   let lightDir = normalize(uniforms.lightDir.xyz);
   let fillDir = normalize(vec3f(-lightDir.x, 0.35, -lightDir.z));
-  let key = max(dot(n, lightDir), 0.0);
-  let fill = max(dot(n, fillDir), 0.0);
-  let ambient = 0.42;
-  let shade = ambient + 0.5 * key + 0.16 * fill;
+  let key = max(dot(nb, lightDir), 0.0);
+  let fill = max(dot(nb, fillDir), 0.0);
 
-  // White paper on the lit side, a slightly cooler grey underside.
-  let frontPaper = vec3f(0.98, 0.98, 0.97);
-  let backPaper = vec3f(0.88, 0.90, 0.92);
-  let isFront = facingCam >= 0.0;
-  let paper = select(backPaper, frontPaper, isFront);
+  // Thin-paper translucency: light bleeds through, so faces angled away from the
+  // light still pick up a soft warm glow instead of going flat/dark.
+  let trans = pow(max(dot(-nb, lightDir), 0.0), 2.0) * 0.12;
 
-  var lit = paper * shade;
+  let ambient = 0.46;
+  let shade = ambient + 0.5 * key + 0.15 * fill + trans;
+
+  var lit = albedo * shade;
+
+  // Broad, faint sheen — paper has a soft matte sheen, not a sharp highlight.
+  let h = normalize(lightDir + viewDir);
+  let sheen = pow(max(dot(nb, h), 0.0), 18.0) * 0.04;
+  lit = lit + sheen;
 
   // Gentle rim to separate overlapping layers against the background.
-  let rim = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
-  lit = lit + rim * 0.06;
-
-  // Very subtle paper grain.
-  let g = fract(sin(dot(input.fragCoord.xy, vec2f(12.9898, 78.233))) * 43758.5453);
-  lit = lit + (g - 0.5) * 0.015;
+  let rim = pow(1.0 - max(dot(nb, viewDir), 0.0), 3.0);
+  lit = lit + rim * 0.05;
 
   return vec4f(clamp(lit, vec3f(0.0), vec3f(1.0)), 1.0);
 }
