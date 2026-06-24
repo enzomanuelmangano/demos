@@ -30,7 +30,11 @@ fn main(
   // where every layer is coplanar). Pure depth, perspective-correct via *w, so
   // no screen-space motion and no cracks.
   let tri = f32(vid / 3u);
-  clip.z = clip.z - (position.y * 0.06 + tri * 2.0e-6) * clip.w;
+  // Two-part bias: physical stacking height (higher y rests on top) plus a
+  // draw-order tiebreak (the fold engine emits triangles bottom→top) that wins
+  // when layers are exactly coplanar. Both were far too weak before, so stacked
+  // sheets z-fought and the top flap merged into the one below during a fold.
+  clip.z = clip.z - (position.y * 0.14 + tri * 1.4e-4) * clip.w;
   out.position = clip;
   out.worldPos = position;
   out.normal = normal;
@@ -57,6 +61,9 @@ fn main(
   @location(0) position: vec3f,
   @location(1) normal: vec3f,
 ) -> @builtin(position) vec4f {
+  // Project along the SAME light that shades the paper, so the ground shadow
+  // falls in the direction the light implies — consistent with the key and the
+  // inter-layer contact shadow.
   let h = uniforms.lightDir.w;
   let L = normalize(uniforms.lightDir.xyz);
   let t = (position.y - h) / max(L.y, 0.2);
@@ -117,6 +124,30 @@ fn fbm(p: vec2f) -> f32 {
   return v;
 }
 
+const PI = 3.14159265;
+
+fn pow5(x: f32) -> f32 {
+  let x2 = x * x;
+  return x2 * x2 * x;
+}
+
+// Disney/Burley diffuse factor (no albedo, no /pi — folded into intensity).
+// Roughness-dependent grazing retroreflection: matte paper reads flatter and a
+// touch brighter at oblique angles instead of edge-darkening like flat Lambert.
+fn disneyDiffuse(NoV: f32, NoL: f32, LoH: f32, rough: f32) -> f32 {
+  let fd90 = 0.5 + 2.0 * rough * LoH * LoH;
+  let fl = 1.0 + (fd90 - 1.0) * pow5(1.0 - NoL);
+  let fv = 1.0 + (fd90 - 1.0) * pow5(1.0 - NoV);
+  return fl * fv;
+}
+
+// Conty-Kulla "Charlie" sheen distribution (fibrous grazing rim).
+fn charlieD(rough: f32, NoH: f32) -> f32 {
+  let invR = 1.0 / max(rough, 0.07);
+  let sin2 = max(1.0 - NoH * NoH, 0.0);
+  return (2.0 + invR) * pow(sin2, invR * 0.5) / (2.0 * PI);
+}
+
 @fragment
 fn main(input: FragmentInput) -> @location(0) vec4f {
   // Two-sided: flip the normal toward the camera so both paper faces shade.
@@ -159,12 +190,16 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   let cH = (1.0 - smoothstep(0.0, cw, abs(uv.y - 0.5))) * smoothstep(0.0, 1.0, p);
   // step 3 folds about the z-axis  → crease runs along z, i.e. the u = 0.5 line
   let cV = (1.0 - smoothstep(0.0, cw, abs(uv.x - 0.5))) * smoothstep(2.0, 3.0, p);
-  // step 5: bottom-left → top-right    → diagonal u + v = 1
-  let cD1 = (1.0 - smoothstep(0.0, cw, abs(uv.x + uv.y - 1.0) * 0.7071)) * smoothstep(4.0, 5.0, p);
-  // step 7: bottom-right → top-left    → diagonal u = v
-  let cD2 = (1.0 - smoothstep(0.0, cw, abs(uv.x - uv.y) * 0.7071)) * smoothstep(6.0, 7.0, p);
+  // Diagonal fold axes verified against the baked frames (which line stays fixed
+  // during each fold), NOT the label wording:
+  // step 5 fold keeps the main diagonal fixed → crease u = v
+  let cD1 = (1.0 - smoothstep(0.0, cw, abs(uv.x - uv.y) * 0.7071)) * smoothstep(4.0, 5.0, p);
+  // step 7 fold keeps the anti-diagonal fixed → crease u + v = 1
+  let cD2 = (1.0 - smoothstep(0.0, cw, abs(uv.x + uv.y - 1.0) * 0.7071)) * smoothstep(6.0, 7.0, p);
   let crease = max(max(cV, cH), max(cD1, cD2));
-  albedo = albedo * (1.0 - crease * 0.10);
+  // Faint memory only — these UV-locked lines don't trace the real fold edges on
+  // the finished crane, so keep them a whisper, never bold dark lines.
+  albedo = albedo * (1.0 - crease * 0.04);
 
   // Perturb the normal slightly with the fibre so light catches the grain.
   let grad = vec2f(
@@ -173,31 +208,56 @@ fn main(input: FragmentInput) -> @location(0) vec4f {
   );
   var nb = normalize(n + vec3f(grad.x, 0.0, grad.y) * 0.6);
 
-  // Key light + soft fill, gentle so facets read as matte paper, never glossy.
+  // ---- layered paper lighting ----
+  // Paper is a rough matte dielectric. Use Disney diffuse (roughness-dependent
+  // grazing retroreflection) for the key, an energy-conserving wrapped cosine
+  // for soft thin-sheet light bleed past the terminator, a hemisphere ambient
+  // (sky vs ground) that gives every facet its own value for free, and a faint
+  // Charlie sheen for the fibre rim. Replaces the old flat 0.62 ambient + plain
+  // Lambert that made differently-oriented facets read the same brightness.
   let lightDir = normalize(uniforms.lightDir.xyz);
   let fillDir = normalize(vec3f(-lightDir.x, 0.35, -lightDir.z));
-  let key = max(dot(nb, lightDir), 0.0);
-  let fill = max(dot(nb, fillDir), 0.0);
+  let H = normalize(lightDir + viewDir);
+  let NoV = max(dot(nb, viewDir), 1e-4);
+  let NoL = dot(nb, lightDir);
+  let NoH = max(dot(nb, H), 0.0);
+  let LoH = max(dot(lightDir, H), 0.0);
 
-  // Thin-paper translucency: light bleeds through, so faces angled away from the
-  // light still pick up a soft warm glow instead of going flat/dark.
-  let trans = pow(max(dot(-nb, lightDir), 0.0), 2.0) * 0.12;
+  let rough = 0.92; // matte printer paper
 
-  // Bright matte white paper: high ambient floor so no facet crushes to grey,
-  // with a gentle key for form.
-  let ambient = 0.62;
-  let shade = ambient + 0.34 * key + 0.12 * fill + trans;
+  // Energy-conserving wrapped key cosine (Filament cloth form, w = 0.5). Softens
+  // the terminator and lets light wrap a little around the sheet. NOT * NoL.
+  let w = 0.5;
+  let wrapNoL = max((NoL + w) / ((1.0 + w) * (1.0 + w)), 0.0);
+  let dd = disneyDiffuse(NoV, max(NoL, 0.0), LoH, rough);
+  let key = dd * wrapNoL * 0.72;
 
-  var lit = albedo * shade;
+  let fill = max(dot(nb, fillDir), 0.0) * 0.13;
 
-  // Broad, faint sheen — paper has a soft matte sheen, not a sharp highlight.
-  let h = normalize(lightDir + viewDir);
-  let sheen = pow(max(dot(nb, h), 0.0), 18.0) * 0.04;
+  // Hemisphere ambient: upward facets catch the (cool) sky, downward facets the
+  // dimmer ground. This is what separates the planes of a fold without a real
+  // GI/AO pass — the single biggest fix for the "flat cutout" look. The ground
+  // term stays light and a touch warm so the undersides read as white paper in
+  // a bright room, not grey card.
+  let up = nb.y * 0.5 + 0.5;
+  let skyAmb = vec3f(0.52, 0.54, 0.58);
+  let groundAmb = vec3f(0.36, 0.34, 0.32);
+  let ambient = mix(groundAmb, skyAmb, up);
+
+  // Thin-paper translucency: faces pointing away from the light still glow warm
+  // as light bleeds through the sheet instead of crushing to grey.
+  let trans = pow(max(dot(-nb, lightDir), 0.0), 3.0) * 0.16;
+
+  var lit = albedo * (ambient + key + fill) + trans * vec3f(1.0, 0.95, 0.88);
+
+  // Charlie sheen — fibrous grazing rim, gated by the key so it never lifts the
+  // shadow side and never blows the white out.
+  let sheen = charlieD(0.5, NoH) * wrapNoL * 0.10;
   lit = lit + sheen;
 
   // Gentle rim to separate overlapping layers against the background.
-  let rim = pow(1.0 - max(dot(nb, viewDir), 0.0), 3.0);
-  lit = lit + rim * 0.05;
+  let rim = pow(1.0 - NoV, 3.0);
+  lit = lit + rim * 0.04;
 
   return vec4f(clamp(lit, vec3f(0.0), vec3f(1.0)), 1.0);
 }

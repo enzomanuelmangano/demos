@@ -9,6 +9,7 @@ import {
   CAMERA_EYE,
   CAMERA_FOV,
   CAMERA_TARGET,
+  LIGHT_DIR,
   UNIFORM_BUFFER_SIZE,
 } from '../constants';
 import {
@@ -130,8 +131,9 @@ export function useWebGPURenderer(
 
     const uniformData = new Float32Array(UNIFORM_BUFFER_SIZE / 4);
     uniformData.set(viewProj, 0);
-    // Single light, shared by the paper shading and the projected shadow.
-    uniformData.set([0.32, 1.0, 0.24, groundY], 16); // lightDir.xyz + groundY
+    // Single light, shared by the paper shading, the inter-layer contact shadow,
+    // and the ground shadow (constants.LIGHT_DIR). Raking so folded facets read.
+    uniformData.set([LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2], groundY], 16);
     // Pass raw fold progress so the shader can reveal each crease only at the
     // step that actually creates it.
     uniformData.set([eye[0], eye[1], eye[2], prog.position], 20);
