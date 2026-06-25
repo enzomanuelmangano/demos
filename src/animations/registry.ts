@@ -92,6 +92,7 @@ import { MotionBlur } from './motion-blur';
 import { NotionQRCode } from './notion-qrcode';
 import { OnlineOffline } from './online-offline';
 import { OrigamiPlane } from './origami-plane';
+import { TextToEyeScreen } from './text-to-eye';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
 import { PomodoroTimer } from './pomodoro-timer';
@@ -259,6 +260,7 @@ export const AnimationRegistry = {
   'art-gallery': ArtGallery,
   chessboard: ChessboardGame,
   'origami-plane': OrigamiPlane,
+  'text-to-eye': TextToEyeScreen,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -878,6 +880,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Origami Crane',
     route: 'OrigamiPlane',
     iconName: 'paper-plane-outline',
+  },
+  'text-to-eye': {
+    name: 'Text to Eye',
+    route: 'TextToEye',
+    iconName: 'eye-outline',
   },
 } as const;
 
