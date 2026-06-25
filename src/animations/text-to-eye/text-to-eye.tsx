@@ -7,6 +7,7 @@ import {
   Atlas,
   Canvas,
   Group,
+  Paint,
   Text as SkText,
   useRSXformBuffer,
   useTexture,
@@ -18,6 +19,7 @@ import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
+  useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming,
@@ -26,6 +28,7 @@ import Animated, {
 import {
   CAMERA_Z,
   EYE_GLYPH_SCALE,
+  FADE_AMT,
   GLYPH_CELL,
   GLYPH_PAD,
   INK,
@@ -275,10 +278,21 @@ const Reveal = ({
     val.set(scos, ssin, tx, ty);
   });
 
+  // Fade in flight: the cloud dims at the peak of the move (sin(progress*PI))
+  // and resolves to full opacity at both ends. drawAtlas is a single draw call,
+  // so this is a layer-level dim (not per-sprite) — no blur.
+  const layerOpacity = useDerivedValue(
+    () => 1 - Math.sin(progress.get() * Math.PI) * FADE_AMT,
+  );
+
   if (!texture) {
     return null;
   }
-  return <Atlas image={texture} sprites={sprites} transforms={transforms} />;
+  return (
+    <Group layer={<Paint opacity={layerOpacity} />}>
+      <Atlas image={texture} sprites={sprites} transforms={transforms} />
+    </Group>
+  );
 };
 
 const FAB_SIZE = 48;

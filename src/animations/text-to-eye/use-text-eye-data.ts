@@ -346,8 +346,11 @@ export const useTextEyeData = (
       const dx = particles[pi].pageX - ax;
       const dy = particles[pi].pageY - ay;
       const ripple = Math.sqrt(dx * dx + dy * dy) / maxR;
+      // smootherstep the wave front so it eases out of the button and eases
+      // into the far edge — organic, not a rigid linear sweep.
+      const e = ripple * ripple * ripple * (ripple * (ripple * 6 - 15) + 10);
       // mostly distance-driven ripple + a little jitter so the front isn't rigid
-      particles[pi].delay = ripple * 0.85 + Math.random() * 0.15;
+      particles[pi].delay = e * 0.85 + Math.random() * 0.15;
       particles[pi].depth = Math.random();
     }
 
