@@ -150,7 +150,7 @@ export const TextToEye = ({ width, height }: Props) => {
       </Canvas>
 
       <PressableScale
-        style={[styles.fab, { top: insets.top + 8 }]}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
         onPress={toggle}>
         <Ionicons
           name={revealed ? 'book-outline' : 'eye-outline'}
