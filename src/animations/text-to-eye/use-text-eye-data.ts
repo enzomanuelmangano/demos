@@ -3,11 +3,11 @@ import { useMemo } from 'react';
 import {
   AlphaType,
   ColorType,
-  matchFont,
   rect,
+  useFont,
   useImage,
 } from '@shopify/react-native-skia';
-import type { SkRect } from '@shopify/react-native-skia';
+import type { SkFont, SkRect } from '@shopify/react-native-skia';
 
 import {
   GLYPH_CELL,
@@ -25,15 +25,9 @@ import {
 } from './constants';
 
 const EYE_IMG = require('./assets/prince.png');
+const PAGE_FONT = require('./assets/Newsreader.ttf');
 
-// Synchronous font so the atlas bakes glyphs on the first render AND we can
-// measure real glyph advances for a proportional page layout.
-export const GLYPH_FONT = matchFont({
-  fontFamily: 'Georgia',
-  fontSize: GLYPH_FONT_SIZE,
-} as never);
-
-// --- STATIC atlas (depends only on PARAGRAPH) ---
+// --- STATIC atlas geometry (depends only on PARAGRAPH) ---
 const VISIBLE_CHARS = Array.from(PARAGRAPH).filter(c => c !== ' ' && c !== '\n');
 export const UNIQUE_CHARS = Array.from(new Set(VISIBLE_CHARS));
 const CHAR_TO_INDEX = new Map(UNIQUE_CHARS.map((c, i) => [c, i]));
@@ -41,15 +35,6 @@ export const ATLAS_COLS = Math.ceil(Math.sqrt(UNIQUE_CHARS.length));
 export const ATLAS_ROWS = Math.ceil(UNIQUE_CHARS.length / ATLAS_COLS);
 export const ATLAS_WIDTH = ATLAS_COLS * GLYPH_CELL;
 export const ATLAS_HEIGHT = ATLAS_ROWS * GLYPH_CELL;
-
-const measure = (s: string): number => {
-  const w = GLYPH_FONT.measureText(s).width;
-  return Number.isFinite(w) && w > 0 ? w : GLYPH_FONT_SIZE * 0.5;
-};
-
-// Real advance (in atlas font units) per unique char + the space.
-const CHAR_ADV: number[] = UNIQUE_CHARS.map(c => measure(c));
-const SPACE_ADV = measure(' ');
 
 const CHAR_SPRITE: SkRect[] = UNIQUE_CHARS.map((_, i) =>
   rect(
@@ -73,6 +58,7 @@ export interface TextEyeData {
   ready: boolean;
   particles: Particle[];
   sprites: SkRect[];
+  font: SkFont | null;
 }
 
 export const useTextEyeData = (
@@ -80,12 +66,26 @@ export const useTextEyeData = (
   canvasHeight: number,
 ): TextEyeData => {
   const eyeImage = useImage(EYE_IMG);
+  const font = useFont(PAGE_FONT, GLYPH_FONT_SIZE);
 
   return useMemo(() => {
-    const empty: TextEyeData = { ready: false, particles: [], sprites: [] };
-    if (!eyeImage || canvasWidth <= 0 || canvasHeight <= 0) {
+    const empty: TextEyeData = {
+      ready: false,
+      particles: [],
+      sprites: [],
+      font: null,
+    };
+    if (!font || !eyeImage || canvasWidth <= 0 || canvasHeight <= 0) {
       return empty;
     }
+
+    // measure real advances for proportional layout
+    const measure = (s: string): number => {
+      const w = font.measureText(s).width;
+      return Number.isFinite(w) && w > 0 ? w : GLYPH_FONT_SIZE * 0.5;
+    };
+    const CHAR_ADV: number[] = UNIQUE_CHARS.map(c => measure(c));
+    const SPACE_ADV = measure(' ');
 
     // --- proportional, word-wrapped page layout ---
     const ds = PAGE_GLYPH_SCALE; // display scale of atlas glyphs
@@ -294,6 +294,6 @@ export const useTextEyeData = (
       particles[i].delay = N > 1 ? i / (N - 1) : 0;
     }
 
-    return { ready: true, particles, sprites };
-  }, [eyeImage, canvasWidth, canvasHeight]);
+    return { ready: true, particles, sprites, font };
+  }, [font, eyeImage, canvasWidth, canvasHeight]);
 };

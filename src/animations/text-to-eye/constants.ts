@@ -11,7 +11,7 @@ export const PARAGRAPH =
   'her, and blinked, and knew her name. ';
 
 // Page text styling
-export const PAGE_BG = '#efe7d6'; // warm paper
+export const PAGE_BG = '#f7f4ec'; // soft warm white
 export const INK = '#1c1a17'; // dark ink
 
 // Atlas glyph cell (offscreen render size per unique char)
