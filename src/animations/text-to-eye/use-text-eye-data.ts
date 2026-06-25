@@ -52,7 +52,8 @@ export interface Particle {
   pageY: number;
   eyeX: number;
   eyeY: number;
-  delay: number;
+  delay: number; // 0..1 stagger order
+  depth: number; // 0..1 per-letter camera nearness for the 3D surge
 }
 
 export interface TextEyeData {
@@ -146,6 +147,7 @@ export const useTextEyeData = (
           eyeX: cellLeft + half,
           eyeY: y + half,
           delay: 0,
+          depth: 0,
         });
         sprites.push(CHAR_SPRITE[idx]);
         x += adv;
@@ -294,10 +296,43 @@ export const useTextEyeData = (
       });
     }
 
+    // --- assignment: pair each page letter to a target by ANGULAR order
+    // around each set's centroid. Keeps rotational coherence (top->top,
+    // left->left) so letters travel short, mostly-parallel paths instead of
+    // crossing the whole screen randomly. ---
+    let pcx = 0;
+    let pcy = 0;
     for (let i = 0; i < N; i++) {
-      particles[i].eyeX = samples[i].x;
-      particles[i].eyeY = samples[i].y;
-      particles[i].delay = N > 1 ? i / (N - 1) : 0;
+      pcx += particles[i].pageX;
+      pcy += particles[i].pageY;
+    }
+    pcx /= N;
+    pcy /= N;
+    let scx = 0;
+    let scy = 0;
+    for (let i = 0; i < N; i++) {
+      scx += samples[i].x;
+      scy += samples[i].y;
+    }
+    scx /= N;
+    scy /= N;
+
+    const pageOrder = particles
+      .map((p, i) => ({ i, a: Math.atan2(p.pageY - pcy, p.pageX - pcx) }))
+      .sort((u, v) => u.a - v.a);
+    const sampleOrder = samples
+      .map((s, i) => ({ i, a: Math.atan2(s.y - scy, s.x - scx) }))
+      .sort((u, v) => u.a - v.a);
+
+    for (let k = 0; k < N; k++) {
+      const pi = pageOrder[k].i;
+      const s = samples[sampleOrder[k].i];
+      particles[pi].eyeX = s.x;
+      particles[pi].eyeY = s.y;
+      // Randomized stagger (no spatial ripple) + random per-letter depth so the
+      // cloud surges through varied camera distances = cinematic parallax.
+      particles[pi].delay = Math.random();
+      particles[pi].depth = Math.random();
     }
 
     return { ready: true, particles, sprites, font };
