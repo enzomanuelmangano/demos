@@ -278,6 +278,82 @@ export const useTextEyeData = (
           accept(rx, ry, false);
         }
       }
+
+      // --- POLISH: prune isolated strays, redistribute onto the figure ---
+      // Probabilistic sampling scatters a few lonely letters into the empty
+      // background. Count each point's neighbours; a point with too few is a
+      // stray. Drop it and re-seed a replacement jittered onto a dense point,
+      // so the silhouette reads clean and N is preserved.
+      if (raw.length > 8) {
+        const R = minDist * 3.2;
+        const R2 = R * R;
+        const pcell = R;
+        const pgrid = new Map<number, number[]>();
+        const pkey = (gx: number, gy: number) => gx * 100000 + gy;
+        for (let i = 0; i < raw.length; i++) {
+          const gx = Math.floor(raw[i].px / pcell);
+          const gy = Math.floor(raw[i].py / pcell);
+          const k = pkey(gx, gy);
+          let a = pgrid.get(k);
+          if (!a) {
+            a = [];
+            pgrid.set(k, a);
+          }
+          a.push(i);
+        }
+        const neighbours = (i: number): number => {
+          const gx = Math.floor(raw[i].px / pcell);
+          const gy = Math.floor(raw[i].py / pcell);
+          let n = 0;
+          for (let ix = gx - 1; ix <= gx + 1; ix++) {
+            for (let iy = gy - 1; iy <= gy + 1; iy++) {
+              const arr = pgrid.get(pkey(ix, iy));
+              if (!arr) {
+                continue;
+              }
+              for (const j of arr) {
+                if (j === i) {
+                  continue;
+                }
+                const dx = raw[j].px - raw[i].px;
+                const dy = raw[j].py - raw[i].py;
+                if (dx * dx + dy * dy < R2) {
+                  n++;
+                }
+              }
+            }
+          }
+          return n;
+        };
+        // Higher threshold over a wider radius also culls small 2-3 letter
+        // background clumps (they only neighbour each other), not just singles.
+        const MIN_NB = 6;
+        const keep = raw.filter((_, i) => neighbours(i) >= MIN_NB);
+        if (keep.length > 8) {
+          const missing = raw.length - keep.length;
+          for (let m = 0; m < missing; m++) {
+            const seed = keep[Math.floor(Math.random() * keep.length)];
+            keep.push({
+              px: seed.px + (Math.random() - 0.5) * minDist,
+              py: seed.py + (Math.random() - 0.5) * minDist,
+            });
+          }
+          raw.length = 0;
+          raw.push(...keep);
+        }
+      }
+    }
+
+    // recompute the content bbox from the (pruned) point set
+    minPX = imgW;
+    minPY = imgH;
+    maxPX = 0;
+    maxPY = 0;
+    for (const s of raw) {
+      if (s.px < minPX) minPX = s.px;
+      if (s.px > maxPX) maxPX = s.px;
+      if (s.py < minPY) minPY = s.py;
+      if (s.py > maxPY) maxPY = s.py;
     }
 
     // content bbox (fallback to full image if nothing sampled)
