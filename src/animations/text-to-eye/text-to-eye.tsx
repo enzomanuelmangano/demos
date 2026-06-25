@@ -24,6 +24,7 @@ import {
 import type { SharedValue } from 'react-native-reanimated';
 
 import {
+  CAMERA_Z,
   EYE_GLYPH_SCALE,
   GLYPH_CELL,
   GLYPH_PAD,
@@ -31,7 +32,10 @@ import {
   PAGE_BG,
   PAGE_GLYPH_SCALE,
   PAGE_MARGIN_FRAC,
+  ROT_3D,
   STAGGER,
+  Z_BASE,
+  Z_MOVE,
 } from './constants';
 import {
   ATLAS_COLS,
@@ -80,6 +84,8 @@ export const TextToEye = ({ width, height }: Props) => {
             sprites={data.sprites}
             font={data.font}
             progress={progress}
+            screenW={width}
+            screenH={height}
           />
         )}
       </Canvas>
@@ -105,9 +111,18 @@ interface RevealProps {
   sprites: SkRect[];
   font: SkFont;
   progress: SharedValue<number>;
+  screenW: number;
+  screenH: number;
 }
 
-const Reveal = ({ particles, sprites, font, progress }: RevealProps) => {
+const Reveal = ({
+  particles,
+  sprites,
+  font,
+  progress,
+  screenW,
+  screenH,
+}: RevealProps) => {
   const N = particles.length;
 
   // Flat typed arrays for cheap reads inside the RSXform worklet.
@@ -151,6 +166,7 @@ const Reveal = ({ particles, sprites, font, progress }: RevealProps) => {
 
   const transforms = useRSXformBuffer(N, (val, i) => {
     'worklet';
+    const PI = Math.PI;
     const p = progress.get();
     const d = delays[i];
     const pe = interpolate(
@@ -165,13 +181,39 @@ const Reveal = ({ particles, sprites, font, progress }: RevealProps) => {
     const tx2 = eyeXY[i * 2];
     const ty2 = eyeXY[i * 2 + 1];
 
-    const cx = sx + (tx2 - sx) * pe;
-    const cy = sy + (ty2 - sy) * pe;
+    // flat interpolated position (page -> picture)
+    const cx0 = sx + (tx2 - sx) * pe;
+    const cy0 = sy + (ty2 - sy) * pe;
 
-    const scale = PAGE_GLYPH_SCALE + (EYE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
-    const half = (GLYPH_CELL / 2) * scale;
+    // 3D: surge toward the camera mid-flight, more for letters that travel far.
+    const dxm = tx2 - sx;
+    const dym = ty2 - sy;
+    const moveDist = Math.sqrt(dxm * dxm + dym * dym);
+    const normMove = Math.min(moveDist / screenW, 1);
+    const eff = Math.sin(pe * PI); // 0 at ends, 1 mid-flight
+    const zDepth = eff * (Z_BASE + normMove * Z_MOVE);
+    const persp = CAMERA_Z / (CAMERA_Z - zDepth);
 
-    val.set(scale, 0, cx - half, cy - half);
+    // perspective pulls the point toward screen centre as it nears the camera
+    const cxC = screenW / 2;
+    const cyC = screenH / 2;
+    const cx = cxC + (cx0 - cxC) * persp;
+    const cy = cyC + (cy0 - cyC) * persp;
+
+    // scale grows with perspective (bigger = nearer)
+    const baseScale =
+      PAGE_GLYPH_SCALE + (EYE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
+    const s = baseScale * persp;
+
+    // slight tilt in the travel direction
+    const rot = eff * ROT_3D * normMove * (dxm >= 0 ? 1 : -1);
+    const scos = s * Math.cos(rot);
+    const ssin = s * Math.sin(rot);
+
+    const h = GLYPH_CELL / 2;
+    const tx = cx - h * (scos - ssin);
+    const ty = cy - h * (ssin + scos);
+    val.set(scos, ssin, tx, ty);
   });
 
   if (!texture) {
