@@ -91,6 +91,7 @@ import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
 import { NotionQRCode } from './notion-qrcode';
 import { OnlineOffline } from './online-offline';
+import { TextToEyeScreen } from './text-to-eye';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
 import { PomodoroTimer } from './pomodoro-timer';
@@ -257,6 +258,7 @@ export const AnimationRegistry = {
   'cherry-blossom-qrcode': CherryBlossomQRCode,
   'art-gallery': ArtGallery,
   chessboard: ChessboardGame,
+  'text-to-eye': TextToEyeScreen,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -871,6 +873,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Chessboard',
     route: 'Chessboard',
     iconName: 'grid-outline',
+  },
+  'text-to-eye': {
+    name: 'Text to Eye',
+    route: 'TextToEye',
+    iconName: 'eye-outline',
   },
 } as const;
 
