@@ -1,14 +1,17 @@
-// Real paragraph (about seeing / the eye) — repeated to fill the page.
-// Meaning ties to the reveal: text dissolves into the eye it describes.
+// The Little Prince (Antoine de Saint-Exupéry) — the fox's farewell.
+// Themed on seeing with the heart, which ties to the picture reveal.
 export const PARAGRAPH =
-  'The eye is the lamp of the body. For a long while she only read, ' +
-  'letting the words pass like quiet water, never once suspecting that ' +
-  'the page was watching her in return. Between every line a second ' +
-  'reader waited, patient as ink, gathering the loose letters of the ' +
-  'world into a single steady gaze. To see, she learned, is not to ' +
-  'collect the light but to be collected by it. And when at last she ' +
-  'looked up, the story had already turned its slow dark pupil toward ' +
-  'her, and blinked, and knew her name. ';
+  'And now here is my secret, a very simple secret: It is only with the ' +
+  'heart that one can see rightly; what is essential is invisible to the ' +
+  'eye. What is essential is invisible to the eye, the little prince ' +
+  'repeated, so that he would be sure to remember. It is the time you ' +
+  'have wasted for your rose that makes your rose so important. Men have ' +
+  'forgotten this truth, said the fox, but you must not forget it. You ' +
+  'become responsible, forever, for what you have tamed. You are ' +
+  'responsible for your rose. All grown-ups were once children, although ' +
+  'few of them remember it. What makes the desert beautiful is that ' +
+  'somewhere it hides a well. The stars are beautiful, because of a ' +
+  'flower that cannot be seen. ';
 
 // Page text styling
 export const PAGE_BG = '#f7f4ec'; // soft warm white
