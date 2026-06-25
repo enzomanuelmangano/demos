@@ -34,8 +34,8 @@ import {
   PAGE_MARGIN_FRAC,
   ROT_3D,
   STAGGER,
-  Z_NEAR_MAX,
-  Z_NEAR_MIN,
+  Z_BASE,
+  Z_MOVE,
 } from './constants';
 import {
   ATLAS_COLS,
@@ -72,7 +72,7 @@ export const TextToEye = ({ width, height }: Props) => {
     progress.set(
       withSpring(next ? 1 : 0, {
         dampingRatio: 1,
-        duration: 1400,
+        duration: 2000,
       }),
     );
     // fast, blur-bridged icon crossfade (Emil Kowalski's tips)
@@ -182,11 +182,10 @@ const Reveal = ({
   const N = particles.length;
 
   // Flat typed arrays for cheap reads inside the RSXform worklet.
-  const { pageXY, eyeXY, delays, depths } = useMemo(() => {
+  const { pageXY, eyeXY, delays } = useMemo(() => {
     const px = new Float32Array(N * 2);
     const ex = new Float32Array(N * 2);
     const dl = new Float32Array(N);
-    const dp = new Float32Array(N);
     for (let i = 0; i < N; i++) {
       const p = particles[i];
       px[i * 2] = p.pageX;
@@ -194,9 +193,8 @@ const Reveal = ({
       ex[i * 2] = p.eyeX;
       ex[i * 2 + 1] = p.eyeY;
       dl[i] = p.delay;
-      dp[i] = p.depth;
     }
-    return { pageXY: px, eyeXY: ex, delays: dl, depths: dp };
+    return { pageXY: px, eyeXY: ex, delays: dl };
   }, [particles, N]);
 
   const atlasElement = useMemo(
@@ -243,13 +241,19 @@ const Reveal = ({
     const cx0 = sx + (tx2 - sx) * pe;
     const cy0 = sy + (ty2 - sy) * pe;
 
-    // 3D: each letter surges toward the camera by its OWN depth, mid-flight.
-    const depth = depths[i];
+    // 3D (art-gallery style): mid-flight the letter surges toward the camera —
+    // more the farther it travels — and the scene is perspective-projected
+    // toward the centre. Coherent across all letters, so it reads as one big
+    // 3D move, not random jitter. Flat at both ends (eff = 0).
+    const dxm = tx2 - sx;
+    const dym = ty2 - sy;
+    const moveDist = Math.sqrt(dxm * dxm + dym * dym);
+    const normMove = Math.min(moveDist / screenW, 1);
     const eff = Math.sin(pe * PI); // 0 at ends, 1 mid-flight
-    const zDepth = eff * (Z_NEAR_MIN + (Z_NEAR_MAX - Z_NEAR_MIN) * depth);
+    const zDepth = eff * (Z_BASE + normMove * Z_MOVE);
     const persp = CAMERA_Z / (CAMERA_Z - zDepth);
 
-    // perspective pulls the point toward screen centre as it nears the camera
+    // perspective projection toward screen centre (the real 3D depth cue)
     const cxC = screenW / 2;
     const cyC = screenH / 2;
     const cx = cxC + (cx0 - cxC) * persp;
@@ -260,8 +264,8 @@ const Reveal = ({
       PAGE_GLYPH_SCALE + (EYE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
     const s = baseScale * persp;
 
-    // slight per-letter tilt (direction varies with depth)
-    const rot = eff * ROT_3D * (depth - 0.5) * 2;
+    // tilt in the travel direction, scaled by distance
+    const rot = eff * ROT_3D * normMove * (dxm >= 0 ? 1 : -1);
     const scos = s * Math.cos(rot);
     const ssin = s * Math.sin(rot);
 
