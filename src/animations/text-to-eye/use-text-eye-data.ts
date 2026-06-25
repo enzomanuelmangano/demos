@@ -18,6 +18,7 @@ import {
   LUM_LO,
   MIN_SPACING,
   PAGE_GLYPH_SCALE,
+  PAGE_MARGIN_FRAC,
   PARAGRAPH,
   SAMPLE_GAMMA,
   SAMPLE_MODE,
@@ -96,7 +97,7 @@ export const useTextEyeData = (
     const ds = PAGE_GLYPH_SCALE; // display scale of atlas glyphs
     const half = (GLYPH_CELL / 2) * ds;
     const padX = GLYPH_PAD * ds; // left bearing baked into the atlas cell
-    const marginX = canvasWidth * 0.09;
+    const marginX = canvasWidth * PAGE_MARGIN_FRAC;
     const marginY = canvasHeight * 0.13;
     const colRight = canvasWidth - marginX;
     const colBottom = canvasHeight - marginY;
