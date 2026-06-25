@@ -55,3 +55,11 @@ export const MIN_SPACING = 0.014;
 
 // Animation
 export const STAGGER = 0.35; // fraction of timeline spent staggering across particles
+
+// 3D feel during the morph (art-gallery style): letters surge toward the
+// camera mid-flight (perspective zoom + pull to center + slight tilt), flat at
+// rest. Effect peaks at sin(t*PI) and is zero at both ends.
+export const CAMERA_Z = 800; // virtual camera distance
+export const Z_BASE = 35; // base pop toward camera
+export const Z_MOVE = 110; // extra pop scaled by how far a letter travels
+export const ROT_3D = 0.07; // max mid-flight tilt (radians)
