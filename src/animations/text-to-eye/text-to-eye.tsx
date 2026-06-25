@@ -12,6 +12,7 @@ import {
   useRSXformBuffer,
   useTexture,
 } from '@shopify/react-native-skia';
+import type { SkFont, SkRect } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -21,6 +22,7 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import type { SharedValue } from 'react-native-reanimated';
 
 import {
   EYE_GLYPH_SCALE,
@@ -35,10 +37,11 @@ import {
   ATLAS_COLS,
   ATLAS_HEIGHT,
   ATLAS_WIDTH,
-  GLYPH_FONT,
   UNIQUE_CHARS,
   useTextEyeData,
 } from './use-text-eye-data';
+
+import type { Particle } from './use-text-eye-data';
 
 interface Props {
   width: number;
@@ -48,11 +51,61 @@ interface Props {
 export const TextToEye = ({ width, height }: Props) => {
   const insets = useSafeAreaInsets();
   const data = useTextEyeData(width, height);
-  const progress = useSharedValue(0); // 0 = page, 1 = eye
+  const progress = useSharedValue(0); // 0 = page, 1 = picture
   const [revealed, setRevealed] = useState(false);
   const lastToggleRef = useRef(0);
 
-  const N = data.particles.length;
+  const toggle = () => {
+    const now = Date.now();
+    if (now - lastToggleRef.current < 400) {
+      return; // debounce double-fire
+    }
+    lastToggleRef.current = now;
+    const next = !revealed;
+    setRevealed(next);
+    progress.value = withTiming(next ? 1 : 0, {
+      duration: 1600,
+      easing: Easing.inOut(Easing.cubic),
+    });
+  };
+
+  return (
+    <View style={[styles.fill, { backgroundColor: PAGE_BG }]}>
+      <Canvas style={styles.fill}>
+        {data.ready && data.font && (
+          // Mounted only once the bundled font is ready, so the offscreen
+          // glyph atlas (useTexture) bakes with glyphs present.
+          <Reveal
+            particles={data.particles}
+            sprites={data.sprites}
+            font={data.font}
+            progress={progress}
+          />
+        )}
+      </Canvas>
+
+      <PressableScale
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        onPress={toggle}>
+        <Ionicons
+          name={revealed ? 'book-outline' : 'eye-outline'}
+          size={22}
+          color="#efe7d6"
+        />
+      </PressableScale>
+    </View>
+  );
+};
+
+interface RevealProps {
+  particles: Particle[];
+  sprites: SkRect[];
+  font: SkFont;
+  progress: SharedValue<number>;
+}
+
+const Reveal = ({ particles, sprites, font, progress }: RevealProps) => {
+  const N = particles.length;
 
   // Flat typed arrays for cheap reads inside the RSXform worklet.
   const { pageXY, eyeXY, delays } = useMemo(() => {
@@ -60,7 +113,7 @@ export const TextToEye = ({ width, height }: Props) => {
     const ex = new Float32Array(N * 2);
     const dl = new Float32Array(N);
     for (let i = 0; i < N; i++) {
-      const p = data.particles[i];
+      const p = particles[i];
       px[i * 2] = p.pageX;
       px[i * 2 + 1] = p.pageY;
       ex[i * 2] = p.eyeX;
@@ -68,29 +121,25 @@ export const TextToEye = ({ width, height }: Props) => {
       dl[i] = p.delay;
     }
     return { pageXY: px, eyeXY: ex, delays: dl };
-  }, [data.particles, N]);
+  }, [particles, N]);
 
-  // Offscreen atlas: each unique char baked into its grid cell.
-  const atlasElement = useMemo(() => {
-    return (
+  const atlasElement = useMemo(
+    () => (
       <Group>
-        {UNIQUE_CHARS.map((ch, i) => {
-          const cx = (i % ATLAS_COLS) * GLYPH_CELL;
-          const cy = Math.floor(i / ATLAS_COLS) * GLYPH_CELL;
-          return (
-            <SkText
-              key={i}
-              x={cx + GLYPH_PAD}
-              y={cy + GLYPH_CELL * 0.72}
-              text={ch}
-              font={GLYPH_FONT}
-              color={INK}
-            />
-          );
-        })}
+        {UNIQUE_CHARS.map((ch, i) => (
+          <SkText
+            key={i}
+            x={(i % ATLAS_COLS) * GLYPH_CELL + GLYPH_PAD}
+            y={Math.floor(i / ATLAS_COLS) * GLYPH_CELL + GLYPH_CELL * 0.72}
+            text={ch}
+            font={font}
+            color={INK}
+          />
+        ))}
       </Group>
-    );
-  }, []);
+    ),
+    [font],
+  );
 
   const texture = useTexture(atlasElement, {
     width: ATLAS_WIDTH,
@@ -101,7 +150,6 @@ export const TextToEye = ({ width, height }: Props) => {
     'worklet';
     const p = progress.get();
     const d = delays[i];
-    // staggered per-particle progress (reading order)
     const pe = interpolate(
       p,
       [d * STAGGER, d * STAGGER + (1 - STAGGER)],
@@ -123,43 +171,10 @@ export const TextToEye = ({ width, height }: Props) => {
     val.set(scale, 0, cx - half, cy - half);
   });
 
-  const toggle = () => {
-    const now = Date.now();
-    if (now - lastToggleRef.current < 400) {
-      return; // debounce double-fire
-    }
-    lastToggleRef.current = now;
-    const next = !revealed;
-    setRevealed(next);
-    progress.value = withTiming(next ? 1 : 0, {
-      duration: 1600,
-      easing: Easing.inOut(Easing.cubic),
-    });
-  };
-
-  return (
-    <View style={[styles.fill, { backgroundColor: PAGE_BG }]}>
-      <Canvas style={styles.fill}>
-        {data.ready && (
-          <Atlas
-            image={texture}
-            sprites={data.sprites}
-            transforms={transforms}
-          />
-        )}
-      </Canvas>
-
-      <PressableScale
-        style={[styles.fab, { bottom: insets.bottom + 16 }]}
-        onPress={toggle}>
-        <Ionicons
-          name={revealed ? 'book-outline' : 'eye-outline'}
-          size={22}
-          color="#efe7d6"
-        />
-      </PressableScale>
-    </View>
-  );
+  if (!texture) {
+    return null;
+  }
+  return <Atlas image={texture} sprites={sprites} transforms={transforms} />;
 };
 
 const FAB_SIZE = 44;
