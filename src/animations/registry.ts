@@ -91,7 +91,6 @@ import { MobileInput } from './mobile-input';
 import { MotionBlur } from './motion-blur';
 import { NotionQRCode } from './notion-qrcode';
 import { OnlineOffline } from './online-offline';
-import { TextToEyeScreen } from './text-to-eye';
 import { PaperFolding } from './paper-folding';
 import { ParticlesButton } from './particles-button';
 import { PomodoroTimer } from './pomodoro-timer';
@@ -126,6 +125,7 @@ import { Sudoku } from './sudoku';
 import { SwipeCards } from './swipe-cards';
 import { TabNavigation } from './tab-navigation';
 import { TelegramThemeSwitch } from './telegram-theme-switch';
+import { TheLittlePrinceScreen } from './the-little-prince';
 import { ThemeCanvasAnimation } from './theme-canvas-animation';
 import { ThreadsHoloTicket } from './threads-holo-ticket/src';
 import { TimeMachine } from './time-machine';
@@ -258,7 +258,7 @@ export const AnimationRegistry = {
   'cherry-blossom-qrcode': CherryBlossomQRCode,
   'art-gallery': ArtGallery,
   chessboard: ChessboardGame,
-  'text-to-eye': TextToEyeScreen,
+  'the-little-prince': TheLittlePrinceScreen,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -874,9 +874,9 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     route: 'Chessboard',
     iconName: 'grid-outline',
   },
-  'text-to-eye': {
-    name: 'Text to Eye',
-    route: 'TextToEye',
+  'the-little-prince': {
+    name: 'The Little Prince',
+    route: 'TheLittlePrince',
     iconName: 'eye-outline',
   },
 } as const;

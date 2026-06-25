@@ -7,7 +7,6 @@ import {
   useFont,
   useImage,
 } from '@shopify/react-native-skia';
-import type { SkFont, SkRect } from '@shopify/react-native-skia';
 
 import {
   GLYPH_CELL,
@@ -25,11 +24,15 @@ import {
   SAT_WEIGHT,
 } from './constants';
 
-const EYE_IMG = require('./assets/prince.png');
+import type { SkFont, SkRect } from '@shopify/react-native-skia';
+
 const PAGE_FONT = require('./assets/Newsreader.ttf');
+const PICTURE_IMG = require('./assets/prince.png');
 
 // --- STATIC atlas geometry (depends only on PARAGRAPH) ---
-const VISIBLE_CHARS = Array.from(PARAGRAPH).filter(c => c !== ' ' && c !== '\n');
+const VISIBLE_CHARS = Array.from(PARAGRAPH).filter(
+  c => c !== ' ' && c !== '\n',
+);
 export const UNIQUE_CHARS = Array.from(new Set(VISIBLE_CHARS));
 const CHAR_TO_INDEX = new Map(UNIQUE_CHARS.map((c, i) => [c, i]));
 export const ATLAS_COLS = Math.ceil(Math.sqrt(UNIQUE_CHARS.length));
@@ -50,34 +53,34 @@ export interface Particle {
   charIndex: number;
   pageX: number; // cell center on the page
   pageY: number;
-  eyeX: number;
-  eyeY: number;
+  picX: number;
+  picY: number;
   delay: number; // 0..1 stagger order
   depth: number; // 0..1 per-letter camera nearness for the 3D surge
 }
 
-export interface TextEyeData {
+export interface LittlePrinceData {
   ready: boolean;
   particles: Particle[];
   sprites: SkRect[];
   font: SkFont | null;
 }
 
-export const useTextEyeData = (
+export const useLittlePrinceData = (
   canvasWidth: number,
   canvasHeight: number,
-): TextEyeData => {
-  const eyeImage = useImage(EYE_IMG);
+): LittlePrinceData => {
+  const pictureImage = useImage(PICTURE_IMG);
   const font = useFont(PAGE_FONT, GLYPH_FONT_SIZE);
 
   return useMemo(() => {
-    const empty: TextEyeData = {
+    const empty: LittlePrinceData = {
       ready: false,
       particles: [],
       sprites: [],
       font: null,
     };
-    if (!font || !eyeImage || canvasWidth <= 0 || canvasHeight <= 0) {
+    if (!font || !pictureImage || canvasWidth <= 0 || canvasHeight <= 0) {
       return empty;
     }
 
@@ -152,8 +155,8 @@ export const useTextEyeData = (
             charIndex: idx,
             pageX: cellLeft + half,
             pageY: y + half,
-            eyeX: cellLeft + half,
-            eyeY: y + half,
+            picX: cellLeft + half,
+            picY: y + half,
             delay: 0,
             depth: 0,
           });
@@ -171,10 +174,10 @@ export const useTextEyeData = (
 
     const N = particles.length;
 
-    // --- sample eye targets (only the darkest pixels; image is dim) ---
-    const imgW = eyeImage.width();
-    const imgH = eyeImage.height();
-    const pixels = eyeImage.readPixels(0, 0, {
+    // --- sample picture targets (letters land on the inked pixels) ---
+    const imgW = pictureImage.width();
+    const imgH = pictureImage.height();
+    const pixels = pictureImage.readPixels(0, 0, {
       width: imgW,
       height: imgH,
       colorType: ColorType.RGBA_8888,
@@ -431,8 +434,8 @@ export const useTextEyeData = (
     for (let k = 0; k < N; k++) {
       const pi = pageOrder[k].i;
       const s = samples[sampleOrder[k].i];
-      particles[pi].eyeX = s.x;
-      particles[pi].eyeY = s.y;
+      particles[pi].picX = s.x;
+      particles[pi].picY = s.y;
       const dx = particles[pi].pageX - ax;
       const dy = particles[pi].pageY - ay;
       const ripple = Math.sqrt(dx * dx + dy * dy) / maxR;
@@ -445,5 +448,5 @@ export const useTextEyeData = (
     }
 
     return { ready: true, particles, sprites, font };
-  }, [font, eyeImage, canvasWidth, canvasHeight]);
+  }, [font, pictureImage, canvasWidth, canvasHeight]);
 };

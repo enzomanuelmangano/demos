@@ -26,7 +26,6 @@ import Animated, {
 
 import {
   CAMERA_Z,
-  EYE_GLYPH_SCALE,
   FADE_AMT,
   GLYPH_CELL,
   GLYPH_PAD,
@@ -34,6 +33,7 @@ import {
   PAGE_BG,
   PAGE_GLYPH_SCALE,
   PAGE_MARGIN_FRAC,
+  PICTURE_GLYPH_SCALE,
   ROT_3D,
   STAGGER,
   Z_BASE,
@@ -44,10 +44,10 @@ import {
   ATLAS_HEIGHT,
   ATLAS_WIDTH,
   UNIQUE_CHARS,
-  useTextEyeData,
-} from './use-text-eye-data';
+  useLittlePrinceData,
+} from './use-little-prince-data';
 
-import type { Particle } from './use-text-eye-data';
+import type { Particle } from './use-little-prince-data';
 import type { SkFont, SkRect } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -56,8 +56,8 @@ interface Props {
   height: number;
 }
 
-export const TextToEye = ({ width, height }: Props) => {
-  const data = useTextEyeData(width, height);
+export const TheLittlePrince = ({ width, height }: Props) => {
+  const data = useLittlePrinceData(width, height);
   const progress = useSharedValue(0); // 0 = page, 1 = picture
   const face = useSharedValue(0); // 0 = aperture icon, 1 = book icon
   const [revealed, setRevealed] = useState(false);
@@ -184,7 +184,7 @@ const Reveal = ({
   const N = particles.length;
 
   // Flat typed arrays for cheap reads inside the RSXform worklet.
-  const { pageXY, eyeXY, delays } = useMemo(() => {
+  const { pageXY, picXY, delays } = useMemo(() => {
     const px = new Float32Array(N * 2);
     const ex = new Float32Array(N * 2);
     const dl = new Float32Array(N);
@@ -192,11 +192,11 @@ const Reveal = ({
       const p = particles[i];
       px[i * 2] = p.pageX;
       px[i * 2 + 1] = p.pageY;
-      ex[i * 2] = p.eyeX;
-      ex[i * 2 + 1] = p.eyeY;
+      ex[i * 2] = p.picX;
+      ex[i * 2 + 1] = p.picY;
       dl[i] = p.delay;
     }
-    return { pageXY: px, eyeXY: ex, delays: dl };
+    return { pageXY: px, picXY: ex, delays: dl };
   }, [particles, N]);
 
   const atlasElement = useMemo(
@@ -236,8 +236,8 @@ const Reveal = ({
 
     const sx = pageXY[i * 2];
     const sy = pageXY[i * 2 + 1];
-    const tx2 = eyeXY[i * 2];
-    const ty2 = eyeXY[i * 2 + 1];
+    const tx2 = picXY[i * 2];
+    const ty2 = picXY[i * 2 + 1];
 
     // flat interpolated position (page -> picture)
     const cx0 = sx + (tx2 - sx) * pe;
@@ -263,7 +263,7 @@ const Reveal = ({
 
     // scale grows with perspective (bigger = nearer)
     const baseScale =
-      PAGE_GLYPH_SCALE + (EYE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
+      PAGE_GLYPH_SCALE + (PICTURE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
     const s = baseScale * persp;
 
     // tilt in the travel direction, scaled by distance
@@ -330,14 +330,14 @@ const styles = StyleSheet.create({
   },
   fill: { flex: 1 },
   iconBox: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
     alignItems: 'center',
+    height: ICON_SIZE,
     justifyContent: 'center',
+    width: ICON_SIZE,
   },
   iconLayer: {
-    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'absolute',
   },
 });

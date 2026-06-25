@@ -40,7 +40,7 @@ export const GLYPH_PAD = 3; // left bearing of the glyph inside its cell
 
 // Display scale of a glyph on the page (book text size)
 export const PAGE_GLYPH_SCALE = 0.48;
-export const EYE_GLYPH_SCALE = 0.44;
+export const PICTURE_GLYPH_SCALE = 0.44;
 
 // Sampling mode per source image:
 //  'dark' — dim photo, subject is the DARKEST pixels (reject mid-tone skin).
