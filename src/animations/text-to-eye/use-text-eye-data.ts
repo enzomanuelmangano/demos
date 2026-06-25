@@ -79,13 +79,18 @@ export const useTextEyeData = (
       return empty;
     }
 
-    // measure real advances for proportional layout
-    const measure = (s: string): number => {
-      const w = font.measureText(s).width;
+    // real ADVANCE width per glyph (incl. side bearings) — NOT the bounding
+    // box (measureText), which gives uneven, cramped spacing.
+    const advanceOf = (ch: string): number => {
+      const ids = font.getGlyphIDs(ch);
+      if (!ids.length) {
+        return GLYPH_FONT_SIZE * 0.5;
+      }
+      const w = font.getGlyphWidths(ids)[0];
       return Number.isFinite(w) && w > 0 ? w : GLYPH_FONT_SIZE * 0.5;
     };
-    const CHAR_ADV: number[] = UNIQUE_CHARS.map(c => measure(c));
-    const SPACE_ADV = measure(' ');
+    const CHAR_ADV: number[] = UNIQUE_CHARS.map(advanceOf);
+    const SPACE_ADV = advanceOf(' ');
 
     // --- proportional, word-wrapped page layout ---
     const ds = PAGE_GLYPH_SCALE; // display scale of atlas glyphs
