@@ -66,7 +66,6 @@ export const Z_BASE = 85; // base pop toward camera
 export const Z_MOVE = 290; // extra pop scaled by travel distance (keep base+move < CAMERA_Z)
 export const ROT_3D = 0.11; // max mid-flight tilt (radians)
 
-// Mid-flight depth-of-field: the moving letters blur + dim, then resolve crisp
-// as they settle (peaks at sin(progress*PI), zero at both ends).
-export const MAX_BLUR = 3.5; // px
+// Fade in flight: the moving letters dim, then resolve to full opacity as they
+// settle (peaks at sin(progress*PI), zero at both ends). No blur.
 export const FADE_AMT = 0.32; // how much opacity dips mid-flight (0..1)
