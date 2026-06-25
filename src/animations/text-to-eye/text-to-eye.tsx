@@ -16,11 +16,10 @@ import type { SkFont, SkRect } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Easing,
   Extrapolation,
   interpolate,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -63,9 +62,9 @@ export const TextToEye = ({ width, height }: Props) => {
     lastToggleRef.current = now;
     const next = !revealed;
     setRevealed(next);
-    progress.value = withTiming(next ? 1 : 0, {
-      duration: 1600,
-      easing: Easing.inOut(Easing.cubic),
+    progress.value = withSpring(next ? 1 : 0, {
+      dampingRatio: 1,
+      duration: 1200,
     });
   };
 
