@@ -324,14 +324,30 @@ export const useTextEyeData = (
       .map((s, i) => ({ i, a: Math.atan2(s.y - scy, s.x - scx) }))
       .sort((u, v) => u.a - v.a);
 
+    // Ripple origin = the floating button (bottom-right corner). Letters
+    // nearest it animate first, so the morph sweeps out from where you tapped.
+    const ax = canvasWidth;
+    const ay = canvasHeight;
+    let maxR = 1;
+    for (let i = 0; i < N; i++) {
+      const dx = particles[i].pageX - ax;
+      const dy = particles[i].pageY - ay;
+      const r = Math.sqrt(dx * dx + dy * dy);
+      if (r > maxR) {
+        maxR = r;
+      }
+    }
+
     for (let k = 0; k < N; k++) {
       const pi = pageOrder[k].i;
       const s = samples[sampleOrder[k].i];
       particles[pi].eyeX = s.x;
       particles[pi].eyeY = s.y;
-      // Randomized stagger (no spatial ripple) + random per-letter depth so the
-      // cloud surges through varied camera distances = cinematic parallax.
-      particles[pi].delay = Math.random();
+      const dx = particles[pi].pageX - ax;
+      const dy = particles[pi].pageY - ay;
+      const ripple = Math.sqrt(dx * dx + dy * dy) / maxR;
+      // mostly distance-driven ripple + a little jitter so the front isn't rigid
+      particles[pi].delay = ripple * 0.85 + Math.random() * 0.15;
       particles[pi].depth = Math.random();
     }
 

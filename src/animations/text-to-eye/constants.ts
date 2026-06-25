@@ -53,13 +53,20 @@ export const PAGE_MARGIN_FRAC = 0.09;
 // longest side. Larger => airier; smaller => denser (until letters touch).
 export const MIN_SPACING = 0.014;
 
-// Animation
-export const STAGGER = 0.35; // fraction of timeline spent staggering across particles
+// Animation — fraction of the timeline spent rippling across letters
+// (higher = more pronounced wave sweeping from the button).
+export const STAGGER = 0.55;
 
-// Cinematic depth during the morph: each letter surges toward the camera by
-// its OWN random amount mid-flight (sin(t*PI) peak, flat at both ends), so the
-// cloud reads as parallax layers passing rather than a uniform pop.
-export const CAMERA_Z = 800; // virtual camera distance
-export const Z_NEAR_MIN = 45; // shallowest letters
-export const Z_NEAR_MAX = 210; // nearest letters (must stay < CAMERA_Z)
-export const ROT_3D = 0.08; // max mid-flight tilt (radians)
+// Cinematic depth during the morph (art-gallery style): mid-flight each letter
+// surges toward the camera (sin(t*PI) peak, flat at both ends) and the scene is
+// perspective-projected toward the centre. Letters that travel farther pop more
+// — coherent depth, not random, so the whole cloud reads as one 3D move.
+export const CAMERA_Z = 820; // virtual camera distance
+export const Z_BASE = 85; // base pop toward camera
+export const Z_MOVE = 290; // extra pop scaled by travel distance (keep base+move < CAMERA_Z)
+export const ROT_3D = 0.11; // max mid-flight tilt (radians)
+
+// Mid-flight depth-of-field: the moving letters blur + dim, then resolve crisp
+// as they settle (peaks at sin(progress*PI), zero at both ends).
+export const MAX_BLUR = 3.5; // px
+export const FADE_AMT = 0.32; // how much opacity dips mid-flight (0..1)
