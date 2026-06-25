@@ -19,7 +19,6 @@ import {
   writeVertices,
 } from '../fold/engine';
 import { mat4 } from '../fold/math';
-import { isSettled, springStep } from '../fold/spring';
 import {
   fragmentShader,
   shadowFragmentShader,
@@ -29,6 +28,9 @@ import {
 
 import type { FoldGeometry } from '../fold/engine';
 import type { Vec3 } from '../fold/math';
+
+// Seconds for one fold step. Slow + smooth so each crease reads clearly.
+const FOLD_DURATION = 1.5;
 
 export interface RendererState {
   targetStep: number;
@@ -57,7 +59,10 @@ export function useWebGPURenderer(
   const resourcesRef = useRef<GPUResources | null>(null);
   const animationRef = useRef<number | null>(null);
   const geometryRef = useRef<FoldGeometry>(createGeometry());
-  const progressRef = useRef({ position: 0, velocity: 0 });
+  // Timed ease-in-out tween between fold steps: each Next retargets and we
+  // interpolate from the current pose to the new step over FOLD_DURATION with
+  // smootherstep easing — slow start, slow end, smooth through the middle.
+  const tweenRef = useRef({ from: 0, to: 0, elapsed: FOLD_DURATION, value: 0 });
   const lastFrameTimeRef = useRef<number>(Date.now());
   const isInitializedRef = useRef(false);
 
@@ -98,20 +103,26 @@ export function useWebGPURenderer(
     const dt = Math.min((now - lastFrameTimeRef.current) / 1000, 0.05);
     lastFrameTimeRef.current = now;
 
-    // Ease fold progress toward the target step.
+    // Ease-in-out tween toward the target step. When the user taps Next/Prev the
+    // target changes; restart the tween from wherever we are now so a mid-fold
+    // tap blends smoothly instead of snapping. The dense isometric frames keep
+    // the paper from crushing along the way.
     const target = state.targetStep;
-    const prog = progressRef.current;
-    const spring = springStep(prog.position, prog.velocity, target, dt);
-    prog.position = spring.position;
-    prog.velocity = spring.velocity;
-    if (isSettled(prog.position, prog.velocity, target)) {
-      prog.position = target;
-      prog.velocity = 0;
+    const tw = tweenRef.current;
+    if (target !== tw.to) {
+      tw.from = tw.value;
+      tw.to = target;
+      tw.elapsed = 0;
     }
+    tw.elapsed = Math.min(tw.elapsed + dt, FOLD_DURATION);
+    const u = FOLD_DURATION > 0 ? tw.elapsed / FOLD_DURATION : 1;
+    const eased = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep
+    tw.value = tw.from + (tw.to - tw.from) * eased;
+    const uiProgress = tw.value;
 
     // Rebuild the folded mesh and upload it.
     const geo = geometryRef.current;
-    writeVertices(geo, prog.position);
+    writeVertices(geo, uiProgress);
     device.queue.writeBuffer(
       vertexBuffer,
       0,
@@ -136,7 +147,7 @@ export function useWebGPURenderer(
     uniformData.set([LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2], groundY], 16);
     // Pass raw fold progress so the shader can reveal each crease only at the
     // step that actually creates it.
-    uniformData.set([eye[0], eye[1], eye[2], prog.position], 20);
+    uniformData.set([eye[0], eye[1], eye[2], uiProgress], 20);
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
     const commandEncoder = device.createCommandEncoder();
