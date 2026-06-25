@@ -108,51 +108,65 @@ export const useTextEyeData = (
     const particles: Particle[] = [];
     const sprites: SkRect[] = [];
 
-    const words = PARAGRAPH.trim().split(/\s+/);
-    let x = marginX;
+    // Paragraphs (split on '\n'); each starts on a fresh line, first line
+    // indented. Laid out once, no looping — page ends when text/space runs out.
+    const paragraphs = PARAGRAPH.trim()
+      .split('\n')
+      .map(p => p.trim())
+      .filter(Boolean);
+    const indent = spaceW * 3; // first-line indent
     let y = marginY;
-    let wi = 0;
-    while (y <= colBottom) {
-      const word = words[wi % words.length];
-      wi++;
-      // width of this word in display units
-      let wordW = 0;
-      for (const ch of word) {
-        const idx = CHAR_TO_INDEX.get(ch);
-        if (idx === undefined) {
-          continue;
+    let placed = true;
+    for (let pi = 0; pi < paragraphs.length && placed; pi++) {
+      const words = paragraphs[pi].split(/\s+/);
+      let x = marginX + indent;
+      for (let wi = 0; wi < words.length; wi++) {
+        const word = words[wi];
+        // width of this word in display units
+        let wordW = 0;
+        for (const ch of word) {
+          const idx = CHAR_TO_INDEX.get(ch);
+          if (idx === undefined) {
+            continue;
+          }
+          wordW += CHAR_ADV[idx] * ds;
         }
-        wordW += CHAR_ADV[idx] * ds;
-      }
-      // wrap on word boundary
-      if (x + wordW > colRight && x > marginX) {
-        x = marginX;
-        y += lineHeight;
-        if (y > colBottom) {
-          break;
+        // wrap on word boundary
+        if (x + wordW > colRight && x > marginX) {
+          x = marginX;
+          y += lineHeight;
+          if (y > colBottom) {
+            placed = false;
+            break;
+          }
         }
-      }
-      for (const ch of word) {
-        const idx = CHAR_TO_INDEX.get(ch);
-        if (idx === undefined) {
-          continue;
+        for (const ch of word) {
+          const idx = CHAR_TO_INDEX.get(ch);
+          if (idx === undefined) {
+            continue;
+          }
+          const adv = CHAR_ADV[idx] * ds;
+          // cell-left sits at x; glyph drawn padX into the cell
+          const cellLeft = x - padX;
+          particles.push({
+            charIndex: idx,
+            pageX: cellLeft + half,
+            pageY: y + half,
+            eyeX: cellLeft + half,
+            eyeY: y + half,
+            delay: 0,
+            depth: 0,
+          });
+          sprites.push(CHAR_SPRITE[idx]);
+          x += adv;
         }
-        const adv = CHAR_ADV[idx] * ds;
-        // cell-left sits at x; glyph drawn padX into the cell
-        const cellLeft = x - padX;
-        particles.push({
-          charIndex: idx,
-          pageX: cellLeft + half,
-          pageY: y + half,
-          eyeX: cellLeft + half,
-          eyeY: y + half,
-          delay: 0,
-          depth: 0,
-        });
-        sprites.push(CHAR_SPRITE[idx]);
-        x += adv;
+        x += spaceW;
       }
-      x += spaceW;
+      // paragraph break — next paragraph starts on a new line
+      y += lineHeight;
+      if (y > colBottom) {
+        placed = false;
+      }
     }
 
     const N = particles.length;

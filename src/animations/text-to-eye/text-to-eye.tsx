@@ -7,8 +7,8 @@ import {
   Atlas,
   Canvas,
   Group,
-  Paint,
   Text as SkText,
+  useColorBuffer,
   useRSXformBuffer,
   useTexture,
 } from '@shopify/react-native-skia';
@@ -19,7 +19,6 @@ import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming,
@@ -278,20 +277,41 @@ const Reveal = ({
     val.set(scos, ssin, tx, ty);
   });
 
-  // Fade in flight: the cloud dims at the peak of the move (sin(progress*PI))
-  // and resolves to full opacity at both ends. drawAtlas is a single draw call,
-  // so this is a layer-level dim (not per-sprite) — no blur.
-  const layerOpacity = useDerivedValue(
-    () => 1 - Math.sin(progress.get() * Math.PI) * FADE_AMT,
-  );
+  // Per-letter fade that FOLLOWS the ripple: each glyph dims only while it is
+  // itself mid-flight (sin(pe*PI) peak using that letter's own staggered phase),
+  // crisp at rest. dstIn blend scales the sprite's alpha by the colour's alpha.
+  const colors = useColorBuffer(N, (val, i) => {
+    'worklet';
+    const p = progress.get();
+    const d = delays[i];
+    const pe = interpolate(
+      p,
+      [d * STAGGER, d * STAGGER + (1 - STAGGER)],
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
+    const eff = Math.sin(pe * Math.PI); // 0 at ends, 1 mid-flight for THIS letter
+    const a = 1 - eff * FADE_AMT;
+    // srcIn (color = src, glyph = dst): output = colour, masked by the glyph's
+    // coverage. The colour carries the INK and the per-letter fade; the atlas
+    // only supplies the glyph shape.
+    val[0] = 0.11; // #1c1a17
+    val[1] = 0.102;
+    val[2] = 0.09;
+    val[3] = a;
+  });
 
   if (!texture) {
     return null;
   }
   return (
-    <Group layer={<Paint opacity={layerOpacity} />}>
-      <Atlas image={texture} sprites={sprites} transforms={transforms} />
-    </Group>
+    <Atlas
+      image={texture}
+      sprites={sprites}
+      transforms={transforms}
+      colors={colors}
+      colorBlendMode="srcIn"
+    />
   );
 };
 
