@@ -30,6 +30,7 @@ import {
   INK,
   PAGE_BG,
   PAGE_GLYPH_SCALE,
+  PAGE_MARGIN_FRAC,
   STAGGER,
 } from './constants';
 import {
@@ -64,7 +65,7 @@ export const TextToEye = ({ width, height }: Props) => {
     setRevealed(next);
     progress.value = withSpring(next ? 1 : 0, {
       dampingRatio: 1,
-      duration: 1200,
+      duration: 1900,
     });
   };
 
@@ -84,7 +85,10 @@ export const TextToEye = ({ width, height }: Props) => {
       </Canvas>
 
       <PressableScale
-        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        style={[
+          styles.fab,
+          { bottom: insets.bottom + 16, right: width * PAGE_MARGIN_FRAC },
+        ]}
         onPress={toggle}>
         <Ionicons
           name={revealed ? 'book-outline' : 'eye-outline'}
@@ -182,7 +186,6 @@ const styles = StyleSheet.create({
   fill: { flex: 1 },
   fab: {
     position: 'absolute',
-    right: 14,
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: FAB_SIZE / 2,
