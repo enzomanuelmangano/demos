@@ -2,8 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { useMemo, useRef, useState } from 'react';
 
-import { Ionicons } from '@expo/vector-icons';
-
+import { Feather } from '@expo/vector-icons';
 import {
   Atlas,
   Canvas,
@@ -12,16 +11,17 @@ import {
   useRSXformBuffer,
   useTexture,
 } from '@shopify/react-native-skia';
-import type { SkFont, SkRect } from '@shopify/react-native-skia';
+import { SymbolView } from 'expo-symbols';
 import { PressableScale } from 'pressto';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
+import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
+  useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
 
 import {
   CAMERA_Z,
@@ -34,8 +34,8 @@ import {
   PAGE_MARGIN_FRAC,
   ROT_3D,
   STAGGER,
-  Z_BASE,
-  Z_MOVE,
+  Z_NEAR_MAX,
+  Z_NEAR_MIN,
 } from './constants';
 import {
   ATLAS_COLS,
@@ -46,6 +46,8 @@ import {
 } from './use-text-eye-data';
 
 import type { Particle } from './use-text-eye-data';
+import type { SkFont, SkRect } from '@shopify/react-native-skia';
+import type { SharedValue } from 'react-native-reanimated';
 
 interface Props {
   width: number;
@@ -53,9 +55,9 @@ interface Props {
 }
 
 export const TextToEye = ({ width, height }: Props) => {
-  const insets = useSafeAreaInsets();
   const data = useTextEyeData(width, height);
   const progress = useSharedValue(0); // 0 = page, 1 = picture
+  const face = useSharedValue(0); // 0 = aperture icon, 1 = book icon
   const [revealed, setRevealed] = useState(false);
   const lastToggleRef = useRef(0);
 
@@ -67,10 +69,19 @@ export const TextToEye = ({ width, height }: Props) => {
     lastToggleRef.current = now;
     const next = !revealed;
     setRevealed(next);
-    progress.value = withSpring(next ? 1 : 0, {
-      dampingRatio: 1,
-      duration: 2500,
-    });
+    progress.set(
+      withSpring(next ? 1 : 0, {
+        dampingRatio: 1,
+        duration: 1400,
+      }),
+    );
+    // fast, blur-bridged icon crossfade (Emil Kowalski's tips)
+    face.set(
+      withTiming(next ? 1 : 0, {
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
   };
 
   return (
@@ -93,15 +104,60 @@ export const TextToEye = ({ width, height }: Props) => {
       <PressableScale
         style={[
           styles.fab,
-          { bottom: insets.bottom + 16, right: width * PAGE_MARGIN_FRAC },
+          {
+            bottom: width * PAGE_MARGIN_FRAC,
+            right: width * PAGE_MARGIN_FRAC,
+          },
         ]}
         onPress={toggle}>
-        <Ionicons
-          name={revealed ? 'book-outline' : 'eye-outline'}
-          size={22}
-          color="#efe7d6"
-        />
+        <ToggleIcon face={face} />
       </PressableScale>
+    </View>
+  );
+};
+
+const ICON_COLOR = '#efe7d6';
+const ICON_SIZE = 20;
+
+const ToggleIcon = ({ face }: { face: SharedValue<number> }) => {
+  // aperture (page state) crossfades to book (picture state) with a blur +
+  // scale bridge — fast, ease-out, never from scale(0).
+  const apertureStyle = useAnimatedStyle(() => {
+    const f = face.get();
+    return {
+      opacity: 1 - f,
+      transform: [{ scale: 1 - 0.15 * f }],
+      filter: [{ blur: 2 * f }],
+    };
+  });
+  const bookStyle = useAnimatedStyle(() => {
+    const f = face.get();
+    return {
+      opacity: f,
+      transform: [{ scale: 0.85 + 0.15 * f }],
+      filter: [{ blur: 2 * (1 - f) }],
+    };
+  });
+  return (
+    <View style={styles.iconBox} pointerEvents="none">
+      <Animated.View style={[styles.iconLayer, apertureStyle]}>
+        <SymbolView
+          name="photo"
+          size={ICON_SIZE}
+          weight="semibold"
+          tintColor={ICON_COLOR}
+          fallback={<Feather name="image" size={17} color={ICON_COLOR} />}
+        />
+      </Animated.View>
+      <Animated.View style={[styles.iconLayer, bookStyle]}>
+        <SymbolView
+          name="textformat"
+          size={ICON_SIZE}
+          weight="semibold"
+          tintColor={ICON_COLOR}
+          fallback={<Feather name="type" size={17} color={ICON_COLOR} />}
+        />
+      </Animated.View>
     </View>
   );
 };
@@ -126,10 +182,11 @@ const Reveal = ({
   const N = particles.length;
 
   // Flat typed arrays for cheap reads inside the RSXform worklet.
-  const { pageXY, eyeXY, delays } = useMemo(() => {
+  const { pageXY, eyeXY, delays, depths } = useMemo(() => {
     const px = new Float32Array(N * 2);
     const ex = new Float32Array(N * 2);
     const dl = new Float32Array(N);
+    const dp = new Float32Array(N);
     for (let i = 0; i < N; i++) {
       const p = particles[i];
       px[i * 2] = p.pageX;
@@ -137,8 +194,9 @@ const Reveal = ({
       ex[i * 2] = p.eyeX;
       ex[i * 2 + 1] = p.eyeY;
       dl[i] = p.delay;
+      dp[i] = p.depth;
     }
-    return { pageXY: px, eyeXY: ex, delays: dl };
+    return { pageXY: px, eyeXY: ex, delays: dl, depths: dp };
   }, [particles, N]);
 
   const atlasElement = useMemo(
@@ -185,13 +243,10 @@ const Reveal = ({
     const cx0 = sx + (tx2 - sx) * pe;
     const cy0 = sy + (ty2 - sy) * pe;
 
-    // 3D: surge toward the camera mid-flight, more for letters that travel far.
-    const dxm = tx2 - sx;
-    const dym = ty2 - sy;
-    const moveDist = Math.sqrt(dxm * dxm + dym * dym);
-    const normMove = Math.min(moveDist / screenW, 1);
+    // 3D: each letter surges toward the camera by its OWN depth, mid-flight.
+    const depth = depths[i];
     const eff = Math.sin(pe * PI); // 0 at ends, 1 mid-flight
-    const zDepth = eff * (Z_BASE + normMove * Z_MOVE);
+    const zDepth = eff * (Z_NEAR_MIN + (Z_NEAR_MAX - Z_NEAR_MIN) * depth);
     const persp = CAMERA_Z / (CAMERA_Z - zDepth);
 
     // perspective pulls the point toward screen centre as it nears the camera
@@ -205,8 +260,8 @@ const Reveal = ({
       PAGE_GLYPH_SCALE + (EYE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
     const s = baseScale * persp;
 
-    // slight tilt in the travel direction
-    const rot = eff * ROT_3D * normMove * (dxm >= 0 ? 1 : -1);
+    // slight per-letter tilt (direction varies with depth)
+    const rot = eff * ROT_3D * (depth - 0.5) * 2;
     const scos = s * Math.cos(rot);
     const ssin = s * Math.sin(rot);
 
@@ -222,17 +277,28 @@ const Reveal = ({
   return <Atlas image={texture} sprites={sprites} transforms={transforms} />;
 };
 
-const FAB_SIZE = 44;
+const FAB_SIZE = 48;
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
   fab: {
+    alignItems: 'center',
+    backgroundColor: '#1c1a17',
+    borderCurve: 'continuous',
+    borderRadius: FAB_SIZE / 2,
+    height: FAB_SIZE,
+    justifyContent: 'center',
     position: 'absolute',
     width: FAB_SIZE,
-    height: FAB_SIZE,
-    borderRadius: FAB_SIZE / 2,
-    borderCurve: 'continuous',
-    backgroundColor: '#1c1a17',
+  },
+  fill: { flex: 1 },
+  iconBox: {
+    width: ICON_SIZE,
+    height: ICON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconLayer: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },

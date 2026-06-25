@@ -56,10 +56,10 @@ export const MIN_SPACING = 0.014;
 // Animation
 export const STAGGER = 0.35; // fraction of timeline spent staggering across particles
 
-// 3D feel during the morph (art-gallery style): letters surge toward the
-// camera mid-flight (perspective zoom + pull to center + slight tilt), flat at
-// rest. Effect peaks at sin(t*PI) and is zero at both ends.
+// Cinematic depth during the morph: each letter surges toward the camera by
+// its OWN random amount mid-flight (sin(t*PI) peak, flat at both ends), so the
+// cloud reads as parallax layers passing rather than a uniform pop.
 export const CAMERA_Z = 800; // virtual camera distance
-export const Z_BASE = 50; // base pop toward camera
-export const Z_MOVE = 165; // extra pop scaled by how far a letter travels
-export const ROT_3D = 0.11; // max mid-flight tilt (radians)
+export const Z_NEAR_MIN = 45; // shallowest letters
+export const Z_NEAR_MAX = 210; // nearest letters (must stay < CAMERA_Z)
+export const ROT_3D = 0.08; // max mid-flight tilt (radians)
