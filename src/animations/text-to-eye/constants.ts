@@ -45,6 +45,10 @@ export const SAT_WEIGHT = 0.45;
 
 export const SAMPLE_GAMMA = 1.4; // contrast: dense subject, thin background
 
+// Page side margin as a fraction of canvas width (shared by the text layout
+// and the floating button so they align).
+export const PAGE_MARGIN_FRAC = 0.09;
+
 // Poisson-disk min spacing between letters, as a fraction of the image's
 // longest side. Larger => airier; smaller => denser (until letters touch).
 export const MIN_SPACING = 0.014;
