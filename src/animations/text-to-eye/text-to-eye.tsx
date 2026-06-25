@@ -69,7 +69,7 @@ export const TextToEye = ({ width, height }: Props) => {
     setRevealed(next);
     progress.value = withSpring(next ? 1 : 0, {
       dampingRatio: 1,
-      duration: 1900,
+      duration: 2500,
     });
   };
 
