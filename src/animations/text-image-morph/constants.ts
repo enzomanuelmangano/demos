@@ -42,9 +42,24 @@ export const PAGE_MARGIN_FRAC = 0.09;
 // longest side. Larger => airier; smaller => denser (until letters touch).
 export const MIN_SPACING = 0.014;
 
+// Picture sampling tuning
+export const SAMPLE_MAX_TRIES_PER_LETTER = 800; // Poisson rejection budget per letter
+export const PRUNE_RADIUS_FACTOR = 3.2; // stray-neighbour search radius (× minDist)
+export const PRUNE_MIN_NEIGHBOURS = 6; // fewer neighbours in range => stray, culled
+export const PICTURE_BOX_W_FRAC = 0.9; // assembled picture max width (× canvas)
+export const PICTURE_BOX_H_FRAC = 0.7; // assembled picture max height (× canvas)
+
 // Animation — fraction of the timeline spent rippling across letters
 // (higher = more pronounced wave sweeping from the button).
 export const STAGGER = 0.55;
+
+// Random share of each letter's stagger delay (the rest is distance-driven), so
+// the ripple front isn't perfectly rigid.
+export const RIPPLE_JITTER = 0.15;
+
+// Duration of the morph spring. The haptic pattern (haptics.ts) is hand-tuned
+// to this timing + the ripple stagger — keep them in sync.
+export const MORPH_DURATION_MS = 2000;
 
 // Cinematic depth during the morph (art-gallery style): mid-flight each letter
 // surges toward the camera (sin(t*PI) peak, flat at both ends) and the scene is

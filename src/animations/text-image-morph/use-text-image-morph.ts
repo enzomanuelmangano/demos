@@ -18,7 +18,13 @@ import {
   MIN_SPACING,
   PAGE_GLYPH_SCALE,
   PAGE_MARGIN_FRAC,
+  PICTURE_BOX_H_FRAC,
+  PICTURE_BOX_W_FRAC,
+  PRUNE_MIN_NEIGHBOURS,
+  PRUNE_RADIUS_FACTOR,
+  RIPPLE_JITTER,
   SAMPLE_GAMMA,
+  SAMPLE_MAX_TRIES_PER_LETTER,
   SAMPLE_MODE,
   SAT_WEIGHT,
 } from './constants';
@@ -33,16 +39,6 @@ import type {
 // Bundled serif used for the page text (generic to the engine).
 const PAGE_FONT = require('./assets/Newsreader.ttf');
 
-export interface Particle {
-  charIndex: number; // index into Atlas.uniqueChars
-  pageX: number; // cell center on the page
-  pageY: number;
-  picX: number; // morph target on the picture (defaults to page until sampled)
-  picY: number;
-  delay: number; // 0..1 stagger order
-  depth: number; // 0..1 per-letter camera nearness for the 3D surge
-}
-
 // Offscreen glyph-atlas geometry, derived from the instance's paragraph.
 export interface Atlas {
   uniqueChars: string[];
@@ -51,20 +47,23 @@ export interface Atlas {
   height: number;
 }
 
-interface Layout {
-  particles: Particle[];
-  sprites: SkRect[];
+// Flat per-letter morph data, filled by the (deferred) picture sampling. xy is
+// interleaved [x0,y0,x1,y1,...]; delays is 0..1 stagger order per letter.
+export interface MorphTargets {
+  picXY: Float32Array;
+  delays: Float32Array;
 }
 
 export interface TextImageMorphData {
   ready: boolean;
-  particles: Particle[];
+  // page positions of every laid-out glyph, interleaved [x,y,...]
+  pageXY: Float32Array;
+  // sprite rect into the atlas for each glyph (same order as pageXY)
   sprites: SkRect[];
   font: SkFont | null;
   atlas: Atlas;
-  // bumps once the (deferred) picture-target sampling has filled picX/picY;
-  // the renderer keys its morph buffers off this so they rebuild when ready.
-  targetsReady: number;
+  // null until the deferred sampling completes; then the morph can run
+  targets: MorphTargets | null;
 }
 
 interface AtlasGeometry extends Atlas {
@@ -72,7 +71,17 @@ interface AtlasGeometry extends Atlas {
   charSprite: SkRect[];
 }
 
-const EMPTY_PARTICLES: Particle[] = [];
+interface Layout {
+  pageXY: Float32Array;
+  sprites: SkRect[];
+}
+
+interface Point {
+  px: number;
+  py: number;
+}
+
+const EMPTY_F32 = new Float32Array(0);
 const EMPTY_SPRITES: SkRect[] = [];
 
 // --- atlas geometry from the paragraph's unique glyphs ---
@@ -96,8 +105,7 @@ const buildAtlas = (paragraph: string): AtlasGeometry => {
 };
 
 // --- CHEAP: word-wrapped page layout. Runs synchronously so the page text can
-// paint immediately; picX/picY start equal to the page position (no morph) and
-// are filled later by the deferred sampling. ---
+// paint immediately; the morph targets are sampled later. ---
 const buildLayout = (
   atlas: AtlasGeometry,
   paragraph: string,
@@ -130,7 +138,7 @@ const buildLayout = (
   const lineHeight = GLYPH_FONT_SIZE * ds * 1.55;
   const spaceW = SPACE_ADV * ds;
 
-  const particles: Particle[] = [];
+  const pagePts: number[] = [];
   const sprites: SkRect[] = [];
 
   // Paragraphs (split on '\n'); each starts on a fresh line, first line
@@ -174,15 +182,7 @@ const buildLayout = (
         const adv = CHAR_ADV[idx] * ds;
         // cell-left sits at x; glyph drawn padX into the cell
         const cellLeft = x - padX;
-        particles.push({
-          charIndex: idx,
-          pageX: cellLeft + half,
-          pageY: y + half,
-          picX: cellLeft + half,
-          picY: y + half,
-          delay: 0,
-          depth: 0,
-        });
+        pagePts.push(cellLeft + half, y + half);
         sprites.push(charSprite[idx]);
         x += adv;
       }
@@ -195,48 +195,17 @@ const buildLayout = (
     }
   }
 
-  return { particles, sprites };
+  return { pageXY: Float32Array.from(pagePts), sprites };
 };
 
-// --- EXPENSIVE: sample the picture for each letter's morph target. Reads the
-// full-res image and runs Poisson sampling + stray pruning + angular
-// assignment. Mutates particles' picX/picY/delay/depth in place. Kept off the
-// first-paint critical path (see useTextImageMorph). ---
-const computeTargets = (
-  particles: Particle[],
-  pictureImage: SkImage,
-  canvasWidth: number,
-  canvasHeight: number,
-): void => {
-  const N = particles.length;
-  if (N === 0) {
-    return;
-  }
-
-  const imgW = pictureImage.width();
-  const imgH = pictureImage.height();
-  const pixels = pictureImage.readPixels(0, 0, {
-    width: imgW,
-    height: imgH,
-    colorType: ColorType.RGBA_8888,
-    alphaType: AlphaType.Unpremul,
-  });
-
-  // Sample in image-pixel space first, then remap the CONTENT bounding box
-  // (not the whole image) to the target box so the subject fills the screen
-  // instead of inheriting the source image's empty margins.
-  const raw: { px: number; py: number }[] = [];
-  let minPX = imgW;
-  let minPY = imgH;
-  let maxPX = 0;
-  let maxPY = 0;
-
-  // ink probability for a pixel
-  const inkProb = (rx: number, ry: number): number => {
+// --- ink probability for a pixel: how strongly a letter should land here ---
+const makeInkProb =
+  (pixels: Uint8Array, imgW: number) =>
+  (rx: number, ry: number): number => {
     const p = (ry * imgW + rx) * 4;
-    const r = pixels![p] / 255;
-    const g = pixels![p + 1] / 255;
-    const b = pixels![p + 2] / 255;
+    const r = pixels[p] / 255;
+    const g = pixels[p + 1] / 255;
+    const b = pixels[p + 2] / 255;
     const lum = 0.299 * r + 0.587 * g + 0.114 * b;
     let t: number;
     if (SAMPLE_MODE === 'ink') {
@@ -251,191 +220,215 @@ const computeTargets = (
     return Math.pow(t, SAMPLE_GAMMA);
   };
 
-  if (pixels) {
-    // Poisson-disk spacing: reject a point too close to an accepted one, so
-    // letters never stack into ink blobs. Density still follows the image
-    // (dark regions fill up to the min-distance limit; light stays sparse).
-    const minDist = Math.max(imgW, imgH) * MIN_SPACING;
-    const minD2 = minDist * minDist;
-    const cell = minDist;
-    const gh = Math.ceil(imgH / cell) + 1;
-    const grid = new Map<number, number[]>();
-    const key = (gx: number, gy: number) => gx * gh + gy;
-    const tooClose = (x: number, y: number): boolean => {
-      const gx = Math.floor(x / cell);
-      const gy = Math.floor(y / cell);
-      for (let ix = gx - 1; ix <= gx + 1; ix++) {
-        for (let iy = gy - 1; iy <= gy + 1; iy++) {
-          const arr = grid.get(key(ix, iy));
-          if (!arr) {
-            continue;
-          }
-          for (let k = 0; k < arr.length; k += 2) {
-            const dx = arr[k] - x;
-            const dy = arr[k + 1] - y;
-            if (dx * dx + dy * dy < minD2) {
-              return true;
-            }
+// --- sample N points across the image, density following the ink, spaced by a
+// Poisson-disk grid so letters never stack into blobs. ---
+const sampleInkPoints = (
+  pixels: Uint8Array,
+  imgW: number,
+  imgH: number,
+  count: number,
+  minDist: number,
+): Point[] => {
+  const inkProb = makeInkProb(pixels, imgW);
+  const raw: Point[] = [];
+  const minD2 = minDist * minDist;
+  const cell = minDist;
+  const gh = Math.ceil(imgH / cell) + 1;
+  const grid = new Map<number, number[]>();
+  const key = (gx: number, gy: number) => gx * gh + gy;
+  const tooClose = (x: number, y: number): boolean => {
+    const gx = Math.floor(x / cell);
+    const gy = Math.floor(y / cell);
+    for (let ix = gx - 1; ix <= gx + 1; ix++) {
+      for (let iy = gy - 1; iy <= gy + 1; iy++) {
+        const arr = grid.get(key(ix, iy));
+        if (!arr) {
+          continue;
+        }
+        for (let k = 0; k < arr.length; k += 2) {
+          const dx = arr[k] - x;
+          const dy = arr[k + 1] - y;
+          if (dx * dx + dy * dy < minD2) {
+            return true;
           }
         }
-      }
-      return false;
-    };
-    const accept = (x: number, y: number, spaced: boolean) => {
-      if (spaced) {
-        const k = key(Math.floor(x / cell), Math.floor(y / cell));
-        let a = grid.get(k);
-        if (!a) {
-          a = [];
-          grid.set(k, a);
-        }
-        a.push(x, y);
-      }
-      raw.push({ px: x, py: y });
-      if (x < minPX) minPX = x;
-      if (x > maxPX) maxPX = x;
-      if (y < minPY) minPY = y;
-      if (y > maxPY) maxPY = y;
-    };
-
-    // pass 1 — spaced
-    let guard = 0;
-    const maxGuard = N * 800;
-    while (raw.length < N && guard < maxGuard) {
-      guard++;
-      const rx = Math.floor(Math.random() * imgW);
-      const ry = Math.floor(Math.random() * imgH);
-      if (Math.random() < inkProb(rx, ry) && !tooClose(rx, ry)) {
-        accept(rx, ry, true);
       }
     }
-    // pass 2 — top up without spacing if the subject couldn't hold N
-    let guard2 = 0;
-    while (raw.length < N && guard2 < maxGuard) {
-      guard2++;
-      const rx = Math.floor(Math.random() * imgW);
-      const ry = Math.floor(Math.random() * imgH);
-      if (Math.random() < inkProb(rx, ry)) {
-        accept(rx, ry, false);
+    return false;
+  };
+  const accept = (x: number, y: number, spaced: boolean) => {
+    if (spaced) {
+      const k = key(Math.floor(x / cell), Math.floor(y / cell));
+      let a = grid.get(k);
+      if (!a) {
+        a = [];
+        grid.set(k, a);
       }
+      a.push(x, y);
     }
+    raw.push({ px: x, py: y });
+  };
 
-    // --- POLISH: prune isolated strays, redistribute onto the figure ---
-    // Probabilistic sampling scatters a few lonely letters into the empty
-    // background. Count each point's neighbours; a point with too few is a
-    // stray. Drop it and re-seed a replacement jittered onto a dense point,
-    // so the silhouette reads clean and N is preserved.
-    if (raw.length > 8) {
-      const R = minDist * 3.2;
-      const R2 = R * R;
-      const pcell = R;
-      const pgrid = new Map<number, number[]>();
-      const pkey = (gx: number, gy: number) => gx * 100000 + gy;
-      for (let i = 0; i < raw.length; i++) {
-        const gx = Math.floor(raw[i].px / pcell);
-        const gy = Math.floor(raw[i].py / pcell);
-        const k = pkey(gx, gy);
-        let a = pgrid.get(k);
-        if (!a) {
-          a = [];
-          pgrid.set(k, a);
-        }
-        a.push(i);
-      }
-      const neighbours = (i: number): number => {
-        const gx = Math.floor(raw[i].px / pcell);
-        const gy = Math.floor(raw[i].py / pcell);
-        let n = 0;
-        for (let ix = gx - 1; ix <= gx + 1; ix++) {
-          for (let iy = gy - 1; iy <= gy + 1; iy++) {
-            const arr = pgrid.get(pkey(ix, iy));
-            if (!arr) {
-              continue;
-            }
-            for (const j of arr) {
-              if (j === i) {
-                continue;
-              }
-              const dx = raw[j].px - raw[i].px;
-              const dy = raw[j].py - raw[i].py;
-              if (dx * dx + dy * dy < R2) {
-                n++;
-              }
-            }
-          }
-        }
-        return n;
-      };
-      // Higher threshold over a wider radius also culls small 2-3 letter
-      // background clumps (they only neighbour each other), not just singles.
-      const MIN_NB = 6;
-      const keep = raw.filter((_, i) => neighbours(i) >= MIN_NB);
-      if (keep.length > 8) {
-        const missing = raw.length - keep.length;
-        for (let m = 0; m < missing; m++) {
-          const seed = keep[Math.floor(Math.random() * keep.length)];
-          keep.push({
-            px: seed.px + (Math.random() - 0.5) * minDist,
-            py: seed.py + (Math.random() - 0.5) * minDist,
-          });
-        }
-        raw.length = 0;
-        raw.push(...keep);
-      }
+  const maxGuard = count * SAMPLE_MAX_TRIES_PER_LETTER;
+  // pass 1 — spaced (density ∝ ink, never closer than minDist)
+  let guard = 0;
+  while (raw.length < count && guard < maxGuard) {
+    guard++;
+    const rx = Math.floor(Math.random() * imgW);
+    const ry = Math.floor(Math.random() * imgH);
+    if (Math.random() < inkProb(rx, ry) && !tooClose(rx, ry)) {
+      accept(rx, ry, true);
     }
   }
+  // pass 2 — top up without spacing if the subject couldn't hold count
+  let guard2 = 0;
+  while (raw.length < count && guard2 < maxGuard) {
+    guard2++;
+    const rx = Math.floor(Math.random() * imgW);
+    const ry = Math.floor(Math.random() * imgH);
+    if (Math.random() < inkProb(rx, ry)) {
+      accept(rx, ry, false);
+    }
+  }
+  return raw;
+};
 
-  // recompute the content bbox from the (pruned) point set
-  minPX = imgW;
-  minPY = imgH;
-  maxPX = 0;
-  maxPY = 0;
+// --- prune isolated strays, redistribute onto the figure. Probabilistic
+// sampling scatters a few lonely letters into the background; count each
+// point's neighbours, drop the lonely ones, and re-seed replacements jittered
+// onto dense points so the silhouette reads clean and the count is preserved. ---
+const pruneStrays = (raw: Point[], minDist: number, imgH: number): Point[] => {
+  if (raw.length <= 8) {
+    return raw;
+  }
+  const R = minDist * PRUNE_RADIUS_FACTOR;
+  const R2 = R * R;
+  const cell = R;
+  const gh = Math.ceil(imgH / cell) + 1;
+  const grid = new Map<number, number[]>();
+  const key = (gx: number, gy: number) => gx * gh + gy;
+  for (let i = 0; i < raw.length; i++) {
+    const gx = Math.floor(raw[i].px / cell);
+    const gy = Math.floor(raw[i].py / cell);
+    const k = key(gx, gy);
+    let a = grid.get(k);
+    if (!a) {
+      a = [];
+      grid.set(k, a);
+    }
+    a.push(i);
+  }
+  const neighbours = (i: number): number => {
+    const gx = Math.floor(raw[i].px / cell);
+    const gy = Math.floor(raw[i].py / cell);
+    let n = 0;
+    for (let ix = gx - 1; ix <= gx + 1; ix++) {
+      for (let iy = gy - 1; iy <= gy + 1; iy++) {
+        const arr = grid.get(key(ix, iy));
+        if (!arr) {
+          continue;
+        }
+        for (const j of arr) {
+          if (j === i) {
+            continue;
+          }
+          const dx = raw[j].px - raw[i].px;
+          const dy = raw[j].py - raw[i].py;
+          if (dx * dx + dy * dy < R2) {
+            n++;
+          }
+        }
+      }
+    }
+    return n;
+  };
+  const keep = raw.filter((_, i) => neighbours(i) >= PRUNE_MIN_NEIGHBOURS);
+  if (keep.length <= 8) {
+    return raw; // too aggressive — keep the original set
+  }
+  const missing = raw.length - keep.length;
+  for (let m = 0; m < missing; m++) {
+    const seed = keep[Math.floor(Math.random() * keep.length)];
+    keep.push({
+      px: seed.px + (Math.random() - 0.5) * minDist,
+      py: seed.py + (Math.random() - 0.5) * minDist,
+    });
+  }
+  return keep;
+};
+
+interface ScreenPoint {
+  x: number;
+  y: number;
+}
+
+// --- map sampled image-space points into a centered box on screen, fitting the
+// CONTENT bounding box (not the whole image) so the subject fills the frame. ---
+const fitToBox = (
+  raw: Point[],
+  canvasWidth: number,
+  canvasHeight: number,
+  count: number,
+): ScreenPoint[] => {
+  let minPX = Infinity;
+  let minPY = Infinity;
+  let maxPX = -Infinity;
+  let maxPY = -Infinity;
   for (const s of raw) {
     if (s.px < minPX) minPX = s.px;
     if (s.px > maxPX) maxPX = s.px;
     if (s.py < minPY) minPY = s.py;
     if (s.py > maxPY) maxPY = s.py;
   }
-
-  // content bbox (fallback to full image if nothing sampled)
   if (raw.length === 0) {
     minPX = 0;
     minPY = 0;
-    maxPX = imgW;
-    maxPY = imgH;
+    maxPX = 1;
+    maxPY = 1;
   }
   const contentW = Math.max(1, maxPX - minPX);
   const contentH = Math.max(1, maxPY - minPY);
   const contentAspect = contentW / contentH;
 
-  // fit the content into a centered box
-  const boxW = canvasWidth * 0.9;
-  const boxH = canvasHeight * 0.7;
+  const boxW = canvasWidth * PICTURE_BOX_W_FRAC;
+  const boxH = canvasHeight * PICTURE_BOX_H_FRAC;
   const areaW = Math.min(boxW, boxH * contentAspect);
   const areaH = areaW / contentAspect;
   const originX = (canvasWidth - areaW) / 2;
   const originY = (canvasHeight - areaH) / 2;
 
-  const samples: { x: number; y: number }[] = raw.map(s => ({
+  const samples: ScreenPoint[] = raw.map(s => ({
     x: originX + ((s.px - minPX) / contentW) * areaW,
     y: originY + ((s.py - minPY) / contentH) * areaH,
   }));
-  while (samples.length < N) {
+  // safety pad: if sampling fell short, drop the rest near the centre
+  while (samples.length < count) {
     samples.push({
       x: originX + areaW * (0.4 + Math.random() * 0.2),
       y: originY + areaH * (0.4 + Math.random() * 0.2),
     });
   }
+  return samples;
+};
 
-  // --- assignment: pair each page letter to a target by ANGULAR order
-  // around each set's centroid. Keeps rotational coherence (top->top,
-  // left->left) so letters travel short, mostly-parallel paths instead of
-  // crossing the whole screen randomly. ---
+// --- pair each page letter to a picture target by ANGULAR order around each
+// set's centroid (keeps rotational coherence so letters travel short, mostly
+// parallel paths), and stagger the ripple out of the bottom-right button. ---
+const assignTargets = (
+  pageXY: Float32Array,
+  samples: ScreenPoint[],
+  canvasWidth: number,
+  canvasHeight: number,
+): MorphTargets => {
+  const N = pageXY.length / 2;
+  const picXY = new Float32Array(N * 2);
+  const delays = new Float32Array(N);
+
   let pcx = 0;
   let pcy = 0;
   for (let i = 0; i < N; i++) {
-    pcx += particles[i].pageX;
-    pcy += particles[i].pageY;
+    pcx += pageXY[i * 2];
+    pcy += pageXY[i * 2 + 1];
   }
   pcx /= N;
   pcy /= N;
@@ -448,21 +441,22 @@ const computeTargets = (
   scx /= N;
   scy /= N;
 
-  const pageOrder = particles
-    .map((p, i) => ({ i, a: Math.atan2(p.pageY - pcy, p.pageX - pcx) }))
-    .sort((u, v) => u.a - v.a);
+  const pageOrder = Array.from({ length: N }, (_, i) => ({
+    i,
+    a: Math.atan2(pageXY[i * 2 + 1] - pcy, pageXY[i * 2] - pcx),
+  })).sort((u, v) => u.a - v.a);
   const sampleOrder = samples
     .map((s, i) => ({ i, a: Math.atan2(s.y - scy, s.x - scx) }))
     .sort((u, v) => u.a - v.a);
 
-  // Ripple origin = the floating button (bottom-right corner). Letters
-  // nearest it animate first, so the morph sweeps out from where you tapped.
+  // Ripple origin = the floating button (bottom-right corner). Letters nearest
+  // it animate first, so the morph sweeps out from where you tapped.
   const ax = canvasWidth;
   const ay = canvasHeight;
   let maxR = 1;
   for (let i = 0; i < N; i++) {
-    const dx = particles[i].pageX - ax;
-    const dy = particles[i].pageY - ay;
+    const dx = pageXY[i * 2] - ax;
+    const dy = pageXY[i * 2 + 1] - ay;
     const r = Math.sqrt(dx * dx + dy * dy);
     if (r > maxR) {
       maxR = r;
@@ -472,18 +466,49 @@ const computeTargets = (
   for (let k = 0; k < N; k++) {
     const pi = pageOrder[k].i;
     const s = samples[sampleOrder[k].i];
-    particles[pi].picX = s.x;
-    particles[pi].picY = s.y;
-    const dx = particles[pi].pageX - ax;
-    const dy = particles[pi].pageY - ay;
+    picXY[pi * 2] = s.x;
+    picXY[pi * 2 + 1] = s.y;
+    const dx = pageXY[pi * 2] - ax;
+    const dy = pageXY[pi * 2 + 1] - ay;
     const ripple = Math.sqrt(dx * dx + dy * dy) / maxR;
-    // smootherstep the wave front so it eases out of the button and eases
-    // into the far edge — organic, not a rigid linear sweep.
+    // smootherstep the wave front so it eases out of the button and eases into
+    // the far edge — organic, not a rigid linear sweep.
     const e = ripple * ripple * ripple * (ripple * (ripple * 6 - 15) + 10);
-    // mostly distance-driven ripple + a little jitter so the front isn't rigid
-    particles[pi].delay = e * 0.85 + Math.random() * 0.15;
-    particles[pi].depth = Math.random();
+    // mostly distance-driven + a little jitter so the front isn't rigid
+    delays[pi] = e * (1 - RIPPLE_JITTER) + Math.random() * RIPPLE_JITTER;
   }
+
+  return { picXY, delays };
+};
+
+// --- EXPENSIVE: full sampling pipeline for the morph targets. Reads the image
+// then sample -> prune -> fit -> assign. Kept off the first-paint critical path
+// (see useTextImageMorph). ---
+const computeTargets = (
+  pageXY: Float32Array,
+  pictureImage: SkImage,
+  canvasWidth: number,
+  canvasHeight: number,
+): MorphTargets => {
+  const N = pageXY.length / 2;
+  const imgW = pictureImage.width();
+  const imgH = pictureImage.height();
+  const pixels = pictureImage.readPixels(0, 0, {
+    width: imgW,
+    height: imgH,
+    colorType: ColorType.RGBA_8888,
+    alphaType: AlphaType.Unpremul,
+  });
+
+  let raw: Point[] = [];
+  if (pixels) {
+    const minDist = Math.max(imgW, imgH) * MIN_SPACING;
+    raw = sampleInkPoints(pixels as Uint8Array, imgW, imgH, N, minDist);
+    raw = pruneStrays(raw, minDist, imgH);
+  }
+
+  const samples = fitToBox(raw, canvasWidth, canvasHeight, N);
+  return assignTargets(pageXY, samples, canvasWidth, canvasHeight);
 };
 
 interface Params {
@@ -514,22 +539,24 @@ export const useTextImageMorph = ({
   }, [atlas, paragraph, font, width, height]);
 
   // Expensive picture-target sampling — deferred until after the first paint so
-  // the text shows instantly; the morph targets fill in a beat later.
-  const [targetsReady, setTargetsReady] = useState(0);
+  // the text shows instantly; the morph targets arrive a beat later as an
+  // immutable object (the renderer keys its buffers off its identity).
+  const [targets, setTargets] = useState<MorphTargets | null>(null);
   useEffect(() => {
+    setTargets(null);
     if (!layout || !pictureImage) {
       return;
     }
     let cancelled = false;
-    // defer past the first paint (macrotask) so the page text shows instantly;
-    // the heavy sampling then runs without blocking the initial render.
+    // defer past the first paint (macrotask) so the heavy sampling doesn't
+    // block the initial render of the page text.
     const id = setTimeout(() => {
       if (cancelled) {
         return;
       }
-      computeTargets(layout.particles, pictureImage, width, height);
+      const t = computeTargets(layout.pageXY, pictureImage, width, height);
       if (!cancelled) {
-        setTargetsReady(v => v + 1);
+        setTargets(t);
       }
     }, 0);
     return () => {
@@ -540,10 +567,10 @@ export const useTextImageMorph = ({
 
   return {
     ready: !!layout && !!font,
-    particles: layout?.particles ?? EMPTY_PARTICLES,
+    pageXY: layout?.pageXY ?? EMPTY_F32,
     sprites: layout?.sprites ?? EMPTY_SPRITES,
     font: font ?? null,
     atlas,
-    targetsReady,
+    targets,
   };
 };

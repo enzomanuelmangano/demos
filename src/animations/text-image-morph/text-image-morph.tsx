@@ -31,6 +31,7 @@ import {
   GLYPH_CELL,
   GLYPH_PAD,
   INK,
+  MORPH_DURATION_MS,
   PAGE_BG,
   PAGE_GLYPH_SCALE,
   PAGE_MARGIN_FRAC,
@@ -43,13 +44,29 @@ import {
 import { MORPH_PATTERN } from './haptics';
 import { useTextImageMorph } from './use-text-image-morph';
 
-import type { Atlas as AtlasGeometry, Particle } from './use-text-image-morph';
+import type {
+  Atlas as AtlasGeometry,
+  MorphTargets,
+} from './use-text-image-morph';
 import type {
   DataSourceParam,
   SkFont,
   SkRect,
 } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
+
+// Phase of a single letter's morph at timeline position p: 0 before it starts,
+// 1 once it has landed. Each letter's window is offset by its stagger delay.
+// Shared by the transform and colour buffers (same value, one definition).
+const letterPhase = (p: number, d: number): number => {
+  'worklet';
+  return interpolate(
+    p,
+    [d * STAGGER, d * STAGGER + (1 - STAGGER)],
+    [0, 1],
+    Extrapolation.CLAMP,
+  );
+};
 
 interface Props {
   width: number;
@@ -83,7 +100,7 @@ export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
     progress.set(
       withSpring(next ? 1 : 0, {
         dampingRatio: 1,
-        duration: 2000,
+        duration: MORPH_DURATION_MS,
       }),
     );
     // fast, blur-bridged icon crossfade (Emil Kowalski's tips)
@@ -102,14 +119,14 @@ export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
           // Mounted only once the bundled font is ready, so the offscreen
           // glyph atlas (useTexture) bakes with glyphs present.
           <Reveal
-            particles={data.particles}
+            pageXY={data.pageXY}
             sprites={data.sprites}
             font={data.font}
             atlas={data.atlas}
+            targets={data.targets}
             progress={progress}
             screenW={width}
             screenH={height}
-            targetsReady={data.targetsReady}
           />
         )}
       </Canvas>
@@ -176,47 +193,35 @@ const ToggleIcon = ({ face }: { face: SharedValue<number> }) => {
 };
 
 interface RevealProps {
-  particles: Particle[];
+  pageXY: Float32Array;
   sprites: SkRect[];
   font: SkFont;
   atlas: AtlasGeometry;
+  targets: MorphTargets | null;
   progress: SharedValue<number>;
   screenW: number;
   screenH: number;
-  targetsReady: number;
 }
 
 const Reveal = ({
-  particles,
+  pageXY,
   sprites,
   font,
   atlas,
+  targets,
   progress,
   screenW,
   screenH,
-  targetsReady,
 }: RevealProps) => {
-  const N = particles.length;
+  const N = sprites.length;
 
-  // Flat typed arrays for cheap reads inside the RSXform worklet. Rebuilt when
-  // the deferred sampling fills picX/picY (targetsReady bumps).
-  const { pageXY, picXY, delays } = useMemo(() => {
-    const px = new Float32Array(N * 2);
-    const ex = new Float32Array(N * 2);
-    const dl = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      const p = particles[i];
-      px[i * 2] = p.pageX;
-      px[i * 2 + 1] = p.pageY;
-      ex[i * 2] = p.picX;
-      ex[i * 2 + 1] = p.picY;
-      dl[i] = p.delay;
-    }
-    return { pageXY: px, picXY: ex, delays: dl };
-    // targetsReady forces a rebuild after the deferred sampling mutates
-    // picX/picY in place (same particles ref, so it isn't auto-detected).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [particles, N, targetsReady]);
+  // Until the deferred sampling lands, targets are the page itself (no travel)
+  // and every delay is 0 — the morph is a no-op, the page just sits there.
+  const picXY = targets?.picXY ?? pageXY;
+  const delays = useMemo(
+    () => targets?.delays ?? new Float32Array(N),
+    [targets, N],
+  );
 
   const atlasElement = useMemo(
     () => (
@@ -244,14 +249,7 @@ const Reveal = ({
   const transforms = useRSXformBuffer(N, (val, i) => {
     'worklet';
     const PI = Math.PI;
-    const p = progress.get();
-    const d = delays[i];
-    const pe = interpolate(
-      p,
-      [d * STAGGER, d * STAGGER + (1 - STAGGER)],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
+    const pe = letterPhase(progress.get(), delays[i]);
 
     const sx = pageXY[i * 2];
     const sy = pageXY[i * 2 + 1];
@@ -301,14 +299,7 @@ const Reveal = ({
   // crisp at rest. srcIn blend scales the sprite's alpha by the colour's alpha.
   const colors = useColorBuffer(N, (val, i) => {
     'worklet';
-    const p = progress.get();
-    const d = delays[i];
-    const pe = interpolate(
-      p,
-      [d * STAGGER, d * STAGGER + (1 - STAGGER)],
-      [0, 1],
-      Extrapolation.CLAMP,
-    );
+    const pe = letterPhase(progress.get(), delays[i]);
     const eff = Math.sin(pe * Math.PI); // 0 at ends, 1 mid-flight for THIS letter
     const a = 1 - eff * FADE_AMT;
     // srcIn (color = src, glyph = dst): output = colour, masked by the glyph's
