@@ -39,27 +39,29 @@ import {
   Z_BASE,
   Z_MOVE,
 } from './constants';
-import {
-  ATLAS_COLS,
-  ATLAS_HEIGHT,
-  ATLAS_WIDTH,
-  UNIQUE_CHARS,
-  useLittlePrinceData,
-} from './use-little-prince-data';
+import { useTextImageMorph } from './use-text-image-morph';
 
-import type { Particle } from './use-little-prince-data';
-import type { SkFont, SkRect } from '@shopify/react-native-skia';
+import type { Atlas as AtlasGeometry, Particle } from './use-text-image-morph';
+import type {
+  DataSourceParam,
+  SkFont,
+  SkRect,
+} from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
 
 interface Props {
   width: number;
   height: number;
+  // the picture the letters assemble into
+  image: DataSourceParam;
+  // the page of text that flies apart to form it
+  paragraph: string;
 }
 
-export const TheLittlePrince = ({ width, height }: Props) => {
-  const data = useLittlePrinceData(width, height);
+export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
+  const data = useTextImageMorph({ image, paragraph, width, height });
   const progress = useSharedValue(0); // 0 = page, 1 = picture
-  const face = useSharedValue(0); // 0 = aperture icon, 1 = book icon
+  const face = useSharedValue(0); // 0 = page icon, 1 = picture icon
   const [revealed, setRevealed] = useState(false);
   const lastToggleRef = useRef(0);
 
@@ -96,9 +98,11 @@ export const TheLittlePrince = ({ width, height }: Props) => {
             particles={data.particles}
             sprites={data.sprites}
             font={data.font}
+            atlas={data.atlas}
             progress={progress}
             screenW={width}
             screenH={height}
+            targetsReady={data.targetsReady}
           />
         )}
       </Canvas>
@@ -122,9 +126,9 @@ const ICON_COLOR = '#efe7d6';
 const ICON_SIZE = 20;
 
 const ToggleIcon = ({ face }: { face: SharedValue<number> }) => {
-  // aperture (page state) crossfades to book (picture state) with a blur +
+  // photo (page state) crossfades to textformat (picture state) with a blur +
   // scale bridge — fast, ease-out, never from scale(0).
-  const apertureStyle = useAnimatedStyle(() => {
+  const photoStyle = useAnimatedStyle(() => {
     const f = face.get();
     return {
       opacity: 1 - f,
@@ -132,7 +136,7 @@ const ToggleIcon = ({ face }: { face: SharedValue<number> }) => {
       filter: [{ blur: 2 * f }],
     };
   });
-  const bookStyle = useAnimatedStyle(() => {
+  const textStyle = useAnimatedStyle(() => {
     const f = face.get();
     return {
       opacity: f,
@@ -142,7 +146,7 @@ const ToggleIcon = ({ face }: { face: SharedValue<number> }) => {
   });
   return (
     <View style={styles.iconBox} pointerEvents="none">
-      <Animated.View style={[styles.iconLayer, apertureStyle]}>
+      <Animated.View style={[styles.iconLayer, photoStyle]}>
         <SymbolView
           name="photo"
           size={ICON_SIZE}
@@ -151,7 +155,7 @@ const ToggleIcon = ({ face }: { face: SharedValue<number> }) => {
           fallback={<Feather name="image" size={17} color={ICON_COLOR} />}
         />
       </Animated.View>
-      <Animated.View style={[styles.iconLayer, bookStyle]}>
+      <Animated.View style={[styles.iconLayer, textStyle]}>
         <SymbolView
           name="textformat"
           size={ICON_SIZE}
@@ -168,22 +172,27 @@ interface RevealProps {
   particles: Particle[];
   sprites: SkRect[];
   font: SkFont;
+  atlas: AtlasGeometry;
   progress: SharedValue<number>;
   screenW: number;
   screenH: number;
+  targetsReady: number;
 }
 
 const Reveal = ({
   particles,
   sprites,
   font,
+  atlas,
   progress,
   screenW,
   screenH,
+  targetsReady,
 }: RevealProps) => {
   const N = particles.length;
 
-  // Flat typed arrays for cheap reads inside the RSXform worklet.
+  // Flat typed arrays for cheap reads inside the RSXform worklet. Rebuilt when
+  // the deferred sampling fills picX/picY (targetsReady bumps).
   const { pageXY, picXY, delays } = useMemo(() => {
     const px = new Float32Array(N * 2);
     const ex = new Float32Array(N * 2);
@@ -197,16 +206,19 @@ const Reveal = ({
       dl[i] = p.delay;
     }
     return { pageXY: px, picXY: ex, delays: dl };
-  }, [particles, N]);
+    // targetsReady forces a rebuild after the deferred sampling mutates
+    // picX/picY in place (same particles ref, so it isn't auto-detected).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [particles, N, targetsReady]);
 
   const atlasElement = useMemo(
     () => (
       <Group>
-        {UNIQUE_CHARS.map((ch, i) => (
+        {atlas.uniqueChars.map((ch, i) => (
           <SkText
             key={i}
-            x={(i % ATLAS_COLS) * GLYPH_CELL + GLYPH_PAD}
-            y={Math.floor(i / ATLAS_COLS) * GLYPH_CELL + GLYPH_CELL * 0.72}
+            x={(i % atlas.cols) * GLYPH_CELL + GLYPH_PAD}
+            y={Math.floor(i / atlas.cols) * GLYPH_CELL + GLYPH_CELL * 0.72}
             text={ch}
             font={font}
             color={INK}
@@ -214,12 +226,12 @@ const Reveal = ({
         ))}
       </Group>
     ),
-    [font],
+    [font, atlas],
   );
 
   const texture = useTexture(atlasElement, {
-    width: ATLAS_WIDTH,
-    height: ATLAS_HEIGHT,
+    width: atlas.width,
+    height: atlas.height,
   });
 
   const transforms = useRSXformBuffer(N, (val, i) => {
@@ -279,7 +291,7 @@ const Reveal = ({
 
   // Per-letter fade that FOLLOWS the ripple: each glyph dims only while it is
   // itself mid-flight (sin(pe*PI) peak using that letter's own staggered phase),
-  // crisp at rest. dstIn blend scales the sprite's alpha by the colour's alpha.
+  // crisp at rest. srcIn blend scales the sprite's alpha by the colour's alpha.
   const colors = useColorBuffer(N, (val, i) => {
     'worklet';
     const p = progress.get();
