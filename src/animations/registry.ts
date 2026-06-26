@@ -877,7 +877,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   'the-little-prince': {
     name: 'The Little Prince',
     route: 'TheLittlePrince',
-    iconName: 'journal-outline',
+    iconName: 'rose-outline',
   },
 } as const;
 
