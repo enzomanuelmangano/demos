@@ -14,6 +14,7 @@ import {
 } from '@shopify/react-native-skia';
 import { SymbolView } from 'expo-symbols';
 import { PressableScale } from 'pressto';
+import { usePatternComposer } from 'react-native-pulsar';
 import Animated, {
   Easing,
   Extrapolation,
@@ -39,6 +40,7 @@ import {
   Z_BASE,
   Z_MOVE,
 } from './constants';
+import { MORPH_PATTERN } from './haptics';
 import { useTextImageMorph } from './use-text-image-morph';
 
 import type { Atlas as AtlasGeometry, Particle } from './use-text-image-morph';
@@ -64,6 +66,9 @@ export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
   const face = useSharedValue(0); // 0 = page icon, 1 = picture icon
   const [revealed, setRevealed] = useState(false);
   const lastToggleRef = useRef(0);
+  // Core Haptics pattern timed to the letter motion; scheduled up front on
+  // play() so it stays locked to the spring (see haptics.ts).
+  const morphHaptic = usePatternComposer(MORPH_PATTERN);
 
   const toggle = () => {
     const now = Date.now();
@@ -73,6 +78,8 @@ export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
     lastToggleRef.current = now;
     const next = !revealed;
     setRevealed(next);
+    // fire haptics the instant the morph spring starts — synced to the letters
+    morphHaptic.play();
     progress.set(
       withSpring(next ? 1 : 0, {
         dampingRatio: 1,
