@@ -1,9 +1,7 @@
 import type { Pattern } from 'react-native-pulsar';
 
-// A series of small, crisp tickles rippling with the letters — densest as the
-// wave launches, thinning as they settle. Low amplitude + high frequency = a
-// light tick; no continuous channel so there's no rumble under the taps.
-// Tuned to MORPH_DURATION_MS + the ripple stagger.
+// Crisp tickles rippling with the letters — densest as the wave launches,
+// thinning as they settle. No continuous channel, so no rumble under the taps.
 export const MORPH_PATTERN: Pattern = {
   discretePattern: [
     { time: 0, amplitude: 0.22, frequency: 1 },

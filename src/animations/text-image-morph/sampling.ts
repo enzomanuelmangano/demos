@@ -18,8 +18,6 @@ import {
 
 import type { SkImage } from '@shopify/react-native-skia';
 
-// Flat per-letter morph data. xy is interleaved [x,y,...]; delays is 0..1
-// stagger order per letter.
 export interface MorphTargets {
   picXY: Float32Array;
   delays: Float32Array;
@@ -35,7 +33,6 @@ interface ScreenPoint {
   y: number;
 }
 
-// how strongly a letter should land on a pixel (darkness or colour saturation)
 const makeInkProb =
   (pixels: Uint8Array, imgW: number) =>
   (rx: number, ry: number): number => {
@@ -57,8 +54,7 @@ const makeInkProb =
     return Math.pow(t, SAMPLE_GAMMA);
   };
 
-// Sample `count` points across the image, density following the ink, spaced by
-// a Poisson-disk grid so letters never stack into blobs.
+// Poisson-disk sample: density follows the ink, never closer than minDist.
 const sampleInkPoints = (
   pixels: Uint8Array,
   imgW: number,
@@ -107,7 +103,6 @@ const sampleInkPoints = (
   };
 
   const maxGuard = count * SAMPLE_MAX_TRIES_PER_LETTER;
-  // pass 1 — spaced (density ∝ ink); pass 2 — top up without spacing if short
   let guard = 0;
   while (raw.length < count && guard < maxGuard) {
     guard++;
@@ -129,9 +124,8 @@ const sampleInkPoints = (
   return raw;
 };
 
-// Drop lonely strays (probabilistic sampling scatters a few into the
-// background) and re-seed replacements onto dense points, so the silhouette
-// reads clean and the count is preserved.
+// Drop lonely strays, re-seed onto dense points so the silhouette reads clean
+// and the count is preserved.
 const pruneStrays = (raw: Point[], minDist: number, imgH: number): Point[] => {
   if (raw.length <= 8) {
     return raw;
@@ -176,7 +170,7 @@ const pruneStrays = (raw: Point[], minDist: number, imgH: number): Point[] => {
   };
   const keep = raw.filter((_, i) => neighbours(i) >= PRUNE_MIN_NEIGHBOURS);
   if (keep.length <= 8) {
-    return raw; // too aggressive — keep the original set
+    return raw;
   }
   const missing = raw.length - keep.length;
   for (let m = 0; m < missing; m++) {
@@ -189,8 +183,8 @@ const pruneStrays = (raw: Point[], minDist: number, imgH: number): Point[] => {
   return keep;
 };
 
-// Map image-space points into a centred box, fitting the CONTENT bbox (not the
-// whole image) so the subject fills the frame.
+// Map points into a centred box, fitting the content bbox so the subject fills
+// the frame (not the image's empty margins).
 const fitToBox = (
   raw: Point[],
   canvasWidth: number,
@@ -229,7 +223,6 @@ const fitToBox = (
     x: originX + ((s.px - minPX) / contentW) * areaW,
     y: originY + ((s.py - minPY) / contentH) * areaH,
   }));
-  // if sampling fell short, pad the rest near the centre
   while (samples.length < count) {
     samples.push({
       x: originX + areaW * (0.4 + Math.random() * 0.2),
@@ -239,9 +232,8 @@ const fitToBox = (
   return samples;
 };
 
-// Pair each page letter to a target by ANGULAR order around each set's centroid
-// (short, mostly-parallel paths), and stagger the ripple out of the bottom-right
-// button so the morph sweeps from where you tapped.
+// Pair page letters to targets by angular order around each centroid (short,
+// parallel paths), and stagger the ripple out of the bottom-right button.
 const assignTargets = (
   pageXY: Float32Array,
   samples: ScreenPoint[],
@@ -295,16 +287,14 @@ const assignTargets = (
     const dx = pageXY[pi * 2] - ax;
     const dy = pageXY[pi * 2 + 1] - ay;
     const ripple = Math.sqrt(dx * dx + dy * dy) / maxR;
-    // smootherstep the wave front so it eases out of the button into the edge
-    const e = ripple * ripple * ripple * (ripple * (ripple * 6 - 15) + 10);
+    const e = ripple * ripple * ripple * (ripple * (ripple * 6 - 15) + 10); // smootherstep
     delays[pi] = e * (1 - RIPPLE_JITTER) + Math.random() * RIPPLE_JITTER;
   }
 
   return { picXY, delays };
 };
 
-// Full sampling pipeline: read the image, then sample -> prune -> fit -> assign.
-// Heavy; kept off the first-paint critical path (see useTextImageMorph).
+// sample -> prune -> fit -> assign. Heavy; runs off the first-paint path.
 export const computeTargets = (
   pageXY: Float32Array,
   pictureImage: SkImage,

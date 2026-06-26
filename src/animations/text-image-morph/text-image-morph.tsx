@@ -3,7 +3,6 @@ import { StyleSheet, View } from 'react-native';
 import { useRef, useState } from 'react';
 
 import { Canvas } from '@shopify/react-native-skia';
-import { PressableScale } from 'pressto';
 import { usePatternComposer } from 'react-native-pulsar';
 import {
   Easing,
@@ -14,8 +13,8 @@ import {
 
 import { MORPH_DURATION_MS, PAGE_BG, PAGE_MARGIN_FRAC } from './constants';
 import { MORPH_PATTERN } from './haptics';
+import { PressableToggleIcon } from './pressable-toggle-icon';
 import { Reveal } from './reveal';
-import { ToggleIcon } from './toggle-icon';
 import { useTextImageMorph } from './use-text-image-morph';
 
 import type { DataSourceParam } from '@shopify/react-native-skia';
@@ -23,14 +22,14 @@ import type { DataSourceParam } from '@shopify/react-native-skia';
 interface Props {
   width: number;
   height: number;
-  image: DataSourceParam; // the picture the letters assemble into
-  paragraph: string; // the page of text that flies apart to form it
+  image: DataSourceParam;
+  paragraph: string;
 }
 
 export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
   const data = useTextImageMorph({ image, paragraph, width, height });
   const progress = useSharedValue(0); // 0 = page, 1 = picture
-  const face = useSharedValue(0); // drives the icon crossfade
+  const face = useSharedValue(0);
   const [revealed, setRevealed] = useState(false);
   const lastToggleRef = useRef(0);
   const morphHaptic = usePatternComposer(MORPH_PATTERN);
@@ -43,7 +42,7 @@ export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
     lastToggleRef.current = now;
     const next = !revealed;
     setRevealed(next);
-    morphHaptic.play(); // crisp tickles, synced to the letters
+    morphHaptic.play();
     progress.set(
       withSpring(next ? 1 : 0, {
         dampingRatio: 1,
@@ -75,30 +74,18 @@ export const TextImageMorph = ({ width, height, image, paragraph }: Props) => {
         )}
       </Canvas>
 
-      <PressableScale
-        style={[
-          styles.fab,
-          { bottom: width * PAGE_MARGIN_FRAC, right: width * PAGE_MARGIN_FRAC },
-        ]}
-        onPress={toggle}>
-        <ToggleIcon face={face} />
-      </PressableScale>
+      <PressableToggleIcon
+        face={face}
+        onPress={toggle}
+        style={{
+          bottom: width * PAGE_MARGIN_FRAC,
+          right: width * PAGE_MARGIN_FRAC,
+        }}
+      />
     </View>
   );
 };
 
-const FAB_SIZE = 48;
-
 const styles = StyleSheet.create({
-  fab: {
-    alignItems: 'center',
-    backgroundColor: '#1c1a17',
-    borderCurve: 'continuous',
-    borderRadius: FAB_SIZE / 2,
-    height: FAB_SIZE,
-    justifyContent: 'center',
-    position: 'absolute',
-    width: FAB_SIZE,
-  },
   fill: { flex: 1 },
 });

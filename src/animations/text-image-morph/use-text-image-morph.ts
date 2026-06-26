@@ -23,7 +23,7 @@ export interface TextImageMorphData {
   sprites: SkRect[];
   font: SkFont | null;
   atlas: Atlas;
-  targets: MorphTargets | null; // null until the deferred sampling completes
+  targets: MorphTargets | null; // null until sampling completes
 }
 
 interface Params {
@@ -47,7 +47,6 @@ export const useTextImageMorph = ({
 
   const atlas = useMemo(() => buildAtlas(paragraph), [paragraph]);
 
-  // cheap — paints the page text immediately
   const layout = useMemo(() => {
     if (!font || width <= 0 || height <= 0) {
       return null;
@@ -55,8 +54,7 @@ export const useTextImageMorph = ({
     return buildLayout(atlas, paragraph, font, width, height);
   }, [atlas, paragraph, font, width, height]);
 
-  // expensive sampling, deferred past the first paint; arrives as an immutable
-  // object the renderer keys its buffers off
+  // sampling deferred past the first paint so the text shows instantly
   const [targets, setTargets] = useState<MorphTargets | null>(null);
   useEffect(() => {
     setTargets(null);

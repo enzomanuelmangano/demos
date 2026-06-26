@@ -32,8 +32,7 @@ import type { Atlas as AtlasGeometry } from './atlas';
 import type { MorphTargets } from './sampling';
 import type { SkFont, SkRect } from '@shopify/react-native-skia';
 
-// A letter's morph phase at timeline p: 0 before it starts, 1 once landed; its
-// window is offset by the letter's stagger delay. Shared by both buffers.
+// 0 before a letter starts moving, 1 once it has landed (offset by its delay).
 const letterPhase = (p: number, d: number): number => {
   'worklet';
   return interpolate(
@@ -67,8 +66,7 @@ export const Reveal = ({
 }: Props) => {
   const N = sprites.length;
 
-  // until the sampling lands, targets are the page itself (no travel, 0 delay)
-  // so the morph is a no-op and the page just sits there
+  // before sampling lands, target = page (no travel) so the morph is a no-op
   const picXY = targets?.picXY ?? pageXY;
   const delays = useMemo(
     () => targets?.delays ?? new Float32Array(N),
@@ -111,9 +109,8 @@ export const Reveal = ({
     const cx0 = sx + (tx2 - sx) * pe;
     const cy0 = sy + (ty2 - sy) * pe;
 
-    // mid-flight each letter surges toward the camera (more the farther it
-    // travels) and the scene is perspective-projected toward the centre —
-    // coherent across all letters, flat at both ends (eff = 0).
+    // mid-flight surge toward the camera (more the farther it travels),
+    // perspective-projected toward centre; flat at both ends
     const dxm = tx2 - sx;
     const dym = ty2 - sy;
     const moveDist = Math.sqrt(dxm * dxm + dym * dym);
@@ -139,8 +136,8 @@ export const Reveal = ({
     val.set(scos, ssin, cx - h * (scos - ssin), cy - h * (ssin + scos));
   });
 
-  // per-letter fade following the ripple: each glyph dims only while it's
-  // mid-flight. srcIn lets the colour carry the INK + alpha; atlas is the shape.
+  // per-letter fade: each glyph dims only while mid-flight. srcIn = colour
+  // carries the INK + alpha, atlas carries the shape.
   const colors = useColorBuffer(N, (val, i) => {
     'worklet';
     const eff = Math.sin(letterPhase(progress.get(), delays[i]) * Math.PI);

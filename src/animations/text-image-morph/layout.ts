@@ -10,12 +10,11 @@ import type { AtlasGeometry } from './atlas';
 import type { SkFont, SkRect } from '@shopify/react-native-skia';
 
 export interface Layout {
-  pageXY: Float32Array; // interleaved [x,y,...] page position per glyph
-  sprites: SkRect[]; // atlas sprite per glyph, same order
+  pageXY: Float32Array; // interleaved [x,y,...] per glyph
+  sprites: SkRect[];
 }
 
-// Word-wrapped page layout. Cheap + synchronous so the text can paint before
-// the morph targets are sampled.
+// Word-wrapped page layout. Cheap + synchronous so the text paints right away.
 export const buildLayout = (
   atlas: AtlasGeometry,
   paragraph: string,
@@ -25,7 +24,7 @@ export const buildLayout = (
 ): Layout => {
   const { uniqueChars, charToIndex, charSprite } = atlas;
 
-  // glyph ADVANCE width (incl. side bearings), not the bounding box
+  // ADVANCE width, not the bounding box (which gives cramped spacing)
   const advanceOf = (ch: string): number => {
     const ids = font.getGlyphIDs(ch);
     if (!ids.length) {
@@ -51,7 +50,6 @@ export const buildLayout = (
   const pagePts: number[] = [];
   const sprites: SkRect[] = [];
 
-  // one paragraph per '\n', each on a fresh indented line; no looping
   const paragraphs = paragraph
     .trim()
     .split('\n')

@@ -4,7 +4,6 @@ import { GLYPH_CELL } from './constants';
 
 import type { SkRect } from '@shopify/react-native-skia';
 
-// Offscreen glyph-atlas geometry, derived from the instance's paragraph.
 export interface Atlas {
   uniqueChars: string[];
   cols: number;
