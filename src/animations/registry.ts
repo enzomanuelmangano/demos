@@ -125,6 +125,7 @@ import { Sudoku } from './sudoku';
 import { SwipeCards } from './swipe-cards';
 import { TabNavigation } from './tab-navigation';
 import { TelegramThemeSwitch } from './telegram-theme-switch';
+import { TheLittlePrinceScreen } from './the-little-prince';
 import { ThemeCanvasAnimation } from './theme-canvas-animation';
 import { ThreadsHoloTicket } from './threads-holo-ticket/src';
 import { TimeMachine } from './time-machine';
@@ -257,6 +258,7 @@ export const AnimationRegistry = {
   'cherry-blossom-qrcode': CherryBlossomQRCode,
   'art-gallery': ArtGallery,
   chessboard: ChessboardGame,
+  'the-little-prince': TheLittlePrinceScreen,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -871,6 +873,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Chessboard',
     route: 'Chessboard',
     iconName: 'grid-outline',
+  },
+  'the-little-prince': {
+    name: 'The Little Prince',
+    route: 'TheLittlePrince',
+    iconName: 'ellipse-outline',
   },
 } as const;
 
