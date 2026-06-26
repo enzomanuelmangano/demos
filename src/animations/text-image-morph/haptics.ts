@@ -1,13 +1,9 @@
 import type { Pattern } from 'react-native-pulsar';
 
-// Haptic for the text<->picture morph: a SERIES OF SMALL TICKLES that ripple
-// with the letters, not a rumble. The morph runs on a ~2000ms spring with a
-// ripple stagger sweeping out of the bottom-right button, so the taps are
-// densest early (the wave launching) and thin out as letters settle.
-//
-// Each tap is low-amplitude + high-frequency = a light, crisp tick (a tickle).
-// No continuous channel at all (amplitude held at 0) so there's no buzz under
-// the taps.
+// A series of small, crisp tickles rippling with the letters — densest as the
+// wave launches, thinning as they settle. Low amplitude + high frequency = a
+// light tick; no continuous channel so there's no rumble under the taps.
+// Tuned to MORPH_DURATION_MS + the ripple stagger.
 export const MORPH_PATTERN: Pattern = {
   discretePattern: [
     { time: 0, amplitude: 0.22, frequency: 1 },
