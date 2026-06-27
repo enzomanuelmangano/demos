@@ -56,6 +56,11 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
 const demoScreenOptions = {
   gestureEnabled: true,
   gestureDirection: 'bidirectional',
+  // Mask the demo into the icon's rounded bounds during the zoom (needs
+  // @react-native-masked-view/masked-view). Without it the zoom scales the
+  // full screen, so a white-bg demo's white fills the frame mid-transition
+  // instead of shrinking into the icon.
+  navigationMaskEnabled: true,
   screenStyleInterpolator: zoomInterpolator,
   transitionSpec: {
     open: Transition.Specs.DefaultSpec,
