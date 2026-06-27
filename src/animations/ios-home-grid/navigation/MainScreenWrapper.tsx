@@ -20,6 +20,7 @@ const MainScreenWrapper = ({ children }: { children: React.ReactNode }) => {
   return (
     <View style={styles.container}>
       <AnimatedBlurView
+        pointerEvents="none"
         style={styles.blurView}
         animatedProps={animatedProps}
         tint="light"
