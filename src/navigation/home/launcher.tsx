@@ -106,24 +106,29 @@ const darkTheme = {
 };
 
 export const Launcher = () => (
-  <NavigationIndependentTree>
-    <NavigationContainer theme={darkTheme}>
-      <DemoStack.Navigator>
-        <DemoStack.Screen
-          name="Home"
-          component={Springboard}
-          // Keep the grid mounted + visible behind an open demo, so dismissing
-          // reveals it (default "hide" detaches it -> black void behind).
-          options={{ inactiveBehavior: 'keep' }}
-        />
-        <DemoStack.Screen
-          name="Demo"
-          component={DemoScreen}
-          options={demoScreenOptions}
-        />
-      </DemoStack.Navigator>
-    </NavigationContainer>
-  </NavigationIndependentTree>
+  // Black root behind the whole tree: the zoom scales the home (background)
+  // view down, and whatever sits behind it must be black, not the white
+  // window/card that would otherwise show through.
+  <View style={styles.root}>
+    <NavigationIndependentTree>
+      <NavigationContainer theme={darkTheme}>
+        <DemoStack.Navigator>
+          <DemoStack.Screen
+            name="Home"
+            component={Springboard}
+            // Keep the grid mounted + visible behind an open demo, so dismissing
+            // reveals it (default "hide" detaches it -> black void behind).
+            options={{ inactiveBehavior: 'keep' }}
+          />
+          <DemoStack.Screen
+            name="Demo"
+            component={DemoScreen}
+            options={demoScreenOptions}
+          />
+        </DemoStack.Navigator>
+      </NavigationContainer>
+    </NavigationIndependentTree>
+  </View>
 );
 
 const styles = StyleSheet.create({
@@ -134,4 +139,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: { color: 'white', fontSize: 16, textAlign: 'center' },
+  root: { backgroundColor: '#000', flex: 1 },
 });
