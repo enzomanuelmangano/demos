@@ -6,7 +6,14 @@ import {
   View,
 } from 'react-native';
 
-import { memo, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -77,14 +84,27 @@ const HeaderRight = memo(
   ({ onPaintingChange }: { onPaintingChange: (id: string | null) => void }) => {
     const selectedPaintingId = useSelectedPaintingId();
 
+    // iOS 26's menu enables type-ahead filtering for large submenu trees: it
+    // attaches a hidden UITextField and makes it first responder, summoning the
+    // soft keyboard over the gallery. The field grabs focus on open AND again
+    // each time a submenu is entered, so a one-shot dismiss on open misses it.
+    // Instead, while the menu is open, dismiss the keyboard every time it shows.
+    const menuOpenRef = useRef(false);
+    useEffect(() => {
+      const sub = Keyboard.addListener('keyboardDidShow', () => {
+        if (menuOpenRef.current) {
+          Keyboard.dismiss();
+        }
+      });
+      return () => sub.remove();
+    }, []);
+
     return (
       <DropdownMenu.Root
         onOpenChange={open => {
-          // iOS 26's menu embeds hidden "Forward" text fields for submenu
-          // typeahead; one grabs first responder when the menu opens and
-          // summons the soft keyboard over the gallery. Dismiss it.
+          menuOpenRef.current = open;
           if (open) {
-            requestAnimationFrame(() => Keyboard.dismiss());
+            Keyboard.dismiss();
           }
         }}>
         <DropdownMenu.Trigger>
