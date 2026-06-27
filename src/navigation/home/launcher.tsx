@@ -7,7 +7,6 @@ import {
   NavigationIndependentTree,
   useRoute,
 } from '@react-navigation/native';
-import { interpolate } from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 
 import { BOUNDS_GROUP } from './constants';
@@ -48,13 +47,9 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   if (!id) {
     return {};
   }
-  return {
-    ...bounds({ id, group: BOUNDS_GROUP }).navigation.zoom(),
-    backdrop: {
-      backgroundColor: 'black',
-      opacity: interpolate(active.transitionProgress, [0, 1, 2], [0, 1, 0]),
-    },
-  };
+  // No backdrop: iOS keeps the home grid fully visible behind a closing app.
+  // The zoom alone reveals the grid as the demo shrinks back to its icon.
+  return bounds({ id, group: BOUNDS_GROUP }).navigation.zoom();
 };
 
 const demoScreenOptions = {
@@ -99,7 +94,13 @@ export const Launcher = () => (
   <NavigationIndependentTree>
     <NavigationContainer>
       <DemoStack.Navigator>
-        <DemoStack.Screen name="Home" component={Springboard} />
+        <DemoStack.Screen
+          name="Home"
+          component={Springboard}
+          // Keep the grid mounted + visible behind an open demo, so dismissing
+          // reveals it (default "hide" detaches it -> black void behind).
+          options={{ inactiveBehavior: 'keep' }}
+        />
         <DemoStack.Screen
           name="Demo"
           component={DemoScreen}
