@@ -96,17 +96,18 @@ const DemoScreen = () => {
 // The whole app navigation: an independent tree (its own NavigationContainer)
 // so the screen-transitions blank stack owns the container and the zoom works
 // without colliding with expo-router's vendored react-navigation.
-// Transparent card background: react-navigation defaults to an off-white
-// scene background, which flashed behind the zoom (and in any gap a demo's own
-// content didn't cover). Transparent lets the kept grid show through instead.
-const transparentTheme = {
+// Black scene background. react-navigation defaults to off-white, which
+// flashed in any gap the zoom/demo hadn't covered; "transparent" was worse — it
+// revealed the white iOS window. Black matches the launcher, so gaps read as
+// the dark home (the kept grid renders over it during the transition).
+const darkTheme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: 'transparent' },
+  colors: { ...DefaultTheme.colors, background: '#000' },
 };
 
 export const Launcher = () => (
   <NavigationIndependentTree>
-    <NavigationContainer theme={transparentTheme}>
+    <NavigationContainer theme={darkTheme}>
       <DemoStack.Navigator>
         <DemoStack.Screen
           name="Home"
