@@ -163,11 +163,11 @@ export const useChessGame = ({
         oppName: PLAYERS.b.name,
         accuracy: REVIEW_ACCURACY,
         moves: REVIEW_MOVES,
-        onRematch: rematch,
-        onReview: () => {}, // dismiss to inspect the final board
+        onReplay: playSequence, // re-run the canned game, animating every move
+        onBack: rematch, // reset to a static fresh board, no auto-moves
       });
     },
-    [flipped, pieceSize, show, rematch],
+    [flipped, pieceSize, show, rematch, playSequence],
   );
 
   const onMove = useCallback(

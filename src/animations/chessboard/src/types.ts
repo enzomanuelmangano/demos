@@ -26,6 +26,6 @@ export type ShowOpts = {
   oppName: string;
   accuracy: { you: number; opp: number };
   moves: AnnotatedMove[];
-  onRematch: () => void;
-  onReview: () => void;
+  onReplay: () => void;
+  onBack: () => void;
 };
