@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   DefaultTheme,
@@ -68,9 +68,32 @@ const demoScreenOptions = {
   },
 } as const;
 
+// Defer the heavy demo mount off the navigation commit. The tap → navigate
+// commit also re-renders all the home boundaries; mounting a demo (some are
+// whole mini-apps) in that same synchronous commit blocked the JS thread ~340ms
+// and froze the tap before the zoom could start. The zoom runs on the UI thread
+// (Reanimated), so we render a black panel first (clipped to the icon by the
+// mask, so it reads as the tile growing), let the zoom begin, then mount the
+// real content ~2 frames later — it fills in while the zoom keeps animating.
+const useDeferredMount = (): boolean => {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let inner = 0;
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setReady(true));
+    });
+    return () => {
+      cancelAnimationFrame(outer);
+      cancelAnimationFrame(inner);
+    };
+  }, []);
+  return ready;
+};
+
 const DemoScreen = () => {
   const { slug } = (useRoute().params ?? {}) as Partial<DemoRouteParams>;
   const dimensions = useWindowDimensions();
+  const ready = useDeferredMount();
 
   const { show } = useRetray<Trays>();
   const handleFeedback = useCallback(() => {
@@ -89,6 +112,10 @@ const DemoScreen = () => {
         <Text style={styles.errorText}>Animation "{slug}" not found</Text>
       </View>
     );
+  }
+  // Black placeholder for the first frames so the zoom starts instantly.
+  if (!ready) {
+    return <View style={styles.placeholder} />;
   }
   return <AnimationComponent {...(dimensions as any)} />;
 };
@@ -139,5 +166,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: { color: 'white', fontSize: 16, textAlign: 'center' },
+  placeholder: { backgroundColor: '#000', flex: 1 },
   root: { backgroundColor: '#000', flex: 1 },
 });
