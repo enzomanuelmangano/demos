@@ -22,7 +22,10 @@ const withSkiaWebGPUFix = config => {
     # Fix duplicate WebGPUView symbol between react-native-skia and react-native-webgpu
     # Remove WebGPUView source files from react-native-skia since SK_GRAPHITE isn't enabled
     installer.pods_project.targets.each do |target|
-      if target.name == 'react-native-skia'
+      # On EAS the precompiled modules pipeline ships react-native-skia as a
+      # PBXAggregateTarget wrapping a prebuilt xcframework, which has no
+      # source_build_phase. Skip it: there are no source files to strip.
+      if target.name == 'react-native-skia' && target.respond_to?(:source_build_phase)
         files_to_remove = []
         target.source_build_phase.files.each do |build_file|
           next unless build_file.file_ref
