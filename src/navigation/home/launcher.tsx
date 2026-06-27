@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useCallback } from 'react';
 
 import {
+  DefaultTheme,
   NavigationContainer,
   NavigationIndependentTree,
   useRoute,
@@ -90,9 +91,17 @@ const DemoScreen = () => {
 // The whole app navigation: an independent tree (its own NavigationContainer)
 // so the screen-transitions blank stack owns the container and the zoom works
 // without colliding with expo-router's vendored react-navigation.
+// Transparent card background: react-navigation defaults to an off-white
+// scene background, which flashed behind the zoom (and in any gap a demo's own
+// content didn't cover). Transparent lets the kept grid show through instead.
+const transparentTheme = {
+  ...DefaultTheme,
+  colors: { ...DefaultTheme.colors, background: 'transparent' },
+};
+
 export const Launcher = () => (
   <NavigationIndependentTree>
-    <NavigationContainer>
+    <NavigationContainer theme={transparentTheme}>
       <DemoStack.Navigator>
         <DemoStack.Screen
           name="Home"
