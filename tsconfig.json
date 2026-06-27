@@ -1,6 +1,11 @@
 {
   "extends": "eslint-config-react-native-wcandillon/tsconfig.base",
   "compilerOptions": {
-    "strict": true
+    "strict": true,
+    // Honor package.json "exports" subpaths (e.g.
+    // react-native-screen-transitions/native-stack), matching Metro's
+    // resolution. The base config uses classic "node" resolution.
+    "module": "esnext",
+    "moduleResolution": "bundler"
   }
 }
