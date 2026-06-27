@@ -2,10 +2,17 @@ import { useEffect, useState } from 'react';
 
 import type { LAB, RGB } from '../types';
 
-// Atlas configuration - matches generate-sprite-atlas.ts
+// Atlas configuration - matches generate-deduped-atlas.ts
 const PHOTO_SIZE = 200;
 const ATLAS_COLS = 40;
-const PHOTOS_PER_ATLAS = ATLAS_COLS * 40; // 1600
+
+// Dedup: picsum reused ~1000 source images across the 10k photos, so the atlas
+// stores only the ~979 unique tiles. atlas-slots.json maps each logical photo
+// id -> its slot in the single deduped atlas. Duplicate ids share a slot, which
+// keeps the color-matcher inventory and the rendered mosaic unchanged.
+const ATLAS_SLOTS = (
+  require('../assets/atlas-slots.json') as { slots: number[] }
+).slots;
 
 interface Rect {
   x: number;
@@ -27,14 +34,13 @@ interface UsePhotoAtlasResult {
   isLoading: boolean;
 }
 
-// Compute atlas index and position within atlas from photo ID
+// Resolve a photo ID to its slot in the single deduped atlas
 const getAtlasInfo = (id: number): { atlasIndex: number; rect: Rect } => {
-  const atlasIndex = Math.floor(id / PHOTOS_PER_ATLAS);
-  const indexInAtlas = id % PHOTOS_PER_ATLAS;
-  const col = indexInAtlas % ATLAS_COLS;
-  const row = Math.floor(indexInAtlas / ATLAS_COLS);
+  const slot = ATLAS_SLOTS[id] ?? 0;
+  const col = slot % ATLAS_COLS;
+  const row = Math.floor(slot / ATLAS_COLS);
   return {
-    atlasIndex,
+    atlasIndex: 0,
     rect: {
       x: col * PHOTO_SIZE,
       y: row * PHOTO_SIZE,

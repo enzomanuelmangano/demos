@@ -9,6 +9,10 @@ const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
+// Bundle raw ASTC-compressed atlases (art-gallery) as binary assets so they can
+// be fetched verbatim and uploaded to GPU compressed textures.
+config.resolver.assetExts.push('astc');
+
 // Redirect Skia's WebGPUViewNativeComponent to a stub to avoid duplicate registration
 // with react-native-webgpu (both register "WebGPUView")
 config.resolver.resolveRequest = (context, moduleName, platform) => {

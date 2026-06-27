@@ -2,7 +2,6 @@ import { PixelRatio, Image } from 'react-native';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
 import { SharedValue } from 'react-native-reanimated';
 import { CanvasRef } from 'react-native-webgpu';
 
@@ -16,13 +15,30 @@ import {
 import type { PhotoInfo } from './use-photo-atlas';
 import type { RGB } from '../types';
 
-// Atlas configuration - 7 atlases, 40x40 photos each at 200px
+// Atlas geometry.
+//
+// The mosaic shows 10,000 photo cells, but the source images come from
+// picsum.photos, which serves from a small pool — so the 10k downloads collapse
+// to only ~979 *unique* images (see scripts/generate-deduped-atlas.ts). Those
+// uniques are packed into ONE atlas; the runtime maps each of the 10k logical
+// photo ids to its slot via atlas-slots.json (in use-photo-atlas), so duplicate
+// ids share a slot. The atlas is 40 columns wide; its row count (and therefore
+// pixel height) depends on the unique count, so it is read from the slots file.
 const PHOTO_SIZE = 200;
 const ATLAS_COLS = 40;
-const ATLAS_ROWS = 40;
-const ATLAS_COUNT = 7;
+const ATLAS_SLOTS_META = require('../assets/atlas-slots.json') as {
+  rows: number;
+};
+
 const ATLAS_WIDTH = ATLAS_COLS * PHOTO_SIZE; // 8000px
-const ATLAS_HEIGHT = ATLAS_ROWS * PHOTO_SIZE; // 8000px
+const ATLAS_HEIGHT = ATLAS_SLOTS_META.rows * PHOTO_SIZE; // unique rows * 200
+
+// Number of atlas texture bindings in the shader / bind-group layout. Dedup left
+// a single atlas, but the layout (and per-tile atlasIndex plumbing) is kept at 7
+// to avoid a shader rewrite; bindings 1..6 hold 1x1 placeholders and are never
+// sampled, since every tile now resolves to atlas 0.
+const ATLAS_COUNT = 7;
+
 const CONTRAST = 1.4;
 
 // Uniform buffer size (16 floats aligned)
@@ -31,24 +47,33 @@ const UNIFORM_BUFFER_SIZE = 64;
 // Tile data: 12 floats per tile (padded for alignment)
 const FLOATS_PER_TILE = 12;
 
-// Static atlas asset requires (must be at module level for Metro bundling)
-const ATLAS_ASSETS = [
-  require('../assets/atlases/photo-atlas-0.jpg'),
-  require('../assets/atlases/photo-atlas-1.jpg'),
-  require('../assets/atlases/photo-atlas-2.jpg'),
-  require('../assets/atlases/photo-atlas-3.jpg'),
-  require('../assets/atlases/photo-atlas-4.jpg'),
-  require('../assets/atlases/photo-atlas-5.jpg'),
-  require('../assets/atlases/photo-atlas-6.jpg'),
-];
+// ASTC-compressed atlas. The GPU samples ASTC blocks directly in hardware, so
+// the texture stays compressed in VRAM (~6MB) instead of expanding to a full
+// rgba8 surface (8000 x 5000 x 4 = ~160MB, and the old 7x 8000^2 layout was
+// ~1.7GB — the source of the iPhone jetsam crash). 10x10 blocks: 8000 and the
+// atlas height are both multiples of 10, which matters because a writeTexture
+// copy whose extent is not block-aligned fails on the GPU and renders black
+// (12x12 tripped exactly that). Quality loss is invisible here — photos render
+// either tiny (overview) or upscaled-blurry (deep zoom from a 200px source),
+// both of which mask the block size. Apple GPUs support ASTC natively; there is
+// no jpg fallback, so a (hypothetical) adapter without ASTC renders nothing.
+const ATLAS_ASSET_ASTC = require('../assets/atlases/deduped-atlas.astc');
 
-type SkData = ReturnType<typeof Skia.Data.fromBytes>;
+// .astc container: 16-byte header then raw block payload (16B/block).
+const ASTC_HEADER_BYTES = 16;
+const ASTC_BLOCK_DIM = 10;
+const ASTC_BLOCK_BYTES = 16;
+const ASTC_TEXTURE_FORMAT = 'astc-10x10-unorm' as GPUTextureFormat;
 
-// Load a single atlas by index
-export async function loadAtlasData(index: number): Promise<SkData | null> {
+// Fetch the raw ASTC bytes for the atlas. The compressed blocks are read
+// directly as an ArrayBuffer (Metro serves the .astc as a binary asset) and
+// handed verbatim to writeTexture — there is no image decode step.
+export async function loadAtlasAstcBytes(): Promise<Uint8Array | null> {
   try {
-    const resolved = Image.resolveAssetSource(ATLAS_ASSETS[index]);
-    return Skia.Data.fromURI(resolved.uri);
+    const resolved = Image.resolveAssetSource(ATLAS_ASSET_ASTC);
+    const res = await fetch(resolved.uri);
+    const buf = await res.arrayBuffer();
+    return new Uint8Array(buf);
   } catch {
     return null;
   }
@@ -257,45 +282,32 @@ export function useWebGPUMosaic(
     [],
   );
 
-  // Decode atlas from SkData and upload to GPU
-  const decodeAtlasToGPU = useCallback(
-    async (device: GPUDevice, data: SkData): Promise<GPUTexture | null> => {
+  // Upload the raw ASTC atlas straight to a compressed GPU texture — no decode
+  // to rgba8, the GPU samples the compressed blocks in hardware.
+  const uploadAstcToGPU = useCallback(
+    (device: GPUDevice, all: Uint8Array): GPUTexture | null => {
       try {
-        const skImage = Skia.Image.MakeImageFromEncoded(data);
-        if (!skImage) {
-          return null;
-        }
+        // Parse the .astc header: bytes 7..15 hold the x/y/z dimensions LE.
+        const dimX = all[7] | (all[8] << 8) | (all[9] << 16);
+        const dimY = all[10] | (all[11] << 8) | (all[12] << 16);
+        if (!dimX || !dimY) return null;
 
-        const width = skImage.width();
-        const height = skImage.height();
-
-        const pixels = skImage.readPixels(0, 0, {
-          width,
-          height,
-          colorType: ColorType.RGBA_8888,
-          alphaType: AlphaType.Unpremul,
-        });
-
-        // Dispose SkImage immediately after reading pixels to free memory
-        if ('dispose' in skImage && typeof skImage.dispose === 'function') {
-          skImage.dispose();
-        }
-
-        if (!pixels) {
-          return null;
-        }
+        const blocks = all.subarray(ASTC_HEADER_BYTES);
+        const blocksWide = Math.ceil(dimX / ASTC_BLOCK_DIM);
+        const blocksHigh = Math.ceil(dimY / ASTC_BLOCK_DIM);
+        const bytesPerRow = blocksWide * ASTC_BLOCK_BYTES;
 
         const texture = device.createTexture({
-          size: [width, height],
-          format: 'rgba8unorm',
+          size: [dimX, dimY],
+          format: ASTC_TEXTURE_FORMAT,
           usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST,
         });
 
         device.queue.writeTexture(
           { texture },
-          pixels.buffer,
-          { bytesPerRow: width * 4, rowsPerImage: height },
-          [width, height],
+          blocks as unknown as BufferSource,
+          { bytesPerRow, rowsPerImage: blocksHigh },
+          [dimX, dimY],
         );
 
         return texture;
@@ -535,7 +547,14 @@ export function useWebGPUMosaic(
       const adapter = await navigator.gpu?.requestAdapter();
       if (!adapter) return;
 
-      const device = await adapter.requestDevice();
+      // Request ASTC support so atlases can stay compressed in VRAM. Apple GPUs
+      // support it natively; guard in case an adapter ever lacks the feature.
+      const hasAstc = adapter.features.has('texture-compression-astc');
+      const device = await adapter.requestDevice(
+        hasAstc
+          ? { requiredFeatures: ['texture-compression-astc'] }
+          : undefined,
+      );
       const format = navigator.gpu.getPreferredCanvasFormat();
 
       const canvas = context.canvas as HTMLCanvasElement;
@@ -749,40 +768,25 @@ export function useWebGPUMosaic(
       setGpuReady(true);
       animationRef.current = requestAnimationFrame(render);
 
-      // Load atlases sequentially (one at a time: fetch + decode)
-      const loadAtlasesProgressively = async () => {
-        // Ensure only one loading sequence runs
+      // Fetch + upload the single ASTC atlas, then swap it in for placeholder
+      // slot 0. Until it lands the gallery renders the 1x1 placeholders (the
+      // mosaic appears once the texture is bound). Guarded so it runs only once.
+      const loadAtlasTexture = async () => {
         if (isLoadingAtlasesRef.current) return;
         isLoadingAtlasesRef.current = true;
 
-        for (let i = 0; i < ATLAS_COUNT; i++) {
-          if (!resourcesRef.current) break;
+        const astcBytes = await loadAtlasAstcBytes();
+        const texture =
+          astcBytes && resourcesRef.current
+            ? uploadAstcToGPU(device, astcBytes)
+            : null;
 
-          // Fetch this atlas (sequential - wait for completion)
-          const skData = await loadAtlasData(i);
-          if (!skData || !resourcesRef.current) {
-            // Skip this atlas if loading failed, continue with others
-            continue;
-          }
-
-          // Decode and upload to GPU (sequential - wait for completion)
-          const texture = await decodeAtlasToGPU(device, skData);
-
-          // Explicitly dispose Skia data to free memory before next atlas
-          if ('dispose' in skData && typeof skData.dispose === 'function') {
-            skData.dispose();
-          }
-
-          if (!texture || !resourcesRef.current) {
-            continue;
-          }
-
-          // Destroy placeholder and swap in real texture
-          const oldPlaceholder = resourcesRef.current.atlasTextures[i];
-          resourcesRef.current.atlasTextures[i] = texture;
+        if (texture && resourcesRef.current) {
+          const oldPlaceholder = resourcesRef.current.atlasTextures[0];
+          resourcesRef.current.atlasTextures[0] = texture;
           oldPlaceholder.destroy();
 
-          // Recreate bind group with updated texture
+          // Rebuild the bind group so it references the real atlas texture.
           resourcesRef.current.bindGroup = createBindGroup(
             device,
             bindGroupLayout,
@@ -792,19 +796,14 @@ export function useWebGPUMosaic(
             resourcesRef.current.atlasTextures,
             sampler,
           );
-          resourcesRef.current.bindGroupVersion = i + 1;
-
-          // Yield to allow render frames
-          await new Promise<void>(resolve =>
-            requestAnimationFrame(() => resolve()),
-          );
+          resourcesRef.current.bindGroupVersion = 1;
         }
 
         isLoadingAtlasesRef.current = false;
       };
 
-      // Start loading in background (don't await)
-      loadAtlasesProgressively();
+      // Start loading in the background (don't await).
+      loadAtlasTexture();
     } catch {
       isInitializedRef.current = false;
     }
@@ -812,7 +811,7 @@ export function useWebGPUMosaic(
     canvasRef,
     createPlaceholderTexture,
     createBindGroup,
-    decodeAtlasToGPU,
+    uploadAstcToGPU,
     photoInfoMap.size,
     render,
   ]);
