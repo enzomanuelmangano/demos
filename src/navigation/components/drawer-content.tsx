@@ -148,7 +148,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
     marginTop: 6,
-    paddingHorizontal: 20,
+    paddingLeft: 14,
+    paddingRight: 20,
   },
   listContainer: {
     flex: 1,
@@ -156,11 +157,15 @@ const styles = StyleSheet.create({
   },
   listItem: {
     height: LIST_ITEM_HEIGHT,
-    paddingHorizontal: 20,
+    paddingLeft: 16,
+    paddingRight: 20,
   },
   searchContainer: {
     marginBottom: 0,
     marginTop: 6,
+    // The rounded box reads optically inset vs the sharp title text; pull it
+    // a couple px left so its visual left edge lines up with "Demos".
+    marginLeft: -2,
     position: 'relative',
   },
   searchInput: {
