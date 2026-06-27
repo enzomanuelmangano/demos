@@ -162,10 +162,10 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     marginBottom: 0,
-    marginTop: 6,
     // The rounded box reads optically inset vs the sharp title text; pull it
     // a couple px left so its visual left edge lines up with "Demos".
     marginLeft: -2,
+    marginTop: 6,
     position: 'relative',
   },
   searchInput: {
