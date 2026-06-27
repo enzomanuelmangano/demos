@@ -72,7 +72,7 @@ const enter = (delay: number) => () => {
 };
 
 // The post-game review panel: players, accuracy, the move-quality breakdown and
-// the Review / Rematch actions. Each section cascades in via enter(); the
+// the Back / Replay actions. Each section cascades in via enter(); the
 // container's blur-into-focus is driven by the parent through `style`.
 export const GameReviewCard: React.FC<{
   card: ShowOpts;
@@ -174,20 +174,20 @@ export const GameReviewCard: React.FC<{
         <PressableScale
           onPress={() => {
             onHide();
-            card.onReview();
+            card.onBack();
           }}
           style={[styles.btn, styles.btnGhost]}>
-          <Ionicons name="search" size={18} color={theme.text} />
-          <Text style={styles.btnGhostText}>Review</Text>
+          <Ionicons name="arrow-back" size={18} color={theme.text} />
+          <Text style={styles.btnGhostText}>Back</Text>
         </PressableScale>
         <PressableScale
           onPress={() => {
             onHide();
-            card.onRematch();
+            card.onReplay();
           }}
           style={[styles.btn, styles.btnPrimary]}>
-          <Ionicons name="refresh" size={20} color={theme.bg} />
-          <Text style={styles.btnPrimaryText}>Rematch</Text>
+          <Ionicons name="reload" size={20} color={theme.bg} />
+          <Text style={styles.btnPrimaryText}>Replay</Text>
         </PressableScale>
       </Animated.View>
     </Animated.View>
