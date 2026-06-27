@@ -8,17 +8,12 @@ import { memo, Suspense, useCallback, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
-import Drawer from 'expo-router/drawer';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
-import {
-  DrawerContent,
-  DrawerContentWidth,
-} from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
@@ -31,23 +26,6 @@ SplashScreen.setOptions({
   fade: true,
 });
 
-const drawerOptions = {
-  headerShown: false,
-  drawerStyle: {
-    backgroundColor: '#000',
-    width: 270,
-  },
-  drawerActiveTintColor: '#fff',
-  drawerInactiveTintColor: '#666',
-  drawerLabelStyle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  overlayColor: 'rgba(0, 0, 0, 0.5)',
-  swipeEnabled: true,
-  swipeEdgeWidth: DrawerContentWidth,
-} as const;
-
 const QuickActionsProvider = memo(
   ({ children }: { children: React.ReactNode }) => {
     useQuickActions();
@@ -55,15 +33,10 @@ const QuickActionsProvider = memo(
   },
 );
 
-const mainScreenOptions = {
-  drawerLabel: 'Home',
-  title: 'Home',
-} as const;
-
-const animationScreenOptions = {
-  drawerLabel: 'Animation',
-  title: 'Animation',
-} as const;
+// The launcher (the iOS SpringBoard home + its open-zoom) lives in a standalone
+// navigation tree hosted by app/index.tsx; expo-router just renders that single
+// screen full-bleed.
+const stackScreenOptions = { headerShown: false } as const;
 
 export default function RootLayout() {
   // Check for OTA updates
@@ -98,15 +71,7 @@ export default function RootLayout() {
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>
                   <QuickActionsProvider>
-                    <Drawer
-                      drawerContent={DrawerContent}
-                      screenOptions={drawerOptions}>
-                      <Drawer.Screen name="index" options={mainScreenOptions} />
-                      <Drawer.Screen
-                        name="animations/[slug]"
-                        options={animationScreenOptions}
-                      />
-                    </Drawer>
+                    <Stack screenOptions={stackScreenOptions} />
                   </QuickActionsProvider>
                 </Retray.Navigator>
               </Retray.Theme>

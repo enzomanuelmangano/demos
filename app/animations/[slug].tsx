@@ -1,100 +1,26 @@
-import {
-  Keyboard,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { useCallback } from 'react';
 
-import { BlurView } from 'expo-blur';
 import { useLocalSearchParams } from 'expo-router';
-import { useAtomValue } from 'jotai';
-import { useDrawerProgress } from 'react-native-drawer-layout';
-import Animated, {
-  Easing,
-  useAnimatedProps,
-  interpolate,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useDerivedValue,
-  withTiming,
-} from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   getAnimationComponent,
   getAnimationMetadata,
 } from '../../src/animations/registry';
-import { AnimatedDrawerIcon } from '../../src/navigation/components/animated-drawer-icon';
 import { useOnShakeEffect } from '../../src/navigation/hooks/use-shake-gesture';
-import { HideDrawerIconAtom } from '../../src/navigation/states/filters';
 import { useRetray } from '../../src/packages/retray';
 
 import type { Trays } from '../../src/trays';
 
-const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
-
-const DrawerIconSize = 40;
-
+// Demo host. The open/close + swipe-to-dismiss transition is driven by the
+// screen-transitions stack (zoom interpolator in app/_layout.tsx) — this screen
+// only resolves and renders the animation. Shake still opens the feedback tray.
 export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const dimensions = useWindowDimensions();
-  const rDrawerProgress = useDrawerProgress();
-  const hideDrawerIconSetting = useAtomValue(HideDrawerIconAtom);
-  const metadata = getAnimationMetadata(slug);
-  const hideDrawerIcon = hideDrawerIconSetting || metadata?.hideDrawerIcon;
-
-  const dismissKeyboard = useCallback(() => {
-    Keyboard.dismiss();
-  }, []);
-
-  useAnimatedReaction(
-    () => rDrawerProgress.get(),
-    (value, prevValue) => {
-      if (value < 0.5 && prevValue && prevValue !== value && prevValue > 0.5) {
-        scheduleOnRN(dismissKeyboard);
-        return;
-      }
-    },
-  );
-
-  // Animated intensity must go through useAnimatedProps: a shared value passed
-  // directly as the prop only forwards its value on the FIRST render
-  // (reanimated's PropsFilter) — re-renders drop the prop and the React commit
-  // clobbers UI-thread updates with the component default.
-  const blurAnimatedProps = useAnimatedProps(() => ({
-    intensity: interpolate(rDrawerProgress.get(), [0, 1], [0, 40]),
-  }));
-
-  const { top: safeTop } = useSafeAreaInsets();
-
-  const rHideDrawerIconProgress = useDerivedValue<number>(() => {
-    return withTiming(hideDrawerIcon ? 0 : 1, {
-      duration: 200,
-      easing: Easing.linear,
-    });
-  }, [hideDrawerIcon]);
-
-  const rDrawerIconStyle = useAnimatedStyle(() => {
-    return {
-      opacity: interpolate(
-        rDrawerProgress.get(),
-        [0, 0.5, 1],
-        [
-          0.5 * rHideDrawerIconProgress.get(),
-          1 * rHideDrawerIconProgress.get(),
-          0,
-        ],
-      ),
-      pointerEvents: hideDrawerIcon ? 'none' : 'auto',
-    };
-  }, [hideDrawerIcon]);
 
   const { show } = useRetray<Trays>();
-
   const handleFeedback = useCallback(() => {
     show('help', { slug });
   }, [show, slug]);
@@ -109,6 +35,7 @@ export default function AnimationScreen() {
     );
   }
 
+  const metadata = getAnimationMetadata(slug);
   const AnimationComponent = getAnimationComponent(slug);
 
   if (!AnimationComponent || !metadata) {
@@ -119,38 +46,10 @@ export default function AnimationScreen() {
     );
   }
 
-  return (
-    <>
-      <AnimationComponent {...(dimensions as any)} />
-      <AnimatedBlurView
-        tint="default"
-        animatedProps={blurAnimatedProps}
-        style={styles.blurView}
-      />
-      <AnimatedDrawerIcon
-        containerStyle={[
-          styles.menu,
-          rDrawerIconStyle,
-          {
-            top: safeTop,
-          },
-        ]}
-      />
-    </>
-  );
+  return <AnimationComponent {...(dimensions as any)} />;
 }
 
 const styles = StyleSheet.create({
-  blurView: {
-    // RN 0.85 removed StyleSheet.absoluteFillObject — spell it out.
-    bottom: 0,
-    left: 0,
-    pointerEvents: 'none',
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    zIndex: 100000,
-  },
   errorContainer: {
     alignItems: 'center',
     backgroundColor: 'black',
@@ -161,17 +60,5 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     textAlign: 'center',
-  },
-  menu: {
-    alignItems: 'center',
-    aspectRatio: 1,
-    backgroundColor: '#000000',
-    borderCurve: 'continuous',
-    borderRadius: 10,
-    height: DrawerIconSize,
-    justifyContent: 'center',
-    left: 10,
-    position: 'absolute',
-    zIndex: 1000000,
   },
 });
