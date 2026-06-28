@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   },
   root: {
     // Light base under the wallpaper image (shows only until it loads).
-    backgroundColor: '#d9dfea',
+    backgroundColor: '#edf0f6',
     flex: 1,
   },
 });
