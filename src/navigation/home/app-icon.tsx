@@ -1,12 +1,15 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Share, StyleSheet, Text, View } from 'react-native';
 
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 
 import { Image } from 'expo-image';
+import * as Linking from 'expo-linking';
 import Transition from 'react-native-screen-transitions';
+import * as ContextMenu from 'zeego/context-menu';
 
 import { BOUNDS_GROUP } from './constants';
 import { getIconSource } from './icon-source';
+import { AnimationInspirations } from '../../animations/inspirations';
 
 import type { Demo } from './demos';
 
@@ -18,33 +21,23 @@ interface Props {
   onPress: (slug: string) => void;
 }
 
-// One SpringBoard cell: squircle icon + label. The whole cell is a shared-bound
-// Trigger keyed by slug, so tapping zooms it open into the demo via
-// bounds({ id: slug }).navigation.zoom(). Every icon stays a mounted Trigger:
-// the package writes each boundary's transition style into a shared map keyed
-// by slug and applies it to this owner view, so the Trigger must not unmount
-// mid-transition or it can re-mount reading a stale (hidden) style.
-const AppIconComponent = ({
-  demo,
-  cellWidth,
-  cellHeight,
-  iconSize,
-  onPress,
-}: Props) => {
+// GitHub source for a demo — folder name === slug (see scripts/generate-icon-map).
+const sourceUrl = (slug: string) =>
+  `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`;
+
+// The squircle icon + label that fills one cell.
+const IconContent = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
+  const radius = iconSize * 0.2237; // iOS continuous-corner ratio
   return (
-    <Transition.Boundary.Trigger
-      id={demo.slug}
-      group={BOUNDS_GROUP}
-      style={[styles.cell, { width: cellWidth, height: cellHeight }]}
-      onPress={() => onPress(demo.slug)}>
+    <>
       <View
         style={[
           styles.iconShadow,
           {
             width: iconSize,
             height: iconSize,
-            borderRadius: iconSize * 0.2237,
-            borderCurve: 'continuous', // iOS continuous-corner ratio
+            borderRadius: radius,
+            borderCurve: 'continuous',
           },
         ]}>
         <View
@@ -54,7 +47,7 @@ const AppIconComponent = ({
               width: iconSize,
               height: iconSize,
               borderCurve: 'continuous',
-              borderRadius: iconSize * 0.2237,
+              borderRadius: radius,
             },
           ]}>
           <Image
@@ -69,7 +62,70 @@ const AppIconComponent = ({
       <Text numberOfLines={1} style={styles.label}>
         {demo.name}
       </Text>
-    </Transition.Boundary.Trigger>
+    </>
+  );
+};
+
+// One SpringBoard cell: a shared-bound Trigger keyed by slug (tap zooms it open
+// via bounds().navigation.zoom()), wrapped in a long-press context menu — iOS
+// home style — offering Inspiration / Share / View Code. The Trigger stays a
+// stable mounted boundary (see git history: unmounting it stranded transition
+// styles and blanked icons).
+const AppIconComponent = ({
+  demo,
+  cellWidth,
+  cellHeight,
+  iconSize,
+  onPress,
+}: Props) => {
+  const { slug, name } = demo;
+  const inspiration = AnimationInspirations[slug];
+  const inspirationLink = inspiration?.link ?? null;
+
+  const onInspiration = useCallback(() => {
+    if (inspirationLink) Linking.openURL(inspirationLink);
+  }, [inspirationLink]);
+
+  const onShare = useCallback(() => {
+    const url = sourceUrl(slug);
+    Share.share({ message: `${name} — ${url}`, url });
+  }, [slug, name]);
+
+  const onViewCode = useCallback(() => {
+    Linking.openURL(sourceUrl(slug));
+  }, [slug]);
+
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger>
+        <Transition.Boundary.Trigger
+          id={slug}
+          group={BOUNDS_GROUP}
+          style={[styles.cell, { width: cellWidth, height: cellHeight }]}
+          onPress={() => onPress(slug)}>
+          <IconContent demo={demo} iconSize={iconSize} />
+        </Transition.Boundary.Trigger>
+      </ContextMenu.Trigger>
+
+      <ContextMenu.Content>
+        {inspirationLink ? (
+          <ContextMenu.Item key="inspiration" onSelect={onInspiration}>
+            <ContextMenu.ItemTitle>Inspiration</ContextMenu.ItemTitle>
+            <ContextMenu.ItemIcon ios={{ name: 'lightbulb' }} />
+          </ContextMenu.Item>
+        ) : null}
+        <ContextMenu.Item key="share" onSelect={onShare}>
+          <ContextMenu.ItemTitle>Share</ContextMenu.ItemTitle>
+          <ContextMenu.ItemIcon ios={{ name: 'square.and.arrow.up' }} />
+        </ContextMenu.Item>
+        <ContextMenu.Item key="code" onSelect={onViewCode}>
+          <ContextMenu.ItemTitle>View Code</ContextMenu.ItemTitle>
+          <ContextMenu.ItemIcon
+            ios={{ name: 'chevron.left.forwardslash.chevron.right' }}
+          />
+        </ContextMenu.Item>
+      </ContextMenu.Content>
+    </ContextMenu.Root>
   );
 };
 
