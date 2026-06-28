@@ -11,6 +11,7 @@ import {
 import Transition from 'react-native-screen-transitions';
 
 import { BOUNDS_GROUP } from './constants';
+import { SCREEN_CORNER_RADIUS } from './screen-radius';
 import { Springboard } from './springboard';
 import { DemoStack } from './stack';
 import {
@@ -50,7 +51,12 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   }
   // No backdrop: iOS keeps the home grid fully visible behind a closing app.
   // The zoom alone reveals the grid as the demo shrinks back to its icon.
-  return bounds({ id, group: BOUNDS_GROUP }).navigation.zoom();
+  // borderRadius: the expanding screen grows to the device's display corner
+  // radius (min 25) so its corners meet the physical screen edge, instead of
+  // staying at the tiny icon radius.
+  return bounds({ id, group: BOUNDS_GROUP }).navigation.zoom({
+    borderRadius: SCREEN_CORNER_RADIUS,
+  });
 };
 
 const demoScreenOptions = {
