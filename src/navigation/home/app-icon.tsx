@@ -39,21 +39,32 @@ const AppIconComponent = ({
       onPress={() => onPress(demo.slug)}>
       <View
         style={[
-          styles.iconClip,
+          styles.iconShadow,
           {
             width: iconSize,
             height: iconSize,
-            borderCurve: 'continuous',
-            borderRadius: iconSize * 0.2237, // iOS continuous-corner ratio
+            borderRadius: iconSize * 0.2237,
+            borderCurve: 'continuous', // iOS continuous-corner ratio
           },
         ]}>
-        <Image
-          source={getIconSource(demo.slug)}
-          style={styles.image}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          recyclingKey={demo.slug}
-        />
+        <View
+          style={[
+            styles.iconClip,
+            {
+              width: iconSize,
+              height: iconSize,
+              borderCurve: 'continuous',
+              borderRadius: iconSize * 0.2237,
+            },
+          ]}>
+          <Image
+            source={getIconSource(demo.slug)}
+            style={styles.image}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={demo.slug}
+          />
+        </View>
       </View>
       <Text numberOfLines={1} style={styles.label}>
         {demo.name}
@@ -73,6 +84,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#1c1c1e',
     borderCurve: 'continuous',
     overflow: 'hidden',
+  },
+  // Soft elevation under each tile. Lives on a wrapper (not the clip) because
+  // the clip's overflow:hidden would otherwise mask its own shadow.
+  iconShadow: {
+    borderCurve: 'continuous',
+    boxShadow: '0px 5px 9px rgba(27, 34, 51, 0.18)',
   },
   image: {
     height: '100%',
