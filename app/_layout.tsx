@@ -40,7 +40,7 @@ const QuickActionsProvider = memo(
 // grid down and would otherwise reveal the white default card as a hard edge.
 const stackScreenOptions = {
   headerShown: false,
-  contentStyle: { backgroundColor: '#d9dfea' },
+  contentStyle: { backgroundColor: '#edf0f6' },
 } as const;
 
 export default function RootLayout() {

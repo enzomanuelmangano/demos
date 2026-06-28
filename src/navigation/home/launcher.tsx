@@ -132,7 +132,7 @@ const DemoScreen = () => {
 // Light scene background matching the home wallpaper's edge tone: the open-zoom
 // scales the grid down and reveals this layer, so it must blend with the light
 // wallpaper rather than flash a hard edge (the kept grid renders over it).
-const HOME_BACKDROP = '#d9dfea';
+const HOME_BACKDROP = '#edf0f6';
 const homeTheme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, background: HOME_BACKDROP },
