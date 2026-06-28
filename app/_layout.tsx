@@ -36,11 +36,11 @@ const QuickActionsProvider = memo(
 // The launcher (the iOS SpringBoard home + its open-zoom) lives in a standalone
 // navigation tree hosted by app/index.tsx; expo-router just renders that single
 // screen full-bleed.
-// Black card so nothing white shows behind the launcher (the home zoom scales
-// the grid down and would otherwise reveal the white default card).
+// Light card matching the home wallpaper's edge tone: the home zoom scales the
+// grid down and would otherwise reveal the white default card as a hard edge.
 const stackScreenOptions = {
   headerShown: false,
-  contentStyle: { backgroundColor: '#000' },
+  contentStyle: { backgroundColor: '#d9dfea' },
 } as const;
 
 export default function RootLayout() {

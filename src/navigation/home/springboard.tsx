@@ -10,6 +10,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppIcon } from './app-icon';
+import { Background } from './background';
 import { PageDots } from './page-dots';
 import { useGridLayout } from './use-grid-layout';
 
@@ -72,6 +73,7 @@ export const Springboard = () => {
 
   return (
     <View style={styles.root}>
+      <Background />
       <Animated.ScrollView
         horizontal
         pagingEnabled
@@ -112,7 +114,8 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   root: {
-    backgroundColor: '#000',
+    // Light base under the wallpaper image (shows only until it loads).
+    backgroundColor: '#d9dfea',
     flex: 1,
   },
 });

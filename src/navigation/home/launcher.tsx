@@ -129,22 +129,22 @@ const DemoScreen = () => {
 // The whole app navigation: an independent tree (its own NavigationContainer)
 // so the screen-transitions blank stack owns the container and the zoom works
 // without colliding with expo-router's vendored react-navigation.
-// Black scene background. react-navigation defaults to off-white, which
-// flashed in any gap the zoom/demo hadn't covered; "transparent" was worse — it
-// revealed the white iOS window. Black matches the launcher, so gaps read as
-// the dark home (the kept grid renders over it during the transition).
-const darkTheme = {
+// Light scene background matching the home wallpaper's edge tone: the open-zoom
+// scales the grid down and reveals this layer, so it must blend with the light
+// wallpaper rather than flash a hard edge (the kept grid renders over it).
+const HOME_BACKDROP = '#d9dfea';
+const homeTheme = {
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: '#000' },
+  colors: { ...DefaultTheme.colors, background: HOME_BACKDROP },
 };
 
 export const Launcher = () => (
-  // Black root behind the whole tree: the zoom scales the home (background)
-  // view down, and whatever sits behind it must be black, not the white
-  // window/card that would otherwise show through.
+  // Light root behind the whole tree: the zoom scales the home (background)
+  // view down, and whatever sits behind it must match the light wallpaper, not
+  // flash the white window/card that would otherwise show through.
   <View style={styles.root}>
     <NavigationIndependentTree>
-      <NavigationContainer theme={darkTheme}>
+      <NavigationContainer theme={homeTheme}>
         <DemoStack.Navigator>
           <DemoStack.Screen
             name="Home"
@@ -172,6 +172,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: { color: 'white', fontSize: 16, textAlign: 'center' },
-  placeholder: { backgroundColor: '#000', flex: 1 },
-  root: { backgroundColor: '#000', flex: 1 },
+  placeholder: { backgroundColor: HOME_BACKDROP, flex: 1 },
+  root: { backgroundColor: HOME_BACKDROP, flex: 1 },
 });
