@@ -79,9 +79,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    color: 'rgba(255,255,255,0.92)',
+    color: 'rgba(28,28,34,0.92)',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 6,
     maxWidth: '100%',
     textAlign: 'center',
