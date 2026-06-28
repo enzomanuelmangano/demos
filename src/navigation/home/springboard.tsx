@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 
 import { useNavigation } from '@react-navigation/native';
 import Animated, {
@@ -15,23 +15,19 @@ import { useGridLayout } from './use-grid-layout';
 
 import type { Demo } from './demos';
 import type { GridLayout } from './use-grid-layout';
-import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 // iOS Home Screen launcher: a horizontally-paged grid of demo icons. Uses a
 // native pagingEnabled ScrollView so the paging deceleration + edge rubber-band
 // match iOS exactly (no hand-rolled snap). All pages stay mounted (ScrollView
-// isn't virtualized), but only the active page's icons register a shared-bound
-// Trigger for the open-zoom (see AppIcon) — the visible page is the only one
-// you can tap, and registering all 122 bounds blocked the JS thread on each tap.
+// isn't virtualized), so every icon's shared-bound Trigger stays mounted and
+// measurable for the open-zoom (see AppIcon for why Triggers must not unmount).
 const Page = ({
   demos,
   layout,
-  active,
   onPressDemo,
 }: {
   demos: Demo[];
   layout: GridLayout;
-  active: boolean;
   onPressDemo: (slug: string) => void;
 }) => (
   <View
@@ -51,7 +47,6 @@ const Page = ({
         cellWidth={layout.cellWidth}
         cellHeight={layout.cellHeight}
         iconSize={layout.iconSize}
-        active={active}
         onPress={onPressDemo}
       />
     ))}
@@ -63,19 +58,6 @@ export const Springboard = () => {
   const insets = useSafeAreaInsets();
   const scrollX = useSharedValue(0);
   const navigation = useNavigation<any>();
-
-  // Which page's icons register a shared-bound Trigger (see AppIcon). Updated on
-  // settle only — not per scroll frame — so swiping never re-renders the grid
-  // mid-gesture. Rounding the offset predicts the paging snap target, so it's
-  // correct even on a zero-velocity release (no momentum event).
-  const [activeIndex, setActiveIndex] = useState(0);
-  const syncActiveIndex = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const next = Math.round(e.nativeEvent.contentOffset.x / layout.pageWidth);
-      setActiveIndex(prev => (prev === next ? prev : next));
-    },
-    [layout.pageWidth],
-  );
 
   const onPressDemo = useCallback(
     (slug: string) => {
@@ -95,8 +77,6 @@ export const Springboard = () => {
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
-        onScrollEndDrag={syncActiveIndex}
-        onMomentumScrollEnd={syncActiveIndex}
         scrollEventThrottle={16}
         contentContainerStyle={{ paddingTop: insets.top }}>
         {layout.pages.map((demos, i) => (
@@ -104,7 +84,6 @@ export const Springboard = () => {
             key={i}
             demos={demos}
             layout={layout}
-            active={i === activeIndex}
             onPressDemo={onPressDemo}
           />
         ))}
