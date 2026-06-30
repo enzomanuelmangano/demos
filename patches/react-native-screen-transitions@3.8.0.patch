@@ -1,5 +1,8 @@
+diff --git a/node_modules/react-native-screen-transitions/.bun-tag-b4886d09fec6e293 b/.bun-tag-b4886d09fec6e293
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js b/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js
-index 7f2663c83a194f7aae1d84746c19cea7f433c20e..db040f5a69ee0d265f42dfff3ae32c023e276ec2 100644
+index 7f2663c83a194f7aae1d84746c19cea7f433c20e..50a4a231061cdfd26e6bdd745d447cbf1870dd0b 100644
 --- a/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js
 +++ b/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js
 @@ -303,9 +303,13 @@ function buildZoomStyles({
@@ -19,8 +22,30 @@ index 7f2663c83a194f7aae1d84746c19cea7f433c20e..db040f5a69ee0d265f42dfff3ae32c02
    const scaleShiftX = (0, _math.computeCenterScaleShift)({
      center: elementCenterX,
      containerCenter: screenLayout.width / 2,
+@@ -332,7 +336,20 @@ function buildZoomStyles({
+   const elementTranslateY = (0, _helpers.toNumber)(elementRaw.translateY) + compensatedGestureY;
+   const elementScaleX = (0, _helpers.toNumber)(elementRaw.scaleX, 1) * elementGestureScale / safeUnfocusedContentScale;
+   const elementScaleY = (0, _helpers.toNumber)(elementRaw.scaleY, 1) * elementGestureScale / safeUnfocusedContentScale;
+-  const resolvedElementStyle = shouldHideUnfocusedElement ? {
++  const resolvedElementStyle = props.active.settled ? {
++    transform: [{
++      translateX: 0
++    }, {
++      translateY: 0
++    }, {
++      scaleX: 1
++    }, {
++      scaleY: 1
++    }],
++    opacity: 1,
++    zIndex: 0,
++    elevation: 0
++  } : shouldHideUnfocusedElement ? {
+     transform: [{
+       translateX: 0
+     }, {
 diff --git a/lib/module/shared/utils/bounds/navigation/zoom/build.js b/lib/module/shared/utils/bounds/navigation/zoom/build.js
-index d9829be607730020335bda94c08d55a43fa38f12..13bd38774678de2128c4a1576a53acae4aacd22b 100644
+index d9829be607730020335bda94c08d55a43fa38f12..f84f2e20e4164bf2f267d29955fb06b51368299b 100644
 --- a/lib/module/shared/utils/bounds/navigation/zoom/build.js
 +++ b/lib/module/shared/utils/bounds/navigation/zoom/build.js
 @@ -299,9 +299,13 @@ export function buildZoomStyles({
@@ -40,8 +65,30 @@ index d9829be607730020335bda94c08d55a43fa38f12..13bd38774678de2128c4a1576a53acae
    const scaleShiftX = computeCenterScaleShift({
      center: elementCenterX,
      containerCenter: screenLayout.width / 2,
+@@ -328,7 +332,20 @@ export function buildZoomStyles({
+   const elementTranslateY = toNumber(elementRaw.translateY) + compensatedGestureY;
+   const elementScaleX = toNumber(elementRaw.scaleX, 1) * elementGestureScale / safeUnfocusedContentScale;
+   const elementScaleY = toNumber(elementRaw.scaleY, 1) * elementGestureScale / safeUnfocusedContentScale;
+-  const resolvedElementStyle = shouldHideUnfocusedElement ? {
++  const resolvedElementStyle = props.active.settled ? {
++    transform: [{
++      translateX: 0
++    }, {
++      translateY: 0
++    }, {
++      scaleX: 1
++    }, {
++      scaleY: 1
++    }],
++    opacity: 1,
++    zIndex: 0,
++    elevation: 0
++  } : shouldHideUnfocusedElement ? {
+     transform: [{
+       translateX: 0
+     }, {
 diff --git a/src/shared/utils/bounds/navigation/zoom/build.ts b/src/shared/utils/bounds/navigation/zoom/build.ts
-index c1eed4dc12f227aebf3d65d0d2efbb88154c1d7e..4571f0fcd72fcf8d8660f93d21c81f3575c49a3f 100644
+index c1eed4dc12f227aebf3d65d0d2efbb88154c1d7e..ebecbe99b0661695661fcbaac70c1213215cd73c 100644
 --- a/src/shared/utils/bounds/navigation/zoom/build.ts
 +++ b/src/shared/utils/bounds/navigation/zoom/build.ts
 @@ -408,10 +408,14 @@ export function buildZoomStyles({
@@ -62,3 +109,29 @@ index c1eed4dc12f227aebf3d65d0d2efbb88154c1d7e..4571f0fcd72fcf8d8660f93d21c81f35
  
  	const scaleShiftX = computeCenterScaleShift({
  		center: elementCenterX,
+@@ -448,7 +452,24 @@ export function buildZoomStyles({
+ 		(toNumber(elementRaw.scaleY, 1) * elementGestureScale) /
+ 		safeUnfocusedContentScale;
+ 
+-	const resolvedElementStyle = shouldHideUnfocusedElement
++	// A settled transition means the source element is at rest by definition, so
++	// pin it to its natural state (identity transform, visible, no stacking). The
++	// last emitted frame of a settled close can otherwise carry a glitched
++	// (enlarged) bounds transform that briefly flashes over the grid before the
++	// screen unmounts. Forcing rest here fixes that flash without hiding the icon.
++	const resolvedElementStyle = props.active.settled
++		? {
++				transform: [
++					{ translateX: 0 },
++					{ translateY: 0 },
++					{ scaleX: 1 },
++					{ scaleY: 1 },
++				],
++				opacity: 1,
++				zIndex: 0,
++				elevation: 0,
++			}
++		: shouldHideUnfocusedElement
+ 		? {
+ 				transform: [
+ 					{ translateX: 0 },
