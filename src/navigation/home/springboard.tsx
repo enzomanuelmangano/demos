@@ -77,8 +77,6 @@ const Page = ({
 // scroll offset is exposed as a shared value (drives the page dots off the JS
 // thread). `recycleItems` is off so each page keeps a stable identity and its
 // boundaries aren't reshuffled under the transition layer mid-animation.
-const viewabilityConfig = { itemVisiblePercentThreshold: 60 } as const;
-
 // iOS-home recede effect: while a demo is open the grid behind it sits slightly
 // scaled-down and blurred; dragging the demo to dismiss un-scales + un-blurs it
 // in lockstep with the gesture. Driven by the child Demo screen's transition
@@ -164,16 +162,16 @@ export const Springboard = () => {
   );
 
   // Publish the visible page into the observable so each icon can gate its own
-  // boundary (see app-icon.tsx). No React state -> the grid never re-renders on
-  // a page change; only the icons whose enabled flag flips do.
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
-      const first = viewableItems[0];
-      if (first?.index != null) {
-        activePage$.set(first.index);
-      }
+  // boundary (see app-icon.tsx). Update on momentum END, not continuously while
+  // scrolling: flipping `enabled` on a page's worth of boundaries mid-swipe
+  // triggered a ~240ms diffProperties re-render storm that stuttered the scroll.
+  // Settling first means the gating re-render lands while the grid is at rest.
+  const onMomentumScrollEnd = useCallback(
+    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
+      const page = Math.round(e.nativeEvent.contentOffset.x / layout.pageWidth);
+      activePage$.set(page);
     },
-    [],
+    [layout.pageWidth],
   );
 
   const renderItem = useCallback(
@@ -199,13 +197,14 @@ export const Springboard = () => {
           horizontal
           pagingEnabled
           recycleItems={false}
-          // Pre-render one page in each direction so swiping reveals a ready
-          // page instead of mounting ~24 icons on demand (which popped in late).
-          // We previously set this to 0 to shrink the open commit, but the open
-          // is now fast via preload + the boundary count barely affects it
-          // (measured ~6ms), so the scroll-smoothness win is worth the extra
-          // mounted page.
-          drawDistance={layout.pageWidth}
+          // Pre-render two pages in each direction. Each icon is a deep tree
+          // (transition boundary + context menu + pressable + image), so
+          // mounting a page on demand mid-swipe costs ~180ms and stutters the
+          // scroll. A 2-page buffer means pages mount during the idle between
+          // swipes, not during them. The open is fast via preload and barely
+          // depends on boundary count (measured ~6ms), so the extra mounted
+          // pages are worth the scroll smoothness.
+          drawDistance={layout.pageWidth * 2}
           estimatedItemSize={layout.pageWidth}
           showsHorizontalScrollIndicator={false}
           // iOS ScrollViews hold touches ~150ms to detect a scroll before
@@ -216,8 +215,7 @@ export const Springboard = () => {
           // forwards this to its underlying ScrollView; its types omit it.)
           {...scrollTouchProps}
           sharedValues={{ scrollOffset: scrollX }}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
+          onMomentumScrollEnd={onMomentumScrollEnd}
           contentContainerStyle={{ paddingTop: insets.top }}
         />
       </Animated.View>
