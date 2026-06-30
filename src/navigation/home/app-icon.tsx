@@ -2,11 +2,13 @@ import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { memo, useCallback } from 'react';
 
+import { useSelector } from '@legendapp/state/react';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import Transition from 'react-native-screen-transitions';
 import * as ContextMenu from 'zeego/context-menu';
 
+import { activePage$ } from './active-page';
 import { BOUNDS_GROUP } from './constants';
 import { getIconSource } from './icon-source';
 import { AnimationInspirations } from '../../animations/inspirations';
@@ -15,6 +17,9 @@ import type { Demo } from './demos';
 
 interface Props {
   demo: Demo;
+  // Which page this icon lives on. Used to gate its transition boundary: only
+  // the visible page's icons keep an active Trigger (see below).
+  pageIndex: number;
   cellWidth: number;
   cellHeight: number;
   iconSize: number;
@@ -73,12 +78,21 @@ const IconContent = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
 // styles and blanked icons).
 const AppIconComponent = ({
   demo,
+  pageIndex,
   cellWidth,
   cellHeight,
   iconSize,
   onPress,
 }: Props) => {
   const { slug, name } = demo;
+
+  // Activate this icon's shared-bound Trigger only while its page is the visible
+  // one. react-native-screen-transitions activates every boundary on a screen
+  // the moment a transition to an interpolator screen is pending, and each
+  // active boundary measures + runs a per-frame reaction. Gating on the visible
+  // page keeps that to ~one page of icons. useSelector re-renders this icon only
+  // when its own boolean flips (page enter/leave), not on every page change.
+  const boundaryEnabled = useSelector(() => activePage$.get() === pageIndex);
   const inspiration = AnimationInspirations[slug];
   const inspirationLink = inspiration?.link ?? null;
 
@@ -101,6 +115,7 @@ const AppIconComponent = ({
         <Transition.Boundary.Trigger
           id={slug}
           group={BOUNDS_GROUP}
+          enabled={boundaryEnabled}
           style={[styles.cell, { width: cellWidth, height: cellHeight }]}
           onPress={() => onPress(slug)}>
           <IconContent demo={demo} iconSize={iconSize} />
@@ -152,7 +167,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
-    color: 'rgba(28,28,34,0.92)',
+    color: 'rgba(255,255,255,0.92)',
     fontSize: 11,
     fontWeight: '600',
     marginTop: 6,
