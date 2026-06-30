@@ -1,0 +1,64 @@
+diff --git a/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js b/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js
+index 7f2663c83a194f7aae1d84746c19cea7f433c20e..db040f5a69ee0d265f42dfff3ae32c023e276ec2 100644
+--- a/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js
++++ b/lib/commonjs/shared/utils/bounds/navigation/zoom/build.js
+@@ -303,9 +303,13 @@ function buildZoomStyles({
+   const elementGestureX = shouldTrackGestureTranslation ? dragX : 0;
+   const elementGestureY = shouldTrackGestureTranslation ? dragY : 0;
+   const safeUnfocusedContentScale = Math.max(Math.abs(unfocusedContentScale), _constants.EPSILON);
+-  // A naturally settled close can leave this as the last emitted style frame,
+-  // so drop temporary stacking here instead of waiting for a later reset pass.
+-  const shouldElevateUnfocusedElement = !props.active.closing || !props.active.settled;
++  // Keep the source element stacked above its siblings for the WHOLE transition,
++  // including the entire close. The original `!closing || !settled` dropped the
++  // zIndex the instant `settled` flipped, which happens while the element is
++  // still visually shrinking back into the grid — so the closing icon fell
++  // behind its neighbours. `closing` keeps it elevated until the close fully
++  // ends, after which the screen's style map resets the value anyway.
++  const shouldElevateUnfocusedElement = !props.active.settled || props.active.closing;
+   const scaleShiftX = (0, _math.computeCenterScaleShift)({
+     center: elementCenterX,
+     containerCenter: screenLayout.width / 2,
+diff --git a/lib/module/shared/utils/bounds/navigation/zoom/build.js b/lib/module/shared/utils/bounds/navigation/zoom/build.js
+index d9829be607730020335bda94c08d55a43fa38f12..13bd38774678de2128c4a1576a53acae4aacd22b 100644
+--- a/lib/module/shared/utils/bounds/navigation/zoom/build.js
++++ b/lib/module/shared/utils/bounds/navigation/zoom/build.js
+@@ -299,9 +299,13 @@ export function buildZoomStyles({
+   const elementGestureX = shouldTrackGestureTranslation ? dragX : 0;
+   const elementGestureY = shouldTrackGestureTranslation ? dragY : 0;
+   const safeUnfocusedContentScale = Math.max(Math.abs(unfocusedContentScale), EPSILON);
+-  // A naturally settled close can leave this as the last emitted style frame,
+-  // so drop temporary stacking here instead of waiting for a later reset pass.
+-  const shouldElevateUnfocusedElement = !props.active.closing || !props.active.settled;
++  // Keep the source element stacked above its siblings for the WHOLE transition,
++  // including the entire close. The original `!closing || !settled` dropped the
++  // zIndex the instant `settled` flipped, which happens while the element is
++  // still visually shrinking back into the grid — so the closing icon fell
++  // behind its neighbours. `closing` keeps it elevated until the close fully
++  // ends, after which the screen's style map resets the value anyway.
++  const shouldElevateUnfocusedElement = !props.active.settled || props.active.closing;
+   const scaleShiftX = computeCenterScaleShift({
+     center: elementCenterX,
+     containerCenter: screenLayout.width / 2,
+diff --git a/src/shared/utils/bounds/navigation/zoom/build.ts b/src/shared/utils/bounds/navigation/zoom/build.ts
+index c1eed4dc12f227aebf3d65d0d2efbb88154c1d7e..4571f0fcd72fcf8d8660f93d21c81f3575c49a3f 100644
+--- a/src/shared/utils/bounds/navigation/zoom/build.ts
++++ b/src/shared/utils/bounds/navigation/zoom/build.ts
+@@ -408,10 +408,14 @@ export function buildZoomStyles({
+ 		Math.abs(unfocusedContentScale),
+ 		EPSILON,
+ 	);
+-	// A naturally settled close can leave this as the last emitted style frame,
+-	// so drop temporary stacking here instead of waiting for a later reset pass.
++	// Keep the source element stacked above its siblings for the WHOLE transition,
++	// including the entire close. The original `!closing || !settled` dropped the
++	// zIndex the instant `settled` flipped, which happens while the element is
++	// still visually shrinking back into the grid — so the closing icon fell
++	// behind its neighbours. `closing` keeps it elevated until the close fully
++	// ends, after which the screen's style map resets the value anyway.
+ 	const shouldElevateUnfocusedElement =
+-		!props.active.closing || !props.active.settled;
++		!props.active.settled || props.active.closing;
+ 
+ 	const scaleShiftX = computeCenterScaleShift({
+ 		center: elementCenterX,
