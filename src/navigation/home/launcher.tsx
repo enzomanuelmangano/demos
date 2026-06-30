@@ -8,6 +8,7 @@ import {
   NavigationIndependentTree,
   useRoute,
 } from '@react-navigation/native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 
 import { BOUNDS_GROUP } from './constants';
@@ -54,52 +55,49 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   // borderRadius: the expanding screen grows to the device's display corner
   // radius (min 25) so its corners meet the physical screen edge, instead of
   // staying at the tiny icon radius.
+  // backgroundScale: 1 keeps the home (wallpaper + grid) perfectly static while
+  // the demo zooms out of its icon. The default zoom scales the whole unfocused
+  // screen down, which visibly shrank the wallpaper too — not what we want.
   return bounds({ id, group: BOUNDS_GROUP }).navigation.zoom({
     borderRadius: SCREEN_CORNER_RADIUS,
+    backgroundScale: 1,
   });
 };
+
+// Snappy, iOS-like open spring. The library's DefaultSpec (stiffness 1000,
+// damping 500, mass 3) is ~4.5x overdamped with a heavy mass, so it crawls open
+// over more than a second — that's the "too slow to open" feel. A duration +
+// dampingRatio spring gives a fixed, fast settle with no sluggish tail; 0.9
+// ratio keeps it crisp (no overshoot bounce on the growing corners).
+const OPEN_DURATION = 300;
+const OPEN_SPEC = { duration: OPEN_DURATION, dampingRatio: 0.9 } as const;
+
+// When to swap the lightweight placeholder for the real (potentially heavy)
+// demo. The whole point: keep the navigate commit cheap so the zoom STARTS
+// immediately and runs perfectly smooth on the UI thread; the demo's expensive
+// first render (e.g. Calendar mounts 420 views ~250ms) then lands AFTER the
+// zoom has settled, while the screen is already full-size — so it never janks
+// the motion. Mounting slightly before the zoom ends hides the content swap
+// under the last frames of growth so it doesn't read as a late pop-in.
+const DEMO_MOUNT_DELAY = OPEN_DURATION - 60;
 
 const demoScreenOptions = {
   gestureEnabled: true,
   gestureDirection: 'bidirectional',
-  // Mask the demo into the icon's rounded bounds during the zoom (needs
-  // @react-native-masked-view/masked-view). Without it the zoom scales the
-  // full screen, so a white-bg demo's white fills the frame mid-transition
-  // instead of shrinking into the icon.
-  navigationMaskEnabled: true,
+  // EXPERIMENT: MaskedView forces offscreen GPU compositing every frame of the
+  // zoom (suspected slowness). Disabled -> the library clips via borderRadius +
+  // overflow:hidden instead. Testing whether this is the perf culprit.
+  navigationMaskEnabled: false,
   screenStyleInterpolator: zoomInterpolator,
   transitionSpec: {
-    open: Transition.Specs.DefaultSpec,
+    open: OPEN_SPEC,
     close: Transition.Specs.FlingSpec,
   },
 } as const;
 
-// Defer the heavy demo mount off the navigation commit. The tap → navigate
-// commit also re-renders all the home boundaries; mounting a demo (some are
-// whole mini-apps) in that same synchronous commit blocked the JS thread ~340ms
-// and froze the tap before the zoom could start. The zoom runs on the UI thread
-// (Reanimated), so we render a black panel first (clipped to the icon by the
-// mask, so it reads as the tile growing), let the zoom begin, then mount the
-// real content ~2 frames later — it fills in while the zoom keeps animating.
-const useDeferredMount = (): boolean => {
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    let inner = 0;
-    const outer = requestAnimationFrame(() => {
-      inner = requestAnimationFrame(() => setReady(true));
-    });
-    return () => {
-      cancelAnimationFrame(outer);
-      cancelAnimationFrame(inner);
-    };
-  }, []);
-  return ready;
-};
-
 const DemoScreen = () => {
   const { slug } = (useRoute().params ?? {}) as Partial<DemoRouteParams>;
   const dimensions = useWindowDimensions();
-  const ready = useDeferredMount();
 
   const { show } = useRetray<Trays>();
   const handleFeedback = useCallback(() => {
@@ -108,6 +106,21 @@ const DemoScreen = () => {
     }
   }, [show, slug]);
   useOnShakeEffect(handleFeedback);
+
+  // Defer the heavy demo mount until the zoom has (almost) finished. During the
+  // zoom we render only a cheap icon placeholder, so the navigate commit is tiny
+  // and the growth animation is buttery from frame one regardless of how heavy
+  // the demo is. A fixed timer (not the library's settle flag, which fires
+  // unreliably late) keeps the swap tightly locked to the spring.
+  const [mounted, setMounted] = useState(false);
+  // Re-defer per slug: the screen instance is reused across opens (it's
+  // preloaded + kept warm), so each open must reset the gate and re-defer the
+  // heavy demo mount off the zoom, not stay mounted from the previous open.
+  useEffect(() => {
+    setMounted(false);
+    const t = setTimeout(() => setMounted(true), DEMO_MOUNT_DELAY);
+    return () => clearTimeout(t);
+  }, [slug]);
 
   const metadata = slug ? getAnimationMetadata(slug) : undefined;
   const AnimationComponent = slug ? getAnimationComponent(slug) : undefined;
@@ -119,11 +132,27 @@ const DemoScreen = () => {
       </View>
     );
   }
-  // Black placeholder for the first frames so the zoom starts instantly.
-  if (!ready) {
-    return <View style={styles.placeholder} />;
-  }
-  return <AnimationComponent {...(dimensions as any)} />;
+
+  // During the zoom the demo isn't mounted yet, so we show a placeholder. It's a
+  // flat backdrop, NOT the icon: the zoom grows the frame from icon-size to
+  // fullscreen, and anything textured inside (like the icon) would visibly
+  // scale up ~5x — a giant zooming icon. A solid colour looks identical at every
+  // scale, so the frame just grows cleanly like an opening card, then the real
+  // content swaps in over it.
+  return (
+    <View style={styles.demoRoot}>
+      {mounted ? (
+        // Fade the real demo in over the flat backdrop so content doesn't pop —
+        // by mount time the zoom has settled, so this cross-fade is the only
+        // motion and reads as the app "developing in" (iOS launch feel).
+        <Animated.View
+          style={styles.demoFill}
+          entering={FadeIn.duration(220)}>
+          <AnimationComponent {...(dimensions as any)} />
+        </Animated.View>
+      ) : null}
+    </View>
+  );
 };
 
 // The whole app navigation: an independent tree (its own NavigationContainer)
@@ -172,6 +201,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: { color: 'white', fontSize: 16, textAlign: 'center' },
-  placeholder: { backgroundColor: HOME_BACKDROP, flex: 1 },
+  // Opaque flat backdrop shown while the demo mounts. Neutral light so it blends
+  // with the (mostly light) demos and the home wallpaper edge as the frame grows.
+  demoRoot: { backgroundColor: '#ffffff', flex: 1, overflow: 'hidden' },
+  demoFill: { flex: 1 },
   root: { backgroundColor: HOME_BACKDROP, flex: 1 },
 });
