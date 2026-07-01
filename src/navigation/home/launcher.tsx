@@ -11,7 +11,7 @@ import {
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 
-import { BOUNDS_GROUP } from './constants';
+import { BOUNDS_GROUP, SEARCH_BOUNDS_GROUP } from './constants';
 import { SCREEN_CORNER_RADIUS } from './screen-radius';
 import { Springboard } from './springboard';
 import { DemoStack } from './stack';
@@ -36,6 +36,12 @@ const getSlug = (route: { params?: object } | undefined): string => {
   return typeof v === 'string' ? v : '';
 };
 
+const isFromSearch = (route: { params?: object } | undefined): boolean => {
+  'worklet';
+  const params = route?.params as Record<string, unknown> | undefined;
+  return params?.fromSearch === true;
+};
+
 // Open-zoom: the demo screen grows out of the tapped icon's shared bound
 // (matched by slug) over a dimming black backdrop.
 const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
@@ -50,6 +56,16 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   if (!id) {
     return {};
   }
+  // Same shared-element zoom whether the demo was opened from a grid icon or a
+  // search result row — only the source bound group differs. Search rows are
+  // their own Boundary.Triggers (SEARCH_BOUNDS_GROUP), so a search-opened demo
+  // zooms out of the tapped row and dismisses back into it, exactly like the
+  // grid icon path.
+  const fromSearch =
+    isFromSearch(active.route) ||
+    isFromSearch(next?.route) ||
+    isFromSearch(current.route);
+  const group = fromSearch ? SEARCH_BOUNDS_GROUP : BOUNDS_GROUP;
   // No backdrop: iOS keeps the home grid fully visible behind a closing app.
   // The zoom alone reveals the grid as the demo shrinks back to its icon.
   // borderRadius: the expanding screen grows to the device's display corner
@@ -58,7 +74,7 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   // backgroundScale: 1 keeps the home (wallpaper + grid) perfectly static while
   // the demo zooms out of its icon. The default zoom scales the whole unfocused
   // screen down, which visibly shrank the wallpaper too — not what we want.
-  return bounds({ id, group: BOUNDS_GROUP }).navigation.zoom({
+  return bounds({ id, group }).navigation.zoom({
     borderRadius: SCREEN_CORNER_RADIUS,
     backgroundScale: 1,
   });
@@ -145,9 +161,7 @@ const DemoScreen = () => {
         // Fade the real demo in over the flat backdrop so content doesn't pop —
         // by mount time the zoom has settled, so this cross-fade is the only
         // motion and reads as the app "developing in" (iOS launch feel).
-        <Animated.View
-          style={styles.demoFill}
-          entering={FadeIn.duration(220)}>
+        <Animated.View style={styles.demoFill} entering={FadeIn.duration(220)}>
           <AnimationComponent {...(dimensions as any)} />
         </Animated.View>
       ) : null}
@@ -194,6 +208,10 @@ export const Launcher = () => (
 );
 
 const styles = StyleSheet.create({
+  demoFill: { flex: 1 },
+  // Opaque flat backdrop shown while the demo mounts. Neutral light so it blends
+  // with the (mostly light) demos and the home wallpaper edge as the frame grows.
+  demoRoot: { backgroundColor: '#ffffff', flex: 1, overflow: 'hidden' },
   error: {
     alignItems: 'center',
     backgroundColor: 'black',
@@ -201,9 +219,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   errorText: { color: 'white', fontSize: 16, textAlign: 'center' },
-  // Opaque flat backdrop shown while the demo mounts. Neutral light so it blends
-  // with the (mostly light) demos and the home wallpaper edge as the frame grows.
-  demoRoot: { backgroundColor: '#ffffff', flex: 1, overflow: 'hidden' },
-  demoFill: { flex: 1 },
   root: { backgroundColor: HOME_BACKDROP, flex: 1 },
 });

@@ -30,44 +30,46 @@ interface Props {
 const sourceUrl = (slug: string) =>
   `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`;
 
-// The squircle icon + label that fills one cell.
-const IconContent = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
+// Just the squircle icon (no label). This is what the shared-bound Trigger wraps
+// so the zoom source is the ICON's square frame — NOT the whole cell. Including
+// the label in the bound made the source rect a tall non-square (icon on top,
+// label below): the demo then zoomed into/out of that rect's centre — which sits
+// between the icon and the label — so the closing screen landed OFFSET from the
+// icon, and the label itself scaled up into a giant ghost floating over the grid
+// mid-close. Bounding the icon square alone makes the zoom symmetric about the
+// icon, with no label ghost.
+const IconSquare = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
   const radius = iconSize * 0.2237; // iOS continuous-corner ratio
   return (
-    <>
+    <View
+      style={[
+        styles.iconShadow,
+        {
+          width: iconSize,
+          height: iconSize,
+          borderRadius: radius,
+          borderCurve: 'continuous',
+        },
+      ]}>
       <View
         style={[
-          styles.iconShadow,
+          styles.iconClip,
           {
             width: iconSize,
             height: iconSize,
-            borderRadius: radius,
             borderCurve: 'continuous',
+            borderRadius: radius,
           },
         ]}>
-        <View
-          style={[
-            styles.iconClip,
-            {
-              width: iconSize,
-              height: iconSize,
-              borderCurve: 'continuous',
-              borderRadius: radius,
-            },
-          ]}>
-          <Image
-            source={getIconSource(demo.slug)}
-            style={styles.image}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            recyclingKey={demo.slug}
-          />
-        </View>
+        <Image
+          source={getIconSource(demo.slug)}
+          style={styles.image}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={demo.slug}
+        />
       </View>
-      <Text numberOfLines={1} style={styles.label}>
-        {demo.name}
-      </Text>
-    </>
+    </View>
   );
 };
 
@@ -112,14 +114,23 @@ const AppIconComponent = ({
   return (
     <ContextMenu.Root>
       <ContextMenu.Trigger>
-        <Transition.Boundary.Trigger
-          id={slug}
-          group={BOUNDS_GROUP}
-          enabled={boundaryEnabled}
-          style={[styles.cell, { width: cellWidth, height: cellHeight }]}
-          onPress={() => onPress(slug)}>
-          <IconContent demo={demo} iconSize={iconSize} />
-        </Transition.Boundary.Trigger>
+        <View style={[styles.cell, { width: cellWidth, height: cellHeight }]}>
+          {/* Bound = the icon square only (the Trigger measures its OWN frame).
+              The label lives outside it so it never enters the zoom. Tap-to-open
+              lives on the Trigger (its press path captures the source bound), so
+              the tap target is the icon — as on the iOS Home Screen. */}
+          <Transition.Boundary.Trigger
+            id={slug}
+            group={BOUNDS_GROUP}
+            enabled={boundaryEnabled}
+            style={styles.iconBound}
+            onPress={() => onPress(slug)}>
+            <IconSquare demo={demo} iconSize={iconSize} />
+          </Transition.Boundary.Trigger>
+          <Text numberOfLines={1} style={styles.label}>
+            {name}
+          </Text>
+        </View>
       </ContextMenu.Trigger>
 
       <ContextMenu.Content>
@@ -150,6 +161,11 @@ const styles = StyleSheet.create({
   cell: {
     alignItems: 'center',
     justifyContent: 'flex-start',
+  },
+  // Wraps the icon square only — its measured frame is the zoom's source bound.
+  iconBound: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconClip: {
     backgroundColor: '#1c1c1e',
