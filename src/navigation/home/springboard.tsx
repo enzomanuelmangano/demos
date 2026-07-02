@@ -164,12 +164,22 @@ export const Springboard = () => {
   const [searchListActive, setSearchListActive] = useState(false);
   const [pullInProgress, setPullInProgress] = useState(false);
   const pullActive = useSharedValue(false);
+  // Mirrors FLAG_DEMO_COVERING across callbacks so the elevation clear below
+  // fires only on its FALLING edge (close fully settled). Clearing on every
+  // not-covering callback is wrong: flag changes unrelated to the demo (e.g.
+  // a pull starting/ending in the tap→mount window) schedule callbacks that
+  // land AFTER onPressDemo has set elevatedSlug$ but BEFORE the demo's
+  // progress registers — wiping the elevation for the whole open/close, so
+  // the closing icon painted under its neighbour cells again.
+  const wasCoveringRef = useRef(false);
   const onHomeFlagsChange = useCallback((flags: number) => {
-    setDemoCovering((flags & FLAG_DEMO_COVERING) !== 0);
+    const covering = (flags & FLAG_DEMO_COVERING) !== 0;
+    setDemoCovering(covering);
     setBlurActive((flags & FLAG_BLUR) !== 0);
     setSearchListActive((flags & FLAG_SEARCH_LIST) !== 0);
     setPullInProgress((flags & FLAG_PULL_ACTIVE) !== 0);
-    if (!(flags & FLAG_DEMO_COVERING)) elevatedSlug$.set(null);
+    if (wasCoveringRef.current && !covering) elevatedSlug$.set(null);
+    wasCoveringRef.current = covering;
   }, []);
   useAnimatedReaction(
     () => {
