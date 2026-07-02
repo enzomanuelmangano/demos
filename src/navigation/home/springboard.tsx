@@ -276,6 +276,15 @@ export const Springboard = () => {
   // Whether the current pull committed to search. Written in onEnd, read in
   // onFinalize — see below.
   const pullCommitted = useSharedValue(false);
+  // Whether the current pull started while an open was already in flight —
+  // decided ON THE UI THREAD in onBegin. `enabled(!demoCovering)` below can't
+  // cover this: demoCovering is JS state that reaches the gesture a commit or
+  // two AFTER the tap, so a swipe-down started instantly after tapping an icon
+  // (finger down before the demo has mounted) still lands in this pan and used
+  // to commit search behind the opening demo — surfacing later, mid-dismiss.
+  // The live signals have no such lag: the overlay's opacity flips to 1 on the
+  // tap frame itself, and next.progress covers the open/close after that.
+  const pullBlocked = useSharedValue(false);
   const pullGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -290,10 +299,14 @@ export const Springboard = () => {
         .onBegin(() => {
           'worklet';
           pullCommitted.set(false);
-          pullActive.set(true);
+          const demoP = homeAnimation.get()?.next?.progress ?? 0;
+          const blocked = demoP > 0.001 || openZoomOpacity.get() > 0.01;
+          pullBlocked.set(blocked);
+          pullActive.set(!blocked);
         })
         .onUpdate(e => {
           'worklet';
+          if (pullBlocked.get()) return;
           const d = e.translationY > 0 ? e.translationY : 0;
           // Damped rubber-band for the grid; reveal tracks it, full at the trigger.
           const p = PULL_RUBBER * (1 - Math.exp(-d / PULL_RUBBER));
@@ -302,6 +315,7 @@ export const Springboard = () => {
         })
         .onEnd(e => {
           'worklet';
+          if (pullBlocked.get()) return;
           // Commit to search when pulled past the trigger (or flicked hard).
           if (e.translationY > SEARCH_TRIGGER || e.velocityY > 900) {
             pullCommitted.set(true);
@@ -317,7 +331,7 @@ export const Springboard = () => {
         .onFinalize(() => {
           'worklet';
           pullActive.set(false);
-          if (!pullCommitted.get()) {
+          if (!pullBlocked.get() && !pullCommitted.get()) {
             pull.set(withTiming(0, { duration: 260 }));
             reveal.set(withTiming(0, { duration: 260 }));
           }
@@ -330,6 +344,8 @@ export const Springboard = () => {
       demoCovering,
       pullCommitted,
       pullActive,
+      pullBlocked,
+      homeAnimation,
     ],
   );
   const rPull = useAnimatedStyle(() => ({
@@ -371,6 +387,11 @@ export const Springboard = () => {
       .maxDeltaY(12)
       .onEnd(e => {
         'worklet';
+        // Same zero-lag gate as the pull's onBegin: `enabled(!demoCovering)`
+        // lags the tap by a commit, so a second tap racing the first open could
+        // restart the overlay zoom from a different icon.
+        const demoP = homeAnimation.get()?.next?.progress ?? 0;
+        if (demoP > 0.001 || openZoomOpacity.get() > 0.01) return;
         // Which page the viewport shows (exact at rest; pagingEnabled snaps).
         const page = Math.round(scrollX.get() / pageWidth);
         if (page < 0 || page >= pageLengths.length) return;
@@ -400,6 +421,7 @@ export const Springboard = () => {
     scrollX,
     searchMode,
     demoCovering,
+    homeAnimation,
   ]);
 
   // Live progress of the demo covering this home screen. A stacked screen isn't
