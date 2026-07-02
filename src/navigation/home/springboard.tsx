@@ -23,6 +23,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { activePage$, elevatedSlug$ } from './active-page';
 import { AppIcon } from './app-icon';
 import { Background } from './background';
+import { getIconBackdrop } from './icon-source';
 import { fadeOutOpenZoom, openZoomOpacity, startOpenZoom } from './open-zoom';
 import { PageDots } from './page-dots';
 import { SEARCH_TRIGGER } from './search-constants';
@@ -374,6 +375,13 @@ export const Springboard = () => {
     () => layout.pages.map(page => page.length),
     [layout.pages],
   );
+  // Per-cell backdrop colours, page-shaped like pageLengths so the tap worklet
+  // can look one up from (page, cellIndex) without touching the demos array.
+  const pageColors = useMemo(
+    () =>
+      layout.pages.map(page => page.map(demo => getIconBackdrop(demo.slug))),
+    [layout.pages],
+  );
   const gridMetrics = useMemo<IconGridMetrics>(
     () => ({
       cols: layout.cols,
@@ -421,13 +429,14 @@ export const Springboard = () => {
         const rect = iconRectForCell(grid, insetTop, cellIndex, offset);
         if (e.x < rect.x || e.x > rect.x + rect.width) return;
         if (e.y < rect.y || e.y > rect.y + rect.height) return;
-        startOpenZoom(rect);
+        startOpenZoom(rect, pageColors[page][cellIndex]);
       });
   }, [
     gridMetrics,
     layout,
     insets.top,
     pageLengths,
+    pageColors,
     scrollX,
     searchMode,
     demoCovering,
@@ -496,7 +505,10 @@ export const Springboard = () => {
       // round trip (cleared when the demo's progress returns to 0).
       elevatedSlug$.set(slug);
       if (openZoomOpacity.get() < 0.5) {
-        startOpenZoom(iconRectForCell(gridMetrics, insets.top, cellIndex));
+        startOpenZoom(
+          iconRectForCell(gridMetrics, insets.top, cellIndex),
+          getIconBackdrop(slug),
+        );
       }
       navigation.navigate('Demo', { slug });
     },

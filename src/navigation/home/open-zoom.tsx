@@ -51,6 +51,10 @@ export const openZoomProgress = makeMutable(0);
 // 1 while the overlay leads the open; timed back to 0 once the real screen has
 // settled underneath (see the reaction in springboard.tsx + backstop below).
 export const openZoomOpacity = makeMutable(0);
+// The card's flat colour — the tapped demo's backdrop (icon-source.ts), so a
+// dark demo expands as a dark card instead of flashing white. Must match the
+// demo screen's pre-mount placeholder (launcher.tsx) or the handoff pops.
+export const openZoomColor = makeMutable('#ffffff');
 
 // Fade the overlay out, revealing the settled real screen underneath.
 export const fadeOutOpenZoom = () => {
@@ -65,9 +69,10 @@ export const fadeOutOpenZoom = () => {
 // on the UI runtime — the expansion then starts on the SAME FRAME the finger
 // lifts, with no JS-thread hop at all. Calling it from JS (search rows, grid
 // fallback) also works: the shared-value sets dispatch to the UI thread.
-export const startOpenZoom = (rect: OpenZoomRect) => {
+export const startOpenZoom = (rect: OpenZoomRect, color = '#ffffff') => {
   'worklet';
   openZoomRect.set(rect);
+  openZoomColor.set(color);
   openZoomOpacity.set(1);
   openZoomProgress.set(0);
   openZoomProgress.set(
@@ -124,6 +129,7 @@ export const OpenZoomOverlay = () => {
     // the first frames — same trade-off the library zoom makes).
     const startRadius = rect.radius / Math.max(startScaleX, 0.001);
     return {
+      backgroundColor: openZoomColor.get(),
       opacity,
       borderRadius: interpolate(
         progress,
@@ -161,8 +167,9 @@ export const OpenZoomOverlay = () => {
 
 const styles = StyleSheet.create({
   card: {
-    // Matches the demo screen's placeholder backdrop (launcher.tsx demoRoot) so
-    // the overlay→real-screen handoff is invisible.
+    // Rest-state colour only — every open overrides it with the tapped demo's
+    // backdrop (openZoomColor), mirroring the demo screen's placeholder
+    // (launcher.tsx) so the overlay→real-screen handoff is invisible.
     backgroundColor: '#ffffff',
     borderCurve: 'continuous',
     left: 0,
