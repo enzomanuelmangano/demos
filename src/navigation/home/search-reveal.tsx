@@ -25,7 +25,7 @@ import Transition from 'react-native-screen-transitions';
 
 import { SEARCH_BOUNDS_GROUP } from './constants';
 import { DEMOS } from './demos';
-import { getIconSource } from './icon-source';
+import { getIconBackdrop, getIconSource } from './icon-source';
 import { startOpenZoom } from './open-zoom';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
@@ -122,13 +122,16 @@ const SearchRow = ({
       return;
     }
     node.measureInWindow((x, y, width, height) => {
-      startOpenZoom({
-        x,
-        y,
-        width,
-        height,
-        radius: iconSize * ICON_RADIUS_RATIO,
-      });
+      startOpenZoom(
+        {
+          x,
+          y,
+          width,
+          height,
+          radius: iconSize * ICON_RADIUS_RATIO,
+        },
+        getIconBackdrop(demo.slug),
+      );
       onSelect(demo.slug);
     });
   };

@@ -12,6 +12,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 
 import { BOUNDS_GROUP, SEARCH_BOUNDS_GROUP } from './constants';
+import { getIconBackdrop } from './icon-source';
 import { OPEN_DURATION, OPEN_EASING, OpenZoomOverlay } from './open-zoom';
 import { SCREEN_CORNER_RADIUS } from './screen-radius';
 import { Springboard } from './springboard';
@@ -156,9 +157,15 @@ const DemoScreen = () => {
   // fullscreen, and anything textured inside (like the icon) would visibly
   // scale up ~5x — a giant zooming icon. A solid colour looks identical at every
   // scale, so the frame just grows cleanly like an opening card, then the real
-  // content swaps in over it.
+  // content swaps in over it. The colour is the DEMO's backdrop (derived from
+  // its icon at build time), matching the overlay card exactly — a dark demo
+  // opens dark, and the overlay's fade-out over this surface stays invisible.
   return (
-    <View style={styles.demoRoot}>
+    <View
+      style={[
+        styles.demoRoot,
+        { backgroundColor: getIconBackdrop(slug ?? '') },
+      ]}>
       {mounted ? (
         // Fade the real demo in over the flat backdrop so content doesn't pop —
         // by mount time the zoom has settled, so this cross-fade is the only
@@ -215,8 +222,9 @@ export const Launcher = () => (
 
 const styles = StyleSheet.create({
   demoFill: { flex: 1 },
-  // Opaque flat backdrop shown while the demo mounts. Neutral light so it blends
-  // with the (mostly light) demos and the home wallpaper edge as the frame grows.
+  // Opaque flat backdrop shown while the demo mounts. The white here is only
+  // the fallback — each render overrides it with the demo's own backdrop
+  // colour (getIconBackdrop), kept in sync with the overlay card.
   demoRoot: { backgroundColor: '#ffffff', flex: 1, overflow: 'hidden' },
   error: {
     alignItems: 'center',
