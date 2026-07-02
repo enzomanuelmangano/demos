@@ -1,6 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
@@ -110,7 +110,9 @@ const FLAG_DEMO_COVERING = 1; // demo open/opening/closing over the home
 const FLAG_BLUR = 2; // anything defocusing the home (demo OR pull/search)
 const FLAG_SEARCH_LIST = 4; // search surface in play -> mount result rows
 const FLAG_OVERLAY_HANDOFF = 8; // real zoom settled under the overlay card
-const JS_FLAGS = FLAG_DEMO_COVERING | FLAG_BLUR | FLAG_SEARCH_LIST;
+const FLAG_PULL_ACTIVE = 16; // a pull gesture currently owns `reveal`
+const JS_FLAGS =
+  FLAG_DEMO_COVERING | FLAG_BLUR | FLAG_SEARCH_LIST | FLAG_PULL_ACTIVE;
 
 export const Springboard = () => {
   const layout = useGridLayout();
@@ -160,10 +162,13 @@ export const Springboard = () => {
   const [demoCovering, setDemoCovering] = useState(false);
   const [blurActive, setBlurActive] = useState(false);
   const [searchListActive, setSearchListActive] = useState(false);
+  const [pullInProgress, setPullInProgress] = useState(false);
+  const pullActive = useSharedValue(false);
   const onHomeFlagsChange = useCallback((flags: number) => {
     setDemoCovering((flags & FLAG_DEMO_COVERING) !== 0);
     setBlurActive((flags & FLAG_BLUR) !== 0);
     setSearchListActive((flags & FLAG_SEARCH_LIST) !== 0);
+    setPullInProgress((flags & FLAG_PULL_ACTIVE) !== 0);
     if (!(flags & FLAG_DEMO_COVERING)) elevatedSlug$.set(null);
   }, []);
   useAnimatedReaction(
@@ -177,6 +182,7 @@ export const Springboard = () => {
       if (demoProgress >= 0.999 && openZoomOpacity.get() === 1) {
         flags |= FLAG_OVERLAY_HANDOFF;
       }
+      if (pullActive.get()) flags |= FLAG_PULL_ACTIVE;
       return flags;
     },
     (flags, prev) => {
@@ -209,7 +215,11 @@ export const Springboard = () => {
   const finishExit = useCallback(() => {
     setSearchMode(false);
     setQuery('');
-  }, []);
+    // Hard-reset the surface drivers: exiting means the surface IS gone, so
+    // never leave a stray non-zero behind whatever path got us here.
+    reveal.set(withTiming(0, { duration: 120 }));
+    pull.set(withTiming(0, { duration: 120 }));
+  }, [reveal, pull]);
   const exitSearch = useCallback(() => {
     inputRef.current?.blur();
     reveal.set(
@@ -219,6 +229,31 @@ export const Springboard = () => {
       }),
     );
   }, [reveal, finishExit]);
+
+  // Self-healing invariant: (search surface visible) must equal (searchMode)
+  // whenever no pull gesture owns `reveal`. The surface is driven by shared
+  // values written from several async paths — the pan worklet, the commit /
+  // exit timings and their completion callbacks — and an interruption in any
+  // of them (gesture cancelled by the pager, a timing replaced mid-flight, a
+  // dropped finished=false callback) strands the two out of sync: either a
+  // ghost search bar floats over the interactive grid, or a committed search
+  // is left with no surface. Rather than chasing each race, reconcile: if the
+  // mismatch persists past the transition timings (~350ms), snap to the state
+  // `searchMode` claims.
+  useEffect(() => {
+    if (pullInProgress || searchListActive === searchMode) return undefined;
+    const t = setTimeout(() => {
+      if (searchMode) {
+        // Committed search with no surface: run the missed exit for real so
+        // focus/keyboard/query are torn down through the normal path.
+        exitSearch();
+      } else {
+        reveal.set(withTiming(0, { duration: 200 }));
+        pull.set(withTiming(0, { duration: 200 }));
+      }
+    }, 600);
+    return () => clearTimeout(t);
+  }, [pullInProgress, searchListActive, searchMode, exitSearch, reveal, pull]);
 
   const onSelectSearch = useCallback(
     (slug: string) => {
@@ -255,6 +290,7 @@ export const Springboard = () => {
         .onBegin(() => {
           'worklet';
           pullCommitted.set(false);
+          pullActive.set(true);
         })
         .onUpdate(e => {
           'worklet';
@@ -280,12 +316,21 @@ export const Springboard = () => {
         // fail alike, so every non-committed pull always settles back to rest.
         .onFinalize(() => {
           'worklet';
+          pullActive.set(false);
           if (!pullCommitted.get()) {
             pull.set(withTiming(0, { duration: 260 }));
             reveal.set(withTiming(0, { duration: 260 }));
           }
         }),
-    [pull, reveal, enterSearch, searchMode, demoCovering, pullCommitted],
+    [
+      pull,
+      reveal,
+      enterSearch,
+      searchMode,
+      demoCovering,
+      pullCommitted,
+      pullActive,
+    ],
   );
   const rPull = useAnimatedStyle(() => ({
     transform: [{ translateY: pull.get() }],
