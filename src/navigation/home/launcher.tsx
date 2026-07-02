@@ -84,6 +84,15 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   return bounds({ id, group }).navigation.zoom({
     borderRadius: SCREEN_CORNER_RADIUS,
     backgroundScale: 1,
+    // Close crossfade, iOS-style: the SCREEN carries almost the whole shrink
+    // and the icon only takes over for the final landing. The library default
+    // hides the focused content below progress 0.6 and lets the (opaque,
+    // blown-up) icon carry the last 60% of the close — a giant blurry icon
+    // ghost floating over the grid, which then lingers through the fling
+    // spring's slow settle tail. Tuples are [inputStart, inputEnd,
+    // opacityAtStart, opacityAtEnd] over close progress (1 = open, 0 = rest).
+    focusedElementOpacity: { close: [0.08, 0.2, 0, 1] },
+    unfocusedElementOpacity: { close: [0.04, 0.22, 1, 0] },
   });
 };
 
