@@ -12,6 +12,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 
 import { BOUNDS_GROUP, SEARCH_BOUNDS_GROUP } from './constants';
+import { OPEN_DURATION, OPEN_EASING, OpenZoomOverlay } from './open-zoom';
 import { SCREEN_CORNER_RADIUS } from './screen-radius';
 import { Springboard } from './springboard';
 import { DemoStack } from './stack';
@@ -80,22 +81,23 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   });
 };
 
-// Snappy, iOS-like open spring. The library's DefaultSpec (stiffness 1000,
-// damping 500, mass 3) is ~4.5x overdamped with a heavy mass, so it crawls open
-// over more than a second — that's the "too slow to open" feel. A duration +
-// dampingRatio spring gives a fixed, fast settle with no sluggish tail; 0.9
-// ratio keeps it crisp (no overshoot bounce on the growing corners).
-const OPEN_DURATION = 300;
-const OPEN_SPEC = { duration: OPEN_DURATION, dampingRatio: 0.9 } as const;
+// The real screen's open transition runs the SAME timing curve as the instant
+// overlay card (open-zoom.tsx), just starting one navigate-commit later. That
+// keeps the overlay strictly ahead on the same path, so it covers the real
+// card until settle and the whole open reads as ONE continuous zoom that
+// starts on the tap frame. NOTE: this must stay a TIMING config (no spring
+// keys) — the library's duration-spring front-loads ~2/3 of the motion into
+// the first fifth, which overtook the overlay and flashed the screen white.
+const OPEN_SPEC = { duration: OPEN_DURATION, easing: OPEN_EASING } as const;
 
 // When to swap the lightweight placeholder for the real (potentially heavy)
 // demo. The whole point: keep the navigate commit cheap so the zoom STARTS
 // immediately and runs perfectly smooth on the UI thread; the demo's expensive
 // first render (e.g. Calendar mounts 420 views ~250ms) then lands AFTER the
-// zoom has settled, while the screen is already full-size — so it never janks
-// the motion. Mounting slightly before the zoom ends hides the content swap
-// under the last frames of growth so it doesn't read as a late pop-in.
-const DEMO_MOUNT_DELAY = OPEN_DURATION - 60;
+// zoom has settled, while the screen sits fullscreen white under/behind the
+// (identical white) overlay — so the mount's UI-thread work never janks any
+// visible motion, and the content cross-fades in as the overlay lifts.
+const DEMO_MOUNT_DELAY = OPEN_DURATION + 40;
 
 const demoScreenOptions = {
   gestureEnabled: true,
@@ -204,6 +206,10 @@ export const Launcher = () => (
         </DemoStack.Navigator>
       </NavigationContainer>
     </NavigationIndependentTree>
+    {/* Above the whole tree: the instant open-zoom card. It starts moving on
+        the tap frame and covers the real screen's (commit-delayed) zoom until
+        that one settles — see open-zoom.tsx. */}
+    <OpenZoomOverlay />
   </View>
 );
 
