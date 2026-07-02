@@ -27,6 +27,7 @@ import { SEARCH_BOUNDS_GROUP } from './constants';
 import { DEMOS } from './demos';
 import { getIconSource } from './icon-source';
 import { startOpenZoom } from './open-zoom';
+import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
 import type { Demo } from './demos';
 import type { View as RNView } from 'react-native';
@@ -121,7 +122,13 @@ const SearchRow = ({
       return;
     }
     node.measureInWindow((x, y, width, height) => {
-      startOpenZoom({ x, y, width, height, radius: iconSize * 0.2237 });
+      startOpenZoom({
+        x,
+        y,
+        width,
+        height,
+        radius: iconSize * ICON_RADIUS_RATIO,
+      });
       onSelect(demo.slug);
     });
   };
@@ -140,7 +147,11 @@ const SearchRow = ({
           // Match the home-grid icon's continuous-corner ratio (borderCurve set
           // in the base rowIcon style).
           // eslint-disable-next-line refined/border-radius-with-curve
-          { width: iconSize, height: iconSize, borderRadius: iconSize * 0.2237 },
+          {
+            width: iconSize,
+            height: iconSize,
+            borderRadius: iconSize * ICON_RADIUS_RATIO,
+          },
         ]}
         contentFit="cover"
         cachePolicy="memory-disk"
