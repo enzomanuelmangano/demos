@@ -20,9 +20,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useScreenAnimation } from 'react-native-screen-transitions';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { activePage$ } from './active-page';
+import { activePage$, elevatedSlug$ } from './active-page';
 import { AppIcon } from './app-icon';
 import { Background } from './background';
+import { fadeOutOpenZoom, openZoomOpacity, startOpenZoom } from './open-zoom';
 import { PageDots } from './page-dots';
 import { SEARCH_TRIGGER } from './search-constants';
 import { SearchReveal } from './search-reveal';
@@ -43,7 +44,7 @@ const Page = ({
   demos: Demo[];
   layout: GridLayout;
   pageIndex: number;
-  onPressDemo: (slug: string) => void;
+  onPressDemo: (slug: string, cellIndex: number) => void;
 }) => (
   <View
     style={[
@@ -55,11 +56,12 @@ const Page = ({
         rowGap: layout.rowGap,
       },
     ]}>
-    {demos.map(demo => (
+    {demos.map((demo, cellIndex) => (
       <AppIcon
         key={demo.slug}
         demo={demo}
         pageIndex={pageIndex}
+        cellIndex={cellIndex}
         cellWidth={layout.cellWidth}
         cellHeight={layout.cellHeight}
         iconSize={layout.iconSize}
@@ -127,6 +129,30 @@ export const Springboard = () => {
   const [query, setQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
 
+  // Live frame of THIS (home) screen — `next` is the demo stacked over it.
+  // Declared up here because the gestures below gate on it.
+  const homeAnimation = useScreenAnimation();
+
+  // True while a demo screen covers (or is opening/closing over) the home.
+  // Gates the home's own gestures: the grid stays mounted behind an open demo
+  // (inactiveBehavior 'keep'), and a downward drag over the demo could leak
+  // into the pull-to-search pan — committing search BEHIND the open demo, so
+  // returning + Cancel stranded a half-revealed search bar over the grid.
+  const [demoCovering, setDemoCovering] = useState(false);
+  const onDemoCoveringChange = useCallback((covering: boolean) => {
+    setDemoCovering(covering);
+    // Demo fully closed (progress back to 0): drop the open icon's cell
+    // elevation (see elevatedSlug$). Cleared here rather than on a timer so it
+    // holds through the whole close, including a slow gesture-driven one.
+    if (!covering) elevatedSlug$.set(null);
+  }, []);
+  useAnimatedReaction(
+    () => (homeAnimation.get()?.next?.progress ?? 0) > 0.001,
+    (covering, prev) => {
+      if (covering !== prev) scheduleOnRN(onDemoCoveringChange, covering);
+    },
+  );
+
   const enterSearch = useCallback(() => {
     setSearchMode(true);
     // Ease the reveal to fully-committed from its current (pulled) level —
@@ -165,17 +191,34 @@ export const Springboard = () => {
       // search list, exactly mirroring the icon↔grid zoom. Just drop the keyboard
       // so it isn't up behind the demo. Cancel from the returned search → grid.
       inputRef.current?.blur();
+      // SearchReveal focuses the field on a 120ms timer after search commits; a
+      // fast row tap can land BEFORE that timer fires, so the field re-focuses
+      // behind the opening demo and the keyboard gets stuck over the grid after
+      // Cancel. A second blur past that window closes the race.
+      setTimeout(() => inputRef.current?.blur(), 250);
       navigation.navigate('Demo', { slug, fromSearch: true });
     },
     [navigation],
   );
 
+  // Whether the current pull committed to search. Written in onEnd, read in
+  // onFinalize — see below.
+  const pullCommitted = useSharedValue(false);
   const pullGesture = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(!searchMode)
-        .activeOffsetY(14)
-        .failOffsetX([-14, 14])
+        // Off while search is committed AND while a demo covers the home —
+        // drags over an open demo must never reach the pull-to-search.
+        .enabled(!searchMode && !demoCovering)
+        // Deliberate pull only: more vertical travel to activate, and any early
+        // horizontal travel fails the pan — a diagonal page-swipe used to cross
+        // the Y threshold first and flash the search bar mid-scroll.
+        .activeOffsetY(22)
+        .failOffsetX([-10, 10])
+        .onBegin(() => {
+          'worklet';
+          pullCommitted.set(false);
+        })
         .onUpdate(e => {
           'worklet';
           const d = e.translationY > 0 ? e.translationY : 0;
@@ -188,17 +231,80 @@ export const Springboard = () => {
           'worklet';
           // Commit to search when pulled past the trigger (or flicked hard).
           if (e.translationY > SEARCH_TRIGGER || e.velocityY > 900) {
+            pullCommitted.set(true);
             scheduleOnRN(enterSearch);
-          } else {
+          }
+        })
+        // Settle-back lives in onFinalize, NOT onEnd: onEnd only fires when the
+        // gesture ends successfully. When the pan is CANCELLED mid-pull (pager
+        // scroll or a tap stealing the touch) onEnd is skipped — the reveal
+        // froze at whatever level the finger left it, leaving the search bar
+        // stuck over the interactive grid. onFinalize fires on end, cancel and
+        // fail alike, so every non-committed pull always settles back to rest.
+        .onFinalize(() => {
+          'worklet';
+          if (!pullCommitted.get()) {
             pull.set(withTiming(0, { duration: 260 }));
             reveal.set(withTiming(0, { duration: 260 }));
           }
         }),
-    [pull, reveal, enterSearch, searchMode],
+    [pull, reveal, enterSearch, searchMode, demoCovering, pullCommitted],
   );
   const rPull = useAnimatedStyle(() => ({
     transform: [{ translateY: pull.get() }],
   }));
+
+  // UI-THREAD tap→zoom: recognize the icon tap with a gesture-handler Tap and
+  // hit-test the icon square with pure grid math in the worklet, so the open
+  // overlay (open-zoom.tsx) starts expanding on the SAME FRAME the finger
+  // lifts — zero JS involvement. The icon's Pressable still fires onPress on
+  // the JS thread a beat later and performs the actual navigation (and the
+  // library's source-bound measurement); by then the zoom is already visibly
+  // running. Runs simultaneously with the pager scroll and the pull gesture —
+  // any real drag exceeds maxDelta and the tap fails, so scrolling is untouched.
+  const pageLengths = useMemo(
+    () => layout.pages.map(page => page.length),
+    [layout.pages],
+  );
+  const tapZoomGesture = useMemo(() => {
+    const { cols, cellWidth, cellHeight, iconSize, rowGap, sideMargin, topPad, pageWidth } =
+      layout;
+    const insetTop = insets.top;
+    return Gesture.Tap()
+      .enabled(!searchMode && !demoCovering)
+      .maxDuration(280)
+      .maxDeltaX(12)
+      .maxDeltaY(12)
+      .onEnd(e => {
+        'worklet';
+        // Which page the viewport shows (exact at rest; pagingEnabled snaps).
+        const page = Math.round(scrollX.get() / pageWidth);
+        if (page < 0 || page >= pageLengths.length) return;
+        // Content shift if tapped mid-settle (0 at rest).
+        const offset = page * pageWidth - scrollX.get();
+        const xInPage = e.x - offset - sideMargin;
+        const col = Math.floor(xInPage / cellWidth);
+        if (col < 0 || col >= cols) return;
+        const yInGrid = e.y - insetTop - topPad;
+        const row = Math.floor(yInGrid / (cellHeight + rowGap));
+        if (row < 0 || yInGrid < 0) return;
+        // Inside the icon SQUARE only (not the label / gaps), matching the
+        // Pressable target so overlay and navigation always agree.
+        const iconLeft = col * cellWidth + (cellWidth - iconSize) / 2;
+        const xInCell = xInPage - iconLeft;
+        const yInRow = yInGrid - row * (cellHeight + rowGap);
+        if (xInCell < 0 || xInCell > iconSize || yInRow > iconSize) return;
+        // Empty trailing cells on the last page have no demo — no zoom.
+        if (row * cols + col >= pageLengths[page]) return;
+        startOpenZoom({
+          x: sideMargin + iconLeft + offset,
+          y: insetTop + topPad + row * (cellHeight + rowGap),
+          width: iconSize,
+          height: iconSize,
+          radius: iconSize * 0.2237,
+        });
+      });
+  }, [layout, insets.top, pageLengths, scrollX, searchMode, demoCovering]);
 
   // Live progress of the demo covering this home screen. A stacked screen isn't
   // a React descendant, so we read THIS screen's own frame: when a demo is
@@ -215,7 +321,8 @@ export const Springboard = () => {
   // To recede WITH scale it'd have to go through the library's own backgroundScale
   // (which the bound math compensates for) — but that scales the wallpaper too,
   // which we don't want. Blur alone carries the depth and keeps the zoom exact.
-  const homeAnimation = useScreenAnimation();
+  // (`homeAnimation` itself is declared near the top — the gestures gate on it.)
+  //
   // One blur layer, two drivers: the demo-recede (home defocuses behind an open
   // demo) and the pull-to-search reveal (home defocuses as you pull / search).
   // Take the max so whichever is active wins, and they never fight.
@@ -244,6 +351,21 @@ export const Springboard = () => {
     },
   );
 
+  // Mount the search result rows only while the search surface is in play (a
+  // pull is in progress or search is committed). At rest the rows are unmounted
+  // entirely: each one is a transition boundary, and every MOUNTED boundary
+  // re-renders on each push/pop — 122 idle rows added ~200ms of dead JS to the
+  // navigate commit of a grid-icon tap (the tap→zoom delay). Flipping on the
+  // first pulled pixel means the ~14 initial rows mount within a frame or two
+  // of the gesture start, well before the surface is meaningfully visible.
+  const [searchListActive, setSearchListActive] = useState(false);
+  useAnimatedReaction(
+    () => reveal.get() > 0.001,
+    (active, prev) => {
+      if (active !== prev) scheduleOnRN(setSearchListActive, active);
+    },
+  );
+
   // Warm the Demo screen's heavy react-native-screen-transitions provider/
   // wrapper tree at idle, with a dummy slug so NO real demo content mounts. The
   // ~240ms screen-mount cost (the open's real blocker) is otherwise paid on the
@@ -260,11 +382,45 @@ export const Springboard = () => {
     }, [navigation]),
   );
 
+  // JS side of the tap. The overlay zoom was normally ALREADY started by the
+  // UI-thread tap gesture above; this only navigates. The guarded fallback
+  // covers paths that bypass the gesture (e.g. accessibility activation) so
+  // the demo never opens without its zoom card.
   const onPressDemo = useCallback(
-    (slug: string) => {
+    (slug: string, cellIndex: number) => {
+      // Keep this cell painting above its siblings for the whole open/close
+      // round trip (cleared when the demo's progress returns to 0).
+      elevatedSlug$.set(slug);
+      if (openZoomOpacity.get() < 0.5) {
+        const col = cellIndex % layout.cols;
+        const row = Math.floor(cellIndex / layout.cols);
+        startOpenZoom({
+          x:
+            layout.sideMargin +
+            col * layout.cellWidth +
+            (layout.cellWidth - layout.iconSize) / 2,
+          y:
+            insets.top + layout.topPad + row * (layout.cellHeight + layout.rowGap),
+          width: layout.iconSize,
+          height: layout.iconSize,
+          radius: layout.iconSize * 0.2237,
+        });
+      }
       navigation.navigate('Demo', { slug });
     },
-    [navigation],
+    [navigation, layout, insets.top],
+  );
+
+  // Hand the overlay off to the real screen: the moment the demo's own zoom
+  // settles underneath (progress 1), fade the overlay card away. Guarded on
+  // full opacity so a close (progress falling back) never re-triggers it.
+  useAnimatedReaction(
+    () => homeAnimation.get()?.next?.progress ?? 0,
+    progress => {
+      if (progress >= 0.999 && openZoomOpacity.get() === 1) {
+        fadeOutOpenZoom();
+      }
+    },
   );
 
   // Publish the visible page into the observable so each icon can gate its own
@@ -295,7 +451,7 @@ export const Springboard = () => {
   return (
     <View style={styles.root}>
       <Background />
-      <GestureDetector gesture={pullGesture}>
+      <GestureDetector gesture={Gesture.Simultaneous(pullGesture, tapZoomGesture)}>
         <Animated.View
           pointerEvents={searchMode ? 'none' : 'auto'}
           style={[styles.gridScale, rPull]}>
@@ -306,14 +462,17 @@ export const Springboard = () => {
             horizontal
             pagingEnabled
             recycleItems={false}
-            // Pre-render two pages in each direction. Each icon is a deep tree
+            // Pre-render one page in each direction. Each icon is a deep tree
             // (transition boundary + context menu + pressable + image), so
             // mounting a page on demand mid-swipe costs ~180ms and stutters the
-            // scroll. A 2-page buffer means pages mount during the idle between
-            // swipes, not during them. The open is fast via preload and barely
-            // depends on boundary count (measured ~6ms), so the extra mounted
-            // pages are worth the scroll smoothness.
-            drawDistance={layout.pageWidth * 2}
+            // scroll — the buffer keeps page mounts in the idle between swipes.
+            // Capped at ONE page (not two) because every MOUNTED icon is a
+            // transition boundary and the library re-renders all of them inside
+            // the navigate commit of an icon tap; profiling showed that commit
+            // is the tap→zoom delay, and its cost scales with mounted boundary
+            // count (~1ms per boundary in dev). 3 mounted pages ≈ 72 boundaries
+            // is the balance point between scroll smoothness and open latency.
+            drawDistance={layout.pageWidth}
             estimatedItemSize={layout.pageWidth}
             showsHorizontalScrollIndicator={false}
             // iOS ScrollViews hold touches ~150ms to detect a scroll before
@@ -361,6 +520,7 @@ export const Springboard = () => {
       <SearchReveal
         reveal={reveal}
         searchMode={searchMode}
+        listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}
         iconSize={layout.iconSize}
         query={query}
