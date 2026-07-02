@@ -8,7 +8,12 @@ import {
   NavigationIndependentTree,
   useRoute,
 } from '@react-navigation/native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import Transition from 'react-native-screen-transitions';
 
 import { BOUNDS_GROUP, SEARCH_BOUNDS_GROUP } from './constants';
@@ -132,14 +137,32 @@ const DemoScreen = () => {
   // the demo is. A fixed timer (not the library's settle flag, which fires
   // unreliably late) keeps the swap tightly locked to the spring.
   const [mounted, setMounted] = useState(false);
+  // Fade driver for the mounted content. NOT an `entering` layout animation:
+  // FadeIn's start races the demo's (heavy, JS-blocking) mount commit, so its
+  // first painted frame could land at FULL opacity before the animation
+  // registered — the content flickered in instead of fading. With a shared
+  // value the content is committed at opacity 0 (plain style, same commit as
+  // the mount, can't flash) and the timing starts from the effect below, i.e.
+  // strictly after that commit.
+  const contentOpacity = useSharedValue(0);
   // Re-defer per slug: the screen instance is reused across opens (it's
   // preloaded + kept warm), so each open must reset the gate and re-defer the
   // heavy demo mount off the zoom, not stay mounted from the previous open.
   useEffect(() => {
     setMounted(false);
+    contentOpacity.set(0);
     const t = setTimeout(() => setMounted(true), DEMO_MOUNT_DELAY);
     return () => clearTimeout(t);
-  }, [slug]);
+  }, [slug, contentOpacity]);
+  useEffect(() => {
+    if (!mounted) return;
+    contentOpacity.set(
+      withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }),
+    );
+  }, [mounted, contentOpacity]);
+  const rContent = useAnimatedStyle(() => ({
+    opacity: contentOpacity.get(),
+  }));
 
   const metadata = slug ? getAnimationMetadata(slug) : undefined;
   const AnimationComponent = slug ? getAnimationComponent(slug) : undefined;
@@ -170,7 +193,7 @@ const DemoScreen = () => {
         // Fade the real demo in over the flat backdrop so content doesn't pop —
         // by mount time the zoom has settled, so this cross-fade is the only
         // motion and reads as the app "developing in" (iOS launch feel).
-        <Animated.View style={styles.demoFill} entering={FadeIn.duration(220)}>
+        <Animated.View style={[styles.demoFill, rContent]}>
           <AnimationComponent {...(dimensions as any)} />
         </Animated.View>
       ) : null}
