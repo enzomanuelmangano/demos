@@ -84,15 +84,6 @@ const zoomInterpolator: ScreenTransitionConfig['screenStyleInterpolator'] = ({
   return bounds({ id, group }).navigation.zoom({
     borderRadius: SCREEN_CORNER_RADIUS,
     backgroundScale: 1,
-    // Close crossfade, iOS-style: the SCREEN carries almost the whole shrink
-    // and the icon only takes over for the final landing. The library default
-    // hides the focused content below progress 0.6 and lets the (opaque,
-    // blown-up) icon carry the last 60% of the close — a giant blurry icon
-    // ghost floating over the grid, which then lingers through the fling
-    // spring's slow settle tail. Tuples are [inputStart, inputEnd,
-    // opacityAtStart, opacityAtEnd] over close progress (1 = open, 0 = rest).
-    focusedElementOpacity: { close: [0.08, 0.2, 0, 1] },
-    unfocusedElementOpacity: { close: [0.04, 0.22, 1, 0] },
   });
 };
 
@@ -117,10 +108,14 @@ const DEMO_MOUNT_DELAY = OPEN_DURATION + 40;
 const demoScreenOptions = {
   gestureEnabled: true,
   gestureDirection: 'bidirectional',
-  // EXPERIMENT: MaskedView forces offscreen GPU compositing every frame of the
-  // zoom (suspected slowness). Disabled -> the library clips via borderRadius +
-  // overflow:hidden instead. Testing whether this is the perf culprit.
-  navigationMaskEnabled: false,
+  // The mask is what CROPS the shrinking screen into the icon rect on close
+  // (real iOS morph). Without it the zoom can only scale the whole screen
+  // uniformly, so a gesture close showed either a phone-shaped miniature
+  // (content visible) or a blown-up icon ghost (content hidden early — the
+  // library's default mitigation). Its GPU cost was once suspected of open
+  // jank, but the instant overlay now covers the entire open, so the mask
+  // only ever composites during the (gesture-paced) close.
+  navigationMaskEnabled: true,
   screenStyleInterpolator: zoomInterpolator,
   transitionSpec: {
     open: OPEN_SPEC,
