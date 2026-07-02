@@ -55,7 +55,9 @@ export const openZoomOpacity = makeMutable(0);
 // Fade the overlay out, revealing the settled real screen underneath.
 export const fadeOutOpenZoom = () => {
   'worklet';
-  openZoomOpacity.set(withTiming(0, { duration: 160, easing: Easing.out(Easing.quad) }));
+  openZoomOpacity.set(
+    withTiming(0, { duration: 160, easing: Easing.out(Easing.quad) }),
+  );
 };
 
 // Kick the overlay zoom from the tapped source rect. Marked as a worklet so
@@ -69,24 +71,31 @@ export const startOpenZoom = (rect: OpenZoomRect) => {
   openZoomOpacity.set(1);
   openZoomProgress.set(0);
   openZoomProgress.set(
-    withTiming(1, { duration: OPEN_DURATION, easing: OPEN_EASING }, finished => {
-      'worklet';
-      if (!finished) {
-        return;
-      }
-      // Backstop: normally the springboard fades the overlay the moment the
-      // real screen's transition settles. If that never fires (screen errored,
-      // instant dismiss, …) don't leave a white card stuck over the app. A
-      // later settle-fade simply replaces this pending one. The delay must
-      // comfortably exceed a cold navigate commit + the real zoom (~900ms in
-      // dev), otherwise the backstop lifts the card mid-zoom and the grid
-      // flashes through before the demo has covered the screen.
-      if (openZoomOpacity.get() === 1) {
-        openZoomOpacity.set(
-          withDelay(1400, withTiming(0, { duration: 200, easing: Easing.out(Easing.quad) })),
-        );
-      }
-    }),
+    withTiming(
+      1,
+      { duration: OPEN_DURATION, easing: OPEN_EASING },
+      finished => {
+        'worklet';
+        if (!finished) {
+          return;
+        }
+        // Backstop: normally the springboard fades the overlay the moment the
+        // real screen's transition settles. If that never fires (screen errored,
+        // instant dismiss, …) don't leave a white card stuck over the app. A
+        // later settle-fade simply replaces this pending one. The delay must
+        // comfortably exceed a cold navigate commit + the real zoom (~900ms in
+        // dev), otherwise the backstop lifts the card mid-zoom and the grid
+        // flashes through before the demo has covered the screen.
+        if (openZoomOpacity.get() === 1) {
+          openZoomOpacity.set(
+            withDelay(
+              1400,
+              withTiming(0, { duration: 200, easing: Easing.out(Easing.quad) }),
+            ),
+          );
+        }
+      },
+    ),
   );
 };
 

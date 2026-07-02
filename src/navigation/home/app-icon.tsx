@@ -11,6 +11,7 @@ import * as ContextMenu from 'zeego/context-menu';
 import { activePage$, elevatedSlug$ } from './active-page';
 import { BOUNDS_GROUP } from './constants';
 import { getIconSource } from './icon-source';
+import { ICON_RADIUS_RATIO } from './use-grid-layout';
 import { AnimationInspirations } from '../../animations/inspirations';
 
 import type { Demo } from './demos';
@@ -43,7 +44,7 @@ const sourceUrl = (slug: string) =>
 // mid-close. Bounding the icon square alone makes the zoom symmetric about the
 // icon, with no label ghost.
 const IconSquare = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
-  const radius = iconSize * 0.2237; // iOS continuous-corner ratio
+  const radius = iconSize * ICON_RADIUS_RATIO;
   return (
     <View
       style={[
@@ -214,10 +215,6 @@ const styles = StyleSheet.create({
     height: '100%',
     width: '100%',
   },
-  // iOS-style pressed acknowledgement on the icon square.
-  pressedDim: {
-    opacity: 0.6,
-  },
   label: {
     color: 'rgba(255,255,255,0.92)',
     fontSize: 11,
@@ -225,5 +222,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     maxWidth: '100%',
     textAlign: 'center',
+  },
+  // iOS-style pressed acknowledgement on the icon square.
+  pressedDim: {
+    opacity: 0.6,
   },
 });

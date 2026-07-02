@@ -21,6 +21,49 @@ const DOTS_BLOCK = 44; // reserved height for the page-dots row
 const clamp = (v: number, lo: number, hi: number) =>
   Math.max(lo, Math.min(hi, v));
 
+// iOS continuous-corner ratio shared by every squircle in the launcher
+// (grid icons, search-row icons, the open-zoom card).
+export const ICON_RADIUS_RATIO = 0.2237;
+
+// Scalar subset of GridLayout consumed by the icon-rect math. Kept small so
+// the UI-thread tap recognizer captures a handful of numbers into its worklet
+// instead of the whole layout (which drags the 122-demo pages array along).
+export interface IconGridMetrics {
+  cols: number;
+  cellWidth: number;
+  cellHeight: number;
+  iconSize: number;
+  rowGap: number;
+  sideMargin: number;
+  topPad: number;
+}
+
+// On-screen rect of a cell's icon square, in viewport coordinates. The single
+// source of the grid geometry used to seed the open-zoom overlay — callable
+// from worklets (UI-thread tap recognizer) and JS (accessibility fallback)
+// alike. `offsetX` compensates a not-exactly-page-aligned scroll (0 at rest).
+export const iconRectForCell = (
+  grid: IconGridMetrics,
+  insetTop: number,
+  cellIndex: number,
+  offsetX = 0,
+) => {
+  'worklet';
+  const col = cellIndex % grid.cols;
+  const row = Math.floor(cellIndex / grid.cols);
+  return {
+    x:
+      offsetX +
+      grid.sideMargin +
+      col * grid.cellWidth +
+      (grid.cellWidth - grid.iconSize) / 2,
+    y: insetTop + grid.topPad + row * (grid.cellHeight + grid.rowGap),
+    width: grid.iconSize,
+    height: grid.iconSize,
+    radius: grid.iconSize * ICON_RADIUS_RATIO,
+  };
+};
+
 export interface GridLayout {
   cols: number;
   rows: number;
