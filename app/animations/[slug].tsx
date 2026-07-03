@@ -15,6 +15,7 @@ import {
   getAnimationMetadata,
 } from '../../src/animations/registry';
 import { getIconBackdrop } from '../../src/navigation/home/icon-source';
+import { SCREEN_CORNER_RADIUS } from '../../src/navigation/home/screen-radius';
 import { useOnShakeEffect } from '../../src/navigation/hooks/use-shake-gesture';
 import { useRetray } from '../../src/packages/retray';
 
@@ -90,7 +91,18 @@ export default function AnimationScreen() {
 
 const styles = StyleSheet.create({
   demoFill: { flex: 1 },
-  demoRoot: { backgroundColor: '#ffffff', flex: 1, overflow: 'hidden' },
+  // The demo surface carries the device's display corner radius (continuous
+  // curve, clipped): at rest the rounding coincides with the physical screen
+  // corners so it's invisible, and during the native zoom / interactive
+  // dismiss the shrinking screen keeps display-matched corners instead of
+  // reading square against the morph's rounded mask.
+  demoRoot: {
+    backgroundColor: '#ffffff',
+    borderCurve: 'continuous',
+    borderRadius: SCREEN_CORNER_RADIUS,
+    flex: 1,
+    overflow: 'hidden',
+  },
   errorContainer: {
     alignItems: 'center',
     backgroundColor: 'black',
