@@ -1,13 +1,15 @@
 import { useCallback } from 'react';
 
-import { Launcher } from '../src/navigation/home/launcher';
+import { SpringboardNative } from '../src/navigation/home/native-spike/springboard-native';
 import { useOnShakeEffect } from '../src/navigation/hooks/use-shake-gesture';
 import { useRetray } from '../src/packages/retray';
 
 import type { Trays } from '../src/trays';
 
-// Home = the iOS SpringBoard launcher (its own navigation tree: grid + demo
-// screens with the open-zoom). Shake still opens the feedback tray.
+// SPIKE: home renders the native-zoom springboard variant. Demos are plain
+// expo-router routes (/animations/[slug]) again — no standalone navigation
+// tree — so Link.AppleZoom can drive the iOS 18 native zoom transition through
+// the router's own native stack. Shake still opens the feedback tray.
 export default function HomeScreen() {
   const { show } = useRetray<Trays>();
   const handleFeedback = useCallback(() => {
@@ -16,5 +18,5 @@ export default function HomeScreen() {
 
   useOnShakeEffect(handleFeedback);
 
-  return <Launcher />;
+  return <SpringboardNative />;
 }

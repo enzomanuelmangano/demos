@@ -1,21 +1,36 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useLocalSearchParams } from 'expo-router';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 
 import {
   getAnimationComponent,
   getAnimationMetadata,
 } from '../../src/animations/registry';
+import { getIconBackdrop } from '../../src/navigation/home/icon-source';
 import { useOnShakeEffect } from '../../src/navigation/hooks/use-shake-gesture';
 import { useRetray } from '../../src/packages/retray';
 
 import type { Trays } from '../../src/trays';
 
-// Demo host. The open/close + swipe-to-dismiss transition is driven by the
-// screen-transitions stack (zoom interpolator in app/_layout.tsx) — this screen
-// only resolves and renders the animation. Shake still opens the feedback tray.
+// How long the iOS 18 native zoom runs before the heavy demo mounts. Same
+// deferred-mount trick as the main branch: during the transition the screen is
+// a flat backdrop the demo's colour (cheap commit, so UIKit's zoom morphs a
+// clean surface and the mount's JS work can't jank the motion), then the real
+// content fades in once the morph has settled.
+const DEMO_MOUNT_DELAY = 450;
+
+// SPIKE demo host. The open/close morph is UIKit's native zoom transition
+// (Link.AppleZoom on the launcher icon) — this screen only provides the zoomed
+// surface: flat backdrop first, demo faded in after the settle. Swipe-down
+// dismiss comes free with the native transition. Shake opens feedback.
 export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const dimensions = useWindowDimensions();
@@ -26,6 +41,22 @@ export default function AnimationScreen() {
   }, [show, slug]);
 
   useOnShakeEffect(handleFeedback);
+
+  const [mounted, setMounted] = useState(false);
+  const contentOpacity = useSharedValue(0);
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), DEMO_MOUNT_DELAY);
+    return () => clearTimeout(t);
+  }, []);
+  useEffect(() => {
+    if (!mounted) return;
+    contentOpacity.set(
+      withTiming(1, { duration: 220, easing: Easing.out(Easing.quad) }),
+    );
+  }, [mounted, contentOpacity]);
+  const rContent = useAnimatedStyle(() => ({
+    opacity: contentOpacity.get(),
+  }));
 
   if (!slug) {
     return (
@@ -46,10 +77,20 @@ export default function AnimationScreen() {
     );
   }
 
-  return <AnimationComponent {...(dimensions as any)} />;
+  return (
+    <View style={[styles.demoRoot, { backgroundColor: getIconBackdrop(slug) }]}>
+      {mounted ? (
+        <Animated.View style={[styles.demoFill, rContent]}>
+          <AnimationComponent {...(dimensions as any)} />
+        </Animated.View>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
+  demoFill: { flex: 1 },
+  demoRoot: { backgroundColor: '#ffffff', flex: 1, overflow: 'hidden' },
   errorContainer: {
     alignItems: 'center',
     backgroundColor: 'black',
