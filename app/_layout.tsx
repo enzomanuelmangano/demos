@@ -1,4 +1,4 @@
-import { LogBox, StatusBar, StyleSheet } from 'react-native';
+import { LogBox, StatusBar, StyleSheet, View } from 'react-native';
 
 // TODO: Remove after upgrading to react-navigation v8
 LogBox.ignoreLogs([/InteractionManager.*deprecated/]);
@@ -14,6 +14,7 @@ import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { Background } from '../src/navigation/home/background';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
@@ -33,14 +34,18 @@ const QuickActionsProvider = memo(
   },
 );
 
-// The launcher (the iOS SpringBoard home + its open-zoom) lives in a standalone
-// navigation tree hosted by app/index.tsx; expo-router just renders that single
-// screen full-bleed.
-// Light card matching the home wallpaper's edge tone: the home zoom scales the
-// grid down and would otherwise reveal the white default card as a hard edge.
+// Transparent screens over a wallpaper that lives OUTSIDE the navigation
+// stack. UIKit's native zoom (Link.AppleZoom) scales the whole source screen
+// during its pushback — wallpaper included, which visibly zoomed the wallpaper
+// on every open/dismiss. Real SpringBoard never scales the wallpaper: it lives
+// in a layer the transition doesn't touch. Same trick here: the wallpaper
+// renders once BEHIND the Stack (sibling, not screen content), the home screen
+// is transparent, so the pushback scales only the icon grid over a still
+// wallpaper. Demo screens paint their own opaque backgrounds, so they're
+// unaffected.
 const stackScreenOptions = {
   headerShown: false,
-  contentStyle: { backgroundColor: '#000000' },
+  contentStyle: { backgroundColor: 'transparent' },
 } as const;
 
 export default function RootLayout() {
@@ -76,7 +81,12 @@ export default function RootLayout() {
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>
                   <QuickActionsProvider>
-                    <Stack screenOptions={stackScreenOptions} />
+                    <View style={styles.host}>
+                      {/* Wallpaper pinned outside the navigator — the native
+                          zoom's pushback never scales it (see comment above). */}
+                      <Background />
+                      <Stack screenOptions={stackScreenOptions} />
+                    </View>
                   </QuickActionsProvider>
                 </Retray.Navigator>
               </Retray.Theme>
@@ -118,6 +128,12 @@ const globalPressableHandlers = {
 
 const styles = StyleSheet.create({
   fill: {
+    flex: 1,
+  },
+  // Black base under the wallpaper image (shows only until it loads / behind
+  // its edges) — matches the dark loupe wallpaper.
+  host: {
+    backgroundColor: '#000000',
     flex: 1,
   },
 });

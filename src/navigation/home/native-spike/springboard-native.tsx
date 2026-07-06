@@ -19,7 +19,6 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { AppIconNative } from './app-icon-native';
 import { SearchRevealNative } from './search-reveal-native';
-import { Background } from '../background';
 import { PageDots } from '../page-dots';
 import { SEARCH_TRIGGER } from '../search-constants';
 import { useGridLayout } from '../use-grid-layout';
@@ -228,7 +227,6 @@ export const SpringboardNative = () => {
 
   return (
     <View style={styles.root}>
-      <Background />
       <GestureDetector gesture={pullGesture}>
         <Animated.View
           pointerEvents={searchMode ? 'none' : 'auto'}
@@ -308,8 +306,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
+  // TRANSPARENT on purpose: the wallpaper renders behind the whole navigation
+  // stack (app/_layout.tsx), so the native zoom's pushback scales only this
+  // screen's content — icons, dots, search — over a still wallpaper.
   root: {
-    backgroundColor: '#000000',
+    backgroundColor: 'transparent',
     flex: 1,
   },
 });
