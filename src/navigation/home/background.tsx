@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 // blending with the image's dark edges wherever a transition reveals it.
 export const Background = () => (
   <Image
-    source={require('../../../assets/images/home-wallpaper-distortion.webp')}
+    source={require('../../../assets/images/home-wallpaper-mono.webp')}
     style={StyleSheet.absoluteFill}
     contentFit="cover"
     cachePolicy="memory-disk"
