@@ -3,7 +3,7 @@ import { LogBox, StatusBar, StyleSheet, View } from 'react-native';
 // TODO: Remove after upgrading to react-navigation v8
 LogBox.ignoreLogs([/InteractionManager.*deprecated/]);
 
-import { memo, Suspense, useCallback, useEffect } from 'react';
+import { memo, Suspense, useCallback, useEffect, useState } from 'react';
 
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
@@ -15,6 +15,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { Background } from '../src/navigation/home/background';
+import { useLauncherAssets } from '../src/navigation/home/use-launcher-assets';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
@@ -53,9 +54,20 @@ export default function RootLayout() {
   useOta();
   const router = useRouter();
 
+  // Keep the splash up until BOTH the root view has laid out AND every image
+  // the launcher paints on its first frame (wallpaper + all grid icons) has
+  // been resolved — so the home never appears with a blank wallpaper or icons
+  // popping in one by one.
+  const assetsReady = useLauncherAssets();
+  const [layoutDone, setLayoutDone] = useState(false);
   const onLayoutRootView = useCallback(() => {
-    SplashScreen.hideAsync();
+    setLayoutDone(true);
   }, []);
+  useEffect(() => {
+    if (assetsReady && layoutDone) {
+      SplashScreen.hideAsync();
+    }
+  }, [assetsReady, layoutDone]);
 
   useEffect(() => {
     Linking.getInitialURL().then(url => {
