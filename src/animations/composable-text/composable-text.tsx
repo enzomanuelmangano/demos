@@ -42,7 +42,12 @@ export const ComposableText = memo(
               <Animated.Text
                 key={buildKeys[index]}
                 entering={FadeIn.duration(200)
-                  .withInitialValues({ transform: [{ scale: 0.5 }] })
+                  // reanimated 4.5 narrowed FadeIn's initial-values type to
+                  // its own animated props (opacity); transforms are still
+                  // applied at runtime exactly as in 3.x.
+                  .withInitialValues({
+                    transform: [{ scale: 0.5 }],
+                  } as unknown as Partial<{ opacity: number }>)
                   .springify()
                   .mass(0.3)
                   .damping(12)

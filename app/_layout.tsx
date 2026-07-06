@@ -8,7 +8,7 @@ import { memo, Suspense, useCallback, useEffect, useState } from 'react';
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter } from 'expo-router';
+import { DarkTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -48,6 +48,16 @@ const stackScreenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: 'transparent' },
 } as const;
+
+// The navigator paints every screen container with the navigation theme's
+// `background` (SDK 57 does this even with a transparent contentStyle, which
+// left the home sitting on a white card after a dismiss). Theme it transparent
+// so the only opaque layers are the wallpaper behind the Stack and each demo
+// screen's own backdrop.
+const navTheme = {
+  ...DarkTheme,
+  colors: { ...DarkTheme.colors, background: 'transparent', card: '#000000' },
+};
 
 export default function RootLayout() {
   // Check for OTA updates
@@ -97,7 +107,9 @@ export default function RootLayout() {
                       {/* Wallpaper pinned outside the navigator — the native
                           zoom's pushback never scales it (see comment above). */}
                       <Background />
-                      <Stack screenOptions={stackScreenOptions} />
+                      <ThemeProvider value={navTheme}>
+                        <Stack screenOptions={stackScreenOptions} />
+                      </ThemeProvider>
                     </View>
                   </QuickActionsProvider>
                 </Retray.Navigator>
