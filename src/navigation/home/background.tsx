@@ -2,14 +2,13 @@ import { StyleSheet } from 'react-native';
 
 import { Image } from 'expo-image';
 
-// SpringBoard wallpaper: a static dark image (a glowing loupe ring on pure
-// black — baked to a PNG, no live shader cost on the home). The open-zoom scales
-// the grid down and reveals the layer behind it, so the launcher root + router
-// card are pure black (see launcher.tsx / _layout.tsx) matching the wallpaper's
-// black edges, so the revealed area blends seamlessly instead of flashing.
+// SpringBoard wallpaper: a static image, no live shader cost on the home.
+// Center-cropped to portrait + downscaled at import time so the decode stays
+// cheap. The layer behind it stays pure black (launcher root / _layout host),
+// blending with the image's dark edges wherever a transition reveals it.
 export const Background = () => (
   <Image
-    source={require('../../../assets/images/home-wallpaper.png')}
+    source={require('../../../assets/images/home-wallpaper-distortion.webp')}
     style={StyleSheet.absoluteFill}
     contentFit="cover"
     cachePolicy="memory-disk"
