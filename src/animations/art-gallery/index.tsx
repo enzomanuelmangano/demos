@@ -6,19 +6,11 @@ import {
   View,
 } from 'react-native';
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -164,7 +156,6 @@ const HeaderRight = memo(
 );
 
 export function ArtGallery() {
-  const navigation = useNavigation();
   const { top: safeTop } = useSafeAreaInsets();
   const canvasRef = useRef<CanvasRef>(null);
 
@@ -311,30 +302,6 @@ export function ArtGallery() {
       setAnalysis,
     ],
   );
-
-  // Configure native header - only depends on handlePaintingChange, not on selectedPaintingId
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      headerTransparent: true,
-      headerTitle: 'Gallery',
-      headerTintColor: '#fff',
-      headerTitleStyle: {
-        fontWeight: '600',
-      },
-      headerRight: () => (
-        <HeaderRight onPaintingChange={handlePaintingChange} />
-      ),
-    });
-
-    // Reset header when unmounting to prevent it persisting on other screens
-    return () => {
-      navigation.setOptions({
-        headerShown: false,
-        headerRight: undefined,
-      });
-    };
-  }, [navigation, handlePaintingChange]);
 
   // Initialize WebGPU renderer
   useWebGPUMosaic(canvasRef, {
@@ -649,6 +616,12 @@ export function ArtGallery() {
           pointerEvents="none"
         />
 
+        {/* No native header (it dragged in a back button + title bar) — just
+            the movements menu, floating top-right under the safe area. */}
+        <View style={[styles.menuButton, { top: safeTop + 4 }]}>
+          <HeaderRight onPaintingChange={handlePaintingChange} />
+        </View>
+
         <Animated.View style={[styles.fab, backButtonStyle]}>
           <ZoomOutButton onPress={resetZoom} />
         </Animated.View>
@@ -678,5 +651,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  menuButton: {
+    position: 'absolute',
+    right: 12,
   },
 });
