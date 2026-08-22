@@ -67,12 +67,20 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let grassBright = vec3f(0.12, 0.38, 0.08);
 
   // Creeper — vanilla's two-tone mottled green.
-  // Deeper and more saturated than vanilla's skin. The mob spends the whole
-  // walk on a near-white QR lawn, where a light green reads washed out - the
-  // contrast has to come from value, not hue.
-  let creeperLight = vec3f(0.33, 0.62, 0.21);
-  let creeperMid = vec3f(0.21, 0.45, 0.15);
-  let creeperDark = vec3f(0.12, 0.29, 0.10);
+  // Creeper skin, matched to the real texture rather than pushed for contrast.
+  // The mob is a BRIGHT light-to-mid green with a TIGHT value spread and
+  // desaturated grey-green patches through it - darkening and saturating it to
+  // separate it from the pale lawn made it read as a different creature. The
+  // separation comes from the block-edge shading below instead.
+  // More saturated than a straight read of the texture: ACES plus the gamma
+  // curve lift these a long way, and values sampled from a screenshot came out
+  // mint rather than green once tonemapped.
+  let creeperPale = vec3f(0.47, 0.74, 0.39);
+  let creeperLight = vec3f(0.36, 0.69, 0.26);
+  let creeperMid = vec3f(0.27, 0.59, 0.19);
+  let creeperDark = vec3f(0.18, 0.44, 0.13);
+  // Only the very bottom of the legs goes near-black, as on the real skin.
+  let creeperFoot = vec3f(0.10, 0.22, 0.08);
 
   // ============================================
   // LIGHTING SETUP
@@ -130,10 +138,20 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   if (blockType == 5) {
     // Vanilla's mottle: a coarse per-voxel two-tone, biased darker down the
     // legs so it grounds instead of floating.
-    var skin = mix(creeperMid, creeperLight, step(0.55, noise1));
-    skin = mix(skin, creeperDark, step(0.78, noise2) * 0.9);
-    if (input.partId >= 2.0) {
-      skin = mix(skin, creeperDark, 0.35);
+    // Four-tone mottle in a narrow band, including the washed grey-green.
+    var skin = creeperMid;
+    if (noise1 < 0.30) {
+      skin = creeperLight;
+    } else if (noise1 < 0.52) {
+      skin = creeperDark;
+    } else if (noise1 < 0.64) {
+      skin = creeperPale;
+    }
+    skin = mix(skin, creeperLight, step(0.86, noise2) * 0.6);
+    // Feet: the dark patches sit on the lowest leg course only, not over the
+    // whole limb.
+    if (input.partId >= 2.0 && layer < 0.5) {
+      skin = mix(skin, creeperFoot, 0.55 + 0.45 * step(0.5, noise2));
     }
 
     // The face fills the front of the head as one 8x8 texture spread over
@@ -159,7 +177,9 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     // Darkened block edges, so the silhouette holds against a pale background
     // instead of dissolving into it.
     let mobEdge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-    let mobAO = mix(0.66, 1.0, smoothstep(0.0, 0.14, mobEdge));
+    // Gentle: a heavy edge darkening put a black outline on every voxel, which
+    // is a large part of what read as wrong.
+    let mobAO = mix(0.82, 1.0, smoothstep(0.0, 0.12, mobEdge));
     albedo = skin * mobShade * mobAO;
 
   // ============================================
