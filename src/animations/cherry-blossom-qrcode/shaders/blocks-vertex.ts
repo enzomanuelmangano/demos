@@ -386,7 +386,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     shake = vec2f(
       sin(uniforms.blastT * 71.0) + sin(uniforms.blastT * 113.0) * 0.5,
       cos(uniforms.blastT * 59.0) + cos(uniforms.blastT * 97.0) * 0.5
-    ) * decay * 0.016;
+    ) * decay * 0.024;
   }
 
   output.position = vec4f(

@@ -1,5 +1,7 @@
 import {
   BLOCK_SIZE,
+  FIREBALL_DURATION,
+  FIREBALL_RADIUS,
   FLAT_ANGLE_X,
   FLAT_ANGLE_Y,
   ISO_ANGLE_X,
@@ -94,6 +96,9 @@ fn main(
   if (t < 0.0 || t > ${SMOKE_DURATION}) {
     return vec4f(0.0);
   }
+  // Ratio computed in JS: both constants interpolate as bare integers, and
+  // 11 / 21 would be integer division in WGSL.
+  let fireRatio = ${(FIREBALL_RADIUS / SMOKE_RADIUS).toFixed(6)};
 
   // Clip space is not square on a portrait canvas, so correct x by the aspect
   // ratio or every puff comes out as an ellipse.
@@ -129,10 +134,23 @@ fn main(
   // blue sky. This scene's background is #f7f7f7, so a white ball is simply
   // invisible - the value has to come down for the smoke to read at all,
   // with per-puff variation so it billows instead of reading as flat fog.
-  let hot = exp(-t * 14.0);
   let grey = mix(0.50, 0.72, shade);
-  let col = mix(vec3f(grey, grey * 0.99, grey * 0.97), vec3f(1.0, 0.93, 0.72), hot);
-  let a = clamp(cover * fade * 0.92, 0.0, 1.0);
+  var col = vec3f(grey, grey * 0.99, grey * 0.97);
+  var a = clamp(cover * fade * 0.92, 0.0, 1.0);
+
+  // Fireball: hot, local and brief. This is what gives the frame its punch,
+  // and it has to be a warm colour rather than a white flash, because a white
+  // flash on a near-white background does nothing at all.
+  let fireT = clamp(t / ${FIREBALL_DURATION.toFixed(4)}, 0.0, 1.0);
+  if (fireT < 1.0) {
+    let fr = radius * fireRatio * (0.35 + 0.85 * fireT);
+    let core = smoothstep(fr, fr * 0.15, length(q));
+    let heat = core * (1.0 - fireT) * (1.0 - fireT);
+    let fireCol = mix(vec3f(1.0, 0.42, 0.06), vec3f(1.0, 0.93, 0.62), 1.0 - fireT);
+    col = mix(col, fireCol, clamp(heat * 1.6, 0.0, 1.0));
+    a = clamp(a + heat * 0.95, 0.0, 1.0);
+  }
+
   return vec4f(col * a, a);
 }
 `;

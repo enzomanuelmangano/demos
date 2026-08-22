@@ -107,7 +107,7 @@ export const RESISTANCE_DRAG = 0.25;
 // Blocks are thrown, not deleted. Vanilla deletes them, but a QR code made of
 // flying cubes is the point of the shot, so this is the one mechanic the scene
 // deliberately keeps from the physics version.
-export const BLAST_SPEED = 20.0;
+export const BLAST_SPEED = 27.0;
 // Speed falloff reach, in blocks. Tight enough that there is a real gradient
 // across the tree - wide and everything departs at the same speed, which reads
 // as the tree inflating rather than being hit.
@@ -116,8 +116,12 @@ export const BLAST_REACH_TREE = 8.5;
 // Launched near 45 degrees. Flatter and the debris skates off the plate.
 export const BLAST_UP_BIAS = 0.95;
 // The shock front's speed through the scene, in blocks/sec. Without it every
-// block leaves on the same frame and the canopy keeps its silhouette.
-export const SHOCK_SPEED = 42.0;
+// block leaves on the same frame and the canopy keeps its silhouette - but at
+// 42 the far side of the canopy, 30 blocks out, did not move until 0.7s after
+// the bang, so the explosion visibly happened AFTER its own detonation. Fast
+// enough now to cross the whole scene in about a seventh of a second: the
+// ordering still reads, the delay does not.
+export const SHOCK_SPEED = 220.0;
 export const BLAST_GRAVITY = 28.0;
 export const BLAST_RESTITUTION = 0.3;
 export const BLAST_FRICTION = 0.35;
@@ -129,13 +133,18 @@ export const DEBRIS_FADE_SPREAD = 0.55;
 export const DEBRIS_FADE_DURATION = 0.5;
 
 // The particle ball: how far it swells, and how long it hangs.
-export const SMOKE_RADIUS = 17.0;
-export const SMOKE_DURATION = 1.15;
+export const SMOKE_RADIUS = 21.0;
+export const SMOKE_DURATION = 1.6;
+// The fireball: short, hot and local. A white flash is useless here because
+// the background is already near-white - the heat has to be a warm colour at
+// the blast itself to read at all.
+export const FIREBALL_RADIUS = 11.0;
+export const FIREBALL_DURATION = 0.32;
 
 // Timeline after detonation.
 export const DEBRIS_SETTLE = 2.6;
 export const REBUILD_DURATION = 1.7;
-// Vanilla has no camera shake at all. Kept as a single frame of settle so
-// the cut still lands, rather than the game-feel wobble it was.
-export const SHAKE_DURATION = 0.18;
+// Not vanilla, which has no shake at all - but this is a hybrid now, and the
+// punch was missing without it.
+export const SHAKE_DURATION = 0.45;
 export const FLASH_DURATION = 0.35;
