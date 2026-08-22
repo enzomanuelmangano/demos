@@ -85,8 +85,12 @@ export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
 // edge and crosses to front-left of the trunk. (Yaw PI is the mirror of this,
 // running back-left to front-right.)
 export const CREEPER_APPROACH_YAW = Math.PI / 2;
-// Small, so runs vary without breaking the grid alignment.
-export const CREEPER_APPROACH_SPREAD = 0.2;
+// How far the approach heading may swing either side of nominal. Only the
+// DIRECTION varies - the destination and the walk distance are fixed - so this
+// can be generous without the mob arriving somewhere different.
+export const CREEPER_APPROACH_SPREAD = 0.9;
+// Keep the spawn point this many blocks inside the plate edge.
+export const CREEPER_SPAWN_MARGIN = 1.5;
 // Where it stops, in blocks past the centre towards the camera. Far enough
 // forward that the canopy cannot hide it.
 export const CREEPER_STAND_FROM_CENTRE = 6;

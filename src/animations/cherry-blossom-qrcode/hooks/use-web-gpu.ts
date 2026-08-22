@@ -6,10 +6,6 @@ import { CanvasRef } from 'react-native-webgpu';
 
 import {
   BLOCK_SIZE,
-  CREEPER_APPROACH_SPREAD,
-  CREEPER_APPROACH_YAW,
-  CREEPER_PATH_OFFSET,
-  CREEPER_STAND_FROM_CENTRE,
   CREEPER_FUSE_DURATION,
   CREEPER_TOTAL,
   CREEPER_WALK_DURATION,
@@ -30,6 +26,7 @@ import {
 } from '../shaders';
 import { BlockData } from '../types';
 import { generateBlockData, generateQRMatrix } from '../utils';
+import { approachDestination, pickApproachYaw } from '../utils/approach';
 
 function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
@@ -97,32 +94,16 @@ export function useWebGPU({
   /** Spawns a creeper. Ignored while one is already on its way. */
   const detonate = useCallback(() => {
     if (sequenceStartRef.current !== null) return false;
-    // Approach from the camera side, with enough spread that two runs never
-    // look identical — a mob that walks in from behind the canopy is a mob
-    // nobody sees.
-    const angle =
-      CREEPER_APPROACH_YAW + (Math.random() - 0.5) * CREEPER_APPROACH_SPREAD;
-    spawnAngleRef.current = angle;
-    // Model faces rotY(+Z, yaw); it stops that far back along its own path,
-    // which is also where the charge goes off.
-    // It walks along +fwd, so the stopping point is that far along fwd from
-    // the centre - which puts it in FRONT of the tree, towards the camera.
-    const fwdX = -Math.sin(angle);
-    const fwdZ = Math.cos(angle);
-    // Shift the whole path sideways so it passes BESIDE the trunk. The shader
-    // derives the spawn point by walking back along fwd from here, so both
-    // ends share the offset and the path stays a straight line.
-    // Screen-right, not screen-left: with the walk running along -z, +x is
-    // the direction that moves the mob to the right of the trunk in view.
-    const rightX = -fwdZ;
-    const rightZ = fwdX;
+    // The destination and the walk distance are fixed, so every run takes the
+    // same time and ends in the same place; only the direction it arrives
+    // from is random, and only from headings whose spawn is still on the
+    // platform.
+    const { gridSize } = blockDataRef.current;
+    spawnAngleRef.current = pickApproachYaw(gridSize || 25);
+    const dest = approachDestination();
     blastPosRef.current = {
-      x:
-        (fwdX * CREEPER_STAND_FROM_CENTRE + rightX * CREEPER_PATH_OFFSET) *
-        BLOCK_SIZE,
-      z:
-        (fwdZ * CREEPER_STAND_FROM_CENTRE + rightZ * CREEPER_PATH_OFFSET) *
-        BLOCK_SIZE,
+      x: dest.x * BLOCK_SIZE,
+      z: dest.z * BLOCK_SIZE,
     };
     detonatedRef.current = false;
     sequenceStartRef.current = Date.now();
