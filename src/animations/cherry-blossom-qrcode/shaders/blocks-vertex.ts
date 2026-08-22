@@ -15,6 +15,7 @@ import {
   ISO_ANGLE_X,
   ISO_ANGLE_Y,
   SHAKE_DURATION,
+  SHOCK_SPEED,
   VIEW_SCALE_2D,
   VIEW_SCALE_3D,
   X_OFFSET_2D,
@@ -278,11 +279,21 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     // Two reaches: a tight one for the ground so the crater keeps a sharp
     // lip, a wide one for the tree so the canopy is thrown rather than left
     // to collapse straight down onto the lawn.
+    // The shock front takes time to cross the scene. Without this every block
+    // departs on the same frame, the whole canopy translates outward together
+    // and the tree keeps its silhouette while "exploding" -- it reads as the
+    // tree dissolving in place rather than being hit by anything.
+    let localT = max(uniforms.blastT - distBlocks / ${SHOCK_SPEED}, 0.0);
+
     let onGround = output.layer < 0.5;
     let reach = select(${BLAST_REACH_TREE}, ${BLAST_REACH_GROUND}, onGround);
     let mass = max(blockMass[blockIdx], 0.05);
     let falloff = 1.0 / (1.0 + pow(distBlocks / reach, 2.2));
-    let speedBlocks = ${BLAST_SPEED} * falloff / mass * (0.72 + 0.56 * rnd.x);
+    // Wide, skewed per-block variance. A tight +/-28% spread made every
+    // fragment travel the same distance, which is the other half of why the
+    // canopy moved as one piece.
+    let spread = 0.35 + 1.75 * rnd.x * rnd.x;
+    let speedBlocks = ${BLAST_SPEED} * falloff / mass * spread;
     charge = clamp(speedBlocks / ${BLAST_SPEED}, 0.0, 1.0);
 
     // Radial, lofted, and jittered — a perfectly radial field reads as a
@@ -293,18 +304,24 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     let v0 = launch * speedBlocks * BLOCK;
 
     let groundY = BLOCK * 0.5;
-    let flight = ballistic(restCentre, v0, uniforms.blastT, groundY);
+    let flight = ballistic(restCentre, v0, localT, groundY);
     var debris = flight.xyz;
 
     // Tumble about a random axis, damped to a stop as the block settles.
     let axis = normalize(rnd * 2.0 - 1.0 + vec3f(0.0001, 0.0, 0.0));
-    let spin = speedBlocks * 0.85 * min(uniforms.blastT, flight.w);
+    let spin = speedBlocks * 0.85 * min(localT, flight.w);
     var spinAmount = spin;
 
     // Rebuild: staggered by height so the ground knits back first and the
     // canopy lands last. Each block waits, then flies home on its own ease —
     // deliberately NOT the explosion played backwards, which reads as a
     // rewound video rather than the tree pulling itself together.
+    // Fragments are not all one size. Uniform cubes are a strong tell that
+    // this is a grid rather than debris; the variation is eased in as the
+    // block breaks loose and eased back out as it returns home.
+    let sizeVar = 0.58 + 0.80 * rnd.z;
+    var sizeMix = clamp(localT / 0.10, 0.0, 1.0);
+
     let rebuild = uniforms.rebuildT;
     if (rebuild > 0.0) {
       let stagger = clamp(output.layer / 26.0, 0.0, 1.0);
@@ -315,10 +332,11 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
       debris.y += sin(localT * PI) * 0.9 * BLOCK * charge;
       spinAmount = spin * (1.0 - e);
       charge = charge * (1.0 - e);
+      sizeMix = sizeMix * (1.0 - e);
     }
 
     centre = debris;
-    offset = rotAxis(offset, axis, spinAmount);
+    offset = rotAxis(offset * mix(1.0, sizeVar, sizeMix), axis, spinAmount);
     normal = rotAxis(normal, axis, spinAmount);
   } else if (typePacked == 1u) {
     // Idle canopy sway — higher blossoms move more, so the dome reads as a

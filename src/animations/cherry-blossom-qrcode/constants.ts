@@ -92,8 +92,12 @@ export const BLAST_SPEED = 20.0;
 // tight one so the crater keeps a sharp lip; the tree gets a wide one because
 // a trunk transmits the shock through the whole canopy instead of letting the
 // far side sit there while the near side leaves.
-export const BLAST_REACH_GROUND = 6.5;
-export const BLAST_REACH_TREE = 15.0;
+export const BLAST_REACH_GROUND = 5.0;
+export const BLAST_REACH_TREE = 8.5;
+// How fast the shock front travels through the scene, in blocks/sec. Without
+// this every block leaves on the same frame and the tree simply inflates,
+// keeping its silhouette; with it you watch the blast arrive.
+export const SHOCK_SPEED = 42.0;
 // Loose material is thrown UP as much as out. Near 45 degrees the debris
 // arcs and lands back on the lawn; flatter than that and it skates off the
 // plate entirely and reads like confetti in a wind tunnel.
