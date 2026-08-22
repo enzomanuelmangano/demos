@@ -84,11 +84,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // and the path is near-white, so what separates the mob from the ground is
   // how GREEN it is - pushing the value instead just walks it towards the
   // white modules it is standing on.
-  let creeperBright = vec3f(0.44, 0.89, 0.32);
-  let creeperPale = vec3f(0.34, 0.80, 0.24);
-  let creeperLight = vec3f(0.25, 0.72, 0.18);
-  let creeperMid = vec3f(0.18, 0.62, 0.13);
-  let creeperDark = vec3f(0.10, 0.46, 0.09);
+  let creeperBright = vec3f(0.53, 0.97, 0.39);
+  let creeperPale = vec3f(0.38, 0.85, 0.27);
+  let creeperLight = vec3f(0.26, 0.73, 0.18);
+  let creeperMid = vec3f(0.16, 0.58, 0.11);
+  let creeperDark = vec3f(0.07, 0.37, 0.06);
   // Only the very bottom of the legs goes near-black, as on the real skin.
   let creeperFoot = vec3f(0.10, 0.22, 0.08);
 
