@@ -19,10 +19,10 @@ export interface BlockData {
 // Block types for the cherry blossom tree
 export enum BlockType {
   Dirt = 0, // QR light modules - tan/brown path
-  CherryBlossom = 1, // QR dark in canopy - pink leaves
+  Leaves = 1, // QR dark in canopy - oak leaf blocks
   Trunk = 2, // QR dark at center - brown trunk
   Grass = 3, // QR dark outside tree - green ground
-  FallenPetals = 4, // Under canopy decoration
+  ForestFloor = 4, // Under canopy decoration - coarse dirt and moss
   Creeper = 5, // The mob itself — rigged and animated apart from the tree
 }
 

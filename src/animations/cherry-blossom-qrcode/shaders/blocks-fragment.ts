@@ -49,27 +49,36 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let dirtMid = vec3f(0.96, 0.94, 0.88);
   let dirtDark = vec3f(0.92, 0.88, 0.82);
 
-  // Cherry blossom (QR dark in canopy)
-  let sakuraLight = vec3f(0.70, 0.25, 0.38);
-  let sakuraMid = vec3f(0.58, 0.18, 0.30);
-  let sakuraDeep = vec3f(0.46, 0.12, 0.24);
-  let sakuraRich = vec3f(0.36, 0.07, 0.18);
+  // Oak leaves (QR dark in canopy). Kept at roughly the luminance the blossom
+  // ramp had, because these blocks ARE the QR's dark modules — a brighter,
+  // prettier green would cost scannability.
+  // Green carries ~70% of perceived luminance against pink's ~13%, so the
+  // same numbers that made a readable sakura canopy make a washed-out green
+  // one. These are tuned by luminance, not by eye: leafMid sits near 0.22,
+  // matching what the blossom ramp actually measured.
+  let leafLight = vec3f(0.18, 0.30, 0.11);
+  let leafMid = vec3f(0.15, 0.25, 0.09);
+  let leafDeep = vec3f(0.11, 0.19, 0.07);
+  let leafRich = vec3f(0.08, 0.13, 0.05);
 
-  // Trunk (QR dark at center)
-  let barkLight = vec3f(0.34, 0.18, 0.07);
-  let barkMid = vec3f(0.26, 0.13, 0.05);
-  let barkDark = vec3f(0.20, 0.09, 0.03);
-  let barkDeep = vec3f(0.14, 0.06, 0.02);
+  // Oak trunk (QR dark at center). Neutral brown rather than the old red-brown
+  // — beside green foliage a red bark reads as cherry again.
+  let barkLight = vec3f(0.36, 0.26, 0.14);
+  let barkMid = vec3f(0.28, 0.20, 0.10);
+  let barkDark = vec3f(0.21, 0.15, 0.07);
+  let barkDeep = vec3f(0.15, 0.10, 0.05);
 
-  // Grass (QR dark outside tree)
-  let grassDark = vec3f(0.05, 0.18, 0.04);
-  let grassMid = vec3f(0.07, 0.28, 0.05);
-  let grassBright = vec3f(0.12, 0.38, 0.08);
+  // Grass block tops (QR dark outside tree). Deeper and bluer than the leaf
+  // ramp so lawn and canopy stay legible as two different materials now that
+  // both are green.
+  let grassDark = vec3f(0.03, 0.13, 0.04);
+  let grassMid = vec3f(0.05, 0.20, 0.06);
+  let grassBright = vec3f(0.07, 0.28, 0.09);
 
   // Creeper — vanilla's two-tone mottled green.
-  let creeperLight = vec3f(0.36, 0.62, 0.28);
-  let creeperMid = vec3f(0.24, 0.48, 0.20);
-  let creeperDark = vec3f(0.14, 0.32, 0.13);
+  let creeperLight = vec3f(0.44, 0.74, 0.32);
+  let creeperMid = vec3f(0.31, 0.60, 0.24);
+  let creeperDark = vec3f(0.20, 0.42, 0.17);
 
   // ============================================
   // LIGHTING SETUP
@@ -174,18 +183,18 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       albedo = dirtColor * topWarmTint;
 
     } else if (blockType == 1) {
-      // CHERRY BLOSSOM
-      var cherryColor = sakuraMid;
+      // OAK LEAVES
+      var leafColor = leafMid;
       let t = noise1;
       if (t < 0.33) {
-        cherryColor = mix(sakuraLight, sakuraMid, t / 0.33);
+        leafColor = mix(leafLight, leafMid, t / 0.33);
       } else if (t < 0.66) {
-        cherryColor = mix(sakuraMid, sakuraDeep, (t - 0.33) / 0.33);
+        leafColor = mix(leafMid, leafDeep, (t - 0.33) / 0.33);
       } else {
-        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
+        leafColor = mix(leafDeep, leafRich, (t - 0.66) / 0.34);
       }
       let shift = (noise2 - 0.5) * 0.15;
-      cherryColor = cherryColor * (1.0 + shift);
+      leafColor = leafColor * (1.0 + shift);
 
       // Edge rounding effect (fades in 2D)
       let edgeX = min(uv.x, 1.0 - uv.x);
@@ -195,7 +204,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let edgeDarken = mix(0.88, 1.0, roundedEdge);
       let finalEdge = mix(edgeDarken, 1.0, progress);
 
-      albedo = cherryColor * topWarmTint * canopyAO * finalEdge;
+      albedo = leafColor * topWarmTint * canopyAO * finalEdge;
 
     } else if (blockType == 2) {
       // TRUNK
@@ -245,11 +254,13 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       albedo = grassColor * topWarmTint;
 
     } else {
-      // FALLEN PETALS (type 4)
-      let brownLight = vec3f(0.52, 0.42, 0.30);
-      let brownDark = vec3f(0.42, 0.32, 0.22);
-      let greenLight = vec3f(0.38, 0.48, 0.28);
-      let greenDark = vec3f(0.32, 0.42, 0.24);
+      // FOREST FLOOR (type 4) — coarse dirt with moss patches. Darkened from
+      // the old fallen-petal colours, which sat too bright for blocks that
+      // have to read as QR dark modules.
+      let brownLight = vec3f(0.42, 0.33, 0.21);
+      let brownDark = vec3f(0.33, 0.25, 0.15);
+      let greenLight = vec3f(0.22, 0.30, 0.15);
+      let greenDark = vec3f(0.17, 0.24, 0.12);
 
       var fallenColor = brownLight;
       if (noise1 < 0.5) {
@@ -287,17 +298,17 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       albedo = dirtColor * shade * tint;
 
     } else if (blockType == 1) {
-      var cherryColor = sakuraMid;
+      var leafColor = leafMid;
       let t = noise1;
       if (t < 0.33) {
-        cherryColor = mix(sakuraLight, sakuraMid, t / 0.33);
+        leafColor = mix(leafLight, leafMid, t / 0.33);
       } else if (t < 0.66) {
-        cherryColor = mix(sakuraMid, sakuraDeep, (t - 0.33) / 0.33);
+        leafColor = mix(leafMid, leafDeep, (t - 0.33) / 0.33);
       } else {
-        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
+        leafColor = mix(leafDeep, leafRich, (t - 0.66) / 0.34);
       }
       let shift = (noise2 - 0.5) * 0.25;
-      cherryColor = cherryColor * (1.0 + shift);
+      leafColor = leafColor * (1.0 + shift);
 
       let edgeX = min(uv.x, 1.0 - uv.x);
       let edgeY = min(uv.y, 1.0 - uv.y);
@@ -305,7 +316,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       let roundedEdge = smoothstep(0.0, 0.12, edgeDist);
       let edgeDarken = mix(0.7, 1.0, roundedEdge);
 
-      albedo = cherryColor * shade * tint * canopyAO * edgeDarken;
+      albedo = leafColor * shade * tint * canopyAO * edgeDarken;
 
     } else if (blockType == 2) {
       var barkColor = barkMid;
@@ -355,8 +366,8 @@ fn main(input: BlockInput) -> @location(0) vec4f {
       albedo = grassColor * shade * tint;
 
     } else {
-      let fallenBrown = vec3f(0.45, 0.35, 0.26);
-      let fallenGreen = vec3f(0.35, 0.42, 0.24);
+      let fallenBrown = vec3f(0.36, 0.28, 0.18);
+      let fallenGreen = vec3f(0.21, 0.28, 0.14);
       var fallenColor = mix(fallenBrown, fallenGreen, noise1 * 0.6);
       let shift = (noise2 - 0.5) * 0.15;
       fallenColor = fallenColor * (1.0 + shift);
@@ -369,12 +380,12 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   } else {
     let bottomTint = vec3f(0.6, 0.62, 0.7);
-    let fallenBottom = vec3f(0.45, 0.42, 0.32);
+    let fallenBottom = vec3f(0.36, 0.33, 0.24);
 
     if (blockType == 0) {
       albedo = dirtDark * 0.5 * bottomTint;
     } else if (blockType == 1) {
-      albedo = sakuraDeep * 0.5 * bottomTint;
+      albedo = leafDeep * 0.5 * bottomTint;
     } else if (blockType == 2) {
       albedo = barkDark * 0.5 * bottomTint;
     } else if (blockType == 3) {

@@ -321,7 +321,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     offset = rotAxis(offset, axis, spinAmount);
     normal = rotAxis(normal, axis, spinAmount);
   } else if (typePacked == 1u) {
-    // Idle canopy sway — higher blossoms move more, so the dome reads as a
+    // Idle canopy sway — higher leaves move more, so the dome reads as a
     // volume of foliage rather than a solid shell.
     let heightFactor = clamp((output.layer - 12.0) / 12.0, 0.15, 1.25);
     let t = uniforms.time;

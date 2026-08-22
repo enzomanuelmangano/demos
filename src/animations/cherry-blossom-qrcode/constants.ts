@@ -87,7 +87,7 @@ export const BLAST_REACH_TREE = 15.0;
 export const BLAST_UP_BIAS = 0.95;
 export const BLAST_RESTITUTION = 0.3;
 export const BLAST_FRICTION = 0.35;
-// Per-type mass, indexed by BlockType. Petals barely weigh anything, trunk
+// Per-type mass, indexed by BlockType. Leaves barely weigh anything, trunk
 // logs resist the blast. The creeper's entry is never read — it is the bomb.
 export const MASS_BY_TYPE: readonly number[] = [1.0, 0.6, 1.3, 1.05, 0.5, 1];
 // Ground blocks are part of a continuous surface — they need a real hit to

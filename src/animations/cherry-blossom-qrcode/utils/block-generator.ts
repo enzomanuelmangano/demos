@@ -20,13 +20,13 @@ function pseudoRandom(col: number, row: number, seed: number = 0): number {
 }
 
 /**
- * Generates 3D block data for a cherry blossom tree visualization of a QR code.
+ * Generates 3D block data for an oak tree visualization of a QR code.
  *
  * The tree structure maps QR code modules to different block types:
  * - Light modules become dirt/path (scannable as "light")
  * - Dark modules become tree parts based on position:
  *   - Center: trunk
- *   - Canopy area: cherry blossoms
+ *   - Canopy area: leaves
  *   - Outside canopy: grass
  *
  * Every block also carries a MASS, which is what the detonation reads to
@@ -78,7 +78,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       } else if (dist >= canopyOuterRadius) {
         type = BlockType.Grass;
       } else {
-        type = BlockType.FallenPetals;
+        type = BlockType.ForestFloor;
       }
       push(col, row, 0, type, true);
     }
@@ -128,7 +128,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
           const layerY = canopyBaseHeight + layer * CUBE_HEIGHT;
           // Slight dome curve - center is higher
           const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
-          push(col, row, layerY + domeOffset, BlockType.CherryBlossom, false);
+          push(col, row, layerY + domeOffset, BlockType.Leaves, false);
         }
 
         // Add random extra blocks on top for organic look
@@ -140,7 +140,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
             col,
             row,
             canopyBaseHeight + extraLayer * CUBE_HEIGHT + domeOffset,
-            BlockType.CherryBlossom,
+            BlockType.Leaves,
             false,
           );
         }
