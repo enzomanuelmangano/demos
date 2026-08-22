@@ -32,8 +32,9 @@ import type { SharedValue } from 'react-native-reanimated';
 
 // NATIVE-SPIKE variant of search-reveal.tsx. Identical surface (liquid-glass
 // field, progressive top blur, results list) with ONE mechanism swapped: a
-// result row is a Link.AppleZoom source instead of a screen-transitions
-// Boundary.Trigger, so a demo opened from search zooms out of the tapped row —
+// result row is a Link.Trigger (withAppleZoom) source instead of a
+// screen-transitions Boundary.Trigger, so a demo opened from search zooms out
+// of the tapped row —
 // and dismisses back into it — through the same iOS 18 native zoom the grid
 // icons use. No bounds groups, no measure, no overlay: the row view itself is
 // handed to UIKit as the transition source.
@@ -86,7 +87,7 @@ const SearchRow = ({
   onSelect: (slug: string) => void;
 }) => (
   <Link href={`/animations/${demo.slug}`} asChild>
-    <Link.AppleZoom>
+    <Link.Trigger withAppleZoom>
       <Pressable style={styles.row} onPress={() => onSelect(demo.slug)}>
         <Image
           source={getIconSource(demo.slug)}
@@ -109,7 +110,7 @@ const SearchRow = ({
           {demo.name}
         </Text>
       </Pressable>
-    </Link.AppleZoom>
+    </Link.Trigger>
   </Link>
 );
 

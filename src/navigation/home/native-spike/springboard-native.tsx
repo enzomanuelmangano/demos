@@ -29,7 +29,8 @@ import type { LegendListRenderItemProps } from '@legendapp/list/react-native';
 import type { TextInput } from 'react-native';
 
 // NATIVE-SPIKE springboard: the main branch's launcher with the transition
-// machinery swapped for the iOS 18 native zoom (Link.AppleZoom in each cell).
+// machinery swapped for the iOS 18 native zoom (Link.Trigger withAppleZoom in
+// each cell).
 // Feature parity with springboard.tsx — pull-to-search, blur reveal, context
 // menus, page dots — minus everything that existed only to serve the JS
 // transition: no boundaries or page gating, no open-zoom overlay, no packed
