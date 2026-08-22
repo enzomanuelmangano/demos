@@ -91,6 +91,11 @@ export const CREEPER_APPROACH_YAW = Math.PI / 2;
 export const CREEPER_APPROACH_SPREAD = 0.9;
 // Keep the spawn point this many blocks inside the plate edge.
 export const CREEPER_SPAWN_MARGIN = 1.5;
+// The heading that points the mob straight at the viewer. The camera sits off
+// -x-z, so facing (-0.707, -0.707) looks down the barrel of it. The approach
+// heading is random, so it turns to this on the fuse - a creeper looks at you
+// before it goes off.
+export const CREEPER_CAMERA_YAW = (3 * Math.PI) / 4;
 // Where it stops, in blocks past the centre towards the camera. Far enough
 // forward that the canopy cannot hide it.
 export const CREEPER_STAND_FROM_CENTRE = 6;

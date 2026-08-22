@@ -67,9 +67,12 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let grassBright = vec3f(0.12, 0.38, 0.08);
 
   // Creeper — vanilla's two-tone mottled green.
-  let creeperLight = vec3f(0.36, 0.62, 0.28);
-  let creeperMid = vec3f(0.24, 0.48, 0.20);
-  let creeperDark = vec3f(0.14, 0.32, 0.13);
+  // Deeper and more saturated than vanilla's skin. The mob spends the whole
+  // walk on a near-white QR lawn, where a light green reads washed out - the
+  // contrast has to come from value, not hue.
+  let creeperLight = vec3f(0.33, 0.62, 0.21);
+  let creeperMid = vec3f(0.21, 0.45, 0.15);
+  let creeperDark = vec3f(0.12, 0.29, 0.10);
 
   // ============================================
   // LIGHTING SETUP
@@ -153,7 +156,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
     // Cheap directional shading so the cube silhouette still reads.
     let mobShade = 0.42 + max(dot(N, sunDir), 0.0) * 0.58 + NdUp * 0.12;
-    albedo = skin * mobShade;
+    // Darkened block edges, so the silhouette holds against a pale background
+    // instead of dissolving into it.
+    let mobEdge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    let mobAO = mix(0.66, 1.0, smoothstep(0.0, 0.14, mobEdge));
+    albedo = skin * mobShade * mobAO;
 
   // ============================================
   // TOP FACE - What QR scanner sees in 2D

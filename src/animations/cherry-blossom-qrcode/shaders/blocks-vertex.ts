@@ -8,6 +8,7 @@ import {
   BLAST_SPEED,
   BLAST_UP_BIAS,
   BLOCK_SIZE,
+  CREEPER_CAMERA_YAW,
   CREEPER_LEG_SWING,
   CREEPER_SCALE,
   CREEPER_SPAWN_FRACTION,
@@ -231,11 +232,11 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
       walk = 0.93 + 0.07 * easeOutCubic((walkRaw - 0.88) / 0.12);
     }
     let walkMoving = (1.0 - smoothstep(0.86, 1.0, walkRaw)) * step(1.0, spawnT);
-    // Creepers look at you before they go off. It walked in with its back to
-    // the camera, so a half turn on the first beat of the fuse puts the face
-    // where it belongs — and gives the hiss something to land on.
+    // Creepers look at you before they go off. The approach heading is random
+    // now, so this rotates to the ONE heading that faces the camera rather
+    // than turning by a fixed amount.
     let fuseRaw = clamp(uniforms.fuseT, 0.0, 1.0);
-    let turn = smoothstep(0.0, 0.4, fuseRaw);
+    let turn = smoothstep(0.0, 0.45, fuseRaw);
     // Shuffling feet through the turn, then still.
     let moving = max(walkMoving, turn * (1.0 - turn) * 2.4);
 
@@ -266,8 +267,9 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     // A tightening shudder as it primes.
     local.x += sin(uniforms.time * 42.0) * fuse * fuse * 0.18 * BLOCK;
 
-    // Face the way it walked in - which is straight at the viewer.
-    let yaw = uniforms.spawnAngle;
+    // Face the way it walked in, then turn to look straight at the camera.
+    // Both headings live inside the same arc, so a plain lerp is safe.
+    let yaw = mix(uniforms.spawnAngle, ${CREEPER_CAMERA_YAW}, turn);
 
     // Shrink the rig to mob scale. Everything above is in model voxels, so a
     // single scale here keeps the pivot, swell and shudder consistent.
