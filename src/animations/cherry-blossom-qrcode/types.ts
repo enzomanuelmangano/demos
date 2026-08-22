@@ -14,10 +14,13 @@ export interface BlockData {
   // Index of the first creeper voxel. Everything before it is world, so the
   // blast code can tell the bomb from what it is blowing up.
   creeperStart: number;
-  // House footprint half-extents in cells, handed to the shader so the ground
-  // shadow is derived from the real building instead of a duplicated formula.
-  houseHalfW: number;
-  houseHalfD: number;
+  // Phone footprint and screen bounds, handed to the shader so the ground
+  // shadow and the display artwork are derived from the real geometry rather
+  // than from a formula duplicated in WGSL.
+  phoneHalfW: number;
+  phoneHalfD: number;
+  screenLo: number;
+  screenHi: number;
 }
 
 export enum BlockType {
@@ -33,7 +36,9 @@ export enum BlockType {
   Planks = 9, // warm wood decking and interior floors
   Lantern = 10, // hanging lights - emissive
   Foliage = 11, // planter greenery and lawn bushes
-  Creeper = 12, // the mob itself - rigged and animated apart from the world
+  PhoneBody = 12, // the handset's frame and bezel
+  Screen = 13, // its display - emissive
+  Creeper = 14, // the mob itself - rigged and animated apart from the world
 }
 
 // Which limb a creeper voxel belongs to. Drives the walk rig in the vertex

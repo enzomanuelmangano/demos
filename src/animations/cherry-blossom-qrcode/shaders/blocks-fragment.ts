@@ -75,13 +75,13 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   let gridSize = uniforms.gridSize;
   let centre = gridSize * 0.5;
   let shadowPush = 1.7;
-  let dxHouse = abs(input.col - centre - shadowPush) - uniforms.houseHalfW;
-  let dzHouse = abs(input.row - centre - shadowPush) - uniforms.houseHalfD;
-  let outsideHouse = max(dxHouse, dzHouse);
-  let inShadow = 1.0 - smoothstep(0.0, 2.5, outsideHouse);
-  // Only the ground takes it; the building cannot shadow itself this crudely.
+  let dxPhone = abs(input.col - centre - shadowPush) - uniforms.phoneHalfW;
+  let dzPhone = abs(input.row - centre - shadowPush) - uniforms.phoneHalfD - 1.5;
+  let outsidePhone = max(dxPhone, dzPhone);
+  let inShadow = 1.0 - smoothstep(0.0, 3.0, outsidePhone);
+  // Only the ground takes it; the handset cannot shadow itself this crudely.
   let groundOnly = 1.0 - step(0.5, layer);
-  let houseShadow = 1.0 - inShadow * groundOnly * 0.32;
+  let houseShadow = 1.0 - inShadow * groundOnly * 0.30;
 
   // ============================================
   // MATERIALS
@@ -246,8 +246,66 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     let clump = fract(sin(dot(floor(uv * 4.0), vec2f(51.1, 17.3))) * 8123.7);
     base = c * (0.82 + clump * 0.32);
 
+  } else if (blockType == 12) {
+    // PHONE BODY - brushed dark metal frame and bezel.
+    let metalLight = vec3f(0.30, 0.31, 0.34);
+    let metalMid = vec3f(0.22, 0.23, 0.26);
+    let metalDark = vec3f(0.15, 0.16, 0.18);
+    var c = mix(metalMid, metalLight, noise1);
+    c = mix(c, metalDark, step(0.8, noise2) * 0.7);
+    // A bright chamfer along the block edges reads as machined metal.
+    let edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+    let chamfer = 1.0 - smoothstep(0.0, 0.11, edgeDist);
+    base = mix(c, vec3f(0.58, 0.60, 0.64), chamfer * 0.55);
+
+  } else if (blockType == 13) {
+    // SCREEN. The artwork spans the whole display rather than repeating per
+    // block: screen-space coords come from the cell position plus the within
+    // block uv, using the real screen bounds passed in as uniforms.
+    let screenHalfW = max(uniforms.phoneHalfW - 1.0, 1.0);
+    let screenRows = max(uniforms.screenHi - uniforms.screenLo + 1.0, 1.0);
+    let fx = ((input.col - (centre - 0.5)) + (uv.x - 0.5)) / screenHalfW;
+    let fy = ((layer - uniforms.screenLo) + uv.y) / screenRows;
+    let ax = abs(fx);
+
+    let skyTop = vec3f(0.09, 0.34, 0.72);
+    let skyBottom = vec3f(0.19, 0.55, 0.90);
+    var c = mix(skyBottom, skyTop, clamp(fy, 0.0, 1.0));
+
+    // Install glyph, laid out in CELL units rather than normalised ones. The
+    // display is 7 cells wide and 17 tall, so a shape drawn in normalised
+    // space comes out stretched to two and a half times its height.
+    // The display faces -Z, and that face's uv.x runs MIRRORED against world
+    // +x. Using it raw puts a sawtooth in the horizontal coordinate and the
+    // artwork comes apart block by block.
+    let flipped = input.faceNz < 0.0;
+    let sx = select(uv.x, 1.0 - uv.x, flipped);
+    let cx = (input.col - (centre - 0.5)) + (sx - 0.5);
+    let midRow = (uniforms.screenLo + uniforms.screenHi) * 0.5;
+    let cy = (layer - midRow) + (uv.y - 0.5);
+    let acx = abs(cx);
+    // Only the front pane carries artwork; the edges just take the gradient.
+    let onFront = step(0.5, -input.faceNz);
+
+    // Downward arrow into a tray: the most legible "install this" there is.
+    let stem = step(acx, 0.7) * step(-0.2, cy) * step(cy, 2.6);
+    let headSpan = 1.5;
+    let headTop = -0.2;
+    let headBottom = headTop - headSpan;
+    let head =
+      step(headBottom, cy) * step(cy, headTop) *
+      step(acx, 2.6 * (cy - headBottom) / headSpan);
+    let tray = step(acx, 3.0) * step(-3.1, cy) * step(cy, -2.4);
+    let mark = clamp(stem + head + tray, 0.0, 1.0) * onFront;
+    c = mix(c, vec3f(0.97, 0.98, 1.0), mark);
+
+    // Slight vignette so the display has depth rather than reading as paint.
+    c = c * (1.0 - 0.12 * smoothstep(0.6, 1.15, max(ax, abs(fy * 2.0 - 1.0))));
+    base = c;
+    emissive = c * 0.85;
+
   } else {
-    // CREEPER (type 12). Shaded apart from the world: it is a mob, not terrain.
+    // CREEPER (type 14). Shaded apart from the world: it is a mob, not terrain.
     let creeperLight = vec3f(0.44, 0.74, 0.32);
     let creeperMid = vec3f(0.31, 0.60, 0.24);
     let creeperDark = vec3f(0.20, 0.42, 0.17);
@@ -278,7 +336,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // FACE TREATMENT
   // ============================================
   var albedo = base;
-  if (blockType == 12) {
+  if (blockType == 14) {
     // The mob gets its own cheap directional shading so its silhouette reads.
     albedo = base * (0.42 + max(dot(N, sunDir), 0.0) * 0.58 + NdUp * 0.12);
   } else if (isTop) {
@@ -308,7 +366,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   var hdr = diffuse + emissive;
 
   // ---- Fuse: the creeper flashes white at an accelerating rate ----
-  if (blockType == 12) {
+  if (blockType == 14) {
     let fuse = clamp(uniforms.fuseT, 0.0, 1.0);
     if (fuse > 0.0) {
       let rate = mix(2.2, 15.0, fuse * fuse);
@@ -323,7 +381,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   // ---- Aftermath: soot, crater scorch, embers, fireball -----------
   let blastT = uniforms.blastT;
-  if (blastT >= 0.0 && blockType != 12) {
+  if (blastT >= 0.0 && blockType != 14) {
     // Grid-space distance to the detonation, from the block's ORIGINAL cell --
     // debris carries the scorch it picked up where it was standing.
     let bCol = uniforms.blastX / BLOCK + centre;

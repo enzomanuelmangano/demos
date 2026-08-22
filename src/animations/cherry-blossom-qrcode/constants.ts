@@ -6,6 +6,11 @@ export const COLORS = {
 export const CONTAINER_BG = COLORS.background;
 export const DEFAULT_QR_CONTENT = 'https://enzo.fyi';
 
+// Promo target. Paste the real invite code in here and pass it as the QR
+// content to point the scene at the beta; left off the default so a shipped
+// build never renders a dead TestFlight link.
+export const TESTFLIGHT_URL = 'https://testflight.apple.com/join/XXXXXXXX';
+
 // Color palette for lighting
 export const PALETTE = {
   skyZenith: { r: 0.82, g: 0.88, b: 0.92 },
@@ -19,49 +24,17 @@ export const PALETTE = {
 export const BLOCK_SIZE = 0.0245;
 export const CUBE_HEIGHT = BLOCK_SIZE;
 
-// House dimensions, in blocks. Width and depth are derived from the grid so
-// the building keeps its proportions whatever QR version the URL produces,
-// and both are forced ODD so the gable has a true centre ridge.
-export const HOUSE_WIDTH_FACTOR = 0.5;
-export const HOUSE_DEPTH_FACTOR = 0.42;
-export const HOUSE_MIN_WIDTH = 9;
-export const HOUSE_MAX_WIDTH = 17;
-export const HOUSE_MIN_DEPTH = 7;
-export const HOUSE_MAX_DEPTH = 13;
-
-// Vertical layout, course by course. Two storeys of timber framing over a
-// cobble footing, then the gable.
-export const FOUNDATION_TOP = 2; // y1..y2 cobble
-export const GROUND_TOP = 5; // y3..y5 lower storey
-export const MID_BAND = 6; // y6 log band at the upper floor line
-export const UPPER_TOP = 9; // y7..y9 upper storey
-export const WALL_TOP = 10; // y10 log top plate
-export const ROOF_BASE = 11; // gable starts here
-// Two courses proud of the ridge. Three made it a flue pipe rather than a
-// chimney, and it was the tallest thing in the silhouette.
-export const CHIMNEY_RISE = 2;
-// One course per row. Anything shallower turns the gable into a ziggurat of
-// wide flat treads with visible risers, which reads as stairs rather than a
-// roof -- the noise problem is the QR pattern, not the pitch, and it is
-// solved in the shader with course banding instead.
-export const ROOF_PITCH = 1.0;
-// The eave ring sits a course BELOW the roof base, so the roof flares out
-// over the top plate instead of ending in a flat lip.
-export const EAVE_DROP = 1;
-// Window courses within each storey.
-export const GROUND_WINDOW_LO = 4;
-export const GROUND_WINDOW_HI = 5;
-export const UPPER_WINDOW_LO = 8;
-export const UPPER_WINDOW_HI = 9;
-// A log post every this many cells along a wall, between the corners.
-export const POST_SPACING = 4;
-// Covered porch depth, in cells, in front of the door.
-export const PORCH_DEPTH = 2;
-export const PORCH_HALF_WIDTH = 2;
-// The porch is covered by a first-floor BALCONY rather than its own roof, as
-// in the reference: the deck is the porch ceiling, with a railing above it.
-export const BALCONY_Y = 7;
-export const BALCONY_RAIL_Y = 8;
+// The phone, in blocks. Deliberately thin: every cell the structure covers is
+// a cell the QR has to encode on a sloped, shaded top surface instead of flat
+// lawn, and this code exists to be scanned off a video. A 9x2 footprint costs
+// about 3% of the symbol where the cottage cost 30%.
+export const PHONE_WIDTH = 9;
+export const PHONE_DEPTH = 2;
+export const PHONE_HEIGHT = 19;
+// It stands on a low wooden dock rather than growing out of the grass.
+export const DOCK_TOP = 2;
+// Screen inset from the body edge, in cells - the bezel.
+export const SCREEN_INSET = 1;
 
 // Grid limits
 export const MAX_GRID_SIZE = 41;
@@ -142,6 +115,8 @@ export const MASS_BY_TYPE: readonly number[] = [
   1.1, // Planks
   0.6, // Lantern
   0.45, // Foliage
+  1.7, // PhoneBody
+  0.8, // Screen
   1, // Creeper
 ];
 export const GROUND_MASS_BONUS = 1.5;
