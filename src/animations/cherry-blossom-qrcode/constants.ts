@@ -94,6 +94,10 @@ export const CREEPER_STAND_FROM_CENTRE = 6;
 // still ON the platform: starting further out than the plate's half-width is
 // what made the mob look like it was floating in over nothing.
 export const CREEPER_WALK_BLOCKS = 16;
+// Fraction of the walk spent spawning in. The mob grows out of the ground at
+// its spawn point and only then starts moving, instead of simply existing at
+// full size on the first frame.
+export const CREEPER_SPAWN_FRACTION = 0.12;
 // Sideways offset of the whole path, in blocks, towards screen-right. Without
 // it the walk runs through the centre - and the trunk is at the centre, so
 // the mob passed through the tree it is about to blow up.

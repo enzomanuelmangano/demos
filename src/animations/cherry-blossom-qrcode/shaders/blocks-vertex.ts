@@ -10,6 +10,7 @@ import {
   BLOCK_SIZE,
   CREEPER_LEG_SWING,
   CREEPER_SCALE,
+  CREEPER_SPAWN_FRACTION,
   CREEPER_STEP_RATE,
   CREEPER_WALK_BLOCKS,
   DEBRIS_FADE_DURATION,
@@ -208,7 +209,18 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     // Creeper rig: walk in, then plant and swell on the fuse.
     // ----------------------------------------------------------------
     let part = i32(posData.z + 0.5);
-    let walkRaw = clamp(uniforms.creeperT, 0.0, 1.0);
+    let creeperT = clamp(uniforms.creeperT, 0.0, 1.0);
+
+    // Spawn in first: grow out of the ground at the spawn point, THEN walk.
+    // Existing at full size on frame one is what made it read as a prop that
+    // had always been there rather than as something arriving.
+    let spawnT = clamp(creeperT / ${CREEPER_SPAWN_FRACTION}, 0.0, 1.0);
+    let spawnScale = easeOutCubic(spawnT);
+    let walkRaw = clamp(
+      (creeperT - ${CREEPER_SPAWN_FRACTION}) / (1.0 - ${CREEPER_SPAWN_FRACTION}),
+      0.0,
+      1.0
+    );
     // Constant stride for most of the approach, then a short deceleration
     // into its final spot — a mob that eases the whole way reads like it is
     // sliding on ice.
@@ -218,7 +230,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     } else {
       walk = 0.93 + 0.07 * easeOutCubic((walkRaw - 0.88) / 0.12);
     }
-    let walkMoving = 1.0 - smoothstep(0.86, 1.0, walkRaw);
+    let walkMoving = (1.0 - smoothstep(0.86, 1.0, walkRaw)) * step(1.0, spawnT);
     // Creepers look at you before they go off. It walked in with its back to
     // the camera, so a half turn on the first beat of the fuse puts the face
     // where it belongs — and gives the hiss something to land on.
@@ -259,8 +271,8 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
 
     // Shrink the rig to mob scale. Everything above is in model voxels, so a
     // single scale here keeps the pivot, swell and shudder consistent.
-    local = local * ${CREEPER_SCALE};
-    localOffset = localOffset * ${CREEPER_SCALE};
+    local = local * ${CREEPER_SCALE} * spawnScale;
+    localOffset = localOffset * ${CREEPER_SCALE} * spawnScale;
     local = rotY(local, yaw);
     localOffset = rotY(localOffset, yaw);
     localNormal = rotY(localNormal, yaw);
