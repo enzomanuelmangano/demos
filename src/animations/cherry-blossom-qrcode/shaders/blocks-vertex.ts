@@ -1,24 +1,26 @@
 import {
-  BLAST_GRAVITY,
   BLAST_FRICTION,
+  BLAST_GRAVITY,
   BLAST_RADIUS,
-  BLAST_RAGGED_HI,
-  BLAST_RAGGED_LO,
+  BLAST_REACH_GROUND,
+  BLAST_REACH_TREE,
   BLAST_RESTITUTION,
+  BLAST_SPEED,
+  BLAST_UP_BIAS,
   BLOCK_SIZE,
   CREEPER_LEG_SWING,
   CREEPER_SCALE,
   CREEPER_STEP_RATE,
-  DROP_FRACTION,
-  DROP_LIFETIME,
-  DROP_SCALE,
-  DROP_SPEED,
+  DEBRIS_FADE_DURATION,
+  DEBRIS_FADE_SPREAD,
+  DEBRIS_FADE_START,
   FLAT_ANGLE_X,
   FLAT_ANGLE_Y,
   ISO_ANGLE_X,
   ISO_ANGLE_Y,
-  RESISTANCE_FACTOR,
+  RESISTANCE_DRAG,
   SHAKE_DURATION,
+  SHOCK_SPEED,
   VIEW_SCALE_2D,
   VIEW_SCALE_3D,
   X_OFFSET_2D,
@@ -272,56 +274,75 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     normal = localNormal;
   } else if (uniforms.blastT >= 0.0) {
     // ----------------------------------------------------------------
-    // Vanilla destruction. Minecraft does not throw blocks: everything
-    // inside a ragged sphere is deleted on the same tick, and roughly a
-    // third of it drops as items. No ballistics for the world itself.
+    // Detonation. Blocks inside a ragged sphere are thrown, tumble, and
+    // then fade out rather than settling: a heap of rubble sitting on the
+    // code was covering the one thing the scene exists to show.
     // ----------------------------------------------------------------
     let blast = vec3f(uniforms.blastX, ${BLAST_CHEST_Y} * BLOCK, uniforms.blastZ);
     let toBlock = restCentre - blast;
     let distBlocks = length(toBlock) / BLOCK;
     let rnd = hash31(f32(blockIdx));
 
-    // Per-block ray intensity, exactly why vanilla craters have ragged
-    // edges, damped by the block's own blast resistance so a log holds on
-    // closer to the centre than foliage does.
-    let ragged = mix(${BLAST_RAGGED_LO}, ${BLAST_RAGGED_HI}, rnd.y);
+    // Everything is thrown, not just what is inside a sphere. Gating on a
+    // radius left the outer canopy hovering untouched while the rest faded,
+    // which read as a pink island rather than an explosion. The falloff
+    // already does the work: distant blocks barely stir before they fade.
     let resistance = blockResistance[blockIdx];
-    let reach = ${BLAST_RADIUS} * ragged / (1.0 + resistance * ${RESISTANCE_FACTOR});
-    let destroyed = distBlocks < reach;
 
-    if (destroyed) {
-      let rebuild = uniforms.rebuildT;
-      // Rebuild: blocks re-materialise from the centre outward, scaling up
-      // in place. Nothing flies home, because nothing flew away.
-      let stagger = clamp(distBlocks / ${BLAST_RADIUS}, 0.0, 1.0);
-      let localT = clamp((rebuild - stagger * 0.45) / 0.55, 0.0, 1.0);
+    let rebuild = uniforms.rebuildT;
+    if (rebuild <= 0.0) {
+      // The shock front takes time to cross the scene. Without it every
+      // block departs on the same frame, the canopy translates outward as
+      // one piece and keeps its silhouette while "exploding".
+      let localT = max(uniforms.blastT - distBlocks / ${SHOCK_SPEED}, 0.0);
 
-      let isDrop = rnd.z < ${DROP_FRACTION};
-      if (isDrop && rebuild <= 0.0) {
-        // Item drop: a quarter-size fragment flicked out and left to bounce,
-        // then fading as vanilla items do when they are picked up.
-        let dir = normalize(toBlock + vec3f(0.0, 0.0009, 0.0));
-        let pop = normalize(dir + vec3f(0.0, 1.1, 0.0) + (rnd - 0.5) * 0.7);
-        let v0 = pop * ${DROP_SPEED} * BLOCK * (0.6 + 0.8 * rnd.x);
-        let flight = ballistic(restCentre, v0, uniforms.blastT, BLOCK * 0.5);
-        centre = flight.xyz;
+      let onGround = output.layer < 0.5;
+      let reach = select(${BLAST_REACH_TREE}, ${BLAST_REACH_GROUND}, onGround);
+      let falloff = 1.0 / (1.0 + pow(distBlocks / reach, 2.2));
+      // Wide, skewed spread. A tight one made every fragment travel the
+      // same distance, which is the other half of moving as one piece.
+      let spread = 0.35 + 1.75 * rnd.x * rnd.x;
+      let speedBlocks =
+        ${BLAST_SPEED} * falloff * spread / (1.0 + resistance * ${RESISTANCE_DRAG});
+      charge = clamp(speedBlocks / ${BLAST_SPEED}, 0.0, 1.0);
 
-        let life = clamp(uniforms.blastT / ${DROP_LIFETIME}, 0.0, 1.0);
-        let shrink = ${DROP_SCALE} * (1.0 - life * life);
-        if (shrink < 0.02) {
-          output.position = vec4f(0.0, 0.0, -10.0, 1.0);
-          return output;
-        }
-        let axis = normalize(rnd * 2.0 - 1.0 + vec3f(0.0001, 0.0, 0.0));
-        offset = rotAxis(offset * shrink, axis, uniforms.blastT * 5.0);
-        charge = 1.0;
-      } else if (localT <= 0.0) {
-        // Deleted, and not yet rebuilt: simply gone.
+      let radial = normalize(toBlock + vec3f(0.0, 0.0008, 0.0));
+      let jitter = (rnd - 0.5) * 0.5;
+      let launch = normalize(radial + vec3f(0.0, ${BLAST_UP_BIAS}, 0.0) + jitter);
+      let v0 = launch * speedBlocks * BLOCK;
+
+      let groundY = BLOCK * 0.5;
+      let flight = ballistic(restCentre, v0, localT, groundY);
+      centre = flight.xyz;
+
+      // Fragments are not all one size; uniform cubes read as a grid.
+      let sizeVar = 0.58 + 0.80 * rnd.z;
+      let sizeMix = clamp(localT / 0.10, 0.0, 1.0);
+
+      // Fade: each block shrinks away on its own staggered clock, so the
+      // debris thins out instead of every cube vanishing on one frame.
+      let fadeAt = ${DEBRIS_FADE_START} + rnd.y * ${DEBRIS_FADE_SPREAD};
+      let fade = clamp((localT - fadeAt) / ${DEBRIS_FADE_DURATION}, 0.0, 1.0);
+      let scale = mix(1.0, sizeVar, sizeMix) * (1.0 - fade * fade);
+      if (scale < 0.02) {
         output.position = vec4f(0.0, 0.0, -10.0, 1.0);
         return output;
-      } else {
-        offset = offset * easeOutCubic(localT);
       }
+
+      let axis = normalize(rnd * 2.0 - 1.0 + vec3f(0.0001, 0.0, 0.0));
+      let spin = speedBlocks * 0.85 * min(localT, flight.w);
+      offset = rotAxis(offset * scale, axis, spin);
+      charge = charge * (1.0 - fade);
+    } else {
+      // Rebuilding: everything thrown has already faded, so blocks simply
+      // re-materialise in place, from the centre outward.
+      let stagger = clamp(distBlocks / ${BLAST_RADIUS}, 0.0, 1.0);
+      let localT = clamp((rebuild - stagger * 0.45) / 0.55, 0.0, 1.0);
+      if (localT <= 0.0) {
+        output.position = vec4f(0.0, 0.0, -10.0, 1.0);
+        return output;
+      }
+      offset = offset * easeOutCubic(localT);
     }
   }
 

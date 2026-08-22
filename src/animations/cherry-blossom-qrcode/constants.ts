@@ -86,16 +86,8 @@ export const CREEPER_LEG_SWING = 0.62;
 // Vanilla explosion mechanics. Minecraft does not throw blocks: it deletes
 // every block inside a rough sphere and drops a fraction of them as items.
 //
-// Radius. A real creeper is power 3, which craters about 3-4 blocks - on this
-// grid that is a dent in the lawn that would not even reach the canopy. This
-// is scaled up so the blast actually takes the tree, which is the one place
-// the scene deliberately departs from vanilla.
+// Scale for the rebuild's centre-outward stagger, in blocks.
 export const BLAST_RADIUS = 19.0;
-// Minecraft randomises each destruction ray's intensity, which is exactly why
-// craters have ragged edges rather than looking stamped out. Same trick: the
-// effective radius is scaled per block over this range.
-export const BLAST_RAGGED_LO = 0.72;
-export const BLAST_RAGGED_HI = 1.24;
 // Blast resistance, indexed by BlockType, using vanilla's own values: leaves
 // 0.2, dirt and grass 0.5, wood 2. Minecraft's destruction rays lose energy
 // per block they pass, which is why a log survives closer to the centre than
@@ -109,19 +101,33 @@ export const RESISTANCE_BY_TYPE: readonly number[] = [
   0.2, // FallenPetals
   0.0, // Creeper - it is the bomb
 ];
-// How much resistance pulls the effective radius in.
-export const RESISTANCE_FACTOR = 0.07;
+// How much resistance slows a block down when it is thrown.
+export const RESISTANCE_DRAG = 0.25;
 
-// A creeper drops 1/power of what it destroys - one third.
-export const DROP_FRACTION = 0.33;
-// Item drops render at roughly a quarter block, like a dropped item entity.
-export const DROP_SCALE = 0.28;
-export const DROP_LIFETIME = 1.6;
-// Item pop, in blocks: drops are flicked out gently, not launched.
-export const DROP_SPEED = 5.5;
+// Blocks are thrown, not deleted. Vanilla deletes them, but a QR code made of
+// flying cubes is the point of the shot, so this is the one mechanic the scene
+// deliberately keeps from the physics version.
+export const BLAST_SPEED = 20.0;
+// Speed falloff reach, in blocks. Tight enough that there is a real gradient
+// across the tree - wide and everything departs at the same speed, which reads
+// as the tree inflating rather than being hit.
+export const BLAST_REACH_GROUND = 5.0;
+export const BLAST_REACH_TREE = 8.5;
+// Launched near 45 degrees. Flatter and the debris skates off the plate.
+export const BLAST_UP_BIAS = 0.95;
+// The shock front's speed through the scene, in blocks/sec. Without it every
+// block leaves on the same frame and the canopy keeps its silhouette.
+export const SHOCK_SPEED = 42.0;
 export const BLAST_GRAVITY = 28.0;
 export const BLAST_RESTITUTION = 0.3;
 export const BLAST_FRICTION = 0.35;
+// Debris fades out rather than settling into a pile: it clears the code before
+// the rebuild starts, and a heap of rubble sitting on the QR was covering the
+// thing the whole scene exists to show.
+export const DEBRIS_FADE_START = 0.85;
+export const DEBRIS_FADE_SPREAD = 0.55;
+export const DEBRIS_FADE_DURATION = 0.5;
+
 // The particle ball: how far it swells, and how long it hangs.
 export const SMOKE_RADIUS = 17.0;
 export const SMOKE_DURATION = 1.15;
