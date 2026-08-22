@@ -81,9 +81,10 @@ export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
 // reads flat, while a world axis projects to a diagonal across the plate -
 // the way a mob moving on the grid reads in an isometric shot.
 //
-// Yaw PI faces -z, which projects down-and-right: it enters at the back-left
-// edge and crosses to front-right of the trunk.
-export const CREEPER_APPROACH_YAW = Math.PI;
+// Yaw PI/2 faces -x, which projects down-and-LEFT: it enters at the back-right
+// edge and crosses to front-left of the trunk. (Yaw PI is the mirror of this,
+// running back-left to front-right.)
+export const CREEPER_APPROACH_YAW = Math.PI / 2;
 // Small, so runs vary without breaking the grid alignment.
 export const CREEPER_APPROACH_SPREAD = 0.2;
 // Where it stops, in blocks past the centre towards the camera. Far enough
