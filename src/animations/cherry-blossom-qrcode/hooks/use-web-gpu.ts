@@ -112,8 +112,10 @@ export function useWebGPU({
     // Shift the whole path sideways so it passes BESIDE the trunk. The shader
     // derives the spawn point by walking back along fwd from here, so both
     // ends share the offset and the path stays a straight line.
-    const rightX = fwdZ;
-    const rightZ = -fwdX;
+    // Screen-right, not screen-left: with the walk running along -z, +x is
+    // the direction that moves the mob to the right of the trunk in view.
+    const rightX = -fwdZ;
+    const rightZ = fwdX;
     blastPosRef.current = {
       x:
         (fwdX * CREEPER_STAND_FROM_CENTRE + rightX * CREEPER_PATH_OFFSET) *

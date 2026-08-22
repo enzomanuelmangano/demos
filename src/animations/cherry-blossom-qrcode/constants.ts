@@ -75,12 +75,17 @@ export const CREEPER_WALK_DURATION = 3.2;
 export const CREEPER_FUSE_DURATION = 1.8;
 export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
 
-// The mob walks in from BEHIND the tree and comes towards the camera, so it
-// crosses the platform in view instead of arriving from off-stage. Facing
-// +3PI/4 points it at the viewer, which also means it no longer has to turn
-// around on the fuse - it already ends up looking at you.
-export const CREEPER_APPROACH_YAW = (3 * Math.PI) / 4;
-export const CREEPER_APPROACH_SPREAD = 0.5;
+// The mob walks in from BEHIND the tree, along a WORLD AXIS rather than along
+// the view diagonal. That distinction is the whole look: travelling the
+// diagonal projects to straight-down-the-screen with no lateral drift, which
+// reads flat, while a world axis projects to a diagonal across the plate -
+// the way a mob moving on the grid reads in an isometric shot.
+//
+// Yaw PI faces -z, which projects down-and-right: it enters at the back-left
+// edge and crosses to front-right of the trunk.
+export const CREEPER_APPROACH_YAW = Math.PI;
+// Small, so runs vary without breaking the grid alignment.
+export const CREEPER_APPROACH_SPREAD = 0.2;
 // Where it stops, in blocks past the centre towards the camera. Far enough
 // forward that the canopy cannot hide it.
 export const CREEPER_STAND_FROM_CENTRE = 6;
@@ -88,9 +93,9 @@ export const CREEPER_STAND_FROM_CENTRE = 6;
 // still ON the platform: starting further out than the plate's half-width is
 // what made the mob look like it was floating in over nothing.
 export const CREEPER_WALK_BLOCKS = 16;
-// Sideways offset of the whole path, in blocks. Without it the walk runs
-// straight through the centre - and the trunk is at the centre, so the mob
-// passed through the tree it is about to blow up.
+// Sideways offset of the whole path, in blocks, towards screen-right. Without
+// it the walk runs through the centre - and the trunk is at the centre, so
+// the mob passed through the tree it is about to blow up.
 export const CREEPER_PATH_OFFSET = 3.5;
 // Stride frequency (steps/sec) and how far the legs swing.
 export const CREEPER_STEP_RATE = 3.1;
