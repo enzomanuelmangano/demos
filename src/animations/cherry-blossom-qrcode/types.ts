@@ -6,7 +6,8 @@ export interface RGB {
 
 export interface BlockData {
   positions: number[];
-  mass: number[];
+  /** Vanilla blast resistance per block; drives how deep the crater cuts. */
+  resistance: number[];
   baseY: number[];
   types: number[];
   gridSize: number;

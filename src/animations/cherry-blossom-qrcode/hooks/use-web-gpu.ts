@@ -73,7 +73,7 @@ export function useWebGPU({
   const deviceRef = useRef<GPUDevice | null>(null);
   const typeBufferRef = useRef<GPUBuffer | null>(null);
   const posBufferRef = useRef<GPUBuffer | null>(null);
-  const massBufferRef = useRef<GPUBuffer | null>(null);
+  const resistanceBufferRef = useRef<GPUBuffer | null>(null);
   const baseYBufferRef = useRef<GPUBuffer | null>(null);
   const blockDataRef = useRef<{ numBlocks: number; gridSize: number }>({
     numBlocks: 0,
@@ -120,10 +120,16 @@ export function useWebGPU({
     const device = deviceRef.current;
     const typeBuffer = typeBufferRef.current;
     const posBuffer = posBufferRef.current;
-    const massBuffer = massBufferRef.current;
+    const resistanceBuffer = resistanceBufferRef.current;
     const baseYBuffer = baseYBufferRef.current;
 
-    if (!device || !typeBuffer || !posBuffer || !massBuffer || !baseYBuffer)
+    if (
+      !device ||
+      !typeBuffer ||
+      !posBuffer ||
+      !resistanceBuffer ||
+      !baseYBuffer
+    )
       return;
 
     const qrMatrix = generateQRMatrix(qrContent);
@@ -131,7 +137,7 @@ export function useWebGPU({
     updateBuffers(device, blockData, {
       typeBuffer,
       posBuffer,
-      massBuffer,
+      resistanceBuffer,
       baseYBuffer,
     });
     blockDataRef.current = {
@@ -186,11 +192,11 @@ export function useWebGPU({
     });
     posBufferRef.current = posBuffer;
 
-    const massBuffer = device.createBuffer({
+    const resistanceBuffer = device.createBuffer({
       size: MAX_BLOCKS * 4,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    massBufferRef.current = massBuffer;
+    resistanceBufferRef.current = resistanceBuffer;
 
     const baseYBuffer = device.createBuffer({
       size: MAX_BLOCKS * 4,
@@ -202,7 +208,7 @@ export function useWebGPU({
     updateBuffers(device, blockData, {
       typeBuffer,
       posBuffer,
-      massBuffer,
+      resistanceBuffer,
       baseYBuffer,
     });
 
@@ -243,7 +249,7 @@ export function useWebGPU({
         { binding: 0, resource: { buffer: uniformBuffer } },
         { binding: 1, resource: { buffer: typeBuffer } },
         { binding: 2, resource: { buffer: posBuffer } },
-        { binding: 3, resource: { buffer: massBuffer } },
+        { binding: 3, resource: { buffer: resistanceBuffer } },
         { binding: 4, resource: { buffer: baseYBuffer } },
       ],
     });
@@ -429,11 +435,12 @@ export function useWebGPU({
       renderPass.setBindGroup(0, bindGroup);
       renderPass.draw(36 * numBlocks);
 
-      // Draw smoke + flash over everything (no-ops before the blast)
+      // Vanilla's explosion particle ball, over everything. One fullscreen
+      // triangle; it early-outs per pixel outside the cluster.
       if (blastT >= 0) {
         renderPass.setPipeline(dustPipeline);
         renderPass.setBindGroup(0, skyBindGroup);
-        renderPass.draw(9);
+        renderPass.draw(3);
       }
 
       renderPass.end();
@@ -465,11 +472,11 @@ function updateBuffers(
   buffers: {
     typeBuffer: GPUBuffer;
     posBuffer: GPUBuffer;
-    massBuffer: GPUBuffer;
+    resistanceBuffer: GPUBuffer;
     baseYBuffer: GPUBuffer;
   },
 ) {
-  const { types, positions, mass, baseY } = blockData;
+  const { types, positions, resistance, baseY } = blockData;
 
   const paddedTypes = new Uint32Array(MAX_BLOCKS);
   paddedTypes.set(types);
@@ -479,9 +486,9 @@ function updateBuffers(
   paddedPositions.set(positions);
   device.queue.writeBuffer(buffers.posBuffer, 0, paddedPositions);
 
-  const paddedMass = new Float32Array(MAX_BLOCKS);
-  paddedMass.set(mass);
-  device.queue.writeBuffer(buffers.massBuffer, 0, paddedMass);
+  const paddedResistance = new Float32Array(MAX_BLOCKS);
+  paddedResistance.set(resistance);
+  device.queue.writeBuffer(buffers.resistanceBuffer, 0, paddedResistance);
 
   const paddedBaseY = new Float32Array(MAX_BLOCKS);
   paddedBaseY.set(baseY);

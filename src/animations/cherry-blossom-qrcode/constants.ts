@@ -83,36 +83,53 @@ export const CREEPER_APPROACH_SPREAD = 1.0;
 export const CREEPER_STEP_RATE = 3.1;
 export const CREEPER_LEG_SWING = 0.62;
 
-// Debris physics, written in BLOCKS (not scene units) so the numbers read
-// like Minecraft and stay meaningful if BLOCK_SIZE changes: ~28 blocks/s^2
-// gravity, a point-blank block leaving the crater at ~17 blocks/s.
+// Vanilla explosion mechanics. Minecraft does not throw blocks: it deletes
+// every block inside a rough sphere and drops a fraction of them as items.
+//
+// Radius. A real creeper is power 3, which craters about 3-4 blocks - on this
+// grid that is a dent in the lawn that would not even reach the canopy. This
+// is scaled up so the blast actually takes the tree, which is the one place
+// the scene deliberately departs from vanilla.
+export const BLAST_RADIUS = 19.0;
+// Minecraft randomises each destruction ray's intensity, which is exactly why
+// craters have ragged edges rather than looking stamped out. Same trick: the
+// effective radius is scaled per block over this range.
+export const BLAST_RAGGED_LO = 0.72;
+export const BLAST_RAGGED_HI = 1.24;
+// Blast resistance, indexed by BlockType, using vanilla's own values: leaves
+// 0.2, dirt and grass 0.5, wood 2. Minecraft's destruction rays lose energy
+// per block they pass, which is why a log survives closer to the centre than
+// foliage does; this reproduces that ordering rather than treating every
+// block as equally fragile.
+export const RESISTANCE_BY_TYPE: readonly number[] = [
+  0.5, // Dirt
+  0.2, // CherryBlossom / leaves
+  2.0, // Trunk / log
+  0.5, // Grass
+  0.2, // FallenPetals
+  0.0, // Creeper - it is the bomb
+];
+// How much resistance pulls the effective radius in.
+export const RESISTANCE_FACTOR = 0.07;
+
+// A creeper drops 1/power of what it destroys - one third.
+export const DROP_FRACTION = 0.33;
+// Item drops render at roughly a quarter block, like a dropped item entity.
+export const DROP_SCALE = 0.28;
+export const DROP_LIFETIME = 1.6;
+// Item pop, in blocks: drops are flicked out gently, not launched.
+export const DROP_SPEED = 5.5;
 export const BLAST_GRAVITY = 28.0;
-export const BLAST_SPEED = 20.0;
-// Reach of the impulse, in blocks, as 1/(1 + (d/reach)^2.2). The ground gets a
-// tight one so the crater keeps a sharp lip; the tree gets a wide one because
-// a trunk transmits the shock through the whole canopy instead of letting the
-// far side sit there while the near side leaves.
-export const BLAST_REACH_GROUND = 5.0;
-export const BLAST_REACH_TREE = 8.5;
-// How fast the shock front travels through the scene, in blocks/sec. Without
-// this every block leaves on the same frame and the tree simply inflates,
-// keeping its silhouette; with it you watch the blast arrive.
-export const SHOCK_SPEED = 42.0;
-// Loose material is thrown UP as much as out. Near 45 degrees the debris
-// arcs and lands back on the lawn; flatter than that and it skates off the
-// plate entirely and reads like confetti in a wind tunnel.
-export const BLAST_UP_BIAS = 0.95;
 export const BLAST_RESTITUTION = 0.3;
 export const BLAST_FRICTION = 0.35;
-// Per-type mass, indexed by BlockType. Petals barely weigh anything, trunk
-// logs resist the blast. The creeper's entry is never read — it is the bomb.
-export const MASS_BY_TYPE: readonly number[] = [1.0, 0.6, 1.3, 1.05, 0.5, 1];
-// Ground blocks are part of a continuous surface — they need a real hit to
-// break loose, which is what carves a crater instead of stripping the lawn.
-export const GROUND_MASS_BONUS = 1.5;
+// The particle ball: how far it swells, and how long it hangs.
+export const SMOKE_RADIUS = 17.0;
+export const SMOKE_DURATION = 1.15;
 
 // Timeline after detonation.
 export const DEBRIS_SETTLE = 2.6;
 export const REBUILD_DURATION = 1.7;
-export const SHAKE_DURATION = 0.8;
+// Vanilla has no camera shake at all. Kept as a single frame of settle so
+// the cut still lands, rather than the game-feel wobble it was.
+export const SHAKE_DURATION = 0.18;
 export const FLASH_DURATION = 0.35;
