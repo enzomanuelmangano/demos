@@ -89,8 +89,9 @@ export const CREEPER_APPROACH_YAW = Math.PI / 2;
 // DIRECTION varies - the destination and the walk distance are fixed - so this
 // can be generous without the mob arriving somewhere different.
 export const CREEPER_APPROACH_SPREAD = 0.9;
-// Keep the spawn point this many blocks inside the plate edge.
-export const CREEPER_SPAWN_MARGIN = 1.5;
+// Keep the spawn point this many blocks inside the plate edge. Small, so the
+// walk can start right at the back edge and cross as much ground as possible.
+export const CREEPER_SPAWN_MARGIN = 0.5;
 // The heading that points the mob straight at the viewer. The camera sits off
 // -x-z, so facing (-0.707, -0.707) looks down the barrel of it. The approach
 // heading is random, so it turns to this on the fuse - a creeper looks at you
@@ -99,18 +100,24 @@ export const CREEPER_CAMERA_YAW = (3 * Math.PI) / 4;
 // Where it stops, in blocks past the centre towards the camera. Far enough
 // forward that the canopy cannot hide it.
 export const CREEPER_STAND_FROM_CENTRE = 6;
-// How far it walks, in blocks. Kept short enough that the spawn point is
-// still ON the platform: starting further out than the plate's half-width is
-// what made the mob look like it was floating in over nothing.
-export const CREEPER_WALK_BLOCKS = 16;
+// How far it walks, in blocks, so more of the approach happens in view.
+//
+// There is a hard ceiling here: the spawn sits on a circle of this radius
+// around a destination about 7 blocks off centre, so it can only still land on
+// the plate while WALK <= |dest| + plateRadius, which is about 18 on a 25-wide
+// grid. Past that NO heading works and the mob starts in mid-air, which is the
+// floating bug again. 17.5 is close to the ceiling on purpose.
+export const CREEPER_WALK_BLOCKS = 17.5;
 // Fraction of the walk spent spawning in. The mob grows out of the ground at
 // its spawn point and only then starts moving, instead of simply existing at
 // full size on the first frame.
 export const CREEPER_SPAWN_FRACTION = 0.12;
-// Sideways offset of the whole path, in blocks, towards screen-right. Without
-// it the walk runs through the centre - and the trunk is at the centre, so
-// the mob passed through the tree it is about to blow up.
-export const CREEPER_PATH_OFFSET = 3.5;
+// Sideways offset of the whole path, in blocks, towards the camera. This is
+// what makes the mob pass IN FRONT of the trunk rather than alongside it: at
+// 3.5 it ended beside the trunk with their edges touching; at 6.5 the
+// destination sits directly over the trunk on screen and 12 blocks nearer the
+// camera, so it crosses in front of the tree it is about to remove.
+export const CREEPER_PATH_OFFSET = 6.5;
 // Stride frequency (steps/sec) and how far the legs swing.
 export const CREEPER_STEP_RATE = 3.1;
 export const CREEPER_LEG_SWING = 0.62;

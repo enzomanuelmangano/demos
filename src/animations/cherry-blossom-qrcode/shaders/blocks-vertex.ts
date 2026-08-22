@@ -236,7 +236,10 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     // now, so this rotates to the ONE heading that faces the camera rather
     // than turning by a fixed amount.
     let fuseRaw = clamp(uniforms.fuseT, 0.0, 1.0);
-    let turn = smoothstep(0.0, 0.45, fuseRaw);
+    // The look is its own beat, landing shortly BEFORE the blast rather than
+    // the instant the fuse starts: it plants, begins to swell, and only then
+    // turns to you - which is the moment worth holding.
+    let turn = smoothstep(0.25, 0.8, fuseRaw);
     // Shuffling feet through the turn, then still.
     let moving = max(walkMoving, turn * (1.0 - turn) * 2.4);
 
