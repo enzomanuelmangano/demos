@@ -5,7 +5,6 @@ import { memo, useCallback } from 'react';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
 import { Link } from 'expo-router';
-import * as ContextMenu from 'zeego/context-menu';
 
 import { AnimationInspirations } from '../../../animations/inspirations';
 import { getIconSource } from '../icon-source';
@@ -24,16 +23,12 @@ interface Props {
 const sourceUrl = (slug: string) =>
   `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`;
 
-// NATIVE-SPIKE launcher cell — full parity with the main branch's AppIcon
-// (long-press context menu: Inspiration / Share / View Code; pressed-dim
-// feedback; label outside the zoom source), with the transition mechanism
-// swapped: the icon square is a Link.AppleZoom source, so the open/close morph
-// is UIKit's iOS 18 native zoom instead of the hand-built shared-bound zoom.
-//
-// Nesting: zeego's ContextMenu.Trigger wraps the whole cell (as on main), and
-// the Link/AppleZoom/Pressable chain wraps the icon square inside it. The
-// context menu recognizes long-press only, the Link's Pressable takes the tap —
-// same division of touches the main branch had with its Boundary.Trigger.
+// NATIVE-SPIKE launcher cell — the icon square is the Link.Trigger
+// (withAppleZoom) of an expo-router Link, so the open/close morph is UIKit's
+// iOS 18 native zoom, and long-press gets the native UIKit context menu with
+// a live route preview (Link.Preview + Link.Menu) instead of the zeego menu.
+// One UIKit system owns both touches — no tap/long-press split to manage.
+// Label stays outside the trigger so only the icon square morphs.
 const AppIconNativeComponent = ({
   demo,
   cellWidth,
@@ -60,73 +55,66 @@ const AppIconNativeComponent = ({
   }, [slug]);
 
   return (
-    <ContextMenu.Root>
-      <ContextMenu.Trigger>
-        <View style={[styles.cell, { width: cellWidth, height: cellHeight }]}>
-          <Link href={`/animations/${slug}`} asChild>
-            <Link.AppleZoom>
-              <Pressable>
-                {({ pressed }) => (
-                  <View style={pressed ? styles.pressedDim : null}>
-                    <View
-                      style={[
-                        styles.iconShadow,
-                        {
-                          width: iconSize,
-                          height: iconSize,
-                          borderRadius: radius,
-                          borderCurve: 'continuous',
-                        },
-                      ]}>
-                      <View
-                        style={[
-                          styles.iconClip,
-                          {
-                            width: iconSize,
-                            height: iconSize,
-                            borderRadius: radius,
-                            borderCurve: 'continuous',
-                          },
-                        ]}>
-                        <Image
-                          source={getIconSource(slug)}
-                          style={styles.image}
-                          contentFit="cover"
-                          cachePolicy="memory-disk"
-                          recyclingKey={slug}
-                        />
-                      </View>
-                    </View>
+    <View style={[styles.cell, { width: cellWidth, height: cellHeight }]}>
+      <Link href={`/animations/${slug}`} asChild>
+        <Link.Trigger withAppleZoom>
+          <Pressable>
+            {({ pressed }) => (
+              <View style={pressed ? styles.pressedDim : null}>
+                <View
+                  style={[
+                    styles.iconShadow,
+                    {
+                      width: iconSize,
+                      height: iconSize,
+                      borderRadius: radius,
+                      borderCurve: 'continuous',
+                    },
+                  ]}>
+                  <View
+                    style={[
+                      styles.iconClip,
+                      {
+                        width: iconSize,
+                        height: iconSize,
+                        borderRadius: radius,
+                        borderCurve: 'continuous',
+                      },
+                    ]}>
+                    <Image
+                      source={getIconSource(slug)}
+                      style={styles.image}
+                      contentFit="cover"
+                      cachePolicy="memory-disk"
+                      recyclingKey={slug}
+                    />
                   </View>
-                )}
-              </Pressable>
-            </Link.AppleZoom>
-          </Link>
-          <Text numberOfLines={1} style={styles.label}>
-            {name}
-          </Text>
-        </View>
-      </ContextMenu.Trigger>
-
-      <ContextMenu.Content>
-        {inspirationLink ? (
-          <ContextMenu.Item key="inspiration" onSelect={onInspiration}>
-            <ContextMenu.ItemTitle>Inspiration</ContextMenu.ItemTitle>
-            <ContextMenu.ItemIcon ios={{ name: 'lightbulb' }} />
-          </ContextMenu.Item>
-        ) : null}
-        <ContextMenu.Item key="share" onSelect={onShare}>
-          <ContextMenu.ItemTitle>Share</ContextMenu.ItemTitle>
-          <ContextMenu.ItemIcon ios={{ name: 'square.and.arrow.up' }} />
-        </ContextMenu.Item>
-        <ContextMenu.Item key="code" onSelect={onViewCode}>
-          <ContextMenu.ItemTitle>View Code</ContextMenu.ItemTitle>
-          <ContextMenu.ItemIcon
-            ios={{ name: 'chevron.left.forwardslash.chevron.right' }}
-          />
-        </ContextMenu.Item>
-      </ContextMenu.Content>
-    </ContextMenu.Root>
+                </View>
+              </View>
+            )}
+          </Pressable>
+        </Link.Trigger>
+        <Link.Preview />
+        <Link.Menu>
+          {inspirationLink ? (
+            <Link.MenuAction icon="lightbulb" onPress={onInspiration}>
+              Inspiration
+            </Link.MenuAction>
+          ) : null}
+          <Link.MenuAction icon="square.and.arrow.up" onPress={onShare}>
+            Share
+          </Link.MenuAction>
+          <Link.MenuAction
+            icon="chevron.left.forwardslash.chevron.right"
+            onPress={onViewCode}>
+            View Code
+          </Link.MenuAction>
+        </Link.Menu>
+      </Link>
+      <Text numberOfLines={1} style={styles.label}>
+        {name}
+      </Text>
+    </View>
   );
 };
 
