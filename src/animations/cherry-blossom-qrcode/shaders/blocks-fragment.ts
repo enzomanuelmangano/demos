@@ -118,9 +118,9 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   } else if (blockType == 2) {
     // COBBLESTONE - foundation and chimney. Chunky grey mottle.
-    let stoneLight = vec3f(0.52, 0.52, 0.53);
-    let stoneMid = vec3f(0.40, 0.40, 0.42);
-    let stoneDark = vec3f(0.28, 0.28, 0.31);
+    let stoneLight = vec3f(0.56, 0.54, 0.50);
+    let stoneMid = vec3f(0.45, 0.43, 0.40);
+    let stoneDark = vec3f(0.33, 0.32, 0.30);
     var c = stoneMid;
     if (noise1 < 0.4) { c = mix(stoneLight, stoneMid, noise1 / 0.4); }
     else { c = mix(stoneMid, stoneDark, (noise1 - 0.4) / 0.6); }
@@ -130,9 +130,9 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   } else if (blockType == 3) {
     // OAK PLANKS - walls. Horizontal seams read as boards.
-    let plankLight = vec3f(0.68, 0.50, 0.29);
-    let plankMid = vec3f(0.58, 0.42, 0.24);
-    let plankDark = vec3f(0.48, 0.34, 0.19);
+    let plankLight = vec3f(0.70, 0.54, 0.33);
+    let plankMid = vec3f(0.62, 0.47, 0.28);
+    let plankDark = vec3f(0.54, 0.40, 0.23);
     var c = mix(plankMid, plankLight, noise1);
     c = mix(c, plankDark, step(0.78, noise2) * 0.7);
     let board = max(seam(uv.y, 0.34, 0.035), seam(uv.y, 0.68, 0.035));
@@ -140,34 +140,37 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   } else if (blockType == 4) {
     // OAK LOG - corner posts and the top plate. Vertical grain, darker.
-    let barkLight = vec3f(0.40, 0.29, 0.16);
-    let barkMid = vec3f(0.32, 0.23, 0.12);
-    let barkDark = vec3f(0.24, 0.17, 0.09);
+    let barkLight = vec3f(0.47, 0.35, 0.20);
+    let barkMid = vec3f(0.40, 0.29, 0.16);
+    let barkDark = vec3f(0.32, 0.23, 0.12);
     var c = mix(barkMid, barkLight, noise1);
     c = mix(c, barkDark, step(0.7, noise2) * 0.8);
     let grain = seam(uv.x, 0.25, 0.05) + seam(uv.x, 0.72, 0.05);
     base = c * (1.0 - grain * 0.22);
 
   } else if (blockType == 5) {
-    // ROOF over a DARK module: deepslate tile. Together with type 6 this is
-    // what lets a solid roof sit on top of a QR without erasing it.
-    let slateLight = vec3f(0.16, 0.16, 0.19);
-    let slateMid = vec3f(0.11, 0.11, 0.14);
-    let slateDark = vec3f(0.07, 0.07, 0.09);
+    // ROOF over a DARK module: blue-slate shingle. Together with type 6 this
+    // is what lets a solid roof sit on a QR without erasing it -- but the
+    // pattern is random, so both tiles carry the SAME directional course
+    // shadow. That banding is what makes the roof read as one shingled
+    // surface instead of scattered confetti.
+    let slateLight = vec3f(0.19, 0.20, 0.25);
+    let slateMid = vec3f(0.13, 0.14, 0.18);
+    let slateDark = vec3f(0.08, 0.09, 0.12);
     var c = mix(slateMid, slateLight, noise1);
     c = mix(c, slateDark, step(0.72, noise2) * 0.8);
-    let course = seam(uv.y, 0.5, 0.05);
-    base = c * (1.0 - course * 0.25);
+    base = c * (1.0 - smoothstep(0.26, 0.0, uv.y) * 0.34);
 
   } else if (blockType == 6) {
-    // ROOF over a LIGHT module: pale timber tile.
-    let paleLight = vec3f(0.93, 0.88, 0.77);
-    let paleMid = vec3f(0.87, 0.81, 0.68);
-    let paleDark = vec3f(0.79, 0.73, 0.59);
+    // ROOF over a LIGHT module: weathered pale timber. Warmed off white so
+    // the pair reads as a two-tone shingle roof rather than a chessboard,
+    // while staying bright enough to keep the code decodable.
+    let paleLight = vec3f(0.91, 0.85, 0.72);
+    let paleMid = vec3f(0.85, 0.78, 0.64);
+    let paleDark = vec3f(0.76, 0.69, 0.55);
     var c = mix(paleMid, paleLight, noise1);
     c = mix(c, paleDark, step(0.75, noise2) * 0.6);
-    let course = seam(uv.y, 0.5, 0.05);
-    base = c * (1.0 - course * 0.14);
+    base = c * (1.0 - smoothstep(0.26, 0.0, uv.y) * 0.22);
 
   } else if (blockType == 7) {
     // GLASS - a proper window: four panes in a white frame, cool sky at the

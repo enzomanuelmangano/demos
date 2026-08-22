@@ -18,7 +18,9 @@ import {
   PORCH_HALF_WIDTH,
   PORCH_ROOF_Y,
   POST_SPACING,
+  EAVE_DROP,
   ROOF_BASE,
+  ROOF_PITCH,
   UPPER_WINDOW_HI,
   UPPER_WINDOW_LO,
   WALL_TOP,
@@ -121,7 +123,14 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const roofYAt = (row: number) => {
     const clamped = clamp(row, rowMin, rowMax);
     const fromEdge = Math.min(clamped - rowMin, rowMax - clamped);
-    return ROOF_BASE + fromEdge;
+    return ROOF_BASE + Math.round(fromEdge * ROOF_PITCH);
+  };
+  // Height of a roof tile at any cell, including the flared eave ring that
+  // hangs a course lower than the roof proper.
+  const roofTileY = (col: number, row: number) => {
+    const outside =
+      col < colMin || col > colMax || row < rowMin || row > rowMax;
+    return outside ? ROOF_BASE - EAVE_DROP : roofYAt(row);
   };
 
   const isCorner = (col: number, row: number) =>
@@ -230,6 +239,8 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   // ------------------------------------------------------------------
   const porchRowFar = rowMin - PORCH_DEPTH;
   for (let row = porchRowFar; row <= rowMin - 1; row++) {
+    // The porch roof slopes away from the house, one course per row out.
+    const porchY = PORCH_ROOF_Y - (rowMin - 1 - row);
     for (
       let col = doorCol - PORCH_HALF_WIDTH;
       col <= doorCol + PORCH_HALF_WIDTH;
@@ -240,11 +251,29 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       const isPillar =
         row === porchRowFar && Math.abs(col - doorCol) === PORCH_HALF_WIDTH;
       if (isPillar) {
-        for (let layer = 2; layer < PORCH_ROOF_Y; layer++) {
+        for (let layer = 2; layer < porchY; layer++) {
           push(col, row, layer, BlockType.Log, false);
         }
       }
-      push(col, row, PORCH_ROOF_Y, roofTypeFor(col, row), false);
+      push(col, row, porchY, roofTypeFor(col, row), false);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Stone plinth, one cell proud of the walls. Hidden from above by the eave,
+  // so it is free to be real stone rather than a coded tile.
+  // ------------------------------------------------------------------
+  for (let row = rowMin - 1; row <= rowMax + 1; row++) {
+    for (let col = colMin - 1; col <= colMax + 1; col++) {
+      const onRing =
+        col === colMin - 1 ||
+        col === colMax + 1 ||
+        row === rowMin - 1 ||
+        row === rowMax + 1;
+      if (!onRing || !inGrid(col, row)) continue;
+      // Leave the porch approach clear.
+      if (row < rowMin && Math.abs(col - doorCol) <= PORCH_HALF_WIDTH) continue;
+      push(col, row, 1, BlockType.Cobble, false);
     }
   }
 
@@ -255,13 +284,13 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   for (let row = rowMin - 1; row <= rowMax + 1; row++) {
     for (let col = colMin - 1; col <= colMax + 1; col++) {
       if (!inGrid(col, row)) continue;
-      push(col, row, roofYAt(row), roofTypeFor(col, row), false);
+      push(col, row, roofTileY(col, row), roofTypeFor(col, row), false);
     }
   }
 
   // Ridge beam along the top of the gable.
   const ridgeRow = centreRow;
-  for (let col = colMin - 1; col <= colMax + 1; col++) {
+  for (let col = colMin; col <= colMax; col++) {
     if (!inGrid(col, ridgeRow)) continue;
     push(
       col,

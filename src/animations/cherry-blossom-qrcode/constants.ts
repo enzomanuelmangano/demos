@@ -37,7 +37,17 @@ export const MID_BAND = 6; // y6 log band at the upper floor line
 export const UPPER_TOP = 9; // y7..y9 upper storey
 export const WALL_TOP = 10; // y10 log top plate
 export const ROOF_BASE = 11; // gable starts here
-export const CHIMNEY_RISE = 3;
+// Two courses proud of the ridge. Three made it a flue pipe rather than a
+// chimney, and it was the tallest thing in the silhouette.
+export const CHIMNEY_RISE = 2;
+// One course per row. Anything shallower turns the gable into a ziggurat of
+// wide flat treads with visible risers, which reads as stairs rather than a
+// roof -- the noise problem is the QR pattern, not the pitch, and it is
+// solved in the shader with course banding instead.
+export const ROOF_PITCH = 1.0;
+// The eave ring sits a course BELOW the roof base, so the roof flares out
+// over the top plate instead of ending in a flat lip.
+export const EAVE_DROP = 1;
 // Window courses within each storey.
 export const GROUND_WINDOW_LO = 4;
 export const GROUND_WINDOW_HI = 5;
@@ -48,7 +58,7 @@ export const POST_SPACING = 4;
 // Covered porch depth, in cells, in front of the door.
 export const PORCH_DEPTH = 2;
 export const PORCH_HALF_WIDTH = 2;
-export const PORCH_ROOF_Y = 7;
+export const PORCH_ROOF_Y = 8;
 
 // Grid limits
 export const MAX_GRID_SIZE = 41;
