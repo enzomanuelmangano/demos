@@ -1,6 +1,9 @@
+import { buildCreeperVoxels } from './creeper-model';
 import {
   CANOPY_OUTER_RADIUS_FACTOR,
   CUBE_HEIGHT,
+  GROUND_MASS_BONUS,
+  MASS_BY_TYPE,
   MAX_CANOPY_LAYERS,
   TRUNK_LAYERS,
   TRUNK_RADIUS,
@@ -25,6 +28,10 @@ function pseudoRandom(col: number, row: number, seed: number = 0): number {
  *   - Center: trunk
  *   - Canopy area: cherry blossoms
  *   - Outside canopy: grass
+ *
+ * Every block also carries a MASS, which is what the detonation reads to
+ * decide how far it flies: petals drift, trunk logs barely shift, and the
+ * ground resists until it is hit hard enough to crater.
  */
 export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const gridSize = qrMatrix.length;
@@ -32,7 +39,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const cy = gridSize / 2;
 
   const positions: number[] = [];
-  const heights: number[] = [];
+  const mass: number[] = [];
   const baseY: number[] = [];
   const types: number[] = [];
 
@@ -40,6 +47,20 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const canopyOuterRadius = gridSize * CANOPY_OUTER_RADIUS_FACTOR;
 
   let blockCount = 0;
+
+  const push = (
+    col: number,
+    row: number,
+    layerY: number,
+    type: BlockType,
+    isGround: boolean,
+  ) => {
+    positions.push(col, row, 0, 0);
+    baseY.push(layerY);
+    types.push(type);
+    mass.push((MASS_BY_TYPE[type] ?? 1) * (isGround ? GROUND_MASS_BONUS : 1));
+    blockCount++;
+  };
 
   // First pass: ground blocks (dirt, grass, trunk base, fallen petals)
   for (let row = 0; row < gridSize; row++) {
@@ -49,20 +70,17 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       const dy = row - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      positions.push(col, row, 0, 0);
-      heights.push(CUBE_HEIGHT);
-      baseY.push(0);
-
+      let type = BlockType.Dirt;
       if (!isQrDark) {
-        types.push(BlockType.Dirt);
+        type = BlockType.Dirt;
       } else if (dist < TRUNK_RADIUS) {
-        types.push(BlockType.Trunk);
+        type = BlockType.Trunk;
       } else if (dist >= canopyOuterRadius) {
-        types.push(BlockType.Grass);
+        type = BlockType.Grass;
       } else {
-        types.push(BlockType.FallenPetals);
+        type = BlockType.FallenPetals;
       }
-      blockCount++;
+      push(col, row, 0, type, true);
     }
   }
 
@@ -79,11 +97,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       if (dist < TRUNK_RADIUS) {
         // Stack trunk blocks (skip layer 0, already added in first pass)
         for (let layer = 1; layer < TRUNK_LAYERS; layer++) {
-          positions.push(col, row, 0, 0);
-          heights.push(CUBE_HEIGHT);
-          baseY.push(layer * CUBE_HEIGHT);
-          types.push(BlockType.Trunk);
-          blockCount++;
+          push(col, row, layer * CUBE_HEIGHT, BlockType.Trunk, false);
         }
       }
     }
@@ -114,12 +128,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
           const layerY = canopyBaseHeight + layer * CUBE_HEIGHT;
           // Slight dome curve - center is higher
           const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
-
-          positions.push(col, row, 0, 0);
-          heights.push(CUBE_HEIGHT);
-          baseY.push(layerY + domeOffset);
-          types.push(BlockType.CherryBlossom);
-          blockCount++;
+          push(col, row, layerY + domeOffset, BlockType.CherryBlossom, false);
         }
 
         // Add random extra blocks on top for organic look
@@ -127,23 +136,41 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
         for (let e = 0; e < extraCount; e++) {
           const extraLayer = layersHere + e;
           const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
-
-          positions.push(col, row, 0, 0);
-          heights.push(CUBE_HEIGHT);
-          baseY.push(canopyBaseHeight + extraLayer * CUBE_HEIGHT + domeOffset);
-          types.push(BlockType.CherryBlossom);
-          blockCount++;
+          push(
+            col,
+            row,
+            canopyBaseHeight + extraLayer * CUBE_HEIGHT + domeOffset,
+            BlockType.CherryBlossom,
+            false,
+          );
         }
       }
     }
   }
 
+  // Fourth pass: the creeper. Its voxels live in the same buffers as the tree
+  // so there is still exactly one draw call, but they are tagged BlockType.
+  // Creeper and carry their limb id, which the vertex shader uses to rig the
+  // walk. Local model coords go in positions.xy/baseY; positions.z is the
+  // limb.
+  const creeperStart = blockCount;
+  for (const voxel of buildCreeperVoxels()) {
+    positions.push(voxel.x, voxel.z, voxel.part, 1);
+    baseY.push(voxel.y * CUBE_HEIGHT);
+    types.push(BlockType.Creeper);
+    // Gunpowder: the mob is consumed by its own blast, so mass is irrelevant
+    // — it is flagged here only for completeness.
+    mass.push(1);
+    blockCount++;
+  }
+
   return {
     positions,
-    heights,
+    mass,
     baseY,
     types,
     gridSize,
     numBlocks: blockCount,
+    creeperStart,
   };
 }

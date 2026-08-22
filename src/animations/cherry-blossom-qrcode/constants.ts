@@ -47,3 +47,55 @@ export const VIEW_SCALE_2D = 2.1;
 // Centering offsets for 2D view
 export const Y_OFFSET_2D = 0.08;
 export const X_OFFSET_2D = 0.015;
+
+// ============================================================
+// Creeper + detonation
+// ============================================================
+
+// The mob is built from the same voxel grid as the tree, shrunk so it stands
+// about a third of the tree's height — a 1:1 voxel creeper next to a 27-block
+// tree is a giant, and a true-to-Minecraft 1:6 one is a speck on a phone.
+export const CREEPER_SCALE = 0.62;
+
+// Spawn -> boom is exactly 5s: the walk-in, then the classic hiss/swell fuse.
+export const CREEPER_WALK_DURATION = 3.2;
+export const CREEPER_FUSE_DURATION = 1.8;
+export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
+
+// The mob approaches from the camera side (yaw around -PI/4) so the canopy
+// never hides the one thing the whole sequence is about.
+export const CREEPER_APPROACH_YAW = -Math.PI / 4;
+export const CREEPER_APPROACH_SPREAD = 1.0;
+// Stride frequency (steps/sec) and how far the legs swing.
+export const CREEPER_STEP_RATE = 3.1;
+export const CREEPER_LEG_SWING = 0.62;
+
+// Debris physics, written in BLOCKS (not scene units) so the numbers read
+// like Minecraft and stay meaningful if BLOCK_SIZE changes: ~28 blocks/s^2
+// gravity, a point-blank block leaving the crater at ~17 blocks/s.
+export const BLAST_GRAVITY = 28.0;
+export const BLAST_SPEED = 20.0;
+// Reach of the impulse, in blocks, as 1/(1 + (d/reach)^2.2). The ground gets a
+// tight one so the crater keeps a sharp lip; the tree gets a wide one because
+// a trunk transmits the shock through the whole canopy instead of letting the
+// far side sit there while the near side leaves.
+export const BLAST_REACH_GROUND = 6.5;
+export const BLAST_REACH_TREE = 15.0;
+// Loose material is thrown UP as much as out. Near 45 degrees the debris
+// arcs and lands back on the lawn; flatter than that and it skates off the
+// plate entirely and reads like confetti in a wind tunnel.
+export const BLAST_UP_BIAS = 0.95;
+export const BLAST_RESTITUTION = 0.3;
+export const BLAST_FRICTION = 0.35;
+// Per-type mass, indexed by BlockType. Petals barely weigh anything, trunk
+// logs resist the blast. The creeper's entry is never read — it is the bomb.
+export const MASS_BY_TYPE: readonly number[] = [1.0, 0.6, 1.3, 1.05, 0.5, 1];
+// Ground blocks are part of a continuous surface — they need a real hit to
+// break loose, which is what carves a crater instead of stripping the lawn.
+export const GROUND_MASS_BONUS = 1.5;
+
+// Timeline after detonation.
+export const DEBRIS_SETTLE = 2.6;
+export const REBUILD_DURATION = 1.7;
+export const SHAKE_DURATION = 0.8;
+export const FLASH_DURATION = 0.35;

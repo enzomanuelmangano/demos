@@ -9,6 +9,7 @@ import {
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import * as Haptics from 'expo-haptics';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Animated, {
   useAnimatedStyle,
@@ -16,7 +17,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
 
-import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
+import {
+  CONTAINER_BG,
+  CREEPER_FUSE_DURATION,
+  CREEPER_WALK_DURATION,
+  DEFAULT_QR_CONTENT,
+} from './constants';
 import { useWebGPU } from './hooks';
 
 export const CherryBlossomQRCode = () => {
@@ -51,19 +57,59 @@ export const CherryBlossomQRCode = () => {
     transform: [{ translateY: -keyboardHeight.get() }],
   }));
 
+  // Haptic fuse: ticks that accelerate as the creeper primes, then a heavy
+  // thump on the blast. Timers are owned here so an unmount mid-fuse cannot
+  // leave the phone buzzing on another screen.
+  const fuseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const clearFuse = useCallback(() => {
+    fuseTimers.current.forEach(clearTimeout);
+    fuseTimers.current = [];
+  }, []);
+
+  const onDetonate = useCallback(() => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+  }, []);
+
   // Initialize WebGPU rendering
-  useWebGPU({
+  const { detonate } = useWebGPU({
     canvasRef,
     canvasWidth,
     canvasHeight,
     qrContent,
     isFlat,
+    onDetonate,
+    onSequenceEnd: clearFuse,
   });
 
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
     inputRef.current?.focus();
   }, []);
+
+  // Long-press spawns the creeper. It walks in for CREEPER_WALK_DURATION,
+  // hisses through the fuse, and takes the tree with it — then the tree
+  // reassembles so the QR is scannable again.
+  const handleLongPress = useCallback(() => {
+    if (!detonate()) return;
+    clearFuse();
+    const ticks = 9;
+    for (let i = 0; i < ticks; i++) {
+      // Ticks bunch up towards the blast: t = fuseStart + fuse * (i/n)^1.7.
+      const at =
+        CREEPER_WALK_DURATION +
+        CREEPER_FUSE_DURATION * Math.pow(i / ticks, 1.7);
+      fuseTimers.current.push(
+        setTimeout(() => {
+          Haptics.impactAsync(
+            i > ticks - 3
+              ? Haptics.ImpactFeedbackStyle.Medium
+              : Haptics.ImpactFeedbackStyle.Light,
+          );
+        }, at * 1000),
+      );
+    }
+  }, [detonate, clearFuse]);
 
   // Keep the keyboard up while the demo is on screen — but only then: an
   // unconditional refocus runs after the unmount blur too, leaking the
@@ -73,9 +119,10 @@ export const CherryBlossomQRCode = () => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      clearFuse();
       Keyboard.dismiss();
     };
-  }, []);
+  }, [clearFuse]);
 
   const handleInputBlur = useCallback(() => {
     requestAnimationFrame(() => {
@@ -89,7 +136,10 @@ export const CherryBlossomQRCode = () => {
       <Animated.View style={[styles.canvasWrapper, canvasWrapperStyle]}>
         <Pressable
           accessibilityLabel="Cherry blossom tree QR code"
+          accessibilityHint="Tap to flatten for scanning. Long press to spawn a creeper."
           onPress={handlePress}
+          onLongPress={handleLongPress}
+          delayLongPress={320}
           style={{ width: canvasWidth, height: canvasHeight }}>
           <Canvas ref={canvasRef} style={styles.canvas} />
         </Pressable>

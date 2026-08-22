@@ -4,10 +4,23 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { CanvasRef } from 'react-native-webgpu';
 
-import { LERP_SPEED, MAX_BLOCKS } from '../constants';
+import {
+  BLOCK_SIZE,
+  CREEPER_APPROACH_SPREAD,
+  CREEPER_APPROACH_YAW,
+  CREEPER_FUSE_DURATION,
+  CREEPER_TOTAL,
+  CREEPER_WALK_DURATION,
+  DEBRIS_SETTLE,
+  LERP_SPEED,
+  MAX_BLOCKS,
+  REBUILD_DURATION,
+} from '../constants';
 import {
   blocksFragmentShader,
   blocksVertexShader,
+  dustFragmentShader,
+  dustVertexShader,
   shadowFragmentShader,
   shadowVertexShader,
   skyFragmentShader,
@@ -20,12 +33,26 @@ function easeInOutCubic(t: number): number {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
+// Where the creeper plants itself, in blocks from the trunk — close enough to
+// gut the tree, far enough out that it does not stand inside the trunk it is
+// about to remove.
+const CREEPER_STAND_DISTANCE = 8;
+
+// Whole sequence: walk in, fuse, blast, debris settles, tree reassembles.
+const SEQUENCE_DURATION = CREEPER_TOTAL + DEBRIS_SETTLE + REBUILD_DURATION;
+
+const UNIFORM_FLOATS = 16;
+
 interface UseWebGPUOptions {
   canvasRef: React.RefObject<CanvasRef | null>;
   canvasWidth: number;
   canvasHeight: number;
   qrContent: string;
   isFlat: React.RefObject<boolean>;
+  /** Fired the frame the creeper detonates — used for the haptic thump. */
+  onDetonate?: () => void;
+  /** Fired when the tree is whole again and the QR is scannable. */
+  onSequenceEnd?: () => void;
 }
 
 export function useWebGPU({
@@ -34,6 +61,8 @@ export function useWebGPU({
   canvasHeight,
   qrContent,
   isFlat,
+  onDetonate,
+  onSequenceEnd,
 }: UseWebGPUOptions) {
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -44,7 +73,7 @@ export function useWebGPU({
   const deviceRef = useRef<GPUDevice | null>(null);
   const typeBufferRef = useRef<GPUBuffer | null>(null);
   const posBufferRef = useRef<GPUBuffer | null>(null);
-  const heightBufferRef = useRef<GPUBuffer | null>(null);
+  const massBufferRef = useRef<GPUBuffer | null>(null);
   const baseYBufferRef = useRef<GPUBuffer | null>(null);
   const blockDataRef = useRef<{ numBlocks: number; gridSize: number }>({
     numBlocks: 0,
@@ -53,15 +82,48 @@ export function useWebGPU({
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
 
+  // The detonation sequence is one clock plus a fixed heading; every visual
+  // downstream is a pure function of them, so nothing can drift out of sync.
+  const sequenceStartRef = useRef<number | null>(null);
+  const spawnAngleRef = useRef(0);
+  const blastPosRef = useRef({ x: 0, z: 0 });
+  const detonatedRef = useRef(false);
+  const onDetonateRef = useRef(onDetonate);
+  onDetonateRef.current = onDetonate;
+  const onSequenceEndRef = useRef(onSequenceEnd);
+  onSequenceEndRef.current = onSequenceEnd;
+
+  /** Spawns a creeper. Ignored while one is already on its way. */
+  const detonate = useCallback(() => {
+    if (sequenceStartRef.current !== null) return false;
+    // Approach from the camera side, with enough spread that two runs never
+    // look identical — a mob that walks in from behind the canopy is a mob
+    // nobody sees.
+    const angle =
+      CREEPER_APPROACH_YAW + (Math.random() - 0.5) * CREEPER_APPROACH_SPREAD;
+    spawnAngleRef.current = angle;
+    // Model faces rotY(+Z, yaw); it stops that far back along its own path,
+    // which is also where the charge goes off.
+    const fwdX = -Math.sin(angle);
+    const fwdZ = Math.cos(angle);
+    blastPosRef.current = {
+      x: -fwdX * CREEPER_STAND_DISTANCE * BLOCK_SIZE,
+      z: -fwdZ * CREEPER_STAND_DISTANCE * BLOCK_SIZE,
+    };
+    detonatedRef.current = false;
+    sequenceStartRef.current = Date.now();
+    return true;
+  }, []);
+
   // Update buffers when QR content changes
   useEffect(() => {
     const device = deviceRef.current;
     const typeBuffer = typeBufferRef.current;
     const posBuffer = posBufferRef.current;
-    const heightBuffer = heightBufferRef.current;
+    const massBuffer = massBufferRef.current;
     const baseYBuffer = baseYBufferRef.current;
 
-    if (!device || !typeBuffer || !posBuffer || !heightBuffer || !baseYBuffer)
+    if (!device || !typeBuffer || !posBuffer || !massBuffer || !baseYBuffer)
       return;
 
     const qrMatrix = generateQRMatrix(qrContent);
@@ -69,7 +131,7 @@ export function useWebGPU({
     updateBuffers(device, blockData, {
       typeBuffer,
       posBuffer,
-      heightBuffer,
+      massBuffer,
       baseYBuffer,
     });
     blockDataRef.current = {
@@ -108,7 +170,7 @@ export function useWebGPU({
 
     // Create buffers
     const uniformBuffer = device.createBuffer({
-      size: 32,
+      size: UNIFORM_FLOATS * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
@@ -124,11 +186,11 @@ export function useWebGPU({
     });
     posBufferRef.current = posBuffer;
 
-    const heightBuffer = device.createBuffer({
+    const massBuffer = device.createBuffer({
       size: MAX_BLOCKS * 4,
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
-    heightBufferRef.current = heightBuffer;
+    massBufferRef.current = massBuffer;
 
     const baseYBuffer = device.createBuffer({
       size: MAX_BLOCKS * 4,
@@ -140,7 +202,7 @@ export function useWebGPU({
     updateBuffers(device, blockData, {
       typeBuffer,
       posBuffer,
-      heightBuffer,
+      massBuffer,
       baseYBuffer,
     });
 
@@ -181,7 +243,7 @@ export function useWebGPU({
         { binding: 0, resource: { buffer: uniformBuffer } },
         { binding: 1, resource: { buffer: typeBuffer } },
         { binding: 2, resource: { buffer: posBuffer } },
-        { binding: 3, resource: { buffer: heightBuffer } },
+        { binding: 3, resource: { buffer: massBuffer } },
         { binding: 4, resource: { buffer: baseYBuffer } },
       ],
     });
@@ -209,23 +271,25 @@ export function useWebGPU({
       depthCompare: 'always',
     });
 
+    const alphaBlend: GPUBlendState = {
+      color: {
+        srcFactor: 'src-alpha',
+        dstFactor: 'one-minus-src-alpha',
+        operation: 'add',
+      },
+      alpha: {
+        srcFactor: 'one',
+        dstFactor: 'one-minus-src-alpha',
+        operation: 'add',
+      },
+    };
+
     const shadowPipeline = createPipeline(device, format, skyBindGroupLayout, {
       vertex: shadowVertexShader,
       fragment: shadowFragmentShader,
       depthWrite: false,
       depthCompare: 'always',
-      blend: {
-        color: {
-          srcFactor: 'src-alpha',
-          dstFactor: 'one-minus-src-alpha',
-          operation: 'add',
-        },
-        alpha: {
-          srcFactor: 'one',
-          dstFactor: 'one-minus-src-alpha',
-          operation: 'add',
-        },
-      },
+      blend: alphaBlend,
     });
 
     const blocksPipeline = createPipeline(device, format, bindGroupLayout, {
@@ -235,6 +299,15 @@ export function useWebGPU({
       depthCompare: 'less',
     });
 
+    // Smoke and flash sit in FRONT of the debris, so this one draws last and
+    // ignores depth entirely. Its colours are premultiplied.
+    const dustPipeline = createPipeline(device, format, skyBindGroupLayout, {
+      vertex: dustVertexShader,
+      fragment: dustFragmentShader,
+      depthWrite: false,
+      depthCompare: 'always',
+    });
+
     const depthTexture = device.createTexture({
       size: [canvas.width, canvas.height],
       format: 'depth24plus',
@@ -242,6 +315,7 @@ export function useWebGPU({
     });
 
     const aspectRatio = canvas.width / canvas.height;
+    const uniformData = new Float32Array(UNIFORM_FLOATS);
 
     // Render loop
     const render = () => {
@@ -261,17 +335,62 @@ export function useWebGPU({
       const time = (now - startTimeRef.current) / 1000;
       const { numBlocks, gridSize } = blockDataRef.current;
 
+      // ---- Creeper timeline ------------------------------------------
+      let creeperT = -1;
+      let fuseT = 0;
+      let blastT = -1;
+      let rebuildT = 0;
+      let creeperAlpha = 0;
+
+      const startedAt = sequenceStartRef.current;
+      if (startedAt !== null) {
+        const seq = (now - startedAt) / 1000;
+
+        if (seq < CREEPER_WALK_DURATION) {
+          creeperT = seq / CREEPER_WALK_DURATION;
+          creeperAlpha = 1;
+        } else if (seq < CREEPER_TOTAL) {
+          creeperT = 1;
+          fuseT = (seq - CREEPER_WALK_DURATION) / CREEPER_FUSE_DURATION;
+          creeperAlpha = 1;
+        } else {
+          // Consumed by its own charge.
+          blastT = seq - CREEPER_TOTAL;
+          if (!detonatedRef.current) {
+            detonatedRef.current = true;
+            onDetonateRef.current?.();
+          }
+          const settleEnd = DEBRIS_SETTLE;
+          if (blastT > settleEnd) {
+            rebuildT = Math.min((blastT - settleEnd) / REBUILD_DURATION, 1);
+          }
+        }
+
+        if (seq >= SEQUENCE_DURATION) {
+          sequenceStartRef.current = null;
+          onSequenceEndRef.current?.();
+          creeperT = -1;
+          fuseT = 0;
+          blastT = -1;
+          rebuildT = 0;
+          creeperAlpha = 0;
+        }
+      }
+
       // Update uniforms
-      const uniformData = new Float32Array([
-        aspectRatio,
-        time,
-        numBlocks,
-        progressRef.current,
-        gridSize,
-        0,
-        0,
-        0,
-      ]);
+      uniformData[0] = aspectRatio;
+      uniformData[1] = time;
+      uniformData[2] = numBlocks;
+      uniformData[3] = progressRef.current;
+      uniformData[4] = gridSize;
+      uniformData[5] = creeperT;
+      uniformData[6] = fuseT;
+      uniformData[7] = blastT;
+      uniformData[8] = blastPosRef.current.x;
+      uniformData[9] = blastPosRef.current.z;
+      uniformData[10] = rebuildT;
+      uniformData[11] = creeperAlpha;
+      uniformData[12] = spawnAngleRef.current;
       device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
       // Render
@@ -310,6 +429,13 @@ export function useWebGPU({
       renderPass.setBindGroup(0, bindGroup);
       renderPass.draw(36 * numBlocks);
 
+      // Draw smoke + flash over everything (no-ops before the blast)
+      if (blastT >= 0) {
+        renderPass.setPipeline(dustPipeline);
+        renderPass.setBindGroup(0, skyBindGroup);
+        renderPass.draw(9);
+      }
+
       renderPass.end();
       device.queue.submit([commandEncoder.finish()]);
       context.present();
@@ -327,6 +453,8 @@ export function useWebGPU({
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [initWebGPU]);
+
+  return { detonate };
 }
 
 // Helper functions
@@ -337,11 +465,11 @@ function updateBuffers(
   buffers: {
     typeBuffer: GPUBuffer;
     posBuffer: GPUBuffer;
-    heightBuffer: GPUBuffer;
+    massBuffer: GPUBuffer;
     baseYBuffer: GPUBuffer;
   },
 ) {
-  const { types, positions, heights, baseY } = blockData;
+  const { types, positions, mass, baseY } = blockData;
 
   const paddedTypes = new Uint32Array(MAX_BLOCKS);
   paddedTypes.set(types);
@@ -351,9 +479,9 @@ function updateBuffers(
   paddedPositions.set(positions);
   device.queue.writeBuffer(buffers.posBuffer, 0, paddedPositions);
 
-  const paddedHeights = new Float32Array(MAX_BLOCKS);
-  paddedHeights.set(heights);
-  device.queue.writeBuffer(buffers.heightBuffer, 0, paddedHeights);
+  const paddedMass = new Float32Array(MAX_BLOCKS);
+  paddedMass.set(mass);
+  device.queue.writeBuffer(buffers.massBuffer, 0, paddedMass);
 
   const paddedBaseY = new Float32Array(MAX_BLOCKS);
   paddedBaseY.set(baseY);
