@@ -75,10 +75,12 @@ export function useWebGPU({
   const posBufferRef = useRef<GPUBuffer | null>(null);
   const massBufferRef = useRef<GPUBuffer | null>(null);
   const baseYBufferRef = useRef<GPUBuffer | null>(null);
-  const blockDataRef = useRef<{ numBlocks: number; gridSize: number }>({
-    numBlocks: 0,
-    gridSize: 0,
-  });
+  const blockDataRef = useRef<{
+    numBlocks: number;
+    gridSize: number;
+    houseHalfW: number;
+    houseHalfD: number;
+  }>({ numBlocks: 0, gridSize: 0, houseHalfW: 0, houseHalfD: 0 });
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
 
@@ -137,6 +139,8 @@ export function useWebGPU({
     blockDataRef.current = {
       numBlocks: blockData.numBlocks,
       gridSize: blockData.gridSize,
+      houseHalfW: blockData.houseHalfW,
+      houseHalfD: blockData.houseHalfD,
     };
   }, [qrContent]);
 
@@ -166,6 +170,8 @@ export function useWebGPU({
     blockDataRef.current = {
       numBlocks: blockData.numBlocks,
       gridSize: blockData.gridSize,
+      houseHalfW: blockData.houseHalfW,
+      houseHalfD: blockData.houseHalfD,
     };
 
     // Create buffers
@@ -333,7 +339,8 @@ export function useWebGPU({
       progressRef.current = easeInOutCubic(rawProgressRef.current);
 
       const time = (now - startTimeRef.current) / 1000;
-      const { numBlocks, gridSize } = blockDataRef.current;
+      const { numBlocks, gridSize, houseHalfW, houseHalfD } =
+        blockDataRef.current;
 
       // ---- Creeper timeline ------------------------------------------
       let creeperT = -1;
@@ -391,6 +398,8 @@ export function useWebGPU({
       uniformData[10] = rebuildT;
       uniformData[11] = creeperAlpha;
       uniformData[12] = spawnAngleRef.current;
+      uniformData[13] = houseHalfW;
+      uniformData[14] = houseHalfD;
       device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
       // Render

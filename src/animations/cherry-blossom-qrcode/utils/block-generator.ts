@@ -1,12 +1,18 @@
 import { buildCreeperVoxels } from './creeper-model';
 import {
-  CANOPY_OUTER_RADIUS_FACTOR,
+  CHIMNEY_RISE,
   CUBE_HEIGHT,
+  FOUNDATION_TOP,
   GROUND_MASS_BONUS,
+  HOUSE_DEPTH_FACTOR,
+  HOUSE_MAX_DEPTH,
+  HOUSE_MAX_WIDTH,
+  HOUSE_MIN_DEPTH,
+  HOUSE_MIN_WIDTH,
+  HOUSE_WIDTH_FACTOR,
   MASS_BY_TYPE,
-  MAX_CANOPY_LAYERS,
-  TRUNK_LAYERS,
-  TRUNK_RADIUS,
+  ROOF_BASE,
+  WALL_TOP,
 } from '../constants';
 import { BlockData, BlockType } from '../types';
 
@@ -19,147 +25,235 @@ function pseudoRandom(col: number, row: number, seed: number = 0): number {
   return s - Math.floor(s);
 }
 
+const clamp = (v: number, lo: number, hi: number) =>
+  Math.max(lo, Math.min(hi, v));
+
+/** Nearest odd number, so the gable gets a true centre ridge. */
+const toOdd = (v: number) =>
+  Math.round(v) % 2 === 0 ? Math.round(v) + 1 : Math.round(v);
+
 /**
- * Generates 3D block data for an oak tree visualization of a QR code.
+ * Generates 3D block data for a QR code rendered as a voxel house on a lawn.
  *
- * The tree structure maps QR code modules to different block types:
- * - Light modules become dirt/path (scannable as "light")
- * - Dark modules become tree parts based on position:
- *   - Center: trunk
- *   - Canopy area: leaves
- *   - Outside canopy: grass
- *
- * Every block also carries a MASS, which is what the detonation reads to
- * decide how far it flies: petals drift, trunk logs barely shift, and the
- * ground resists until it is hit hard enough to crater.
+ * The QR survives because NOTHING is allowed to cover a module with the wrong
+ * value. On the lawn that is easy: light modules are path, dark modules are
+ * grass. Under the house it is not, because a roof is a solid slab over both.
+ * So the roof itself carries the code: a tile standing over a dark module is
+ * dark slate, one standing over a light module is pale timber. Seen from
+ * above the building IS the QR; seen from the side it is a two-tone roof.
  */
 export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const gridSize = qrMatrix.length;
-  const cx = gridSize / 2;
-  const cy = gridSize / 2;
 
   const positions: number[] = [];
   const mass: number[] = [];
   const baseY: number[] = [];
   const types: number[] = [];
 
-  const canopyBaseHeight = TRUNK_LAYERS * CUBE_HEIGHT;
-  const canopyOuterRadius = gridSize * CANOPY_OUTER_RADIUS_FACTOR;
-
   let blockCount = 0;
-
   const push = (
     col: number,
     row: number,
-    layerY: number,
+    layer: number,
     type: BlockType,
     isGround: boolean,
   ) => {
     positions.push(col, row, 0, 0);
-    baseY.push(layerY);
+    baseY.push(layer * CUBE_HEIGHT);
     types.push(type);
     mass.push((MASS_BY_TYPE[type] ?? 1) * (isGround ? GROUND_MASS_BONUS : 1));
     blockCount++;
   };
 
-  // First pass: ground blocks (dirt, grass, trunk base, fallen petals)
+  // ------------------------------------------------------------------
+  // Ground: the QR itself, one block per module.
+  // ------------------------------------------------------------------
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
-      const isQrDark = qrMatrix[row][col];
-      const dx = col - cx;
-      const dy = row - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-
-      let type = BlockType.Dirt;
-      if (!isQrDark) {
-        type = BlockType.Dirt;
-      } else if (dist < TRUNK_RADIUS) {
-        type = BlockType.Trunk;
-      } else if (dist >= canopyOuterRadius) {
-        type = BlockType.Grass;
-      } else {
-        type = BlockType.ForestFloor;
-      }
-      push(col, row, 0, type, true);
+      push(
+        col,
+        row,
+        0,
+        qrMatrix[row][col] ? BlockType.Grass : BlockType.Dirt,
+        true,
+      );
     }
   }
 
-  // Second pass: trunk blocks stacked vertically
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      const isQrDark = qrMatrix[row][col];
-      if (!isQrDark) continue;
+  // ------------------------------------------------------------------
+  // House footprint, centred and always odd.
+  // ------------------------------------------------------------------
+  const width = toOdd(
+    clamp(gridSize * HOUSE_WIDTH_FACTOR, HOUSE_MIN_WIDTH, HOUSE_MAX_WIDTH),
+  );
+  const depth = toOdd(
+    clamp(gridSize * HOUSE_DEPTH_FACTOR, HOUSE_MIN_DEPTH, HOUSE_MAX_DEPTH),
+  );
+  const halfW = (width - 1) / 2;
+  const halfD = (depth - 1) / 2;
+  const centreCol = Math.floor(gridSize / 2);
+  const centreRow = Math.floor(gridSize / 2);
+  const colMin = centreCol - halfW;
+  const colMax = centreCol + halfW;
+  const rowMin = centreRow - halfD;
+  const rowMax = centreRow + halfD;
 
-      const dx = col - cx;
-      const dy = row - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+  const inGrid = (col: number, row: number) =>
+    col >= 0 && col < gridSize && row >= 0 && row < gridSize;
 
-      if (dist < TRUNK_RADIUS) {
-        // Stack trunk blocks (skip layer 0, already added in first pass)
-        for (let layer = 1; layer < TRUNK_LAYERS; layer++) {
-          push(col, row, layer * CUBE_HEIGHT, BlockType.Trunk, false);
+  // The gable ridge runs along the width, so height rises towards the middle
+  // row and the triangles land on the two width-ends.
+  const roofYAt = (row: number) => {
+    const clamped = clamp(row, rowMin, rowMax);
+    const fromEdge = Math.min(clamped - rowMin, rowMax - clamped);
+    return ROOF_BASE + fromEdge;
+  };
+
+  const isCorner = (col: number, row: number) =>
+    (col === colMin || col === colMax) && (row === rowMin || row === rowMax);
+
+  // The front wall faces the camera-near side of the isometric view, which is
+  // where the creeper walks in from - so the door is the thing it walks at.
+  const doorCol = centreCol;
+  const doorRow = rowMin;
+
+  // ------------------------------------------------------------------
+  // Walls: cobble footing, plank infill, log posts and a top plate.
+  // ------------------------------------------------------------------
+  for (let row = rowMin; row <= rowMax; row++) {
+    for (let col = colMin; col <= colMax; col++) {
+      const onPerimeter =
+        col === colMin || col === colMax || row === rowMin || row === rowMax;
+      if (!onPerimeter || !inGrid(col, row)) continue;
+
+      const corner = isCorner(col, row);
+      for (let layer = 1; layer <= WALL_TOP; layer++) {
+        // Door: a two-block opening in the front wall.
+        if (
+          col === doorCol &&
+          row === doorRow &&
+          (layer === 3 || layer === 4)
+        ) {
+          push(col, row, layer, BlockType.Door, false);
+          continue;
         }
-      }
-    }
-  }
 
-  // Third pass: canopy foliage with dome shape
-  for (let row = 0; row < gridSize; row++) {
-    for (let col = 0; col < gridSize; col++) {
-      const isQrDark = qrMatrix[row][col];
-      if (!isQrDark) continue;
+        if (layer <= FOUNDATION_TOP) {
+          push(col, row, layer, BlockType.Cobble, false);
+          continue;
+        }
 
-      const dx = col - cx;
-      const dy = row - cy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+        // Corner posts run full height; the top course is a log plate, which
+        // is what gives the reference build its timber-framed look.
+        if (corner || layer === WALL_TOP) {
+          push(col, row, layer, BlockType.Log, false);
+          continue;
+        }
 
-      if (dist < canopyOuterRadius) {
-        // t = 1 at center, 0 at edge
-        const t = 1 - dist / canopyOuterRadius;
-
-        // Dome shape: more layers near center, fewer at edges
-        const layersHere = Math.max(
-          3,
-          Math.round(MAX_CANOPY_LAYERS * (0.25 + 0.75 * t * t)),
+        // Windows: every other bay, clear of the corners and the doorway.
+        const alongWidth = row === rowMin || row === rowMax;
+        const bay = alongWidth ? col - colMin : row - rowMin;
+        const nearDoor = col === doorCol && row === doorRow;
+        const isWindow =
+          !nearDoor &&
+          (layer === 5 || layer === 6 || layer === 7) &&
+          bay % 2 === 1 &&
+          bay > 0 &&
+          bay < (alongWidth ? width : depth) - 1;
+        push(
+          col,
+          row,
+          layer,
+          isWindow ? BlockType.Glass : BlockType.Planks,
+          false,
         );
+      }
 
-        // Stack cubic blocks vertically
-        for (let layer = 0; layer < layersHere; layer++) {
-          const layerY = canopyBaseHeight + layer * CUBE_HEIGHT;
-          // Slight dome curve - center is higher
-          const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
-          push(col, row, layerY + domeOffset, BlockType.Leaves, false);
-        }
-
-        // Add random extra blocks on top for organic look
-        const extraCount = Math.floor(pseudoRandom(col, row, 500) * 4);
-        for (let e = 0; e < extraCount; e++) {
-          const extraLayer = layersHere + e;
-          const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
-          push(
-            col,
-            row,
-            canopyBaseHeight + extraLayer * CUBE_HEIGHT + domeOffset,
-            BlockType.Leaves,
-            false,
-          );
+      // Gable infill: the width-ends rise with the roof, otherwise the
+      // building is open to the sky from the side.
+      if (col === colMin || col === colMax) {
+        for (let layer = WALL_TOP + 1; layer < roofYAt(row); layer++) {
+          push(col, row, layer, BlockType.Planks, false);
         }
       }
     }
   }
 
-  // Fourth pass: the creeper. Its voxels live in the same buffers as the tree
-  // so there is still exactly one draw call, but they are tagged BlockType.
-  // Creeper and carry their limb id, which the vertex shader uses to rig the
-  // walk. Local model coords go in positions.xy/baseY; positions.z is the
-  // limb.
+  // Interior floor, one course above the footing. Hidden by the roof, but it
+  // stops the inside reading as a hole once the blast opens a wall.
+  for (let row = rowMin + 1; row < rowMax; row++) {
+    for (let col = colMin + 1; col < colMax; col++) {
+      if (inGrid(col, row)) push(col, row, 1, BlockType.Planks, false);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Roof. Every tile is typed by the module UNDERNEATH it, which is what
+  // keeps the code readable from directly above.
+  // ------------------------------------------------------------------
+  for (let row = rowMin - 1; row <= rowMax + 1; row++) {
+    for (let col = colMin - 1; col <= colMax + 1; col++) {
+      if (!inGrid(col, row)) continue;
+      const dark = qrMatrix[row][col];
+      push(
+        col,
+        row,
+        roofYAt(row),
+        dark ? BlockType.RoofDark : BlockType.RoofLight,
+        false,
+      );
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Chimney, rising out of the roof. Its cap is typed by the module too, so
+  // even this one column does not punch a hole in the code.
+  // ------------------------------------------------------------------
+  const chimneyCol = colMin + 1;
+  const chimneyRow = centreRow;
+  if (inGrid(chimneyCol, chimneyRow)) {
+    const top = roofYAt(chimneyRow) + CHIMNEY_RISE;
+    for (let layer = 1; layer < top; layer++) {
+      push(chimneyCol, chimneyRow, layer, BlockType.Cobble, false);
+    }
+    const dark = qrMatrix[chimneyRow][chimneyCol];
+    push(
+      chimneyCol,
+      chimneyRow,
+      top,
+      dark ? BlockType.RoofDark : BlockType.RoofLight,
+      false,
+    );
+  }
+
+  // ------------------------------------------------------------------
+  // Scattered grass tufts on the lawn, for a little relief. Ground level
+  // only where the module is dark, so the code is untouched.
+  // ------------------------------------------------------------------
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      if (!qrMatrix[row][col]) continue;
+      const insideHouse =
+        col >= colMin - 1 &&
+        col <= colMax + 1 &&
+        row >= rowMin - 1 &&
+        row <= rowMax + 1;
+      if (insideHouse) continue;
+      if (pseudoRandom(col, row, 91) > 0.9) {
+        push(col, row, 1, BlockType.Grass, false);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // The creeper. Same buffers as the world, tagged so the vertex shader can
+  // rig it; local model coords go in positions.xy/baseY, limb in positions.z.
+  // ------------------------------------------------------------------
   const creeperStart = blockCount;
   for (const voxel of buildCreeperVoxels()) {
     positions.push(voxel.x, voxel.z, voxel.part, 1);
     baseY.push(voxel.y * CUBE_HEIGHT);
     types.push(BlockType.Creeper);
-    // Gunpowder: the mob is consumed by its own blast, so mass is irrelevant
-    // — it is flagged here only for completeness.
     mass.push(1);
     blockCount++;
   }
@@ -172,5 +266,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
     gridSize,
     numBlocks: blockCount,
     creeperStart,
+    houseHalfW: halfW,
+    houseHalfD: halfD,
   };
 }

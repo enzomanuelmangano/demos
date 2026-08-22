@@ -19,11 +19,20 @@ export const PALETTE = {
 export const BLOCK_SIZE = 0.0245;
 export const CUBE_HEIGHT = BLOCK_SIZE;
 
-// Tree structure parameters
-export const TRUNK_RADIUS = 2.5;
-export const TRUNK_LAYERS = 12;
-export const MAX_CANOPY_LAYERS = 12;
-export const CANOPY_OUTER_RADIUS_FACTOR = 0.46;
+// House dimensions, in blocks. Width and depth are derived from the grid so
+// the building keeps its proportions whatever QR version the URL produces,
+// and both are forced ODD so the gable has a true centre ridge.
+export const HOUSE_WIDTH_FACTOR = 0.44;
+export const HOUSE_DEPTH_FACTOR = 0.36;
+export const HOUSE_MIN_WIDTH = 7;
+export const HOUSE_MAX_WIDTH = 15;
+export const HOUSE_MIN_DEPTH = 5;
+export const HOUSE_MAX_DEPTH = 13;
+// Vertical layout: cobble foundation, plank walls, then the gable.
+export const FOUNDATION_TOP = 2;
+export const WALL_TOP = 9;
+export const ROOF_BASE = 10;
+export const CHIMNEY_RISE = 3;
 
 // Grid limits
 export const MAX_GRID_SIZE = 41;
@@ -87,11 +96,20 @@ export const BLAST_REACH_TREE = 15.0;
 export const BLAST_UP_BIAS = 0.95;
 export const BLAST_RESTITUTION = 0.3;
 export const BLAST_FRICTION = 0.35;
-// Per-type mass, indexed by BlockType. Leaves barely weigh anything, trunk
-// logs resist the blast. The creeper's entry is never read — it is the bomb.
-export const MASS_BY_TYPE: readonly number[] = [1.0, 0.6, 1.3, 1.05, 0.5, 1];
-// Ground blocks are part of a continuous surface — they need a real hit to
-// break loose, which is what carves a crater instead of stripping the lawn.
+// Per-type mass, indexed by BlockType. Glass shatters and flies, cobble
+// foundations barely notice, and the creeper's entry is never read.
+export const MASS_BY_TYPE: readonly number[] = [
+  1.0, // Dirt
+  1.05, // Grass
+  2.0, // Cobble
+  1.1, // Planks
+  1.6, // Log
+  1.2, // RoofDark
+  1.2, // RoofLight
+  0.5, // Glass
+  1.15, // Door
+  1, // Creeper
+];
 export const GROUND_MASS_BONUS = 1.5;
 
 // Timeline after detonation.

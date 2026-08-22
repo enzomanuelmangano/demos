@@ -21,6 +21,8 @@ export function wgslVec3(c: RGB): string {
  * rebuildT     0..1 as the tree reassembles.
  * creeperAlpha 1 while the mob is on screen, 0 once it is consumed.
  * spawnAngle   which way the creeper walked in from.
+ * houseHalfW/D house footprint half-extents in cells, so the ground shadow is
+ *              derived from the real building instead of a duplicated formula.
  */
 export const uniformsStruct = /* wgsl */ `
 struct Uniforms {
@@ -37,9 +39,9 @@ struct Uniforms {
   rebuildT: f32,
   creeperAlpha: f32,
   spawnAngle: f32,
+  houseHalfW: f32,
+  houseHalfD: f32,
   _pad0: f32,
-  _pad1: f32,
-  _pad2: f32,
 }
 `;
 

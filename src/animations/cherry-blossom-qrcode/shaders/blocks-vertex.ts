@@ -117,7 +117,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
 
   let posData = blockPositions[blockIdx];
   let typePacked = blockTypes[blockIdx];
-  let isCreeper = typePacked == 5u;
+  let isCreeper = typePacked == 9u;
 
   // The creeper is spawned once and lives in the buffers forever; when no
   // detonation sequence is running it is simply not drawn.
@@ -320,14 +320,6 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     centre = debris;
     offset = rotAxis(offset, axis, spinAmount);
     normal = rotAxis(normal, axis, spinAmount);
-  } else if (typePacked == 1u) {
-    // Idle canopy sway — higher leaves move more, so the dome reads as a
-    // volume of foliage rather than a solid shell.
-    let heightFactor = clamp((output.layer - 12.0) / 12.0, 0.15, 1.25);
-    let t = uniforms.time;
-    let amp = 0.13 * BLOCK * heightFactor * (1.0 - uniforms.progress);
-    centre.x += sin(t * 0.8 + posData.x * 0.3 + posData.y * 0.2) * amp;
-    centre.z += sin(t * 0.61 + posData.x * 0.2 + posData.y * 0.4) * amp * 0.75;
   }
 
   output.charge = charge;
