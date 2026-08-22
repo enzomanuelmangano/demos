@@ -33,24 +33,48 @@ fn faceRect(p: vec2f, x0: f32, y0: f32, x1: f32, y1: f32) -> bool {
   return p.x >= x0 && p.x < x1 && p.y >= y0 && p.y < y1;
 }
 
-// A dark line near a coordinate, for plank seams and window mullions.
-fn seam(v: f32, at: f32, w: f32) -> f32 {
-  return 1.0 - smoothstep(0.0, w, abs(v - at));
-}
-
 @fragment
 fn main(input: BlockInput) -> @location(0) vec4f {
   let uv = input.uv;
   let N = normalize(vec3f(input.faceNx, input.faceNy, input.faceNz));
   let blockType = i32(input.blockType + 0.5);
-  let layer = input.layer;
+  let progress = uniforms.progress;
 
-  let isTop = input.faceNy > 0.5;
-  let isSide = abs(input.faceNz) > 0.5 || abs(input.faceNx) > 0.5;
+  // ============================================
+  // COLOR PALETTES
+  // ============================================
+
+  // Dirt/path (QR light modules) - bright for scannability
+  let dirtLight = vec3f(1.0, 0.98, 0.94);
+  let dirtMid = vec3f(0.96, 0.94, 0.88);
+  let dirtDark = vec3f(0.92, 0.88, 0.82);
+
+  // Cherry blossom (QR dark in canopy)
+  let sakuraLight = vec3f(0.70, 0.25, 0.38);
+  let sakuraMid = vec3f(0.58, 0.18, 0.30);
+  let sakuraDeep = vec3f(0.46, 0.12, 0.24);
+  let sakuraRich = vec3f(0.36, 0.07, 0.18);
+
+  // Trunk (QR dark at center)
+  let barkLight = vec3f(0.34, 0.18, 0.07);
+  let barkMid = vec3f(0.26, 0.13, 0.05);
+  let barkDark = vec3f(0.20, 0.09, 0.03);
+  let barkDeep = vec3f(0.14, 0.06, 0.02);
+
+  // Grass (QR dark outside tree)
+  let grassDark = vec3f(0.05, 0.18, 0.04);
+  let grassMid = vec3f(0.07, 0.28, 0.05);
+  let grassBright = vec3f(0.12, 0.38, 0.08);
+
+  // Creeper — vanilla's two-tone mottled green.
+  let creeperLight = vec3f(0.36, 0.62, 0.28);
+  let creeperMid = vec3f(0.24, 0.48, 0.20);
+  let creeperDark = vec3f(0.14, 0.32, 0.13);
 
   // ============================================
   // LIGHTING SETUP
   // ============================================
+
   let sunDir = normalize(vec3f(-0.5, 0.8, -0.5));
   let sunCol = ${wgslVec3(PALETTE.sun)};
   let ambient = vec3f(0.35, 0.38, 0.45);
@@ -63,259 +87,54 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // ============================================
   // PER-BLOCK NOISE
   // ============================================
-  let blockSeed = input.col * 17.3 + input.row * 31.1 + layer * 73.7;
+
+  let layer = input.layer;
+  let seed = vec2f(input.col, input.row);
+  let blockSeed = seed.x * 17.3 + seed.y * 31.1 + layer * 73.7;
   let noise1 = fract(sin(blockSeed) * 43758.5);
   let noise2 = fract(sin(blockSeed * 1.7 + 127.1) * 43758.5);
   let noise3 = fract(sin(blockSeed * 2.3 + 311.7) * 43758.5);
 
   // ============================================
-  // HOUSE SHADOW on the lawn. Derived from the real footprint (passed in as
-  // uniforms) and pushed away from the sun, rather than the old radial blob.
+  // TREE SHADOW CALCULATION
   // ============================================
-  let gridSize = uniforms.gridSize;
-  let centre = gridSize * 0.5;
-  let shadowPush = 1.7;
-  let dxPhone = abs(input.col - centre - shadowPush) - uniforms.phoneHalfW;
-  let dzPhone = abs(input.row - centre - shadowPush) - uniforms.phoneHalfD - 1.5;
-  let outsidePhone = max(dxPhone, dzPhone);
-  let inShadow = 1.0 - smoothstep(0.0, 3.0, outsidePhone);
-  // Only the ground takes it; the handset cannot shadow itself this crudely.
-  let groundOnly = 1.0 - step(0.5, layer);
-  let houseShadow = 1.0 - inShadow * groundOnly * 0.30;
 
-  // ============================================
-  // MATERIALS
-  // ============================================
-  var base = vec3f(0.5);
-  // Light the window panes emit on their own, so a lit room survives the
-  // face shading that would otherwise dim it to nothing.
-  var emissive = vec3f(0.0);
+  let gridSize = uniforms.gridSize;
+  let cx = gridSize * 0.5;
+  let cy = gridSize * 0.5;
+  let shadowOffsetX = 1.5;
+  let shadowOffsetY = 1.5;
+  let dx = input.col - (cx + shadowOffsetX);
+  let dy = input.row - (cy + shadowOffsetY);
+  let distFromShadowCenter = sqrt(dx * dx + dy * dy);
+  let canopyRadius = gridSize * 0.46;
+  let trunkRadius = 2.5;
+  let shadowT = 1.0 - smoothstep(trunkRadius, canopyRadius, distFromShadowCenter);
+  let treeShadow = 1.0 - shadowT * 0.35;
+
+  // Canopy self-shadowing
+  let maxCanopyLayer = 15.0;
+  let layerRatio = min(layer / maxCanopyLayer, 1.0);
+  let canopyAO = 0.65 + layerRatio * 0.35;
+
+  var albedo = vec3f(0.5);
   // Set on the creeper's face pixels so the fuse strobe cannot white them out.
   var creeperFace = 0.0;
 
-  if (blockType == 0) {
-    // DIRT PATH - the QR's LIGHT modules. Stays bright: this is half of the
-    // contrast the code is read with.
-    let dirtLight = vec3f(1.0, 0.98, 0.94);
-    let dirtMid = vec3f(0.96, 0.94, 0.88);
-    let dirtDark = vec3f(0.92, 0.88, 0.82);
-    var c = dirtMid;
-    if (noise1 < 0.5) { c = mix(dirtLight, dirtMid, noise1 / 0.5); }
-    else { c = mix(dirtMid, dirtDark, (noise1 - 0.5) / 0.5); }
-    base = c * (1.0 + (noise2 - 0.5) * 0.1) * houseShadow;
-
-  } else if (blockType == 1) {
-    // GRASS - the QR's DARK modules out on the lawn.
-    let grassDark = vec3f(0.03, 0.13, 0.04);
-    let grassMid = vec3f(0.05, 0.20, 0.06);
-    let grassBright = vec3f(0.07, 0.28, 0.09);
-    let grassBrown = vec3f(0.18, 0.17, 0.08);
-    var c = grassMid;
-    if (noise1 < 0.35) { c = mix(grassBright, grassMid, noise1 / 0.35); }
-    else if (noise1 < 0.75) { c = mix(grassMid, grassDark, (noise1 - 0.35) / 0.4); }
-    else { c = mix(grassDark, grassBrown, (noise1 - 0.75) / 0.25); }
-    base = c * (1.0 + (noise2 - 0.5) * 0.2) * houseShadow;
-
-  } else if (blockType == 2) {
-    // COBBLESTONE - foundation and chimney. Chunky grey mottle.
-    let stoneLight = vec3f(0.56, 0.54, 0.50);
-    let stoneMid = vec3f(0.45, 0.43, 0.40);
-    let stoneDark = vec3f(0.33, 0.32, 0.30);
-    var c = stoneMid;
-    if (noise1 < 0.4) { c = mix(stoneLight, stoneMid, noise1 / 0.4); }
-    else { c = mix(stoneMid, stoneDark, (noise1 - 0.4) / 0.6); }
-    // Coarse pits so cobble does not read as smooth concrete.
-    let pit = step(0.72, fract(sin(dot(floor(uv * 3.0), vec2f(41.3, 17.7))) * 4331.7));
-    base = c * (1.0 - pit * 0.18) * (1.0 + (noise2 - 0.5) * 0.12);
-
-  } else if (blockType == 3) {
-    // PLASTER infill. The half-timbered look lives on this contrast: cream
-    // panels held in a dark timber frame. Oak planks against oak posts read
-    // as brown-on-brown mush at this size.
-    let plasterLight = vec3f(0.95, 0.93, 0.88);
-    let plasterMid = vec3f(0.90, 0.87, 0.81);
-    let plasterDark = vec3f(0.83, 0.80, 0.73);
-    var c = mix(plasterMid, plasterLight, noise1);
-    c = mix(c, plasterDark, step(0.82, noise2) * 0.7);
-    // Faint trowel mottle so it is not a flat fill.
-    let mottle = fract(sin(dot(floor(uv * 4.0), vec2f(23.7, 91.3))) * 2571.3);
-    base = c * (0.96 + mottle * 0.06);
-
-  } else if (blockType == 4) {
-    // OAK LOG - corner posts and the top plate. Vertical grain, darker.
-    let barkLight = vec3f(0.47, 0.35, 0.20);
-    let barkMid = vec3f(0.40, 0.29, 0.16);
-    let barkDark = vec3f(0.32, 0.23, 0.12);
-    var c = mix(barkMid, barkLight, noise1);
-    c = mix(c, barkDark, step(0.7, noise2) * 0.8);
-    let grain = seam(uv.x, 0.25, 0.05) + seam(uv.x, 0.72, 0.05);
-    base = c * (1.0 - grain * 0.22);
-
-  } else if (blockType == 5) {
-    // ROOF/DECK board over a DARK module: dark timber. Together with type 6
-    // this is what lets a solid roof sit on a QR without erasing it, and in
-    // this palette the pair reads as a two-tone wooden roof rather than as a
-    // pattern imposed on one.
-    let darkLight = vec3f(0.36, 0.24, 0.13);
-    let darkMid = vec3f(0.29, 0.19, 0.10);
-    let darkDeep = vec3f(0.22, 0.14, 0.07);
-    var c = mix(darkMid, darkLight, noise1);
-    c = mix(c, darkDeep, step(0.72, noise2) * 0.8);
-    // Both roof tiles carry the SAME course shadow, which is what makes a
-    // random pattern read as one shingled plane.
-    base = c * (1.0 - smoothstep(0.26, 0.0, uv.y) * 0.34);
-
-  } else if (blockType == 6) {
-    // ROOF/DECK board over a LIGHT module: pale birch.
-    // Warm TAN, not cream. At cream the roof matched the plaster walls and
-    // the whole building collapsed into one pale mass; the reference reads
-    // as a wooden roof over white walls, so the light tile has to stay wood.
-    let paleLight = vec3f(0.88, 0.75, 0.53);
-    let paleMid = vec3f(0.81, 0.68, 0.47);
-    let paleDark = vec3f(0.72, 0.59, 0.39);
-    var c = mix(paleMid, paleLight, noise1);
-    c = mix(c, paleDark, step(0.75, noise2) * 0.6);
-    base = c * (1.0 - smoothstep(0.26, 0.0, uv.y) * 0.22);
-
-  } else if (blockType == 7) {
-    // GLASS - a proper window: four panes in a white frame, cool sky at the
-    // top, a warm room behind the bottom, and one specular streak. Opaque,
-    // because sorted transparency would cost a second pass, but it reads as
-    // glass because of the gradient and the highlight rather than alpha.
-    let paneTop = vec3f(0.46, 0.62, 0.74);
-    let paneBottom = vec3f(0.72, 0.82, 0.88);
-    var c = mix(paneTop, paneBottom, smoothstep(0.15, 0.95, uv.y));
-
-    // Warm interior light, strongest low in the pane where a room would be.
-    let roomLight = smoothstep(0.95, 0.0, uv.y);
-    let warm = vec3f(1.0, 0.66, 0.30);
-    c = mix(c, warm, roomLight * 0.55);
-    emissive = warm * roomLight * 0.62;
-
-    // Specular streak across the glass.
-    let streak = smoothstep(0.07, 0.0, abs((uv.x * 0.75 + uv.y * 0.65) - 0.78));
-    c += vec3f(0.22, 0.24, 0.26) * streak;
-
-    // Mullions: a 2x2 grid plus the outer frame.
-    let gx = abs(fract(uv.x * 2.0) - 0.5);
-    let gy = abs(fract(uv.y * 2.0) - 0.5);
-    let mullion = max(smoothstep(0.40, 0.5, gx), smoothstep(0.40, 0.5, gy));
-    let border = 1.0 - smoothstep(0.0, 0.1, min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)));
-    let frame = max(mullion, border);
-    base = mix(c, vec3f(0.94, 0.93, 0.89), frame * 0.92);
-    emissive = emissive * (1.0 - frame);
-
-  } else if (blockType == 8) {
-    // DOOR - dark oak with a vertical joint and a handle.
-    let doorLight = vec3f(0.40, 0.26, 0.13);
-    let doorDark = vec3f(0.29, 0.18, 0.09);
-    var c = mix(doorDark, doorLight, noise1 * 0.6 + 0.2);
-    let joint = seam(uv.x, 0.5, 0.045);
-    let handle = 1.0 - smoothstep(0.0, 0.07, length(uv - vec2f(0.72, 0.5)));
-    c = c * (1.0 - joint * 0.35);
-    base = mix(c, vec3f(0.62, 0.55, 0.28), handle * 0.8);
-
-  } else if (blockType == 9) {
-    // PLANKS - warm decking for the porch, balcony underside and floors.
-    let deckLight = vec3f(0.68, 0.50, 0.30);
-    let deckMid = vec3f(0.59, 0.43, 0.25);
-    let deckDark = vec3f(0.50, 0.36, 0.21);
-    var c = mix(deckMid, deckLight, noise1);
-    c = mix(c, deckDark, step(0.78, noise2) * 0.7);
-    let board = max(seam(uv.y, 0.34, 0.035), seam(uv.y, 0.68, 0.035));
-    base = c * (1.0 - board * 0.28);
-
-  } else if (blockType == 10) {
-    // LANTERN. Emissive, so it still glows on the shaded side of the house
-    // and pools a little warmth on whatever it hangs over.
-    let cage = vec3f(0.34, 0.24, 0.13);
-    let flame = vec3f(1.0, 0.80, 0.42);
-    let inner = 1.0 - smoothstep(0.18, 0.46, length(uv - vec2f(0.5, 0.5)));
-    base = mix(cage, flame, inner);
-    emissive = flame * (0.35 + inner * 1.15);
-
-  } else if (blockType == 11) {
-    // FOLIAGE - planter greenery and lawn bushes. Always sits on a dark
-    // module, so it never disturbs the code.
-    let leafLight = vec3f(0.26, 0.42, 0.16);
-    let leafMid = vec3f(0.19, 0.33, 0.12);
-    let leafDark = vec3f(0.13, 0.24, 0.09);
-    var c = mix(leafMid, leafLight, noise1);
-    c = mix(c, leafDark, step(0.7, noise2) * 0.85);
-    // Broken edges so a bush does not read as a solid cube.
-    let clump = fract(sin(dot(floor(uv * 4.0), vec2f(51.1, 17.3))) * 8123.7);
-    base = c * (0.82 + clump * 0.32);
-
-  } else if (blockType == 12) {
-    // PHONE BODY - brushed dark metal frame and bezel.
-    let metalLight = vec3f(0.30, 0.31, 0.34);
-    let metalMid = vec3f(0.22, 0.23, 0.26);
-    let metalDark = vec3f(0.15, 0.16, 0.18);
-    var c = mix(metalMid, metalLight, noise1);
-    c = mix(c, metalDark, step(0.8, noise2) * 0.7);
-    // A bright chamfer along the block edges reads as machined metal.
-    let edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-    let chamfer = 1.0 - smoothstep(0.0, 0.11, edgeDist);
-    base = mix(c, vec3f(0.58, 0.60, 0.64), chamfer * 0.55);
-
-  } else if (blockType == 13) {
-    // SCREEN. The artwork spans the whole display rather than repeating per
-    // block: screen-space coords come from the cell position plus the within
-    // block uv, using the real screen bounds passed in as uniforms.
-    let screenHalfW = max(uniforms.phoneHalfW - 1.0, 1.0);
-    let screenRows = max(uniforms.screenHi - uniforms.screenLo + 1.0, 1.0);
-    let fx = ((input.col - (centre - 0.5)) + (uv.x - 0.5)) / screenHalfW;
-    let fy = ((layer - uniforms.screenLo) + uv.y) / screenRows;
-    let ax = abs(fx);
-
-    let skyTop = vec3f(0.09, 0.34, 0.72);
-    let skyBottom = vec3f(0.19, 0.55, 0.90);
-    var c = mix(skyBottom, skyTop, clamp(fy, 0.0, 1.0));
-
-    // Install glyph, laid out in CELL units rather than normalised ones. The
-    // display is 7 cells wide and 17 tall, so a shape drawn in normalised
-    // space comes out stretched to two and a half times its height.
-    // The display faces -Z, and that face's uv.x runs MIRRORED against world
-    // +x. Using it raw puts a sawtooth in the horizontal coordinate and the
-    // artwork comes apart block by block.
-    let flipped = input.faceNz < 0.0;
-    let sx = select(uv.x, 1.0 - uv.x, flipped);
-    let cx = (input.col - (centre - 0.5)) + (sx - 0.5);
-    let midRow = (uniforms.screenLo + uniforms.screenHi) * 0.5;
-    let cy = (layer - midRow) + (uv.y - 0.5);
-    let acx = abs(cx);
-    // Only the front pane carries artwork; the edges just take the gradient.
-    let onFront = step(0.5, -input.faceNz);
-
-    // Downward arrow into a tray: the most legible "install this" there is.
-    let stem = step(acx, 0.7) * step(-0.2, cy) * step(cy, 2.6);
-    let headSpan = 1.5;
-    let headTop = -0.2;
-    let headBottom = headTop - headSpan;
-    let head =
-      step(headBottom, cy) * step(cy, headTop) *
-      step(acx, 2.6 * (cy - headBottom) / headSpan);
-    let tray = step(acx, 3.0) * step(-3.1, cy) * step(cy, -2.4);
-    let mark = clamp(stem + head + tray, 0.0, 1.0) * onFront;
-    c = mix(c, vec3f(0.97, 0.98, 1.0), mark);
-
-    // Slight vignette so the display has depth rather than reading as paint.
-    c = c * (1.0 - 0.12 * smoothstep(0.6, 1.15, max(ax, abs(fy * 2.0 - 1.0))));
-    base = c;
-    emissive = c * 0.85;
-
-  } else {
-    // CREEPER (type 14). Shaded apart from the world: it is a mob, not terrain.
-    let creeperLight = vec3f(0.44, 0.74, 0.32);
-    let creeperMid = vec3f(0.31, 0.60, 0.24);
-    let creeperDark = vec3f(0.20, 0.42, 0.17);
+  // ============================================
+  // CREEPER — shaded apart from the tree: it is a mob, not terrain.
+  // ============================================
+  if (blockType == 5) {
+    // Vanilla's mottle: a coarse per-voxel two-tone, biased darker down the
+    // legs so it grounds instead of floating.
     var skin = mix(creeperMid, creeperLight, step(0.55, noise1));
     skin = mix(skin, creeperDark, step(0.78, noise2) * 0.9);
-    if (input.partId >= 2.0) { skin = mix(skin, creeperDark, 0.35); }
+    if (input.partId >= 2.0) {
+      skin = mix(skin, creeperDark, 0.35);
+    }
 
-    // The face fills the front of the head as one 8x8 texture spread over the
-    // 4x4 voxels, exactly like the real skin. Tested against the MODEL front,
-    // not the world normal, because the mob turns.
+    // The face fills the front of the head as one 8x8 texture spread over
+    // the 4x4 voxels, exactly like the real skin.
     if (input.partId < 0.5 && input.modelFront > 0.5) {
       let px = ((input.col + 2.0) + uv.x) * 2.0;
       let py = ((3.0 - (layer - 9.0)) + (1.0 - uv.y)) * 2.0;
@@ -327,46 +146,255 @@ fn main(input: BlockInput) -> @location(0) vec4f {
         faceRect(p, 2.0, 5.0, 6.0, 6.0) ||
         faceRect(p, 2.0, 6.0, 3.0, 7.0) ||
         faceRect(p, 5.0, 6.0, 6.0, 7.0);
-      if (isFace) { skin = vec3f(0.02, 0.03, 0.02); creeperFace = 1.0; }
+      if (isFace) {
+        skin = vec3f(0.02, 0.03, 0.02);
+      }
     }
-    base = skin;
-  }
+
+    // Cheap directional shading so the cube silhouette still reads.
+    let mobShade = 0.42 + max(dot(N, sunDir), 0.0) * 0.58 + NdUp * 0.12;
+    albedo = skin * mobShade;
 
   // ============================================
-  // FACE TREATMENT
+  // TOP FACE - What QR scanner sees in 2D
   // ============================================
-  var albedo = base;
-  if (blockType == 14) {
-    // The mob gets its own cheap directional shading so its silhouette reads.
-    albedo = base * (0.42 + max(dot(N, sunDir), 0.0) * 0.58 + NdUp * 0.12);
-  } else if (isTop) {
-    // Tops are what a scanner sees in the flat view, so they stay clean: a
-    // warm tint and a soft edge, nothing that muddies the module value.
+
+  } else if (input.faceNy > 0.5) {
     let topWarmTint = vec3f(1.1, 1.08, 1.02);
-    let edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-    let rounded = smoothstep(0.0, 0.1, edgeDist);
-    let edgeDarken = mix(0.9, 1.0, rounded);
-    // The rounding fades out as the view flattens, so the scan target is flat.
-    albedo = base * topWarmTint * mix(edgeDarken, 1.0, uniforms.progress);
-  } else if (isSide) {
-    let sunLight = max(dot(N, sunDir), 0.0);
+
+    if (blockType == 0) {
+      // DIRT/PATH
+      var dirtColor = dirtMid;
+      let t = noise1;
+      if (t < 0.5) {
+        dirtColor = mix(dirtLight, dirtMid, t / 0.5);
+      } else {
+        dirtColor = mix(dirtMid, dirtDark, (t - 0.5) / 0.5);
+      }
+      let shift = (noise2 - 0.5) * 0.1;
+      dirtColor = dirtColor * (1.0 + shift) * treeShadow;
+      albedo = dirtColor * topWarmTint;
+
+    } else if (blockType == 1) {
+      // CHERRY BLOSSOM
+      var cherryColor = sakuraMid;
+      let t = noise1;
+      if (t < 0.33) {
+        cherryColor = mix(sakuraLight, sakuraMid, t / 0.33);
+      } else if (t < 0.66) {
+        cherryColor = mix(sakuraMid, sakuraDeep, (t - 0.33) / 0.33);
+      } else {
+        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
+      }
+      let shift = (noise2 - 0.5) * 0.15;
+      cherryColor = cherryColor * (1.0 + shift);
+
+      // Edge rounding effect (fades in 2D)
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let roundedEdge = smoothstep(0.0, 0.12, edgeDist);
+      let edgeDarken = mix(0.88, 1.0, roundedEdge);
+      let finalEdge = mix(edgeDarken, 1.0, progress);
+
+      albedo = cherryColor * topWarmTint * canopyAO * finalEdge;
+
+    } else if (blockType == 2) {
+      // TRUNK
+      var barkColor = barkMid;
+      let t = noise1;
+      if (t < 0.33) {
+        barkColor = mix(barkLight, barkMid, t / 0.33);
+      } else if (t < 0.66) {
+        barkColor = mix(barkMid, barkDark, (t - 0.33) / 0.33);
+      } else {
+        barkColor = mix(barkDark, barkDeep, (t - 0.66) / 0.34);
+      }
+      let shift = (noise2 - 0.5) * 0.2;
+      barkColor = barkColor * (1.0 + shift);
+
+      let trunkMaxLayer = 12.0;
+      let heightRatio = min(layer / trunkMaxLayer, 1.0);
+      let aoShadow = 0.6 + heightRatio * 0.4;
+
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let cornerDist = length(vec2f(0.5 - abs(uv.x - 0.5), 0.5 - abs(uv.y - 0.5)));
+      let roundedEdge = smoothstep(0.0, 0.18, edgeDist) * smoothstep(0.25, 0.5, cornerDist);
+      let edgeAO = mix(0.55, 1.0, roundedEdge);
+
+      albedo = barkColor * aoShadow * edgeAO * topWarmTint;
+
+    } else if (blockType == 3) {
+      // GRASS
+      let grassBrown = vec3f(0.28, 0.25, 0.12);
+      let grassOlive = vec3f(0.32, 0.35, 0.15);
+
+      var grassColor = grassMid;
+      let t = noise1;
+      if (t < 0.3) {
+        grassColor = mix(grassBright, grassMid, t / 0.3);
+      } else if (t < 0.6) {
+        grassColor = mix(grassMid, grassDark, (t - 0.3) / 0.3);
+      } else if (t < 0.8) {
+        grassColor = mix(grassDark, grassBrown, (t - 0.6) / 0.2);
+      } else {
+        grassColor = mix(grassBrown, grassOlive, (t - 0.8) / 0.2);
+      }
+      let shift = (noise2 - 0.5) * 0.2;
+      grassColor = grassColor * (1.0 + shift);
+      albedo = grassColor * topWarmTint;
+
+    } else {
+      // FALLEN PETALS (type 4)
+      let brownLight = vec3f(0.52, 0.42, 0.30);
+      let brownDark = vec3f(0.42, 0.32, 0.22);
+      let greenLight = vec3f(0.38, 0.48, 0.28);
+      let greenDark = vec3f(0.32, 0.42, 0.24);
+
+      var fallenColor = brownLight;
+      if (noise1 < 0.5) {
+        fallenColor = mix(brownLight, brownDark, noise2);
+      } else {
+        fallenColor = mix(greenLight, greenDark, noise2);
+      }
+      let shift = (noise2 - 0.5) * 0.15;
+      fallenColor = fallenColor * (1.0 + shift) * treeShadow;
+      albedo = fallenColor * topWarmTint;
+    }
+
+  // ============================================
+  // SIDE FACES
+  // ============================================
+
+  } else if (abs(input.faceNz) > 0.5 || abs(input.faceNx) > 0.5) {
+    let faceN = normalize(vec3f(input.faceNx, input.faceNy, input.faceNz));
+    let sunLight = max(dot(faceN, sunDir), 0.0);
     let shade = 0.3 + sunLight * 0.65;
-    let verticalAO = 0.82 + uv.y * 0.18;
-    let edgeDist = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
-    let edgeAO = mix(0.62, 1.0, smoothstep(0.0, 0.13, edgeDist));
-    albedo = base * shade * verticalAO * edgeAO * vec3f(0.95, 0.95, 0.98);
+    let tint = vec3f(0.95, 0.95, 0.98);
+
+    if (blockType == 0) {
+      var dirtColor = dirtMid;
+      let t = noise1;
+      if (t < 0.33) {
+        dirtColor = mix(dirtLight, dirtMid, t / 0.33);
+      } else if (t < 0.66) {
+        dirtColor = mix(dirtMid, dirtDark, (t - 0.33) / 0.33);
+      } else {
+        dirtColor = dirtDark * (1.0 - (t - 0.66) * 0.3);
+      }
+      let shift = (noise2 - 0.5) * 0.2;
+      dirtColor = dirtColor * (1.0 + shift);
+      albedo = dirtColor * shade * tint;
+
+    } else if (blockType == 1) {
+      var cherryColor = sakuraMid;
+      let t = noise1;
+      if (t < 0.33) {
+        cherryColor = mix(sakuraLight, sakuraMid, t / 0.33);
+      } else if (t < 0.66) {
+        cherryColor = mix(sakuraMid, sakuraDeep, (t - 0.33) / 0.33);
+      } else {
+        cherryColor = mix(sakuraDeep, sakuraRich, (t - 0.66) / 0.34);
+      }
+      let shift = (noise2 - 0.5) * 0.25;
+      cherryColor = cherryColor * (1.0 + shift);
+
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let roundedEdge = smoothstep(0.0, 0.12, edgeDist);
+      let edgeDarken = mix(0.7, 1.0, roundedEdge);
+
+      albedo = cherryColor * shade * tint * canopyAO * edgeDarken;
+
+    } else if (blockType == 2) {
+      var barkColor = barkMid;
+      let t = noise1;
+      if (t < 0.33) {
+        barkColor = mix(barkLight, barkMid, t / 0.33);
+      } else if (t < 0.66) {
+        barkColor = mix(barkMid, barkDark, (t - 0.33) / 0.33);
+      } else {
+        barkColor = mix(barkDark, barkDeep, (t - 0.66) / 0.34);
+      }
+      let shift = (noise2 - 0.5) * 0.2;
+      barkColor = barkColor * (1.0 + shift);
+
+      let trunkMaxLayer = 12.0;
+      let heightRatio = min(layer / trunkMaxLayer, 1.0);
+      let aoShadow = 0.55 + heightRatio * 0.45;
+
+      let edgeX = min(uv.x, 1.0 - uv.x);
+      let edgeY = min(uv.y, 1.0 - uv.y);
+      let edgeDist = min(edgeX, edgeY);
+      let roundedEdge = smoothstep(0.0, 0.15, edgeDist);
+      let edgeAO = mix(0.5, 1.0, roundedEdge);
+      let verticalAO = 0.8 + uv.y * 0.2;
+
+      albedo = barkColor * aoShadow * verticalAO * edgeAO * shade * tint;
+
+    } else if (blockType == 3) {
+      let grassBrown = vec3f(0.28, 0.25, 0.12);
+      let grassOlive = vec3f(0.32, 0.35, 0.15);
+
+      var grassColor = grassMid;
+      let t = noise1;
+      if (t < 0.3) {
+        grassColor = mix(grassBright, grassMid, t / 0.3);
+      } else if (t < 0.6) {
+        // Was (t - 0.6) / 0.3 — a negative factor that extrapolated the mix
+        // and made mid-range grass sides read brighter than the top faces.
+        grassColor = mix(grassMid, grassDark, (t - 0.3) / 0.3);
+      } else if (t < 0.8) {
+        grassColor = mix(grassDark, grassBrown, (t - 0.6) / 0.2);
+      } else {
+        grassColor = mix(grassBrown, grassOlive, (t - 0.8) / 0.2);
+      }
+      let shift = (noise2 - 0.5) * 0.2;
+      grassColor = grassColor * (1.0 + shift);
+      albedo = grassColor * shade * tint;
+
+    } else {
+      let fallenBrown = vec3f(0.45, 0.35, 0.26);
+      let fallenGreen = vec3f(0.35, 0.42, 0.24);
+      var fallenColor = mix(fallenBrown, fallenGreen, noise1 * 0.6);
+      let shift = (noise2 - 0.5) * 0.15;
+      fallenColor = fallenColor * (1.0 + shift);
+      albedo = fallenColor * shade * tint;
+    }
+
+  // ============================================
+  // BOTTOM FACE
+  // ============================================
+
   } else {
-    albedo = base * 0.5 * vec3f(0.6, 0.62, 0.7);
+    let bottomTint = vec3f(0.6, 0.62, 0.7);
+    let fallenBottom = vec3f(0.45, 0.42, 0.32);
+
+    if (blockType == 0) {
+      albedo = dirtDark * 0.5 * bottomTint;
+    } else if (blockType == 1) {
+      albedo = sakuraDeep * 0.5 * bottomTint;
+    } else if (blockType == 2) {
+      albedo = barkDark * 0.5 * bottomTint;
+    } else if (blockType == 3) {
+      albedo = grassDark * 0.5 * bottomTint;
+    } else {
+      albedo = fallenBottom * 0.6 * bottomTint;
+    }
   }
 
   // ============================================
   // FINAL LIGHTING & TONEMAPPING
   // ============================================
+
   let diffuse = albedo * (ambient + sunCol * NdSun * 0.65 + skyFill * NdUp * 0.25 + bounce * 0.2);
-  var hdr = diffuse + emissive;
+  var hdr = diffuse;
 
   // ---- Fuse: the creeper flashes white at an accelerating rate ----
-  if (blockType == 14) {
+  if (blockType == 5) {
     let fuse = clamp(uniforms.fuseT, 0.0, 1.0);
     if (fuse > 0.0) {
       let rate = mix(2.2, 15.0, fuse * fuse);
@@ -381,22 +409,25 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   // ---- Aftermath: soot, crater scorch, embers, fireball -----------
   let blastT = uniforms.blastT;
-  if (blastT >= 0.0 && blockType != 14) {
-    // Grid-space distance to the detonation, from the block's ORIGINAL cell --
+  if (blastT >= 0.0 && blockType != 5) {
+    // Grid-space distance to the detonation, from the block's ORIGINAL cell —
     // debris carries the scorch it picked up where it was standing.
-    let bCol = uniforms.blastX / BLOCK + centre;
-    let bRow = uniforms.blastZ / BLOCK + centre;
+    let bCol = uniforms.blastX / BLOCK + gridSize * 0.5;
+    let bRow = uniforms.blastZ / BLOCK + gridSize * 0.5;
     let dGrid = length(vec2f(input.col - bCol, input.row - bRow));
 
     let fade = 1.0 - clamp(uniforms.rebuildT * 1.35, 0.0, 1.0);
-    // Scorch is a property of WHERE a block stood, not of how fast it left.
+    // Scorch is a property of WHERE a block stood, not of how fast it left —
+    // driving it from the impulse painted the whole canopy black as soon as
+    // the blast was strong enough to actually throw the tree.
     let heightFalloff = 1.0 - smoothstep(5.0, 20.0, layer);
     let crater = (1.0 - smoothstep(3.0, 13.0, dGrid)) * heightFalloff;
     let soot = clamp(crater * 0.9, 0.0, 1.0) * fade;
     hdr = mix(hdr, hdr * vec3f(0.17, 0.14, 0.13) + vec3f(0.012, 0.009, 0.008), soot);
 
-    // Embers on a SPARSE set of blocks; glowing every sooted one just washed
-    // the char back out again.
+    // Embers on a SPARSE set of blocks. Glowing every sooted block just added
+    // an orange wash that cancelled the char and left the crater looking
+    // washed out rather than burnt.
     let isEmber = step(0.84, noise3);
     let emberLife = exp(-blastT * 1.15) * fade;
     let flicker = 0.4 + 0.6 * sin(uniforms.time * 11.0 + noise2 * 42.0);

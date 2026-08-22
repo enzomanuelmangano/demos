@@ -8,7 +8,7 @@ export function wgslVec3(c: RGB): string {
 }
 
 /**
- * Common uniform struct used by all shaders. 20 floats / 80 bytes.
+ * Common uniform struct used by all shaders. 16 floats / 64 bytes.
  *
  * The whole creeper + detonation sequence is driven from here — no per-frame
  * CPU work touches the block buffers, so the blast costs nothing beyond the
@@ -21,10 +21,6 @@ export function wgslVec3(c: RGB): string {
  * rebuildT     0..1 as the tree reassembles.
  * creeperAlpha 1 while the mob is on screen, 0 once it is consumed.
  * spawnAngle   which way the creeper walked in from.
- * phoneHalfW/D phone footprint half-extents in cells, and screenLo/Hi the
- *              display's vertical bounds in layers. Passed in so the ground
- *              shadow and the screen artwork come from the real geometry
- *              rather than a formula duplicated in WGSL.
  */
 export const uniformsStruct = /* wgsl */ `
 struct Uniforms {
@@ -41,10 +37,6 @@ struct Uniforms {
   rebuildT: f32,
   creeperAlpha: f32,
   spawnAngle: f32,
-  phoneHalfW: f32,
-  phoneHalfD: f32,
-  screenLo: f32,
-  screenHi: f32,
   _pad0: f32,
   _pad1: f32,
   _pad2: f32,

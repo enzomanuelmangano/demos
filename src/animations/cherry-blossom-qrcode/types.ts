@@ -11,34 +11,19 @@ export interface BlockData {
   types: number[];
   gridSize: number;
   numBlocks: number;
-  // Index of the first creeper voxel. Everything before it is world, so the
+  // Index of the first creeper voxel. Everything before it is tree, so the
   // blast code can tell the bomb from what it is blowing up.
   creeperStart: number;
-  // Phone footprint and screen bounds, handed to the shader so the ground
-  // shadow and the display artwork are derived from the real geometry rather
-  // than from a formula duplicated in WGSL.
-  phoneHalfW: number;
-  phoneHalfD: number;
-  screenLo: number;
-  screenHi: number;
 }
 
+// Block types for the cherry blossom tree
 export enum BlockType {
-  Dirt = 0, // QR light modules - the path
-  Grass = 1, // QR dark modules out on the lawn
-  Cobble = 2, // foundation, chimney, stone accent panel
-  Plaster = 3, // cream wall infill between the timbers
-  Log = 4, // dark timber framing: posts, beams, rafters
-  RoofDark = 5, // roof/deck board standing over a DARK module
-  RoofLight = 6, // roof/deck board standing over a LIGHT module
-  Glass = 7, // windows
-  Door = 8,
-  Planks = 9, // warm wood decking and interior floors
-  Lantern = 10, // hanging lights - emissive
-  Foliage = 11, // planter greenery and lawn bushes
-  PhoneBody = 12, // the handset's frame and bezel
-  Screen = 13, // its display - emissive
-  Creeper = 14, // the mob itself - rigged and animated apart from the world
+  Dirt = 0, // QR light modules - tan/brown path
+  CherryBlossom = 1, // QR dark in canopy - pink leaves
+  Trunk = 2, // QR dark at center - brown trunk
+  Grass = 3, // QR dark outside tree - green ground
+  FallenPetals = 4, // Under canopy decoration
+  Creeper = 5, // The mob itself — rigged and animated apart from the tree
 }
 
 // Which limb a creeper voxel belongs to. Drives the walk rig in the vertex

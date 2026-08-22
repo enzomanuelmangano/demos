@@ -1,13 +1,12 @@
 import { buildCreeperVoxels } from './creeper-model';
 import {
+  CANOPY_OUTER_RADIUS_FACTOR,
   CUBE_HEIGHT,
-  DOCK_TOP,
   GROUND_MASS_BONUS,
   MASS_BY_TYPE,
-  PHONE_DEPTH,
-  PHONE_HEIGHT,
-  PHONE_WIDTH,
-  SCREEN_INSET,
+  MAX_CANOPY_LAYERS,
+  TRUNK_LAYERS,
+  TRUNK_RADIUS,
 } from '../constants';
 import { BlockData, BlockType } from '../types';
 
@@ -21,177 +20,146 @@ function pseudoRandom(col: number, row: number, seed: number = 0): number {
 }
 
 /**
- * Generates 3D block data for a QR code with a phone standing on it.
+ * Generates 3D block data for a cherry blossom tree visualization of a QR code.
  *
- * The QR survives because nothing is allowed to cover a module with the wrong
- * value. On the lawn that is easy. The phone is the exception: its top edge is
- * the highest thing at those cells, so those blocks are typed by the module
- * underneath them, exactly as the roof was. That is only 18 cells here, which
- * is the whole reason for choosing a thin structure - the code stays flat,
- * evenly lit lawn, which is what survives being scanned off a video.
+ * The tree structure maps QR code modules to different block types:
+ * - Light modules become dirt/path (scannable as "light")
+ * - Dark modules become tree parts based on position:
+ *   - Center: trunk
+ *   - Canopy area: cherry blossoms
+ *   - Outside canopy: grass
+ *
+ * Every block also carries a MASS, which is what the detonation reads to
+ * decide how far it flies: petals drift, trunk logs barely shift, and the
+ * ground resists until it is hit hard enough to crater.
  */
 export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const gridSize = qrMatrix.length;
+  const cx = gridSize / 2;
+  const cy = gridSize / 2;
 
   const positions: number[] = [];
   const mass: number[] = [];
   const baseY: number[] = [];
   const types: number[] = [];
 
+  const canopyBaseHeight = TRUNK_LAYERS * CUBE_HEIGHT;
+  const canopyOuterRadius = gridSize * CANOPY_OUTER_RADIUS_FACTOR;
+
   let blockCount = 0;
+
   const push = (
     col: number,
     row: number,
-    layer: number,
+    layerY: number,
     type: BlockType,
     isGround: boolean,
   ) => {
     positions.push(col, row, 0, 0);
-    baseY.push(layer * CUBE_HEIGHT);
+    baseY.push(layerY);
     types.push(type);
     mass.push((MASS_BY_TYPE[type] ?? 1) * (isGround ? GROUND_MASS_BONUS : 1));
     blockCount++;
   };
 
-  // ------------------------------------------------------------------
-  // Ground: the QR itself, one block per module.
-  // ------------------------------------------------------------------
+  // First pass: ground blocks (dirt, grass, trunk base, fallen petals)
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
-      push(
-        col,
-        row,
-        0,
-        qrMatrix[row][col] ? BlockType.Grass : BlockType.Dirt,
-        true,
-      );
-    }
-  }
+      const isQrDark = qrMatrix[row][col];
+      const dx = col - cx;
+      const dy = row - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
 
-  const centreCol = Math.floor(gridSize / 2);
-  const centreRow = Math.floor(gridSize / 2);
-  const halfW = (PHONE_WIDTH - 1) / 2;
-  const colMin = centreCol - halfW;
-  const colMax = centreCol + halfW;
-  // Depth 2: the front row carries the screen, the back row the body.
-  const rowFront = centreRow - 1;
-  const rowBack = rowFront + PHONE_DEPTH - 1;
-
-  const inGrid = (col: number, row: number) =>
-    col >= 0 && col < gridSize && row >= 0 && row < gridSize;
-
-  // Anything that ends up top-most at a cell carries that cell's module.
-  const codedTypeFor = (col: number, row: number) =>
-    qrMatrix[row][col] ? BlockType.RoofDark : BlockType.RoofLight;
-
-  const bodyBottom = DOCK_TOP + 1;
-  const bodyTop = bodyBottom + PHONE_HEIGHT - 1;
-  const screenLo = bodyBottom + SCREEN_INSET;
-  const screenHi = bodyTop - SCREEN_INSET;
-
-  // ------------------------------------------------------------------
-  // Wooden dock. Gives the handset something to stand on and keeps the
-  // silhouette from growing straight out of the grass.
-  // ------------------------------------------------------------------
-  for (let row = rowFront - 1; row <= rowBack + 1; row++) {
-    for (let col = colMin - 1; col <= colMax + 1; col++) {
-      if (!inGrid(col, row)) continue;
-      for (let layer = 1; layer <= DOCK_TOP; layer++) {
-        const edge =
-          col === colMin - 1 ||
-          col === colMax + 1 ||
-          row === rowFront - 1 ||
-          row === rowBack + 1;
-        push(
-          col,
-          row,
-          layer,
-          edge && layer === DOCK_TOP ? BlockType.Log : BlockType.Planks,
-          false,
-        );
+      let type = BlockType.Dirt;
+      if (!isQrDark) {
+        type = BlockType.Dirt;
+      } else if (dist < TRUNK_RADIUS) {
+        type = BlockType.Trunk;
+      } else if (dist >= canopyOuterRadius) {
+        type = BlockType.Grass;
+      } else {
+        type = BlockType.FallenPetals;
       }
+      push(col, row, 0, type, true);
     }
   }
 
-  // A lantern on each end of the dock.
-  for (const col of [colMin - 1, colMax + 1]) {
-    if (inGrid(col, rowFront - 1)) {
-      push(col, rowFront - 1, DOCK_TOP + 1, BlockType.Lantern, false);
-    }
-  }
-
-  // ------------------------------------------------------------------
-  // The handset. Front row is bezel + display, back row is the body.
-  // ------------------------------------------------------------------
-  for (let layer = bodyBottom; layer <= bodyTop; layer++) {
-    for (let col = colMin; col <= colMax; col++) {
-      // The very top course is the highest block at these cells, so it is
-      // typed by the module rather than by the material.
-      const coded = layer === bodyTop;
-
-      if (inGrid(col, rowFront)) {
-        const onBezel =
-          col <= colMin + SCREEN_INSET - 1 ||
-          col >= colMax - SCREEN_INSET + 1 ||
-          layer < screenLo ||
-          layer > screenHi;
-        push(
-          col,
-          rowFront,
-          layer,
-          coded
-            ? codedTypeFor(col, rowFront)
-            : onBezel
-              ? BlockType.PhoneBody
-              : BlockType.Screen,
-          false,
-        );
-      }
-
-      for (let row = rowFront + 1; row <= rowBack; row++) {
-        if (!inGrid(col, row)) continue;
-        push(
-          col,
-          row,
-          layer,
-          coded ? codedTypeFor(col, row) : BlockType.PhoneBody,
-          false,
-        );
-      }
-    }
-  }
-
-  // ------------------------------------------------------------------
-  // Lawn planting. Tufts and shrubs only ever sit on DARK modules, so the
-  // greenery can never disturb the code.
-  // ------------------------------------------------------------------
+  // Second pass: trunk blocks stacked vertically
   for (let row = 0; row < gridSize; row++) {
     for (let col = 0; col < gridSize; col++) {
-      if (!qrMatrix[row][col]) continue;
-      const nearPhone =
-        col >= colMin - 2 &&
-        col <= colMax + 2 &&
-        row >= rowFront - 2 &&
-        row <= rowBack + 2;
-      if (nearPhone) continue;
-      const r = pseudoRandom(col, row, 91);
-      if (r > 0.94) {
-        push(col, row, 1, BlockType.Foliage, false);
-      } else if (r > 0.88) {
-        push(col, row, 1, BlockType.Grass, false);
+      const isQrDark = qrMatrix[row][col];
+      if (!isQrDark) continue;
+
+      const dx = col - cx;
+      const dy = row - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < TRUNK_RADIUS) {
+        // Stack trunk blocks (skip layer 0, already added in first pass)
+        for (let layer = 1; layer < TRUNK_LAYERS; layer++) {
+          push(col, row, layer * CUBE_HEIGHT, BlockType.Trunk, false);
+        }
       }
     }
   }
 
-  // ------------------------------------------------------------------
-  // The creeper. Same buffers as the world, tagged so the vertex shader can
-  // rig it; local model coords go in positions.xy/baseY, limb in positions.z.
-  // ------------------------------------------------------------------
+  // Third pass: canopy foliage with dome shape
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const isQrDark = qrMatrix[row][col];
+      if (!isQrDark) continue;
+
+      const dx = col - cx;
+      const dy = row - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      if (dist < canopyOuterRadius) {
+        // t = 1 at center, 0 at edge
+        const t = 1 - dist / canopyOuterRadius;
+
+        // Dome shape: more layers near center, fewer at edges
+        const layersHere = Math.max(
+          3,
+          Math.round(MAX_CANOPY_LAYERS * (0.25 + 0.75 * t * t)),
+        );
+
+        // Stack cubic blocks vertically
+        for (let layer = 0; layer < layersHere; layer++) {
+          const layerY = canopyBaseHeight + layer * CUBE_HEIGHT;
+          // Slight dome curve - center is higher
+          const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
+          push(col, row, layerY + domeOffset, BlockType.CherryBlossom, false);
+        }
+
+        // Add random extra blocks on top for organic look
+        const extraCount = Math.floor(pseudoRandom(col, row, 500) * 4);
+        for (let e = 0; e < extraCount; e++) {
+          const extraLayer = layersHere + e;
+          const domeOffset = Math.floor(t * 3) * CUBE_HEIGHT;
+          push(
+            col,
+            row,
+            canopyBaseHeight + extraLayer * CUBE_HEIGHT + domeOffset,
+            BlockType.CherryBlossom,
+            false,
+          );
+        }
+      }
+    }
+  }
+
+  // Fourth pass: the creeper. Its voxels live in the same buffers as the tree
+  // so there is still exactly one draw call, but they are tagged BlockType.
+  // Creeper and carry their limb id, which the vertex shader uses to rig the
+  // walk. Local model coords go in positions.xy/baseY; positions.z is the
+  // limb.
   const creeperStart = blockCount;
   for (const voxel of buildCreeperVoxels()) {
     positions.push(voxel.x, voxel.z, voxel.part, 1);
     baseY.push(voxel.y * CUBE_HEIGHT);
     types.push(BlockType.Creeper);
+    // Gunpowder: the mob is consumed by its own blast, so mass is irrelevant
+    // — it is flagged here only for completeness.
     mass.push(1);
     blockCount++;
   }
@@ -204,9 +172,5 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
     gridSize,
     numBlocks: blockCount,
     creeperStart,
-    phoneHalfW: halfW,
-    phoneHalfD: PHONE_DEPTH / 2,
-    screenLo,
-    screenHi,
   };
 }

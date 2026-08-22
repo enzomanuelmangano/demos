@@ -41,7 +41,7 @@ const CREEPER_STAND_DISTANCE = 8;
 // Whole sequence: walk in, fuse, blast, debris settles, tree reassembles.
 const SEQUENCE_DURATION = CREEPER_TOTAL + DEBRIS_SETTLE + REBUILD_DURATION;
 
-const UNIFORM_FLOATS = 20;
+const UNIFORM_FLOATS = 16;
 
 interface UseWebGPUOptions {
   canvasRef: React.RefObject<CanvasRef | null>;
@@ -75,20 +75,9 @@ export function useWebGPU({
   const posBufferRef = useRef<GPUBuffer | null>(null);
   const massBufferRef = useRef<GPUBuffer | null>(null);
   const baseYBufferRef = useRef<GPUBuffer | null>(null);
-  const blockDataRef = useRef<{
-    numBlocks: number;
-    gridSize: number;
-    phoneHalfW: number;
-    phoneHalfD: number;
-    screenLo: number;
-    screenHi: number;
-  }>({
+  const blockDataRef = useRef<{ numBlocks: number; gridSize: number }>({
     numBlocks: 0,
     gridSize: 0,
-    phoneHalfW: 0,
-    phoneHalfD: 0,
-    screenLo: 0,
-    screenHi: 0,
   });
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
@@ -148,10 +137,6 @@ export function useWebGPU({
     blockDataRef.current = {
       numBlocks: blockData.numBlocks,
       gridSize: blockData.gridSize,
-      phoneHalfW: blockData.phoneHalfW,
-      phoneHalfD: blockData.phoneHalfD,
-      screenLo: blockData.screenLo,
-      screenHi: blockData.screenHi,
     };
   }, [qrContent]);
 
@@ -181,10 +166,6 @@ export function useWebGPU({
     blockDataRef.current = {
       numBlocks: blockData.numBlocks,
       gridSize: blockData.gridSize,
-      phoneHalfW: blockData.phoneHalfW,
-      phoneHalfD: blockData.phoneHalfD,
-      screenLo: blockData.screenLo,
-      screenHi: blockData.screenHi,
     };
 
     // Create buffers
@@ -352,14 +333,7 @@ export function useWebGPU({
       progressRef.current = easeInOutCubic(rawProgressRef.current);
 
       const time = (now - startTimeRef.current) / 1000;
-      const {
-        numBlocks,
-        gridSize,
-        phoneHalfW,
-        phoneHalfD,
-        screenLo,
-        screenHi,
-      } = blockDataRef.current;
+      const { numBlocks, gridSize } = blockDataRef.current;
 
       // ---- Creeper timeline ------------------------------------------
       let creeperT = -1;
@@ -417,10 +391,6 @@ export function useWebGPU({
       uniformData[10] = rebuildT;
       uniformData[11] = creeperAlpha;
       uniformData[12] = spawnAngleRef.current;
-      uniformData[13] = phoneHalfW;
-      uniformData[14] = phoneHalfD;
-      uniformData[15] = screenLo;
-      uniformData[16] = screenHi;
       device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
       // Render

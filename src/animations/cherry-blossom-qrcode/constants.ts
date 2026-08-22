@@ -6,10 +6,18 @@ export const COLORS = {
 export const CONTAINER_BG = COLORS.background;
 export const DEFAULT_QR_CONTENT = 'https://enzo.fyi';
 
-// Promo target. Paste the real invite code in here and pass it as the QR
-// content to point the scene at the beta; left off the default so a shipped
-// build never renders a dead TestFlight link.
-export const TESTFLIGHT_URL = 'https://testflight.apple.com/join/XXXXXXXX';
+// If this scene is ever pointed at a TestFlight invite, use a SHORT redirect
+// (enzo.fyi/beta -> testflight.apple.com/join/...) rather than the invite URL
+// itself. A 42-character TestFlight link pushes the symbol from 25x25 to
+// 29x29, and the canopy - which is what encodes the dark modules - is a
+// weaker contrast pair than flat ground. Decoding the flat view after a
+// downscale and JPEG q45:
+//
+//   scale                      1.0    0.6    0.45   0.3
+//   short link   (25x25)       ok     ok     ok     ok
+//   TestFlight URL (29x29)     fail   fail   ok     fail
+//
+// The redirect costs nothing and keeps the code readable off a video.
 
 // Color palette for lighting
 export const PALETTE = {
@@ -24,17 +32,11 @@ export const PALETTE = {
 export const BLOCK_SIZE = 0.0245;
 export const CUBE_HEIGHT = BLOCK_SIZE;
 
-// The phone, in blocks. Deliberately thin: every cell the structure covers is
-// a cell the QR has to encode on a sloped, shaded top surface instead of flat
-// lawn, and this code exists to be scanned off a video. A 9x2 footprint costs
-// about 3% of the symbol where the cottage cost 30%.
-export const PHONE_WIDTH = 9;
-export const PHONE_DEPTH = 2;
-export const PHONE_HEIGHT = 19;
-// It stands on a low wooden dock rather than growing out of the grass.
-export const DOCK_TOP = 2;
-// Screen inset from the body edge, in cells - the bezel.
-export const SCREEN_INSET = 1;
+// Tree structure parameters
+export const TRUNK_RADIUS = 2.5;
+export const TRUNK_LAYERS = 12;
+export const MAX_CANOPY_LAYERS = 12;
+export const CANOPY_OUTER_RADIUS_FACTOR = 0.46;
 
 // Grid limits
 export const MAX_GRID_SIZE = 41;
@@ -73,12 +75,10 @@ export const CREEPER_WALK_DURATION = 3.2;
 export const CREEPER_FUSE_DURATION = 1.8;
 export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
 
-// The mob walks in along the door's axis, so it ends up on the porch step
-// rather than wandering to a blank corner. Yaw 0 means "facing +z", which is
-// the wall the door is in; the spread keeps two runs from looking identical
-// without ever putting the creeper behind the house.
-export const CREEPER_APPROACH_YAW = 0;
-export const CREEPER_APPROACH_SPREAD = 0.5;
+// The mob approaches from the camera side (yaw around -PI/4) so the canopy
+// never hides the one thing the whole sequence is about.
+export const CREEPER_APPROACH_YAW = -Math.PI / 4;
+export const CREEPER_APPROACH_SPREAD = 1.0;
 // Stride frequency (steps/sec) and how far the legs swing.
 export const CREEPER_STEP_RATE = 3.1;
 export const CREEPER_LEG_SWING = 0.62;
@@ -100,25 +100,11 @@ export const BLAST_REACH_TREE = 15.0;
 export const BLAST_UP_BIAS = 0.95;
 export const BLAST_RESTITUTION = 0.3;
 export const BLAST_FRICTION = 0.35;
-// Per-type mass, indexed by BlockType. Glass shatters and flies, cobble
-// foundations barely notice, and the creeper's entry is never read.
-export const MASS_BY_TYPE: readonly number[] = [
-  1.0, // Dirt
-  1.05, // Grass
-  2.0, // Cobble
-  0.95, // Plaster
-  1.6, // Log
-  1.2, // RoofDark
-  1.2, // RoofLight
-  0.5, // Glass
-  1.15, // Door
-  1.1, // Planks
-  0.6, // Lantern
-  0.45, // Foliage
-  1.7, // PhoneBody
-  0.8, // Screen
-  1, // Creeper
-];
+// Per-type mass, indexed by BlockType. Petals barely weigh anything, trunk
+// logs resist the blast. The creeper's entry is never read — it is the bomb.
+export const MASS_BY_TYPE: readonly number[] = [1.0, 0.6, 1.3, 1.05, 0.5, 1];
+// Ground blocks are part of a continuous surface — they need a real hit to
+// break loose, which is what carves a crater instead of stripping the lawn.
 export const GROUND_MASS_BONUS = 1.5;
 
 // Timeline after detonation.
