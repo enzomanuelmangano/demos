@@ -22,17 +22,33 @@ export const CUBE_HEIGHT = BLOCK_SIZE;
 // House dimensions, in blocks. Width and depth are derived from the grid so
 // the building keeps its proportions whatever QR version the URL produces,
 // and both are forced ODD so the gable has a true centre ridge.
-export const HOUSE_WIDTH_FACTOR = 0.44;
-export const HOUSE_DEPTH_FACTOR = 0.36;
-export const HOUSE_MIN_WIDTH = 7;
-export const HOUSE_MAX_WIDTH = 15;
-export const HOUSE_MIN_DEPTH = 5;
+export const HOUSE_WIDTH_FACTOR = 0.5;
+export const HOUSE_DEPTH_FACTOR = 0.42;
+export const HOUSE_MIN_WIDTH = 9;
+export const HOUSE_MAX_WIDTH = 17;
+export const HOUSE_MIN_DEPTH = 7;
 export const HOUSE_MAX_DEPTH = 13;
-// Vertical layout: cobble foundation, plank walls, then the gable.
-export const FOUNDATION_TOP = 2;
-export const WALL_TOP = 9;
-export const ROOF_BASE = 10;
+
+// Vertical layout, course by course. Two storeys of timber framing over a
+// cobble footing, then the gable.
+export const FOUNDATION_TOP = 2; // y1..y2 cobble
+export const GROUND_TOP = 5; // y3..y5 lower storey
+export const MID_BAND = 6; // y6 log band at the upper floor line
+export const UPPER_TOP = 9; // y7..y9 upper storey
+export const WALL_TOP = 10; // y10 log top plate
+export const ROOF_BASE = 11; // gable starts here
 export const CHIMNEY_RISE = 3;
+// Window courses within each storey.
+export const GROUND_WINDOW_LO = 4;
+export const GROUND_WINDOW_HI = 5;
+export const UPPER_WINDOW_LO = 8;
+export const UPPER_WINDOW_HI = 9;
+// A log post every this many cells along a wall, between the corners.
+export const POST_SPACING = 4;
+// Covered porch depth, in cells, in front of the door.
+export const PORCH_DEPTH = 2;
+export const PORCH_HALF_WIDTH = 2;
+export const PORCH_ROOF_Y = 7;
 
 // Grid limits
 export const MAX_GRID_SIZE = 41;
@@ -71,10 +87,12 @@ export const CREEPER_WALK_DURATION = 3.2;
 export const CREEPER_FUSE_DURATION = 1.8;
 export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
 
-// The mob approaches from the camera side (yaw around -PI/4) so the canopy
-// never hides the one thing the whole sequence is about.
-export const CREEPER_APPROACH_YAW = -Math.PI / 4;
-export const CREEPER_APPROACH_SPREAD = 1.0;
+// The mob walks in along the door's axis, so it ends up on the porch step
+// rather than wandering to a blank corner. Yaw 0 means "facing +z", which is
+// the wall the door is in; the spread keeps two runs from looking identical
+// without ever putting the creeper behind the house.
+export const CREEPER_APPROACH_YAW = 0;
+export const CREEPER_APPROACH_SPREAD = 0.5;
 // Stride frequency (steps/sec) and how far the legs swing.
 export const CREEPER_STEP_RATE = 3.1;
 export const CREEPER_LEG_SWING = 0.62;

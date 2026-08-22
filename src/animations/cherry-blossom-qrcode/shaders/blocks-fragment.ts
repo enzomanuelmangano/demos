@@ -87,6 +87,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // MATERIALS
   // ============================================
   var base = vec3f(0.5);
+  // Light the window panes emit on their own, so a lit room survives the
+  // face shading that would otherwise dim it to nothing.
+  var emissive = vec3f(0.0);
+  // Set on the creeper's face pixels so the fuse strobe cannot white them out.
+  var creeperFace = 0.0;
 
   if (blockType == 0) {
     // DIRT PATH - the QR's LIGHT modules. Stays bright: this is half of the
@@ -165,14 +170,32 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     base = c * (1.0 - course * 0.14);
 
   } else if (blockType == 7) {
-    // GLASS - windows. Bright, cool, with a mullion cross.
-    let pane = vec3f(0.74, 0.86, 0.90);
-    let frame = vec3f(0.86, 0.84, 0.78);
-    let cross = max(seam(uv.x, 0.5, 0.06), seam(uv.y, 0.5, 0.06));
-    let edge = 1.0 - smoothstep(0.0, 0.1, min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)));
-    base = mix(pane, frame, max(cross, edge));
-    // A faint sky reflection so glass does not read as flat paint.
-    base = base + vec3f(0.05, 0.07, 0.09) * (1.0 - uv.y);
+    // GLASS - a proper window: four panes in a white frame, cool sky at the
+    // top, a warm room behind the bottom, and one specular streak. Opaque,
+    // because sorted transparency would cost a second pass, but it reads as
+    // glass because of the gradient and the highlight rather than alpha.
+    let paneTop = vec3f(0.46, 0.62, 0.74);
+    let paneBottom = vec3f(0.72, 0.82, 0.88);
+    var c = mix(paneTop, paneBottom, smoothstep(0.15, 0.95, uv.y));
+
+    // Warm interior light, strongest low in the pane where a room would be.
+    let roomLight = smoothstep(0.95, 0.0, uv.y);
+    let warm = vec3f(1.0, 0.66, 0.30);
+    c = mix(c, warm, roomLight * 0.55);
+    emissive = warm * roomLight * 0.62;
+
+    // Specular streak across the glass.
+    let streak = smoothstep(0.07, 0.0, abs((uv.x * 0.75 + uv.y * 0.65) - 0.78));
+    c += vec3f(0.22, 0.24, 0.26) * streak;
+
+    // Mullions: a 2x2 grid plus the outer frame.
+    let gx = abs(fract(uv.x * 2.0) - 0.5);
+    let gy = abs(fract(uv.y * 2.0) - 0.5);
+    let mullion = max(smoothstep(0.40, 0.5, gx), smoothstep(0.40, 0.5, gy));
+    let border = 1.0 - smoothstep(0.0, 0.1, min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y)));
+    let frame = max(mullion, border);
+    base = mix(c, vec3f(0.94, 0.93, 0.89), frame * 0.92);
+    emissive = emissive * (1.0 - frame);
 
   } else if (blockType == 8) {
     // DOOR - dark oak with a vertical joint and a handle.
@@ -207,7 +230,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
         faceRect(p, 2.0, 5.0, 6.0, 6.0) ||
         faceRect(p, 2.0, 6.0, 3.0, 7.0) ||
         faceRect(p, 5.0, 6.0, 6.0, 7.0);
-      if (isFace) { skin = vec3f(0.02, 0.03, 0.02); }
+      if (isFace) { skin = vec3f(0.02, 0.03, 0.02); creeperFace = 1.0; }
     }
     base = skin;
   }
@@ -243,7 +266,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // FINAL LIGHTING & TONEMAPPING
   // ============================================
   let diffuse = albedo * (ambient + sunCol * NdSun * 0.65 + skyFill * NdUp * 0.25 + bounce * 0.2);
-  var hdr = diffuse;
+  var hdr = diffuse + emissive;
 
   // ---- Fuse: the creeper flashes white at an accelerating rate ----
   if (blockType == 9) {
@@ -251,7 +274,11 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     if (fuse > 0.0) {
       let rate = mix(2.2, 15.0, fuse * fuse);
       let strobe = step(0.5, fract(uniforms.time * rate));
-      hdr = mix(hdr, vec3f(1.45), strobe * smoothstep(0.02, 0.85, fuse) * 0.9);
+      // Hold back on the face and keep the flash under full white, so the mob
+      // still has a silhouette at the moment it matters most. Blowing it out
+      // to a featureless slab loses the one frame everybody screenshots.
+      let flash = strobe * smoothstep(0.02, 0.85, fuse) * 0.62 * (1.0 - creeperFace * 0.85);
+      hdr = mix(hdr, vec3f(1.25, 1.24, 1.18), flash);
     }
   }
 

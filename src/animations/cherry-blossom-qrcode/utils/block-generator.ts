@@ -3,6 +3,8 @@ import {
   CHIMNEY_RISE,
   CUBE_HEIGHT,
   FOUNDATION_TOP,
+  GROUND_WINDOW_HI,
+  GROUND_WINDOW_LO,
   GROUND_MASS_BONUS,
   HOUSE_DEPTH_FACTOR,
   HOUSE_MAX_DEPTH,
@@ -11,7 +13,14 @@ import {
   HOUSE_MIN_WIDTH,
   HOUSE_WIDTH_FACTOR,
   MASS_BY_TYPE,
+  MID_BAND,
+  PORCH_DEPTH,
+  PORCH_HALF_WIDTH,
+  PORCH_ROOF_Y,
+  POST_SPACING,
   ROOF_BASE,
+  UPPER_WINDOW_HI,
+  UPPER_WINDOW_LO,
   WALL_TOP,
 } from '../constants';
 import { BlockData, BlockType } from '../types';
@@ -101,6 +110,12 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const inGrid = (col: number, row: number) =>
     col >= 0 && col < gridSize && row >= 0 && row < gridSize;
 
+  // ANY block that ends up being the top-most one at a cell has to carry that
+  // cell's module, or the code stops reading from above. Roof, porch roof and
+  // chimney cap all go through here.
+  const roofTypeFor = (col: number, row: number) =>
+    qrMatrix[row][col] ? BlockType.RoofDark : BlockType.RoofLight;
+
   // The gable ridge runs along the width, so height rises towards the middle
   // row and the triangles land on the two width-ends.
   const roofYAt = (row: number) => {
@@ -118,7 +133,8 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   const doorRow = rowMin;
 
   // ------------------------------------------------------------------
-  // Walls: cobble footing, plank infill, log posts and a top plate.
+  // Walls: cobble footing, two storeys of plank infill between log posts and
+  // bands, generous window bays, and a log top plate.
   // ------------------------------------------------------------------
   for (let row = rowMin; row <= rowMax; row++) {
     for (let col = colMin; col <= colMax; col++) {
@@ -127,39 +143,50 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       if (!onPerimeter || !inGrid(col, row)) continue;
 
       const corner = isCorner(col, row);
-      for (let layer = 1; layer <= WALL_TOP; layer++) {
-        // Door: a two-block opening in the front wall.
-        if (
-          col === doorCol &&
-          row === doorRow &&
-          (layer === 3 || layer === 4)
-        ) {
-          push(col, row, layer, BlockType.Door, false);
-          continue;
-        }
+      // Distance along this wall, measured from its corner, so posts and
+      // window bays line up on every face.
+      const alongWidth = row === rowMin || row === rowMax;
+      const bay = alongWidth ? col - colMin : row - rowMin;
+      const bayCount = alongWidth ? width : depth;
+      const isPost = !corner && bay % POST_SPACING === 0;
+      const isDoorColumn = col === doorCol && row === doorRow;
 
+      for (let layer = 1; layer <= WALL_TOP; layer++) {
         if (layer <= FOUNDATION_TOP) {
           push(col, row, layer, BlockType.Cobble, false);
           continue;
         }
 
-        // Corner posts run full height; the top course is a log plate, which
-        // is what gives the reference build its timber-framed look.
-        if (corner || layer === WALL_TOP) {
+        // Timber: corners and posts run full height, bands cap each storey.
+        if (corner || isPost || layer === MID_BAND || layer === WALL_TOP) {
           push(col, row, layer, BlockType.Log, false);
           continue;
         }
 
-        // Windows: every other bay, clear of the corners and the doorway.
-        const alongWidth = row === rowMin || row === rowMax;
-        const bay = alongWidth ? col - colMin : row - rowMin;
-        const nearDoor = col === doorCol && row === doorRow;
+        if (isDoorColumn) {
+          // Door, with a glass transom over it.
+          if (layer === 3 || layer === 4) {
+            push(col, row, layer, BlockType.Door, false);
+          } else if (layer === GROUND_WINDOW_HI) {
+            push(col, row, layer, BlockType.Glass, false);
+          } else {
+            push(col, row, layer, BlockType.Planks, false);
+          }
+          continue;
+        }
+
+        // Window bays: two glazed cells, then a plank pier, repeating. Never
+        // against a corner, so the frame always reads as structure.
+        const bayPhase = bay % POST_SPACING;
+        const glazedBay = bayPhase === 1 || bayPhase === 2;
+        const clearOfCorners = bay > 0 && bay < bayCount - 1;
+        const inGroundBand =
+          layer >= GROUND_WINDOW_LO && layer <= GROUND_WINDOW_HI;
+        const inUpperBand =
+          layer >= UPPER_WINDOW_LO && layer <= UPPER_WINDOW_HI;
         const isWindow =
-          !nearDoor &&
-          (layer === 5 || layer === 6 || layer === 7) &&
-          bay % 2 === 1 &&
-          bay > 0 &&
-          bay < (alongWidth ? width : depth) - 1;
+          glazedBay && clearOfCorners && (inGroundBand || inUpperBand);
+
         push(
           col,
           row,
@@ -170,20 +197,54 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       }
 
       // Gable infill: the width-ends rise with the roof, otherwise the
-      // building is open to the sky from the side.
+      // building is open to the sky from the side. A window in each gable.
       if (col === colMin || col === colMax) {
         for (let layer = WALL_TOP + 1; layer < roofYAt(row); layer++) {
-          push(col, row, layer, BlockType.Planks, false);
+          const gableWindow =
+            layer === WALL_TOP + 2 && Math.abs(row - centreRow) <= 1;
+          push(
+            col,
+            row,
+            layer,
+            gableWindow ? BlockType.Glass : BlockType.Planks,
+            false,
+          );
         }
       }
     }
   }
 
-  // Interior floor, one course above the footing. Hidden by the roof, but it
-  // stops the inside reading as a hole once the blast opens a wall.
+  // Interior floors. Hidden by the roof, but they stop the inside reading as
+  // an empty shell once the blast opens a wall.
   for (let row = rowMin + 1; row < rowMax; row++) {
     for (let col = colMin + 1; col < colMax; col++) {
-      if (inGrid(col, row)) push(col, row, 1, BlockType.Planks, false);
+      if (!inGrid(col, row)) continue;
+      push(col, row, 1, BlockType.Planks, false);
+      push(col, row, MID_BAND, BlockType.Planks, false);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Covered porch in front of the door: plank deck, log pillars, its own
+  // little roof. Gives the silhouette some depth instead of a flat box.
+  // ------------------------------------------------------------------
+  const porchRowFar = rowMin - PORCH_DEPTH;
+  for (let row = porchRowFar; row <= rowMin - 1; row++) {
+    for (
+      let col = doorCol - PORCH_HALF_WIDTH;
+      col <= doorCol + PORCH_HALF_WIDTH;
+      col++
+    ) {
+      if (!inGrid(col, row)) continue;
+      push(col, row, 1, BlockType.Planks, false);
+      const isPillar =
+        row === porchRowFar && Math.abs(col - doorCol) === PORCH_HALF_WIDTH;
+      if (isPillar) {
+        for (let layer = 2; layer < PORCH_ROOF_Y; layer++) {
+          push(col, row, layer, BlockType.Log, false);
+        }
+      }
+      push(col, row, PORCH_ROOF_Y, roofTypeFor(col, row), false);
     }
   }
 
@@ -194,34 +255,39 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   for (let row = rowMin - 1; row <= rowMax + 1; row++) {
     for (let col = colMin - 1; col <= colMax + 1; col++) {
       if (!inGrid(col, row)) continue;
-      const dark = qrMatrix[row][col];
-      push(
-        col,
-        row,
-        roofYAt(row),
-        dark ? BlockType.RoofDark : BlockType.RoofLight,
-        false,
-      );
+      push(col, row, roofYAt(row), roofTypeFor(col, row), false);
     }
   }
 
+  // Ridge beam along the top of the gable.
+  const ridgeRow = centreRow;
+  for (let col = colMin - 1; col <= colMax + 1; col++) {
+    if (!inGrid(col, ridgeRow)) continue;
+    push(
+      col,
+      ridgeRow,
+      roofYAt(ridgeRow) + 1,
+      roofTypeFor(col, ridgeRow),
+      false,
+    );
+  }
+
   // ------------------------------------------------------------------
-  // Chimney, rising out of the roof. Its cap is typed by the module too, so
-  // even this one column does not punch a hole in the code.
+  // Exterior chimney against the gable end, like the reference build. Its
+  // cap is typed by the module too, so even this column keeps the code.
   // ------------------------------------------------------------------
-  const chimneyCol = colMin + 1;
+  const chimneyCol = colMin - 1;
   const chimneyRow = centreRow;
   if (inGrid(chimneyCol, chimneyRow)) {
     const top = roofYAt(chimneyRow) + CHIMNEY_RISE;
     for (let layer = 1; layer < top; layer++) {
       push(chimneyCol, chimneyRow, layer, BlockType.Cobble, false);
     }
-    const dark = qrMatrix[chimneyRow][chimneyCol];
     push(
       chimneyCol,
       chimneyRow,
       top,
-      dark ? BlockType.RoofDark : BlockType.RoofLight,
+      roofTypeFor(chimneyCol, chimneyRow),
       false,
     );
   }
@@ -236,7 +302,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
       const insideHouse =
         col >= colMin - 1 &&
         col <= colMax + 1 &&
-        row >= rowMin - 1 &&
+        row >= rowMin - PORCH_DEPTH &&
         row <= rowMax + 1;
       if (insideHouse) continue;
       if (pseudoRandom(col, row, 91) > 0.9) {
