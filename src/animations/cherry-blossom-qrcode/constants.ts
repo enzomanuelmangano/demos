@@ -132,14 +132,20 @@ export const DEBRIS_FADE_START = 0.85;
 export const DEBRIS_FADE_SPREAD = 0.55;
 export const DEBRIS_FADE_DURATION = 0.5;
 
-// The particle ball: how far it swells, and how long it hangs.
-export const SMOKE_RADIUS = 21.0;
-export const SMOKE_DURATION = 1.6;
-// The fireball: short, hot and local. A white flash is useless here because
-// the background is already near-white - the heat has to be a warm colour at
-// the blast itself to read at all.
-export const FIREBALL_RADIUS = 11.0;
-export const FIREBALL_DURATION = 0.32;
+// The particle poof. Sized off vanilla rather than off taste: a normal
+// creeper uses the small `explosion` particle, while `explosion_emitter` -
+// the big multi-particle ball - is reserved for TNT and CHARGED creepers. And
+// explosions carried no smoke particles at all between 1.15 and 1.21.9, so a
+// lingering cloud is not what a creeper looks like in most of the game's
+// modern history. Small, sparse and brief.
+export const SMOKE_RADIUS = 13.0;
+export const SMOKE_DURATION = 0.75;
+// Vanilla's explosion particle is a white-grey poof with no fire in it at
+// all; the orange fireball everyone pictures comes from shaders and mods.
+// Kept only as a small, very brief warm core for punch - a white flash would
+// be invisible against this near-white background.
+export const FIREBALL_RADIUS = 5.5;
+export const FIREBALL_DURATION = 0.16;
 
 // Timeline after detonation.
 export const DEBRIS_SETTLE = 2.6;

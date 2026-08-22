@@ -84,7 +84,9 @@ ${shaderUtils}
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
 
-const PUFFS = 20;
+// Nine, not twenty. Vanilla's poof is a handful of discrete puffs, not a
+// dense volume - the previous cloud read as fog rather than as an explosion.
+const PUFFS = 9;
 
 @fragment
 fn main(
@@ -124,7 +126,7 @@ fn main(
     // Puffs sit at varied distances and drift upward as they age, the way
     // the emitter's particles do.
     let off = dir * r * (0.15 + 0.85 * h.z) + vec2f(0.0, t * 0.035 * ar);
-    let pr = r * (0.30 + 0.30 * fract(h.x * 7.7));
+    let pr = r * (0.26 + 0.26 * fract(h.x * 7.7));
     let d = length(q - off);
     let c = smoothstep(pr, pr * 0.25, d);
     if (c > cover) { cover = c; shade = fract(h.y * 13.1); }
@@ -134,9 +136,9 @@ fn main(
   // blue sky. This scene's background is #f7f7f7, so a white ball is simply
   // invisible - the value has to come down for the smoke to read at all,
   // with per-puff variation so it billows instead of reading as flat fog.
-  let grey = mix(0.50, 0.72, shade);
+  let grey = mix(0.58, 0.80, shade);
   var col = vec3f(grey, grey * 0.99, grey * 0.97);
-  var a = clamp(cover * fade * 0.92, 0.0, 1.0);
+  var a = clamp(cover * fade * 0.52, 0.0, 1.0);
 
   // Fireball: hot, local and brief. This is what gives the frame its punch,
   // and it has to be a warm colour rather than a white flash, because a white
@@ -147,8 +149,8 @@ fn main(
     let core = smoothstep(fr, fr * 0.15, length(q));
     let heat = core * (1.0 - fireT) * (1.0 - fireT);
     let fireCol = mix(vec3f(1.0, 0.42, 0.06), vec3f(1.0, 0.93, 0.62), 1.0 - fireT);
-    col = mix(col, fireCol, clamp(heat * 1.6, 0.0, 1.0));
-    a = clamp(a + heat * 0.95, 0.0, 1.0);
+    col = mix(col, fireCol, clamp(heat * 1.5, 0.0, 1.0));
+    a = clamp(a + heat * 0.8, 0.0, 1.0);
   }
 
   return vec4f(col * a, a);
