@@ -129,14 +129,17 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     base = c * (1.0 - pit * 0.18) * (1.0 + (noise2 - 0.5) * 0.12);
 
   } else if (blockType == 3) {
-    // OAK PLANKS - walls. Horizontal seams read as boards.
-    let plankLight = vec3f(0.70, 0.54, 0.33);
-    let plankMid = vec3f(0.62, 0.47, 0.28);
-    let plankDark = vec3f(0.54, 0.40, 0.23);
-    var c = mix(plankMid, plankLight, noise1);
-    c = mix(c, plankDark, step(0.78, noise2) * 0.7);
-    let board = max(seam(uv.y, 0.34, 0.035), seam(uv.y, 0.68, 0.035));
-    base = c * (1.0 - board * 0.3) * (1.0 + (noise3 - 0.5) * 0.08);
+    // PLASTER infill. The half-timbered look lives on this contrast: cream
+    // panels held in a dark timber frame. Oak planks against oak posts read
+    // as brown-on-brown mush at this size.
+    let plasterLight = vec3f(0.95, 0.93, 0.88);
+    let plasterMid = vec3f(0.90, 0.87, 0.81);
+    let plasterDark = vec3f(0.83, 0.80, 0.73);
+    var c = mix(plasterMid, plasterLight, noise1);
+    c = mix(c, plasterDark, step(0.82, noise2) * 0.7);
+    // Faint trowel mottle so it is not a flat fill.
+    let mottle = fract(sin(dot(floor(uv * 4.0), vec2f(23.7, 91.3))) * 2571.3);
+    base = c * (0.96 + mottle * 0.06);
 
   } else if (blockType == 4) {
     // OAK LOG - corner posts and the top plate. Vertical grain, darker.
@@ -149,25 +152,27 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     base = c * (1.0 - grain * 0.22);
 
   } else if (blockType == 5) {
-    // ROOF over a DARK module: blue-slate shingle. Together with type 6 this
-    // is what lets a solid roof sit on a QR without erasing it -- but the
-    // pattern is random, so both tiles carry the SAME directional course
-    // shadow. That banding is what makes the roof read as one shingled
-    // surface instead of scattered confetti.
-    let slateLight = vec3f(0.19, 0.20, 0.25);
-    let slateMid = vec3f(0.13, 0.14, 0.18);
-    let slateDark = vec3f(0.08, 0.09, 0.12);
-    var c = mix(slateMid, slateLight, noise1);
-    c = mix(c, slateDark, step(0.72, noise2) * 0.8);
+    // ROOF/DECK board over a DARK module: dark timber. Together with type 6
+    // this is what lets a solid roof sit on a QR without erasing it, and in
+    // this palette the pair reads as a two-tone wooden roof rather than as a
+    // pattern imposed on one.
+    let darkLight = vec3f(0.36, 0.24, 0.13);
+    let darkMid = vec3f(0.29, 0.19, 0.10);
+    let darkDeep = vec3f(0.22, 0.14, 0.07);
+    var c = mix(darkMid, darkLight, noise1);
+    c = mix(c, darkDeep, step(0.72, noise2) * 0.8);
+    // Both roof tiles carry the SAME course shadow, which is what makes a
+    // random pattern read as one shingled plane.
     base = c * (1.0 - smoothstep(0.26, 0.0, uv.y) * 0.34);
 
   } else if (blockType == 6) {
-    // ROOF over a LIGHT module: weathered pale timber. Warmed off white so
-    // the pair reads as a two-tone shingle roof rather than a chessboard,
-    // while staying bright enough to keep the code decodable.
-    let paleLight = vec3f(0.91, 0.85, 0.72);
-    let paleMid = vec3f(0.85, 0.78, 0.64);
-    let paleDark = vec3f(0.76, 0.69, 0.55);
+    // ROOF/DECK board over a LIGHT module: pale birch.
+    // Warm TAN, not cream. At cream the roof matched the plaster walls and
+    // the whole building collapsed into one pale mass; the reference reads
+    // as a wooden roof over white walls, so the light tile has to stay wood.
+    let paleLight = vec3f(0.88, 0.75, 0.53);
+    let paleMid = vec3f(0.81, 0.68, 0.47);
+    let paleDark = vec3f(0.72, 0.59, 0.39);
     var c = mix(paleMid, paleLight, noise1);
     c = mix(c, paleDark, step(0.75, noise2) * 0.6);
     base = c * (1.0 - smoothstep(0.26, 0.0, uv.y) * 0.22);
@@ -210,8 +215,39 @@ fn main(input: BlockInput) -> @location(0) vec4f {
     c = c * (1.0 - joint * 0.35);
     base = mix(c, vec3f(0.62, 0.55, 0.28), handle * 0.8);
 
+  } else if (blockType == 9) {
+    // PLANKS - warm decking for the porch, balcony underside and floors.
+    let deckLight = vec3f(0.68, 0.50, 0.30);
+    let deckMid = vec3f(0.59, 0.43, 0.25);
+    let deckDark = vec3f(0.50, 0.36, 0.21);
+    var c = mix(deckMid, deckLight, noise1);
+    c = mix(c, deckDark, step(0.78, noise2) * 0.7);
+    let board = max(seam(uv.y, 0.34, 0.035), seam(uv.y, 0.68, 0.035));
+    base = c * (1.0 - board * 0.28);
+
+  } else if (blockType == 10) {
+    // LANTERN. Emissive, so it still glows on the shaded side of the house
+    // and pools a little warmth on whatever it hangs over.
+    let cage = vec3f(0.34, 0.24, 0.13);
+    let flame = vec3f(1.0, 0.80, 0.42);
+    let inner = 1.0 - smoothstep(0.18, 0.46, length(uv - vec2f(0.5, 0.5)));
+    base = mix(cage, flame, inner);
+    emissive = flame * (0.35 + inner * 1.15);
+
+  } else if (blockType == 11) {
+    // FOLIAGE - planter greenery and lawn bushes. Always sits on a dark
+    // module, so it never disturbs the code.
+    let leafLight = vec3f(0.26, 0.42, 0.16);
+    let leafMid = vec3f(0.19, 0.33, 0.12);
+    let leafDark = vec3f(0.13, 0.24, 0.09);
+    var c = mix(leafMid, leafLight, noise1);
+    c = mix(c, leafDark, step(0.7, noise2) * 0.85);
+    // Broken edges so a bush does not read as a solid cube.
+    let clump = fract(sin(dot(floor(uv * 4.0), vec2f(51.1, 17.3))) * 8123.7);
+    base = c * (0.82 + clump * 0.32);
+
   } else {
-    // CREEPER (type 9). Shaded apart from the world: it is a mob, not terrain.
+    // CREEPER (type 12). Shaded apart from the world: it is a mob, not terrain.
     let creeperLight = vec3f(0.44, 0.74, 0.32);
     let creeperMid = vec3f(0.31, 0.60, 0.24);
     let creeperDark = vec3f(0.20, 0.42, 0.17);
@@ -242,7 +278,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // FACE TREATMENT
   // ============================================
   var albedo = base;
-  if (blockType == 9) {
+  if (blockType == 12) {
     // The mob gets its own cheap directional shading so its silhouette reads.
     albedo = base * (0.42 + max(dot(N, sunDir), 0.0) * 0.58 + NdUp * 0.12);
   } else if (isTop) {
@@ -272,7 +308,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   var hdr = diffuse + emissive;
 
   // ---- Fuse: the creeper flashes white at an accelerating rate ----
-  if (blockType == 9) {
+  if (blockType == 12) {
     let fuse = clamp(uniforms.fuseT, 0.0, 1.0);
     if (fuse > 0.0) {
       let rate = mix(2.2, 15.0, fuse * fuse);
@@ -287,7 +323,7 @@ fn main(input: BlockInput) -> @location(0) vec4f {
 
   // ---- Aftermath: soot, crater scorch, embers, fireball -----------
   let blastT = uniforms.blastT;
-  if (blastT >= 0.0 && blockType != 9) {
+  if (blastT >= 0.0 && blockType != 12) {
     // Grid-space distance to the detonation, from the block's ORIGINAL cell --
     // debris carries the scorch it picked up where it was standing.
     let bCol = uniforms.blastX / BLOCK + centre;

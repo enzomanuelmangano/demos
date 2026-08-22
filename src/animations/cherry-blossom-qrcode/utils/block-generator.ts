@@ -1,6 +1,7 @@
 import { buildCreeperVoxels } from './creeper-model';
 import {
-  CHIMNEY_RISE,
+  BALCONY_RAIL_Y,
+  BALCONY_Y,
   CUBE_HEIGHT,
   FOUNDATION_TOP,
   GROUND_WINDOW_HI,
@@ -16,7 +17,6 @@ import {
   MID_BAND,
   PORCH_DEPTH,
   PORCH_HALF_WIDTH,
-  PORCH_ROOF_Y,
   POST_SPACING,
   EAVE_DROP,
   ROOF_BASE,
@@ -179,7 +179,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
           } else if (layer === GROUND_WINDOW_HI) {
             push(col, row, layer, BlockType.Glass, false);
           } else {
-            push(col, row, layer, BlockType.Planks, false);
+            push(col, row, layer, BlockType.Plaster, false);
           }
           continue;
         }
@@ -200,7 +200,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
           col,
           row,
           layer,
-          isWindow ? BlockType.Glass : BlockType.Planks,
+          isWindow ? BlockType.Glass : BlockType.Plaster,
           false,
         );
       }
@@ -215,7 +215,7 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
             col,
             row,
             layer,
-            gableWindow ? BlockType.Glass : BlockType.Planks,
+            gableWindow ? BlockType.Glass : BlockType.Plaster,
             false,
           );
         }
@@ -234,13 +234,12 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   }
 
   // ------------------------------------------------------------------
-  // Covered porch in front of the door: plank deck, log pillars, its own
-  // little roof. Gives the silhouette some depth instead of a flat box.
+  // Porch below, balcony above - the reference's two-tier front. The balcony
+  // deck doubles as the porch ceiling, so one structure reads as both.
+  // Deck and rail are top-most at their cells, so both are module-typed.
   // ------------------------------------------------------------------
   const porchRowFar = rowMin - PORCH_DEPTH;
   for (let row = porchRowFar; row <= rowMin - 1; row++) {
-    // The porch roof slopes away from the house, one course per row out.
-    const porchY = PORCH_ROOF_Y - (rowMin - 1 - row);
     for (
       let col = doorCol - PORCH_HALF_WIDTH;
       col <= doorCol + PORCH_HALF_WIDTH;
@@ -248,14 +247,48 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
     ) {
       if (!inGrid(col, row)) continue;
       push(col, row, 1, BlockType.Planks, false);
-      const isPillar =
+
+      const isOuterCorner =
         row === porchRowFar && Math.abs(col - doorCol) === PORCH_HALF_WIDTH;
-      if (isPillar) {
-        for (let layer = 2; layer < porchY; layer++) {
+      if (isOuterCorner) {
+        // Timber post up to the balcony, with a lantern hung underneath it.
+        for (let layer = 2; layer < BALCONY_Y - 1; layer++) {
           push(col, row, layer, BlockType.Log, false);
         }
+        push(col, row, BALCONY_Y - 1, BlockType.Lantern, false);
       }
-      push(col, row, porchY, roofTypeFor(col, row), false);
+
+      push(col, row, BALCONY_Y, roofTypeFor(col, row), false);
+
+      // Railing around the open edges of the balcony.
+      const onRailEdge =
+        row === porchRowFar || Math.abs(col - doorCol) === PORCH_HALF_WIDTH;
+      if (onRailEdge) {
+        push(col, row, BALCONY_RAIL_Y, roofTypeFor(col, row), false);
+      }
+    }
+  }
+
+  // Lanterns either side of the front door, sheltered under the balcony.
+  for (const side of [-1, 1]) {
+    const col = doorCol + side * 2;
+    if (inGrid(col, rowMin)) {
+      push(col, rowMin - 1, 5, BlockType.Lantern, false);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Window boxes: planters on the ring cells, tucked under the eave so they
+  // are never the top-most block and stay free of the code.
+  // ------------------------------------------------------------------
+  for (let col = colMin; col <= colMax; col++) {
+    for (const row of [rowMin - 1, rowMax + 1]) {
+      if (!inGrid(col, row)) continue;
+      if (row < rowMin && Math.abs(col - doorCol) <= PORCH_HALF_WIDTH) continue;
+      const bay = col - colMin;
+      if (bay % POST_SPACING !== 1) continue;
+      push(col, row, UPPER_WINDOW_LO - 1, BlockType.Planks, false);
+      push(col, row, UPPER_WINDOW_LO, BlockType.Foliage, false);
     }
   }
 
@@ -302,26 +335,6 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
   }
 
   // ------------------------------------------------------------------
-  // Exterior chimney against the gable end, like the reference build. Its
-  // cap is typed by the module too, so even this column keeps the code.
-  // ------------------------------------------------------------------
-  const chimneyCol = colMin - 1;
-  const chimneyRow = centreRow;
-  if (inGrid(chimneyCol, chimneyRow)) {
-    const top = roofYAt(chimneyRow) + CHIMNEY_RISE;
-    for (let layer = 1; layer < top; layer++) {
-      push(chimneyCol, chimneyRow, layer, BlockType.Cobble, false);
-    }
-    push(
-      chimneyCol,
-      chimneyRow,
-      top,
-      roofTypeFor(chimneyCol, chimneyRow),
-      false,
-    );
-  }
-
-  // ------------------------------------------------------------------
   // Scattered grass tufts on the lawn, for a little relief. Ground level
   // only where the module is dark, so the code is untouched.
   // ------------------------------------------------------------------
@@ -334,7 +347,10 @@ export function generateBlockData(qrMatrix: boolean[][]): BlockData {
         row >= rowMin - PORCH_DEPTH &&
         row <= rowMax + 1;
       if (insideHouse) continue;
-      if (pseudoRandom(col, row, 91) > 0.9) {
+      const r = pseudoRandom(col, row, 91);
+      if (r > 0.93) {
+        push(col, row, 1, BlockType.Foliage, false);
+      } else if (r > 0.86) {
         push(col, row, 1, BlockType.Grass, false);
       }
     }

@@ -23,14 +23,17 @@ export interface BlockData {
 export enum BlockType {
   Dirt = 0, // QR light modules - the path
   Grass = 1, // QR dark modules out on the lawn
-  Cobble = 2, // foundation and chimney
-  Planks = 3, // walls
-  Log = 4, // corner posts and timber framing
-  RoofDark = 5, // roof tile standing over a DARK module
-  RoofLight = 6, // roof tile standing over a LIGHT module
+  Cobble = 2, // foundation, chimney, stone accent panel
+  Plaster = 3, // cream wall infill between the timbers
+  Log = 4, // dark timber framing: posts, beams, rafters
+  RoofDark = 5, // roof/deck board standing over a DARK module
+  RoofLight = 6, // roof/deck board standing over a LIGHT module
   Glass = 7, // windows
   Door = 8,
-  Creeper = 9, // the mob itself - rigged and animated apart from the world
+  Planks = 9, // warm wood decking and interior floors
+  Lantern = 10, // hanging lights - emissive
+  Foliage = 11, // planter greenery and lawn bushes
+  Creeper = 12, // the mob itself - rigged and animated apart from the world
 }
 
 // Which limb a creeper voxel belongs to. Drives the walk rig in the vertex

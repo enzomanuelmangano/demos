@@ -117,7 +117,7 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
 
   let posData = blockPositions[blockIdx];
   let typePacked = blockTypes[blockIdx];
-  let isCreeper = typePacked == 9u;
+  let isCreeper = typePacked == 12u;
 
   // The creeper is spawned once and lives in the buffers forever; when no
   // detonation sequence is running it is simply not drawn.

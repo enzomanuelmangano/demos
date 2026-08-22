@@ -58,7 +58,10 @@ export const POST_SPACING = 4;
 // Covered porch depth, in cells, in front of the door.
 export const PORCH_DEPTH = 2;
 export const PORCH_HALF_WIDTH = 2;
-export const PORCH_ROOF_Y = 8;
+// The porch is covered by a first-floor BALCONY rather than its own roof, as
+// in the reference: the deck is the porch ceiling, with a railing above it.
+export const BALCONY_Y = 7;
+export const BALCONY_RAIL_Y = 8;
 
 // Grid limits
 export const MAX_GRID_SIZE = 41;
@@ -130,12 +133,15 @@ export const MASS_BY_TYPE: readonly number[] = [
   1.0, // Dirt
   1.05, // Grass
   2.0, // Cobble
-  1.1, // Planks
+  0.95, // Plaster
   1.6, // Log
   1.2, // RoofDark
   1.2, // RoofLight
   0.5, // Glass
   1.15, // Door
+  1.1, // Planks
+  0.6, // Lantern
+  0.45, // Foliage
   1, // Creeper
 ];
 export const GROUND_MASS_BONUS = 1.5;
