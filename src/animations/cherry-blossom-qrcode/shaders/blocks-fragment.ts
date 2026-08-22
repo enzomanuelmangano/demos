@@ -80,11 +80,15 @@ fn main(input: BlockInput) -> @location(0) vec4f {
   // creeper look like a creeper is BETWEEN patches, not around each cube - so
   // it lives here, in how far apart neighbouring voxels sit, rather than in
   // edge shading that outlines every block.
-  let creeperBright = vec3f(0.56, 0.87, 0.46);
-  let creeperPale = vec3f(0.44, 0.75, 0.35);
-  let creeperLight = vec3f(0.34, 0.67, 0.24);
-  let creeperMid = vec3f(0.25, 0.56, 0.17);
-  let creeperDark = vec3f(0.15, 0.40, 0.11);
+  // Saturated rather than lightened. The lawn's own green is dark and dull
+  // and the path is near-white, so what separates the mob from the ground is
+  // how GREEN it is - pushing the value instead just walks it towards the
+  // white modules it is standing on.
+  let creeperBright = vec3f(0.44, 0.89, 0.32);
+  let creeperPale = vec3f(0.34, 0.80, 0.24);
+  let creeperLight = vec3f(0.25, 0.72, 0.18);
+  let creeperMid = vec3f(0.18, 0.62, 0.13);
+  let creeperDark = vec3f(0.10, 0.46, 0.09);
   // Only the very bottom of the legs goes near-black, as on the real skin.
   let creeperFoot = vec3f(0.10, 0.22, 0.08);
 
