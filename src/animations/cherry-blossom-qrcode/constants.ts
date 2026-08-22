@@ -75,10 +75,23 @@ export const CREEPER_WALK_DURATION = 3.2;
 export const CREEPER_FUSE_DURATION = 1.8;
 export const CREEPER_TOTAL = CREEPER_WALK_DURATION + CREEPER_FUSE_DURATION;
 
-// The mob approaches from the camera side (yaw around -PI/4) so the canopy
-// never hides the one thing the whole sequence is about.
-export const CREEPER_APPROACH_YAW = -Math.PI / 4;
-export const CREEPER_APPROACH_SPREAD = 1.0;
+// The mob walks in from BEHIND the tree and comes towards the camera, so it
+// crosses the platform in view instead of arriving from off-stage. Facing
+// +3PI/4 points it at the viewer, which also means it no longer has to turn
+// around on the fuse - it already ends up looking at you.
+export const CREEPER_APPROACH_YAW = (3 * Math.PI) / 4;
+export const CREEPER_APPROACH_SPREAD = 0.5;
+// Where it stops, in blocks past the centre towards the camera. Far enough
+// forward that the canopy cannot hide it.
+export const CREEPER_STAND_FROM_CENTRE = 6;
+// How far it walks, in blocks. Kept short enough that the spawn point is
+// still ON the platform: starting further out than the plate's half-width is
+// what made the mob look like it was floating in over nothing.
+export const CREEPER_WALK_BLOCKS = 16;
+// Sideways offset of the whole path, in blocks. Without it the walk runs
+// straight through the centre - and the trunk is at the centre, so the mob
+// passed through the tree it is about to blow up.
+export const CREEPER_PATH_OFFSET = 3.5;
 // Stride frequency (steps/sec) and how far the legs swing.
 export const CREEPER_STEP_RATE = 3.1;
 export const CREEPER_LEG_SWING = 0.62;

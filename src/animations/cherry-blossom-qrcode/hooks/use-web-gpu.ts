@@ -8,6 +8,8 @@ import {
   BLOCK_SIZE,
   CREEPER_APPROACH_SPREAD,
   CREEPER_APPROACH_YAW,
+  CREEPER_PATH_OFFSET,
+  CREEPER_STAND_FROM_CENTRE,
   CREEPER_FUSE_DURATION,
   CREEPER_TOTAL,
   CREEPER_WALK_DURATION,
@@ -36,7 +38,6 @@ function easeInOutCubic(t: number): number {
 // Where the creeper plants itself, in blocks from the trunk — close enough to
 // gut the tree, far enough out that it does not stand inside the trunk it is
 // about to remove.
-const CREEPER_STAND_DISTANCE = 8;
 
 // Whole sequence: walk in, fuse, blast, debris settles, tree reassembles.
 const SEQUENCE_DURATION = CREEPER_TOTAL + DEBRIS_SETTLE + REBUILD_DURATION;
@@ -104,11 +105,22 @@ export function useWebGPU({
     spawnAngleRef.current = angle;
     // Model faces rotY(+Z, yaw); it stops that far back along its own path,
     // which is also where the charge goes off.
+    // It walks along +fwd, so the stopping point is that far along fwd from
+    // the centre - which puts it in FRONT of the tree, towards the camera.
     const fwdX = -Math.sin(angle);
     const fwdZ = Math.cos(angle);
+    // Shift the whole path sideways so it passes BESIDE the trunk. The shader
+    // derives the spawn point by walking back along fwd from here, so both
+    // ends share the offset and the path stays a straight line.
+    const rightX = fwdZ;
+    const rightZ = -fwdX;
     blastPosRef.current = {
-      x: -fwdX * CREEPER_STAND_DISTANCE * BLOCK_SIZE,
-      z: -fwdZ * CREEPER_STAND_DISTANCE * BLOCK_SIZE,
+      x:
+        (fwdX * CREEPER_STAND_FROM_CENTRE + rightX * CREEPER_PATH_OFFSET) *
+        BLOCK_SIZE,
+      z:
+        (fwdZ * CREEPER_STAND_FROM_CENTRE + rightZ * CREEPER_PATH_OFFSET) *
+        BLOCK_SIZE,
     };
     detonatedRef.current = false;
     sequenceStartRef.current = Date.now();

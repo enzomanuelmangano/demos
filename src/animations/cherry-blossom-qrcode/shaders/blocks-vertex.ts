@@ -11,6 +11,7 @@ import {
   CREEPER_LEG_SWING,
   CREEPER_SCALE,
   CREEPER_STEP_RATE,
+  CREEPER_WALK_BLOCKS,
   DEBRIS_FADE_DURATION,
   DEBRIS_FADE_SPREAD,
   DEBRIS_FADE_START,
@@ -253,8 +254,8 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     // A tightening shudder as it primes.
     local.x += sin(uniforms.time * 42.0) * fuse * fuse * 0.18 * BLOCK;
 
-    // Face the way it walked in, then swing 180 degrees to face the camera.
-    let yaw = uniforms.spawnAngle + PI * turn;
+    // Face the way it walked in - which is straight at the viewer.
+    let yaw = uniforms.spawnAngle;
 
     // Shrink the rig to mob scale. Everything above is in model voxels, so a
     // single scale here keeps the pivot, swell and shudder consistent.
@@ -268,8 +269,13 @@ fn main(@builtin(vertex_index) vertexIndex: u32) -> BlockOutput {
     // walks, so it never moon-walks in from the side.
     let fwd = vec3f(-sin(yaw), 0.0, cos(yaw));
     let standPos = vec3f(uniforms.blastX, 0.0, uniforms.blastZ);
-    let spawn = standPos - fwd * halfGrid * 1.35;
-    centre = local + mix(spawn, standPos, walk);
+    // Spawn a fixed number of BLOCKS back along the path, not a multiple of
+    // the grid: the old 1.35x half-grid start was off the edge of the plate,
+    // so the mob walked in over empty space and read as floating.
+    let spawn = standPos - fwd * ${CREEPER_WALK_BLOCKS} * BLOCK;
+    // Stand ON the lawn. Ground blocks occupy y 0..BLOCK, so feet at y=0 sat
+    // a full block below the surface.
+    centre = local + mix(spawn, standPos, walk) + vec3f(0.0, BLOCK, 0.0);
     offset = localOffset;
     normal = localNormal;
   } else if (uniforms.blastT >= 0.0) {
