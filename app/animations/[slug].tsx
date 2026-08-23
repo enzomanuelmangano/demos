@@ -39,6 +39,11 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 
 const DrawerIconSize = 40;
 
+// TEMPORARY: hides the drawer button on demo screens so the demos can be
+// captured clean. Flip back to true to restore it - that is the only change
+// needed, the button is otherwise untouched.
+const SHOW_DRAWER_ICON = false;
+
 export default function AnimationScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const dimensions = useWindowDimensions();
@@ -127,15 +132,17 @@ export default function AnimationScreen() {
         animatedProps={blurAnimatedProps}
         style={styles.blurView}
       />
-      <AnimatedDrawerIcon
-        containerStyle={[
-          styles.menu,
-          rDrawerIconStyle,
-          {
-            top: safeTop,
-          },
-        ]}
-      />
+      {SHOW_DRAWER_ICON ? (
+        <AnimatedDrawerIcon
+          containerStyle={[
+            styles.menu,
+            rDrawerIconStyle,
+            {
+              top: safeTop,
+            },
+          ]}
+        />
+      ) : null}
     </>
   );
 }
