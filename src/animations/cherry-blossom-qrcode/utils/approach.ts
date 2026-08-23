@@ -4,6 +4,7 @@ import {
   CREEPER_PATH_OFFSET,
   CREEPER_SPAWN_MARGIN,
   CREEPER_STAND_FROM_CENTRE,
+  CREEPER_TRUNK_CLEARANCE,
   CREEPER_WALK_BLOCKS,
 } from '../constants';
 
@@ -47,6 +48,18 @@ export function spawnFor(yaw: number): Vec2 {
 }
 
 /**
+ * Perpendicular distance from the trunk's centre to the walk line.
+ *
+ * The path passes through the fixed destination in direction `fwd`, so this is
+ * the magnitude of the 2D cross product of the destination and the heading.
+ */
+export function trunkClearance(yaw: number): number {
+  const dest = approachDestination();
+  const fwd = forwardFor(yaw);
+  return Math.abs(dest.x * fwd.z - dest.z * fwd.x);
+}
+
+/**
  * Headings whose spawn point still lands ON the platform.
  *
  * The destination sits well off-centre and the walk is a fixed 16 blocks, so
@@ -63,7 +76,14 @@ export function validApproachYaws(gridSize: number, samples = 64): number[] {
       CREEPER_APPROACH_YAW +
       (i / (samples - 1) - 0.5) * 2 * CREEPER_APPROACH_SPREAD;
     const s = spawnFor(yaw);
-    if (Math.hypot(s.x, s.z) <= limit) out.push(yaw);
+    const onPlate = Math.hypot(s.x, s.z) <= limit;
+    // ...and that do not walk THROUGH the trunk. The destination is fixed
+    // while the heading varies, so swinging the heading pivots the whole line
+    // about that point - and over the top half of the arc it swept straight
+    // through the tree. Clearing the trunk at the nominal heading is not
+    // enough once the approach is randomised.
+    const clearsTrunk = trunkClearance(yaw) >= CREEPER_TRUNK_CLEARANCE;
+    if (onPlate && clearsTrunk) out.push(yaw);
   }
   // Never return nothing: the nominal heading is the fallback.
   return out.length ? out : [CREEPER_APPROACH_YAW];

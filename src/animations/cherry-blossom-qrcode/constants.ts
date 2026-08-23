@@ -107,7 +107,7 @@ export const CREEPER_STAND_FROM_CENTRE = 6;
 // the plate while WALK <= |dest| + plateRadius, which is about 18 on a 25-wide
 // grid. Past that NO heading works and the mob starts in mid-air, which is the
 // floating bug again. 17.5 is close to the ceiling on purpose.
-export const CREEPER_WALK_BLOCKS = 17.5;
+export const CREEPER_WALK_BLOCKS = 15;
 // Fraction of the walk spent spawning in. The mob grows out of the ground at
 // its spawn point and only then starts moving, instead of simply existing at
 // full size on the first frame.
@@ -118,6 +118,10 @@ export const CREEPER_SPAWN_FRACTION = 0.12;
 // destination sits directly over the trunk on screen and 12 blocks nearer the
 // camera, so it crosses in front of the tree it is about to remove.
 export const CREEPER_PATH_OFFSET = 6.5;
+// How far the walk line must stay from the trunk's centre, in blocks. The
+// trunk is TRUNK_RADIUS (2.5) and the mob is about 2.5 wide, so anything under
+// ~3.8 clips; this leaves a little air on top of that.
+export const CREEPER_TRUNK_CLEARANCE = 4.5;
 // Stride frequency (steps/sec) and how far the legs swing.
 export const CREEPER_STEP_RATE = 3.1;
 export const CREEPER_LEG_SWING = 0.62;
