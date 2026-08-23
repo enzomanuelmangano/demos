@@ -86,7 +86,9 @@ export const CherryBlossomQRCode = () => {
     );
   }, [hintOpacity]);
   const hintStyle = useAnimatedStyle(() => ({
-    opacity: hintOpacity.get(),
+    // Settles below full strength so it sits under the scene rather than
+    // competing with it - a chosen level, not washed-out ink.
+    opacity: hintOpacity.get() * 0.72,
   }));
 
   const onDetonate = useCallback(() => {
@@ -216,9 +218,11 @@ const styles = StyleSheet.create({
     right: 0,
   },
   hintText: {
-    color: 'rgba(26, 26, 26, 0.42)',
+    // The app's house face - SF-Pro-Rounded-Bold is what the rest of the
+    // demos are set in, and this was falling back to the system default.
+    color: '#1a1a1a',
+    fontFamily: 'SF-Pro-Rounded-Bold',
     fontSize: 13,
-    fontWeight: '500',
     letterSpacing: 0.2,
   },
   input: {
