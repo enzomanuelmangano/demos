@@ -47,7 +47,13 @@ interface UseWebGPUOptions {
   canvasHeight: number;
   qrContent: string;
   isFlat: React.RefObject<boolean>;
-  /** Fired the frame the creeper detonates — used for the haptic thump. */
+  /**
+   * Fired the frame the fuse begins. The whole detonation haptic is one
+   * pattern played from here, so its beats are timed by the haptic engine
+   * rather than by JS timers racing the sequence clock.
+   */
+  onFuseStart?: () => void;
+  /** Fired the frame the creeper detonates. */
   onDetonate?: () => void;
   /** Fired when the tree is whole again and the QR is scannable. */
   onSequenceEnd?: () => void;
@@ -59,6 +65,7 @@ export function useWebGPU({
   canvasHeight,
   qrContent,
   isFlat,
+  onFuseStart,
   onDetonate,
   onSequenceEnd,
 }: UseWebGPUOptions) {
@@ -86,6 +93,9 @@ export function useWebGPU({
   const spawnAngleRef = useRef(0);
   const blastPosRef = useRef({ x: 0, z: 0 });
   const detonatedRef = useRef(false);
+  const fuseStartedRef = useRef(false);
+  const onFuseStartRef = useRef(onFuseStart);
+  onFuseStartRef.current = onFuseStart;
   const onDetonateRef = useRef(onDetonate);
   onDetonateRef.current = onDetonate;
   const onSequenceEndRef = useRef(onSequenceEnd);
@@ -106,6 +116,7 @@ export function useWebGPU({
       z: dest.z * BLOCK_SIZE,
     };
     detonatedRef.current = false;
+    fuseStartedRef.current = false;
     sequenceStartRef.current = Date.now();
     return true;
   }, []);
@@ -354,6 +365,10 @@ export function useWebGPU({
           creeperT = 1;
           fuseT = (seq - CREEPER_WALK_DURATION) / CREEPER_FUSE_DURATION;
           creeperAlpha = 1;
+          if (!fuseStartedRef.current) {
+            fuseStartedRef.current = true;
+            onFuseStartRef.current?.();
+          }
         } else {
           // Consumed by its own charge.
           blastT = seq - CREEPER_TOTAL;

@@ -10,8 +10,8 @@ import {
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import * as Haptics from 'expo-haptics';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
+import { Presets, Settings, usePatternComposer } from 'react-native-pulsar';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -21,12 +21,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
 
-import {
-  CONTAINER_BG,
-  CREEPER_FUSE_DURATION,
-  CREEPER_WALK_DURATION,
-  DEFAULT_QR_CONTENT,
-} from './constants';
+import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
+import { CREEPER_BLAST_PATTERN } from './haptics';
 import { useWebGPU } from './hooks';
 
 // The long press is the only way to find the creeper, and nothing on screen
@@ -67,15 +63,6 @@ export const CherryBlossomQRCode = () => {
     transform: [{ translateY: -keyboardHeight.get() }],
   }));
 
-  // Haptic fuse: ticks that accelerate as the creeper primes, then a heavy
-  // thump on the blast. Timers are owned here so an unmount mid-fuse cannot
-  // leave the phone buzzing on another screen.
-  const fuseTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
-  const clearFuse = useCallback(() => {
-    fuseTimers.current.forEach(clearTimeout);
-    fuseTimers.current = [];
-  }, []);
-
   const hintOpacity = useSharedValue(0);
   useEffect(() => {
     hintOpacity.set(
@@ -91,10 +78,14 @@ export const CherryBlossomQRCode = () => {
     opacity: hintOpacity.get() * 0.72,
   }));
 
-  const onDetonate = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-  }, []);
+  // The fuse and the blast are one composed pattern, fired when the fuse
+  // starts. It replaces a chain of setTimeouts that had to be tracked and
+  // cancelled by hand, and whose ticks drifted against the sequence clock
+  // because each one was scheduled from JS rather than by the haptic engine.
+  const blastHaptic = usePatternComposer(CREEPER_BLAST_PATTERN);
+  const onFuseStart = useCallback(() => {
+    blastHaptic.play();
+  }, [blastHaptic]);
 
   // Initialize WebGPU rendering
   const { detonate } = useWebGPU({
@@ -103,8 +94,7 @@ export const CherryBlossomQRCode = () => {
     canvasHeight,
     qrContent,
     isFlat,
-    onDetonate,
-    onSequenceEnd: clearFuse,
+    onFuseStart,
   });
 
   const handlePress = useCallback(() => {
@@ -117,26 +107,13 @@ export const CherryBlossomQRCode = () => {
   // reassembles so the QR is scannable again.
   const handleLongPress = useCallback(() => {
     if (!detonate()) return;
-    // Its job is done the moment the gesture is discovered.
+    // A light tap as the mob materialises: the spawn is a beat of its own,
+    // three seconds before the fuse pattern starts, and without it the long
+    // press gives no feedback that anything took.
+    Presets.System.impactLight();
+    // The hint's job is done the moment the gesture is discovered.
     hintOpacity.set(withTiming(0, { duration: 260 }));
-    clearFuse();
-    const ticks = 9;
-    for (let i = 0; i < ticks; i++) {
-      // Ticks bunch up towards the blast: t = fuseStart + fuse * (i/n)^1.7.
-      const at =
-        CREEPER_WALK_DURATION +
-        CREEPER_FUSE_DURATION * Math.pow(i / ticks, 1.7);
-      fuseTimers.current.push(
-        setTimeout(() => {
-          Haptics.impactAsync(
-            i > ticks - 3
-              ? Haptics.ImpactFeedbackStyle.Medium
-              : Haptics.ImpactFeedbackStyle.Light,
-          );
-        }, at * 1000),
-      );
-    }
-  }, [detonate, clearFuse, hintOpacity]);
+  }, [detonate, hintOpacity]);
 
   // Keep the keyboard up while the demo is on screen — but only then: an
   // unconditional refocus runs after the unmount blur too, leaking the
@@ -146,10 +123,12 @@ export const CherryBlossomQRCode = () => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
-      clearFuse();
+      // A pattern mid-play would otherwise keep buzzing on the next screen -
+      // the same leak the timer chain had to guard against.
+      Settings.stopHaptics();
       Keyboard.dismiss();
     };
-  }, [clearFuse]);
+  }, []);
 
   const handleInputBlur = useCallback(() => {
     requestAnimationFrame(() => {
