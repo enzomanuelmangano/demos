@@ -89,8 +89,21 @@ fn main(@location(0) uv: vec2f) -> @location(0) vec4f {
   // Gaussian-like falloff
   let shadowStrength = 0.08;
   let falloff = exp(-dist * dist * 2.5);
-  let alpha = shadowStrength * falloff;
 
+  // The shadow belongs to the scene casting it, so it has to leave with the
+  // scene. It used to be a constant, which left a shadow lying on the ground
+  // under a tree that had just been blown to pieces and faded out.
+  //
+  // It thins out as the debris clears rather than snapping off at the blast:
+  // there is plenty of scene still in the air for the first moment. Then it
+  // comes back with the rebuild, in step with the blocks re-materialising.
+  var presence = 1.0;
+  if (uniforms.blastT >= 0.0) {
+    presence = 1.0 - smoothstep(0.15, 1.7, uniforms.blastT);
+    presence = max(presence, uniforms.rebuildT);
+  }
+
+  let alpha = shadowStrength * falloff * presence;
   let shadowColor = vec3f(0.1, 0.12, 0.15);
   return vec4f(shadowColor * alpha, alpha);
 }
