@@ -2,6 +2,7 @@ import {
   Keyboard,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -12,8 +13,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import Animated, {
+  Easing,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withTiming,
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
 
@@ -24,6 +28,12 @@ import {
   DEFAULT_QR_CONTENT,
 } from './constants';
 import { useWebGPU } from './hooks';
+
+// The long press is the only way to find the creeper, and nothing on screen
+// suggests it exists. The hint waits a beat so it does not compete with the
+// scene appearing, then retires itself once the gesture has been used.
+const HINT_DELAY_MS = 2000;
+const HINT_TEXT = 'Long press to spawn a creeper';
 
 export const CherryBlossomQRCode = () => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -66,6 +76,19 @@ export const CherryBlossomQRCode = () => {
     fuseTimers.current = [];
   }, []);
 
+  const hintOpacity = useSharedValue(0);
+  useEffect(() => {
+    hintOpacity.set(
+      withDelay(
+        HINT_DELAY_MS,
+        withTiming(1, { duration: 650, easing: Easing.out(Easing.quad) }),
+      ),
+    );
+  }, [hintOpacity]);
+  const hintStyle = useAnimatedStyle(() => ({
+    opacity: hintOpacity.get(),
+  }));
+
   const onDetonate = useCallback(() => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
@@ -92,6 +115,8 @@ export const CherryBlossomQRCode = () => {
   // reassembles so the QR is scannable again.
   const handleLongPress = useCallback(() => {
     if (!detonate()) return;
+    // Its job is done the moment the gesture is discovered.
+    hintOpacity.set(withTiming(0, { duration: 260 }));
     clearFuse();
     const ticks = 9;
     for (let i = 0; i < ticks; i++) {
@@ -109,7 +134,7 @@ export const CherryBlossomQRCode = () => {
         }, at * 1000),
       );
     }
-  }, [detonate, clearFuse]);
+  }, [detonate, clearFuse, hintOpacity]);
 
   // Keep the keyboard up while the demo is on screen — but only then: an
   // unconditional refocus runs after the unmount blur too, leaking the
@@ -143,6 +168,9 @@ export const CherryBlossomQRCode = () => {
           style={{ width: canvasWidth, height: canvasHeight }}>
           <Canvas ref={canvasRef} style={styles.canvas} />
         </Pressable>
+        <Animated.View pointerEvents="none" style={[styles.hint, hintStyle]}>
+          <Text style={styles.hintText}>{HINT_TEXT}</Text>
+        </Animated.View>
       </Animated.View>
       <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
@@ -179,6 +207,19 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: CONTAINER_BG,
     flex: 1,
+  },
+  hint: {
+    alignItems: 'center',
+    bottom: 8,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
+  hintText: {
+    color: 'rgba(26, 26, 26, 0.42)',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: 0.2,
   },
   input: {
     backgroundColor: '#fff',
