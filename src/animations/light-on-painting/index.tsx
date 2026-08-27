@@ -111,6 +111,10 @@ export const LightOnPainting = () => {
         state.grabY = state.y - (event.y - height * PAINTING_CENTER_Y) / scale;
         state.targetX = state.x;
         state.targetY = state.y;
+        // Taking hold is what wakes the physics, cord or no cord. Set from the
+        // tethered drag alone, an untethered bulb never left its rest pose —
+        // the loop kept resetting it there because it had never been paid out.
+        state.paidOut = true;
         state.grabbed = true;
         state.held = true;
         return;
@@ -158,7 +162,6 @@ export const LightOnPainting = () => {
         CORD_MAX_LENGTH,
         Math.max(CORD_MIN_LENGTH, distance),
       );
-      state.paidOut = true;
       // A target, not a position: the loop eases onto it every frame, which is
       // what keeps the bulb moving between touch events.
       state.targetX = CORD_ANCHOR_X + (dx / distance) * state.cordLength;

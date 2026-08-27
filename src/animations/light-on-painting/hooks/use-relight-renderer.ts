@@ -30,6 +30,10 @@ const HALF_FLOAT_BYTES = 8; // rgba16float
 
 const MAX_PIXEL_RATIO = 2;
 
+/** The canvas is not measured on the first tick; poll briefly for a layout. */
+const INIT_RETRY_MS = 50;
+const INIT_MAX_ATTEMPTS = 20;
+
 interface RNWebGPUContext extends GPUCanvasContext {
   present(): void;
 }
@@ -239,38 +243,81 @@ export const useRelightRenderer = (
   scrollValue: SharedValue<number>,
 ) => {
   const initializedRef = useRef(false);
+  // Bumped on every teardown. `initialize` re-reads it after each await, so a
+  // screen left during the ~150ms of adapter and asset loading can drop the
+  // work rather than hand a dead swapchain a loop nothing is left to stop.
+  const generationRef = useRef(0);
 
-  // Stopping is all this does. The frame loop owns the GPU objects and frees
-  // them itself once it sees the flag, which keeps creation and destruction on
-  // the same thread.
+  // Once the loop is running, stopping is all this does: the frame loop owns
+  // the GPU objects and frees them itself when it sees the flag, which keeps
+  // creation and destruction on the same thread. An init still in flight has no
+  // loop yet, so the generation bump is what releases its half-built resources.
   const cleanup = useCallback(() => {
+    generationRef.current += 1;
     runningValue.set(false);
     initializedRef.current = false;
   }, [runningValue]);
 
+  /**
+   * Resolves false when the canvas has not been laid out yet and the caller
+   * should ask again; true once it has, whether or not init then succeeded.
+   */
   const initialize = useCallback(async () => {
-    if (!canvasRef.current || initializedRef.current) {
-      return;
+    if (initializedRef.current) {
+      return true;
     }
-    initializedRef.current = true;
+    if (!canvasRef.current) {
+      return false;
+    }
 
     const context = canvasRef.current.getContext(
       'webgpu',
     ) as RNWebGPUContext | null;
     if (!context) {
       console.error('[light-on-painting] no webgpu context');
-      return;
+      return true;
     }
-
-    const adapter = await navigator.gpu?.requestAdapter();
-    if (!adapter) {
-      console.error('[light-on-painting] no adapter');
-      return;
-    }
-    const device = await adapter.requestDevice();
-    const format = navigator.gpu.getPreferredCanvasFormat();
 
     const canvas = context.canvas as HTMLCanvasElement;
+    // A canvas measured at zero would put a NaN in every world-space uniform
+    // and leave the screen black for good, so wait for a real layout instead.
+    if (!canvas.clientWidth || !canvas.clientHeight) {
+      return false;
+    }
+
+    initializedRef.current = true;
+    const generation = generationRef.current;
+    // Everything built so far, so an abandoned or failed init leaves nothing
+    // behind; on success the frame loop inherits it as its disposables.
+    const created: { destroy: () => void }[] = [];
+    const release = () => {
+      for (let i = 0; i < created.length; i += 1) {
+        created[i].destroy();
+      }
+      created.length = 0;
+    };
+    const abandoned = () => {
+      if (generation === generationRef.current) {
+        return false;
+      }
+      release();
+      return true;
+    };
+
+    const adapter = await navigator.gpu?.requestAdapter();
+    if (abandoned()) {
+      return true;
+    }
+    if (!adapter) {
+      console.error('[light-on-painting] no adapter');
+      return true;
+    }
+    const device = await adapter.requestDevice();
+    if (abandoned()) {
+      return true;
+    }
+    const format = navigator.gpu.getPreferredCanvasFormat();
+
     // Every fragment pays for a shadow march, so a 3x buffer costs roughly
     // twice a 2x one for detail this soft-edged image will never show.
     const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
@@ -287,9 +334,13 @@ export const useRelightRenderer = (
         loadImagePixels(painting.albedo),
         loadBinaryAsset(painting.surface),
       ]);
+      if (abandoned()) {
+        return true;
+      }
       if (!image || !surfaceBytes) {
         console.error('[light-on-painting] failed to load', painting.id);
-        return;
+        release();
+        return true;
       }
 
       const albedo = device.createTexture({
@@ -321,6 +372,7 @@ export const useRelightRenderer = (
 
       albedoTextures.push(albedo);
       surfaceTextures.push(surface);
+      created.push(albedo, surface);
       // The UI runtime gets its own copy: the bulb's exposure test needs the
       // depth field and now runs there.
       fields.push(
@@ -343,6 +395,7 @@ export const useRelightRenderer = (
       size: UNIFORM_BUFFER_SIZE,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
+    created.push(uniformBuffer);
 
     const module = device.createShaderModule({ code: relightShader });
     const pipeline = device.createRenderPipeline({
@@ -385,11 +438,14 @@ export const useRelightRenderer = (
         height: painting.meta.height,
       })),
       fields,
-      disposables: [...albedoTextures, ...surfaceTextures, uniformBuffer],
+      disposables: created,
       width: canvas.width,
       height: canvas.height,
     };
 
+    if (abandoned()) {
+      return true;
+    }
     runningValue.set(true);
     scheduleOnUI(
       startFrameLoop,
@@ -400,10 +456,30 @@ export const useRelightRenderer = (
       scrollValue,
       new ArrayBuffer(UNIFORM_BUFFER_SIZE),
     );
+    return true;
   }, [canvasRef, lightValue, settingsValue, runningValue, scrollValue]);
 
   useEffect(() => {
-    initialize();
-    return cleanup;
+    // The canvas reports a zero size for a tick or two after mount; ask again
+    // on a short timer until it has been laid out, then stop asking.
+    let cancelled = false;
+    let attempts = 0;
+
+    const attempt = async () => {
+      const laidOut = await initialize();
+      if (cancelled || laidOut || attempts >= INIT_MAX_ATTEMPTS) {
+        return;
+      }
+      attempts += 1;
+      timeout = setTimeout(attempt, INIT_RETRY_MS);
+    };
+
+    let timeout = setTimeout(attempt, INIT_RETRY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+      cleanup();
+    };
   }, [initialize, cleanup]);
 };
