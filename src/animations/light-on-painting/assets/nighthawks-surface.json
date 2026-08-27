@@ -1,0 +1,16 @@
+{
+  "width": 640,
+  "height": 349,
+  "format": "rgba16float",
+  "channels": [
+    "slopeX",
+    "slopeY",
+    "occlusion",
+    "depth"
+  ],
+  "source": "nighthawks.jpg",
+  "relief": 1.0,
+  "normals": true,
+  "detailSigma": 0.0,
+  "gradientRadius": 7
+}

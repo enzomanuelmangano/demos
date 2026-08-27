@@ -10,8 +10,10 @@ const path = require('path');
 const config = getDefaultConfig(__dirname);
 
 // Bundle raw ASTC-compressed atlases (art-gallery) as binary assets so they can
-// be fetched verbatim and uploaded to GPU compressed textures.
-config.resolver.assetExts.push('astc');
+// be fetched verbatim and uploaded to GPU compressed textures. .bin carries the
+// same idea for uncompressed GPU payloads — light-on-painting's baked
+// rgba16float surface field, whose half-floats no image container would survive.
+config.resolver.assetExts.push('astc', 'bin');
 
 // Redirect Skia's WebGPUViewNativeComponent to a stub to avoid duplicate registration
 // with react-native-webgpu (both register "WebGPUView")

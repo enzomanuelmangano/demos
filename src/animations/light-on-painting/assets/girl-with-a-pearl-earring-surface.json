@@ -1,0 +1,16 @@
+{
+  "width": 640,
+  "height": 758,
+  "format": "rgba16float",
+  "channels": [
+    "slopeX",
+    "slopeY",
+    "occlusion",
+    "depth"
+  ],
+  "source": "girl-with-a-pearl-earring.jpg",
+  "relief": 1.0,
+  "normals": true,
+  "detailSigma": 0.0,
+  "gradientRadius": 7
+}

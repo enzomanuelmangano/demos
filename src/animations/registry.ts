@@ -80,6 +80,7 @@ import { InfiniteCarousel } from './infinite-carousel';
 import { InteractionAppearance } from './interaction-appearance';
 import { IosHomeBouncy } from './ios-home-bouncy';
 import { iOSHomeGrid } from './ios-home-grid';
+import { LightOnPainting } from './light-on-painting';
 import { LinearSensors } from './linear-sensors';
 import { Playground } from './liquid-glass-playground';
 import { LoadingButton } from './loading-button';
@@ -259,6 +260,7 @@ export const AnimationRegistry = {
   'art-gallery': ArtGallery,
   chessboard: ChessboardGame,
   'the-little-prince': TheLittlePrinceScreen,
+  'light-on-painting': LightOnPainting,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -878,6 +880,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'The Little Prince',
     route: 'TheLittlePrince',
     iconName: 'ellipse-outline',
+  },
+  'light-on-painting': {
+    name: 'Light on Painting',
+    route: 'LightOnPainting',
+    iconName: 'bulb-outline',
   },
 } as const;
 

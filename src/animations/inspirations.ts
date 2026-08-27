@@ -84,6 +84,10 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     authorName: 'Tony Owen',
     link: 'https://tonyowen.medium.com/flutter-bottom-tab-bar-animation-75d1ca58c096',
   },
+  'calendar-days': {
+    authorName: '@austinvalleskey',
+    link: null,
+  },
   'card-shader-reflections': {
     authorName: 'Trade Republic',
     link: 'https://apps.apple.com/ie/app/trade-republic-broker-bank/id1410703839',
@@ -455,5 +459,9 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'sphere-waves': {
     authorName: '@XorDev',
     link: 'https://x.com/XorDev/status/1475524322785640455',
+  },
+  'light-on-painting': {
+    authorName: '@reczko_konrad',
+    link: 'https://x.com/reczko_konrad/status/2089670934009413751',
   },
 } as const;
