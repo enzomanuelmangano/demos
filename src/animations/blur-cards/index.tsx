@@ -1,6 +1,6 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   BackdropBlur,
@@ -17,10 +17,12 @@ import {
 } from '@shopify/react-native-skia';
 import { PressableOpacity } from 'pressto';
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -66,8 +68,23 @@ export const BlurCards = () => {
 
   const progress = useSharedValue(0);
 
+  // e2e outcome probe: the fan/collapse state lives in a Skia worklet with no
+  // inspectable React state, so we bridge progress crossing the halfway point
+  // back to JS. Visually negligible (alpha ~0.01).
+  const [status, setStatus] = useState<'collapsed' | 'fanned'>('collapsed');
+  useAnimatedReaction(
+    () => progress.get() > 0.5,
+    (fanned, prev) => {
+      if (prev === null || fanned === prev) return;
+      scheduleOnRN(setStatus, fanned ? 'fanned' : 'collapsed');
+    },
+  );
+
   return (
     <View style={styles.container}>
+      <Text testID="blur-cards-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <Canvas style={styles.canvas}>
         <Rect x={0} y={0} width={windowWidth} height={windowHeight}>
           <RadialGradient
@@ -108,6 +125,7 @@ export const BlurCards = () => {
         })}
       </Canvas>
       <PressableOpacity
+        testID="blur-cards-canvas"
         style={StyleSheet.absoluteFill}
         onPress={() => {
           progress.set(
@@ -129,5 +147,16 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     flex: 1,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: 'black',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });

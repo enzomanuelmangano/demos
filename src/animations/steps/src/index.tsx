@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useCallback, useState } from 'react';
 
@@ -11,6 +11,10 @@ import { StepButtons } from './steps/step-buttons';
 const App = () => {
   const activeIndex = useSharedValue(0);
   const [isLastStep, setIsLastStep] = useState(false);
+
+  // e2e outcome probe: exposes the current step index so a test can assert that
+  // Continue/Back actually advanced the flow. Near-invisible.
+  const [stepIndex, setStepIndex] = useState(0);
 
   const rightLabel = isLastStep ? 'Finish' : 'Continue';
 
@@ -26,11 +30,15 @@ const App = () => {
     () => activeIndex.get(),
     index => {
       scheduleOnRN(setIsLastStep, index === 2);
+      scheduleOnRN(setStepIndex, index);
     },
   );
 
   return (
     <View style={styles.container}>
+      <Text testID="steps-status" style={styles.statusProbe}>
+        {`step:${stepIndex}`}
+      </Text>
       <Dots activeIndex={activeIndex} count={3} dotSize={10} />
       <StepButtons
         activeIndex={activeIndex}
@@ -50,6 +58,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
     paddingBottom: 64,
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#808080',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });
 

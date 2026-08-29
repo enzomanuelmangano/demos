@@ -136,6 +136,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
+        testID="fibonacci-shader-grid-pad"
         style={[
           {
             width,

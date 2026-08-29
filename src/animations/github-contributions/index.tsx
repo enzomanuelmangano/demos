@@ -1,4 +1,4 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useMemo, useRef } from 'react';
 
@@ -26,7 +26,13 @@ export const GitHubContributions = () => {
 
   return (
     <View style={styles.appContainer}>
+      {/* e2e probe: passive self-running wave; assert the surface mounted.
+          Near-invisible (alpha ~0.01). */}
+      <Text testID="github-contributions-status" style={styles.statusProbe}>
+        ready
+      </Text>
       <PressableScale
+        testID="github-contributions-surface"
         style={styles.appContainer}
         onPress={handleToggleAnimation}>
         <GitHubContributionCalendar
@@ -45,5 +51,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#f7f7f7',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#f7f7f7',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

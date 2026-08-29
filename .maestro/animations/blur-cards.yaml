@@ -1,0 +1,32 @@
+# e2e: Full-screen Skia blurred card fan; an absolute-fill PressableOpacity over the canvas toggles the cards between collapsed and the spring-fanned blurred layout on each tap. Probe bridges the worklet 'progress' (>0.5) back to JS so the test asserts the cards actually fanned out.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/blur-cards"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/blur-cards--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "blur-cards-canvas"
+- waitForAnimationToEnd:
+    timeout: 2500
+- assertVisible:
+    text: "fanned"
+    timeout: 4000
+- tapOn:
+    id: "blur-cards-canvas"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "collapsed"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/blur-cards--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

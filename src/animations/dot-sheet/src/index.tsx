@@ -27,6 +27,7 @@ const App = () => {
       <View style={styles.fill} />
       <CardInput ref={cardInputRef} />
       <PressableScale
+        testID="dot-sheet-start"
         onPress={() => {
           cardInputRef.current?.focus();
         }}

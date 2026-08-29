@@ -1,16 +1,20 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+
+import { useState } from 'react';
 
 import { Canvas, FitBox, Path, rect, Skia } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
+import { scheduleOnRN } from 'react-native-worklets';
 
 type SliderProps = {
   pickerSize?: number;
@@ -46,6 +50,19 @@ const Slider: React.FC<SliderProps> = ({
 
   const translateX = useSharedValue(0);
   const contextX = useSharedValue(0);
+
+  // e2e outcome probe: flips to "moved" once the knob is dragged away from the
+  // start, exposed as an assertable token so a test can verify the drag gesture
+  // changed the slider value. Visually negligible (alpha ~0.01).
+  const [dragState, setDragState] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => translateX.get() !== 0,
+    hasMoved => {
+      if (hasMoved) {
+        scheduleOnRN(setDragState, 'moved');
+      }
+    },
+  );
 
   const scale = useSharedValue(defaultScale);
   const pickerBorderRadius = useSharedValue(defaultPickerBorderRadius);
@@ -139,6 +156,9 @@ const Slider: React.FC<SliderProps> = ({
         backgroundColor: '#E5E5E5',
         borderCurve: 'continuous',
       }}>
+      <Text testID="cuberto-slider-status" style={styles.statusProbe}>
+        {dragState}
+      </Text>
       <Animated.View
         style={[
           {
@@ -170,6 +190,7 @@ const Slider: React.FC<SliderProps> = ({
       />
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="cuberto-knob"
           style={[
             {
               height: pickerSize,
@@ -207,6 +228,15 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     top: 0,
+  },
+  statusProbe: {
+    color: '#E5E5E5',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });
 

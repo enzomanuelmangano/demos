@@ -233,6 +233,7 @@ const SortableItem: FC<SortableListItemProps> = ({
       </View>
       <GestureDetector gesture={panGesture}>
         <Animated.View
+          testID={`drag-to-sort-item-${index}`}
           style={[
             styles.item,
             {

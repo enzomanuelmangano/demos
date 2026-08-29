@@ -26,6 +26,7 @@ const CircularList: FC<CircularListProps> = ({ data, scaleEnabled }) => {
   return (
     // Animated.FlatList renders the circular list
     <Animated.FlatList
+      testID="circular-carousel"
       // Snap each item to the width of a list item
       snapToInterval={LIST_ITEM_WIDTH}
       showsHorizontalScrollIndicator={false}

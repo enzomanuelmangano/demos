@@ -1,0 +1,33 @@
+# e2e: Drag across the card to drive the 3D rotation, then back; ASSERTS the tilt outcome (animated-3d-parallax-status reads "card:tilted").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/animated-3d-parallax"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-3d-parallax--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "animated-3d-parallax-card"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "animated-3d-parallax-card"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "card:tilted"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-3d-parallax--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

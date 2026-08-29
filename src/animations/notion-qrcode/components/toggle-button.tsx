@@ -90,7 +90,10 @@ export const ToggleButton = ({ progress, onPress }: ToggleButtonProps) => {
   return (
     <View style={styles.buttonContainer}>
       <Animated.View style={buttonPulseStyle}>
-        <PressableScale style={styles.button} onPress={onPress}>
+        <PressableScale
+          testID="notion-qrcode-toggle"
+          style={styles.button}
+          onPress={onPress}>
           <Animated.View style={[styles.iconContainer, teamIconStyle]}>
             <Ionicons name="scan" size={28} color="#1a1a1a" />
           </Animated.View>

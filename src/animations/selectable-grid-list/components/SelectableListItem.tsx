@@ -71,6 +71,7 @@ const SelectableListItem: FC<SelectableListItemProps> = memo(
 
     return (
       <View
+        testID={`selectable-grid-list-item-${index}`}
         style={{
           width: containerWidth,
           height: containerHeight,

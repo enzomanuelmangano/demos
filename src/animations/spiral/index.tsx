@@ -1,6 +1,6 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   BlurMask,
@@ -45,6 +45,11 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
   );
 
   const angle = useSharedValue(Math.PI / 2);
+
+  // e2e outcome probe: counts how many times the spiral was re-randomized so a
+  // test can verify the tap actually fired (the spiral is pure Skia and has no
+  // inspectable state). Visually negligible (alpha ~0.01).
+  const [tapCount, setTapCount] = useState(0);
 
   const spiralCoordinates = useMemo(() => {
     const coordinates: SharedValue<{ x: number; y: number }>[] = [];
@@ -100,6 +105,9 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
 
   return (
     <View style={{ flex: 1 }}>
+      <Text testID="spiral-status" style={styles.statusProbe}>
+        {`spiral-taps:${tapCount}`}
+      </Text>
       <Canvas style={{ flex: 1, backgroundColor: '#010101' }}>
         <Group
           transform={[
@@ -119,11 +127,25 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
         </Group>
       </Canvas>
       <PressableWithoutFeedback
+        testID="spiral-canvas"
         onPress={() => {
           angle.set(Math.PI * 2 * Math.random());
+          setTapCount(count => count + 1);
         }}
         style={StyleSheet.absoluteFill}
       />
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  statusProbe: {
+    color: '#010101',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
+  },
+});

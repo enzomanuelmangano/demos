@@ -1,17 +1,19 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 
-import { type FC, useMemo } from 'react';
+import { type FC, useMemo, useState } from 'react';
 
 import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Color from 'color';
 import Animated, {
   convertToRGBA,
   interpolateColor,
+  useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { OnboardingPage } from './page';
 import { PaginationDots } from './pagination-dots';
@@ -62,10 +64,26 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
     },
   });
 
+  // e2e outcome probe: bridge the scroll offset (a worklet value) to JS as the
+  // settled page index so a test can assert which onboarding page is showing.
+  const [pageIndex, setPageIndex] = useState(0);
+  useAnimatedReaction(
+    () => Math.round(currentOffset.get() / width),
+    (next, prev) => {
+      if (next !== prev) {
+        scheduleOnRN(setPageIndex, next);
+      }
+    },
+    [width],
+  );
+
   const ref = useAnimatedRef();
 
   return (
     <>
+      <Text testID="github-onboarding-status" style={styles.statusProbe}>
+        {`page-${pageIndex}`}
+      </Text>
       <Canvas style={[styles.canvas, { width, height }]}>
         <Rect x={0} y={0} width={width} height={height}>
           <LinearGradient
@@ -79,6 +97,7 @@ export const ColorfulOnboarding: FC<ColorfulOnboardingProps> = ({ data }) => {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         ref={ref}
+        testID="github-onboarding-carousel"
         data={data}
         keyExtractor={(_, index) => index.toString()}
         renderItem={({ item, index }) => (
@@ -130,5 +149,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     zIndex: 10,
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

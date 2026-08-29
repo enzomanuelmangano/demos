@@ -1,0 +1,35 @@
+# e2e: A stacked list with a black '+' Add button; tapping it inserts a new item with a motion-blur entrance. Tap Add several times.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/motion-blur"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/motion-blur--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "motion-blur-add"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "motion-blur-add"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "motion-blur-add"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "items:3"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/motion-blur--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

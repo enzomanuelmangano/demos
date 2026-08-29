@@ -11,11 +11,13 @@ import Animated, {
   FadeOut,
   LinearTransition,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { ActionTray, type ActionTrayRef } from './components/ActionTray';
 import { Palette } from './constants/palette';
@@ -27,6 +29,18 @@ function App() {
   const [step, setStep] = useState(0);
 
   const isActionTrayOpened = useSharedValue(false);
+
+  // e2e outcome probe: bridge the tray's open state (a worklet value) to JS so
+  // a test can assert the tray is actually open at the end of the flow.
+  const [isOpen, setIsOpen] = useState(false);
+  useAnimatedReaction(
+    () => isActionTrayOpened.get(),
+    (next, prev) => {
+      if (next !== prev) {
+        scheduleOnRN(setIsOpen, next);
+      }
+    },
+  );
 
   const close = useCallback(() => {
     ref.current?.close();
@@ -94,7 +108,11 @@ function App() {
 
   return (
     <View style={styles.container}>
+      <Text testID="action-tray-status" style={styles.statusProbe}>
+        {isOpen ? `tray-open-${step}` : 'tray-closed'}
+      </Text>
       <PressableScale
+        testID="action-tray-fab"
         style={[styles.button, rToggleButtonStyle]}
         onPress={toggleActionTray}>
         <MaterialCommunityIcons
@@ -171,6 +189,7 @@ function App() {
         </Animated.View>
 
         <PressableScale
+          testID="action-tray-continue"
           style={styles.continueButton}
           onPress={() => {
             if (step === 2) {
@@ -247,6 +266,14 @@ const styles = StyleSheet.create({
   headingText: {
     fontSize: 20,
     fontWeight: '600',
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

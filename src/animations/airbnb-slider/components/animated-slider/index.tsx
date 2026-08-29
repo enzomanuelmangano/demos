@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -86,6 +86,19 @@ const AnimatedSlider: React.FC<SliderProps> = ({
     },
   );
 
+  // e2e outcome probe: flips to "moved" once the knob is dragged away from its
+  // initial position, so a test can assert the slider actually changed value.
+  const initialTranslateX = initialProgress * sliderWidth;
+  const [moveState, setMoveState] = useState<'initial' | 'moved'>('initial');
+  useAnimatedReaction(
+    () => Math.abs(clampedTranslateX.get() - initialTranslateX) > 2,
+    (moved, prev) => {
+      if (moved && moved !== prev) {
+        scheduleOnRN(setMoveState, 'moved');
+      }
+    },
+  );
+
   const gesture = Gesture.Pan()
     .onBegin(() => {
       scale.set(withSpring(1));
@@ -115,6 +128,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
 
   return (
     <Animated.View
+      testID="airbnb-slider-track"
       style={{
         borderRadius: 5,
         backgroundColor: Palette.secondary,
@@ -123,6 +137,9 @@ const AnimatedSlider: React.FC<SliderProps> = ({
         width: sliderWidth,
         borderCurve: 'continuous',
       }}>
+      <Text testID="airbnb-slider-status" style={styles.statusProbe}>
+        {moveState}
+      </Text>
       <Animated.View
         style={[
           {
@@ -134,6 +151,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
       />
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="airbnb-slider-knob"
           style={[
             {
               height: pickerSize,
@@ -161,6 +179,14 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     top: 0,
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

@@ -88,6 +88,7 @@ export const AppsList = () => {
             {row.map((item, itemIndex) => (
               <AppItem
                 key={item.id}
+                testID={`ios-home-grid-icon-${rowIndex * NUM_COLUMNS + itemIndex}`}
                 item={item}
                 style={[
                   {

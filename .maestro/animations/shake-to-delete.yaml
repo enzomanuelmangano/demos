@@ -1,0 +1,29 @@
+# e2e: Grid of gradient app tiles; long-press a tile to enter shake/edit mode (delete badges appear), then tap the badge to remove it.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/shake-to-delete"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/shake-to-delete--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "shake-to-delete-item-0"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "shake-to-delete-item-0-delete"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "deleted"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/shake-to-delete--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

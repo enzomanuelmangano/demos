@@ -27,6 +27,14 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 }) => {
   const [code, setCode] = useState<number[]>([]);
 
+  // e2e outcome probe: latches the verification result as an assertable string
+  // so a test can verify the entered code actually validated (the visible
+  // feedback is animated Skia digits + a shake, with no inspectable RN state).
+  // Latched (not reset) so the assertion is stable. Near-invisible (alpha ~0.01).
+  const [status, setStatus] = useState<'inProgress' | 'correct' | 'wrong'>(
+    'inProgress',
+  );
+
   const verificationStatus = useSharedValue<StatusType>('inProgress');
 
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
@@ -55,6 +63,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 
   const onWrongCodeWrapper = useCallback(() => {
     verificationStatus.set('wrong');
+    setStatus('wrong');
     shake();
     resetCode();
     onWrongCode?.();
@@ -62,6 +71,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 
   const onCorrectCodeWrapper = useCallback(() => {
     verificationStatus.set('correct');
+    setStatus('correct');
     resetCode();
     onCorrectCode?.();
   }, [onCorrectCode, resetCode, verificationStatus]);
@@ -80,11 +90,15 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 
   return (
     <View style={styles.container}>
+      <Text testID="verification-code-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <Animated.View style={rKeyboardAvoidingViewStyle}>
         <View>
           <Text style={styles.headerText}>Enter Code</Text>
         </View>
         <Animated.View
+          testID="verification-code-input"
           style={[styles.codeContainer, rShakeStyle]}
           onTouchEnd={() => {
             invisibleTextInputRef.current?.focus();
@@ -106,6 +120,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
           VerificationCode component.
        */}
       <TextInput
+        testID="verification-code-field"
         keyboardAppearance="default"
         autoFocus
         ref={invisibleTextInputRef}
@@ -152,5 +167,13 @@ const styles = StyleSheet.create({
   invisibleInput: {
     bottom: -50,
     position: 'absolute',
+  },
+  statusProbe: {
+    color: '#FFF',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });

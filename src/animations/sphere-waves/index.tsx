@@ -1,6 +1,6 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   Canvas,
@@ -17,6 +17,7 @@ import {
   Easing,
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withRepeat,
@@ -94,6 +95,18 @@ const SphereWaves = () => {
   const savedDistance = useSharedValue(300);
 
   const iTime = useSharedValue(0.0);
+
+  // e2e outcome probe: a tap/drag on the canvas re-randomizes magicalMul (the
+  // spiral multiplier), which only lives on the UI thread. Bridge the first
+  // change off the initial value back to JS. Visually negligible (alpha ~0.01).
+  const [status, setStatus] = useState<'initial' | 'moved'>('initial');
+  useAnimatedReaction(
+    () => magicalMul.get() !== INITIAL_MAGICAL_MUL,
+    (moved, prev) => {
+      if (prev === null || moved === prev) return;
+      scheduleOnRN(setStatus, moved ? 'moved' : 'initial');
+    },
+  );
 
   // History tracking for magicalMul values
   const historyRef = useRef<number[]>([INITIAL_MAGICAL_MUL]);
@@ -184,7 +197,10 @@ const SphereWaves = () => {
 
   return (
     <GestureDetector gesture={combinedGesture}>
-      <View style={styles.container}>
+      <View testID="sphere-waves-canvas" style={styles.container}>
+        <Text testID="sphere-waves-status" style={styles.statusProbe}>
+          {status}
+        </Text>
         <Canvas
           style={{
             width: CANVAS_WIDTH,
@@ -209,6 +225,17 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     flex: 1,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: 'black',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });
 

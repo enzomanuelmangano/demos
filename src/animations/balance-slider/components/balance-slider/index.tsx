@@ -125,6 +125,7 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View
+        testID="balance-slider-knob"
         style={[
           {
             width,

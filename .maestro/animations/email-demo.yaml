@@ -1,0 +1,33 @@
+# e2e: Email-style stacked list with floating restore/delete FABs that animate cards in/out. Presses delete twice then restore (net erased = 1), then ASSERTS the erased count (email-demo-status reads "erased:1", bridged from the erasedItems shared value).
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/email-demo"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/email-demo--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "email-demo-delete"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    id: "email-demo-delete"
+- waitForAnimationToEnd:
+    timeout: 1200
+- tapOn:
+    id: "email-demo-restore"
+- waitForAnimationToEnd:
+    timeout: 1200
+- assertVisible:
+    text: "erased:1"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/email-demo--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

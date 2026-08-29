@@ -1,0 +1,32 @@
+# e2e: Open the dropdown via the header trigger, then pick the Calendar option; ASSERTS the picked outcome (smooth-dropdown-status reads "picked:calendar").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/smooth-dropdown"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/smooth-dropdown--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "smooth-dropdown-trigger"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    id: "smooth-dropdown-item-calendar"
+    timeout: 4000
+- tapOn:
+    id: "smooth-dropdown-item-calendar"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "picked:calendar"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/smooth-dropdown--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

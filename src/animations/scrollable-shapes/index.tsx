@@ -1,6 +1,6 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   Blur,
@@ -15,12 +15,14 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Easing,
+  useAnimatedReaction,
   useSharedValue,
   withRepeat,
   withTiming,
   useAnimatedScrollHandler,
   useDerivedValue,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { Paginator } from './components';
 import {
@@ -56,6 +58,18 @@ const ScrollableShapes = () => {
 
   // Input range for shape interpolation (computed once)
   const inputRange = ALL_SHAPES.map((_, idx) => windowWidth * idx);
+
+  // e2e outcome probe: the morphed shape is driven by an invisible pager whose
+  // offset only lives on the UI thread. Bridge the current page index back to
+  // JS so a test can assert the pager actually advanced. alpha ~0.01.
+  const [page, setPage] = useState(0);
+  useAnimatedReaction(
+    () => Math.round(scrollX.get() / windowWidth),
+    (currentPage, prevPage) => {
+      if (prevPage === null || currentPage === prevPage) return;
+      scheduleOnRN(setPage, currentPage);
+    },
+  );
 
   // Create picture using drawPoints for massive performance gain
   const picture = useDerivedValue(() => {
@@ -170,6 +184,9 @@ const ScrollableShapes = () => {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
+      <Text testID="scrollable-shapes-status" style={styles.statusProbe}>
+        {`page-${page}`}
+      </Text>
 
       {/* Canvas with the shape */}
       <Canvas
@@ -197,6 +214,7 @@ const ScrollableShapes = () => {
 
       {/* Invisible ScrollView to control the morph */}
       <Animated.ScrollView
+        testID="scrollable-shapes-pager"
         horizontal
         showsHorizontalScrollIndicator={false}
         onScroll={scrollHandler}
@@ -223,6 +241,17 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'black',
     flex: 1,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: 'black',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });
 

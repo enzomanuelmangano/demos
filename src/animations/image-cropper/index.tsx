@@ -1,4 +1,10 @@
-import { Modal, StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  Modal,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 
 import { useCallback, useRef, useState } from 'react';
 
@@ -57,6 +63,11 @@ const ImageCropper = () => {
 
     return (
       <View style={styles.detailContainer}>
+        {/* e2e outcome probe: only present once the crop produced the detail
+            view, so a test can assert Crop actually opened the result. */}
+        <Text testID="image-cropper-status" style={styles.statusProbe}>
+          cropped:shown
+        </Text>
         <Canvas
           style={{
             width: width,
@@ -141,6 +152,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
   },
 });
 

@@ -1,10 +1,15 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  FadeIn,
+  FadeOut,
+  useAnimatedReaction,
+} from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { SwipeableCard } from './components/Card';
 import { IMAGES } from './constants';
@@ -17,6 +22,18 @@ export const SwipeCards = () => {
   const liked = useRef(0);
   const disliked = useRef(0);
 
+  // e2e outcome probe: exposes how many cards have been swiped away as an
+  // assertable token so a test can verify the swipe buttons actually advanced
+  // the deck (the cards themselves are Skia/animated and expose no state).
+  // Visually negligible (alpha ~0.01).
+  const [swipedCount, setSwipedCount] = useState(0);
+  useAnimatedReaction(
+    () => activeIndex.get(),
+    current => {
+      scheduleOnRN(setSwipedCount, current);
+    },
+  );
+
   const onReset = useCallback(() => {
     activeIndex.set(0);
     liked.current = 0;
@@ -27,6 +44,9 @@ export const SwipeCards = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="swipe-cards-status" style={styles.statusProbe}>
+        {`swiped:${swipedCount}`}
+      </Text>
       <View style={{ flex: 7 }}>
         <Animated.View
           style={{
@@ -59,15 +79,22 @@ export const SwipeCards = () => {
 
       {/* Define the buttons container */}
       <View style={styles.buttonsContainer}>
-        <PressableScale style={styles.button} onPress={swipeLeft}>
+        <PressableScale
+          testID="swipe-cards-dislike"
+          style={styles.button}
+          onPress={swipeLeft}>
           <AntDesign name="close" size={32} color="white" />
         </PressableScale>
         <PressableScale
+          testID="swipe-cards-reset"
           style={[styles.button, { height: 60, marginHorizontal: 10 }]}
           onPress={onReset}>
           <AntDesign name="reload" size={24} color="white" />
         </PressableScale>
-        <PressableScale style={styles.button} onPress={swipeRight}>
+        <PressableScale
+          testID="swipe-cards-like"
+          style={styles.button}
+          onPress={swipeRight}>
           <AntDesign name="heart" size={32} color="white" />
         </PressableScale>
       </View>
@@ -95,5 +122,14 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#242831',
     flex: 1,
+  },
+  statusProbe: {
+    color: '#242831',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1000,
   },
 });

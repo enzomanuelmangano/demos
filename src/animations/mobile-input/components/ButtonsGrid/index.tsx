@@ -35,6 +35,7 @@ const ButtonsGrid: FC<ButtonsGridProps> = memo(({ pin, onReset }) => {
         return (
           <InputButton
             key={index}
+            testID={label == null ? undefined : `mobile-input-key-${label}`}
             style={styles.input}
             onPress={() => {
               if (typeof label === 'number') {

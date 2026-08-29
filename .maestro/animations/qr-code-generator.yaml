@@ -1,0 +1,32 @@
+# e2e: Type new text to regenerate the QR code, then drag the deviation slider; ASSERTS the content outcome (qr-code-generator-status reads "qr:reactiive").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/qr-code-generator"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/qr-code-generator--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "qr-code-generator-input"
+- inputText: "reactiive"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "qr:reactiive"
+    timeout: 4000
+- swipe:
+    from:
+      id: "qr-code-generator-slider"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/qr-code-generator--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

@@ -16,9 +16,9 @@
  * ```
  */
 
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { AntDesign, FontAwesome6 } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
@@ -93,6 +93,8 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
 }) => {
   const progress = useSharedValue(0);
   const isAnimating = useSharedValue(false);
+  // e2e outcome probe: flips to 'blasted' once the button has fired.
+  const [hasBlasted, setHasBlasted] = useState(false);
 
   const boxStyle = useMemo(() => {
     return {
@@ -173,6 +175,7 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
     }
 
     onPress?.();
+    setHasBlasted(true);
 
     cancelAnimation(progress);
     isAnimating.set(true);
@@ -197,6 +200,10 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
 
   return (
     <View style={styles.boxContainer}>
+      {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+      <Text testID="particles-button-status" style={styles.statusProbe}>
+        {hasBlasted ? 'blasted' : 'idle'}
+      </Text>
       <View style={[styles.blastContainer, blastCenterStyle]}>
         <BlastCircleEffect
           blastRadius={blastRadius}
@@ -206,7 +213,10 @@ export const CircularButton: React.FC<CircularButtonProps> = ({
           circleRadius={2}
         />
       </View>
-      <PressableScale style={boxStyle} onPress={onPressHandler}>
+      <PressableScale
+        testID="particles-button"
+        style={boxStyle}
+        onPress={onPressHandler}>
         <Animated.View style={[styles.iconContainer, rBaseIconStyle]}>
           {baseIcon}
         </Animated.View>
@@ -233,5 +243,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...StyleSheet.absoluteFill,
+  },
+  statusProbe: {
+    color: '#808080',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

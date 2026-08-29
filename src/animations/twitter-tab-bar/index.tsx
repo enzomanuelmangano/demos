@@ -1,4 +1,4 @@
-import { View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useState } from 'react';
 
@@ -37,6 +37,11 @@ const TwitterTabBarContent = () => {
   return (
     <ActiveTabBarContextProvider>
       <View style={{ flex: 1, backgroundColor: colors.background }}>
+        {/* e2e outcome probe: surfaces the active tab as an assertable value so
+            a test can verify the tab switch actually changed the selection. */}
+        <Text testID="twitter-tab-bar-status" style={styles.statusProbe}>
+          {`tab:${activeTab.toLowerCase()}`}
+        </Text>
         <View style={{ flex: 1 }}>
           <ActiveScreen />
         </View>
@@ -48,6 +53,19 @@ const TwitterTabBarContent = () => {
     </ActiveTabBarContextProvider>
   );
 };
+
+const styles = StyleSheet.create({
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
+  },
+});
 
 export const TwitterTabBar = () => {
   return (

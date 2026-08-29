@@ -1,0 +1,33 @@
+# e2e: Two-column image grid; tap a card to navigate to a details screen with a shared-element transition, then back. ASSERT the Home screen re-focused after the round-trip (shared-transitions-status reads "home-visits:2").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/shared-transitions"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/shared-transitions--mounted"
+# this demo raises a native alert (outside the RN view tree)
+- tapOn:
+    text: "OK"
+    optional: true
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "shared-transitions-card-0"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "home-visits:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/shared-transitions--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

@@ -36,6 +36,7 @@ const AddCloseIcon: FC<AddCloseIconProps> = memo(({ onPress, progress }) => {
 
   return (
     <PressableScale
+      testID="floating-modal-trigger"
       onPress={onPress}
       style={[
         {

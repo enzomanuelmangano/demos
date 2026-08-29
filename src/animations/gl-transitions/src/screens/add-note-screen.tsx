@@ -77,6 +77,12 @@ export const AddNoteScreen = () => {
         backgroundColor: Palette.background,
         paddingHorizontal: 8,
       }}>
+      {/* e2e outcome probe: this screen is reached only via the GL transition,
+          so its presence is an assertable proof that the + button actually
+          navigated here. Near-invisible (alpha ~0.01). */}
+      <Text testID="gl-transitions-status" style={styles.statusProbe}>
+        addnote
+      </Text>
       <LinearGradient
         // Background Linear Gradient
         colors={['rgba(255, 0, 0, 0.05)', 'transparent', 'transparent']}
@@ -156,5 +162,14 @@ const styles = StyleSheet.create({
     marginTop: 16,
     minHeight: 200,
     padding: 16,
+  },
+  statusProbe: {
+    color: Palette.text,
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });

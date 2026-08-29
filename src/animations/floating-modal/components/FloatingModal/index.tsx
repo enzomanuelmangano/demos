@@ -1,17 +1,19 @@
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions } from 'react-native';
 
-import { type FC, memo } from 'react';
+import { type FC, memo, useState } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { AddCloseIcon } from './AddCloseIcon';
 import { AnimatedBackdrop } from './AnimatedBackdrop';
@@ -136,8 +138,22 @@ const FloatingModal: FC = memo(() => {
     return progress.get() === 1;
   }, []);
 
+  // e2e outcome probe: bridges the worklet-driven open state to a JS string so
+  // a test can assert the modal actually morphed open. Visually negligible.
+  const [status, setStatus] = useState<'hidden' | 'shown'>('hidden');
+  useAnimatedReaction(
+    () => isModalVisible.get(),
+    visible => {
+      scheduleOnRN(setStatus, visible ? 'shown' : 'hidden');
+    },
+    [],
+  );
+
   return (
     <>
+      <Text testID="floating-modal-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <AnimatedBackdrop
         isVisible={isModalVisible}
         onBackdropPress={() => {
@@ -173,6 +189,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     boxShadow: '0px 12px 12px rgba(0, 0, 0, 0.2)',
     position: 'absolute',
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#000',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });
 

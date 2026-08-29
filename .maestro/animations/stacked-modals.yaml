@@ -1,0 +1,36 @@
+# e2e: A '+' FAB that pushes a stack of modals, each with Confirm/Dismiss buttons; Confirm advances to the next stacked modal. Open the stack then confirm twice.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/stacked-modals"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/stacked-modals--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "stacked-modals-trigger"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    text: "Confirm"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    text: "Confirm"
+    optional: true
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "count:3"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/stacked-modals--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

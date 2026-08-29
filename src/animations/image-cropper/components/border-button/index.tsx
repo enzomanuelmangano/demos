@@ -13,6 +13,7 @@ const FancyBorderButton: React.FC<FancyBorderButtonProps> = ({
 }) => {
   return (
     <PressableScale
+      testID={`image-cropper-${title.toLowerCase()}`}
       onPress={onPress}
       style={{
         borderWidth: 1,

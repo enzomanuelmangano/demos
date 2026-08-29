@@ -1,0 +1,29 @@
+# e2e: Tap three grid cells to select them; ASSERTS the selection count outcome (selectable-grid-list-status reads "selected:3").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/selectable-grid-list"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/selectable-grid-list--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "selectable-grid-list-item-0"
+- tapOn:
+    id: "selectable-grid-list-item-2"
+- tapOn:
+    id: "selectable-grid-list-item-5"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "selected:3"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/selectable-grid-list--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

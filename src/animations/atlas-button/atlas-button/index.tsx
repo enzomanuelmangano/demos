@@ -1,6 +1,11 @@
-import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
+import {
+  type StyleProp,
+  StyleSheet,
+  Text,
+  type TextStyle,
+} from 'react-native';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   Canvas,
@@ -14,6 +19,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -50,6 +56,17 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
   const iconSize = width * 0.2;
 
   const isActive = useSharedValue(false);
+
+  // e2e outcome probe: exposes whether the atlas button has been pressed at
+  // least once (the atlas morph is Skia-only). Near-invisible (alpha ~0.012).
+  const [status, setStatus] = useState<'idle' | 'pressed'>('idle');
+  useAnimatedReaction(
+    () => isActive.get(),
+    active => {
+      if (active) scheduleOnRN(setStatus, 'pressed');
+    },
+  );
+
   const tapGesture = Gesture.Tap()
     .maxDuration(10000)
     .onTouchesDown(() => {
@@ -124,7 +141,10 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
 
   return (
     <GestureDetector gesture={tapGesture}>
-      <Animated.View style={[rStyle, styles.center]}>
+      <Animated.View testID="atlas-button" style={[rStyle, styles.center]}>
+        <Text testID="atlas-button-status" style={styles.statusProbe}>
+          {status}
+        </Text>
         <Canvas
           style={{
             width,
@@ -174,5 +194,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
     position: 'absolute',
     textAlign: 'center',
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });

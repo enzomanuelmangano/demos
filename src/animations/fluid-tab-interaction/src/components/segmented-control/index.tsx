@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useMemo } from 'react';
 
@@ -94,6 +94,13 @@ function SegmentedControl<T extends { name: string; icon: string }>({
           padding: internalPadding,
         },
       ]}>
+      {/* e2e outcome probe: exposes the selected segment so a test can verify
+          the tap actually moved the fluid selector. Visually negligible. */}
+      <Text
+        testID="fluid-tab-interaction-status"
+        style={localStyles.statusProbe}>
+        {`tab:${selected.name.toLowerCase()}`}
+      </Text>
       {data.map((item, index) => {
         // eslint-disable-next-line react-hooks/rules-of-hooks
         const internalBlurProps = useAnimatedProps(() => {
@@ -121,6 +128,7 @@ function SegmentedControl<T extends { name: string; icon: string }>({
         return (
           <PressableScale
             key={item.name}
+            testID={`fluid-tab-interaction-tab-${item.name.toLowerCase()}`}
             style={localStyles.labelContainer}
             onPress={() => {
               onPress(item);
@@ -234,6 +242,14 @@ const localStyles = StyleSheet.create({
     gap: 5,
     justifyContent: 'center',
     zIndex: 2,
+  },
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
+    zIndex: 9999,
   },
 });
 

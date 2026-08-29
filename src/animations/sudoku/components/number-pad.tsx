@@ -81,6 +81,7 @@ const NumberPadButton = memo<NumberPadButtonProps>(
 
     return (
       <AnimatedPressable
+        testID={`sudoku-key-${value}`}
         style={[styles.numpadButton, numpadAnimatedStyle]}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}

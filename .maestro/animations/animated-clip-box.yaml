@@ -1,0 +1,29 @@
+# e2e: Two cards with a clip-path reveal on press; press 'Explore Demos' then 'Learn More', then ASSERT both reveals fired (animated-clip-box-status reads "revealed:2").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/animated-clip-box"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-clip-box--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "animated-clip-box-explore"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "animated-clip-box-learn-more"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "revealed:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/animated-clip-box--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

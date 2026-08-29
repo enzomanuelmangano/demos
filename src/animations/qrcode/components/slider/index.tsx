@@ -147,6 +147,7 @@ const Slider: FC<SliderProps> = ({
       />
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="qr-code-generator-slider"
           style={[
             {
               height: pickerSize,

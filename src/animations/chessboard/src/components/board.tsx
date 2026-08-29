@@ -25,7 +25,7 @@ export const Board = memo(function Board({
   onMove: (result: MoveResult) => void;
 }) {
   return (
-    <View ref={boxRef} collapsable={false}>
+    <View testID="chessboard-board" ref={boxRef} collapsable={false}>
       <Chessboard
         ref={chessRef}
         boardSize={boardSize}

@@ -1,0 +1,39 @@
+# e2e: WebGPU GitHub-contributions terrain; tapping the canvas toggles flat<->raised 3D terrain, and a bottom-right Switch toggles real vs demo data. Probe mirrors the (ref-held) flat/raised + real/demo state into a '<flat|raised>-<real|demo>' token so the test asserts the data switch actually flipped to demo.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/github-terrain"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/github-terrain--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "github-terrain-canvas"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "raised-real"
+    timeout: 4000
+- tapOn:
+    id: "github-terrain-switch"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "raised-demo"
+    timeout: 4000
+- tapOn:
+    id: "github-terrain-canvas"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "flat-demo"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/github-terrain--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

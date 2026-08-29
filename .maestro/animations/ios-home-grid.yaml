@@ -1,0 +1,25 @@
+# e2e: iOS-style app grid; tap the first icon to play the expand-into-detail shared-element navigation transition.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/ios-home-grid"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/ios-home-grid--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "ios-home-grid-icon-0"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "expanded"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/ios-home-grid--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

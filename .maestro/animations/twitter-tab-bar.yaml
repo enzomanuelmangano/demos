@@ -1,0 +1,29 @@
+# e2e: Tap different tabs to move the active indicator, ending on Message; ASSERTS the active-tab outcome (twitter-tab-bar-status reads "tab:message").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/twitter-tab-bar"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/twitter-tab-bar--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "twitter-tab-bar-tab-search"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "twitter-tab-bar-tab-message"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:message"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/twitter-tab-bar--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

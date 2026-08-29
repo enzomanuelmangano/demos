@@ -191,6 +191,7 @@ export const CircularDraggableSlider = forwardRef<
         </View>
         <GestureDetector gesture={panGesture}>
           <Animated.View
+            testID="pomodoro-timer-slider"
             style={[
               {
                 height: WindowHeight / 2,

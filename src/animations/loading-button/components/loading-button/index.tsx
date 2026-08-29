@@ -34,7 +34,10 @@ const LoadingButton: React.FC<LoadingButtonProps> = ({
   }, [colorFromStatusMap, status]);
 
   return (
-    <PressableScale onPress={onPress} layout={LinearTransition.springify()}>
+    <PressableScale
+      testID="loading-button"
+      onPress={onPress}
+      layout={LinearTransition.springify()}>
       <Animated.View
         style={[
           {

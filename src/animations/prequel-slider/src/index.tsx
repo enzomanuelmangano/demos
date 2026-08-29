@@ -1,9 +1,12 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
+import { useState } from 'react';
 
 import { useImage } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import {
   interpolateColor,
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
@@ -34,6 +37,21 @@ const App = () => {
   const progressPercentage = useSharedValue(0);
   const previousLineIndex = useSharedValue(-1);
 
+  // e2e outcome probe: the GL transition is driven by progressPercentage (a
+  // worklet value with no inspectable RN state), so we bridge a CHANGED flag to
+  // prove the scrubber drag actually moved the progress. Near-invisible
+  // (alpha ~0.01).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+  useAnimatedReaction(
+    () => progressPercentage.get(),
+    (current, previous) => {
+      if (previous != null && current !== previous) {
+        scheduleOnRN(setStatus, 'moved');
+      }
+    },
+    [],
+  );
+
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const demoImage = useImage(DemoImageUrl);
@@ -59,6 +77,9 @@ const App = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="prequel-slider-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <ImageEditor
         width={imageEditorWidth}
         height={imageEditorHeight}
@@ -128,6 +149,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#FFF',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
   },
 });
 

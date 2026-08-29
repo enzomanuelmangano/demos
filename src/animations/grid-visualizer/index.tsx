@@ -1,6 +1,6 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import {
   BlurMask,
@@ -37,12 +37,17 @@ export function GridVisualizer() {
   // Keep in mind that this is a number, but you can use a string as well :)
   const text = useSharedValue<string | null>('99');
 
+  // e2e outcome probe: counts how many times the grid has re-rendered a new
+  // number (the visible result is Skia-only). Near-invisible (alpha ~0.012).
+  const [renderCount, setRenderCount] = useState(0);
+
   const generateRandomText = useCallback(() => {
     // This is a hack to force to clear the grid before changing again the text
     // Try to comment this line and tap the screen multiple times to see what happens
     text.set(null);
     setTimeout(() => {
       text.set(Math.floor(Math.random() * 100).toString());
+      setRenderCount(count => count + 1);
     }, 700);
   }, [text]);
 
@@ -56,7 +61,10 @@ export function GridVisualizer() {
        * Honestly there was no need to use a GestureDetector for such a simple tap gesture
        */}
       <GestureDetector gesture={tapGesture}>
-        <Animated.View>
+        <Animated.View testID="grid-visualizer">
+          <Text testID="grid-visualizer-status" style={styles.statusProbe}>
+            {`renders:${renderCount}`}
+          </Text>
           <GridVisualizerComponent
             text={text}
             width={CanvasWidth}
@@ -99,5 +107,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingTop: 10,
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });

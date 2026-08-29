@@ -1,4 +1,6 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+
+import { useState } from 'react';
 
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -146,10 +148,16 @@ export const StackedCarousel = <T,>({
   // Shared value for scroll position
   const scrollX = useSharedValue(0);
 
+  // e2e outcome probe: bridge a 'moved' flag once the carousel scrolls.
+  const [moved, setMoved] = useState(false);
+
   // Scroll handler
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
       scrollX.set(event.contentOffset.x);
+      if (event.contentOffset.x > 1) {
+        scheduleOnRN(setMoved, true);
+      }
     },
   });
 
@@ -169,6 +177,10 @@ export const StackedCarousel = <T,>({
 
   return (
     <View style={[styles.container, style]}>
+      {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+      <Text testID="stacked-carousel-status" style={styles.statusProbe}>
+        {moved ? 'moved' : 'idle'}
+      </Text>
       {/* Render animated cards */}
       {data.map((item, index) => (
         <AnimatedCard
@@ -184,6 +196,7 @@ export const StackedCarousel = <T,>({
 
       {/* Invisible horizontal scroll view positioned over the cards */}
       <Animated.FlatList
+        testID="stacked-carousel-scroller"
         data={data}
         renderItem={() => (
           <View
@@ -258,5 +271,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 40,
+  },
+  statusProbe: {
+    color: '#808080',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 2000,
   },
 });

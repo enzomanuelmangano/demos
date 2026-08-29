@@ -1,0 +1,31 @@
+# e2e: A mini player docked above a bottom tab bar; tapping it expands it into a full sheet, swiping down collapses it. Tap to expand then swipe down to collapse.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/expandable-mini-player"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/expandable-mini-player--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "expandable-mini-player"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "expanded"
+    timeout: 4000
+- swipe:
+    from:
+      id: "expandable-mini-player"
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/expandable-mini-player--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

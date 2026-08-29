@@ -21,6 +21,7 @@ type NavigationItemProps = {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onNavigate?: () => void;
+  testID?: string;
   config?: {
     borderRadius?: number;
     color?: string;
@@ -31,6 +32,7 @@ const NavigationItem = ({
   children,
   style,
   onNavigate,
+  testID,
   config,
 }: NavigationItemProps) => {
   const ref = useAnimatedRef();
@@ -91,7 +93,11 @@ const NavigationItem = ({
       {/* collapsable={false} keeps a backing native view on Fabric so
           measure() returns dimensions instead of null (the expand
           transition silently no-op'd without it). */}
-      <Animated.View collapsable={false} ref={ref} style={[style, rStyle]}>
+      <Animated.View
+        testID={testID}
+        collapsable={false}
+        ref={ref}
+        style={[style, rStyle]}>
         {children}
       </Animated.View>
     </GestureDetector>

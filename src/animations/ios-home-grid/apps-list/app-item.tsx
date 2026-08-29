@@ -17,9 +17,15 @@ interface AppItemProps {
   item: AppData;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
-export const AppItem: React.FC<AppItemProps> = ({ item, onPress, style }) => {
+export const AppItem: React.FC<AppItemProps> = ({
+  item,
+  onPress,
+  style,
+  testID,
+}) => {
   const handleNavigate = () => {
     onPress?.();
   };
@@ -31,6 +37,7 @@ export const AppItem: React.FC<AppItemProps> = ({ item, onPress, style }) => {
       exiting={FadeOut}>
       {/* Main touchable area for the app item */}
       <NavigationItem
+        testID={testID}
         style={{
           flex: 1,
         }}

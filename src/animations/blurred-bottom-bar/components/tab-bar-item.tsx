@@ -48,7 +48,10 @@ export const TabBarItem: FC<TabBarItemProps> = memo(
 
     return (
       <Animated.View style={[localStyles.fill, rStyle]}>
-        <PressableScale style={localStyles.fillCenter} onPress={onPress}>
+        <PressableScale
+          testID={`blurred-bottom-bar-tab-${screenName.toLowerCase()}`}
+          style={localStyles.fillCenter}
+          onPress={onPress}>
           {getIconByScreenName(screenName)}
         </PressableScale>
       </Animated.View>

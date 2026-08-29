@@ -1,0 +1,41 @@
+# e2e: Horizontal paged inverted ScrollView driving a stack of iMessage-style cards animated off scroll offset.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/imessage-stack"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/imessage-stack--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "imessage-stack"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- swipe:
+    from:
+      id: "imessage-stack"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- swipe:
+    from:
+      id: "imessage-stack"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/imessage-stack--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

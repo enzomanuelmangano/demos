@@ -181,6 +181,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     <View>
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="prequel-slider-scrubber"
           style={{
             height: scrollableAreaHeight,
           }}>

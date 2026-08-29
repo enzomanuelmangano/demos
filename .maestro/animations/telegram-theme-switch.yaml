@@ -1,0 +1,29 @@
+# e2e: Telegram-style app shell where an 80x80 Lottie switch button (bottom-right, above the tab bar) triggers a full-screen circular reveal that swaps light/dark theme. Tests tapping the switch to toggle the theme twice.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/telegram-theme-switch"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/telegram-theme-switch--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "telegram-theme-switch"
+- waitForAnimationToEnd:
+    timeout: 2500
+- tapOn:
+    id: "telegram-theme-switch"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "dark"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/telegram-theme-switch--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

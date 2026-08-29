@@ -193,6 +193,7 @@ const BaseInfiniteCircularCarousel = <T,>(
     <View>
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="infinite-carousel"
           style={[
             styles.container,
             {

@@ -30,6 +30,7 @@ export type CellProps = {
   isInitial: boolean;
   onPress: () => void;
   isSelected: SharedValue<boolean>;
+  testID?: string;
 };
 
 export const Cell = memo<CellProps>(
@@ -41,6 +42,7 @@ export const Cell = memo<CellProps>(
     isBorderBottom,
     isInitial,
     onPress,
+    testID,
   }) => {
     const isHighlighted = useDerivedValue(() => {
       return value === highlightedNumber.get() && highlightedNumber.get() !== 0;
@@ -86,7 +88,7 @@ export const Cell = memo<CellProps>(
     );
 
     return (
-      <AnimatedPressable style={cellStyle} onPress={onPress}>
+      <AnimatedPressable testID={testID} style={cellStyle} onPress={onPress}>
         <Text style={textStyle}>{value || ''}</Text>
         <Animated.View style={[styles.cellBackground, cellAnimatedStyle]} />
       </AnimatedPressable>

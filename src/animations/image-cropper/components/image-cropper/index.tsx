@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useMemo } from 'react';
 
+import { View } from 'react-native';
 import { Image, rect } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
@@ -76,27 +77,29 @@ const ImageCropper = forwardRef<ImageCropperRef, ImageCropperProps>(
     }));
 
     return (
-      <Touchable.Canvas
-        style={[
-          { backgroundColor: 'black' },
-          style,
-          {
-            width,
-            height,
-          },
-        ]}>
-        {image && <Image image={image} rect={imageRect} fit={'contain'} />}
-        <Grid
-          x={x}
-          y={y}
-          width={gridWidth}
-          height={gridHeight}
-          maxHeight={height}
-          maxWidth={width}
-          minWidth={minWidth}
-          minHeight={minHeight}
-        />
-      </Touchable.Canvas>
+      <View testID="image-cropper-canvas" style={{ width, height }}>
+        <Touchable.Canvas
+          style={[
+            { backgroundColor: 'black' },
+            style,
+            {
+              width,
+              height,
+            },
+          ]}>
+          {image && <Image image={image} rect={imageRect} fit={'contain'} />}
+          <Grid
+            x={x}
+            y={y}
+            width={gridWidth}
+            height={gridHeight}
+            maxHeight={height}
+            maxWidth={width}
+            minWidth={minWidth}
+            minHeight={minHeight}
+          />
+        </Touchable.Canvas>
+      </View>
     );
   },
 );

@@ -1,11 +1,12 @@
 import {
   Platform,
   StyleSheet,
+  Text,
   TextInput,
   useWindowDimensions,
 } from 'react-native';
 
-import { forwardRef, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
@@ -29,6 +30,10 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   const progress = useSharedValue(0);
   const { top: safeTop } = useSafeAreaInsets();
   const animatedTextInput = useRef<TextInput>(null);
+
+  // e2e outcome probe: exposes whether the Dot-style sheet has opened (the
+  // card is driven by a Reanimated progress value). Near-invisible.
+  const [status, setStatus] = useState<'closed' | 'open'>('closed');
 
   useImperativeHandle(
     ref,
@@ -131,6 +136,9 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
 
   return (
     <>
+      <Text testID="dot-sheet-status" style={styles.statusProbe}>
+        {`sheet:${status}`}
+      </Text>
       <PressableScale
         onPress={() => {
           // blurring the input will automatically animate the card
@@ -159,10 +167,12 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
           onFocus={() => {
             // Here's the magic, we animate the progress value in a reactive way
             progress.set(withSpring(1, { duration: 800, dampingRatio: 1 }));
+            setStatus('open');
           }}
           onBlur={() => {
             // When the input is unfocused, we animate the progress value back to 0
             progress.set(withSpring(0, { duration: 800, dampingRatio: 1 }));
+            setStatus('closed');
           }}
           style={[styles.input, rTextInputStyle]}
           autoCorrect={false}
@@ -198,5 +208,15 @@ const styles = StyleSheet.create({
     marginRight: 12,
     marginTop: 24,
     textAlignVertical: 'top',
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#808080',
+    opacity: 0.012,
+    zIndex: 1000,
   },
 });

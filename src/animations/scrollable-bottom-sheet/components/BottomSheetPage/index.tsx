@@ -32,7 +32,7 @@ const BottomSheetPage: FC<BottomSheetPageProps> = ({
           width: windowWidth,
         },
       ]}>
-      <PressableScale onPress={onPress}>
+      <PressableScale testID="scrollable-bottom-sheet-next" onPress={onPress}>
         <LinearGradient
           start={{ x: 0, y: 1 }}
           end={{ x: 1, y: 0 }}

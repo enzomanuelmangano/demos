@@ -60,6 +60,9 @@ const generateRandomDataChart = () => {
 
 export const RadarChartContainer = () => {
   const [data, setData] = useState(generateRandomDataChart);
+  // e2e outcome probe: counts how many times the chart was re-shuffled so a
+  // test can assert the Shuffle interaction actually mutated the data.
+  const [shuffles, setShuffles] = useState(0);
 
   const font = useFont(
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -71,6 +74,9 @@ export const RadarChartContainer = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="radar-chart-status" style={styles.statusProbe}>
+        {`shuffled:${shuffles}`}
+      </Text>
       <RadarChart
         data={data}
         showGrid={true}
@@ -81,8 +87,10 @@ export const RadarChartContainer = () => {
         style={{ width: width, aspectRatio: 1 }}
       />
       <PressableScale
+        testID="radar-chart-shuffle"
         onPress={() => {
           setData(generateRandomDataChart());
+          setShuffles(s => s + 1);
         }}
         style={styles.button}>
         <Text style={styles.title}>Shuffle</Text>
@@ -109,6 +117,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 20,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: 'white',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
   title: {
     color: 'white',

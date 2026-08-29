@@ -13,6 +13,7 @@ export const FloatingButtonTheme: React.FC = () => {
 
   return (
     <PressableScale
+      testID="interaction-appearance-toggle"
       onPressIn={() => {
         // Here we keep track that we are switching the theme
         // This is going to impact the Rescaler and the Theme Blur component

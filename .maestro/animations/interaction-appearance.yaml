@@ -1,0 +1,31 @@
+# e2e: Movie-detail screen with a floating theme toggle (bottom-right); tapping runs a rescaler/blur light-dark appearance transition.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/interaction-appearance"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/interaction-appearance--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "interaction-appearance-toggle"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "interaction-appearance-toggle"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "light#2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/interaction-appearance--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

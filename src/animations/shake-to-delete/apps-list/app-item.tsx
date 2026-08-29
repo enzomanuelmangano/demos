@@ -28,6 +28,7 @@ interface AppItemProps {
   onLongPress: () => void;
   onDelete?: () => void;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 }
 
 /**
@@ -50,6 +51,7 @@ export const AppItem: React.FC<AppItemProps> = ({
   onLongPress,
   onDelete,
   style,
+  testID,
 }) => {
   const { isShaking } = useIsShaking();
   const { rShakingStyle } = useShakingAnimation(item.id);
@@ -66,11 +68,15 @@ export const AppItem: React.FC<AppItemProps> = ({
       layout={LinearTransition.duration(350)}
       exiting={FadeOut}>
       {/* Main touchable area for the app item */}
-      <PressableOpacity style={styles.touchable} onLongPress={onLongPress}>
+      <PressableOpacity
+        testID={testID}
+        style={styles.touchable}
+        onLongPress={onLongPress}>
         {/* Delete button overlay */}
         <Animated.View
           style={[styles.deleteButtonContainer, rDeleteButtonContainerStyle]}>
           <PressableOpacity
+            testID={testID ? `${testID}-delete` : undefined}
             onPress={onDelete}
             style={styles.deleteButton}
             hitSlop={DeleteButtonHitSlop}>

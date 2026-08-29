@@ -1,0 +1,33 @@
+# e2e: Page-flip 'tear-off' calendar driven by a draggable slider (pan gesture); dragging the slider RIGHT flips through the days. Probe bridges the slider's page index (round(progress*31) > 0) back to JS so the test asserts the slider actually moved off the first page. NOTE: there is no tappable day grid, only the slider.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/calendar-days"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/calendar-days--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "calendar-days-slider"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- swipe:
+    from:
+      id: "calendar-days-slider"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/calendar-days--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

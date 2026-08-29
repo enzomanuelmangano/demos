@@ -1,0 +1,33 @@
+# e2e: Cuberto-style balloon slider: a 300px horizontal track; drag the picker along the track, then ASSERT the drag took effect (cuberto-slider-status latches to "moved").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/cuberto-slider"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/cuberto-slider--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "cuberto-knob"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "cuberto-knob"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/cuberto-slider--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

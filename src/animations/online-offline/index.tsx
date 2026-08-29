@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useCallback, useState } from 'react';
 
@@ -40,11 +40,14 @@ const InitialItems = [
 
 export const OnlineOffline = () => {
   const [items, setItems] = useState(InitialItems);
+  // e2e outcome probe: flips to 'migrated' once an item has changed section.
+  const [migrated, setMigrated] = useState(false);
 
   const onlineItems = items.filter(item => !item.isOffline);
   const offlineItems = items.filter(item => item.isOffline);
 
   const handleTouchEnd = useCallback(() => {
+    setMigrated(true);
     setItems(prevItems => {
       const onlineCount = prevItems.filter(item => !item.isOffline).length;
       const offlineCount = prevItems.filter(item => item.isOffline).length;
@@ -117,7 +120,14 @@ export const OnlineOffline = () => {
   return (
     <LayoutAnimationConfig skipEntering>
       <View style={styles.container}>
-        <PressableScale style={styles.container} onPress={handleTouchEnd}>
+        {/* e2e outcome probe: near-invisible (alpha ~0.01). */}
+        <Text testID="online-offline-status" style={styles.statusProbe}>
+          {migrated ? 'migrated' : 'idle'}
+        </Text>
+        <PressableScale
+          testID="online-offline-surface"
+          style={styles.container}
+          onPress={handleTouchEnd}>
           <OnlineToOffline
             offline={offlineItems.map(item => item.uri)}
             online={onlineItems.map(item => item.uri)}
@@ -138,5 +148,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     flex: 1,
     justifyContent: 'center',
+  },
+  statusProbe: {
+    color: '#ffffff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });

@@ -1,0 +1,33 @@
+# e2e: Skia metaball: two blurred circles stacked at center; drag one circle to stretch the gooey connection. Drag across the canvas, then ASSERT the drag took effect (metaball-status latches to "moved").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/metaball"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/metaball--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- swipe:
+    from:
+      id: "metaball-canvas"
+    direction: "RIGHT"
+- waitForAnimationToEnd:
+    timeout: 2000
+- swipe:
+    from:
+      id: "metaball-canvas"
+    direction: "LEFT"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "moved"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/metaball--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

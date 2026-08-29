@@ -27,6 +27,7 @@ type FrictionSliderProps = {
   }) => void;
   children?: React.ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 const ScreenWidth = Dimensions.get('window').width;
@@ -46,6 +47,7 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   onProgressChange,
   children,
   containerStyle,
+  testID,
 }) => {
   const scrollOffset = useSharedValue(0);
 
@@ -104,6 +106,7 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   if (Platform.OS === 'ios') {
     return (
       <Animated.ScrollView
+        testID={testID}
         horizontal
         showsHorizontalScrollIndicator={false}
         scrollEventThrottle={16}
@@ -121,6 +124,7 @@ export const FrictionSlider: React.FC<FrictionSliderProps> = ({
   // Fallback to PanGesture with manual friction for non-iOS platforms
   return (
     <FrictionSliderPanGesture
+      testID={testID}
       onProgressChange={onProgressChange}
       containerStyle={containerStyle}>
       {children}
@@ -133,6 +137,7 @@ const FrictionSliderPanGesture: React.FC<FrictionSliderProps> = ({
   onProgressChange,
   children,
   containerStyle,
+  testID,
 }) => {
   const translateX = useSharedValue(0);
   const contextX = useSharedValue(0);
@@ -217,7 +222,7 @@ const FrictionSliderPanGesture: React.FC<FrictionSliderProps> = ({
 
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View style={[rTextStyle, containerStyle]}>
+      <Animated.View testID={testID} style={[rTextStyle, containerStyle]}>
         {children}
       </Animated.View>
     </GestureDetector>

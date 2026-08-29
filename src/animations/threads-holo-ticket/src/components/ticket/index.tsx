@@ -3,14 +3,15 @@
  * The ticket has two sides (front and back) and uses a holographic effect.
  */
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { type FC, memo, type ReactNode } from 'react';
+import { type FC, memo, type ReactNode, useState } from 'react';
 
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
+  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
@@ -120,9 +121,23 @@ export const Ticket: FC<TicketProps> = memo(
       };
     });
 
+    // e2e outcome probe: flips to "flipped" once the ticket shows its back side,
+    // so a test can verify the tap actually flipped it (the rotation lives in a
+    // worklet and is otherwise un-inspectable). Visually negligible.
+    const [status, setStatus] = useState<'front' | 'flipped'>('front');
+    useAnimatedReaction(
+      () => isFront.get(),
+      front => {
+        if (!front) {
+          scheduleOnRN(setStatus, 'flipped');
+        }
+      },
+    );
+
     return (
       <GestureDetector gesture={gesture}>
         <Animated.View
+          testID="threads-holo-ticket"
           style={[
             {
               width,
@@ -131,6 +146,9 @@ export const Ticket: FC<TicketProps> = memo(
             },
             rTicketStyle,
           ]}>
+          <Text testID="threads-holo-ticket-status" style={probeStyles.status}>
+            {status}
+          </Text>
           {/* Holographic effect layer */}
           <HolographicCard
             width={width}
@@ -158,3 +176,14 @@ export const Ticket: FC<TicketProps> = memo(
     );
   },
 );
+
+const probeStyles = StyleSheet.create({
+  status: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    opacity: 0.012,
+    zIndex: 9999,
+  },
+});

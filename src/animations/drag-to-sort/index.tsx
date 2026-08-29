@@ -1,6 +1,6 @@
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSharedValue } from 'react-native-reanimated';
@@ -27,7 +27,16 @@ const App = () => {
   const { width: windowWidth } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
 
+  // e2e outcome probe: exposes whether a drag actually reordered the list. The
+  // top item (index 0) starts at offset 0; if its offset changed, it moved.
+  const [orderState, setOrderState] = useState<'unchanged' | 'reordered'>(
+    'unchanged',
+  );
+
   const onDragEnd = useCallback((data: Positions) => {
+    if (data[0] !== 0) {
+      setOrderState('reordered');
+    }
     // onDragEnd is called when the user releases the item (if the item was moved)
     // The data argument contains the new positions of the items
     // The data is a map of index to height
@@ -55,6 +64,9 @@ const App = () => {
 
   return (
     <>
+      <Text testID="drag-to-sort-status" style={styles.statusProbe}>
+        {orderState}
+      </Text>
       <LinearGradient
         pointerEvents="none"
         colors={LINEAR_GRADIENT_COLORS}
@@ -124,6 +136,14 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 50,
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
+    zIndex: 999,
   },
 });
 

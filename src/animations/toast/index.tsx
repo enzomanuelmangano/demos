@@ -49,6 +49,7 @@ const App = () => {
   return (
     <View style={styles.container}>
       <PressableScale
+        testID="toast-trigger"
         style={styles.button}
         onPress={() => {
           const toast = toasts[value.current++];

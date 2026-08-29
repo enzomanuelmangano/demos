@@ -1,0 +1,30 @@
+# e2e: WebGPU cherry-blossom tree whose canopy encodes a QR code; an auto-focused TextInput drives the QR content live. Probe exposes the live qrContent string so the test asserts the typed text actually reached the QR encoder (default 'https://enzo.fyi' + typed 'hello').
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/cherry-blossom-qrcode"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/cherry-blossom-qrcode--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "cherry-blossom-qrcode-input"
+- inputText: "hello"
+- waitForAnimationToEnd:
+    timeout: 2000
+- assertVisible:
+    text: "hello"
+    timeout: 4000
+- tapOn:
+    id: "cherry-blossom-qrcode-canvas"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/cherry-blossom-qrcode--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

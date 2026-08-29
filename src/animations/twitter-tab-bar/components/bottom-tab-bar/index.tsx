@@ -175,7 +175,10 @@ const TabBarItem: FC<TabBarItemProps> = memo(
 
     return (
       <Animated.View style={[localStyles.fill, rStyle]}>
-        <PressableScale style={localStyles.fillCenter} onPress={onPress}>
+        <PressableScale
+          testID={`twitter-tab-bar-tab-${iconName.toLowerCase()}`}
+          style={localStyles.fillCenter}
+          onPress={onPress}>
           <MaterialIcons
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore

@@ -139,8 +139,16 @@ export const CherryBlossomQRCode = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: exposes the live QR content string so a test can
+          assert the typed text actually drove the QR encoding. The canvas is
+          WebGPU and has no inspectable content. Visually negligible (alpha
+          ~0.01). */}
+      <Text testID="cherry-blossom-qrcode-status" style={styles.statusProbe}>
+        {qrContent}
+      </Text>
       <Animated.View style={[styles.canvasWrapper, canvasWrapperStyle]}>
         <Pressable
+          testID="cherry-blossom-qrcode-canvas"
           accessibilityLabel="Cherry blossom tree QR code"
           accessibilityHint="Tap to flatten for scanning. Long press to spawn a creeper."
           onPress={handlePress}
@@ -156,6 +164,7 @@ export const CherryBlossomQRCode = () => {
       <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
           ref={inputRef}
+          testID="cherry-blossom-qrcode-input"
           style={styles.input}
           value={qrContent}
           onChangeText={setQrContent}
@@ -220,5 +229,16 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingHorizontal: 12,
     paddingTop: 16,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: CONTAINER_BG,
+    opacity: 0.012,
+    zIndex: 10,
   },
 });

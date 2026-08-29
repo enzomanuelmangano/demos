@@ -1,6 +1,6 @@
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, Text, View } from 'react-native';
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
@@ -21,10 +21,17 @@ const App = () => {
   const previousTick = useSharedValue(0);
   const [isTimerEnabled, toggleTimer] = useToggle(false);
 
+  // e2e outcome probe: flips to "moved" once the circular slider has been
+  // dragged to a non-zero value (the ruler is a Skia/worklet view).
+  const [status, setStatus] = useState<'idle' | 'moved'>('idle');
+
   const circularSliderRef = useRef<CircularDraggableSliderRefType>(null);
 
   return (
     <View style={styles.container}>
+      <Text testID="pomodoro-timer-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <View
         style={{
           marginBottom: 256,
@@ -74,12 +81,17 @@ const App = () => {
             previousTick.set(sliderProgress);
           }
 
+          if (sliderProgress > 0) {
+            scheduleOnRN(setStatus, 'moved');
+          }
+
           // Bind the progress value to the animated number
           animatedNumber.set(sliderProgress);
         }}
       />
       <View style={styles.buttonsContainer}>
         <PressableScale
+          testID="pomodoro-timer-start"
           style={styles.button}
           onPress={() => {
             toggleTimer();
@@ -122,6 +134,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
     flex: 1,
     justifyContent: 'center',
+  },
+  // Near-invisible to the eye, but on-screen for the e2e accessibility tree.
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#FFFFFF',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });
 

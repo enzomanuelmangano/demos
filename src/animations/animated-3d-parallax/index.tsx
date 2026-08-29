@@ -1,4 +1,6 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { useState } from 'react';
 
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -7,6 +9,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { use3DRotationStyle } from './hooks/use-3d-rotation-style';
 
@@ -23,7 +26,14 @@ export const Animated3DParallax = () => {
   const touchX = useSharedValue(CARD_SIZE / 2);
   const touchY = useSharedValue(CARD_SIZE / 2);
 
+  // e2e outcome probe: flips to "tilted" once the card is dragged, so a test
+  // can assert the pan actually drove the 3D rotation. Visually negligible.
+  const [status, setStatus] = useState<'idle' | 'tilted'>('idle');
+
   const gesture = Gesture.Pan()
+    .onStart(() => {
+      scheduleOnRN(setStatus, 'tilted');
+    })
     // That's up to you to decide if you want to cancel the gesture when the user is outside the card
     // .shouldCancelWhenOutside(true)
     .onBegin(({ x, y }) => {
@@ -88,8 +98,13 @@ export const Animated3DParallax = () => {
 
   return (
     <View style={styles.container}>
+      <Text testID="animated-3d-parallax-status" style={styles.statusProbe}>
+        {`card:${status}`}
+      </Text>
       <GestureDetector gesture={gesture}>
-        <Animated.View style={styles.cardContainer}>
+        <Animated.View
+          testID="animated-3d-parallax-card"
+          style={styles.cardContainer}>
           <Animated.View
             style={[
               StyleSheet.absoluteFill,
@@ -148,5 +163,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#17202A',
     flex: 1,
     justifyContent: 'center',
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    color: '#fff',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });

@@ -25,9 +25,15 @@ export const CircularCarousel = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: surfaces the Scale switch state as an assertable
+          value so a test can verify the toggle actually flipped. */}
+      <Text testID="circular-carousel-status" style={styles.statusProbe}>
+        {`scale:${scaleEnabled ? 'on' : 'off'}`}
+      </Text>
       <Text style={styles.label}>Scale</Text>
       <View>
         <Switch
+          testID="circular-carousel-switch"
           trackColor={{
             false: '#ccc',
             true: '#111',
@@ -53,5 +59,14 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 8,
     textTransform: 'uppercase',
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });

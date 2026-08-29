@@ -1,0 +1,29 @@
+# e2e: Skia-rendered bottom tab bar (Home/Search/User); tapping the tab-bar rect center activates the centered Search tab. Tap the tab bar, then ASSERT the active tab (bottom-bar-skia-status reads "tab:search").
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/bottom-bar-skia"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/bottom-bar-skia--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "bottom-bar-skia-tabbar"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "bottom-bar-skia-tabbar"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:search"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/bottom-bar-skia--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

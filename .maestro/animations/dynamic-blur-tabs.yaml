@@ -1,0 +1,35 @@
+# e2e: A bottom tab navigator with a dynamic blur tab bar over a scrollable gradient screen. Tap different bottom-bar tabs to trigger the blur transition.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/dynamic-blur-tabs"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/dynamic-blur-tabs--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "dynamic-blur-tabs-tab-3"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "dynamic-blur-tabs-tab-1"
+- waitForAnimationToEnd:
+    timeout: 1500
+- tapOn:
+    id: "dynamic-blur-tabs-tab-2"
+- waitForAnimationToEnd:
+    timeout: 1500
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "tab:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/dynamic-blur-tabs--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

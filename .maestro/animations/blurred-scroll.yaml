@@ -1,0 +1,33 @@
+# e2e: A vertical FlatList of cards where items blur and scale based on their distance from the screen center as you scroll. Tests scrolling down then back up to drive the focus-blur effect.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/blurred-scroll"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/blurred-scroll--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- scroll:
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 1500
+- scroll:
+    direction: "DOWN"
+- waitForAnimationToEnd:
+    timeout: 1500
+- scroll:
+    direction: "UP"
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "scrolled"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/blurred-scroll--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

@@ -36,16 +36,30 @@ export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
 
   const [toggled, setToggled] = useState(false);
 
+  // e2e outcome probe: the reveal is a staggered worklet animation over Skia/
+  // animated digits with no inspectable RN state. We latch "revealed" the first
+  // time the eye is toggled on, so the assertion proves the toggle actually
+  // fired even if the flow ends back on hidden. Near-invisible (alpha ~0.01).
+  const [everRevealed, setEverRevealed] = useState(false);
+
   const hiddenIndexes = useDerivedValue(() => {
     return toggled ? HIDDEN_INDEXES : NO_HIDDEN_INDEXES;
   }, [toggled]);
 
   const onToggle = useCallback(() => {
-    setToggled(prev => !prev);
+    setToggled(prev => {
+      if (!prev) {
+        setEverRevealed(true);
+      }
+      return !prev;
+    });
   }, []);
 
   return (
     <View style={styles.container}>
+      <Text testID="staggered-card-number-status" style={styles.statusProbe}>
+        {everRevealed ? 'revealed' : 'hidden'}
+      </Text>
       <View>
         <Text style={styles.title}>Number</Text>
         <View style={styles.numbers}>
@@ -67,7 +81,10 @@ export const CardInfo: FC<CardInfoProps> = memo(({ cardNumber }) => {
         </View>
       </View>
       <View style={{ flex: 1 }} />
-      <TouchableFeedback onPress={onToggle} style={styles.button}>
+      <TouchableFeedback
+        testID="staggered-card-number-eye"
+        onPress={onToggle}
+        style={styles.button}>
         <Feather name={toggled ? 'eye' : 'eye-off'} size={24} color="#38a27b" />
       </TouchableFeedback>
     </View>
@@ -98,6 +115,14 @@ const styles = StyleSheet.create({
   numbers: {
     flexDirection: 'row',
     marginTop: 5,
+  },
+  statusProbe: {
+    color: '#787878',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
   title: {
     color: '#787878',

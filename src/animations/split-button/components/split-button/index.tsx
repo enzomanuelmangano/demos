@@ -81,9 +81,15 @@ const SplitButton: FC<SplitButtonProps> = memo(
 
     return (
       <View style={[styles.container, style]}>
+        {/* e2e outcome probe: exposes whether the chip has split open
+            ("split-open") vs collapsed ("split-closed"). Near-invisible. */}
+        <Text testID="split-button-status" style={styles.statusProbe}>
+          {activated ? 'split-open' : 'split-closed'}
+        </Text>
         {/* Left Button */}
         <Animated.View style={rLeftStyle}>
           <PressableScale
+            testID="split-button-left"
             onPress={() => {
               onLeft?.(); // Call the provided onLeft function if available
               setActive(false); // Deactivate the button
@@ -105,6 +111,7 @@ const SplitButton: FC<SplitButtonProps> = memo(
         {/* Right Button */}
         <Animated.View style={[styles.rightChipContainer, rRightStyle]}>
           <PressableScale
+            testID="split-button"
             onPress={() => {
               if (!activated) {
                 setActive(true); // Activate the button
@@ -178,6 +185,13 @@ const styles = StyleSheet.create({
   rightChipContainer: {
     position: 'absolute',
     zIndex: 100,
+  },
+  statusProbe: {
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });
 

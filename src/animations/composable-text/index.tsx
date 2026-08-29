@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useState } from 'react';
 
@@ -34,7 +34,13 @@ export const ComposableTextScreen = () => {
 
   return (
     <View style={styles.container}>
+      {/* e2e outcome probe: mirrors the current pill label so a test can
+          assert the morph actually toggled. Near-invisible (alpha ~0.01). */}
+      <Text testID="composable-text-status" style={styles.statusProbe}>
+        {text.label}
+      </Text>
       <PressableScale
+        testID="composable-text-pill"
         layout={LinearTransition.springify()
           .mass(0.4)
           .damping(12)
@@ -72,5 +78,13 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: 16,
     paddingHorizontal: 22,
+  },
+  statusProbe: {
+    color: '#0c0c0c',
+    fontSize: 1,
+    left: 0,
+    opacity: 0.012,
+    position: 'absolute',
+    top: 0,
   },
 });

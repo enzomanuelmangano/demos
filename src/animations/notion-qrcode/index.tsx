@@ -21,9 +21,9 @@
  *    - Points animate with staggered delays based on angular position
  *    - Creates a "wave" that sweeps around during morphing
  */
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Canvas, Picture, Skia, useImage } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -231,8 +231,23 @@ const NotionQRCode = () => {
   const animationRef = useRef<QRCodeAnimationRef | null>(null);
   const progress = useSharedValue(0);
 
+  // e2e outcome probe: the torus↔QR mode is driven by a spring on the UI
+  // thread. Bridge progress crossing the halfway point back to JS so a test can
+  // assert the toggle actually morphed. Visually negligible (alpha ~0.01).
+  const [status, setStatus] = useState<'torus' | 'qr'>('torus');
+  useAnimatedReaction(
+    () => progress.get() > 0.5,
+    (isQR, prev) => {
+      if (prev === null || isQR === prev) return;
+      scheduleOnRN(setStatus, isQR ? 'qr' : 'torus');
+    },
+  );
+
   return (
     <View style={styles.container}>
+      <Text testID="notion-qrcode-status" style={styles.statusProbe}>
+        {status}
+      </Text>
       <QRCodeAnimation
         ref={animationRef}
         qrData="https://www.reactiive.io"
@@ -285,6 +300,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  // Near-invisible to the eye, but on-screen + opaque enough for the
+  // accessibility/view tree to expose it to e2e (alpha >= 0.01).
+  statusProbe: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    fontSize: 1,
+    color: '#f5f5f5',
+    opacity: 0.012,
+    zIndex: 10,
   },
 });
 

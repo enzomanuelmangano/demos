@@ -1,0 +1,31 @@
+# e2e: A full-screen pressable that plays a staggered 'Everybody / can cook.' text reveal; tapping anywhere resets and replays. Tap the screen to retrigger the stagger.
+appId: com.reactiive.app
+---
+- launchApp
+- openLink: "demos://animations/everybody-can-cook"
+# prove the demo actually mounted (not the "Animation … not found" screen)
+- extendedWaitUntil:
+    notVisible: "not found"
+    timeout: 8000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/everybody-can-cook--mounted"
+# --- the demo's own interaction (real HID touches; Skia hit-tests the point) ---
+- tapOn:
+    id: "everybody-can-cook"
+- waitForAnimationToEnd:
+    timeout: 2000
+- tapOn:
+    id: "everybody-can-cook"
+- waitForAnimationToEnd:
+    timeout: 2000
+- waitForAnimationToEnd:
+    timeout: 1500
+- assertVisible:
+    text: "replays:2"
+    timeout: 4000
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: ".maestro/artifacts/everybody-can-cook--after"
+# still on the demo (didn't bounce to not-found) and not crashed
+- assertNotVisible: "not found"

@@ -44,6 +44,7 @@ export const HomeScreen = () => {
           </Text>
         </View>
         <PressableScale
+          testID="gl-transitions-add"
           onPress={async () => {
             await prepareTransition();
             navigation.navigate('AddNote');
