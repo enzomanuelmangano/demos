@@ -97,6 +97,7 @@
     "react-native-screens": "~4.26.0",
     "react-native-skia-gesture": "0.4.5-beta.1",
     "react-native-teleport": "^1.2.2",
+    "react-native-variable-blur": "0.1.0",
     "react-native-web": "^0.21.0",
     "react-native-webgpu": "0.5.14",
     "react-native-worklets": "0.10.1",

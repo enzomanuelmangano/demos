@@ -1,5 +1,6 @@
 import {
   FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -21,6 +22,7 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { VariableBlur } from 'react-native-variable-blur';
 
 import { DEMOS } from './demos';
 import { getIconSource } from './icon-source';
@@ -37,19 +39,14 @@ const LIQUID_GLASS = isLiquidGlassAvailable();
 const BAR_HEIGHT = 48;
 const BAR_TOP_GAP = 10;
 
-// True progressive (variable) blur: instead of one uniform blur faded by a mask,
-// stack several blur layers of INCREASING intensity, each masked to a shorter
-// top slice. They accumulate — the very top gets every layer (heaviest blur),
-// and each successive band down drops the strongest layer — so the blur RADIUS
-// ramps smoothly from heavy (under the field) to sharp, instead of a flat blur
-// that just fades out. `end` is the fraction of the band the layer covers before
-// its mask fades to transparent.
-const BLUR_LAYERS = [
-  { intensity: 10, end: 1.0 },
-  { intensity: 22, end: 0.7 },
-  { intensity: 44, end: 0.45 },
-  { intensity: 80, end: 0.26 },
-];
+// The blur behind the search field fades out downwards by its RADIUS, not by
+// its opacity. Stacked blur layers under gradient masks (the previous version)
+// cut each layer off at the end of its mask, so the band ended on a visible
+// edge over the first result. react-native-variable-blur drives one
+// continuous radius ramp instead, from `SCROLL_EDGE_BLUR` at the top to sharp
+// at the bottom of the band. It is iOS only; elsewhere the band keeps a
+// single blur under a gradient mask.
+const SCROLL_EDGE_BLUR = 18;
 
 const EMPTY_RESULTS: Demo[] = [];
 
@@ -258,34 +255,34 @@ export const SearchReveal = ({
         />
       </Animated.View>
 
-      {/* Progressive blur band at the top: a BlurView masked by a vertical
-          gradient (opaque at the top → transparent below) so list content
-          dissolves into blur as it scrolls up under the search field — the iOS
-          scroll-edge effect. (clerk-toast masked-blur technique.) Leads the
-          reveal with the field. */}
+      {/* Progressive blur band at the top: list content dissolves into blur as
+          it scrolls up under the search field — the iOS scroll-edge effect.
+          Leads the reveal with the field. */}
       <Animated.View
         pointerEvents="none"
         style={[styles.blurBand, { height: blurBandHeight }, rField]}>
-        {BLUR_LAYERS.map(layer => (
+        {Platform.OS === 'ios' ? (
+          <VariableBlur
+            blurRadius={SCROLL_EDGE_BLUR}
+            direction="down"
+            style={StyleSheet.absoluteFill}
+          />
+        ) : (
           <MaskedView
-            key={layer.intensity}
             style={StyleSheet.absoluteFill}
             maskElement={
               <LinearGradient
-                // Opaque across this layer's top slice, then a soft fade to
-                // transparent — so stronger (shorter) layers pile onto the top.
-                locations={[0, layer.end, Math.min(layer.end + 0.2, 1)]}
-                colors={['rgba(0,0,0,1)', 'rgba(0,0,0,1)', 'rgba(0,0,0,0)']}
+                colors={['rgba(0,0,0,1)', 'rgba(0,0,0,0)']}
                 style={StyleSheet.absoluteFill}
               />
             }>
             <BlurView
-              intensity={layer.intensity}
+              intensity={40}
               tint="dark"
               style={StyleSheet.absoluteFill}
             />
           </MaskedView>
-        ))}
+        )}
       </Animated.View>
 
       <Animated.View
