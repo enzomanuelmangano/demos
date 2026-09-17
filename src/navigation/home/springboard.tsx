@@ -22,6 +22,7 @@ import { AppIcon } from './app-icon';
 import { Background } from './background';
 import {
   CLOSE_SCALE,
+  homeTap,
   launchGroup,
   launchPose,
   launchProgress,
@@ -29,7 +30,7 @@ import {
 import { PageDots } from './page-dots';
 import { SEARCH_TRIGGER } from './search-constants';
 import { SearchReveal } from './search-reveal';
-import { useGridLayout } from './use-grid-layout';
+import { iconRectForCell, useGridLayout } from './use-grid-layout';
 
 import type { Demo } from './demos';
 import type { LaunchSource } from './launch-transition';
@@ -365,6 +366,28 @@ export const Springboard = ({ onOpen }: Props) => {
   // home. On the idle grid a 0-intensity BlurView is still a fullscreen
   // UIVisualEffectView composited every frame — dead GPU cost that made
   // horizontal scrolling stutter.
+
+  // A tap forwarded by a closing demo (see `homeTap`): open the icon under it,
+  // found by the grid's own geometry on the page in view.
+  homeTap.current = (x, y) => {
+    if (searchMode) return;
+    const page = Math.round(scrollX.get() / layout.pageWidth);
+    const demos = layout.pages[page];
+    if (!demos) return;
+    const offset = page * layout.pageWidth - scrollX.get();
+    for (let cell = 0; cell < demos.length; cell++) {
+      const rect = iconRectForCell(layout, insets.top, cell, offset);
+      if (
+        x >= rect.x &&
+        x <= rect.x + rect.width &&
+        y >= rect.y &&
+        y <= rect.y + rect.height
+      ) {
+        onOpen('grid', demos[cell].slug);
+        return;
+      }
+    }
+  };
 
   const onPressDemo = useCallback(
     (slug: string) => onOpen('grid', slug),

@@ -71,10 +71,27 @@ export interface LaunchFrame {
 export const launchGroup = makeMutable<string | null>(null);
 
 /**
- * The group of the demo screen currently mounted, set by that screen. Plain JS:
- * only the open command's watchdog reads it (see app/index.tsx).
+ * Plain-JS bookkeeping for the launches, read and written on the JS thread.
+ *
+ * - `token` names the latest launch. A demo only tears the launch down when
+ *   it unmounts if it is still the latest one: a tap during a close already
+ *   named the next launch, which the closing demo must not clear.
+ * - `closing` is up once a close has been committed, and lets a tap on the
+ *   home name the next launch while the card is still flying home.
+ * - `mounted` is the token of the demo screen currently mounted, for the open
+ *   command's watchdog (see app/index.tsx).
  */
-export const mountedLaunch: { groupId: string | null } = { groupId: null };
+export const launchSession = { token: 0, closing: false, mounted: 0 };
+
+/**
+ * A tap that lands on a closing demo, handed to the home. While the card flies
+ * home the demo route is still presented above the springboard, and a touch
+ * cannot reach the icons under it; the demo forwards the point instead, and
+ * the springboard opens whatever icon is there. Published by the springboard.
+ */
+export const homeTap: { current: ((x: number, y: number) => void) | null } = {
+  current: null,
+};
 
 /**
  * The choreography's expansion clock, mirrored: 0 at the icon, 1 full screen,
@@ -257,9 +274,9 @@ const styles = StyleSheet.create({
 export const launchTransition = defineTransition({
   motion: {
     spring: {
-      damping: 28,
+      damping: 36,
       mass: 1,
-      stiffness: 190,
+      stiffness: 380,
       overshootClamping: true,
       restDisplacementThreshold: 0.001,
       restSpeedThreshold: 0.001,

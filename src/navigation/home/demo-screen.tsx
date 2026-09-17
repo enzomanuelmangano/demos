@@ -1,6 +1,12 @@
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 import { useRouter } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -32,8 +38,9 @@ import {
   launchGroupId,
   launchPose,
   launchProgress,
+  homeTap,
+  launchSession,
   launchTransition,
-  mountedLaunch,
 } from './launch-transition';
 import { SCREEN_CORNER_RADIUS } from './screen-radius';
 import {
@@ -79,9 +86,9 @@ const DRAG_HOME_SPRING = { damping: 26, stiffness: 300, mass: 1 };
  * and read as a snap rather than a flight.
  */
 const CLOSE_SPRING = {
-  damping: 30,
+  damping: 38,
   mass: 1,
-  stiffness: 230,
+  stiffness: 400,
   overshootClamping: true,
   restDisplacementThreshold: 0.001,
   restSpeedThreshold: 0.001,
@@ -143,7 +150,7 @@ type CloseState = 'idle' | 'preparing' | 'ready' | 'unavailable';
  * the hooks re-render their caller on every phase, and here that renders
  * nothing. The handlers reach the gesture through the module.
  */
-const CloseBridge = () => {
+const CloseBridge = ({ onCommit }: { onCommit: () => void }) => {
   const router = useRouter();
   const choreography = useChoreographyRouter(router, DEMO_SCREEN_ID);
   const interactive = useInteractiveTransition();
@@ -173,6 +180,8 @@ const CloseBridge = () => {
       pending.current = 'commit';
       return;
     }
+    launchSession.closing = true;
+    onCommit();
     if (state.current === 'ready') {
       // Thrown, not dropped: a spring from rest spends its first frames barely
       // moving, which read as the card hanging at the threshold.
@@ -222,49 +231,47 @@ const CloseBridge = () => {
 const DemoLaunch = ({
   slug,
   groupId,
+  token,
 }: {
   slug: string;
   groupId: string | null;
+  token: number;
 }) => {
   const dimensions = useWindowDimensions();
   const { width, height } = dimensions;
   const backdrop = getIconBackdrop(slug);
   const AnimationComponent = getAnimationComponent(slug);
 
-  // The launch is this screen's while it is here. Cleared on unmount, which is
-  // after the close has landed on the icon: the home's gestures and blur
-  // follow the launch until then.
-  useEffect(() => {
-    mountedLaunch.groupId = groupId;
+  // The launch is this screen's while it is here, and it tears it down when it
+  // unmounts, after the close has landed on the icon — unless a tap during the
+  // close has already named the next launch, which is left alone.
+  useLayoutEffect(() => {
+    launchSession.mounted = token;
+    // A pose frozen by the previous close must not move this card.
+    launchPose.translateX.set(0);
+    launchPose.translateY.set(0);
+    launchPose.scale.set(1);
     return () => {
-      if (mountedLaunch.groupId === groupId) mountedLaunch.groupId = null;
-      // The launch route is gone with this demo; the next one is preloaded
-      // empty, not with this demo already mounted in it.
-      clearLaunchTarget(slug);
-    };
-  }, [groupId, slug]);
-  useEffect(
-    () => () => {
+      if (launchSession.mounted === token) launchSession.mounted = 0;
+      clearLaunchTarget(token);
+      if (launchSession.token !== token) return;
+      launchSession.closing = false;
       if (groupId !== null && launchGroup.get() === groupId) {
         launchGroup.set(null);
         launchFrame.set(null);
       }
-      // The pose froze at the threshold for the flight home, which has landed.
-      // Cleared HERE, not at the next open: a stale pose would move the next
-      // demo's card.
       launchPose.translateX.set(0);
       launchPose.translateY.set(0);
       launchPose.scale.set(1);
-    },
-    [groupId],
-  );
+    };
+  }, [groupId, token]);
 
-  // The card, by transforms only (see `launchCardAt`): a full-screen view
-  // scaled on each axis to the card's size and moved to its centre. The demo
-  // inside is counter-scaled on the vertical axis, so it shrinks uniformly to
-  // the card's WIDTH and is cropped top and bottom by the card — as iOS does —
-  // instead of being squeezed. The corner radius is set in the card's own,
-  // stretched space, so it is divided by the scale.
+  // The card: its SIZE by layout, its place by a transform. Scaling a full-
+  // screen view to the card instead was cheaper, but not uniformly — the icon
+  // is square and the screen is not — and a corner radius under an uneven
+  // scale is an ellipse, which showed as the card squared up on the icon.
+  // Only the card lays out: the demo inside has a fixed size, is scaled
+  // uniformly to the card's width, and is cropped top and bottom by it.
   const cardStyle = useAnimatedStyle(() => {
     const mine = groupId !== null && launchGroup.get() === groupId;
     const frame = launchFrame.get();
@@ -278,30 +285,38 @@ const DemoLaunch = ({
       launchPose.translateY.get(),
       launchPose.scale.get(),
     );
-    const scaleX = card.width / width;
-    const scaleY = card.height / height;
     return {
       // Named but not yet measured: nothing to draw until the icon is known.
       opacity: mine && !measured ? 0 : 1,
-      borderRadius: card.radius / Math.sqrt(scaleX * scaleY),
+      width: card.width,
+      height: card.height,
+      borderRadius: card.radius,
       transform: [
-        { translateX: card.centerX - width / 2 },
-        { translateY: card.centerY - height / 2 },
-        { scaleX },
-        { scaleY },
+        { translateX: card.centerX - card.width / 2 },
+        { translateY: card.centerY - card.height / 2 },
       ],
     };
   });
   const contentStyle = useAnimatedStyle(() => {
     const mine = groupId !== null && launchGroup.get() === groupId;
     const frame = launchFrame.get();
-    if (!mine || frame?.groupId !== groupId) {
-      return { transform: [{ scaleY: 1 }] };
-    }
-    const expansion = launchProgress.get();
-    const card = launchCardAt(frame, width, height, expansion, 0, 0, 1);
+    const card = launchCardAt(
+      mine && frame?.groupId === groupId
+        ? frame
+        : { groupId: '', x: 0, y: 0, width, height, radius: 0 },
+      width,
+      height,
+      mine ? launchProgress.get() : 1,
+      launchPose.translateX.get(),
+      launchPose.translateY.get(),
+      launchPose.scale.get(),
+    );
     return {
-      transform: [{ scaleY: card.width / width / (card.height / height) }],
+      transform: [
+        { translateX: (card.width - width) / 2 },
+        { translateY: (card.height - height) / 2 },
+        { scale: card.width / width },
+      ],
     };
   });
 
@@ -341,18 +356,16 @@ const DemoLaunch = ({
           name="app"
           groupId={groupId}
           metadata={{ radius: SCREEN_CORNER_RADIUS } satisfies LaunchMetadata}
-          style={StyleSheet.absoluteFill}
+          style={styles.target}
           // The artwork rests here while the demo is open. The card covers the
           // screen but not its rounded corners, where the icon showed through.
+          // It takes no touch: a full-screen host is hit-tested like any view,
+          // opacity or not, and it swallowed taps on the home during a close.
           hostStyle={styles.hiddenHost}
         />
       ) : null}
       <Animated.View
-        style={[
-          styles.card,
-          { width, height, backgroundColor: backdrop },
-          cardStyle,
-        ]}>
+        style={[styles.card, { backgroundColor: backdrop }, cardStyle]}>
         <Animated.View
           style={[styles.content, { width, height }, contentStyle]}>
           {mounted && AnimationComponent ? (
@@ -376,9 +389,11 @@ const DemoLaunch = ({
  */
 const CloseGesture = ({
   enabled,
+  released = false,
   children,
 }: {
   enabled: boolean;
+  released?: boolean;
   children: ReactNode;
 }) => {
   const { height } = useWindowDimensions();
@@ -436,7 +451,20 @@ const CloseGesture = ({
 
   return (
     <GestureDetector gesture={closeGesture}>
-      <View pointerEvents={enabled ? 'auto' : 'none'} style={styles.fill}>
+      <View
+        // Released (a close is flying home), the demo keeps the touch only to
+        // hand a tap on to the home under it; see `homeTap`.
+        onTouchEnd={
+          released
+            ? event =>
+                homeTap.current?.(
+                  event.nativeEvent.pageX,
+                  event.nativeEvent.pageY,
+                )
+            : undefined
+        }
+        pointerEvents={enabled ? 'auto' : released ? 'box-only' : 'none'}
+        style={styles.fill}>
         {children}
         {/* Not collapsable: a view with only layout props is flattened away by
             Fabric, and the touch then lands on the demo under it. */}
@@ -457,10 +485,16 @@ const CloseGesture = ({
 export const DemoScreen = ({
   slug,
   source,
+  token = 0,
 }: {
   slug: string | undefined;
   source?: string;
+  token?: number;
 }) => {
+  // Once the close is committed the demo takes no more touches, so a tap on
+  // the home while the card flies back reaches the icon under it.
+  const [released, setReleased] = useState(false);
+  const release = useCallback(() => setReleased(true), []);
   const { show } = useRetray<Trays>();
   const handleFeedback = useCallback(() => {
     show('help', { slug });
@@ -502,10 +536,10 @@ export const DemoScreen = ({
       : null;
 
   return (
-    <CloseGesture enabled>
+    <CloseGesture enabled={!released} released={released}>
       <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
-        <CloseBridge />
-        <DemoLaunch slug={slug} groupId={groupId} />
+        <CloseBridge onCommit={release} />
+        <DemoLaunch slug={slug} groupId={groupId} token={token} />
       </ChoreographyScreen>
     </CloseGesture>
   );
@@ -537,5 +571,6 @@ const styles = StyleSheet.create({
   },
   fill: { flex: 1 },
   grabZone: { left: 0, position: 'absolute', right: 0, top: 0 },
-  hiddenHost: { opacity: 0 },
+  hiddenHost: { opacity: 0, pointerEvents: 'none' },
+  target: { ...StyleSheet.absoluteFill, pointerEvents: 'none' },
 });

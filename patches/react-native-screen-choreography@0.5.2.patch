@@ -1,18 +1,19 @@
 diff --git a/lib/module/components/ChoreographyScreenBase.js b/lib/module/components/ChoreographyScreenBase.js
-index a89dcffa3fdfc7177ab36fa2f845d0c892c30cf5..7e0e11c03c3c18fa662dff7b60dfcb9b850de38b 100644
+index a89dcffa3fdfc7177ab36fa2f845d0c892c30cf5..15d23a8307f8003673b9c95c3da27481a7f206a1 100644
 --- a/lib/module/components/ChoreographyScreenBase.js
 +++ b/lib/module/components/ChoreographyScreenBase.js
-@@ -14,7 +14,8 @@ export function ChoreographyScreenBase({
+@@ -14,7 +14,9 @@ export function ChoreographyScreenBase({
    instanceId,
    isFocused = true,
    children,
 -  ready = true
 +  ready = true,
-+  keepVisible = false
++  keepVisible = false,
++  interactiveWhileReturning = false
  }) {
    const screenId = instanceId ?? screenName;
    const choreography = useContext(ChoreographyContext);
-@@ -35,9 +36,9 @@ export function ChoreographyScreenBase({
+@@ -35,10 +37,11 @@ export function ChoreographyScreenBase({
    const revealStyle = useAnimatedStyle(() => {
      const value = progress?.value ?? 0;
      return {
@@ -20,10 +21,22 @@ index a89dcffa3fdfc7177ab36fa2f845d0c892c30cf5..7e0e11c03c3c18fa662dff7b60dfcb9b
 +      opacity: keepVisible ? 1 : deriveScreenOpacity(direction, role, phase, value)
      };
 -  }, [direction, role, phase, progress]);
+-  const blockInteraction = isPendingTarget || shouldBlockInteraction(role, phase);
 +  }, [direction, role, phase, progress, keepVisible]);
-   const blockInteraction = isPendingTarget || shouldBlockInteraction(role, phase);
++  const returning = interactiveWhileReturning && role === 'target' && direction === 'backward';
++  const blockInteraction = !returning && (isPendingTarget || shouldBlockInteraction(role, phase));
    const interactionOwner = choreography?.interactionOwner;
    const interactionProps = useAnimatedProps(() => ({
+     pointerEvents: blockInteraction && interactionOwner?.value !== screenId ? 'none' : 'auto'
+@@ -93,7 +96,7 @@ export function ChoreographyScreenBase({
+       style: [styles.container, {
+         opacity: staticOpacity
+       }],
+-      pointerEvents: isPendingTarget || role !== 'inactive' && phase === 'preparing' ? 'none' : 'box-none',
++      pointerEvents: !returning && (isPendingTarget || role !== 'inactive' && phase === 'preparing') ? 'none' : 'box-none',
+       children: /*#__PURE__*/_jsx(Animated.View, {
+         style: [styles.container, revealStyle],
+         pointerEvents: blockInteraction ? 'none' : 'auto',
 diff --git a/lib/module/core/ProgressOwnership.js b/lib/module/core/ProgressOwnership.js
 index bc513dccacc33d22f1eb9bd0feb8338478b6fa1d..6459c529631467b930da360af13867d1b66feee0 100644
 --- a/lib/module/core/ProgressOwnership.js
@@ -95,23 +108,25 @@ index bc513dccacc33d22f1eb9bd0feb8338478b6fa1d..6459c529631467b930da360af13867d1
      };
      progress.value = duration ? withTiming(target, {
 diff --git a/lib/typescript/src/components/ChoreographyScreenBase.d.ts b/lib/typescript/src/components/ChoreographyScreenBase.d.ts
-index 625d720f6bf992d17d32678bf9d307530aea7766..b4288ab43174b2ca79a975eafdd5360aced54c78 100644
+index 625d720f6bf992d17d32678bf9d307530aea7766..549025f5bb9ff68651d6ca238b26285e1a91db6f 100644
 --- a/lib/typescript/src/components/ChoreographyScreenBase.d.ts
 +++ b/lib/typescript/src/components/ChoreographyScreenBase.d.ts
-@@ -4,6 +4,8 @@ export interface ChoreographyScreenProps {
+@@ -4,6 +4,10 @@ export interface ChoreographyScreenProps {
      children: React.ReactNode;
      /** Additional app readiness gate applied after the screen has laid out. */
      ready?: boolean;
 +    /** Keep this screen fully visible during a session instead of cross-fading it with the other endpoint. */
 +    keepVisible?: boolean;
++    /** Keep this screen touchable while a close flies back onto it. */
++    interactiveWhileReturning?: boolean;
  }
  export declare function ChoreographyScreenBase({ screenId: screenName, instanceId, isFocused, children, ready, }: ChoreographyScreenProps & {
      instanceId?: string;
 diff --git a/src/components/ChoreographyScreenBase.tsx b/src/components/ChoreographyScreenBase.tsx
-index 1313eab88f325359479c6e2532aa710a919b2067..6cbd4d58c3c214c07caea7e007913dc5ac5d28bb 100644
+index 1313eab88f325359479c6e2532aa710a919b2067..78dc1960a63552ca82f5b52ec7fdbf01f2dd2064 100644
 --- a/src/components/ChoreographyScreenBase.tsx
 +++ b/src/components/ChoreographyScreenBase.tsx
-@@ -23,6 +23,12 @@ export interface ChoreographyScreenProps {
+@@ -23,6 +23,18 @@ export interface ChoreographyScreenProps {
    children: React.ReactNode;
    /** Additional app readiness gate applied after the screen has laid out. */
    ready?: boolean;
@@ -121,18 +136,25 @@ index 1313eab88f325359479c6e2532aa710a919b2067..6cbd4d58c3c214c07caea7e007913dc5
 +   * over the list it came from) the source must stay on screen.
 +   */
 +  keepVisible?: boolean;
++  /**
++   * Keep this screen touchable while a close flies back onto it. A tap then
++   * reaches it mid-flight, and a navigation it starts is queued until the
++   * close lands, instead of the touch being dropped.
++   */
++  interactiveWhileReturning?: boolean;
  }
  
  export function ChoreographyScreenBase({
-@@ -31,6 +37,7 @@ export function ChoreographyScreenBase({
+@@ -31,6 +43,8 @@ export function ChoreographyScreenBase({
    isFocused = true,
    children,
    ready = true,
 +  keepVisible = false,
++  interactiveWhileReturning = false,
  }: ChoreographyScreenProps & { instanceId?: string; isFocused?: boolean }) {
    const screenId = instanceId ?? screenName;
    const choreography = useContext(ChoreographyContext);
-@@ -65,8 +72,12 @@ export function ChoreographyScreenBase({
+@@ -65,11 +79,17 @@ export function ChoreographyScreenBase({
  
    const revealStyle = useAnimatedStyle(() => {
      const value = progress?.value ?? 0;
@@ -145,8 +167,24 @@ index 1313eab88f325359479c6e2532aa710a919b2067..6cbd4d58c3c214c07caea7e007913dc5
 +    };
 +  }, [direction, role, phase, progress, keepVisible]);
  
++  const returning =
++    interactiveWhileReturning && role === 'target' && direction === 'backward';
    const blockInteraction =
-     isPendingTarget || shouldBlockInteraction(role, phase);
+-    isPendingTarget || shouldBlockInteraction(role, phase);
++    !returning && (isPendingTarget || shouldBlockInteraction(role, phase));
+   const interactionOwner = choreography?.interactionOwner;
+   const interactionProps = useAnimatedProps(() => ({
+     pointerEvents:
+@@ -138,7 +158,8 @@ export function ChoreographyScreenBase({
+         onLayout={handleLayout}
+         style={[styles.container, { opacity: staticOpacity }]}
+         pointerEvents={
+-          isPendingTarget || (role !== 'inactive' && phase === 'preparing')
++          !returning &&
++          (isPendingTarget || (role !== 'inactive' && phase === 'preparing'))
+             ? 'none'
+             : 'box-none'
+         }
 diff --git a/src/core/ProgressOwnership.ts b/src/core/ProgressOwnership.ts
 index 9e72c7c89dde625dac72f0589b3674f311f84212..f24ce6d24f9a6995afeec9b815d8eb35ecc0c85f 100644
 --- a/src/core/ProgressOwnership.ts

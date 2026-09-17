@@ -5,6 +5,8 @@ import type { LaunchSource } from './launch-transition';
 export interface LaunchTarget {
   slug: string;
   source: LaunchSource;
+  /** The launch this target belongs to (see `launchSession`). */
+  token: number;
 }
 
 // The demo the launcher is opening. Not a route param: the launch route is
@@ -19,9 +21,9 @@ export const setLaunchTarget = (next: LaunchTarget | null) => {
   listeners.forEach(listener => listener());
 };
 
-/** Forget the target, if it is still this demo's. */
-export const clearLaunchTarget = (slug: string) => {
-  if (target?.slug === slug) setLaunchTarget(null);
+/** Forget the target, if it is still this launch's. */
+export const clearLaunchTarget = (token: number) => {
+  if (target?.token === token) setLaunchTarget(null);
 };
 
 const subscribe = (listener: () => void) => {
