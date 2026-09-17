@@ -3,22 +3,15 @@ import {
   Dimensions,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-} from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -164,7 +157,6 @@ const HeaderRight = memo(
 );
 
 export function ArtGallery() {
-  const navigation = useNavigation();
   const { top: safeTop } = useSafeAreaInsets();
   const canvasRef = useRef<CanvasRef>(null);
 
@@ -311,30 +303,6 @@ export function ArtGallery() {
       setAnalysis,
     ],
   );
-
-  // Configure native header - only depends on handlePaintingChange, not on selectedPaintingId
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerShown: true,
-      headerTransparent: true,
-      headerTitle: 'Gallery',
-      headerTintColor: '#fff',
-      headerTitleStyle: {
-        fontWeight: '600',
-      },
-      headerRight: () => (
-        <HeaderRight onPaintingChange={handlePaintingChange} />
-      ),
-    });
-
-    // Reset header when unmounting to prevent it persisting on other screens
-    return () => {
-      navigation.setOptions({
-        headerShown: false,
-        headerRight: undefined,
-      });
-    };
-  }, [navigation, handlePaintingChange]);
 
   // Initialize WebGPU renderer
   useWebGPUMosaic(canvasRef, {
@@ -649,6 +617,17 @@ export function ArtGallery() {
           pointerEvents="none"
         />
 
+        {/* The header is the gallery's own, not the navigator's: the demo
+            opens in a transparent modal, where toggling the native header
+            remounts the screen, and a native header would not shrink with
+            the card when the demo closes. */}
+        <View style={[styles.header, { top: safeTop }]}>
+          <Text style={styles.headerTitle}>Gallery</Text>
+          <View style={styles.headerRight}>
+            <HeaderRight onPaintingChange={handlePaintingChange} />
+          </View>
+        </View>
+
         <Animated.View style={[styles.fab, backButtonStyle]}>
           <ZoomOutButton onPress={resetZoom} />
         </Animated.View>
@@ -669,6 +648,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
   },
+  header: {
+    alignItems: 'center',
+    height: 44,
+    justifyContent: 'center',
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
   headerButton: {
     marginRight: 8,
     padding: 4,
@@ -678,5 +665,14 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
+  },
+  headerRight: {
+    position: 'absolute',
+    right: 12,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });
