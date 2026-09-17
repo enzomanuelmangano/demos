@@ -8,7 +8,7 @@ import {
   useState,
 } from 'react';
 
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Easing,
@@ -168,12 +168,15 @@ const CloseBridge = ({ onCommit }: { onCommit: () => void }) => {
       });
   };
   closeHandlers.commit = () => {
+    // Released at once, even while the session is still being prepared: from
+    // the threshold on the card is going home, and a tap on the home in that
+    // window opens the next demo instead of landing on this one.
+    launchSession.closing = true;
+    onCommit();
     if (state.current === 'preparing') {
       pending.current = 'commit';
       return;
     }
-    launchSession.closing = true;
-    onCommit();
     if (state.current === 'ready') {
       latest.current.interactive.finish({ duration: CLOSE_DURATION });
     } else {
@@ -219,10 +222,12 @@ const DemoLaunch = ({
   slug,
   groupId,
   token,
+  presented,
 }: {
   slug: string;
   groupId: string | null;
   token: number;
+  presented: boolean;
 }) => {
   const dimensions = useWindowDimensions();
   const { width, height } = dimensions;
@@ -233,7 +238,6 @@ const DemoLaunch = ({
   // unmounts, after the close has landed on the icon — unless a tap during the
   // close has already named the next launch, which is left alone.
   useLayoutEffect(() => {
-    launchSession.mounted = token;
     // A pose frozen by the previous close must not move this card.
     launchPose.translateX.set(0);
     launchPose.translateY.set(0);
@@ -252,6 +256,12 @@ const DemoLaunch = ({
       launchPose.scale.set(1);
     };
   }, [groupId, token]);
+  // Mounted is not opened: the preloaded route renders its demo as soon as the
+  // tap names it, pushed or not. The open command's watchdog asks whether the
+  // push was actually presented (see app/index.tsx).
+  useLayoutEffect(() => {
+    if (presented) launchSession.mounted = token;
+  }, [presented, token]);
 
   // The card: its SIZE by layout, its place by a transform. Scaling a full-
   // screen view to the card instead was cheaper, but not uniformly — the icon
@@ -481,6 +491,10 @@ export const DemoScreen = ({
   // Once the close is committed the demo takes no more touches, so a tap on
   // the home while the card flies back reaches the icon under it.
   const [released, setReleased] = useState(false);
+  // A preloaded route is laid out over the home but not presented. Named by a
+  // tap whose push never went through, it would hold a demo there — invisible,
+  // with a live close gesture — and take every touch meant for the home.
+  const presented = useIsFocused();
   const release = useCallback(() => setReleased(true), []);
   const { show } = useRetray<Trays>();
   const handleFeedback = useCallback(() => {
@@ -523,10 +537,15 @@ export const DemoScreen = ({
       : null;
 
   return (
-    <CloseGesture enabled={!released} released={released}>
+    <CloseGesture enabled={presented && !released} released={released}>
       <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
         <CloseBridge onCommit={release} />
-        <DemoLaunch slug={slug} groupId={groupId} token={token} />
+        <DemoLaunch
+          slug={slug}
+          groupId={groupId}
+          token={token}
+          presented={presented}
+        />
       </ChoreographyScreen>
     </CloseGesture>
   );

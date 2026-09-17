@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+
+import { useIsFocused } from 'expo-router';
 
 import { DemoScreen } from '../src/navigation/home/demo-screen';
 import { useLaunchTarget } from '../src/navigation/home/launch-store';
@@ -16,12 +18,18 @@ import type { LaunchTarget } from '../src/navigation/home/launch-store';
  *
  * A route keeps the first demo it is given. A tap during a close names the
  * next demo while this one is still flying home, and that one opens in a
- * route of its own.
+ * route of its own. The one exception is a launch that never got here.
  */
 export default function LaunchScreen() {
   const target = useLaunchTarget();
   const [own, setOwn] = useState<LaunchTarget | null>(target);
+  const focused = useIsFocused();
+  const presented = useRef(false);
+  if (focused) presented.current = true;
   if (own === null && target !== null) setOwn(target);
+  // A launch given up before this route was ever presented (its push was
+  // dropped; see the watchdog in app/index.tsx) leaves it preloaded and empty.
+  if (own !== null && target === null && !presented.current) setOwn(null);
   return (
     <DemoScreen
       slug={own?.slug}

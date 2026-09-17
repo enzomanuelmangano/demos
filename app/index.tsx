@@ -106,9 +106,9 @@ const LaunchBridge = ({
         ...launchTransition.navigationOptions,
       }).catch(() => undefined);
       // The library can refuse a push without rejecting — blocked, it queues
-      // or drops it and resolves. A launch named for a demo that never mounts
-      // would then gate every later tap and pull for good, so it is released
-      // if its demo has not appeared in time.
+      // or drops it and resolves. A launch named for a demo that is never
+      // presented would then gate every later tap and pull for good, so it is
+      // released if its route has not come to the front in time.
       setTimeout(() => {
         if (launchSession.token === token && launchSession.mounted !== token) {
           launchGroup.set(null);
