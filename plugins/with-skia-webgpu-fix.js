@@ -52,6 +52,14 @@ const withSkiaWebGPUFix = config => {
         phase.shell_script += "\\n# Strip skia's WebGPUView codegen entry (its sources are removed by the skia-webgpu fix)\\n/usr/bin/sed -i '' '/@\\"SkiaWebGPUView\\"/d' \\"$PODS_ROOT/../build/generated/ios/ReactCodegen/RCTThirdPartyComponentsProvider.mm\\" || true\\n"
       end
     end
+
+    # pod install runs codegen too, and Xcode skips the phase above when its
+    # inputs have not changed — the next launch then crashed on the nil class.
+    # So strip the file right here as well.
+    provider = File.join(__dir__, 'build/generated/ios/ReactCodegen/RCTThirdPartyComponentsProvider.mm')
+    if File.exist?(provider)
+      File.write(provider, File.read(provider).gsub(/^.*@"SkiaWebGPUView".*\\n/, ''))
+    end
   end
 end`;
 

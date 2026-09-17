@@ -1,0 +1,32 @@
+diff --git a/src/hoc/with-touchable-handler.tsx b/src/hoc/with-touchable-handler.tsx
+index 42963de5947036fa55ccd58e5b37b3e071b2b4c9..82a19a5425e5d8c1fd2c99d751615f7d01ada4ab 100644
+--- a/src/hoc/with-touchable-handler.tsx
++++ b/src/hoc/with-touchable-handler.tsx
+@@ -96,6 +96,10 @@ const withTouchableHandler = <T,>(
+       [onTapProp]
+     );
+ 
++    // Only the shape's own props reach the worklet: `children` are React
++    // elements, which carry their fiber in development, and worklets cannot
++    // copy a fiber to the UI runtime.
++    const { children: _children, ...shapeProps } = props as any;
+     const isPointInPath = useCallback(
+       (point: Vector) => {
+         'worklet';
+@@ -104,14 +108,14 @@ const withTouchableHandler = <T,>(
+         }
+ 
+         if (!componentName) return false;
+-        const path = getSkiaPath(componentName, props);
++        const path = getSkiaPath(componentName, shapeProps);
+ 
+         if (!path) {
+           throw Error('No touchablePath provided');
+         }
+         return path.contains(point.x, point.y);
+       },
+-      [props, touchablePath]
++      [shapeProps, touchablePath]
+     );
+ 
+     useEffect(() => {

@@ -1,0 +1,48 @@
+diff --git a/cpp/rnwgpu/api/GPUAdapter.cpp b/cpp/rnwgpu/api/GPUAdapter.cpp
+index 085b582dc1c9090a102c3b1ee04d8b55a1c120c4..32210ef838796b4712eee6bdfd7ce312a407d2f7 100644
+--- a/cpp/rnwgpu/api/GPUAdapter.cpp
++++ b/cpp/rnwgpu/api/GPUAdapter.cpp
+@@ -252,7 +252,7 @@ std::unordered_set<std::string> GPUAdapter::getFeatures() {
+ 
+ std::shared_ptr<GPUSupportedLimits> GPUAdapter::getLimits() {
+   wgpu::Limits limits{};
+-  if (!_instance.GetLimits(&limits)) {
++  if (_instance.GetLimits(&limits) != wgpu::Status::Success) {
+     throw std::runtime_error("Failed to get limits");
+   }
+   return std::make_shared<GPUSupportedLimits>(limits);
+diff --git a/cpp/rnwgpu/api/GPUDevice.cpp b/cpp/rnwgpu/api/GPUDevice.cpp
+index 4d6c92ffa781c20c31b7a3fb18a376cfbfc964d2..ed92775422b00e6c9ccf2e8c165165009a6f292c 100644
+--- a/cpp/rnwgpu/api/GPUDevice.cpp
++++ b/cpp/rnwgpu/api/GPUDevice.cpp
+@@ -59,7 +59,7 @@ GPUDevice::createBuffer(std::shared_ptr<GPUBufferDescriptor> descriptor) {
+ 
+ std::shared_ptr<GPUSupportedLimits> GPUDevice::getLimits() {
+   wgpu::Limits limits{};
+-  if (!_instance.GetLimits(&limits)) {
++  if (_instance.GetLimits(&limits) != wgpu::Status::Success) {
+     throw std::runtime_error("failed to get device limits");
+   }
+   return std::make_shared<GPUSupportedLimits>(limits);
+diff --git a/cpp/rnwgpu/api/GPUExternalTexture.cpp b/cpp/rnwgpu/api/GPUExternalTexture.cpp
+index 255cd6f80894883155f6119a130a9b0034d42f4f..939d4d4c42a3d46927b5cf8b01c8c2e45da83851 100644
+--- a/cpp/rnwgpu/api/GPUExternalTexture.cpp
++++ b/cpp/rnwgpu/api/GPUExternalTexture.cpp
+@@ -157,7 +157,7 @@ std::shared_ptr<GPUExternalTexture> GPUExternalTexture::Create(
+   wgpu::SharedTextureMemoryBeginAccessDescriptor begin{};
+   begin.initialized = true;
+   begin.concurrentRead = false;
+-  if (!memory.BeginAccess(texture, &begin)) {
++  if (memory.BeginAccess(texture, &begin) != wgpu::Status::Success) {
+     throw std::runtime_error(
+         "GPUExternalTexture::Create(): BeginAccess failed");
+   }
+@@ -252,7 +252,7 @@ std::shared_ptr<GPUExternalTexture> GPUExternalTexture::Create(
+   begin.concurrentRead = false;
+   wgpu::SharedTextureMemoryVkImageLayoutBeginState beginLayout{};
+   begin.nextInChain = &beginLayout;
+-  if (!memory.BeginAccess(texture, &begin)) {
++  if (memory.BeginAccess(texture, &begin) != wgpu::Status::Success) {
+     throw std::runtime_error(
+         "GPUExternalTexture::Create(): BeginAccess failed");
+   }

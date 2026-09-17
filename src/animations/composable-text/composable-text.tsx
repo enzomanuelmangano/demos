@@ -42,6 +42,9 @@ export const ComposableText = memo(
               <Animated.Text
                 key={buildKeys[index]}
                 entering={FadeIn.duration(200)
+                  // Reanimated 4.5 types FadeIn's initial values as opacity
+                  // only; the scale is still applied at runtime.
+                  // @ts-expect-error see above
                   .withInitialValues({ transform: [{ scale: 0.5 }] })
                   .springify()
                   .mass(0.3)
