@@ -81,21 +81,13 @@ const THROW_PROJECTION = 0.12;
 const DRAG_HOME_SPRING = { damping: 26, stiffness: 300, mass: 1 };
 
 /**
- * The flight home once the drag has crossed the threshold: a touch softer than
- * the library's reverse spring, which reached the icon in a couple of frames
- * and read as a snap rather than a flight.
+ * The flight home once the drag has crossed the threshold, in milliseconds, on
+ * the library's ease-out timing. Not a spring: thrown so it would not hang at
+ * the threshold, a clamped spring reached the icon still at speed and stopped
+ * dead, the card jumping from a third of the screen to the icon in one frame.
+ * An ease-out leaves quickly and lands slowly.
  */
-const CLOSE_SPRING = {
-  damping: 38,
-  mass: 1,
-  stiffness: 400,
-  overshootClamping: true,
-  restDisplacementThreshold: 0.001,
-  restSpeedThreshold: 0.001,
-};
-
-/** The flight home's initial speed, in expansions per second. */
-const CLOSE_VELOCITY = 2;
+const CLOSE_DURATION = 360;
 
 /** The demo's content fades in over its card as the open lands. */
 const CONTENT_FADE = { duration: 200, easing: Easing.out(Easing.quad) };
@@ -183,17 +175,12 @@ const CloseBridge = ({ onCommit }: { onCommit: () => void }) => {
     launchSession.closing = true;
     onCommit();
     if (state.current === 'ready') {
-      // Thrown, not dropped: a spring from rest spends its first frames barely
-      // moving, which read as the card hanging at the threshold.
-      latest.current.interactive.finish({
-        spring: CLOSE_SPRING,
-        velocity: CLOSE_VELOCITY,
-      });
+      latest.current.interactive.finish({ duration: CLOSE_DURATION });
     } else {
       // No session to fly (it could not start, or the drag never began one):
       // the plain choreographed back, which also covers a deep link.
       latest.current.choreography
-        .back({ spring: CLOSE_SPRING })
+        .back({ duration: CLOSE_DURATION })
         .catch(() => undefined);
     }
     state.current = 'idle';
