@@ -3,7 +3,7 @@
   "compilerOptions": {
     "strict": true,
     // Honor package.json "exports" subpaths (e.g.
-    // react-native-screen-transitions/native-stack), matching Metro's
+    // react-native-screen-choreography/expo-router), matching Metro's
     // resolution. The base config uses classic "node" resolution.
     "module": "esnext",
     "moduleResolution": "bundler"

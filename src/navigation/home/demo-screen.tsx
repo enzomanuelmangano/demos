@@ -1,0 +1,505 @@
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { useRouter } from 'expo-router';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  Easing,
+  interpolate,
+  useAnimatedReaction,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import {
+  ChoreographyScreen,
+  useChoreographyRouter,
+  useInteractiveTransition,
+} from 'react-native-screen-choreography/expo-router';
+import { scheduleOnRN } from 'react-native-worklets';
+
+import { getIconBackdrop } from './icon-source';
+import { clearLaunchTarget } from './launch-store';
+import {
+  CLOSE_SCALE,
+  DEMO_SCREEN_ID,
+  launchCardAt,
+  launchFrame,
+  launchGroup,
+  launchGroupId,
+  launchPose,
+  launchProgress,
+  launchTransition,
+  mountedLaunch,
+} from './launch-transition';
+import { SCREEN_CORNER_RADIUS } from './screen-radius';
+import {
+  getAnimationComponent,
+  getAnimationMetadata,
+} from '../../animations/registry';
+import { useRetray } from '../../packages/retray';
+import { useOnShakeEffect } from '../hooks/use-shake-gesture';
+
+import type { LaunchMetadata } from './launch-transition';
+import type { Trays } from '../../trays';
+import type { ReactNode } from 'react';
+
+/**
+ * The close drag. The card follows the finger down — part of the way, so it
+ * reads as held rather than dragged off — and shrinks with the distance, to
+ * `DRAG_MIN_SCALE` over `DRAG_SHRINK_TRAVEL` of the screen's height. Past
+ * `CLOSE_SCALE` it closes on its own; let go before that, it springs back.
+ */
+const DRAG_SHRINK_TRAVEL = 0.5;
+const DRAG_MIN_SCALE = 0.5;
+const DRAG_FOLLOW_Y = 0.5;
+const DRAG_FOLLOW_X = 0.35;
+/** Seconds of release velocity added to a drag to judge a throw. */
+const THROW_PROJECTION = 0.12;
+/** Back to full screen after a drag that did not close: quick, no bounce. */
+const DRAG_HOME_SPRING = { damping: 26, stiffness: 300, mass: 1 };
+
+/**
+ * The flight home once the drag has crossed the threshold: a touch softer than
+ * the library's reverse spring, which reached the icon in a couple of frames
+ * and read as a snap rather than a flight.
+ */
+const CLOSE_SPRING = {
+  damping: 30,
+  mass: 1,
+  stiffness: 230,
+  overshootClamping: true,
+  restDisplacementThreshold: 0.001,
+  restSpeedThreshold: 0.001,
+};
+
+/** The flight home's initial speed, in expansions per second. */
+const CLOSE_VELOCITY = 2;
+
+/** The demo's content fades in over its card as the open lands. */
+const CONTENT_FADE = { duration: 200, easing: Easing.out(Easing.quad) };
+/** How far into the open the demo starts to mount. */
+const MOUNT_AT_PROGRESS = 0.85;
+/** A launch that never reports its landing still shows its demo. */
+const MOUNT_BACKSTOP_MS = 1500;
+
+/**
+ * Everything a worklet on this screen calls back into JS is MODULE-LEVEL, on
+ * purpose: worklets resolves such callbacks through a weak registry, and a
+ * function owned by a component is collected once that component is gone — a
+ * gesture event one frame after the route pops would then abort the process.
+ * A module never goes away; the screen publishes its handlers into it.
+ */
+const scaleForDrag = (distance: number, screenHeight: number) => {
+  'worklet';
+  return interpolate(
+    distance,
+    [0, screenHeight * DRAG_SHRINK_TRAVEL],
+    [1, DRAG_MIN_SCALE],
+    'clamp',
+  );
+};
+
+const closeHandlers: {
+  begin: (() => void) | null;
+  commit: (() => void) | null;
+  abort: (() => void) | null;
+} = { begin: null, commit: null, abort: null };
+const beginClose = () => closeHandlers.begin?.();
+const commitClose = () => closeHandlers.commit?.();
+const abortClose = () => closeHandlers.abort?.();
+const mountHandler: { current: (() => void) | null } = { current: null };
+const mountDemo = () => mountHandler.current?.();
+
+type CloseState = 'idle' | 'preparing' | 'ready' | 'unavailable';
+
+/**
+ * The close, prepared while the finger is still dragging.
+ *
+ * Starting a back session measures the icon it lands on and waits for it to
+ * hold still — about a third of a second in a debug build. Started at the
+ * threshold, that was a third of a second of a card frozen at 0.75 before it
+ * flew. So the session is begun when the drag BEGINS, through the library's
+ * interactive back, with its clock held at 1: nothing on screen changes (the
+ * card is open, the icon in the overlay is transparent), and by the time the
+ * card crosses the threshold the flight is ready to go. A drag that is let go
+ * short of it cancels the session instead.
+ *
+ * Also the one subscriber to the choreography's session state on this screen:
+ * the hooks re-render their caller on every phase, and here that renders
+ * nothing. The handlers reach the gesture through the module.
+ */
+const CloseBridge = () => {
+  const router = useRouter();
+  const choreography = useChoreographyRouter(router, DEMO_SCREEN_ID);
+  const interactive = useInteractiveTransition();
+  // Read at call time: the hooks return new objects on every render.
+  const latest = useRef({ choreography, interactive });
+  latest.current = { choreography, interactive };
+  const state = useRef<CloseState>('idle');
+  const pending = useRef<'commit' | 'abort' | null>(null);
+
+  closeHandlers.begin = () => {
+    if (state.current !== 'idle') return;
+    state.current = 'preparing';
+    pending.current = null;
+    latest.current.interactive
+      .beginBack()
+      .catch(() => null)
+      .then(session => {
+        state.current = session ? 'ready' : 'unavailable';
+        const next = pending.current;
+        pending.current = null;
+        if (next === 'commit') closeHandlers.commit?.();
+        else if (next === 'abort') closeHandlers.abort?.();
+      });
+  };
+  closeHandlers.commit = () => {
+    if (state.current === 'preparing') {
+      pending.current = 'commit';
+      return;
+    }
+    if (state.current === 'ready') {
+      // Thrown, not dropped: a spring from rest spends its first frames barely
+      // moving, which read as the card hanging at the threshold.
+      latest.current.interactive.finish({
+        spring: CLOSE_SPRING,
+        velocity: CLOSE_VELOCITY,
+      });
+    } else {
+      // No session to fly (it could not start, or the drag never began one):
+      // the plain choreographed back, which also covers a deep link.
+      latest.current.choreography
+        .back({ spring: CLOSE_SPRING })
+        .catch(() => undefined);
+    }
+    state.current = 'idle';
+  };
+  closeHandlers.abort = () => {
+    if (state.current === 'preparing') {
+      pending.current = 'abort';
+      return;
+    }
+    if (state.current === 'ready') latest.current.interactive.cancel();
+    state.current = 'idle';
+  };
+
+  useEffect(
+    () => () => {
+      closeHandlers.begin = null;
+      closeHandlers.commit = null;
+      closeHandlers.abort = null;
+    },
+    [],
+  );
+  return null;
+};
+
+/**
+ * A demo, opened out of the icon that was tapped.
+ *
+ * Not a pushed screen: a transparent route over the SpringBoard. The icon's
+ * artwork travels in the choreography overlay (see launch-transition.tsx) and
+ * lands in this screen's full-screen target; the card it opens into is drawn
+ * HERE, under the overlay, on the same clock — the demo's backdrop colour, and
+ * once mounted the demo itself, scaled into it. On the way back the same card
+ * shrinks, with the running demo inside, into the icon.
+ */
+const DemoLaunch = ({
+  slug,
+  groupId,
+}: {
+  slug: string;
+  groupId: string | null;
+}) => {
+  const dimensions = useWindowDimensions();
+  const { width, height } = dimensions;
+  const backdrop = getIconBackdrop(slug);
+  const AnimationComponent = getAnimationComponent(slug);
+
+  // The launch is this screen's while it is here. Cleared on unmount, which is
+  // after the close has landed on the icon: the home's gestures and blur
+  // follow the launch until then.
+  useEffect(() => {
+    mountedLaunch.groupId = groupId;
+    return () => {
+      if (mountedLaunch.groupId === groupId) mountedLaunch.groupId = null;
+      // The launch route is gone with this demo; the next one is preloaded
+      // empty, not with this demo already mounted in it.
+      clearLaunchTarget(slug);
+    };
+  }, [groupId, slug]);
+  useEffect(
+    () => () => {
+      if (groupId !== null && launchGroup.get() === groupId) {
+        launchGroup.set(null);
+        launchFrame.set(null);
+      }
+      // The pose froze at the threshold for the flight home, which has landed.
+      // Cleared HERE, not at the next open: a stale pose would move the next
+      // demo's card.
+      launchPose.translateX.set(0);
+      launchPose.translateY.set(0);
+      launchPose.scale.set(1);
+    },
+    [groupId],
+  );
+
+  // The card, by transforms only (see `launchCardAt`): a full-screen view
+  // scaled on each axis to the card's size and moved to its centre. The demo
+  // inside is counter-scaled on the vertical axis, so it shrinks uniformly to
+  // the card's WIDTH and is cropped top and bottom by the card — as iOS does —
+  // instead of being squeezed. The corner radius is set in the card's own,
+  // stretched space, so it is divided by the scale.
+  const cardStyle = useAnimatedStyle(() => {
+    const mine = groupId !== null && launchGroup.get() === groupId;
+    const frame = launchFrame.get();
+    const measured = mine && frame?.groupId === groupId;
+    const card = launchCardAt(
+      measured ? frame : { groupId: '', x: 0, y: 0, width, height, radius: 0 },
+      width,
+      height,
+      mine ? launchProgress.get() : 1,
+      launchPose.translateX.get(),
+      launchPose.translateY.get(),
+      launchPose.scale.get(),
+    );
+    const scaleX = card.width / width;
+    const scaleY = card.height / height;
+    return {
+      // Named but not yet measured: nothing to draw until the icon is known.
+      opacity: mine && !measured ? 0 : 1,
+      borderRadius: card.radius / Math.sqrt(scaleX * scaleY),
+      transform: [
+        { translateX: card.centerX - width / 2 },
+        { translateY: card.centerY - height / 2 },
+        { scaleX },
+        { scaleY },
+      ],
+    };
+  });
+  const contentStyle = useAnimatedStyle(() => {
+    const mine = groupId !== null && launchGroup.get() === groupId;
+    const frame = launchFrame.get();
+    if (!mine || frame?.groupId !== groupId) {
+      return { transform: [{ scaleY: 1 }] };
+    }
+    const expansion = launchProgress.get();
+    const card = launchCardAt(frame, width, height, expansion, 0, 0, 1);
+    return {
+      transform: [{ scaleY: card.width / width / (card.height / height) }],
+    };
+  });
+
+  // The demo mounts near the end of the open. Its first render can be heavy
+  // (hundreds of views), and the launch waits for this screen to lay out: with
+  // only the card to lay out it starts at once, the card covers the screen for
+  // most of the flight, and the mount's work lands in the settle, as the
+  // content fades in over the flat backdrop.
+  const [mounted, setMounted] = useState(groupId === null);
+  mountHandler.current = () => setMounted(true);
+  useAnimatedReaction(
+    () =>
+      groupId !== null &&
+      launchGroup.get() === groupId &&
+      launchProgress.get() >= MOUNT_AT_PROGRESS,
+    (ready, wasReady) => {
+      if (ready && !wasReady) scheduleOnRN(mountDemo);
+    },
+  );
+  useEffect(() => {
+    if (mounted) return undefined;
+    const t = setTimeout(() => setMounted(true), MOUNT_BACKSTOP_MS);
+    return () => clearTimeout(t);
+  }, [mounted]);
+  const contentOpacity = useSharedValue(groupId === null ? 1 : 0);
+  useEffect(() => {
+    if (mounted) contentOpacity.set(withTiming(1, CONTENT_FADE));
+  }, [mounted, contentOpacity]);
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: contentOpacity.get(),
+  }));
+
+  return (
+    <View style={styles.fill}>
+      {groupId !== null ? (
+        <launchTransition.Element.Target
+          name="app"
+          groupId={groupId}
+          metadata={{ radius: SCREEN_CORNER_RADIUS } satisfies LaunchMetadata}
+          style={StyleSheet.absoluteFill}
+          // The artwork rests here while the demo is open. The card covers the
+          // screen but not its rounded corners, where the icon showed through.
+          hostStyle={styles.hiddenHost}
+        />
+      ) : null}
+      <Animated.View
+        style={[
+          styles.card,
+          { width, height, backgroundColor: backdrop },
+          cardStyle,
+        ]}>
+        <Animated.View
+          style={[styles.content, { width, height }, contentStyle]}>
+          {mounted && AnimationComponent ? (
+            <Animated.View style={[styles.fill, fadeStyle]}>
+              <AnimationComponent {...(dimensions as any)} />
+            </Animated.View>
+          ) : null}
+        </Animated.View>
+      </Animated.View>
+    </View>
+  );
+};
+
+/**
+ * The close gesture: a drag down, anywhere. The card shrinks with it; past
+ * `CLOSE_SCALE` the pose freezes and the close flies home from it — or at a
+ * release whose throw would carry it past. It lives OUTSIDE the choreography
+ * screen: once the close's session starts the library blocks that screen's
+ * touches, and a recognizer inside it was cancelled — springing the frozen
+ * pose back mid-flight.
+ */
+const CloseGesture = ({ children }: { children: ReactNode }) => {
+  const { height } = useWindowDimensions();
+  // Whether this drag owns the pose: false until it starts on a settled demo,
+  // and false again once it has handed the card to the close, so neither the
+  // finger nor the release can move the card after that.
+  const dragging = useSharedValue(false);
+  const closeGesture = Gesture.Pan()
+    // Down only. Sideways travel before that belongs to the demo.
+    .activeOffsetY(10)
+    .failOffsetX([-30, 30])
+    .onStart(() => {
+      // Not while a launch is flying: the close would be refused, and the pose
+      // would stay frozen on an open card.
+      const group = launchGroup.get();
+      const settled = group === null || launchProgress.get() >= 0.999;
+      dragging.set(settled);
+      if (settled) scheduleOnRN(beginClose);
+    })
+    .onUpdate(event => {
+      if (!dragging.get()) return;
+      const distance = Math.max(0, event.translationY);
+      const scale = scaleForDrag(distance, height);
+      launchPose.translateX.set(event.translationX * DRAG_FOLLOW_X);
+      launchPose.translateY.set(distance * DRAG_FOLLOW_Y);
+      launchPose.scale.set(scale);
+      if (scale <= CLOSE_SCALE) {
+        dragging.set(false);
+        scheduleOnRN(commitClose);
+      }
+    })
+    .onEnd(event => {
+      if (!dragging.get()) return;
+      const thrown =
+        Math.max(0, event.translationY) +
+        Math.max(0, event.velocityY) * THROW_PROJECTION;
+      if (scaleForDrag(thrown, height) <= CLOSE_SCALE) {
+        dragging.set(false);
+        scheduleOnRN(commitClose);
+      }
+    })
+    .onFinalize(() => {
+      if (!dragging.get()) return;
+      dragging.set(false);
+      scheduleOnRN(abortClose);
+      launchPose.translateX.set(withSpring(0, DRAG_HOME_SPRING));
+      launchPose.translateY.set(withSpring(0, DRAG_HOME_SPRING));
+      launchPose.scale.set(withSpring(1, DRAG_HOME_SPRING));
+    });
+
+  return <GestureDetector gesture={closeGesture}>{children}</GestureDetector>;
+};
+
+/**
+ * A demo host: the launch choreography around one demo (see DemoLaunch). The
+ * routes only resolve which demo — app/launch.tsx for the launcher,
+ * app/animations/[slug].tsx for a deep link. Shake opens the feedback tray.
+ */
+export const DemoScreen = ({
+  slug,
+  source,
+}: {
+  slug: string | undefined;
+  source?: string;
+}) => {
+  const { show } = useRetray<Trays>();
+  const handleFeedback = useCallback(() => {
+    show('help', { slug });
+  }, [show, slug]);
+
+  useOnShakeEffect(handleFeedback);
+
+  // The preloaded launch route before a tap: the same tree, empty, so naming a
+  // demo only adds the card and the target to a screen already laid out.
+  if (slug === undefined && source === 'launcher') {
+    return (
+      <CloseGesture>
+        <View style={styles.fill}>
+          <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
+            <View style={styles.fill} />
+          </ChoreographyScreen>
+        </View>
+      </CloseGesture>
+    );
+  }
+
+  if (!slug || !getAnimationComponent(slug) || !getAnimationMetadata(slug)) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>
+          {slug ? `Animation "${slug}" not found` : 'No animation specified'}
+        </Text>
+      </View>
+    );
+  }
+
+  // Opened from the launcher: pair with the icon it came from. Opened any
+  // other way (a deep link) there is no icon, and it simply appears.
+  const groupId =
+    source === 'grid' || source === 'search'
+      ? launchGroupId(source, slug)
+      : null;
+
+  return (
+    <CloseGesture>
+      <View style={styles.fill}>
+        <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
+          <CloseBridge />
+          <DemoLaunch slug={slug} groupId={groupId} />
+        </ChoreographyScreen>
+      </View>
+    </CloseGesture>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    borderCurve: 'continuous',
+    left: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    top: 0,
+  },
+  content: {
+    left: 0,
+    position: 'absolute',
+    top: 0,
+  },
+  errorContainer: {
+    alignItems: 'center',
+    backgroundColor: 'black',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  errorText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  fill: { flex: 1 },
+  hiddenHost: { opacity: 0 },
+});

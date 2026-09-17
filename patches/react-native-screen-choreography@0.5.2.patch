@@ -1,0 +1,221 @@
+diff --git a/lib/module/components/ChoreographyScreenBase.js b/lib/module/components/ChoreographyScreenBase.js
+index a89dcffa3fdfc7177ab36fa2f845d0c892c30cf5..7e0e11c03c3c18fa662dff7b60dfcb9b850de38b 100644
+--- a/lib/module/components/ChoreographyScreenBase.js
++++ b/lib/module/components/ChoreographyScreenBase.js
+@@ -14,7 +14,8 @@ export function ChoreographyScreenBase({
+   instanceId,
+   isFocused = true,
+   children,
+-  ready = true
++  ready = true,
++  keepVisible = false
+ }) {
+   const screenId = instanceId ?? screenName;
+   const choreography = useContext(ChoreographyContext);
+@@ -35,9 +36,9 @@ export function ChoreographyScreenBase({
+   const revealStyle = useAnimatedStyle(() => {
+     const value = progress?.value ?? 0;
+     return {
+-      opacity: deriveScreenOpacity(direction, role, phase, value)
++      opacity: keepVisible ? 1 : deriveScreenOpacity(direction, role, phase, value)
+     };
+-  }, [direction, role, phase, progress]);
++  }, [direction, role, phase, progress, keepVisible]);
+   const blockInteraction = isPendingTarget || shouldBlockInteraction(role, phase);
+   const interactionOwner = choreography?.interactionOwner;
+   const interactionProps = useAnimatedProps(() => ({
+diff --git a/lib/module/core/ProgressOwnership.js b/lib/module/core/ProgressOwnership.js
+index bc513dccacc33d22f1eb9bd0feb8338478b6fa1d..6459c529631467b930da360af13867d1b66feee0 100644
+--- a/lib/module/core/ProgressOwnership.js
++++ b/lib/module/core/ProgressOwnership.js
+@@ -3,6 +3,20 @@
+ import { cancelAnimation, Easing, withSpring, withTiming } from 'react-native-reanimated';
+ import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
+ import { finishVisibilityHandoff, resumeVisibilityHandoff } from "./ElementVisibilityRegistry.js";
++
++// Completion callbacks reach the UI thread as remote functions, which
++// worklets resolves through a WEAK registry on the JS side. A callback
++// replaced by a re-render while its spring is still running is collected
++// before the spring finishes; the scheduler then resolves nothing and the
++// process aborts (jsi getObject assertion in scheduleOnRN). So the callbacks
++// are held HERE, strongly, keyed by their animation token, and the worklet
++// schedules one module-level function that never goes away.
++const completions = new Map();
++function dispatchCompletion(token, sessionId) {
++  const onComplete = completions.get(token);
++  completions.delete(token);
++  onComplete?.(token, sessionId);
++}
+ export class ProgressOwnership {
+   generation = 0;
+   sessionId = null;
+@@ -23,6 +37,8 @@ export class ProgressOwnership {
+     this.invalidate();
+   }
+   invalidate() {
++    // Every older token is stale now; drop the callbacks waiting on them.
++    completions.clear();
+     const token = ++this.generation;
+     const {
+       owner,
+@@ -65,14 +81,16 @@ export function setOwnedProgress(ownership, token, sessionId, progress, value, o
+     owner,
+     handoff
+   } = ownership;
++  const hasCompletion = Boolean(onComplete);
++  if (onComplete) completions.set(token, onComplete);
+   scheduleOnUI(() => {
+     'worklet';
+ 
+     if (owner.value !== token) return;
+     progress.value = value;
+-    if (onComplete) {
++    if (hasCompletion) {
+       if (value === 0 || value === 1) finishVisibilityHandoff(handoff, sessionId);
+-      scheduleOnRN(onComplete, token, sessionId);
++      scheduleOnRN(dispatchCompletion, token, sessionId);
+     }
+   });
+ }
+@@ -93,6 +111,7 @@ export function animateOwnedProgress({
+     owner,
+     handoff
+   } = ownership;
++  completions.set(token, onComplete);
+   scheduleOnUI(() => {
+     'worklet';
+ 
+@@ -105,7 +124,7 @@ export function animateOwnedProgress({
+           finishVisibilityHandoff(handoff, sessionId);
+         }
+         onCompleteUI?.();
+-        scheduleOnRN(onComplete, token, sessionId);
++        scheduleOnRN(dispatchCompletion, token, sessionId);
+       }
+     };
+     progress.value = duration ? withTiming(target, {
+diff --git a/lib/typescript/src/components/ChoreographyScreenBase.d.ts b/lib/typescript/src/components/ChoreographyScreenBase.d.ts
+index 625d720f6bf992d17d32678bf9d307530aea7766..b4288ab43174b2ca79a975eafdd5360aced54c78 100644
+--- a/lib/typescript/src/components/ChoreographyScreenBase.d.ts
++++ b/lib/typescript/src/components/ChoreographyScreenBase.d.ts
+@@ -4,6 +4,8 @@ export interface ChoreographyScreenProps {
+     children: React.ReactNode;
+     /** Additional app readiness gate applied after the screen has laid out. */
+     ready?: boolean;
++    /** Keep this screen fully visible during a session instead of cross-fading it with the other endpoint. */
++    keepVisible?: boolean;
+ }
+ export declare function ChoreographyScreenBase({ screenId: screenName, instanceId, isFocused, children, ready, }: ChoreographyScreenProps & {
+     instanceId?: string;
+diff --git a/src/components/ChoreographyScreenBase.tsx b/src/components/ChoreographyScreenBase.tsx
+index 1313eab88f325359479c6e2532aa710a919b2067..6cbd4d58c3c214c07caea7e007913dc5ac5d28bb 100644
+--- a/src/components/ChoreographyScreenBase.tsx
++++ b/src/components/ChoreographyScreenBase.tsx
+@@ -23,6 +23,12 @@ export interface ChoreographyScreenProps {
+   children: React.ReactNode;
+   /** Additional app readiness gate applied after the screen has laid out. */
+   ready?: boolean;
++  /**
++   * Keep this screen fully visible during a session instead of cross-fading
++   * it with the other endpoint. For a transparent destination (a preview
++   * over the list it came from) the source must stay on screen.
++   */
++  keepVisible?: boolean;
+ }
+ 
+ export function ChoreographyScreenBase({
+@@ -31,6 +37,7 @@ export function ChoreographyScreenBase({
+   isFocused = true,
+   children,
+   ready = true,
++  keepVisible = false,
+ }: ChoreographyScreenProps & { instanceId?: string; isFocused?: boolean }) {
+   const screenId = instanceId ?? screenName;
+   const choreography = useContext(ChoreographyContext);
+@@ -65,8 +72,12 @@ export function ChoreographyScreenBase({
+ 
+   const revealStyle = useAnimatedStyle(() => {
+     const value = progress?.value ?? 0;
+-    return { opacity: deriveScreenOpacity(direction, role, phase, value) };
+-  }, [direction, role, phase, progress]);
++    return {
++      opacity: keepVisible
++        ? 1
++        : deriveScreenOpacity(direction, role, phase, value),
++    };
++  }, [direction, role, phase, progress, keepVisible]);
+ 
+   const blockInteraction =
+     isPendingTarget || shouldBlockInteraction(role, phase);
+diff --git a/src/core/ProgressOwnership.ts b/src/core/ProgressOwnership.ts
+index 9e72c7c89dde625dac72f0589b3674f311f84212..f24ce6d24f9a6995afeec9b815d8eb35ecc0c85f 100644
+--- a/src/core/ProgressOwnership.ts
++++ b/src/core/ProgressOwnership.ts
+@@ -13,6 +13,21 @@ import {
+   type VisibilityHandoff,
+ } from './ElementVisibilityRegistry';
+ 
++// Completion callbacks reach the UI thread as remote functions, which
++// worklets resolves through a WEAK registry on the JS side. A callback
++// replaced by a re-render while its spring is still running is collected
++// before the spring finishes; the scheduler then resolves nothing and the
++// process aborts (jsi getObject assertion in scheduleOnRN). So the callbacks
++// are held HERE, strongly, keyed by their animation token, and the worklet
++// schedules one module-level function that never goes away.
++type Completion = (token: number, sessionId: string) => void;
++const completions = new Map<number, Completion>();
++function dispatchCompletion(token: number, sessionId: string): void {
++  const onComplete = completions.get(token);
++  completions.delete(token);
++  onComplete?.(token, sessionId);
++}
++
+ export class ProgressOwnership {
+   private generation = 0;
+   private sessionId: string | null = null;
+@@ -38,6 +53,8 @@ export class ProgressOwnership {
+   }
+ 
+   invalidate(): void {
++    // Every older token is stale now; drop the callbacks waiting on them.
++    completions.clear();
+     const token = ++this.generation;
+     const { owner, progress } = this;
+     scheduleOnUI(() => {
+@@ -80,14 +97,15 @@ export function setOwnedProgress(
+ ): void {
+   if (!ownership.isCurrent(token, sessionId)) return;
+   const { owner, handoff } = ownership;
++  const hasCompletion = Boolean(onComplete);
++  if (onComplete) completions.set(token, onComplete);
+   scheduleOnUI(() => {
+     'worklet';
+     if (owner.value !== token) return;
+     progress.value = value;
+-    if (onComplete) {
+-      if (value === 0 || value === 1)
+-        finishVisibilityHandoff(handoff, sessionId);
+-      scheduleOnRN(onComplete, token, sessionId);
++    if (hasCompletion) {
++      if (value === 0 || value === 1) finishVisibilityHandoff(handoff, sessionId);
++      scheduleOnRN(dispatchCompletion, token, sessionId);
+     }
+   });
+ }
+@@ -119,6 +137,7 @@ export function animateOwnedProgress({
+ }): void {
+   if (!ownership.isCurrent(token, sessionId)) return;
+   const { owner, handoff } = ownership;
++  completions.set(token, onComplete);
+   scheduleOnUI(() => {
+     'worklet';
+     if (owner.value !== token) return;
+@@ -129,7 +148,7 @@ export function animateOwnedProgress({
+           finishVisibilityHandoff(handoff, sessionId);
+         }
+         onCompleteUI?.();
+-        scheduleOnRN(onComplete, token, sessionId);
++        scheduleOnRN(dispatchCompletion, token, sessionId);
+       }
+     };
+     progress.value = duration

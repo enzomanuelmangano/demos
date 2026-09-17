@@ -1,16 +1,14 @@
-import { Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Share, StyleSheet, Text, View } from 'react-native';
 
 import { memo, useCallback } from 'react';
 
-import { useSelector } from '@legendapp/state/react';
 import { Image } from 'expo-image';
 import * as Linking from 'expo-linking';
-import Transition from 'react-native-screen-transitions';
 import * as ContextMenu from 'zeego/context-menu';
 
-import { activePage$, elevatedSlug$ } from './active-page';
-import { BOUNDS_GROUP } from './constants';
 import { getIconSource } from './icon-source';
+import { LaunchIcon } from './launch-icon';
+import { launchGroupId } from './launch-transition';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 import { AnimationInspirations } from '../../animations/inspirations';
 
@@ -18,31 +16,19 @@ import type { Demo } from './demos';
 
 interface Props {
   demo: Demo;
-  // Which page this icon lives on. Used to gate its transition boundary: only
-  // the visible page's icons keep an active Trigger (see below).
-  pageIndex: number;
-  // Position within the page — the springboard derives the icon's on-screen
-  // rect from this (deterministic grid layout) to seed the instant open-zoom
-  // overlay without an async measure.
-  cellIndex: number;
   cellWidth: number;
   cellHeight: number;
   iconSize: number;
-  onPress: (slug: string, cellIndex: number) => void;
+  onPress: (slug: string) => void;
 }
 
 // GitHub source for a demo — folder name === slug (see scripts/generate-icon-map).
 const sourceUrl = (slug: string) =>
   `https://github.com/enzomanuelmangano/demos/tree/main/src/animations/${slug}`;
 
-// Just the squircle icon (no label). This is what the shared-bound Trigger wraps
-// so the zoom source is the ICON's square frame — NOT the whole cell. Including
-// the label in the bound made the source rect a tall non-square (icon on top,
-// label below): the demo then zoomed into/out of that rect's centre — which sits
-// between the icon and the label — so the closing screen landed OFFSET from the
-// icon, and the label itself scaled up into a giant ghost floating over the grid
-// mid-close. Bounding the icon square alone makes the zoom symmetric about the
-// icon, with no label ghost.
+// Just the squircle icon (no label): the launch's shared element is the ICON's
+// square, not the whole cell, so the card grows out of the icon and lands back
+// on it — a label inside the source frame would move its centre off the icon.
 const IconSquare = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
   const radius = iconSize * ICON_RADIUS_RATIO;
   return (
@@ -78,33 +64,17 @@ const IconSquare = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
   );
 };
 
-// One SpringBoard cell: a shared-bound Trigger keyed by slug (tap zooms it open
-// via bounds().navigation.zoom()), wrapped in a long-press context menu — iOS
-// home style — offering Inspiration / Share / View Code. The Trigger stays a
-// stable mounted boundary (see git history: unmounting it stranded transition
-// styles and blanked icons).
+// One SpringBoard cell: the launch icon (tap opens its demo out of it — see
+// launch-icon.tsx), wrapped in a long-press context menu — iOS home style —
+// offering Inspiration / Share / View Code.
 const AppIconComponent = ({
   demo,
-  pageIndex,
-  cellIndex,
   cellWidth,
   cellHeight,
   iconSize,
   onPress,
 }: Props) => {
   const { slug, name } = demo;
-
-  // Activate this icon's shared-bound Trigger only while its page is the visible
-  // one. react-native-screen-transitions activates every boundary on a screen
-  // the moment a transition to an interpolator screen is pending, and each
-  // active boundary measures + runs a per-frame reaction. Gating on the visible
-  // page keeps that to ~one page of icons. useSelector re-renders this icon only
-  // when its own boolean flips (page enter/leave), not on every page change.
-  const boundaryEnabled = useSelector(() => activePage$.get() === pageIndex);
-  // While this icon's demo is open/closing, lift the WHOLE cell above its
-  // sibling cells — see elevatedSlug$ in active-page.ts for why the library's
-  // own boundary zIndex can't do this since the cell restructure.
-  const elevated = useSelector(() => elevatedSlug$.get() === slug);
   const inspiration = AnimationInspirations[slug];
   const inspirationLink = inspiration?.link ?? null;
 
@@ -121,63 +91,53 @@ const AppIconComponent = ({
     Linking.openURL(sourceUrl(slug));
   }, [slug]);
 
-  return (
-    // This wrapper is the page's DIRECT child — the actual stacking sibling of
-    // every other cell. zIndex only wins against siblings, so the elevation for
-    // the open icon must live at THIS level: inside zeego's wrappers (native
-    // context-menu view > trigger view) it can never beat neighbouring cells,
-    // which is exactly how the closing icon ended up painting under them.
-    <View style={elevated ? styles.cellElevated : undefined}>
-      <ContextMenu.Root>
-        <ContextMenu.Trigger>
-          <View style={[styles.cell, { width: cellWidth, height: cellHeight }]}>
-            {/* Bound = the icon square only (the Trigger measures its OWN frame).
-              The label lives outside it so it never enters the zoom. Tap-to-open
-              lives on the Trigger (its press path captures the source bound), so
-              the tap target is the icon — as on the iOS Home Screen. */}
-            <Transition.Boundary.Trigger
-              id={slug}
-              group={BOUNDS_GROUP}
-              enabled={boundaryEnabled}
-              style={styles.iconBound}
-              onPress={() => onPress(slug, cellIndex)}>
-              {/* Instant touch-down feedback (iOS home dims the pressed icon).
-                The open's navigate commit costs a real beat on JS, so without
-                sub-frame feedback the tap reads as "nothing happened yet" —
-                the dim acknowledges the touch on the very first frame. The
-                function child reaches the Trigger's underlying Pressable. */}
-              {({ pressed }: { pressed: boolean }) => (
-                <View style={pressed ? styles.pressedDim : null}>
-                  <IconSquare demo={demo} iconSize={iconSize} />
-                </View>
-              )}
-            </Transition.Boundary.Trigger>
-            <Text numberOfLines={1} style={styles.label}>
-              {name}
-            </Text>
-          </View>
-        </ContextMenu.Trigger>
+  const onOpen = useCallback(() => onPress(slug), [onPress, slug]);
 
-        <ContextMenu.Content>
-          {inspirationLink ? (
-            <ContextMenu.Item key="inspiration" onSelect={onInspiration}>
-              <ContextMenu.ItemTitle>Inspiration</ContextMenu.ItemTitle>
-              <ContextMenu.ItemIcon ios={{ name: 'lightbulb' }} />
-            </ContextMenu.Item>
-          ) : null}
-          <ContextMenu.Item key="share" onSelect={onShare}>
-            <ContextMenu.ItemTitle>Share</ContextMenu.ItemTitle>
-            <ContextMenu.ItemIcon ios={{ name: 'square.and.arrow.up' }} />
+  return (
+    <ContextMenu.Root>
+      <ContextMenu.Trigger>
+        <View style={[styles.cell, { width: cellWidth, height: cellHeight }]}>
+          {/* The tap target is the icon, as on the iOS Home Screen. The press
+              lives out here rather than on the icon because the icon is the
+              thing that travels. The dim is the touch acknowledged on the very
+              first frame, before the launch has measured anything. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Open ${name}`}
+            onPress={onOpen}
+            style={({ pressed }) => (pressed ? styles.pressedDim : null)}>
+            <LaunchIcon
+              groupId={launchGroupId('grid', slug)}
+              size={iconSize}
+              radius={iconSize * ICON_RADIUS_RATIO}>
+              <IconSquare demo={demo} iconSize={iconSize} />
+            </LaunchIcon>
+          </Pressable>
+          <Text numberOfLines={1} style={styles.label}>
+            {name}
+          </Text>
+        </View>
+      </ContextMenu.Trigger>
+
+      <ContextMenu.Content>
+        {inspirationLink ? (
+          <ContextMenu.Item key="inspiration" onSelect={onInspiration}>
+            <ContextMenu.ItemTitle>Inspiration</ContextMenu.ItemTitle>
+            <ContextMenu.ItemIcon ios={{ name: 'lightbulb' }} />
           </ContextMenu.Item>
-          <ContextMenu.Item key="code" onSelect={onViewCode}>
-            <ContextMenu.ItemTitle>View Code</ContextMenu.ItemTitle>
-            <ContextMenu.ItemIcon
-              ios={{ name: 'chevron.left.forwardslash.chevron.right' }}
-            />
-          </ContextMenu.Item>
-        </ContextMenu.Content>
-      </ContextMenu.Root>
-    </View>
+        ) : null}
+        <ContextMenu.Item key="share" onSelect={onShare}>
+          <ContextMenu.ItemTitle>Share</ContextMenu.ItemTitle>
+          <ContextMenu.ItemIcon ios={{ name: 'square.and.arrow.up' }} />
+        </ContextMenu.Item>
+        <ContextMenu.Item key="code" onSelect={onViewCode}>
+          <ContextMenu.ItemTitle>View Code</ContextMenu.ItemTitle>
+          <ContextMenu.ItemIcon
+            ios={{ name: 'chevron.left.forwardslash.chevron.right' }}
+          />
+        </ContextMenu.Item>
+      </ContextMenu.Content>
+    </ContextMenu.Root>
   );
 };
 
@@ -187,18 +147,6 @@ const styles = StyleSheet.create({
   cell: {
     alignItems: 'center',
     justifyContent: 'flex-start',
-  },
-  // Applied to the OPEN icon's outermost wrapper while its demo is open or
-  // closing: the shrinking screen morphs into this cell's icon, which must
-  // paint above every sibling cell (iOS keeps the launching app's icon top).
-  cellElevated: {
-    elevation: 100,
-    zIndex: 100,
-  },
-  // Wraps the icon square only — its measured frame is the zoom's source bound.
-  iconBound: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   iconClip: {
     backgroundColor: '#1c1c1e',

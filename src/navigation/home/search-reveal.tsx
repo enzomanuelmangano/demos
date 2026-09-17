@@ -7,7 +7,7 @@ import {
   View,
 } from 'react-native';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import MaskedView from '@react-native-masked-view/masked-view';
@@ -21,16 +21,14 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Transition from 'react-native-screen-transitions';
 
-import { SEARCH_BOUNDS_GROUP } from './constants';
 import { DEMOS } from './demos';
-import { getIconBackdrop, getIconSource } from './icon-source';
-import { startOpenZoom } from './open-zoom';
+import { getIconSource } from './icon-source';
+import { LaunchIcon } from './launch-icon';
+import { launchGroupId } from './launch-transition';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
 import type { Demo } from './demos';
-import type { View as RNView } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 
 // iOS 26 Liquid Glass for the field where available; a translucent gray pill
@@ -62,12 +60,10 @@ interface Props {
   // Whether the search view is committed (input focused, results interactive).
   searchMode: boolean;
   // Whether the result LIST should be mounted at all. False while the grid is
-  // at rest: every SearchRow is a Transition.Boundary.Trigger, and the library
-  // re-renders EVERY mounted boundary on each push/pop (descriptor context) —
-  // keeping 122 rows alive at rest added ~200ms of dead JS work to the navigate
-  // commit of a plain grid-icon open, which is exactly the tap→zoom delay.
-  // Flipped on from the first frame of a pull (see springboard.tsx), so the
-  // rows are there by the time the surface is visibly revealing.
+  // at rest: every SearchRow registers a shared element with the launch, and
+  // 122 idle registrations are dead work. Flipped on from the first frame of a
+  // pull (see springboard.tsx), so the rows are there by the time the surface
+  // is visibly revealing.
   listActive: boolean;
   // Horizontal page padding of the grid, so the search surface lines up with it.
   sideMargin: number;
@@ -91,79 +87,43 @@ interface Props {
 // The whole thing is PRE-MOUNTED (opacity 0 at rest, pointerEvents none) and the
 // reveal is driven purely by shared values on the UI thread — no mid-gesture
 // mounts or React re-renders — so the pull stays buttery.
-// Each result row is a shared-bound Trigger (own group, keyed by slug), so a
-// demo opened from search zooms out of THIS row and dismisses back into it —
-// identical mechanism to the grid icon's open-zoom.
+// Each result row's icon is a launch source of its own (the 'search' group),
+// so a demo opened from search grows out of THIS row's icon and dismisses back
+// into it — the same mechanism as the grid icon.
 const SearchRow = ({
   demo,
   iconSize,
-  boundsEnabled,
   onSelect,
 }: {
   demo: Demo;
   iconSize: number;
-  // Bounds only need to be live once search is committed (rows are tappable and
-  // a demo can open from / dismiss into them). While merely revealed mid-pull
-  // the rows are pointerEvents-none, so keeping their boundaries disabled spares
-  // the transition layer from measuring them during a grid-icon open-zoom.
-  boundsEnabled: boolean;
   onSelect: (slug: string) => void;
 }) => {
-  const rowRef = useRef<RNView>(null);
-  // Same instant-open trick as the grid icons: kick the pre-mounted overlay
-  // zoom from the tapped row's rect BEFORE navigating, so motion starts on the
-  // tap frame while the navigate commit renders the demo behind it. Rows live
-  // in a scrollable list, so the rect comes from a measure (one quick hop)
-  // instead of the deterministic grid math.
-  const openFromRow = () => {
-    const node = rowRef.current;
-    if (!node) {
-      onSelect(demo.slug);
-      return;
-    }
-    node.measureInWindow((x, y, width, height) => {
-      startOpenZoom(
-        {
-          x,
-          y,
-          width,
-          height,
-          radius: iconSize * ICON_RADIUS_RATIO,
-        },
-        getIconBackdrop(demo.slug),
-      );
-      onSelect(demo.slug);
-    });
-  };
+  const radius = iconSize * ICON_RADIUS_RATIO;
   return (
-    <Transition.Boundary.Trigger
-      ref={rowRef}
-      id={demo.slug}
-      group={SEARCH_BOUNDS_GROUP}
-      enabled={boundsEnabled}
-      style={styles.row}
-      onPress={openFromRow}>
-      <Image
-        source={getIconSource(demo.slug)}
-        style={[
-          styles.rowIcon,
-          // Match the home-grid icon's continuous-corner ratio (borderCurve set
-          // in the base rowIcon style).
-          // eslint-disable-next-line refined/border-radius-with-curve
-          {
-            width: iconSize,
-            height: iconSize,
-            borderRadius: iconSize * ICON_RADIUS_RATIO,
-          },
-        ]}
-        contentFit="cover"
-        cachePolicy="memory-disk"
-        recyclingKey={demo.slug}
-      />
+    <Pressable style={styles.row} onPress={() => onSelect(demo.slug)}>
+      <LaunchIcon
+        groupId={launchGroupId('search', demo.slug)}
+        size={iconSize}
+        radius={radius}>
+        <Image
+          source={getIconSource(demo.slug)}
+          style={[
+            styles.rowIcon,
+            // Match the home-grid icon's continuous-corner ratio (borderCurve
+            // set in the base rowIcon style).
+            // eslint-disable-next-line refined/border-radius-with-curve
+            { width: iconSize, height: iconSize, borderRadius: radius },
+          ]}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={demo.slug}
+        />
+      </LaunchIcon>
       <Text style={styles.rowName} numberOfLines={1}>
         {demo.name}
       </Text>
-    </Transition.Boundary.Trigger>
+    </Pressable>
   );
 };
 
@@ -274,7 +234,7 @@ export const SearchReveal = ({
           // Zero rows mounted while the grid is at rest (see listActive above).
           // The window caps keep the mounted row count ~a screen and a half even
           // in committed search, instead of FlatList idly filling all 122 rows —
-          // each row is a boundary, and mounted boundaries tax every open-zoom.
+          // each row registers a shared element.
           data={listActive ? results : EMPTY_RESULTS}
           initialNumToRender={14}
           maxToRenderPerBatch={16}
@@ -293,12 +253,7 @@ export const SearchReveal = ({
             <View style={[styles.separator, { marginLeft: separatorInset }]} />
           )}
           renderItem={({ item }) => (
-            <SearchRow
-              demo={item}
-              iconSize={iconSize}
-              boundsEnabled={searchMode}
-              onSelect={onSelect}
-            />
+            <SearchRow demo={item} iconSize={iconSize} onSelect={onSelect} />
           )}
         />
       </Animated.View>

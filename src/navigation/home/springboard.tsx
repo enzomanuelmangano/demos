@@ -3,7 +3,6 @@ import { StyleSheet, View } from 'react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimatedLegendList } from '@legendapp/list/reanimated';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -17,21 +16,24 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useScreenAnimation } from 'react-native-screen-transitions';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { activePage$, elevatedSlug$ } from './active-page';
 import { AppIcon } from './app-icon';
 import { Background } from './background';
-import { getIconBackdrop } from './icon-source';
-import { fadeOutOpenZoom, openZoomOpacity, startOpenZoom } from './open-zoom';
+import {
+  CLOSE_SCALE,
+  launchGroup,
+  launchPose,
+  launchProgress,
+} from './launch-transition';
 import { PageDots } from './page-dots';
 import { SEARCH_TRIGGER } from './search-constants';
 import { SearchReveal } from './search-reveal';
-import { iconRectForCell, useGridLayout } from './use-grid-layout';
+import { useGridLayout } from './use-grid-layout';
 
 import type { Demo } from './demos';
-import type { GridLayout, IconGridMetrics } from './use-grid-layout';
+import type { LaunchSource } from './launch-transition';
+import type { GridLayout } from './use-grid-layout';
 import type { LegendListRenderItemProps } from '@legendapp/list/react-native';
 import type { TextInput } from 'react-native';
 
@@ -39,13 +41,11 @@ import type { TextInput } from 'react-native';
 const Page = ({
   demos,
   layout,
-  pageIndex,
   onPressDemo,
 }: {
   demos: Demo[];
   layout: GridLayout;
-  pageIndex: number;
-  onPressDemo: (slug: string, cellIndex: number) => void;
+  onPressDemo: (slug: string) => void;
 }) => (
   <View
     style={[
@@ -57,12 +57,10 @@ const Page = ({
         rowGap: layout.rowGap,
       },
     ]}>
-    {demos.map((demo, cellIndex) => (
+    {demos.map(demo => (
       <AppIcon
         key={demo.slug}
         demo={demo}
-        pageIndex={pageIndex}
-        cellIndex={cellIndex}
         cellWidth={layout.cellWidth}
         cellHeight={layout.cellHeight}
         iconSize={layout.iconSize}
@@ -76,21 +74,17 @@ const Page = ({
 //
 // Backed by a virtualized LegendList (not a plain ScrollView) so only the
 // visible page — plus a small pre-render buffer — is mounted at a time. With
-// 122 demos that's the difference between ~24 mounted icons and 122; it matters
-// because every mounted icon is a react-native-screen-transitions boundary, and
-// each active boundary runs a per-frame animated reaction during a transition.
-// Keeping the mounted set tiny is what makes the open-zoom stay smooth.
+// 122 demos that's the difference between ~24 mounted icons and 122; every
+// mounted icon registers a shared element with the launch choreography.
 //
 // `pagingEnabled` + full-width items give iOS's native paging deceleration and
 // edge rubber-band for free. We use the reanimated LegendList variant so the
 // scroll offset is exposed as a shared value (drives the page dots off the JS
 // thread). `recycleItems` is off so each page keeps a stable identity and its
-// boundaries aren't reshuffled under the transition layer mid-animation.
-// iOS-home recede effect: while a demo is open the grid behind it sits slightly
-// scaled-down and blurred; dragging the demo to dismiss un-scales + un-blurs it
-// in lockstep with the gesture. Driven by the child Demo screen's transition
-// progress (0 = home focused, 1 = demo fully open). Only the icon grid scales —
-// the wallpaper stays put.
+// icons aren't reshuffled under the overlay mid-launch.
+// iOS-home recede effect: while a demo is open the grid behind it is blurred,
+// clearing with the close in lockstep. Driven by the launch clock (0 = home
+// focused, 1 = demo fully open).
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 // Forwarded to LegendList's underlying ScrollView (not in its prop types).
 const scrollTouchProps = { delaysContentTouches: false } as Record<
@@ -106,20 +100,22 @@ const HOME_MAX_BLUR = 90;
 const PULL_RUBBER = 260;
 
 // Bit flags for the single home-state reaction below (one per-frame worklet
-// instead of four): which JS states flip, plus the UI-only overlay handoff.
+// instead of four): which JS states flip.
 const FLAG_DEMO_COVERING = 1; // demo open/opening/closing over the home
 const FLAG_BLUR = 2; // anything defocusing the home (demo OR pull/search)
 const FLAG_SEARCH_LIST = 4; // search surface in play -> mount result rows
-const FLAG_OVERLAY_HANDOFF = 8; // real zoom settled under the overlay card
-const FLAG_PULL_ACTIVE = 16; // a pull gesture currently owns `reveal`
-const JS_FLAGS =
-  FLAG_DEMO_COVERING | FLAG_BLUR | FLAG_SEARCH_LIST | FLAG_PULL_ACTIVE;
+const FLAG_PULL_ACTIVE = 8; // a pull gesture currently owns `reveal`
 
-export const Springboard = () => {
+interface Props {
+  // Opens a demo out of its icon (grid) or result row (search). See
+  // app/index.tsx, which owns the choreography.
+  onOpen: (source: LaunchSource, slug: string) => void;
+}
+
+export const Springboard = ({ onOpen }: Props) => {
   const layout = useGridLayout();
   const insets = useSafeAreaInsets();
   const scrollX = useSharedValue(0);
-  const navigation = useNavigation<any>();
 
   // Raycast-style pull-to-search, in place (no navigation). A downward drag
   // rubber-bands the grid (`pull`) and ramps a blur over it; releasing past the
@@ -140,68 +136,44 @@ export const Springboard = () => {
   const [query, setQuery] = useState('');
   const inputRef = useRef<TextInput>(null);
 
-  // Live frame of THIS (home) screen — `next` is the demo stacked over it.
-  // Declared up here because the gestures below gate on it.
-  const homeAnimation = useScreenAnimation();
-
-  // All the JS-side flags derived from the home's live animation state, packed
-  // into one per-frame reaction (they read the same shared values every frame):
+  // All the JS-side flags derived from the home's live state, packed into one
+  // per-frame reaction (they read the same shared values every frame):
   // `demoCovering` — a demo is open/opening/closing over the home. Gates the
-  //   home's own gestures: the grid stays mounted behind an open demo
-  //   (inactiveBehavior 'keep') and a downward drag over the demo could leak
-  //   into the pull-to-search pan, committing search BEHIND the open demo.
-  //   Also scopes the open icon's cell elevation (see elevatedSlug$), cleared
-  //   only when the close fully settles so it survives slow gesture closes.
+  //   home's own gestures: the grid stays mounted under the transparent demo
+  //   route, and a downward drag must never commit search BEHIND a demo.
   // `blurActive` — something is defocusing the home; gates mounting the
   //   fullscreen BlurView (a 0-intensity one still costs GPU every frame).
   // `searchListActive` — the search surface is in play; mounts the result
-  //   rows from the first pulled pixel (each row is a transition boundary,
-  //   and idle boundaries tax every open's navigate commit).
-  // FLAG_OVERLAY_HANDOFF stays on the UI thread: the moment the real zoom
-  //   settles under the overlay card, fade the card away (edge-triggered, and
-  //   only from full opacity so a close never re-triggers it).
+  //   rows from the first pulled pixel (each row is a shared element).
   const [demoCovering, setDemoCovering] = useState(false);
   const [blurActive, setBlurActive] = useState(false);
   const [searchListActive, setSearchListActive] = useState(false);
   const [pullInProgress, setPullInProgress] = useState(false);
   const pullActive = useSharedValue(false);
-  // Mirrors FLAG_DEMO_COVERING across callbacks so the elevation clear below
-  // fires only on its FALLING edge (close fully settled). Clearing on every
-  // not-covering callback is wrong: flag changes unrelated to the demo (e.g.
-  // a pull starting/ending in the tap→mount window) schedule callbacks that
-  // land AFTER onPressDemo has set elevatedSlug$ but BEFORE the demo's
-  // progress registers — wiping the elevation for the whole open/close, so
-  // the closing icon painted under its neighbour cells again.
-  const wasCoveringRef = useRef(false);
   const onHomeFlagsChange = useCallback((flags: number) => {
-    const covering = (flags & FLAG_DEMO_COVERING) !== 0;
-    setDemoCovering(covering);
+    setDemoCovering((flags & FLAG_DEMO_COVERING) !== 0);
     setBlurActive((flags & FLAG_BLUR) !== 0);
     setSearchListActive((flags & FLAG_SEARCH_LIST) !== 0);
     setPullInProgress((flags & FLAG_PULL_ACTIVE) !== 0);
-    if (wasCoveringRef.current && !covering) elevatedSlug$.set(null);
-    wasCoveringRef.current = covering;
   }, []);
   useAnimatedReaction(
     () => {
-      const demoProgress = homeAnimation.get()?.next?.progress ?? 0;
+      // A launch covers the home from the tap (the group is named before
+      // anything is measured) until the close has landed back on the icon.
+      // Read here, not through a helper worklet: a shared value read inside
+      // another function is not a dependency of this reaction, and the flags
+      // then stayed 'covering' after the close.
+      const covering = launchGroup.get() !== null;
       const revealLevel = reveal.get();
       let flags = 0;
-      if (demoProgress > 0.001) flags |= FLAG_DEMO_COVERING;
-      if (demoProgress > 0.001 || revealLevel > 0.01) flags |= FLAG_BLUR;
+      if (covering) flags |= FLAG_DEMO_COVERING;
+      if (covering || revealLevel > 0.01) flags |= FLAG_BLUR;
       if (revealLevel > 0.001) flags |= FLAG_SEARCH_LIST;
-      if (demoProgress >= 0.999 && openZoomOpacity.get() === 1) {
-        flags |= FLAG_OVERLAY_HANDOFF;
-      }
       if (pullActive.get()) flags |= FLAG_PULL_ACTIVE;
       return flags;
     },
     (flags, prev) => {
-      const before = prev ?? 0;
-      if (flags & FLAG_OVERLAY_HANDOFF && !(before & FLAG_OVERLAY_HANDOFF)) {
-        fadeOutOpenZoom();
-      }
-      if ((flags & JS_FLAGS) !== (before & JS_FLAGS)) {
+      if (flags !== prev) {
         scheduleOnRN(onHomeFlagsChange, flags);
       }
     },
@@ -268,20 +240,20 @@ export const Springboard = () => {
 
   const onSelectSearch = useCallback(
     (slug: string) => {
-      // Open the demo from the tapped row's shared bound. Keep the search open
-      // (row mounted) so the zoom has a live source to grow from AND a live
-      // target to shrink back into on dismiss — the demo dismisses back into the
-      // search list, exactly mirroring the icon↔grid zoom. Just drop the keyboard
-      // so it isn't up behind the demo. Cancel from the returned search → grid.
+      // Open the demo out of the tapped row's icon. Keep the search open (row
+      // mounted): the row owns the travelling icon, so it must still be there
+      // for the close to land on — the demo dismisses back into the search
+      // list, exactly mirroring the grid. Just drop the keyboard so it isn't
+      // up behind the demo. Cancel from the returned search → grid.
       inputRef.current?.blur();
       // SearchReveal focuses the field on a 120ms timer after search commits; a
       // fast row tap can land BEFORE that timer fires, so the field re-focuses
       // behind the opening demo and the keyboard gets stuck over the grid after
       // Cancel. A second blur past that window closes the race.
       setTimeout(() => inputRef.current?.blur(), 250);
-      navigation.navigate('Demo', { slug, fromSearch: true });
+      onOpen('search', slug);
     },
-    [navigation],
+    [onOpen],
   );
 
   // Whether the current pull committed to search. Written in onEnd, read in
@@ -291,10 +263,9 @@ export const Springboard = () => {
   // decided ON THE UI THREAD in onBegin. `enabled(!demoCovering)` below can't
   // cover this: demoCovering is JS state that reaches the gesture a commit or
   // two AFTER the tap, so a swipe-down started instantly after tapping an icon
-  // (finger down before the demo has mounted) still lands in this pan and used
-  // to commit search behind the opening demo — surfacing later, mid-dismiss.
-  // The live signals have no such lag: the overlay's opacity flips to 1 on the
-  // tap frame itself, and next.progress covers the open/close after that.
+  // (finger down before the demo has mounted) would still land in this pan and
+  // commit search behind the opening demo. The launch group has no such lag:
+  // it is named on the tap itself.
   const pullBlocked = useSharedValue(false);
   const pullGesture = useMemo(
     () =>
@@ -310,8 +281,7 @@ export const Springboard = () => {
         .onBegin(() => {
           'worklet';
           pullCommitted.set(false);
-          const demoP = homeAnimation.get()?.next?.progress ?? 0;
-          const blocked = demoP > 0.001 || openZoomOpacity.get() > 0.01;
+          const blocked = launchGroup.get() !== null;
           pullBlocked.set(blocked);
           pullActive.set(!blocked);
         })
@@ -356,115 +326,32 @@ export const Springboard = () => {
       pullCommitted,
       pullActive,
       pullBlocked,
-      homeAnimation,
     ],
   );
   const rPull = useAnimatedStyle(() => ({
     transform: [{ translateY: pull.get() }],
   }));
 
-  // UI-THREAD tap→zoom: recognize the icon tap with a gesture-handler Tap and
-  // hit-test the icon square with pure grid math in the worklet, so the open
-  // overlay (open-zoom.tsx) starts expanding on the SAME FRAME the finger
-  // lifts — zero JS involvement. The icon's Pressable still fires onPress on
-  // the JS thread a beat later and performs the actual navigation (and the
-  // library's source-bound measurement); by then the zoom is already visibly
-  // running. Runs simultaneously with the pager scroll and the pull gesture —
-  // any real drag exceeds maxDelta and the tap fails, so scrolling is untouched.
-  const pageLengths = useMemo(
-    () => layout.pages.map(page => page.length),
-    [layout.pages],
-  );
-  // Per-cell backdrop colours, page-shaped like pageLengths so the tap worklet
-  // can look one up from (page, cellIndex) without touching the demos array.
-  const pageColors = useMemo(
-    () =>
-      layout.pages.map(page => page.map(demo => getIconBackdrop(demo.slug))),
-    [layout.pages],
-  );
-  const gridMetrics = useMemo<IconGridMetrics>(
-    () => ({
-      cols: layout.cols,
-      cellWidth: layout.cellWidth,
-      cellHeight: layout.cellHeight,
-      iconSize: layout.iconSize,
-      rowGap: layout.rowGap,
-      sideMargin: layout.sideMargin,
-      topPad: layout.topPad,
-    }),
-    [layout],
-  );
-  const tapZoomGesture = useMemo(() => {
-    const grid = gridMetrics;
-    const { pageWidth } = layout;
-    const insetTop = insets.top;
-    return Gesture.Tap()
-      .enabled(!searchMode && !demoCovering)
-      .maxDuration(280)
-      .maxDeltaX(12)
-      .maxDeltaY(12)
-      .onEnd(e => {
-        'worklet';
-        // Same zero-lag gate as the pull's onBegin: `enabled(!demoCovering)`
-        // lags the tap by a commit, so a second tap racing the first open could
-        // restart the overlay zoom from a different icon.
-        const demoP = homeAnimation.get()?.next?.progress ?? 0;
-        if (demoP > 0.001 || openZoomOpacity.get() > 0.01) return;
-        // Which page the viewport shows (exact at rest; pagingEnabled snaps).
-        const page = Math.round(scrollX.get() / pageWidth);
-        if (page < 0 || page >= pageLengths.length) return;
-        // Content shift if tapped mid-settle (0 at rest).
-        const offset = page * pageWidth - scrollX.get();
-        const xInPage = e.x - offset - grid.sideMargin;
-        const col = Math.floor(xInPage / grid.cellWidth);
-        if (col < 0 || col >= grid.cols) return;
-        const yInGrid = e.y - insetTop - grid.topPad;
-        const row = Math.floor(yInGrid / (grid.cellHeight + grid.rowGap));
-        if (row < 0 || yInGrid < 0) return;
-        const cellIndex = row * grid.cols + col;
-        // Empty trailing cells on the last page have no demo — no zoom.
-        if (cellIndex >= pageLengths[page]) return;
-        // Inside the icon SQUARE only (not the label / gaps), matching the
-        // Pressable target so overlay and navigation always agree.
-        const rect = iconRectForCell(grid, insetTop, cellIndex, offset);
-        if (e.x < rect.x || e.x > rect.x + rect.width) return;
-        if (e.y < rect.y || e.y > rect.y + rect.height) return;
-        startOpenZoom(rect, pageColors[page][cellIndex]);
-      });
-  }, [
-    gridMetrics,
-    layout,
-    insets.top,
-    pageLengths,
-    pageColors,
-    scrollX,
-    searchMode,
-    demoCovering,
-    homeAnimation,
-  ]);
-
-  // Live progress of the demo covering this home screen. A stacked screen isn't
-  // a React descendant, so we read THIS screen's own frame: when a demo is
-  // pushed over home it becomes home's `next`, whose `progress` runs 0 -> 1 on
-  // open and 1 -> 0 (gesture-driven) on dismiss.
-  //
   // The recede behind an open demo is BLUR ONLY — deliberately no scale on the
-  // grid. A transform on the grid can't drive the zoom recede: the shared-bound
-  // zoom measures each icon's frame with measure(), which reports LAYOUT position
-  // and ignores transforms. At open the grid is unscaled so the source is
-  // captured correctly, but during the close the grid would be scaled — so the
-  // demo shrank into the icon's UNSCALED slot while the icon was displayed at its
-  // SCALED position, landing visibly offset (the "wrong z / ghost icon" on back).
-  // To recede WITH scale it'd have to go through the library's own backgroundScale
-  // (which the bound math compensates for) — but that scales the wallpaper too,
-  // which we don't want. Blur alone carries the depth and keeps the zoom exact.
-  // (`homeAnimation` itself is declared near the top — the gestures gate on it.)
+  // grid: the launch measures the icon through its transforms, so a scaled
+  // grid would move the frame the close lands on.
   //
   // One blur layer, two drivers: the demo-recede (home defocuses behind an open
   // demo) and the pull-to-search reveal (home defocuses as you pull / search).
   // Take the max so whichever is active wins, and they never fight.
   const blurProps = useAnimatedProps(() => {
-    const demoP = homeAnimation.get()?.next?.progress ?? 0;
+    // The blur also clears as an open demo is dragged smaller, so the grid
+    // sharpens as the card is about to return to it.
+    const demoP =
+      launchGroup.get() !== null
+        ? launchProgress.get() *
+          interpolate(
+            launchPose.scale.get(),
+            [1, CLOSE_SCALE],
+            [1, 0.5],
+            Extrapolation.CLAMP,
+          )
+        : 0;
     const demoBlur = interpolate(
       demoP,
       [0, 1],
@@ -477,65 +364,16 @@ export const Springboard = () => {
   // Only mount the fullscreen blur while something is actually defocusing the
   // home. On the idle grid a 0-intensity BlurView is still a fullscreen
   // UIVisualEffectView composited every frame — dead GPU cost that made
-  // horizontal scrolling stutter. Gate its presence on demo progress OR an
-  // active pull/search so plain grid scrolling pays nothing.
-  // Warm the Demo screen's heavy react-native-screen-transitions provider/
-  // wrapper tree at idle, with a dummy slug so NO real demo content mounts. The
-  // ~240ms screen-mount cost (the open's real blocker) is otherwise paid on the
-  // tap; preloading pays it invisibly so the tap just promotes this warm
-  // instance and swaps the slug. Re-arm on every focus: the first open consumes
-  // the preloaded route, so re-warming when we return to the grid keeps EVERY
-  // open fast, not just the first.
-  useFocusEffect(
-    useCallback(() => {
-      const t = setTimeout(() => {
-        (navigation as any).preload?.('Demo', { slug: '__warm__' });
-      }, 250);
-      return () => clearTimeout(t);
-    }, [navigation]),
-  );
+  // horizontal scrolling stutter.
 
-  // JS side of the tap. The overlay zoom was normally ALREADY started by the
-  // UI-thread tap gesture above; this only navigates. The guarded fallback
-  // covers paths that bypass the gesture (e.g. accessibility activation) so
-  // the demo never opens without its zoom card.
   const onPressDemo = useCallback(
-    (slug: string, cellIndex: number) => {
-      // Keep this cell painting above its siblings for the whole open/close
-      // round trip (cleared when the demo's progress returns to 0).
-      elevatedSlug$.set(slug);
-      if (openZoomOpacity.get() < 0.5) {
-        startOpenZoom(
-          iconRectForCell(gridMetrics, insets.top, cellIndex),
-          getIconBackdrop(slug),
-        );
-      }
-      navigation.navigate('Demo', { slug });
-    },
-    [navigation, gridMetrics, insets.top],
-  );
-
-  // Publish the visible page into the observable so each icon can gate its own
-  // boundary (see app-icon.tsx). Update on momentum END, not continuously while
-  // scrolling: flipping `enabled` on a page's worth of boundaries mid-swipe
-  // triggered a ~240ms diffProperties re-render storm that stuttered the scroll.
-  // Settling first means the gating re-render lands while the grid is at rest.
-  const onMomentumScrollEnd = useCallback(
-    (e: { nativeEvent: { contentOffset: { x: number } } }) => {
-      const page = Math.round(e.nativeEvent.contentOffset.x / layout.pageWidth);
-      activePage$.set(page);
-    },
-    [layout.pageWidth],
+    (slug: string) => onOpen('grid', slug),
+    [onOpen],
   );
 
   const renderItem = useCallback(
-    ({ item, index }: LegendListRenderItemProps<Demo[]>) => (
-      <Page
-        demos={item}
-        layout={layout}
-        pageIndex={index}
-        onPressDemo={onPressDemo}
-      />
+    ({ item }: LegendListRenderItemProps<Demo[]>) => (
+      <Page demos={item} layout={layout} onPressDemo={onPressDemo} />
     ),
     [layout, onPressDemo],
   );
@@ -543,8 +381,7 @@ export const Springboard = () => {
   return (
     <View style={styles.root}>
       <Background />
-      <GestureDetector
-        gesture={Gesture.Simultaneous(pullGesture, tapZoomGesture)}>
+      <GestureDetector gesture={pullGesture}>
         <Animated.View
           pointerEvents={searchMode ? 'none' : 'auto'}
           style={[styles.gridScale, rPull]}>
@@ -556,27 +393,20 @@ export const Springboard = () => {
             pagingEnabled
             recycleItems={false}
             // Pre-render one page in each direction. Each icon is a deep tree
-            // (transition boundary + context menu + pressable + image), so
-            // mounting a page on demand mid-swipe costs ~180ms and stutters the
-            // scroll — the buffer keeps page mounts in the idle between swipes.
-            // Capped at ONE page (not two) because every MOUNTED icon is a
-            // transition boundary and the library re-renders all of them inside
-            // the navigate commit of an icon tap; profiling showed that commit
-            // is the tap→zoom delay, and its cost scales with mounted boundary
-            // count (~1ms per boundary in dev). 3 mounted pages ≈ 72 boundaries
-            // is the balance point between scroll smoothness and open latency.
+            // (shared element + context menu + pressable + image), so mounting
+            // a page on demand mid-swipe costs ~180ms and stutters the scroll —
+            // the buffer keeps page mounts in the idle between swipes.
             drawDistance={layout.pageWidth}
             estimatedItemSize={layout.pageWidth}
             showsHorizontalScrollIndicator={false}
             // iOS ScrollViews hold touches ~150ms to detect a scroll before
             // delivering them to child Pressables. On a tap-to-open launcher that
-            // is a dead delay before the icon's onPress (and the zoom) fires —
+            // is a dead delay before the icon's onPress (and the launch) fires —
             // JS sits idle the whole time. Deliver taps immediately; paging still
             // works because a real drag cancels the child touch. (LegendList
             // forwards this to its underlying ScrollView; its types omit it.)
             {...scrollTouchProps}
             sharedValues={{ scrollOffset: scrollX }}
-            onMomentumScrollEnd={onMomentumScrollEnd}
             contentContainerStyle={{ paddingTop: insets.top }}
           />
         </Animated.View>

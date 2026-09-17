@@ -13,6 +13,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { ChoreographyProvider } from 'react-native-screen-choreography/expo-router';
 
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
@@ -33,14 +34,25 @@ const QuickActionsProvider = memo(
   },
 );
 
-// The launcher (the iOS SpringBoard home + its open-zoom) lives in a standalone
-// navigation tree hosted by app/index.tsx; expo-router just renders that single
-// screen full-bleed.
-// Light card matching the home wallpaper's edge tone: the home zoom scales the
-// grid down and would otherwise reveal the white default card as a hard edge.
+// Black card behind the SpringBoard, matching the wallpaper's black edges.
 const stackScreenOptions = {
   headerShown: false,
   contentStyle: { backgroundColor: '#000000' },
+} as const;
+
+// A demo is not pushed like a screen: it opens out of the icon that was tapped.
+// The icon travels in the choreography overlay and the demo draws the growing
+// card under it (see src/navigation/home/launch-transition.tsx), so the route
+// is a transparent layer over the SpringBoard with no native animation — a
+// second, native movement would show under the one moving card. It lives in
+// THIS stack, next to the home route: the choreography adapter watches the
+// source route's own navigator for the new top route.
+const demoScreenOptions = {
+  headerShown: false,
+  presentation: 'containedTransparentModal',
+  animation: 'none',
+  gestureEnabled: false,
+  contentStyle: { backgroundColor: 'transparent' },
 } as const;
 
 export default function RootLayout() {
@@ -76,7 +88,19 @@ export default function RootLayout() {
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>
                   <QuickActionsProvider>
-                    <Stack screenOptions={stackScreenOptions} />
+                    <ChoreographyProvider>
+                      <Stack screenOptions={stackScreenOptions}>
+                        <Stack.Screen name="index" />
+                        <Stack.Screen
+                          name="launch"
+                          options={demoScreenOptions}
+                        />
+                        <Stack.Screen
+                          name="animations/[slug]"
+                          options={demoScreenOptions}
+                        />
+                      </Stack>
+                    </ChoreographyProvider>
                   </QuickActionsProvider>
                 </Retray.Navigator>
               </Retray.Theme>
