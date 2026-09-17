@@ -146,7 +146,8 @@
     "react-native-ios-utilities@5.2.0": "patches/react-native-ios-utilities@5.2.0.patch",
     "react-native-screen-transitions@3.8.0": "patches/react-native-screen-transitions@3.8.0.patch",
     "react-native-webgpu@0.5.14": "patches/react-native-webgpu@0.5.14.patch",
-    "react-native-skia-gesture@0.4.5-beta.1": "patches/react-native-skia-gesture@0.4.5-beta.1.patch"
+    "react-native-skia-gesture@0.4.5-beta.1": "patches/react-native-skia-gesture@0.4.5-beta.1.patch",
+    "expo-blur@57.0.3": "patches/expo-blur@57.0.3.patch"
   },
   "overrides": {
     "react-native-drawer-layout": "4.2.4"
