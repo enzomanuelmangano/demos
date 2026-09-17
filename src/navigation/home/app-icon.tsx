@@ -9,6 +9,7 @@ import * as ContextMenu from 'zeego/context-menu';
 import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
 import { launchGroupId } from './launch-transition';
+import { usePressScale } from './press-scale';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 import { AnimationInspirations } from '../../animations/inspirations';
 
@@ -21,6 +22,9 @@ interface Props {
   iconSize: number;
   onPress: (slug: string) => void;
 }
+
+/** How far an icon shrinks under the finger. */
+const ICON_PRESSED_SCALE = 0.88;
 
 // GitHub source for a demo — folder name === slug (see scripts/generate-icon-map).
 const sourceUrl = (slug: string) =>
@@ -92,6 +96,7 @@ const AppIconComponent = ({
   }, [slug]);
 
   const onOpen = useCallback(() => onPress(slug), [onPress, slug]);
+  const press = usePressScale(ICON_PRESSED_SCALE);
 
   return (
     <ContextMenu.Root>
@@ -99,17 +104,18 @@ const AppIconComponent = ({
         <View style={[styles.cell, { width: cellWidth, height: cellHeight }]}>
           {/* The tap target is the icon, as on the iOS Home Screen. The press
               lives out here rather than on the icon because the icon is the
-              thing that travels. The dim is the touch acknowledged on the very
-              first frame, before the launch has measured anything. */}
+              thing that travels; the icon only shows it (see LaunchIcon). */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Open ${name}`}
             onPress={onOpen}
-            style={({ pressed }) => (pressed ? styles.pressedDim : null)}>
+            onPressIn={press.onPressIn}
+            onPressOut={press.onPressOut}>
             <LaunchIcon
               groupId={launchGroupId('grid', slug)}
               size={iconSize}
-              radius={iconSize * ICON_RADIUS_RATIO}>
+              radius={iconSize * ICON_RADIUS_RATIO}
+              pressScale={press.scale}>
               <IconSquare demo={demo} iconSize={iconSize} />
             </LaunchIcon>
           </Pressable>
@@ -170,9 +176,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
     maxWidth: '100%',
     textAlign: 'center',
-  },
-  // iOS-style pressed acknowledgement on the icon square.
-  pressedDim: {
-    opacity: 0.6,
   },
 });

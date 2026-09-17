@@ -28,6 +28,7 @@ import { DEMOS } from './demos';
 import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
 import { launchGroupId } from './launch-transition';
+import { usePressScale } from './press-scale';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
 import type { Demo } from './demos';
@@ -37,6 +38,8 @@ import type { SharedValue } from 'react-native-reanimated';
 // otherwise (older iOS / Android).
 const LIQUID_GLASS = isLiquidGlassAvailable();
 const BAR_HEIGHT = 48;
+/** A result's icon under the finger (see usePressScale); its name dims. */
+const ROW_PRESSED_SCALE = 0.88;
 const BAR_TOP_GAP = 10;
 
 // The blur behind the search field fades out downwards by its RADIUS, not by
@@ -97,12 +100,21 @@ const SearchRow = ({
   onSelect: (slug: string) => void;
 }) => {
   const radius = iconSize * ICON_RADIUS_RATIO;
+  const press = usePressScale(ROW_PRESSED_SCALE);
+  const nameStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(press.scale.get(), [ROW_PRESSED_SCALE, 1], [0.6, 1]),
+  }));
   return (
-    <Pressable style={styles.row} onPress={() => onSelect(demo.slug)}>
+    <Pressable
+      style={styles.row}
+      onPress={() => onSelect(demo.slug)}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}>
       <LaunchIcon
         groupId={launchGroupId('search', demo.slug)}
         size={iconSize}
-        radius={radius}>
+        radius={radius}
+        pressScale={press.scale}>
         <Image
           source={getIconSource(demo.slug)}
           style={[
@@ -117,9 +129,9 @@ const SearchRow = ({
           recyclingKey={demo.slug}
         />
       </LaunchIcon>
-      <Text style={styles.rowName} numberOfLines={1}>
+      <Animated.Text style={[styles.rowName, nameStyle]} numberOfLines={1}>
         {demo.name}
-      </Text>
+      </Animated.Text>
     </Pressable>
   );
 };
