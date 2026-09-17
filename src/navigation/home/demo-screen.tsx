@@ -13,6 +13,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChoreographyScreen,
   useChoreographyRouter,
@@ -56,6 +57,17 @@ const DRAG_SHRINK_TRAVEL = 0.5;
 const DRAG_MIN_SCALE = 0.5;
 const DRAG_FOLLOW_Y = 0.5;
 const DRAG_FOLLOW_X = 0.35;
+/**
+ * Where the close drag always wins: the status bar and this much below it.
+ * A strip there sits ABOVE the demo, so a touch that starts in it never
+ * reaches the demo's own gestures — some claim the finger on touch-down
+ * (`minDistance(0)`), and nothing can beat those to a drag. Anywhere else a
+ * demo that handles the touch keeps it, and a demo that does not closes on a
+ * clear drag down.
+ */
+const GRAB_ZONE = 20;
+/** Sideways travel before the drag claims, after which it is the demo's. */
+const FAIL_SIDEWAYS = 30;
 /** Seconds of release velocity added to a drag to judge a throw. */
 const THROW_PROJECTION = 0.12;
 /** Back to full screen after a drag that did not close: quick, no bounce. */
@@ -362,16 +374,27 @@ const DemoLaunch = ({
  * touches, and a recognizer inside it was cancelled — springing the frozen
  * pose back mid-flight.
  */
-const CloseGesture = ({ children }: { children: ReactNode }) => {
+const CloseGesture = ({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children: ReactNode;
+}) => {
   const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const grabZone = insets.top + GRAB_ZONE;
   // Whether this drag owns the pose: false until it starts on a settled demo,
   // and false again once it has handed the card to the close, so neither the
   // finger nor the release can move the card after that.
   const dragging = useSharedValue(false);
   const closeGesture = Gesture.Pan()
-    // Down only. Sideways travel before that belongs to the demo.
+    .enabled(enabled)
+    // Down only; sideways travel first belongs to the demo. A drag that
+    // starts in the grab strip (see `GRAB_ZONE`) never reaches the demo, so
+    // there it always closes; elsewhere a demo that uses the touch keeps it.
     .activeOffsetY(10)
-    .failOffsetX([-30, 30])
+    .failOffsetX([-FAIL_SIDEWAYS, FAIL_SIDEWAYS])
     .onStart(() => {
       // Not while a launch is flying: the close would be refused, and the pose
       // would stay frozen on an open card.
@@ -411,7 +434,19 @@ const CloseGesture = ({ children }: { children: ReactNode }) => {
       launchPose.scale.set(withSpring(1, DRAG_HOME_SPRING));
     });
 
-  return <GestureDetector gesture={closeGesture}>{children}</GestureDetector>;
+  return (
+    <GestureDetector gesture={closeGesture}>
+      <View pointerEvents={enabled ? 'auto' : 'none'} style={styles.fill}>
+        {children}
+        {/* Not collapsable: a view with only layout props is flattened away by
+            Fabric, and the touch then lands on the demo under it. */}
+        <View
+          collapsable={false}
+          style={[styles.grabZone, { height: grabZone }]}
+        />
+      </View>
+    </GestureDetector>
+  );
 };
 
 /**
@@ -434,15 +469,17 @@ export const DemoScreen = ({
   useOnShakeEffect(handleFeedback);
 
   // The preloaded launch route before a tap: the same tree, empty, so naming a
-  // demo only adds the card and the target to a screen already laid out.
+  // demo only adds the card and the target to a screen already laid out. The
+  // tree must stay the SAME one — a close gesture mounted in the commit that
+  // starts the launch never recognized. What changes is that an idle route
+  // takes no touch at all: preloaded, it can still be hit over the home, and
+  // it swallowed the taps meant for the icons under it.
   if (slug === undefined && source === 'launcher') {
     return (
-      <CloseGesture>
-        <View style={styles.fill}>
-          <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
-            <View style={styles.fill} />
-          </ChoreographyScreen>
-        </View>
+      <CloseGesture enabled={false}>
+        <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
+          <View style={styles.fill} />
+        </ChoreographyScreen>
       </CloseGesture>
     );
   }
@@ -465,13 +502,11 @@ export const DemoScreen = ({
       : null;
 
   return (
-    <CloseGesture>
-      <View style={styles.fill}>
-        <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
-          <CloseBridge />
-          <DemoLaunch slug={slug} groupId={groupId} />
-        </ChoreographyScreen>
-      </View>
+    <CloseGesture enabled>
+      <ChoreographyScreen screenId={DEMO_SCREEN_ID} keepVisible>
+        <CloseBridge />
+        <DemoLaunch slug={slug} groupId={groupId} />
+      </ChoreographyScreen>
     </CloseGesture>
   );
 };
@@ -501,5 +536,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   fill: { flex: 1 },
+  grabZone: { left: 0, position: 'absolute', right: 0, top: 0 },
   hiddenHost: { opacity: 0 },
 });
