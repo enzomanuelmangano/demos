@@ -95,6 +95,8 @@ const scrollTouchProps = { delaysContentTouches: false } as Record<
 // Strong defocus behind an open demo / the search reveal — matches the heavy
 // blur iOS puts behind the App Library search.
 const HOME_MAX_BLUR = 90;
+// The search's second blur pass, over the first (see where it is rendered).
+const SEARCH_EXTRA_BLUR = 100;
 // Asymptote for the damped rubber-band that maps raw finger travel to the grid's
 // downward pull. Pull tracks the finger ~1:1 early, then eases, so a long drag
 // never runs away.
@@ -362,6 +364,9 @@ export const Springboard = ({ onOpen }: Props) => {
     const searchBlur = reveal.get() * HOME_MAX_BLUR;
     return { intensity: Math.max(demoBlur, searchBlur) };
   });
+  const searchBlurProps = useAnimatedProps(() => ({
+    intensity: reveal.get() * SEARCH_EXTRA_BLUR,
+  }));
   // Only mount the fullscreen blur while something is actually defocusing the
   // home. On the idle grid a 0-intensity BlurView is still a fullscreen
   // UIVisualEffectView composited every frame — dead GPU cost that made
@@ -455,6 +460,18 @@ export const Springboard = ({ onOpen }: Props) => {
       {blurActive ? (
         <AnimatedBlurView
           animatedProps={blurProps}
+          tint="dark"
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
+      {/* A second pass for search only. One native blur tops out at a radius
+          that leaves a mostly empty page reading sharp: the wallpaper's wide
+          arc showed through as if nothing was blurred. Stacked, the second
+          blurs the first, and the search sits on an even, defocused ground. */}
+      {searchListActive || searchMode ? (
+        <AnimatedBlurView
+          animatedProps={searchBlurProps}
           tint="dark"
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
