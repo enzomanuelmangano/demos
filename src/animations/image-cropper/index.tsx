@@ -9,7 +9,7 @@ import {
   Image,
   rect as skRect,
   useImage,
-} from '@shopify/react-native-skia';
+} from 'react-native-skia';
 
 import { FancyBorderButton } from './components/border-button';
 import { ImageCropper as ImageCropperComponent } from './components/image-cropper';

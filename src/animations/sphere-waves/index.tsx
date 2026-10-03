@@ -2,14 +2,6 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { useEffect, useRef } from 'react';
 
-import {
-  Canvas,
-  LinearGradient,
-  Path,
-  SkPathBuilder,
-  usePathValue,
-  vec,
-} from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import debounce from 'lodash.debounce';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -23,6 +15,14 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  LinearGradient,
+  Path,
+  SkPathBuilder,
+  usePathValue,
+  vec,
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const N_ITEMS = 2000;

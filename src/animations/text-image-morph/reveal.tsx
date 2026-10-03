@@ -1,18 +1,18 @@
 import { useMemo } from 'react';
 
 import {
+  Extrapolation,
+  interpolate,
+  type SharedValue,
+} from 'react-native-reanimated';
+import {
   Atlas,
   Group,
   Text as SkText,
   useColorBuffer,
   useRSXformBuffer,
   useTexture,
-} from '@shopify/react-native-skia';
-import {
-  Extrapolation,
-  interpolate,
-  type SharedValue,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import {
   CAMERA_Z,
@@ -30,7 +30,7 @@ import {
 
 import type { Atlas as AtlasGeometry } from './atlas';
 import type { MorphTargets } from './sampling';
-import type { SkFont, SkRect } from '@shopify/react-native-skia';
+import type { SkFont, SkRect } from 'react-native-skia';
 
 // 0 before a letter starts moving, 1 once it has landed (offset by its delay).
 const letterPhase = (p: number, d: number): number => {

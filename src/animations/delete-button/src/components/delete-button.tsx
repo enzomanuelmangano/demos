@@ -1,4 +1,4 @@
-import { Group, ImageSVG, Text } from '@shopify/react-native-skia';
+import { Group, ImageSVG, Text } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
 import {

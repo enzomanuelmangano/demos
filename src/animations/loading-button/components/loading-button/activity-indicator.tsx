@@ -1,16 +1,5 @@
 import { useEffect, useMemo } from 'react';
 
-import {
-  Canvas,
-  Circle,
-  Group,
-  ImageSVG,
-  Path,
-  Skia,
-  fitbox,
-  rect,
-  type SkSVG,
-} from '@shopify/react-native-skia';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -21,6 +10,17 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  Circle,
+  Group,
+  ImageSVG,
+  Path,
+  Skia,
+  fitbox,
+  rect,
+  type SkSVG,
+} from 'react-native-skia';
 
 export type ActivityStatus = 'idle' | 'loading' | 'success' | 'error';
 

@@ -1,3 +1,8 @@
+import Animated, {
+  SharedValue,
+  useAnimatedStyle,
+  useDerivedValue,
+} from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
@@ -6,12 +11,7 @@ import {
   LinearGradient,
   RoundedRect,
   interpolate,
-} from '@shopify/react-native-skia';
-import Animated, {
-  SharedValue,
-  useAnimatedStyle,
-  useDerivedValue,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 type BlurredItemProps = {
   index: number;

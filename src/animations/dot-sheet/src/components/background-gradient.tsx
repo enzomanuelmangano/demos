@@ -1,6 +1,6 @@
 import { useWindowDimensions } from 'react-native';
 
-import { Blur, Canvas, Fill, SweepGradient } from '@shopify/react-native-skia';
+import { Blur, Canvas, Fill, SweepGradient } from 'react-native-skia';
 
 import type { StyleProp, ViewStyle } from 'react-native';
 

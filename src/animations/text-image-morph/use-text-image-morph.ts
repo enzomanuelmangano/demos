@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { useFont, useImage } from '@shopify/react-native-skia';
+import { useFont, useImage } from 'react-native-skia';
 
 import { buildAtlas } from './atlas';
 import { GLYPH_FONT_SIZE } from './constants';
@@ -9,11 +9,7 @@ import { computeTargets } from './sampling';
 
 import type { Atlas } from './atlas';
 import type { MorphTargets } from './sampling';
-import type {
-  DataSourceParam,
-  SkFont,
-  SkRect,
-} from '@shopify/react-native-skia';
+import type { DataSourceParam, SkFont, SkRect } from 'react-native-skia';
 
 const PAGE_FONT = require('./assets/Newsreader.ttf');
 

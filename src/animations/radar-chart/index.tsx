@@ -2,8 +2,8 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { useState } from 'react';
 
-import { useFont } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
+import { useFont } from 'react-native-skia';
 
 import { RadarChart } from './components/radar-chart';
 

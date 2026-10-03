@@ -1,16 +1,6 @@
 import { useMemo, type FC } from 'react';
 
 import {
-  Atlas,
-  Canvas,
-  Fill,
-  Skia,
-  useRSXformBuffer,
-  useRectBuffer,
-  useTexture,
-  type SkFont,
-} from '@shopify/react-native-skia';
-import {
   Extrapolation,
   interpolate,
   makeMutable,
@@ -19,6 +9,16 @@ import {
   withSpring,
   type SharedValue,
 } from 'react-native-reanimated';
+import {
+  Atlas,
+  Canvas,
+  Fill,
+  Skia,
+  useRSXformBuffer,
+  useRectBuffer,
+  useTexture,
+  type SkFont,
+} from 'react-native-skia';
 
 type GridVisualizerProps = {
   text: SharedValue<string | null>; // The text to display (e.g. '99')

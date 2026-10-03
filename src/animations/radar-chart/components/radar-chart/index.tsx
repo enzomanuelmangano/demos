@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Canvas, Group, Path, Points, Text } from '@shopify/react-native-skia';
 import Color from 'color';
 import { useDerivedValue } from 'react-native-reanimated';
+import { Canvas, Group, Path, Points, Text } from 'react-native-skia';
 
 import { useCanvasLayout } from './hooks/use-canvas-layout';
 import { usePolygonGrid } from './hooks/use-polygon-grid';

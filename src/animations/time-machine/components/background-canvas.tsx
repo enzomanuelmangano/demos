@@ -2,7 +2,6 @@ import { StyleSheet } from 'react-native';
 
 import { useEffect } from 'react';
 
-import { Blur, Canvas, Rect, Shader, vec } from '@shopify/react-native-skia';
 import { useAtomValue } from 'jotai';
 import {
   Easing,
@@ -13,6 +12,7 @@ import {
   withTiming,
 } from 'react-native-reanimated';
 import { withPause } from 'react-native-redash';
+import { Blur, Canvas, Rect, Shader, vec } from 'react-native-skia';
 
 import { IsTimeMachineActiveAtom } from '../atoms/time-machine-active';
 import { shader } from '../shader';

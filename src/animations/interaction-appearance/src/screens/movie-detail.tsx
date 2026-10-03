@@ -2,7 +2,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 
 import { type FC } from 'react';
 
-import { useImage } from '@shopify/react-native-skia';
+import { useImage } from 'react-native-skia';
 
 import { BottomLinearGradient } from '../components/bottom-linear-gradient';
 import { MovieImage } from '../components/movie-image';

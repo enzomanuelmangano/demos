@@ -8,7 +8,7 @@ import {
   Group,
   Image,
   rect as skRect,
-} from '@shopify/react-native-skia';
+} from 'react-native-skia';
 
 import type { DetailCroppedImageRouteProp } from '../navigation';
 

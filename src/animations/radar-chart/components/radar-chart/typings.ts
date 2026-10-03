@@ -1,6 +1,6 @@
-import type { SkFont } from '@shopify/react-native-skia';
 import type { StyleProp, ViewStyle } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
+import type { SkFont } from 'react-native-skia';
 
 export type RadarDataType<K extends string> = {
   color?: string;

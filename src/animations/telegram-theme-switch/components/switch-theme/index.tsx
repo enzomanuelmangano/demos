@@ -2,13 +2,6 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { useMemo, useRef, useState } from 'react';
 
-import {
-  Canvas,
-  Group,
-  Image,
-  Skia,
-  makeImageFromView,
-} from '@shopify/react-native-skia';
 import Reanimated, {
   interpolate,
   useAnimatedProps,
@@ -17,6 +10,13 @@ import Reanimated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  Group,
+  Image,
+  Skia,
+  makeImageFromView,
+} from 'react-native-skia';
 
 import { AnimatedLottieView } from '../animated-lottie-view';
 import { SwitchThemeContext, useSwitchTheme, type Theme } from './context';
@@ -25,8 +25,8 @@ import {
   SwitchThemeButton,
 } from './switch-theme-button';
 
-import type { SkImage } from '@shopify/react-native-skia';
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { SkImage } from 'react-native-skia';
 
 type SwitchThemeProviderProps = {
   children?: React.ReactNode;

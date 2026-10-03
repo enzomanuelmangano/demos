@@ -1,4 +1,4 @@
-import { AlphaType, ColorType } from '@shopify/react-native-skia';
+import { AlphaType, ColorType } from 'react-native-skia';
 
 import {
   INK_FLOOR,
@@ -16,7 +16,7 @@ import {
   SAT_WEIGHT,
 } from './constants';
 
-import type { SkImage } from '@shopify/react-native-skia';
+import type { SkImage } from 'react-native-skia';
 
 export interface MorphTargets {
   picXY: Float32Array;

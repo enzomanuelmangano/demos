@@ -1,5 +1,5 @@
 // Importing the necessary dependency
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 // Type definition for the parameters of the function
 type GetScaledPolygonPath = {

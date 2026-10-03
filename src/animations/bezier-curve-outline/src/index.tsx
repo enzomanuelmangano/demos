@@ -1,6 +1,5 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import Animated, {
   useAnimatedProps,
@@ -13,6 +12,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Skia } from 'react-native-skia';
 
 import { AnimatedBlurView } from './components/animated-blur-view';
 import { AnimatedSquare } from './components/animated-square';

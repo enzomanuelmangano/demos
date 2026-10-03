@@ -4,18 +4,18 @@ import { useWindowDimensions } from 'react-native';
 import { type FC, memo } from 'react';
 
 import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import {
   BackdropBlur,
   BlurMask,
   rect,
   RoundedRect,
   rrect,
   Skia,
-} from '@shopify/react-native-skia';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import type { SharedValue } from 'react-native-reanimated';

@@ -1,12 +1,5 @@
-import {
-  Group,
-  Path,
-  Rect,
-  Skia,
-  clamp,
-  rect,
-} from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { Group, Path, Rect, Skia, clamp, rect } from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import { useCornerGestures } from './useCornerGestures';

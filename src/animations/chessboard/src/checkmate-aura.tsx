@@ -10,13 +10,6 @@ import React, {
   useState,
 } from 'react';
 
-import {
-  Canvas,
-  Fill,
-  ImageShader,
-  Shader,
-  makeImageFromView,
-} from '@shopify/react-native-skia';
 import Animated, {
   Easing,
   useAnimatedReaction,
@@ -26,13 +19,20 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  Fill,
+  ImageShader,
+  Shader,
+  makeImageFromView,
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { GameReviewCard } from './components/game-review-card';
 import { DEEP, EXIT_MS, GLOW, SPARK, WAVE, WAVE_MS } from './wave-shader';
 
 import type { ShowOpts } from './types';
-import type { SkImage } from '@shopify/react-native-skia';
+import type { SkImage } from 'react-native-skia';
 
 type AuraApi = { show: (opts: ShowOpts) => void; hide: () => void };
 const AuraContext = createContext<AuraApi>({ show: () => {}, hide: () => {} });

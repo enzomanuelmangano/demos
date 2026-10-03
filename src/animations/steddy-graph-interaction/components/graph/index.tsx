@@ -1,5 +1,6 @@
 import { type FC, memo } from 'react';
 
+import { useDerivedValue, withSpring } from 'react-native-reanimated';
 import {
   Canvas,
   CornerPathEffect,
@@ -10,8 +11,7 @@ import {
   Text,
   useFont,
   vec,
-} from '@shopify/react-native-skia';
-import { useDerivedValue, withSpring } from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { Palette } from '../../constants/palette';
 

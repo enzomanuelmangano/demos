@@ -2,13 +2,13 @@ import { useWindowDimensions } from 'react-native';
 
 import { useCallback } from 'react';
 
-import { Group, Rect, Skia, Text, useFont } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { Group, Rect, Skia, Text, useFont } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 

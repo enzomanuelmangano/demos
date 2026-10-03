@@ -2,6 +2,12 @@ import { StyleSheet, View, Dimensions } from 'react-native';
 
 import React, { useMemo } from 'react';
 
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  interpolate,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import {
   Atlas,
   Canvas,
@@ -10,13 +16,7 @@ import {
   rect,
   useRSXformBuffer,
   useTexture,
-} from '@shopify/react-native-skia';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  interpolate,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SQUARES_AMOUNT_HORIZONTAL = 40;

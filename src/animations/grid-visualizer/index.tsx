@@ -2,6 +2,8 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { useCallback } from 'react';
 
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useSharedValue } from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
@@ -9,9 +11,7 @@ import {
   RadialGradient,
   useFont,
   vec,
-} from '@shopify/react-native-skia';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useSharedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { GridVisualizer as GridVisualizerComponent } from './grid-visualizer';

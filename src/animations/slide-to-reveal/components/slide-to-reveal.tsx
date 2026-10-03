@@ -1,5 +1,11 @@
 import { type FC, memo, useMemo } from 'react';
 
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
@@ -8,13 +14,7 @@ import {
   Mask,
   RoundedRect,
   useFont,
-} from '@shopify/react-native-skia';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { TextCode } from './text-code';
 

@@ -1,5 +1,6 @@
 import { type FC, useMemo } from 'react';
 
+import { Extrapolation, useDerivedValue } from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
@@ -12,8 +13,7 @@ import {
   Rect,
   RoundedRect,
   Skia,
-} from '@shopify/react-native-skia';
-import { Extrapolation, useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { useDeviceTilt } from '../hooks/use-device-tilt';
 

@@ -1,15 +1,6 @@
 import { forwardRef, useCallback, useImperativeHandle } from 'react';
 
 import {
-  BlurMask,
-  Canvas,
-  Path,
-  rect,
-  RoundedRect,
-  rrect,
-  Skia,
-} from '@shopify/react-native-skia';
-import {
   Directions,
   Gesture,
   GestureDetector,
@@ -21,6 +12,15 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  BlurMask,
+  Canvas,
+  Path,
+  rect,
+  RoundedRect,
+  rrect,
+  Skia,
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { SnakeGame } from './snake-game';

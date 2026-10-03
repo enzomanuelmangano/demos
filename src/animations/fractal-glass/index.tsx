@@ -3,14 +3,6 @@ import { StyleSheet, useWindowDimensions } from 'react-native';
 import { useState } from 'react';
 
 import { Octicons } from '@expo/vector-icons';
-import {
-  Blur,
-  Canvas,
-  Circle,
-  Group,
-  Mask,
-  rect,
-} from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +11,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Blur, Canvas, Circle, Group, Mask, rect } from 'react-native-skia';
 
 import { FractalGlassMask } from './components/fractal-glass-mask';
 

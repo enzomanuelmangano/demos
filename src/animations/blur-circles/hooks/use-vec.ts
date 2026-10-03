@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 
-import { vec } from '@shopify/react-native-skia';
 import {
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { vec } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { center } from '../constants';

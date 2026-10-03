@@ -1,6 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle } from 'react';
 
-import { Path, Skia } from '@shopify/react-native-skia';
 import {
   cancelAnimation,
   Easing,
@@ -9,13 +8,14 @@ import {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Path, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { extractEpicycles } from './utils/extract-epicycles';
 import { computeFFT } from './utils/fft';
 import { fillToPowerOfTwo, getPoints } from './utils/fill';
 
-import type { SkPath } from '@shopify/react-native-skia';
+import type { SkPath } from 'react-native-skia';
 
 export type FourierVisualizerRefType = {
   draw: ({

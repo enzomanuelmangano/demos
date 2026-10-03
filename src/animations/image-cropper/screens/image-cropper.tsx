@@ -8,7 +8,7 @@ import {
 import { useCallback, useRef } from 'react';
 
 import { useNavigation } from '@react-navigation/native';
-import { useImage } from '@shopify/react-native-skia';
+import { useImage } from 'react-native-skia';
 
 import { FancyBorderButton } from '../components/border-button';
 import { ImageCropper } from '../components/image-cropper';

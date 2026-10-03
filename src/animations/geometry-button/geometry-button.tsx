@@ -1,13 +1,5 @@
 import { type FC, memo, useMemo } from 'react';
 
-import {
-  Canvas,
-  Group,
-  Path,
-  rect,
-  rrect,
-  Skia,
-} from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -17,6 +9,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { Canvas, Group, Path, rect, rrect, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 type GeometryButtonProps = {

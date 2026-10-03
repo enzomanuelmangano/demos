@@ -1,6 +1,5 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { useImage } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import {
   interpolateColor,
@@ -8,6 +7,7 @@ import {
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useImage } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { DonutCircularProgress } from './components/donut-circular-progress';

@@ -1,5 +1,5 @@
 // Importing necessary modules and types
-import { Skia, rect, rrect } from '@shopify/react-native-skia';
+import { Skia, rect, rrect } from 'react-native-skia';
 
 import { ScreenWidth } from '../constants';
 

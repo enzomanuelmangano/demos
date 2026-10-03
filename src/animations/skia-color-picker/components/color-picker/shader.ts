@@ -1,4 +1,4 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 // Initiate the Skia runtime effect with a shader program.
 const radialGradientShader = Skia.RuntimeEffect.Make(`

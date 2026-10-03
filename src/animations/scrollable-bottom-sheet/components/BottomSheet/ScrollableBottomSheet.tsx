@@ -107,6 +107,13 @@ const ScrollableBottomSheet = forwardRef<
     return pages.map(item => item.height);
   }, [pages]);
 
+  // The scroll offset of each page. Computed here, not in the scroll handler:
+  // `pages` holds React elements, and a worklet cannot copy them to the UI
+  // runtime.
+  const pagesOffset = useMemo(() => {
+    return pages.map((_, index) => index * windowWidth);
+  }, [pages, windowWidth]);
+
   const pagesComponent = useMemo(() => {
     return pages.map(item => item.component);
   }, [pages]);
@@ -117,7 +124,7 @@ const ScrollableBottomSheet = forwardRef<
 
       const interpolatedHeight = interpolate(
         event.contentOffset.x,
-        pages.map((_, index) => index * windowWidth),
+        pagesOffset,
         pagesHeight,
         Extrapolation.CLAMP,
       );

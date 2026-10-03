@@ -2,6 +2,12 @@ import { useWindowDimensions } from 'react-native';
 
 import { FC, useMemo } from 'react';
 
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useDerivedValue,
+} from 'react-native-reanimated';
 import {
   Blur,
   BlurMask,
@@ -14,13 +20,7 @@ import {
   Text,
   useFont,
   vec,
-} from '@shopify/react-native-skia';
-import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedStyle,
-  useDerivedValue,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

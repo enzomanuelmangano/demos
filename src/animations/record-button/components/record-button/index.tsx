@@ -2,7 +2,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { type FC, useMemo } from 'react';
 
-import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import Animated, {
   type SharedValue,
@@ -12,6 +11,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, Path, RoundedRect, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { getRightLinePath } from './create-skia-line';

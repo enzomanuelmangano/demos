@@ -6,7 +6,7 @@ import {
   Path,
   RoundedRect,
   Skia,
-} from '@shopify/react-native-skia';
+} from 'react-native-skia';
 
 type HighlightedPathProps = {
   width: number;

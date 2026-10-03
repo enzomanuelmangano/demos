@@ -25,7 +25,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { useEffect, useRef } from 'react';
 
-import { Canvas, Picture, Skia, useImage } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Easing,
@@ -35,6 +34,7 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, Picture, Skia, useImage } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { ToggleButton } from './components';

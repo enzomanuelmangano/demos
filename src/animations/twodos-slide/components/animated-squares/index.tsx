@@ -3,12 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import { useMemo } from 'react';
 
 import { Entypo } from '@expo/vector-icons';
-import { Canvas, Group, Path } from '@shopify/react-native-skia';
 import Animated, {
   clamp,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+import { Canvas, Group, Path } from 'react-native-skia';
 
 import { drawSquirclePath } from '../../utils/draw-squircle';
 

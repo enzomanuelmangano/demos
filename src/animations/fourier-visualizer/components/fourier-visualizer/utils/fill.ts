@@ -2,7 +2,7 @@
 import { PathGeometry } from './geometry';
 
 import type { Point } from './types';
-import type { SkPath } from '@shopify/react-native-skia';
+import type { SkPath } from 'react-native-skia';
 
 // Extracts and returns an array of points from an SkPath object.
 // The whole point of this animation is using the FFT algorithm.

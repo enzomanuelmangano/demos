@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 
 import { memo, useMemo } from 'react';
 
-import { Canvas, Fill, LinearGradient } from '@shopify/react-native-skia';
+import { Canvas, Fill, LinearGradient } from 'react-native-skia';
 
 import { useTheme } from '../theme';
 

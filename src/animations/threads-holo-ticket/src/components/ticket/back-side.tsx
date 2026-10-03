@@ -5,8 +5,8 @@
 
 import { View } from 'react-native';
 
-import { LinearGradient } from '@shopify/react-native-skia';
 import QRCode from 'react-native-qrcode-skia';
+import { LinearGradient } from 'react-native-skia';
 
 const QR_SIZE = 150;
 

@@ -11,14 +11,10 @@ import {
 
 import { useState } from 'react';
 
-import {
-  DiscretePathEffect,
-  LinearGradient,
-  vec,
-} from '@shopify/react-native-skia';
 import QRCode from 'react-native-qrcode-skia';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DiscretePathEffect, LinearGradient, vec } from 'react-native-skia';
 
 import { Slider } from './components/slider';
 
