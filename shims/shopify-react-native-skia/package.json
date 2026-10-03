@@ -1,0 +1,11 @@
+{
+  "name": "@shopify/react-native-skia",
+  "version": "3.0.1",
+  "description": "Points the old Skia package name at react-native-skia (Skia 3). JavaScript only: it ships no native code, so the app links one Skia.",
+  "private": true,
+  "main": "index.js",
+  "types": "index.d.ts",
+  "peerDependencies": {
+    "react-native-skia": "3.0.1"
+  }
+}

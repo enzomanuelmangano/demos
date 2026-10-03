@@ -3,6 +3,11 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useMemo } from 'react';
 
 import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import {
   Blur,
   ColorMatrix,
   Group,
@@ -11,12 +16,7 @@ import {
   Skia,
   SweepGradient,
   vec,
-} from '@shopify/react-native-skia';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 const RADIUS = 80;
@@ -70,11 +70,12 @@ export function Metaball() {
   });
 
   const path = useDerivedValue(() => {
-    const circles = Skia.Path.Make();
-    circles.addCircle(firstCx.get(), firstCy.get(), RADIUS);
-    circles.addCircle(secondCx.get(), secondCy.get(), RADIUS);
-    circles.simplify();
-    return circles;
+    // Both circles wind the same way, so the default fill already draws
+    // their union — what simplify() used to bake into the path.
+    return Skia.PathBuilder.Make()
+      .addCircle(firstCx.get(), firstCy.get(), RADIUS)
+      .addCircle(secondCx.get(), secondCy.get(), RADIUS)
+      .build();
   }, [firstCx, firstCy, secondCx, secondCy]);
 
   const paint = useMemo(() => {

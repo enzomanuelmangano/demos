@@ -1,6 +1,19 @@
 {
   "extends": "eslint-config-react-native-wcandillon/tsconfig.base",
   "compilerOptions": {
-    "strict": true
-  }
+    "strict": true,
+    // TypeScript 6 deprecates the base config's classic "node" resolution.
+    // "bundler" also honors package.json "exports", matching Metro.
+    "module": "esnext",
+    "moduleResolution": "bundler"
+  },
+  "exclude": [
+    "node_modules",
+    "babel.config.js",
+    "metro.config.js",
+    "jest.config.js",
+    // A standalone Node tool with its own dependencies, pinned to a headless
+    // Skia build; it is installed and compiled on its own.
+    "scripts/generate-app-icon"
+  ]
 }

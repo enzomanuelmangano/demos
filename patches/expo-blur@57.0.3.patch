@@ -1,0 +1,51 @@
+diff --git a/ios/BlurEffectView.swift b/ios/BlurEffectView.swift
+index 185f69af847f3a9d40784539dfd83e56c9d9ee0d..c46f216f4ebfe1fb0503f914cff214baab936208 100644
+--- a/ios/BlurEffectView.swift
++++ b/ios/BlurEffectView.swift
+@@ -10,7 +10,15 @@ final class BlurEffectView: UIVisualEffectView {
+   @Clamping(lowerBound: 0.01, upperBound: 1)
+   var intensity: Double = 0.5 {
+     didSet {
+-      setNeedsDisplay()
++      // Drive the existing animator. Rebuilding it on every change (the
++      // previous behaviour, via setNeedsDisplay) removed the effect and
++      // re-added it through a fresh animator each frame, so a blur whose
++      // intensity is animated rendered black while it was driven.
++      if let animator {
++        animator.fractionComplete = CGFloat(intensity)
++      } else {
++        setNeedsDisplay()
++      }
+     }
+   }
+ 
+@@ -22,6 +30,9 @@ final class BlurEffectView: UIVisualEffectView {
+ 
+   private var visualEffect: UIVisualEffect = UIBlurEffect(style: TintStyle.default.toBlurEffect()) {
+     didSet {
++      // A new effect needs a new animator; the intensity is re-applied.
++      animator?.stopAnimation(true)
++      animator = nil
+       setNeedsDisplay()
+     }
+   }
+@@ -48,12 +59,16 @@ final class BlurEffectView: UIVisualEffectView {
+       return
+     }
+ 
++    guard animator == nil else { return }
+     effect = nil
+-    animator?.stopAnimation(true)
+-    animator = UIViewPropertyAnimator(duration: 1, curve: .linear) { [unowned self] in
++    let animator = UIViewPropertyAnimator(duration: 1, curve: .linear) { [unowned self] in
+       self.effect = visualEffect
+     }
+-    animator?.fractionComplete = CGFloat(intensity)
++    // Stay paused at the end rather than finishing: a finished animator
++    // releases its animation, and later fractions would no longer apply.
++    animator.pausesOnCompletion = true
++    animator.fractionComplete = CGFloat(intensity)
++    self.animator = animator
+   }
+ }
+ 

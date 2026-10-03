@@ -5,7 +5,6 @@
 process.env.EXPO_ROUTER_DISABLE_RN_NAVIGATION_CHECK = '1';
 
 const { getDefaultConfig } = require('expo/metro-config');
-const path = require('path');
 
 const config = getDefaultConfig(__dirname);
 
@@ -14,22 +13,5 @@ const config = getDefaultConfig(__dirname);
 // same idea for uncompressed GPU payloads — light-on-painting's baked
 // rgba16float surface field, whose half-floats no image container would survive.
 config.resolver.assetExts.push('astc', 'bin');
-
-// Redirect Skia's WebGPUViewNativeComponent to a stub to avoid duplicate registration
-// with react-native-webgpu (both register "WebGPUView")
-config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (
-    moduleName.includes('WebGPUViewNativeComponent') &&
-    context.originModulePath.includes('@shopify/react-native-skia')
-  ) {
-    return {
-      filePath: path.resolve(__dirname, 'src/stubs/webgpu-view-stub.js'),
-      type: 'sourceFile',
-    };
-  }
-
-  // Fall back to default resolution
-  return context.resolveRequest(context, moduleName, platform);
-};
 
 module.exports = config;

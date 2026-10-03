@@ -134,7 +134,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-status-bar',
-    './plugins/with-skia-webgpu-fix',
     './plugins/with-nitro-autolinking',
   ],
   experiments: {
