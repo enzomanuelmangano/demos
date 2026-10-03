@@ -2,15 +2,6 @@ import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
 import { useEffect } from 'react';
 
-import {
-  Blur,
-  Canvas,
-  Circle,
-  Mask,
-  Rect,
-  Shader,
-  Skia,
-} from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import {
   Easing,
@@ -19,6 +10,15 @@ import {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  Blur,
+  Canvas,
+  Circle,
+  Mask,
+  Rect,
+  Shader,
+  Skia,
+} from 'react-native-skia';
 
 import { AnimatedSlider } from './components/animated-slider';
 

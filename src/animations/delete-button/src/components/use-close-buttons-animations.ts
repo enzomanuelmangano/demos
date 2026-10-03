@@ -1,4 +1,3 @@
-import { Skia } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import {
   useAnimatedReaction,
@@ -7,6 +6,7 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Skia } from 'react-native-skia';
 import { useGestureHandler } from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 

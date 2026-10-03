@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 
-import { Blur, ColorMatrix, Group, Paint } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
+import { Blur, ColorMatrix, Group, Paint } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
 import { ExclusionTabBox } from './exclusion-tab-box';

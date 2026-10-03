@@ -2,6 +2,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { forwardRef, useImperativeHandle } from 'react';
 
+import QRCode from 'react-native-qrcode-skia';
+import Animated, { useDerivedValue } from 'react-native-reanimated';
 import {
   Canvas,
   RadialGradient,
@@ -9,9 +11,7 @@ import {
   Text,
   useFont,
   vec,
-} from '@shopify/react-native-skia';
-import QRCode from 'react-native-qrcode-skia';
-import Animated, { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { useActiveLetterAnimation } from './hooks/use-active-letter';
 import { useActiveQRCode } from './hooks/use-active-qrcode';

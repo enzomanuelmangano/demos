@@ -1,12 +1,12 @@
 import { type FC, memo, useMemo } from 'react';
 
-import { FitBox, Group, Path, rect } from '@shopify/react-native-skia';
 import {
   interpolateColor,
   useDerivedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { FitBox, Group, Path, rect } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
 import { BOTTOM_BAR_ICONS } from './svg-icons';

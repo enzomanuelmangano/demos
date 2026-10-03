@@ -2,16 +2,6 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useEffect } from 'react';
 
-import {
-  Blur,
-  Canvas,
-  Circle,
-  Picture,
-  PointMode,
-  RadialGradient,
-  Skia,
-  vec,
-} from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Easing,
@@ -21,6 +11,16 @@ import Animated, {
   useAnimatedScrollHandler,
   useDerivedValue,
 } from 'react-native-reanimated';
+import {
+  Blur,
+  Canvas,
+  Circle,
+  Picture,
+  PointMode,
+  RadialGradient,
+  Skia,
+  vec,
+} from 'react-native-skia';
 
 import { Paginator } from './components';
 import {

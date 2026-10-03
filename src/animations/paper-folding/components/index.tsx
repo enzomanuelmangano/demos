@@ -1,12 +1,12 @@
 import { View } from 'react-native';
 
-import { Canvas, Rect, Shadow } from '@shopify/react-native-skia';
 import Animated, {
   interpolate,
   interpolateColor,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+import { Canvas, Rect, Shadow } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

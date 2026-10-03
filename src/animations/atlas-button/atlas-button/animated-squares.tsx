@@ -1,13 +1,13 @@
 import { type FC, memo, useMemo } from 'react';
 
+import { useDerivedValue } from 'react-native-reanimated';
 import {
   Atlas,
   Fill,
   useRSXformBuffer,
   useRectBuffer,
   useTexture,
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

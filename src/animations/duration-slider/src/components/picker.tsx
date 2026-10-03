@@ -1,3 +1,4 @@
+import { useDerivedValue } from 'react-native-reanimated';
 import {
   BlurMask,
   Group,
@@ -6,8 +7,7 @@ import {
   Shadow,
   Skia,
   vec,
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import type { SharedValue } from 'react-native-reanimated';

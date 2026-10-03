@@ -1,12 +1,6 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
 
-import {
-  Blur,
-  Canvas,
-  Rect,
-  SweepGradient,
-  vec,
-} from '@shopify/react-native-skia';
+import { Blur, Canvas, Rect, SweepGradient, vec } from 'react-native-skia';
 
 export const BackgroundGradient = () => {
   const { width, height } = useWindowDimensions();

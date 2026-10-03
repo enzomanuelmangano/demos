@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import { useCallback, useRef } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
-import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -12,6 +11,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, Path, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { FourierVisualizer } from './components/fourier-visualizer';

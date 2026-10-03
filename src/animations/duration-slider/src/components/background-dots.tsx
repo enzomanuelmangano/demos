@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Path, Skia } from '@shopify/react-native-skia';
+import { Path, Skia } from 'react-native-skia';
 
 type BackgroundDotsProps = {
   cx: number;

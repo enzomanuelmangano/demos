@@ -1,6 +1,12 @@
 import { useEffect, useMemo } from 'react';
 
 import {
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import {
   Blur,
   BlurMask,
   Canvas,
@@ -10,13 +16,7 @@ import {
   rrect,
   SweepGradient,
   vec,
-} from '@shopify/react-native-skia';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { A, FREQUENCY, noise2D, RADIUS, secondNoise2D } from './constants';
 import { useVec } from './hooks/use-vec';

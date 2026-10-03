@@ -2,14 +2,6 @@ import { type StyleProp, StyleSheet, type TextStyle } from 'react-native';
 
 import { useMemo } from 'react';
 
-import {
-  Canvas,
-  fitbox,
-  Group,
-  ImageSVG,
-  rect,
-  useSVG,
-} from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -19,11 +11,19 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  fitbox,
+  Group,
+  ImageSVG,
+  rect,
+  useSVG,
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedSquares } from './animated-squares';
 
-import type { DataSourceParam } from '@shopify/react-native-skia';
+import type { DataSourceParam } from 'react-native-skia';
 
 type AtlasButtonProps = {
   width: number;

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { BlurMask, Group, Oval } from '@shopify/react-native-skia';
+import { BlurMask, Group, Oval } from 'react-native-skia';
 
 const SIZE = 60;
 const OVAL_HEIGHT_RATIO = 2.5;

@@ -1,5 +1,5 @@
-import { Group, Text } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
+import { Group, Text } from 'react-native-skia';
 
 import { font } from '../../constants';
 import { useAnimatedPathData } from './hooks/use-animated-path-data';

@@ -1,5 +1,5 @@
-import { useImage, Image } from '@shopify/react-native-skia';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
+import { useImage, Image } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
 import { BottomSheet } from './components/bottom-sheet';

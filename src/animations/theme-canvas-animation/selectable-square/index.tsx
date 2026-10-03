@@ -1,9 +1,9 @@
-import { Group, RoundedRect } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { Group, RoundedRect } from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 

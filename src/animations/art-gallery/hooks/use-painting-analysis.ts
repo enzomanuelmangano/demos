@@ -1,11 +1,11 @@
 import { Image } from 'react-native';
 
-import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
+import { AlphaType, ColorType, Skia } from 'react-native-skia';
 
 import { TARGET_CELLS } from '../constants';
 
 import type { GridCell, RGB } from '../types';
-import type { SkImage } from '@shopify/react-native-skia';
+import type { SkImage } from 'react-native-skia';
 
 // Module-level cache
 let cachedPaintingAnalysis: GridCell[] | null = null;

@@ -3,17 +3,17 @@ import { useWindowDimensions } from 'react-native';
 import { forwardRef, useCallback, useImperativeHandle } from 'react';
 
 import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import {
   Group,
   Path,
   Skia,
   Circle as SkiaCircle,
   interpolate,
-} from '@shopify/react-native-skia';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 const sadMouth = Skia.Path.MakeFromSVGString(
   `M31.2226 8.20008C27.3898 4.95606 22.4321 3 17.0176 3C11.6909 3 6.8063 4.89309 3 8.04317`,

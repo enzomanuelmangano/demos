@@ -2,7 +2,6 @@ import { StyleSheet, useWindowDimensions } from 'react-native';
 
 import { type FC, useMemo } from 'react';
 
-import { Canvas, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
 import Color from 'color';
 import Animated, {
   convertToRGBA,
@@ -12,6 +11,7 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import { Canvas, LinearGradient, Rect, vec } from 'react-native-skia';
 
 import { OnboardingPage } from './page';
 import { PaginationDots } from './pagination-dots';

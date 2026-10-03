@@ -2,6 +2,12 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useMemo } from 'react';
 
+import { PressableOpacity } from 'pressto';
+import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import {
   BackdropBlur,
   Blur,
@@ -14,13 +20,7 @@ import {
   rrect,
   Skia,
   vec,
-} from '@shopify/react-native-skia';
-import { PressableOpacity } from 'pressto';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

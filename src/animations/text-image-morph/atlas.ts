@@ -1,8 +1,8 @@
-import { rect } from '@shopify/react-native-skia';
+import { rect } from 'react-native-skia';
 
 import { GLYPH_CELL } from './constants';
 
-import type { SkRect } from '@shopify/react-native-skia';
+import type { SkRect } from 'react-native-skia';
 
 export interface Atlas {
   uniqueChars: string[];

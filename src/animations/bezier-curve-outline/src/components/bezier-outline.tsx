@@ -1,13 +1,13 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Circle, Group, Path, Skia } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
+import { Circle, Group, Path, Skia } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
 import { InitialPoints } from './constants';
 import { useSharedControlPoint } from '../hooks/useSharedControlPoint';
 
-import type { SkPath } from '@shopify/react-native-skia';
+import type { SkPath } from 'react-native-skia';
 
 type BezierOutlineProps = {
   onPathUpdate: (path: SkPath) => void;

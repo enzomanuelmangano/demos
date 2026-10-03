@@ -1,6 +1,6 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
-import type { SkContourMeasure, SkPath } from '@shopify/react-native-skia';
+import type { SkContourMeasure, SkPath } from 'react-native-skia';
 
 export class PathGeometry {
   private totalLength = 0;

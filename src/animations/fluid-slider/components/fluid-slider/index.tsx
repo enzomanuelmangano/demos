@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useDerivedValue } from 'react-native-reanimated';
 import {
   Blur,
   Circle,
@@ -10,8 +11,7 @@ import {
   Text,
   interpolate,
   useFont,
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import { usePickerLayout } from './hooks/use-picker-layout';

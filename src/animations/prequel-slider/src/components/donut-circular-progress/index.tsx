@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Canvas, Group, Path, Skia } from '@shopify/react-native-skia';
+import { Canvas, Group, Path, Skia } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

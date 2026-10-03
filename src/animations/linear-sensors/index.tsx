@@ -3,6 +3,13 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import { useCallback } from 'react';
 
 import {
+  useAnimatedSensor,
+  SensorType,
+  interpolate,
+  Extrapolation,
+  useDerivedValue,
+} from 'react-native-reanimated';
+import {
   Blur,
   Canvas,
   Fill,
@@ -12,14 +19,7 @@ import {
   RoundedRect,
   Shadow,
   vec,
-} from '@shopify/react-native-skia';
-import {
-  useAnimatedSensor,
-  SensorType,
-  interpolate,
-  Extrapolation,
-  useDerivedValue,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { ReactNativeLogo } from './react-logo';
 

@@ -1,4 +1,4 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 // Checkmate transition. The glass ripple from the mated king is the APPLICATOR:
 // as the shell sweeps outward it progressively BLURS and tints the board in its

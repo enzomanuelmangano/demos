@@ -13,14 +13,8 @@
 
 import { useMemo } from 'react';
 
-import {
-  Canvas,
-  Circle,
-  Group,
-  Line,
-  Shadow,
-} from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import { Canvas, Circle, Group, Line, Shadow } from 'react-native-skia';
 
 /**
  * Props for the Clock component

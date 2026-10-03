@@ -2,7 +2,7 @@ import { Image, PixelRatio } from 'react-native';
 
 import { useCallback, useEffect, useRef } from 'react';
 
-import { AlphaType, ColorType, Skia } from '@shopify/react-native-skia';
+import { AlphaType, ColorType, Skia } from 'react-native-skia';
 import { CanvasRef } from 'react-native-webgpu';
 import { scheduleOnUI } from 'react-native-worklets';
 

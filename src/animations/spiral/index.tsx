@@ -2,6 +2,13 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 
 import { useMemo } from 'react';
 
+import { PressableWithoutFeedback } from 'pressto';
+import {
+  makeMutable,
+  useAnimatedReaction,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
@@ -12,14 +19,7 @@ import {
   SweepGradient,
   usePathValue,
   vec,
-} from '@shopify/react-native-skia';
-import { PressableWithoutFeedback } from 'pressto';
-import {
-  makeMutable,
-  useAnimatedReaction,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { logarithmicSpiral } from './utils';
 

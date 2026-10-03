@@ -1,7 +1,7 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { useFont } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
+import { useFont } from 'react-native-skia';
 
 import { CircularSlider } from './components/circular-slider';
 // @ts-ignore

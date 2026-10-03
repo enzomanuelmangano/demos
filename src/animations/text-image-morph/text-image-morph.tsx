@@ -2,7 +2,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { useRef, useState } from 'react';
 
-import { Canvas } from '@shopify/react-native-skia';
 import { usePatternComposer } from 'react-native-pulsar';
 import {
   Easing,
@@ -10,6 +9,7 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas } from 'react-native-skia';
 
 import { MORPH_DURATION_MS, PAGE_BG, PAGE_MARGIN_FRAC } from './constants';
 import { MORPH_PATTERN } from './haptics';
@@ -17,7 +17,7 @@ import { PressableToggleIcon } from './pressable-toggle-icon';
 import { Reveal } from './reveal';
 import { useTextImageMorph } from './use-text-image-morph';
 
-import type { DataSourceParam } from '@shopify/react-native-skia';
+import type { DataSourceParam } from 'react-native-skia';
 
 interface Props {
   width: number;

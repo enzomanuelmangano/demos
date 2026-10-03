@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useImperativeHandle, forwardRef } from 'react';
 
-import { Canvas, Path, rect, Skia } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import {
   useDerivedValue,
   useSharedValue,
   useAnimatedReaction,
 } from 'react-native-reanimated';
+import { Canvas, Path, rect, Skia } from 'react-native-skia';
 
 const GRID_SIZE = 28; // 28x28
 const CELL_SIZE = 10;

@@ -3,6 +3,13 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import { useEffect } from 'react';
 
 import {
+  Easing,
+  useDerivedValue,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import {
   Blur,
   Canvas,
   Circle,
@@ -10,14 +17,7 @@ import {
   Rect,
   Shader,
   Skia,
-} from '@shopify/react-native-skia';
-import {
-  Easing,
-  useDerivedValue,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import { ControlPanel } from './components/control-panel';
 

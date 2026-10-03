@@ -1,5 +1,5 @@
-import { rect, rrect, Skia } from '@shopify/react-native-skia';
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
+import { rect, rrect, Skia } from 'react-native-skia';
 
 import { useBoxWidths } from './use-text-widths';
 

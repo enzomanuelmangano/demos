@@ -1,4 +1,4 @@
-import { rect, Skia } from '@shopify/react-native-skia';
+import { rect, Skia } from 'react-native-skia';
 
 const searchPath = Skia.Path.MakeFromSVGString(
   `M54.734,9.053C39.12,18.067,27.95,32.624,23.284,50.039c-4.667,17.415-2.271,35.606,6.743,51.22

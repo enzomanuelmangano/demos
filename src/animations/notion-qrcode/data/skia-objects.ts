@@ -1,4 +1,4 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 // Reusable Skia objects (created once, reused every frame for performance)
 export const reusablePaint = Skia.Paint();

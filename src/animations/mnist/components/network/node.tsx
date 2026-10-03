@@ -1,4 +1,4 @@
-import { Circle, Group } from '@shopify/react-native-skia';
+import { Circle, Group } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

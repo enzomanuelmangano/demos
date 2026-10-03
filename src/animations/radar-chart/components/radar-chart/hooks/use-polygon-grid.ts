@@ -1,6 +1,6 @@
 // Importing the necessary dependencies and types
-import { Skia } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
+import { Skia } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 

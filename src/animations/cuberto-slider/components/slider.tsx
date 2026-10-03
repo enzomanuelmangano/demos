@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native';
 
-import { Canvas, FitBox, Path, rect, Skia } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   Extrapolation,
@@ -11,6 +10,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { ReText } from 'react-native-redash';
+import { Canvas, FitBox, Path, rect, Skia } from 'react-native-skia';
 
 type SliderProps = {
   pickerSize?: number;

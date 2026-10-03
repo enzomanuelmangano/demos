@@ -2,13 +2,13 @@ import { StyleSheet, View } from 'react-native';
 
 import { useCallback, useRef } from 'react';
 
-import { Canvas } from '@shopify/react-native-skia';
 import Animated, {
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Canvas } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { AnimatedFace } from './components/AnimatedFace';

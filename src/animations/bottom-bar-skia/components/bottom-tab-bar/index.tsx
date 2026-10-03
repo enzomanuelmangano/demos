@@ -2,6 +2,9 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useMemo } from 'react';
 
+import * as Haptics from 'expo-haptics';
+import { useDerivedValue, withSpring } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Blur,
   Circle,
@@ -11,10 +14,7 @@ import {
   Path,
   rect,
   Skia,
-} from '@shopify/react-native-skia';
-import * as Haptics from 'expo-haptics';
-import { useDerivedValue, withSpring } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 

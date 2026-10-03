@@ -1,11 +1,11 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Canvas, RadialGradient, Rect, vec } from '@shopify/react-native-skia';
 import {
   useDerivedValue,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, RadialGradient, Rect, vec } from 'react-native-skia';
 
 import { Carousel } from './components/carousel';
 import { BACKGROUND_COLOR, data, windowWidth } from './constants';

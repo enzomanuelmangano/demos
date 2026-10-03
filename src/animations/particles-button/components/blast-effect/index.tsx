@@ -20,15 +20,6 @@
 import { forwardRef, useCallback, useImperativeHandle } from 'react';
 
 import {
-  Atlas,
-  Canvas,
-  Circle,
-  Group,
-  rect,
-  useRSXformBuffer,
-  useTexture,
-} from '@shopify/react-native-skia';
-import {
   cancelAnimation,
   interpolate,
   useDerivedValue,
@@ -36,6 +27,15 @@ import {
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
+import {
+  Atlas,
+  Canvas,
+  Circle,
+  Group,
+  rect,
+  useRSXformBuffer,
+  useTexture,
+} from 'react-native-skia';
 
 import type { WithSpringConfig } from 'react-native-reanimated';
 

@@ -19,8 +19,8 @@
  *    - Colored rounded rectangle background
  *    - Avatar image from sprite sheet (with clipping)
  */
-import { ClipOp, Skia, SkImage } from '@shopify/react-native-skia';
 import { SharedValue } from 'react-native-reanimated';
+import { ClipOp, Skia, SkImage } from 'react-native-skia';
 
 import {
   CANVAS_HEIGHT,
