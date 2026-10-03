@@ -12,6 +12,7 @@ const SwitchThemeContext = createContext<{
     center: { x: number; y: number; height: number; width: number };
     style: StyleProp<ViewStyle>;
   }) => void;
+  prepareToggleTheme: () => void;
   animationProgress: SharedValue<number>;
 }>({
   theme: 'light',
@@ -19,6 +20,9 @@ const SwitchThemeContext = createContext<{
     center: { x: number; y: number; height: number; width: number };
     style: StyleProp<ViewStyle>;
   }) => {
+    //
+  },
+  prepareToggleTheme: () => {
     //
   },
   animationProgress: makeMutable(0),
