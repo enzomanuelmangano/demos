@@ -1,19 +1,17 @@
 import { Platform, StyleSheet, Text, View } from 'react-native';
 
-import { memo, useState, type FC } from 'react';
+import { memo, type FC } from 'react';
 
 import { Octicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import Animated, {
   interpolate,
   useAnimatedProps,
-  useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -37,20 +35,6 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
       [hiddenIndexes, index],
     );
 
-    // The blur views are invisible at rest (intensity 0, or their layer is at
-    // opacity 0), so they're only mounted while this digit animates: 32
-    // UIVisualEffectViews updating every frame are the bulk of the cost.
-    const [isAnimating, setIsAnimating] = useState(false);
-
-    useAnimatedReaction(
-      () => isHidden.get(),
-      (hidden, prevHidden) => {
-        if (prevHidden !== null && hidden !== prevHidden) {
-          scheduleOnRN(setIsAnimating, true);
-        }
-      },
-    );
-
     // Calculate the animation progress based on whether the number is hidden or not
     const animationProgress = useDerivedValue(
       () =>
@@ -58,16 +42,10 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
         // based on its index (i.e. 0.1s delay for each number)
         withDelay(
           index * HideableNumberHeight,
-          withSpring(
-            isHidden.get() ? 1 : 0,
-            {
-              duration: 700,
-              dampingRatio: 1,
-            },
-            finished => {
-              if (finished) scheduleOnRN(setIsAnimating, false);
-            },
-          ),
+          withSpring(isHidden.get() ? 1 : 0, {
+            duration: 700,
+            dampingRatio: 1,
+          }),
         ),
       [isHidden, index],
     );
@@ -109,7 +87,7 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
             size={DotSize}
             color="black"
           />
-          {Platform.OS === 'ios' && isAnimating && (
+          {Platform.OS === 'ios' && (
             <AnimatedBlurView
               animatedProps={animatedDotBlur}
               style={StyleSheet.absoluteFill}
@@ -120,7 +98,7 @@ export const HideableNumber: FC<HideableNumberProps> = memo(
         {/* Animated text */}
         <Animated.View style={[styles.box, rTextNumberStyle]}>
           <Text style={styles.cardNumber}>{number}</Text>
-          {Platform.OS === 'ios' && isAnimating && (
+          {Platform.OS === 'ios' && (
             <AnimatedBlurView
               animatedProps={animatedTextBlur}
               style={StyleSheet.absoluteFill}

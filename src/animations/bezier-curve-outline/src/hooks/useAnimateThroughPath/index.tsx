@@ -7,8 +7,7 @@ import {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-
-import { PathGeometry } from './utils/geometry';
+import { Skia } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 import type { SkPath } from 'react-native-skia';
@@ -18,15 +17,21 @@ type Point = {
   y: number;
 };
 
+// Runs on the UI thread, so the contour is walked directly: a class instance
+// (the old PathGeometry helper) can't be used inside a worklet.
 const getPathPoints = (path: SkPath): Point[] => {
   'worklet';
   const points: Point[] = [];
 
-  const geometry = new PathGeometry(path);
-  const totalLength = geometry.getTotalLength();
+  const contour = Skia.ContourMeasureIter(path, false, 1).next();
+  if (!contour) {
+    // The initial path is empty until the outline reports its first curve.
+    return points;
+  }
+  const totalLength = contour.length();
 
   for (let i = 0; i < totalLength; i++) {
-    const point = geometry.getPointAtLength(i);
+    const [point] = contour.getPosTan(i);
     points.push({ x: point.x, y: point.y });
   }
   return points;
