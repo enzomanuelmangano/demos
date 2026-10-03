@@ -2,9 +2,9 @@
  * Container component that manages the state and interactions for each cell
  */
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 
-import { useDerivedValue } from 'react-native-reanimated';
+import { FadeIn } from 'react-native-reanimated';
 
 import { Cell } from './cell';
 
@@ -19,6 +19,8 @@ export type CellContainerProps = {
   highlightedNumber: SharedValue<number>;
   isInitial: boolean;
   onCellPress: (row: number, col: number) => void;
+  // performance.now() when the board started appearing
+  revealStart: number;
 };
 
 export const CellContainer = memo<CellContainerProps>(
@@ -30,14 +32,17 @@ export const CellContainer = memo<CellContainerProps>(
     highlightedNumber,
     isInitial,
     onCellPress,
+    revealStart,
   }) => {
-    const isSelected = useDerivedValue(() => {
-      return (
-        selectedCell.get().row === rowIndex &&
-        selectedCell.get().col === colIndex &&
-        highlightedNumber.get() === 0
-      );
-    }, [rowIndex, colIndex, selectedCell, highlightedNumber]);
+    // Rows are mounted one per frame (see SudokuBoard), so the time since the
+    // reveal started comes off the delay: the cascade keeps its timing. Built
+    // once, so re-renders don't hand the cell a new entering object.
+    const [entering] = useState(() => {
+      const elapsed = performance.now() - revealStart;
+      return FadeIn.delay(
+        Math.max(0, (rowIndex + colIndex) * 75 - elapsed),
+      ).duration(350);
+    });
 
     const handlePress = useCallback(() => {
       onCellPress(rowIndex, colIndex);
@@ -55,13 +60,16 @@ export const CellContainer = memo<CellContainerProps>(
 
     return (
       <Cell
+        rowIndex={rowIndex}
+        colIndex={colIndex}
         value={value}
-        isSelected={isSelected}
+        selectedCell={selectedCell}
         highlightedNumber={highlightedNumber}
         isBorderRight={isBorderRight}
         isBorderBottom={isBorderBottom}
         isInitial={isInitial}
         onPress={handlePress}
+        entering={entering}
       />
     );
   },
