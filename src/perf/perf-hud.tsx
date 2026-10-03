@@ -22,7 +22,7 @@ const FRAME_MS = 1000 / 60;
 // A frame counts as dropped once it takes longer than one and a half refresh
 // intervals; each extra interval it spans is one dropped frame.
 const DROP_THRESHOLD_MS = FRAME_MS * 1.5;
-const SETTLE_MS = 800;
+const SETTLE_MS = 2500;
 // Counting stops after this window, so whatever runs after a scripted
 // interaction (an accessibility-tree read, a screenshot) is not counted.
 const WINDOW_MS = 8000;
