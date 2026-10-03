@@ -1,14 +1,32 @@
 import { memo, useMemo } from 'react';
 
 import Animated, {
-  FadeIn,
   FadeOut,
   LayoutAnimationConfig,
   LinearTransition,
+  withSpring,
 } from 'react-native-reanimated';
 
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
-import type { AnimatedStyle } from 'react-native-reanimated';
+import type {
+  AnimatedStyle,
+  EntryExitAnimationFunction,
+} from 'react-native-reanimated';
+
+const CharacterSpringConfig = { mass: 0.3, damping: 12, stiffness: 80 };
+
+// Each character springs in from half size. Reanimated 4.5's FadeIn keeps only
+// the opacity of withInitialValues, so the scale needs its own animation.
+const CharacterEntering: EntryExitAnimationFunction = () => {
+  'worklet';
+  return {
+    initialValues: { opacity: 0, transform: [{ scale: 0.5 }] },
+    animations: {
+      opacity: withSpring(1, CharacterSpringConfig),
+      transform: [{ scale: withSpring(1, CharacterSpringConfig) }],
+    },
+  };
+};
 
 type ComposableTextProps = {
   text: string;
@@ -41,15 +59,7 @@ export const ComposableText = memo(
             return (
               <Animated.Text
                 key={buildKeys[index]}
-                entering={FadeIn.duration(200)
-                  // Reanimated 4.5 types FadeIn's initial values as opacity
-                  // only; the scale is still applied at runtime.
-                  // @ts-expect-error see above
-                  .withInitialValues({ transform: [{ scale: 0.5 }] })
-                  .springify()
-                  .mass(0.3)
-                  .damping(12)
-                  .stiffness(80)}
+                entering={CharacterEntering}
                 exiting={FadeOut.duration(200)}
                 layout={LinearTransition.springify()
                   .mass(0.3)

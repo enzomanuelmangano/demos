@@ -22,7 +22,7 @@
         "date-fns": "^4.1.0",
         "expo": "~57.0.26",
         "expo-asset": "~57.0.18",
-        "expo-blur": "~57.0.3",
+        "expo-blur": "57.0.3",
         "expo-build-properties": "~57.0.22",
         "expo-constants": "~57.0.20",
         "expo-dev-client": "~57.0.19",
@@ -105,13 +105,11 @@
       },
     },
   },
-  "trustedDependencies": [
-    "react-native-skia",
-  ],
   "patchedDependencies": {
     "expo-blur@57.0.3": "patches/expo-blur@57.0.3.patch",
     "react-native-ios-utilities@5.2.0": "patches/react-native-ios-utilities@5.2.0.patch",
     "react-native-skia-gesture@0.4.5-beta.1": "patches/react-native-skia-gesture@0.4.5-beta.1.patch",
+    "expo-modules-jsi@57.1.1": "patches/expo-modules-jsi@57.1.1.patch",
     "react-native-chessboard@0.2.0": "patches/react-native-chessboard@0.2.0.patch",
   },
   "overrides": {
