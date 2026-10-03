@@ -3,8 +3,8 @@ import { Dimensions, StyleSheet, View } from 'react-native';
 import { PressableWithoutFeedback } from 'pressto';
 import {
   useAnimatedReaction,
+  useFrameCallback,
   useSharedValue,
-  withSpring,
 } from 'react-native-reanimated';
 import {
   BlurMask,
@@ -16,6 +16,11 @@ import {
   vec,
 } from 'react-native-skia';
 
+import {
+  createSpringArrayState,
+  retargetSpringArray,
+  stepSpringArray,
+} from './spring-array';
 import { logarithmicSpiral } from './utils';
 
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
@@ -50,18 +55,37 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
 
   const angle = useSharedValue(Math.PI / 2);
 
-  // Every circle's coordinates, flattened as [x0, y0, x1, y1, ...], in one
-  // shared value. Reanimated springs each element of an animated array on
-  // its own, exactly as it springs each key of an {x, y} object, so the
-  // motion is the same as one shared value per circle, without ~1700 shared
-  // values to update and read every frame.
-  const spiralCoordinates = useSharedValue(spiralPositions(angle.get()));
+  // Every circle's coordinates, flattened as [x0, y0, x1, y1, ...], sprung
+  // together toward the spiral for the new angle. spring-array.ts steps them
+  // exactly as withSpring(TimingConfig) steps each coordinate, in one frame
+  // callback instead of ~3400 animation objects, and stops once they rest.
+  const springs = useSharedValue(
+    createSpringArrayState(spiralPositions(angle.get())),
+  );
+  // Bumped on every stepped frame so the path rebuilds.
+  const frame = useSharedValue(0);
+
+  useFrameCallback(({ timestamp }) => {
+    'worklet';
+    const state = springs.get();
+    if (!state.running) {
+      // At rest: nothing to step, and the path is left as it is.
+      return;
+    }
+    stepSpringArray(state, timestamp);
+    frame.set(frame.get() + 1);
+  });
 
   useAnimatedReaction(
     () => angle.get(),
-    newAngle => {
-      spiralCoordinates.set(
-        withSpring(spiralPositions(newAngle), TimingConfig),
+    (newAngle, previousAngle) => {
+      if (previousAngle === null) {
+        return;
+      }
+      retargetSpringArray(
+        springs.get(),
+        spiralPositions(newAngle),
+        TimingConfig.duration,
       );
     },
   );
@@ -69,7 +93,8 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
   const path = usePathValue(skPath => {
     'worklet';
 
-    const coordinates = spiralCoordinates.get();
+    frame.get();
+    const coordinates = springs.get().current;
     for (let index = 0; index < spiralCircleCount; index++) {
       const x = coordinates[index * 2];
       const y = coordinates[index * 2 + 1];
