@@ -36,6 +36,40 @@ const INITIAL_MAGICAL_MUL = (MAX_MAGICAL_MUL + MIN_MAGICAL_MUL) / 2;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CANVAS_SIZE = SCREEN_WIDTH;
 
+// This shader is deeeeeply inspired by: https://x.com/XorDev/status/1475524322785640455?s=20
+// This guy is amazing and honestly without his code this animation wouldn't exist.
+//
+// The effect is compiled once. N, the time and the multiplier are uniforms:
+// SkSL loops need a constant bound, so the loop runs up to the maximum and
+// stops after N iterations, exactly as `i < N` did when N was baked into the
+// source (which recompiled the shader on every frame).
+const FibonacciEffect = Skia.RuntimeEffect.Make(`
+  uniform float iTime;
+  uniform float N;
+  uniform float magicalMul;
+
+  const vec2 iResolution = vec2(${CANVAS_SIZE}, ${CANVAS_SIZE});
+  const float MAX_N = ${Math.ceil(MAX_CIRCLES_AMOUNT).toFixed(1)};
+
+  vec4 main(vec2 FC) {
+    vec4 o = vec4(0, 0, 0, 1);
+    vec2 p = vec2(0);
+    vec2 c = p;
+    vec2 u = FC.xy * 2.0 - iResolution.xy;
+    float a;
+
+    for (float i = 0.0; i < MAX_N; i++) {
+      if (i >= N) {
+        break;
+      }
+      a = i / (N * 0.5) - 1.0;
+      p = cos(i * magicalMul + iTime + vec2(0, 11)) * sqrt(1.0 - a * a);
+      c = u / iResolution.y + vec2(p.x, a) / (p.y + 2.0);
+      o += (cos(i + vec4(0, 2, 4, 0)) + 1.0) / dot(c, c) * (1.0 - p.y) / (N * 75.0); // Play with this 75.0
+    }
+    return o;
+  }`)!;
+
 const FibonacciShaderGrid = () => {
   // N is the amount of circles
   const n = useSharedValue(INITIAL_CIRCLES_AMOUNT);
@@ -45,41 +79,12 @@ const FibonacciShaderGrid = () => {
 
   const iTime = useSharedValue(0.0);
 
-  const dynamicSource = useDerivedValue(() => {
-    // WHAT IS THIS!!!
-    // With RN Skia you can actually parametrize the values and then pass them to the Shader uniforms.
-    // So why did I create the shader as a parametrized string?
-
-    // The main issue I had was with the "N":
-    // const float N.
-    // This value needs to be const because it's used in a loop (these are shader rules)
-    // But if we accept N as a uniform, it can't be used anymore in the loop.
-    // To avoid this issue I'm recomputing the shader as a Reanimated Shared Value of type string.
-    // Am I sure about this approach? Not at all 👀
-
-    // This shader is deeeeeply inspired by: https://x.com/XorDev/status/1475524322785640455?s=20
-    // This guy is amazing and honestly without his code this animation wouldn't exist.
-    return Skia.RuntimeEffect.Make(`
-      const vec2 iResolution = vec2(${CANVAS_SIZE}, ${CANVAS_SIZE});
-      const float iTime = ${iTime.get()};
-      const float N = ${n.get()};
-
-      vec4 main(vec2 FC) {
-        vec4 o = vec4(0, 0, 0, 1); 
-        vec2 p = vec2(0);
-        vec2 c = p ;
-        vec2 u = FC.xy * 2.0 - iResolution.xy;
-        float a;
-
-        for (float i = 0.0; i < N; i++) {
-
-          a = i / (N * 0.5) - 1.0;
-          p = cos(i * ${magicalMul.get()} + iTime + vec2(0, 11)) * sqrt( 1.0 - a * a);
-          c = u / iResolution.y + vec2(p.x, a) / (p.y + 2.0); 
-          o += (cos(i + vec4(0, 2, 4, 0)) + 1) / dot(c, c) * (1.0 - p.y) / (N * 75.0); // Play with this 75.0
-        }
-        return o;
-      }`)!;
+  const uniforms = useDerivedValue(() => {
+    return {
+      iTime: iTime.get(),
+      N: n.get(),
+      magicalMul: magicalMul.get(),
+    };
   }, []);
 
   useEffect(() => {
@@ -125,7 +130,7 @@ const FibonacciShaderGrid = () => {
               </Circle>
             }>
             <Rect x={0} y={0} width={CANVAS_SIZE} height={CANVAS_SIZE}>
-              <Shader source={dynamicSource} />
+              <Shader source={FibonacciEffect} uniforms={uniforms} />
             </Rect>
           </Mask>
         </Canvas>

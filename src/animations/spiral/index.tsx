@@ -1,10 +1,7 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { useMemo } from 'react';
-
 import { PressableWithoutFeedback } from 'pressto';
 import {
-  makeMutable,
   useAnimatedReaction,
   useSharedValue,
   withSpring,
@@ -12,9 +9,7 @@ import {
 import {
   BlurMask,
   Canvas,
-  Extrapolate,
   Group,
-  interpolate,
   Path,
   SweepGradient,
   usePathValue,
@@ -23,11 +18,20 @@ import {
 
 import { logarithmicSpiral } from './utils';
 
-import type { SharedValue } from 'react-native-reanimated';
-
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 const spiralCircleCount = Math.floor(windowHeight * 1.8);
+const spiralPositions = (angle: number) => {
+  'worklet';
+  const positions: number[] = new Array(spiralCircleCount * 2);
+  for (let index = 0; index < spiralCircleCount; index++) {
+    const { x, y } = logarithmicSpiral({ angle, index });
+    positions[index * 2] = x;
+    positions[index * 2 + 1] = y;
+  }
+  return positions;
+};
+
 const TimingConfig = {
   duration: 3000,
   dampingRatio: 1,
@@ -46,51 +50,39 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
 
   const angle = useSharedValue(Math.PI / 2);
 
-  const spiralCoordinates = useMemo(() => {
-    const coordinates: SharedValue<{ x: number; y: number }>[] = [];
-    for (let index = 0; index < spiralCircleCount; index++) {
-      const coordinate = makeMutable(
-        logarithmicSpiral({
-          angle: angle.get(),
-          index,
-        }),
-      );
-      coordinates.push(coordinate);
-    }
-    return coordinates;
-  }, [angle]);
+  // Every circle's coordinates, flattened as [x0, y0, x1, y1, ...], in one
+  // shared value. Reanimated springs each element of an animated array on
+  // its own, exactly as it springs each key of an {x, y} object, so the
+  // motion is the same as one shared value per circle, without ~1700 shared
+  // values to update and read every frame.
+  const spiralCoordinates = useSharedValue(spiralPositions(angle.get()));
 
   useAnimatedReaction(
     () => angle.get(),
     newAngle => {
-      for (let index = 0; index < spiralCircleCount; index++) {
-        spiralCoordinates[index].set(
-          withSpring(
-            logarithmicSpiral({
-              angle: newAngle,
-              index,
-            }),
-            TimingConfig,
-          ),
-        );
-      }
+      spiralCoordinates.set(
+        withSpring(spiralPositions(newAngle), TimingConfig),
+      );
     },
   );
 
   const path = usePathValue(skPath => {
     'worklet';
 
+    const coordinates = spiralCoordinates.get();
     for (let index = 0; index < spiralCircleCount; index++) {
-      const { x, y } = spiralCoordinates[index].get();
+      const x = coordinates[index * 2];
+      const y = coordinates[index * 2 + 1];
 
       const distanceFromCenter = Math.sqrt(x ** 2 + y ** 2);
 
-      const radius = interpolate(
-        distanceFromCenter,
-        [0, MAX_DISTANCE_FROM_CENTER],
-        [1.2, 0.2],
-        Extrapolate.CLAMP,
+      // interpolate(distance, [0, max], [1.2, 0.2], CLAMP), inlined so the
+      // loop allocates nothing per circle.
+      const progress = Math.min(
+        Math.max(distanceFromCenter / MAX_DISTANCE_FROM_CENTER, 0),
+        1,
       );
+      const radius = 1.2 - progress;
 
       skPath.addCircle(x, y, radius);
     }

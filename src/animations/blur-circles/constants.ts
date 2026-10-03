@@ -1,6 +1,6 @@
 import { Dimensions } from 'react-native';
 
-import { createNoise2D } from 'simplex-noise';
+import { createNoiseTables } from './worklet-noise';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const center = {
@@ -11,8 +11,10 @@ const center = {
 const FREQUENCY = 1800;
 const A = 30;
 
-const noise2D = createNoise2D();
-const secondNoise2D = createNoise2D();
+// Permutation tables for the two noise fields; noise2D() in worklet-noise.ts
+// evaluates them on the UI thread.
+const noiseTables = createNoiseTables();
+const secondNoiseTables = createNoiseTables();
 const RADIUS = 80;
 
-export { center, FREQUENCY, A, noise2D, secondNoise2D, RADIUS };
+export { center, FREQUENCY, A, noiseTables, secondNoiseTables, RADIUS };

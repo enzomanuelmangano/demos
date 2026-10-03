@@ -18,7 +18,13 @@ import {
   vec,
 } from 'react-native-skia';
 
-import { A, FREQUENCY, noise2D, RADIUS, secondNoise2D } from './constants';
+import {
+  A,
+  FREQUENCY,
+  noiseTables,
+  RADIUS,
+  secondNoiseTables,
+} from './constants';
 import { useVec } from './hooks/use-vec';
 
 export const BlurCircles = () => {
@@ -42,7 +48,7 @@ export const BlurCircles = () => {
     clock,
     frequency: FREQUENCY,
     amplitude: A,
-    noise: noise2D,
+    noise: noiseTables,
   });
 
   // As you can see, I've chosen different frequencies and
@@ -53,7 +59,7 @@ export const BlurCircles = () => {
     clock,
     frequency: FREQUENCY * 2,
     amplitude: A * 3,
-    noise: secondNoise2D,
+    noise: secondNoiseTables,
   });
 
   // This is the clip path of the blurred circle.
