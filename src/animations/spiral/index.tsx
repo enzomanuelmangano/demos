@@ -7,11 +7,12 @@ import {
   useSharedValue,
 } from 'react-native-reanimated';
 import {
-  BlurMask,
   Canvas,
   Group,
   Path,
+  Skia,
   SweepGradient,
+  TileMode,
   usePathValue,
   vec,
 } from 'react-native-skia';
@@ -36,6 +37,18 @@ const spiralPositions = (angle: number) => {
   }
   return positions;
 };
+
+// The glow of BlurMask(blur 5, "solid"): the sharp circles drawn over their
+// blurred copy. A mask filter makes Skia rasterize and blur the coverage of
+// all ~1500 circles on the CPU every frame; as a layer filter the blur runs on
+// the GPU over the already drawn layer.
+const glowPaint = Skia.Paint();
+glowPaint.setImageFilter(
+  Skia.ImageFilter.MakeMerge([
+    Skia.ImageFilter.MakeBlur(5, 5, TileMode.Decal, null),
+    null,
+  ]),
+);
 
 const TimingConfig = {
   duration: 3000,
@@ -119,6 +132,7 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
     <View style={{ flex: 1 }}>
       <Canvas style={{ flex: 1, backgroundColor: '#010101' }}>
         <Group
+          layer={glowPaint}
           transform={[
             {
               translateX: width / 2,
@@ -132,7 +146,6 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
             c={vec(0, 0)}
             colors={['cyan', 'magenta', 'yellow', 'cyan']}
           />
-          <BlurMask blur={5} style="solid" />
         </Group>
       </Canvas>
       <PressableWithoutFeedback

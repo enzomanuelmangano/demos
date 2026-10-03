@@ -4,11 +4,13 @@ import Animated, {
   useDerivedValue,
 } from 'react-native-reanimated';
 import {
-  BlurMask,
+  Blur,
   Canvas,
   Extrapolate,
+  Fill,
   Group,
   LinearGradient,
+  Paint,
   RoundedRect,
   interpolate,
 } from 'react-native-skia';
@@ -98,19 +100,34 @@ const BlurredItem: React.FC<BlurredItemProps> = ({
             x: width / 2,
             y: 0,
           }}>
-          <RoundedRect
-            x={horizontalPadding / 2}
-            y={verticalPadding / 2}
-            width={width - horizontalPadding}
-            height={blurredItemContainerHeight - verticalPadding}
-            r={20}>
+          {/* A BlurMask whose sigma changes every frame made Skia rebuild the
+              blurred rrect mask on the CPU for every new sigma. Blurring a
+              white rrect in a layer (GPU blur) and painting the gradient
+              over it with srcIn gives the same picture: gradient colour,
+              blurred coverage. The canvas is transparent, so srcIn only
+              keeps what the layer drew. */}
+          <Group
+            layer={
+              <Paint>
+                <Blur blur={blur} />
+              </Paint>
+            }>
+            <RoundedRect
+              x={horizontalPadding / 2}
+              y={verticalPadding / 2}
+              width={width - horizontalPadding}
+              height={blurredItemContainerHeight - verticalPadding}
+              r={20}
+              color="white"
+            />
+          </Group>
+          <Fill blendMode="srcIn">
             <LinearGradient
               start={{ x: 0, y: 0 }}
               end={{ x: width, y: blurredItemContainerHeight }}
               colors={['#9459F4', '#3411E4']}
             />
-          </RoundedRect>
-          <BlurMask blur={blur} />
+          </Fill>
         </Group>
       </Canvas>
     </Animated.View>

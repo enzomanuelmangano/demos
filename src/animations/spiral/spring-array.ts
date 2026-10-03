@@ -38,17 +38,21 @@ const getEnergy = (displacement: number, velocity: number, k: number) => {
 };
 
 // calculateNewStiffnessToMatchDuration + bisectRoot, for dampingRatio 1.
+// It visits exactly the same midpoints and returns the same stiffness, but
+// evaluates the energy once per midpoint instead of twice: a retarget
+// mid-flight runs this for thousands of coordinates in a single frame.
 const solveStiffness = (x0: number, v0: number, durationMs: number) => {
   'worklet';
   const settlingDuration = (durationMs * PERCEPTUAL_COEFFICIENT) / 1000;
+  const halfMassV0Squared = 0.5 * MASS * v0 ** 2;
+  const x0Squared = x0 ** 2;
   const energyDiff = (stiffness: number) => {
     const omega0 = Math.sqrt(stiffness / MASS);
     const envelope = Math.exp(-omega0 * settlingDuration);
-    const xtk = (x0 + (v0 + x0 * omega0) * settlingDuration) * envelope;
-    const vtk =
-      (x0 + (v0 + x0 * omega0) * settlingDuration) * envelope * -omega0 +
-      (v0 + x0 * omega0) * envelope;
-    const e0 = getEnergy(x0, v0, stiffness);
+    const a = v0 + x0 * omega0;
+    const xtk = (x0 + a * settlingDuration) * envelope;
+    const vtk = xtk * -omega0 + a * envelope;
+    const e0 = 0.5 * stiffness * x0Squared + halfMassV0Squared;
     const etk = getEnergy(xtk, vtk, stiffness);
     return etk / e0 - ENERGY_THRESHOLD;
   };
@@ -57,11 +61,14 @@ const solveStiffness = (x0: number, v0: number, durationMs: number) => {
   let min = Number.EPSILON;
   let max = 8e3;
   const direction = energyDiff(max) >= energyDiff(min) ? 1 : -1;
-  let iterations = 100;
   let current = (max + min) / 2;
-  while (Math.abs(energyDiff(current)) > precision && iterations > 0) {
-    iterations -= 1;
-    if (energyDiff(current) * direction < 0) {
+  for (let iterations = 100; iterations > 0; iterations--) {
+    const diff = energyDiff(current);
+    // Written as !(a > b) so a NaN (x0 = v0 = 0) stops, as bisectRoot does.
+    if (!(Math.abs(diff) > precision)) {
+      break;
+    }
+    if (diff * direction < 0) {
       min = current;
     } else {
       max = current;
