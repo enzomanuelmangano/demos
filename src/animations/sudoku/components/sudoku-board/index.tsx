@@ -47,6 +47,9 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
   ({ initialBoard, delay = 0, onComplete }, ref) => {
     const [game] = useState(() => new SudokuGame(initialBoard));
     const [board, setBoard] = useState(() => game.getBoard());
+    // The givens never change for a game: read them once instead of handing
+    // every cell a fresh 9x9 copy per render (which defeated CellContainer's memo)
+    const [givens] = useState(() => game.getInitialBoard());
     const selectedCell = useSharedValue(game.getSelectedCell());
     const highlightedNumber = useSharedValue(game.getHighlightedNumber());
 
@@ -120,10 +123,9 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
                 rowIndex={rowIndex}
                 colIndex={colIndex}
                 value={value}
-                board={board}
                 selectedCell={selectedCell}
                 highlightedNumber={highlightedNumber}
-                initialBoard={game.getInitialBoard()}
+                isInitial={givens[rowIndex][colIndex] !== null}
                 onCellPress={handleCellPress}
               />
             </Animated.View>
@@ -135,7 +137,7 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
       board,
       selectedCell,
       highlightedNumber,
-      game,
+      givens,
       handleCellPress,
     ]);
 

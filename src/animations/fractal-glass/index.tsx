@@ -63,10 +63,14 @@ const App = () => {
     };
   }, [theme]);
 
+  // Transforms over a static left/top: 0 give the same hit area as
+  // animating left/top, without a layout pass on every pan event
   const rFakeCircleStyle = useAnimatedStyle(() => {
     return {
-      left: cx.get() - CircleRadius,
-      top: cy.get() - CircleRadius,
+      transform: [
+        { translateX: cx.get() - CircleRadius },
+        { translateY: cy.get() - CircleRadius },
+      ],
     };
   }, []);
 
@@ -78,6 +82,8 @@ const App = () => {
             rFakeCircleStyle,
             {
               position: 'absolute',
+              left: 0,
+              top: 0,
               height: CircleRadius * 2,
               width: CircleRadius * 2,
               borderRadius: CircleRadius,

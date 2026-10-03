@@ -1,8 +1,4 @@
-import {
-  generateWaveform,
-  normalizeArray,
-  pickNValuesFromArray,
-} from './helpers';
+import { normalizeArray, pickNValuesFromDistribution } from './helpers';
 
 const Palette = {
   primary: '#474069',
@@ -17,16 +13,19 @@ const Palette = {
 // - src/helpers/normalize-array.ts
 // - src/helpers/convert-array-to-string.ts
 
-const sampleRate = 44100;
-const frequency = 440;
 const DURATION = 22.0;
 
-const waveform = generateWaveform(sampleRate, frequency, DURATION);
+// generateWaveform(44100, 440, DURATION) is a pure sine: 970k samples whose
+// mean is 0 and standard deviation is 1/√2. Only those two numbers were used,
+// so pass them directly instead of building (and reducing twice) the array at
+// app launch (every demo module is evaluated at startup).
+const SINE_MEAN = 0;
+const SINE_STD_DEV = Math.SQRT1_2;
 
 const N_SAMPLES = 50;
 
 const waveformSamples = normalizeArray(
-  pickNValuesFromArray(waveform, N_SAMPLES),
+  pickNValuesFromDistribution(SINE_MEAN, SINE_STD_DEV, N_SAMPLES),
 );
 
 export { Palette, waveformSamples, DURATION };

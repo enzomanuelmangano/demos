@@ -25,16 +25,18 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
       };
     });
 
+    // scaleX instead of a `width` percentage: the parent clips the bar, so
+    // the result is identical but scrolling no longer triggers a layout pass.
     const rProgressBarAnimatedStyle = useAnimatedStyle(() => {
-      const width = interpolate(
+      const scaleX = interpolate(
         progress.get(),
         [0, 1],
-        [0, 100],
+        [0, 1],
         Extrapolation.CLAMP,
       );
 
       return {
-        width: `${width}%`,
+        transform: [{ scaleX }],
       };
     });
 
@@ -86,6 +88,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
               {
                 ...StyleSheet.absoluteFill,
                 backgroundColor: '#9E9E9E',
+                transformOrigin: 'left',
               },
               rProgressBarAnimatedStyle,
             ]}

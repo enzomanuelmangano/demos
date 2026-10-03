@@ -1,11 +1,12 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
 
+import { useMemo } from 'react';
+
 import Animated, {
   Extrapolation,
   interpolate,
   useAnimatedScrollHandler,
   useAnimatedStyle,
-  useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
 
@@ -30,6 +31,17 @@ const ListMarginTop = 70;
 // Feel free to change it to see the difference
 const NiceOffset = 80;
 
+// visibleAmount at which the (extended) opacity reaches 1:
+// 0.7 at FullListItemHeight, +0.3 per 2/3 * FullListItemHeight
+const FullyVisibleAmount = FullListItemHeight + (FullListItemHeight * 2) / 3;
+
+// Used while an item is invisible (opacity <= 0). Its transform doesn't
+// matter then; a constant object lets Reanimated skip the update.
+const HiddenStyle = {
+  opacity: 0,
+  transform: [{ translateY: 0 }, { scale: 0.6 }],
+};
+
 // Get screen dimensions
 const { height: ScreenHeight, width: ScreenWidth } = Dimensions.get('window');
 
@@ -52,11 +64,22 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
   // Basically the point where I'm expecting the animation to start
   const BottomThreshold = ScreenHeight - ListMarginTop - NiceOffset;
 
-  // This function calculates the visible amount of an item on the screen based on its position and the scroll offset.
-  // It utilizes the interpolate function from Reanimated to map the input range to the output range
-  const visibleAmount = useDerivedValue(() => {
-    // Calculate the distance between the top of the item and the bottom of the screen after scrolling
+  // Once an item is far enough above the stack, every value is clamped
+  // (opacity >= 1): reusing the same object lets Reanimated skip the update.
+  const fullyVisibleStyle = useMemo(
+    () => ({
+      opacity: 1,
+      transform: [{ translateY: baseTranslateY }, { scale: 1 }],
+    }),
+    [baseTranslateY],
+  );
 
+  // Animated style for the item.
+  // Everything is computed in this single worklet (instead of three derived
+  // values + the style) to run 1 mapper per item per frame instead of 4.
+  const rContainerStyle = useAnimatedStyle(() => {
+    // This calculates the visible amount of an item on the screen based on its position and the scroll offset.
+    // Calculate the distance between the top of the item and the bottom of the screen after scrolling
     const distanceFromTop =
       scrollOffset.get() + BottomThreshold - baseTranslateY;
 
@@ -69,20 +92,22 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
     // I want values to get a negative amount based on the distance from the item and the ScreenHeight
     // The point is that I'm going to use this value to evaluate the opacity and I want that the opacity
     // decreases when the item is going to disappear from the screen
-
-    return interpolate(
+    const visibleAmount = interpolate(
       distanceFromTop,
       [0, FullListItemHeight], // Input range: [0, FullListItemHeight]
       [0, FullListItemHeight], // Output range: [0, FullListItemHeight]
       // You can set .CLAMP to see the difference
       Extrapolation.EXTEND, // Extrapolate values outside the input range
     );
-  }, []);
 
-  // Derived value for the real translateY of the item
-  const realTranslateY = useDerivedValue(() => {
-    return interpolate(
-      visibleAmount.get(),
+    // Opacity reaches 0 at -FullListItemHeight: the item is invisible
+    if (visibleAmount <= -FullListItemHeight) return HiddenStyle;
+    // Opacity reaches 1 at FullListItemHeight + 73.3: nothing changes anymore
+    if (visibleAmount >= FullyVisibleAmount) return fullyVisibleStyle;
+
+    // The real translateY of the item
+    const realTranslateY = interpolate(
+      visibleAmount,
       [0, FullListItemHeight],
       [
         scrollOffset.get() + BottomThreshold - FullListItemHeight,
@@ -90,23 +115,18 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
       ],
       Extrapolation.CLAMP,
     );
-  }, []);
 
-  // Derived value for the scale of the item
-  const scale = useDerivedValue(() => {
-    return interpolate(
-      visibleAmount.get(),
+    // The scale of the item
+    const scale = interpolate(
+      visibleAmount,
       [0, FullListItemHeight],
       [0.6, 1],
       Extrapolation.CLAMP,
     );
-  }, [baseTranslateY]);
 
-  // Animated style for the item
-  const rContainerStyle = useAnimatedStyle(() => {
     return {
       opacity: interpolate(
-        visibleAmount.get(),
+        visibleAmount,
         [0, FullListItemHeight / 3, FullListItemHeight],
         // The opacity will be 0.7 when the item is fully visible
         // That's why I'm multiplying the "NiceOffset" by 1.5 (look at the FlatList contentContainerStyle)
@@ -117,14 +137,14 @@ const ListItem: React.FC<ListItemProps> = ({ index, scrollOffset }) => {
       ),
       transform: [
         {
-          translateY: realTranslateY.get(),
+          translateY: realTranslateY,
         },
         {
-          scale: scale.get(),
+          scale: scale,
         },
       ],
     };
-  }, []);
+  }, [fullyVisibleStyle]);
 
   // Render the item
   return (

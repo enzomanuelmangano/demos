@@ -11,6 +11,51 @@ import { useBoxWidths } from './use-text-widths';
 // - The path is updated whenever the active tab changes.
 // - The hook returns the animated values and the path for use in components.
 
+// The animated x of the tab's box. The text only needs this value, so it
+// uses this hook instead of building (and measuring) its own copy of the path.
+export const useAnimatedBoxX = ({
+  tabs,
+  activeTabIndex,
+  index,
+  internalBoxPadding,
+  horizontalTabsPadding,
+}: {
+  tabs: readonly string[];
+  activeTabIndex: number;
+  index: number;
+  internalBoxPadding: number;
+  horizontalTabsPadding: number;
+}) => {
+  const translateX = useDerivedValue(() => {
+    if (index >= activeTabIndex + 1) {
+      return 10;
+    }
+    if (index <= activeTabIndex - 1) {
+      return -10;
+    }
+    return 0;
+  }, [activeTabIndex, index]);
+
+  const animatedTranslateX = useDerivedValue(() => {
+    return withTiming(translateX.get());
+  }, [translateX]);
+
+  const { textWidths, getPreviousBoxWidth } = useBoxWidths({
+    tabs,
+    internalBoxPadding,
+  });
+
+  const boxX = useDerivedValue(() => {
+    return (
+      getPreviousBoxWidth(index) +
+      animatedTranslateX.get() +
+      horizontalTabsPadding
+    );
+  }, [index]);
+
+  return { boxX, textWidths };
+};
+
 export const useAnimatedPathData = ({
   tabs,
   activeTabIndex,
@@ -33,23 +78,12 @@ export const useAnimatedPathData = ({
     [isActiveTab],
   );
 
-  const translateX = useDerivedValue(() => {
-    if (index >= activeTabIndex + 1) {
-      return 10;
-    }
-    if (index <= activeTabIndex - 1) {
-      return -10;
-    }
-    return 0;
-  }, [activeTabIndex, index]);
-
-  const animatedTranslateX = useDerivedValue(() => {
-    return withTiming(translateX.get());
-  }, [translateX]);
-
-  const { textWidths, getPreviousBoxWidth } = useBoxWidths({
+  const { boxX, textWidths } = useAnimatedBoxX({
     tabs,
+    activeTabIndex,
+    index,
     internalBoxPadding,
+    horizontalTabsPadding,
   });
 
   const skPath = useDerivedValue(() => {
@@ -58,9 +92,7 @@ export const useAnimatedPathData = ({
     builder.addRRect(
       rrect(
         rect(
-          getPreviousBoxWidth(index) +
-            animatedTranslateX.get() +
-            horizontalTabsPadding,
+          boxX.get(),
           0,
           textWidths[index] + internalBoxPadding * 2,
           pathHeight,

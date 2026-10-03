@@ -8,17 +8,16 @@ import { useDerivedValue } from 'react-native-reanimated';
 
 import { Cell } from './cell';
 
-import type { CellValue, SudokuBoard } from '../../logic';
+import type { CellValue } from '../../logic';
 import type { SharedValue } from 'react-native-reanimated';
 
 export type CellContainerProps = {
   rowIndex: number;
   colIndex: number;
   value: CellValue;
-  board: SudokuBoard;
   selectedCell: SharedValue<{ row: number; col: number }>;
   highlightedNumber: SharedValue<number>;
-  initialBoard: SudokuBoard;
+  isInitial: boolean;
   onCellPress: (row: number, col: number) => void;
 };
 
@@ -27,20 +26,18 @@ export const CellContainer = memo<CellContainerProps>(
     rowIndex,
     colIndex,
     value,
-    board,
     selectedCell,
     highlightedNumber,
-    initialBoard,
+    isInitial,
     onCellPress,
   }) => {
     const isSelected = useDerivedValue(() => {
       return (
         selectedCell.get().row === rowIndex &&
         selectedCell.get().col === colIndex &&
-        board[rowIndex][colIndex] === value &&
         highlightedNumber.get() === 0
       );
-    }, [rowIndex, colIndex, value, board, selectedCell, highlightedNumber]);
+    }, [rowIndex, colIndex, selectedCell, highlightedNumber]);
 
     const handlePress = useCallback(() => {
       onCellPress(rowIndex, colIndex);
@@ -54,11 +51,6 @@ export const CellContainer = memo<CellContainerProps>(
     const isBorderBottom = useMemo(
       () => (rowIndex + 1) % 3 === 0 && rowIndex !== 8,
       [rowIndex],
-    );
-
-    const isInitial = useMemo(
-      () => initialBoard[rowIndex][colIndex] !== null,
-      [initialBoard, rowIndex, colIndex],
     );
 
     return (

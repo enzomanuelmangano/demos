@@ -44,7 +44,6 @@ function StoryListItem<T>({
     );
 
     return {
-      left: paddingLeft,
       transform: [
         {
           translateX: translateX,
@@ -60,6 +59,8 @@ function StoryListItem<T>({
         {
           position: 'absolute',
           top: 0,
+          // static: it never changes, no need to return it every scroll frame
+          left: paddingLeft,
           width: itemWidth,
           height: itemHeight,
           zIndex: -index,

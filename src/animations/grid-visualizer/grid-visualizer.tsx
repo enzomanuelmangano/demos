@@ -1,12 +1,11 @@
 import { useMemo, type FC } from 'react';
 
 import {
-  Extrapolation,
-  interpolate,
   makeMutable,
   useAnimatedReaction,
   useDerivedValue,
-  withSpring,
+  useReducedMotion,
+  useSharedValue,
   type SharedValue,
 } from 'react-native-reanimated';
 import {
@@ -125,51 +124,79 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
   //   );
   // }, []);
 
-  // Create an array of individual shared values for progress, one for each square
-  // This follows the spiral pattern of using makeMutable for each element
-  const progressValues = useMemo(() => {
-    const values: SharedValue<number>[] = [];
+  // Every square runs two springs (delay + progress), so 3500 Reanimated
+  // animations ran per frame. Instead, all of them live in typed arrays and
+  // a single UI-thread loop steps them with the exact math of withSpring
+  // (see the spring helpers at the bottom of the file).
+  // The per-square random delays are still the key to the organic look:
+  // the delay spring is never drawn, it is only sampled at the next text change.
+  const springs = useMemo(() => {
+    const initialDelays = new Float64Array(SquaresAmount);
     for (let i = 0; i < SquaresAmount; i++) {
-      values.push(makeMutable(0));
+      initialDelays[i] = Math.random() - 0.5;
     }
-    return values;
+    return makeMutable({
+      delay: createSpringSet(SquaresAmount, initialDelays),
+      progress: createSpringSet(SquaresAmount, new Float64Array(SquaresAmount)),
+      looping: false,
+    });
   }, [SquaresAmount]);
 
-  // Create an array of individual shared values for random delays, one for each square
-  const delayValues = useMemo(() => {
-    const values: SharedValue<number>[] = [];
-    for (let i = 0; i < SquaresAmount; i++) {
-      values.push(makeMutable(Math.random() - 0.5));
-    }
-    return values;
-  }, [SquaresAmount]);
+  // Bumped after every step so the RSXform mapper redraws
+  const frame = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
 
-  // Use animated reaction to update each individual shared value when activeRects changes
-  // This mimics the spiral's pattern of updating individual shared values
   useAnimatedReaction(
     () => activeRects.get(),
     newActiveRects => {
+      const state = springs.get();
+      const now = getAnimationTimestamp();
+
       // First update delay values
       for (let i = 0; i < SquaresAmount; i++) {
         const isActive = newActiveRects[i];
-        delayValues[i].set(
-          withSpring(isActive ? 1 : Math.random() - 0.5, {
-            duration: 2000,
-          }),
+        setSpring(
+          state.delay,
+          i,
+          isActive ? 1 : Math.random() - 0.5,
+          now,
+          DelaySpringConfig,
+          reduceMotion,
         );
       }
 
       // Then update progress values based on delay values
       for (let i = 0; i < SquaresAmount; i++) {
         const isActive = newActiveRects[i];
-        progressValues[i].set(
-          withSpring(isActive ? delayValues[i].get() : 0, {
-            mass: 2,
-            damping: 10,
-            stiffness: 100,
-          }),
+        setSpring(
+          state.progress,
+          i,
+          isActive ? state.delay.current[i] : 0,
+          now,
+          ProgressSpringConfig,
+          reduceMotion,
         );
       }
+
+      frame.set(frame.get() + 1);
+
+      if (state.looping) {
+        return;
+      }
+      state.looping = true;
+      const loop = (timestamp: number) => {
+        const running =
+          stepSprings(state.delay, timestamp, DelaySpringConfig) |
+          stepSprings(state.progress, timestamp, ProgressSpringConfig);
+        frame.set(frame.get() + 1);
+        if (running) {
+          requestAnimationFrame(loop);
+        } else {
+          // Everything is at rest: stop requesting frames
+          state.looping = false;
+        }
+      };
+      requestAnimationFrame(loop);
     },
   );
 
@@ -178,9 +205,8 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
   // The idea is to animate organically the alpha value of the color.
   // The interpolation function is a bit tricky because I just played with the values until I got something that I liked.
   // But the main idea was just to make the squares fade in and fade out.
-  // Now we read from individual shared values instead of a shared value array
   const colors = useMemo(() => {
-    return progressValues.map(() => {
+    return Array.from({ length: SquaresAmount }, () => {
       // const progress = progressValue.value;
       // const alpha = interpolate(
       //   progress,
@@ -190,7 +216,7 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
       // );
       return new Float32Array([1, 1, 1, 0.8]);
     });
-  }, [progressValues]);
+  }, [SquaresAmount]);
 
   // We need to provide a texture to the Atlas (We're just saying that the texture is a white by default)
   const texture = useTexture(<Fill color={'white'} />, {
@@ -218,15 +244,19 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
     const scaledTx = (i % HSquares) * ScaledXSpacing + xScaledOffset;
     const scaledTy = Math.floor(i / HSquares) * ScaledYSpacing + yScaledOffset;
 
-    // Read from individual shared value instead of shared value array
-    const prog = progressValues[i].get();
-    const tx = interpolate(prog, [0, 1], [shrinkedTx, scaledTx]);
-    const ty = interpolate(prog, [0, 1], [shrinkedTy, scaledTy]);
+    // Subscribes the mapper to the spring loop
+    frame.get();
+    const prog = springs.get().progress.current[i];
+    // Inlined interpolate(prog, [0, 1], ...): same math, without allocating
+    // the range arrays 5250 times per frame
+    const tx = shrinkedTx + prog * (scaledTx - shrinkedTx);
+    const ty = shrinkedTy + prog * (scaledTy - shrinkedTy);
 
     const translatedX = tx;
     const translatedY = ty;
 
-    const scale = interpolate(prog, [0, 1], [0.6, 0.85], Extrapolation.CLAMP);
+    // interpolate(prog, [0, 1], [0.6, 0.85], Extrapolation.CLAMP)
+    const scale = Math.min(Math.max(0.6 + prog * (0.85 - 0.6), 0.6), 0.85);
 
     val.set(scale, 0, translatedX, translatedY);
   });
@@ -253,4 +283,294 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
       />
     </Canvas>
   );
+};
+
+// Spring helpers.
+// A line-by-line port of Reanimated's withSpring (onStart + onFrame in
+// react-native-reanimated/src/animation/spring) for numbers, so the motion
+// is identical to the previous per-square withSpring animations.
+
+type SpringConfig = {
+  mass: number;
+  energyThreshold: number;
+  // physics-based config
+  stiffness: number;
+  damping: number;
+  // duration-based config (useDuration)
+  useDuration: boolean;
+  duration: number;
+  dampingRatio: number;
+};
+
+// withSpring(target, { duration: 2000 }), merged with Reanimated's defaults
+const DelaySpringConfig: SpringConfig = {
+  mass: 4,
+  energyThreshold: 6e-9,
+  stiffness: 900,
+  damping: 120,
+  useDuration: true,
+  duration: 2000,
+  dampingRatio: 1,
+};
+
+// withSpring(target, { mass: 2, damping: 10, stiffness: 100 })
+const ProgressSpringConfig: SpringConfig = {
+  mass: 2,
+  energyThreshold: 6e-9,
+  stiffness: 100,
+  damping: 10,
+  useDuration: false,
+  duration: 550,
+  dampingRatio: 1,
+};
+
+type SpringSet = {
+  current: Float64Array;
+  velocity: Float64Array;
+  toValue: Float64Array;
+  startValue: Float64Array;
+  lastTimestamp: Float64Array;
+  startTimestamp: Float64Array;
+  zeta: Float64Array;
+  omega0: Float64Array;
+  omega1: Float64Array;
+  initialEnergy: Float64Array;
+  // config.stiffness after onStart, used by the termination check
+  stiffness: Float64Array;
+  running: Uint8Array;
+};
+
+const createSpringSet = (size: number, initial: Float64Array): SpringSet => ({
+  current: initial,
+  velocity: new Float64Array(size),
+  toValue: new Float64Array(size),
+  startValue: new Float64Array(size),
+  lastTimestamp: new Float64Array(size),
+  startTimestamp: new Float64Array(size),
+  zeta: new Float64Array(size),
+  omega0: new Float64Array(size),
+  omega1: new Float64Array(size),
+  initialEnergy: new Float64Array(size),
+  stiffness: new Float64Array(size),
+  running: new Uint8Array(size),
+});
+
+const getAnimationTimestamp = () => {
+  'worklet';
+  const g = globalThis as unknown as {
+    __frameTimestamp?: number;
+    _getAnimationTimestamp: () => number;
+  };
+  return g.__frameTimestamp || g._getAnimationTimestamp();
+};
+
+const getEnergy = (
+  displacement: number,
+  velocity: number,
+  stiffness: number,
+  mass: number,
+) => {
+  'worklet';
+  return 0.5 * stiffness * displacement ** 2 + 0.5 * mass * velocity ** 2;
+};
+
+const calculateStiffnessToMatchDuration = (
+  x0: number,
+  v0: number,
+  config: SpringConfig,
+) => {
+  'worklet';
+  const { dampingRatio: zeta, energyThreshold: threshold, mass: m } = config;
+  const settlingDuration = (config.duration * 1.5) / 1000;
+
+  const func = (stiffness: number) => {
+    'worklet';
+    const omega0 = Math.sqrt(stiffness / m) * zeta;
+    const xtk =
+      (x0 + (v0 + x0 * omega0) * settlingDuration) *
+      Math.exp(-omega0 * settlingDuration);
+    const vtk =
+      (x0 + (v0 + x0 * omega0) * settlingDuration) *
+        Math.exp(-omega0 * settlingDuration) *
+        -omega0 +
+      (v0 + x0 * omega0) * Math.exp(-omega0 * settlingDuration);
+    const e0 = getEnergy(x0, v0, stiffness, m);
+    const etk = getEnergy(xtk, vtk, stiffness, m);
+    return etk / e0 - threshold;
+  };
+
+  // bisectRoot
+  const precision = threshold * 1e-3;
+  let min = Number.EPSILON;
+  let max = 8e3;
+  const direction = func(max) >= func(min) ? 1 : -1;
+  let idx = 100;
+  let current = (max + min) / 2;
+  while (Math.abs(func(current)) > precision && idx > 0) {
+    idx -= 1;
+    if (func(current) * direction < 0) {
+      min = current;
+    } else {
+      max = current;
+    }
+    current = (min + max) / 2;
+  }
+  return current;
+};
+
+// One frame of springOnFrame. Returns true when the spring came to rest.
+const stepSpring = (
+  s: SpringSet,
+  i: number,
+  now: number,
+  config: SpringConfig,
+) => {
+  'worklet';
+  const toValue = s.toValue[i];
+  const deltaTime = Math.min(Math.max(now - s.lastTimestamp[i], 0), 64);
+  s.lastTimestamp[i] = now;
+
+  const t = deltaTime / 1000;
+  const v0 = s.velocity[i];
+  const x0 = s.current[i] - toValue;
+  const zeta = s.zeta[i];
+  const omega0 = s.omega0[i];
+
+  let position: number;
+  let velocity: number;
+  if (zeta < 1) {
+    const omega1 = s.omega1[i];
+    const sin1 = Math.sin(omega1 * t);
+    const cos1 = Math.cos(omega1 * t);
+    const envelope = Math.exp(-zeta * omega0 * t);
+    const frag1 =
+      envelope * (sin1 * ((v0 + zeta * omega0 * x0) / omega1) + x0 * cos1);
+    position = toValue + frag1;
+    velocity =
+      -zeta * omega0 * frag1 +
+      envelope * (cos1 * (v0 + zeta * omega0 * x0) - omega1 * x0 * sin1);
+  } else {
+    const envelope = Math.exp(-omega0 * t);
+    position = toValue + envelope * (x0 + (v0 + omega0 * x0) * t);
+    velocity =
+      envelope * -omega0 * (x0 + (v0 + omega0 * x0) * t) +
+      envelope * (v0 + omega0 * x0);
+  }
+
+  s.current[i] = position;
+  s.velocity[i] = velocity;
+
+  const initialEnergy = s.initialEnergy[i];
+  const currentEnergy = getEnergy(
+    toValue - position,
+    velocity,
+    s.stiffness[i],
+    config.mass,
+  );
+  if (
+    initialEnergy === 0 ||
+    currentEnergy / initialEnergy <= config.energyThreshold
+  ) {
+    s.velocity[i] = 0;
+    s.current[i] = toValue;
+    s.lastTimestamp[i] = 0;
+    s.running[i] = 0;
+    return true;
+  }
+  return false;
+};
+
+// Equivalent of sharedValue.set(withSpring(toValue, config)):
+// valueSetter + onStart + the immediate first step.
+const setSpring = (
+  s: SpringSet,
+  i: number,
+  toValue: number,
+  now: number,
+  config: SpringConfig,
+  reduceMotion: boolean,
+) => {
+  'worklet';
+  const wasRunning = s.running[i] === 1;
+  const value = s.current[i];
+  // valueSetter skips the animation when the value is already at the target
+  // (and drops the running one)
+  if (value === toValue) {
+    s.running[i] = 0;
+    s.velocity[i] = 0;
+    s.lastTimestamp[i] = 0;
+    return;
+  }
+  if (reduceMotion) {
+    s.current[i] = toValue;
+    s.velocity[i] = 0;
+    s.lastTimestamp[i] = 0;
+    s.running[i] = 0;
+    return;
+  }
+
+  // isTriggeredTwice: same target while the previous spring is still running
+  const triggeredTwice =
+    wasRunning &&
+    s.lastTimestamp[i] !== 0 &&
+    s.startTimestamp[i] !== 0 &&
+    s.toValue[i] === toValue;
+
+  const x0 = triggeredTwice ? s.startValue[i] : value - toValue;
+  s.startValue[i] = x0;
+  s.toValue[i] = toValue;
+
+  let velocity = wasRunning ? s.velocity[i] || 0 : 0;
+  if ((toValue > value && velocity < 0) || (toValue < value && velocity > 0)) {
+    velocity = 0;
+  }
+  s.velocity[i] = velocity;
+
+  let stiffness = config.stiffness;
+  if (!triggeredTwice) {
+    let zeta: number;
+    let omega0: number;
+    if (config.useDuration) {
+      stiffness = calculateStiffnessToMatchDuration(x0, velocity, config);
+      zeta = config.dampingRatio;
+      omega0 = Math.sqrt(stiffness / config.mass);
+    } else {
+      zeta = config.damping / (2 * Math.sqrt(config.stiffness * config.mass));
+      omega0 = Math.sqrt(config.stiffness / config.mass);
+    }
+    s.zeta[i] = zeta;
+    s.omega0[i] = omega0;
+    s.omega1[i] = zeta < 1 ? omega0 * Math.sqrt(1 - zeta ** 2) : 0;
+  }
+  s.stiffness[i] = stiffness;
+  s.initialEnergy[i] = getEnergy(x0, 0, stiffness, config.mass);
+
+  if (!wasRunning || s.lastTimestamp[i] === 0) {
+    s.lastTimestamp[i] = now;
+  }
+  if (!triggeredTwice) {
+    s.startTimestamp[i] = now;
+  }
+  s.running[i] = 1;
+
+  stepSpring(s, i, now, config);
+};
+
+// Steps every running spring of the set. Returns 1 if any is still running.
+const stepSprings = (s: SpringSet, now: number, config: SpringConfig) => {
+  'worklet';
+  let anyRunning = 0;
+  for (let i = 0; i < s.running.length; i++) {
+    // Skip springs started this frame: their first step already ran in setSpring
+    if (s.running[i] === 0 || s.lastTimestamp[i] === now) {
+      if (s.running[i] === 1) {
+        anyRunning = 1;
+      }
+      continue;
+    }
+    if (!stepSpring(s, i, now, config)) {
+      anyRunning = 1;
+    }
+  }
+  return anyRunning;
 };

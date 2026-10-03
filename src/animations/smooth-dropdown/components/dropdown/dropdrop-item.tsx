@@ -71,17 +71,8 @@ const DropdownItem: FC<DropdownItemProps> = memo(
       // Calculating the scale of the item based on its index (note that this will only be applied when the dropdown is collapsed)
       const scale = interpolate(progress.get(), [0, 1], [1 - index * 0.05, 1]);
 
-      // if progress.value < 0.5, the dropdown is collapsed, so we use the collapsedBackgroundColor
-      // otherwise, the dropdown is expanded, so we use the expandedBackgroundColor (which is the same as the main color)
-      const backgroundColor =
-        progress.get() < 0.5
-          ? collapsedBackgroundColor
-          : expandedBackgroundColor;
-
       return {
         bottom: bottom,
-        backgroundColor: backgroundColor,
-        zIndex: optionsLength - index,
         transform: [
           {
             scale: scale,
@@ -89,6 +80,19 @@ const DropdownItem: FC<DropdownItemProps> = memo(
         ],
       };
     }, [index, optionsLength, progress]);
+
+    // The background only flips at progress 0.5: kept out of the per-frame
+    // style above so it isn't re-sent on every frame (zIndex is static).
+    const rBackgroundStyle = useAnimatedStyle(() => {
+      // if progress.value < 0.5, the dropdown is collapsed, so we use the collapsedBackgroundColor
+      // otherwise, the dropdown is expanded, so we use the expandedBackgroundColor (which is the same as the main color)
+      return {
+        backgroundColor:
+          progress.get() < 0.5
+            ? collapsedBackgroundColor
+            : expandedBackgroundColor,
+      };
+    }, [collapsedBackgroundColor, progress]);
 
     const rContentStyle = useAnimatedStyle(() => {
       const opacity = interpolate(
@@ -122,7 +126,12 @@ const DropdownItem: FC<DropdownItemProps> = memo(
     return (
       <PressableScale
         onPress={onPressWrapper}
-        style={[styles.item, { height: itemHeight }, rItemStyle]}>
+        style={[
+          styles.item,
+          { height: itemHeight, zIndex: optionsLength - index },
+          rBackgroundStyle,
+          rItemStyle,
+        ]}>
         <Animated.View style={[styles.content, rContentStyle]}>
           <View style={styles.iconBox}>
             <AntDesign name={iconName} color={'white'} size={20} />

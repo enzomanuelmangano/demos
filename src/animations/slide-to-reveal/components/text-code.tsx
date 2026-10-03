@@ -41,6 +41,10 @@ const TextCode: React.FC<TextCodeProps> = ({
         .toString()
         .split('')
         .map((char, index) => {
+          // Spaces draw nothing: skip their per-frame animated values.
+          // Positions come from the index, so other characters don't move.
+          if (char === ' ') return null;
+
           const spacingBetweenLetters = (index * textWidth) / code.length;
           const marginHorizontal = (containerWidth - textWidth) / 2 - 5;
 

@@ -29,12 +29,12 @@ export const useTimeMachineGesture = ({
   );
 
   useAnimatedReaction(
-    () => timeMachineProgress.get(),
-    value => {
-      if (value > 0.5) {
-        scheduleOnRN(updateTimeMachineActiveWrapper, true);
-      } else {
-        scheduleOnRN(updateTimeMachineActiveWrapper, false);
+    // Only the side of 0.5 matters, so hop to JS when it flips instead of
+    // on every pan frame.
+    () => timeMachineProgress.get() > 0.5,
+    (isActive, wasActive) => {
+      if (isActive !== wasActive) {
+        scheduleOnRN(updateTimeMachineActiveWrapper, isActive);
       }
     },
     [updateTimeMachineActiveWrapper],

@@ -51,10 +51,6 @@ export const CherryBlossomQRCode = () => {
     },
   });
 
-  const canvasWrapperStyle = useAnimatedStyle(() => ({
-    marginBottom: keyboardHeight.get(),
-  }));
-
   // Lift the input above the keyboard from the same shared value. This used
   // to be a KeyboardStickyView, but its translation no longer applies on the
   // new architecture (kirillzyusko/react-native-keyboard-controller#1411) —
@@ -76,6 +72,10 @@ export const CherryBlossomQRCode = () => {
     // Settles below full strength so it sits under the scene rather than
     // competing with it - a chosen level, not washed-out ink.
     opacity: hintOpacity.get() * 0.72,
+    // The canvas has a fixed size, so the hint is the only thing a keyboard
+    // margin on the wrapper would move. Translating it lands it in the same
+    // place without a layout pass per keyboard frame.
+    transform: [{ translateY: -keyboardHeight.get() }],
   }));
 
   // The fuse and the blast are one composed pattern, fired when the fuse
@@ -139,7 +139,7 @@ export const CherryBlossomQRCode = () => {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.canvasWrapper, canvasWrapperStyle]}>
+      <View style={styles.canvasWrapper}>
         <Pressable
           accessibilityLabel="Cherry blossom tree QR code"
           accessibilityHint="Tap to flatten for scanning. Long press to spawn a creeper."
@@ -152,7 +152,7 @@ export const CherryBlossomQRCode = () => {
         <Animated.View pointerEvents="none" style={[styles.hint, hintStyle]}>
           <Text style={styles.hintText}>{HINT_TEXT}</Text>
         </Animated.View>
-      </Animated.View>
+      </View>
       <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
           ref={inputRef}

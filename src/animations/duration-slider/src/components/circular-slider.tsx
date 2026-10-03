@@ -1,11 +1,22 @@
-import { useMemo } from 'react';
+import { PixelRatio } from 'react-native';
+
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { BlurMask, Circle, Group, Shadow, Skia, Text } from 'react-native-skia';
+import {
+  BlurMask,
+  Circle,
+  drawAsImage,
+  Group,
+  Image,
+  Shadow,
+  Skia,
+  Text,
+} from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -13,7 +24,46 @@ import { BackgroundDots } from './background-dots';
 import { Donut } from './donut';
 import { Picker } from './picker';
 
-import type { SkFont } from 'react-native-skia';
+import type { ReactElement } from 'react';
+import type { SkFont, SkImage } from 'react-native-skia';
+
+// Rasterizes a static layer once at device pixel density. The blur masks
+// below are expensive and the canvas redraws on every drag frame; drawing a
+// pre-rendered image instead gives the same pixels. Until the image is ready
+// the live layer is drawn, so the first frames look the same too.
+const useStaticLayer = (
+  element: ReactElement,
+  width: number,
+  height: number,
+) => {
+  const [image, setImage] = useState<SkImage | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const pd = PixelRatio.get();
+    drawAsImage(<Group transform={[{ scale: pd }]}>{element}</Group>, {
+      width: Math.ceil(width * pd),
+      height: Math.ceil(height * pd),
+    }).then(img => {
+      if (!cancelled) setImage(img);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // `element` is rebuilt every render; its content only depends on size.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, height]);
+  if (!image) return element;
+  return (
+    <Image
+      image={image}
+      x={0}
+      y={0}
+      width={Math.ceil(width * PixelRatio.get()) / PixelRatio.get()}
+      height={Math.ceil(height * PixelRatio.get()) / PixelRatio.get()}
+      fit="fill"
+    />
+  );
+};
 
 type CircularSliderProps = {
   width: number;
@@ -81,8 +131,8 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     },
   );
 
-  return (
-    <Touchable.Canvas style={{ width, height }}>
+  const backgroundLayer = useStaticLayer(
+    <Group>
       <Group>
         <Circle cx={cx} cy={cy} r={radius + strokeWidth / 2} color={'#ebebeb'}>
           <BlurMask blur={30} style={'inner'} />
@@ -103,6 +153,30 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         radius={radius}
         initialAngleRad={initialAngleRad}
       />
+    </Group>,
+    width,
+    height,
+  );
+
+  const innerDiscLayer = useStaticLayer(
+    <Group>
+      <Circle
+        cx={cx}
+        cy={cy}
+        r={radius - strokeWidth / 2}
+        color={'#222222'}
+        opacity={0.5}>
+        <BlurMask blur={20} style={'solid'} />
+      </Circle>
+      <Circle cx={cx} cy={cy} r={radius - strokeWidth / 2} color={'#FFFFFF'} />
+    </Group>,
+    width,
+    height,
+  );
+
+  return (
+    <Touchable.Canvas style={{ width, height }}>
+      {backgroundLayer}
 
       <Donut
         cx={cx}
@@ -136,15 +210,7 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         />
       </Group>
 
-      <Circle
-        cx={cx}
-        cy={cy}
-        r={radius - strokeWidth / 2}
-        color={'#222222'}
-        opacity={0.5}>
-        <BlurMask blur={20} style={'solid'} />
-      </Circle>
-      <Circle cx={cx} cy={cy} r={radius - strokeWidth / 2} color={'#FFFFFF'} />
+      {innerDiscLayer}
 
       <Text
         text={currentTextValue}

@@ -110,9 +110,16 @@ const StackedToast: React.FC<StackedToastProps> = ({
       isSwiping.set(false);
     });
 
-  const rStackedToastStyle = useAnimatedStyle(() => {
+  // `bottom` springs every frame while the stack moves; keeping it apart from
+  // zIndex and the shadow timings stops those being re-sent on each frame.
+  const rStackedToastBottomStyle = useAnimatedStyle(() => {
     return {
       bottom: bottom.get(),
+    };
+  }, []);
+
+  const rStackedToastStyle = useAnimatedStyle(() => {
+    return {
       zIndex: 100 - stackedToastId,
       shadowRadius: withTiming(Math.max(10 - stackedToastId * 2.5, 2)),
       shadowOpacity: withTiming(
@@ -156,6 +163,7 @@ const StackedToast: React.FC<StackedToastProps> = ({
           },
           styles.container,
           rStackedToastStyle,
+          rStackedToastBottomStyle,
         ]}
         exiting={FadeOutLeft.delay(120 * stackedToastId)}>
         <Animated.View key={index} style={rStackedToastTranslationStyle}>

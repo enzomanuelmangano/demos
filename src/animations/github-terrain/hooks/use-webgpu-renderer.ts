@@ -1,4 +1,4 @@
-import { PixelRatio } from 'react-native';
+import { AppState, PixelRatio } from 'react-native';
 
 import { useCallback, useEffect, useRef } from 'react';
 
@@ -27,6 +27,7 @@ interface GPUResources {
   bindGroup: GPUBindGroup;
   uniformBuffer: GPUBuffer;
   depthTexture: GPUTexture;
+  depthView: GPUTextureView;
   buffers: GPUBuffer[];
 }
 
@@ -53,6 +54,11 @@ export function useWebGPURenderer(
   const lastFrameTimeRef = useRef<number>(Date.now());
   const startTimeRef = useRef<number>(Date.now());
   const isInitializedRef = useRef(false);
+  // Frames to keep rendering after init even if settled, while the
+  // surface is being set up
+  const warmupFramesRef = useRef(0);
+  // Reused every frame (writeBuffer copies it)
+  const uniformDataRef = useRef(new Float32Array(6));
 
   const cleanup = useCallback(() => {
     if (animationRef.current) {
@@ -263,6 +269,7 @@ export function useWebGPURenderer(
         bindGroup,
         uniformBuffer,
         depthTexture,
+        depthView: depthTexture.createView(),
         buffers,
       };
 
@@ -279,14 +286,8 @@ export function useWebGPURenderer(
       return;
     }
 
-    const {
-      device,
-      context,
-      pipeline,
-      bindGroup,
-      uniformBuffer,
-      depthTexture,
-    } = resourcesRef.current;
+    const { device, context, pipeline, bindGroup, uniformBuffer, depthView } =
+      resourcesRef.current;
     const state = stateRef.current;
     const layout = layoutRef.current;
 
@@ -345,14 +346,13 @@ export function useWebGPURenderer(
     const time = (now - startTimeRef.current) / 1000;
 
     // Update uniforms
-    const uniformData = new Float32Array([
-      aspectRatio,
-      time,
-      NUM_BLOCKS,
-      animState.progress,
-      animState.dataProgress,
-      1.0, // zoomScale
-    ]);
+    const uniformData = uniformDataRef.current;
+    uniformData[0] = aspectRatio;
+    uniformData[1] = time;
+    uniformData[2] = NUM_BLOCKS;
+    uniformData[3] = animState.progress;
+    uniformData[4] = animState.dataProgress;
+    uniformData[5] = 1.0; // zoomScale
     device.queue.writeBuffer(uniformBuffer, 0, uniformData);
 
     // Render
@@ -374,7 +374,7 @@ export function useWebGPURenderer(
         },
       ],
       depthStencilAttachment: {
-        view: depthTexture.createView(),
+        view: depthView,
         depthClearValue: 1,
         depthLoadOp: 'clear',
         depthStoreOp: 'store',
@@ -389,14 +389,40 @@ export function useWebGPURenderer(
     device.queue.submit([commandEncoder.finish()]);
     context.present();
 
-    animationRef.current = requestAnimationFrame(render);
+    // Once both springs rest on their targets every next frame would be
+    // identical (time isn't used by the shaders): stop the JS-thread loop
+    // until requestRender() is called again
+    if (warmupFramesRef.current > 0) warmupFramesRef.current -= 1;
+    const isSettled =
+      warmupFramesRef.current === 0 &&
+      animState.progress === viewTarget &&
+      animState.progressVelocity === 0 &&
+      animState.dataProgress === dataTarget &&
+      animState.dataVelocity === 0;
+    animationRef.current = isSettled ? null : requestAnimationFrame(render);
   }, [stateRef, layoutRef]);
+
+  // Renders again after the state or the layout changed
+  const requestRender = useCallback(() => {
+    if (!isInitializedRef.current || animationRef.current) return;
+    lastFrameTimeRef.current = Date.now();
+    animationRef.current = requestAnimationFrame(render);
+  }, [render]);
+
+  // The surface can be dropped while the app is in background
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', appState => {
+      if (appState === 'active') requestRender();
+    });
+    return () => subscription.remove();
+  }, [requestRender]);
 
   const startRenderLoop = useCallback(() => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
     lastFrameTimeRef.current = Date.now();
+    warmupFramesRef.current = 30;
     animationRef.current = requestAnimationFrame(render);
   }, [render]);
 
@@ -415,5 +441,6 @@ export function useWebGPURenderer(
 
   return {
     isInitialized: isInitializedRef.current,
+    requestRender,
   };
 }

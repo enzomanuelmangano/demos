@@ -2,13 +2,11 @@ import { useCallback } from 'react';
 
 import {
   cancelAnimation,
-  interpolate,
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { PathGeometry } from './utils/geometry';
 
@@ -36,6 +34,9 @@ const getPathPoints = (path: SkPath): Point[] => {
 
 type UseAnimateThroughPathProps = {
   pathReference: SharedValue<SkPath>;
+  // While true nothing reads the animated point (e.g. the square is fully
+  // faded out), so the contour walk is deferred until it becomes false.
+  isPathHidden?: SharedValue<boolean>;
 };
 
 const withCustomSpring = (value: number) => {
@@ -48,19 +49,22 @@ const withCustomSpring = (value: number) => {
 
 export const useAnimateThroughPath = ({
   pathReference,
+  isPathHidden,
 }: UseAnimateThroughPathProps) => {
   const progress = useSharedValue(0);
   const points = useSharedValue<Point[]>([]);
-  const assignPathPoints = useCallback(() => {
-    points.set(getPathPoints(pathReference.get()));
-  }, [points, pathReference]);
 
+  // Walk the contour on the UI thread (no JS round trip per path change), and
+  // only while the result can be seen: dragging the control points with the
+  // square hidden no longer re-samples the whole path every frame.
   useAnimatedReaction(
-    () => pathReference.get(),
-    () => {
-      scheduleOnRN(assignPathPoints);
+    () => (isPathHidden?.get() ? null : pathReference.get()),
+    (path, previousPath) => {
+      if (path !== null && path !== previousPath) {
+        points.set(getPathPoints(path));
+      }
     },
-    [assignPathPoints],
+    [],
   );
 
   const startAnimation = useCallback(() => {
@@ -75,30 +79,25 @@ export const useAnimateThroughPath = ({
     progress.set(withCustomSpring(0));
   }, [progress]);
 
+  // Same result as interpolate(progress, [0, 1/len, ..., (len-1)/len], pts)
+  // with the default (extend) extrapolation, but the input range is uniform so
+  // the segment is found by index instead of rebuilding two arrays per frame.
   const cx = useDerivedValue(() => {
     const pts = points.get();
-    if (pts.length <= 1) return 0;
     const len = pts.length;
-    const inputRange: number[] = [];
-    const pointsX: number[] = [];
-    for (let i = 0; i < len; i++) {
-      inputRange.push(i / len);
-      pointsX.push(pts[i].x);
-    }
-    return interpolate(progress.get(), inputRange, pointsX);
+    if (len <= 1) return 0;
+    const t = progress.get() * len;
+    const i = Math.min(Math.max(Math.floor(t), 0), len - 2);
+    return pts[i].x + (pts[i + 1].x - pts[i].x) * (t - i);
   }, [points]);
 
   const cy = useDerivedValue(() => {
     const pts = points.get();
-    if (pts.length <= 1) return 0;
     const len = pts.length;
-    const inputRange: number[] = [];
-    const pointsY: number[] = [];
-    for (let i = 0; i < len; i++) {
-      inputRange.push(i / len);
-      pointsY.push(pts[i].y);
-    }
-    return interpolate(progress.get(), inputRange, pointsY);
+    if (len <= 1) return 0;
+    const t = progress.get() * len;
+    const i = Math.min(Math.max(Math.floor(t), 0), len - 2);
+    return pts[i].y + (pts[i + 1].y - pts[i].y) * (t - i);
   }, [points]);
 
   return { progress, startAnimation, cx, cy, reverseAnimation };

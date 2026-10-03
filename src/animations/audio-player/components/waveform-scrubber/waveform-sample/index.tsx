@@ -4,7 +4,9 @@ import { type FC, memo } from 'react';
 
 import Animated, {
   type SharedValue,
+  useAnimatedReaction,
   useAnimatedStyle,
+  useSharedValue,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -50,21 +52,43 @@ const getNextScaleY = ({
 
 const WaveformScrubberSample: FC<WaveformScrubberSampleProps> = memo(
   ({ position, currentX, isDragging, value }) => {
+    const opacity = useSharedValue(0.6);
+    const scaleY = useSharedValue(1);
+
+    // currentX moves on every frame for the whole playback, but the targets
+    // only flip a few times: start the timing/spring when a target changes
+    // instead of allocating two new animations per sample per frame.
+    // (The first run applies the target directly, like an animated style's
+    // initial value.)
+    useAnimatedReaction(
+      () => (currentX.get() > position ? 1 : 0.6),
+      (target, previous) => {
+        if (previous === null) opacity.set(target);
+        else if (target !== previous) opacity.set(withTiming(target));
+      },
+      [position],
+    );
+
+    useAnimatedReaction(
+      () =>
+        getNextScaleY({
+          isDragging: isDragging.get(),
+          isActive: currentX.get() > position,
+          isNearCurrentX: Math.abs(currentX.get() - position) < 20,
+        }),
+      (target, previous) => {
+        if (previous === null) scaleY.set(target);
+        else if (target !== previous) scaleY.set(withSpring(target));
+      },
+      [position],
+    );
+
     const rStyle = useAnimatedStyle(() => {
-      const isActive = currentX.get() > position;
-      const isNearCurrentX = Math.abs(currentX.get() - position) < 20;
-
-      const scaleY = getNextScaleY({
-        isDragging: isDragging.get(),
-        isActive,
-        isNearCurrentX,
-      });
-
       return {
-        opacity: withTiming(isActive ? 1 : 0.6),
+        opacity: opacity.get(),
         transform: [
           {
-            scaleY: withSpring(scaleY),
+            scaleY: scaleY.get(),
           },
         ],
       };

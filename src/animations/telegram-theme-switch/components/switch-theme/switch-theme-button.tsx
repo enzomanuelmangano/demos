@@ -74,9 +74,12 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
     };
   });
 
+  // The button is hidden (opacity 0) for the whole transition and only shown
+  // at rest (0 or 1), so rounding is identical on screen but lets Reanimated
+  // skip the in-between frames instead of redrawing this Lottie every frame.
   const animatedProps = useAnimatedProps(() => {
     return {
-      progress: animationProgress.get(),
+      progress: Math.round(animationProgress.get()),
     };
   });
 

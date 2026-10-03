@@ -19,8 +19,7 @@ const App = () => {
         <CircularSlider
           minVal={1}
           maxVal={12}
-          onValueChange={value => {
-            console.log({ value });
+          onValueChange={() => {
             Haptics.selectionAsync();
           }}
           width={size}

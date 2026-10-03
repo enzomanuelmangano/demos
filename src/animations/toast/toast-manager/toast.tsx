@@ -112,9 +112,13 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
     const scale = isSwiping.get() ? baseScale * 0.96 : baseScale;
 
     return {
-      bottom: bottom.get(),
       zIndex: 1000 - toast.id,
       transform: [
+        // translateY over a static bottom instead of animating `bottom`:
+        // same position, no layout pass. First, so it isn't scaled.
+        {
+          translateY: -(bottom.get() - BaseSafeArea),
+        },
         {
           scale: withTiming(scale),
         },
@@ -144,6 +148,7 @@ const Toast: React.FC<ToastProps> = ({ toastKey, index, onDismiss }) => {
             left: windowWidth * 0.05,
             zIndex: 100 - toast.id,
             borderCurve: 'continuous',
+            bottom: BaseSafeArea,
           },
           styles.container,
           rToastStyle,

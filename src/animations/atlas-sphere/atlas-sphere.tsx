@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  interpolate,
+  useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
@@ -12,7 +12,6 @@ import {
   Atlas,
   Canvas,
   Circle,
-  Extrapolate,
   rect,
   useRSXformBuffer,
   useTexture,
@@ -42,6 +41,7 @@ const SQUARE_TEXTURE_SIZE = {
 
 const MAX_SCALE = 1;
 const MIN_SCALE = 0.1;
+const SCALE_DISTANCE = MAX_DISTANCE / 4;
 
 const BASE_SQUARE = (
   <Circle
@@ -82,6 +82,17 @@ export const AtlasSphere = () => {
 
   const texture = useTexture(BASE_SQUARE, SQUARE_TEXTURE_SIZE);
 
+  // Read the inputs once per frame instead of five times per sprite
+  // (~3k sprites).
+  const frame = useDerivedValue(() => {
+    const currentProgress = progress.get();
+    return {
+      point: touchedPoint.get(),
+      progress: currentProgress,
+      progressSquared: currentProgress ** 2,
+    };
+  });
+
   const transforms = useRSXformBuffer(NUMBER_OF_SQUARES, (val, index) => {
     'worklet';
 
@@ -89,9 +100,11 @@ export const AtlasSphere = () => {
     const ty =
       Math.floor(index / SQUARES_AMOUNT_HORIZONTAL) * SQUARE_CONTAINER_SIZE;
 
+    const { point, progress: currentProgress, progressSquared } = frame.get();
+
     // scale according to the distance from the touched point
-    const touchedPointX = touchedPoint.get()?.x ?? tx;
-    const touchedPointY = touchedPoint.get()?.y ?? ty;
+    const touchedPointX = point?.x ?? tx;
+    const touchedPointY = point?.y ?? ty;
 
     const distanceX = touchedPointX - tx;
     const distanceY = touchedPointY - ty;
@@ -99,17 +112,16 @@ export const AtlasSphere = () => {
     // calculate the distance from the touched point
     const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
-    const progressiveDistance = distance * progress.get();
+    const progressiveDistance = distance * currentProgress;
 
-    // calculate the scaling factor based on distance
-    const scale = interpolate(
-      progressiveDistance,
-      [0, MAX_DISTANCE / 4],
-      [MAX_SCALE, MIN_SCALE],
-      {
-        extrapolateRight: Extrapolate.CLAMP,
-      },
-    );
+    // calculate the scaling factor based on distance: same as
+    // interpolate(d, [0, SCALE_DISTANCE], [MAX_SCALE, MIN_SCALE]) with the
+    // right side clamped, inlined to skip the per-sprite options object.
+    const scale =
+      progressiveDistance > SCALE_DISTANCE
+        ? MIN_SCALE
+        : MAX_SCALE +
+          (progressiveDistance / SCALE_DISTANCE) * (MIN_SCALE - MAX_SCALE);
 
     if (scale <= MIN_SCALE) {
       // Hide the square if it's too small
@@ -117,8 +129,8 @@ export const AtlasSphere = () => {
     }
 
     // calculate the translation values with respect to the touched point
-    const translatedX = tx + distanceX * (1 - scale) * progress.get() ** 2;
-    const translatedY = ty + distanceY * (1 - scale) * progress.get() ** 2;
+    const translatedX = tx + distanceX * (1 - scale) * progressSquared;
+    const translatedY = ty + distanceY * (1 - scale) * progressSquared;
 
     val.set(scale, 0, translatedX, translatedY);
   });

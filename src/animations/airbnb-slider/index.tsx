@@ -78,6 +78,7 @@ const App = () => {
         minValue={0}
         maxValue={maxValue}
         onUpdate={prog => {
+          'worklet';
           price.set(Math.round(prog));
         }}
       />

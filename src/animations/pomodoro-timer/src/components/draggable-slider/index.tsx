@@ -7,6 +7,7 @@ import Animated, {
   cancelAnimation,
   interpolate,
   useAnimatedReaction,
+  useAnimatedStyle,
   useDerivedValue,
   useSharedValue,
   withDecay,
@@ -139,6 +140,15 @@ export const CircularDraggableSlider = forwardRef<
       },
     );
 
+    // Every tick sits at angle (2πi/N - p), oriented along the ring: that is the
+    // p=0 ring rotated by -p about its centre. Rotating this zero-size wrapper
+    // gives the same picture with a single animated transform.
+    const rRingStyle = useAnimatedStyle(() => {
+      return {
+        transform: [{ rotate: `${-progressRadiants.get()}rad` }],
+      };
+    });
+
     return (
       <View style={styles.container}>
         <View
@@ -167,7 +177,7 @@ export const CircularDraggableSlider = forwardRef<
               backgroundColor: indicatorColor,
             }}
           />
-          <Animated.View pointerEvents="none">
+          <Animated.View pointerEvents="none" style={rRingStyle}>
             {new Array(linesAmount).fill(0).map((_, index) => {
               const isBigLine = index % bigLineIndexOffset === 0;
               const height = isBigLine ? maxLineHeight : minLineHeight;
@@ -179,7 +189,6 @@ export const CircularDraggableSlider = forwardRef<
                   key={index}
                   height={height}
                   radius={radius}
-                  progressRadiants={progressRadiants}
                   index={index}
                   lineWidth={lineWidth}
                   color={color}

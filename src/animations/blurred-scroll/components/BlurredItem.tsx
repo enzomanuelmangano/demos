@@ -65,16 +65,22 @@ const BlurredItem: React.FC<BlurredItemProps> = ({
     };
   }, []);
 
-  const transformGroup = useDerivedValue(() => {
-    const scale = interpolate(
+  // Primitive first: an unchanged scale doesn't notify, so items outside the
+  // input range stop rebuilding the transform (and redrawing their canvas)
+  // on every scroll event.
+  const scale = useDerivedValue(() => {
+    return interpolate(
       contentOffsetY.get(),
       inputRange,
       [0.8, 1, 0.8, 1],
       Extrapolate.CLAMP,
     );
+  }, []);
+
+  const transformGroup = useDerivedValue(() => {
     return [
       {
-        scale,
+        scale: scale.get(),
       },
     ];
   }, []);

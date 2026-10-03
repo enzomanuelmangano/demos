@@ -4,8 +4,9 @@ import { type FC } from 'react';
 
 import Animated, {
   interpolate,
+  useAnimatedReaction,
   useAnimatedStyle,
-  useDerivedValue,
+  useSharedValue,
 } from 'react-native-reanimated';
 
 import { CardCanvas } from './card-canvas.component';
@@ -85,15 +86,25 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
     };
   });
 
-  const rotate = useDerivedValue(() => {
-    const input = [
-      (index - 1) * CARD_WIDTH,
-      index * CARD_WIDTH,
-      (index + 1) * CARD_WIDTH,
-    ];
+  const rotateInput = [
+    (index - 1) * CARD_WIDTH,
+    index * CARD_WIDTH,
+    (index + 1) * CARD_WIDTH,
+  ];
+  const rotateOutput = [-Math.PI, 0, Math.PI];
 
-    return interpolate(scrollX.get(), input, [-Math.PI, 0, Math.PI], 'clamp');
-  });
+  // Written only when the value changes: a derived value would notify on every
+  // scroll event, re-running the (heavy) card shader even for cards clamped
+  // at ±π that don't change.
+  const rotate = useSharedValue(
+    interpolate(scrollX.get(), rotateInput, rotateOutput, 'clamp'),
+  );
+  useAnimatedReaction(
+    () => interpolate(scrollX.get(), rotateInput, rotateOutput, 'clamp'),
+    (value, prev) => {
+      if (value !== prev && value !== rotate.get()) rotate.set(value);
+    },
+  );
 
   return (
     <View style={styles.cardContainer}>

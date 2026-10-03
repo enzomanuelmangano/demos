@@ -79,6 +79,7 @@ const QRCodeGenerator = () => {
                   width: windowWidth - 50,
                 }}
                 onUpdate={prog => {
+                  'worklet';
                   deviationProgress.set(prog);
                 }}
               />

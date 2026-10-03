@@ -22,7 +22,9 @@ export const getLinesPath = (params: {
   type: 'all' | 'bigLines' | 'smallLines';
   bigLineEach?: number;
   lineWidth?: number;
-  scrollOffset: SharedValue<number>;
+  // When omitted, every line is added at its unscrolled position (no culling),
+  // so the path can be built once and translated by the scroll offset.
+  scrollOffset?: SharedValue<number>;
 }) => {
   'worklet';
 
@@ -56,19 +58,21 @@ export const getLinesPath = (params: {
     const offsetY = (maxLineHeight - lineHeight) / 2;
     const offsetX = i * spacePerLine;
 
-    // Determining the base scroll view position
-    const baseScrollView = -scrollOffset.get() + ScreenWidth / 2;
+    if (scrollOffset) {
+      // Determining the base scroll view position
+      const baseScrollView = -scrollOffset.get() + ScreenWidth / 2;
 
-    // Skipping iteration if line is outside the visible area
-    if (
-      baseScrollView < offsetX - ScreenWidth / 2 ||
-      baseScrollView > offsetX + ScreenWidth / 2
-    ) {
-      continue;
+      // Skipping iteration if line is outside the visible area
+      if (
+        baseScrollView < offsetX - ScreenWidth / 2 ||
+        baseScrollView > offsetX + ScreenWidth / 2
+      ) {
+        continue;
+      }
     }
 
     // Calculating the scroll offset for current line
-    const scrollOffsetX = offsetX + scrollOffset.get();
+    const scrollOffsetX = offsetX + (scrollOffset ? scrollOffset.get() : 0);
 
     // Creating a rounded rectangle representing the line
     const roundedRect = rrect(

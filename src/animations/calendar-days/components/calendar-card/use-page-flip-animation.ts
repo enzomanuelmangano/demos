@@ -1,8 +1,9 @@
 import { Platform, type ViewStyle } from 'react-native';
 
 import {
+  useAnimatedReaction,
   useAnimatedStyle,
-  useDerivedValue,
+  useSharedValue,
   withSpring,
   type AnimatedStyle,
   type DerivedValue,
@@ -20,6 +21,7 @@ type UsePageFlipAnimationParams = {
 type UsePageFlipAnimationReturn = {
   pageFlipProgress: DerivedValue<number>;
   rFlipStyle: AnimatedStyle<ViewStyle>;
+  rZIndexStyle: AnimatedStyle<ViewStyle>;
 };
 
 export const usePageFlipAnimation = ({
@@ -27,24 +29,46 @@ export const usePageFlipAnimation = ({
   progress,
   totalPages,
 }: UsePageFlipAnimationParams): UsePageFlipAnimationReturn => {
-  const pageFlipProgress = useDerivedValue<number>(() => {
-    const currentPage = progress.get() * totalPages;
-    const targetFlip = currentPage > index ? 1 : 0;
+  const pageFlipProgress = useSharedValue(
+    progress.get() * totalPages > index ? 1 : 0,
+  );
 
-    return withSpring(targetFlip, {
-      duration: 1100,
-      dampingRatio: 1,
-    });
-  }, [index, totalPages]);
+  // Same as re-deriving `withSpring(target)` on every progress change, minus
+  // the pages already resting on their target: restarting a spring from
+  // target to target moves nothing, but it woke all 30 pages (and their 5
+  // styles each) on every pan event.
+  useAnimatedReaction(
+    () => progress.get(),
+    () => {
+      const currentPage = progress.get() * totalPages;
+      const targetFlip = currentPage > index ? 1 : 0;
+      if (pageFlipProgress.get() === targetFlip) return;
+
+      pageFlipProgress.set(
+        withSpring(targetFlip, {
+          duration: 1100,
+          dampingRatio: 1,
+        }),
+      );
+    },
+    [index, totalPages],
+  );
+
+  // zIndex has its own style: it only changes when crossing 0.5, while the
+  // rotation changes every frame and would re-send it (a commit) each time.
+  const rZIndexStyle = useAnimatedStyle(() => {
+    const zIndex =
+      pageFlipProgress.get() < 0.5
+        ? totalPages - index
+        : index + totalPages + 1;
+
+    return { zIndex };
+  });
 
   const rFlipStyle = useAnimatedStyle(() => {
     const pageProgress = pageFlipProgress.get();
 
-    const zIndex =
-      pageProgress < 0.5 ? totalPages - index : index + totalPages + 1;
-
     return {
-      zIndex,
       transform: [
         { perspective: Platform.OS === 'ios' ? 400 : 10000 },
         { translateY: -PAGE_SIZE / 2 },
@@ -57,5 +81,6 @@ export const usePageFlipAnimation = ({
   return {
     pageFlipProgress,
     rFlipStyle,
+    rZIndexStyle,
   };
 };

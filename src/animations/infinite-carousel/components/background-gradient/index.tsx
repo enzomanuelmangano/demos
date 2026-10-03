@@ -24,35 +24,41 @@ export const BackgroundGradient: FC<BackgroundGradientProps> = memo(
     }, []);
 
     return (
-      <Canvas style={StyleSheet.absoluteFill}>
-        <Rect
-          x={0}
-          y={0}
-          width={WindowWidth}
-          height={WindowHeight}
-          color={mainColor}
-          opacity={0.75}
-        />
-        <Rect x={0} y={0} width={WindowWidth} height={WindowHeight}>
-          <SweepGradient
-            c={vec(WindowWidth / 2, WindowHeight / 2)}
-            colors={sweepGradientColors}
+      <>
+        <Canvas style={StyleSheet.absoluteFill}>
+          <Rect
+            x={0}
+            y={0}
+            width={WindowWidth}
+            height={WindowHeight}
+            color={mainColor}
+            opacity={0.75}
           />
-          <Blur blur={30} />
-        </Rect>
-        <Rect
-          x={0}
-          y={0}
-          width={WindowWidth}
-          height={WindowHeight}
-          opacity={0.3}>
-          <SweepGradient
-            c={vec(WindowWidth / 2, WindowHeight / 2)}
-            colors={['white', 'white', '#d9d9d9']}
-          />
-          <Blur blur={10} />
-        </Rect>
-      </Canvas>
+          <Rect x={0} y={0} width={WindowWidth} height={WindowHeight}>
+            <SweepGradient
+              c={vec(WindowWidth / 2, WindowHeight / 2)}
+              colors={sweepGradientColors}
+            />
+            <Blur blur={30} />
+          </Rect>
+        </Canvas>
+        {/* The white sweep never changes: in its own canvas it is drawn once
+            instead of re-running its blur on every frame of the color fade. */}
+        <Canvas style={StyleSheet.absoluteFill} pointerEvents="none">
+          <Rect
+            x={0}
+            y={0}
+            width={WindowWidth}
+            height={WindowHeight}
+            opacity={0.3}>
+            <SweepGradient
+              c={vec(WindowWidth / 2, WindowHeight / 2)}
+              colors={['white', 'white', '#d9d9d9']}
+            />
+            <Blur blur={10} />
+          </Rect>
+        </Canvas>
+      </>
     );
   },
 );
