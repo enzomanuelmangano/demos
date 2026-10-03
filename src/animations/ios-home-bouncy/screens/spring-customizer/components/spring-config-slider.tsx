@@ -10,7 +10,8 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
+
+import { ReText } from '../../../../../components/re-text';
 
 interface SpringConfigSliderProps {
   label: string;

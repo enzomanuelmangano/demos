@@ -10,7 +10,8 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
+
+import { ReText } from '../../../../components/re-text';
 
 type ProgressBarAreaProps = {
   isVisible: SharedValue<boolean>;

@@ -9,8 +9,9 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 import { Canvas, FitBox, Path, rect, Skia } from 'react-native-skia';
+
+import { ReText } from '../../../components/re-text';
 
 type SliderProps = {
   pickerSize?: number;

@@ -2,9 +2,9 @@ import { Text, View, useWindowDimensions, StyleSheet } from 'react-native';
 
 import { GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useDerivedValue } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 
 import { WaveformScrubberSample } from './waveform-sample';
+import { ReText } from '../../../../components/re-text';
 import { DURATION, Palette } from '../../constants';
 import { zeroPad } from '../../helpers';
 import { useCurrentPlayingValue } from './waveform-sample/use-current-playing-value';

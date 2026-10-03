@@ -14,8 +14,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 
+import { ReText } from '../../../../components/re-text';
 import { PIECE_IMG, PLAYERS, VALUE } from '../constants';
 import {
   capturedAtom,
