@@ -13,7 +13,6 @@ import {
   Canvas,
   Fill,
   Skia,
-  useRSXformBuffer,
   useRectBuffer,
   useTexture,
   type SkFont,
@@ -97,14 +96,28 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
   // To do that, we'll use the "contains" method from the Path
   // We'll use a derived value to do that because we need to check it every frame
   const activeRects = useDerivedValue(() => {
+    const path = animatedText.get();
+    // contains() walks the whole glyph outline; most squares sit outside the
+    // text's bounds, where it can only answer false, so skip the native call.
+    const bounds = path ? path.getBounds() : null;
     return new Array(SquaresAmount).fill(false).map((_, i) => {
+      if (!path || !bounds) {
+        return false;
+      }
       const tx = (i % HSquares) * XSpacing + (XSpacing + scaleFactor) / 2;
       const ty =
         Math.floor(i / HSquares) * YSpacing + (YSpacing + scaleFactor) / 2;
-
-      return animatedText
-        .get()
-        ?.contains(tx + squareSize / 2, ty + squareSize / 2);
+      const px = tx + squareSize / 2;
+      const py = ty + squareSize / 2;
+      if (
+        px < bounds.x ||
+        py < bounds.y ||
+        px > bounds.x + bounds.width ||
+        py > bounds.y + bounds.height
+      ) {
+        return false;
+      }
+      return path.contains(px, py);
     });
   }, []);
 
@@ -152,6 +165,11 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
       const state = springs.get();
       const now = getAnimationTimestamp();
 
+      // The delay springs are never drawn, only sampled here, so they are not
+      // stepped every frame: bring them to `now` in one closed-form step (the
+      // spring solution is exact for any time step).
+      advanceSprings(state.delay, now, DelaySpringConfig);
+
       // First update delay values
       for (let i = 0; i < SquaresAmount; i++) {
         const isActive = newActiveRects[i];
@@ -162,6 +180,9 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
           now,
           DelaySpringConfig,
           reduceMotion,
+          // ~1750 bisections in this one frame were the cost of a text
+          // change; they're spread over the next frames instead
+          true,
         );
       }
 
@@ -185,9 +206,17 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
       }
       state.looping = true;
       const loop = (timestamp: number) => {
+        // Only the drawn springs are stepped per frame (see advanceSprings);
+        // the delay springs only get their deferred stiffness solved, a
+        // slice per frame, well before the next text change samples them.
+        const pending = resolvePendingSprings(
+          state.delay,
+          DelaySpringConfig,
+          PENDING_SPRINGS_PER_FRAME,
+        );
         const running =
-          stepSprings(state.delay, timestamp, DelaySpringConfig) |
-          stepSprings(state.progress, timestamp, ProgressSpringConfig);
+          stepSprings(state.progress, timestamp, ProgressSpringConfig) |
+          (pending > 0 ? 1 : 0);
         frame.set(frame.get() + 1);
         if (running) {
           requestAnimationFrame(loop);
@@ -200,23 +229,12 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
     },
   );
 
-  // Since we're using the Atlas API, we need to pass a Float32Array as color.
-  // The Float32Array accepts 4 values: [R, G, B, A]
-  // The idea is to animate organically the alpha value of the color.
-  // The interpolation function is a bit tricky because I just played with the values until I got something that I liked.
-  // But the main idea was just to make the squares fade in and fade out.
-  const colors = useMemo(() => {
-    return Array.from({ length: SquaresAmount }, () => {
-      // const progress = progressValue.value;
-      // const alpha = interpolate(
-      //   progress,
-      //   [-3, 0, 1, 2],
-      //   [0, 0.8, 0, 0],
-      //   Extrapolation.CLAMP,
-      // );
-      return new Float32Array([1, 1, 1, 0.8]);
-    });
-  }, [SquaresAmount]);
+  // The squares used to get a per-sprite color of [1, 1, 1, 0.8], but the
+  // Atlas blends colors with DstOver (the default) onto an opaque white
+  // texture, so they never changed a pixel; they only cost 1750 color
+  // conversions on every frame. They are dropped.
+  // (The original idea was to fade the squares in and out organically with
+  // interpolate(progress, [-3, 0, 1, 2], [0, 0.8, 0, 0]) on the alpha.)
 
   // We need to provide a texture to the Atlas (We're just saying that the texture is a white by default)
   const texture = useTexture(<Fill color={'white'} />, {
@@ -224,42 +242,73 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
     height: canvasHeight,
   });
 
-  // The useRSXformBuffer is a hook provided by Skia that allows us to animate the position and scale of the squares.
+  // The RSXforms animate the position and scale of the squares.
   // The idea is that by default, the squares are going to be positioned in a shrinked grid (because of the scaleFactor).
   // When the square gets active, the squares are going to be positioned in a scaled grid
   // If the scaleFactor is 0, the shrinked grid is going to be the same as the scaled grid.
   // The magic happens because of the individual progress shared values and the interpolate function.
-  const transforms = useRSXformBuffer(SquaresAmount, (val, i) => {
-    'worklet';
 
-    const xShrinkedOffset = (XSpacing + scaleFactor) / 2;
-    const yShrinkedOffset = (YSpacing + scaleFactor) / 2;
+  // Last progress written to each RSXform: squares at rest (most of them,
+  // most of the time) skip the native set() call.
+  const lastProgress = useMemo(() => {
+    return new Float64Array(SquaresAmount).fill(NaN);
+  }, [SquaresAmount]);
 
-    const xScaledOffset = ScaledXSpacing / 2;
-    const yScaledOffset = ScaledYSpacing / 2;
+  // One loop per frame over RSXforms updated in place (a per-sprite modifier
+  // callback allocated a closure environment per square per frame); the
+  // shared value only tells the Atlas to redraw.
+  const transforms = useMemo(() => {
+    return makeMutable(
+      Array.from({ length: SquaresAmount }, () => Skia.RSXform(1, 0, 0, 0)),
+    );
+  }, [SquaresAmount]);
 
-    const shrinkedTx = (i % HSquares) * XSpacing + xShrinkedOffset;
-    const shrinkedTy = Math.floor(i / HSquares) * YSpacing + yShrinkedOffset;
+  useAnimatedReaction(
+    // Subscribes to the spring loop
+    () => frame.get(),
+    () => {
+      const xforms = transforms.get();
+      const progress = springs.get().progress.current;
 
-    const scaledTx = (i % HSquares) * ScaledXSpacing + xScaledOffset;
-    const scaledTy = Math.floor(i / HSquares) * ScaledYSpacing + yScaledOffset;
+      const xShrinkedOffset = (XSpacing + scaleFactor) / 2;
+      const yShrinkedOffset = (YSpacing + scaleFactor) / 2;
 
-    // Subscribes the mapper to the spring loop
-    frame.get();
-    const prog = springs.get().progress.current[i];
-    // Inlined interpolate(prog, [0, 1], ...): same math, without allocating
-    // the range arrays 5250 times per frame
-    const tx = shrinkedTx + prog * (scaledTx - shrinkedTx);
-    const ty = shrinkedTy + prog * (scaledTy - shrinkedTy);
+      const xScaledOffset = ScaledXSpacing / 2;
+      const yScaledOffset = ScaledYSpacing / 2;
 
-    const translatedX = tx;
-    const translatedY = ty;
+      let changed = false;
+      for (let i = 0; i < SquaresAmount; i++) {
+        const prog = progress[i];
+        if (prog === lastProgress[i]) {
+          continue;
+        }
+        lastProgress[i] = prog;
+        changed = true;
 
-    // interpolate(prog, [0, 1], [0.6, 0.85], Extrapolation.CLAMP)
-    const scale = Math.min(Math.max(0.6 + prog * (0.85 - 0.6), 0.6), 0.85);
+        const shrinkedTx = (i % HSquares) * XSpacing + xShrinkedOffset;
+        const shrinkedTy =
+          Math.floor(i / HSquares) * YSpacing + yShrinkedOffset;
 
-    val.set(scale, 0, translatedX, translatedY);
-  });
+        const scaledTx = (i % HSquares) * ScaledXSpacing + xScaledOffset;
+        const scaledTy =
+          Math.floor(i / HSquares) * ScaledYSpacing + yScaledOffset;
+
+        // Inlined interpolate(prog, [0, 1], ...): same math, without
+        // allocating the range arrays 5250 times per frame
+        const tx = shrinkedTx + prog * (scaledTx - shrinkedTx);
+        const ty = shrinkedTy + prog * (scaledTy - shrinkedTy);
+
+        // interpolate(prog, [0, 1], [0.6, 0.85], Extrapolation.CLAMP)
+        const scale = Math.min(Math.max(0.6 + prog * (0.85 - 0.6), 0.6), 0.85);
+
+        xforms[i].set(scale, 0, tx, ty);
+      }
+      if (changed) {
+        // Same array, so force the notification
+        transforms.modify(undefined, true);
+      }
+    },
+  );
 
   // We need to provide the position of each square to the Atlas
   const sprites = useRectBuffer(SquaresAmount, (val, j) => {
@@ -275,12 +324,7 @@ export const GridVisualizer: FC<GridVisualizerProps> = ({
         width: canvasWidth,
         height: canvasHeight,
       }}>
-      <Atlas
-        image={texture}
-        sprites={sprites}
-        colors={colors}
-        transforms={transforms}
-      />
+      <Atlas image={texture} sprites={sprites} transforms={transforms} />
     </Canvas>
   );
 };
@@ -324,6 +368,9 @@ const ProgressSpringConfig: SpringConfig = {
   dampingRatio: 1,
 };
 
+// ~1ms of bisections per frame
+const PENDING_SPRINGS_PER_FRAME = 100;
+
 type SpringSet = {
   current: Float64Array;
   velocity: Float64Array;
@@ -338,6 +385,8 @@ type SpringSet = {
   // config.stiffness after onStart, used by the termination check
   stiffness: Float64Array;
   running: Uint8Array;
+  // Duration-based springs whose stiffness isn't solved yet (see setSpring)
+  pending: Uint8Array;
 };
 
 const createSpringSet = (size: number, initial: Float64Array): SpringSet => ({
@@ -353,6 +402,7 @@ const createSpringSet = (size: number, initial: Float64Array): SpringSet => ({
   initialEnergy: new Float64Array(size),
   stiffness: new Float64Array(size),
   running: new Uint8Array(size),
+  pending: new Uint8Array(size),
 });
 
 const getAnimationTimestamp = () => {
@@ -371,7 +421,42 @@ const getEnergy = (
   mass: number,
 ) => {
   'worklet';
-  return 0.5 * stiffness * displacement ** 2 + 0.5 * mass * velocity ** 2;
+  // Squares as products: `**` is a slow builtin call in Hermes
+  return (
+    0.5 * stiffness * (displacement * displacement) +
+    0.5 * mass * (velocity * velocity)
+  );
+};
+
+// From rest (no initial velocity) the energy ratio this solves for doesn't
+// depend on the displacement: every square lands on the same stiffness, so
+// it's solved once per config instead of once per square (1750 bisections
+// of ~40 exp() calls each, all in the frame the text changes).
+const restStiffnessCache = { duration: -1, stiffness: 0 };
+
+// Reanimated's bisection target: the energy left after the settling time,
+// relative to the initial energy, minus the threshold. Same math, with the
+// exponential computed once and squares as products: this runs ~20 times per
+// square on every text change.
+const settleEnergyError = (
+  stiffness: number,
+  x0: number,
+  v0: number,
+  m: number,
+  zeta: number,
+  settlingDuration: number,
+  threshold: number,
+) => {
+  'worklet';
+  const omega0 = Math.sqrt(stiffness / m) * zeta;
+  const decay = Math.exp(-omega0 * settlingDuration);
+  const xtk = (x0 + (v0 + x0 * omega0) * settlingDuration) * decay;
+  const vtk =
+    (x0 + (v0 + x0 * omega0) * settlingDuration) * decay * -omega0 +
+    (v0 + x0 * omega0) * decay;
+  const e0 = 0.5 * stiffness * (x0 * x0) + 0.5 * m * (v0 * v0);
+  const etk = 0.5 * stiffness * (xtk * xtk) + 0.5 * m * (vtk * vtk);
+  return etk / e0 - threshold;
 };
 
 const calculateStiffnessToMatchDuration = (
@@ -380,40 +465,47 @@ const calculateStiffnessToMatchDuration = (
   config: SpringConfig,
 ) => {
   'worklet';
+  // Only DelaySpringConfig is duration-based, so its duration is the key
+  if (v0 === 0 && restStiffnessCache.duration === config.duration) {
+    return restStiffnessCache.stiffness;
+  }
   const { dampingRatio: zeta, energyThreshold: threshold, mass: m } = config;
   const settlingDuration = (config.duration * 1.5) / 1000;
 
   const func = (stiffness: number) => {
     'worklet';
-    const omega0 = Math.sqrt(stiffness / m) * zeta;
-    const xtk =
-      (x0 + (v0 + x0 * omega0) * settlingDuration) *
-      Math.exp(-omega0 * settlingDuration);
-    const vtk =
-      (x0 + (v0 + x0 * omega0) * settlingDuration) *
-        Math.exp(-omega0 * settlingDuration) *
-        -omega0 +
-      (v0 + x0 * omega0) * Math.exp(-omega0 * settlingDuration);
-    const e0 = getEnergy(x0, v0, stiffness, m);
-    const etk = getEnergy(xtk, vtk, stiffness, m);
-    return etk / e0 - threshold;
+    return settleEnergyError(
+      stiffness,
+      x0,
+      v0,
+      m,
+      zeta,
+      settlingDuration,
+      threshold,
+    );
   };
 
-  // bisectRoot
+  // bisectRoot (each midpoint is evaluated once instead of twice)
   const precision = threshold * 1e-3;
   let min = Number.EPSILON;
   let max = 8e3;
   const direction = func(max) >= func(min) ? 1 : -1;
   let idx = 100;
   let current = (max + min) / 2;
-  while (Math.abs(func(current)) > precision && idx > 0) {
+  let value = func(current);
+  while (Math.abs(value) > precision && idx > 0) {
     idx -= 1;
-    if (func(current) * direction < 0) {
+    if (value * direction < 0) {
       min = current;
     } else {
       max = current;
     }
     current = (min + max) / 2;
+    value = func(current);
+  }
+  if (v0 === 0) {
+    restStiffnessCache.duration = config.duration;
+    restStiffnessCache.stiffness = current;
   }
   return current;
 };
@@ -424,10 +516,15 @@ const stepSpring = (
   i: number,
   now: number,
   config: SpringConfig,
+  // Reanimated clamps a frame's step to 64ms
+  maxDeltaTime = 64,
 ) => {
   'worklet';
   const toValue = s.toValue[i];
-  const deltaTime = Math.min(Math.max(now - s.lastTimestamp[i], 0), 64);
+  const deltaTime = Math.min(
+    Math.max(now - s.lastTimestamp[i], 0),
+    maxDeltaTime,
+  );
   s.lastTimestamp[i] = now;
 
   const t = deltaTime / 1000;
@@ -489,6 +586,10 @@ const setSpring = (
   now: number,
   config: SpringConfig,
   reduceMotion: boolean,
+  // Leave the stiffness bisection of a duration-based spring for later
+  // (resolvePendingSprings). Only valid for a spring that isn't stepped
+  // before it is resolved and is already at `now` (dt = 0).
+  deferStiffness = false,
 ) => {
   'worklet';
   const wasRunning = s.running[i] === 1;
@@ -497,6 +598,7 @@ const setSpring = (
   // (and drops the running one)
   if (value === toValue) {
     s.running[i] = 0;
+    s.pending[i] = 0;
     s.velocity[i] = 0;
     s.lastTimestamp[i] = 0;
     return;
@@ -506,6 +608,7 @@ const setSpring = (
     s.velocity[i] = 0;
     s.lastTimestamp[i] = 0;
     s.running[i] = 0;
+    s.pending[i] = 0;
     return;
   }
 
@@ -525,6 +628,24 @@ const setSpring = (
     velocity = 0;
   }
   s.velocity[i] = velocity;
+
+  if (
+    deferStiffness &&
+    config.useDuration &&
+    !triggeredTwice &&
+    !(velocity === 0 && restStiffnessCache.duration === config.duration)
+  ) {
+    // The first step below would cover dt = 0: it leaves the position and
+    // velocity where they are, so it can wait for the stiffness as well.
+    s.pending[i] = 1;
+    if (!wasRunning || s.lastTimestamp[i] === 0) {
+      s.lastTimestamp[i] = now;
+    }
+    s.startTimestamp[i] = now;
+    s.running[i] = 1;
+    return;
+  }
+  s.pending[i] = 0;
 
   let stiffness = config.stiffness;
   if (!triggeredTwice) {
@@ -573,4 +694,61 @@ const stepSprings = (s: SpringSet, now: number, config: SpringConfig) => {
     }
   }
   return anyRunning;
+};
+
+// Solves the stiffness of springs deferred by setSpring, from the same inputs
+// (x0 and v0 are still in startValue and velocity: the spring hasn't moved).
+const resolveSpring = (s: SpringSet, i: number, config: SpringConfig) => {
+  'worklet';
+  const x0 = s.startValue[i];
+  const stiffness = calculateStiffnessToMatchDuration(
+    x0,
+    s.velocity[i],
+    config,
+  );
+  const zeta = config.dampingRatio;
+  const omega0 = Math.sqrt(stiffness / config.mass);
+  s.zeta[i] = zeta;
+  s.omega0[i] = omega0;
+  s.omega1[i] = zeta < 1 ? omega0 * Math.sqrt(1 - zeta ** 2) : 0;
+  s.stiffness[i] = stiffness;
+  s.initialEnergy[i] = getEnergy(x0, 0, stiffness, config.mass);
+  s.pending[i] = 0;
+};
+
+// Resolves up to `budget` deferred springs. Returns how many are left.
+const resolvePendingSprings = (
+  s: SpringSet,
+  config: SpringConfig,
+  budget: number,
+) => {
+  'worklet';
+  let left = 0;
+  for (let i = 0; i < s.pending.length; i++) {
+    if (s.pending[i] === 1) {
+      if (budget > 0) {
+        resolveSpring(s, i, config);
+        budget -= 1;
+      } else {
+        left += 1;
+      }
+    }
+  }
+  return left;
+};
+
+// Moves every running spring of the set straight to `now`, however long ago
+// it was last stepped. The termination check still applies: the energy only
+// decays, so a spring that would have come to rest on an earlier frame is at
+// rest here too.
+const advanceSprings = (s: SpringSet, now: number, config: SpringConfig) => {
+  'worklet';
+  for (let i = 0; i < s.running.length; i++) {
+    if (s.pending[i] === 1) {
+      resolveSpring(s, i, config);
+    }
+    if (s.running[i] === 1 && s.lastTimestamp[i] !== now) {
+      stepSpring(s, i, now, config, Infinity);
+    }
+  }
 };

@@ -4,7 +4,8 @@ import React, { useMemo } from 'react';
 
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useDerivedValue,
+  makeMutable,
+  useAnimatedReaction,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
@@ -12,8 +13,8 @@ import {
   Atlas,
   Canvas,
   Circle,
+  Skia,
   rect,
-  useRSXformBuffer,
   useTexture,
 } from 'react-native-skia';
 
@@ -33,6 +34,15 @@ const SQUARES_AMOUNT_VERTICAL = Math.floor(
 const MAX_DISTANCE = Math.sqrt(CANVAS_WIDTH ** 2 + CANVAS_HEIGHT ** 2);
 
 const NUMBER_OF_SQUARES = SQUARES_AMOUNT_HORIZONTAL * SQUARES_AMOUNT_VERTICAL;
+
+// Grid position of every sprite, computed once instead of per frame
+const GRID_X = new Float64Array(NUMBER_OF_SQUARES);
+const GRID_Y = new Float64Array(NUMBER_OF_SQUARES);
+for (let index = 0; index < NUMBER_OF_SQUARES; index++) {
+  GRID_X[index] = (index % SQUARES_AMOUNT_HORIZONTAL) * SQUARE_CONTAINER_SIZE;
+  GRID_Y[index] =
+    Math.floor(index / SQUARES_AMOUNT_HORIZONTAL) * SQUARE_CONTAINER_SIZE;
+}
 
 const SQUARE_TEXTURE_SIZE = {
   width: SQUARE_CONTAINER_SIZE,
@@ -82,58 +92,68 @@ export const AtlasSphere = () => {
 
   const texture = useTexture(BASE_SQUARE, SQUARE_TEXTURE_SIZE);
 
-  // Read the inputs once per frame instead of five times per sprite
-  // (~3k sprites).
-  const frame = useDerivedValue(() => {
-    const currentProgress = progress.get();
-    return {
-      point: touchedPoint.get(),
-      progress: currentProgress,
-      progressSquared: currentProgress ** 2,
-    };
-  });
+  // The RSXforms are written in place by a single loop below; the shared
+  // value only signals the Atlas to redraw.
+  const transforms = useMemo(
+    () =>
+      makeMutable(
+        new Array(NUMBER_OF_SQUARES)
+          .fill(0)
+          .map((_, index) => Skia.RSXform(1, 0, GRID_X[index], GRID_Y[index])),
+      ),
+    [],
+  );
+  // Sprites already collapsed to zero: about half of the grid while
+  // dragging, and they don't need another native set() call per frame.
+  const hidden = useMemo(() => new Uint8Array(NUMBER_OF_SQUARES), []);
 
-  const transforms = useRSXformBuffer(NUMBER_OF_SQUARES, (val, index) => {
-    'worklet';
+  useAnimatedReaction(
+    () => ({ point: touchedPoint.get(), currentProgress: progress.get() }),
+    ({ point, currentProgress }) => {
+      const progressSquared = currentProgress ** 2;
+      const xforms = transforms.get();
+      for (let index = 0; index < NUMBER_OF_SQUARES; index++) {
+        const tx = GRID_X[index];
+        const ty = GRID_Y[index];
 
-    const tx = (index % SQUARES_AMOUNT_HORIZONTAL) * SQUARE_CONTAINER_SIZE;
-    const ty =
-      Math.floor(index / SQUARES_AMOUNT_HORIZONTAL) * SQUARE_CONTAINER_SIZE;
+        // scale according to the distance from the touched point
+        const distanceX = point ? point.x - tx : 0;
+        const distanceY = point ? point.y - ty : 0;
 
-    const { point, progress: currentProgress, progressSquared } = frame.get();
+        // calculate the distance from the touched point
+        const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
 
-    // scale according to the distance from the touched point
-    const touchedPointX = point?.x ?? tx;
-    const touchedPointY = point?.y ?? ty;
+        const progressiveDistance = distance * currentProgress;
 
-    const distanceX = touchedPointX - tx;
-    const distanceY = touchedPointY - ty;
+        // calculate the scaling factor based on distance: same as
+        // interpolate(d, [0, SCALE_DISTANCE], [MAX_SCALE, MIN_SCALE]) with the
+        // right side clamped, inlined to skip the per-sprite options object.
+        const scale =
+          progressiveDistance > SCALE_DISTANCE
+            ? MIN_SCALE
+            : MAX_SCALE +
+              (progressiveDistance / SCALE_DISTANCE) * (MIN_SCALE - MAX_SCALE);
 
-    // calculate the distance from the touched point
-    const distance = Math.sqrt(distanceX ** 2 + distanceY ** 2);
+        if (scale <= MIN_SCALE) {
+          // Hide the square if it's too small
+          if (hidden[index] === 0) {
+            hidden[index] = 1;
+            xforms[index].set(0, 0, 0, 0);
+          }
+          continue;
+        }
+        hidden[index] = 0;
 
-    const progressiveDistance = distance * currentProgress;
+        // calculate the translation values with respect to the touched point
+        const translatedX = tx + distanceX * (1 - scale) * progressSquared;
+        const translatedY = ty + distanceY * (1 - scale) * progressSquared;
 
-    // calculate the scaling factor based on distance: same as
-    // interpolate(d, [0, SCALE_DISTANCE], [MAX_SCALE, MIN_SCALE]) with the
-    // right side clamped, inlined to skip the per-sprite options object.
-    const scale =
-      progressiveDistance > SCALE_DISTANCE
-        ? MIN_SCALE
-        : MAX_SCALE +
-          (progressiveDistance / SCALE_DISTANCE) * (MIN_SCALE - MAX_SCALE);
-
-    if (scale <= MIN_SCALE) {
-      // Hide the square if it's too small
-      return val.set(0, 0, 0, 0);
-    }
-
-    // calculate the translation values with respect to the touched point
-    const translatedX = tx + distanceX * (1 - scale) * progressSquared;
-    const translatedY = ty + distanceY * (1 - scale) * progressSquared;
-
-    val.set(scale, 0, translatedX, translatedY);
-  });
+        xforms[index].set(scale, 0, translatedX, translatedY);
+      }
+      // Same array, so force the notification
+      transforms.modify(undefined, true);
+    },
+  );
 
   return (
     <View style={styles.container}>
