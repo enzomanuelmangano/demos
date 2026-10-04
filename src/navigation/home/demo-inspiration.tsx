@@ -17,8 +17,10 @@ import {
   buttonStyle,
   controlSize,
   font,
+  fixedSize,
   frame,
   labelStyle,
+  offset,
   opacity,
   padding,
   presentationDragIndicator,
@@ -40,10 +42,17 @@ const APPEAR = Animation.easeOut({ duration: 0.22 });
 /** Wider than any sheet: the action buttons span the sheet's full width. */
 const FULL_WIDTH = 10000;
 
+/** One inset on every side of the sheet's content, the bottom included. */
+const INSET = 24;
+
 const SHEET_MODIFIERS = [presentationDragIndicator('visible')];
-const CONTENT_MODIFIERS = [padding({ horizontal: 24, top: 28, bottom: 12 })];
 const TITLE_MODIFIERS = [font({ textStyle: 'title2', weight: 'bold' })];
-const STORY_MODIFIERS = [font({ textStyle: 'body' })];
+const STORY_MODIFIERS = [
+  font({ textStyle: 'body' }),
+  // Wraps to its full height rather than truncating while the sheet's
+  // height is still being measured.
+  fixedSize({ horizontal: false, vertical: true }),
+];
 const ACTION_LABEL_MODIFIERS = [
   font({ textStyle: 'headline' }),
   frame({ maxWidth: FULL_WIDTH }),
@@ -69,8 +78,13 @@ export const DemoInspiration = ({
   copy: InspirationCopy;
   visible: boolean;
 }) => {
-  const { top } = useSafeAreaInsets();
+  const { top, bottom } = useSafeAreaInsets();
   const [presented, setPresented] = useState(false);
+  // A sheet sized to its content still keeps the window's bottom safe area
+  // under it, which left the button far higher off the bottom than the inset
+  // at its sides. The content moves down into that area by what it exceeds
+  // the inset; the top padding grows by as much, so the top keeps its gap.
+  const shift = Math.max(0, bottom - INSET);
 
   return (
     <Host
@@ -104,7 +118,10 @@ export const DemoInspiration = ({
           <VStack
             alignment="leading"
             spacing={16}
-            modifiers={CONTENT_MODIFIERS}>
+            modifiers={[
+              padding({ horizontal: INSET, top: INSET + 4 + shift }),
+              offset({ y: shift }),
+            ]}>
             <Text modifiers={TITLE_MODIFIERS}>Inspiration</Text>
             <Text modifiers={STORY_MODIFIERS}>{copy.story}</Text>
             <Button
@@ -113,7 +130,12 @@ export const DemoInspiration = ({
                 buttonStyle(
                   LIQUID_GLASS ? 'glassProminent' : 'borderedProminent',
                 ),
+                // Concentric with the sheet: its corners measure about 50pt, less the
+                // inset leaves more than half the button's height, so a capsule.
+                buttonBorderShape('capsule'),
                 controlSize('large'),
+                // A little more air than between the lines of copy above.
+                padding({ top: 8 }),
               ]}>
               <Text modifiers={ACTION_LABEL_MODIFIERS}>
                 {copy.action.label}
