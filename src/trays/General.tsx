@@ -31,7 +31,7 @@ const Items: readonly GeneralItem[] = [
   },
   {
     title: 'Hide Close Button',
-    description: 'Close demos with the drag down only',
+    description: 'Hide the close and info buttons; close with the drag down',
     icon: 'close-circle-outline',
     backgroundColor: '#5856D6',
     type: 'closeButton',

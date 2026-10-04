@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ListItem } from './components/ListItem';
 import { SortableList } from './components/SortableList';
 import { ITEMS } from './constants';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 import type { Positions } from './components/SortableList/types';
 
@@ -67,7 +68,7 @@ const App = () => {
       />
       <SortableList
         style={{
-          paddingTop: safeTop,
+          paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
         }}
         onAnimatedIndexChange={index => {
           currentActiveIndex.set(index);

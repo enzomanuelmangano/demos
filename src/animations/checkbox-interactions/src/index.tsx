@@ -4,13 +4,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Checkbox } from './components/checkbox';
 import { useCuisines } from './hooks/use-cuisines';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../navigation/home/demo-close-button';
 
 const App = () => {
   const { top: safeTop } = useSafeAreaInsets();
   const { cuisines, toggleCuisine } = useCuisines();
 
   return (
-    <View style={[styles.container, { paddingTop: safeTop + 24 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT },
+      ]}>
       <Text style={styles.sectionTitle}>What are your favorite cuisines?</Text>
       <View style={styles.contentWrap}>
         {cuisines.map(cuisine => (

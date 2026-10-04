@@ -19,6 +19,7 @@ import { SelectableGridList } from './components/SelectableGridList';
 import { SelectableListItem } from './components/SelectableListItem';
 import { Palette } from './constants';
 import { ReText } from '../../components/re-text';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 import type { GridListRefType } from './components/SelectableGridList';
 
@@ -87,7 +88,7 @@ const SelectableGridListContainer = () => {
       style={{
         flex: 1,
         backgroundColor: Palette.background,
-        paddingTop: safeTop,
+        paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
       }}>
       <SelectableGridList
         data={new Array(50).fill(0) as number[]}

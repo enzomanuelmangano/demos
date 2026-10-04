@@ -18,12 +18,20 @@ const LIQUID_GLASS = isLiquidGlassAvailable();
 /** Inset from the screen's left edge, as a navigation bar's leading item. */
 const LEADING = 16;
 
+/**
+ * The height the demo's own chrome takes below the safe area: the close and
+ * info buttons (a large glass circle, about 45pt) and a gap under them. A demo
+ * with a header of its own starts it this far down, or the buttons cover it.
+ */
+export const DEMO_BUTTON_ROW_HEIGHT = 56;
+
 /** Native, so it eases like the system's own chrome rather than RN's. */
 const APPEAR = Animation.easeOut({ duration: 0.22 });
 
 /**
  * The way out of every demo, drawn by the demo screen over whatever the demo
- * is: no demo renders it, and none has to leave room for it.
+ * is: no demo renders it. A demo with content at its top starts it below
+ * the row this and the info button share (`DEMO_BUTTON_ROW_HEIGHT`).
  *
  * A real SwiftUI button, so it is the system's own. On iOS 26 it is the
  * close role on liquid glass — the xmark the system draws for it; before,

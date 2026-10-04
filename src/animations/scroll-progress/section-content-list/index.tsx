@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomProgress } from './bottom-progress';
 import { clamp, getReadingTime } from './utils';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../navigation/home/demo-close-button';
 
 import type {
   LayoutChangeEvent,
@@ -52,25 +53,19 @@ const SectionContentList: FC<SectionContentListProps> = memo(
     const isResetting = useSharedValue(false);
     const currentScroll = useSharedValue(0);
 
-    const onLayout = useCallback(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (event: any) => {
-        const { height } = event.nativeEvent.layout;
+    // The whole content, paddings included: measured from the sections alone
+    // it left out the top padding, and the bar read 100% that far before the
+    // end of the scroll.
+    const onContentSizeChange = useCallback(
+      (_width: number, height: number) => {
         scrollHeight.set(height);
       },
       [scrollHeight],
     );
 
-    const paddingBottom = useMemo(() => {
-      return +(
-        StyleSheet.flatten(scrollViewProps.contentContainerStyle ?? {})
-          .paddingBottom ?? 0
-      );
-    }, [scrollViewProps.contentContainerStyle]);
-
     const scrollableHeight = useDerivedValue(() => {
-      return scrollHeight.get() - viewHeight.get() + paddingBottom;
-    }, [paddingBottom]);
+      return Math.max(1, scrollHeight.get() - viewHeight.get());
+    });
 
     const onScroll = useAnimatedScrollHandler({
       onScroll: ({ contentOffset: { y } }) => {
@@ -117,7 +112,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
 
     const contentContainerStyle = useMemo(() => {
       return {
-        paddingTop: safeTop + 16,
+        paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
         paddingBottom: safeBottom + 100,
         paddingHorizontal: 32,
       };
@@ -130,8 +125,9 @@ const SectionContentList: FC<SectionContentListProps> = memo(
           contentContainerStyle={contentContainerStyle}
           ref={scrollRef}
           onScroll={onScroll}
+          onContentSizeChange={onContentSizeChange}
           scrollEventThrottle={16}>
-          <View onLayout={onLayout}>{sections.map(renderSection)}</View>
+          <View>{sections.map(renderSection)}</View>
         </Animated.ScrollView>
         <LinearGradient
           colors={GRADIENT_COLORS}

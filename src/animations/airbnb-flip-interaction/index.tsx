@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { spacing } from './constants';
 import { FlipCard } from './flip-interaction';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 import { MainPage } from './flip-interaction/components/card/pages/MainPage';
 import { SecondPage } from './flip-interaction/components/card/pages/SecondPage';
 
@@ -142,7 +143,7 @@ const App = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{
-          paddingTop: safeTop + 30,
+          paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
           paddingBottom: safeBottom + 40,
         }}>
         {/* Main Card Section */}

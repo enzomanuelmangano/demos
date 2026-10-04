@@ -9,6 +9,7 @@ import { PressableScale } from 'pressto';
 import { Easing } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../../navigation/home/demo-close-button';
 import { useNotes } from '../atoms/notes';
 import { Palette } from '../constants/theme';
 import { useGLTransition } from '../providers/gl-transitions';
@@ -85,7 +86,8 @@ export const AddNoteScreen = () => {
       <View
         style={{
           flexDirection: 'row',
-          paddingTop: safeTop + 16,
+          // Below the demo's close and info buttons, which sit over this row.
+          paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
         }}>
         <PressableScale onPress={onClose} style={styles.button}>
           <AntDesign name="close" size={32} color={Palette.text} />

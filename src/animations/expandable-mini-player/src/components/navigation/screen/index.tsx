@@ -6,6 +6,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../../../../navigation/home/demo-close-button';
 import { Palette } from '../../../constants/palette';
 import { ExpandedSheetMutableProgress } from '../bottom-tab-bar/shared-progress';
 
@@ -38,7 +39,10 @@ export function Screen({ children, title }: ScreenProps) {
       <Animated.View
         style={[
           styles.container,
-          { paddingTop: safeTop + 20, paddingHorizontal: 24 },
+          {
+            paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
+            paddingHorizontal: 24,
+          },
           rScreenStyle,
         ]}>
         <Text style={styles.title}>{title}</Text>

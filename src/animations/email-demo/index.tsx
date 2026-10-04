@@ -12,6 +12,7 @@ import { InteractiveList } from './components/interactive-list';
 import { ListItem } from './components/list-item';
 import { INITIAL_ITEMS } from './constants';
 import { useAnimatedShake } from './hooks/use-animated-shake';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 const ITEM_HEIGHT = 100;
 const ITEM_MARGIN = 10;
@@ -72,7 +73,7 @@ const EmailDemo = () => {
           itemContainerStyle={styles.listContainerItem}
           contentContainerStyle={{
             paddingBottom: ITEM_HEIGHT + ITEM_MARGIN,
-            paddingTop: safeTop,
+            paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
           }}
           renderItem={({ item }) => {
             return <ListItem item={item} itemHeight={ITEM_HEIGHT} />;

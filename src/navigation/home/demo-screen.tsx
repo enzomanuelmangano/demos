@@ -8,6 +8,7 @@ import {
 
 import {
   useCallback,
+  useMemo,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -36,7 +37,9 @@ import {
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { DemoCloseButton } from './demo-close-button';
+import { DemoInspiration } from './demo-inspiration';
 import { getIconBackdrop } from './icon-source';
+import { getInspirationCopy } from './inspiration-copy';
 import { clearLaunchTarget } from './launch-store';
 import {
   CLOSE_SCALE,
@@ -423,6 +426,7 @@ const DemoLaunch = ({
   const contentOpacity = useSharedValue(0);
   const [shown, setShown] = useState(false);
   const hideCloseButton = useAtomValue(HideCloseButtonAtom);
+  const inspiration = useMemo(() => getInspirationCopy(slug), [slug]);
   const onContentLayout = useCallback(() => {
     let frames = 0;
     const tick = () => {
@@ -471,6 +475,9 @@ const DemoLaunch = ({
               visible={shown && !closing}
               onPress={closeFromButton}
             />
+          ) : null}
+          {mounted && !hideCloseButton && inspiration ? (
+            <DemoInspiration copy={inspiration} visible={shown && !closing} />
           ) : null}
         </Animated.View>
       </Animated.View>

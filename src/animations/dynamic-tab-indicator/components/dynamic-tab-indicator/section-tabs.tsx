@@ -9,6 +9,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../../navigation/home/demo-close-button';
+
 import type { LayoutRectangle } from 'react-native';
 
 type SectionTabsProps = {
@@ -36,7 +38,7 @@ const SectionTabs: FC<SectionTabsProps> = memo(
     const rIndicatorLayoutStyle = useAnimatedStyle(() => {
       return {
         position: 'absolute',
-        top: indicatorLayout.get().y + height - 35,
+        top: indicatorLayout.get().y + height + DEMO_BUTTON_ROW_HEIGHT - 35,
         left: indicatorLayout.get().x,
         width: indicatorLayout.get().width,
         height: 2,
@@ -63,8 +65,10 @@ const SectionTabs: FC<SectionTabsProps> = memo(
           styles.safeContainer,
           {
             width,
-            height,
-            paddingTop: insets.top,
+            // The tabs start below the demo's close and info buttons, and the
+            // indicator above moves down with them.
+            height: height + DEMO_BUTTON_ROW_HEIGHT,
+            paddingTop: insets.top + DEMO_BUTTON_ROW_HEIGHT,
             paddingBottom: insets.bottom,
           },
         ]}>
