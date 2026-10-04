@@ -17,7 +17,7 @@ interface ListedDemo extends Demo {
   unstable: boolean;
 }
 
-// Flat {slug,name} list for the launcher grid. Newest-first (mirrors the old
+// Flat {slug,name,label} list for the launcher grid. Newest-first (mirrors the old
 // drawer order). slug is unique + stable and equals the /animations/[slug]
 // route, so it doubles as the shared-bound id for the open-zoom.
 const ALL_DEMOS: ListedDemo[] = getAllAnimations()

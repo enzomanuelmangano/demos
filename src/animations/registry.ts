@@ -1,7 +1,7 @@
 export type IconFamily = 'Ionicons';
 
 export interface AnimationMetadataType extends Record<string, unknown> {
-  /** The demo's title: search, sharing, accessibility and the Inspiration sheet. */
+  /** The demo's title: search, sharing and accessibility. */
   name: string;
   /**
    * A shorter label for the home grid, where the full name would be cut off
@@ -311,7 +311,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'theme-canvas-animation': {
     name: 'Theme Canvas Animation',
-    displayName: 'Canvas',
+    displayName: 'Theme Picker',
     route: 'ThemeCanvasAnimation',
     iconName: 'color-palette-outline',
   },
@@ -337,7 +337,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'shared-transitions': {
     name: 'Shared Transitions',
-    displayName: 'Transitions',
+    displayName: 'Shared Views',
     route: 'SharedTransitions',
     alert: true,
     iconName: 'sync-outline',
@@ -444,7 +444,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'circular-carousel': {
     name: 'Circular Carousel',
-    displayName: 'Circular',
+    displayName: 'Ring Carousel',
     route: 'CircularCarousel',
     iconName: 'ellipse-outline',
   },
@@ -467,13 +467,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'github-onboarding': {
     name: 'GitHub Onboarding',
-    displayName: 'Onboarding',
+    displayName: 'GitHub Intro',
     route: 'GitHubOnboarding',
     iconName: 'logo-github',
   },
   'loading-button': {
     name: 'Loading Button',
-    displayName: 'Loading',
+    displayName: 'Load Button',
     route: 'LoadingButton',
     iconName: 'refresh-outline',
   },
@@ -606,7 +606,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'infinite-carousel': {
     name: 'Infinite Carousel',
-    displayName: 'Infinite',
+    displayName: 'Loop Carousel',
     route: 'InfiniteCarousel',
     iconName: 'images-outline',
   },
@@ -666,7 +666,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'interaction-appearance': {
     name: 'Interaction Appearance',
-    displayName: 'Appearance',
+    displayName: 'Theme Toggle',
     route: 'InteractionAppearance',
     iconName: 'contrast-outline',
   },
@@ -758,7 +758,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'tab-navigation': {
     name: 'Tab Navigation',
-    displayName: 'Tab Nav',
+    displayName: 'Tabs',
     route: 'TabNavigation',
     iconName: 'browsers-outline',
   },
@@ -786,7 +786,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'everybody-can-cook': {
     name: 'Everybody Can Cook',
-    displayName: 'Can Cook',
+    displayName: 'Stagger Text',
     route: 'EverybodyCanCook',
     iconName: 'restaurant-outline',
   },
@@ -810,7 +810,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'composable-text': {
     name: 'Composable Text',
-    displayName: 'Composable',
+    displayName: 'Spring Text',
     route: 'ComposableText',
     iconName: 'text-outline',
   },
@@ -951,7 +951,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'light-on-painting': {
     name: 'Light on Painting',
-    displayName: 'Lit Painting',
+    displayName: 'Painting Light',
     route: 'LightOnPainting',
     iconName: 'bulb-outline',
   },
