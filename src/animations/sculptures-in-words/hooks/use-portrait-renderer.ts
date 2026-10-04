@@ -2,9 +2,10 @@ import { Image, PixelRatio } from 'react-native';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useSharedValue } from 'react-native-reanimated';
+import { makeMutable, useSharedValue } from 'react-native-reanimated';
 import { Skia } from 'react-native-skia';
 import { adoptTexture, importDevice } from 'react-native-webgpu';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import {
   CAMERA_DIST,
@@ -128,6 +129,7 @@ const writeModelMatrix = (
   lean: number,
   spin: number,
 ) => {
+  'worklet';
   const cl = Math.cos(lean);
   const sl = Math.sin(lean);
   const cs = Math.cos(spin);
@@ -247,6 +249,150 @@ const pairClouds = (
   return bForA;
 };
 
+/** Where the page starts coming apart, and how far its farthest letter is. */
+interface Origin {
+  cy: number;
+  reach: number;
+}
+
+/** What one run built on the GPU, handed to the frame loop once. */
+interface FrameGPU {
+  device: GPUDevice;
+  pipeline: GPURenderPipeline;
+  bindGroup: GPUBindGroup;
+  uniformBuffer: GPUBuffer;
+  quadBuffer: GPUBuffer;
+  instanceBuffer: GPUBuffer;
+  shapeTexture: GPUTexture;
+  passDescriptor: GPURenderPassDescriptor;
+  count: number;
+}
+
+/** The shared values the frame loop reads, and the two it writes. */
+interface FrameClock {
+  progress: SharedValue<number>;
+  yaw: SharedValue<number>;
+  scroll: SharedValue<number>;
+  cross: SharedValue<number>;
+  rewind: SharedValue<number>;
+  origin: SharedValue<Origin>;
+  image: SharedValue<SkImage | null>;
+  /** Cleared by the screen when it lets go; the loop stops on the next frame. */
+  running: SharedValue<boolean>;
+}
+
+/**
+ * The figure's frame loop, on the UI thread.
+ *
+ * It ran on the JS thread, from `requestAnimationFrame`, and that thread does
+ * not own any of what it reads: each of the four shared values was a blocking
+ * read across to the UI thread, every frame, at rest included. Worse, a frame
+ * of the morph waited on whatever else the JS thread was doing — a collection,
+ * a timer — and the profile showed the morph dropping frames exactly there.
+ *
+ * Here the clock is read on the thread that springs it, and the image is handed
+ * to Skia on the thread that draws it: the texture this pass renders and the
+ * canvas that shows it now advance on the same frame.
+ *
+ * `release` runs on the JS thread once the loop has stopped and Skia has had
+ * two frames to let go of the last image: a texture must not be destroyed
+ * under an image still in flight.
+ */
+const startFrameLoop = (
+  gpu: FrameGPU,
+  uniformData: ArrayBuffer,
+  clock: FrameClock,
+  release: () => void,
+) => {
+  'worklet';
+  const uniforms = new Float32Array(uniformData);
+  const {
+    device,
+    pipeline,
+    bindGroup,
+    uniformBuffer,
+    quadBuffer,
+    instanceBuffer,
+    shapeTexture,
+    passDescriptor,
+    count,
+  } = gpu;
+  // Reused every frame, like the descriptor: a fresh literal per frame is
+  // garbage on the thread where a collection costs a visible frame.
+  const submission: GPUCommandBuffer[] = [
+    undefined as unknown as GPUCommandBuffer,
+  ];
+  let linger = 0;
+  let idle = false;
+
+  // No 'worklet' directive: it already runs inside one, and marking it would
+  // make it a worklet object rather than a plain callable for rAF.
+  const frame = () => {
+    if (!clock.running.get()) {
+      clock.image.set(null);
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => scheduleOnRN(release)),
+      );
+      return;
+    }
+    const morph = clock.progress.get();
+    if (morph > 0) {
+      linger = LINGER_FRAMES;
+    } else if (linger > 0) {
+      linger--;
+    }
+    // Nothing to draw and Skia has had its frames to take the column back:
+    // the GPU has nothing to do while the article is being read. One more
+    // pass clears the layer, then none until the next tap.
+    if (morph <= 0 && linger === 0) {
+      if (idle) {
+        requestAnimationFrame(frame);
+        return;
+      }
+      idle = true;
+    } else {
+      idle = false;
+    }
+
+    writeModelMatrix(
+      uniforms,
+      16,
+      SHAPE_LEAN,
+      clock.yaw.get() + SHAPE_YAW_OFFSET,
+    );
+    uniforms[31] = morph;
+    uniforms[35] = clock.scroll.get();
+    const origin = clock.origin.get();
+    uniforms[43] = origin.cy;
+    uniforms[48] = origin.reach;
+    uniforms[49] = clock.cross.get();
+    uniforms[50] = clock.rewind.get();
+    device.queue.writeBuffer(uniformBuffer, 0, uniforms);
+
+    const encoder = device.createCommandEncoder();
+    const pass = encoder.beginRenderPass(passDescriptor);
+    pass.setPipeline(pipeline);
+    pass.setBindGroup(0, bindGroup);
+    pass.setVertexBuffer(0, quadBuffer);
+    pass.setVertexBuffer(1, instanceBuffer);
+    pass.draw(6, count);
+    pass.end();
+    submission[0] = encoder.finish();
+    device.queue.submit(submission);
+
+    // Wrapped fresh each frame. An SkImage is a snapshot by contract, so
+    // re-using one over a texture that has been redrawn is not something to
+    // rely on; the wrapper is a handle, not a copy, so this costs a JSI call
+    // and no pixels.
+    clock.image.set(
+      Skia.Image.MakeImageFromNativeTexture(shapeTexture.nativePointer),
+    );
+    requestAnimationFrame(frame);
+  };
+
+  requestAnimationFrame(frame);
+};
+
 interface Params {
   width: number;
   height: number;
@@ -290,6 +436,8 @@ export const usePortraitRenderer = ({
   progress,
 }: Params): PortraitStatus => {
   const image = useSharedValue<SkImage | null>(null);
+  // Written here at a tap, read by the frame loop on the UI thread.
+  const origin = useSharedValue<Origin>({ cy: 0, reach: 0 });
   const originRef = useRef<((scroll: number) => void) | null>(null);
   const setOrigin = useCallback((scroll: number) => {
     originRef.current?.(scroll);
@@ -302,13 +450,12 @@ export const usePortraitRenderer = ({
     pages: null,
   });
 
-  const frameRef = useRef<number | null>(null);
-
   useEffect(() => {
     if (width <= 0 || height <= 0) {
       return;
     }
     let cancelled = false;
+    let running: SharedValue<boolean> | null = null;
     /**
      * Everything this run allocates, released when it ends.
      *
@@ -727,10 +874,6 @@ export const usePortraitRenderer = ({
         },
       };
 
-      // Frames this pass keeps drawing after the last letter lands. Skia is
-      // told to show the column through a shared value that crosses to the UI
-      // thread, and that can take a frame or two; drawing the (identical)
-      // letters over the gap is what keeps it from ever being empty.
       // The departure front's origin, set at the tap. Farthest letter from it
       // is one of the four corners of the column.
       originRef.current = (scrollPx: number) => {
@@ -750,81 +893,48 @@ export const usePortraitRenderer = ({
           ];
         const cx = width / 2;
         const cy = scrollPx + height / 2;
-        uniforms[43] = cy;
-        uniforms[48] = Math.max(
-          Math.hypot(cx, cy),
-          Math.hypot(width - cx, cy),
-          Math.hypot(cx, column.height - cy),
-          Math.hypot(width - cx, column.height - cy),
-        );
+        origin.set({
+          cy,
+          reach: Math.max(
+            Math.hypot(cx, cy),
+            Math.hypot(width - cx, cy),
+            Math.hypot(cx, column.height - cy),
+            Math.hypot(width - cx, column.height - cy),
+          ),
+        });
       };
       originRef.current(0);
 
-      let linger = 0;
-      let idle = false;
-
-      const frame = () => {
-        if (cancelled) {
-          return;
-        }
-        const morph = progress.get();
-        if (morph > 0) {
-          linger = LINGER_FRAMES;
-        } else if (linger > 0) {
-          linger--;
-        }
-        // Nothing to draw and Skia has had its frames to take the column
-        // back: the GPU has nothing to do while the article is being read.
-        // One more pass clears the layer, then none until the next tap.
-        if (morph <= 0 && linger === 0) {
-          if (idle) {
-            frameRef.current = requestAnimationFrame(frame);
-            return;
-          }
-          idle = true;
-        } else {
-          idle = false;
-        }
-
-        writeModelMatrix(
-          uniforms,
-          16,
-          SHAPE_LEAN,
-          yaw.get() + SHAPE_YAW_OFFSET,
-        );
-        uniforms[31] = morph;
-        uniforms[35] = scroll.get();
-        uniforms[49] = cross.get();
-        uniforms[50] = rewind.get();
-        device.queue.writeBuffer(uniformBuffer, 0, uniforms);
-
-        const encoder = device.createCommandEncoder();
-        const pass = encoder.beginRenderPass(passDescriptor);
-        pass.setPipeline(pipeline);
-        pass.setBindGroup(0, bindGroup);
-        pass.setVertexBuffer(0, quadBuffer);
-        pass.setVertexBuffer(1, instanceBuffer);
-        pass.draw(6, count);
-        pass.end();
-        device.queue.submit([encoder.finish()]);
-
-        // Wrapped fresh each frame. An SkImage is a snapshot by contract, so
-        // re-using one over a texture that has been redrawn is not something to
-        // rely on; the wrapper is a handle, not a copy, so this costs a JSI
-        // call and no pixels. The native side takes its own reference, which is
-        // why the texture must never be destroyed while a frame is in flight.
-        image.set(
-          Skia.Image.MakeImageFromNativeTexture(shapeTexture.nativePointer),
-        );
-        frameRef.current = requestAnimationFrame(frame);
-      };
+      if (cancelled) {
+        release();
+        return;
+      }
+      // One flag per run: a run that ends stops its own loop, whatever the
+      // next one does.
+      running = makeMutable(true);
+      scheduleOnUI(
+        startFrameLoop,
+        {
+          device,
+          pipeline,
+          bindGroup,
+          uniformBuffer,
+          quadBuffer,
+          instanceBuffer,
+          shapeTexture,
+          passDescriptor,
+          count,
+        },
+        uniforms.buffer as ArrayBuffer,
+        { progress, yaw, scroll, cross, rewind, origin, image, running },
+        release,
+      );
 
       setStatus({
         ready: true,
         error: null,
         pages,
       });
-      frameRef.current = requestAnimationFrame(frame);
     };
 
     init().catch((e: unknown) => {
@@ -841,20 +951,30 @@ export const usePortraitRenderer = ({
 
     return () => {
       cancelled = true;
-      if (frameRef.current !== null) {
-        cancelAnimationFrame(frameRef.current);
-        frameRef.current = null;
+      if (running) {
+        // The loop lets go of the image, and hands the GPU objects back to
+        // `release` two frames later (see startFrameLoop).
+        running.set(false);
+      } else {
+        // No loop yet: nothing can be drawing what this run built.
+        release();
       }
-      // Skia may still draw the last image over the shape texture this frame,
-      // and a texture must not be destroyed under an image in flight. So the
-      // canvas lets go of it first, and the GPU objects go two frames later.
-      image.set(null);
-      requestAnimationFrame(() => requestAnimationFrame(release));
       // The figure this run built is gone. Should the effect run again, the
       // button must wait for the next one rather than morph into nothing.
       setStatus(s => (s.ready ? { ...s, ready: false } : s));
     };
-  }, [width, height, texts, cross, rewind, progress, yaw, scroll, image]);
+  }, [
+    width,
+    height,
+    texts,
+    cross,
+    rewind,
+    progress,
+    yaw,
+    scroll,
+    image,
+    origin,
+  ]);
 
   return { ...status, image, setOrigin };
 };
