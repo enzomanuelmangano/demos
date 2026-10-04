@@ -4,17 +4,21 @@ import { StyleSheet, View } from 'react-native';
 // import { PressableGlass } from 'pressto/glass';
 import { PressableScale } from 'pressto';
 import { ScrollView } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDemoStackedToast } from './hook';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../navigation/home/demo-close-button';
 
 const App = () => {
   const { onPress } = useDemoStackedToast();
+  const { top: safeTop } = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: 60,
+          // Below the demo's close and info buttons.
+          paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
         }}>
         {new Array(10).fill(null).map((_, index) => (
           <PressableScale

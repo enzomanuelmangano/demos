@@ -5,15 +5,18 @@ import { useCallback, useRef } from 'react';
 import { AntDesign } from '@expo/vector-icons';
 import { PressableScale } from 'pressto';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SwipeableCard } from './components/Card';
 import { IMAGES } from './constants';
 import { useSwipeControls } from './hooks/use-swipe-controls';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 export const SwipeCards = () => {
   const { activeIndex, refs, swipeRight, swipeLeft, reset } =
     useSwipeControls();
 
+  const { top: safeTop } = useSafeAreaInsets();
   const liked = useRef(0);
   const disliked = useRef(0);
 
@@ -30,7 +33,8 @@ export const SwipeCards = () => {
       <View style={{ flex: 7 }}>
         <Animated.View
           style={{
-            marginTop: 20,
+            // The stack starts below the demo's close and info buttons.
+            marginTop: safeTop + DEMO_BUTTON_ROW_HEIGHT - 40,
             justifyContent: 'center',
             alignItems: 'center',
             flex: 1,

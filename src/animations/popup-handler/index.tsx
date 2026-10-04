@@ -15,8 +15,10 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BlurredPopupProvider, TouchablePopupHandler } from './BlurredPopup';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 const capitalize = (s: string) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
@@ -38,6 +40,8 @@ type Angle = (typeof angles)[number];
 
 const PopupHandler = () => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  // The top corners sit below the demo's close and info buttons.
+  const topY = useSafeAreaInsets().top + DEMO_BUTTON_ROW_HEIGHT;
 
   const internalPadding = size / 2;
   const width = windowWidth - internalPadding * 2;
@@ -45,8 +49,8 @@ const PopupHandler = () => {
 
   const selectedAngle = useSharedValue<Angle>('top-left');
 
-  const translateX = useSharedValue(0);
-  const translateY = useSharedValue(0);
+  const translateX = useSharedValue(size / 2);
+  const translateY = useSharedValue(topY);
 
   const context = useSharedValue({
     x: 0,
@@ -129,7 +133,7 @@ const PopupHandler = () => {
       const x = angle.includes('right')
         ? width - internalPadding
         : internalPadding;
-      const y = angle.includes('bottom') ? height - size : internalPadding * 2;
+      const y = angle.includes('bottom') ? height - size : topY;
       translateX.set(withSpring(x));
       translateY.set(withSpring(y));
     },

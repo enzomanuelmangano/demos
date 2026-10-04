@@ -27,7 +27,11 @@ export const FloatingBottomBar = () => {
   return (
     <NavigationIndependentTree>
       <NavigationContainer theme={DefaultTheme}>
-        <BottomTab.Navigator tabBar={tabBar}>
+        {/* No header: the screens are empty, the bar is the demo, and a
+            title row sat under the demo's close and info buttons. */}
+        <BottomTab.Navigator
+          tabBar={tabBar}
+          screenOptions={{ headerShown: false }}>
           <BottomTab.Screen name={ScreenNames.Home} component={View} />
           <BottomTab.Screen name={ScreenNames.Bookmark} component={View} />
           <BottomTab.Screen name={ScreenNames.Add} component={View} />

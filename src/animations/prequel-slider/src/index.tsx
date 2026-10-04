@@ -14,6 +14,7 @@ import { DonutCircularProgress } from './components/donut-circular-progress';
 import { DraggableSlider } from './components/draggable-slider';
 import { ImageEditor } from './components/image-editor';
 import { ButterflyWaveScrawlerGL } from './gl-transition';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../navigation/home/demo-close-button';
 
 const Lines = 50;
 const SpacePerLine = 10;
@@ -55,7 +56,9 @@ const App = () => {
 
   // There are definitely better ways of doing that :)
   const imageEditorWidth = windowWidth * 0.95;
-  const imageEditorHeight = windowHeight * 0.9 - safeBottom * 3 - safeTop;
+  // The editor starts below the demo's close and info buttons.
+  const editorTop = safeTop + DEMO_BUTTON_ROW_HEIGHT;
+  const imageEditorHeight = windowHeight * 0.9 - safeBottom * 3 - editorTop;
 
   return (
     <View style={styles.container}>
@@ -67,7 +70,7 @@ const App = () => {
           overflow: 'hidden',
           borderCurve: 'continuous',
           position: 'absolute',
-          top: safeTop,
+          top: editorTop,
         }}
         glEffect={ButterflyWaveScrawlerGL}
         image={demoImage}

@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomProgress } from './bottom-progress';
 import { clamp, getReadingTime } from './utils';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../navigation/home/demo-close-button';
 
 import type {
   LayoutChangeEvent,
@@ -117,7 +118,7 @@ const SectionContentList: FC<SectionContentListProps> = memo(
 
     const contentContainerStyle = useMemo(() => {
       return {
-        paddingTop: safeTop + 16,
+        paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
         paddingBottom: safeBottom + 100,
         paddingHorizontal: 32,
       };
