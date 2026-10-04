@@ -11,6 +11,8 @@ import type { SharedValue } from 'react-native-reanimated';
 const FAB_SIZE = 48;
 const ICON_COLOR = '#efe7d6';
 const ICON_SIZE = 20;
+// A 48pt disc in a screen corner: the thumb lands short of it, not on it.
+const HIT_SLOP = 16;
 
 interface Props {
   face: SharedValue<number>; // 0 = page icon, 1 = picture icon
@@ -30,7 +32,12 @@ export const PressableToggleIcon = ({ face, onPress, style }: Props) => {
     return { opacity: f, transform: [{ scale: 0.85 + 0.15 * f }] };
   });
   return (
-    <PressableScale style={[styles.fab, style]} onPress={onPress}>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityLabel="Switch between the text and the picture"
+      hitSlop={HIT_SLOP}
+      style={[styles.fab, style]}
+      onPress={onPress}>
       <View style={styles.box} pointerEvents="none">
         <Animated.View style={[styles.layer, photoStyle]}>
           <SymbolView

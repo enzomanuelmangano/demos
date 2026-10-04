@@ -1,15 +1,7 @@
-import {
-  Keyboard,
-  Dimensions,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -25,8 +17,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
 import { scheduleOnRN } from 'react-native-worklets';
-import * as DropdownMenu from 'zeego/dropdown-menu';
 
+import { PaintingMenu } from './components/painting-menu';
 import { ZoomOutButton } from './components/zoom-out-button';
 import {
   clearMosaicMappingCache,
@@ -38,11 +30,10 @@ import {
 } from './hooks/use-painting-analysis';
 import { usePhotoAtlas } from './hooks/use-photo-atlas';
 import { useWebGPUMosaic } from './hooks/use-webgpu-mosaic';
-import { ART_MOVEMENTS, PAINTINGS } from './paintings';
+import { PAINTINGS } from './paintings';
 import {
   useAnalysis,
   useIsAtlasMode,
-  useSelectedPaintingId,
   useSetAnalysis,
   useSetSelectedPaintingId,
 } from './state';
@@ -71,90 +62,6 @@ const GRID_MODE_TARGET = 0.7;
 const SNAP_BACK_THRESHOLD = 1.2;
 // Minimum scale with rubber band effect during pinch
 const MIN_SCALE_RUBBER_BAND = 0.5;
-
-// Header right button component - subscribes only to selectedPaintingId
-const HeaderRight = memo(
-  ({ onPaintingChange }: { onPaintingChange: (id: string | null) => void }) => {
-    const selectedPaintingId = useSelectedPaintingId();
-
-    // iOS 26's menu enables type-ahead filtering for large submenu trees: it
-    // attaches a hidden UITextField and makes it first responder, summoning the
-    // soft keyboard over the gallery. The field grabs focus on open AND again
-    // each time a submenu is entered, so a one-shot dismiss on open misses it.
-    // Instead, while the menu is open, dismiss the keyboard every time it shows.
-    const menuOpenRef = useRef(false);
-    useEffect(() => {
-      const sub = Keyboard.addListener('keyboardDidShow', () => {
-        if (menuOpenRef.current) {
-          Keyboard.dismiss();
-        }
-      });
-      return () => sub.remove();
-    }, []);
-
-    return (
-      <DropdownMenu.Root
-        onOpenChange={open => {
-          menuOpenRef.current = open;
-          if (open) {
-            Keyboard.dismiss();
-          }
-        }}>
-        <DropdownMenu.Trigger>
-          <Pressable style={styles.headerButton} hitSlop={12}>
-            <Ionicons
-              name="ellipsis-horizontal-circle"
-              size={28}
-              color="#fff"
-            />
-          </Pressable>
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Content>
-          <DropdownMenu.CheckboxItem
-            key="default"
-            value={selectedPaintingId === null ? 'on' : 'off'}
-            onValueChange={() => onPaintingChange(null)}>
-            <DropdownMenu.ItemTitle>Default</DropdownMenu.ItemTitle>
-            <DropdownMenu.ItemIndicator />
-          </DropdownMenu.CheckboxItem>
-          {ART_MOVEMENTS.map(movement => (
-            <DropdownMenu.Sub key={movement.id}>
-              <DropdownMenu.SubTrigger key={`${movement.id}-trigger`}>
-                <DropdownMenu.ItemTitle>{movement.name}</DropdownMenu.ItemTitle>
-              </DropdownMenu.SubTrigger>
-              <DropdownMenu.SubContent>
-                {movement.painters.map(painter => (
-                  <DropdownMenu.Sub key={painter.id}>
-                    <DropdownMenu.SubTrigger key={`${painter.id}-trigger`}>
-                      <DropdownMenu.ItemTitle>
-                        {painter.name}
-                      </DropdownMenu.ItemTitle>
-                    </DropdownMenu.SubTrigger>
-                    <DropdownMenu.SubContent>
-                      {painter.paintings.map(painting => (
-                        <DropdownMenu.CheckboxItem
-                          key={painting.id}
-                          value={
-                            painting.id === selectedPaintingId ? 'on' : 'off'
-                          }
-                          onValueChange={() => onPaintingChange(painting.id)}>
-                          <DropdownMenu.ItemTitle>
-                            {painting.name}
-                          </DropdownMenu.ItemTitle>
-                          <DropdownMenu.ItemIndicator />
-                        </DropdownMenu.CheckboxItem>
-                      ))}
-                    </DropdownMenu.SubContent>
-                  </DropdownMenu.Sub>
-                ))}
-              </DropdownMenu.SubContent>
-            </DropdownMenu.Sub>
-          ))}
-        </DropdownMenu.Content>
-      </DropdownMenu.Root>
-    );
-  },
-);
 
 export function ArtGallery() {
   const { top: safeTop } = useSafeAreaInsets();
@@ -623,10 +530,8 @@ export function ArtGallery() {
             the card when the demo closes. */}
         <View style={[styles.header, { top: safeTop }]}>
           <Text style={styles.headerTitle}>Gallery</Text>
-          <View style={styles.headerRight}>
-            <HeaderRight onPaintingChange={handlePaintingChange} />
-          </View>
         </View>
+        <PaintingMenu onPaintingChange={handlePaintingChange} />
 
         <Animated.View style={[styles.fab, backButtonStyle]}>
           <ZoomOutButton onPress={resetZoom} />
@@ -656,19 +561,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
   },
-  headerButton: {
-    marginRight: 8,
-    padding: 4,
-  },
   headerGradient: {
     left: 0,
     position: 'absolute',
     right: 0,
     top: 0,
-  },
-  headerRight: {
-    position: 'absolute',
-    right: 12,
   },
   headerTitle: {
     color: '#fff',
