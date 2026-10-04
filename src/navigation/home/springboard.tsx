@@ -115,15 +115,32 @@ const PAGER_MOVING_BACKSTOP = 1200;
 const SEARCH_EXTRA_BLUR = 100;
 
 /**
- * The pull's blur LEADS the search surface: it is whole by halfway through
- * the reveal, eased out so the first pixels of a pull already defocus the
- * grid; the field and then the results arrive over a home that has gone soft
- * (see SearchReveal's ranges, which start where this has done its work).
+ * How the pull's blur comes in: it still LEADS the search surface, but
+ * gently. A smoothstep that starts soft and is whole at `blurFull`, not an
+ * ease-out whole by halfway: that one defocused the grid on the first
+ * pixels of a pull, fast and hard. The second pass only joins over the
+ * last stretch, `blurExtra` (see where it is rendered).
  */
+const smoothstep = (edge0: number, edge1: number, x: number) => {
+  'worklet';
+  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
+  return t * t * (3 - 2 * t);
+};
+// Squared on top of the smoothstep: a visual-effect blur reads as most of
+// its depth at a small fraction of its intensity, so a linear ramp looked
+// fast and heavy from the first pixels of a pull.
 const searchBlurLead = (revealLevel: number) => {
   'worklet';
-  const t = Math.min(1, Math.max(0, revealLevel / SEARCH_REVEAL.blurFull));
-  return 1 - (1 - t) * (1 - t);
+  const t = smoothstep(0, SEARCH_REVEAL.blurFull, revealLevel);
+  return t * t;
+};
+const searchBlurExtra = (revealLevel: number) => {
+  'worklet';
+  return smoothstep(
+    SEARCH_REVEAL.blurExtra[0],
+    SEARCH_REVEAL.blurExtra[1],
+    revealLevel,
+  );
 };
 // Asymptote for the damped rubber-band that maps raw finger travel to the grid's
 // downward pull. Pull tracks the finger ~1:1 early, then eases, so a long drag
@@ -335,7 +352,7 @@ export const Springboard = ({ onOpen }: Props) => {
           // On the UI thread, on the frame it crosses.
           if (!pullArmed.get() && e.translationY > SEARCH_TRIGGER) {
             pullArmed.set(true);
-            Presets.System.impactMedium();
+            Presets.System.impactLight();
           } else if (
             pullArmed.get() &&
             e.translationY < SEARCH_TRIGGER * PULL_DISARM
@@ -353,7 +370,7 @@ export const Springboard = ({ onOpen }: Props) => {
           if (pullArmed.get() || e.velocityY > 900) {
             // A flick opens search without crossing the trigger: its tick
             // lands here instead.
-            if (!pullArmed.get()) Presets.System.impactMedium();
+            if (!pullArmed.get()) Presets.System.impactLight();
             pullCommitted.set(true);
             scheduleOnRN(enterSearch);
           }
@@ -414,7 +431,7 @@ export const Springboard = ({ onOpen }: Props) => {
     return { intensity: Math.max(demoBlur, searchBlur) };
   });
   const searchBlurProps = useAnimatedProps(() => ({
-    intensity: searchBlurLead(reveal.get()) * SEARCH_EXTRA_BLUR,
+    intensity: searchBlurExtra(reveal.get()) * SEARCH_EXTRA_BLUR,
   }));
   // Both blurs stay mounted and are driven on the UI thread, from the first
   // pixel of a pull or a launch. Mounted from JS, they arrived a few frames

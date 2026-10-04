@@ -134,7 +134,12 @@ export const frameAt = (
     x: frame.x * (1 - t),
     y: frame.y * (1 - t),
     width: frame.width + (screenWidth - frame.width) * t,
-    height: frame.height + (screenHeight - frame.height) * t ** HEIGHT_EASE,
+    // Never wider than tall: early in an open the eased height would fall
+    // below the width and squash the card for a few frames.
+    height: Math.max(
+      frame.height + (screenHeight - frame.height) * t ** HEIGHT_EASE,
+      frame.width + (screenWidth - frame.width) * t,
+    ),
     radius: frame.radius + (SCREEN_CORNER_RADIUS - frame.radius) * t,
   };
 };
@@ -237,6 +242,11 @@ export const landClose = () => {
  * and a window of 0.45 → 0.24 in expansion lasted ~50ms of a 360ms close,
  * three frames that read as a cut from the demo to the icon. Undoing the
  * easing (t = 1 - cbrt(expansion)) lets the fade run evenly over its frames.
+ *
+ * The mapping is tuned for the drag's close, which is that ease-out. The
+ * close button's runs on the launch spring instead; the fade is defined on
+ * expansion either way, so there it is a little shorter (~120ms) but still
+ * whole and still over in time.
  *
  * It has to be over before expansion 0.2: the library removes the demo's
  * route there, before the flight has landed, and a route with no native

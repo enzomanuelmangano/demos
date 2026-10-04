@@ -90,7 +90,8 @@ const DRAG_HOME_SPRING = { damping: 26, stiffness: 300, mass: 1 };
  * the library's ease-out timing. Not a spring: thrown so it would not hang at
  * the threshold, a clamped spring reached the icon still at speed and stopped
  * dead, the card jumping from a third of the screen to the icon in one frame.
- * An ease-out leaves quickly and lands slowly. Long enough that the card's
+ * An ease-out leaves quickly and lands slowly. (The close button's close is
+ * the library's own and runs on the launch spring.) Long enough that the card's
  * cross-fade into the icon, which has to end before the library removes the
  * route (40% of the way), gets frames enough to read as a fade.
  */

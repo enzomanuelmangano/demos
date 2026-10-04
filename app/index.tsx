@@ -124,7 +124,7 @@ const LaunchBridge = ({
       // The launch is taken: acknowledge it here, once, whatever started it
       // (an icon, a search row, a tap forwarded during a close). A tap that
       // was ignored above stays silent.
-      Presets.System.impactLight();
+      Presets.System.impactSoft();
       launchSession.closing = false;
       const token = ++launchSession.token;
       const group = launchGroupId(source, slug);

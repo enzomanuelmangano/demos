@@ -9,7 +9,9 @@ export const SEARCH_TRIGGER = 100;
 // home's blur first, whole by `blurFull`; then the field; then the results,
 // only once the home has gone soft, so a row is never drawn over sharp icons.
 export const SEARCH_REVEAL = {
-  blurFull: 0.5,
-  field: [0.15, 0.55],
-  list: [0.5, 1],
+  blurFull: 1,
+  // The search's second blur pass, over the last stretch only.
+  blurExtra: [0.5, 1],
+  field: [0.2, 0.6],
+  list: [0.55, 1],
 } as const;

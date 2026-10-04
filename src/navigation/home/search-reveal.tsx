@@ -269,10 +269,15 @@ export const SearchReveal = ({
   );
 
   // Cancel is ALWAYS rendered (so its layout space is reserved and the field
-  // width never jumps); it only fades in over the last stretch of the reveal, so
-  // it appears as the search commits rather than partway through a pull.
+  // width never jumps); it fades in with the field it belongs to.
   const rCancel = useAnimatedStyle(() => ({
-    opacity: interpolate(reveal.get(), [0.55, 1], [0, 1], Extrapolation.CLAMP),
+    // With the field, not the results: it belongs to the search bar.
+    opacity: interpolate(
+      reveal.get(),
+      SEARCH_REVEAL.field,
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
   }));
 
   // One TextInput, always — never swapped for a Text — so the placeholder can't
