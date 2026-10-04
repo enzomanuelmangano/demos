@@ -192,7 +192,11 @@ export const SearchReveal = ({
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return demos;
-    return demos.filter(d => d.name.toLowerCase().includes(q));
+    // The short label too: it is the name people see on the grid.
+    return demos.filter(
+      d =>
+        d.name.toLowerCase().includes(q) || d.label.toLowerCase().includes(q),
+    );
   }, [query, demos]);
 
   // Reveal progress 0 → 1: live pull (until the trigger) OR the pinned commit
