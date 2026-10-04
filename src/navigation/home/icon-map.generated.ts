@@ -95,6 +95,7 @@ export const ICON_MAP: Record<string, ImageSourcePropType> = {
   'scroll-transition-3d': require('../../../assets/app-icons/scroll-transition-3d.png'),
   'scrollable-bottom-sheet': require('../../../assets/app-icons/scrollable-bottom-sheet.png'),
   'scrollable-shapes': require('../../../assets/app-icons/scrollable-shapes.png'),
+  'sculptures-in-words': require('../../../assets/app-icons/sculptures-in-words.png'),
   'selectable-grid-list': require('../../../assets/app-icons/selectable-grid-list.png'),
   'shake-to-delete': require('../../../assets/app-icons/shake-to-delete.png'),
   'shared-transitions': require('../../../assets/app-icons/shared-transitions.png'),

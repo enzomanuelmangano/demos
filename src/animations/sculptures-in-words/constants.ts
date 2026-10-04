@@ -25,7 +25,8 @@ export const GLYPH_FONT_SIZE = 46;
  */
 export const PAGE_GLYPH_SCALE = 0.34;
 export const PAGE_MARGIN_FRAC = 0.09;
-export const PAGE_TOP_FRAC = 0.11;
+// Clears the launcher's close button, which sits under the status bar.
+export const PAGE_TOP_FRAC = 0.14;
 export const LINE_HEIGHT_FACTOR = 1.55;
 
 // --- bust -------------------------------------------------------------------
