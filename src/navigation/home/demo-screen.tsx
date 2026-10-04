@@ -15,6 +15,7 @@ import {
 } from 'react';
 
 import { useIsFocused, useRouter } from 'expo-router';
+import { useAtomValue } from 'jotai';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Presets } from 'react-native-pulsar';
 import Animated, {
@@ -61,6 +62,7 @@ import {
 } from '../../animations/registry';
 import { useRetray } from '../../packages/retray';
 import { useOnShakeEffect } from '../hooks/use-shake-gesture';
+import { HideCloseButtonAtom } from '../states/close-button';
 
 import type { LaunchMetadata } from './launch-transition';
 import type { Trays } from '../../trays';
@@ -417,6 +419,7 @@ const DemoLaunch = ({
   // still popped in. It waits for those frames instead.
   const contentOpacity = useSharedValue(0);
   const [shown, setShown] = useState(false);
+  const hideCloseButton = useAtomValue(HideCloseButtonAtom);
   const onContentLayout = useCallback(() => {
     let frames = 0;
     const tick = () => {
@@ -460,7 +463,7 @@ const DemoLaunch = ({
               <AnimationComponent {...(dimensions as any)} />
             </Animated.View>
           ) : null}
-          {mounted ? (
+          {mounted && !hideCloseButton ? (
             <DemoCloseButton
               visible={shown && !closing}
               onPress={closeFromButton}

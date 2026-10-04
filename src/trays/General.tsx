@@ -7,7 +7,9 @@ import Constants from 'expo-constants';
 import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 
+import { HideCloseButtonAtom } from '../navigation/states/close-button';
 import { ShowUnstableAnimationsAtom } from '../navigation/states/filters';
+import { ShowTouchesAtom, canShowTouches } from '../navigation/states/touches';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -28,6 +30,20 @@ const Items: readonly GeneralItem[] = [
     type: 'unstable',
   },
   {
+    title: 'Hide Close Button',
+    description: 'Close demos with the drag down only',
+    icon: 'close-circle-outline',
+    backgroundColor: '#5856D6',
+    type: 'closeButton',
+  },
+  {
+    title: 'Show Touches',
+    description: 'Draw a disc under each finger, for screen recordings',
+    icon: 'finger-print',
+    backgroundColor: '#34C759',
+    type: 'touches',
+  },
+  {
     title: 'Sponsor',
     description: 'Support the project and help keep it running',
     icon: 'heart',
@@ -35,6 +51,12 @@ const Items: readonly GeneralItem[] = [
     type: 'sponsor',
   },
 ] as const;
+
+// "Show Touches" only where the native overlay is in the binary: Android, and
+// any iOS build made before the module was added, have nothing to switch.
+const VisibleItems = Items.filter(
+  item => item.type !== 'touches' || canShowTouches(),
+);
 
 const BurntToastOptions = {
   layout: {
@@ -60,6 +82,8 @@ const updateUnstableDemos = () => {
 
 export const General = () => {
   const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
+  const [hideCloseButton, setHideCloseButton] = useAtom(HideCloseButtonAtom);
+  const [showTouches, setShowTouches] = useAtom(ShowTouchesAtom);
 
   const handleItemPress = useCallback(
     (type: string) => {
@@ -69,18 +93,26 @@ export const General = () => {
           setShowUnstable(prev => !prev);
           break;
         }
+        case 'closeButton': {
+          setHideCloseButton(prev => !prev);
+          break;
+        }
+        case 'touches': {
+          setShowTouches(prev => !prev);
+          break;
+        }
         case 'sponsor': {
           Linking.openURL('https://github.com/sponsors/enzomanuelmangano');
           break;
         }
       }
     },
-    [setShowUnstable],
+    [setShowUnstable, setHideCloseButton, setShowTouches],
   );
 
   return (
     <View style={styles.container}>
-      {Items.map(item => (
+      {VisibleItems.map(item => (
         <PressableScale
           style={styles.item}
           key={item.type}
@@ -103,6 +135,22 @@ export const General = () => {
               value={showUnstable}
               onValueChange={setShowUnstable}
               trackColor={{ false: '#3e3e3e', true: '#FF9500' }}
+              thumbColor="#ffffff"
+            />
+          )}
+          {item.type === 'closeButton' && (
+            <Switch
+              value={hideCloseButton}
+              onValueChange={setHideCloseButton}
+              trackColor={{ false: '#3e3e3e', true: '#5856D6' }}
+              thumbColor="#ffffff"
+            />
+          )}
+          {item.type === 'touches' && (
+            <Switch
+              value={showTouches}
+              onValueChange={setShowTouches}
+              trackColor={{ false: '#3e3e3e', true: '#34C759' }}
               thumbColor="#ffffff"
             />
           )}
