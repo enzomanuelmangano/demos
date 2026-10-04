@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spiral Lab — app icon randomness</title>
+<style>
+  :root { color-scheme: dark; --bg:#0d0f14; --panel:#161a22; --line:#262c38; --text:#e8ecf3; --dim:#8b93a3; --ok:#34c759; --bad:#ff453a; --accent:#0a84ff; }
+  * { box-sizing: border-box; }
+  body { margin:0; font: 14px/1.45 -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:20px 28px 8px; }
+  h1 { margin:0 0 4px; font-size:22px; }
+  header p { margin:0; color:var(--dim); max-width:900px; }
+  main { display:grid; grid-template-columns: 440px 1fr; gap:24px; padding:16px 28px 40px; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:16px; }
+  .hero canvas { width:100%; aspect-ratio:1; border-radius:22%; display:block; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+  button { background:var(--accent); color:white; border:0; border-radius:10px; padding:9px 14px; font-weight:600; cursor:pointer; }
+  button.secondary { background:#2a3140; }
+  .stats { margin-top:12px; display:grid; grid-template-columns:auto 1fr; gap:4px 12px; font-variant-numeric: tabular-nums; }
+  .stats span:nth-child(odd) { color:var(--dim); }
+  .verdict { font-weight:700; }
+  .ok { color:var(--ok); } .bad { color:var(--bad); }
+  label.slider { display:grid; grid-template-columns: 150px 1fr 56px; align-items:center; gap:10px; margin:10px 0; }
+  label.slider span:first-child { color:var(--dim); }
+  input[type=range] { width:100%; }
+  h2 { font-size:15px; margin:0 0 10px; }
+  .grids { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+  .grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:10px; }
+  .cell { position:relative; cursor:pointer; }
+  .cell canvas { width:100%; aspect-ratio:1; border-radius:22%; display:block; }
+  .cell .tag { position:absolute; left:6px; bottom:6px; font-size:10px; font-weight:700; padding:2px 6px; border-radius:6px; background:rgba(0,0,0,.55); font-variant-numeric: tabular-nums; }
+  .cell .tag.bad { color:#ff8a80; } .cell .tag.ok { color:#9be7a9; }
+  .muted { color:var(--dim); font-size:12px; }
+  details { margin-top:14px; color:var(--dim); }
+  details p { margin:6px 0; }
+  code { background:#222836; padding:1px 5px; border-radius:5px; color:#cfd6e4; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Spiral Lab</h1>
+  <p>The app icon's spiral is drawn from one random number. The best ones have arms drawn by close dots with wide blue gaps between them; others come out as straight rays, thick ribbons or an even dotted texture with no space.
+     This page draws the real icon and applies the rule that throws the bad draws away. Click any icon to inspect it.</p>
+</header>
+<main>
+  <section class="panel hero">
+    <canvas id="hero" width="1024" height="1024"></canvas>
+    <div class="row">
+      <button id="gen">Generate (filtered)</button>
+      <button id="genRaw" class="secondary">Generate (old random)</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <label class="slider"><span>Angle α (manual)</span><input id="alpha" type="range" min="0.0005" max="0.9995" step="0.0005" value="0.5" /><span id="alphaV"></span></label>
+    <h2 style="margin-top:18px">Rule thresholds</h2>
+    <label class="slider"><span>Min space between arms</span><input id="minSpace" type="range" min="10" max="250" step="1" value="150" /><span id="minSpaceV"></span></label>
+    <label class="slider"><span>Min arms</span><input id="minArms" type="range" min="1" max="40" step="1" value="10" /><span id="minArmsV"></span></label>
+    <label class="slider"><span>Max arms</span><input id="maxArms" type="range" min="5" max="80" step="1" value="20" /><span id="maxArmsV"></span></label>
+    <label class="slider"><span>Min curve (°)</span><input id="minPitch" type="range" min="0" max="60" step="1" value="15" /><span id="minPitchV"></span></label>
+    <label class="slider"><span>Max curve (°)</span><input id="maxPitch" type="range" min="60" max="90" step="1" value="72" /><span id="maxPitchV"></span></label>
+    <div class="muted" id="acceptance"></div>
+    <details>
+      <summary>What the numbers mean</summary>
+      <p>Point <code>n</code> sits at radius <code>n/4</code> and angle <code>n·α</code>. What the eye reads as the spiral are the nearest neighbours: points <code>q</code> steps apart that land closest. They trace <code>q</code> arms.</p>
+      <p><b>Space between arms</b>: the gap to the next arm, mid-icon. Wide gaps are the airy look; narrow ones fill the icon with an even dotted texture.</p>
+      <p><b>Arms</b>: too few and the arms fuse into thick ribbons; too many and there is no space left between them.</p>
+      <p><b>Curve</b>: how far the arms lean off the radius. Near 0° they are straight rays.</p>
+    </details>
+  </section>
+  <section>
+    <div class="row" style="margin:0 0 14px"><button id="batch">New batch</button><span class="muted" style="align-self:center">12 draws each, same thresholds</span></div>
+    <div class="grids">
+      <div class="panel"><h2>Old random <span class="muted">(every draw kept)</span></h2><div class="grid" id="rawGrid"></div></div>
+      <div class="panel"><h2>Filtered <span class="muted">(rule applied)</span></h2><div class="grid" id="okGrid"></div></div>
+    </div>
+  </section>
+</main>
+<script>
+// ---------------------------------------------------------------- the rule
+// Mirrors scripts/generate-app-icon/src/app-icon/spiral-quality.ts.
+//
+// What reads as the spiral is not the curve the points are laid along but
+// the nearest-neighbour family: points q steps apart that land closest. Those
+// trace q arms. The icons that look best have a moderate number of arms,
+// traced by dots close together, with wide blue gaps between the arms.
+const SIZE = 1024, POINTS = 3000, MAX_DOT = 7, HALF_DIAG = Math.hypot(SIZE / 2, SIZE / 2);
+const RADII = [250, 400, 550];
+const QMAX = 400;
+const angleOf = rf => (Math.PI * rf) / 2;
+
+function measure(rf) {
+  const x = angleOf(rf) / (2 * Math.PI);
+  const at = RADII.map(r => {
+    let d1 = Infinity, q1 = 0, e1 = 0;
+    const dist = new Float64Array(QMAX + 1);
+    for (let q = 1; q <= QMAX; q++) {
+      const e = q * x - Math.round(q * x);
+      const d = Math.hypot(q / 4, r * 2 * Math.PI * e);
+      dist[q] = d;
+      if (d < d1) { d1 = d; q1 = q; e1 = e; }
+    }
+    let d2 = Infinity;
+    for (let q = 1; q <= QMAX; q++) if (q % q1 !== 0 && dist[q] < d2) d2 = dist[q];
+    // How far the arms lean off the radius: 0° is a straight ray.
+    const pitch = (Math.atan2(Math.abs(r * 2 * Math.PI * e1), q1 / 4) * 180) / Math.PI;
+    return { arms: q1, along: d1, across: d2, pitch };
+  });
+  const mid = at[1];
+  // The same arms all the way out; otherwise a second pattern takes over.
+  const stable = at.every(m => m.arms === mid.arms);
+  return { ...mid, stable };
+}
+const thresholds = () => ({
+  minSpace: +minSpace.value, minArms: +minArms.value, maxArms: +maxArms.value, minPitch: +minPitch.value, maxPitch: +maxPitch.value,
+});
+function verdict(m, t = thresholds()) {
+  const why = [];
+  if (!m.stable) why.push('arms change across the icon');
+  if (m.arms < t.minArms) why.push(`only ${m.arms} arms`);
+  if (m.arms > t.maxArms) why.push(`${m.arms} arms, too dense`);
+  if (m.across < t.minSpace) why.push('arms too close');
+  if (m.pitch < t.minPitch) why.push('straight rays');
+  if (m.pitch > t.maxPitch) why.push('arms wound into rings');
+  return { ok: why.length === 0, why };
+}
+function drawFiltered(maxTries = 20000) {
+  for (let i = 1; i <= maxTries; i++) {
+    const rf = Math.random();
+    if (verdict(measure(rf)).ok) return { rf, tries: i };
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------- the icon
+// The same composition as the generator: vertical gradient, dashed 4×4 grid,
+// 3000 dots growing to 7px with a radial fade, and the glowing ":)".
+function drawIcon(ctx, rf) {
+  const S = ctx.canvas.width, k = S / SIZE;
+  ctx.save(); ctx.scale(k, k);
+  const g = ctx.createLinearGradient(0, 0, 0, SIZE);
+  g.addColorStop(0, '#0290FE'); g.addColorStop(1, '#0048EC');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, SIZE, SIZE);
+
+  ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
+  for (let i = 0; i < 4; i++) {
+    const p = (i * SIZE) / 4;
+    ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(SIZE, p); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, SIZE); ctx.stroke();
+  }
+  ctx.restore();
+
+  const alpha = angleOf(rf), grow = Math.exp(0.005 * alpha);
+  const fade = ctx.createRadialGradient(SIZE / 2, SIZE / 2, 0, SIZE / 2, SIZE / 2, SIZE / 2);
+  fade.addColorStop(0, 'rgba(255,255,255,0)'); fade.addColorStop(0.5, 'rgba(255,255,255,0.8)'); fade.addColorStop(1, 'rgba(255,255,255,1)');
+  ctx.fillStyle = fade; ctx.beginPath();
+  for (let n = 0; n < POINTS; n++) {
+    const a = (n / 4) * grow, x = a * Math.cos(alpha * n), y = a * Math.sin(alpha * n);
+    const r = Math.min(MAX_DOT, (MAX_DOT * Math.hypot(x, y)) / HALF_DIAG);
+    if (r <= 0) continue;
+    ctx.moveTo(SIZE / 2 + x + r, SIZE / 2 + y); ctx.arc(SIZE / 2 + x, SIZE / 2 + y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+
+  ctx.font = '700 400px "SF Pro Rounded", ui-rounded, -apple-system, system-ui, sans-serif';
+  const text = ':)', w = ctx.measureText(text).width, tx = SIZE / 2 - w / 2, ty = SIZE / 2 + 400 / 3;
+  ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fillText(text, tx, ty);
+  ctx.save(); ctx.shadowColor = 'white'; ctx.shadowBlur = 10; ctx.strokeStyle = 'white'; ctx.lineWidth = 8; ctx.strokeText(text, tx, ty); ctx.restore();
+  ctx.restore();
+}
+
+// ---------------------------------------------------------------- the page
+const hero = document.getElementById('hero').getContext('2d');
+const $ = id => document.getElementById(id);
+const minSpace = $('minSpace'), minArms = $('minArms'), maxArms = $('maxArms'), minPitch = $('minPitch'), alphaIn = $('alpha');
+const maxPitch = $('maxPitch');
+const sliders = [minSpace, minArms, maxArms, minPitch, maxPitch];
+let current = { rf: 0.5, tries: null };
+
+function show(rf, tries) {
+  current = { rf, tries };
+  alphaIn.value = rf;
+  drawIcon(hero, rf);
+  const m = measure(rf), v = verdict(m);
+  $('stats').innerHTML = `
+    <span>Seed (randomFactor)</span><span>${rf.toFixed(5)}</span>
+    <span>Angle α</span><span>${((angleOf(rf) * 180) / Math.PI).toFixed(2)}°</span>
+    <span>Arms</span><span>${m.arms}</span>
+    <span>Space between arms</span><span>${m.across === Infinity ? '∞' : m.across.toFixed(0) + ' px'}</span>
+    <span>Dots along an arm</span><span>${m.along.toFixed(0)} px apart</span>
+    <span>Curve</span><span>${m.pitch.toFixed(0)}°</span>
+    <span>Verdict</span><span class="verdict ${v.ok ? 'ok' : 'bad'}">${v.ok ? 'Accepted' : 'Rejected — ' + v.why.join(', ')}</span>
+    ${tries ? `<span>Draws needed</span><span>${tries}</span>` : ''}`;
+  $('alphaV').textContent = ((angleOf(rf) * 180) / Math.PI).toFixed(1) + '°';
+}
+
+function cell(rf) {
+  const wrap = document.createElement('div'); wrap.className = 'cell';
+  const c = document.createElement('canvas'); c.width = c.height = 256; drawIcon(c.getContext('2d'), rf);
+  const v = verdict(measure(rf));
+  const tag = document.createElement('div'); tag.className = 'tag ' + (v.ok ? 'ok' : 'bad');
+  tag.textContent = ((angleOf(rf) * 180) / Math.PI).toFixed(1) + '°' + (v.ok ? '' : ' ✕');
+  wrap.append(c, tag); wrap.title = `seed ${rf.toFixed(5)} — click to inspect`;
+  wrap.onclick = () => show(rf, null);
+  return wrap;
+}
+function batch() {
+  const raw = $('rawGrid'), ok = $('okGrid'); raw.innerHTML = ''; ok.innerHTML = '';
+  for (let i = 0; i < 12; i++) raw.append(cell(Math.random()));
+  for (let i = 0; i < 12; i++) { const d = drawFiltered(); if (d) ok.append(cell(d.rf)); }
+  if (!ok.children.length) ok.textContent = 'No angle passes these thresholds.';
+}
+function acceptance() {
+  let n = 0, N = 8000;
+  for (let i = 1; i < N; i++) if (verdict(measure(i / N)).ok) n++;
+  $('acceptance').textContent = n > 0
+    ? `Acceptance: ${((n / (N - 1)) * 100).toFixed(2)}% of all angles (≈ ${Math.round((N - 1) / n)} draws per icon)`
+    : 'Acceptance: no angle passes these thresholds';
+}
+function syncLabels() {
+  $('minSpaceV').textContent = minSpace.value + ' px'; $('minArmsV').textContent = minArms.value; $('maxArmsV').textContent = maxArms.value; $('minPitchV').textContent = minPitch.value + '°'; $('maxPitchV').textContent = maxPitch.value + '°';
+}
+for (const s of sliders) s.addEventListener('input', () => { syncLabels(); show(current.rf, current.tries); });
+for (const s of sliders) s.addEventListener('change', () => { acceptance(); batch(); });
+alphaIn.addEventListener('input', () => show(+alphaIn.value, null));
+$('gen').onclick = () => { const d = drawFiltered(); if (d) show(d.rf, d.tries); };
+$('genRaw').onclick = () => show(Math.random(), null);
+$('batch').onclick = batch;
+
+syncLabels(); acceptance();
+const first = drawFiltered(); if (first) show(first.rf, first.tries); batch();
+</script>
+</body>
+</html>

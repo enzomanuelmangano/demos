@@ -10,6 +10,7 @@ import { LoadSkiaWeb } from '@shopify/react-native-skia/lib/commonjs/web/LoadSki
 import React from 'react';
 
 import { AppIcon } from '../app-icon';
+import { drawGoodSpiral } from '../app-icon/spiral-quality';
 
 const Icons = [
   {
@@ -58,7 +59,10 @@ const displayText = text || ':)';
   // Once that CanvasKit is loaded, you can access Skia via getSkiaExports()
   const { Skia } = getSkiaExports();
 
-  const randomFactor = Math.random();
+  // Not any random spiral: only one with curved arms and space between them
+  // (see spiral-quality.ts, and spiral-lab.html to try the rule by eye).
+  const randomFactor = drawGoodSpiral();
+  console.log(`spiral randomFactor ${randomFactor}`);
 
   const data = Skia.Data.fromBytes(
     fs.readFileSync(require.resolve('../../assets/SF-Pro-Rounded-Bold.otf')),
