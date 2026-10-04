@@ -157,6 +157,23 @@ export const Springboard = ({ onOpen }: Props) => {
   const [searchListActive, setSearchListActive] = useState(false);
   const [pullInProgress, setPullInProgress] = useState(false);
   const pullActive = useSharedValue(false);
+  // 1 once the home's blur is on screen. The blur mounts from JS, a few frames
+  // behind a pull that the UI thread tracks from its first pixel, and the
+  // search surface revealing in those frames sat over a sharp grid: rows and
+  // icons on top of each other. The surface waits for it (see SearchReveal).
+  const homeBlurReady = useSharedValue(0);
+  useEffect(() => {
+    if (!blurActive) {
+      homeBlurReady.set(0);
+      return undefined;
+    }
+    // The frame after the commit that mounted it, so it is drawn; eased, so a
+    // surface the pull has already revealed fades in rather than popping.
+    const frame = requestAnimationFrame(() =>
+      homeBlurReady.set(withTiming(1, { duration: 120 })),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [blurActive, homeBlurReady]);
   const onHomeFlagsChange = useCallback((flags: number) => {
     setDemoCovering((flags & FLAG_DEMO_COVERING) !== 0);
     setBlurActive((flags & FLAG_BLUR) !== 0);
@@ -365,11 +382,13 @@ export const Springboard = ({ onOpen }: Props) => {
       [0, HOME_MAX_BLUR],
       Extrapolation.CLAMP,
     );
-    const searchBlur = reveal.get() * HOME_MAX_BLUR;
+    // Eased in once mounted: a pull already under way would otherwise switch
+    // the blur on at its full depth in one frame.
+    const searchBlur = reveal.get() * HOME_MAX_BLUR * homeBlurReady.get();
     return { intensity: Math.max(demoBlur, searchBlur) };
   });
   const searchBlurProps = useAnimatedProps(() => ({
-    intensity: reveal.get() * SEARCH_EXTRA_BLUR,
+    intensity: reveal.get() * SEARCH_EXTRA_BLUR * homeBlurReady.get(),
   }));
   // Only mount the fullscreen blur while something is actually defocusing the
   // home. On the idle grid a 0-intensity BlurView is still a fullscreen
@@ -506,6 +525,7 @@ export const Springboard = ({ onOpen }: Props) => {
           pull and composited over the blurred grid. */}
       <SearchReveal
         reveal={reveal}
+        blurReady={homeBlurReady}
         searchMode={searchMode}
         listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}

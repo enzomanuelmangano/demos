@@ -72,6 +72,9 @@ interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
   // commit (never dips — so the surface never flickers mid-commit).
   reveal: SharedValue<number>;
+  // 1 once the home's blur is drawn; the surface never shows over a sharp
+  // grid (see springboard.tsx).
+  blurReady: SharedValue<number>;
   // Whether the search view is committed (input focused, results interactive).
   searchMode: boolean;
   // Whether the result LIST should be mounted at all. False while the grid is
@@ -154,6 +157,7 @@ const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
+  blurReady,
   searchMode,
   listActive,
   sideMargin,
@@ -190,7 +194,7 @@ export const SearchReveal = ({
   const rField = useAnimatedStyle(() => {
     const prog = reveal.get();
     return {
-      opacity: prog,
+      opacity: prog * blurReady.get(),
       transform: [{ translateY: interpolate(prog, [0, 1], [-16, 0]) }],
     };
   });
@@ -202,7 +206,7 @@ export const SearchReveal = ({
       Extrapolation.CLAMP,
     );
     return {
-      opacity: lp,
+      opacity: lp * blurReady.get(),
       // Descend into place (from above) so the list enters WITH the downward
       // pull, not against it — same direction as the field.
       transform: [{ translateY: interpolate(lp, [0, 1], [-20, 0]) }],
