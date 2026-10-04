@@ -95,7 +95,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   },
   'calendar-days': {
     authorName: '@austinvalleskey',
-    link: null,
+    link: 'https://x.com/austinvalleskey/status/1990438034064466290',
     builtOn: '2025-11-30',
   },
   'card-shader-reflections': {
