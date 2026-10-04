@@ -10,6 +10,7 @@ import Animated, {
   interpolate,
   useAnimatedProps,
   useAnimatedReaction,
+  useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
@@ -418,6 +419,17 @@ export const Springboard = ({ onOpen }: Props) => {
     scrollX.set(event.contentOffset.x);
   });
 
+  // Fewer pages (Show Unstable turned off) leave the content shorter, and the
+  // scroll view keeps an offset past its end: an empty page, with the dots
+  // and the forwarded taps pointing at one that is gone.
+  const pagerRef = useAnimatedRef<Animated.ScrollView>();
+  useEffect(() => {
+    const last = (layout.pageCount - 1) * layout.pageWidth;
+    if (scrollX.get() > last) {
+      pagerRef.current?.scrollTo({ x: last, animated: false });
+    }
+  }, [layout.pageCount, layout.pageWidth, scrollX, pagerRef]);
+
   return (
     <View style={styles.root}>
       <Background />
@@ -426,6 +438,7 @@ export const Springboard = ({ onOpen }: Props) => {
           pointerEvents={searchMode ? 'none' : 'auto'}
           style={[styles.gridScale, rPull]}>
           <Animated.ScrollView
+            ref={pagerRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}

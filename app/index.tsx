@@ -16,16 +16,14 @@ import {
 import {
   DEMO_SCREEN_ID,
   HOME_SCREEN_ID,
+  landClose,
   launchClosing,
-  launchFrame,
   launchGroup,
   launchGroupId,
-  launchPose,
   launchProgress,
   launchSession,
   launchTransition,
   parseLaunchGroup,
-  pendingLaunchTeardown,
 } from '../src/navigation/home/launch-transition';
 import { Springboard } from '../src/navigation/home/springboard';
 import { useOnShakeEffect } from '../src/navigation/hooks/use-shake-gesture';
@@ -85,20 +83,7 @@ const LaunchBridge = ({
     () => launchClosing.get() && launchProgress.get() <= 0.001,
     (landed, wasLanded) => {
       if (!landed || wasLanded) return;
-      // Always lowered on landing: a tap during the close can have named the
-      // next launch, and its card must not open faded.
-      launchClosing.set(false);
-      const pending = pendingLaunchTeardown.get();
-      if (pending === null) return;
-      pendingLaunchTeardown.set(null);
-      if (launchGroup.get() === pending) {
-        launchGroup.set(null);
-        launchFrame.set(null);
-      }
-      launchPose.translateX.set(0);
-      launchPose.translateY.set(0);
-      launchPose.scale.set(1);
-      scheduleOnRN(endClose);
+      if (landClose()) scheduleOnRN(endClose);
     },
   );
 

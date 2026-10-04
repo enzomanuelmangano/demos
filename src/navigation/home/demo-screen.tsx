@@ -42,6 +42,7 @@ import {
   DEMO_SCREEN_ID,
   closeFadeAt,
   launchCardAt,
+  landClose,
   launchClosing,
   launchFrame,
   launchGroup,
@@ -66,8 +67,8 @@ import type { Trays } from '../../trays';
 import type { ReactNode } from 'react';
 
 /**
- * The close drag. The card follows the finger down â part of the way, so it
- * reads as held rather than dragged off â and shrinks with the distance, to
+ * The close drag. The card follows the finger down — part of the way, so it
+ * reads as held rather than dragged off — and shrinks with the distance, to
  * `DRAG_MIN_SCALE` over `DRAG_SHRINK_TRAVEL` of the screen's height. Past
  * `CLOSE_SCALE` it closes on its own; let go before that, it springs back.
  */
@@ -99,11 +100,13 @@ const FIRST_PAINT_FRAMES = 4;
 const MOUNT_AT_PROGRESS = 0.85;
 /** A launch that never reports its landing still shows its demo. */
 const MOUNT_BACKSTOP_MS = 1500;
+/** Longer than any close flight; see the demo's unmount teardown. */
+const TEARDOWN_BACKSTOP_MS = 900;
 
 /**
  * Everything a worklet on this screen calls back into JS is MODULE-LEVEL, on
  * purpose: worklets resolves such callbacks through a weak registry, and a
- * function owned by a component is collected once that component is gone â a
+ * function owned by a component is collected once that component is gone — a
  * gesture event one frame after the route pops would then abort the process.
  * A module never goes away; the screen publishes its handlers into it.
  */
@@ -131,10 +134,16 @@ const abortClose = () => closeHandlers.abort?.();
  */
 const closeFromButton = () => {
   if (launchGroup.get() !== null && launchProgress.get() < 0.999) return;
+  // Once: a second tap before the button has faded would close twice.
+  if (launchSession.closing || closeHandlers.commit === null) return;
   // The same as a drag that lets the card go (see CloseGesture).
   Presets.System.impactMedium();
   commitClose();
 };
+/** When the last close was committed; see the forwarded taps in CloseGesture. */
+const closedAt = { current: 0 };
+/** A tap this soon after a close commits belongs to the gesture that made it. */
+const FORWARD_TAP_DELAY_MS = 300;
 const mountHandlers = new Map<string, () => void>();
 const mountDemo = (groupId: string) => mountHandlers.get(groupId)?.();
 
@@ -144,7 +153,7 @@ type CloseState = 'idle' | 'preparing' | 'ready' | 'unavailable';
  * The close, prepared while the finger is still dragging.
  *
  * Starting a back session measures the icon it lands on and waits for it to
- * hold still â about a third of a second in a debug build. Started at the
+ * hold still — about a third of a second in a debug build. Started at the
  * threshold, that was a third of a second of a card frozen at 0.75 before it
  * flew. So the session is begun when the drag BEGINS, through the library's
  * interactive back, with its clock held at 1: nothing on screen changes (the
@@ -187,6 +196,7 @@ const CloseBridge = ({ onCommit }: { onCommit: () => void }) => {
     // window opens the next demo instead of landing on this one.
     launchSession.closing = true;
     launchClosing.set(true);
+    closedAt.current = Date.now();
     // The keyboard is the demo's: it goes as the card leaves, not over the
     // home once the demo has unmounted.
     Keyboard.dismiss();
@@ -237,7 +247,7 @@ const CloseBridge = ({ onCommit }: { onCommit: () => void }) => {
  * Not a pushed screen: a transparent route over the SpringBoard. The icon's
  * artwork travels in the choreography overlay (see launch-transition.tsx) and
  * lands in this screen's full-screen target; the card it opens into is drawn
- * HERE, under the overlay, on the same clock â the demo's backdrop colour, and
+ * HERE, under the overlay, on the same clock — the demo's backdrop colour, and
  * once mounted the demo itself, scaled into it. On the way back the same card
  * shrinks, with the running demo inside, into the icon.
  */
@@ -260,7 +270,7 @@ const DemoLaunch = ({
   const AnimationComponent = getAnimationComponent(slug);
 
   // The launch is this screen's while it is here, and it tears it down when it
-  // unmounts, after the close has landed on the icon â unless a tap during the
+  // unmounts, after the close has landed on the icon — unless a tap during the
   // close has already named the next launch, which is left alone.
   useLayoutEffect(() => {
     // A pose frozen by the previous close must not move this card.
@@ -282,6 +292,15 @@ const DemoLaunch = ({
         launchProgress.get() > 0.001
       ) {
         pendingLaunchTeardown.set(groupId);
+        // Not every removal animates: the library pops the route outright
+        // when it cannot fly the card home (its icon is gone, a lock is
+        // held), the clock never lands, and the home stayed blurred and
+        // covered for good. Past any flight, the teardown runs from here.
+        setTimeout(() => {
+          if (pendingLaunchTeardown.get() !== groupId) return;
+          landClose();
+          launchSession.closing = false;
+        }, TEARDOWN_BACKSTOP_MS);
         return;
       }
       launchSession.closing = false;
@@ -303,8 +322,8 @@ const DemoLaunch = ({
   }, [presented, token]);
 
   // The card: its SIZE by layout, its place by a transform. Scaling a full-
-  // screen view to the card instead was cheaper, but not uniformly â the icon
-  // is square and the screen is not â and a corner radius under an uneven
+  // screen view to the card instead was cheaper, but not uniformly — the icon
+  // is square and the screen is not — and a corner radius under an uneven
   // scale is an ellipse, which showed as the card squared up on the icon.
   // Only the card lays out: the demo inside has a fixed size, is scaled
   // uniformly to the card's width, and is cropped top and bottom by it.
@@ -455,10 +474,10 @@ const DemoLaunch = ({
 
 /**
  * The close gesture: a drag down, anywhere. The card shrinks with it; past
- * `CLOSE_SCALE` the pose freezes and the close flies home from it â or at a
+ * `CLOSE_SCALE` the pose freezes and the close flies home from it — or at a
  * release whose throw would carry it past. It lives OUTSIDE the choreography
  * screen: once the close's session starts the library blocks that screen's
- * touches, and a recognizer inside it was cancelled â springing the frozen
+ * touches, and a recognizer inside it was cancelled — springing the frozen
  * pose back mid-flight.
  */
 const CloseGesture = ({
@@ -538,11 +557,17 @@ const CloseGesture = ({
         // hand a tap on to the home under it; see `homeTap`.
         onTouchEnd={
           released
-            ? event =>
+            ? event => {
+                // Not the tail of the gesture that closed it: a double tap
+                // on the close button landed on the icon under it.
+                if (Date.now() - closedAt.current < FORWARD_TAP_DELAY_MS) {
+                  return;
+                }
                 homeTap.current?.(
                   event.nativeEvent.pageX,
                   event.nativeEvent.pageY,
-                )
+                );
+              }
             : undefined
         }
         pointerEvents={enabled ? 'auto' : released ? 'box-only' : 'none'}
@@ -561,7 +586,7 @@ const CloseGesture = ({
 
 /**
  * A demo host: the launch choreography around one demo (see DemoLaunch). The
- * routes only resolve which demo â app/launch.tsx for the launcher,
+ * routes only resolve which demo — app/launch.tsx for the launcher,
  * app/animations/[slug].tsx for a deep link. Shake opens the feedback tray.
  */
 export const DemoScreen = ({
@@ -577,8 +602,8 @@ export const DemoScreen = ({
   // the home while the card flies back reaches the icon under it.
   const [released, setReleased] = useState(false);
   // A preloaded route is laid out over the home but not presented. Named by a
-  // tap whose push never went through, it would hold a demo there â invisible,
-  // with a live close gesture â and take every touch meant for the home.
+  // tap whose push never went through, it would hold a demo there — invisible,
+  // with a live close gesture — and take every touch meant for the home.
   const presented = useIsFocused();
   const release = useCallback(() => setReleased(true), []);
   const { show } = useRetray<Trays>();
@@ -590,7 +615,7 @@ export const DemoScreen = ({
 
   // The preloaded launch route before a tap: the same tree, empty, so naming a
   // demo only adds the card and the target to a screen already laid out. The
-  // tree must stay the SAME one â a close gesture mounted in the commit that
+  // tree must stay the SAME one — a close gesture mounted in the commit that
   // starts the launch never recognized. What changes is that an idle route
   // takes no touch at all: preloaded, it can still be hit over the home, and
   // it swallowed the taps meant for the icons under it.

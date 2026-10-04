@@ -196,6 +196,30 @@ export const launchClosing = makeMutable(false);
 export const pendingLaunchTeardown = makeMutable<string | null>(null);
 
 /**
+ * The end of a close, once it has landed: the closing flag is lowered and, if
+ * the demo unmounted before the landing, what the icon flew on is torn down.
+ * Runs on either thread — the home's landing reaction, or the demo's backstop
+ * for a close that never animated. Returns whether a teardown ran.
+ */
+export const landClose = () => {
+  'worklet';
+  // Always lowered: a tap during the close can have named the next launch,
+  // and its card must not open faded.
+  launchClosing.set(false);
+  const pending = pendingLaunchTeardown.get();
+  if (pending === null) return false;
+  pendingLaunchTeardown.set(null);
+  if (launchGroup.get() === pending) {
+    launchGroup.set(null);
+    launchFrame.set(null);
+  }
+  launchPose.translateX.set(0);
+  launchPose.translateY.set(0);
+  launchPose.scale.set(1);
+  return true;
+};
+
+/**
  * The end of a close, by expansion: the card fades out over it and the icon
  * artwork fades in, so the icon lands whole. The library removes the demo's
  * route once the clock is under 0.2 — before the flight has landed — and a
