@@ -114,9 +114,13 @@ export const buildGlyphAtlas = (
     }
   });
   surface.flush();
+  // The snapshot holds its own reference to the pixels; the surface is done
+  // with, and left to the collector it kept another atlas-sized target alive.
+  const image = surface.makeImageSnapshot();
+  surface.dispose();
 
   return {
-    image: surface.makeImageSnapshot(),
+    image,
     width,
     height,
     cols,
