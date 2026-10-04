@@ -309,11 +309,24 @@ export const usePortraitRenderer = ({
       return;
     }
     let cancelled = false;
+    /**
+     * Everything this run allocates, released when it ends.
+     *
+     * The device is Skia's and lives as long as the app, so nothing goes with
+     * it: left to the garbage collector, two device-sized targets and the
+     * atlas stayed alive after every visit — Hermes does not count native
+     * memory, so it was in no hurry to collect them.
+     */
+    const disposables: (() => void)[] = [];
+    const release = () => {
+      for (const dispose of disposables.splice(0).reverse()) {
+        dispose();
+      }
+    };
 
     const init = async () => {
       // One device for both libraries when Skia is on Graphite: the atlas then
-      // never leaves the GPU. Without it, fall back to an adapter of our own
-      // and a readback — the picture is identical, it just costs a copy.
+      // never leaves the GPU.
       //
       // There is no capability flag to ask: `getNativeDevice` simply throws on
       // a build without Graphite, so the throw IS the feature detection.
@@ -342,7 +355,10 @@ export const usePortraitRenderer = ({
 
       const ratio = Math.min(PixelRatio.get(), MAX_PIXEL_RATIO);
       const typeface = await loadTypeface(PAGE_FONT);
-      if (cancelled || !typeface) {
+      if (cancelled) {
+        return;
+      }
+      if (!typeface) {
         setStatus(s2 => ({ ...s2, error: 'font failed' }));
         return;
       }
@@ -368,7 +384,10 @@ export const usePortraitRenderer = ({
         loadBinaryAsset(NIKE),
         loadBinaryAsset(THINKER),
       ]);
-      if (cancelled || !bust || !nike || !thinker) {
+      if (cancelled) {
+        return;
+      }
+      if (!bust || !nike || !thinker) {
         setStatus(s2 => ({ ...s2, error: 'point cloud missing' }));
         return;
       }
@@ -414,9 +433,11 @@ export const usePortraitRenderer = ({
 
       // Skia typeset it; the coverage crosses to WebGPU on the same device,
       // with no copy when Graphite is on.
+      disposables.push(() => atlas.image.dispose());
       const atlasTexture = adoptTexture(
         Skia.Image.MakeNativeTextureFromImage(atlas.image),
       );
+      disposables.push(() => atlasTexture.destroy());
 
       /** What each figure can carry, on its own terms. */
       const countA = Math.min(
@@ -525,6 +546,7 @@ export const usePortraitRenderer = ({
         size: instances.byteLength,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       });
+      disposables.push(() => instanceBuffer.destroy());
       device.queue.writeBuffer(instanceBuffer, 0, instances);
 
       const quad = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
@@ -532,12 +554,14 @@ export const usePortraitRenderer = ({
         size: quad.byteLength,
         usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
       });
+      disposables.push(() => quadBuffer.destroy());
       device.queue.writeBuffer(quadBuffer, 0, quad);
 
       const uniformBuffer = device.createBuffer({
         size: UNIFORM_BYTES,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
+      disposables.push(() => uniformBuffer.destroy());
 
       const module = device.createShaderModule({ code: glyphShader });
       const pipeline = device.createRenderPipeline({
@@ -669,6 +693,7 @@ export const usePortraitRenderer = ({
         usage:
           GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
       });
+      disposables.push(() => shapeTexture.destroy());
       // Sized from the colour attachment itself: a depth attachment even one
       // pixel off it fails validation and the pass silently renders nothing.
       const depthTexture = device.createTexture({
@@ -676,6 +701,7 @@ export const usePortraitRenderer = ({
         format: 'depth24plus',
         usage: GPUTextureUsage.RENDER_ATTACHMENT,
       });
+      disposables.push(() => depthTexture.destroy());
 
       // Views, and the descriptor that names them, built once.
       //
@@ -802,6 +828,11 @@ export const usePortraitRenderer = ({
     };
 
     init().catch((e: unknown) => {
+      // A run that failed part-way keeps nothing it had built.
+      release();
+      if (cancelled) {
+        return;
+      }
       setStatus(s => ({
         ...s,
         error: e instanceof Error ? e.message : String(e),
@@ -814,6 +845,11 @@ export const usePortraitRenderer = ({
         cancelAnimationFrame(frameRef.current);
         frameRef.current = null;
       }
+      // Skia may still draw the last image over the shape texture this frame,
+      // and a texture must not be destroyed under an image in flight. So the
+      // canvas lets go of it first, and the GPU objects go two frames later.
+      image.set(null);
+      requestAnimationFrame(() => requestAnimationFrame(release));
     };
   }, [width, height, texts, cross, rewind, progress, yaw, scroll, image]);
 

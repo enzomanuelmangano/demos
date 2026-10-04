@@ -295,6 +295,11 @@ export const SculpturesInWordsScreen = () => {
   }, [yaw]);
 
   const toggle = useCallback(() => {
+    // Until the figure exists there is nothing to turn the page into: the
+    // column would be clipped away with no letters drawn in its place.
+    if (!portrait.ready) {
+      return;
+    }
     const now = Date.now();
     if (now - lastToggle.current < 120) {
       return; // the press animation can fire twice on one tap
