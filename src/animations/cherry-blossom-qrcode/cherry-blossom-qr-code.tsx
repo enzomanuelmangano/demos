@@ -10,16 +10,19 @@ import {
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useDrawerProgress } from 'react-native-drawer-layout';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import { Presets, Settings, usePatternComposer } from 'react-native-pulsar';
 import Animated, {
   Easing,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
 import { CREEPER_BLAST_PATTERN } from './haptics';
@@ -31,6 +34,11 @@ import { useWebGPU } from './hooks';
 const HINT_DELAY_MS = 2000;
 const HINT_TEXT = 'Long press to spawn a creeper';
 
+// The demo fades in a few frames after it mounts. Raising the keyboard at
+// mount (autoFocus) slid it up over the black placeholder before the scene
+// was visible; waiting lets both arrive together.
+const INITIAL_FOCUS_DELAY_MS = 120;
+
 export const CherryBlossomQRCode = () => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const canvasWidth = windowWidth;
@@ -40,6 +48,7 @@ export const CherryBlossomQRCode = () => {
   const inputRef = useRef<TextInput>(null);
   const canvasRef = useRef<CanvasRef>(null);
   const isFlat = useRef(false);
+  const mountedRef = useRef(true);
 
   // Keyboard handling
   const keyboardHeight = useSharedValue(0);
@@ -97,10 +106,42 @@ export const CherryBlossomQRCode = () => {
     onFuseStart,
   });
 
-  const handlePress = useCallback(() => {
-    isFlat.current = !isFlat.current;
+  // The keyboard belongs to the demo, not to the drawer. While the drawer is
+  // open (or being dragged) the input stays blurred: refocusing there kept
+  // the keyboard over the drawer and then dropped it over the black
+  // transition placeholder once another demo was picked.
+  const drawerProgress = useDrawerProgress();
+  const isDrawerOpenRef = useRef(drawerProgress.get() > 0.01);
+
+  const focusInput = useCallback(() => {
+    if (!mountedRef.current || isDrawerOpenRef.current) return;
     inputRef.current?.focus();
   }, []);
+
+  const onDrawerOpenChange = useCallback(
+    (open: boolean) => {
+      isDrawerOpenRef.current = open;
+      if (open) {
+        Keyboard.dismiss();
+      } else {
+        focusInput();
+      }
+    },
+    [focusInput],
+  );
+
+  useAnimatedReaction(
+    () => drawerProgress.get() > 0.01,
+    (open, wasOpen) => {
+      if (wasOpen === null || open === wasOpen) return;
+      scheduleOnRN(onDrawerOpenChange, open);
+    },
+  );
+
+  const handlePress = useCallback(() => {
+    isFlat.current = !isFlat.current;
+    focusInput();
+  }, [focusInput]);
 
   // Long-press spawns the creeper. It walks in for CREEPER_WALK_DURATION,
   // hisses through the fuse, and takes the tree with it — then the tree
@@ -118,24 +159,22 @@ export const CherryBlossomQRCode = () => {
   // Keep the keyboard up while the demo is on screen — but only then: an
   // unconditional refocus runs after the unmount blur too, leaking the
   // keyboard onto whatever screen comes next.
-  const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
+    const timeout = setTimeout(focusInput, INITIAL_FOCUS_DELAY_MS);
     return () => {
+      clearTimeout(timeout);
       mountedRef.current = false;
       // A pattern mid-play would otherwise keep buzzing on the next screen -
       // the same leak the timer chain had to guard against.
       Settings.stopHaptics();
       Keyboard.dismiss();
     };
-  }, []);
+  }, [focusInput]);
 
   const handleInputBlur = useCallback(() => {
-    requestAnimationFrame(() => {
-      if (!mountedRef.current) return;
-      inputRef.current?.focus();
-    });
-  }, []);
+    requestAnimationFrame(focusInput);
+  }, [focusInput]);
 
   return (
     <View style={styles.container}>
@@ -169,7 +208,6 @@ export const CherryBlossomQRCode = () => {
           inputMode="url"
           keyboardAppearance="light"
           showSoftInputOnFocus={true}
-          autoFocus
         />
       </Animated.View>
     </View>
