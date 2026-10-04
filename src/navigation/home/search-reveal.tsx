@@ -1,5 +1,6 @@
 import {
   FlatList,
+  Keyboard,
   Platform,
   Pressable,
   StyleSheet,
@@ -28,8 +29,8 @@ import { VariableBlur } from 'react-native-variable-blur';
 import { useDemos } from './demos';
 import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
-import { launchGroupId } from './launch-transition';
-import { usePressScale } from './press-scale';
+import { launchGroup, launchGroupId } from './launch-transition';
+import { PRESSED_OPACITY, usePressOpacity } from './press-opacity';
 import { SEARCH_REVEAL } from './search-constants';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
@@ -40,8 +41,6 @@ import type { SharedValue } from 'react-native-reanimated';
 // otherwise (older iOS / Android).
 const LIQUID_GLASS = isLiquidGlassAvailable();
 const BAR_HEIGHT = 48;
-/** A result's icon under the finger (see usePressScale); its name dims. */
-const ROW_PRESSED_SCALE = 0.88;
 const BAR_TOP_GAP = 10;
 
 // The blur behind the search field fades out downwards by its RADIUS, not by
@@ -127,9 +126,9 @@ const SearchRowComponent = ({
   onSelect: (slug: string) => void;
 }) => {
   const radius = iconSize * ICON_RADIUS_RATIO;
-  const press = usePressScale(ROW_PRESSED_SCALE);
+  const press = usePressOpacity();
   const nameStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(press.scale.get(), [ROW_PRESSED_SCALE, 1], [0.6, 1]),
+    opacity: interpolate(press.opacity.get(), [PRESSED_OPACITY, 1], [0.6, 1]),
   }));
   return (
     <Pressable
@@ -141,7 +140,7 @@ const SearchRowComponent = ({
         groupId={launchGroupId('search', demo.slug)}
         size={iconSize}
         radius={radius}
-        pressScale={press.scale}>
+        pressOpacity={press.opacity}>
         <Image
           source={getIconSource(demo.slug)}
           style={[
@@ -184,7 +183,9 @@ export const SearchReveal = ({
   // so the keyboard rises with the reveal rather than racing the mount.
   useEffect(() => {
     if (!searchMode) return undefined;
-    const t = setTimeout(() => inputRef.current?.focus(), 120);
+    const t = setTimeout(() => {
+      if (launchGroup.get() === null) inputRef.current?.focus();
+    }, 120);
     return () => clearTimeout(t);
   }, [searchMode, inputRef]);
 
@@ -268,10 +269,15 @@ export const SearchReveal = ({
   );
 
   // Cancel is ALWAYS rendered (so its layout space is reserved and the field
-  // width never jumps); it only fades in over the last stretch of the reveal, so
-  // it appears as the search commits rather than partway through a pull.
+  // width never jumps); it fades in with the field it belongs to.
   const rCancel = useAnimatedStyle(() => ({
-    opacity: interpolate(reveal.get(), [0.55, 1], [0, 1], Extrapolation.CLAMP),
+    // With the field, not the results: it belongs to the search bar.
+    opacity: interpolate(
+      reveal.get(),
+      SEARCH_REVEAL.field,
+      [0, 1],
+      Extrapolation.CLAMP,
+    ),
   }));
 
   // One TextInput, always — never swapped for a Text — so the placeholder can't
@@ -290,6 +296,15 @@ export const SearchReveal = ({
         autoCapitalize="none"
         returnKeyType="search"
         clearButtonMode="while-editing"
+        // Never focused under a demo: UIKit hands first responder back to
+        // the field when the demo's route is presented over the home, and
+        // the keyboard came up over the opening demo.
+        onFocus={() => {
+          if (launchGroup.get() !== null) {
+            inputRef.current?.blur();
+            Keyboard.dismiss();
+          }
+        }}
       />
     </>
   );

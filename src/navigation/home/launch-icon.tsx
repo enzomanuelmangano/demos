@@ -13,7 +13,7 @@ interface Props {
   size: number;
   radius: number;
   /** The press feedback, applied to the artwork (see below). */
-  pressScale?: SharedValue<number>;
+  pressOpacity?: SharedValue<number>;
   children: ReactNode;
 }
 
@@ -27,18 +27,17 @@ interface Props {
  * icon costs no per-frame work while another one launches — with a page or
  * three of icons mounted, a style per icon ran dozens of worklets a frame.
  *
- * The press scale is the one exception, and it reads only its own value. It
- * scales the artwork, not the wrapper: the launch measures the wrapper on the
- * tap, and a wrapper caught mid-press measured smaller than the artwork it
- * lays out, so the flight started a few points off the icon. The artwork
- * carries its scale into the overlay and springs back as it flies.
+ * The press dim is the one exception, and it reads only its own value. It
+ * dims the artwork, not the wrapper, and never changes its size: the launch
+ * measures the icon on the tap, and a press that scaled it started the
+ * flight off the icon's frame.
  */
 export const LaunchIcon = memo(
-  ({ groupId, size, radius, pressScale, children }: Props) => {
+  ({ groupId, size, radius, pressOpacity, children }: Props) => {
     const metadata: LaunchMetadata = { radius };
     const box = { width: size, height: size };
     const pressStyle = useAnimatedStyle(() =>
-      pressScale ? { transform: [{ scale: pressScale.get() }] } : {},
+      pressOpacity ? { opacity: pressOpacity.get() } : {},
     );
     return (
       <launchTransition.Element

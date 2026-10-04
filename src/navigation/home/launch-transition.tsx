@@ -112,7 +112,16 @@ export const launchProgress = makeMutable(0);
  */
 export const launchFrame = makeMutable<LaunchFrame | null>(null);
 
-/** Linear interpolation from the icon to the full screen, by `progress`. */
+/**
+ * How much faster the card's height closes on the icon than its width. A
+ * linear height left the card a tall rectangle (~130 x 224pt) where it
+ * cross-fades into the square icon, and a rectangle fading into a square
+ * read as a jump. Like the iOS app switcher, the card squares up as it
+ * nears the icon: by the cross-fade it is the icon's shape.
+ */
+const HEIGHT_EASE = 1.6;
+
+/** From the icon to the full screen, by `progress`. */
 export const frameAt = (
   frame: LaunchFrame,
   screenWidth: number,
@@ -125,7 +134,12 @@ export const frameAt = (
     x: frame.x * (1 - t),
     y: frame.y * (1 - t),
     width: frame.width + (screenWidth - frame.width) * t,
-    height: frame.height + (screenHeight - frame.height) * t,
+    // Never wider than tall: early in an open the eased height would fall
+    // below the width and squash the card for a few frames.
+    height: Math.max(
+      frame.height + (screenHeight - frame.height) * t ** HEIGHT_EASE,
+      frame.width + (screenWidth - frame.width) * t,
+    ),
     radius: frame.radius + (SCREEN_CORNER_RADIUS - frame.radius) * t,
   };
 };
@@ -220,23 +234,40 @@ export const landClose = () => {
 };
 
 /**
- * The end of a close, by expansion: the card fades out over it and the icon
- * artwork fades in, so the icon lands whole. The library removes the demo's
- * route once the clock is under 0.2 — before the flight has landed — and a
- * route with no native animation goes in one frame: the card has to be gone
- * by then, or it vanishes mid-air.
+ * The card cross-fades into the icon over a close: the card (with the demo in
+ * it) fades out as the icon artwork fades in, so the icon lands whole.
+ *
+ * The window is set in TIME, not in expansion. The close runs the library's
+ * ease-out cubic, so expansion is (1 - t)^3: it falls fastest at the start,
+ * and a window of 0.45 → 0.24 in expansion lasted ~50ms of a 360ms close,
+ * three frames that read as a cut from the demo to the icon. Undoing the
+ * easing (t = 1 - cbrt(expansion)) lets the fade run evenly over its frames.
+ *
+ * The mapping is tuned for the drag's close, which is that ease-out. The
+ * close button's runs on the launch spring instead; the fade is defined on
+ * expansion either way, so there it is a little shorter (~120ms) but still
+ * whole and still over in time.
+ *
+ * It has to be over before expansion 0.2: the library removes the demo's
+ * route there, before the flight has landed, and a route with no native
+ * animation goes in one frame. That is t = 0.415, so the fade runs from 5%
+ * to 40% of the close (~160ms of a 450ms close), on a smoothstep.
  */
-const CLOSE_FADE = { from: 0.45, to: 0.24 };
+const CLOSE_FADE = { fromTime: 0.05, toTime: 0.4 };
 
 export const closeFadeAt = (expansion: number) => {
   'worklet';
-  return Math.max(
+  const e = Math.max(0, Math.min(1, expansion));
+  const t = 1 - Math.cbrt(e);
+  const x = Math.max(
     0,
     Math.min(
       1,
-      (expansion - CLOSE_FADE.to) / (CLOSE_FADE.from - CLOSE_FADE.to),
+      (t - CLOSE_FADE.fromTime) / (CLOSE_FADE.toTime - CLOSE_FADE.fromTime),
     ),
   );
+  // Card opacity: 1 at the start of the window, 0 at its end.
+  return 1 - x * x * (3 - 2 * x);
 };
 
 /**

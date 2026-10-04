@@ -113,6 +113,8 @@ export const CherryBlossomQRCode = () => {
 
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
+    // The tree folding flat for scanning, and back: a toggle, felt as one.
+    Presets.System.impactMedium();
     focusInput();
   }, [focusInput]);
 
