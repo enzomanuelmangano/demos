@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Presets } from 'react-native-pulsar';
 import Animated, {
   Easing,
   Extrapolation,
@@ -12,7 +13,6 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -41,10 +41,13 @@ import type { TextInput } from 'react-native';
 // One full page of the SpringBoard: a flex-wrapped grid of demo icons.
 const PageComponent = ({
   demos,
+  mounted,
   layout,
   onPressDemo,
 }: {
   demos: Demo[];
+  // How many of this page's icons are mounted; the rest hold their cell.
+  mounted: number;
   layout: GridLayout;
   onPressDemo: (slug: string) => void;
 }) => (
@@ -63,16 +66,23 @@ const PageComponent = ({
         rowGap: layout.rowGap,
       },
     ]}>
-    {demos.map(demo => (
-      <AppIcon
-        key={demo.slug}
-        demo={demo}
-        cellWidth={layout.cellWidth}
-        cellHeight={layout.cellHeight}
-        iconSize={layout.iconSize}
-        onPress={onPressDemo}
-      />
-    ))}
+    {demos.map((demo, index) =>
+      index < mounted ? (
+        <AppIcon
+          key={demo.slug}
+          demo={demo}
+          cellWidth={layout.cellWidth}
+          cellHeight={layout.cellHeight}
+          iconSize={layout.iconSize}
+          onPress={onPressDemo}
+        />
+      ) : (
+        <View
+          key={demo.slug}
+          style={{ width: layout.cellWidth, height: layout.cellHeight }}
+        />
+      ),
+    )}
   </View>
 );
 const Page = memo(PageComponent);
@@ -85,7 +95,7 @@ const Page = memo(PageComponent);
 // rebuilt ~24 icons (a context menu, a shared element, an image decode each)
 // on the main thread while the page moved, and coming back rebuilt them
 // again. Now the first page mounts with the home, the others one by one in
-// the idle after it (see `mountedPages`), and a swipe mounts nothing.
+// the idle after it (see `mountedIcons`), and a swipe mounts nothing.
 //
 // `pagingEnabled` + full-width pages give iOS's native paging deceleration and
 // edge rubber-band for free. The offset is mirrored into a shared value on the
@@ -99,6 +109,8 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 const HOME_MAX_BLUR = 90;
 // Upper bound on the wait for an idle slot to mount the next page.
 const PAGE_MOUNT_TIMEOUT = 500;
+// Longest a swipe can hold page mounts back (see `pagerMoving`).
+const PAGER_MOVING_BACKSTOP = 1200;
 // The search's second blur pass, over the first (see where it is rendered).
 const SEARCH_EXTRA_BLUR = 100;
 
@@ -117,6 +129,9 @@ const searchBlurLead = (revealLevel: number) => {
 // downward pull. Pull tracks the finger ~1:1 early, then eases, so a long drag
 // never runs away.
 const PULL_RUBBER = 260;
+// Backing off below this share of the trigger disarms the pull (hysteresis,
+// so a finger resting on the trigger does not tick on and off).
+const PULL_DISARM = 0.85;
 
 // Bit flags for the single home-state reaction below (one per-frame worklet
 // instead of four): which JS states flip.
@@ -280,6 +295,8 @@ export const Springboard = ({ onOpen }: Props) => {
   // commit search behind the opening demo. The launch group has no such lag:
   // it is named on the tap itself.
   const pullBlocked = useSharedValue(false);
+  // Whether the pull is past the point where letting go opens search.
+  const pullArmed = useSharedValue(false);
   const pullGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -294,6 +311,7 @@ export const Springboard = ({ onOpen }: Props) => {
         .onBegin(() => {
           'worklet';
           pullCommitted.set(false);
+          pullArmed.set(false);
           const blocked = launchGroup.get() !== null;
           pullBlocked.set(blocked);
           pullActive.set(!blocked);
@@ -306,12 +324,30 @@ export const Springboard = ({ onOpen }: Props) => {
           const p = PULL_RUBBER * (1 - Math.exp(-d / PULL_RUBBER));
           pull.set(p);
           reveal.set(Math.min(p / SEARCH_TRIGGER, 1));
+          // The tick of a pull-to-refresh: one as the pull crosses the point
+          // where letting go opens search, a lighter one if it backs off.
+          // On the UI thread, on the frame it crosses.
+          if (!pullArmed.get() && e.translationY > SEARCH_TRIGGER) {
+            pullArmed.set(true);
+            Presets.System.impactMedium();
+          } else if (
+            pullArmed.get() &&
+            e.translationY < SEARCH_TRIGGER * PULL_DISARM
+          ) {
+            pullArmed.set(false);
+            Presets.System.selection();
+          }
         })
         .onEnd(e => {
           'worklet';
           if (pullBlocked.get()) return;
           // Commit to search when pulled past the trigger (or flicked hard).
-          if (e.translationY > SEARCH_TRIGGER || e.velocityY > 900) {
+          // The same line as the tick: armed means letting go opens search,
+          // so a pull eased back into the hysteresis band still commits.
+          if (pullArmed.get() || e.velocityY > 900) {
+            // A flick opens search without crossing the trigger: its tick
+            // lands here instead.
+            if (!pullArmed.get()) Presets.System.impactMedium();
             pullCommitted.set(true);
             scheduleOnRN(enterSearch);
           }
@@ -339,12 +375,9 @@ export const Springboard = ({ onOpen }: Props) => {
       pullCommitted,
       pullActive,
       pullBlocked,
+      pullArmed,
     ],
   );
-  const rPull = useAnimatedStyle(() => ({
-    transform: [{ translateY: pull.get() }],
-  }));
-
   // The recede behind an open demo is BLUR ONLY — deliberately no scale on the
   // grid: the launch measures the icon through its transforms, so a scaled
   // grid would move the frame the close lands on.
@@ -400,6 +433,10 @@ export const Springboard = ({ onOpen }: Props) => {
         y >= rect.y &&
         y <= rect.y + rect.height
       ) {
+        // A cell whose icon has not mounted yet has no launch source: the
+        // demo would open with nothing to grow out of, invisible over the
+        // home. The tap is dropped instead.
+        if (page * layout.perPage + cell >= mountedIconsRef.current) return;
         onOpen('grid', demos[cell].slug);
         return;
       }
@@ -411,20 +448,57 @@ export const Springboard = ({ onOpen }: Props) => {
     [onOpen],
   );
 
-  // Pages beyond the first mount one per idle slot after the home has drawn,
-  // then stay mounted: the first frame only pays for the page in view.
-  const [mountedPages, setMountedPages] = useState(1);
+  // The first page mounts with the home; the other icons follow a row at a
+  // time, one per idle slot, and then stay mounted. A row, not a page: a whole
+  // page (~24 icons) committed to the main thread in one go, and a swipe that
+  // began during it dropped frames. And never while the pager moves.
+  const totalIcons = layout.perPage * layout.pageCount;
+  const [mountedIcons, setMountedIcons] = useState(layout.perPage);
+  const [pagerMoving, setPagerMoving] = useState(false);
+  // Read where a render is not: the forwarded tap and the scroll worklets.
+  const mountedIconsRef = useRef(mountedIcons);
+  mountedIconsRef.current = mountedIcons;
+  const gridComplete = useSharedValue(false);
   useEffect(() => {
-    if (mountedPages >= layout.pageCount) return undefined;
+    gridComplete.set(mountedIcons >= totalIcons);
+    if (mountedIcons >= totalIcons) setPagerMoving(false);
+  }, [mountedIcons, totalIcons, gridComplete]);
+  useEffect(() => {
+    if (pagerMoving || mountedIcons >= totalIcons) return undefined;
     const handle = requestIdleCallback(
-      () => setMountedPages(count => count + 1),
+      () => setMountedIcons(count => count + layout.cols),
       { timeout: PAGE_MOUNT_TIMEOUT },
     );
     return () => cancelIdleCallback(handle);
-  }, [mountedPages, layout.pageCount]);
+  }, [mountedIcons, totalIcons, pagerMoving, layout.cols]);
+  // Backstop: a swipe whose end the scroll events never report must not hold
+  // the remaining pages back for good.
+  useEffect(() => {
+    if (!pagerMoving) return undefined;
+    const t = setTimeout(() => setPagerMoving(false), PAGER_MOVING_BACKSTOP);
+    return () => clearTimeout(t);
+  }, [pagerMoving]);
 
-  const onScroll = useAnimatedScrollHandler(event => {
-    scrollX.set(event.contentOffset.x);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollX.set(event.contentOffset.x);
+    },
+    // Only while icons remain to mount: once the grid is whole, a swipe
+    // re-renders nothing.
+    onBeginDrag: () => {
+      if (gridComplete.get()) return;
+      scheduleOnRN(setPagerMoving, true);
+    },
+    // A paging swipe always ends in momentum; a drag released in place does
+    // not, and ends here.
+    onEndDrag: event => {
+      if (gridComplete.get()) return;
+      if (event.velocity?.x === 0) scheduleOnRN(setPagerMoving, false);
+    },
+    onMomentumEnd: () => {
+      if (gridComplete.get()) return;
+      scheduleOnRN(setPagerMoving, false);
+    },
   });
 
   // Fewer pages (Show Unstable turned off) leave the content shorter, and the
@@ -444,7 +518,10 @@ export const Springboard = ({ onOpen }: Props) => {
       <GestureDetector gesture={pullGesture}>
         <Animated.View
           pointerEvents={searchMode ? 'none' : 'auto'}
-          style={[styles.gridScale, rPull]}>
+          // The grid holds still under a pull and only defocuses, as the
+          // App Library's does: it is the results that come down with the
+          // finger (see SearchReveal's \`pull\`).
+          style={styles.gridScale}>
           <Animated.ScrollView
             ref={pagerRef}
             horizontal
@@ -456,18 +533,20 @@ export const Springboard = ({ onOpen }: Props) => {
             // content touches (the ~150ms UIKit hold would sit before every
             // launch), and a real drag still cancels the child touch.
             contentContainerStyle={{ paddingTop: insets.top }}>
-            {layout.pages.map((demos, index) =>
-              index < mountedPages ? (
-                <Page
-                  key={index}
-                  demos={demos}
-                  layout={layout}
-                  onPressDemo={onPressDemo}
-                />
-              ) : (
-                <View key={index} style={{ width: layout.pageWidth }} />
-              ),
-            )}
+            {layout.pages.map((demos, index) => (
+              <Page
+                key={index}
+                demos={demos}
+                // Clamped to the page: a page already whole stays the same
+                // props, and its memo holds while the next one mounts.
+                mounted={Math.min(
+                  demos.length,
+                  Math.max(0, mountedIcons - index * layout.perPage),
+                )}
+                layout={layout}
+                onPressDemo={onPressDemo}
+              />
+            ))}
           </Animated.ScrollView>
         </Animated.View>
       </GestureDetector>
@@ -510,6 +589,7 @@ export const Springboard = ({ onOpen }: Props) => {
           pull and composited over the blurred grid. */}
       <SearchReveal
         reveal={reveal}
+        pull={pull}
         searchMode={searchMode}
         listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}

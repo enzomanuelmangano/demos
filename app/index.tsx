@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useRef } from 'react';
 
 import { useFocusEffect, useRouter } from 'expo-router';
+import { Presets } from 'react-native-pulsar';
 import { useAnimatedReaction } from 'react-native-reanimated';
 import {
   ChoreographyScreen,
@@ -106,6 +107,10 @@ const LaunchBridge = ({
       // exception — the card is already on its way home, and a tap on another
       // icon (or the same one) is queued by the library until it lands.
       if (named !== null && !launchSession.closing) return;
+      // The launch is taken: acknowledge it here, once, whatever started it
+      // (an icon, a search row, a tap forwarded during a close). A tap that
+      // was ignored above stays silent.
+      Presets.System.impactLight();
       launchSession.closing = false;
       const token = ++launchSession.token;
       const group = launchGroupId(source, slug);

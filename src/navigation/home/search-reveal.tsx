@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Presets } from 'react-native-pulsar';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -66,13 +67,23 @@ const EMPTY_RESULTS: Demo[] = [];
 
 /** Vertical padding of a result row, above and below its icon. */
 const ROW_PADDING = 7;
-/** Screens of rows kept mounted: enough to hold every demo at once. */
+/** Screens of rows kept mounted once search is open: every demo at once. */
 const SEARCH_WINDOW_SIZE = 25;
+/**
+ * During a pull that has not committed: the first screen only. A pull let go
+ * short of the trigger used to mount all ~120 rows in the background, each a
+ * shared element and an image, for a list that never opened.
+ */
+const PULL_WINDOW_SIZE = 1;
 
 interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
   // commit (never dips — so the surface never flickers mid-commit).
   reveal: SharedValue<number>;
+  // The grid's rubber-band offset. The results ride it, as the App Library's
+  // do: they come down with the finger (the field stays put) and settle up
+  // as search commits.
+  pull: SharedValue<number>;
   // Whether the search view is committed (input focused, results interactive).
   searchMode: boolean;
   // Whether the result LIST should be mounted at all. False while the grid is
@@ -92,13 +103,13 @@ interface Props {
   inputRef: React.RefObject<TextInput | null>;
 }
 
-// iOS-App-Library-style pull-to-search. The WHOLE surface — search field AND
-// results — tracks the finger from the first pixel of the pull, sliding down +
-// fading in together over the blurred grid, so it's progressively visible (not
-// only on release). Past the trigger, releasing commits (`searchMode`): the
-// field left-aligns, focuses, a Cancel button appears, and the list becomes
-// interactive. A short pull that doesn't commit slides everything back out as
-// `pull` springs to 0.
+// iOS-App-Library-style pull-to-search. The surface reveals from the first
+// pixel of the pull over the defocusing grid, which holds still: the field
+// fades in at the top, and the results fade in and come down with the finger.
+// Past the trigger, releasing commits (`searchMode`): the field focuses, a
+// Cancel button appears, the results settle up and become interactive. A
+// short pull that doesn't commit fades everything back out as `pull` springs
+// to 0.
 //
 // The whole thing is PRE-MOUNTED (opacity 0 at rest, pointerEvents none) and the
 // reveal is driven purely by shared values on the UI thread — no mid-gesture
@@ -155,6 +166,7 @@ const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
+  pull,
   searchMode,
   listActive,
   sideMargin,
@@ -207,9 +219,11 @@ export const SearchReveal = ({
     );
     return {
       opacity: lp,
-      // Descend into place (from above) so the list enters WITH the downward
-      // pull, not against it — same direction as the field.
-      transform: [{ translateY: interpolate(lp, [0, 1], [-20, 0]) }],
+      // Descend into place (from above), and ride the pull: the results come
+      // down with the finger and settle up as it springs back.
+      transform: [
+        { translateY: interpolate(lp, [0, 1], [-20, 0]) + pull.get() },
+      ],
     };
   });
 
@@ -301,7 +315,7 @@ export const SearchReveal = ({
           data={listActive ? results : EMPTY_RESULTS}
           initialNumToRender={12}
           maxToRenderPerBatch={8}
-          windowSize={SEARCH_WINDOW_SIZE}
+          windowSize={searchMode ? SEARCH_WINDOW_SIZE : PULL_WINDOW_SIZE}
           // Every row is the same height: no row has to be measured to place
           // the next, and the scroll never waits on a layout pass.
           getItemLayout={getItemLayout}
@@ -379,7 +393,12 @@ export const SearchReveal = ({
         <Animated.View
           style={[styles.cancelBtn, rCancel]}
           pointerEvents={searchMode ? 'auto' : 'none'}>
-          <Pressable hitSlop={10} onPress={onCancel}>
+          <Pressable
+            hitSlop={10}
+            onPress={() => {
+              Presets.System.selection();
+              onCancel();
+            }}>
             <Text style={styles.cancel}>Cancel</Text>
           </Pressable>
         </Animated.View>
