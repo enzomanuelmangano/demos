@@ -6,7 +6,9 @@ export interface AnimationMetadataType extends Record<string, unknown> {
   /**
    * A shorter label for the home grid, where the full name would be cut off
    * under its icon: words of the title itself, so the icon still reads as the
-   * demo it opens. Defaults to `name`.
+   * demo it opens. Labels stay within 77.5pt (11pt semibold), which keeps
+   * clear space between neighbours even on the narrowest grid (iPhone SE).
+   * Defaults to `name`.
    */
   displayName?: string;
   route: string;
@@ -313,7 +315,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'theme-canvas-animation': {
     name: 'Theme Canvas Animation',
-    displayName: 'Theme Canvas',
+    displayName: 'Theme',
     route: 'ThemeCanvasAnimation',
     iconName: 'color-palette-outline',
   },
@@ -324,11 +326,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'bottom-bar-skia': {
     name: 'BottomBarSkia',
+    displayName: 'BottomBar',
     route: 'BottomBarSkia',
     iconName: 'tablet-portrait-outline',
   },
   'cuberto-slider': {
     name: 'Cuberto Slider',
+    displayName: 'Cuberto',
     route: 'CubertoSlider',
     iconName: 'balloon-outline',
   },
@@ -375,6 +379,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'floating-modal': {
     name: 'Floating Modal',
+    displayName: 'Floating',
     route: 'FloatingModal',
     iconName: 'expand-outline',
   },
@@ -385,6 +390,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'color-carousel': {
     name: 'Color Carousel',
+    displayName: 'Color',
     route: 'ColorCarousel',
     iconName: 'color-palette-outline',
   },
@@ -412,12 +418,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'image-cropper': {
     name: 'Image Cropper',
+    displayName: 'Cropper',
     route: 'ImageCropper',
     iconName: 'crop-outline',
   },
   'selectable-grid-list': {
     name: 'Selectable Grid List',
-    displayName: 'Selectable List',
+    displayName: 'Selectable',
     route: 'SelectableGridList',
     iconName: 'checkbox-outline',
   },
@@ -435,6 +442,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'popup-handler': {
     name: 'Popup Handler',
+    displayName: 'Popup',
     route: 'PopupHandler',
     iconName: 'radio-button-on-outline',
   },
@@ -519,6 +527,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'slide-to-reveal': {
     name: 'Slide to Reveal',
+    displayName: 'Reveal',
     route: 'SlideToReveal',
     iconName: 'calculator-outline',
   },
@@ -552,12 +561,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'balance-slider': {
     name: 'Balance Slider',
+    displayName: 'Balance',
     route: 'BalanceSlider',
     iconName: 'scale-outline',
   },
   'fibonacci-shader-grid': {
     name: 'Fibonacci Shader Grid',
-    displayName: 'Fibonacci Grid',
+    displayName: 'Shader Grid',
     route: 'FibonacciShaderGrid',
     iconName: 'grid-outline',
   },
@@ -586,12 +596,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'stacked-bottom-sheet': {
     name: 'Stacked Bottom Sheet',
-    displayName: 'Stacked Sheet',
+    displayName: 'Sheet',
     route: 'StackedBottomSheet',
     iconName: 'card-outline',
   },
   'gl-transitions': {
     name: 'GL Transitions',
+    displayName: 'Transitions',
     route: 'GLTransitions',
     iconName: 'shuffle-outline',
   },
@@ -635,6 +646,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'record-button': {
     name: 'Record Button',
+    displayName: 'Record',
     route: 'RecordButton',
     iconName: 'radio-button-on',
   },
@@ -707,6 +719,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'exclusion-tabs': {
     name: 'Exclusion Tabs',
+    displayName: 'Exclusion',
     route: 'ExclusionTabs',
     iconName: 'browsers-outline',
   },
@@ -717,6 +730,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'duration-slider': {
     name: 'Duration Slider',
+    displayName: 'Duration',
     route: 'DurationSlider',
     iconName: 'timer-outline',
   },
@@ -760,6 +774,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'tab-navigation': {
     name: 'Tab Navigation',
+    displayName: 'Navigation',
     route: 'TabNavigation',
     iconName: 'browsers-outline',
   },
@@ -776,6 +791,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'linear-sensors': {
     name: 'Linear Sensors',
+    displayName: 'Sensors',
     route: 'LinearSensors',
     iconName: 'logo-react',
   },
@@ -840,6 +856,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'magnet-spring': {
     name: 'Magnet Spring',
+    displayName: 'Magnet',
     route: 'MagnetSpring',
     iconName: 'magnet-outline',
   },
@@ -904,6 +921,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'calendar-days': {
     name: 'Calendar Days',
+    displayName: 'Calendar',
     route: 'CalendarDays',
     iconName: 'calendar-outline',
   },
@@ -926,6 +944,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'github-terrain': {
     name: 'GitHub Terrain',
+    displayName: 'Terrain',
     route: 'GitHubTerrain',
     iconName: 'logo-github',
   },
