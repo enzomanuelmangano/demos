@@ -1,8 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { AnimatedLegendList } from '@legendapp/list/reanimated';
 import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -11,6 +10,7 @@ import Animated, {
   interpolate,
   useAnimatedProps,
   useAnimatedReaction,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -35,11 +35,10 @@ import { iconRectForCell, useGridLayout } from './use-grid-layout';
 import type { Demo } from './demos';
 import type { LaunchSource } from './launch-transition';
 import type { GridLayout } from './use-grid-layout';
-import type { LegendListRenderItemProps } from '@legendapp/list/react-native';
 import type { TextInput } from 'react-native';
 
 // One full page of the SpringBoard: a flex-wrapped grid of demo icons.
-const Page = ({
+const PageComponent = ({
   demos,
   layout,
   onPressDemo,
@@ -49,6 +48,11 @@ const Page = ({
   onPressDemo: (slug: string) => void;
 }) => (
   <View
+    // The pager re-clips its whole subtree every few points of a swipe: with
+    // every page mounted, that walked thousands of views per frame. A page
+    // that clips its own cells detaches them while it is off screen, and the
+    // walk stops there.
+    removeClippedSubviews
     style={[
       styles.page,
       {
@@ -70,31 +74,30 @@ const Page = ({
     ))}
   </View>
 );
+const Page = memo(PageComponent);
 
 // iOS Home Screen launcher: a horizontally-paged grid of demo icons.
 //
-// Backed by a virtualized LegendList (not a plain ScrollView) so only the
-// visible page — plus a small pre-render buffer — is mounted at a time. With
-// 122 demos that's the difference between ~24 mounted icons and 122; every
-// mounted icon registers a shared element with the launch choreography.
+// A plain paging ScrollView, every page mounted once and kept. It was a
+// virtualized list holding one page either side of the visible one: swiping
+// mounted the next page mid-flight and unmounted the far one, so each swipe
+// rebuilt ~24 icons (a context menu, a shared element, an image decode each)
+// on the main thread while the page moved, and coming back rebuilt them
+// again. Now the first page mounts with the home, the others one by one in
+// the idle after it (see `mountedPages`), and a swipe mounts nothing.
 //
-// `pagingEnabled` + full-width items give iOS's native paging deceleration and
-// edge rubber-band for free. We use the reanimated LegendList variant so the
-// scroll offset is exposed as a shared value (drives the page dots off the JS
-// thread). `recycleItems` is off so each page keeps a stable identity and its
-// icons aren't reshuffled under the overlay mid-launch.
+// `pagingEnabled` + full-width pages give iOS's native paging deceleration and
+// edge rubber-band for free. The offset is mirrored into a shared value on the
+// UI thread, which drives the page dots.
 // iOS-home recede effect: while a demo is open the grid behind it is blurred,
 // clearing with the close in lockstep. Driven by the launch clock (0 = home
 // focused, 1 = demo fully open).
 const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
-// Forwarded to LegendList's underlying ScrollView (not in its prop types).
-const scrollTouchProps = { delaysContentTouches: false } as Record<
-  string,
-  unknown
->;
 // Strong defocus behind an open demo / the search reveal — matches the heavy
 // blur iOS puts behind the App Library search.
 const HOME_MAX_BLUR = 90;
+// Upper bound on the wait for an idle slot to mount the next page.
+const PAGE_MOUNT_TIMEOUT = 500;
 // The search's second blur pass, over the first (see where it is rendered).
 const SEARCH_EXTRA_BLUR = 100;
 // Asymptote for the damped rubber-band that maps raw finger travel to the grid's
@@ -399,12 +402,21 @@ export const Springboard = ({ onOpen }: Props) => {
     [onOpen],
   );
 
-  const renderItem = useCallback(
-    ({ item }: LegendListRenderItemProps<Demo[]>) => (
-      <Page demos={item} layout={layout} onPressDemo={onPressDemo} />
-    ),
-    [layout, onPressDemo],
-  );
+  // Pages beyond the first mount one per idle slot after the home has drawn,
+  // then stay mounted: the first frame only pays for the page in view.
+  const [mountedPages, setMountedPages] = useState(1);
+  useEffect(() => {
+    if (mountedPages >= layout.pageCount) return undefined;
+    const handle = requestIdleCallback(
+      () => setMountedPages(count => count + 1),
+      { timeout: PAGE_MOUNT_TIMEOUT },
+    );
+    return () => cancelIdleCallback(handle);
+  }, [mountedPages, layout.pageCount]);
+
+  const onScroll = useAnimatedScrollHandler(event => {
+    scrollX.set(event.contentOffset.x);
+  });
 
   return (
     <View style={styles.root}>
@@ -413,30 +425,29 @@ export const Springboard = ({ onOpen }: Props) => {
         <Animated.View
           pointerEvents={searchMode ? 'none' : 'auto'}
           style={[styles.gridScale, rPull]}>
-          <AnimatedLegendList
-            data={layout.pages}
-            renderItem={renderItem}
-            keyExtractor={(_, index) => `page-${index}`}
+          <Animated.ScrollView
             horizontal
             pagingEnabled
-            recycleItems={false}
-            // Pre-render one page in each direction. Each icon is a deep tree
-            // (shared element + context menu + pressable + image), so mounting
-            // a page on demand mid-swipe costs ~180ms and stutters the scroll —
-            // the buffer keeps page mounts in the idle between swipes.
-            drawDistance={layout.pageWidth}
-            estimatedItemSize={layout.pageWidth}
             showsHorizontalScrollIndicator={false}
-            // iOS ScrollViews hold touches ~150ms to detect a scroll before
-            // delivering them to child Pressables. On a tap-to-open launcher that
-            // is a dead delay before the icon's onPress (and the launch) fires —
-            // JS sits idle the whole time. Deliver taps immediately; paging still
-            // works because a real drag cancels the child touch. (LegendList
-            // forwards this to its underlying ScrollView; its types omit it.)
-            {...scrollTouchProps}
-            sharedValues={{ scrollOffset: scrollX }}
-            contentContainerStyle={{ paddingTop: insets.top }}
-          />
+            scrollEventThrottle={16}
+            onScroll={onScroll}
+            // Taps reach the icons at once: Fabric's ScrollView never delays
+            // content touches (the ~150ms UIKit hold would sit before every
+            // launch), and a real drag still cancels the child touch.
+            contentContainerStyle={{ paddingTop: insets.top }}>
+            {layout.pages.map((demos, index) =>
+              index < mountedPages ? (
+                <Page
+                  key={index}
+                  demos={demos}
+                  layout={layout}
+                  onPressDemo={onPressDemo}
+                />
+              ) : (
+                <View key={index} style={{ width: layout.pageWidth }} />
+              ),
+            )}
+          </Animated.ScrollView>
         </Animated.View>
       </GestureDetector>
 

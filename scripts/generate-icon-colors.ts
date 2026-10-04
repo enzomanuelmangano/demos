@@ -19,7 +19,7 @@ import fs from 'fs';
 import path from 'path';
 
 const ROOT = path.resolve(__dirname, '..');
-const ICONS_DIR = path.join(ROOT, 'assets/app-icons');
+const ICONS_DIR = path.join(ROOT, 'assets/app-icons-src');
 const OUT = path.join(ROOT, 'src/navigation/home/icon-colors.generated.ts');
 
 // Downsample size: the border ring of the NxN thumbnail is what we average.
