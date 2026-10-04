@@ -103,5 +103,6 @@ const styles = StyleSheet.create({
   host: {
     position: 'absolute',
     right: TRAILING,
+    zIndex: 1000,
   },
 });
