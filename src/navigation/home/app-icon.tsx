@@ -59,6 +59,9 @@ const IconSquare = ({ demo, iconSize }: { demo: Demo; iconSize: number }) => {
           contentFit="cover"
           cachePolicy="memory-disk"
           recyclingKey={demo.slug}
+          // Bundled at the size it is drawn (see generate-icon-map.ts): the
+          // downscale would be a resize on the main thread for nothing.
+          allowDownscaling={false}
         />
       </View>
     </View>

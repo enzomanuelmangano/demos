@@ -8,11 +8,14 @@
 //
 //   bun scripts/generate-icon-map.ts
 //
-// Why two folders: the grid shows an icon at ~62pt (186px at 3x). Bundled at
-// 1024px, every icon that mounted decoded a full 1024px image and resized it
-// on the main thread, which dropped frames while the home pages were swiped,
-// and the icons alone were 43 MB of the app. 512px stays sharp through the
-// launch, where the artwork is drawn up to ~150pt before it fades.
+// Why two folders: the grid shows an icon at 62pt at most (186px at 3x), and
+// that is the largest bitmap it ever draws: expo-image shrinks whatever it
+// decodes to the view's own size, and the launch carries the icon by a
+// transform, so a larger master only cost a bigger decode and a resize on the
+// main thread for every icon that mounted (both showed in the home's traces,
+// and a cold cache showed blank tiles while they ran). 192px is the view's
+// size and a little over, so the views draw it as it is (`allowDownscaling`
+// is off on them).
 //
 // `_placeholder.png` is excluded from the map — it's the fallback for any
 // missing slug — but it is downscaled like the rest.
@@ -24,7 +27,7 @@ const ROOT = path.resolve(__dirname, '..');
 const SRC_DIR = path.join(ROOT, 'assets/app-icons-src');
 const ICONS_DIR = path.join(ROOT, 'assets/app-icons');
 const OUT = path.join(ROOT, 'src/navigation/home/icon-map.generated.ts');
-const BUNDLED_SIZE = 512;
+const BUNDLED_SIZE = 192;
 
 fs.mkdirSync(ICONS_DIR, { recursive: true });
 const sources = fs.readdirSync(SRC_DIR).filter(f => f.endsWith('.png'));

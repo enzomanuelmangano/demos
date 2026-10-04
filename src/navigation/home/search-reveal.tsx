@@ -153,6 +153,9 @@ const SearchRowComponent = ({
           contentFit="cover"
           cachePolicy="memory-disk"
           recyclingKey={demo.slug}
+          // Bundled at the size it is drawn (see generate-icon-map.ts): the
+          // downscale would be a resize on the main thread for nothing.
+          allowDownscaling={false}
         />
       </LaunchIcon>
       <Animated.Text style={[styles.rowName, nameStyle]} numberOfLines={1}>
