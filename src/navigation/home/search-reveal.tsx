@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import MaskedView from '@react-native-masked-view/masked-view';
@@ -53,6 +53,11 @@ const SCROLL_EDGE_BLUR = 18;
 
 const EMPTY_RESULTS: Demo[] = [];
 
+/** Vertical padding of a result row, above and below its icon. */
+const ROW_PADDING = 7;
+/** Screens of rows kept mounted: enough to hold every demo at once. */
+const SEARCH_WINDOW_SIZE = 25;
+
 interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
   // commit (never dips — so the surface never flickers mid-commit).
@@ -90,7 +95,7 @@ interface Props {
 // Each result row's icon is a launch source of its own (the 'search' group),
 // so a demo opened from search grows out of THIS row's icon and dismisses back
 // into it — the same mechanism as the grid icon.
-const SearchRow = ({
+const SearchRowComponent = ({
   demo,
   iconSize,
   onSelect,
@@ -135,6 +140,7 @@ const SearchRow = ({
     </Pressable>
   );
 };
+const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
@@ -197,10 +203,38 @@ export const SearchReveal = ({
   const barBottom = barTop + BAR_HEIGHT;
   // Where the result list starts, and how tall the top progressive-blur band is.
   const listTop = barBottom + 10;
-  // Extend the band below the bar so the blur ramps over a short zone.
-  const blurBandHeight = barBottom + 40;
+  // The band ends where the list starts. It ran 30pt further and blurred the
+  // top of the first result at rest; a row should only dissolve once it has
+  // scrolled up under the field.
+  const blurBandHeight = listTop;
   // Separator inset: starts under the label, not the icon (iOS style).
   const separatorInset = iconSize + 14;
+  // Stable across renders: an inline separator is a new component type every
+  // render, so each keystroke and reveal step remounted every separator, and
+  // an inline renderItem re-rendered every row.
+  const Separator = useMemo(() => {
+    const SeparatorLine = () => (
+      <View style={[styles.separator, { marginLeft: separatorInset }]} />
+    );
+    return SeparatorLine;
+  }, [separatorInset]);
+  // A row is its icon and its padding (the name is one line, shorter than the
+  // icon), plus the hairline separator after it.
+  const rowStride = iconSize + ROW_PADDING * 2 + StyleSheet.hairlineWidth;
+  const getItemLayout = useCallback(
+    (_: ArrayLike<Demo> | null | undefined, index: number) => ({
+      length: rowStride,
+      offset: rowStride * index,
+      index,
+    }),
+    [rowStride],
+  );
+  const renderItem = useCallback(
+    ({ item }: { item: Demo }) => (
+      <SearchRow demo={item} iconSize={iconSize} onSelect={onSelect} />
+    ),
+    [iconSize, onSelect],
+  );
 
   // Cancel is ALWAYS rendered (so its layout space is reserved and the field
   // width never jumps); it only fades in over the last stretch of the reveal, so
@@ -242,13 +276,21 @@ export const SearchReveal = ({
         <FlatList
           style={StyleSheet.absoluteFill}
           // Zero rows mounted while the grid is at rest (see listActive above).
-          // The window caps keep the mounted row count ~a screen and a half even
-          // in committed search, instead of FlatList idly filling all 122 rows —
-          // each row registers a shared element.
+          // Once search opens, the first screen mounts at once and the rest in
+          // batches while idle, and then they stay: the window spans the whole
+          // list. A window of a screen and a half mounted and unmounted rows
+          // (a shared element and an image each) under the finger, on every
+          // scroll, and that is what stuttered.
           data={listActive ? results : EMPTY_RESULTS}
-          initialNumToRender={14}
-          maxToRenderPerBatch={16}
-          windowSize={5}
+          initialNumToRender={12}
+          maxToRenderPerBatch={8}
+          windowSize={SEARCH_WINDOW_SIZE}
+          // Every row is the same height: no row has to be measured to place
+          // the next, and the scroll never waits on a layout pass.
+          getItemLayout={getItemLayout}
+          // Off-screen rows leave the native hierarchy, so re-clipping on
+          // scroll only walks the rows in view.
+          removeClippedSubviews
           keyExtractor={item => item.slug}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
@@ -259,12 +301,8 @@ export const SearchReveal = ({
           }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={searchMode}
-          ItemSeparatorComponent={() => (
-            <View style={[styles.separator, { marginLeft: separatorInset }]} />
-          )}
-          renderItem={({ item }) => (
-            <SearchRow demo={item} iconSize={iconSize} onSelect={onSelect} />
-          )}
+          ItemSeparatorComponent={Separator}
+          renderItem={renderItem}
         />
       </Animated.View>
 
@@ -350,7 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 14,
-    paddingVertical: 7,
+    paddingVertical: ROW_PADDING,
   },
   rowIcon: {
     backgroundColor: '#1c1c1e',
