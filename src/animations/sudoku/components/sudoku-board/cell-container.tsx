@@ -2,24 +2,25 @@
  * Container component that manages the state and interactions for each cell
  */
 
-import { memo, useCallback, useMemo } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 
-import { useDerivedValue } from 'react-native-reanimated';
+import { FadeIn } from 'react-native-reanimated';
 
 import { Cell } from './cell';
 
-import type { CellValue, SudokuBoard } from '../../logic';
+import type { CellValue } from '../../logic';
 import type { SharedValue } from 'react-native-reanimated';
 
 export type CellContainerProps = {
   rowIndex: number;
   colIndex: number;
   value: CellValue;
-  board: SudokuBoard;
   selectedCell: SharedValue<{ row: number; col: number }>;
   highlightedNumber: SharedValue<number>;
-  initialBoard: SudokuBoard;
+  isInitial: boolean;
   onCellPress: (row: number, col: number) => void;
+  // performance.now() when the board started appearing
+  revealStart: number;
 };
 
 export const CellContainer = memo<CellContainerProps>(
@@ -27,20 +28,21 @@ export const CellContainer = memo<CellContainerProps>(
     rowIndex,
     colIndex,
     value,
-    board,
     selectedCell,
     highlightedNumber,
-    initialBoard,
+    isInitial,
     onCellPress,
+    revealStart,
   }) => {
-    const isSelected = useDerivedValue(() => {
-      return (
-        selectedCell.get().row === rowIndex &&
-        selectedCell.get().col === colIndex &&
-        board[rowIndex][colIndex] === value &&
-        highlightedNumber.get() === 0
-      );
-    }, [rowIndex, colIndex, value, board, selectedCell, highlightedNumber]);
+    // Rows are mounted one per frame (see SudokuBoard), so the time since the
+    // reveal started comes off the delay: the cascade keeps its timing. Built
+    // once, so re-renders don't hand the cell a new entering object.
+    const [entering] = useState(() => {
+      const elapsed = performance.now() - revealStart;
+      return FadeIn.delay(
+        Math.max(0, (rowIndex + colIndex) * 75 - elapsed),
+      ).duration(350);
+    });
 
     const handlePress = useCallback(() => {
       onCellPress(rowIndex, colIndex);
@@ -56,20 +58,18 @@ export const CellContainer = memo<CellContainerProps>(
       [rowIndex],
     );
 
-    const isInitial = useMemo(
-      () => initialBoard[rowIndex][colIndex] !== null,
-      [initialBoard, rowIndex, colIndex],
-    );
-
     return (
       <Cell
+        rowIndex={rowIndex}
+        colIndex={colIndex}
         value={value}
-        isSelected={isSelected}
+        selectedCell={selectedCell}
         highlightedNumber={highlightedNumber}
         isBorderRight={isBorderRight}
         isBorderBottom={isBorderBottom}
         isInitial={isInitial}
         onPress={handlePress}
+        entering={entering}
       />
     );
   },

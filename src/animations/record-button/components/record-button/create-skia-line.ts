@@ -1,4 +1,4 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 // My suggestion is to try to recreate this function alone without the borderRadius and internalPadding;
 // then, try to add these two parameters to the function and see how the path changes.

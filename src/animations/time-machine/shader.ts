@@ -1,4 +1,4 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 // THIS SHADER COMES COURTESY OF P_Malin from ShaderToy
 // SOURCE: https://www.shadertoy.com/view/MdlXWr

@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import { useCallback, useRef } from 'react';
 
 import { MaterialIcons } from '@expo/vector-icons';
-import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -12,11 +11,13 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, Path, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { FourierVisualizer } from './components/fourier-visualizer';
 
 import type { FourierVisualizerRefType } from './components/fourier-visualizer';
+import type { SkPathBuilder } from 'react-native-skia';
 
 // The main App component.
 const App = () => {
@@ -34,6 +35,10 @@ const App = () => {
 
   // Opacity value for animation.
   const opacity = useSharedValue(1);
+
+  // The builder of the stroke being drawn (UI thread only): each touch event
+  // appends one point instead of copying the whole stroke into a new builder
+  const strokeBuilder = useSharedValue<SkPathBuilder | null>(null);
 
   // Shared value to track if drawing is in progress.
   const isDrawing = useSharedValue(false);
@@ -65,10 +70,13 @@ const App = () => {
       const builder = Skia.PathBuilder.Make();
       builder.moveTo(x, y);
       builder.lineTo(x, y);
+      strokeBuilder.set(builder);
+      // build() doesn't reset the builder, so it keeps accumulating
       drawPath.set(builder.build());
     })
     .onChange(({ x, y }) => {
-      const builder = Skia.PathBuilder.MakeFromPath(drawPath.get());
+      const builder =
+        strokeBuilder.get() ?? Skia.PathBuilder.MakeFromPath(drawPath.get());
       builder.lineTo(x, y);
       drawPath.set(builder.build());
     })

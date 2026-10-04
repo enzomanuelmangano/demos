@@ -19,6 +19,9 @@ const DetailsScreen: FC<{ route: DetailsRouteProp }> = memo(
         <View style={styles.container}>
           <AnimatedImage
             cachePolicy="memory-disk"
+            // The image is at most ~1.1x the header: Core Animation scales
+            // it instead of a main-thread redraw.
+            allowDownscaling={false}
             // @@TODO: maybe back in 4.2.0
             // sharedTransitionTag={heroTag}
             source={source}

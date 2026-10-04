@@ -2,13 +2,6 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
 import { useMemo, useRef, useState } from 'react';
 
-import {
-  Canvas,
-  Group,
-  Image,
-  Skia,
-  makeImageFromView,
-} from '@shopify/react-native-skia';
 import Reanimated, {
   interpolate,
   useAnimatedProps,
@@ -17,6 +10,13 @@ import Reanimated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  Group,
+  Image,
+  Skia,
+  makeImageFromView,
+} from 'react-native-skia';
 
 import { AnimatedLottieView } from '../animated-lottie-view';
 import { SwitchThemeContext, useSwitchTheme, type Theme } from './context';
@@ -25,8 +25,8 @@ import {
   SwitchThemeButton,
 } from './switch-theme-button';
 
-import type { SkImage } from '@shopify/react-native-skia';
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { SkImage } from 'react-native-skia';
 
 type SwitchThemeProviderProps = {
   children?: React.ReactNode;
@@ -48,6 +48,8 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   });
 
   const viewRef = useRef<View>(null);
+  // Snapshot taken when the finger touches the button (see prepareToggleTheme).
+  const pendingSnapshot = useRef<Promise<SkImage | null> | null>(null);
 
   const switchThemeStyle = useSharedValue({});
   const skImage = useSharedValue<SkImage | null>(null);
@@ -72,6 +74,16 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
       // Return the animation progress
       animationProgress,
 
+      // Called on touch down. makeImageFromView renders the whole view
+      // hierarchy on the main thread (drawViewHierarchyInRect with
+      // afterScreenUpdates), which stalls it for several frames. Starting it
+      // while the finger is still down keeps that stall out of the reveal,
+      // and the screen being captured is the same one toggleTheme would see.
+      prepareToggleTheme: () => {
+        if (isAnimating.get()) return;
+        pendingSnapshot.current = makeImageFromView(viewRef);
+      },
+
       // Define a function to toggle the theme,
       // which can be triggered by other components or events
       toggleTheme: async ({
@@ -90,8 +102,11 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         // Set `invertClip` to true if the current theme is not 'light'
         invertClip.set(theme !== 'light');
 
-        // Create an image representation of the current view (snapshot)
-        const image = await makeImageFromView(viewRef);
+        // Create an image representation of the current view (snapshot),
+        // reusing the one started on touch down when there is one
+        const snapshot = pendingSnapshot.current ?? makeImageFromView(viewRef);
+        pendingSnapshot.current = null;
+        const image = await snapshot;
         skImage.set(image);
 
         // Update the `center` shared value with the provided center for the toggled item

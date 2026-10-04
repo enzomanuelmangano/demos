@@ -1,4 +1,4 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
 import { CardType } from '../utils/constants';
 
@@ -186,10 +186,11 @@ export const cardShader = Skia.RuntimeEffect.Make(`
         return detail * intensity;
     }
 
-    vec3 calculateNormal(vec2 uv, float normalStrength, float cardType) {
+    // c is the metallic detail at uv; main() needs it too, so it is
+    // computed once there and passed in (saves one 4-octave noise per pixel).
+    vec3 calculateNormal(vec2 uv, float c, float normalStrength, float cardType) {
         vec2 eps = vec2(1.0) / resolution;  // Back to original epsilon
         
-        float c = calculateMetallicDetail(uv, cardType);
         float r = calculateMetallicDetail(uv + vec2(eps.x, 0.0), cardType);
         float t = calculateMetallicDetail(uv + vec2(0.0, eps.y), cardType);
         
@@ -397,7 +398,8 @@ export const cardShader = Skia.RuntimeEffect.Make(`
             sin(rotationAngle * 0.5) * 0.015,  // Moderate distortion
             cos(rotationAngle * 0.7) * 0.015   // Moderate distortion
         );
-        vec3 normal = calculateNormal(distortedUV, normalStrength, cardType);
+        float metallicPattern = calculateMetallicDetail(distortedUV, cardType);
+        vec3 normal = calculateNormal(distortedUV, metallicPattern, normalStrength, cardType);
         
         // Calculate enhanced specular
         vec3 specular = calculateEnhancedSpecular(normal, viewDir, lightDir, baseColor, roughness, rotationAngle);
@@ -417,7 +419,6 @@ export const cardShader = Skia.RuntimeEffect.Make(`
         finalColor = finalColor * (0.5 + 0.7 * pow(max(dot(normal, lightDir), 0.0), 1.4)) + specular * 1.2;  // Increased light contribution
         
         // Enhanced metallic pattern with motion distortion
-        float metallicPattern = calculateMetallicDetail(distortedUV, cardType);
         finalColor *= (1.0 + metallicPattern * (0.35 + rotationSpeed * 0.45));
         
         // Motion-based contrast enhancement

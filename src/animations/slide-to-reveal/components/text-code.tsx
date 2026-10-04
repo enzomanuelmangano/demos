@@ -1,15 +1,15 @@
 import { useMemo } from 'react';
 
-import { Group, Text } from '@shopify/react-native-skia';
 import {
   Extrapolation,
   interpolate,
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Group, Text } from 'react-native-skia';
 
-import type { SkFont, TextProps } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
+import type { SkFont, TextProps } from 'react-native-skia';
 
 type TextCodeProps = {
   containerWidth: number;
@@ -41,6 +41,10 @@ const TextCode: React.FC<TextCodeProps> = ({
         .toString()
         .split('')
         .map((char, index) => {
+          // Spaces draw nothing: skip their per-frame animated values.
+          // Positions come from the index, so other characters don't move.
+          if (char === ' ') return null;
+
           const spacingBetweenLetters = (index * textWidth) / code.length;
           const marginHorizontal = (containerWidth - textWidth) / 2 - 5;
 

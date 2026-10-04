@@ -10,7 +10,8 @@ import Animated, {
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
+
+import { ReText } from '../../../../../components/re-text';
 
 interface SpringConfigSliderProps {
   label: string;
@@ -73,9 +74,14 @@ export const SpringConfigSlider: FC<SpringConfigSliderProps> = ({
     };
   });
 
+  // A full-width fill slid in from the left (clipped to the track's content
+  // box) looks the same as animating its width, without a layout pass per
+  // drag frame.
   const trackFillStyle = useAnimatedStyle(() => {
     return {
-      width: translateX.get() + THUMB_SIZE / 2,
+      transform: [
+        { translateX: translateX.get() + THUMB_SIZE / 2 - SLIDER_WIDTH },
+      ],
     };
   });
 
@@ -87,7 +93,9 @@ export const SpringConfigSlider: FC<SpringConfigSliderProps> = ({
       </View>
       <View style={styles.sliderContainer}>
         <View style={styles.track}>
-          <Animated.View style={[styles.trackFill, trackFillStyle]} />
+          <View style={styles.trackFillClip}>
+            <Animated.View style={[styles.trackFill, trackFillStyle]} />
+          </View>
         </View>
         <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.thumb, thumbStyle]} />
@@ -148,6 +156,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
     boxShadow: '0px 1px 2px rgba(209, 213, 219, 0.08)',
     height: 8,
+    width: SLIDER_WIDTH,
+  },
+  // Hides the part of the fill slid past the left border, where the old
+  // width-based fill never reached. Extends over the other borders, which the
+  // fill could already cover.
+  trackFillClip: {
+    bottom: -1,
+    left: 0,
+    overflow: 'hidden',
+    paddingTop: 1,
+    position: 'absolute',
+    right: -1,
+    top: -1,
   },
   value: {
     backgroundColor: 'rgba(156, 163, 175, 0.06)',

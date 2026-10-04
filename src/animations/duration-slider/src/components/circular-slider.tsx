@@ -1,18 +1,25 @@
-import { useMemo } from 'react';
+import { PixelRatio } from 'react-native';
 
-import {
-  BlurMask,
-  Circle,
-  Group,
-  Shadow,
-  Skia,
-  Text,
-} from '@shopify/react-native-skia';
+import { useEffect, useMemo, useState } from 'react';
+
 import {
   useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
 } from 'react-native-reanimated';
+import {
+  Blur,
+  Circle,
+  drawAsImage,
+  Group,
+  Image,
+  Paint,
+  Shadow,
+  Skia,
+  Text,
+  rect,
+  rrect,
+} from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 import { scheduleOnRN } from 'react-native-worklets';
 
@@ -20,7 +27,56 @@ import { BackgroundDots } from './background-dots';
 import { Donut } from './donut';
 import { Picker } from './picker';
 
-import type { SkFont } from '@shopify/react-native-skia';
+import type { ReactElement } from 'react';
+import type { SkFont, SkImage } from 'react-native-skia';
+
+// Rasterizes a static layer once at device pixel density. The blur masks
+// below are expensive and the canvas redraws on every drag frame; drawing a
+// pre-rendered image instead gives the same pixels. Until the image is ready
+// the live layer is drawn, so the first frames look the same too.
+const useStaticLayer = (
+  element: ReactElement,
+  width: number,
+  height: number,
+) => {
+  const [image, setImage] = useState<SkImage | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    const pd = PixelRatio.get();
+    drawAsImage(<Group transform={[{ scale: pd }]}>{element}</Group>, {
+      width: Math.ceil(width * pd),
+      height: Math.ceil(height * pd),
+    }).then(img => {
+      if (!cancelled) setImage(img);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // `element` is rebuilt every render; its content only depends on size.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [width, height]);
+  if (!image) return element;
+  return (
+    <Image
+      image={image}
+      x={0}
+      y={0}
+      width={Math.ceil(width * PixelRatio.get()) / PixelRatio.get()}
+      height={Math.ceil(height * PixelRatio.get()) / PixelRatio.get()}
+      fit="fill"
+    />
+  );
+};
+
+// Layer paint that blurs its content (a GPU image filter)
+const BlurPaint = ({ blur }: { blur: number }) => (
+  <Paint>
+    <Blur blur={blur} />
+  </Paint>
+);
+
+const circleRRect = (cx: number, cy: number, r: number) =>
+  rrect(rect(cx - r, cy - r, r * 2, r * 2), r, r);
 
 type CircularSliderProps = {
   width: number;
@@ -60,7 +116,7 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     let theta = Math.atan2(y, x) + initialAngleRad;
     if (theta < 0) theta += 2 * Math.PI;
     return theta / (2 * Math.PI);
-  }, [translateX.get(), translateY.get()]);
+  }, [cx, cy]);
 
   const circlePath = useMemo(() => {
     const builder = Skia.PathBuilder.Make();
@@ -70,11 +126,11 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
 
   const animatedValue = useDerivedValue(() => {
     return Math.min(Math.round(progress.get() * maxVal) + minVal, maxVal);
-  }, [progress.get()]);
+  }, [maxVal, minVal]);
 
   const currentTextValue = useDerivedValue(() => {
     return animatedValue.get().toString();
-  }, [animatedValue.get()]);
+  }, []);
 
   const textPositionX = useDerivedValue(() => {
     return cx - font.measureText(currentTextValue.get()).width / 2 - 2;
@@ -88,20 +144,46 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
     },
   );
 
-  return (
-    <Touchable.Canvas style={{ width, height }}>
+  // The BlurMask filters these layers used are computed on the CPU (a mask
+  // blurred in software for every new geometry). Each one is rebuilt from a
+  // GPU blur instead, with the same result:
+  // - style 'inner' (blurred coverage × shape) = blurred shape clipped to it
+  // - style 'solid' (shape ∪ blurred shape) = blurred shape, shape on top
+  const outerCircle = circleRRect(cx, cy, radius + strokeWidth / 2);
+  const outerRimCircle = circleRRect(cx, cy, radius + strokeWidth / 2 + 2);
+
+  const backgroundLayer = useStaticLayer(
+    <Group>
       <Group>
-        <Circle cx={cx} cy={cy} r={radius + strokeWidth / 2} color={'#ebebeb'}>
-          <BlurMask blur={30} style={'inner'} />
-        </Circle>
-        <Circle
-          cx={cx}
-          cy={cy}
-          r={radius + strokeWidth / 2 + 2}
-          color={'#f7f7f7'}>
-          <Shadow dx={0} dy={20} blur={10} color="#e9e9e9" inner />
-          <BlurMask blur={10} style={'inner'} />
-        </Circle>
+        {/* BlurMask blur={30} style={'inner'} */}
+        <Group clip={outerCircle}>
+          <Group layer={<BlurPaint blur={30} />}>
+            <Circle
+              cx={cx}
+              cy={cy}
+              r={radius + strokeWidth / 2}
+              color={'#ebebeb'}
+            />
+          </Group>
+        </Group>
+        <Group
+          layer={
+            <Paint>
+              <Shadow dx={0} dy={20} blur={10} color="#e9e9e9" inner />
+            </Paint>
+          }>
+          {/* BlurMask blur={10} style={'inner'} */}
+          <Group clip={outerRimCircle}>
+            <Group layer={<BlurPaint blur={10} />}>
+              <Circle
+                cx={cx}
+                cy={cy}
+                r={radius + strokeWidth / 2 + 2}
+                color={'#f7f7f7'}
+              />
+            </Group>
+          </Group>
+        </Group>
       </Group>
 
       <BackgroundDots
@@ -110,6 +192,40 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         radius={radius}
         initialAngleRad={initialAngleRad}
       />
+    </Group>,
+    width,
+    height,
+  );
+
+  const innerDiscLayer = useStaticLayer(
+    <Group>
+      {/* BlurMask blur={20} style={'solid'}, with the 0.5 opacity applied
+          to the union as the paint did */}
+      <Group layer={<Paint opacity={0.5} />}>
+        <Group layer={<BlurPaint blur={20} />}>
+          <Circle
+            cx={cx}
+            cy={cy}
+            r={radius - strokeWidth / 2}
+            color={'#222222'}
+          />
+        </Group>
+        <Circle
+          cx={cx}
+          cy={cy}
+          r={radius - strokeWidth / 2}
+          color={'#222222'}
+        />
+      </Group>
+      <Circle cx={cx} cy={cy} r={radius - strokeWidth / 2} color={'#FFFFFF'} />
+    </Group>,
+    width,
+    height,
+  );
+
+  return (
+    <Touchable.Canvas style={{ width, height }}>
+      {backgroundLayer}
 
       <Donut
         cx={cx}
@@ -120,6 +236,10 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         initialAngleRad={initialAngleRad}
       />
 
+      {/* The glow: BlurMask blur={100} style={'solid'} on the arc. As a mask
+          filter it re-blurred a huge software mask on every drag frame (the
+          main cost of this demo); a blurred layer plus the arc on top is the
+          same union, done on the GPU. */}
       <Group clip={circlePath}>
         <Donut
           cx={cx}
@@ -127,9 +247,17 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
           radius={radius}
           strokeWidth={strokeWidth}
           progress={progress}
-          initialAngleRad={initialAngleRad}>
-          <BlurMask blur={100} style={'solid'} />
-        </Donut>
+          initialAngleRad={initialAngleRad}
+          layer={<BlurPaint blur={100} />}
+        />
+        <Donut
+          cx={cx}
+          cy={cy}
+          radius={radius}
+          strokeWidth={strokeWidth}
+          progress={progress}
+          initialAngleRad={initialAngleRad}
+        />
       </Group>
 
       <Group clip={circlePath}>
@@ -143,15 +271,7 @@ export const CircularSlider: React.FC<CircularSliderProps> = ({
         />
       </Group>
 
-      <Circle
-        cx={cx}
-        cy={cy}
-        r={radius - strokeWidth / 2}
-        color={'#222222'}
-        opacity={0.5}>
-        <BlurMask blur={20} style={'solid'} />
-      </Circle>
-      <Circle cx={cx} cy={cy} r={radius - strokeWidth / 2} color={'#FFFFFF'} />
+      {innerDiscLayer}
 
       <Text
         text={currentTextValue}

@@ -1,13 +1,13 @@
 import { type FC, memo, useMemo } from 'react';
 
+import { useDerivedValue } from 'react-native-reanimated';
 import {
   Atlas,
   Fill,
   useRSXformBuffer,
   useRectBuffer,
   useTexture,
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -55,15 +55,23 @@ export const AnimatedSquares: FC<AnimatedSquaresProps> = memo(
       return Array.from({ length: SquaresAmount }, () => Math.random());
     }, [SquaresAmount]);
 
+    // Each square's distance from the center never changes: compute it once
+    // instead of a sqrt per square per frame of the press spring.
+    const distances = useMemo(() => {
+      return Array.from({ length: SquaresAmount }, (_, i) => {
+        const tx = (i % HSquares) * SquareContainerSize;
+        const ty = Math.floor(i / HSquares) * SquareContainerSize;
+        return Math.sqrt((tx - width / 2) ** 2 + (ty - height / 2) ** 2);
+      });
+    }, [SquaresAmount, HSquares, SquareContainerSize, width, height]);
+
     const transforms = useRSXformBuffer(SquaresAmount, (val, i) => {
       'worklet';
 
       const tx = (i % HSquares) * SquareContainerSize;
       const ty = Math.floor(i / HSquares) * SquareContainerSize;
 
-      const distance = Math.sqrt(
-        (tx - width / 2) ** 2 + (ty - height / 2) ** 2,
-      );
+      const distance = distances[i];
 
       const scale = Math.max(0, 1.5 - distance / activeRadius.get());
 

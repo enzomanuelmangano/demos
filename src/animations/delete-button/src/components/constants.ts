@@ -1,13 +1,15 @@
 import { Platform } from 'react-native';
 
-import { matchFont, Skia } from '@shopify/react-native-skia';
+import { matchFont } from 'react-native-skia';
 
-export const CloseSvgPath = Skia.SVG.MakeFromString(
-  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" stroke-width="2" stroke="white" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M18 6l-12 12" /><path d="M6 6l12 12" /></svg>',
-);
-
-export const CloseSvgPathWidth = CloseSvgPath?.width() ?? 0;
-export const CloseSvgPathHeight = CloseSvgPath?.height() ?? 0;
+// The close icon: an "X" of two round-capped 2px strokes from (6, 6) to
+// (18, 18) in a 24×24 box. A round-capped segment is a stadium, so each stroke
+// is drawn as a rounded rect rotated by ±45° around the icon centre.
+// It used to be an SVG (a stroked path). Being invisible at mount, its path
+// stroke pipeline was only compiled by the GPU on the first tap, which
+// stalled that frame; rounded rects reuse the button's pipeline.
+export const CloseIconBarLength = 12 * Math.SQRT2 + 2;
+export const CloseIconBarThickness = 2;
 
 export const fontFamily = Platform.select({
   ios: 'Helvetica',

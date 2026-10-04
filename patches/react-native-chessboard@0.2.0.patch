@@ -1,0 +1,22 @@
+diff --git a/src/components/skia/skia-dots.tsx b/src/components/skia/skia-dots.tsx
+index 5032bfe81a485ff85d710e7d6e4c0a2e8d78347e..61948832038a5b4cea318be93b0eba67849f1b64 100644
+--- a/src/components/skia/skia-dots.tsx
++++ b/src/components/skia/skia-dots.tsx
+@@ -22,13 +22,14 @@ export const SkiaDots: React.FC<SkiaDotsProps> = React.memo(
+     const half = pieceSize / 2;
+ 
+     const path = useDerivedValue(() => {
+-      const p = Skia.Path.Make();
++      // Skia 3 paths are immutable: circles go through a PathBuilder.
++      const builder = Skia.PathBuilder.Make();
+       const moves = boardState.validMoves.get();
+       for (let i = 0; i < moves.length; i++) {
+         const pos = squareToPosition(moves[i], pieceSize, flipped);
+-        p.addCircle(pos.x + half, pos.y + half, radius);
++        builder.addCircle(pos.x + half, pos.y + half, radius);
+       }
+-      return p;
++      return builder.build();
+     });
+ 
+     return <Path path={path} color="rgba(0, 0, 0, 0.3)" opacity={0.5} />;

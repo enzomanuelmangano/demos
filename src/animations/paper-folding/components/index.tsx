@@ -1,12 +1,12 @@
 import { View } from 'react-native';
 
-import { Canvas, Rect, Shadow } from '@shopify/react-native-skia';
 import Animated, {
   interpolate,
   interpolateColor,
   useAnimatedStyle,
   useDerivedValue,
 } from 'react-native-reanimated';
+import { Canvas, Rect, Shadow } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -83,13 +83,11 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
 
           if (i === 1) {
             return {
-              top: height / 2 - foldHeight / 2,
               transform: secondFoldTransform,
             };
           }
 
           return {
-            top: height / 2 - foldHeight / 2,
             transform: [
               ...secondFoldTransform,
               { translateY: foldHeight / 2 },
@@ -125,6 +123,9 @@ export const Paper: React.FC<PaperProps> = ({ height, width, progress }) => {
                   position: 'absolute',
                   height: foldHeight,
                   width: width,
+                  // Constant, so it lives in the static style rather than
+                  // being re-sent (as a layout prop) on every frame.
+                  top: i > 0 ? height / 2 - foldHeight / 2 : undefined,
                 },
                 rCardStyle,
               ]}>

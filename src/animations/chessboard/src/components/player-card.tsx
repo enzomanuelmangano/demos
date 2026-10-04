@@ -14,8 +14,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 
+import { ReText } from '../../../../components/re-text';
 import { PIECE_IMG, PLAYERS, VALUE } from '../constants';
 import {
   capturedAtom,
@@ -142,9 +142,14 @@ export const PlayerCard: React.FC<{ side: Side }> = ({ side }) => {
   // Dot stays mounted at all times — its width/margin animate from 0, so the
   // clock grows/shrinks smoothly per-frame on the UI thread (no mount/unmount,
   // no layout transition, no flicker).
-  const dotStyle = useAnimatedStyle(() => ({
+  // Size (layout) and pulse (opacity/scale) live on separate views: the pulse
+  // repeats forever, and sharing a style would re-send width/margin — a layout
+  // pass — on every frame. The slot only changes during the 280 ms turn fade.
+  const dotSlotStyle = useAnimatedStyle(() => ({
     width: active.get() * 6,
     marginRight: active.get() * 6,
+  }));
+  const dotStyle = useAnimatedStyle(() => ({
     opacity: active.get() * (0.45 + pulse.get() * 0.55),
     transform: [{ scale: 0.8 + pulse.get() * 0.5 }],
   }));
@@ -173,7 +178,9 @@ export const PlayerCard: React.FC<{ side: Side }> = ({ side }) => {
           style={[styles.clockTint, clockTintStyle]}
           pointerEvents="none"
         />
-        <Animated.View style={[styles.clockDot, dotStyle]} />
+        <Animated.View style={[styles.clockDotSlot, dotSlotStyle]}>
+          <Animated.View style={[styles.clockDot, dotStyle]} />
+        </Animated.View>
         <ReText text={clockText} style={[styles.clockText, clockTextStyle]} />
       </View>
     </Animated.View>
@@ -206,7 +213,11 @@ const styles = StyleSheet.create({
   },
   clockDot: {
     backgroundColor: theme.accent,
+    borderCurve: 'continuous',
     borderRadius: 3,
+    flex: 1,
+  },
+  clockDotSlot: {
     height: 6,
   },
   clockText: {

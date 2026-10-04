@@ -31,6 +31,25 @@ type StackedCarouselProps<T = unknown> = {
   paginatorBackground?: React.ReactNode;
 };
 
+// Styles of cards far enough from the current page that every value is
+// clamped (and opacity is <= 0). Returning the same object lets Reanimated
+// skip the update, so only the few cards near the current page are pushed
+// on every scroll frame.
+const FAR_RIGHT_CARD_STYLE = {
+  transform: [{ translateY: 65 }, { scale: 0.7 }],
+  opacity: 0,
+};
+const FAR_LEFT_CARD_STYLE = {
+  transform: [{ translateY: -100 }, { scale: 1.5 }],
+  opacity: 0,
+};
+const FAR_RIGHT_ROTATE_STYLE = {
+  transform: [{ perspective: 600 }, { rotateX: '45deg' }],
+};
+const FAR_LEFT_ROTATE_STYLE = {
+  transform: [{ perspective: 600 }, { rotateX: '0deg' }],
+};
+
 const AnimatedCard = ({
   index,
   scrollX,
@@ -55,6 +74,11 @@ const AnimatedCard = ({
   ];
 
   const animatedStyle = useAnimatedStyle(() => {
+    // 3+ pages ahead: opacity <= -0.4, scale/translateY clamped
+    if (scrollX.get() <= (index - 3) * cardWidth) return FAR_RIGHT_CARD_STYLE;
+    // 1+ page behind: opacity <= -1, scale/translateY clamped
+    if (scrollX.get() >= (index + 1) * cardWidth) return FAR_LEFT_CARD_STYLE;
+
     // Scale animation - your organic scaling
     const scale = interpolate(
       scrollX.get(),
@@ -86,6 +110,10 @@ const AnimatedCard = ({
   });
 
   const rRotateStyle = useAnimatedStyle(() => {
+    // rotateX is clamped outside [index - 2, index] pages
+    if (scrollX.get() <= (index - 2) * cardWidth) return FAR_RIGHT_ROTATE_STYLE;
+    if (scrollX.get() >= index * cardWidth) return FAR_LEFT_ROTATE_STYLE;
+
     const rotateX = interpolate(
       scrollX.get(),
       extendedInputRange,

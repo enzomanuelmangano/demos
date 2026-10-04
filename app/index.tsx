@@ -140,13 +140,10 @@ export default function HomeScreen() {
     // `keepVisible`: the library cross-fades the source screen with the
     // destination. The demo route is transparent and the springboard is what
     // it opens over, so the springboard stays.
-    // `interactiveWhileReturning`: a tap on an icon while a demo is still
-    // flying home is taken, and the open waits for the close to land, instead
-    // of the touch being dropped (patched in; see patches/).
-    <ChoreographyScreen
-      screenId={HOME_SCREEN_ID}
-      keepVisible
-      interactiveWhileReturning>
+    // A tap on an icon while a demo is still flying home is taken, and the
+    // open waits for the close to land: the library lets an arriving screen
+    // take touches by default (`allowInteractionDuringTransition`).
+    <ChoreographyScreen screenId={HOME_SCREEN_ID} keepVisible>
       <LaunchBridge commands={commands} />
       <Springboard onOpen={onOpen} />
     </ChoreographyScreen>

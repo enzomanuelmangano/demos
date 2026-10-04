@@ -140,21 +140,17 @@ const AnimatedDot = memo(
       );
       return {
         opacity: visibility.get(),
-        marginRight: spacing,
         transform: [{ scale }],
       };
     });
 
-    const rDotStyle = useAnimatedStyle(() => {
-      return {
-        width: dotSize,
-        height: dotSize,
-      };
-    });
-
+    // marginRight and the dot size are constant: plain styles, so the
+    // layout prop isn't re-sent with the transform on every scroll frame.
     return (
-      <Animated.View style={rContainerStyle}>
-        <Animated.View style={[styles.dot, rDotStyle]} />
+      <Animated.View style={[{ marginRight: spacing }, rContainerStyle]}>
+        <Animated.View
+          style={[styles.dot, { width: dotSize, height: dotSize }]}
+        />
       </Animated.View>
     );
   },

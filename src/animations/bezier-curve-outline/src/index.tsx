@@ -1,6 +1,5 @@
 import { StyleSheet, View } from 'react-native';
 
-import { Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import Animated, {
   useAnimatedProps,
@@ -13,6 +12,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Skia } from 'react-native-skia';
 
 import { AnimatedBlurView } from './components/animated-blur-view';
 import { AnimatedSquare } from './components/animated-square';
@@ -65,10 +65,15 @@ const App = () => {
   );
 
   const skiaPath = useSharedValue(Skia.Path.Make());
+  // The square is fully transparent once outline mode has settled.
+  const isSquareHidden = useDerivedValue(() => {
+    return outlineModeProgress.get() === 1;
+  }, []);
 
   const { progress, startAnimation, cx, cy, reverseAnimation } =
     useAnimateThroughPath({
       pathReference: skiaPath,
+      isPathHidden: isSquareHidden,
     });
 
   const squareSize = useDerivedValue(() => {
@@ -107,7 +112,8 @@ const App = () => {
         <BezierOutline
           onPathUpdate={path => {
             'worklet';
-            skiaPath.set(Skia.Path.MakeFromSVGString(path.toSVGString()!)!);
+            // SkPath is immutable in Skia 3: store it as is, no SVG round trip.
+            skiaPath.set(path);
           }}
         />
       </Animated.View>

@@ -1,15 +1,7 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
-import {
-  Canvas,
-  LinearGradient,
-  Path,
-  SkPathBuilder,
-  usePathValue,
-  vec,
-} from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
 import debounce from 'lodash.debounce';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -23,6 +15,13 @@ import {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  Picture,
+  Skia,
+  type SkCanvas,
+  type SkPaint,
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 const N_ITEMS = 2000;
@@ -31,46 +30,59 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CANVAS_HEIGHT = SCREEN_HEIGHT;
 const CANVAS_WIDTH = SCREEN_WIDTH;
 
-const createEnhancedFibonacciPath = (
+// Draws every dot with drawCircle into a recorded picture: same pixels as
+// filling one path with 2000 circle contours, without tessellating that path
+// on every frame.
+const drawEnhancedFibonacci = (
   N: number,
   magicalMul: number,
   iTime: number,
   distance: number,
-  skPath: SkPathBuilder,
+  canvas: SkCanvas,
+  paint: SkPaint,
 ) => {
   'worklet';
   const centerX = CANVAS_WIDTH / 2;
   const centerY = CANVAS_HEIGHT / 2;
 
+  // Loop invariants, hoisted out of the per-dot loop
+  const timePulse = Math.sin(iTime * 0.8) * 0.2 + 1.0;
+  const halfN = N * 0.5;
+  const intensityDiv = N * 0.01;
+  const radiusScale = CANVAS_WIDTH * 0.4;
+  const t07 = iTime * 0.7;
+  const t03 = iTime * 0.3;
+  const t12 = iTime * 1.2;
+  const t20 = iTime * 2.0;
+
   for (let i = 0; i < N; i++) {
-    const a = i / (N * 0.5) - 1.0;
-    const px = Math.cos(i * magicalMul + iTime) * Math.sqrt(1.0 - a * a);
-    const py = Math.cos(i * magicalMul + iTime + 11) * Math.sqrt(1.0 - a * a);
+    const a = i / halfN - 1.0;
+    const sq = Math.sqrt(1.0 - a * a);
+    const angle = i * magicalMul + iTime;
+    const px = Math.cos(angle) * sq;
+    const py = Math.cos(angle + 11) * sq;
 
     // Enhanced 3D movement with multiple wave patterns
-    const wave1 = Math.sin(i * 0.1 + iTime * 0.7) * 80;
-    const wave2 = Math.cos(i * 0.05 + iTime * 0.3) * 40;
-    const wave3 = Math.sin(i * 0.15 + iTime * 1.2) * 20;
+    const wave1 = Math.sin(i * 0.1 + t07) * 80;
+    const wave2 = Math.cos(i * 0.05 + t03) * 40;
+    const wave3 = Math.sin(i * 0.15 + t12) * 20;
     const z = wave1 + wave2 + wave3;
 
     // Perspective projection
     const scale = distance / (distance + z);
 
-    const x = centerX + px * CANVAS_WIDTH * 0.4 * scale;
-    const y = centerY + a * CANVAS_WIDTH * 0.4 * scale;
+    const x = centerX + px * radiusScale * scale;
+    const y = centerY + a * radiusScale * scale;
 
     // Pulsing animation based on time and position
-    const pulse = Math.sin(i * 0.2 + iTime * 2.0) * 0.3 + 1.0;
-    const timePulse = Math.sin(iTime * 0.8) * 0.2 + 1.0;
+    const pulse = Math.sin(i * 0.2 + t20) * 0.3 + 1.0;
 
-    const intensity = (1.0 - Math.abs(py)) / (N * 0.01);
+    const intensity = (1.0 - Math.abs(py)) / intensityDiv;
     const baseRadius = Math.max(0.5, Math.min(intensity * 20 * scale, 10));
     const radius = baseRadius * pulse * timePulse;
 
-    skPath.addCircle(x, y, radius);
+    canvas.drawCircle(x, y, radius, paint);
   }
-
-  return skPath;
 };
 
 const INITIAL_MAGICAL_MUL = 2.4;
@@ -144,30 +156,49 @@ const SphereWaves = () => {
       distance.set(withSpring(300));
     });
 
-  const fibonacciPath = usePathValue(skPath => {
-    'worklet';
-    return createEnhancedFibonacciPath(
-      N_ITEMS,
-      magicalMul.get(),
-      iTime.get(),
-      distance.get(),
-      skPath,
-    );
-  });
+  // Reused across frames; only its gradient shader changes per frame.
+  const paint = useMemo(() => {
+    const p = Skia.Paint();
+    p.setAntiAlias(true);
+    return p;
+  }, []);
 
-  const animatedColors = useDerivedValue(() => {
+  const picture = useDerivedValue(() => {
     'worklet';
     const time = iTime.get();
     const hueShift = (time * 40) % 360;
 
-    return [
-      `hsl(${(340 + hueShift) % 360}, 90%, 70%)`,
-      `hsl(${(280 + hueShift) % 360}, 85%, 75%)`,
-      `hsl(${(220 + hueShift) % 360}, 95%, 80%)`,
-      `hsl(${(160 + hueShift) % 360}, 88%, 72%)`,
-      `hsl(${(60 + hueShift) % 360}, 92%, 78%)`,
+    const colors = [
+      Skia.Color(`hsl(${(340 + hueShift) % 360}, 90%, 70%)`),
+      Skia.Color(`hsl(${(280 + hueShift) % 360}, 85%, 75%)`),
+      Skia.Color(`hsl(${(220 + hueShift) % 360}, 95%, 80%)`),
+      Skia.Color(`hsl(${(160 + hueShift) % 360}, 88%, 72%)`),
+      Skia.Color(`hsl(${(60 + hueShift) % 360}, 92%, 78%)`),
     ];
-  }, [iTime]);
+    paint.setShader(
+      Skia.Shader.MakeLinearGradient(
+        { x: 0, y: 0 },
+        { x: CANVAS_WIDTH, y: CANVAS_HEIGHT },
+        colors,
+        null,
+        0,
+      ),
+    );
+
+    const recorder = Skia.PictureRecorder();
+    const canvas = recorder.beginRecording(
+      Skia.XYWHRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT),
+    );
+    drawEnhancedFibonacci(
+      N_ITEMS,
+      magicalMul.get(),
+      time,
+      distance.get(),
+      canvas,
+      paint,
+    );
+    return recorder.finishRecordingAsPicture();
+  }, [iTime, magicalMul, distance, paint]);
 
   useEffect(() => {
     iTime.set(
@@ -192,13 +223,7 @@ const SphereWaves = () => {
             position: 'absolute',
           }}>
           {/* Main front layer with dynamic colors */}
-          <Path path={fibonacciPath} style="fill">
-            <LinearGradient
-              start={vec(0, 0)}
-              end={vec(CANVAS_WIDTH, CANVAS_HEIGHT)}
-              colors={animatedColors}
-            />
-          </Path>
+          <Picture picture={picture} />
         </Canvas>
       </View>
     </GestureDetector>

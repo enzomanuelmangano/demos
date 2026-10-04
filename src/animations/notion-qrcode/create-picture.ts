@@ -19,8 +19,8 @@
  *    - Colored rounded rectangle background
  *    - Avatar image from sprite sheet (with clipping)
  */
-import { ClipOp, Skia, SkImage } from '@shopify/react-native-skia';
 import { SharedValue } from 'react-native-reanimated';
+import { ClipOp, Skia, SkImage } from 'react-native-skia';
 
 import {
   CANVAS_HEIGHT,
@@ -30,23 +30,57 @@ import {
   DISTANCE,
 } from './constants';
 import { reusablePaint, reusableWhiteBgPaint } from './data';
-import { ColorConfig, Point3D, ShapeData } from './types';
-import { rotateX, rotateY, smoothstep } from './utils';
+import { ColorConfig, ShapeData } from './types';
+import { smoothstep } from './utils';
 
 /**
- * Computed transform data for a single avatar in the current frame.
- * Calculated for each point, then sorted by z-depth for proper rendering.
+ * Background color string for an avatar at a given morph progress.
+ * Shared by the per-frame path and the precomputed cache so both produce
+ * exactly the same color.
  */
-interface AvatarTransform {
-  index: number; // Original point index (for sprite assignment)
-  x: number; // Screen X position (top-left corner)
-  y: number; // Screen Y position (top-left corner)
-  size: number; // Rendered size in pixels
-  cornerRadius: number; // For rounded corners (circle → square during morph)
-  imageOpacity: number; // Avatar image opacity (fades out during morph)
-  z: number; // Z-depth for sorting (larger = further away)
-  morphProgress: number; // This point's eased progress (0-1)
-}
+const backgroundColorString = (
+  colors: ColorConfig,
+  avatarIndex: number,
+  contrastBoost: number,
+) => {
+  'worklet';
+  const [satMin, satMax] = colors.saturationRange;
+  const [lightMin, lightMax] = colors.lightnessRange;
+  const satRange = satMax - satMin;
+  const lightRange = lightMax - lightMin;
+
+  const baseSat = satMin + (avatarIndex % 5) * (satRange / 4);
+  const baseLight = lightMin + (avatarIndex % 4) * (lightRange / 3);
+
+  // Increase contrast during morph (darker, more saturated)
+  const sat = Math.min(100, baseSat + 10 * contrastBoost);
+  const light = Math.max(30, baseLight - 15 * contrastBoost);
+
+  return `hsl(${colors.hue}, ${sat}%, ${light}%)`;
+};
+
+/**
+ * Parsed background colors for the two resting states (torus = 0, QR = 1).
+ * Points sit at one of these most of the time, so the frame loop can skip
+ * building and parsing an hsl() string per point.
+ */
+export type BackgroundColors = {
+  torus: Float32Array[];
+  qr: Float32Array[];
+};
+
+export const createBackgroundColors = (
+  colors: ColorConfig,
+  numAvatars: number,
+): BackgroundColors => {
+  const torus: Float32Array[] = [];
+  const qr: Float32Array[] = [];
+  for (let i = 0; i < numAvatars; i++) {
+    torus.push(Skia.Color(backgroundColorString(colors, i, 0)));
+    qr.push(Skia.Color(backgroundColorString(colors, i, 1)));
+  }
+  return { torus, qr };
+};
 
 /**
  * Creates a single frame of the animation as a Skia Picture.
@@ -62,6 +96,7 @@ interface AvatarTransform {
  * @param shapeData - Pre-computed torus/QR points and sprite coordinates
  * @param colors - HSL color configuration for backgrounds
  * @param avatarSize - Base size of avatars in torus mode
+ * @param backgroundColors - Precomputed colors for the resting states
  */
 export const createPicture = (
   spriteSheet: SkImage,
@@ -72,6 +107,7 @@ export const createPicture = (
   shapeData: ShapeData,
   colors: ColorConfig,
   avatarSize: number,
+  backgroundColors: BackgroundColors,
 ) => {
   'worklet';
 
@@ -95,32 +131,48 @@ export const createPicture = (
   const { allShapes, nPoints, qrModuleSize, avatarAssignments, spriteCoords } =
     shapeData;
 
-  // Color ranges for background variation
-  const [satMin, satMax] = colors.saturationRange;
-  const [lightMin, lightMax] = colors.lightnessRange;
-  const satRange = satMax - satMin;
-  const lightRange = lightMax - lightMin;
-
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 2: COMPUTE TRANSFORMS
-  // Calculate screen position and visual properties for each point
+  // Calculate screen position and visual properties for each point.
+  // Stored in flat arrays indexed by point (no per-point objects).
   // ═══════════════════════════════════════════════════════════════════════════
 
-  const transforms: AvatarTransform[] = [];
+  const xs = new Float64Array(nPoints); // Screen X (top-left corner)
+  const ys = new Float64Array(nPoints); // Screen Y (top-left corner)
+  const sizes = new Float64Array(nPoints); // Rendered size in pixels
+  const cornerRadii = new Float64Array(nPoints); // Circle → square during morph
+  const imageOpacities = new Float64Array(nPoints); // Fades out during morph
+  const zs = new Float64Array(nPoints); // Z-depth (larger = further away)
+  const morphProgresses = new Float64Array(nPoints); // Eased progress (0-1)
+
+  // Rotation angles shared by every point
+  const staggerTiltCos = Math.cos(0.3);
+  const staggerTiltSin = Math.sin(0.3);
+  const staggerCos = Math.cos(staggerTime);
+  const staggerSin = Math.sin(staggerTime);
+
+  // Handle 2π wrapping to prevent sudden jumps
+  let rotationDelta = timeValue - frozenRotation;
+  if (rotationDelta > Math.PI) rotationDelta -= 2 * Math.PI;
+  if (rotationDelta < -Math.PI) rotationDelta += 2 * Math.PI;
 
   for (let index = 0; index < nPoints; index++) {
     const torusPoint = allShapes[0][index];
+    const qrPoint = allShapes[1][index];
 
     // ─── 2a: CALCULATE STAGGERED DELAY ─────────────────────────────────────
     // Points at different angles around the torus get different delays,
     // creating a "wave" effect that sweeps around during morphing.
 
     // Rotate torus point to frozen position for consistent wave pattern
-    let rotatedTorus = rotateX(torusPoint, 0.3);
-    rotatedTorus = rotateY(rotatedTorus, staggerTime);
+    // (rotateX by 0.3, then rotateY by staggerTime, inlined)
+    const tiltedZ =
+      torusPoint.y * staggerTiltSin + torusPoint.z * staggerTiltCos;
+    const rotatedTorusX = torusPoint.x * staggerCos + tiltedZ * staggerSin;
+    const rotatedTorusZ = -torusPoint.x * staggerSin + tiltedZ * staggerCos;
 
     // Convert XZ position to angle (0 to 2π around the torus)
-    const angle = Math.atan2(rotatedTorus.z, rotatedTorus.x);
+    const angle = Math.atan2(rotatedTorusZ, rotatedTorusX);
     const normalizedAngle = (angle + Math.PI) / (2 * Math.PI); // 0 to 1
 
     // Wave delay: angle 0 starts immediately, angle 1 starts at 25% progress
@@ -141,15 +193,9 @@ export const createPicture = (
 
     // ─── 2c: INTERPOLATE POSITION ──────────────────────────────────────────
     // Linear interpolation between torus [0] and QR [1] positions
-    const baseX =
-      allShapes[0][index].x +
-      (allShapes[1][index].x - allShapes[0][index].x) * eased;
-    const baseY =
-      allShapes[0][index].y +
-      (allShapes[1][index].y - allShapes[0][index].y) * eased;
-    const baseZ =
-      allShapes[0][index].z +
-      (allShapes[1][index].z - allShapes[0][index].z) * eased;
+    const baseX = torusPoint.x + (qrPoint.x - torusPoint.x) * eased;
+    const baseY = torusPoint.y + (qrPoint.y - torusPoint.y) * eased;
+    const baseZ = torusPoint.z + (qrPoint.z - torusPoint.z) * eased;
 
     // ─── 2d: APPLY 3D ROTATION ─────────────────────────────────────────────
     // Rotation fades out as we approach QR mode
@@ -157,25 +203,26 @@ export const createPicture = (
     // "Transition boost" adds a slight arc during mid-morph
     const transitionBoost = Math.sin(eased * Math.PI) * 0.6;
 
-    // Handle 2π wrapping to prevent sudden jumps
-    let rotationDelta = timeValue - frozenRotation;
-    if (rotationDelta > Math.PI) rotationDelta -= 2 * Math.PI;
-    if (rotationDelta < -Math.PI) rotationDelta += 2 * Math.PI;
-
     const rotationAmount =
       (frozenRotation + rotationDelta) * (1 - eased) + transitionBoost;
     const tiltAmount = 0.3 * (1 - eased);
 
-    // Apply rotation
-    let p: Point3D = { x: baseX, y: baseY, z: baseZ };
-    p = rotateX(p, tiltAmount);
-    p = rotateY(p, rotationAmount);
+    // Apply rotation (rotateX by tiltAmount, then rotateY, inlined)
+    const tiltCos = Math.cos(tiltAmount);
+    const tiltSin = Math.sin(tiltAmount);
+    const tY = baseY * tiltCos - baseZ * tiltSin;
+    const tZ = baseY * tiltSin + baseZ * tiltCos;
+    const rotCos = Math.cos(rotationAmount);
+    const rotSin = Math.sin(rotationAmount);
+    const px = baseX * rotCos + tZ * rotSin;
+    const py = tY;
+    const pz = -baseX * rotSin + tZ * rotCos;
 
     // ─── 2e: PERSPECTIVE PROJECTION ────────────────────────────────────────
     // Objects further away appear smaller
-    const scale = DISTANCE / (DISTANCE + p.z);
-    const screenX = CENTER_X + p.x * scale;
-    const screenY = CENTER_Y + p.y * scale;
+    const scale = DISTANCE / (DISTANCE + pz);
+    const screenX = CENTER_X + px * scale;
+    const screenY = CENTER_Y + py * scale;
 
     // ─── 2f: CALCULATE SIZE ────────────────────────────────────────────────
     const avatarScale = avatarSize * scale;
@@ -189,21 +236,16 @@ export const createPicture = (
     const size = baseSize * scalePulse;
 
     // ─── 2g: VISUAL PROPERTIES ─────────────────────────────────────────────
-    const cornerRadius = (size / 2) * (1 - eased); // Circle → Square
-    const frontFade = smoothstep(100, -150, p.z); // Depth-based fade
+    const frontFade = smoothstep(100, -150, pz); // Depth-based fade
     const transitionOpacity = 1 - eased;
-    const imageOpacity = transitionOpacity * frontFade;
 
-    transforms.push({
-      index,
-      x: screenX - size / 2,
-      y: screenY - size / 2,
-      size,
-      cornerRadius,
-      imageOpacity,
-      z: p.z,
-      morphProgress: eased,
-    });
+    xs[index] = screenX - size / 2;
+    ys[index] = screenY - size / 2;
+    sizes[index] = size;
+    cornerRadii[index] = (size / 2) * (1 - eased); // Circle → Square
+    imageOpacities[index] = transitionOpacity * frontFade;
+    zs[index] = pz;
+    morphProgresses[index] = eased;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -211,71 +253,82 @@ export const createPicture = (
   // Draw back-to-front for correct occlusion (painter's algorithm)
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Insertion sort by z-depth (larger z = further = draw first)
-  for (let i = 1; i < transforms.length; i++) {
-    const current = transforms[i];
-    let j = i - 1;
-    while (j >= 0 && transforms[j].z < current.z) {
-      transforms[j + 1] = transforms[j];
-      j--;
-    }
-    transforms[j + 1] = current;
-  }
+  // Sort by z-depth (larger z = further = draw first), ties by index: the
+  // same order the old stable insertion sort gave, in O(n log n) instead of
+  // O(n²) moves per frame.
+  const order: number[] = [];
+  for (let i = 0; i < nPoints; i++) order.push(i);
+  order.sort((a, b) => zs[b] - zs[a] || a - b);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // STEP 4: RENDER
   // Draw each avatar to the canvas
   // ═══════════════════════════════════════════════════════════════════════════
 
-  for (const t of transforms) {
-    const avatarIndex = avatarAssignments[t.index];
+  // Plain rect/rrect objects reused for every point: Skia reads them by value,
+  // so this avoids ~1.5k host-object allocations per frame.
+  const srcRect = { x: 0, y: 0, width: 0, height: 0 };
+  const dstRect = { x: 0, y: 0, width: 0, height: 0 };
+  const bgRect = { x: 0, y: 0, width: 0, height: 0 };
+  const bgRRect = { rect: bgRect, rx: 0, ry: 0 };
+  const clipRRect = { rect: dstRect, rx: 0, ry: 0 };
+
+  for (let o = 0; o < nPoints; o++) {
+    const index = order[o];
+    const avatarIndex = avatarAssignments[index];
     const coords = spriteCoords[avatarIndex];
+    const x = xs[index];
+    const y = ys[index];
+    const size = sizes[index];
+    const imageOpacity = imageOpacities[index];
+    const morphProgress = morphProgresses[index];
 
     // Sprite sheet rectangles
-    const srcRect = Skia.XYWHRect(coords.x, coords.y, coords.w, coords.h);
-    const dstRect = Skia.XYWHRect(t.x, t.y, t.size, t.size);
+    srcRect.x = coords.x;
+    srcRect.y = coords.y;
+    srcRect.width = coords.w;
+    srcRect.height = coords.h;
+    dstRect.x = x;
+    dstRect.y = y;
+    dstRect.width = size;
+    dstRect.height = size;
 
     // ─── 4a: COLORED BACKGROUND ────────────────────────────────────────────
-    // Each avatar gets a slightly different color (visual variety)
-    const baseSat = satMin + (avatarIndex % 5) * (satRange / 4);
-    const baseLight = lightMin + (avatarIndex % 4) * (lightRange / 3);
-
-    // Increase contrast during morph (darker, more saturated)
-    const contrastBoost = t.morphProgress;
-    const sat = Math.min(100, baseSat + 10 * contrastBoost);
-    const light = Math.max(30, baseLight - 15 * contrastBoost);
-
-    const bgColor = `hsl(${colors.hue}, ${sat}%, ${light}%)`;
-    reusableWhiteBgPaint.setColor(Skia.Color(bgColor));
-    const bgOpacity = Math.max(t.imageOpacity, t.morphProgress);
+    // Each avatar gets a slightly different color (visual variety), with
+    // more contrast during the morph.
+    if (morphProgress === 0) {
+      reusableWhiteBgPaint.setColor(backgroundColors.torus[avatarIndex]);
+    } else if (morphProgress === 1) {
+      reusableWhiteBgPaint.setColor(backgroundColors.qr[avatarIndex]);
+    } else {
+      reusableWhiteBgPaint.setColor(
+        Skia.Color(backgroundColorString(colors, avatarIndex, morphProgress)),
+      );
+    }
+    const bgOpacity = Math.max(imageOpacity, morphProgress);
     reusableWhiteBgPaint.setAlphaf(bgOpacity);
 
     // Draw rounded rect (slightly larger than avatar)
     const padding = 1;
-    const bgRect = Skia.XYWHRect(
-      t.x - padding,
-      t.y - padding,
-      t.size + padding,
-      t.size + padding,
-    );
-    const bgRadius = (t.size + padding) / 2;
-    canvas.drawRRect(
-      Skia.RRectXY(bgRect, bgRadius, bgRadius),
-      reusableWhiteBgPaint,
-    );
+    bgRect.x = x - padding;
+    bgRect.y = y - padding;
+    bgRect.width = size + padding;
+    bgRect.height = size + padding;
+    const bgRadius = (size + padding) / 2;
+    bgRRect.rx = bgRadius;
+    bgRRect.ry = bgRadius;
+    canvas.drawRRect(bgRRect, reusableWhiteBgPaint);
 
     // ─── 4b: AVATAR IMAGE ──────────────────────────────────────────────────
-    if (t.imageOpacity > 0) {
-      reusablePaint.setAlphaf(t.imageOpacity);
+    if (imageOpacity > 0) {
+      reusablePaint.setAlphaf(imageOpacity);
 
       // Clip to rounded rectangle — clipRRect avoids the deprecated mutable
       // SkPath (reset/addRRect) entirely.
       canvas.save();
-      canvas.clipRRect(
-        Skia.RRectXY(dstRect, t.cornerRadius, t.cornerRadius),
-        ClipOp.Intersect,
-        true,
-      );
+      clipRRect.rx = cornerRadii[index];
+      clipRRect.ry = cornerRadii[index];
+      canvas.clipRRect(clipRRect, ClipOp.Intersect, true);
       canvas.drawImageRect(spriteSheet, srcRect, dstRect, reusablePaint);
       canvas.restore();
     }

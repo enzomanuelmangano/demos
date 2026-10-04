@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { Blur, ColorMatrix, Paint } from '@shopify/react-native-skia';
+import { Blur, ColorMatrix, Paint } from 'react-native-skia';
 
 // Define an interface for the hook parameters
 interface GooeyLayerParams {

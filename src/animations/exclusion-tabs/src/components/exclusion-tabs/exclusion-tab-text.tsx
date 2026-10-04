@@ -1,8 +1,8 @@
-import { Group, Text } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
+import { Group, Text } from 'react-native-skia';
 
 import { font } from '../../constants';
-import { useAnimatedPathData } from './hooks/use-animated-path-data';
+import { useAnimatedBoxX } from './hooks/use-animated-path-data';
 
 type ExclusionTabTextProps = {
   tabs: readonly string[];
@@ -23,24 +23,22 @@ export const ExclusionTabText: React.FC<ExclusionTabTextProps> = ({
 }) => {
   const text = tabs[index];
 
-  const { skPath } = useAnimatedPathData({
+  // Same x as the box path bounds (the box's y is always 0)
+  const { boxX } = useAnimatedBoxX({
     tabs,
     activeTabIndex,
-    pathHeight: height,
     index,
     internalBoxPadding,
     horizontalTabsPadding,
   });
 
   const transform = useDerivedValue(() => {
-    const bounds = skPath.get().getBounds();
-
     return [
       {
-        translateX: bounds.x + internalBoxPadding,
+        translateX: boxX.get() + internalBoxPadding,
       },
       {
-        translateY: bounds.y + height / 2 + font.getSize() / 3,
+        translateY: height / 2 + font.getSize() / 3,
       },
     ];
   }, []);

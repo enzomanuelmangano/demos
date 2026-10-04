@@ -1,26 +1,33 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  PixelRatio,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { useMemo } from 'react';
 
-import {
-  BackdropBlur,
-  Blur,
-  Canvas,
-  Group,
-  Path,
-  RadialGradient,
-  rect,
-  Rect,
-  rrect,
-  Skia,
-  vec,
-} from '@shopify/react-native-skia';
 import { PressableOpacity } from 'pressto';
 import {
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import {
+  BackdropBlur,
+  Blur,
+  Canvas,
+  Group,
+  Image,
+  Path,
+  RadialGradient,
+  rect,
+  Rect,
+  rrect,
+  Skia,
+  TileMode,
+  vec,
+} from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
 
@@ -61,22 +68,66 @@ const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
   );
 };
 
+// The blurred gradient never changes, but a sigma-100 blur re-ran on every
+// frame of the card spring. Rasterize it once at device resolution (same
+// gradient, same decal blur as the <Rect> + <Blur> below) and draw the image.
+const useBlurredBackground = (width: number, height: number) => {
+  return useMemo(() => {
+    const pixelRatio = PixelRatio.get();
+    const surface = Skia.Surface.MakeOffscreen(
+      Math.round(width * pixelRatio),
+      Math.round(height * pixelRatio),
+    );
+    if (!surface) return null;
+    const canvas = surface.getCanvas();
+    canvas.scale(pixelRatio, pixelRatio);
+    const paint = Skia.Paint();
+    paint.setShader(
+      Skia.Shader.MakeRadialGradient(
+        vec(width / 2, height / 2),
+        Math.min(width, height) / 2,
+        [Skia.Color('violet'), Skia.Color('black')],
+        null,
+        TileMode.Clamp,
+      ),
+    );
+    paint.setImageFilter(
+      Skia.ImageFilter.MakeBlur(100, 100, TileMode.Decal, null),
+    );
+    canvas.drawRect(rect(0, 0, width, height), paint);
+    surface.flush();
+    return surface.makeImageSnapshot().makeNonTextureImage();
+  }, [width, height]);
+};
+
 export const BlurCards = () => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const progress = useSharedValue(0);
+  const background = useBlurredBackground(windowWidth, windowHeight);
 
   return (
     <View style={styles.container}>
       <Canvas style={styles.canvas}>
-        <Rect x={0} y={0} width={windowWidth} height={windowHeight}>
-          <RadialGradient
-            c={vec(windowWidth / 2, windowHeight / 2)}
-            r={Math.min(windowWidth, windowHeight) / 2}
-            colors={['violet', 'black']}
+        {background ? (
+          <Image
+            image={background}
+            x={0}
+            y={0}
+            width={windowWidth}
+            height={windowHeight}
+            fit="fill"
           />
-          <Blur blur={100} />
-        </Rect>
+        ) : (
+          <Rect x={0} y={0} width={windowWidth} height={windowHeight}>
+            <RadialGradient
+              c={vec(windowWidth / 2, windowHeight / 2)}
+              r={Math.min(windowWidth, windowHeight) / 2}
+              colors={['violet', 'black']}
+            />
+            <Blur blur={100} />
+          </Rect>
+        )}
         {new Array(5).fill(0).map((_, index) => {
           // eslint-disable-next-line react-hooks/rules-of-hooks
           const transform = useDerivedValue(() => {

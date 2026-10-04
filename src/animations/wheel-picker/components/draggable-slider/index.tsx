@@ -2,7 +2,6 @@ import { View } from 'react-native';
 
 import { useMemo } from 'react';
 
-import { Canvas, Path } from '@shopify/react-native-skia';
 import Color from 'color';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -16,6 +15,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, Group, Path } from 'react-native-skia';
 
 import { BoundaryGradient } from './boundary-gradient';
 import { ScreenWidth } from './constants';
@@ -167,6 +167,9 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
     },
   );
 
+  // The paths only depend on the line spacing: they're built unscrolled and
+  // translated by the scroll offset, instead of being rebuilt every drag frame
+  // (the canvas clips the off-screen lines).
   const bigLinesPath = useDerivedValue(() => {
     return getLinesPath({
       linesAmount,
@@ -175,7 +178,6 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
       minLineHeight,
       type: 'bigLines',
       bigLineEach: bigLineIndexOffset,
-      scrollOffset: scrollOffset,
     });
   }, []);
 
@@ -187,8 +189,11 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
       minLineHeight,
       type: 'smallLines',
       bigLineEach: bigLineIndexOffset,
-      scrollOffset: scrollOffset,
     });
+  }, []);
+
+  const linesTransform = useDerivedValue(() => {
+    return [{ translateX: scrollOffset.get() }];
   }, []);
 
   const indicatorLineWidth = lineWidth * 1.4;
@@ -224,9 +229,11 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
                   I'm not sure if this can be optimized further
               */}
               {/* Rendering small lines */}
-              <Path path={smallLinesPath} color={lineColor} />
-              {/* Rendering big lines */}
-              <Path path={bigLinesPath} color={bigLineColor} />
+              <Group transform={linesTransform}>
+                <Path path={smallLinesPath} color={lineColor} />
+                {/* Rendering big lines */}
+                <Path path={bigLinesPath} color={bigLineColor} />
+              </Group>
               {/* Rendering boundary gradient if enabled */}
               {showBoundaryGradient && (
                 <BoundaryGradient

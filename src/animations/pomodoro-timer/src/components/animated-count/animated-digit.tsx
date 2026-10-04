@@ -184,6 +184,15 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
       [],
     );
 
+    // At intensity 0 the effect view is a no-op. Opacity 0 lets Core Animation
+    // skip the 5 effect layers between changes (display:'none' would unmount
+    // and rebuild the native blur on every digit change).
+    const rBlurStyle = useAnimatedStyle(() => {
+      return {
+        opacity: isChangingProgress.get() !== 0 ? 1 : 0,
+      };
+    }, []);
+
     return (
       <Animated.View
         style={[
@@ -202,6 +211,7 @@ const AnimatedDigit: FC<AnimatedDigitProps> = memo(
               {
                 zIndex: 10,
               },
+              rBlurStyle,
             ]}
             animatedProps={blurAnimatedProps}
           />

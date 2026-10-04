@@ -1,4 +1,4 @@
-import type { DataSourceParam } from '@shopify/react-native-skia';
+import type { DataSourceParam } from 'react-native-skia';
 
 export type Point3D = { x: number; y: number; z: number };
 

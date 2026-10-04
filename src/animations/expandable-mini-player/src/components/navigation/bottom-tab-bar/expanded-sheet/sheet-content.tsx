@@ -1,5 +1,6 @@
-import { View, Image, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
+import { Image } from 'expo-image';
 import Animated, {
   interpolate,
   useAnimatedStyle,
@@ -43,14 +44,16 @@ export const SheetContent = ({
     };
   }, []);
 
+  // The vertical offsets are transforms (static marginTop + translateY):
+  // nothing is laid out below these views, so the result is the same
+  // without a layout pass for them. marginLeft stays a layout prop because
+  // it also sets the width available to the labels.
   const rContentStyle = useAnimatedStyle(() => {
     return {
-      marginTop: interpolate(
-        progress.get(),
-        [0, 1],
-        [BaseOffset, BaseOffset + 120],
-      ),
       marginLeft: interpolate(progress.get(), [0, 1], [BaseOffset, 24]),
+      transform: [
+        { translateY: interpolate(progress.get(), [0, 1], [0, 120]) },
+      ],
     };
   });
 
@@ -71,18 +74,24 @@ export const SheetContent = ({
       position: 'absolute',
       top: 0,
       left: interpolate(progress.get(), [0, 1], [ImageHeight + 10, 0]),
-      marginTop: interpolate(
-        progress.get(),
-        [0, 1],
-        [5, ExpandedImageHeight + 24],
-      ),
+      marginTop: 5,
+      transform: [
+        {
+          translateY: interpolate(
+            progress.get(),
+            [0, 1],
+            [0, ExpandedImageHeight + 24 - 5],
+          ),
+        },
+      ],
     };
   });
 
   return (
     <View style={styles.fill}>
-      <Animated.View style={rContentStyle}>
+      <Animated.View style={[styles.content, rContentStyle]}>
         <Animated.View style={rImageStyle}>
+          {/* expo-image: RN's Image re-requests the bitmap as its view grows */}
           <Image
             source={{
               uri: imageUrl,
@@ -104,6 +113,9 @@ export const SheetContent = ({
 };
 
 const styles = StyleSheet.create({
+  content: {
+    marginTop: BaseOffset,
+  },
   fill: {
     flex: 1,
   },

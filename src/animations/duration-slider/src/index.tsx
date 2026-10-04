@@ -1,7 +1,7 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { useFont } from '@shopify/react-native-skia';
 import * as Haptics from 'expo-haptics';
+import { useFont } from 'react-native-skia';
 
 import { CircularSlider } from './components/circular-slider';
 // @ts-ignore
@@ -19,8 +19,7 @@ const App = () => {
         <CircularSlider
           minVal={1}
           maxVal={12}
-          onValueChange={value => {
-            console.log({ value });
+          onValueChange={() => {
             Haptics.selectionAsync();
           }}
           width={size}

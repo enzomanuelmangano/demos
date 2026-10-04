@@ -7,7 +7,7 @@ import {
 } from './constants';
 
 import type { AtlasGeometry } from './atlas';
-import type { SkFont, SkRect } from '@shopify/react-native-skia';
+import type { SkFont, SkRect } from 'react-native-skia';
 
 export interface Layout {
   pageXY: Float32Array; // interleaved [x,y,...] per glyph

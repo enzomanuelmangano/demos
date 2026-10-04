@@ -12,7 +12,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { Palette } from '../../constants';
 
@@ -27,6 +26,7 @@ type SliderProps = {
   style: StyleProp<
     Omit<ViewStyle, 'width' | 'height'> & { width: number; height?: number }
   >;
+  // Must be a worklet: it runs on the UI thread on every drag frame.
   onUpdate?: (progress: number) => void;
   initialProgress?: number;
 };
@@ -82,7 +82,9 @@ const AnimatedSlider: React.FC<SliderProps> = ({
         [minValue, maxValue],
         Extrapolation.CLAMP,
       );
-      if (onUpdate) scheduleOnRN(onUpdate, progress);
+      // Called in place (no UI→JS→UI hop per frame), so the digits never lag
+      // behind the thumb when the JS thread is busy.
+      if (onUpdate) onUpdate(progress);
     },
   );
 
@@ -107,9 +109,12 @@ const AnimatedSlider: React.FC<SliderProps> = ({
     };
   }, []);
 
+  // Full-width bar scaled from the left edge instead of animating `width`:
+  // the bar has no corner radius, so it looks the same without a layout pass
+  // per frame.
   const rProgressBarStyle = useAnimatedStyle(() => {
     return {
-      width: clampedTranslateX.get(),
+      transform: [{ scaleX: clampedTranslateX.get() / sliderWidth }],
     };
   }, []);
 
@@ -127,6 +132,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
         style={[
           {
             backgroundColor: color,
+            width: sliderWidth,
           },
           styles.progressBar,
           rProgressBarStyle,
@@ -161,6 +167,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     top: 0,
+    transformOrigin: 'left',
   },
 });
 

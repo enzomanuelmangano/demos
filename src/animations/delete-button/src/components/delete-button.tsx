@@ -1,10 +1,10 @@
-import { Group, ImageSVG, Text } from '@shopify/react-native-skia';
+import { useDerivedValue } from 'react-native-reanimated';
+import { Group, RoundedRect, Text } from 'react-native-skia';
 import Touchable from 'react-native-skia-gesture';
 
 import {
-  CloseSvgPath,
-  CloseSvgPathHeight,
-  CloseSvgPathWidth,
+  CloseIconBarLength,
+  CloseIconBarThickness,
   font,
   fontStyle,
 } from './constants';
@@ -66,6 +66,10 @@ export const DeleteButton = ({
 
   const layer = useGooeyLayer();
 
+  const closeIconTransform = useDerivedValue(() => {
+    return [{ translateX: closeIconCircleX.get() }, { translateY: height / 2 }];
+  }, [height]);
+
   return (
     <Touchable.Canvas
       style={{
@@ -122,17 +126,27 @@ export const DeleteButton = ({
           opacity={confirmTextOpacity}
         />
       </Group>
-      <Group
-        layer={paint}
-        transform={[
-          { translateX: -CloseSvgPathWidth / 2 },
-          { translateY: -CloseSvgPathHeight / 2 },
-        ]}
-        origin={{
-          x: width + additionalWidth / 2,
-          y: height / 2,
-        }}>
-        <ImageSVG svg={CloseSvgPath} x={closeIconCircleX} y={height / 2} />
+      <Group layer={paint}>
+        <Group transform={closeIconTransform}>
+          <RoundedRect
+            x={-CloseIconBarLength / 2}
+            y={-CloseIconBarThickness / 2}
+            width={CloseIconBarLength}
+            height={CloseIconBarThickness}
+            r={CloseIconBarThickness / 2}
+            color={'white'}
+            transform={[{ rotate: Math.PI / 4 }]}
+          />
+          <RoundedRect
+            x={-CloseIconBarLength / 2}
+            y={-CloseIconBarThickness / 2}
+            width={CloseIconBarLength}
+            height={CloseIconBarThickness}
+            r={CloseIconBarThickness / 2}
+            color={'white'}
+            transform={[{ rotate: -Math.PI / 4 }]}
+          />
+        </Group>
       </Group>
     </Touchable.Canvas>
   );

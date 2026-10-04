@@ -1,13 +1,14 @@
+import { useDerivedValue } from 'react-native-reanimated';
 import {
-  BlurMask,
+  Blur,
   Group,
+  Paint,
   Path,
   RadialGradient,
   Shadow,
   Skia,
   vec,
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import type { SharedValue } from 'react-native-reanimated';
@@ -56,7 +57,7 @@ export const Picker: React.FC<PickerProps> = ({
     const x = translateX.get() - cx;
     const y = translateY.get() - cy;
     return normalizeAngle(Math.atan2(y, x));
-  }, [translateX.get(), translateY.get()]);
+  }, [cx, cy]);
 
   const pickerPath = useDerivedValue(() => {
     const builder = Skia.PathBuilder.Make();
@@ -66,7 +67,7 @@ export const Picker: React.FC<PickerProps> = ({
       strokeWidth / 2,
     );
     return builder.build();
-  }, [cx, radius, strokeWidth, theta.get()]);
+  }, [cx, cy, radius, strokeWidth]);
 
   const internalPickerPath = useDerivedValue(() => {
     const builder = Skia.PathBuilder.Make();
@@ -76,20 +77,34 @@ export const Picker: React.FC<PickerProps> = ({
       strokeWidth / 2 - 10,
     );
     return builder.build();
-  }, [cx, radius, strokeWidth, theta.get()]);
+  }, [cx, cy, radius, strokeWidth]);
 
   return (
     <Group>
-      <Group>
-        <Touchable.Path {...gesture} path={pickerPath}>
+      {/* The glow was a BlurMask blur={20} style={'solid'}: a software mask
+          blurred again on every frame since the circle moves. Same union on
+          the GPU: the blurred circle in a layer, the circle on top. */}
+      <Group
+        layer={
+          <Paint>
+            <Blur blur={20} />
+          </Paint>
+        }>
+        <Path path={pickerPath}>
           <RadialGradient
             c={vec(cx, cy)}
             r={radius + strokeWidth}
             colors={['#dc3f69', '#f2384d']}
           />
-        </Touchable.Path>
-        <BlurMask blur={20} style={'solid'} />
+        </Path>
       </Group>
+      <Touchable.Path {...gesture} path={pickerPath}>
+        <RadialGradient
+          c={vec(cx, cy)}
+          r={radius + strokeWidth}
+          colors={['#dc3f69', '#f2384d']}
+        />
+      </Touchable.Path>
       <Path path={internalPickerPath} color={'#FFFFFF'}>
         <Shadow dx={0} dy={20} blur={10} color="#d4d4d4" inner />
       </Path>

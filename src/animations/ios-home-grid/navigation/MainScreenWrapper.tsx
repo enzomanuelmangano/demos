@@ -1,7 +1,10 @@
 import { StyleSheet, View } from 'react-native';
 
 import { BlurView } from 'expo-blur';
-import Animated, { useAnimatedProps } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedProps,
+  useAnimatedStyle,
+} from 'react-native-reanimated';
 
 import { useCustomNavigation } from './expansion-provider';
 
@@ -17,11 +20,17 @@ const MainScreenWrapper = ({ children }: { children: React.ReactNode }) => {
     intensity: springProgress.get() * 50,
   }));
 
+  // At rest the intensity is 0 (a no-op blur); opacity 0 lets Core Animation
+  // skip the full-screen effect layer over the 97-icon grid.
+  const rBlurStyle = useAnimatedStyle(() => ({
+    opacity: springProgress.get() !== 0 ? 1 : 0,
+  }));
+
   return (
     <View style={styles.container}>
       <AnimatedBlurView
         pointerEvents="none"
-        style={styles.blurView}
+        style={[styles.blurView, rBlurStyle]}
         animatedProps={animatedProps}
         tint="light"
       />

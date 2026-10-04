@@ -3,14 +3,14 @@ import { useWindowDimensions, View } from 'react-native';
 
 import { useMemo } from 'react';
 
-import { Canvas, Path, Skia } from '@shopify/react-native-skia';
 import { useDerivedValue } from 'react-native-reanimated';
+import { Canvas, Path, Skia } from 'react-native-skia';
 
 import { NetworkNode } from './node';
 
 import type { NeuralNetworkWeights, PredictResult } from '../../neural-network';
-import type { SkPathBuilder } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
+import type { SkPathBuilder } from 'react-native-skia';
 
 type NeuralNetworkProps = {
   weights: NeuralNetworkWeights;

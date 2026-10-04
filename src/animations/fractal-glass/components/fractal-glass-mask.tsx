@@ -1,4 +1,4 @@
-import { Group, LinearGradient, Rect, vec } from '@shopify/react-native-skia';
+import { Group, LinearGradient, Rect, vec } from 'react-native-skia';
 
 type FractalGlassMaskProps = {
   x: number;

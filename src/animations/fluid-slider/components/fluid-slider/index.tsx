@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useDerivedValue } from 'react-native-reanimated';
 import {
   Blur,
   Circle,
@@ -10,8 +11,7 @@ import {
   Text,
   interpolate,
   useFont,
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 import { usePickerLayout } from './hooks/use-picker-layout';
@@ -111,12 +111,17 @@ const FluidSlider: React.FC<FluidSliderProps> = ({
     ).toString();
   }, [clampedPickerX, metaballRadius, sliderSize]);
 
+  // Measured only when the label changes (about 100 times across the whole
+  // slider), not on every pan frame
+  const pickerTextWidth = useDerivedValue(() => {
+    if (!font) return 0;
+    return font.measureText(pickerCircleText.get()).width;
+  }, [font, pickerCircleText]);
+
   const pickerTextX = useDerivedValue(() => {
     if (!font) return 0;
-    return (
-      clampedPickerX.get() - font.measureText(pickerCircleText.get()).width / 2
-    );
-  }, [clampedPickerX, pickerCircleTextContainerRadius, font, pickerCircleText]);
+    return clampedPickerX.get() - pickerTextWidth.get() / 2;
+  }, [clampedPickerX, pickerCircleTextContainerRadius, font, pickerTextWidth]);
 
   const derivedPickerY = useDerivedValue(() => {
     return height / 2;

@@ -1,10 +1,19 @@
+import { PixelRatio } from 'react-native';
+
 import { type FC, useMemo } from 'react';
 
+import {
+  Extrapolation,
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+} from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
   Circle,
   Group,
+  Image,
   interpolate,
   LinearGradient,
   Mask,
@@ -12,8 +21,8 @@ import {
   Rect,
   RoundedRect,
   Skia,
-} from '@shopify/react-native-skia';
-import { Extrapolation, useDerivedValue } from 'react-native-reanimated';
+  useTexture,
+} from 'react-native-skia';
 
 import { useDeviceTilt } from '../hooks/use-device-tilt';
 
@@ -41,7 +50,37 @@ export const HolographicCard: FC<HolographicCardProps> = ({
   color = '#FFF',
 }) => {
   // Get smoothed device tilt values
-  const { pitch: smoothPitch, roll: smoothRoll } = useDeviceTilt();
+  const { pitch: sensorPitch, roll: sensorRoll } = useDeviceTilt();
+
+  // Calculate mask opacity based on rotation angle
+  const maskOpacity = useDerivedValue(() => {
+    const normalizedRotation = interpolate(
+      Math.abs(rotateY.get()),
+      [0, 90, 180, 270, 360],
+      [0, 0.5, 0, 0.5, 0],
+      Extrapolation.CLAMP,
+    );
+
+    return normalizedRotation;
+  });
+
+  // At opacity 0 the luminance mask hides the whole holographic layer, so the
+  // tilt is only forwarded while it's visible: the noisy sensor would
+  // otherwise redraw the canvas at 60Hz with the card at rest.
+  const smoothPitch = useSharedValue(0);
+  const smoothRoll = useSharedValue(0);
+  useAnimatedReaction(
+    () => (maskOpacity.get() > 0 ? sensorPitch.get() : null),
+    pitch => {
+      if (pitch !== null) smoothPitch.set(pitch);
+    },
+  );
+  useAnimatedReaction(
+    () => (maskOpacity.get() > 0 ? sensorRoll.get() : null),
+    roll => {
+      if (roll !== null) smoothRoll.set(roll);
+    },
+  );
 
   // Calculate the center of the mask based on rotation AND device tilt
   const maskCenterX = useDerivedValue(() => {
@@ -74,18 +113,6 @@ export const HolographicCard: FC<HolographicCardProps> = ({
     );
 
     return height / 2 + tiltOffsetY;
-  });
-
-  // Calculate mask opacity based on rotation angle
-  const maskOpacity = useDerivedValue(() => {
-    const normalizedRotation = interpolate(
-      Math.abs(rotateY.get()),
-      [0, 90, 180, 270, 360],
-      [0, 0.5, 0, 0.5, 0],
-      Extrapolation.CLAMP,
-    );
-
-    return normalizedRotation;
   });
 
   // Create the mask for the holographic effect
@@ -142,6 +169,18 @@ export const HolographicCard: FC<HolographicCardProps> = ({
     return builder.build();
   }, [LogoAmountVertical, LogoSize]);
 
+  // The ~850-circle grid is static: rasterize it once at device resolution
+  // and use it to cut the gradient (dstIn) instead of filling the path every
+  // frame.
+  const pixelRatio = PixelRatio.get();
+  const gridTexture = useTexture(
+    <Group transform={[{ scale: pixelRatio }]}>
+      <Path path={GridPath} color="white" />
+    </Group>,
+    { width: width * pixelRatio, height: height * pixelRatio },
+    [GridPath, pixelRatio, width, height],
+  );
+
   // Gradient positions influenced by device tilt - subtle effect
   const gradientStart = useDerivedValue(() => {
     const x = interpolate(
@@ -192,7 +231,7 @@ export const HolographicCard: FC<HolographicCardProps> = ({
         <Group>
           {/* Holographic effect mask */}
           <Mask mask={mask} mode="luminance">
-            <Path path={GridPath}>
+            <Rect x={0} y={0} width={width} height={height}>
               {/* Holographic gradient colors - responds to device tilt */}
               <LinearGradient
                 start={gradientStart}
@@ -208,7 +247,16 @@ export const HolographicCard: FC<HolographicCardProps> = ({
                 ]}
                 positions={[0, 0.17, 0.33, 0.5, 0.67, 0.83, 1]}
               />
-            </Path>
+            </Rect>
+            <Image
+              image={gridTexture}
+              x={0}
+              y={0}
+              width={width}
+              height={height}
+              fit="fill"
+              blendMode="dstIn"
+            />
           </Mask>
         </Group>
       </Group>

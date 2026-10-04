@@ -3,23 +3,28 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useMemo } from 'react';
 
 import {
+  useDerivedValue,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
+import {
   Blur,
   ColorMatrix,
   Group,
   Paint,
   Path,
+  rect,
   Skia,
   SweepGradient,
   vec,
-} from '@shopify/react-native-skia';
-import {
-  useDerivedValue,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 const RADIUS = 80;
+const BLUR = 30;
+// The blur kernel stops at 3σ, and the alpha threshold zeroes anything that
+// faint anyway, so nothing is drawn further than this from a circle's centre.
+const LAYER_MARGIN = RADIUS + 3 * BLUR + 2;
 
 export function Metaball() {
   const { width, height } = useWindowDimensions();
@@ -70,17 +75,27 @@ export function Metaball() {
   });
 
   const path = useDerivedValue(() => {
-    const circles = Skia.Path.Make();
-    circles.addCircle(firstCx.get(), firstCy.get(), RADIUS);
-    circles.addCircle(secondCx.get(), secondCy.get(), RADIUS);
-    circles.simplify();
-    return circles;
+    // Both circles wind the same way, so the default fill already draws
+    // their union — what simplify() used to bake into the path.
+    return Skia.PathBuilder.Make()
+      .addCircle(firstCx.get(), firstCy.get(), RADIUS)
+      .addCircle(secondCx.get(), secondCy.get(), RADIUS)
+      .build();
+  }, [firstCx, firstCy, secondCx, secondCy]);
+
+  // Bounds the blur layer to the two circles instead of the whole screen.
+  const layerClip = useDerivedValue(() => {
+    const minX = Math.min(firstCx.get(), secondCx.get()) - LAYER_MARGIN;
+    const minY = Math.min(firstCy.get(), secondCy.get()) - LAYER_MARGIN;
+    const maxX = Math.max(firstCx.get(), secondCx.get()) + LAYER_MARGIN;
+    const maxY = Math.max(firstCy.get(), secondCy.get()) + LAYER_MARGIN;
+    return rect(minX, minY, maxX - minX, maxY - minY);
   }, [firstCx, firstCy, secondCx, secondCy]);
 
   const paint = useMemo(() => {
     return (
       <Paint>
-        <Blur blur={30} />
+        <Blur blur={BLUR} />
         <ColorMatrix
           matrix={[
             // R, G, B, A, Position
@@ -101,10 +116,13 @@ export function Metaball() {
   return (
     <View style={styles.container}>
       <Touchable.Canvas style={{ flex: 1 }}>
-        <Group layer={paint}>
-          <Path path={path}>
-            <SweepGradient c={vec(0, 0)} colors={['cyan', 'blue', 'cyan']} />
-          </Path>
+        {/* The clip sits outside the layer so it bounds the offscreen surface */}
+        <Group clip={layerClip}>
+          <Group layer={paint}>
+            <Path path={path}>
+              <SweepGradient c={vec(0, 0)} colors={['cyan', 'blue', 'cyan']} />
+            </Path>
+          </Group>
         </Group>
         <Touchable.Circle
           cx={secondCx}

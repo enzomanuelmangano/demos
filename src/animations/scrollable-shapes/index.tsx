@@ -1,17 +1,7 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 
-import {
-  Blur,
-  Canvas,
-  Circle,
-  Picture,
-  PointMode,
-  RadialGradient,
-  Skia,
-  vec,
-} from '@shopify/react-native-skia';
 import { StatusBar } from 'expo-status-bar';
 import Animated, {
   Easing,
@@ -21,6 +11,17 @@ import Animated, {
   useAnimatedScrollHandler,
   useDerivedValue,
 } from 'react-native-reanimated';
+import {
+  Blur,
+  Canvas,
+  Circle,
+  Picture,
+  PointMode,
+  RadialGradient,
+  Skia,
+  vec,
+} from 'react-native-skia';
+import { isUIRuntime } from 'react-native-worklets';
 
 import { Paginator } from './components';
 import {
@@ -57,6 +58,31 @@ const ScrollableShapes = () => {
   // Input range for shape interpolation (computed once)
   const inputRange = ALL_SHAPES.map((_, idx) => windowWidth * idx);
 
+  // Gradient paint is constant: build it once instead of every frame.
+  const paint = useMemo(() => {
+    const shader = Skia.Shader.MakeLinearGradient(
+      { x: 0, y: 0 },
+      { x: windowWidth, y: windowHeight },
+      [Skia.Color('#00d9ff'), Skia.Color('#ffffff'), Skia.Color('#ff006e')],
+      null,
+      0,
+    );
+    const p = Skia.Paint();
+    p.setShader(shader);
+    p.setStyle(1); // Stroke
+    p.setStrokeCap(1); // Round
+    return p;
+  }, [windowWidth, windowHeight]);
+
+  // Point objects and bins reused across frames (created lazily on the UI
+  // runtime) so each frame doesn't allocate 3000 objects + 3 arrays.
+  const pools = useSharedValue<{
+    near: { x: number; y: number }[];
+    mid: { x: number; y: number }[];
+    far: { x: number; y: number }[];
+    points: { x: number; y: number }[];
+  } | null>(null);
+
   // Create picture using drawPoints for massive performance gain
   const picture = useDerivedValue(() => {
     'worklet';
@@ -84,10 +110,25 @@ const ScrollableShapes = () => {
         : (scroll - inputRange[idx]) / (inputRange[nextIdx] - inputRange[idx]);
     const clampedT = t < 0 ? 0 : t > 1 ? 1 : t;
 
+    let pool = pools.get();
+    if (pool === null) {
+      const points: { x: number; y: number }[] = [];
+      for (let i = 0; i < N_POINTS; i++) {
+        points.push({ x: 0, y: 0 });
+      }
+      pool = { near: [], mid: [], far: [], points };
+      // Only kept on the UI runtime: the initial JS-side run must not hand
+      // these (then frozen) objects to the shared value and mutate them.
+      if (isUIRuntime()) pools.set(pool);
+    }
+
     // Collect points in bins by depth for perspective sizing
-    const nearPoints: { x: number; y: number }[] = [];
-    const midPoints: { x: number; y: number }[] = [];
-    const farPoints: { x: number; y: number }[] = [];
+    const nearPoints = pool.near;
+    const midPoints = pool.mid;
+    const farPoints = pool.far;
+    nearPoints.length = 0;
+    midPoints.length = 0;
+    farPoints.length = 0;
 
     for (let i = 0; i < N_POINTS; i++) {
       const arrX = ALL_SHAPES_X[i];
@@ -111,7 +152,9 @@ const ScrollableShapes = () => {
       const sy = centerY + y1 * scale;
 
       // Bin by depth
-      const point = { x: sx, y: sy };
+      const point = pool.points[i];
+      point.x = sx;
+      point.y = sy;
       if (scale > 1.1) {
         nearPoints.push(point);
       } else if (scale > 0.9) {
@@ -121,20 +164,7 @@ const ScrollableShapes = () => {
       }
     }
 
-    // Create gradient shader
-    const shader = Skia.Shader.MakeLinearGradient(
-      { x: 0, y: 0 },
-      { x: windowWidth, y: windowHeight },
-      [Skia.Color('#00d9ff'), Skia.Color('#ffffff'), Skia.Color('#ff006e')],
-      null,
-      0,
-    );
-
     // Draw each bin with appropriate size (far to near for proper depth)
-    const paint = Skia.Paint();
-    paint.setShader(shader);
-    paint.setStyle(1); // Stroke
-    paint.setStrokeCap(1); // Round
 
     // Original used radius = Math.max(0.2, 0.5 * scale), so stroke width ~0.4-1.0
     if (farPoints.length > 0) {
@@ -153,7 +183,17 @@ const ScrollableShapes = () => {
     }
 
     return recorder.finishRecordingAsPicture();
-  }, [scrollX, iTime, windowWidth, windowHeight, centerX, centerY, inputRange]);
+  }, [
+    scrollX,
+    iTime,
+    windowWidth,
+    windowHeight,
+    centerX,
+    centerY,
+    inputRange,
+    paint,
+    pools,
+  ]);
 
   // Rotation animation
   useEffect(() => {
@@ -171,7 +211,8 @@ const ScrollableShapes = () => {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Canvas with the shape */}
+      {/* Static glow on its own canvas: the 60px blur would otherwise be
+          re-rendered every frame together with the rotating shape. */}
       <Canvas
         style={{
           width: windowWidth,
@@ -190,7 +231,15 @@ const ScrollableShapes = () => {
           />
           <Blur blur={60} />
         </Circle>
+      </Canvas>
 
+      {/* Canvas with the shape */}
+      <Canvas
+        style={{
+          width: windowWidth,
+          height: windowHeight,
+          position: 'absolute',
+        }}>
         {/* Main shape - using Picture for GPU caching */}
         <Picture picture={picture} />
       </Canvas>

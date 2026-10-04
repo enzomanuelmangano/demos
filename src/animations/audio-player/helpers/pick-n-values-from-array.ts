@@ -25,14 +25,24 @@
 // and it gave me the algorithm :)
 
 const pickNValuesFromArray = (arr: number[], N: number): number[] => {
-  const selectedValues: number[] = [];
-
   // Calculate the mean and standard deviation of the array
   const sum = arr.reduce((acc, val) => acc + val, 0);
   const mean = sum / arr.length;
   const variance =
     arr.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / arr.length;
   const stdDev = Math.sqrt(variance);
+
+  return pickNValuesFromDistribution(mean, stdDev, N);
+};
+
+// Same picking, from the mean and standard deviation directly: lets callers
+// that know them skip building the (huge) array.
+const pickNValuesFromDistribution = (
+  mean: number,
+  stdDev: number,
+  N: number,
+): number[] => {
+  const selectedValues: number[] = [];
 
   // Pick N values from the array
   for (let i = 0; i < N; i++) {
@@ -53,4 +63,4 @@ const pickNValuesFromArray = (arr: number[], N: number): number[] => {
   return selectedValues;
 };
 
-export { pickNValuesFromArray };
+export { pickNValuesFromArray, pickNValuesFromDistribution };

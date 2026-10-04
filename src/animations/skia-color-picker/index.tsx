@@ -12,18 +12,11 @@ const App = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        {/* ColorPicker component with specified properties. 
+        {/* ColorPicker component with specified properties.
       canvasSize is determined by the width of the window (i.e., the device's screen width).
-      blur is set to 20. 
-      onColorUpdate is a callback that logs the color
-      to the console when the color is updated. */}
-        <ColorPicker
-          canvasSize={canvasSize}
-          blur={20}
-          onColorUpdate={color => {
-            console.log(color);
-          }}
-        />
+      blur is set to 20.
+      No onColorUpdate here: logging the color hopped to JS on every drag frame. */}
+        <ColorPicker canvasSize={canvasSize} blur={20} />
       </View>
     </GestureHandlerRootView>
   );

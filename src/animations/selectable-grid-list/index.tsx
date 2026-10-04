@@ -13,12 +13,12 @@ import {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SelectableGridList } from './components/SelectableGridList';
 import { SelectableListItem } from './components/SelectableListItem';
 import { Palette } from './constants';
+import { ReText } from '../../components/re-text';
 
 import type { GridListRefType } from './components/SelectableGridList';
 

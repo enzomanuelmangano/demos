@@ -196,7 +196,6 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
         [0, 1],
         [collapsedWidth / 2, 16],
       ),
-      padding: interpolate(progress.get(), [0, 1], [0, 0]),
     };
   });
 

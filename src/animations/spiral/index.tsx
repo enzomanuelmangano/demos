@@ -1,33 +1,55 @@
 import { Dimensions, StyleSheet, View } from 'react-native';
 
-import { useMemo } from 'react';
-
-import {
-  BlurMask,
-  Canvas,
-  Extrapolate,
-  Group,
-  interpolate,
-  Path,
-  SweepGradient,
-  usePathValue,
-  vec,
-} from '@shopify/react-native-skia';
 import { PressableWithoutFeedback } from 'pressto';
 import {
-  makeMutable,
   useAnimatedReaction,
+  useFrameCallback,
   useSharedValue,
-  withSpring,
 } from 'react-native-reanimated';
+import {
+  Canvas,
+  Group,
+  Path,
+  Skia,
+  SweepGradient,
+  TileMode,
+  usePathValue,
+  vec,
+} from 'react-native-skia';
 
+import {
+  createSpringArrayState,
+  retargetSpringArray,
+  stepSpringArray,
+} from './spring-array';
 import { logarithmicSpiral } from './utils';
-
-import type { SharedValue } from 'react-native-reanimated';
 
 const { width: windowWidth, height: windowHeight } = Dimensions.get('window');
 
 const spiralCircleCount = Math.floor(windowHeight * 1.8);
+const spiralPositions = (angle: number) => {
+  'worklet';
+  const positions: number[] = new Array(spiralCircleCount * 2);
+  for (let index = 0; index < spiralCircleCount; index++) {
+    const { x, y } = logarithmicSpiral({ angle, index });
+    positions[index * 2] = x;
+    positions[index * 2 + 1] = y;
+  }
+  return positions;
+};
+
+// The glow of BlurMask(blur 5, "solid"): the sharp circles drawn over their
+// blurred copy. A mask filter makes Skia rasterize and blur the coverage of
+// all ~1500 circles on the CPU every frame; as a layer filter the blur runs on
+// the GPU over the already drawn layer.
+const glowPaint = Skia.Paint();
+glowPaint.setImageFilter(
+  Skia.ImageFilter.MakeMerge([
+    Skia.ImageFilter.MakeBlur(5, 5, TileMode.Decal, null),
+    null,
+  ]),
+);
+
 const TimingConfig = {
   duration: 3000,
   dampingRatio: 1,
@@ -46,51 +68,59 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
 
   const angle = useSharedValue(Math.PI / 2);
 
-  const spiralCoordinates = useMemo(() => {
-    const coordinates: SharedValue<{ x: number; y: number }>[] = [];
-    for (let index = 0; index < spiralCircleCount; index++) {
-      const coordinate = makeMutable(
-        logarithmicSpiral({
-          angle: angle.get(),
-          index,
-        }),
-      );
-      coordinates.push(coordinate);
+  // Every circle's coordinates, flattened as [x0, y0, x1, y1, ...], sprung
+  // together toward the spiral for the new angle. spring-array.ts steps them
+  // exactly as withSpring(TimingConfig) steps each coordinate, in one frame
+  // callback instead of ~3400 animation objects, and stops once they rest.
+  const springs = useSharedValue(
+    createSpringArrayState(spiralPositions(angle.get())),
+  );
+  // Bumped on every stepped frame so the path rebuilds.
+  const frame = useSharedValue(0);
+
+  useFrameCallback(({ timestamp }) => {
+    'worklet';
+    const state = springs.get();
+    if (!state.running) {
+      // At rest: nothing to step, and the path is left as it is.
+      return;
     }
-    return coordinates;
-  }, [angle]);
+    stepSpringArray(state, timestamp);
+    frame.set(frame.get() + 1);
+  });
 
   useAnimatedReaction(
     () => angle.get(),
-    newAngle => {
-      for (let index = 0; index < spiralCircleCount; index++) {
-        spiralCoordinates[index].set(
-          withSpring(
-            logarithmicSpiral({
-              angle: newAngle,
-              index,
-            }),
-            TimingConfig,
-          ),
-        );
+    (newAngle, previousAngle) => {
+      if (previousAngle === null) {
+        return;
       }
+      retargetSpringArray(
+        springs.get(),
+        spiralPositions(newAngle),
+        TimingConfig.duration,
+      );
     },
   );
 
   const path = usePathValue(skPath => {
     'worklet';
 
+    frame.get();
+    const coordinates = springs.get().current;
     for (let index = 0; index < spiralCircleCount; index++) {
-      const { x, y } = spiralCoordinates[index].get();
+      const x = coordinates[index * 2];
+      const y = coordinates[index * 2 + 1];
 
       const distanceFromCenter = Math.sqrt(x ** 2 + y ** 2);
 
-      const radius = interpolate(
-        distanceFromCenter,
-        [0, MAX_DISTANCE_FROM_CENTER],
-        [1.2, 0.2],
-        Extrapolate.CLAMP,
+      // interpolate(distance, [0, max], [1.2, 0.2], CLAMP), inlined so the
+      // loop allocates nothing per circle.
+      const progress = Math.min(
+        Math.max(distanceFromCenter / MAX_DISTANCE_FROM_CENTER, 0),
+        1,
       );
+      const radius = 1.2 - progress;
 
       skPath.addCircle(x, y, radius);
     }
@@ -102,6 +132,7 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
     <View style={{ flex: 1 }}>
       <Canvas style={{ flex: 1, backgroundColor: '#010101' }}>
         <Group
+          layer={glowPaint}
           transform={[
             {
               translateX: width / 2,
@@ -115,7 +146,6 @@ export const Spiral = (dimensions?: { width: number; height: number }) => {
             c={vec(0, 0)}
             colors={['cyan', 'magenta', 'yellow', 'cyan']}
           />
-          <BlurMask blur={5} style="solid" />
         </Group>
       </Canvas>
       <PressableWithoutFeedback

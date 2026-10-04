@@ -2,7 +2,6 @@ import { View } from 'react-native';
 
 import { useMemo } from 'react';
 
-import { Canvas, Path } from '@shopify/react-native-skia';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   cancelAnimation,
@@ -14,6 +13,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { Canvas, Path } from 'react-native-skia';
 
 import { BoundaryGradient } from './boundary-gradient';
 import { ScreenWidth } from './constants';

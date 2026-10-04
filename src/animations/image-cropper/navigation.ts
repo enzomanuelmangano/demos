@@ -1,6 +1,6 @@
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { SkImage, SkRect } from '@shopify/react-native-skia';
+import type { SkImage, SkRect } from 'react-native-skia';
 
 type RootStackParamList = {
   ImageCropper: undefined;

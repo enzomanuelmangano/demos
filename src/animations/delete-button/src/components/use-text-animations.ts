@@ -1,7 +1,7 @@
 import { useDerivedValue, withTiming } from 'react-native-reanimated';
 
-import type { SkFont } from '@shopify/react-native-skia';
 import type { SharedValue } from 'react-native-reanimated';
+import type { SkFont } from 'react-native-skia';
 
 type UseTextAnimationsParams = {
   isToggled: SharedValue<boolean>;
@@ -20,19 +20,22 @@ export const useTextAnimations = ({
   initialText,
   confirmText,
 }: UseTextAnimationsParams) => {
+  // The labels never change, so measure them once here instead of on every
+  // frame of the spring.
+  const initialTextWidth = font.measureText(initialText).width;
+  const confirmTextWidth = font.measureText(confirmText).width;
+
   const deleteTextX = useDerivedValue(() => {
-    const textWidth = font.measureText(initialText).width;
-    return deleteButtonRectX.get() + width / 2 - textWidth / 2;
-  }, [font, deleteButtonRectX, width]);
+    return deleteButtonRectX.get() + width / 2 - initialTextWidth / 2;
+  }, [initialTextWidth, deleteButtonRectX, width]);
 
   const deleteTextOpacity = useDerivedValue(() => {
     return withTiming(isToggled.get() ? 0 : 1);
   }, []);
 
   const confirmTextX = useDerivedValue(() => {
-    const textWidth = font.measureText(confirmText).width;
-    return deleteButtonRectX.get() + width / 2 - textWidth / 2;
-  }, [font, deleteButtonRectX, width]);
+    return deleteButtonRectX.get() + width / 2 - confirmTextWidth / 2;
+  }, [confirmTextWidth, deleteButtonRectX, width]);
 
   const confirmTextOpacity = useDerivedValue(() => {
     return withTiming(isToggled.get() ? 1 : 0);

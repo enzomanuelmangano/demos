@@ -1,3 +1,9 @@
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedReaction,
+  useDerivedValue,
+  useSharedValue,
+} from 'react-native-reanimated';
 import {
   BlurMask,
   Canvas,
@@ -8,13 +14,7 @@ import {
   Shadow,
   Skia,
   SweepGradient,
-} from '@shopify/react-native-skia';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  useAnimatedReaction,
-  useDerivedValue,
-  useSharedValue,
-} from 'react-native-reanimated';
+} from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { radialGradientShader } from './shader';
@@ -24,8 +24,8 @@ import { getSaturationFromPosition } from './utils/get-saturation-from-position'
 import { hsvToRgb } from './utils/hsv-to-rgb';
 
 import type { Point } from './types';
-import type { SkPath } from '@shopify/react-native-skia';
 import type { FC } from 'react';
+import type { SkPath } from 'react-native-skia';
 
 type ColorPickerProps = {
   canvasSize: number;
@@ -34,14 +34,17 @@ type ColorPickerProps = {
   onColorUpdate?: (color: string) => void;
 };
 
+// Parsed once at module level instead of on every render
+const DEFAULT_PICKER_SHAPE = Skia.Path.MakeFromSVGString(
+  'M22 .889C9.943.889.167 10.664.167 22.723C.167 37.127 22 59.111 22 59.111S43.833 37.43 43.833 22.723C43.833 10.664 34.057.889 22 .889z',
+)!;
+
 // ColorPicker component
 const ColorPicker: FC<ColorPickerProps> = ({
   canvasSize,
   blur,
   // Set default shape for the color picker if none provided
-  pickerShape = Skia.Path.MakeFromSVGString(
-    'M22 .889C9.943.889.167 10.664.167 22.723C.167 37.127 22 59.111 22 59.111S43.833 37.43 43.833 22.723C43.833 10.664 34.057.889 22 .889z',
-  )!,
+  pickerShape = DEFAULT_PICKER_SHAPE,
   onColorUpdate,
 }) => {
   // Calculate the bounds for the picker
@@ -141,6 +144,8 @@ const ColorPicker: FC<ColorPickerProps> = ({
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View>
+        {/* The wheel (sweep gradient + 20px blur + per-pixel shader) is static:
+            it lives on its own canvas so dragging only redraws the picker. */}
         <Canvas
           style={{
             width: canvasSize,
@@ -178,7 +183,16 @@ const ColorPicker: FC<ColorPickerProps> = ({
               />
             </Circle>
           </Group>
+        </Canvas>
 
+        <Canvas
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: canvasSize,
+            height: canvasSize,
+          }}>
           <Group transform={pickerTransform}>
             <Path
               path={pickerShape}

@@ -3,14 +3,6 @@ import { StyleSheet, useWindowDimensions } from 'react-native';
 import { useState } from 'react';
 
 import { Octicons } from '@expo/vector-icons';
-import {
-  Blur,
-  Canvas,
-  Circle,
-  Group,
-  Mask,
-  rect,
-} from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -19,6 +11,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import { Blur, Canvas, Circle, Group, Mask, rect } from 'react-native-skia';
 
 import { FractalGlassMask } from './components/fractal-glass-mask';
 
@@ -70,10 +63,14 @@ const App = () => {
     };
   }, [theme]);
 
+  // Transforms over a static left/top: 0 give the same hit area as
+  // animating left/top, without a layout pass on every pan event
   const rFakeCircleStyle = useAnimatedStyle(() => {
     return {
-      left: cx.get() - CircleRadius,
-      top: cy.get() - CircleRadius,
+      transform: [
+        { translateX: cx.get() - CircleRadius },
+        { translateY: cy.get() - CircleRadius },
+      ],
     };
   }, []);
 
@@ -85,6 +82,8 @@ const App = () => {
             rFakeCircleStyle,
             {
               position: 'absolute',
+              left: 0,
+              top: 0,
               height: CircleRadius * 2,
               width: CircleRadius * 2,
               borderRadius: CircleRadius,

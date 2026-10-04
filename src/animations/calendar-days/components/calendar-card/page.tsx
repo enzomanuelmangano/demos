@@ -15,14 +15,14 @@ export const Page = ({
   backPageNumber,
   totalPages,
 }: PageProps) => {
-  const { pageFlipProgress, rFlipStyle } = usePageFlipAnimation({
+  const { pageFlipProgress, rFlipStyle, rZIndexStyle } = usePageFlipAnimation({
     index,
     progress,
     totalPages,
   });
 
   return (
-    <Animated.View style={[rFlipStyle, styles.pageContainer]}>
+    <Animated.View style={[rFlipStyle, rZIndexStyle, styles.pageContainer]}>
       <PageFace
         pageNumber={frontPageNumber}
         variant="front"

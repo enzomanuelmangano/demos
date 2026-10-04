@@ -3,18 +3,18 @@ import { useWindowDimensions } from 'react-native';
 import { memo, useEffect } from 'react';
 
 import {
-  BlurMask,
-  Group,
-  Circle as SkiaCircle,
-  SweepGradient,
-  vec,
-} from '@shopify/react-native-skia';
-import {
   useDerivedValue,
   useSharedValue,
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
+import {
+  BlurMask,
+  Group,
+  Circle as SkiaCircle,
+  SweepGradient,
+  vec,
+} from 'react-native-skia';
 
 const CircleStroke = memo(() => {
   const { width, height } = useWindowDimensions();

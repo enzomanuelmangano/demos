@@ -86,6 +86,9 @@ export function useWebGPU({
   });
   const qrContentRef = useRef(qrContent);
   qrContentRef.current = qrContent;
+  // Set when the block buffers change, so the idle render loop knows the next
+  // frame differs from the one already on screen.
+  const buffersDirtyRef = useRef(true);
 
   // The detonation sequence is one clock plus a fixed heading; every visual
   // downstream is a pure function of them, so nothing can drift out of sync.
@@ -150,6 +153,7 @@ export function useWebGPU({
       numBlocks: blockData.numBlocks,
       gridSize: blockData.gridSize,
     };
+    buffersDirtyRef.current = true;
   }, [qrContent]);
 
   const initWebGPU = useCallback(async () => {
@@ -326,8 +330,13 @@ export function useWebGPU({
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
 
+    // The depth texture never changes, so neither does its view.
+    const depthView = depthTexture.createView();
+
     const aspectRatio = canvas.width / canvas.height;
     const uniformData = new Float32Array(UNIFORM_FLOATS);
+    // Progress of the last frame actually drawn (NaN = nothing drawn yet).
+    let lastDrawnProgress = NaN;
 
     // Render loop
     const render = () => {
@@ -355,6 +364,21 @@ export function useWebGPU({
       let creeperAlpha = 0;
 
       const startedAt = sequenceStartRef.current;
+
+      // Outside the creeper sequence nothing in the shaders reads `time`, so
+      // with progress settled and the buffers unchanged the frame would be
+      // identical to the one on screen: skip encoding it.
+      if (
+        startedAt === null &&
+        !buffersDirtyRef.current &&
+        progressRef.current === lastDrawnProgress
+      ) {
+        animationRef.current = requestAnimationFrame(render);
+        return;
+      }
+      buffersDirtyRef.current = false;
+      lastDrawnProgress = progressRef.current;
+
       if (startedAt !== null) {
         const seq = (now - startedAt) / 1000;
 
@@ -423,7 +447,7 @@ export function useWebGPU({
           },
         ],
         depthStencilAttachment: {
-          view: depthTexture.createView(),
+          view: depthView,
           depthClearValue: 1,
           depthLoadOp: 'clear',
           depthStoreOp: 'store',
@@ -488,21 +512,16 @@ function updateBuffers(
 ) {
   const { types, positions, resistance, baseY } = blockData;
 
-  const paddedTypes = new Uint32Array(MAX_BLOCKS);
-  paddedTypes.set(types);
-  device.queue.writeBuffer(buffers.typeBuffer, 0, paddedTypes);
-
-  const paddedPositions = new Float32Array(MAX_BLOCKS * 4);
-  paddedPositions.set(positions);
-  device.queue.writeBuffer(buffers.posBuffer, 0, paddedPositions);
-
-  const paddedResistance = new Float32Array(MAX_BLOCKS);
-  paddedResistance.set(resistance);
-  device.queue.writeBuffer(buffers.resistanceBuffer, 0, paddedResistance);
-
-  const paddedBaseY = new Float32Array(MAX_BLOCKS);
-  paddedBaseY.set(baseY);
-  device.queue.writeBuffer(buffers.baseYBuffer, 0, paddedBaseY);
+  // Upload only the blocks in use: the draw call covers `numBlocks`, so the
+  // tail of each MAX_BLOCKS-sized buffer is never read.
+  device.queue.writeBuffer(buffers.typeBuffer, 0, new Uint32Array(types));
+  device.queue.writeBuffer(buffers.posBuffer, 0, new Float32Array(positions));
+  device.queue.writeBuffer(
+    buffers.resistanceBuffer,
+    0,
+    new Float32Array(resistance),
+  );
+  device.queue.writeBuffer(buffers.baseYBuffer, 0, new Float32Array(baseY));
 }
 
 interface PipelineOptions {

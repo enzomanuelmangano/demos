@@ -31,6 +31,11 @@ import { useWebGPU } from './hooks';
 const HINT_DELAY_MS = 2000;
 const HINT_TEXT = 'Long press to spawn a creeper';
 
+// The demo fades in a few frames after it mounts. Raising the keyboard at
+// mount (autoFocus) slid it up over the black placeholder before the scene
+// was visible; waiting lets both arrive together.
+const INITIAL_FOCUS_DELAY_MS = 120;
+
 export const CherryBlossomQRCode = () => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const canvasWidth = windowWidth;
@@ -40,6 +45,7 @@ export const CherryBlossomQRCode = () => {
   const inputRef = useRef<TextInput>(null);
   const canvasRef = useRef<CanvasRef>(null);
   const isFlat = useRef(false);
+  const mountedRef = useRef(true);
 
   // Keyboard handling
   const keyboardHeight = useSharedValue(0);
@@ -50,10 +56,6 @@ export const CherryBlossomQRCode = () => {
       keyboardHeight.set(e.height);
     },
   });
-
-  const canvasWrapperStyle = useAnimatedStyle(() => ({
-    marginBottom: keyboardHeight.get(),
-  }));
 
   // Lift the input above the keyboard from the same shared value. This used
   // to be a KeyboardStickyView, but its translation no longer applies on the
@@ -76,6 +78,10 @@ export const CherryBlossomQRCode = () => {
     // Settles below full strength so it sits under the scene rather than
     // competing with it - a chosen level, not washed-out ink.
     opacity: hintOpacity.get() * 0.72,
+    // The canvas has a fixed size, so the hint is the only thing a keyboard
+    // margin on the wrapper would move. Translating it lands it in the same
+    // place without a layout pass per keyboard frame.
+    transform: [{ translateY: -keyboardHeight.get() }],
   }));
 
   // The fuse and the blast are one composed pattern, fired when the fuse
@@ -97,10 +103,15 @@ export const CherryBlossomQRCode = () => {
     onFuseStart,
   });
 
-  const handlePress = useCallback(() => {
-    isFlat.current = !isFlat.current;
+  const focusInput = useCallback(() => {
+    if (!mountedRef.current) return;
     inputRef.current?.focus();
   }, []);
+
+  const handlePress = useCallback(() => {
+    isFlat.current = !isFlat.current;
+    focusInput();
+  }, [focusInput]);
 
   // Long-press spawns the creeper. It walks in for CREEPER_WALK_DURATION,
   // hisses through the fuse, and takes the tree with it — then the tree
@@ -118,28 +129,26 @@ export const CherryBlossomQRCode = () => {
   // Keep the keyboard up while the demo is on screen — but only then: an
   // unconditional refocus runs after the unmount blur too, leaking the
   // keyboard onto whatever screen comes next.
-  const mountedRef = useRef(true);
   useEffect(() => {
     mountedRef.current = true;
+    const timeout = setTimeout(focusInput, INITIAL_FOCUS_DELAY_MS);
     return () => {
+      clearTimeout(timeout);
       mountedRef.current = false;
       // A pattern mid-play would otherwise keep buzzing on the next screen -
       // the same leak the timer chain had to guard against.
       Settings.stopHaptics();
       Keyboard.dismiss();
     };
-  }, []);
+  }, [focusInput]);
 
   const handleInputBlur = useCallback(() => {
-    requestAnimationFrame(() => {
-      if (!mountedRef.current) return;
-      inputRef.current?.focus();
-    });
-  }, []);
+    requestAnimationFrame(focusInput);
+  }, [focusInput]);
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.canvasWrapper, canvasWrapperStyle]}>
+      <View style={styles.canvasWrapper}>
         <Pressable
           accessibilityLabel="Cherry blossom tree QR code"
           accessibilityHint="Tap to flatten for scanning. Long press to spawn a creeper."
@@ -152,7 +161,7 @@ export const CherryBlossomQRCode = () => {
         <Animated.View pointerEvents="none" style={[styles.hint, hintStyle]}>
           <Text style={styles.hintText}>{HINT_TEXT}</Text>
         </Animated.View>
-      </Animated.View>
+      </View>
       <Animated.View style={[styles.inputContainer, inputContainerStyle]}>
         <TextInput
           ref={inputRef}
@@ -169,7 +178,6 @@ export const CherryBlossomQRCode = () => {
           inputMode="url"
           keyboardAppearance="light"
           showSoftInputOnFocus={true}
-          autoFocus
         />
       </Animated.View>
     </View>

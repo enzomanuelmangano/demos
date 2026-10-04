@@ -64,9 +64,9 @@ export const Tab = ({
       [0, 1],
       [(minWidth - IconSize) / 2, IconSize], // Move from center to left
     );
+    // translateX over a static left: 0 — same position, no layout pass
     return {
-      left: translateX,
-      position: 'absolute',
+      transform: [{ translateX }],
     };
   }, []);
 
@@ -100,6 +100,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     backgroundColor: '#f1f1f1',
     height: IconSize,
+    left: 0,
+    position: 'absolute',
     width: IconSize,
     zIndex: 100,
   },

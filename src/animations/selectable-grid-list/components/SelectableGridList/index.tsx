@@ -134,6 +134,8 @@ function SelectableGridList<T>({
   );
 
   const initialSelectedIndex = useSharedValue<number | null>(null);
+  // Last cell the pan was over: pending ranges are only rebuilt when it changes
+  const lastPendingFinalIndex = useSharedValue<number | null>(null);
 
   const toggleIndex = useCallback((index: number) => {
     'worklet';
@@ -153,6 +155,7 @@ function SelectableGridList<T>({
 
   const panGesture = Gesture.Pan()
     .onBegin(event => {
+      lastPendingFinalIndex.set(null);
       initialSelectedIndex.set(
         calculateGridItemPosition({
           x: event.x,
@@ -169,19 +172,28 @@ function SelectableGridList<T>({
         y: event.y + contentOffsetY.get(),
       });
 
-      const newPending = generateNumbersInRange(startIndex, pendingFinalIndex);
-      pendingIndexes.set(newPending);
-      const pendingSet = new Set(newPending);
-      pendingIndexesSet.set(pendingSet);
+      // Same cell as the previous update: the selection would be rebuilt
+      // identically, so skip the allocations and the downstream updates.
+      if (pendingFinalIndex !== lastPendingFinalIndex.get()) {
+        lastPendingFinalIndex.set(pendingFinalIndex);
 
-      const filteredCurrent = [];
-      for (const idx of currentActiveIndexes.get()) {
-        if (!pendingSet.has(idx)) {
-          filteredCurrent.push(idx);
+        const newPending = generateNumbersInRange(
+          startIndex,
+          pendingFinalIndex,
+        );
+        pendingIndexes.set(newPending);
+        const pendingSet = new Set(newPending);
+        pendingIndexesSet.set(pendingSet);
+
+        const filteredCurrent = [];
+        for (const idx of currentActiveIndexes.get()) {
+          if (!pendingSet.has(idx)) {
+            filteredCurrent.push(idx);
+          }
         }
+        currentActiveIndexes.set(filteredCurrent);
+        currentActiveIndexesSet.set(new Set(filteredCurrent));
       }
-      currentActiveIndexes.set(filteredCurrent);
-      currentActiveIndexesSet.set(new Set(filteredCurrent));
 
       const lowerBound = contentOffsetY.get() + itemSize;
       const upperBound = lowerBound + containerHeight - 2 * itemSize;

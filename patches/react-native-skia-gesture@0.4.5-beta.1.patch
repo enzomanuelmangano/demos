@@ -30,3 +30,68 @@ index 42963de5947036fa55ccd58e5b37b3e071b2b4c9..82a19a5425e5d8c1fd2c99d751615f7d
      );
  
      useEffect(() => {
+diff --git a/src/utils/get-circle-path.ts b/src/utils/get-circle-path.ts
+index ce5f26ea2e5d3106bb1a45e7e4f913cb30f3a9ee..49683b292d96e9c7e90b9c62264b2f14bcb16d3d 100644
+--- a/src/utils/get-circle-path.ts
++++ b/src/utils/get-circle-path.ts
+@@ -2,7 +2,8 @@ import { Skia } from '@shopify/react-native-skia';
+ 
+ type GetCirclePathParams = { cx: number; cy: number; r: number };
+ 
++// Skia 3 paths are immutable: shapes are added through a PathBuilder.
+ export const getCirclePath = ({ cx, cy, r }: GetCirclePathParams) => {
+   'worklet';
+-  return Skia.Path.Make().addCircle(cx, cy, r);
++  return Skia.PathBuilder.Make().addCircle(cx, cy, r).build();
+ };
+diff --git a/src/utils/get-rect-path.ts b/src/utils/get-rect-path.ts
+index c35197d8d4f61c99ae758a36a2342c3316da858d..d4a083162dc5f0a344afc7f9f9e130927a1bc1b3 100644
+--- a/src/utils/get-rect-path.ts
++++ b/src/utils/get-rect-path.ts
+@@ -9,20 +9,20 @@ type GetRectPathParams =
+     }
+   | { rect: SkRect };
+ 
++// Skia 3 paths are immutable: shapes are added through a PathBuilder.
+ const getRectPath = (params: GetRectPathParams) => {
+   'worklet';
+ 
+-  const skPath = Skia.Path.Make();
+   if ('rect' in params) {
+     const { rect } = params;
+ 
+-    skPath.addRect(rect);
+-    return skPath;
++    return Skia.PathBuilder.Make().addRect(rect).build();
+   }
+   const { x, y, width, height } = params;
+ 
+-  skPath.addRect(Skia.XYWHRect(x, y, width, height));
+-  return skPath;
++  return Skia.PathBuilder.Make()
++    .addRect(Skia.XYWHRect(x, y, width, height))
++    .build();
+ };
+ 
+ type GetRoundedRectPathParams = GetRectPathParams & {
+@@ -33,18 +33,15 @@ const getRoundedRectPath = (params: GetRoundedRectPathParams) => {
+   'worklet';
+ 
+   const { r } = params;
+-  const skPath = Skia.Path.Make();
+   if ('rect' in params) {
+     const { rect } = params;
+ 
+-    skPath.addRRect(Skia.RRectXY(rect, r, r));
+-    return skPath;
++    return Skia.PathBuilder.Make().addRRect(Skia.RRectXY(rect, r, r)).build();
+   }
+   const { x, y, width, height } = params;
+ 
+   const roundedRect = Skia.RRectXY(Skia.XYWHRect(x, y, width, height), r, r);
+-  skPath.addRRect(roundedRect);
+-  return skPath;
++  return Skia.PathBuilder.Make().addRRect(roundedRect).build();
+ };
+ 
+ export { getRectPath, getRoundedRectPath };

@@ -21,7 +21,8 @@ const HomeScreen = memo(() => {
         numColumns={2}
         data={dataSources}
         contentContainerStyle={styles.listContainer}
-        renderItem={({ item: source, i }) => {
+        renderItem={({ item, i }) => {
+          const { thumbnail, source } = item as (typeof dataSources)[number];
           const heroTag = 'heroTag' + i;
           return (
             <PressableOpacity
@@ -42,8 +43,10 @@ const HomeScreen = memo(() => {
                   // @@TODO: maybe back in 4.2.0
                   // sharedTransitionTag={heroTag}
                   cachePolicy="memory-disk"
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  source={source as any}
+                  // The thumbnail is at most ~1.2x the cell: Core Animation scales
+                  // it instead of a main-thread redraw.
+                  allowDownscaling={false}
+                  source={thumbnail}
                   style={[
                     {
                       height: 150 + 50 * ((i ?? 0) % 3),

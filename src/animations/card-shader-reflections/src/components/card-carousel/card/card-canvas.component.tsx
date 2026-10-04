@@ -2,8 +2,8 @@ import { StyleSheet } from 'react-native';
 
 import { type FC } from 'react';
 
-import { Canvas, Fill, Shader } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import { Canvas, Fill, Shader } from 'react-native-skia';
 
 import { cardShader } from './card.shader';
 

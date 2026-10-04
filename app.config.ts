@@ -97,6 +97,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         android: {
           reactNativeReleaseLevel: 'experimental',
           minSdkVersion: 27,
+          packagingOptions: {
+            // Skia 3 (Graphite) and react-native-webgpu both package the
+            // same Dawn build; keep one copy of the shared library.
+            pickFirst: ['**/libwebgpu_dawn.so'],
+          },
         },
         ios: {
           reactNativeReleaseLevel: 'experimental',
@@ -134,7 +139,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-status-bar',
-    './plugins/with-skia-webgpu-fix',
     './plugins/with-nitro-autolinking',
   ],
   experiments: {

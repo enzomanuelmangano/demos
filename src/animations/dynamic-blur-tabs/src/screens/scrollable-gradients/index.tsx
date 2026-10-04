@@ -42,7 +42,10 @@ export const ScrollableGradients = () => {
 
   const scroll = useAnimatedScrollHandler({
     onScroll: event => {
-      IsTabBarActive.set(event.contentOffset.y <= 0);
+      // Write only on a change: every write re-runs the tab bar's spring
+      // mapper, even when the boolean is the same.
+      const isAtTop = event.contentOffset.y <= 0;
+      if (isAtTop !== IsTabBarActive.get()) IsTabBarActive.set(isAtTop);
     },
   });
 

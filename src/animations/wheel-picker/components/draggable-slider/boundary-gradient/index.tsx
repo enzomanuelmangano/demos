@@ -1,7 +1,7 @@
 import { type FC, memo, useMemo } from 'react';
 
-import { LinearGradient, Rect } from '@shopify/react-native-skia';
 import Color from 'color';
+import { LinearGradient, Rect } from 'react-native-skia';
 
 // Defining type for props
 type BoundaryGradientProps = {

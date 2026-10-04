@@ -40,6 +40,14 @@ const Carousel: FC<CarouselProps> = memo(
     // https://youtu.be/OT-73hpwxXQ
     const onScroll = useAnimatedScrollHandler({
       onScroll: ({ contentOffset: { x } }) => {
+        // The active index doesn't depend on the item, so it is computed once
+        // here instead of in every item's style (24 writes per frame).
+        const initialActiveIndex = Math.floor(maxRenderedItems / 2);
+        const preciseActiveIndex =
+          initialActiveIndex +
+          (x + LIST_ITEM_WIDTH / 2) / (width / maxRenderedItems);
+        activeIndex.set(Math.floor(preciseActiveIndex));
+
         translateX.set(-x);
       },
     });
@@ -73,7 +81,6 @@ const Carousel: FC<CarouselProps> = memo(
                 itemHeight={LIST_ITEM_HEIGHT}
                 carouselWidth={width}
                 maxRenderedItems={maxRenderedItems}
-                activeIndex={activeIndex}
               />
             );
           })}

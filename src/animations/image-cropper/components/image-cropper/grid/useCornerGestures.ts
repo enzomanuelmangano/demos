@@ -1,5 +1,5 @@
-import { clamp } from '@shopify/react-native-skia';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { clamp } from 'react-native-skia';
 import { useGestureHandler } from 'react-native-skia-gesture';
 
 type UseCornerGesturesParams = {

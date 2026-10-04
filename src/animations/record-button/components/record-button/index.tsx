@@ -2,7 +2,6 @@ import { StyleSheet, View } from 'react-native';
 
 import { type FC, useMemo } from 'react';
 
-import { Canvas, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
 import { PressableScale } from 'pressto';
 import Animated, {
   type SharedValue,
@@ -12,6 +11,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { Canvas, Path, RoundedRect, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { getRightLinePath } from './create-skia-line';
@@ -85,11 +85,18 @@ export const RecordButton: FC<RecordButtonProps> = ({
     return withTiming(activated.get() ? 1 : 0);
   }, []);
 
+  // Opacity changes every scroll frame; color/fontWeight only when
+  // `activated` flips. Kept apart so text props aren't re-sent (and the text
+  // re-measured) on every frame. fontSize is already in the static style.
+  const rTextOpacityStyle = useAnimatedStyle(() => {
+    return {
+      opacity: progress.get(),
+    };
+  }, []);
+
   const rTextStyle = useAnimatedStyle(() => {
     return {
-      fontSize,
       color: activated.get() ? 'white' : color,
-      opacity: progress.get(),
       fontWeight: activated.get() ? '600' : '500',
     };
   }, [color]);
@@ -144,6 +151,7 @@ export const RecordButton: FC<RecordButtonProps> = ({
               },
               styles.label,
               rTextStyle,
+              rTextOpacityStyle,
             ]}>
             Record
           </Animated.Text>

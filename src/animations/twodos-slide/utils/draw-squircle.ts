@@ -1,6 +1,6 @@
-import { Skia } from '@shopify/react-native-skia';
+import { Skia } from 'react-native-skia';
 
-import type { SkPathBuilder } from '@shopify/react-native-skia';
+import type { SkPathBuilder } from 'react-native-skia';
 
 // Just to be clear, I have no idea how this code works
 // I just copied it from it: https://github.com/samuel-rl/react-native-squircle/blob/main/src/utils/functions.ts
