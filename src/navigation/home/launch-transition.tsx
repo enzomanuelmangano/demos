@@ -84,6 +84,12 @@ export const launchGroup = makeMutable<string | null>(null);
 export const launchSession = { token: 0, closing: false, mounted: 0 };
 
 /**
+ * Whether the demo on screen is on its way home. A demo that keeps its own
+ * focus (a refocusing input) checks it, so it lets the keyboard go.
+ */
+export const isDemoClosing = () => launchSession.closing;
+
+/**
  * A tap that lands on a closing demo, handed to the home. While the card flies
  * home the demo route is still presented above the springboard, and a touch
  * cannot reach the icons under it; the demo forwards the point instead, and
@@ -177,9 +183,45 @@ export const launchCardAt = (
   };
 };
 
-/** The icon artwork fades as the card grows, and returns as it lands. */
-export const iconOpacityAt = (progress: number) => {
+/**
+ * Up from the moment a close is committed until it has landed. Read on the UI
+ * thread by the card and the icon, which cross-fade at the end of a close.
+ */
+export const launchClosing = makeMutable(false);
+
+/**
+ * The group of a close whose demo has already unmounted while the card is
+ * still flying (see `CLOSE_FADE`). Torn down by the home when the clock lands.
+ */
+export const pendingLaunchTeardown = makeMutable<string | null>(null);
+
+/**
+ * The end of a close, by expansion: the card fades out over it and the icon
+ * artwork fades in, so the icon lands whole. The library removes the demo's
+ * route once the clock is under 0.2 — before the flight has landed — and a
+ * route with no native animation goes in one frame: the card has to be gone
+ * by then, or it vanishes mid-air.
+ */
+const CLOSE_FADE = { from: 0.45, to: 0.24 };
+
+export const closeFadeAt = (expansion: number) => {
   'worklet';
+  return Math.max(
+    0,
+    Math.min(
+      1,
+      (expansion - CLOSE_FADE.to) / (CLOSE_FADE.from - CLOSE_FADE.to),
+    ),
+  );
+};
+
+/**
+ * The icon artwork fades as the card grows. On the way back it returns over
+ * the end of the close, as the card fades (see `closeFadeAt`).
+ */
+export const iconOpacityAt = (progress: number, closing: boolean) => {
+  'worklet';
+  if (closing) return 1 - closeFadeAt(progress);
   return 1 - Math.max(0, Math.min(1, progress / 0.3));
 };
 
@@ -240,7 +282,7 @@ const LaunchRenderer = ({
       launchPose.scale.get(),
     );
     return {
-      opacity: iconOpacityAt(expansion),
+      opacity: iconOpacityAt(expansion, backward),
       transform: [
         { translateX: card.centerX - (pageX + width / 2) },
         { translateY: card.centerY - (pageY + height / 2) },

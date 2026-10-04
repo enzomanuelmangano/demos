@@ -7,6 +7,7 @@ import {
   useChoreographyProgress,
   useChoreographyRouter,
 } from 'react-native-screen-choreography/expo-router';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import {
   clearLaunchTarget,
@@ -15,12 +16,16 @@ import {
 import {
   DEMO_SCREEN_ID,
   HOME_SCREEN_ID,
+  launchClosing,
+  launchFrame,
   launchGroup,
   launchGroupId,
+  launchPose,
   launchProgress,
   launchSession,
   launchTransition,
   parseLaunchGroup,
+  pendingLaunchTeardown,
 } from '../src/navigation/home/launch-transition';
 import { Springboard } from '../src/navigation/home/springboard';
 import { useOnShakeEffect } from '../src/navigation/hooks/use-shake-gesture';
@@ -35,6 +40,11 @@ import type { RefObject } from 'react';
  * a tap queued behind a close, which waits for the close to land.
  */
 const LAUNCH_WATCHDOG_MS = 2500;
+
+/** Module-level: a worklet's callback into JS must outlive the component. */
+const endClose = () => {
+  launchSession.closing = false;
+};
 
 type LaunchCommands = {
   open: (source: LaunchSource, slug: string) => void;
@@ -59,8 +69,9 @@ const LaunchBridge = ({
   const { progress, groupId } = useChoreographyProgress();
 
   // Which icon is travelling, by the library's own session. Left as is between
-  // sessions: an open demo keeps its icon hidden. The demo clears it when it
-  // unmounts, which is after the close has landed.
+  // sessions: an open demo keeps its icon hidden. Cleared once the close has
+  // landed: by the demo as it unmounts, or here when the library removed the
+  // demo's route while the card was still flying (see `CLOSE_FADE`).
   useLayoutEffect(() => {
     if (parseLaunchGroup(groupId)) launchGroup.set(groupId);
   }, [groupId]);
@@ -68,6 +79,26 @@ const LaunchBridge = ({
     () => progress.get(),
     value => {
       launchProgress.set(value);
+    },
+  );
+  useAnimatedReaction(
+    () => launchClosing.get() && launchProgress.get() <= 0.001,
+    (landed, wasLanded) => {
+      if (!landed || wasLanded) return;
+      // Always lowered on landing: a tap during the close can have named the
+      // next launch, and its card must not open faded.
+      launchClosing.set(false);
+      const pending = pendingLaunchTeardown.get();
+      if (pending === null) return;
+      pendingLaunchTeardown.set(null);
+      if (launchGroup.get() === pending) {
+        launchGroup.set(null);
+        launchFrame.set(null);
+      }
+      launchPose.translateX.set(0);
+      launchPose.translateY.set(0);
+      launchPose.scale.set(1);
+      scheduleOnRN(endClose);
     },
   );
 

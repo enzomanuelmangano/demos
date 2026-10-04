@@ -24,6 +24,7 @@ import { Canvas, CanvasRef } from 'react-native-webgpu';
 import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
 import { CREEPER_BLAST_PATTERN } from './haptics';
 import { useWebGPU } from './hooks';
+import { isDemoClosing } from '../../navigation/home/launch-transition';
 
 // The long press is the only way to find the creeper, and nothing on screen
 // suggests it exists. The hint waits a beat so it does not compete with the
@@ -32,8 +33,8 @@ const HINT_DELAY_MS = 2000;
 const HINT_TEXT = 'Long press to spawn a creeper';
 
 // The demo fades in a few frames after it mounts. Raising the keyboard at
-// mount (autoFocus) slid it up over the black placeholder before the scene
-// was visible; waiting lets both arrive together.
+// mount (autoFocus) slid it up over the empty card before the scene was
+// visible; waiting lets both arrive together.
 const INITIAL_FOCUS_DELAY_MS = 120;
 
 export const CherryBlossomQRCode = () => {
@@ -103,8 +104,10 @@ export const CherryBlossomQRCode = () => {
     onFuseStart,
   });
 
+  // Not once the demo is closing: the close dismisses the keyboard, and a
+  // refocus on that blur would raise it again over the flight home.
   const focusInput = useCallback(() => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || isDemoClosing()) return;
     inputRef.current?.focus();
   }, []);
 
