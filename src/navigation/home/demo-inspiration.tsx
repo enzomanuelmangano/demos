@@ -1,6 +1,6 @@
 import { Linking, StyleSheet } from 'react-native';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
   BottomSheet,
@@ -80,6 +80,10 @@ export const DemoInspiration = ({
 }) => {
   const { top, bottom } = useSafeAreaInsets();
   const [presented, setPresented] = useState(false);
+  // A sheet left open must not outlive the demo it describes.
+  useEffect(() => {
+    if (!visible) setPresented(false);
+  }, [visible]);
   // A sheet sized to its content still keeps the window's bottom safe area
   // under it, which left the button far higher off the bottom than the inset
   // at its sides. The content moves down into that area by what it exceeds
@@ -120,7 +124,13 @@ export const DemoInspiration = ({
             alignment="leading"
             spacing={16}
             modifiers={[
-              padding({ horizontal: INSET, top: INSET + 4 - shift }),
+              padding({
+                horizontal: INSET,
+                top: INSET + 4 - shift,
+                // A phone with no home indicator keeps no safe area under
+                // the sheet: the inset is the content's own.
+                bottom: Math.max(0, INSET - bottom),
+              }),
               offset({ y: shift }),
             ]}>
             <Text modifiers={TITLE_MODIFIERS}>Inspiration</Text>

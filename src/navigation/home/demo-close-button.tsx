@@ -30,7 +30,8 @@ const APPEAR = Animation.easeOut({ duration: 0.22 });
 
 /**
  * The way out of every demo, drawn by the demo screen over whatever the demo
- * is: no demo renders it, and none has to leave room for it.
+ * is: no demo renders it. A demo with content at its top starts it below
+ * the row this and the info button share (`DEMO_BUTTON_ROW_HEIGHT`).
  *
  * A real SwiftUI button, so it is the system's own. On iOS 26 it is the
  * close role on liquid glass — the xmark the system draws for it; before,

@@ -27,9 +27,11 @@ const MONTHS = [
  * through Intl, so the sheet reads the same whatever locale data the runtime
  * ships with.
  */
-const formatDay = (day: string) => {
+const formatDay = (day: string): string | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   const [year, month, date] = day.split('-').map(Number);
-  return `${MONTHS[month - 1]} ${date}, ${year}`;
+  const name = MONTHS[month - 1];
+  return name ? `${name} ${date}, ${year}` : null;
 };
 
 const X_HOSTS = new Set([
@@ -37,36 +39,48 @@ const X_HOSTS = new Set([
   'twitter.com',
   'www.x.com',
   'www.twitter.com',
+  'mobile.x.com',
+  'mobile.twitter.com',
 ]);
 
-type Source =
+type Source = { host: string } & (
   | { kind: 'x-post'; handle: string | null }
   | { kind: 'x-profile'; handle: string }
   | { kind: 'app-store' }
   | { kind: 'video' }
-  | { kind: 'web' };
+  | { kind: 'web' }
+);
 
 const readSource = (link: string): Source => {
   let url: URL;
   try {
     url = new URL(link);
   } catch {
-    return { kind: 'web' };
+    // Not a URL anyone can parse: still a link to offer, with no host to
+    // name it by.
+    return { kind: 'web', host: link };
   }
   const host = url.hostname.toLowerCase();
   if (X_HOSTS.has(host)) {
-    // x.com/<handle>/status/<id>, x.com/i/status/<id>, or a bare x.com/<handle>.
-    const [first, second] = url.pathname.split('/').filter(Boolean);
-    if (second === 'status') {
-      return { kind: 'x-post', handle: first === 'i' ? null : first };
+    // x.com/<handle>/status/<id>, x.com/i/status/<id>,
+    // x.com/i/web/status/<id>, or a bare x.com/<handle>.
+    const parts = url.pathname.split('/').filter(Boolean);
+    if (parts.includes('status')) {
+      return {
+        kind: 'x-post',
+        host,
+        handle: parts[0] === 'i' ? null : parts[0],
+      };
     }
-    if (first) return { kind: 'x-profile', handle: first };
+    if (parts[0] && parts[0] !== 'i') {
+      return { kind: 'x-profile', host, handle: parts[0] };
+    }
   }
-  if (host === 'apps.apple.com') return { kind: 'app-store' };
+  if (host === 'apps.apple.com') return { kind: 'app-store', host };
   if (host === 'youtu.be' || host.endsWith('youtube.com')) {
-    return { kind: 'video' };
+    return { kind: 'video', host };
   }
-  return { kind: 'web' };
+  return { kind: 'web', host };
 };
 
 const withAt = (name: string) => (name.startsWith('@') ? name : `@${name}`);
@@ -89,16 +103,28 @@ export const getInspirationCopy = (slug: string): InspirationCopy | null => {
   const source = readSource(link);
   // "This animation was built on <day> and is inspired by …", or, where the
   // day is not on record, "This animation is inspired by …".
-  const lead = builtOn
-    ? `This animation was built on ${formatDay(builtOn)} and is inspired by`
+  const day = builtOn ? formatDay(builtOn) : null;
+  const lead = day
+    ? `This animation was built on ${day} and is inspired by`
     : 'This animation is inspired by';
 
   if (source.kind === 'x-post' || source.kind === 'x-profile') {
-    // The credited author, or the link's own account where none is named.
-    const handle =
-      authorName && authorName.startsWith('@')
-        ? authorName
-        : withAt(source.handle ?? authorName ?? 'unknown');
+    // A credit that is not a handle names the author; the post is someone
+    // else's — a curator's, usually — and is said to be theirs.
+    if (authorName && !authorName.startsWith('@')) {
+      const by = source.handle ? ` by ${withAt(source.handle)}` : '';
+      return source.kind === 'x-post'
+        ? {
+            story: `${lead} ${authorName}, featured in a post on X${by}.`,
+            action: { label: 'See Post', url: link },
+          }
+        : {
+            story: `${lead} ${authorName}, on X.`,
+            action: { label: 'See Profile', url: link },
+          };
+    }
+    // The credited handle, or the link's own account where none is named.
+    const handle = authorName ?? withAt(source.handle ?? 'unknown');
     if (source.kind === 'x-profile') {
       return {
         story: `${lead} the work of ${handle} on X.`,
@@ -118,10 +144,12 @@ export const getInspirationCopy = (slug: string): InspirationCopy | null => {
     };
   }
 
-  const credit = authorName ?? new URL(link).hostname;
+  const credit = authorName ?? source.host;
   if (source.kind === 'app-store') {
+    // An app is named, not handled.
+    const app = credit.replace(/^@/, '');
     return {
-      story: `${lead} an interaction in the ${credit} app.`,
+      story: `${lead} an interaction in the ${app} app.`,
       action: { label: 'View on the App Store', url: link },
     };
   }

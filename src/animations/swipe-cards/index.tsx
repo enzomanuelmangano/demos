@@ -12,6 +12,12 @@ import { IMAGES } from './constants';
 import { useSwipeControls } from './hooks/use-swipe-controls';
 import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
+/**
+ * How far below the box's top the centred stack already sits. The box only
+ * needs to start this much above the button row for the cards to clear it.
+ */
+const CENTRED_SLACK = 40;
+
 export const SwipeCards = () => {
   const { activeIndex, refs, swipeRight, swipeLeft, reset } =
     useSwipeControls();
@@ -33,8 +39,9 @@ export const SwipeCards = () => {
       <View style={{ flex: 7 }}>
         <Animated.View
           style={{
-            // The stack starts below the demo's close and info buttons.
-            marginTop: safeTop + DEMO_BUTTON_ROW_HEIGHT - 40,
+            // The stack is centred in this box, so its top only has to clear
+            // the demo's close and info buttons by the box's own slack.
+            marginTop: safeTop + DEMO_BUTTON_ROW_HEIGHT - CENTRED_SLACK,
             justifyContent: 'center',
             alignItems: 'center',
             flex: 1,

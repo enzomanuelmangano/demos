@@ -112,7 +112,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/_Kavsoft/status/1676300031882846208?s=20',
   },
   'clerk-toast': {
-    authorName: 'emilkowalski_',
+    authorName: '@emilkowalski_',
     link: 'https://x.com/emilkowalski_/status/1818747624088125509',
   },
   'clock-time-picker': {
@@ -203,7 +203,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: 'https://x.com/XorDev/status/1475524322785640455',
   },
   'floating-bottom-bar': {
-    authorName: 'sikriti_dakua',
+    authorName: 'a design by sikriti_dakua on Pinterest',
     link: 'https://www.pinterest.it/pin/548594798370796215/',
   },
   'floating-modal': {
@@ -295,7 +295,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'miles-bar-chart': {
-    authorName: '@MilesRunningApp',
+    authorName: 'Miles',
     link: 'https://apps.apple.com/it/app/miles-running-tracker/id6478332265',
   },
   'mobile-input': {
@@ -394,7 +394,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
     link: null,
   },
   'split-button': {
-    authorName: '@MilesRunningApp',
+    authorName: 'Miles',
     link: 'https://apps.apple.com/app/miles-rewards/id1070565563',
   },
   'stacked-bottom-sheet': {
