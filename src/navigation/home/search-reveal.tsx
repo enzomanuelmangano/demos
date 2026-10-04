@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 
-import { useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
 import MaskedView from '@react-native-masked-view/masked-view';
@@ -29,6 +29,7 @@ import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
 import { launchGroupId } from './launch-transition';
 import { usePressScale } from './press-scale';
+import { SEARCH_REVEAL } from './search-constants';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
 import type { Demo } from './demos';
@@ -49,9 +50,24 @@ const BAR_TOP_GAP = 10;
 // continuous radius ramp instead, from `SCROLL_EDGE_BLUR` at the top to sharp
 // at the bottom of the band. It is iOS only; elsewhere the band keeps a
 // single blur under a gradient mask.
-const SCROLL_EDGE_BLUR = 18;
+const SCROLL_EDGE_BLUR = 28;
+
+// The scroll edge also FADES what passes under it, as iOS does: a blur alone
+// kept the rows' shapes, and text at a middling radius smeared into streaks
+// instead of dissolving. The fade is the colour of the defocused home behind
+// the list, so a row sinks into the background rather than under a band.
+const EDGE_FADE_COLORS = [
+  'rgba(31, 31, 32, 0.92)',
+  'rgba(31, 31, 32, 0.7)',
+  'rgba(31, 31, 32, 0)',
+] as const;
 
 const EMPTY_RESULTS: Demo[] = [];
+
+/** Vertical padding of a result row, above and below its icon. */
+const ROW_PADDING = 7;
+/** Screens of rows kept mounted: enough to hold every demo at once. */
+const SEARCH_WINDOW_SIZE = 25;
 
 interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
@@ -90,7 +106,7 @@ interface Props {
 // Each result row's icon is a launch source of its own (the 'search' group),
 // so a demo opened from search grows out of THIS row's icon and dismisses back
 // into it — the same mechanism as the grid icon.
-const SearchRow = ({
+const SearchRowComponent = ({
   demo,
   iconSize,
   onSelect,
@@ -135,6 +151,7 @@ const SearchRow = ({
     </Pressable>
   );
 };
+const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
@@ -166,22 +183,25 @@ export const SearchReveal = ({
   }, [query, demos]);
 
   // Reveal progress 0 → 1: live pull (until the trigger) OR the pinned commit
-  // level. Layered so the surface reveals like iOS rather than snapping in:
-  //  • the search field + top blur lead — they fade + slide down tracking the
-  //    finger from the first pixel;
-  //  • the results LAG (start at ~28% progress) and ease up a touch slower, so
-  //    the list "develops in" under the field instead of popping with it.
+  // level. In order (SEARCH_REVEAL): the home's blur leads (springboard.tsx);
+  // the field comes in as the home goes soft; the results only once it has,
+  // and "develop in" under the field instead of popping with it.
   const rField = useAnimatedStyle(() => {
-    const prog = reveal.get();
+    const fp = interpolate(
+      reveal.get(),
+      SEARCH_REVEAL.field,
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
     return {
-      opacity: prog,
-      transform: [{ translateY: interpolate(prog, [0, 1], [-16, 0]) }],
+      opacity: fp,
+      transform: [{ translateY: interpolate(fp, [0, 1], [-16, 0]) }],
     };
   });
   const rList = useAnimatedStyle(() => {
     const lp = interpolate(
       reveal.get(),
-      [0.28, 1],
+      SEARCH_REVEAL.list,
       [0, 1],
       Extrapolation.CLAMP,
     );
@@ -196,11 +216,42 @@ export const SearchReveal = ({
   const barTop = insets.top + BAR_TOP_GAP;
   const barBottom = barTop + BAR_HEIGHT;
   // Where the result list starts, and how tall the top progressive-blur band is.
-  const listTop = barBottom + 10;
-  // Extend the band below the bar so the blur ramps over a short zone.
-  const blurBandHeight = barBottom + 40;
+  // The gap is the fade's runway: over 10pt a row reached the glass field
+  // barely faded, and the field refracted its text into streaks.
+  const listTop = barBottom + 24;
+  // The band ends where the list starts. It ran 30pt further and blurred the
+  // top of the first result at rest; a row should only dissolve once it has
+  // scrolled up under the field.
+  const blurBandHeight = listTop;
   // Separator inset: starts under the label, not the icon (iOS style).
   const separatorInset = iconSize + 14;
+  // Stable across renders: an inline separator is a new component type every
+  // render, so each keystroke and reveal step remounted every separator, and
+  // an inline renderItem re-rendered every row.
+  const Separator = useMemo(() => {
+    const SeparatorLine = () => (
+      <View style={[styles.separator, { marginLeft: separatorInset }]} />
+    );
+    return SeparatorLine;
+  }, [separatorInset]);
+  // A row is its icon and its padding (the name is one line, shorter than the
+  // icon), plus the hairline separator after it.
+  const rowStride = iconSize + ROW_PADDING * 2 + StyleSheet.hairlineWidth;
+  const getItemLayout = useCallback(
+    (_: ArrayLike<Demo> | null | undefined, index: number) => ({
+      length: rowStride,
+      // Measured cells sit below the content padding; estimates must too.
+      offset: listTop + rowStride * index,
+      index,
+    }),
+    [rowStride, listTop],
+  );
+  const renderItem = useCallback(
+    ({ item }: { item: Demo }) => (
+      <SearchRow demo={item} iconSize={iconSize} onSelect={onSelect} />
+    ),
+    [iconSize, onSelect],
+  );
 
   // Cancel is ALWAYS rendered (so its layout space is reserved and the field
   // width never jumps); it only fades in over the last stretch of the reveal, so
@@ -242,13 +293,21 @@ export const SearchReveal = ({
         <FlatList
           style={StyleSheet.absoluteFill}
           // Zero rows mounted while the grid is at rest (see listActive above).
-          // The window caps keep the mounted row count ~a screen and a half even
-          // in committed search, instead of FlatList idly filling all 122 rows —
-          // each row registers a shared element.
+          // Once search opens, the first screen mounts at once and the rest in
+          // batches while idle, and then they stay: the window spans the whole
+          // list. A window of a screen and a half mounted and unmounted rows
+          // (a shared element and an image each) under the finger, on every
+          // scroll, and that is what stuttered.
           data={listActive ? results : EMPTY_RESULTS}
-          initialNumToRender={14}
-          maxToRenderPerBatch={16}
-          windowSize={5}
+          initialNumToRender={12}
+          maxToRenderPerBatch={8}
+          windowSize={SEARCH_WINDOW_SIZE}
+          // Every row is the same height: no row has to be measured to place
+          // the next, and the scroll never waits on a layout pass.
+          getItemLayout={getItemLayout}
+          // Off-screen rows leave the native hierarchy, so re-clipping on
+          // scroll only walks the rows in view.
+          removeClippedSubviews
           keyExtractor={item => item.slug}
           keyboardShouldPersistTaps="always"
           keyboardDismissMode="on-drag"
@@ -259,12 +318,8 @@ export const SearchReveal = ({
           }}
           showsVerticalScrollIndicator={false}
           scrollEnabled={searchMode}
-          ItemSeparatorComponent={() => (
-            <View style={[styles.separator, { marginLeft: separatorInset }]} />
-          )}
-          renderItem={({ item }) => (
-            <SearchRow demo={item} iconSize={iconSize} onSelect={onSelect} />
-          )}
+          ItemSeparatorComponent={Separator}
+          renderItem={renderItem}
         />
       </Animated.View>
 
@@ -296,6 +351,13 @@ export const SearchReveal = ({
             />
           </MaskedView>
         )}
+        {/* Mostly faded by the bottom of the field, clear where the list
+            starts: a row is untouched at rest and gone under the field. */}
+        <LinearGradient
+          colors={EDGE_FADE_COLORS}
+          locations={[0, barBottom / blurBandHeight, 1]}
+          style={StyleSheet.absoluteFill}
+        />
       </Animated.View>
 
       <Animated.View
@@ -350,7 +412,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: 14,
-    paddingVertical: 7,
+    paddingVertical: ROW_PADDING,
   },
   rowIcon: {
     backgroundColor: '#1c1c1e',
