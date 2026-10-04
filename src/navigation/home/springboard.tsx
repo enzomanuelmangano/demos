@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { Keyboard, StyleSheet, View } from 'react-native';
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -273,12 +273,18 @@ export const Springboard = ({ onOpen }: Props) => {
       // for the close to land on — the demo dismisses back into the search
       // list, exactly mirroring the grid. Just drop the keyboard so it isn't
       // up behind the demo. Cancel from the returned search → grid.
+      // The field's blur alone left the keyboard up over the opening demo:
+      // the dismissal goes to whatever holds the keyboard.
       inputRef.current?.blur();
+      Keyboard.dismiss();
       // SearchReveal focuses the field on a 120ms timer after search commits; a
       // fast row tap can land BEFORE that timer fires, so the field re-focuses
       // behind the opening demo and the keyboard gets stuck over the grid after
-      // Cancel. A second blur past that window closes the race.
-      setTimeout(() => inputRef.current?.blur(), 250);
+      // Cancel. A second dismissal past that window closes the race.
+      setTimeout(() => {
+        inputRef.current?.blur();
+        Keyboard.dismiss();
+      }, 250);
       onOpen('search', slug);
     },
     [onOpen],

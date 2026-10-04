@@ -9,7 +9,7 @@ import * as ContextMenu from 'zeego/context-menu';
 import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
 import { launchGroupId } from './launch-transition';
-import { usePressScale } from './press-scale';
+import { usePressOpacity } from './press-opacity';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 import { AnimationInspirations } from '../../animations/inspirations';
 
@@ -22,9 +22,6 @@ interface Props {
   iconSize: number;
   onPress: (slug: string) => void;
 }
-
-/** How far an icon shrinks under the finger. */
-const ICON_PRESSED_SCALE = 0.88;
 
 // GitHub source for a demo — folder name === slug (see scripts/generate-icon-map).
 const sourceUrl = (slug: string) =>
@@ -96,7 +93,7 @@ const AppIconComponent = ({
   }, [slug]);
 
   const onOpen = useCallback(() => onPress(slug), [onPress, slug]);
-  const press = usePressScale(ICON_PRESSED_SCALE);
+  const press = usePressOpacity();
 
   return (
     <ContextMenu.Root>
@@ -115,7 +112,7 @@ const AppIconComponent = ({
               groupId={launchGroupId('grid', slug)}
               size={iconSize}
               radius={iconSize * ICON_RADIUS_RATIO}
-              pressScale={press.scale}>
+              pressOpacity={press.opacity}>
               <IconSquare demo={demo} iconSize={iconSize} />
             </LaunchIcon>
           </Pressable>
