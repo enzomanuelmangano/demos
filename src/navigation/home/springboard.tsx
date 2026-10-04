@@ -13,7 +13,6 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
-  useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -343,7 +342,9 @@ export const Springboard = ({ onOpen }: Props) => {
           'worklet';
           if (pullBlocked.get()) return;
           // Commit to search when pulled past the trigger (or flicked hard).
-          if (e.translationY > SEARCH_TRIGGER || e.velocityY > 900) {
+          // The same line as the tick: armed means letting go opens search,
+          // so a pull eased back into the hysteresis band still commits.
+          if (pullArmed.get() || e.velocityY > 900) {
             // A flick opens search without crossing the trigger: its tick
             // lands here instead.
             if (!pullArmed.get()) Presets.System.impactMedium();
@@ -377,10 +378,6 @@ export const Springboard = ({ onOpen }: Props) => {
       pullArmed,
     ],
   );
-  const rPull = useAnimatedStyle(() => ({
-    transform: [{ translateY: pull.get() }],
-  }));
-
   // The recede behind an open demo is BLUR ONLY — deliberately no scale on the
   // grid: the launch measures the icon through its transforms, so a scaled
   // grid would move the frame the close lands on.
@@ -436,6 +433,10 @@ export const Springboard = ({ onOpen }: Props) => {
         y >= rect.y &&
         y <= rect.y + rect.height
       ) {
+        // A cell whose icon has not mounted yet has no launch source: the
+        // demo would open with nothing to grow out of, invisible over the
+        // home. The tap is dropped instead.
+        if (page * layout.perPage + cell >= mountedIconsRef.current) return;
         onOpen('grid', demos[cell].slug);
         return;
       }
@@ -454,6 +455,14 @@ export const Springboard = ({ onOpen }: Props) => {
   const totalIcons = layout.perPage * layout.pageCount;
   const [mountedIcons, setMountedIcons] = useState(layout.perPage);
   const [pagerMoving, setPagerMoving] = useState(false);
+  // Read where a render is not: the forwarded tap and the scroll worklets.
+  const mountedIconsRef = useRef(mountedIcons);
+  mountedIconsRef.current = mountedIcons;
+  const gridComplete = useSharedValue(false);
+  useEffect(() => {
+    gridComplete.set(mountedIcons >= totalIcons);
+    if (mountedIcons >= totalIcons) setPagerMoving(false);
+  }, [mountedIcons, totalIcons, gridComplete]);
   useEffect(() => {
     if (pagerMoving || mountedIcons >= totalIcons) return undefined;
     const handle = requestIdleCallback(
@@ -474,15 +483,20 @@ export const Springboard = ({ onOpen }: Props) => {
     onScroll: event => {
       scrollX.set(event.contentOffset.x);
     },
+    // Only while icons remain to mount: once the grid is whole, a swipe
+    // re-renders nothing.
     onBeginDrag: () => {
+      if (gridComplete.get()) return;
       scheduleOnRN(setPagerMoving, true);
     },
     // A paging swipe always ends in momentum; a drag released in place does
     // not, and ends here.
     onEndDrag: event => {
+      if (gridComplete.get()) return;
       if (event.velocity?.x === 0) scheduleOnRN(setPagerMoving, false);
     },
     onMomentumEnd: () => {
+      if (gridComplete.get()) return;
       scheduleOnRN(setPagerMoving, false);
     },
   });
@@ -504,7 +518,10 @@ export const Springboard = ({ onOpen }: Props) => {
       <GestureDetector gesture={pullGesture}>
         <Animated.View
           pointerEvents={searchMode ? 'none' : 'auto'}
-          style={[styles.gridScale, rPull]}>
+          // The grid holds still under a pull and only defocuses, as the
+          // App Library's does: it is the results that come down with the
+          // finger (see SearchReveal's \`pull\`).
+          style={styles.gridScale}>
           <Animated.ScrollView
             ref={pagerRef}
             horizontal
@@ -572,6 +589,7 @@ export const Springboard = ({ onOpen }: Props) => {
           pull and composited over the blurred grid. */}
       <SearchReveal
         reveal={reveal}
+        pull={pull}
         searchMode={searchMode}
         listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}

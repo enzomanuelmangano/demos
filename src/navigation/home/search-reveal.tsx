@@ -80,6 +80,10 @@ interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
   // commit (never dips — so the surface never flickers mid-commit).
   reveal: SharedValue<number>;
+  // The grid's rubber-band offset. The results ride it, as the App Library's
+  // do: they come down with the finger (the field stays put) and settle up
+  // as search commits.
+  pull: SharedValue<number>;
   // Whether the search view is committed (input focused, results interactive).
   searchMode: boolean;
   // Whether the result LIST should be mounted at all. False while the grid is
@@ -162,6 +166,7 @@ const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
+  pull,
   searchMode,
   listActive,
   sideMargin,
@@ -216,7 +221,9 @@ export const SearchReveal = ({
       opacity: lp,
       // Descend into place (from above) so the list enters WITH the downward
       // pull, not against it — same direction as the field.
-      transform: [{ translateY: interpolate(lp, [0, 1], [-20, 0]) }],
+      transform: [
+        { translateY: interpolate(lp, [0, 1], [-20, 0]) + pull.get() },
+      ],
     };
   });
 
