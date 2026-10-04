@@ -1,6 +1,12 @@
 export interface InspirationData {
   authorName: string | null;
   link: string | null;
+  /**
+   * The day the demo was built (YYYY-MM-DD), where the history records it.
+   * Demos brought in by the repository's bulk imports have no reliable date
+   * and leave it out.
+   */
+  builtOn?: string;
 }
 
 export const AnimationInspirations: Record<string, InspirationData> = {
@@ -15,6 +21,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'airbnb-flip-interaction': {
     authorName: 'Airbnb',
     link: 'https://apps.apple.com/app/airbnb/id401626263',
+    builtOn: '2025-08-30',
   },
   'airbnb-slider': {
     authorName: 'Airbnb',
@@ -23,6 +30,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'alert-drawer': {
     authorName: 'Family',
     link: 'https://apps.apple.com/it/app/family-crypto-wallet/id1606779267',
+    builtOn: '2024-11-05',
   },
   'animated-3d-parallax': {
     authorName: null,
@@ -63,6 +71,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'bezier-curve-outline': {
     authorName: '@duyluongdesign',
     link: 'https://x.com/duyluongdesign/status/1753455738616447042',
+    builtOn: '2024-11-05',
   },
   'blur-cards': {
     authorName: '@abeyang',
@@ -91,6 +100,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'card-shader-reflections': {
     authorName: 'Trade Republic',
     link: 'https://apps.apple.com/ie/app/trade-republic-broker-bank/id1410703839',
+    builtOn: '2025-02-27',
   },
   'checkbox-interactions': {
     authorName: '@dankuntz',
@@ -107,6 +117,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'clock-time-picker': {
     authorName: '@proskuaaa',
     link: 'https://x.com/proskuaaa/status/1901890724452311188',
+    builtOn: '2025-03-22',
   },
   'color-carousel': {
     authorName: null,
@@ -115,6 +126,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'composable-text': {
     authorName: '@jakubkrehel',
     link: 'https://x.com/jakubkrehel/status/1869445123677041053',
+    builtOn: '2025-02-17',
   },
   'coverflow-carousel': {
     authorName: '@mackenziechild',
@@ -127,6 +139,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'delete-button': {
     authorName: '@wickedmishra',
     link: 'https://x.com/wickedmishra/status/1819414169512562902',
+    builtOn: '2024-11-05',
   },
   'dot-sheet': {
     authorName: 'Dot',
@@ -143,6 +156,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'duration-slider': {
     authorName: '@60fpsdesign',
     link: 'https://x.com/60fpsdesign/status/1819319030597009675',
+    builtOn: '2024-11-05',
   },
   'dynamic-blur-tabs': {
     authorName: null,
@@ -163,14 +177,17 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'everybody-can-cook': {
     authorName: '@jh3yy',
     link: 'https://x.com/jh3yy/status/1849618145545191821',
+    builtOn: '2025-01-06',
   },
   'exclusion-tabs': {
     authorName: '@wickedmishra',
     link: 'https://x.com/wickedmishra/status/1823026659894940124',
+    builtOn: '2024-11-06',
   },
   'expandable-mini-player': {
     authorName: 'Apple Music',
     link: 'https://apps.apple.com/it/app/apple-music/id1108187390?l=en-GB',
+    builtOn: '2024-11-05',
   },
   'family-number-input': {
     authorName: '@benjitaylor',
@@ -199,6 +216,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'fluid-tab-interaction': {
     authorName: '@nitishkmrk',
     link: 'https://x.com/nitishkmrk/status/1834915715490758731',
+    builtOn: '2025-01-26',
   },
   'fourier-visualizer': {
     authorName: '3Blue1Brown',
@@ -215,6 +233,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'github-contributions': {
     authorName: '@mykolaharmash',
     link: 'https://x.com/spottedinprod/status/1923759537711895014',
+    builtOn: '2025-07-27',
   },
   'github-onboarding': {
     authorName: 'GitHub',
@@ -255,6 +274,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'linear-sensors': {
     authorName: '@60fpsdesign',
     link: 'https://x.com/60fpsdesign/status/1836812918635286959',
+    builtOn: '2025-11-02',
   },
   'liquid-glass-playground': {
     authorName: null,
@@ -267,6 +287,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'magnet-spring': {
     authorName: 'Animated with Springs (WWDC 2023)',
     link: 'https://youtu.be/HaZ2jw9rx9M?t=343',
+    builtOn: '2025-11-02',
   },
   metaball: {
     authorName: null,
@@ -283,10 +304,12 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'motion-blur': {
     authorName: '@afonindv',
     link: 'https://x.com/afonindv/status/1793688077535154444',
+    builtOn: '2024-11-05',
   },
   'online-offline': {
     authorName: '@farrelput',
     link: 'https://x.com/farrelput/status/1915792408580628817',
+    builtOn: '2025-06-29',
   },
   'paper-folding': {
     authorName: '@k_wagner',
@@ -363,6 +386,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   snake: {
     authorName: 'Money',
     link: 'https://x.com/spottedinprod/status/1813962465639821543',
+    builtOn: '2024-11-05',
   },
   spiral: {
     authorName: null,
@@ -379,6 +403,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'stacked-carousel': {
     authorName: '@nasm423',
     link: 'https://x.com/nasm423/status/1795133452016054401',
+    builtOn: '2025-08-23',
   },
   'stacked-list': {
     authorName: null,
@@ -387,6 +412,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'stacked-modals': {
     authorName: '@emilkowalski_',
     link: 'https://x.com/emilkowalski_/status/1793339341311201556',
+    builtOn: '2024-12-12',
   },
   'staggered-card-number': {
     authorName: '@Barbapapapps',
@@ -415,6 +441,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'tab-navigation': {
     authorName: '@60fpsdesign',
     link: 'https://x.com/60fpsdesign/status/1823211658459701437',
+    builtOn: '2024-11-06',
   },
   'telegram-theme-switch': {
     authorName: 'Telegram',
@@ -427,10 +454,12 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'threads-holo-ticket': {
     authorName: 'Threads',
     link: 'https://apps.apple.com/it/app/threads/id6446901002',
+    builtOn: '2025-01-13',
   },
   'time-machine': {
     authorName: 'Daniel Friyia',
     link: 'https://youtu.be/Af2-OT9mE14',
+    builtOn: '2025-06-07',
   },
   toast: {
     authorName: '@emilkowalski_',
@@ -459,9 +488,11 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'sphere-waves': {
     authorName: '@XorDev',
     link: 'https://x.com/XorDev/status/1475524322785640455',
+    builtOn: '2025-12-07',
   },
   'light-on-painting': {
     authorName: '@reczko_konrad',
     link: 'https://x.com/reczko_konrad/status/2089670934009413751',
+    builtOn: '2026-08-27',
   },
 } as const;

@@ -18,6 +18,13 @@ const LIQUID_GLASS = isLiquidGlassAvailable();
 /** Inset from the screen's left edge, as a navigation bar's leading item. */
 const LEADING = 16;
 
+/**
+ * The height the demo's own chrome takes below the safe area: the close and
+ * info buttons (a large glass circle, about 45pt) and a gap under them. A demo
+ * with a header of its own starts it this far down, or the buttons cover it.
+ */
+export const DEMO_BUTTON_ROW_HEIGHT = 56;
+
 /** Native, so it eases like the system's own chrome rather than RN's. */
 const APPEAR = Animation.easeOut({ duration: 0.22 });
 
