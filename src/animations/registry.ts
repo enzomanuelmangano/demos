@@ -289,6 +289,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'scroll-progress': {
     name: 'Scroll Progress',
+    displayName: 'Progress',
     route: 'ScrollProgress',
     iconName: 'stats-chart-outline',
   },
