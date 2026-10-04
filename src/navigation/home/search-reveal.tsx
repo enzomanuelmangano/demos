@@ -103,13 +103,13 @@ interface Props {
   inputRef: React.RefObject<TextInput | null>;
 }
 
-// iOS-App-Library-style pull-to-search. The WHOLE surface — search field AND
-// results — tracks the finger from the first pixel of the pull, sliding down +
-// fading in together over the blurred grid, so it's progressively visible (not
-// only on release). Past the trigger, releasing commits (`searchMode`): the
-// field left-aligns, focuses, a Cancel button appears, and the list becomes
-// interactive. A short pull that doesn't commit slides everything back out as
-// `pull` springs to 0.
+// iOS-App-Library-style pull-to-search. The surface reveals from the first
+// pixel of the pull over the defocusing grid, which holds still: the field
+// fades in at the top, and the results fade in and come down with the finger.
+// Past the trigger, releasing commits (`searchMode`): the field focuses, a
+// Cancel button appears, the results settle up and become interactive. A
+// short pull that doesn't commit fades everything back out as `pull` springs
+// to 0.
 //
 // The whole thing is PRE-MOUNTED (opacity 0 at rest, pointerEvents none) and the
 // reveal is driven purely by shared values on the UI thread — no mid-gesture
@@ -219,8 +219,8 @@ export const SearchReveal = ({
     );
     return {
       opacity: lp,
-      // Descend into place (from above) so the list enters WITH the downward
-      // pull, not against it — same direction as the field.
+      // Descend into place (from above), and ride the pull: the results come
+      // down with the finger and settle up as it springs back.
       transform: [
         { translateY: interpolate(lp, [0, 1], [-20, 0]) + pull.get() },
       ],
