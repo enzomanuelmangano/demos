@@ -845,6 +845,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'ios-home-grid': {
     name: 'iOS Home Grid',
+    displayName: 'iOS Grid',
     route: 'iOSHomeGrid',
     iconName: 'grid-outline',
   },
