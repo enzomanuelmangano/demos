@@ -338,7 +338,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'shared-transitions': {
     name: 'Shared Transitions',
-    displayName: 'Transitions',
+    displayName: 'Shared',
     route: 'SharedTransitions',
     alert: true,
     iconName: 'sync-outline',
@@ -416,7 +416,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'selectable-grid-list': {
     name: 'Selectable Grid List',
-    displayName: 'Selectable',
+    displayName: 'Selectable List',
     route: 'SelectableGridList',
     iconName: 'checkbox-outline',
   },
@@ -439,7 +439,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'twitter-tab-bar': {
     name: 'Twitter Tab Bar',
-    displayName: 'Twitter Tabs',
+    displayName: 'Twitter Tab',
     route: 'TwitterTabBar',
     iconName: 'logo-twitter',
   },
@@ -480,7 +480,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'scrollable-bottom-sheet': {
     name: 'Scrollable Bottom Sheet',
-    displayName: 'Scroll Sheet',
+    displayName: 'Bottom Sheet',
     route: 'ScrollableBottomSheet',
     iconName: 'arrow-up-outline',
   },
@@ -759,7 +759,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'tab-navigation': {
     name: 'Tab Navigation',
-    displayName: 'Navigation',
     route: 'TabNavigation',
     iconName: 'browsers-outline',
   },
@@ -770,7 +769,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'stacked-modals': {
     name: 'Stacked Modals',
-    displayName: 'Stacked Modal',
+    displayName: 'Modals',
     route: 'StackedModals',
     iconName: 'card-outline',
   },
@@ -913,7 +912,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'scrollable-shapes': {
     name: 'Scrollable Shapes',
-    displayName: 'Scroll Shapes',
+    displayName: 'Shapes',
     route: 'ScrollableShapes',
     iconName: 'shapes-outline',
   },
