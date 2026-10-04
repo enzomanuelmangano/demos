@@ -39,6 +39,8 @@ import type { RefObject } from 'react';
  * a tap queued behind a close, which waits for the close to land.
  */
 const LAUNCH_WATCHDOG_MS = 2500;
+/** How often the next launch route checks whether the close has landed. */
+const PREFETCH_RETRY_MS = 100;
 
 /** Module-level: a worklet's callback into JS must outlive the component. */
 const endClose = () => {
@@ -89,11 +91,23 @@ const LaunchBridge = ({
   );
 
   // Keep the launch route preloaded while the home is in front, so a tap opens
-  // an already mounted screen (see app/launch.tsx). A launch consumes it; the
-  // home regains focus when the close lands, and preloads the next one.
+  // an already mounted screen (see app/launch.tsx). A launch consumes it, and
+  // the home preloads the next one once the close has LANDED. The home
+  // regains focus earlier, when the library removes the demo's route mid
+  // flight, and mounting the next route there stalled the main thread on the
+  // frames where the card cross-fades into the icon.
   useFocusEffect(
     useCallback(() => {
-      router.prefetch('/launch');
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const prefetchWhenLanded = () => {
+        if (launchGroup.get() !== null) {
+          timer = setTimeout(prefetchWhenLanded, PREFETCH_RETRY_MS);
+          return;
+        }
+        router.prefetch('/launch');
+      };
+      prefetchWhenLanded();
+      return () => clearTimeout(timer);
     }, [router]),
   );
 
