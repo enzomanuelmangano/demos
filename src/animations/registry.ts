@@ -6,7 +6,6 @@ export interface AnimationMetadataType extends Record<string, unknown> {
   iconName: string;
   alert?: boolean;
   iconColor?: string;
-  hideDrawerIcon?: boolean;
 }
 
 export interface IconMetadata {
@@ -631,7 +630,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Dot Sheet',
     route: 'DotSheet',
     iconName: 'attach-outline',
-    hideDrawerIcon: true,
   },
   'coverflow-carousel': {
     name: 'Coverflow Carousel',
@@ -869,7 +867,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Art Gallery',
     route: 'ArtGallery',
     iconName: 'images-outline',
-    hideDrawerIcon: true,
   },
   chessboard: {
     name: 'Chessboard',

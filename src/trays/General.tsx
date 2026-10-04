@@ -7,10 +7,7 @@ import Constants from 'expo-constants';
 import { useAtom } from 'jotai';
 import { PressableScale } from 'pressto';
 
-import {
-  HideDrawerIconAtom,
-  ShowUnstableAnimationsAtom,
-} from '../navigation/states/filters';
+import { ShowUnstableAnimationsAtom } from '../navigation/states/filters';
 
 type IoniconsIconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -29,13 +26,6 @@ const Items: readonly GeneralItem[] = [
     icon: 'flask',
     backgroundColor: '#FF9500',
     type: 'unstable',
-  },
-  {
-    title: 'Hide Drawer Icon',
-    description: 'Hide the drawer icon in animation screens',
-    icon: 'eye-off-outline',
-    backgroundColor: '#5856D6',
-    type: 'hideDrawer',
   },
   {
     title: 'Sponsor',
@@ -68,18 +58,8 @@ const updateUnstableDemos = () => {
   });
 };
 
-const updateDrawerIconVisibility = () => {
-  if (Constants.executionEnvironment !== 'bare') return;
-  const Burnt = require('burnt');
-  return Burnt.toast({
-    title: 'Drawer icon visibility has been updated',
-    ...BurntToastOptions,
-  });
-};
-
 export const General = () => {
   const [showUnstable, setShowUnstable] = useAtom(ShowUnstableAnimationsAtom);
-  const [hideDrawerIcon, setHideDrawerIcon] = useAtom(HideDrawerIconAtom);
 
   const handleItemPress = useCallback(
     (type: string) => {
@@ -89,18 +69,13 @@ export const General = () => {
           setShowUnstable(prev => !prev);
           break;
         }
-        case 'hideDrawer': {
-          updateDrawerIconVisibility();
-          setHideDrawerIcon(prev => !prev);
-          break;
-        }
         case 'sponsor': {
           Linking.openURL('https://github.com/sponsors/enzomanuelmangano');
           break;
         }
       }
     },
-    [setShowUnstable, setHideDrawerIcon],
+    [setShowUnstable],
   );
 
   return (
@@ -128,14 +103,6 @@ export const General = () => {
               value={showUnstable}
               onValueChange={setShowUnstable}
               trackColor={{ false: '#3e3e3e', true: '#FF9500' }}
-              thumbColor="#ffffff"
-            />
-          )}
-          {item.type === 'hideDrawer' && (
-            <Switch
-              value={hideDrawerIcon}
-              onValueChange={setHideDrawerIcon}
-              trackColor={{ false: '#3e3e3e', true: '#5856D6' }}
               thumbColor="#ffffff"
             />
           )}

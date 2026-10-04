@@ -1,6 +1,6 @@
 {
   "name": "demos",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "main": "expo-router/entry",
   "reanimated": {
     "staticFeatureFlags": {
@@ -43,7 +43,6 @@
     "@react-native-menu/menu": "^2.0.0",
     "@react-native-seoul/masonry-list": "^1.4.2",
     "@react-navigation/bottom-tabs": "^7.16.2",
-    "@react-navigation/drawer": "^7.10.3",
     "@react-navigation/native": "^7.2.5",
     "@react-navigation/native-stack": "^7.16.0",
     "@shopify/react-native-skia": "file:./shims/shopify-react-native-skia",
@@ -91,9 +90,13 @@
     "react-native-reanimated": "4.5.1",
     "react-native-redash": "^18.1.4",
     "react-native-safe-area-context": "~5.7.0",
+    "react-native-screen-choreography": "0.7.1",
+    "react-native-screen-corner-radius": "^0.2.3",
     "react-native-screens": "~4.26.0",
     "react-native-skia": "3.0.1",
     "react-native-skia-gesture": "0.4.5-beta.1",
+    "react-native-teleport": "^1.2.2",
+    "react-native-variable-blur": "0.1.0",
     "react-native-web": "^0.21.0",
     "react-native-webgpu": "0.10.4",
     "react-native-worklets": "0.10.1",
@@ -141,8 +144,5 @@
     "expo-blur@57.0.3": "patches/expo-blur@57.0.3.patch",
     "react-native-chessboard@0.2.0": "patches/react-native-chessboard@0.2.0.patch",
     "expo-modules-jsi@57.1.1": "patches/expo-modules-jsi@57.1.1.patch"
-  },
-  "overrides": {
-    "react-native-drawer-layout": "4.2.4"
   }
 }

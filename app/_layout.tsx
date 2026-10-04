@@ -8,17 +8,13 @@ import { memo, Suspense, useCallback, useEffect } from 'react';
 import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
-import Drawer from 'expo-router/drawer';
+import { Stack, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { PressablesConfig } from 'pressto';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { ChoreographyProvider } from 'react-native-screen-choreography/expo-router';
 
-import {
-  DrawerContent,
-  DrawerContentWidth,
-} from '../src/navigation/components/drawer-content';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
@@ -31,28 +27,6 @@ SplashScreen.setOptions({
   fade: true,
 });
 
-const drawerOptions = {
-  headerShown: false,
-  drawerStyle: {
-    backgroundColor: '#000',
-    width: 270,
-  },
-  drawerActiveTintColor: '#fff',
-  drawerInactiveTintColor: '#666',
-  drawerLabelStyle: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  overlayColor: 'rgba(0, 0, 0, 0.5)',
-  // The navigator's default scene background is light grey; it showed
-  // through as a grey flash whenever a demo screen was still empty.
-  sceneStyle: {
-    backgroundColor: '#000',
-  },
-  swipeEnabled: true,
-  swipeEdgeWidth: DrawerContentWidth,
-} as const;
-
 const QuickActionsProvider = memo(
   ({ children }: { children: React.ReactNode }) => {
     useQuickActions();
@@ -60,14 +34,25 @@ const QuickActionsProvider = memo(
   },
 );
 
-const mainScreenOptions = {
-  drawerLabel: 'Home',
-  title: 'Home',
+// Black card behind the SpringBoard, matching the wallpaper's black edges.
+const stackScreenOptions = {
+  headerShown: false,
+  contentStyle: { backgroundColor: '#000000' },
 } as const;
 
-const animationScreenOptions = {
-  drawerLabel: 'Animation',
-  title: 'Animation',
+// A demo is not pushed like a screen: it opens out of the icon that was tapped.
+// The icon travels in the choreography overlay and the demo draws the growing
+// card under it (see src/navigation/home/launch-transition.tsx), so the route
+// is a transparent layer over the SpringBoard with no native animation — a
+// second, native movement would show under the one moving card. It lives in
+// THIS stack, next to the home route: the choreography adapter watches the
+// source route's own navigator for the new top route.
+const demoScreenOptions = {
+  headerShown: false,
+  presentation: 'containedTransparentModal',
+  animation: 'none',
+  gestureEnabled: false,
+  contentStyle: { backgroundColor: 'transparent' },
 } as const;
 
 export default function RootLayout() {
@@ -103,15 +88,19 @@ export default function RootLayout() {
               <Retray.Theme theme={RetrayThemes.light}>
                 <Retray.Navigator screens={trays}>
                   <QuickActionsProvider>
-                    <Drawer
-                      drawerContent={DrawerContent}
-                      screenOptions={drawerOptions}>
-                      <Drawer.Screen name="index" options={mainScreenOptions} />
-                      <Drawer.Screen
-                        name="animations/[slug]"
-                        options={animationScreenOptions}
-                      />
-                    </Drawer>
+                    <ChoreographyProvider>
+                      <Stack screenOptions={stackScreenOptions}>
+                        <Stack.Screen name="index" />
+                        <Stack.Screen
+                          name="launch"
+                          options={demoScreenOptions}
+                        />
+                        <Stack.Screen
+                          name="animations/[slug]"
+                          options={demoScreenOptions}
+                        />
+                      </Stack>
+                    </ChoreographyProvider>
                   </QuickActionsProvider>
                 </Retray.Navigator>
               </Retray.Theme>

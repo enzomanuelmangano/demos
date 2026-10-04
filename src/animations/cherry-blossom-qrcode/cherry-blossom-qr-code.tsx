@@ -10,23 +10,21 @@ import {
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useDrawerProgress } from 'react-native-drawer-layout';
 import { useKeyboardHandler } from 'react-native-keyboard-controller';
 import { Presets, Settings, usePatternComposer } from 'react-native-pulsar';
 import Animated, {
   Easing,
-  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withTiming,
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
 import { CREEPER_BLAST_PATTERN } from './haptics';
 import { useWebGPU } from './hooks';
+import { isDemoClosing } from '../../navigation/home/launch-transition';
 
 // The long press is the only way to find the creeper, and nothing on screen
 // suggests it exists. The hint waits a beat so it does not compete with the
@@ -35,8 +33,8 @@ const HINT_DELAY_MS = 2000;
 const HINT_TEXT = 'Long press to spawn a creeper';
 
 // The demo fades in a few frames after it mounts. Raising the keyboard at
-// mount (autoFocus) slid it up over the black placeholder before the scene
-// was visible; waiting lets both arrive together.
+// mount (autoFocus) slid it up over the empty card before the scene was
+// visible; waiting lets both arrive together.
 const INITIAL_FOCUS_DELAY_MS = 120;
 
 export const CherryBlossomQRCode = () => {
@@ -106,37 +104,12 @@ export const CherryBlossomQRCode = () => {
     onFuseStart,
   });
 
-  // The keyboard belongs to the demo, not to the drawer. While the drawer is
-  // open (or being dragged) the input stays blurred: refocusing there kept
-  // the keyboard over the drawer and then dropped it over the black
-  // transition placeholder once another demo was picked.
-  const drawerProgress = useDrawerProgress();
-  const isDrawerOpenRef = useRef(drawerProgress.get() > 0.01);
-
+  // Not once the demo is closing: the close dismisses the keyboard, and a
+  // refocus on that blur would raise it again over the flight home.
   const focusInput = useCallback(() => {
-    if (!mountedRef.current || isDrawerOpenRef.current) return;
+    if (!mountedRef.current || isDemoClosing()) return;
     inputRef.current?.focus();
   }, []);
-
-  const onDrawerOpenChange = useCallback(
-    (open: boolean) => {
-      isDrawerOpenRef.current = open;
-      if (open) {
-        Keyboard.dismiss();
-      } else {
-        focusInput();
-      }
-    },
-    [focusInput],
-  );
-
-  useAnimatedReaction(
-    () => drawerProgress.get() > 0.01,
-    (open, wasOpen) => {
-      if (wasOpen === null || open === wasOpen) return;
-      scheduleOnRN(onDrawerOpenChange, open);
-    },
-  );
 
   const handlePress = useCallback(() => {
     isFlat.current = !isFlat.current;
