@@ -22,7 +22,6 @@ import {
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { Retray, RetrayThemes } from '../src/packages/retray';
-import { PERF_HUD_ENABLED, PerfHud } from '../src/perf/perf-hud';
 import { trays } from '../src/trays';
 
 SplashScreen.preventAutoHideAsync();
@@ -113,7 +112,6 @@ export default function RootLayout() {
               </Retray.Theme>
             </FontsProvider>
           </PressablesConfig>
-          {PERF_HUD_ENABLED && <PerfHud />}
         </GestureHandlerRootView>
       </KeyboardProvider>
     </Suspense>
