@@ -5,9 +5,9 @@
 // pulling past this, but the reveal (blur + surface) is clamped to full here.
 export const SEARCH_TRIGGER = 100;
 
-// The order the search arrives in, as fractions of the reveal (0 → 1): the
-// home's blur first, whole by `blurFull`; then the field; then the results,
-// only once the home has gone soft, so a row is never drawn over sharp icons.
+// How the search arrives, as fractions of the reveal (0 → 1): the home's blur
+// builds gently over the whole pull (whole at `blurFull`, its second pass over
+// `blurExtra`); the field and its Cancel come in over it, then the results.
 export const SEARCH_REVEAL = {
   blurFull: 1,
   // The search's second blur pass, over the last stretch only.
