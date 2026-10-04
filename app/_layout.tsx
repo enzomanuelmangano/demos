@@ -44,6 +44,11 @@ const drawerOptions = {
     fontWeight: '500',
   },
   overlayColor: 'rgba(0, 0, 0, 0.5)',
+  // The navigator's default scene background is light grey; it showed
+  // through as a grey flash whenever a demo screen was still empty.
+  sceneStyle: {
+    backgroundColor: '#000',
+  },
   swipeEnabled: true,
   swipeEdgeWidth: DrawerContentWidth,
 } as const;
