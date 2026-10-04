@@ -850,6 +850,9 @@ export const usePortraitRenderer = ({
       // canvas lets go of it first, and the GPU objects go two frames later.
       image.set(null);
       requestAnimationFrame(() => requestAnimationFrame(release));
+      // The figure this run built is gone. Should the effect run again, the
+      // button must wait for the next one rather than morph into nothing.
+      setStatus(s => (s.ready ? { ...s, ready: false } : s));
     };
   }, [width, height, texts, cross, rewind, progress, yaw, scroll, image]);
 
