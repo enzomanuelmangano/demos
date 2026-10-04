@@ -258,10 +258,11 @@ export const SculpturesInWordsScreen = () => {
   // clip is honoured by everything.
   //
   // And hidden two frames AFTER WebGPU starts drawing, not on the same frame.
-  // WebGPU reads the clock from a JS-thread frame callback and can be a frame
-  // behind; had both switched on the same value there would be an ordering
-  // in which neither drew, and a blank frame is the one thing that cannot be
-  // hidden. Two frames of both drawing identical pixels can.
+  // Both now follow the clock on the UI thread, but the GPU pass and Skia's
+  // redraw can still land a frame apart; had both switched on the same value
+  // there would be an ordering in which neither drew, and a blank frame is
+  // the one thing that cannot be hidden. Two frames of both drawing identical
+  // pixels can.
   //
   // One column wide on purpose — the other two are parked a screen to either
   // side by `columnShift` and this is what keeps them off the page. Tall
