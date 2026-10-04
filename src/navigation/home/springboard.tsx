@@ -29,7 +29,7 @@ import {
   launchProgress,
 } from './launch-transition';
 import { PageDots } from './page-dots';
-import { SEARCH_TRIGGER } from './search-constants';
+import { SEARCH_REVEAL, SEARCH_TRIGGER } from './search-constants';
 import { SearchReveal } from './search-reveal';
 import { iconRectForCell, useGridLayout } from './use-grid-layout';
 
@@ -101,6 +101,18 @@ const HOME_MAX_BLUR = 90;
 const PAGE_MOUNT_TIMEOUT = 500;
 // The search's second blur pass, over the first (see where it is rendered).
 const SEARCH_EXTRA_BLUR = 100;
+
+/**
+ * The pull's blur LEADS the search surface: it is whole by halfway through
+ * the reveal, eased out so the first pixels of a pull already defocus the
+ * grid; the field and then the results arrive over a home that has gone soft
+ * (see SearchReveal's ranges, which start where this has done its work).
+ */
+const searchBlurLead = (revealLevel: number) => {
+  'worklet';
+  const t = Math.min(1, Math.max(0, revealLevel / SEARCH_REVEAL.blurFull));
+  return 1 - (1 - t) * (1 - t);
+};
 // Asymptote for the damped rubber-band that maps raw finger travel to the grid's
 // downward pull. Pull tracks the finger ~1:1 early, then eases, so a long drag
 // never runs away.
@@ -109,7 +121,6 @@ const PULL_RUBBER = 260;
 // Bit flags for the single home-state reaction below (one per-frame worklet
 // instead of four): which JS states flip.
 const FLAG_DEMO_COVERING = 1; // demo open/opening/closing over the home
-const FLAG_BLUR = 2; // anything defocusing the home (demo OR pull/search)
 const FLAG_SEARCH_LIST = 4; // search surface in play -> mount result rows
 const FLAG_PULL_ACTIVE = 8; // a pull gesture currently owns `reveal`
 
@@ -148,35 +159,14 @@ export const Springboard = ({ onOpen }: Props) => {
   // `demoCovering` — a demo is open/opening/closing over the home. Gates the
   //   home's own gestures: the grid stays mounted under the transparent demo
   //   route, and a downward drag must never commit search BEHIND a demo.
-  // `blurActive` — something is defocusing the home; gates mounting the
-  //   fullscreen BlurView (a 0-intensity one still costs GPU every frame).
   // `searchListActive` — the search surface is in play; mounts the result
   //   rows from the first pulled pixel (each row is a shared element).
   const [demoCovering, setDemoCovering] = useState(false);
-  const [blurActive, setBlurActive] = useState(false);
   const [searchListActive, setSearchListActive] = useState(false);
   const [pullInProgress, setPullInProgress] = useState(false);
   const pullActive = useSharedValue(false);
-  // 1 once the home's blur is on screen. The blur mounts from JS, a few frames
-  // behind a pull that the UI thread tracks from its first pixel, and the
-  // search surface revealing in those frames sat over a sharp grid: rows and
-  // icons on top of each other. The surface waits for it (see SearchReveal).
-  const homeBlurReady = useSharedValue(0);
-  useEffect(() => {
-    if (!blurActive) {
-      homeBlurReady.set(0);
-      return undefined;
-    }
-    // The frame after the commit that mounted it, so it is drawn; eased, so a
-    // surface the pull has already revealed fades in rather than popping.
-    const frame = requestAnimationFrame(() =>
-      homeBlurReady.set(withTiming(1, { duration: 120 })),
-    );
-    return () => cancelAnimationFrame(frame);
-  }, [blurActive, homeBlurReady]);
   const onHomeFlagsChange = useCallback((flags: number) => {
     setDemoCovering((flags & FLAG_DEMO_COVERING) !== 0);
-    setBlurActive((flags & FLAG_BLUR) !== 0);
     setSearchListActive((flags & FLAG_SEARCH_LIST) !== 0);
     setPullInProgress((flags & FLAG_PULL_ACTIVE) !== 0);
   }, []);
@@ -191,7 +181,6 @@ export const Springboard = ({ onOpen }: Props) => {
       const revealLevel = reveal.get();
       let flags = 0;
       if (covering) flags |= FLAG_DEMO_COVERING;
-      if (covering || revealLevel > 0.01) flags |= FLAG_BLUR;
       if (revealLevel > 0.001) flags |= FLAG_SEARCH_LIST;
       if (pullActive.get()) flags |= FLAG_PULL_ACTIVE;
       return flags;
@@ -382,18 +371,18 @@ export const Springboard = ({ onOpen }: Props) => {
       [0, HOME_MAX_BLUR],
       Extrapolation.CLAMP,
     );
-    // Eased in once mounted: a pull already under way would otherwise switch
-    // the blur on at its full depth in one frame.
-    const searchBlur = reveal.get() * HOME_MAX_BLUR * homeBlurReady.get();
+    const searchBlur = searchBlurLead(reveal.get()) * HOME_MAX_BLUR;
     return { intensity: Math.max(demoBlur, searchBlur) };
   });
   const searchBlurProps = useAnimatedProps(() => ({
-    intensity: reveal.get() * SEARCH_EXTRA_BLUR * homeBlurReady.get(),
+    intensity: searchBlurLead(reveal.get()) * SEARCH_EXTRA_BLUR,
   }));
-  // Only mount the fullscreen blur while something is actually defocusing the
-  // home. On the idle grid a 0-intensity BlurView is still a fullscreen
-  // UIVisualEffectView composited every frame — dead GPU cost that made
-  // horizontal scrolling stutter.
+  // Both blurs stay mounted and are driven on the UI thread, from the first
+  // pixel of a pull or a launch. Mounted from JS, they arrived a few frames
+  // behind the finger, and the results revealed over a sharp grid. (Hiding
+  // them with an animated opacity when idle does not work: a visual effect
+  // view brought back from opacity 0 on the UI thread stays undrawn until the
+  // next React commit.)
 
   // A tap forwarded by a closing demo (see `homeTap`): open the icon under it,
   // found by the grid's own geometry on the page in view.
@@ -500,32 +489,27 @@ export const Springboard = ({ onOpen }: Props) => {
           defocus is active — the demo-recede or the pull-to-search — so the home
           blurs behind an open demo and as the search reveals, sharpening back on
           dismiss / cancel. */}
-      {blurActive ? (
-        <AnimatedBlurView
-          animatedProps={blurProps}
-          tint="dark"
-          pointerEvents="none"
-          style={StyleSheet.absoluteFill}
-        />
-      ) : null}
+      <AnimatedBlurView
+        animatedProps={blurProps}
+        tint="dark"
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      />
       {/* A second pass for search only. One native blur tops out at a radius
           that leaves a mostly empty page reading sharp: the wallpaper's wide
           arc showed through as if nothing was blurred. Stacked, the second
           blurs the first, and the search sits on an even, defocused ground. */}
-      {searchListActive || searchMode ? (
-        <AnimatedBlurView
-          animatedProps={searchBlurProps}
-          tint="dark"
-          pointerEvents="none"
-          style={StyleSheet.absoluteFill}
-        />
-      ) : null}
+      <AnimatedBlurView
+        animatedProps={searchBlurProps}
+        tint="dark"
+        pointerEvents="none"
+        style={StyleSheet.absoluteFill}
+      />
 
       {/* Pull-to-search reveal: the search field + results, revealed with the
           pull and composited over the blurred grid. */}
       <SearchReveal
         reveal={reveal}
-        blurReady={homeBlurReady}
         searchMode={searchMode}
         listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}

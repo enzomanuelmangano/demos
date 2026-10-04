@@ -29,6 +29,7 @@ import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
 import { launchGroupId } from './launch-transition';
 import { usePressScale } from './press-scale';
+import { SEARCH_REVEAL } from './search-constants';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
 
 import type { Demo } from './demos';
@@ -72,9 +73,6 @@ interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
   // commit (never dips — so the surface never flickers mid-commit).
   reveal: SharedValue<number>;
-  // 1 once the home's blur is drawn; the surface never shows over a sharp
-  // grid (see springboard.tsx).
-  blurReady: SharedValue<number>;
   // Whether the search view is committed (input focused, results interactive).
   searchMode: boolean;
   // Whether the result LIST should be mounted at all. False while the grid is
@@ -157,7 +155,6 @@ const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
-  blurReady,
   searchMode,
   listActive,
   sideMargin,
@@ -186,27 +183,30 @@ export const SearchReveal = ({
   }, [query, demos]);
 
   // Reveal progress 0 → 1: live pull (until the trigger) OR the pinned commit
-  // level. Layered so the surface reveals like iOS rather than snapping in:
-  //  • the search field + top blur lead — they fade + slide down tracking the
-  //    finger from the first pixel;
-  //  • the results LAG (start at ~28% progress) and ease up a touch slower, so
-  //    the list "develops in" under the field instead of popping with it.
+  // level. In order (SEARCH_REVEAL): the home's blur leads (springboard.tsx);
+  // the field comes in as the home goes soft; the results only once it has,
+  // and "develop in" under the field instead of popping with it.
   const rField = useAnimatedStyle(() => {
-    const prog = reveal.get();
+    const fp = interpolate(
+      reveal.get(),
+      SEARCH_REVEAL.field,
+      [0, 1],
+      Extrapolation.CLAMP,
+    );
     return {
-      opacity: prog * blurReady.get(),
-      transform: [{ translateY: interpolate(prog, [0, 1], [-16, 0]) }],
+      opacity: fp,
+      transform: [{ translateY: interpolate(fp, [0, 1], [-16, 0]) }],
     };
   });
   const rList = useAnimatedStyle(() => {
     const lp = interpolate(
       reveal.get(),
-      [0.28, 1],
+      SEARCH_REVEAL.list,
       [0, 1],
       Extrapolation.CLAMP,
     );
     return {
-      opacity: lp * blurReady.get(),
+      opacity: lp,
       // Descend into place (from above) so the list enters WITH the downward
       // pull, not against it — same direction as the field.
       transform: [{ translateY: interpolate(lp, [0, 1], [-20, 0]) }],
