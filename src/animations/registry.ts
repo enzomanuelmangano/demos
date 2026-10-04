@@ -102,6 +102,7 @@ import { RecordButton } from './record-button';
 import { ScrollProgress } from './scroll-progress';
 import { ScrollableBottomSheet } from './scrollable-bottom-sheet';
 import { ScrollableShapes } from './scrollable-shapes';
+import { SculpturesInWordsScreen } from './sculptures-in-words';
 import { SelectableGridList } from './selectable-grid-list';
 import { ShakeToDeleteAnimation } from './shake-to-delete';
 import { SharedTransitions } from './shared-transition';
@@ -260,6 +261,7 @@ export const AnimationRegistry = {
   chessboard: ChessboardGame,
   'the-little-prince': TheLittlePrinceScreen,
   'light-on-painting': LightOnPainting,
+  'sculptures-in-words': SculpturesInWordsScreen,
 } as const;
 
 export const AnimationMetadata: Record<string, AnimationMetadataType> = {
@@ -882,6 +884,11 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
     name: 'Light on Painting',
     route: 'LightOnPainting',
     iconName: 'bulb-outline',
+  },
+  'sculptures-in-words': {
+    name: 'Sculptures in Words',
+    route: 'SculpturesInWords',
+    iconName: 'text-outline',
   },
 } as const;
 

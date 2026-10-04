@@ -92,6 +92,7 @@ export const ICON_COLORS: Record<string, string> = {
   'scroll-transition-3d': '#080707',
   'scrollable-bottom-sheet': '#090909',
   'scrollable-shapes': '#000000',
+  'sculptures-in-words': '#f8f8f8',
   'selectable-grid-list': '#000101',
   'shake-to-delete': '#080808',
   'shared-transitions': '#ffffff',
