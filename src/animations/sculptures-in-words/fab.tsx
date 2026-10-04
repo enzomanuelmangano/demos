@@ -13,6 +13,8 @@ import type { SharedValue } from 'react-native-reanimated';
 export const FAB_SIZE = 48;
 const ICON_COLOR = ON_INK;
 const ICON_SIZE = 20;
+/** A 48pt disc in a screen corner: the thumb lands short of it, not on it. */
+const HIT_SLOP = 16;
 
 interface Props {
   /** 0 = showing the page, 1 = showing the bust. */
@@ -42,6 +44,7 @@ export const PortraitToggle = ({ face, onPress, style }: Props) => {
     <PressableScale
       accessibilityRole="button"
       accessibilityLabel="Switch between the article and the sculpture"
+      hitSlop={HIT_SLOP}
       style={[styles.fab, style]}
       onPress={onPress}>
       <View style={styles.box} pointerEvents="none">
