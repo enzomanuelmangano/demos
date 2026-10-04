@@ -70,6 +70,7 @@ export const ICON_MAP: Record<string, ImageSourcePropType> = {
   'interaction-appearance': require('../../../assets/app-icons/interaction-appearance.png'),
   'ios-home-bouncy': require('../../../assets/app-icons/ios-home-bouncy.png'),
   'ios-home-grid': require('../../../assets/app-icons/ios-home-grid.png'),
+  'light-on-painting': require('../../../assets/app-icons/light-on-painting.png'),
   'linear-sensors': require('../../../assets/app-icons/linear-sensors.png'),
   'liquid-glass-playground': require('../../../assets/app-icons/liquid-glass-playground.png'),
   'loading-button': require('../../../assets/app-icons/loading-button.png'),

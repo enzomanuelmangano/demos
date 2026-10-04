@@ -68,6 +68,7 @@ export const ICON_COLORS: Record<string, string> = {
   'interaction-appearance': '#838383',
   'ios-home-bouncy': '#f9f9f9',
   'ios-home-grid': '#fafafa',
+  'light-on-painting': '#33291e',
   'linear-sensors': '#070707',
   'liquid-glass-playground': '#203115',
   'loading-button': '#fefeff',
