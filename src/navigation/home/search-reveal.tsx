@@ -16,6 +16,7 @@ import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Presets } from 'react-native-pulsar';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -79,6 +80,9 @@ interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
   // commit (never dips — so the surface never flickers mid-commit).
   reveal: SharedValue<number>;
+  // The grid's rubber-band offset. The surface rides it, as the App Library
+  // does: it comes down with the finger and settles up when search commits.
+  pull: SharedValue<number>;
   // Whether the search view is committed (input focused, results interactive).
   searchMode: boolean;
   // Whether the result LIST should be mounted at all. False while the grid is
@@ -161,6 +165,7 @@ const SearchRow = memo(SearchRowComponent);
 
 export const SearchReveal = ({
   reveal,
+  pull,
   searchMode,
   listActive,
   sideMargin,
@@ -201,7 +206,9 @@ export const SearchReveal = ({
     );
     return {
       opacity: fp,
-      transform: [{ translateY: interpolate(fp, [0, 1], [-16, 0]) }],
+      transform: [
+        { translateY: interpolate(fp, [0, 1], [-16, 0]) + pull.get() },
+      ],
     };
   });
   const rList = useAnimatedStyle(() => {
@@ -215,7 +222,9 @@ export const SearchReveal = ({
       opacity: lp,
       // Descend into place (from above) so the list enters WITH the downward
       // pull, not against it — same direction as the field.
-      transform: [{ translateY: interpolate(lp, [0, 1], [-20, 0]) }],
+      transform: [
+        { translateY: interpolate(lp, [0, 1], [-20, 0]) + pull.get() },
+      ],
     };
   });
 
@@ -385,7 +394,12 @@ export const SearchReveal = ({
         <Animated.View
           style={[styles.cancelBtn, rCancel]}
           pointerEvents={searchMode ? 'auto' : 'none'}>
-          <Pressable hitSlop={10} onPress={onCancel}>
+          <Pressable
+            hitSlop={10}
+            onPress={() => {
+              Presets.System.selection();
+              onCancel();
+            }}>
             <Text style={styles.cancel}>Cancel</Text>
           </Pressable>
         </Animated.View>

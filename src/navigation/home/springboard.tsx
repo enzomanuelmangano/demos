@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BlurView } from 'expo-blur';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Presets } from 'react-native-pulsar';
 import Animated, {
   Easing,
   Extrapolation,
@@ -129,6 +130,9 @@ const searchBlurLead = (revealLevel: number) => {
 // downward pull. Pull tracks the finger ~1:1 early, then eases, so a long drag
 // never runs away.
 const PULL_RUBBER = 260;
+// Backing off below this share of the trigger disarms the pull (hysteresis,
+// so a finger resting on the trigger does not tick on and off).
+const PULL_DISARM = 0.85;
 
 // Bit flags for the single home-state reaction below (one per-frame worklet
 // instead of four): which JS states flip.
@@ -292,6 +296,8 @@ export const Springboard = ({ onOpen }: Props) => {
   // commit search behind the opening demo. The launch group has no such lag:
   // it is named on the tap itself.
   const pullBlocked = useSharedValue(false);
+  // Whether the pull is past the point where letting go opens search.
+  const pullArmed = useSharedValue(false);
   const pullGesture = useMemo(
     () =>
       Gesture.Pan()
@@ -306,6 +312,7 @@ export const Springboard = ({ onOpen }: Props) => {
         .onBegin(() => {
           'worklet';
           pullCommitted.set(false);
+          pullArmed.set(false);
           const blocked = launchGroup.get() !== null;
           pullBlocked.set(blocked);
           pullActive.set(!blocked);
@@ -318,12 +325,28 @@ export const Springboard = ({ onOpen }: Props) => {
           const p = PULL_RUBBER * (1 - Math.exp(-d / PULL_RUBBER));
           pull.set(p);
           reveal.set(Math.min(p / SEARCH_TRIGGER, 1));
+          // The tick of a pull-to-refresh: one as the pull crosses the point
+          // where letting go opens search, a lighter one if it backs off.
+          // On the UI thread, on the frame it crosses.
+          if (!pullArmed.get() && e.translationY > SEARCH_TRIGGER) {
+            pullArmed.set(true);
+            Presets.System.impactMedium();
+          } else if (
+            pullArmed.get() &&
+            e.translationY < SEARCH_TRIGGER * PULL_DISARM
+          ) {
+            pullArmed.set(false);
+            Presets.System.selection();
+          }
         })
         .onEnd(e => {
           'worklet';
           if (pullBlocked.get()) return;
           // Commit to search when pulled past the trigger (or flicked hard).
           if (e.translationY > SEARCH_TRIGGER || e.velocityY > 900) {
+            // A flick opens search without crossing the trigger: its tick
+            // lands here instead.
+            if (!pullArmed.get()) Presets.System.impactMedium();
             pullCommitted.set(true);
             scheduleOnRN(enterSearch);
           }
@@ -351,6 +374,7 @@ export const Springboard = ({ onOpen }: Props) => {
       pullCommitted,
       pullActive,
       pullBlocked,
+      pullArmed,
     ],
   );
   const rPull = useAnimatedStyle(() => ({
@@ -548,6 +572,7 @@ export const Springboard = ({ onOpen }: Props) => {
           pull and composited over the blurred grid. */}
       <SearchReveal
         reveal={reveal}
+        pull={pull}
         searchMode={searchMode}
         listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}
