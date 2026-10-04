@@ -572,7 +572,6 @@ export const Springboard = ({ onOpen }: Props) => {
           pull and composited over the blurred grid. */}
       <SearchReveal
         reveal={reveal}
-        pull={pull}
         searchMode={searchMode}
         listActive={searchListActive || searchMode}
         sideMargin={layout.sideMargin}
