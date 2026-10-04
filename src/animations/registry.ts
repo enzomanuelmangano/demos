@@ -1,7 +1,13 @@
 export type IconFamily = 'Ionicons';
 
 export interface AnimationMetadataType extends Record<string, unknown> {
+  /** The demo's title: search, sharing and accessibility. */
   name: string;
+  /**
+   * A shorter label for the home grid, where the full name would be cut off
+   * under its icon. Defaults to `name`.
+   */
+  displayName?: string;
   route: string;
   iconName: string;
   alert?: boolean;
@@ -287,21 +293,25 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'animated-grid-list': {
     name: 'Animated Grid List',
+    displayName: 'Grid List',
     route: 'AnimatedGridList',
     iconName: 'grid-outline',
   },
   'floating-bottom-bar': {
     name: 'Floating Bottom Bar',
+    displayName: 'Floating Bar',
     route: 'FloatingBottomBar',
     iconName: 'star-outline',
   },
   'animated-clip-box': {
     name: 'Animated Clip Box',
+    displayName: 'Clip Box',
     route: 'AnimatedClipBox',
     iconName: 'square-outline',
   },
   'theme-canvas-animation': {
     name: 'Theme Canvas Animation',
+    displayName: 'Theme Picker',
     route: 'ThemeCanvasAnimation',
     iconName: 'color-palette-outline',
   },
@@ -327,6 +337,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'shared-transitions': {
     name: 'Shared Transitions',
+    displayName: 'Shared Views',
     route: 'SharedTransitions',
     alert: true,
     iconName: 'sync-outline',
@@ -339,6 +350,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'dynamic-tab-indicator': {
     name: 'Dynamic Tab Indicator',
+    displayName: 'Tab Indicator',
     route: 'DynamicTabIndicator',
     iconName: 'browsers-outline',
   },
@@ -349,11 +361,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'smooth-dropdown': {
     name: 'Smooth Dropdown',
+    displayName: 'Dropdown',
     route: 'SmoothDropdown',
     iconName: 'chevron-down-outline',
   },
   'skia-bottom-sheet': {
     name: 'Skia BottomSheet',
+    displayName: 'Skia Sheet',
     route: 'SkiaBottomSheet',
     iconName: 'card-outline',
   },
@@ -374,6 +388,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'animated-3d-parallax': {
     name: 'Animated 3D Parallax',
+    displayName: '3D Parallax',
     route: 'Animated3DParallax',
     iconName: 'logo-twitter',
   },
@@ -384,6 +399,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'animated-indicator-list': {
     name: 'Animated Indicator List',
+    displayName: 'Indicator List',
     route: 'AnimatedIndicatorList',
     iconName: 'list-outline',
   },
@@ -399,16 +415,19 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'selectable-grid-list': {
     name: 'Selectable Grid List',
+    displayName: 'Select Grid',
     route: 'SelectableGridList',
     iconName: 'checkbox-outline',
   },
   'animated-count-text': {
     name: 'Animated Count Text',
+    displayName: 'Count Text',
     route: 'AnimatedCountText',
     iconName: 'calculator-outline',
   },
   'qr-code-generator': {
     name: 'QR Code Generator',
+    displayName: 'QR Generator',
     route: 'QRCodeGenerator',
     iconName: 'qr-code-outline',
   },
@@ -419,11 +438,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'twitter-tab-bar': {
     name: 'Twitter Tab Bar',
+    displayName: 'Twitter Tabs',
     route: 'TwitterTabBar',
     iconName: 'logo-twitter',
   },
   'circular-carousel': {
     name: 'Circular Carousel',
+    displayName: 'Ring Carousel',
     route: 'CircularCarousel',
     iconName: 'ellipse-outline',
   },
@@ -434,31 +455,37 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'telegram-theme-switch': {
     name: 'Telegram Theme Switch',
+    displayName: 'Theme Switch',
     route: 'TelegramThemeSwitch',
     iconName: 'paper-plane-outline',
   },
   'fourier-visualizer': {
     name: 'Fourier Visualizer',
+    displayName: 'Fourier',
     route: 'FourierVisualizer',
     iconName: 'brush-outline',
   },
   'github-onboarding': {
     name: 'GitHub Onboarding',
+    displayName: 'GitHub Intro',
     route: 'GitHubOnboarding',
     iconName: 'logo-github',
   },
   'loading-button': {
     name: 'Loading Button',
+    displayName: 'Load Button',
     route: 'LoadingButton',
     iconName: 'refresh-outline',
   },
   'scrollable-bottom-sheet': {
     name: 'Scrollable Bottom Sheet',
+    displayName: 'Scroll Sheet',
     route: 'ScrollableBottomSheet',
     iconName: 'arrow-up-outline',
   },
   'skia-color-picker': {
     name: 'Skia Color Picker',
+    displayName: 'Color Picker',
     route: 'SkiaColorPicker',
     iconName: 'color-palette-outline',
   },
@@ -474,6 +501,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'steddy-graph-interaction': {
     name: 'Steddy Graph Interaction',
+    displayName: 'Steddy Graph',
     route: 'SteddyGraphInteraction',
     iconName: 'trending-up-outline',
   },
@@ -494,6 +522,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'blurred-bottom-bar': {
     name: 'Blurred Bottom Bar',
+    displayName: 'Blurred Bar',
     route: 'BlurredBottomBar',
     iconName: 'remove-outline',
   },
@@ -509,11 +538,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'fibonacci-shader': {
     name: 'Fibonacci Shader',
+    displayName: 'Fibonacci',
     route: 'FibonacciShader',
     iconName: 'globe-outline',
   },
   'family-number-input': {
     name: 'Family Number Input',
+    displayName: 'Number Input',
     route: 'FamilyNumberInput',
     iconName: 'grid-outline',
   },
@@ -524,11 +555,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'fibonacci-shader-grid': {
     name: 'Fibonacci Shader Grid',
+    displayName: 'Fibonacci Grid',
     route: 'FibonacciShaderGrid',
     iconName: 'grid-outline',
   },
   'verification-code': {
     name: 'Verification Code',
+    displayName: 'Verify Code',
     route: 'VerificationCode',
     iconName: 'shield-checkmark-outline',
   },
@@ -539,16 +572,19 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'scroll-transition-3d': {
     name: '3D Scroll Transition',
+    displayName: '3D Scroll',
     route: 'ScrollTransition3D',
     iconName: 'cube-outline',
   },
   'staggered-card-number': {
     name: 'Staggered Card Number',
+    displayName: 'Card Number',
     route: 'StaggeredCardNumber',
     iconName: 'card-outline',
   },
   'stacked-bottom-sheet': {
     name: 'Stacked Bottom Sheet',
+    displayName: 'Stacked Sheet',
     route: 'StackedBottomSheet',
     iconName: 'card-outline',
   },
@@ -564,11 +600,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'empty-qr-code': {
     name: 'Empty QR Code',
+    displayName: 'Empty QR',
     route: 'EmptyQRCode',
     iconName: 'qr-code-outline',
   },
   'infinite-carousel': {
     name: 'Infinite Carousel',
+    displayName: 'Loop Carousel',
     route: 'InfiniteCarousel',
     iconName: 'images-outline',
   },
@@ -589,6 +627,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'geometry-button': {
     name: 'Geometry Button',
+    displayName: 'Geometry',
     route: 'GeometryButton',
     iconName: 'globe-outline',
   },
@@ -605,6 +644,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'imessage-stack': {
     name: 'iMessageStack',
+    displayName: 'iMessage',
     route: 'IMessageStack',
     iconName: 'swap-horizontal-outline',
   },
@@ -620,11 +660,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'checkbox-interactions': {
     name: 'Checkbox Interactions',
+    displayName: 'Checkboxes',
     route: 'CheckboxInteractions',
     iconName: 'checkbox-outline',
   },
   'interaction-appearance': {
     name: 'Interaction Appearance',
+    displayName: 'Theme Toggle',
     route: 'InteractionAppearance',
     iconName: 'contrast-outline',
   },
@@ -635,6 +677,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'coverflow-carousel': {
     name: 'Coverflow Carousel',
+    displayName: 'Coverflow',
     route: 'CoverflowCarousel',
     iconName: 'images-outline',
   },
@@ -645,6 +688,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'miles-bar-chart': {
     name: 'Miles Bar Chart',
+    displayName: 'Miles Chart',
     route: 'MilesBarChart',
     iconName: 'bar-chart-outline',
   },
@@ -655,6 +699,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'pomodoro-timer': {
     name: 'Pomodoro Timer',
+    displayName: 'Pomodoro',
     route: 'PomodoroTimer',
     iconName: 'timer-outline',
   },
@@ -690,6 +735,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'dynamic-blur-tabs': {
     name: 'Dynamic Blur Tabs',
+    displayName: 'Blur Tabs',
     route: 'DynamicBlurTabs',
     iconName: 'ellipse-outline',
   },
@@ -700,16 +746,19 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'expandable-mini-player': {
     name: 'Expandable Mini Player',
+    displayName: 'Mini Player',
     route: 'ExpandableMiniPlayer',
     iconName: 'musical-notes-outline',
   },
   'bezier-curve-outline': {
     name: 'Bezier Curve Outline',
+    displayName: 'Bezier Outline',
     route: 'BezierCurveOutline',
     iconName: 'analytics-outline',
   },
   'tab-navigation': {
     name: 'Tab Navigation',
+    displayName: 'Tabs',
     route: 'TabNavigation',
     iconName: 'browsers-outline',
   },
@@ -720,6 +769,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'stacked-modals': {
     name: 'Stacked Modals',
+    displayName: 'Modal Stack',
     route: 'StackedModals',
     iconName: 'card-outline',
   },
@@ -730,41 +780,49 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'verification-code-face': {
     name: 'Verification Code Face',
+    displayName: 'Code Face',
     route: 'VerificationCodeFace',
     iconName: 'person-outline',
   },
   'everybody-can-cook': {
     name: 'Everybody Can Cook',
+    displayName: 'Stagger Text',
     route: 'EverybodyCanCook',
     iconName: 'restaurant-outline',
   },
   'threads-holo-ticket': {
     name: 'Threads Holo Ticket',
+    displayName: 'Holo Ticket',
     route: 'ThreadsHoloTicket',
     iconName: 'ticket-outline',
   },
   'fluid-tab-interaction': {
     name: 'Fluid Tab Interaction',
+    displayName: 'Fluid Tabs',
     route: 'FluidTabInteraction',
     iconName: 'ellipse-outline',
   },
   'shake-to-delete': {
     name: 'Shake to Delete',
+    displayName: 'Shake Delete',
     route: 'ShakeToDelete',
     iconName: 'phone-portrait-outline',
   },
   'composable-text': {
     name: 'Composable Text',
+    displayName: 'Spring Text',
     route: 'ComposableText',
     iconName: 'text-outline',
   },
   'card-shader-reflections': {
     name: 'Card Shader Reflections',
+    displayName: 'Card Shader',
     route: 'CardShaderReflections',
     iconName: 'card-outline',
   },
   'clock-time-picker': {
     name: 'Clock Time Picker',
+    displayName: 'Clock Picker',
     route: 'ClockTimePicker',
     iconName: 'time-outline',
   },
@@ -775,6 +833,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'particles-button': {
     name: 'Particles Button',
+    displayName: 'Particles',
     route: 'ParticlesButton',
     iconName: 'planet-outline',
   },
@@ -796,6 +855,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'ios-home-bouncy': {
     name: 'iOS Home Bouncy',
+    displayName: 'Bouncy Home',
     route: 'IosHomeBouncy',
     iconName: 'home-outline',
     alert: true,
@@ -807,26 +867,31 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'draggable-panel': {
     name: 'Draggable Panel',
+    displayName: 'Drag Panel',
     route: 'DraggablePanel',
     iconName: 'move-outline',
   },
   'github-contributions': {
     name: 'GitHub Contributions',
+    displayName: 'Contributions',
     route: 'GitHubContributions',
     iconName: 'logo-github',
   },
   'stacked-carousel': {
     name: 'Stacked Carousel',
+    displayName: 'Card Stack',
     route: 'StackedCarousel',
     iconName: 'images-outline',
   },
   'airbnb-flip-interaction': {
     name: 'Airbnb Flip Interaction',
+    displayName: 'Airbnb Flip',
     route: 'AirbnbFlipInteraction',
     iconName: 'person-outline',
   },
   'liquid-glass-playground': {
     name: 'Liquid Glass Playground',
+    displayName: 'Liquid Glass',
     route: 'Playground',
     iconName: 'play-outline',
   },
@@ -847,11 +912,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'scrollable-shapes': {
     name: 'Scrollable Shapes',
+    displayName: 'Shapes',
     route: 'ScrollableShapes',
     iconName: 'shapes-outline',
   },
   'notion-qrcode': {
     name: 'Notion QR Code',
+    displayName: 'Notion QR',
     route: 'NotionQRCode',
     iconName: 'qr-code-outline',
   },
@@ -862,6 +929,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'cherry-blossom-qrcode': {
     name: 'Cherry Blossom QR',
+    displayName: 'Cherry QR',
     route: 'CherryBlossomQRCode',
     iconName: 'flower-outline',
   },
@@ -877,16 +945,19 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'the-little-prince': {
     name: 'The Little Prince',
+    displayName: 'Little Prince',
     route: 'TheLittlePrince',
     iconName: 'ellipse-outline',
   },
   'light-on-painting': {
     name: 'Light on Painting',
+    displayName: 'Painting Light',
     route: 'LightOnPainting',
     iconName: 'bulb-outline',
   },
   'sculptures-in-words': {
     name: 'Sculptures in Words',
+    displayName: 'Sculptures',
     route: 'SculpturesInWords',
     iconName: 'text-outline',
   },

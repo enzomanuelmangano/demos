@@ -7,14 +7,17 @@ import { ShowUnstableAnimationsAtom } from '../states/filters';
 
 export interface Demo {
   slug: string;
+  /** The full title: search results, sharing, accessibility. */
   name: string;
+  /** What fits under the icon: the short display name, or the title. */
+  label: string;
 }
 
 interface ListedDemo extends Demo {
   unstable: boolean;
 }
 
-// Flat {slug,name} list for the launcher grid. Newest-first (mirrors the old
+// Flat {slug,name,label} list for the launcher grid. Newest-first (mirrors the old
 // drawer order). slug is unique + stable and equals the /animations/[slug]
 // route, so it doubles as the shared-bound id for the open-zoom.
 const ALL_DEMOS: ListedDemo[] = getAllAnimations()
@@ -22,6 +25,7 @@ const ALL_DEMOS: ListedDemo[] = getAllAnimations()
   .map(animation => ({
     slug: animation.slug,
     name: animation.metadata.name,
+    label: animation.metadata.displayName ?? animation.metadata.name,
     unstable: animation.metadata.alert === true,
   }))
   .reverse();

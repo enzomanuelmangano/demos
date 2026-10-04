@@ -75,7 +75,7 @@ const AppIconComponent = ({
   iconSize,
   onPress,
 }: Props) => {
-  const { slug, name } = demo;
+  const { slug, name, label } = demo;
   const inspiration = AnimationInspirations[slug];
   const inspirationLink = inspiration?.link ?? null;
 
@@ -117,7 +117,7 @@ const AppIconComponent = ({
             </LaunchIcon>
           </Pressable>
           <Text numberOfLines={1} style={styles.label}>
-            {name}
+            {label}
           </Text>
         </View>
       </ContextMenu.Trigger>
