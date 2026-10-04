@@ -66,8 +66,14 @@ const EMPTY_RESULTS: Demo[] = [];
 
 /** Vertical padding of a result row, above and below its icon. */
 const ROW_PADDING = 7;
-/** Screens of rows kept mounted: enough to hold every demo at once. */
+/** Screens of rows kept mounted once search is open: every demo at once. */
 const SEARCH_WINDOW_SIZE = 25;
+/**
+ * During a pull that has not committed: the first screen only. A pull let go
+ * short of the trigger used to mount all ~120 rows in the background, each a
+ * shared element and an image, for a list that never opened.
+ */
+const PULL_WINDOW_SIZE = 1;
 
 interface Props {
   // Monotonic reveal 0 → 1: tracks the pull during the drag, then eases to 1 on
@@ -301,7 +307,7 @@ export const SearchReveal = ({
           data={listActive ? results : EMPTY_RESULTS}
           initialNumToRender={12}
           maxToRenderPerBatch={8}
-          windowSize={SEARCH_WINDOW_SIZE}
+          windowSize={searchMode ? SEARCH_WINDOW_SIZE : PULL_WINDOW_SIZE}
           // Every row is the same height: no row has to be measured to place
           // the next, and the scroll never waits on a layout pass.
           getItemLayout={getItemLayout}

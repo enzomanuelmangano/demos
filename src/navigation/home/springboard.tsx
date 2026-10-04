@@ -41,10 +41,13 @@ import type { TextInput } from 'react-native';
 // One full page of the SpringBoard: a flex-wrapped grid of demo icons.
 const PageComponent = ({
   demos,
+  mounted,
   layout,
   onPressDemo,
 }: {
   demos: Demo[];
+  // How many of this page's icons are mounted; the rest hold their cell.
+  mounted: number;
   layout: GridLayout;
   onPressDemo: (slug: string) => void;
 }) => (
@@ -63,16 +66,23 @@ const PageComponent = ({
         rowGap: layout.rowGap,
       },
     ]}>
-    {demos.map(demo => (
-      <AppIcon
-        key={demo.slug}
-        demo={demo}
-        cellWidth={layout.cellWidth}
-        cellHeight={layout.cellHeight}
-        iconSize={layout.iconSize}
-        onPress={onPressDemo}
-      />
-    ))}
+    {demos.map((demo, index) =>
+      index < mounted ? (
+        <AppIcon
+          key={demo.slug}
+          demo={demo}
+          cellWidth={layout.cellWidth}
+          cellHeight={layout.cellHeight}
+          iconSize={layout.iconSize}
+          onPress={onPressDemo}
+        />
+      ) : (
+        <View
+          key={demo.slug}
+          style={{ width: layout.cellWidth, height: layout.cellHeight }}
+        />
+      ),
+    )}
   </View>
 );
 const Page = memo(PageComponent);
@@ -85,7 +95,7 @@ const Page = memo(PageComponent);
 // rebuilt ~24 icons (a context menu, a shared element, an image decode each)
 // on the main thread while the page moved, and coming back rebuilt them
 // again. Now the first page mounts with the home, the others one by one in
-// the idle after it (see `mountedPages`), and a swipe mounts nothing.
+// the idle after it (see `mountedIcons`), and a swipe mounts nothing.
 //
 // `pagingEnabled` + full-width pages give iOS's native paging deceleration and
 // edge rubber-band for free. The offset is mirrored into a shared value on the
@@ -99,6 +109,8 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 const HOME_MAX_BLUR = 90;
 // Upper bound on the wait for an idle slot to mount the next page.
 const PAGE_MOUNT_TIMEOUT = 500;
+// Longest a swipe can hold page mounts back (see `pagerMoving`).
+const PAGER_MOVING_BACKSTOP = 1200;
 // The search's second blur pass, over the first (see where it is rendered).
 const SEARCH_EXTRA_BLUR = 100;
 
@@ -411,20 +423,44 @@ export const Springboard = ({ onOpen }: Props) => {
     [onOpen],
   );
 
-  // Pages beyond the first mount one per idle slot after the home has drawn,
-  // then stay mounted: the first frame only pays for the page in view.
-  const [mountedPages, setMountedPages] = useState(1);
+  // The first page mounts with the home; the other icons follow a row at a
+  // time, one per idle slot, and then stay mounted. A row, not a page: a whole
+  // page (~24 icons) committed to the main thread in one go, and a swipe that
+  // began during it dropped frames. And never while the pager moves.
+  const totalIcons = layout.perPage * layout.pageCount;
+  const [mountedIcons, setMountedIcons] = useState(layout.perPage);
+  const [pagerMoving, setPagerMoving] = useState(false);
   useEffect(() => {
-    if (mountedPages >= layout.pageCount) return undefined;
+    if (pagerMoving || mountedIcons >= totalIcons) return undefined;
     const handle = requestIdleCallback(
-      () => setMountedPages(count => count + 1),
+      () => setMountedIcons(count => count + layout.cols),
       { timeout: PAGE_MOUNT_TIMEOUT },
     );
     return () => cancelIdleCallback(handle);
-  }, [mountedPages, layout.pageCount]);
+  }, [mountedIcons, totalIcons, pagerMoving, layout.cols]);
+  // Backstop: a swipe whose end the scroll events never report must not hold
+  // the remaining pages back for good.
+  useEffect(() => {
+    if (!pagerMoving) return undefined;
+    const t = setTimeout(() => setPagerMoving(false), PAGER_MOVING_BACKSTOP);
+    return () => clearTimeout(t);
+  }, [pagerMoving]);
 
-  const onScroll = useAnimatedScrollHandler(event => {
-    scrollX.set(event.contentOffset.x);
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: event => {
+      scrollX.set(event.contentOffset.x);
+    },
+    onBeginDrag: () => {
+      scheduleOnRN(setPagerMoving, true);
+    },
+    // A paging swipe always ends in momentum; a drag released in place does
+    // not, and ends here.
+    onEndDrag: event => {
+      if (event.velocity?.x === 0) scheduleOnRN(setPagerMoving, false);
+    },
+    onMomentumEnd: () => {
+      scheduleOnRN(setPagerMoving, false);
+    },
   });
 
   // Fewer pages (Show Unstable turned off) leave the content shorter, and the
@@ -456,18 +492,20 @@ export const Springboard = ({ onOpen }: Props) => {
             // content touches (the ~150ms UIKit hold would sit before every
             // launch), and a real drag still cancels the child touch.
             contentContainerStyle={{ paddingTop: insets.top }}>
-            {layout.pages.map((demos, index) =>
-              index < mountedPages ? (
-                <Page
-                  key={index}
-                  demos={demos}
-                  layout={layout}
-                  onPressDemo={onPressDemo}
-                />
-              ) : (
-                <View key={index} style={{ width: layout.pageWidth }} />
-              ),
-            )}
+            {layout.pages.map((demos, index) => (
+              <Page
+                key={index}
+                demos={demos}
+                // Clamped to the page: a page already whole stays the same
+                // props, and its memo holds while the next one mounts.
+                mounted={Math.min(
+                  demos.length,
+                  Math.max(0, mountedIcons - index * layout.perPage),
+                )}
+                layout={layout}
+                onPressDemo={onPressDemo}
+              />
+            ))}
           </Animated.ScrollView>
         </Animated.View>
       </GestureDetector>
