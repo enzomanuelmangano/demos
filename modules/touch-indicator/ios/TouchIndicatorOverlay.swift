@@ -87,6 +87,17 @@ enum TouchIndicator {
         UIWindow.self, #selector(UIWindow.touchIndicator_sendEvent(_:)))
     else { return }
     method_exchangeImplementations(original, replacement)
+    // Touches the system cancels without an event — an incoming call, the app
+    // leaving the foreground mid-drag — never reach `sendEvent:` as `.ended`,
+    // and their discs stayed on screen at the last point. Leaving the
+    // foreground lifts every finger.
+    NotificationCenter.default.addObserver(
+      forName: UIApplication.willResignActiveNotification, object: nil,
+      queue: .main
+    ) { _ in
+      host()?.sublayers?.forEach { $0.removeFromSuperlayer() }
+      live.removeAllObjects()
+    }
   }
 
   // MARK: - Overlay
@@ -102,12 +113,13 @@ enum TouchIndicator {
       overlay = nil
     }
     if overlay == nil {
-      let window = UIWindow(windowScene: scene)
+      let window = OverlayWindow(windowScene: scene)
       window.backgroundColor = .clear
       // A ROOT VIEW CONTROLLER, which is not optional. A UIWindow without one
       // is never composited: it can be unhidden, correctly sized and full of
       // layers and still not appear. That cost an afternoon on the prototype.
-      let root = UIViewController()
+      let root = OverlayController()
+      root.source = source
       root.view.backgroundColor = .clear
       root.view.isUserInteractionEnabled = false
       window.rootViewController = root
@@ -195,7 +207,11 @@ enum TouchIndicator {
     guard isEnabled, event.type == .touches else { return }
     guard window(for: source) != nil, let host = host() else { return }
 
-    for touch in event.allTouches ?? [] {
+    // This window's touches only. One event with fingers in two windows (the
+    // keyboard's and the app's) is delivered to both, and walking every touch
+    // each time ran each one twice: the second pass saw no movement and reset
+    // the stretch, and a press popped twice.
+    for touch in event.touches(for: source) ?? [] {
       let point = touch.location(in: nil)
       let state = live.object(forKey: touch)
 
@@ -267,6 +283,35 @@ enum TouchIndicator {
         break
       }
     }
+  }
+}
+
+/// The overlay can never become key. A plain window can: when the key window
+/// hides (an RN alert dismissing), UIKit promotes another visible one, and the
+/// overlay sits above the app. Key, it is where RN presents the next alert or
+/// modal — on a window that takes no touches, so the app would look frozen.
+private final class OverlayWindow: UIWindow {
+  override var canBecomeKey: Bool { false }
+}
+
+/// Defers the status bar and the home indicator to the app. A window above the
+/// app can take over both, and a demo that hides the status bar would show it
+/// again in exactly the recordings this exists for.
+private final class OverlayController: UIViewController {
+  weak var source: UIWindow?
+
+  private var appController: UIViewController? {
+    var controller = source?.rootViewController
+    while let presented = controller?.presentedViewController {
+      controller = presented
+    }
+    return controller
+  }
+
+  override var childForStatusBarStyle: UIViewController? { appController }
+  override var childForStatusBarHidden: UIViewController? { appController }
+  override var childForHomeIndicatorAutoHidden: UIViewController? {
+    appController
   }
 }
 
