@@ -96,6 +96,7 @@ export const AnimationInspirations: Record<string, InspirationData> = {
   'calendar-days': {
     authorName: '@austinvalleskey',
     link: null,
+    builtOn: '2025-11-30',
   },
   'card-shader-reflections': {
     authorName: 'Trade Republic',

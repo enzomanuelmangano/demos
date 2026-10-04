@@ -73,12 +73,19 @@ const withAt = (name: string) => (name.startsWith('@') ? name : `@${name}`);
 
 /**
  * The sheet's copy for a demo, or null when the demo credits no one (or
- * credits someone without a link to send people to).
+ * credits someone with no link or X handle to send people to).
  */
 export const getInspirationCopy = (slug: string): InspirationCopy | null => {
   const inspiration = AnimationInspirations[slug];
-  if (!inspiration?.link) return null;
-  const { authorName, link, builtOn } = inspiration;
+  if (!inspiration) return null;
+  const { authorName, builtOn } = inspiration;
+  // An X handle credited without a post still has a profile to send people to.
+  const link =
+    inspiration.link ??
+    (authorName?.startsWith('@')
+      ? `https://x.com/${authorName.slice(1)}`
+      : null);
+  if (!link) return null;
   const source = readSource(link);
   // "This animation was built on <day> and is inspired by …", or, where the
   // day is not on record, "This animation is inspired by …".

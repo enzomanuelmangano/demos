@@ -83,8 +83,9 @@ export const DemoInspiration = ({
   // A sheet sized to its content still keeps the window's bottom safe area
   // under it, which left the button far higher off the bottom than the inset
   // at its sides. The content moves down into that area by what it exceeds
-  // the inset; the top padding grows by as much, so the top keeps its gap.
-  const shift = Math.max(0, bottom - INSET);
+  // the inset; the move carries the top down too, so the top padding gives
+  // back as much and the title keeps its place under the grabber.
+  const shift = Math.min(Math.max(0, bottom - INSET), INSET + 4);
 
   return (
     <Host
@@ -119,7 +120,7 @@ export const DemoInspiration = ({
             alignment="leading"
             spacing={16}
             modifiers={[
-              padding({ horizontal: INSET, top: INSET + 4 + shift }),
+              padding({ horizontal: INSET, top: INSET + 4 - shift }),
               offset({ y: shift }),
             ]}>
             <Text modifiers={TITLE_MODIFIERS}>Inspiration</Text>
