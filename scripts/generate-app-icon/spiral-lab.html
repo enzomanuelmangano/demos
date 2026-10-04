@@ -128,7 +128,7 @@ function drawFiltered(maxTries = 20000) {
     const rf = Math.random();
     if (verdict(measure(rf)).ok) return { rf, tries: i };
   }
-  return { rf: Math.random(), tries: maxTries };
+  return null;
 }
 
 // ---------------------------------------------------------------- the icon
@@ -206,12 +206,15 @@ function cell(rf) {
 function batch() {
   const raw = $('rawGrid'), ok = $('okGrid'); raw.innerHTML = ''; ok.innerHTML = '';
   for (let i = 0; i < 12; i++) raw.append(cell(Math.random()));
-  for (let i = 0; i < 12; i++) ok.append(cell(drawFiltered().rf));
+  for (let i = 0; i < 12; i++) { const d = drawFiltered(); if (d) ok.append(cell(d.rf)); }
+  if (!ok.children.length) ok.textContent = 'No angle passes these thresholds.';
 }
 function acceptance() {
   let n = 0, N = 8000;
   for (let i = 1; i < N; i++) if (verdict(measure(i / N)).ok) n++;
-  $('acceptance').textContent = `Acceptance: ${((n / (N - 1)) * 100).toFixed(1)}% of all angles (≈ ${(N - 1) / Math.max(n, 1) < 100 ? ((N - 1) / Math.max(n, 1)).toFixed(1) : '∞'} draws per icon)`;
+  $('acceptance').textContent = n > 0
+    ? `Acceptance: ${((n / (N - 1)) * 100).toFixed(2)}% of all angles (≈ ${Math.round((N - 1) / n)} draws per icon)`
+    : 'Acceptance: no angle passes these thresholds';
 }
 function syncLabels() {
   $('minSpaceV').textContent = minSpace.value + ' px'; $('minArmsV').textContent = minArms.value; $('maxArmsV').textContent = maxArms.value; $('minPitchV').textContent = minPitch.value + '°'; $('maxPitchV').textContent = maxPitch.value + '°';
@@ -219,12 +222,12 @@ function syncLabels() {
 for (const s of sliders) s.addEventListener('input', () => { syncLabels(); show(current.rf, current.tries); });
 for (const s of sliders) s.addEventListener('change', () => { acceptance(); batch(); });
 alphaIn.addEventListener('input', () => show(+alphaIn.value, null));
-$('gen').onclick = () => { const d = drawFiltered(); show(d.rf, d.tries); };
+$('gen').onclick = () => { const d = drawFiltered(); if (d) show(d.rf, d.tries); };
 $('genRaw').onclick = () => show(Math.random(), null);
 $('batch').onclick = batch;
 
 syncLabels(); acceptance();
-const first = drawFiltered(); show(first.rf, first.tries); batch();
+const first = drawFiltered(); if (first) show(first.rf, first.tries); batch();
 </script>
 </body>
 </html>
