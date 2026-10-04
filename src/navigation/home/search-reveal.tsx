@@ -49,7 +49,17 @@ const BAR_TOP_GAP = 10;
 // continuous radius ramp instead, from `SCROLL_EDGE_BLUR` at the top to sharp
 // at the bottom of the band. It is iOS only; elsewhere the band keeps a
 // single blur under a gradient mask.
-const SCROLL_EDGE_BLUR = 18;
+const SCROLL_EDGE_BLUR = 28;
+
+// The scroll edge also FADES what passes under it, as iOS does: a blur alone
+// kept the rows' shapes, and text at a middling radius smeared into streaks
+// instead of dissolving. The fade is the colour of the defocused home behind
+// the list, so a row sinks into the background rather than under a band.
+const EDGE_FADE_COLORS = [
+  'rgba(31, 31, 32, 0.92)',
+  'rgba(31, 31, 32, 0.7)',
+  'rgba(31, 31, 32, 0)',
+] as const;
 
 const EMPTY_RESULTS: Demo[] = [];
 
@@ -202,7 +212,9 @@ export const SearchReveal = ({
   const barTop = insets.top + BAR_TOP_GAP;
   const barBottom = barTop + BAR_HEIGHT;
   // Where the result list starts, and how tall the top progressive-blur band is.
-  const listTop = barBottom + 10;
+  // The gap is the fade's runway: over 10pt a row reached the glass field
+  // barely faded, and the field refracted its text into streaks.
+  const listTop = barBottom + 24;
   // The band ends where the list starts. It ran 30pt further and blurred the
   // top of the first result at rest; a row should only dissolve once it has
   // scrolled up under the field.
@@ -334,6 +346,13 @@ export const SearchReveal = ({
             />
           </MaskedView>
         )}
+        {/* Mostly faded by the bottom of the field, clear where the list
+            starts: a row is untouched at rest and gone under the field. */}
+        <LinearGradient
+          colors={EDGE_FADE_COLORS}
+          locations={[0, barBottom / blurBandHeight, 1]}
+          style={StyleSheet.absoluteFill}
+        />
       </Animated.View>
 
       <Animated.View
