@@ -480,11 +480,7 @@ const CloseGesture = ({
       const group = launchGroup.get();
       const settled = group === null || launchProgress.get() >= 0.999;
       dragging.set(settled);
-      if (settled) {
-        // On the UI thread, on the frame the card starts to give.
-        Presets.System.impactLight();
-        scheduleOnRN(beginClose);
-      }
+      if (settled) scheduleOnRN(beginClose);
     })
     .onUpdate(event => {
       if (!dragging.get()) return;
@@ -495,6 +491,7 @@ const CloseGesture = ({
       launchPose.scale.set(scale);
       if (scale <= CLOSE_SCALE) {
         dragging.set(false);
+        // The snap: on the UI thread, on the frame the card is let go.
         Presets.System.impactMedium();
         scheduleOnRN(commitClose);
       }
