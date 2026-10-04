@@ -5,7 +5,8 @@ export interface AnimationMetadataType extends Record<string, unknown> {
   name: string;
   /**
    * A shorter label for the home grid, where the full name would be cut off
-   * under its icon. Defaults to `name`.
+   * under its icon: words of the title itself, so the icon still reads as the
+   * demo it opens. Defaults to `name`.
    */
   displayName?: string;
   route: string;
@@ -288,6 +289,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'scroll-progress': {
     name: 'Scroll Progress',
+    displayName: 'Progress',
     route: 'ScrollProgress',
     iconName: 'stats-chart-outline',
   },
@@ -311,7 +313,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'theme-canvas-animation': {
     name: 'Theme Canvas Animation',
-    displayName: 'Theme Picker',
+    displayName: 'Theme Canvas',
     route: 'ThemeCanvasAnimation',
     iconName: 'color-palette-outline',
   },
@@ -337,7 +339,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'shared-transitions': {
     name: 'Shared Transitions',
-    displayName: 'Shared Views',
+    displayName: 'Shared',
     route: 'SharedTransitions',
     alert: true,
     iconName: 'sync-outline',
@@ -415,7 +417,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'selectable-grid-list': {
     name: 'Selectable Grid List',
-    displayName: 'Select Grid',
+    displayName: 'Selectable List',
     route: 'SelectableGridList',
     iconName: 'checkbox-outline',
   },
@@ -438,13 +440,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'twitter-tab-bar': {
     name: 'Twitter Tab Bar',
-    displayName: 'Twitter Tabs',
+    displayName: 'Twitter Tab',
     route: 'TwitterTabBar',
     iconName: 'logo-twitter',
   },
   'circular-carousel': {
     name: 'Circular Carousel',
-    displayName: 'Ring Carousel',
+    displayName: 'Circular',
     route: 'CircularCarousel',
     iconName: 'ellipse-outline',
   },
@@ -467,19 +469,19 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'github-onboarding': {
     name: 'GitHub Onboarding',
-    displayName: 'GitHub Intro',
+    displayName: 'Onboarding',
     route: 'GitHubOnboarding',
     iconName: 'logo-github',
   },
   'loading-button': {
     name: 'Loading Button',
-    displayName: 'Load Button',
+    displayName: 'Loading',
     route: 'LoadingButton',
     iconName: 'refresh-outline',
   },
   'scrollable-bottom-sheet': {
     name: 'Scrollable Bottom Sheet',
-    displayName: 'Scroll Sheet',
+    displayName: 'Bottom Sheet',
     route: 'ScrollableBottomSheet',
     iconName: 'arrow-up-outline',
   },
@@ -561,7 +563,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'verification-code': {
     name: 'Verification Code',
-    displayName: 'Verify Code',
+    displayName: 'Verification',
     route: 'VerificationCode',
     iconName: 'shield-checkmark-outline',
   },
@@ -606,7 +608,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'infinite-carousel': {
     name: 'Infinite Carousel',
-    displayName: 'Loop Carousel',
+    displayName: 'Infinite',
     route: 'InfiniteCarousel',
     iconName: 'images-outline',
   },
@@ -660,13 +662,13 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'checkbox-interactions': {
     name: 'Checkbox Interactions',
-    displayName: 'Checkboxes',
+    displayName: 'Checkbox',
     route: 'CheckboxInteractions',
     iconName: 'checkbox-outline',
   },
   'interaction-appearance': {
     name: 'Interaction Appearance',
-    displayName: 'Theme Toggle',
+    displayName: 'Appearance',
     route: 'InteractionAppearance',
     iconName: 'contrast-outline',
   },
@@ -758,7 +760,6 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'tab-navigation': {
     name: 'Tab Navigation',
-    displayName: 'Tabs',
     route: 'TabNavigation',
     iconName: 'browsers-outline',
   },
@@ -769,7 +770,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'stacked-modals': {
     name: 'Stacked Modals',
-    displayName: 'Modal Stack',
+    displayName: 'Modals',
     route: 'StackedModals',
     iconName: 'card-outline',
   },
@@ -786,7 +787,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'everybody-can-cook': {
     name: 'Everybody Can Cook',
-    displayName: 'Stagger Text',
+    displayName: 'Everybody',
     route: 'EverybodyCanCook',
     iconName: 'restaurant-outline',
   },
@@ -798,7 +799,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'fluid-tab-interaction': {
     name: 'Fluid Tab Interaction',
-    displayName: 'Fluid Tabs',
+    displayName: 'Fluid Tab',
     route: 'FluidTabInteraction',
     iconName: 'ellipse-outline',
   },
@@ -810,7 +811,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'composable-text': {
     name: 'Composable Text',
-    displayName: 'Spring Text',
+    displayName: 'Composable',
     route: 'ComposableText',
     iconName: 'text-outline',
   },
@@ -855,7 +856,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'ios-home-bouncy': {
     name: 'iOS Home Bouncy',
-    displayName: 'Bouncy Home',
+    displayName: 'Home Bouncy',
     route: 'IosHomeBouncy',
     iconName: 'home-outline',
     alert: true,
@@ -867,7 +868,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'draggable-panel': {
     name: 'Draggable Panel',
-    displayName: 'Drag Panel',
+    displayName: 'Draggable',
     route: 'DraggablePanel',
     iconName: 'move-outline',
   },
@@ -879,7 +880,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'stacked-carousel': {
     name: 'Stacked Carousel',
-    displayName: 'Card Stack',
+    displayName: 'Stacked',
     route: 'StackedCarousel',
     iconName: 'images-outline',
   },
@@ -951,7 +952,7 @@ export const AnimationMetadata: Record<string, AnimationMetadataType> = {
   },
   'light-on-painting': {
     name: 'Light on Painting',
-    displayName: 'Painting Light',
+    displayName: 'Light Painting',
     route: 'LightOnPainting',
     iconName: 'bulb-outline',
   },
