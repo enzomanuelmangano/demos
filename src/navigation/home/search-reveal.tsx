@@ -240,10 +240,11 @@ export const SearchReveal = ({
   const getItemLayout = useCallback(
     (_: ArrayLike<Demo> | null | undefined, index: number) => ({
       length: rowStride,
-      offset: rowStride * index,
+      // Measured cells sit below the content padding; estimates must too.
+      offset: listTop + rowStride * index,
       index,
     }),
-    [rowStride],
+    [rowStride, listTop],
   );
   const renderItem = useCallback(
     ({ item }: { item: Demo }) => (
