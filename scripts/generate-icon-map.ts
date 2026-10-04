@@ -8,14 +8,19 @@
 //
 //   bun scripts/generate-icon-map.ts
 //
-// Why two folders: the grid shows an icon at 62pt at most (186px at 3x), and
-// that is the largest bitmap it ever draws: expo-image shrinks whatever it
-// decodes to the view's own size, and the launch carries the icon by a
-// transform, so a larger master only cost a bigger decode and a resize on the
-// main thread for every icon that mounted (both showed in the home's traces,
-// and a cold cache showed blank tiles while they ran). 192px is the view's
-// size and a little over, so the views draw it as it is (`allowDownscaling`
-// is off on them).
+// Why two folders: the grid shows an icon at 62pt at most (186px at 3x), so
+// that is the largest bitmap it draws at rest. expo-image shrinks whatever it
+// decodes to the view's own size, so a larger master only cost a bigger decode
+// and a resize on the main thread for every icon that mounted (both showed in
+// the home's traces, and a cold cache showed blank tiles while they ran).
+// 192px is the view's size and a little over, so the views draw it as it is
+// (`allowDownscaling` is off on them).
+//
+// The launch is the one place the artwork is drawn larger: it flies out of the
+// grid scaled up (see launch-transition.tsx), so 192px is upsampled there. That
+// is accepted: the artwork fades over the first third of the flight, under a
+// blurring grid, and compared with 512px the difference is a slightly softer
+// first frame.
 //
 // `_placeholder.png` is excluded from the map — it's the fallback for any
 // missing slug — but it is downscaled like the rest.
@@ -29,13 +34,27 @@ const ICONS_DIR = path.join(ROOT, 'assets/app-icons');
 const OUT = path.join(ROOT, 'src/navigation/home/icon-map.generated.ts');
 const BUNDLED_SIZE = 192;
 
+// An output made for another size is stale however new it is: changing
+// BUNDLED_SIZE has to remake the whole folder, not only the masters touched
+// since.
+const bundledSize = (file: string) =>
+  Number(
+    execFileSync('sips', ['-g', 'pixelWidth', file], { encoding: 'utf8' })
+      .split('pixelWidth:')[1]
+      ?.trim(),
+  );
+
 fs.mkdirSync(ICONS_DIR, { recursive: true });
 const sources = fs.readdirSync(SRC_DIR).filter(f => f.endsWith('.png'));
 let resized = 0;
 for (const file of sources) {
   const from = path.join(SRC_DIR, file);
   const to = path.join(ICONS_DIR, file);
-  if (fs.existsSync(to) && fs.statSync(to).mtimeMs >= fs.statSync(from).mtimeMs)
+  if (
+    fs.existsSync(to) &&
+    fs.statSync(to).mtimeMs >= fs.statSync(from).mtimeMs &&
+    bundledSize(to) === BUNDLED_SIZE
+  )
     continue;
   // sips ships with macOS; -Z fits the longest edge, keeping the square.
   execFileSync('sips', ['-Z', String(BUNDLED_SIZE), from, '--out', to], {
