@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { DEMOS } from './demos';
+import { useDemos } from './demos';
 
 import type { Demo } from './demos';
 
@@ -82,6 +82,7 @@ export interface GridLayout {
 export const useGridLayout = (): GridLayout => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const demos = useDemos();
 
   return useMemo(() => {
     const availW = width - SIDE_MARGIN * 2;
@@ -103,8 +104,8 @@ export const useGridLayout = (): GridLayout => {
     const perPage = cols * rows;
 
     const pages: Demo[][] = [];
-    for (let i = 0; i < DEMOS.length; i += perPage) {
-      pages.push(DEMOS.slice(i, i + perPage));
+    for (let i = 0; i < demos.length; i += perPage) {
+      pages.push(demos.slice(i, i + perPage));
     }
 
     return {
@@ -121,5 +122,5 @@ export const useGridLayout = (): GridLayout => {
       pages,
       pageCount: pages.length,
     };
-  }, [width, height, insets.top, insets.bottom]);
+  }, [width, height, insets.top, insets.bottom, demos]);
 };

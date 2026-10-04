@@ -135,8 +135,8 @@ const closeFromButton = () => {
   Presets.System.impactMedium();
   commitClose();
 };
-const mountHandler: { current: (() => void) | null } = { current: null };
-const mountDemo = () => mountHandler.current?.();
+const mountHandlers = new Map<string, () => void>();
+const mountDemo = (groupId: string) => mountHandlers.get(groupId)?.();
 
 type CloseState = 'idle' | 'preparing' | 'ready' | 'unavailable';
 
@@ -214,12 +214,17 @@ const CloseBridge = ({ onCommit }: { onCommit: () => void }) => {
     if (state.current === 'ready') latest.current.interactive.cancel();
     state.current = 'idle';
   };
+  // What this bridge published, so its unmount clears only its own: a demo
+  // opened during a close mounts the next bridge before this one unmounts.
+  const published = useRef(closeHandlers);
+  published.current = { ...closeHandlers };
 
   useEffect(
     () => () => {
-      closeHandlers.begin = null;
-      closeHandlers.commit = null;
-      closeHandlers.abort = null;
+      const mine = published.current;
+      if (closeHandlers.begin === mine.begin) closeHandlers.begin = null;
+      if (closeHandlers.commit === mine.commit) closeHandlers.commit = null;
+      if (closeHandlers.abort === mine.abort) closeHandlers.abort = null;
     },
     [],
   );
@@ -363,14 +368,24 @@ const DemoLaunch = ({
   // most of the flight, and the mount's work lands in the settle, as the
   // content fades in over the flat backdrop.
   const [mounted, setMounted] = useState(groupId === null);
-  mountHandler.current = () => setMounted(true);
+  // Keyed by group: a demo still closing re-renders while the next one opens,
+  // and a single slot let it take the new demo's mount.
+  useLayoutEffect(() => {
+    if (groupId === null) return undefined;
+    const mount = () => setMounted(true);
+    mountHandlers.set(groupId, mount);
+    return () => {
+      if (mountHandlers.get(groupId) === mount) mountHandlers.delete(groupId);
+    };
+  }, [groupId]);
   useAnimatedReaction(
     () =>
       groupId !== null &&
       launchGroup.get() === groupId &&
       launchProgress.get() >= MOUNT_AT_PROGRESS,
     (ready, wasReady) => {
-      if (ready && !wasReady) scheduleOnRN(mountDemo);
+      if (ready && !wasReady && groupId !== null)
+        scheduleOnRN(mountDemo, groupId);
     },
   );
   useEffect(() => {

@@ -24,7 +24,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VariableBlur } from 'react-native-variable-blur';
 
-import { DEMOS } from './demos';
+import { useDemos } from './demos';
 import { getIconSource } from './icon-source';
 import { LaunchIcon } from './launch-icon';
 import { launchGroupId } from './launch-transition';
@@ -149,6 +149,7 @@ export const SearchReveal = ({
   inputRef,
 }: Props) => {
   const insets = useSafeAreaInsets();
+  const demos = useDemos();
 
   // Focus the field once search commits (after the surface has fully revealed)
   // so the keyboard rises with the reveal rather than racing the mount.
@@ -160,9 +161,9 @@ export const SearchReveal = ({
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return DEMOS;
-    return DEMOS.filter(d => d.name.toLowerCase().includes(q));
-  }, [query]);
+    if (!q) return demos;
+    return demos.filter(d => d.name.toLowerCase().includes(q));
+  }, [query, demos]);
 
   // Reveal progress 0 → 1: live pull (until the trigger) OR the pinned commit
   // level. Layered so the surface reveals like iOS rather than snapping in:
