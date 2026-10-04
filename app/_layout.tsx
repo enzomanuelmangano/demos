@@ -17,6 +17,7 @@ import { ChoreographyProvider } from 'react-native-screen-choreography/expo-rout
 
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
+import { useTouchIndicatorSync } from '../src/navigation/states/touches';
 import { Retray, RetrayThemes } from '../src/packages/retray';
 import { trays } from '../src/trays';
 
@@ -58,6 +59,8 @@ const demoScreenOptions = {
 export default function RootLayout() {
   // Check for OTA updates
   useOta();
+  // The "Show Touches" overlay, re-armed on launch (see the General tray).
+  useTouchIndicatorSync();
   const router = useRouter();
 
   const onLayoutRootView = useCallback(() => {
