@@ -55,15 +55,20 @@ const playCelebrationHaptics = async () => {
 
 const Transition = LinearTransition;
 
-// Generate initial board with medium difficulty
-const { puzzle: INITIAL_BOARD } = generateSudoku('medium');
+// Generate initial board with medium difficulty. Lazily, on first mount: every
+// demo module is imported at app start, and generating blocks JS for tens of ms.
+let initialBoard: ReturnType<typeof generateSudoku>['puzzle'] | undefined;
+const getInitialBoard = () => {
+  initialBoard ??= generateSudoku('medium').puzzle;
+  return initialBoard;
+};
 
 /**
  * Main App component that renders the Sudoku game interface
  */
 export const Sudoku = () => {
   const [hasStarted, setHasStarted] = useState(false);
-  const [board, setBoard] = useState(INITIAL_BOARD);
+  const [board, setBoard] = useState(getInitialBoard);
   const sudokuRef = useRef<SudokuBoardRef>(null);
   const confettiRef = useRef<PIConfettiMethods>(null);
 

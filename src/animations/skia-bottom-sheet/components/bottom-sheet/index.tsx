@@ -1,24 +1,31 @@
 // Import necessary modules and types
-import { useWindowDimensions } from 'react-native';
+import { PixelRatio, useWindowDimensions } from 'react-native';
 
-import { type FC, memo } from 'react';
+import { type FC, memo, useEffect, useState } from 'react';
 
 import {
+  useAnimatedReaction,
   useDerivedValue,
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
 import {
   BackdropBlur,
+  Blur,
   BlurMask,
+  drawAsImage,
+  Group,
+  Image,
   rect,
   RoundedRect,
   rrect,
   Skia,
 } from 'react-native-skia';
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import type { SharedValue } from 'react-native-reanimated';
+import type { SkImage } from 'react-native-skia';
 
 // Set default values for bottom sheet props
 const DEFAULT_CARD_RADIUS = 30;
@@ -38,6 +45,59 @@ type BottomSheetProps = {
   cardRadius?: number;
   cardInitialOffset?: number;
   color?: string;
+  // The (static) image drawn behind the sheet. When provided, it is blurred
+  // once offscreen instead of blurring the backdrop on every frame.
+  backdropImage?: SkImage | null;
+};
+
+type Size = { width: number; height: number };
+
+// Renders `image` (fit cover, like the background) with the same clamp blur
+// BackdropBlur applies, at device pixel size so it maps 1:1 on screen.
+const useBlurredImage = (
+  image: SkImage | null | undefined,
+  size: SharedValue<Size>,
+  blur: number,
+) => {
+  const [canvasSize, setCanvasSize] = useState<Size | null>(null);
+  const [blurred, setBlurred] = useState<SkImage | null>(null);
+
+  useAnimatedReaction(
+    () => size.get(),
+    ({ width, height }) => {
+      if (width > 0 && height > 0) {
+        scheduleOnRN(setCanvasSize, { width, height });
+      }
+    },
+  );
+
+  useEffect(() => {
+    if (!image || !canvasSize) return;
+    let cancelled = false;
+    const pd = PixelRatio.get();
+    const { width, height } = canvasSize;
+    drawAsImage(
+      <Group transform={[{ scale: pd }]}>
+        <Image
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fit="cover"
+          image={image}>
+          <Blur blur={blur} mode="clamp" />
+        </Image>
+      </Group>,
+      { width: Math.round(width * pd), height: Math.round(height * pd) },
+    ).then(result => {
+      if (!cancelled) setBlurred(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [image, canvasSize, blur]);
+
+  return { blurred, canvasSize };
 };
 
 // Define the BottomSheet component
@@ -48,7 +108,10 @@ const BottomSheet: FC<BottomSheetProps> = memo(
     cardRadius = DEFAULT_CARD_RADIUS,
     cardInitialOffset = DEFAULT_CARD_INITIAL_OFFSET,
     color = DEFAULT_CARD_COLOR,
+    backdropImage,
   }) => {
+    const { blurred, canvasSize } = useBlurredImage(backdropImage, size, blur);
+
     // Set up animated translateY value with default value of 0
     const translateY = useSharedValue(0);
 
@@ -133,7 +196,20 @@ const BottomSheet: FC<BottomSheetProps> = memo(
 
     return (
       <>
-        <BackdropBlur clip={roundedRectPath} blur={blur} />
+        {blurred && canvasSize ? (
+          <Group clip={roundedRectPath}>
+            <Image
+              x={0}
+              y={0}
+              width={canvasSize.width}
+              height={canvasSize.height}
+              fit="fill"
+              image={blurred}
+            />
+          </Group>
+        ) : (
+          <BackdropBlur clip={roundedRectPath} blur={blur} />
+        )}
         <RoundedRect
           x={x}
           y={y}

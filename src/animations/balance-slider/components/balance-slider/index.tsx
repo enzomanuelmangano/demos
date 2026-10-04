@@ -66,6 +66,10 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     [onChange],
   );
 
+  // Last percentage sent to onChange: repeated values (pinned at an edge, or
+  // a purely vertical finger move) skip the hop to the JS thread.
+  const lastReportedPercentage = useSharedValue(-1);
+
   const xPercentage = useDerivedValue(() => {
     return clamp((x.get() - pickerWidth / 2) / width, 0, 1);
   });
@@ -86,7 +90,11 @@ export const BalanceSlider: React.FC<BalanceSliderProps> = ({
     })
     .onUpdate(event => {
       x.set(event.x + pickerWidth / 2);
-      scheduleOnRN(onChangeWrapper, xPercentage.get());
+      const percentage = xPercentage.get();
+      if (percentage !== lastReportedPercentage.get()) {
+        lastReportedPercentage.set(percentage);
+        scheduleOnRN(onChangeWrapper, percentage);
+      }
     });
 
   const hasReachedBoundaries = useDerivedValue(() => {

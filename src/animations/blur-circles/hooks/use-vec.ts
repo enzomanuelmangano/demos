@@ -1,61 +1,30 @@
-import { useCallback } from 'react';
-
-import {
-  useAnimatedReaction,
-  useDerivedValue,
-  useSharedValue,
-} from 'react-native-reanimated';
-import { vec } from 'react-native-skia';
-import { scheduleOnRN } from 'react-native-worklets';
+import { useDerivedValue } from 'react-native-reanimated';
 
 import { center } from '../constants';
+import { noise2D } from '../worklet-noise';
 
+import type { NoiseTables } from '../worklet-noise';
 import type { SharedValue } from 'react-native-reanimated';
 
 type UseVecParams = {
   clock: SharedValue<number>;
   frequency: number;
   amplitude: number;
-  noise: (x: number, y: number) => number;
+  noise: NoiseTables;
 };
 
-// This hook is used to retrieve the x and y coordinates of the circle
-// that is animated in the example.
-
-// The hook takes in a clock, frequency, amplitude, and noise function
-// and returns the x and y coordinates of the circle.
-
+// Returns the x and y coordinates of an animated circle: simplex noise
+// sampled along the clock, scaled by the amplitude and centred on screen.
+// The noise runs in a worklet, so the circles move without ever touching the
+// JS thread.
 const useVec = ({ clock, frequency, amplitude, noise }: UseVecParams) => {
-  const vecNoise = useSharedValue(vec(0, 0));
-
-  const updateVecNoise = useCallback(() => {
-    const x = noise(clock.get() / frequency, 0);
-    const y = noise(0, clock.get() / frequency);
-    vecNoise.set(vec(amplitude * x, amplitude * y));
-  }, [clock, frequency, amplitude, noise, vecNoise]);
-
-  useAnimatedReaction(
-    () => clock.get(),
-    () => {
-      scheduleOnRN(updateVecNoise);
-    },
-    [updateVecNoise],
-  );
-
-  // The hook uses the useComputedValue hook to create a computed value
-  // that is dependent on the clock. The computed value is a vector
-  // that is created by using the noise function to create a value for
-  // the x and y coordinates of the vector. The vector is then multiplied
-  // by the amplitude to create a larger value. The vector is then added
-  // to the center of the screen to create a vector that is centered
-  // on the screen.
   const cx = useDerivedValue(() => {
-    return vecNoise.get().x + center.x;
-  }, [vecNoise]);
+    return amplitude * noise2D(noise, clock.get() / frequency, 0) + center.x;
+  }, [clock, frequency, amplitude, noise]);
 
   const cy = useDerivedValue(() => {
-    return vecNoise.get().y + center.y;
-  }, [vecNoise]);
+    return amplitude * noise2D(noise, 0, clock.get() / frequency) + center.y;
+  }, [clock, frequency, amplitude, noise]);
 
   return {
     cx,

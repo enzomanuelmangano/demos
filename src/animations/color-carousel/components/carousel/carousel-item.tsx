@@ -20,7 +20,6 @@ type CarouselItemProps = {
   itemHeight: number;
   carouselWidth: number;
   maxRenderedItems: number;
-  activeIndex: SharedValue<number>;
 };
 
 const CarouselItem: FC<CarouselItemProps> = memo(
@@ -32,7 +31,6 @@ const CarouselItem: FC<CarouselItemProps> = memo(
     itemHeight,
     carouselWidth,
     maxRenderedItems,
-    activeIndex,
   }) => {
     const rItemListStyle = useAnimatedStyle(() => {
       const position = index * itemWidth + translateX.get();
@@ -56,8 +54,6 @@ const CarouselItem: FC<CarouselItemProps> = memo(
         initialActiveIndex +
         (-translateX.get() + itemWidth / 2) /
           (carouselWidth / maxRenderedItems);
-
-      activeIndex.set(Math.floor(preciseActiveIndex));
 
       const rotateY = interpolate(
         preciseActiveIndex - index - 0.5,

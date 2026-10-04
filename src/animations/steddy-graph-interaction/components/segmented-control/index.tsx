@@ -55,8 +55,15 @@ function SegmentedControl<T extends string>({
     // 3 -> -internalPadding / 4
     // 4 -> -internalPadding / 2
 
+    // translateX over a static left: 0 — same position, no layout pass
     return {
-      left: withSpring(cellBackgroundWidth * selectedCellIndex + padding),
+      transform: [
+        {
+          translateX: withSpring(
+            cellBackgroundWidth * selectedCellIndex + padding,
+          ),
+        },
+      ],
     };
   }, [selectedCellIndex]);
 
@@ -123,6 +130,7 @@ const localStyles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+    left: 0,
     position: 'absolute',
     zIndex: 1,
   },

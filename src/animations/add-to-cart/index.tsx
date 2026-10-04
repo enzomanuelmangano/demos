@@ -23,8 +23,10 @@ import type { MeasuredDimensions } from 'react-native-reanimated';
 const items = new Array(20).fill(0).map((_, index) => ({
   id: index,
   title: `Item ${index}`,
+  // Shown as a ~55pt square (cover): w=200 is still above 3x, w=987 decoded
+  // a ~5.8MB bitmap per row.
   imageUri:
-    'https://images.unsplash.com/photo-1662880195918-63fecf8a8b71?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=987&q=80',
+    'https://images.unsplash.com/photo-1662880195918-63fecf8a8b71?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=200&q=80',
   description:
     'Lorem, ipsum dolor sit amet consectetur adipisicing elit. Vitae itaque quae, deleniti distinctio laudantium, doloremque debitis, fugiat ea alias sint dolor qui? Quo tempore, ab aliquam repellendus veritatis aspernatur cupiditate.',
   count: 0,

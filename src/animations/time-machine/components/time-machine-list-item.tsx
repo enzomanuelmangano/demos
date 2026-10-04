@@ -33,8 +33,6 @@ export const TimeMachineListItem = memo(
 
     const rStyle = useAnimatedStyle(() => {
       return {
-        width: width,
-        height: height,
         opacity: itemOpacity.get(),
         pointerEvents: progress.get() > 0.1 ? 'none' : 'auto',
         transform: [
@@ -49,7 +47,7 @@ export const TimeMachineListItem = memo(
     }, [index, progress, activeIndex]);
 
     return (
-      <Animated.View style={[styles.container, rStyle]}>
+      <Animated.View style={[styles.container, { width, height }, rStyle]}>
         <Animated.View style={styles.content}>
           <OptimizedPriorityListView target={target} />
         </Animated.View>

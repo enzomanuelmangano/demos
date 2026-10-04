@@ -32,12 +32,10 @@ const getDigitByIndex = ({
 }) => {
   'worklet';
 
-  const paddedValue = count.toString().padStart(maxDigits, '0');
-
-  return parseInt(
-    paddedValue.toString().split('')?.[maxDigits - 1 - digitIndex] ?? 0,
-    10,
-  );
+  // Same digit as reading count.padStart(maxDigits, '0') from the right, but
+  // without building strings and arrays on every frame.
+  if (digitIndex >= maxDigits) return 0;
+  return Math.floor(count / 10 ** digitIndex) % 10;
 };
 
 const AnimatedDigit: FC<AnimatedDigitProps> = memo(

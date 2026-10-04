@@ -1,10 +1,6 @@
 import { useMemo } from 'react';
 
-import {
-  Extrapolation,
-  interpolate,
-  type SharedValue,
-} from 'react-native-reanimated';
+import { type SharedValue } from 'react-native-reanimated';
 import {
   Atlas,
   Group,
@@ -33,14 +29,14 @@ import type { MorphTargets } from './sampling';
 import type { SkFont, SkRect } from 'react-native-skia';
 
 // 0 before a letter starts moving, 1 once it has landed (offset by its delay).
+// Same math as a clamped interpolate(), inlined: it runs twice per glyph per
+// frame and interpolate() would allocate two range arrays on every call.
 const letterPhase = (p: number, d: number): number => {
   'worklet';
-  return interpolate(
-    p,
-    [d * STAGGER, d * STAGGER + (1 - STAGGER)],
-    [0, 1],
-    Extrapolation.CLAMP,
-  );
+  const start = d * STAGGER;
+  const end = start + (1 - STAGGER);
+  const t = (p - start) / (end - start);
+  return t < 0 ? 0 : t > 1 ? 1 : t;
 };
 
 interface Props {
@@ -72,6 +68,22 @@ export const Reveal = ({
     () => targets?.delays ?? new Float32Array(N),
     [targets, N],
   );
+
+  // travel distance and direction only depend on the fixed endpoints, so
+  // they're computed once per target instead of per glyph per frame
+  const travel = useMemo(() => {
+    const normMoves = new Float64Array(N);
+    const rotSigns = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const dxm = picXY[i * 2] - pageXY[i * 2];
+      const dym = picXY[i * 2 + 1] - pageXY[i * 2 + 1];
+      const moveDist = Math.sqrt(dxm * dxm + dym * dym);
+      normMoves[i] = Math.min(moveDist / screenW, 1);
+      rotSigns[i] = dxm >= 0 ? 1 : -1;
+    }
+    return { normMoves, rotSigns };
+  }, [N, pageXY, picXY, screenW]);
+  const { normMoves, rotSigns } = travel;
 
   const atlasElement = useMemo(
     () => (
@@ -111,10 +123,7 @@ export const Reveal = ({
 
     // mid-flight surge toward the camera (more the farther it travels),
     // perspective-projected toward centre; flat at both ends
-    const dxm = tx2 - sx;
-    const dym = ty2 - sy;
-    const moveDist = Math.sqrt(dxm * dxm + dym * dym);
-    const normMove = Math.min(moveDist / screenW, 1);
+    const normMove = normMoves[i];
     const eff = Math.sin(pe * PI);
     const zDepth = eff * (Z_BASE + normMove * Z_MOVE);
     const persp = CAMERA_Z / (CAMERA_Z - zDepth);
@@ -128,7 +137,7 @@ export const Reveal = ({
       PAGE_GLYPH_SCALE + (PICTURE_GLYPH_SCALE - PAGE_GLYPH_SCALE) * pe;
     const s = baseScale * persp;
 
-    const rot = eff * ROT_3D * normMove * (dxm >= 0 ? 1 : -1);
+    const rot = eff * ROT_3D * normMove * rotSigns[i];
     const scos = s * Math.cos(rot);
     const ssin = s * Math.sin(rot);
 

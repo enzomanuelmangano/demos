@@ -58,39 +58,31 @@ export const GeometryButton: FC<GeometryButtonProps> = memo(
     const animatedCircles = useDerivedValue(() => {
       // Create a new path builder using Skia
       const builder = Skia.PathBuilder.Make();
+      const p = progress.get();
 
       // Loop through the number of circles specified
       for (let i = 0; i < circles; i++) {
-        // Create a new circle path builder using Skia
-        const circle = Skia.PathBuilder.Make();
-
         // Calculate the rotation angle for each circle
         const rotation = (i * 2 * Math.PI) / circles;
 
-        // Add a rounded rectangle to the circle path representing the circle
+        // Translate the circle along the x-axis based on the progress value and the cosine of the rotation angle
+        const dx = radius * Math.cos(rotation) * p;
+        // Translate the circle along the y-axis based on the progress value and the sine of the rotation angle
+        const dy = radius * Math.sin(rotation) * p;
+
+        // Add a rounded rectangle representing the circle, already translated
+        // (same geometry as building it at the origin and transforming it,
+        // without a builder, a matrix and a path per circle every frame)
         // Why a rounded rectangle?
         // Because there's an interesting effect if you animate the radius as well!
-        circle.addRRect(
-          rrect(rect(-radius, -radius, size, size), radius, radius),
+        builder.addRRect(
+          rrect(rect(-radius + dx, -radius + dy, size, size), radius, radius),
         );
-
-        // Apply a transformation to the circle path to animate its position
-        circle.transform(
-          Skia.Matrix().translate(
-            // Translate the circle along the x-axis based on the progress value and the cosine of the rotation angle
-            radius * Math.cos(rotation) * progress.get(),
-            // Translate the circle along the y-axis based on the progress value and the sine of the rotation angle
-            radius * Math.sin(rotation) * progress.get(),
-          ),
-        );
-
-        // Add the transformed circle path to the main path
-        builder.addPath(circle.build());
       }
 
       // Return the main path containing all the animated circles
       return builder.build();
-    }, [progress.get(), size]);
+    }, [circles, size]);
 
     const canvasSize = size * 2;
     const baseStyle = useMemo(() => {

@@ -12,21 +12,16 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useState,
 } from 'react';
 
-import Animated, {
-  FadeIn,
-  FadeInDown,
-  useSharedValue,
-} from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue } from 'react-native-reanimated';
 
 import { SudokuGame } from '../../logic';
 import { COLORS } from '../../theme';
 import { NumberPad } from '../number-pad';
 import { CellContainer } from './cell-container';
-import { BOARD_SIZE } from './constants';
+import { BOARD_SIZE, CELL_SIZE } from './constants';
 
 import type { SudokuBoard as SudokuBoardType } from '../../logic';
 
@@ -47,6 +42,9 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
   ({ initialBoard, delay = 0, onComplete }, ref) => {
     const [game] = useState(() => new SudokuGame(initialBoard));
     const [board, setBoard] = useState(() => game.getBoard());
+    // The givens never change for a game: read them once instead of handing
+    // every cell a fresh 9x9 copy per render (which defeated CellContainer's memo)
+    const [givens] = useState(() => game.getInitialBoard());
     const selectedCell = useSharedValue(game.getSelectedCell());
     const highlightedNumber = useSharedValue(game.getHighlightedNumber());
 
@@ -90,12 +88,16 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
       }
     }, [game]);
 
-    const [isReady, setIsReady] = useState(false);
+    // Rows mount one per frame instead of all 81 cells (each with its views,
+    // pressable and mappers) in a single JS task, which stalled the reveal.
+    const [mountedRows, setMountedRows] = useState(0);
+    const [revealStart, setRevealStart] = useState(0);
     const [isNumberPadReady, setIsNumberPadReady] = useState(false);
 
     useEffect(() => {
       const timer = setTimeout(() => {
-        setIsReady(true);
+        setRevealStart(performance.now());
+        setMountedRows(1);
       }, delay);
       const numberPadTimer = setTimeout(() => {
         setIsNumberPadReady(true);
@@ -107,37 +109,34 @@ export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
       };
     }, [delay]);
 
-    const boardContent = useMemo(() => {
-      if (!isReady) return null;
+    useEffect(() => {
+      if (mountedRows === 0 || mountedRows >= board.length) return;
+      const frame = requestAnimationFrame(() => {
+        setMountedRows(rows => rows + 1);
+      });
+      return () => cancelAnimationFrame(frame);
+    }, [mountedRows, board.length]);
 
-      return board.map((row, rowIndex) => (
-        <View key={`sudoku-row-${rowIndex}`} style={styles.row}>
-          {row.map((value, colIndex) => (
-            <Animated.View
+    // Every row keeps its height while empty, so the centred board doesn't
+    // shift as rows arrive.
+    const boardContent = board.map((row, rowIndex) => (
+      <View key={`sudoku-row-${rowIndex}`} style={styles.row}>
+        {rowIndex < mountedRows &&
+          row.map((value, colIndex) => (
+            <CellContainer
               key={`sudoku-cell-r${rowIndex}-c${colIndex}`}
-              entering={FadeIn.delay((rowIndex + colIndex) * 75).duration(350)}>
-              <CellContainer
-                rowIndex={rowIndex}
-                colIndex={colIndex}
-                value={value}
-                board={board}
-                selectedCell={selectedCell}
-                highlightedNumber={highlightedNumber}
-                initialBoard={game.getInitialBoard()}
-                onCellPress={handleCellPress}
-              />
-            </Animated.View>
+              rowIndex={rowIndex}
+              colIndex={colIndex}
+              value={value}
+              selectedCell={selectedCell}
+              highlightedNumber={highlightedNumber}
+              isInitial={givens[rowIndex][colIndex] !== null}
+              onCellPress={handleCellPress}
+              revealStart={revealStart}
+            />
           ))}
-        </View>
-      ));
-    }, [
-      isReady,
-      board,
-      selectedCell,
-      highlightedNumber,
-      game,
-      handleCellPress,
-    ]);
+      </View>
+    ));
 
     return (
       <View style={styles.boardContainer}>
@@ -185,5 +184,6 @@ export const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
+    height: CELL_SIZE,
   },
 });

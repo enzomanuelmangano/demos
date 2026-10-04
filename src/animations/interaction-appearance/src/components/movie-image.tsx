@@ -1,8 +1,12 @@
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useMemo } from 'react';
 
-import { useDerivedValue, withTiming } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useDerivedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Blur, Canvas, Group, Image, rect, rrect } from 'react-native-skia';
 
@@ -53,28 +57,41 @@ export const MovieImage: React.FC<MovieImageProps> = ({
   const canvasStyle = useMemo(
     () =>
       ({
-        height: canvasHeight + 500,
+        // The blurred copy spreads far below the image; the sharp one fits
+        // inside canvasHeight, so it doesn't need the extra surface.
+        height: blur ? canvasHeight + 500 : canvasHeight,
         position: 'absolute',
         width: '100%',
       }) as const,
-    [canvasHeight],
+    [blur, canvasHeight],
   );
+
+  // The opacity fade runs on the native view: the sigma-500 blur is drawn
+  // once instead of being recomputed on every frame of the fade.
+  const rCanvasStyle = useAnimatedStyle(() => {
+    return {
+      opacity: blurImageOpacity.get(),
+    };
+  }, []);
+
   return (
     <>
-      <Canvas style={canvasStyle}>
-        <Group clip={imageRoundedRect} opacity={blurImageOpacity}>
-          <Image
-            image={skImage}
-            fit={'cover'}
-            width={200}
-            height={imageHeight}
-            x={32}
-            y={imageY}
-          />
-          {/* Try to comment this blur component to see how it impacts the layout */}
-          {blur && <Blur blur={blur} />}
-        </Group>
-      </Canvas>
+      <Animated.View style={[canvasStyle, rCanvasStyle]}>
+        <Canvas style={StyleSheet.absoluteFill}>
+          <Group clip={imageRoundedRect}>
+            <Image
+              image={skImage}
+              fit={'cover'}
+              width={200}
+              height={imageHeight}
+              x={32}
+              y={imageY}
+            />
+            {/* Try to comment this blur component to see how it impacts the layout */}
+            {blur && <Blur blur={blur} />}
+          </Group>
+        </Canvas>
+      </Animated.View>
       {!blur && (
         <View
           style={{

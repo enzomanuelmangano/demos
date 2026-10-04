@@ -11,7 +11,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { scheduleOnRN } from 'react-native-worklets';
 
 import type { StyleProp, ViewStyle } from 'react-native';
 
@@ -24,6 +23,7 @@ type SliderProps = {
   style: StyleProp<
     Omit<ViewStyle, 'width' | 'height'> & { width: number; height?: number }
   >;
+  // Must be a worklet: it's called on the UI thread on every drag frame
   onUpdate?: (progress: number) => void;
   initialProgress?: number;
 };
@@ -81,7 +81,8 @@ const Slider: FC<SliderProps> = ({
         [0, sliderWidth],
         [minValue, maxValue],
       );
-      if (onUpdate) scheduleOnRN(onUpdate, progress);
+      // Called directly on the UI thread: no JS hop per drag frame
+      if (onUpdate) onUpdate(progress);
     },
   );
 
@@ -107,10 +108,17 @@ const Slider: FC<SliderProps> = ({
       pickerBorderWidth.set(withSpring(defaultPickerBorderWidth));
     });
 
-  const rPickerStyle = useAnimatedStyle(() => {
+  // Border props only change on press/release: kept apart from the
+  // per-frame transform so dragging doesn't re-send them every frame.
+  const rPickerBorderStyle = useAnimatedStyle(() => {
     return {
       borderWidth: pickerBorderWidth.get(),
       borderRadius: pickerBorderRadius.get(),
+    };
+  }, []);
+
+  const rPickerStyle = useAnimatedStyle(() => {
+    return {
       transform: [
         { translateX: clampedTranslateX.get() - pickerSize / 2 },
         {
@@ -120,9 +128,11 @@ const Slider: FC<SliderProps> = ({
     };
   }, []);
 
+  // Full-width bar scaled from the left instead of animating `width`:
+  // same pixels (the bar has no radius), no layout pass per frame.
   const rProgressBarStyle = useAnimatedStyle(() => {
     return {
-      width: clampedTranslateX.get(),
+      transform: [{ scaleX: clampedTranslateX.get() / sliderWidth }],
     };
   }, []);
 
@@ -140,6 +150,7 @@ const Slider: FC<SliderProps> = ({
         style={[
           {
             backgroundColor: color,
+            width: sliderWidth,
           },
           styles.progressBar,
           rProgressBarStyle,
@@ -154,6 +165,7 @@ const Slider: FC<SliderProps> = ({
               top: -pickerSize / 2 + sliderHeight / 2,
             },
             styles.picker,
+            rPickerBorderStyle,
             rPickerStyle,
           ]}
         />
@@ -175,6 +187,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     top: 0,
+    transformOrigin: 'left',
   },
 });
 

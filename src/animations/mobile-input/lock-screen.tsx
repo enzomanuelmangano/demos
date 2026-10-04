@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useCallback, useRef } from 'react';
 
@@ -34,6 +34,7 @@ const LockScreen: FC<LockScreenProps> = ({
   onError,
 }) => {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const animatedFaceRef = useRef<AnimatedFaceRefType>(null);
   const { shake, rShakeStyle: rPinContainerStyle } = useAnimatedShake();
 
@@ -93,7 +94,15 @@ const LockScreen: FC<LockScreenProps> = ({
 
   return (
     <View style={styles.container}>
-      <Canvas style={{ width: '200%', position: 'absolute', aspectRatio: 1 }}>
+      {/* Same height as the old 200%-wide square canvas, but only as wide as
+          the screen: its right half was off-screen, and the surface under the
+          animated BlurMask is halved. Skia coordinates are unchanged. */}
+      <Canvas
+        style={{
+          width: '100%',
+          position: 'absolute',
+          height: windowWidth * 2,
+        }}>
         <CircleStroke />
         <AnimatedFace ref={animatedFaceRef} />
       </Canvas>

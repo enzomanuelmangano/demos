@@ -9,8 +9,9 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
 import { Canvas, FitBox, Path, rect, Skia } from 'react-native-skia';
+
+import { ReText } from '../../../components/re-text';
 
 type SliderProps = {
   pickerSize?: number;
@@ -85,9 +86,11 @@ const Slider: React.FC<SliderProps> = ({
     };
   }, []);
 
+  // Full-width bar scaled from its left edge: same fill as animating `width`
+  // (the bar has no radius to distort) without a layout pass per pan frame.
   const rProgressBarStyle = useAnimatedStyle(() => {
     return {
-      width: clampedTranslateX.get(),
+      transform: [{ scaleX: clampedTranslateX.get() / sliderWidth }],
     };
   }, []);
 
@@ -163,6 +166,7 @@ const Slider: React.FC<SliderProps> = ({
         style={[
           {
             backgroundColor: color,
+            width: sliderWidth,
           },
           styles.progressBar,
           rProgressBarStyle,
@@ -207,6 +211,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     top: 0,
+    transformOrigin: 'left',
   },
 });
 

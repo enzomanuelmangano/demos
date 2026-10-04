@@ -23,7 +23,7 @@
  */
 import { StyleSheet, View } from 'react-native';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -46,7 +46,7 @@ import {
   DEFAULT_QR_TARGET_HEIGHT,
   DEFAULT_TORUS,
 } from './constants';
-import { createPicture } from './create-picture';
+import { createBackgroundColors, createPicture } from './create-picture';
 import { useShapeData } from './hooks';
 import {
   QRCodeAnimationProps,
@@ -104,6 +104,12 @@ const QRCodeAnimation = ({
 
   // Load sprite sheet
   const spriteSheet = useImage(sprite.source);
+
+  // Parsed once: the frame loop reuses these instead of parsing hsl() strings
+  const backgroundColors = useMemo(
+    () => createBackgroundColors(colors, shapeData.spriteCoords.length),
+    [colors, shapeData],
+  );
 
   /**
    * Toggle between torus and QR code modes.
@@ -187,6 +193,7 @@ const QRCodeAnimation = ({
       shapeData,
       colors,
       avatarSize,
+      backgroundColors,
     );
   }, [
     spriteSheet,
@@ -197,6 +204,7 @@ const QRCodeAnimation = ({
     shapeData,
     colors,
     avatarSize,
+    backgroundColors,
   ]);
 
   // Don't render until both sprite and shape data are ready

@@ -39,9 +39,14 @@ export function generateNumbersInRange(n: number, m: number) {
 }
 
 // check if two array contains the same elements
+// (set comparison without the sort + join string building)
 export const sameElements = (arr1: number[], arr2: number[]) => {
   'worklet';
-  return (
-    [...new Set(arr1)].sort().join(',') === [...new Set(arr2)].sort().join(',')
-  );
+  const set1 = new Set(arr1);
+  const set2 = new Set(arr2);
+  if (set1.size !== set2.size) return false;
+  for (const value of set1) {
+    if (!set2.has(value)) return false;
+  }
+  return true;
 };

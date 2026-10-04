@@ -210,9 +210,12 @@ const SortableItem: FC<SortableListItemProps> = ({
   const rStyle = useAnimatedStyle(() => {
     const zIndex = getZIndex();
 
+    // translateY over a static top: 0 — same position, but no layout pass
     return {
-      top: top.get(),
       transform: [
+        {
+          translateY: top.get(),
+        },
         {
           translateX: translateX.get(),
         },
@@ -262,6 +265,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
+    top: 0,
   },
 });
 

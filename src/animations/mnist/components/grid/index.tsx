@@ -83,12 +83,14 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
           return;
         }
 
-        for (let i = 0; i < GRID_SIZE; i++) {
-          for (let j = 0; j < GRID_SIZE; j++) {
-            const square = `${j},${i}`;
-            const isTouched = updatedTouchedSquares.includes(square);
-
-            baseSquares[i][j] = isTouched ? 1 : 0;
+        // Mark each touched cell directly (O(n)) instead of 784 string
+        // lookups into the touched list. Square "x,y" lands in row y, col x.
+        for (let s = 0; s < updatedTouchedSquares.length; s++) {
+          const parts = updatedTouchedSquares[s].split(',');
+          const x = Number(parts[0]);
+          const y = Number(parts[1]);
+          if (isWithinBounds(x, y)) {
+            baseSquares[y][x] = 1;
           }
         }
 
@@ -108,9 +110,18 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
         const i = Math.floor(event.x / CELL_SIZE);
         const j = Math.floor(event.y / CELL_SIZE);
 
-        if (isWithinBounds(i, j)) {
-          touchedSquares.set([...touchedSquares.get(), `${i},${j}`]);
+        if (!isWithinBounds(i, j)) {
+          return;
         }
+        // Pan updates fire many times per cell. A cell that is already touched
+        // changes neither the paths nor the prediction, so skip it instead of
+        // growing the list (and re-running predict) on every event.
+        const square = `${i},${j}`;
+        const squares = touchedSquares.get();
+        if (squares.includes(square)) {
+          return;
+        }
+        touchedSquares.set([...squares, square]);
       },
       [touchedSquares],
     );
@@ -143,13 +154,23 @@ export const Grid = forwardRef<GridHandleRef, GridProps>(
       const builder = Skia.PathBuilder.Make();
       const groups = surroundingSquareCoords.get();
       const touched = touchedSquares.get();
+      // Flag grid for O(1) "is touched" checks (was an includes() per neighbour).
+      const touchedFlags = new Uint8Array(GRID_SIZE * GRID_SIZE);
+      for (let s = 0; s < touched.length; s++) {
+        const parts = touched[s].split(',');
+        const x = Number(parts[0]);
+        const y = Number(parts[1]);
+        if (isWithinBounds(x, y)) {
+          touchedFlags[x * GRID_SIZE + y] = 1;
+        }
+      }
       for (let g = 0; g < groups.length; g++) {
         const coords = groups[g];
         for (let c = 0; c < coords.length; c++) {
           const parts = coords[c].split(',');
           const x = Number(parts[0]);
           const y = Number(parts[1]);
-          if (isWithinBounds(x, y) && !touched.includes(`${x},${y}`)) {
+          if (isWithinBounds(x, y) && !touchedFlags[x * GRID_SIZE + y]) {
             builder.addRect(createSquarePath(x, y));
           }
         }

@@ -127,6 +127,11 @@ const startFrameLoop = (
   const submission: GPUCommandBuffer[] = [
     undefined as unknown as GPUCommandBuffer,
   ];
+  // The uniforms are the only per-frame input to the pass. When they match the
+  // last frame word for word, the image would be the same, and the swapchain
+  // keeps showing the last presented frame, so the full-screen pass is skipped.
+  const presentedWords = new Uint32Array(uints.length);
+  let hasPresented = false;
 
   // No 'worklet' directive: this already runs inside one, and marking it turns
   // it into a worklet object rather than a plain callable for rAF.
@@ -213,6 +218,19 @@ const startFrameLoop = (
     // Published as its own shared value: the paginator animates off this, and
     // mutating a property inside lightValue would never notify Reanimated.
     scrollValue.set(light.pageShift);
+
+    let unchanged = hasPresented;
+    for (let i = 0; unchanged && i < uints.length; i += 1) {
+      if (uints[i] !== presentedWords[i]) {
+        unchanged = false;
+      }
+    }
+    if (unchanged) {
+      requestAnimationFrame(frame);
+      return;
+    }
+    presentedWords.set(uints);
+    hasPresented = true;
 
     device.queue.writeBuffer(uniformBuffer, 0, uniforms);
 

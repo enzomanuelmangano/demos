@@ -28,7 +28,8 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
   style,
   contentContainerStyle,
 }) => {
-  const { toggleTheme, animationProgress } = useSwitchTheme();
+  const { toggleTheme, prepareToggleTheme, animationProgress } =
+    useSwitchTheme();
 
   const viewRef = useAnimatedRef<Reanimated.View>();
 
@@ -51,18 +52,22 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
 
   const scale = useSharedValue(1);
 
-  const tapGesture = Gesture.Tap().onTouchesUp(() => {
-    const value = measure(viewRef);
-    if (!value) return;
-    const center = {
-      x: value.pageX,
-      y: value.pageY,
-      height: 80,
-      width: 80,
-    };
+  const tapGesture = Gesture.Tap()
+    .onTouchesDown(() => {
+      scheduleOnRN(prepareToggleTheme);
+    })
+    .onTouchesUp(() => {
+      const value = measure(viewRef);
+      if (!value) return;
+      const center = {
+        x: value.pageX,
+        y: value.pageY,
+        height: 80,
+        width: 80,
+      };
 
-    scheduleOnRN(toggleTheme, { center, style });
-  });
+      scheduleOnRN(toggleTheme, { center, style });
+    });
 
   const rContainerStyle = useAnimatedStyle(() => {
     return {
@@ -74,9 +79,12 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
     };
   });
 
+  // The button is hidden (opacity 0) for the whole transition and only shown
+  // at rest (0 or 1), so rounding is identical on screen but lets Reanimated
+  // skip the in-between frames instead of redrawing this Lottie every frame.
   const animatedProps = useAnimatedProps(() => {
     return {
-      progress: animationProgress.get(),
+      progress: Math.round(animationProgress.get()),
     };
   });
 

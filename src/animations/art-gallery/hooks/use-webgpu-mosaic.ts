@@ -179,6 +179,11 @@ export function useWebGPUMosaic(
   );
 
   const uniformDataRef = useRef(new Float32Array(16));
+  // Uniforms of the last presented frame. When nothing changed (and no buffer
+  // or bind group was swapped) the frame would be identical, so the loop skips
+  // the encode/submit/present and the previous frame stays on screen.
+  const lastUniformDataRef = useRef(new Float32Array(16));
+  const needsRedrawRef = useRef(true);
 
   const {
     cells,
@@ -334,7 +339,6 @@ export function useWebGPUMosaic(
       depthTexture,
       backgroundPipeline,
       backgroundBindGroup,
-      backgroundUniformBuffer,
     } = resourcesRef.current;
 
     // Don't present until the tile buffers are populated: early frames would
@@ -378,21 +382,27 @@ export function useWebGPUMosaic(
       if (!wasFocused && hasFocus) {
         // Unfocused → Focused: fade in
         animTypeRef.current = 'fade-in';
-        focusPosRef.current = { x: newTargetX, y: newTargetY };
-        targetFocusPosRef.current = { x: newTargetX, y: newTargetY };
+        focusPosRef.current.x = newTargetX;
+        focusPosRef.current.y = newTargetY;
+        targetFocusPosRef.current.x = newTargetX;
+        targetFocusPosRef.current.y = newTargetY;
         transitionStartRef.current = now;
         wasFocusedRef.current = true;
       } else if (wasFocused && !hasFocus) {
         // Focused → Unfocused: fade out
         animTypeRef.current = 'fade-out';
-        targetFocusPosRef.current = { x: -9999, y: -9999 };
+        targetFocusPosRef.current.x = -9999;
+        targetFocusPosRef.current.y = -9999;
         transitionStartRef.current = now;
         wasFocusedRef.current = false;
       } else if (wasFocused && hasFocus) {
         // Cell → Cell: interpolate position
         animTypeRef.current = 'move';
-        startFocusPosRef.current = { ...focusPosRef.current }; // Save start position
-        targetFocusPosRef.current = { x: newTargetX, y: newTargetY };
+        // Save start position (mutated in place: no allocation per frame)
+        startFocusPosRef.current.x = focusPosRef.current.x;
+        startFocusPosRef.current.y = focusPosRef.current.y;
+        targetFocusPosRef.current.x = newTargetX;
+        targetFocusPosRef.current.y = newTargetY;
         transitionStartRef.current = now;
       }
     }
@@ -414,20 +424,20 @@ export function useWebGPUMosaic(
         const startY = startFocusPosRef.current.y;
         const endX = targetFocusPosRef.current.x;
         const endY = targetFocusPosRef.current.y;
-        focusPosRef.current = {
-          x: startX + (endX - startX) * eased,
-          y: startY + (endY - startY) * eased,
-        };
+        focusPosRef.current.x = startX + (endX - startX) * eased;
+        focusPosRef.current.y = startY + (endY - startY) * eased;
       }
 
       if (progress >= 1) {
         transitionStartRef.current = null;
         animTypeRef.current = null;
         if (hasFocus) {
-          focusPosRef.current = targetFocusPosRef.current;
+          focusPosRef.current.x = targetFocusPosRef.current.x;
+          focusPosRef.current.y = targetFocusPosRef.current.y;
           focusIntensityRef.current = 1;
         } else {
-          focusPosRef.current = { x: -9999, y: -9999 };
+          focusPosRef.current.x = -9999;
+          focusPosRef.current.y = -9999;
           focusIntensityRef.current = 0;
         }
       }
@@ -466,19 +476,24 @@ export function useWebGPUMosaic(
     uniformData[14] = ch;
     uniformData[15] = focusIntensityRef.current; // Smooth focus transition
 
+    // Idle: same uniforms (time at [7] is unused by the shaders) and same
+    // buffers means a pixel-identical frame, so keep the last one on screen.
+    const lastUniformData = lastUniformDataRef.current;
+    let changed = needsRedrawRef.current;
+    for (let i = 0; i < 16 && !changed; i++) {
+      if (i !== 7 && uniformData[i] !== lastUniformData[i]) changed = true;
+    }
+    if (!changed) {
+      animationRef.current = requestAnimationFrame(render);
+      return;
+    }
+    lastUniformData.set(uniformData);
+    needsRedrawRef.current = false;
+
     device.queue.writeBuffer(
       uniformBuffer,
       0,
       uniformData as unknown as BufferSource,
-    );
-
-    // Write background uniforms (actual canvas pixel dimensions for fragCoord)
-    const canvas = context.canvas as HTMLCanvasElement;
-    const bgUniformData = new Float32Array([canvas.width, canvas.height]);
-    device.queue.writeBuffer(
-      backgroundUniformBuffer,
-      0,
-      bgUniformData as unknown as BufferSource,
     );
 
     const commandEncoder = device.createCommandEncoder();
@@ -526,7 +541,7 @@ export function useWebGPUMosaic(
     context.present();
 
     animationRef.current = requestAnimationFrame(render);
-  }, [scale, translateX, translateY]);
+  }, [scale, translateX, translateY, currentRow, currentCol]);
 
   const initWebGPU = useCallback(async () => {
     if (!canvasRef.current || isInitializedRef.current) return;
@@ -708,6 +723,16 @@ export function useWebGPUMosaic(
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
       buffers.push(backgroundUniformBuffer);
+      // Background uniforms (actual canvas pixel dimensions for fragCoord).
+      // The canvas size is fixed at init, so this is written once, not per frame.
+      device.queue.writeBuffer(
+        backgroundUniformBuffer,
+        0,
+        new Float32Array([
+          canvas.width,
+          canvas.height,
+        ]) as unknown as BufferSource,
+      );
 
       const backgroundBindGroupLayout = device.createBindGroupLayout({
         entries: [
@@ -765,6 +790,7 @@ export function useWebGPUMosaic(
       };
 
       startTimeRef.current = Date.now();
+      needsRedrawRef.current = true;
       setGpuReady(true);
       animationRef.current = requestAnimationFrame(render);
 
@@ -797,6 +823,7 @@ export function useWebGPUMosaic(
             sampler,
           );
           resourcesRef.current.bindGroupVersion = 1;
+          needsRedrawRef.current = true;
         }
 
         isLoadingAtlasesRef.current = false;
@@ -926,6 +953,7 @@ export function useWebGPUMosaic(
       tileData as unknown as BufferSource,
     );
     resourcesRef.current.tileCount = totalTileCount;
+    needsRedrawRef.current = true;
 
     if (hasAnimation) {
       // Start the rearrange clock in the same synchronous block as the buffer

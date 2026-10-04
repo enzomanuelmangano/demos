@@ -30,13 +30,6 @@ export const PullToDismissGesture: FC<PullToDismissGestureProps> = ({
   const translateY = useSharedValue(0);
   const hasTriggeredMainAnimation = useSharedValue(false);
 
-  const triggerMainAnimation = useCallback(() => {
-    if (!hasTriggeredMainAnimation.get()) {
-      startAnimation();
-      hasTriggeredMainAnimation.set(true);
-    }
-  }, [hasTriggeredMainAnimation]);
-
   const handleClose = useCallback(() => {
     if (onClose) {
       onClose();
@@ -52,8 +45,11 @@ export const PullToDismissGesture: FC<PullToDismissGestureProps> = ({
       if (event.translationY > 0) {
         translateY.set(event.translationY);
 
-        if (translateY.get() > 120) {
-          scheduleOnRN(triggerMainAnimation);
+        // Checked on the UI thread (startAnimation is a worklet), so pulling
+        // past the threshold doesn't schedule a JS call on every pan frame.
+        if (translateY.get() > 120 && !hasTriggeredMainAnimation.get()) {
+          hasTriggeredMainAnimation.set(true);
+          startAnimation();
         }
       }
     })

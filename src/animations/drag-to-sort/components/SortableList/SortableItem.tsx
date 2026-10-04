@@ -182,7 +182,11 @@ const SortableItem: FC<SortableListItemProps> = ({
     if (isGestureActive.get()) return positions.get()[index];
 
     const nextPosition = getPosition(index);
-    positions.set({ ...positions.get(), [index]: nextPosition });
+    // This mapper reads `positions`, so writing it re-schedules the mapper on
+    // the next frame. Only write on a real change, or every item loops forever.
+    if (positions.get()[index] !== nextPosition) {
+      positions.set({ ...positions.get(), [index]: nextPosition });
+    }
 
     return withTiming(nextPosition, {
       duration: 200,
@@ -202,20 +206,29 @@ const SortableItem: FC<SortableListItemProps> = ({
     return 0;
   }, [isGestureActive.get(), wasLastActiveIndex.get()]);
 
+  // Derived once per gesture change instead of restarting the timing on
+  // every style run.
+  const borderRadius = useDerivedValue(() => {
+    return withTiming(isGestureActive.get() ? 20 : 0, {
+      duration: 200,
+    });
+  });
+
   const rStyle = useAnimatedStyle(() => {
     const zIndex = getZIndex();
 
     return {
-      top: top.get(),
+      // translateY over `top` (static 0): same position, no layout pass per frame
       transform: [
+        {
+          translateY: top.get(),
+        },
         {
           translateX: translateX.get(),
         },
       ],
       zIndex: zIndex,
-      borderRadius: withTiming(isGestureActive.get() ? 20 : 0, {
-        duration: 200,
-      }),
+      borderRadius: borderRadius.get(),
     };
   }, []);
 
@@ -260,6 +273,7 @@ const styles = StyleSheet.create({
     left: 0,
     position: 'absolute',
     right: 0,
+    top: 0,
   },
 });
 

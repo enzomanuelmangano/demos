@@ -6,8 +6,14 @@ import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
 } from 'react-native-reanimated';
+import { useFont } from 'react-native-skia';
 
 import { BlurredListItem } from './components/blurred-list-item';
+
+// Import the custom font
+// TODO: Improve
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const SFProRoundedBold = require('../../../assets/fonts/SF-Pro-Rounded-Bold.otf');
 
 const NUMBERS_ARRAY = new Array(100)
   .fill(0)
@@ -18,6 +24,9 @@ export const ScrollTransition3D = memo(() => {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const scrollY = useSharedValue(0);
+  // One font for every item (items mount and unmount constantly while
+  // scrolling, see windowSize below).
+  const font = useFont(SFProRoundedBold, 175);
   // This is tremendously more efficient than using the default onScroll prop
   // Combining the useAnimatedScrollHandler with the Animated.FlatList's onScroll prop
   // is one of the most useful and efficient ways to handle scroll events 💥
@@ -63,6 +72,7 @@ export const ScrollTransition3D = memo(() => {
             size={itemSize}
             index={index}
             scrollY={scrollY}
+            font={font}
           />
         )}
       />

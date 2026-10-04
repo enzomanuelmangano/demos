@@ -69,17 +69,30 @@ function SegmentedControl<T extends { name: string; icon: string }>({
     // 2 -> 0
     // 3 -> -internalPadding / 4
     // 4 -> -internalPadding / 2
+    // translateX over a static left: 0 lands on the same spot as animating
+    // left, without a layout pass every frame
     return {
-      left: withTiming(
-        cellBackgroundWidth * selectedCellIndex + padding,
-        TimingConfig,
-      ),
+      transform: [
+        {
+          translateX: withTiming(
+            cellBackgroundWidth * selectedCellIndex + padding,
+            TimingConfig,
+          ),
+        },
+      ],
     };
   }, [selectedCellIndex]);
 
   const rCellBlurMessageStyle = useAnimatedStyle(() => {
     return {
-      left: withTiming(cellBackgroundWidth * selectedCellIndex, TimingConfig),
+      transform: [
+        {
+          translateX: withTiming(
+            cellBackgroundWidth * selectedCellIndex,
+            TimingConfig,
+          ),
+        },
+      ],
     };
   }, [selectedCellIndex]);
 
@@ -213,6 +226,7 @@ const localStyles = StyleSheet.create({
   },
   highlightedCellBlurContent: {
     alignSelf: 'center',
+    left: 0,
     position: 'absolute',
     zIndex: 1,
   },
@@ -224,6 +238,7 @@ const localStyles = StyleSheet.create({
     borderRadius: 30,
     borderWidth: 1,
     boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.1)',
+    left: 0,
     position: 'absolute',
     zIndex: 1,
   },

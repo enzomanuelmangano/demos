@@ -104,15 +104,18 @@ const StackedSheet: FC<StackedSheetProps> = ({
       isSwiping.set(false);
     });
 
+  // `bottom` is applied as a translateY (before the scale, so it isn't
+  // scaled) on top of a static `bottom: BaseSafeArea`: same position, but no
+  // relayout on every frame of the spring/swipe. zIndex is static and the
+  // shadow lives in its own style, so neither is re-sent while swiping.
   const rStackedSheetStyle = useAnimatedStyle(() => {
     const scale = 1 - stackedSheetId * 0.05;
 
     return {
-      bottom: bottom.get(),
-      zIndex: 100 - stackedSheetId,
-      shadowRadius: withTiming(Math.max(10 - stackedSheetId * 2.5, 2)),
-      shadowOpacity: withTiming(Math.max(0.1 - stackedSheetId * 0.025, 0.05)),
       transform: [
+        {
+          translateY: -(bottom.get() - BaseSafeArea),
+        },
         {
           scale: withSpring(scale),
         },
@@ -122,6 +125,13 @@ const StackedSheet: FC<StackedSheetProps> = ({
       ],
     };
   }, [stackedSheet, stackedSheetId]);
+
+  const rShadowStyle = useAnimatedStyle(() => {
+    return {
+      shadowRadius: withTiming(Math.max(10 - stackedSheetId * 2.5, 2)),
+      shadowOpacity: withTiming(Math.max(0.1 - stackedSheetId * 0.025, 0.05)),
+    };
+  }, [stackedSheetId]);
 
   const rVisibleContainerStyle = useAnimatedStyle(() => {
     return {
@@ -142,9 +152,11 @@ const StackedSheet: FC<StackedSheetProps> = ({
           {
             width: windowWidth * 0.9,
             left: windowWidth * 0.05,
-            zIndex: -1,
+            bottom: BaseSafeArea,
+            zIndex: 100 - stackedSheetId,
           },
           styles.container,
+          rShadowStyle,
           rStackedSheetStyle,
         ]}>
         {memoizedChildren && (

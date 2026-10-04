@@ -85,11 +85,18 @@ export const RecordButton: FC<RecordButtonProps> = ({
     return withTiming(activated.get() ? 1 : 0);
   }, []);
 
+  // Opacity changes every scroll frame; color/fontWeight only when
+  // `activated` flips. Kept apart so text props aren't re-sent (and the text
+  // re-measured) on every frame. fontSize is already in the static style.
+  const rTextOpacityStyle = useAnimatedStyle(() => {
+    return {
+      opacity: progress.get(),
+    };
+  }, []);
+
   const rTextStyle = useAnimatedStyle(() => {
     return {
-      fontSize,
       color: activated.get() ? 'white' : color,
-      opacity: progress.get(),
       fontWeight: activated.get() ? '600' : '500',
     };
   }, [color]);
@@ -144,6 +151,7 @@ export const RecordButton: FC<RecordButtonProps> = ({
               },
               styles.label,
               rTextStyle,
+              rTextOpacityStyle,
             ]}>
             Record
           </Animated.Text>

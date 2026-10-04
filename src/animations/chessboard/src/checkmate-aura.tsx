@@ -12,6 +12,7 @@ import React, {
 
 import Animated, {
   Easing,
+  cancelAnimation,
   useAnimatedReaction,
   useAnimatedStyle,
   useDerivedValue,
@@ -130,6 +131,10 @@ export const CheckmateAuraProvider: React.FC<{
         snapshot.set(null);
         progress.set(0);
         blurIn.set(0);
+        // The breathing loop is infinite and feeds the full-screen shader's
+        // uniforms; stop it so the hidden canvas stops redrawing every frame.
+        cancelAnimation(breath);
+        breath.set(0);
         scheduleOnRN(clearCard);
       }
     },

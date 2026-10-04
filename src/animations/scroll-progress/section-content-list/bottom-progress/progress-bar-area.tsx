@@ -10,7 +10,8 @@ import Animated, {
   useDerivedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { ReText } from 'react-native-redash';
+
+import { ReText } from '../../../../components/re-text';
 
 type ProgressBarAreaProps = {
   isVisible: SharedValue<boolean>;
@@ -25,16 +26,18 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
       };
     });
 
+    // scaleX instead of a `width` percentage: the parent clips the bar, so
+    // the result is identical but scrolling no longer triggers a layout pass.
     const rProgressBarAnimatedStyle = useAnimatedStyle(() => {
-      const width = interpolate(
+      const scaleX = interpolate(
         progress.get(),
         [0, 1],
-        [0, 100],
+        [0, 1],
         Extrapolation.CLAMP,
       );
 
       return {
-        width: `${width}%`,
+        transform: [{ scaleX }],
       };
     });
 
@@ -86,6 +89,7 @@ const ProgressBarArea: FC<ProgressBarAreaProps> = memo(
               {
                 ...StyleSheet.absoluteFill,
                 backgroundColor: '#9E9E9E',
+                transformOrigin: 'left',
               },
               rProgressBarAnimatedStyle,
             ]}

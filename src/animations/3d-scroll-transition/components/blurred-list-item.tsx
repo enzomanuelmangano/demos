@@ -18,16 +18,11 @@ import {
   Paint,
   SweepGradient,
   Text,
-  useFont,
   vec,
 } from 'react-native-skia';
 
 import type { SharedValue } from 'react-native-reanimated';
-
-// Import the custom font
-// TODO: Improve
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const SFProRoundedBold = require('../../../../assets/fonts/SF-Pro-Rounded-Bold.otf');
+import type { SkFont } from 'react-native-skia';
 
 // Define the BlurredListItem functional component
 export const BlurredListItem: FC<{
@@ -35,7 +30,10 @@ export const BlurredListItem: FC<{
   size: number;
   index: number;
   scrollY: SharedValue<number>;
-}> = ({ text, size, index, scrollY }) => {
+  // Loaded once by the list: with windowSize={2} items mount constantly, and
+  // a useFont per item re-parsed the .otf (and rendered nothing) each time.
+  font: SkFont | null;
+}> = ({ text, size, index, scrollY, font }) => {
   // Calculate input range based on size and index
   const inputRange = useMemo(
     () => [
@@ -93,7 +91,10 @@ export const BlurredListItem: FC<{
   }, [inputRange, scrollY]);
 
   const { width: windowWidth } = useWindowDimensions();
-  const font = useFont(SFProRoundedBold, 175);
+  const textWidth = useMemo(
+    () => (font ? font.measureText(text).width : 0),
+    [font, text],
+  );
   const sweepGradient = useMemo(() => {
     return (
       <SweepGradient
@@ -125,7 +126,7 @@ export const BlurredListItem: FC<{
                 color={'white'}
                 font={font}
                 text={text}
-                x={windowWidth / 2 - font.measureText(text).width / 2}
+                x={windowWidth / 2 - textWidth / 2}
                 y={size / 2 + font.getSize() / 4}
               />
             }>

@@ -19,6 +19,10 @@ import Animated, {
 const LIST_ITEM_HEIGHT = 90;
 const LIST_ITEM_MARGIN_BOTTOM = 20;
 const LIST_ITEM_CONTAINER_HEIGHT = LIST_ITEM_HEIGHT + LIST_ITEM_MARGIN_BOTTOM;
+// Items that scrolled out render null, so only the last few need to stay
+// mounted: enough to let the ones leaving finish their 400ms exiting
+// animation even with rapid taps.
+const EXITING_ITEMS_BUFFER = 4;
 
 type BlurredListProps<T> = {
   maxVisibleItems: number;
@@ -111,6 +115,12 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
     intensity: blurIntensity.get(),
   }));
 
+  // At intensity 0 the blur is a no-op; opacity 0 lets Core Animation skip
+  // the effect layer instead of compositing it over every resting card.
+  const blurStyle = useAnimatedStyle(() => ({
+    opacity: blurIntensity.get() !== 0 ? 1 : 0,
+  }));
+
   const contentStyle = useAnimatedStyle(() => ({
     shadowColor: 'black',
     shadowOffset: {
@@ -134,7 +144,7 @@ const BlurredListItemContainer: FC<BlurredListItemContainerProps> = ({
       <AnimatedBlurView
         tint={'extraLight'}
         animatedProps={animatedProps}
-        style={styles.blurView}
+        style={[styles.blurView, blurStyle]}
       />
     </Animated.View>
   );
@@ -159,13 +169,24 @@ export function BlurredList<T>({
     [data.length, maxVisibleItems, renderItem],
   );
 
+  // Older items already render null; skipping them keeps each add O(1)
+  // instead of re-rendering every item ever added.
+  const firstMountedIndex = Math.max(
+    0,
+    data.length - maxVisibleItems - EXITING_ITEMS_BUFFER,
+  );
+
   return (
     <View
       style={[
         styles.container,
         { height: maxVisibleItems * LIST_ITEM_CONTAINER_HEIGHT },
       ]}>
-      {data.map((item, index) => renderItemWithBlur({ item, index }))}
+      {data
+        .slice(firstMountedIndex)
+        .map((item, offset) =>
+          renderItemWithBlur({ item, index: firstMountedIndex + offset }),
+        )}
     </View>
   );
 }

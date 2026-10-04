@@ -13,6 +13,7 @@ import {
   Group,
   Paint,
   Path,
+  rect,
   Skia,
   SweepGradient,
   vec,
@@ -20,6 +21,10 @@ import {
 import Touchable, { useGestureHandler } from 'react-native-skia-gesture';
 
 const RADIUS = 80;
+const BLUR = 30;
+// The blur kernel stops at 3σ, and the alpha threshold zeroes anything that
+// faint anyway, so nothing is drawn further than this from a circle's centre.
+const LAYER_MARGIN = RADIUS + 3 * BLUR + 2;
 
 export function Metaball() {
   const { width, height } = useWindowDimensions();
@@ -78,10 +83,19 @@ export function Metaball() {
       .build();
   }, [firstCx, firstCy, secondCx, secondCy]);
 
+  // Bounds the blur layer to the two circles instead of the whole screen.
+  const layerClip = useDerivedValue(() => {
+    const minX = Math.min(firstCx.get(), secondCx.get()) - LAYER_MARGIN;
+    const minY = Math.min(firstCy.get(), secondCy.get()) - LAYER_MARGIN;
+    const maxX = Math.max(firstCx.get(), secondCx.get()) + LAYER_MARGIN;
+    const maxY = Math.max(firstCy.get(), secondCy.get()) + LAYER_MARGIN;
+    return rect(minX, minY, maxX - minX, maxY - minY);
+  }, [firstCx, firstCy, secondCx, secondCy]);
+
   const paint = useMemo(() => {
     return (
       <Paint>
-        <Blur blur={30} />
+        <Blur blur={BLUR} />
         <ColorMatrix
           matrix={[
             // R, G, B, A, Position
@@ -102,10 +116,13 @@ export function Metaball() {
   return (
     <View style={styles.container}>
       <Touchable.Canvas style={{ flex: 1 }}>
-        <Group layer={paint}>
-          <Path path={path}>
-            <SweepGradient c={vec(0, 0)} colors={['cyan', 'blue', 'cyan']} />
-          </Path>
+        {/* The clip sits outside the layer so it bounds the offscreen surface */}
+        <Group clip={layerClip}>
+          <Group layer={paint}>
+            <Path path={path}>
+              <SweepGradient c={vec(0, 0)} colors={['cyan', 'blue', 'cyan']} />
+            </Path>
+          </Group>
         </Group>
         <Touchable.Circle
           cx={secondCx}

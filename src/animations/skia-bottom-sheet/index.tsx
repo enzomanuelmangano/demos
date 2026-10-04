@@ -33,7 +33,7 @@ const CanvasContainer = () => {
           image={image}
         />
       )}
-      <BottomSheet size={size} />
+      <BottomSheet size={size} backdropImage={image} />
     </Touchable.Canvas>
   );
 };

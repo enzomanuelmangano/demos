@@ -33,24 +33,33 @@ export const GitHubTerrain = () => {
   const [switchValue, setSwitchValue] = useState(true);
 
   // Initialize WebGPU renderer
-  useWebGPURenderer(canvasRef, stateRef, layoutRef);
+  const { requestRender } = useWebGPURenderer(canvasRef, stateRef, layoutRef);
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     stateRef.current.isFlat = !stateRef.current.isFlat;
-  }, []);
+    requestRender();
+  }, [requestRender]);
 
-  const handleDataToggle = useCallback((value: boolean) => {
-    setSwitchValue(value);
-    stateRef.current.useRealData = value;
-  }, []);
+  const handleDataToggle = useCallback(
+    (value: boolean) => {
+      setSwitchValue(value);
+      stateRef.current.useRealData = value;
+      requestRender();
+    },
+    [requestRender],
+  );
 
-  const handleLayout = useCallback((e: LayoutChangeEvent) => {
-    const { width: w, height: h } = e.nativeEvent.layout;
-    if (w > 0 && h > 0) {
-      layoutRef.current = { width: w, height: h };
-    }
-  }, []);
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent) => {
+      const { width: w, height: h } = e.nativeEvent.layout;
+      if (w > 0 && h > 0) {
+        layoutRef.current = { width: w, height: h };
+        requestRender();
+      }
+    },
+    [requestRender],
+  );
 
   return (
     <View style={styles.container} onLayout={handleLayout}>

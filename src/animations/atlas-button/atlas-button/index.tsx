@@ -83,26 +83,36 @@ export const AtlasButton: React.FC<AtlasButtonProps> = ({
 
   const imageSvg = useSVG(svgIcon);
 
+  // translateY instead of `top` (label pinned at top: 0, icon is relative):
+  // same offsets, without a layout pass per frame.
   const textStyle = useAnimatedStyle(() => {
     return {
       opacity: progress.get() * 3,
-      top: interpolate(
-        progress.get() * 3,
-        [0, 1],
-        [50, 25],
-        Extrapolation.CLAMP,
-      ),
+      transform: [
+        {
+          translateY: interpolate(
+            progress.get() * 3,
+            [0, 1],
+            [50, 25],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
     };
   }, []);
 
   const iconStyle = useAnimatedStyle(() => {
     return {
-      top: interpolate(
-        progress.get() * 3,
-        [0, 1],
-        [0, -25],
-        Extrapolation.CLAMP,
-      ),
+      transform: [
+        {
+          translateY: interpolate(
+            progress.get() * 3,
+            [0, 1],
+            [0, -25],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
     };
   }, []);
 
@@ -174,5 +184,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
     position: 'absolute',
     textAlign: 'center',
+    top: 0,
   },
 });
