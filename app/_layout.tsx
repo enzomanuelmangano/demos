@@ -92,7 +92,8 @@ export default function RootLayout() {
   return (
     <Suspense>
       <StatusBar barStyle="default" animated />
-      <KeyboardProvider>
+      {/* Preloaded by the home once its entrance is over, not here. */}
+      <KeyboardProvider preload={false}>
         <GestureHandlerRootView style={styles.fill} onLayout={onLayoutRootView}>
           <PressablesConfig
             globalHandlers={globalPressableHandlers}

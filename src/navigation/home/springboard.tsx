@@ -13,6 +13,7 @@ import {
 import { BlurView } from 'expo-blur';
 import * as SplashScreen from 'expo-splash-screen';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { KeyboardController } from 'react-native-keyboard-controller';
 import { Presets } from 'react-native-pulsar';
 import Animated, {
   Easing,
@@ -199,6 +200,8 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 // Strong defocus behind an open demo / the search reveal — matches the heavy
 // blur iOS puts behind the App Library search.
 const HOME_MAX_BLUR = 90;
+// Longest the keyboard preload waits for an idle slot after the entrance.
+const KEYBOARD_PRELOAD_TIMEOUT = 1500;
 // Longest the home's entrance may take before it is put at rest regardless.
 const INTRO_BACKSTOP_MS = 2000;
 // Upper bound on the wait for an idle slot to mount the next page.
@@ -627,13 +630,27 @@ export const Springboard = ({ onOpen }: Props) => {
     if (mountedIcons >= totalIcons) setPagerMoving(false);
   }, [mountedIcons, totalIcons, gridComplete]);
   useEffect(() => {
-    if (pagerMoving || mountedIcons >= totalIcons) return undefined;
+    // Not while the entrance plays: each row is a commit on the main thread,
+    // and a stall there is a frame the entrance does not get.
+    if (!introDone || pagerMoving || mountedIcons >= totalIcons) {
+      return undefined;
+    }
     const handle = requestIdleCallback(
       () => setMountedIcons(count => count + layout.cols),
       { timeout: PAGE_MOUNT_TIMEOUT },
     );
     return () => cancelIdleCallback(handle);
-  }, [mountedIcons, totalIcons, pagerMoving, layout.cols]);
+  }, [introDone, mountedIcons, totalIcons, pagerMoving, layout.cols]);
+  // The keyboard is preloaded (a hidden field takes focus once, so the first
+  // real one opens without lag) after the entrance, not with the app: it was
+  // ~175ms of the main thread, in the window the home first shows in.
+  useEffect(() => {
+    if (!introDone) return undefined;
+    const handle = requestIdleCallback(() => KeyboardController.preload(), {
+      timeout: KEYBOARD_PRELOAD_TIMEOUT,
+    });
+    return () => cancelIdleCallback(handle);
+  }, [introDone]);
   // Backstop: a swipe whose end the scroll events never report must not hold
   // the remaining pages back for good.
   useEffect(() => {
