@@ -286,18 +286,25 @@ export const Springboard = ({ onOpen }: Props) => {
       return;
     }
     // One frame after layout: the frame the grid is first drawn in.
-    requestAnimationFrame(playIntro);
+    requestAnimationFrame(() => {
+      playIntro();
+      // However the entrance goes, the home is at rest and takes touches
+      // within two seconds of it starting: a frame callback that never runs
+      // must not strand it. Armed here, not at mount: a slow first layout
+      // must not cut a fall short.
+      backstop.current = setTimeout(() => {
+        settleHomeIntro();
+        setIntroDone(true);
+      }, INTRO_BACKSTOP_MS);
+    });
   }, [reduceMotion, playIntro]);
-  // However the entrance goes, the home is at rest and takes touches within
-  // two seconds: a frame callback that never runs must not strand it.
-  useEffect(() => {
-    if (reduceMotion) return undefined;
-    const t = setTimeout(() => {
-      settleHomeIntro();
-      setIntroDone(true);
-    }, INTRO_BACKSTOP_MS);
-    return () => clearTimeout(t);
-  }, [reduceMotion]);
+  const backstop = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (backstop.current) clearTimeout(backstop.current);
+    },
+    [],
+  );
   const introFrame = useMemo(
     () => ({ insetTop: insets.top, width: screenWidth, height: screenHeight }),
     [insets.top, screenWidth, screenHeight],
@@ -694,7 +701,7 @@ export const Springboard = ({ onOpen }: Props) => {
 
   return (
     <View style={styles.root}>
-      <Background />
+      <Background introDone={introDone} />
       <GestureDetector gesture={pullGesture}>
         <Animated.View
           pointerEvents={searchMode || !introDone ? 'none' : 'auto'}

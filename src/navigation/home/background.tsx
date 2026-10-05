@@ -15,7 +15,7 @@ import { homeIntro, wallpaperIntro } from './home-intro';
 // The focus is not a live blur: a copy of the wallpaper an eighth of its size,
 // blurred once, lies over it and fades. Scaled up it is as soft as a blur, its
 // decode is nothing, and the fade is an opacity — no layout, no commit.
-export const Background = () => {
+export const Background = ({ introDone }: { introDone: boolean }) => {
   const rWallpaper = useAnimatedStyle(() => ({
     transform: [{ scale: wallpaperIntro(homeIntro.get()).scale }],
   }));
@@ -30,14 +30,17 @@ export const Background = () => {
         contentFit="cover"
         cachePolicy="memory-disk"
       />
-      <Animated.View style={[StyleSheet.absoluteFill, rBlur]}>
-        <Image
-          source={require('../../../assets/images/home-wallpaper-blur.jpg')}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-        />
-      </Animated.View>
+      {/* Gone once the entrance is over: it is at opacity 0 by then. */}
+      {introDone ? null : (
+        <Animated.View style={[StyleSheet.absoluteFill, rBlur]}>
+          <Image
+            source={require('../../../assets/images/home-wallpaper-blur.jpg')}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+          />
+        </Animated.View>
+      )}
     </Animated.View>
   );
 };
