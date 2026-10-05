@@ -26,12 +26,12 @@ SplashScreen.preventAutoHideAsync();
 // Longest the splash waits for the home to lift it.
 const SPLASH_FALLBACK_MS = 3000;
 
-// A short fade: the home makes its own entrance under it (see
-// src/navigation/home/home-intro.ts), and a slow one covered all of it, the
-// way an iPhone's lock screen is gone a frame or two into the unlock.
+// No fade: the home makes its own entrance the moment the splash lifts (see
+// src/navigation/home/home-intro.ts), and any dissolve left the icons half
+// transparent over their first frames.
 SplashScreen.setOptions({
-  duration: 150,
-  fade: true,
+  duration: 0,
+  fade: false,
 });
 
 const QuickActionsProvider = memo(

@@ -33,10 +33,13 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { AppIcon } from './app-icon';
 import { Background } from './background';
 import {
-  gridIntroScale,
+  HOME_INTRO,
   holdHomeIntro,
+  settleHomeIntro,
   homeIntro,
-  playHomeIntro,
+  introDelay,
+  introTransform,
+  useHomeIntro,
 } from './home-intro';
 import {
   CLOSE_SCALE,
@@ -55,25 +58,81 @@ import type { LaunchSource } from './launch-transition';
 import type { GridLayout } from './use-grid-layout';
 import type { TextInput } from 'react-native';
 
+/** Where the screen's centre is, for the cells that make the entrance. */
+interface IntroFrame {
+  insetTop: number;
+  width: number;
+  height: number;
+}
+
+// A cell of the first page during the home's entrance (see home-intro.ts): it
+// falls onto its place about the screen's centre, starting later the further
+// it is from it. Only the first page is in view, so only it gets one.
+const IntroCell = ({
+  index,
+  layout,
+  frame,
+  children,
+}: {
+  index: number;
+  layout: GridLayout;
+  frame: IntroFrame;
+  children: React.ReactNode;
+}) => {
+  const col = index % layout.cols;
+  const row = Math.floor(index / layout.cols);
+  // The cell's own centre, which its scale is about…
+  const cellX =
+    layout.sideMargin + col * layout.cellWidth + layout.cellWidth / 2;
+  const cellY =
+    frame.insetTop +
+    layout.topPad +
+    row * (layout.cellHeight + layout.rowGap) +
+    layout.cellHeight / 2;
+  // …and the icon's, which its delay is measured from (as it was measured).
+  const icon = iconRectForCell(layout, frame.insetTop, index);
+  const delay = introDelay(
+    Math.hypot(
+      icon.x + icon.width / 2 - frame.width / 2,
+      icon.y + icon.height / 2 - frame.height / 2,
+    ),
+    frame.height,
+  );
+  const dx = cellX - frame.width / 2;
+  const dy = cellY - frame.height / 2;
+  const rIntro = useAnimatedStyle(() => ({
+    transform: introTransform(homeIntro.get(), delay, dx, dy),
+  }));
+  return <Animated.View style={rIntro}>{children}</Animated.View>;
+};
+
 // One full page of the SpringBoard: a flex-wrapped grid of demo icons.
 const PageComponent = ({
   demos,
   mounted,
   layout,
   onPressDemo,
+  introFrame,
+  introDone,
 }: {
   demos: Demo[];
   // How many of this page's icons are mounted; the rest hold their cell.
   mounted: number;
   layout: GridLayout;
   onPressDemo: (slug: string) => void;
+  // Set on the first page only: its cells make the entrance.
+  introFrame?: IntroFrame;
+  introDone: boolean;
 }) => (
   <View
     // The pager re-clips its whole subtree every few points of a swipe: with
     // every page mounted, that walked thousands of views per frame. A page
     // that clips its own cells detaches them while it is off screen, and the
     // walk stops there.
-    removeClippedSubviews
+    // The first page does not clip until its entrance is over: its cells start
+    // off screen, and a cell clipped away there is not put back when it falls
+    // into view (the clipping runs on layout and scroll, not on a transform).
+    removeClippedSubviews={!introFrame || introDone}
     style={[
       styles.page,
       {
@@ -85,14 +144,30 @@ const PageComponent = ({
     ]}>
     {demos.map((demo, index) =>
       index < mounted ? (
-        <AppIcon
-          key={demo.slug}
-          demo={demo}
-          cellWidth={layout.cellWidth}
-          cellHeight={layout.cellHeight}
-          iconSize={layout.iconSize}
-          onPress={onPressDemo}
-        />
+        introFrame ? (
+          <IntroCell
+            key={demo.slug}
+            index={index}
+            layout={layout}
+            frame={introFrame}>
+            <AppIcon
+              demo={demo}
+              cellWidth={layout.cellWidth}
+              cellHeight={layout.cellHeight}
+              iconSize={layout.iconSize}
+              onPress={onPressDemo}
+            />
+          </IntroCell>
+        ) : (
+          <AppIcon
+            key={demo.slug}
+            demo={demo}
+            cellWidth={layout.cellWidth}
+            cellHeight={layout.cellHeight}
+            iconSize={layout.iconSize}
+            onPress={onPressDemo}
+          />
+        )
       ) : (
         <View
           key={demo.slug}
@@ -124,6 +199,8 @@ const AnimatedBlurView = Animated.createAnimatedComponent(BlurView);
 // Strong defocus behind an open demo / the search reveal — matches the heavy
 // blur iOS puts behind the App Library search.
 const HOME_MAX_BLUR = 90;
+// Longest the home's entrance may take before it is put at rest regardless.
+const INTRO_BACKSTOP_MS = 2000;
 // Upper bound on the wait for an idle slot to mount the next page.
 const PAGE_MOUNT_TIMEOUT = 500;
 // Longest a swipe can hold page mounts back (see `pagerMoving`).
@@ -183,16 +260,18 @@ export const Springboard = ({ onOpen }: Props) => {
   const layout = useGridLayout();
   const insets = useSafeAreaInsets();
   const scrollX = useSharedValue(0);
-  const { height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
-  // The entrance (see home-intro.ts): the grid falls onto its place from ~4×
-  // about the centre of the screen as the home first shows. One transform on
-  // the layer that holds every page, not one per icon. Until it lands the grid
-  // takes no touches: the launch measures an icon through its transforms, and
-  // a scale still in flight is not in the tree it measures yet.
+  // The entrance (see home-intro.ts): as the home first shows, each icon of
+  // the first page falls onto its place about the centre of the screen, the
+  // further ones later (see IntroCell). Transforms only, on the synchronous
+  // path: nothing commits while it plays. Until it lands the grid takes no
+  // touches: the launch measures an icon through its transforms, and a scale
+  // still in flight is not in the tree it measures yet.
   const reduceMotion = useReducedMotion();
   const [introDone, setIntroDone] = useState(reduceMotion);
   const introStarted = useRef(false);
+  const playIntro = useHomeIntro(useCallback(() => setIntroDone(true), []));
   useLayoutEffect(() => {
     if (!reduceMotion) holdHomeIntro();
   }, [reduceMotion]);
@@ -204,23 +283,29 @@ export const Springboard = ({ onOpen }: Props) => {
       return;
     }
     // One frame after layout: the frame the grid is first drawn in.
-    requestAnimationFrame(() => playHomeIntro(() => setIntroDone(true)));
+    requestAnimationFrame(playIntro);
+  }, [reduceMotion, playIntro]);
+  // However the entrance goes, the home is at rest and takes touches within
+  // two seconds: a frame callback that never runs must not strand it.
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const t = setTimeout(() => {
+      settleHomeIntro();
+      setIntroDone(true);
+    }, INTRO_BACKSTOP_MS);
+    return () => clearTimeout(t);
   }, [reduceMotion]);
-  const rGridIntro = useAnimatedStyle(() => ({
-    transform: [{ scale: gridIntroScale(homeIntro.get()) }],
+  const introFrame = useMemo(
+    () => ({ insetTop: insets.top, width: screenWidth, height: screenHeight }),
+    [insets.top, screenWidth, screenHeight],
+  );
+  // The dots sit low on the screen, where the dock is on an iPhone: they fall
+  // with it, from below and at once, not after the icons nearest them.
+  const dotsFromMiddle = screenHeight / 2 - (insets.bottom + 14 + 3.5);
+  const dotsDelay = HOME_INTRO.dockDelay;
+  const rDotsIntro = useAnimatedStyle(() => ({
+    transform: introTransform(homeIntro.get(), dotsDelay, 0, dotsFromMiddle),
   }));
-  // The dots sit low on the screen, so about the screen's centre they move
-  // down as they grow, the way the dock and the search pill do on an iPhone.
-  const dotsCentreFromMiddle = screenHeight / 2 - (insets.bottom + 14 + 3.5);
-  const rDotsIntro = useAnimatedStyle(() => {
-    const scale = gridIntroScale(homeIntro.get());
-    return {
-      transform: [
-        { translateY: dotsCentreFromMiddle * (scale - 1) },
-        { scale },
-      ],
-    };
-  });
 
   // Raycast-style pull-to-search, in place (no navigation). A downward drag
   // rubber-bands the grid (`pull`) and ramps a blur over it; releasing past the
@@ -600,7 +685,7 @@ export const Springboard = ({ onOpen }: Props) => {
           // App Library's does: it is the results that come down with the
           // finger (see SearchReveal's \`pull\`).
           onLayout={onGridLayout}
-          style={[styles.gridScale, rGridIntro]}>
+          style={styles.gridScale}>
           <Animated.ScrollView
             ref={pagerRef}
             horizontal
@@ -624,6 +709,8 @@ export const Springboard = ({ onOpen }: Props) => {
                 )}
                 layout={layout}
                 onPressDemo={onPressDemo}
+                introFrame={index === 0 ? introFrame : undefined}
+                introDone={introDone}
               />
             ))}
           </Animated.ScrollView>
