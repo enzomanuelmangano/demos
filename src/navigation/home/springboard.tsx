@@ -1,8 +1,17 @@
-import { Keyboard, StyleSheet, View } from 'react-native';
+import { Keyboard, StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { BlurView } from 'expo-blur';
+import * as SplashScreen from 'expo-splash-screen';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { Presets } from 'react-native-pulsar';
 import Animated, {
@@ -13,6 +22,8 @@ import Animated, {
   useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
@@ -21,6 +32,12 @@ import { scheduleOnRN } from 'react-native-worklets';
 
 import { AppIcon } from './app-icon';
 import { Background } from './background';
+import {
+  gridIntroScale,
+  holdHomeIntro,
+  homeIntro,
+  playHomeIntro,
+} from './home-intro';
 import {
   CLOSE_SCALE,
   homeTap,
@@ -166,6 +183,44 @@ export const Springboard = ({ onOpen }: Props) => {
   const layout = useGridLayout();
   const insets = useSafeAreaInsets();
   const scrollX = useSharedValue(0);
+  const { height: screenHeight } = useWindowDimensions();
+
+  // The entrance (see home-intro.ts): the grid falls onto its place from ~4×
+  // about the centre of the screen as the home first shows. One transform on
+  // the layer that holds every page, not one per icon. Until it lands the grid
+  // takes no touches: the launch measures an icon through its transforms, and
+  // a scale still in flight is not in the tree it measures yet.
+  const reduceMotion = useReducedMotion();
+  const [introDone, setIntroDone] = useState(reduceMotion);
+  const introStarted = useRef(false);
+  useLayoutEffect(() => {
+    if (!reduceMotion) holdHomeIntro();
+  }, [reduceMotion]);
+  const onGridLayout = useCallback(() => {
+    if (introStarted.current) return;
+    introStarted.current = true;
+    if (reduceMotion) {
+      SplashScreen.hideAsync();
+      return;
+    }
+    // One frame after layout: the frame the grid is first drawn in.
+    requestAnimationFrame(() => playHomeIntro(() => setIntroDone(true)));
+  }, [reduceMotion]);
+  const rGridIntro = useAnimatedStyle(() => ({
+    transform: [{ scale: gridIntroScale(homeIntro.get()) }],
+  }));
+  // The dots sit low on the screen, so about the screen's centre they move
+  // down as they grow, the way the dock and the search pill do on an iPhone.
+  const dotsCentreFromMiddle = screenHeight / 2 - (insets.bottom + 14 + 3.5);
+  const rDotsIntro = useAnimatedStyle(() => {
+    const scale = gridIntroScale(homeIntro.get());
+    return {
+      transform: [
+        { translateY: dotsCentreFromMiddle * (scale - 1) },
+        { scale },
+      ],
+    };
+  });
 
   // Raycast-style pull-to-search, in place (no navigation). A downward drag
   // rubber-bands the grid (`pull`) and ramps a blur over it; releasing past the
@@ -540,11 +595,12 @@ export const Springboard = ({ onOpen }: Props) => {
       <Background />
       <GestureDetector gesture={pullGesture}>
         <Animated.View
-          pointerEvents={searchMode ? 'none' : 'auto'}
+          pointerEvents={searchMode || !introDone ? 'none' : 'auto'}
           // The grid holds still under a pull and only defocuses, as the
           // App Library's does: it is the results that come down with the
           // finger (see SearchReveal's \`pull\`).
-          style={styles.gridScale}>
+          onLayout={onGridLayout}
+          style={[styles.gridScale, rGridIntro]}>
           <Animated.ScrollView
             ref={pagerRef}
             horizontal
@@ -578,13 +634,14 @@ export const Springboard = ({ onOpen }: Props) => {
           grid during a pull/demo-recede (rendered before the blur in z-order).
           Hidden once search commits. */}
       {searchMode ? null : (
-        <View style={[styles.dots, { bottom: insets.bottom + 14 }]}>
+        <Animated.View
+          style={[styles.dots, { bottom: insets.bottom + 14 }, rDotsIntro]}>
           <PageDots
             count={layout.pageCount}
             scrollX={scrollX}
             pageWidth={layout.pageWidth}
           />
-        </View>
+        </Animated.View>
       )}
 
       {/* Blur layer over wallpaper + grid + dots. Intensity tracks whichever

@@ -23,8 +23,14 @@ import { trays } from '../src/trays';
 
 SplashScreen.preventAutoHideAsync();
 
+// Longest the splash waits for the home to lift it.
+const SPLASH_FALLBACK_MS = 3000;
+
+// A short fade: the home makes its own entrance under it (see
+// src/navigation/home/home-intro.ts), and a slow one covered all of it, the
+// way an iPhone's lock screen is gone a frame or two into the unlock.
 SplashScreen.setOptions({
-  duration: 500,
+  duration: 150,
   fade: true,
 });
 
@@ -63,8 +69,12 @@ export default function RootLayout() {
   useTouchIndicatorSync();
   const router = useRouter();
 
+  // The home lifts the splash itself, on its first frame, and makes its
+  // entrance under it (see src/navigation/home/home-intro.ts). This is the
+  // fallback for a launch that never shows the home (a deep link straight
+  // into a demo); hiding twice is harmless.
   const onLayoutRootView = useCallback(() => {
-    SplashScreen.hideAsync();
+    setTimeout(() => SplashScreen.hideAsync(), SPLASH_FALLBACK_MS);
   }, []);
 
   useEffect(() => {
