@@ -23,9 +23,15 @@ import { trays } from '../src/trays';
 
 SplashScreen.preventAutoHideAsync();
 
+// Longest the splash waits for the home to lift it.
+const SPLASH_FALLBACK_MS = 3000;
+
+// No fade: the home makes its own entrance the moment the splash lifts (see
+// src/navigation/home/home-intro.ts), and any dissolve left the icons half
+// transparent over their first frames.
 SplashScreen.setOptions({
-  duration: 500,
-  fade: true,
+  duration: 0,
+  fade: false,
 });
 
 const QuickActionsProvider = memo(
@@ -63,8 +69,12 @@ export default function RootLayout() {
   useTouchIndicatorSync();
   const router = useRouter();
 
+  // The home lifts the splash itself, on its first frame, and makes its
+  // entrance under it (see src/navigation/home/home-intro.ts). This is the
+  // fallback for a launch that never shows the home (a deep link straight
+  // into a demo); hiding twice is harmless.
   const onLayoutRootView = useCallback(() => {
-    SplashScreen.hideAsync();
+    setTimeout(() => SplashScreen.hideAsync(), SPLASH_FALLBACK_MS);
   }, []);
 
   useEffect(() => {
@@ -82,7 +92,8 @@ export default function RootLayout() {
   return (
     <Suspense>
       <StatusBar barStyle="default" animated />
-      <KeyboardProvider>
+      {/* Preloaded by the home once its entrance is over, not here. */}
+      <KeyboardProvider preload={false}>
         <GestureHandlerRootView style={styles.fill} onLayout={onLayoutRootView}>
           <PressablesConfig
             globalHandlers={globalPressableHandlers}
