@@ -8,46 +8,67 @@ import { PressableScale } from 'pressto';
 import { useDerivedValue, useSharedValue } from 'react-native-reanimated';
 
 import NoneMatrix from '../find-weights/examples/none.json';
-import ModelWeights from '../find-weights/model_weights.json';
 import * as nn from '../neural-network';
 import { Grid } from './grid';
 import { NeuralNetwork } from './network';
 import { Predictions } from './predictions';
 
-import type { PredictResult } from '../neural-network';
+import type { NeuralNetworkWeights, PredictResult } from '../neural-network';
 import type { GridHandleRef } from './grid';
 
-const {
-  weight_0: inputLayerWeights,
-  weight_1: inputLayerBias,
-  weight_2: hiddenLayerWeights,
-  weight_3: hiddenLayerBias,
-  weight_4: outputLayerWeights,
-  weight_5: outputLayerBias,
-} = ModelWeights;
+type ModelWeightsJson = {
+  weight_0: number[][];
+  weight_1: number[];
+  weight_2: number[][];
+  weight_3: number[];
+  weight_4: number[][];
+  weight_5: number[];
+};
 
-const ModelWeightsFlat = {
-  inputLayerWeights: inputLayerWeights,
-  inputLayerBias: inputLayerBias,
-  hiddenLayerWeights: hiddenLayerWeights,
-  hiddenLayerBias: hiddenLayerBias,
-  outputLayerWeights: outputLayerWeights,
-  outputLayerBias: outputLayerBias,
+let cachedModel:
+  | { weights: NeuralNetworkWeights; initialPrediction: PredictResult }
+  | undefined;
+
+// The weights file is 1.1MB of JSON and the registry imports every demo at
+// launch, so it is parsed on the demo's first mount instead of at startup.
+const getModel = () => {
+  if (!cachedModel) {
+    const {
+      weight_0: inputLayerWeights,
+      weight_1: inputLayerBias,
+      weight_2: hiddenLayerWeights,
+      weight_3: hiddenLayerBias,
+      weight_4: outputLayerWeights,
+      weight_5: outputLayerBias,
+    } = require('../find-weights/model_weights.json') as ModelWeightsJson;
+    const weights: NeuralNetworkWeights = {
+      inputLayerWeights,
+      inputLayerBias,
+      hiddenLayerWeights,
+      hiddenLayerBias,
+      outputLayerWeights,
+      outputLayerBias,
+    };
+    cachedModel = {
+      weights,
+      initialPrediction: nn.predict(weights, NoneMatrix.matrix),
+    };
+  }
+  return cachedModel;
 };
 
 function App() {
-  const predictions = useSharedValue<PredictResult>(
-    nn.predict(ModelWeightsFlat, NoneMatrix.matrix),
-  );
+  const { weights, initialPrediction } = getModel();
+  const predictions = useSharedValue<PredictResult>(initialPrediction);
 
   const onUpdate = useCallback(
     (squaresGrid: number[][]) => {
       'worklet';
 
-      const result = nn.predict(ModelWeightsFlat, squaresGrid);
+      const result = nn.predict(weights, squaresGrid);
       predictions.set(result);
     },
-    [predictions],
+    [predictions, weights],
   );
 
   const gridRef = useRef<GridHandleRef>(null);
@@ -58,7 +79,7 @@ function App() {
     <View style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.fillCenter}>
-        <NeuralNetwork weights={ModelWeightsFlat} predictions={predictions} />
+        <NeuralNetwork weights={weights} predictions={predictions} />
         <Predictions finalOutput={finalOutput} />
       </View>
       <View style={styles.fill}>
