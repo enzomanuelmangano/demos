@@ -47,7 +47,11 @@ export const App = () => {
   });
 
   const onTimeMachineClose = useCallback(() => {
-    const newActiveItemKey = target[activeIndex.get()].key;
+    const activeItem = target[activeIndex.get()];
+    if (!activeItem) {
+      return;
+    }
+    const newActiveItemKey = activeItem.key;
 
     if (previousActiveItemKey.current === newActiveItemKey) {
       return;
@@ -56,8 +60,12 @@ export const App = () => {
     setActiveItemKey(newActiveItemKey);
     setTimeout(() => {
       setHistory(prev => {
-        const newHistory = [...prev];
-        return newHistory.filter(item => item.key === newActiveItemKey);
+        // A reorder within this second can cap the history and evict the
+        // selected entry; filtering then would empty the time machine.
+        if (!prev.some(item => item.key === newActiveItemKey)) {
+          return prev;
+        }
+        return prev.filter(item => item.key === newActiveItemKey);
       });
     }, 1000);
   }, [

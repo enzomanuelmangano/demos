@@ -20,7 +20,7 @@ export const LITTLE_PRINCE_TEXT =
   'heart that one can see rightly; what is essential is invisible to the ' +
   'eye.”\n' +
   'What is essential is invisible to the eye, the little prince repeated, ' +
-  'so that hember.\n' +
+  'so that he would be sure to remember.\n' +
   '“It is the time you have wasted for your rose that makes your rose so ' +
   'important.”\n' +
   '“It is the time I have wasted for my rose…” the little prince repeated, ' +

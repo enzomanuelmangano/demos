@@ -1,5 +1,7 @@
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
+import { useEffect } from 'react';
+
 import * as Haptics from 'expo-haptics';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -21,6 +23,14 @@ import { SheetContent } from './sheet-content';
 export const ExpandedSheet = () => {
   const { height: windowHeight } = useWindowDimensions();
   const progress = ExpandedSheetMutableProgress;
+
+  // The progress is module-level and outlives the demo: collapse it on unmount
+  // so reopening the demo doesn't start with the sheet expanded.
+  useEffect(() => {
+    return () => {
+      progress.set(0);
+    };
+  }, [progress]);
 
   const isTapped = useSharedValue(false);
   const progressThreshold = 0.8;

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { useAtomValue } from 'jotai';
 import Animated, {
@@ -21,7 +21,7 @@ export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
   const scrollOffset = useSharedValue(0);
   const onScrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
-      scrollOffset.set(event.contentOffset.y);
+      scrollOffset.set(event.contentOffset.x);
     },
   });
 
@@ -32,6 +32,16 @@ export const TimeMachineList = ({ data, onScroll }: TimeMachineListProps) => {
       width: StoryListItemWidth * data.length + ListPadding,
     };
   }, [data.length, ListPadding]);
+
+  // Closing the time machine prunes the history down to the selected entry, so
+  // the offset can be left pointing past the last item: bring it back in range.
+  useEffect(() => {
+    const lastItemOffset = Math.max(0, data.length - 1) * StoryListItemWidth;
+    if (scrollOffset.get() > lastItemOffset) {
+      animatedRef.current?.scrollTo({ x: lastItemOffset, animated: false });
+      scrollOffset.set(lastItemOffset);
+    }
+  }, [data.length, animatedRef, scrollOffset]);
 
   useAnimatedReaction(
     () => scrollOffset.get(),
