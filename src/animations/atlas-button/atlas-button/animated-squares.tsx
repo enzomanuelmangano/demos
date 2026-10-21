@@ -73,7 +73,10 @@ export const AnimatedSquares: FC<AnimatedSquaresProps> = memo(
 
       const distance = distances[i];
 
-      const scale = Math.max(0, 1.5 - distance / activeRadius.get());
+      // At rest the radius is exactly 0, and the square sitting on the centre
+      // has distance 0 too: 0 / 0 would hand Skia a NaN scale
+      const radius = Math.max(activeRadius.get(), 1e-3);
+      const scale = Math.max(0, 1.5 - distance / radius);
 
       const randomValue = randomValues[i] || 1;
 
