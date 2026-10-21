@@ -16,4 +16,4 @@ const generateSpherePoints = (radius: number): Point3D[] => {
   return points;
 };
 
-export const SPHERE_POINTS = normalizeShape(generateSpherePoints(100));
+export const makeSpherePoints = () => normalizeShape(generateSpherePoints(100));

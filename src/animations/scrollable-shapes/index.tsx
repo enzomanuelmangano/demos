@@ -24,16 +24,8 @@ import {
 import { isUIRuntime } from 'react-native-worklets';
 
 import { Paginator } from './components';
-import {
-  N_POINTS,
-  ALL_SHAPES,
-  ALL_SHAPES_X,
-  ALL_SHAPES_Y,
-  ALL_SHAPES_Z,
-} from './shapes';
+import { N_POINTS, SHAPES_COUNT, getShapeAxes } from './shapes';
 
-// Number of shapes
-const SHAPES_COUNT = ALL_SHAPES.length;
 const DISTANCE = 350;
 
 // Pre-computed tilt rotation (0.2 radians)
@@ -48,6 +40,8 @@ const ScrollableShapes = () => {
   const centerX = windowWidth / 2;
   const centerY = windowHeight / 2;
 
+  const { x: shapesX, y: shapesY, z: shapesZ } = getShapeAxes();
+
   // Scroll handler for the invisible ScrollView
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: event => {
@@ -56,7 +50,10 @@ const ScrollableShapes = () => {
   });
 
   // Input range for shape interpolation (computed once)
-  const inputRange = ALL_SHAPES.map((_, idx) => windowWidth * idx);
+  const inputRange = Array.from(
+    { length: SHAPES_COUNT },
+    (_, idx) => windowWidth * idx,
+  );
 
   // Gradient paint is constant: build it once instead of every frame.
   const paint = useMemo(() => {
@@ -131,9 +128,9 @@ const ScrollableShapes = () => {
     farPoints.length = 0;
 
     for (let i = 0; i < N_POINTS; i++) {
-      const arrX = ALL_SHAPES_X[i];
-      const arrY = ALL_SHAPES_Y[i];
-      const arrZ = ALL_SHAPES_Z[i];
+      const arrX = shapesX[i];
+      const arrY = shapesY[i];
+      const arrZ = shapesZ[i];
 
       // Lerp
       const x = arrX[idx] + (arrX[nextIdx] - arrX[idx]) * clampedT;
@@ -193,6 +190,9 @@ const ScrollableShapes = () => {
     inputRange,
     paint,
     pools,
+    shapesX,
+    shapesY,
+    shapesZ,
   ]);
 
   // Rotation animation

@@ -42,7 +42,5 @@ const generateTorusPoints = (major: number, minor: number): Point3D[] => {
   return points.slice(0, N_POINTS);
 };
 
-export const TORUS_POINTS = scaleShape(
-  normalizeShape(generateTorusPoints(50, 25)),
-  1.2,
-);
+export const makeTorusPoints = () =>
+  scaleShape(normalizeShape(generateTorusPoints(50, 25)), 1.2);

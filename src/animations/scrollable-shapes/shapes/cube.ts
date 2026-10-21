@@ -29,7 +29,5 @@ const generateCubePoints = (size: number): Point3D[] => {
   return points;
 };
 
-export const CUBE_POINTS = scaleShape(
-  normalizeShape(generateCubePoints(150)),
-  0.75,
-);
+export const makeCubePoints = () =>
+  scaleShape(normalizeShape(generateCubePoints(150)), 0.75);
