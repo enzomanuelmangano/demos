@@ -143,23 +143,38 @@ export class SnakeGame {
     this.direction = newDirection;
   }
 
-  // Generates food at a random location on the board
+  // Generates food at a random free location on the board
   private generateFood(): Coordinate | null {
     'worklet';
-    let food: Coordinate;
+    const cols = Math.floor(this.boardWidth / this.squareSize);
+    const rows = Math.floor(this.boardHeight / this.squareSize);
 
-    do {
-      food = {
-        x:
-          Math.floor(Math.random() * (this.boardWidth / this.squareSize)) *
-          this.squareSize,
-        y:
-          Math.floor(Math.random() * (this.boardHeight / this.squareSize)) *
-          this.squareSize,
+    // Random picks are cheap while the board is mostly empty
+    for (let attempt = 0; attempt < 32; attempt++) {
+      const food = {
+        x: Math.floor(Math.random() * cols) * this.squareSize,
+        y: Math.floor(Math.random() * rows) * this.squareSize,
       };
-    } while (this.isSnake(food)); // Ensure food does not spawn on the snake
+      if (!this.isSnake(food)) {
+        return food;
+      }
+    }
 
-    return food;
+    // A crowded board: pick among the free cells, since retrying at random
+    // would never end once the snake fills the whole board
+    const freeCells: Coordinate[] = [];
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        const cell = { x: col * this.squareSize, y: row * this.squareSize };
+        if (!this.isSnake(cell)) {
+          freeCells.push(cell);
+        }
+      }
+    }
+    if (freeCells.length === 0) {
+      return null;
+    }
+    return freeCells[Math.floor(Math.random() * freeCells.length)];
   }
 
   // Checks if a coordinate is part of the snake's body
