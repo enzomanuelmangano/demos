@@ -167,13 +167,16 @@ const SphereWaves = () => {
     'worklet';
     const time = iTime.get();
     const hueShift = (time * 40) % 360;
+    // toFixed: a hue that lands a hair above 0 (e.g. 4e-15) would print in
+    // scientific notation, which the colour parser rejects on the UI thread.
+    const hue = (base: number) => ((base + hueShift) % 360).toFixed(2);
 
     const colors = [
-      Skia.Color(`hsl(${(340 + hueShift) % 360}, 90%, 70%)`),
-      Skia.Color(`hsl(${(280 + hueShift) % 360}, 85%, 75%)`),
-      Skia.Color(`hsl(${(220 + hueShift) % 360}, 95%, 80%)`),
-      Skia.Color(`hsl(${(160 + hueShift) % 360}, 88%, 72%)`),
-      Skia.Color(`hsl(${(60 + hueShift) % 360}, 92%, 78%)`),
+      Skia.Color(`hsl(${hue(340)}, 90%, 70%)`),
+      Skia.Color(`hsl(${hue(280)}, 85%, 75%)`),
+      Skia.Color(`hsl(${hue(220)}, 95%, 80%)`),
+      Skia.Color(`hsl(${hue(160)}, 88%, 72%)`),
+      Skia.Color(`hsl(${hue(60)}, 92%, 78%)`),
     ];
     paint.setShader(
       Skia.Shader.MakeLinearGradient(
