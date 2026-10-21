@@ -85,7 +85,7 @@ const sampleRegionFromBuffer = (
 };
 
 // Synchronous analysis of a loaded image
-const analyzeImage = (image: SkImage): AnalysisResult => {
+const analyzeImage = (image: SkImage, sourceUri: string): AnalysisResult => {
   const imageWidth = image.width();
   const imageHeight = image.height();
   const aspectRatio = imageWidth / imageHeight;
@@ -96,7 +96,9 @@ const analyzeImage = (image: SkImage): AnalysisResult => {
   const cellWidth = imageWidth / cols;
   const cellHeight = imageHeight / rows;
 
-  const paintingKey = `${imageWidth}x${imageHeight}-${cols}x${rows}`;
+  // Keyed by source too: paintings can share pixel dimensions (Impression,
+  // Sunrise and The School of Athens are both 1280x993).
+  const paintingKey = `${sourceUri}-${imageWidth}x${imageHeight}-${cols}x${rows}`;
   const dimensions = { cols, rows, totalCells, aspectRatio };
 
   // Return cached if available
@@ -155,7 +157,7 @@ export const loadAndAnalyzePainting = async (
     const image = Skia.Image.MakeImageFromEncoded(data);
 
     if (image) {
-      return analyzeImage(image);
+      return analyzeImage(image, resolved.uri);
     }
   } catch {
     // Silently fail
