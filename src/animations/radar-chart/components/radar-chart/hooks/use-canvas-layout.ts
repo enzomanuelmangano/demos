@@ -12,8 +12,7 @@ const useCanvasLayout = (canvasStyle: StyleProp<ViewStyle>) => {
   // Calculating the canvas size using the `useMemo` hook
   const canvasSize = useMemo(() => {
     // Flattening the canvas style object to extract the width and height
-    const { width } = StyleSheet.flatten(canvasStyle);
-    const { height } = StyleSheet.flatten(canvasStyle);
+    const { width, height } = StyleSheet.flatten(canvasStyle) ?? {};
 
     // Checking if the extracted width and height are numbers
     const effectiveWidth = typeof width === 'number' && width;

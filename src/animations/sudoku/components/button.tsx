@@ -42,7 +42,7 @@ export const Button: FC<ButtonProps> = ({
         entering={entering || FadeIn.duration(400)}
         exiting={exiting || FadeOut.duration(200)}
         onPress={onPress}
-        enabled={!disabled}
+        disabled={disabled}
         style={[
           styles.button,
           styles[size],

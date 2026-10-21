@@ -1,6 +1,6 @@
 import type { Side } from './types';
 import type React from 'react';
-import type { View } from 'react-native';
+import type { ViewInstance } from 'react-native';
 import type { MoveResult } from 'react-native-chessboard';
 
 export const delay = (ms: number) =>
@@ -8,7 +8,7 @@ export const delay = (ms: number) =>
 
 // Measure a view's frame in window (screen) coordinates, as a promise.
 export const measureInWindow = (
-  ref: React.RefObject<View | null>,
+  ref: React.RefObject<ViewInstance | null>,
 ): Promise<{ x: number; y: number; width: number; height: number } | null> =>
   new Promise(resolve => {
     const node = ref.current;

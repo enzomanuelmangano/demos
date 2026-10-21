@@ -384,9 +384,7 @@ const startFrameLoop = (
     // re-using one over a texture that has been redrawn is not something to
     // rely on; the wrapper is a handle, not a copy, so this costs a JSI call
     // and no pixels.
-    clock.image.set(
-      Skia.Image.MakeImageFromNativeTexture(shapeTexture.nativePointer),
-    );
+    clock.image.set(Skia.Image.MakeImageFromGPUTexture(shapeTexture));
     requestAnimationFrame(frame);
   };
 
@@ -582,7 +580,7 @@ export const usePortraitRenderer = ({
       // with no copy when Graphite is on.
       disposables.push(() => atlas.image.dispose());
       const atlasTexture = adoptTexture(
-        Skia.Image.MakeNativeTextureFromImage(atlas.image),
+        Skia.Image.MakeGPUTextureFromImage(atlas.image),
       );
       disposables.push(() => atlasTexture.destroy());
 

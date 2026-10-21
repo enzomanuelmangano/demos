@@ -22,7 +22,12 @@ const CanvasContainer = () => {
   }, [size]);
 
   return (
-    <Touchable.Canvas style={{ flex: 1 }} onSize={size}>
+    <Touchable.Canvas
+      style={{ flex: 1 }}
+      // Skia 3.7 dropped `onSize`: the layout feeds the shared value instead
+      onLayout={({ nativeEvent: { layout } }) =>
+        size.set({ width: layout.width, height: layout.height })
+      }>
       {image && (
         <Image
           x={0}

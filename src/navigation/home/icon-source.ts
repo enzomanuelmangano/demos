@@ -1,15 +1,13 @@
 import { ICON_COLORS } from './icon-colors.generated';
 import { ICON_MAP } from './icon-map.generated';
 
-import type { ImageSourcePropType } from 'react-native';
-
 // Temporary 1024×1024 placeholder used for every demo until a real
 // assets/app-icons-src/<slug>.png is supplied (then re-run generate-icon-map.ts).
-const PLACEHOLDER: ImageSourcePropType = require('../../../assets/app-icons/_placeholder.png');
+const PLACEHOLDER: number = require('../../../assets/app-icons/_placeholder.png');
 
 // Real icon for the slug, or the placeholder if none has shipped yet — so
 // partial icon coverage just works with no code changes.
-export const getIconSource = (slug: string): ImageSourcePropType =>
+export const getIconSource = (slug: string): number =>
   ICON_MAP[slug] ?? PLACEHOLDER;
 
 // Flat backdrop the demo's open-zoom card expands with — derived from the

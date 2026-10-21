@@ -12,7 +12,6 @@ import {
 import { memo, useCallback, useEffect, useMemo } from 'react';
 
 import { Ionicons } from '@expo/vector-icons';
-import MaskedView from '@react-native-masked-view/masked-view';
 import { BlurView } from 'expo-blur';
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Image } from 'expo-image';
@@ -33,8 +32,10 @@ import { launchGroup, launchGroupId } from './launch-transition';
 import { PRESSED_OPACITY, usePressOpacity } from './press-opacity';
 import { SEARCH_REVEAL } from './search-constants';
 import { ICON_RADIUS_RATIO } from './use-grid-layout';
+import { MaskedView } from '../../components/masked-view';
 
 import type { Demo } from './demos';
+import type { TextInputInstance } from 'react-native';
 import type { SharedValue } from 'react-native-reanimated';
 
 // iOS 26 Liquid Glass for the field where available; a translucent gray pill
@@ -99,7 +100,7 @@ interface Props {
   onChangeQuery: (q: string) => void;
   onCancel: () => void;
   onSelect: (slug: string) => void;
-  inputRef: React.RefObject<TextInput | null>;
+  inputRef: React.RefObject<TextInputInstance | null>;
 }
 
 // iOS-App-Library-style pull-to-search. The surface reveals from the first

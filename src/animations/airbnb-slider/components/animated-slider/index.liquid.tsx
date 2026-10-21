@@ -37,7 +37,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
     return StyleSheet.flatten(style);
   }, [style]);
 
-  const sliderWidth = flattenedStyle.width;
+  const sliderWidth = flattenedStyle?.width;
 
   const sliderProgress = useSharedValue(initialProgress);
 

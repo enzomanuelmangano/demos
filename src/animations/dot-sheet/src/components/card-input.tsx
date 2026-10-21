@@ -19,6 +19,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { DEMO_BUTTON_ROW_HEIGHT } from '../../../../navigation/home/demo-close-button';
 
+import type { TextInputInstance } from 'react-native';
+
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 export type CardInputRefType = {
@@ -33,7 +35,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   // info buttons, which are drawn over the demo: under them, a tap on the
   // back button closed the demo instead.
   const topInset = useSafeAreaInsets().top + DEMO_BUTTON_ROW_HEIGHT;
-  const animatedTextInput = useRef<TextInput>(null);
+  const animatedTextInput = useRef<TextInputInstance>(null);
 
   useImperativeHandle(
     ref,

@@ -57,7 +57,7 @@ import { iconRectForCell, useGridLayout } from './use-grid-layout';
 import type { Demo } from './demos';
 import type { LaunchSource } from './launch-transition';
 import type { GridLayout } from './use-grid-layout';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 
 /** Where the screen's centre is, for the cells that make the entrance. */
 interface IntroFrame {
@@ -334,7 +334,7 @@ export const Springboard = ({ onOpen }: Props) => {
   const reveal = useSharedValue(0);
   const [searchMode, setSearchMode] = useState(false);
   const [query, setQuery] = useState('');
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
 
   // All the JS-side flags derived from the home's live state, packed into one
   // per-frame reaction (they read the same shared values every frame):

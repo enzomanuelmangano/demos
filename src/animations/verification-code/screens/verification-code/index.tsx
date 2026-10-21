@@ -13,6 +13,7 @@ import { useAnimatedShake } from '../../../email-demo/hooks/use-animated-shake';
 import { VerificationCode } from '../../components/verification-code';
 
 import type { StatusType } from '../../components/verification-code/animated-code-number';
+import type { TextInputInstance } from 'react-native';
 
 type VerificationCodeScreenProps = {
   correctCode: number;
@@ -43,7 +44,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
 
   const { shake, rShakeStyle } = useAnimatedShake();
 
-  const invisibleTextInputRef = useRef<TextInput>(null);
+  const invisibleTextInputRef = useRef<TextInputInstance>(null);
 
   const resetCode = useCallback(() => {
     setTimeout(() => {

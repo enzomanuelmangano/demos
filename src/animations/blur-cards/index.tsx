@@ -99,7 +99,7 @@ const useBlurredBackground = (width: number, height: number) => {
     // Only the raster copy is drawn; the surface and its GPU snapshot are both
     // screen-sized and would otherwise wait for the garbage collector.
     const snapshot = surface.makeImageSnapshot();
-    const raster = snapshot.makeNonTextureImage();
+    const raster = snapshot.makeRasterImageSync();
     snapshot.dispose();
     surface.dispose();
     return raster;

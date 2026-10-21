@@ -112,7 +112,12 @@ function RadarChart<K extends string>({
   }, [centerX, centerY]);
 
   return (
-    <Canvas onSize={size} style={style}>
+    <Canvas
+      // Skia 3.7 dropped `onSize`: the layout feeds the shared value instead
+      onLayout={({ nativeEvent: { layout } }) =>
+        size.set({ width: layout.width, height: layout.height })
+      }
+      style={style}>
       <>
         {showGrid && (
           <Path

@@ -20,19 +20,15 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  Canvas,
-  Fill,
-  ImageShader,
-  Shader,
-  makeImageFromView,
-} from 'react-native-skia';
+import { Canvas, Fill, ImageShader, Shader } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { GameReviewCard } from './components/game-review-card';
 import { DEEP, EXIT_MS, GLOW, SPARK, WAVE, WAVE_MS } from './wave-shader';
+import { makeImageFromView } from '../../../components/make-image-from-view';
 
 import type { ShowOpts } from './types';
+import type { ViewInstance } from 'react-native';
 import type { SkImage } from 'react-native-skia';
 
 type AuraApi = { show: (opts: ShowOpts) => void; hide: () => void };
@@ -43,8 +39,8 @@ export const CheckmateAuraProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const { width, height } = useWindowDimensions();
-  const rootRef = useRef<View>(null);
-  const contentRef = useRef<View>(null); // wraps children only (no Canvas)
+  const rootRef = useRef<ViewInstance>(null);
+  const contentRef = useRef<ViewInstance>(null); // wraps children only (no Canvas)
   const busy = useRef(false);
 
   const snapshot = useSharedValue<SkImage | null>(null);
