@@ -55,7 +55,9 @@ const SortableItem: FC<SortableListItemProps> = ({
   useAnimatedReaction(
     () => animatedIndex.get(),
     currentActiveIndex => {
-      if (currentActiveIndex) {
+      // Index 0 is a valid active item: only the release (null) is skipped,
+      // so the last dragged item keeps its zIndex while it settles
+      if (currentActiveIndex !== null) {
         wasLastActiveIndex.set(currentActiveIndex === index);
       }
     },
@@ -174,7 +176,8 @@ const SortableItem: FC<SortableListItemProps> = ({
           }
         }),
       );
-      wasLastActiveIndex.set(true);
+      // wasLastActiveIndex is already set by the reaction when the drag
+      // started: onFinalize also runs for touches that never activated
       animatedIndex.set(null);
     });
 
