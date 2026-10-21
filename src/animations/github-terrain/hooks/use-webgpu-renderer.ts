@@ -31,6 +31,10 @@ interface GPUResources {
   buffers: GPUBuffer[];
 }
 
+/** The canvas is not measured on the first tick; poll briefly for a layout. */
+const INIT_RETRY_MS = 50;
+const INIT_MAX_ATTEMPTS = 20;
+
 interface AnimationState {
   progress: number;
   progressVelocity: number;
@@ -54,6 +58,10 @@ export function useWebGPURenderer(
   const lastFrameTimeRef = useRef<number>(Date.now());
   const startTimeRef = useRef<number>(Date.now());
   const isInitializedRef = useRef(false);
+  // Bumped on every teardown. Init re-reads it after each await, so a screen
+  // left while the adapter or device is still being requested drops the work
+  // instead of starting a render loop on an unmounted canvas.
+  const generationRef = useRef(0);
   // Frames to keep rendering after init even if settled, while the
   // surface is being set up
   const warmupFramesRef = useRef(0);
@@ -61,19 +69,26 @@ export function useWebGPURenderer(
   const uniformDataRef = useRef(new Float32Array(6));
 
   const cleanup = useCallback(() => {
+    generationRef.current += 1;
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
 
     if (resourcesRef.current) {
-      const { depthTexture, buffers } = resourcesRef.current;
+      const { device, context, depthTexture, buffers } = resourcesRef.current;
+
+      // The loop runs on this thread and was just cancelled, so no frame can
+      // still be using these objects.
+      context.unconfigure();
 
       // Destroy all buffers
       buffers.forEach(buffer => buffer.destroy());
 
       // Destroy depth texture
       depthTexture.destroy();
+
+      device.destroy();
 
       resourcesRef.current = null;
     }
@@ -92,40 +107,63 @@ export function useWebGPURenderer(
     [],
   );
 
+  /**
+   * Resolves false when the canvas has not been laid out yet and the caller
+   * should ask again; true once it has, whether or not init then succeeded.
+   */
   const initWebGPU = useCallback(async () => {
-    if (!canvasRef.current || isInitializedRef.current) return;
+    if (isInitializedRef.current) return true;
+    if (!canvasRef.current) return false;
 
     const context = canvasRef.current.getContext(
       'webgpu',
     ) as RNWebGPUContext | null;
     if (!context) {
       console.error('[WebGPU] Failed to get context');
-      return;
+      return true;
     }
+
+    const canvas = context.canvas as HTMLCanvasElement;
+    // A canvas measured at zero would get a 0x0 depth texture, which fails
+    // validation and leaves the screen blank, so wait for a real layout.
+    if (!canvas.clientWidth || !canvas.clientHeight) return false;
+
+    const generation = generationRef.current;
+    const abandoned = () => generation !== generationRef.current;
+
+    // Outside the try so a throw part-way through init can still release
+    // them: resourcesRef is only set at the end, out of cleanup's reach.
+    let initDevice: GPUDevice | null = null;
+    let configured = false;
+    const buffers: GPUBuffer[] = [];
 
     try {
       const adapter = await navigator.gpu?.requestAdapter();
+      if (abandoned()) return true;
       if (!adapter) {
         console.error('[WebGPU] No adapter available');
-        return;
+        return true;
       }
 
       const device = await adapter.requestDevice();
+      if (abandoned()) {
+        device.destroy();
+        return true;
+      }
+      initDevice = device;
       const format = navigator.gpu.getPreferredCanvasFormat();
 
-      const canvas = context.canvas as HTMLCanvasElement;
       canvas.width = canvas.clientWidth * PixelRatio.get();
       canvas.height = canvas.clientHeight * PixelRatio.get();
 
       context.configure({ device, format, alphaMode: 'opaque' });
+      configured = true;
 
       // Build scene data for both data sets
       const syntheticData = buildSceneData(getContributionGrid(false));
       const realData = buildSceneData(getContributionGrid(true));
 
       // Create buffers
-      const buffers: GPUBuffer[] = [];
-
       const uniformBuffer = device.createBuffer({
         size: UNIFORM_BUFFER_SIZE,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -277,7 +315,14 @@ export function useWebGPURenderer(
       startRenderLoop();
     } catch (e) {
       console.error('[WebGPU] Initialization failed:', e);
+      // Once resourcesRef holds them, cleanup owns them instead.
+      if (initDevice && resourcesRef.current?.device !== initDevice) {
+        if (configured) context.unconfigure();
+        buffers.forEach(buffer => buffer.destroy());
+        initDevice.destroy();
+      }
     }
+    return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasRef, cleanup, createDepthTexture]);
 
@@ -428,12 +473,26 @@ export function useWebGPURenderer(
 
   // Initialize on mount
   useEffect(() => {
-    // Small delay to ensure canvas is ready
-    const timeoutId = setTimeout(() => {
-      initWebGPU();
-    }, 50);
+    // The canvas reports a zero size for a tick or two after mount; ask again
+    // on a short timer until it has been laid out, then stop asking.
+    let cancelled = false;
+    let attempts = 0;
+
+    const attempt = async () => {
+      const laidOut = await initWebGPU();
+      if (cancelled || laidOut) return;
+      if (attempts >= INIT_MAX_ATTEMPTS) {
+        console.warn('[WebGPU] Canvas never got a size; not rendering');
+        return;
+      }
+      attempts += 1;
+      timeoutId = setTimeout(attempt, INIT_RETRY_MS);
+    };
+
+    let timeoutId = setTimeout(attempt, INIT_RETRY_MS);
 
     return () => {
+      cancelled = true;
       clearTimeout(timeoutId);
       cleanup();
     };

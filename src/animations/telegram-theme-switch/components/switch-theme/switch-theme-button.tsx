@@ -28,8 +28,12 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
   style,
   contentContainerStyle,
 }) => {
-  const { toggleTheme, prepareToggleTheme, animationProgress } =
-    useSwitchTheme();
+  const {
+    toggleTheme,
+    prepareToggleTheme,
+    cancelToggleTheme,
+    animationProgress,
+  } = useSwitchTheme();
 
   const viewRef = useAnimatedRef<Reanimated.View>();
 
@@ -58,7 +62,10 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
     })
     .onTouchesUp(() => {
       const value = measure(viewRef);
-      if (!value) return;
+      if (!value) {
+        scheduleOnRN(cancelToggleTheme);
+        return;
+      }
       const center = {
         x: value.pageX,
         y: value.pageY,
@@ -67,6 +74,9 @@ const SwitchThemeButton: React.FC<SwitchThemeButtonProps> = ({
       };
 
       scheduleOnRN(toggleTheme, { center, style });
+    })
+    .onTouchesCancelled(() => {
+      scheduleOnRN(cancelToggleTheme);
     });
 
   const rContainerStyle = useAnimatedStyle(() => {

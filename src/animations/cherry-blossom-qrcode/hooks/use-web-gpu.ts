@@ -41,6 +41,18 @@ const SEQUENCE_DURATION = CREEPER_TOTAL + DEBRIS_SETTLE + REBUILD_DURATION;
 
 const UNIFORM_FLOATS = 16;
 
+/**
+ * One mount's GPU work. Cleanup flips `disposed`; init re-reads it after every
+ * await, so a demo closed while the adapter or device is still being requested
+ * drops the work instead of starting a render loop on an unmounted canvas.
+ */
+interface GPUSession {
+  disposed: boolean;
+  context: GPUCanvasContext | null;
+  /** Released in reverse order on cleanup, so the device goes last. */
+  resources: { destroy: () => void }[];
+}
+
 interface UseWebGPUOptions {
   canvasRef: React.RefObject<CanvasRef | null>;
   canvasWidth: number;
@@ -75,6 +87,7 @@ export function useWebGPU({
   const rawProgressRef = useRef(0);
   const lastFrameTimeRef = useRef(Date.now());
 
+  const sessionRef = useRef<GPUSession | null>(null);
   const deviceRef = useRef<GPUDevice | null>(null);
   const typeBufferRef = useRef<GPUBuffer | null>(null);
   const posBufferRef = useRef<GPUBuffer | null>(null);
@@ -157,15 +170,22 @@ export function useWebGPU({
   }, [qrContent]);
 
   const initWebGPU = useCallback(async () => {
-    if (!canvasRef.current) return;
+    const session = sessionRef.current;
+    if (!session || session.disposed || !canvasRef.current) return;
 
     const context = canvasRef.current.getContext('webgpu');
     if (!context) return;
 
     const adapter = await navigator.gpu?.requestAdapter();
-    if (!adapter) return;
+    if (session.disposed || !adapter) return;
 
     const device = await adapter.requestDevice();
+    if (session.disposed) {
+      device.destroy();
+      return;
+    }
+    session.resources.push(device);
+    session.context = context;
     deviceRef.current = device;
     const format = navigator.gpu.getPreferredCanvasFormat();
 
@@ -189,6 +209,7 @@ export function useWebGPU({
       size: UNIFORM_FLOATS * 4,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
+    session.resources.push(uniformBuffer);
 
     const typeBuffer = device.createBuffer({
       size: MAX_BLOCKS * 4,
@@ -213,6 +234,12 @@ export function useWebGPU({
       usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
     });
     baseYBufferRef.current = baseYBuffer;
+    session.resources.push(
+      typeBuffer,
+      posBuffer,
+      resistanceBuffer,
+      baseYBuffer,
+    );
 
     // Initialize buffer data
     updateBuffers(device, blockData, {
@@ -329,6 +356,7 @@ export function useWebGPU({
       format: 'depth24plus',
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
+    session.resources.push(depthTexture);
 
     // The depth texture never changes, so neither does its view.
     const depthView = depthTexture.createView();
@@ -340,6 +368,7 @@ export function useWebGPU({
 
     // Render loop
     const render = () => {
+      if (session.disposed) return;
       const now = Date.now();
       const dt = Math.min((now - lastFrameTimeRef.current) / 1000, 0.05);
       lastFrameTimeRef.current = now;
@@ -488,10 +517,31 @@ export function useWebGPU({
   }, [canvasWidth, canvasHeight, canvasRef, isFlat]);
 
   useEffect(() => {
+    const session: GPUSession = {
+      disposed: false,
+      context: null,
+      resources: [],
+    };
+    sessionRef.current = session;
     const id = setTimeout(initWebGPU, 100);
     return () => {
+      session.disposed = true;
       clearTimeout(id);
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+      // The QR effect writes through these refs; they must not reach buffers
+      // that are about to be destroyed.
+      deviceRef.current = null;
+      typeBufferRef.current = null;
+      posBufferRef.current = null;
+      resistanceBufferRef.current = null;
+      baseYBufferRef.current = null;
+      // The loop runs on this thread and was just cancelled, so no frame can
+      // still be using these objects.
+      session.context?.unconfigure();
+      for (const resource of session.resources.splice(0).reverse()) {
+        resource.destroy();
+      }
     };
   }, [initWebGPU]);
 

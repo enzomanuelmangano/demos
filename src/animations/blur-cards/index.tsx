@@ -5,7 +5,7 @@ import {
   View,
 } from 'react-native';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { PressableOpacity } from 'pressto';
 import {
@@ -72,7 +72,7 @@ const BlurredCard = ({ blurredProgress }: BlurredCardProps) => {
 // frame of the card spring. Rasterize it once at device resolution (same
 // gradient, same decal blur as the <Rect> + <Blur> below) and draw the image.
 const useBlurredBackground = (width: number, height: number) => {
-  return useMemo(() => {
+  const image = useMemo(() => {
     const pixelRatio = PixelRatio.get();
     const surface = Skia.Surface.MakeOffscreen(
       Math.round(width * pixelRatio),
@@ -96,8 +96,22 @@ const useBlurredBackground = (width: number, height: number) => {
     );
     canvas.drawRect(rect(0, 0, width, height), paint);
     surface.flush();
-    return surface.makeImageSnapshot().makeNonTextureImage();
+    // Only the raster copy is drawn; the surface and its GPU snapshot are both
+    // screen-sized and would otherwise wait for the garbage collector.
+    const snapshot = surface.makeImageSnapshot();
+    const raster = snapshot.makeNonTextureImage();
+    snapshot.dispose();
+    surface.dispose();
+    return raster;
   }, [width, height]);
+  // Released once a resize has committed its replacement, or on unmount. The
+  // canvas records its own reference at commit, so the frame on screen keeps
+  // drawing.
+  useEffect(() => {
+    if (!image) return;
+    return () => image.dispose();
+  }, [image]);
+  return image;
 };
 
 export const BlurCards = () => {
