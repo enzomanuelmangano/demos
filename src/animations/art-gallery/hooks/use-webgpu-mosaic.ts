@@ -571,6 +571,12 @@ export function useWebGPUMosaic(
       return;
     }
 
+    // Outside the try so a throw part-way through init can still release
+    // them: resourcesRef is only set at the end, out of cleanup's reach.
+    let initDevice: GPUDevice | null = null;
+    let configured = false;
+    const buffers: GPUBuffer[] = [];
+
     try {
       const adapter = await navigator.gpu?.requestAdapter();
       if (abandoned() || !adapter) return;
@@ -587,6 +593,7 @@ export function useWebGPUMosaic(
         device.destroy();
         return;
       }
+      initDevice = device;
       const format = navigator.gpu.getPreferredCanvasFormat();
 
       const canvas = context.canvas as HTMLCanvasElement;
@@ -595,8 +602,7 @@ export function useWebGPUMosaic(
       canvas.height = canvas.clientHeight * pixelRatio;
 
       context.configure({ device, format, alphaMode: 'premultiplied' });
-
-      const buffers: GPUBuffer[] = [];
+      configured = true;
 
       const uniformBuffer = device.createBuffer({
         size: UNIFORM_BUFFER_SIZE,
@@ -852,6 +858,12 @@ export function useWebGPUMosaic(
       // Start loading in the background (don't await).
       loadAtlasTexture();
     } catch {
+      // Once resourcesRef holds them, cleanup owns them instead.
+      if (initDevice && resourcesRef.current?.device !== initDevice) {
+        if (configured) context.unconfigure();
+        buffers.forEach(buffer => buffer.destroy());
+        initDevice.destroy();
+      }
       if (!abandoned()) isInitializedRef.current = false;
     }
   }, [

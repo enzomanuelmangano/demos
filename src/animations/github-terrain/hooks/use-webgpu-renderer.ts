@@ -131,6 +131,12 @@ export function useWebGPURenderer(
     const generation = generationRef.current;
     const abandoned = () => generation !== generationRef.current;
 
+    // Outside the try so a throw part-way through init can still release
+    // them: resourcesRef is only set at the end, out of cleanup's reach.
+    let initDevice: GPUDevice | null = null;
+    let configured = false;
+    const buffers: GPUBuffer[] = [];
+
     try {
       const adapter = await navigator.gpu?.requestAdapter();
       if (abandoned()) return true;
@@ -144,20 +150,20 @@ export function useWebGPURenderer(
         device.destroy();
         return true;
       }
+      initDevice = device;
       const format = navigator.gpu.getPreferredCanvasFormat();
 
       canvas.width = canvas.clientWidth * PixelRatio.get();
       canvas.height = canvas.clientHeight * PixelRatio.get();
 
       context.configure({ device, format, alphaMode: 'opaque' });
+      configured = true;
 
       // Build scene data for both data sets
       const syntheticData = buildSceneData(getContributionGrid(false));
       const realData = buildSceneData(getContributionGrid(true));
 
       // Create buffers
-      const buffers: GPUBuffer[] = [];
-
       const uniformBuffer = device.createBuffer({
         size: UNIFORM_BUFFER_SIZE,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -309,6 +315,12 @@ export function useWebGPURenderer(
       startRenderLoop();
     } catch (e) {
       console.error('[WebGPU] Initialization failed:', e);
+      // Once resourcesRef holds them, cleanup owns them instead.
+      if (initDevice && resourcesRef.current?.device !== initDevice) {
+        if (configured) context.unconfigure();
+        buffers.forEach(buffer => buffer.destroy());
+        initDevice.destroy();
+      }
     }
     return true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -468,7 +480,11 @@ export function useWebGPURenderer(
 
     const attempt = async () => {
       const laidOut = await initWebGPU();
-      if (cancelled || laidOut || attempts >= INIT_MAX_ATTEMPTS) return;
+      if (cancelled || laidOut) return;
+      if (attempts >= INIT_MAX_ATTEMPTS) {
+        console.warn('[WebGPU] Canvas never got a size; not rendering');
+        return;
+      }
       attempts += 1;
       timeoutId = setTimeout(attempt, INIT_RETRY_MS);
     };
