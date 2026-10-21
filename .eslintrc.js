@@ -13,7 +13,6 @@ module.exports = {
     'react',
     'react-hooks',
     'react-native',
-    'deprecation',
     'prettier',
     'pressto',
     'refined',
@@ -54,7 +53,37 @@ module.exports = {
     'prettier/prettier': 'error',
     '@typescript-eslint/consistent-type-imports': 'off',
     '@typescript-eslint/no-unused-vars': 'off',
-    'deprecation/deprecation': 'error',
+    // Gesture Handler 3 deprecates the `Gesture.*` builder in favour of the
+    // hook API. The builder still works on v3; moving every demo to hooks is
+    // its own migration, so only the builder is allowed here — any other
+    // deprecated API is still an error.
+    '@typescript-eslint/no-deprecated': [
+      'error',
+      {
+        allow: [
+          {
+            from: 'package',
+            package: 'react-native-gesture-handler',
+            name: [
+              'Gesture',
+              'Tap',
+              'Pan',
+              'Pinch',
+              'Rotation',
+              'Fling',
+              'LongPress',
+              'ForceTouch',
+              'Native',
+              'Manual',
+              'Hover',
+              'Race',
+              'Simultaneous',
+              'Exclusive',
+            ],
+          },
+        ],
+      },
+    ],
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
     'react/display-name': 'off',
