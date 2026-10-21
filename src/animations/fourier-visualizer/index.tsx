@@ -15,9 +15,14 @@ import { Canvas, Path, Skia } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { FourierVisualizer } from './components/fourier-visualizer';
+import { PathGeometry } from './components/fourier-visualizer/utils/geometry';
 
 import type { FourierVisualizerRefType } from './components/fourier-visualizer';
 import type { SkPathBuilder } from 'react-native-skia';
+
+// Below this the stroke yields too few points for the FFT (it needs at least
+// two, a power of two), so a tap or a tiny flick would throw
+const MIN_STROKE_LENGTH = 8;
 
 // The main App component.
 const App = () => {
@@ -46,7 +51,15 @@ const App = () => {
   // Callback to handle the drawing of paths.
   const drawPathWrapper = useCallback(
     (svgString: string) => {
-      const newPath = Skia.Path.MakeFromSVGString(svgString)!;
+      const newPath = Skia.Path.MakeFromSVGString(svgString);
+      if (
+        !newPath ||
+        new PathGeometry(newPath).getTotalLength() < MIN_STROKE_LENGTH
+      ) {
+        isDrawing.set(false);
+        ref.current?.clear();
+        return;
+      }
       isDrawing.set(true);
       ref.current?.draw({
         path: newPath,

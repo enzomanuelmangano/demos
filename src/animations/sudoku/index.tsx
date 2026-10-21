@@ -57,10 +57,10 @@ const Transition = LinearTransition;
 
 // Generate initial board with medium difficulty. Lazily, on first mount: every
 // demo module is imported at app start, and generating blocks JS for tens of ms.
-let initialBoard: ReturnType<typeof generateSudoku>['puzzle'] | undefined;
-const getInitialBoard = () => {
-  initialBoard ??= generateSudoku('medium').puzzle;
-  return initialBoard;
+let initialSudoku: ReturnType<typeof generateSudoku> | undefined;
+const getInitialSudoku = () => {
+  initialSudoku ??= generateSudoku('medium');
+  return initialSudoku;
 };
 
 /**
@@ -68,7 +68,7 @@ const getInitialBoard = () => {
  */
 export const Sudoku = () => {
   const [hasStarted, setHasStarted] = useState(false);
-  const [board, setBoard] = useState(getInitialBoard);
+  const [sudoku, setSudoku] = useState(getInitialSudoku);
   const sudokuRef = useRef<SudokuBoardRef>(null);
   const confettiRef = useRef<PIConfettiMethods>(null);
 
@@ -90,8 +90,7 @@ export const Sudoku = () => {
           text: 'New Game',
           style: 'destructive',
           onPress: () => {
-            const { puzzle: newBoard } = generateSudoku('medium');
-            setBoard(newBoard);
+            setSudoku(generateSudoku('medium'));
             setHasStarted(false);
           },
         },
@@ -171,7 +170,8 @@ export const Sudoku = () => {
                 style={styles.boardWrapper}>
                 <SudokuBoard
                   ref={sudokuRef}
-                  initialBoard={board}
+                  initialBoard={sudoku.puzzle}
+                  solution={sudoku.solution}
                   delay={600}
                   onComplete={handleSudokuComplete}
                 />

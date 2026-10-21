@@ -19,12 +19,13 @@ export const getPointAtLength = (length: number, from: Vector, to: Vector) => {
 
 export class PathGeometry {
   private totalLength = 0;
-  private contour: SkContourMeasure;
+  private contour: SkContourMeasure | null;
 
   constructor(path: SkPath, resScale = 1) {
     const it = Skia.ContourMeasureIter(path, false, resScale);
-    const contour: SkContourMeasure = it.next()!;
-    this.totalLength = contour.length();
+    // Skia skips zero-length contours, so a tap-sized stroke has none
+    const contour = it.next();
+    this.totalLength = contour?.length() ?? 0;
     this.contour = contour;
   }
 
@@ -33,6 +34,9 @@ export class PathGeometry {
   }
 
   getPointAtLength(length: number) {
+    if (!this.contour) {
+      return vec(0, 0);
+    }
     const [pos] = this.contour.getPosTan(length);
     return pos;
   }

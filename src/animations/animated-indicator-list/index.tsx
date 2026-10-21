@@ -23,6 +23,23 @@ const ItemHeight = 50;
 
 const headers = data.filter(isHeader) as HeaderListItem[];
 
+// Every row has a fixed height, so the list can be laid out up front: without
+// it scrollToIndex throws for a header that hasn't been rendered yet
+const itemLayouts = data.reduce<{ length: number; offset: number }[]>(
+  (acc, item) => {
+    const previous = acc[acc.length - 1];
+    const offset = previous ? previous.offset + previous.length : 0;
+    acc.push({ length: isHeader(item) ? HeaderHeight : ItemHeight, offset });
+    return acc;
+  },
+  [],
+);
+
+const getItemLayout = (_: unknown, index: number) => ({
+  ...itemLayouts[index],
+  index,
+});
+
 export const AnimatedIndicatorList = () => {
   const insets = useSafeAreaInsets();
   const contentOffsetY = useSharedValue(0);
@@ -101,6 +118,7 @@ export const AnimatedIndicatorList = () => {
         ref={flatlistRef}
         scrollEventThrottle={16}
         data={data}
+        getItemLayout={getItemLayout}
         contentContainerStyle={{
           paddingBottom: 400,
         }}

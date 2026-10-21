@@ -55,7 +55,9 @@ const SortableItem: FC<SortableListItemProps> = ({
   useAnimatedReaction(
     () => animatedIndex.get(),
     currentActiveIndex => {
-      if (currentActiveIndex) {
+      // Index 0 is a valid active item: only the release (null) is skipped,
+      // so the last dragged item keeps its zIndex while it settles
+      if (currentActiveIndex !== null) {
         wasLastActiveIndex.set(currentActiveIndex === index);
       }
     },
@@ -131,6 +133,7 @@ const SortableItem: FC<SortableListItemProps> = ({
       prevPositions.set(Object.assign({}, positions.get()));
 
       animatedIndex.set(index);
+      wasLastActiveIndex.set(true);
       // Keep the reference of the initialContentOffset
       // At the beginning I was missing the -scrollContentOffsetY.get().
       // But that's extremely important to handle the edge cases while scrolling
@@ -174,8 +177,12 @@ const SortableItem: FC<SortableListItemProps> = ({
           }
         }),
       );
-      wasLastActiveIndex.set(true);
-      animatedIndex.set(null);
+      // onFinalize also runs for touches that never activated (e.g. a second
+      // finger on another item): only the dragged item releases the index,
+      // and wasLastActiveIndex was already raised in onStart
+      if (animatedIndex.get() === index) {
+        animatedIndex.set(null);
+      }
     });
 
   const top = useDerivedValue(() => {

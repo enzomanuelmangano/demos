@@ -133,24 +133,28 @@ export const generateSudoku = (
 
   let removed = 0;
 
-  while (removed < cellsToRemove) {
-    const randomRow = Math.floor(Math.random() * 9);
-    const randomCol = Math.floor(Math.random() * 9);
+  // Try each cell once, in random order. A clue that can't be removed now
+  // never can later (removing more clues only adds solutions), so retrying
+  // random cells would spin forever once every remaining clue is essential.
+  const cells = shuffle(Array.from({ length: 81 }, (_, index) => index));
 
-    if (puzzle[randomRow][randomCol] !== null) {
-      const temp = puzzle[randomRow][randomCol];
-      puzzle[randomRow][randomCol] = null;
+  for (const cell of cells) {
+    if (removed >= cellsToRemove) break;
+    const randomRow = Math.floor(cell / 9);
+    const randomCol = cell % 9;
 
-      // Check if puzzle still has a unique solution
-      const tempBoard = puzzle.map(boardRow => [...boardRow]);
-      const solutions = { value: 0 };
-      countSolutions(tempBoard, solutions);
+    const temp = puzzle[randomRow][randomCol];
+    puzzle[randomRow][randomCol] = null;
 
-      if (solutions.value === 1) {
-        removed++;
-      } else {
-        puzzle[randomRow][randomCol] = temp;
-      }
+    // Check if puzzle still has a unique solution
+    const tempBoard = puzzle.map(boardRow => [...boardRow]);
+    const solutions = { value: 0 };
+    countSolutions(tempBoard, solutions);
+
+    if (solutions.value === 1) {
+      removed++;
+    } else {
+      puzzle[randomRow][randomCol] = temp;
     }
   }
 

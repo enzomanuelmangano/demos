@@ -143,14 +143,14 @@ export const SnakeBoard = forwardRef<SnakeBoardRef, SnakeBoardProps>(
 
     const foodPath = useDerivedValue(() => {
       const builder = Skia.PathBuilder.Make();
+      const food = gameState.get().food;
+      // No food once the snake fills the board: draw nothing
+      if (!food) {
+        return builder.build();
+      }
       builder.addRRect(
         rrect(
-          rect(
-            gameState.get().food?.x ?? 0,
-            gameState.get().food?.y ?? 0,
-            squareSize,
-            squareSize,
-          ),
+          rect(food.x, food.y, squareSize, squareSize),
           squareSize,
           squareSize,
         ),

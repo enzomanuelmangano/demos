@@ -23,8 +23,12 @@ export const useTimer = ({
   // References to manage timer and counter
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const counter = useRef(0);
+  // Bumped by every run/stop/reset/unmount: the interval is created after an
+  // await, and a run that was superseded in the meantime must not start it
+  const runId = useRef(0);
 
   const clearCounter = useCallback(() => {
+    runId.current += 1;
     if (timerRef.current) clearInterval(timerRef.current);
     counter.current = 0;
   }, []);
@@ -36,10 +40,9 @@ export const useTimer = ({
         return Alert.alert('Please enter a valid number');
       }
 
-      // Clear existing timer if it exists
-      if (timerRef.current) {
-        clearCounter();
-      }
+      // Clear existing timer (and any run still waiting to start)
+      clearCounter();
+      const currentRunId = runId.current;
 
       // Enable the timer and reset progress
       isTimerEnabled.set(true);
@@ -47,6 +50,9 @@ export const useTimer = ({
 
       // Wait for a short delay before starting the timer
       await new Promise(resolve => setTimeout(resolve, 300));
+      if (runId.current !== currentRunId) {
+        return;
+      }
 
       // Set interval to update the counter and progress
       // IMPORTANT:
@@ -72,9 +78,6 @@ export const useTimer = ({
 
   const stopTimer = useCallback(() => {
     isTimerEnabled.set(false);
-    if (!timerRef.current) {
-      return;
-    }
     clearCounter();
   }, [clearCounter, isTimerEnabled]);
 
@@ -87,6 +90,7 @@ export const useTimer = ({
   // Cleanup function to clear interval on component unmount
   useEffect(() => {
     return () => {
+      runId.current += 1;
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
