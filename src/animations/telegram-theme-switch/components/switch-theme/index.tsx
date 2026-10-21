@@ -135,8 +135,15 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         center: { x: number; y: number; height: number; width: number };
         style: StyleProp<ViewStyle>;
       }) => {
-        // If an animation is currently in progress, don't initiate a new one
-        if (isAnimating.get()) return;
+        // If an animation is currently in progress, don't initiate a new one,
+        // and drop the snapshot this touch took on the way down
+        if (isAnimating.get()) {
+          if (pendingSnapshot.current) {
+            disposeWhenReady(pendingSnapshot.current);
+          }
+          pendingSnapshot.current = null;
+          return;
+        }
 
         // Indicate that the theme toggle animation is starting
         isAnimating.set(true);
