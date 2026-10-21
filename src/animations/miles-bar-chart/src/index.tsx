@@ -25,7 +25,12 @@ const App = () => {
     },
   });
   const activeIndex = useDerivedValue(() => {
-    return Math.floor((scrollOffset.get() + windowWidth / 2) / windowWidth);
+    const index = Math.floor(
+      (scrollOffset.get() + windowWidth / 2) / windowWidth,
+    );
+    // The rubber band overscrolls past both ends: an index outside data
+    // would hand the chart an undefined week
+    return Math.min(Math.max(index, 0), data.length - 1);
   }, [scrollOffset]);
 
   useAnimatedReaction(
