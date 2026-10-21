@@ -148,6 +148,10 @@ export function useWebGPUMosaic(
   const animationRef = useRef<number | null>(null);
   const isInitializedRef = useRef(false);
   const isLoadingAtlasesRef = useRef(false);
+  // Bumped on every teardown. Init re-reads it after each await, so a gallery
+  // closed while the device or the atlas is still loading drops that work
+  // instead of starting a frame loop nothing is left to stop.
+  const generationRef = useRef(0);
   const startTimeRef = useRef<number>(Date.now());
   // Mosaic rearrange animation clock. Lives on the JS side, set in the same
   // synchronous block that swaps the tile buffers: driving this through a
@@ -221,20 +225,27 @@ export function useWebGPUMosaic(
   };
 
   const cleanup = useCallback(() => {
+    generationRef.current += 1;
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
 
     if (resourcesRef.current) {
-      const { atlasTextures, buffers, depthTexture } = resourcesRef.current;
+      const { device, context, atlasTextures, buffers, depthTexture } =
+        resourcesRef.current;
+      // The loop runs on this thread and was just cancelled, so no frame can
+      // still be using these objects.
+      context.unconfigure();
       buffers.forEach(buffer => buffer.destroy());
       atlasTextures.forEach(texture => texture.destroy());
       depthTexture.destroy();
+      device.destroy();
       resourcesRef.current = null;
     }
 
     isInitializedRef.current = false;
+    isLoadingAtlasesRef.current = false;
   }, []);
 
   // Create a 1x1 placeholder texture
@@ -549,6 +560,8 @@ export function useWebGPUMosaic(
 
     // Mark as initialized immediately to prevent race conditions
     isInitializedRef.current = true;
+    const generation = generationRef.current;
+    const abandoned = () => generation !== generationRef.current;
 
     const context = canvasRef.current.getContext(
       'webgpu',
@@ -560,7 +573,7 @@ export function useWebGPUMosaic(
 
     try {
       const adapter = await navigator.gpu?.requestAdapter();
-      if (!adapter) return;
+      if (abandoned() || !adapter) return;
 
       // Request ASTC support so atlases can stay compressed in VRAM. Apple GPUs
       // support it natively; guard in case an adapter ever lacks the feature.
@@ -570,6 +583,10 @@ export function useWebGPUMosaic(
           ? { requiredFeatures: ['texture-compression-astc'] }
           : undefined,
       );
+      if (abandoned()) {
+        device.destroy();
+        return;
+      }
       const format = navigator.gpu.getPreferredCanvasFormat();
 
       const canvas = context.canvas as HTMLCanvasElement;
@@ -802,6 +819,9 @@ export function useWebGPUMosaic(
         isLoadingAtlasesRef.current = true;
 
         const astcBytes = await loadAtlasAstcBytes();
+        // Teardown already destroyed this device and reset the loading flag;
+        // touching either would hand a dead device's texture to the next mount.
+        if (abandoned()) return;
         const texture =
           astcBytes && resourcesRef.current
             ? uploadAstcToGPU(device, astcBytes)
@@ -832,7 +852,7 @@ export function useWebGPUMosaic(
       // Start loading in the background (don't await).
       loadAtlasTexture();
     } catch {
-      isInitializedRef.current = false;
+      if (!abandoned()) isInitializedRef.current = false;
     }
   }, [
     canvasRef,
