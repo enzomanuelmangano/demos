@@ -1,6 +1,6 @@
 import { StyleSheet, useWindowDimensions } from 'react-native';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,10 @@ export const AppsList = () => {
   const { toggleShaking, stopShaking } = useIsShaking();
   const { width: screenWidth } = useWindowDimensions();
   const { top: safeTop } = useSafeAreaInsets();
+
+  // The shaking flag is module-level and outlives the demo: clear it on
+  // unmount so reopening the demo doesn't start in edit mode.
+  useEffect(() => stopShaking, [stopShaking]);
 
   /**
    * Calculate layout dimensions based on screen width
