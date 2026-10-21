@@ -1,18 +1,15 @@
-import {
-  type CellValue,
-  type SudokuBoard,
-  isValidMove,
-  isPuzzleComplete,
-} from './sudoku';
+import { type CellValue, type SudokuBoard, isPuzzleComplete } from './sudoku';
 
 export class SudokuGame {
   private board: SudokuBoard;
   private initialBoard: SudokuBoard;
+  private solution: SudokuBoard;
   private selectedCell: { row: number; col: number } = { row: -1, col: -1 };
   private highlightedNumber: number = 0;
 
-  constructor(initialBoard: SudokuBoard) {
+  constructor(initialBoard: SudokuBoard, solution: SudokuBoard) {
     this.initialBoard = initialBoard.map(row => [...row]);
+    this.solution = solution.map(row => [...row]);
     this.board = initialBoard.map(row => [...row]);
   }
 
@@ -74,33 +71,12 @@ export class SudokuGame {
     return isPuzzleComplete(this.board);
   }
 
+  // The puzzle is generated with a unique solution, so solving is just
+  // revealing it: brute-forcing the user's board instead could backtrack for
+  // seconds when their entries made it unsolvable
   public solve(): boolean {
-    const solveBoard = (currentBoard: SudokuBoard): boolean => {
-      for (let row = 0; row < 9; row++) {
-        for (let col = 0; col < 9; col++) {
-          if (currentBoard[row][col] === null) {
-            for (let num = 1; num <= 9; num++) {
-              if (isValidMove(currentBoard, row, col, num)) {
-                currentBoard[row][col] = num;
-                if (solveBoard(currentBoard)) {
-                  return true;
-                }
-                currentBoard[row][col] = null;
-              }
-            }
-            return false;
-          }
-        }
-      }
-      return true;
-    };
-
-    const newBoard = this.board.map(row => [...row]);
-    if (solveBoard(newBoard)) {
-      this.board = newBoard;
-      return true;
-    }
-    return false;
+    this.board = this.solution.map(row => [...row]);
+    return true;
   }
 
   public isCellInitial(row: number, col: number): boolean {

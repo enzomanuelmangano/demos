@@ -31,6 +31,7 @@ export type SudokuBoardRef = {
 
 export type SudokuBoardProps = {
   initialBoard: SudokuBoardType;
+  solution: SudokuBoardType;
   delay?: number;
   onComplete?: () => void;
 };
@@ -39,8 +40,8 @@ export type SudokuBoardProps = {
  * Main SudokuBoard component that manages the game state and renders the board
  */
 export const SudokuBoard = forwardRef<SudokuBoardRef, SudokuBoardProps>(
-  ({ initialBoard, delay = 0, onComplete }, ref) => {
-    const [game] = useState(() => new SudokuGame(initialBoard));
+  ({ initialBoard, solution, delay = 0, onComplete }, ref) => {
+    const [game] = useState(() => new SudokuGame(initialBoard, solution));
     const [board, setBoard] = useState(() => game.getBoard());
     // The givens never change for a game: read them once instead of handing
     // every cell a fresh 9x9 copy per render (which defeated CellContainer's memo)
