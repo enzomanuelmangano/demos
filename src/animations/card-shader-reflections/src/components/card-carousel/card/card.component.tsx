@@ -112,7 +112,7 @@ export const Card: FC<CardProps> = ({ item, index, scrollX }) => {
         <View style={styles.card}>
           <CardCanvas
             rotation={rotate}
-            cardType={item.id - 1}
+            cardType={item.id}
             width={CARD_WIDTH}
             height={CARD_HEIGHT}
           />
