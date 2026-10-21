@@ -5,7 +5,7 @@ import { type FC } from 'react';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import { Canvas, Fill, Shader } from 'react-native-skia';
 
-import { cardShader } from './card.shader';
+import { getCardShader } from './card.shader';
 
 interface CardCanvasProps {
   rotation: SharedValue<number>;
@@ -32,7 +32,7 @@ export const CardCanvas: FC<CardCanvasProps> = ({
   return (
     <Canvas style={[StyleSheet.absoluteFill, { width, height }]}>
       <Fill>
-        <Shader source={cardShader} uniforms={uniforms} />
+        <Shader source={getCardShader()} uniforms={uniforms} />
       </Fill>
     </Canvas>
   );

@@ -1,4 +1,4 @@
-import { Skia } from 'react-native-skia';
+import { Skia, type SkRuntimeEffect } from 'react-native-skia';
 
 import { CardType } from '../utils/constants';
 
@@ -102,8 +102,13 @@ const generateMaterialConstants = () => {
  * Card Shader Implementation
  * This shader creates realistic metallic card effects with dynamic lighting and reflections.
  * It supports four card types: Silver (0), Gold (1), Platinum (2), and Metal (3).
+ *
+ * Compiled on first use, not at import: the registry imports every demo at
+ * launch.
  */
-export const cardShader = Skia.RuntimeEffect.Make(`
+let cachedCardShader: SkRuntimeEffect | undefined;
+export const getCardShader = () =>
+  (cachedCardShader ??= Skia.RuntimeEffect.Make(`
     //------------------------------------------------------------------------------
     // Uniform inputs
     //------------------------------------------------------------------------------
@@ -439,4 +444,4 @@ export const cardShader = Skia.RuntimeEffect.Make(`
         
         return vec4(finalColor, 1.0);
     }
-`)!;
+`)!);
