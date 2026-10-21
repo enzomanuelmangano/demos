@@ -17,6 +17,7 @@ import {
   Rect,
   Shader,
   Skia,
+  type SkRuntimeEffect,
 } from 'react-native-skia';
 
 import { ControlPanel } from './components/control-panel';
@@ -42,8 +43,11 @@ const CANVAS_SIZE = SCREEN_WIDTH;
 // The effect is compiled once. N, the time and the multiplier are uniforms:
 // SkSL loops need a constant bound, so the loop runs up to the maximum and
 // stops after N iterations, exactly as `i < N` did when N was baked into the
-// source (which recompiled the shader on every frame).
-const FibonacciEffect = Skia.RuntimeEffect.Make(`
+// source (which recompiled the shader on every frame). It is compiled on first
+// use rather than at import, since the registry imports every demo at launch.
+let cachedFibonacciEffect: SkRuntimeEffect | undefined;
+const getFibonacciEffect = () =>
+  (cachedFibonacciEffect ??= Skia.RuntimeEffect.Make(`
   uniform float iTime;
   uniform float N;
   uniform float magicalMul;
@@ -68,7 +72,7 @@ const FibonacciEffect = Skia.RuntimeEffect.Make(`
       o += (cos(i + vec4(0, 2, 4, 0)) + 1.0) / dot(c, c) * (1.0 - p.y) / (N * 75.0); // Play with this 75.0
     }
     return o;
-  }`)!;
+  }`)!);
 
 const FibonacciShaderGrid = () => {
   // N is the amount of circles
@@ -130,7 +134,7 @@ const FibonacciShaderGrid = () => {
               </Circle>
             }>
             <Rect x={0} y={0} width={CANVAS_SIZE} height={CANVAS_SIZE}>
-              <Shader source={FibonacciEffect} uniforms={uniforms} />
+              <Shader source={getFibonacciEffect()} uniforms={uniforms} />
             </Rect>
           </Mask>
         </Canvas>

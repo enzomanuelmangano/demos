@@ -32,4 +32,4 @@ const generateHeartPoints = (scale: number): Point3D[] => {
   return points;
 };
 
-export const HEART_POINTS = normalizeShape(generateHeartPoints(120));
+export const makeHeartPoints = () => normalizeShape(generateHeartPoints(120));

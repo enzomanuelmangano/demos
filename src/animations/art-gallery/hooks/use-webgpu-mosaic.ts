@@ -23,15 +23,17 @@ import type { RGB } from '../types';
 // uniques are packed into ONE atlas; the runtime maps each of the 10k logical
 // photo ids to its slot via atlas-slots.json (in use-photo-atlas), so duplicate
 // ids share a slot. The atlas is 40 columns wide; its row count (and therefore
-// pixel height) depends on the unique count, so it is read from the slots file.
+// pixel height) depends on the unique count, so it is read from the slots file
+// — on first use, not at import, since the registry imports every demo at launch.
 const PHOTO_SIZE = 200;
 const ATLAS_COLS = 40;
-const ATLAS_SLOTS_META = require('../assets/atlas-slots.json') as {
-  rows: number;
-};
 
 const ATLAS_WIDTH = ATLAS_COLS * PHOTO_SIZE; // 8000px
-const ATLAS_HEIGHT = ATLAS_SLOTS_META.rows * PHOTO_SIZE; // unique rows * 200
+let cachedAtlasHeight: number | undefined;
+const getAtlasHeight = () =>
+  (cachedAtlasHeight ??=
+    (require('../assets/atlas-slots.json') as { rows: number }).rows *
+    PHOTO_SIZE); // unique rows * 200
 
 // Number of atlas texture bindings in the shader / bind-group layout. Dedup left
 // a single atlas, but the layout (and per-tile atlasIndex plumbing) is kept at 7
@@ -452,7 +454,7 @@ export function useWebGPUMosaic(
     uniformData[2] = focusedX; // Focused tile center X (screen-relative, -9999 = none)
     uniformData[3] = focusedY; // Focused tile center Y (screen-relative, -9999 = none)
     uniformData[4] = ATLAS_WIDTH;
-    uniformData[5] = ATLAS_HEIGHT;
+    uniformData[5] = getAtlasHeight();
     uniformData[6] = CONTRAST;
     uniformData[7] = time;
     uniformData[8] = scale.get();
@@ -889,9 +891,9 @@ export function useWebGPUMosaic(
       tileData[offset + 2] = cellWidth;
       tileData[offset + 3] = cellHeight;
       tileData[offset + 4] = info.atlasRect.x / ATLAS_WIDTH;
-      tileData[offset + 5] = info.atlasRect.y / ATLAS_HEIGHT;
+      tileData[offset + 5] = info.atlasRect.y / getAtlasHeight();
       tileData[offset + 6] = info.atlasRect.width / ATLAS_WIDTH;
-      tileData[offset + 7] = info.atlasRect.height / ATLAS_HEIGHT;
+      tileData[offset + 7] = info.atlasRect.height / getAtlasHeight();
       tileData[offset + 8] = info.atlasIndex;
 
       // Old tile data - already screen-relative from when it was stored
@@ -975,9 +977,9 @@ export function useWebGPUMosaic(
           w: cellWidth,
           h: cellHeight,
           uvX: info.atlasRect.x / ATLAS_WIDTH,
-          uvY: info.atlasRect.y / ATLAS_HEIGHT,
+          uvY: info.atlasRect.y / getAtlasHeight(),
           uvW: info.atlasRect.width / ATLAS_WIDTH,
-          uvH: info.atlasRect.height / ATLAS_HEIGHT,
+          uvH: info.atlasRect.height / getAtlasHeight(),
           atlasIndex: info.atlasIndex,
         });
       }

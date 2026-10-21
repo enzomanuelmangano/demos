@@ -9,10 +9,13 @@ const ATLAS_COLS = 40;
 // Dedup: picsum reused ~1000 source images across the 10k photos, so the atlas
 // stores only the ~979 unique tiles. atlas-slots.json maps each logical photo
 // id -> its slot in the single deduped atlas. Duplicate ids share a slot, which
-// keeps the color-matcher inventory and the rendered mosaic unchanged.
-const ATLAS_SLOTS = (
-  require('../assets/atlas-slots.json') as { slots: number[] }
-).slots;
+// keeps the color-matcher inventory and the rendered mosaic unchanged. Read on
+// first use, not at import: the registry imports every demo at launch.
+let cachedAtlasSlots: number[] | undefined;
+const getAtlasSlots = () =>
+  (cachedAtlasSlots ??= (
+    require('../assets/atlas-slots.json') as { slots: number[] }
+  ).slots);
 
 interface Rect {
   x: number;
@@ -36,7 +39,7 @@ interface UsePhotoAtlasResult {
 
 // Resolve a photo ID to its slot in the single deduped atlas
 const getAtlasInfo = (id: number): { atlasIndex: number; rect: Rect } => {
-  const slot = ATLAS_SLOTS[id] ?? 0;
+  const slot = getAtlasSlots()[id] ?? 0;
   const col = slot % ATLAS_COLS;
   const row = Math.floor(slot / ATLAS_COLS);
   return {

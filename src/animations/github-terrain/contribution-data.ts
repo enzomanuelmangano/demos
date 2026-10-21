@@ -5,12 +5,6 @@ export const CONTRIBUTION_YEARS = [
   2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026,
 ];
 
-/**
- * Default source for `CONTRIBUTION_GRID` when not using the in-app toggle.
- * Prefer `getContributionGrid(useReal)` / the GitHubTerrain "My contributions" switch.
- */
-export const USE_REAL_CONTRIBUTION_GRID = false;
-
 /** Smooth float field (box blur) so quantized levels read as foothills / ranges. */
 function smoothFloat2D(grid: number[][], passes: number): number[][] {
   const cols = grid.length;
@@ -414,7 +408,3 @@ const REAL_CONTRIBUTION_GRID: number[][] = [
 export function getContributionGrid(useReal: boolean): number[][] {
   return useReal ? REAL_CONTRIBUTION_GRID : buildAdHocContributionGrid();
 }
-
-export const CONTRIBUTION_GRID: number[][] = getContributionGrid(
-  USE_REAL_CONTRIBUTION_GRID,
-);
