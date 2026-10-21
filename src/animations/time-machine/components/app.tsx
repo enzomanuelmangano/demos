@@ -47,7 +47,11 @@ export const App = () => {
   });
 
   const onTimeMachineClose = useCallback(() => {
-    const newActiveItemKey = target[activeIndex.get()].key;
+    const activeItem = target[activeIndex.get()];
+    if (!activeItem) {
+      return;
+    }
+    const newActiveItemKey = activeItem.key;
 
     if (previousActiveItemKey.current === newActiveItemKey) {
       return;

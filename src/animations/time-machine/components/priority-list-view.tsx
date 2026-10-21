@@ -4,7 +4,11 @@ import { memo, useCallback } from 'react';
 
 import { useSetAtom } from 'jotai';
 
-import { ActiveItemKeyAtom, HistoryAtom } from '../atoms/history-atom';
+import {
+  ActiveItemKeyAtom,
+  HistoryAtom,
+  MAX_HISTORY_LENGTH,
+} from '../atoms/history-atom';
 import { LIST_ITEM_HEIGHT, generateKey } from '../constants';
 import { SortableList } from '../drag-to-sort/components/SortableList';
 
@@ -64,13 +68,15 @@ export const PriorityListView = memo(({ items }: PriorityListViewProps) => {
       const newData = newOrder.map(i => items[i]);
       const newKey = generateKey();
       setActiveItemKey(newKey);
-      setTarget(prev => [
-        {
-          items: newData,
-          key: newKey,
-        },
-        ...prev,
-      ]);
+      setTarget(prev =>
+        [
+          {
+            items: newData,
+            key: newKey,
+          },
+          ...prev,
+        ].slice(0, MAX_HISTORY_LENGTH),
+      );
     },
     [setActiveItemKey, setTarget, items],
   );
