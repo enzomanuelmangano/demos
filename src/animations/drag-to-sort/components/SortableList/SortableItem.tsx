@@ -133,6 +133,7 @@ const SortableItem: FC<SortableListItemProps> = ({
       prevPositions.set(Object.assign({}, positions.get()));
 
       animatedIndex.set(index);
+      wasLastActiveIndex.set(true);
       // Keep the reference of the initialContentOffset
       // At the beginning I was missing the -scrollContentOffsetY.get().
       // But that's extremely important to handle the edge cases while scrolling
@@ -176,9 +177,12 @@ const SortableItem: FC<SortableListItemProps> = ({
           }
         }),
       );
-      // wasLastActiveIndex is already set by the reaction when the drag
-      // started: onFinalize also runs for touches that never activated
-      animatedIndex.set(null);
+      // onFinalize also runs for touches that never activated (e.g. a second
+      // finger on another item): only the dragged item releases the index,
+      // and wasLastActiveIndex was already raised in onStart
+      if (animatedIndex.get() === index) {
+        animatedIndex.set(null);
+      }
     });
 
   const top = useDerivedValue(() => {
