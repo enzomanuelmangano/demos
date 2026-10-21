@@ -47,7 +47,11 @@ const useStaticLayer = (
       width: Math.ceil(width * pd),
       height: Math.ceil(height * pd),
     }).then(img => {
-      if (!cancelled) setImage(img);
+      if (cancelled) {
+        img?.dispose();
+        return;
+      }
+      setImage(img);
     });
     return () => {
       cancelled = true;
@@ -55,6 +59,13 @@ const useStaticLayer = (
     // `element` is rebuilt every render; its content only depends on size.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height]);
+  // Released once a newer layer has been committed in its place, or on
+  // unmount. The canvas records its own reference at commit, so the frame on
+  // screen keeps drawing; left to the garbage collector, each one lingered.
+  useEffect(() => {
+    if (!image) return;
+    return () => image.dispose();
+  }, [image]);
   if (!image) return element;
   return (
     <Image
