@@ -1,6 +1,6 @@
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import Reanimated, {
   interpolate,
@@ -17,6 +17,7 @@ import {
   Skia,
   makeImageFromView,
 } from 'react-native-skia';
+import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import { AnimatedLottieView } from '../animated-lottie-view';
 import { SwitchThemeContext, useSwitchTheme, type Theme } from './context';
@@ -33,6 +34,22 @@ type SwitchThemeProviderProps = {
 };
 
 export const SWITCH_THEME_ANIMATION_DURATION = 1000;
+
+/**
+ * Runs `callback` on the JS thread once the UI thread has applied every shared
+ * value set before this call. The snapshot is a full-screen texture; disposing
+ * it any earlier could let a frame still draw it after it was released.
+ */
+const afterUIUpdate = (callback: () => void) => {
+  scheduleOnUI(() => {
+    'worklet';
+    scheduleOnRN(callback);
+  });
+};
+
+const disposeWhenReady = (snapshot: Promise<SkImage | null>) => {
+  snapshot.then(image => image?.dispose()).catch(() => {});
+};
 
 const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
   children,
@@ -53,6 +70,24 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
 
   const switchThemeStyle = useSharedValue({});
   const skImage = useSharedValue<SkImage | null>(null);
+  // The snapshot skImage holds, so it can be disposed once the reveal is over.
+  // Left to the garbage collector, every toggle kept a full-screen texture.
+  const shownImage = useRef<SkImage | null>(null);
+  const unmounted = useRef(false);
+
+  useEffect(() => {
+    unmounted.current = false;
+    return () => {
+      unmounted.current = true;
+      if (pendingSnapshot.current) disposeWhenReady(pendingSnapshot.current);
+      pendingSnapshot.current = null;
+      const image = shownImage.current;
+      shownImage.current = null;
+      // The canvas may not have heard of the unmount yet on the UI thread.
+      skImage.set(null);
+      if (image) afterUIUpdate(() => image.dispose());
+    };
+  }, [skImage]);
 
   const clipPathRadiusScale = useDerivedValue(() => {
     return withSpring(theme === 'light' ? 1 : 0, {
@@ -81,6 +116,8 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
       // and the screen being captured is the same one toggleTheme would see.
       prepareToggleTheme: () => {
         if (isAnimating.get()) return;
+        // A touch that never became a toggle leaves its snapshot unused.
+        if (pendingSnapshot.current) disposeWhenReady(pendingSnapshot.current);
         pendingSnapshot.current = makeImageFromView(viewRef);
       },
 
@@ -107,7 +144,19 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         const snapshot = pendingSnapshot.current ?? makeImageFromView(viewRef);
         pendingSnapshot.current = null;
         const image = await snapshot;
+        if (unmounted.current) {
+          image?.dispose();
+          return;
+        }
+        const previous = shownImage.current;
+        shownImage.current = image;
         skImage.set(image);
+        if (previous) afterUIUpdate(() => previous.dispose());
+        const releaseImage = () => {
+          if (shownImage.current !== image) return;
+          shownImage.current = null;
+          image?.dispose();
+        };
 
         // Update the `center` shared value with the provided center for the toggled item
         center.set({ ...toggledItemCenter });
@@ -130,8 +179,12 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
             finished => {
               // Reset certain values after the animation is complete
               isAnimating.set(false);
+              // Cleared even when interrupted: the reveal is over either way,
+              // and a snapshot left here would never be released.
+              skImage.set(null);
+              // Set to null on this thread above, so no later frame draws it.
+              scheduleOnRN(releaseImage);
               if (finished) {
-                skImage.set(null);
                 switchThemeStyle.set({});
               }
             },
