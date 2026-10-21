@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -36,7 +37,8 @@ export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
   );
 
   const sortedStackedSheets = useMemo(() => {
-    return stackedSheets.sort((a, b) => a.id - b.id);
+    // Sort a copy: sorting the state array in place would mutate React state.
+    return [...stackedSheets].sort((a, b) => a.id - b.id);
   }, [stackedSheets]);
 
   // Function to dismiss a StackedSheet by its ID
@@ -75,6 +77,22 @@ export const StackedSheetProvider: FC<PropsWithChildren> = ({ children }) => {
   const stackedSheetsMemoizedByKeys = useRef<
     Record<string | number, ReactNode>
   >({});
+
+  // Drop the memoized node of every dismissed sheet: the cache would otherwise
+  // grow with each sheet ever shown, and a key shown again would get back the
+  // node (and props) of its earlier, dismissed instance.
+  useEffect(() => {
+    const liveKeys = new Set(
+      stackedSheets.map(stackedSheet =>
+        String(stackedSheet.key || stackedSheet.id),
+      ),
+    );
+    for (const key of Object.keys(stackedSheetsMemoizedByKeys.current)) {
+      if (!liveKeys.has(key)) {
+        delete stackedSheetsMemoizedByKeys.current[key];
+      }
+    }
+  }, [stackedSheets]);
 
   const renderStackedSheet = useCallback(
     (stackedSheet: StackedSheetType, index: number) => {
