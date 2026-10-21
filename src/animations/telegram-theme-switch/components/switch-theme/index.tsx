@@ -121,6 +121,11 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
         pendingSnapshot.current = makeImageFromView(viewRef);
       },
 
+      cancelToggleTheme: () => {
+        if (pendingSnapshot.current) disposeWhenReady(pendingSnapshot.current);
+        pendingSnapshot.current = null;
+      },
+
       // Define a function to toggle the theme,
       // which can be triggered by other components or events
       toggleTheme: async ({

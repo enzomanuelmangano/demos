@@ -13,6 +13,8 @@ const SwitchThemeContext = createContext<{
     style: StyleProp<ViewStyle>;
   }) => void;
   prepareToggleTheme: () => void;
+  /** Called when a touch ends without toggling, to drop its snapshot. */
+  cancelToggleTheme: () => void;
   animationProgress: SharedValue<number>;
 }>({
   theme: 'light',
@@ -23,6 +25,9 @@ const SwitchThemeContext = createContext<{
     //
   },
   prepareToggleTheme: () => {
+    //
+  },
+  cancelToggleTheme: () => {
     //
   },
   animationProgress: makeMutable(0),
