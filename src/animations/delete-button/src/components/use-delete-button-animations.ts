@@ -33,6 +33,13 @@ export const useDeleteButtonAnimations = ({
       'worklet';
       isButtonPressed.set(true);
     },
+    // onEnd runs when the touch finishes however it finishes (the pan's
+    // onFinalize); onTap alone missed a touch dragged off the button, which
+    // left it scaled down.
+    onEnd: () => {
+      'worklet';
+      isButtonPressed.set(false);
+    },
     onTap: () => {
       'worklet';
       isButtonPressed.set(false);

@@ -124,18 +124,24 @@ export function Metaball() {
             </Path>
           </Group>
         </Group>
-        <Touchable.Circle
-          cx={secondCx}
-          cy={secondCy}
-          r={RADIUS}
-          {...secondCircleGesture}
-          color={'transparent'}
-        />
+        {/* The circles start on top of each other, and a touch goes to the
+            first one registered, i.e. rendered. The first circle stays where
+            it is dropped, so it goes first: drag it away and the second one,
+            which springs back to the centre, is free to grab. The other way
+            round the second took every touch and the first was never
+            reachable. */}
         <Touchable.Circle
           cx={firstCx}
           cy={firstCy}
           r={RADIUS}
           {...circleGesture}
+          color={'transparent'}
+        />
+        <Touchable.Circle
+          cx={secondCx}
+          cy={secondCy}
+          r={RADIUS}
+          {...secondCircleGesture}
           color={'transparent'}
         />
       </Touchable.Canvas>

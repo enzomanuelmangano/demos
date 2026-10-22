@@ -7,6 +7,7 @@ import { PressableOpacity } from 'pressto';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCustomNavigation } from './navigation/expansion-provider';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 import type { AppData } from './apps-list/constants';
 import type { RouteProp } from '@react-navigation/native';
@@ -54,7 +55,8 @@ export const AppDetailScreen: React.FC<AppDetailScreenProps> = ({ route }) => {
       {/* Back button */}
       <PressableOpacity
         onPress={handleGoBack}
-        style={[styles.backButton, { top: safeTop + 16 }]}
+        // Below the demo's info button, which sits over this corner.
+        style={[styles.backButton, { top: safeTop + DEMO_BUTTON_ROW_HEIGHT }]}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
         <Ionicons name="close" size={24} color="rgba(0, 0, 0, 0.7)" />
       </PressableOpacity>

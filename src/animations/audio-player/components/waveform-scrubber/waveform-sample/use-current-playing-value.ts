@@ -38,13 +38,21 @@ const useCurrentPlayingValue = ({
   // this value is set to the touchedX value
   const currentX = useSharedValue(0);
 
+  // A held drag keeps reporting x past either edge of the waveform. Clamp it,
+  // or the time pill reads "0:-1" and the resumed playback gets a duration
+  // longer than the track (or a negative one).
+  const clampToWaveform = (x: number) => {
+    'worklet';
+    return Math.min(Math.max(x, 0), waveformContentWidth);
+  };
+
   const panGesture = Gesture.Pan()
     .onBegin(event => {
-      touchedX.set(event.x);
+      touchedX.set(clampToWaveform(event.x));
       isDragging.set(true);
     })
     .onUpdate(event => {
-      touchedX.set(event.x);
+      touchedX.set(clampToWaveform(event.x));
     })
     .onFinalize(() => {
       isDragging.set(false);

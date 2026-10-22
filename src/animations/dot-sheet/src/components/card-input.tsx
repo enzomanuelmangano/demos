@@ -17,6 +17,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../../navigation/home/demo-close-button';
+
 const AnimatedTextInput = Animated.createAnimatedComponent(TextInput);
 
 export type CardInputRefType = {
@@ -27,7 +29,10 @@ export type CardInputRefType = {
 export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   const { width, height } = useWindowDimensions();
   const progress = useSharedValue(0);
-  const { top: safeTop } = useSafeAreaInsets();
+  // The back button and the expanded card start below the demo's close and
+  // info buttons, which are drawn over the demo: under them, a tap on the
+  // back button closed the demo instead.
+  const topInset = useSafeAreaInsets().top + DEMO_BUTTON_ROW_HEIGHT;
   const animatedTextInput = useRef<TextInput>(null);
 
   useImperativeHandle(
@@ -58,7 +63,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
   const expandedRotate = 0;
 
   const initialTop = (height - initialCardHeight) / 2 + 35;
-  const expandedTop = safeTop + potentialHeaderHeight;
+  const expandedTop = topInset + potentialHeaderHeight;
 
   const initialLeft = (width - initialCardWidth) / 2;
   const expandedLeft = 1;
@@ -139,7 +144,7 @@ export const CardInput = forwardRef<CardInputRefType, {}>((_, ref) => {
         }}
         style={[
           {
-            top: safeTop + (Platform.OS === 'android' ? 8 : 0),
+            top: topInset + (Platform.OS === 'android' ? 8 : 0),
           },
           rBackIconStyle,
           styles.back,

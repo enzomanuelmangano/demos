@@ -73,6 +73,11 @@ const SectionContentList: FC<SectionContentListProps> = memo(
         if (isResetting.get()) return; // ignore scroll events while resetting
         progress.set(clamp(y / scrollableHeight.get(), 0, 1));
       },
+      // A drag interrupts the animated scroll to the top, which then never
+      // reaches 0 to clear the flag: clear it here, or the bar stays frozen.
+      onBeginDrag: () => {
+        isResetting.set(false);
+      },
     });
 
     const readingTime = useMemo(() => {
