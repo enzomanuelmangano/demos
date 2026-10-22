@@ -16,41 +16,41 @@ wait 2000
 wait "label=\"Close\"" 30000
 wait 1500
 # Open, dismiss by dragging down fast past the threshold.
-press 152 208
+press 152 260
 wait 1500
 gesture pan 200 300 0 420 350
 wait 1500
 # Another icon; short drag (springs back), then the real dismiss.
-press 250 306
+press 250 358
 wait 1500
 gesture pan 200 300 0 150 500
 wait 1200
 gesture pan 200 250 0 450 300
 wait 1500
 # Bottom row, last column.
-press 348 600
+press 348 652
 wait 1500
 # Slow long drag.
 gesture pan 200 250 0 450 1500
 wait 1500
 # First column, middle row.
-press 54 404
+press 54 456
 wait 1500
 gesture pan 200 300 0 420 350
 wait 1500
 # Tap a second icon while the first transition is still running.
-press 152 502
+press 152 554
 wait 150
-press 250 502
+press 250 554
 wait 1500
 gesture pan 200 300 0 420 350
 wait 1500
 # Quick open/close cycles.
-press 348 404
+press 348 456
 wait 900
 gesture pan 200 300 0 420 300
 wait 900
-press 54 600
+press 54 652
 wait 900
 gesture pan 200 300 0 420 300
 wait 1500

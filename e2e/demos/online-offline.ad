@@ -2,7 +2,6 @@
 # What this test covers: single taps with each transition fully settled, taps while the layout springs are still
 # running, a long burst that is likely to empty one group (the forced-direction branch, pill exiting/entering with
 # FadeOut/FadeIn), taps on and off the avatars (the whole screen is the pressable), and a long press.
-# Visual note: on a fresh open only the first online avatar is painted; the others stay blank until they move.
 context platform=ios
 open "demos://animations/online-offline"
 wait "label=\"Close\"" 40000

@@ -15,14 +15,14 @@ wait 600
 gesture pan 380 477 -370 0 900
 wait 1200
 wait "text" "50" 3000
-# Expand at the end: spacing springs to 50 and the offset re-snaps.
-# KNOWN BUG: the re-snap keeps the pixel offset instead of the tick, so 50 becomes 20 here and 49 after
-# collapsing (draggable-slider/index.tsx:155-166); not asserted so the rest of the test still runs.
+# Expand at the end: spacing springs to 50 and the selected tick must hold.
 press 338 794
 wait 1200
-# Collapse again.
+wait "text" "50" 3000
+# Collapse again: still 50.
 press 338 794
 wait 1200
+wait "text" "50" 3000
 # Back to 0 with drags.
 gesture pan 20 477 370 0 900
 wait 600

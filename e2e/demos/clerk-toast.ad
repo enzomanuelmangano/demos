@@ -45,6 +45,8 @@ wait 500
 press 200 420
 wait 500
 press 200 420
+wait 500
+press 200 420
 wait 1200
 wait "text" "Actually, let's clear quickly everything" 8000
 # Its X (trailing pressable) clears the stack.

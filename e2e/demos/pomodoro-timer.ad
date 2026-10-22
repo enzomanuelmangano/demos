@@ -13,12 +13,11 @@ context platform=ios
 open "demos://animations/pomodoro-timer"
 wait "label=\"Close\"" 10000
 wait 3500
-# Zero seconds: validation alert, then toggle back.
+# Zero seconds: validation alert; the button must stay on Start, so the
+# next press starts the timer (no toggle back needed).
 press 338 794
 wait "text" "Please enter a valid number" 4000
 press "label=\"OK\""
-wait 600
-press 338 794
 wait 1500
 # ~5 seconds, run to completion while trying to drag.
 gesture pan 250 650 -60 0 1500
