@@ -33,6 +33,9 @@ export const SharedTransitions = memo(() => {
             <Stack.Screen
               name={ScreenNames.Details}
               component={DetailsScreen}
+              // Its back button sat under the demo's close button: the
+              // screen draws its own, below the demo's buttons.
+              options={{ headerShown: false }}
             />
           </Stack.Navigator>
         </NavigationContainer>
