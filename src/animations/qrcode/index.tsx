@@ -18,6 +18,11 @@ import { DiscretePathEffect, LinearGradient, vec } from 'react-native-skia';
 
 import { Slider } from './components/slider';
 
+// A level-H QR code holds at most 1273 bytes. UTF-8 never needs more than 3
+// bytes per UTF-16 unit, so 300 units always fit (and stay scannable); longer
+// input made the QR encoder throw and took the whole screen down.
+const MAX_QR_TEXT_LENGTH = 300;
+
 const QRCodeGenerator = () => {
   const { width: windowWidth } = useWindowDimensions();
 
@@ -46,8 +51,9 @@ const QRCodeGenerator = () => {
             placeholderTextColor={'gray'}
             cursorColor={'white'}
             placeholder="Enter text to generate QR code"
+            maxLength={MAX_QR_TEXT_LENGTH}
             onChangeText={text => {
-              setQRCode(text);
+              setQRCode(text.slice(0, MAX_QR_TEXT_LENGTH));
             }}
           />
 
