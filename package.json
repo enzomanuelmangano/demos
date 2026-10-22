@@ -68,6 +68,7 @@
     "expo-splash-screen": "~58.0.11",
     "expo-sqlite": "~58.0.13",
     "expo-status-bar": "~58.0.4",
+    "expo-symbols": "~58.0.4",
     "expo-system-ui": "~58.0.6",
     "expo-updates": "~58.0.18",
     "fft.js": "^4.0.4",
