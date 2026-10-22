@@ -20,6 +20,10 @@ wait "text" "SHOW STACKED TRAY" 10000
 wait 800
 press 201 427
 wait 1200
+wait "text" "You can put here" 3000
+press 201 427
+wait 1200
+wait "text" "Whatever you want" 3000
 press 201 427
 wait 1500
 wait "text" "Let's add a bit of magic" 3000
@@ -55,7 +59,7 @@ gesture pan 201 700 0 150 300
 wait 1200
 gesture pan 201 700 0 150 300
 wait 1200
-# Short upward flick on the front tray.
+# Short upward flick on the front tray: must spring back, not dismiss.
 gesture pan 201 760 0 -30 300
 wait 1500
 wait "text" "SHOW STACKED TRAY" 3000

@@ -17,15 +17,15 @@ wait "text" "Home" 10000
 wait 1000
 # Left column, first photo -> Details.
 press 100 200
-wait "text" "Details" 3000
+wait "text" "Lorem ipsum" 3000
 wait 1200
 # Header back button: its left half sits under the demo's Close button.
-press 100 84
+press 50 140
 wait 1000
 wait "text" "Home" 3000
 # Right column photo -> Details, back with the edge swipe.
 press 300 400
-wait "text" "Details" 3000
+wait "text" "Lorem ipsum" 3000
 wait 1200
 gesture pan 2 450 300 0 400
 wait 1000
@@ -33,13 +33,13 @@ wait "text" "Home" 3000
 # Back while the text is still fading in (FadeIn.delay(400/600)).
 press 100 450
 wait 250
-press 100 84
+press 50 140
 wait 1000
 wait "text" "Home" 3000
 # Rapid double tap on one photo, then a single back must return Home.
 press 300 600 --count 2
 wait 1500
-press 100 84
+press 50 140
 wait 1000
 wait "text" "Home" 3000
 # Scroll to the end of the masonry list and open a bottom photo.
@@ -48,9 +48,9 @@ wait 600
 gesture pan 200 750 0 -550 250
 wait 1500
 press 300 700
-wait "text" "Details" 3000
+wait "text" "Lorem ipsum" 3000
 wait 1200
-press 100 84
+press 50 140
 wait 1000
 # One upward scroll only (a downward drag starting at offset 0 closes the demo).
 gesture pan 200 250 0 550 250

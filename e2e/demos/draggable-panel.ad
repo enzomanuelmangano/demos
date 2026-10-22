@@ -23,9 +23,9 @@ wait 500
 gesture pan 200 660 0 -500 600
 wait 1500
 # Super (panel at TR), then drag TR -> BL.
-press 313 174
+press 313 212
 wait 500
-gesture pan 200 115 -150 520 600
+gesture pan 200 153 -150 520 600
 wait 2000
 # Short drag: back to BL.
 gesture pan 120 660 40 -60 500
@@ -34,9 +34,9 @@ wait 1500
 gesture pan 120 660 120 -150 120
 wait 2000
 # Elegant, then back to BR.
-press 150 174
+press 150 212
 wait 500
-gesture pan 200 115 0 520 600
+gesture pan 200 153 0 520 600
 wait 1500
 # Re-grab mid-spring.
 gesture pan 200 660 -150 0 300
