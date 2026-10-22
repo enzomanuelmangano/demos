@@ -30,7 +30,7 @@ import {
 import { delay, kingFromFen, measureInWindow, statusFor } from './utils';
 
 import type { Side } from './types';
-import type { View } from 'react-native';
+import type { ViewInstance } from 'react-native';
 import type { ChessboardRef, MoveResult } from 'react-native-chessboard';
 
 // The whole game machine behind the chessboard screen: the canned replay
@@ -45,7 +45,7 @@ export const useChessGame = ({
   pieceSize: number;
 }) => {
   const boardRef = useRef<ChessboardRef>(null);
-  const boardBoxRef = useRef<View>(null);
+  const boardBoxRef = useRef<ViewInstance>(null);
   const { show, hide } = useCheckmateAura();
 
   const setPlies = useSetAtom(pliesAtom);

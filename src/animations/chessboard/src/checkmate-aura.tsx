@@ -20,19 +20,15 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  Canvas,
-  Fill,
-  ImageShader,
-  Shader,
-  makeImageFromView,
-} from 'react-native-skia';
+import { Canvas, Fill, ImageShader, Shader } from 'react-native-skia';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { GameReviewCard } from './components/game-review-card';
 import { DEEP, EXIT_MS, GLOW, SPARK, WAVE, WAVE_MS } from './wave-shader';
+import { makeImageFromView } from '../../../components/make-image-from-view';
 
 import type { ShowOpts } from './types';
+import type { ViewInstance } from 'react-native';
 import type { SkImage } from 'react-native-skia';
 
 type AuraApi = { show: (opts: ShowOpts) => void; hide: () => void };
@@ -43,8 +39,8 @@ export const CheckmateAuraProvider: React.FC<{
   children: React.ReactNode;
 }> = ({ children }) => {
   const { width, height } = useWindowDimensions();
-  const rootRef = useRef<View>(null);
-  const contentRef = useRef<View>(null); // wraps children only (no Canvas)
+  const rootRef = useRef<ViewInstance>(null);
+  const contentRef = useRef<ViewInstance>(null); // wraps children only (no Canvas)
   const busy = useRef(false);
 
   const snapshot = useSharedValue<SkImage | null>(null);
@@ -62,12 +58,16 @@ export const CheckmateAuraProvider: React.FC<{
   const alive = useRef(true);
   const rafId = useRef<number | null>(null);
   const cardTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The board snapshot holds a full-screen GPU texture until it is disposed.
+  const shownImage = useRef<SkImage | null>(null);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
       if (rafId.current != null) cancelAnimationFrame(rafId.current);
       if (cardTimer.current != null) clearTimeout(cardTimer.current);
+      shownImage.current?.dispose();
+      shownImage.current = null;
     };
   }, []);
 
@@ -121,6 +121,9 @@ export const CheckmateAuraProvider: React.FC<{
   const clearCard = useCallback(() => {
     busy.current = false;
     setCard(null);
+    // The UI thread has already dropped it (snapshot.set(null) above us).
+    shownImage.current?.dispose();
+    shownImage.current = null;
   }, []);
 
   // Free the snapshot + card once fully hidden.
@@ -150,9 +153,12 @@ export const CheckmateAuraProvider: React.FC<{
       // Canvas flush on iOS → a one-frame flicker.
       const image = await makeImageFromView(contentRef);
       if (!image || !alive.current) {
+        image?.dispose();
         busy.current = false;
         return;
       }
+      shownImage.current?.dispose();
+      shownImage.current = image;
       snapshot.set(image);
       progress.set(0);
       // Reveal on the NEXT frame: this gives the Canvas one frame to paint the

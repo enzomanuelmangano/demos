@@ -54,7 +54,7 @@ const Slider: FC<SliderProps> = ({
   }, [style]);
 
   const sliderHeight = flattenedStyle?.height ?? 4;
-  const sliderWidth = flattenedStyle.width;
+  const sliderWidth = flattenedStyle?.width ?? 0;
 
   const defaultPickerBorderRadius = pickerSize / 2.5;
   const defaultPickerBorderWidth = Math.floor(pickerSize / 3);

@@ -38,7 +38,7 @@ const ClipBoxButton: FC<ClipBoxButtonProps> = ({
   description,
   onPress,
 }) => {
-  const boxWidth = StyleSheet.flatten(style ?? {}).width as number;
+  const boxWidth = StyleSheet.flatten(style)?.width as number;
   const circleMargin = boxWidth * 0.12;
   const canvasAreaHeight = circleMargin * 2 + initialRadius;
   const r = useSharedValue(initialRadius);

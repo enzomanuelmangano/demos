@@ -16,17 +16,13 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import {
-  Canvas,
-  Fill,
-  ImageShader,
-  makeImageFromView,
-  Shader,
-} from 'react-native-skia';
+import { Canvas, Fill, ImageShader, Shader } from 'react-native-skia';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
 import { transition } from './utils/transition';
+import { makeImageFromView } from '../../../../../components/make-image-from-view';
 
+import type { ViewInstance } from 'react-native';
 import type { WithTimingConfig } from 'react-native-reanimated';
 import type { SkImage } from 'react-native-skia';
 
@@ -85,7 +81,7 @@ export const GLTransitionsProvider: FC<GLTransitionsProviderProps> = ({
   const secondScreenSnapshot = useSharedValue<SkImage | null>(null);
 
   // Ref for container
-  const containerRef = useRef<View>(null);
+  const containerRef = useRef<ViewInstance>(null);
 
   // The snapshots this provider still owns, so each one is disposed exactly
   // once: when its transition ends, when a newer snapshot replaces it, or on

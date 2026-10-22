@@ -10,15 +10,10 @@ import Reanimated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import {
-  Canvas,
-  Group,
-  Image,
-  Skia,
-  makeImageFromView,
-} from 'react-native-skia';
+import { Canvas, Group, Image, Skia } from 'react-native-skia';
 import { scheduleOnRN, scheduleOnUI } from 'react-native-worklets';
 
+import { makeImageFromView } from '../../../../components/make-image-from-view';
 import { AnimatedLottieView } from '../animated-lottie-view';
 import { SwitchThemeContext, useSwitchTheme, type Theme } from './context';
 import {
@@ -26,7 +21,7 @@ import {
   SwitchThemeButton,
 } from './switch-theme-button';
 
-import type { StyleProp, ViewStyle } from 'react-native';
+import type { StyleProp, ViewInstance, ViewStyle } from 'react-native';
 import type { SkImage } from 'react-native-skia';
 
 type SwitchThemeProviderProps = {
@@ -64,7 +59,7 @@ const SwitchThemeProvider: React.FC<SwitchThemeProviderProps> = ({
     width: 0,
   });
 
-  const viewRef = useRef<View>(null);
+  const viewRef = useRef<ViewInstance>(null);
   // Snapshot taken when the finger touches the button (see prepareToggleTheme).
   const pendingSnapshot = useRef<Promise<SkImage | null> | null>(null);
 

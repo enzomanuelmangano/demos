@@ -20,6 +20,7 @@ import { IconSquare } from '../../components/verification-code/icon-square';
 
 import type { StatusType } from '../../components/verification-code/animated-code-number';
 import type { InternalIconRef } from '../../components/verification-code/icon-square/icon';
+import type { TextInputInstance } from 'react-native';
 
 type VerificationCodeScreenProps = {
   correctCode: number;
@@ -47,7 +48,7 @@ export const VerificationCodeScreen: FC<VerificationCodeScreenProps> = ({
   }, [keyboardHeight]);
 
   const { shake, rShakeStyle } = useAnimatedShake();
-  const invisibleTextInputRef = useRef<TextInput>(null);
+  const invisibleTextInputRef = useRef<TextInputInstance>(null);
   const iconSquareRef = useRef<InternalIconRef>(null);
 
   useFocusEffect(

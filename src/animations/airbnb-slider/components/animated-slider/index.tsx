@@ -58,7 +58,7 @@ const AnimatedSlider: React.FC<SliderProps> = ({
   }, [style]);
 
   const sliderHeight = flattenedStyle?.height ?? 4;
-  const sliderWidth = flattenedStyle.width;
+  const sliderWidth = flattenedStyle?.width ?? 0;
 
   const defaultPickerBorderRadius = pickerSize / 2;
 

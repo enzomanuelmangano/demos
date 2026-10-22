@@ -37,7 +37,7 @@ const LiquidSlider: React.FC<SliderProps> = ({
     return StyleSheet.flatten(style);
   }, [style]);
 
-  const sliderWidth = flattenedStyle.width;
+  const sliderWidth = flattenedStyle?.width;
   const sliderHeight = flattenedStyle?.height ?? 4;
 
   const sliderProgress = useSharedValue(initialProgress);

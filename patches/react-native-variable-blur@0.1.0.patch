@@ -1,0 +1,14 @@
+diff --git a/nitrogen/generated/ios/c++/views/HybridVariableBlurComponent.mm b/nitrogen/generated/ios/c++/views/HybridVariableBlurComponent.mm
+index 50647722cfad19e43c18a3ed2bfa55c25decfe18..bf9f5cf00840107c7d8394738445b7b0976b0792 100644
+--- a/nitrogen/generated/ios/c++/views/HybridVariableBlurComponent.mm
++++ b/nitrogen/generated/ios/c++/views/HybridVariableBlurComponent.mm
+@@ -42,6 +42,9 @@ + (void) load {
+ 
+ - (instancetype) init {
+   if (self = [super init]) {
++    // RN 0.88 requires RCTViewComponentView subclasses to seed _props.
++    static const auto defaultProps = std::make_shared<const HybridVariableBlurProps>();
++    _props = defaultProps;
+     std::shared_ptr<HybridVariableBlurSpec> hybridView = VariableBlur::VariableBlurAutolinking::createVariableBlur();
+     _hybridView = std::dynamic_pointer_cast<HybridVariableBlurSpecSwift>(hybridView);
+     [self updateView];

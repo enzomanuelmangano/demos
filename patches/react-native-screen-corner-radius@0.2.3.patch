@@ -1,0 +1,11 @@
+diff --git a/ios/ScreenCornerRadius.m b/ios/ScreenCornerRadius.m
+index e781740ccf3b291dd042d8e9dea7bfc6a78dfd17..985ee9ca39026a2c1a5216cc00dc5958cd6719ba 100644
+--- a/ios/ScreenCornerRadius.m
++++ b/ios/ScreenCornerRadius.m
+@@ -1,5 +1,5 @@
+ #import "ScreenCornerRadius-Bridging-Header.h"
+-#import "RCTBridgeModule.h"
++#import <React/RCTBridgeModule.h>
+ 
+ @interface RCT_EXTERN_REMAP_MODULE(ScreenCornerRadius, ScreenCornerRadius, NSObject)
+ 

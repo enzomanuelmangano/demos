@@ -9,6 +9,8 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 
+import type { ViewInstance } from 'react-native';
+
 interface TabOption<T> {
   key: T;
   label: string;
@@ -26,7 +28,7 @@ export function TabSelector<T extends string>({
   onTabChange,
 }: TabSelectorProps<T>) {
   const [tabWidth, setTabWidth] = useState(0);
-  const containerRef = useRef<View>(null);
+  const containerRef = useRef<ViewInstance>(null);
 
   const selectedIndex = options.findIndex(option => option.key === selectedTab);
 

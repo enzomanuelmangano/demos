@@ -68,7 +68,7 @@ export const useOta = () => {
 
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       const isReturningToForeground =
-        appStateRef.current.match(/inactive|background/) &&
+        appStateRef.current?.match(/inactive|background/) &&
         nextAppState === 'active';
 
       if (isReturningToForeground) {

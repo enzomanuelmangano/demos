@@ -73,6 +73,7 @@ const ASTC_TEXTURE_FORMAT = 'astc-10x10-unorm' as GPUTextureFormat;
 export async function loadAtlasAstcBytes(): Promise<Uint8Array | null> {
   try {
     const resolved = Image.resolveAssetSource(ATLAS_ASSET_ASTC);
+    if (!resolved) return null;
     const res = await fetch(resolved.uri);
     const buf = await res.arrayBuffer();
     return new Uint8Array(buf);

@@ -31,6 +31,8 @@ import { useWebGPU } from './hooks';
 import { clampToQRBytes } from './utils';
 import { isDemoClosing } from '../../navigation/home/launch-transition';
 
+import type { TextInputInstance } from 'react-native';
+
 // The long press is the only way to find the creeper, and nothing on screen
 // suggests it exists. The hint waits a beat so it does not compete with the
 // scene appearing, then retires itself once the gesture has been used.
@@ -48,7 +50,7 @@ export const CherryBlossomQRCode = () => {
   const canvasHeight = windowHeight * 0.6;
 
   const [qrContent, setQrContent] = useState(DEFAULT_QR_CONTENT);
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const canvasRef = useRef<CanvasRef>(null);
   const isFlat = useRef(false);
   const mountedRef = useRef(true);

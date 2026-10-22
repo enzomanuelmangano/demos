@@ -6,6 +6,7 @@ import Chessboard from 'react-native-chessboard';
 
 import { BOARD_COLORS } from '../constants';
 
+import type { ViewInstance } from 'react-native';
 import type { ChessboardRef, MoveResult } from 'react-native-chessboard';
 
 // The board is isolated behind React.memo so the chrome's per-move state
@@ -19,7 +20,7 @@ export const Board = memo(function Board({
   onMove,
 }: {
   chessRef: React.RefObject<ChessboardRef | null>;
-  boxRef: React.RefObject<View | null>;
+  boxRef: React.RefObject<ViewInstance | null>;
   boardSize: number;
   flipped: boolean;
   onMove: (result: MoveResult) => void;
