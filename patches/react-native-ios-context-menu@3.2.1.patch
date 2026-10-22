@@ -1,6 +1,24 @@
+diff --git a/node_modules/react-native-ios-context-menu/.bun-tag-2c39b812341a8bd3 b/.bun-tag-2c39b812341a8bd3
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/node_modules/react-native-ios-context-menu/.bun-tag-61a44f9fb4e40629 b/.bun-tag-61a44f9fb4e40629
 new file mode 100644
 index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/ios/RNIContextMenu/RNIMenuActionItem.swift b/ios/RNIContextMenu/RNIMenuActionItem.swift
+index 63fae48aeb169f0ec81798adc60f53304be9afcb..ef7f380880372a7269cb2e88fcce01a024e4a63e 100644
+--- a/ios/RNIContextMenu/RNIMenuActionItem.swift
++++ b/ios/RNIContextMenu/RNIMenuActionItem.swift
+@@ -182,7 +182,9 @@ extension RNIMenuActionItem {
+     );
+     
+     #if swift(>=5.5)
+-    if #available(iOS 15.0, *) {
++    // The subtitle setter on UIMenuElement is iOS 16+; Xcode 27 rejects it
++    // behind a 15.0 check (iOS 15.1 deployment target).
++    if #available(iOS 16.0, *) {
+       action.subtitle =
+            self.actionSubtitle
+         ?? self.fallbackActionSubtitle;
 diff --git a/ios/RNIContextMenu/RNIMenuItem.swift b/ios/RNIContextMenu/RNIMenuItem.swift
 index 6c14152eb1debcb258aa48f8602a1a7e09fcd320..091d14ca8c1b3efd67bb33282d51d2107f7098ce 100644
 --- a/ios/RNIContextMenu/RNIMenuItem.swift
