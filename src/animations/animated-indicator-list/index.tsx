@@ -14,6 +14,7 @@ import { SectionListItem } from './components/SectionListItem';
 import { data, isHeader } from './constants';
 import { useHeaderLayout } from './hooks/useHeaderLayout';
 import { useHeaderStyle } from './hooks/useHeaderStyle';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../navigation/home/demo-close-button';
 
 import type { HeaderListItem, ListItem } from './constants';
 import type { FlatList, LayoutRectangle } from 'react-native';
@@ -80,7 +81,11 @@ export const AnimatedIndicatorList = () => {
     <View
       style={[
         styles.container,
-        { paddingTop: insets.top, paddingBottom: insets.bottom },
+        // The header row starts below the demo's close and info buttons.
+        {
+          paddingTop: insets.top + DEMO_BUTTON_ROW_HEIGHT,
+          paddingBottom: insets.bottom,
+        },
       ]}>
       <Animated.View style={[{ flexDirection: 'row' }, rHeaderListStyle]}>
         {headers.map(({ header }, index) => {
