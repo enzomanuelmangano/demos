@@ -87,7 +87,12 @@ export const useDemoStackedToast = () => {
     //   iconName: 'archive',
     //   // optional - trailing: <></>
     // })
-    showToast(toasts[toastIndex.current++ % toasts.length]);
+    // Read, then bump, in two statements: React Compiler compiles
+    // `toastIndex.current++` inside the expression as a pre-increment, which
+    // skipped the first toast.
+    const index = toastIndex.current;
+    toastIndex.current = index + 1;
+    showToast(toasts[index % toasts.length]);
   }, [showToast, toasts]);
 
   return {
