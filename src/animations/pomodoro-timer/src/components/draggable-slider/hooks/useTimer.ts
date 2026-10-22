@@ -33,11 +33,14 @@ export const useTimer = ({
     counter.current = 0;
   }, []);
 
+  // Returns whether the timer started, synchronously, so the caller can flip
+  // its own state only for a valid value.
   const runTimer = useCallback(
-    async (toValue: number) => {
+    (toValue: number) => {
       // Validate input value
       if (Math.floor(toValue) === 0) {
-        return Alert.alert('Please enter a valid number');
+        Alert.alert('Please enter a valid number');
+        return false;
       }
 
       // Clear existing timer (and any run still waiting to start)
@@ -49,29 +52,32 @@ export const useTimer = ({
       progress.set(withTiming(0, { duration: 500 }));
 
       // Wait for a short delay before starting the timer
-      await new Promise(resolve => setTimeout(resolve, 300));
-      if (runId.current !== currentRunId) {
-        return;
-      }
-
-      // Set interval to update the counter and progress
-      // IMPORTANT:
-      // I heavily recommend using the react-native-background-timer package for these use cases.
-      // I didn't use it because I wanted to run the code on Expo Go.
-      // The react-native-background-timer package can be used with Expo Development Builds
-      // package link: https://github.com/ocetnik/react-native-background-timer
-      timerRef.current = setInterval(() => {
-        counter.current += 1;
-        progress.set(progress.get() - incrementOffset);
-
-        // Check if timer has reached the target value
-        if (counter.current >= toValue) {
-          clearInterval(timerRef.current as NodeJS.Timeout);
-          if (onCompletion) {
-            onCompletion();
-          }
+      setTimeout(() => {
+        if (runId.current !== currentRunId) {
+          return;
         }
-      }, 1000);
+
+        // Set interval to update the counter and progress
+        // IMPORTANT:
+        // I heavily recommend using the react-native-background-timer package for these use cases.
+        // I didn't use it because I wanted to run the code on Expo Go.
+        // The react-native-background-timer package can be used with Expo Development Builds
+        // package link: https://github.com/ocetnik/react-native-background-timer
+        timerRef.current = setInterval(() => {
+          counter.current += 1;
+          progress.set(progress.get() - incrementOffset);
+
+          // Check if timer has reached the target value
+          if (counter.current >= toValue) {
+            clearInterval(timerRef.current as NodeJS.Timeout);
+            if (onCompletion) {
+              onCompletion();
+            }
+          }
+        }, 1000);
+      }, 300);
+
+      return true;
     },
     [clearCounter, incrementOffset, isTimerEnabled, onCompletion, progress],
   );

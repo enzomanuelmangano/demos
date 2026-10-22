@@ -24,7 +24,7 @@ const radius = 280;
 
 export type CircularDraggableSliderRefType = {
   resetTimer: () => void;
-  runTimer: (to: number) => void;
+  runTimer: (to: number) => boolean;
   stopTimer: () => void;
 };
 
