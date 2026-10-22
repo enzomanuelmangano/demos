@@ -51,7 +51,12 @@ const App = () => {
       <PressableScale
         style={styles.button}
         onPress={() => {
-          const toast = toasts[value.current++];
+          // Read, then bump, in two statements: React Compiler compiles
+          // `toasts[value.current++]` as a pre-increment, which skipped the
+          // first toast.
+          const index = value.current;
+          value.current = index + 1;
+          const toast = toasts[index];
 
           if (toast) {
             showToast(toast);
