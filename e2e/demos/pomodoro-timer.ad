@@ -1,0 +1,63 @@
+# Pomodoro Timer — a 200-tick circular dial dragged horizontally (pan -> rotation,
+# withDecay fling, timing back to 0 when dragged positive) sets seconds shown by a
+# 5-digit rolling counter; the timer button counts down with setInterval and shows
+# a "Timer completed" alert.
+# What this test covers: starting with 0 seconds ("Please enter a valid
+# number" alert); a slow drag setting ~5s, starting the timer, a drag during
+# the run (must be ignored), the completion alert and its OK (reset); a drag
+# to the right (positive progress, springs back to 0); a long fling with
+# decay so the counter rolls through many digits; grabbing the dial during
+# the decay; starting then stopping a timer mid-run; a stop issued during the start delay.
+# The timer button is icon-only: tapped at (338,794).
+context platform=ios
+open "demos://animations/pomodoro-timer"
+wait "label=\"Close\"" 10000
+wait 3500
+# Zero seconds: validation alert, then toggle back.
+press 338 794
+wait "text" "Please enter a valid number" 4000
+press "label=\"OK\""
+wait 600
+press 338 794
+wait 1500
+# ~5 seconds, run to completion while trying to drag.
+gesture pan 250 650 -60 0 1500
+wait 1000
+press 338 794
+wait 1000
+gesture pan 250 650 -100 0 500
+wait "text" "Timer completed" 15000
+press "label=\"OK\""
+wait 1000
+# Drag right (positive): returns to 0.
+gesture pan 150 650 120 0 600
+wait 1000
+# Long fling with decay, then grab mid-decay.
+gesture fling left 360 650 250
+wait 400
+press 200 650
+wait 600
+gesture fling left 360 650 250
+wait 2500
+# Bring it back near zero with flings to the right (values clamp at 0).
+gesture pan 100 650 250 0 400
+wait 300
+gesture pan 100 650 250 0 400
+wait 1500
+# Start and stop mid-run.
+gesture pan 250 650 -90 0 1500
+wait 800
+press 338 794
+wait 2500
+press 338 794
+wait 1000
+# Quick start/stop (stop 150ms after start, during the 300ms pre-delay).
+gesture pan 250 650 -50 0 1200
+wait 800
+press 338 794
+wait 150
+press 338 794
+wait 3000
+wait "label=\"Close\"" 8000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

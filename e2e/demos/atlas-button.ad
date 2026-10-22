@@ -1,0 +1,34 @@
+# Atlas Button — a Skia Atlas of 50x40 tiny squares (per-sprite RSXform computed
+# in a worklet from the press progress) that bloom outward from the centre while
+# the button is held; the React logo lifts and a "React Native" label fades in;
+# releasing logs "Button pressed".
+# What this test covers: a quick tap (log), a long hold (full bloom, 1200ms
+# spring) then release, rapid taps reversing the spring mid-bloom, a hold that
+# drags sideways off the button, and taps near the canvas corners (250x200 canvas).
+# expect-log: Button pressed
+context platform=ios
+open "demos://animations/atlas-button"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait 1500
+press 201 437
+wait 1500
+longpress 201 437 3000
+wait 2000
+press 201 437 --count 8 --interval-ms 100
+wait 2000
+gesture pan 201 437 170 0 1500
+wait 2000
+# Corners of the 250x200 canvas (x 76..326, y 337..537).
+press 85 345
+wait 800
+press 318 530
+wait 800
+longpress 201 437 800
+wait 2000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

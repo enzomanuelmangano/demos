@@ -1,0 +1,68 @@
+# Family Number Input — keypad that builds a number shown as per-digit Animated.Text
+# with FadeInDown/FadeOutDown + LinearTransition, thousands separators, and a row
+# that scales down as it grows; backspace deletes, long-press backspace resets.
+# What this test covers: typing 1..7 so separators appear (1,234,567); leading
+# zero at 0 (stays 0); backspace one digit at a time across a separator;
+# typing past the 11-digit cap (extra digits ignored, row at min scale);
+# long-press backspace reset from 11 digits (all digits exit at once); rapid
+# typing and rapid backspacing past zero while layout transitions are running.
+# Keys are pressed by position (cols x 70/200/330; rows y 494/582/669/756)
+# because the display digits share the same text labels as the keys.
+context platform=ios
+open "demos://animations/family-number-input"
+wait "label=\"Close\"" 10000
+wait 1000
+# 0 at 0 stays 0.
+press 200 756
+wait 400
+press 70 494
+press 200 494
+press 330 494
+press 70 582
+wait 500
+wait "text" "," 3000
+press 200 582
+press 330 582
+press 70 669
+wait 800
+# Backspace across the separator.
+press 330 756
+wait 400
+press 330 756
+wait 400
+press 330 756
+wait 400
+press 330 756
+wait 600
+# Fill to the 11-digit cap and beyond.
+press 200 669
+press 330 669
+press 200 756
+press 70 494
+press 200 494
+press 330 494
+press 70 582
+press 200 582
+press 330 582
+press 70 669
+press 200 669
+press 330 669
+wait 1000
+# Long-press backspace resets to 0.
+longpress 330 756 800
+wait 1200
+# Rapid typing then rapid backspacing past zero.
+press 330 669 --count 8
+wait 300
+press 330 756 --count 12
+wait 1000
+press 70 494
+press 200 756
+press 200 756
+press 200 756
+wait 800
+longpress 330 756 800
+wait 1000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

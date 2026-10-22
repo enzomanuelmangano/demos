@@ -1,0 +1,61 @@
+# Dynamic Tab Indicator — a paging photo carousel (France, Italy, Iceland, Norway, Japan) under a tab row whose underline interpolates its x/width from the scroll offset to the measured title layouts.
+# What this test covers: jumping to the last and first tabs (indicator crosses every title), stepping through each
+# tab, tapping a new tab while the previous programmatic scroll is still animating, paging by swipe in both
+# directions, overscrolling past both ends (clamped interpolation), a short drag that snaps back to the same page,
+# and a fast tab burst.
+context platform=ios
+open "demos://animations/dynamic-tab-indicator"
+wait "label=\"Close\"" 40000
+wait "text" "Iceland" 10000
+wait 800
+press "text=\"Japan\""
+wait 1000
+press "text=\"France\""
+wait 1000
+press "text=\"Italy\""
+wait 700
+press "text=\"Iceland\""
+wait 700
+press "text=\"Norway\""
+wait 700
+# Interrupt: retarget while the previous scrollTo is mid-flight.
+press "text=\"France\""
+wait 120
+press "text=\"Japan\""
+wait 120
+press "text=\"Italy\""
+wait 1000
+# Page by swiping the photos.
+swipe 330 500 60 500
+wait 900
+swipe 330 500 60 500
+wait 900
+swipe 330 500 60 500
+wait 900
+# Overscroll past the last page.
+swipe 330 500 40 500
+wait 900
+# Short drag that should snap back to the same page.
+gesture pan 200 500 -60 0 500
+wait 900
+# Page back to the first and overscroll past it.
+swipe 60 500 330 500
+wait 700
+swipe 60 500 330 500
+wait 700
+swipe 60 500 330 500
+wait 700
+swipe 60 500 330 500
+wait 700
+swipe 40 500 360 500
+wait 900
+# Fast tab burst.
+press "text=\"Norway\""
+press "text=\"Iceland\""
+press "text=\"Japan\""
+press "text=\"France\""
+wait 1200
+wait "text" "France" 3000
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

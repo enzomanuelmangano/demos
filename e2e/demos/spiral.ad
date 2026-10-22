@@ -1,0 +1,31 @@
+# Spiral — ~1500 Skia circles laid on a logarithmic spiral; every tap springs all of them (one frame-callback spring array) to a spiral with a new random angle.
+# What this test covers: first retarget from rest, letting a 3 s spring settle completely, retargeting mid-flight
+# (inertia kept/dropped per coordinate and per-element stiffness re-solve), a rapid tap burst that re-solves thousands
+# of springs per frame, taps in the corners of the full-screen pressable, and a final settle before closing.
+context platform=ios
+open "demos://animations/spiral"
+wait "label=\"Close\"" 40000
+wait 2500
+# Retarget from rest, then let the 3 s spring come fully to rest.
+press 200 500
+wait 3500
+# Retarget mid-flight: half a second into the spring.
+press 200 450
+wait 500
+press 120 300
+wait 1200
+# Rapid burst: every tap re-solves the stiffness for elements caught mid-flight.
+press 200 600 --count 6 --interval-ms 120
+wait 800
+# Corners of the full-screen pressable.
+press 100 835
+wait 300
+press 370 820
+wait 300
+press 370 200
+wait 3500
+press 200 437
+wait 3500
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

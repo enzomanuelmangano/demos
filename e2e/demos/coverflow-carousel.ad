@@ -1,0 +1,59 @@
+# Coverflow Carousel — horizontal paging FlatList of 11 remote photos; each card's
+# width, scaleY, translateX, borderRadius and opacity are interpolated from the
+# scroll offset (7-point ranges, scaleY/translateX/borderRadius unclamped).
+# What this test covers: one-card drags in both directions, a drag shorter
+# than half a card (snaps back), flinging all the way to the last card and
+# over-scrolling past it, flinging back to the first and over-scrolling the
+# start (offset < 0: extrapolated scaleY/translateX on the first cards),
+# reversing direction mid-momentum, and a tap on the centred card.
+context platform=ios
+open "demos://animations/coverflow-carousel"
+wait "label=\"Close\"" 10000
+wait 2500
+gesture pan 280 437 -160 0 600
+wait 900
+gesture pan 280 437 -160 0 600
+wait 900
+gesture pan 120 437 160 0 600
+wait 900
+# Short drag: snaps back.
+gesture pan 250 437 -50 0 600
+wait 900
+# Fling to the end and past it.
+gesture fling left 300 437 250
+wait 700
+gesture fling left 300 437 250
+wait 700
+gesture fling left 300 437 250
+wait 700
+gesture fling left 300 437 250
+wait 700
+gesture fling left 300 437 250
+wait 1000
+gesture pan 350 437 -300 0 700
+wait 1200
+# Reverse mid-momentum.
+gesture fling right 100 437 250
+wait 150
+gesture fling left 300 437 250
+wait 1200
+# Back to the start and past it.
+gesture fling right 100 437 250
+wait 700
+gesture fling right 100 437 250
+wait 700
+gesture fling right 100 437 250
+wait 700
+gesture fling right 100 437 250
+wait 700
+gesture fling right 100 437 250
+wait 700
+gesture fling right 100 437 250
+wait 1000
+gesture pan 50 437 300 0 700
+wait 1200
+press 201 437
+wait 800
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

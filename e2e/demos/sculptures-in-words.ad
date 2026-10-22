@@ -1,0 +1,73 @@
+# Sculptures in Words — a Skia-typeset article (The Venus de Milo, etc.) whose
+# letters, at the press of the round button, fly out of the page and assemble
+# into a WebGPU point-sculpture of the statue (one instanced mark per glyph,
+# depth-tested); in sculpture mode a paged horizontal scroll crosses between
+# three sculptures (each with its own article), and pressing again flies the
+# letters back into the page at the current scroll offset.
+# What this test covers: reading-mode scroll (letters launch from the live
+# offset), the morph both ways, reversing mid-morph, crossing to every
+# sculpture and back with swipes and a half drag released early, reading the
+# second article after crossing, a rapid toggle burst (the one-clock morph
+# retargeted mid-flight), and scrolling the article never past its top (a
+# pull-down there is the app's close gesture).
+context platform=ios
+open "demos://animations/sculptures-in-words"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "label=\"Switch between the article and the sculpture\"" 30000
+wait 2500
+# Read a bit, then morph from a scrolled offset.
+gesture pan 200 700 0 -400 800
+wait 800
+gesture pan 200 700 0 -300 600
+wait 800
+press "label=\"Switch between the article and the sculpture\""
+wait 3500
+# Back to the page, then reverse mid-morph both ways.
+press "label=\"Switch between the article and the sculpture\""
+wait 3500
+press "label=\"Switch between the article and the sculpture\""
+wait 700
+press "label=\"Switch between the article and the sculpture\""
+wait 700
+press "label=\"Switch between the article and the sculpture\""
+wait 3500
+# Sculpture mode: cross to the next sculptures and back.
+swipe 340 450 60 450
+wait 2500
+swipe 340 450 60 450
+wait 2500
+swipe 340 450 60 450
+wait 1500
+gesture pan 300 450 -120 0 900
+wait 1500
+swipe 60 450 340 450
+wait 2500
+# Read the second article (page morph from the second sculpture).
+press "label=\"Switch between the article and the sculpture\""
+wait 3500
+gesture pan 200 700 0 -400 700
+wait 800
+swipe 200 750 200 200
+wait 1500
+gesture pan 200 300 0 300 700
+wait 800
+# Rapid toggles.
+press "label=\"Switch between the article and the sculpture\""
+wait 200
+press "label=\"Switch between the article and the sculpture\""
+wait 200
+press "label=\"Switch between the article and the sculpture\""
+wait 200
+press "label=\"Switch between the article and the sculpture\""
+wait 200
+press "label=\"Switch between the article and the sculpture\""
+wait 4000
+# Back to the first sculpture and to its page.
+swipe 60 450 340 450
+wait 2500
+press "label=\"Switch between the article and the sculpture\""
+wait 3500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

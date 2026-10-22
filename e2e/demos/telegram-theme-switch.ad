@@ -1,0 +1,59 @@
+# Telegram Theme Switch — Telegram-style dark/light switch: tapping the moon/sun button
+# snapshots the screen (makeImageFromView), flips the theme and reveals it through
+# a Skia circular clip growing from the button while a Lottie icon plays; 4-tab bar.
+# What this test covers: dark->light and light->dark; tapping again while the
+# 1s reveal is running (must be ignored via isAnimating); rapid triple taps;
+# every tab (only Search hosts the button) and toggling after returning to
+# Search; a touch-down on the button that is dragged away (tap cancelled after
+# the touch-down snapshot) followed by a tab change and a real toggle, so a
+# stale pending snapshot would be revealed; ending back on the dark theme.
+context platform=ios
+open "demos://animations/telegram-theme-switch"
+wait "label=\"Close\"" 10000
+wait 1500
+press 352 719
+wait 1800
+press 352 719
+wait 1800
+# Re-tap mid-animation.
+press 352 719
+wait 300
+press 352 719
+wait 300
+press 352 719
+wait 1800
+# Rapid taps.
+press 352 719 --count 3
+wait 2000
+# Tabs: Home, Notifications, Message, back to Search.
+press 50 817
+wait 600
+press 251 817
+wait 600
+press 352 817
+wait 600
+press 150 817
+wait 800
+press 352 719
+wait 1800
+# Cancelled tap (touch down, drag off), then switch tab and toggle.
+gesture pan 352 719 -200 -300 500
+wait 500
+press 50 817
+wait 600
+press 150 817
+wait 800
+press 352 719
+wait 1800
+# Switch tabs while the reveal is running.
+press 352 719
+wait 200
+press 50 817
+wait 1500
+press 150 817
+wait 800
+press 352 719
+wait 1800
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

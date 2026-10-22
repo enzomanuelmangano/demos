@@ -1,0 +1,43 @@
+# Staggered Card Number — a card number whose first 12 digits flip, one after
+# another (withDelay stagger + spring), into blurred dots when the eye button
+# is tapped, and back when tapped again (animated BlurView intensity per digit).
+# What this test covers: hide and reveal with each stagger left to finish,
+# toggling back mid-stagger (springs reversed while later digits are still
+# delayed), a rapid burst of toggles ending in each state, and a
+# press-and-hold on the animated-pressable button.
+context platform=ios
+open "demos://animations/staggered-card-number"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Number" 30000
+wait 1000
+# Eye button (unlabeled icon): tap by position.
+press 329 439
+wait 1500
+press 329 439
+wait 1500
+# Reverse mid-stagger.
+press 329 439
+wait 150
+press 329 439
+wait 1500
+# Rapid toggles (odd count: ends hidden), then even (ends hidden too).
+press 329 439
+wait 90
+press 329 439
+wait 90
+press 329 439
+wait 90
+press 329 439
+wait 90
+press 329 439
+wait 1500
+press 329 439 --count 6 --interval-ms 100
+wait 1500
+# Hold then release: reveals.
+longpress 329 439 700
+wait 1500
+wait "text" "Number" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

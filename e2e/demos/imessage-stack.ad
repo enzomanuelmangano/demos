@@ -1,0 +1,79 @@
+# iMessage Stack — a fanned deck of 10 pastel cards driven entirely by one
+# invisible, inverted, paged horizontal FlatList: each card's scale, rotation,
+# X/Y translation, perspective rotateY, swap offset and zIndex are aggressive
+# interpolations of the scroll offset.
+# What this test covers: card-by-card drags forward through the whole deck to
+# the last card and overscroll past it, card-by-card back to the first, a
+# half drag released before the snap point (springs back, mid-swap pose), a
+# drag held exactly at a half card (perspective/swap midpoint), fast flings
+# both ways (disableIntervalMomentum: one card per fling), and a fling stopped
+# by a touch. The deck sits at y~460; drags are horizontal there.
+context platform=ios
+open "demos://animations/imessage-stack"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1000
+# Forward card by card (inverted list: drag right).
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+gesture pan 140 460 140 0 500
+wait 700
+# Past the last card.
+gesture pan 140 460 200 0 500
+wait 1000
+# Back, card by card.
+gesture pan 280 460 -140 0 500
+wait 700
+gesture pan 280 460 -140 0 500
+wait 700
+gesture pan 280 460 -140 0 500
+wait 700
+# Half drag released early, and one held at the swap midpoint.
+gesture pan 200 460 -40 0 900
+wait 900
+gesture pan 200 460 -67 0 1500
+wait 900
+# Fast flings both ways.
+swipe 330 460 60 460
+wait 800
+swipe 60 460 340 460
+wait 800
+swipe 330 460 60 460
+wait 800
+swipe 330 460 60 460
+wait 800
+# Fling then stop with a touch.
+swipe 330 460 60 460
+wait 100
+press 200 460
+wait 800
+# All the way back to the first card.
+gesture pan 280 460 -140 0 400
+wait 500
+gesture pan 280 460 -140 0 400
+wait 500
+gesture pan 280 460 -140 0 400
+wait 500
+gesture pan 280 460 -140 0 400
+wait 500
+gesture pan 280 460 -140 0 400
+wait 500
+gesture pan 280 460 -200 0 400
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

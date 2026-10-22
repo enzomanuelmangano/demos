@@ -1,0 +1,43 @@
+# Record Button — inverted 2-page FlatList: scrolling the dark "Scroll" page away
+# draws a Skia outline around a "Record" pill (progress from the scroll offset),
+# which fills/scales up past 0.98 (haptic); release past 0.97 snaps to the
+# record page, tapping Record scrolls back.
+# What this test covers: a small scroll (progress < threshold, springs back
+# to the first page), a partial scroll that stops mid-outline, a full scroll
+# that snaps to the Record page, pressing Record to scroll back, a fling,
+# scrolling back down by hand from the Record page, and pressing Record
+# repeatedly while the scroll-back is running.
+context platform=ios
+open "demos://animations/record-button"
+wait "text" "Scroll" 10000
+wait 1000
+# Small drag: progress below 0, page returns.
+gesture pan 200 300 0 60 600
+wait 1000
+# Partial: outline partly drawn, snaps back.
+gesture pan 200 300 0 160 900
+wait 1200
+# Full: snaps to the Record page.
+gesture pan 200 250 0 400 900
+wait 1200
+wait "label=\"Record\"" 3000
+press "label=\"Record\""
+wait 1200
+wait "text" "Scroll" 3000
+# Fling up to Record, scroll back by hand.
+gesture fling down 200 300 300
+wait 1500
+gesture pan 200 650 0 -400 900
+wait 1200
+gesture pan 200 250 0 400 900
+wait 1200
+# Record pressed repeatedly during the scroll-back.
+press "label=\"Record\""
+wait 100
+press 201 815
+wait 100
+press 201 815
+wait 1500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

@@ -1,0 +1,57 @@
+# Checkbox Interactions — 20 "Italian" chips in a wrapping row; toggling one animates its colours/padding, fades a checkmark in/out and reflows every chip with a springy LinearTransition layout animation.
+# What this test covers: checking chips in different rows (reflow pushes later chips to new rows), unchecking,
+# double-tapping the same chip so the checkmark's entering animation is interrupted by its exiting one, a rapid
+# burst on the first column while the layout springs are mid-flight, checking the last chip, and unchecking back.
+context platform=ios
+open "demos://animations/checkbox-interactions"
+wait "label=\"Close\"" 40000
+wait "text" "What are your favorite cuisines?" 5000
+wait 600
+# Check chips in a few rows.
+press 62 195
+wait 500
+press 175 256
+wait 500
+press 288 316
+wait 500
+press 62 438
+wait 800
+# Uncheck the first one.
+press 62 195
+wait 800
+# Toggle the same chip twice fast: checkmark enter interrupted by exit.
+press 62 256
+wait 80
+press 62 256
+wait 800
+# Rapid burst down the first column while layout springs run.
+press 62 195
+press 62 256
+press 62 316
+press 62 377
+press 62 438
+press 62 498
+press 62 559
+wait 1500
+# The same column again (unchecks most, reflow back).
+press 62 195
+wait 200
+press 62 256
+wait 200
+press 62 316
+wait 200
+press 62 377
+wait 200
+press 62 438
+wait 200
+press 62 498
+wait 200
+press 62 559
+wait 1500
+# Repeated taps with jitter around the middle of the grid.
+press 175 377 --count 6 --interval-ms 150
+wait 1500
+wait "text" "What are your favorite cuisines?" 3000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

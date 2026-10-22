@@ -1,0 +1,36 @@
+# Radar Chart — Skia radar chart (5 axes, 5 grid layers, two filled polygons with
+# dots) whose values spring to new random data on SHUFFLE; a shuffle during a
+# running spring re-bases from the interpolated values (cancelAnimation path).
+# What this test covers: single shuffles with the spring allowed to settle,
+# bursts of rapid shuffles that interrupt the spring mid-flight (the
+# progress < 1 re-interpolation branch), a press-and-hold on the button, and a
+# final settle.
+context platform=ios
+open "demos://animations/radar-chart"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "SHUFFLE" 10000
+wait 1000
+press "label=\"SHUFFLE\""
+wait 1500
+press "label=\"SHUFFLE\""
+wait 1500
+# Burst: five shuffles 120ms apart, each interrupting the previous spring.
+press 200 663 --count 5 --interval-ms 120
+wait 300
+press 200 663 --count 3 --interval-ms 60
+wait 2000
+# Long hold on the button (PressableScale scale-down, release fires onPress).
+longpress 200 663 900
+wait 1500
+press "label=\"SHUFFLE\""
+wait 250
+press "label=\"SHUFFLE\""
+wait 2000
+wait "text" "SHUFFLE" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

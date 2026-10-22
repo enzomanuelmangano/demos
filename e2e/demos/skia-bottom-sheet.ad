@@ -1,0 +1,40 @@
+# Skia Bottom Sheet — a blurred-glass sheet drawn in Skia over a remote photo, dragged
+# through react-native-skia-gesture on a Touchable.Path; snaps open (-h/2) or closed.
+# What this test covers: a short drag under the snap threshold (height/3) that
+# springs back closed; open past the threshold; close from open; dragging far
+# above the top (clamped to canvas height - 150); dragging below the closed
+# position (unclamped downward); grabbing the sheet mid-spring and reversing;
+# a tap on the sheet without movement; a pan outside the sheet (no effect).
+context platform=ios
+open "demos://animations/skia-bottom-sheet"
+wait "label=\"Close\"" 10000
+wait 3000
+# Under the threshold: back to closed.
+gesture pan 200 790 0 -80 600
+wait 1000
+# Open, then close.
+gesture pan 200 790 0 -400 600
+wait 1200
+gesture pan 200 350 0 380 600
+wait 1200
+# Over-drag to the top clamp and release.
+gesture pan 200 790 0 -700 800
+wait 1200
+# Close again, then drag below the closed position.
+gesture pan 200 350 0 380 600
+wait 1200
+gesture pan 200 760 0 100 500
+wait 1200
+# Interrupt the opening spring, reverse it.
+gesture pan 200 790 0 -300 250
+wait 120
+gesture pan 200 600 0 250 300
+wait 1200
+# Tap on the sheet, and a drag above it (outside the touchable path).
+press 200 800
+wait 500
+gesture pan 200 450 0 -150 400
+wait 800
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

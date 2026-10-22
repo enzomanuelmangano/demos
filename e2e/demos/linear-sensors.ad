@@ -1,0 +1,30 @@
+# Linear Sensors — a Skia "app icon" (rounded square + React logo) tilted in
+# 3D by the device's rotation (roll) and gravity (z) sensors through
+# useAnimatedSensor at 20 ms, with a drop shadow that moves with the tilt.
+# What this test covers: the sensor-driven worklets running for a while (the
+# simulator reports a resting device), device orientation changes through all
+# four orientations and back (app is portrait-locked; sensors keep streaming
+# and the icon must keep rendering), and taps/drags on the canvas (no
+# handlers; must be ignored). Ends back in portrait.
+context platform=ios
+open "demos://animations/linear-sensors"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 3000
+orientation landscape-left
+wait 1500
+orientation portrait-upside-down
+wait 1500
+orientation landscape-right
+wait 1500
+orientation portrait
+wait 2000
+press 201 450
+wait 300
+gesture pan 120 450 160 0 500
+wait 500
+gesture pan 201 600 0 -200 500
+wait 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

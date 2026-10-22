@@ -1,0 +1,43 @@
+# Split Button — a "Start" chip that splits into two chips (Google left, Apple
+# right) with springs on translateX/padding and FadeIn/FadeOut layout content;
+# either chip collapses it back to "Start".
+# What this test covers: split via Start, collapse via the left (Google) chip,
+# split again and collapse via the right (Apple) chip, rapid toggles on the
+# right chip while its spring is still moving (x=240 is on the right chip in
+# both states), and hitting the left chip while it is still sliding out.
+context platform=ios
+open "demos://animations/split-button"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "Start" 10000
+wait 800
+press "label=\"Start\""
+wait 1000
+# Left (Google) chip collapses the split.
+press 128 437
+wait 1000
+wait "label=\"Start\"" 3000
+press "label=\"Start\""
+wait 1000
+# Right (Apple) chip collapses it too.
+press 274 437
+wait 1000
+wait "label=\"Start\"" 3000
+# Rapid toggles interrupting the springs + FadeIn/FadeOut layout animations.
+press 240 437 --count 4 --interval-ms 200
+wait 1500
+press 240 437 --count 6 --interval-ms 90
+wait 1500
+# Split and immediately hit the left chip while it is still sliding out.
+wait "label=\"Start\"" 3000
+press "label=\"Start\""
+wait 300
+press 128 437
+wait 1200
+wait "label=\"Start\"" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

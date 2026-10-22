@@ -1,0 +1,66 @@
+# Expandable Mini Player — an Apple-Music-style mini player above a 4-tab bar (react-navigation bottom tabs) that expands to a full-screen sheet on tap (spring), scaling the screen behind it; the sheet is dragged down to collapse (threshold 0.8).
+# What this test covers: normalising the start state (the progress is a module-level shared value, so it survives
+# closing the demo), every tab, tap-to-expand with the press-scale feedback, short drag down (stays expanded),
+# long drag down (collapses), drags released just above and below the threshold, tapping the expanded sheet (ignored),
+# interrupting the expand spring with a drag, a rapid expand/collapse cycle, and ending collapsed.
+context platform=ios
+open "demos://animations/expandable-mini-player"
+wait "label=\"Close\"" 40000
+wait "text" "Happiness does not wait" 10000
+wait 800
+# A previous session may have left the sheet expanded: tapping the mini player expands it either way (a tap on
+# the expanded sheet is ignored), then drag it down. Never drag down on the collapsed screen: that closes the demo.
+press 250 757
+wait 1200
+gesture pan 250 450 0 300 500
+wait 1200
+# Tabs.
+press 150 826
+wait 400
+press 250 826
+wait 400
+press 351 826
+wait 400
+press 75 835
+wait 400
+# Expand.
+press 250 757
+wait 1200
+# Tapping the expanded sheet is ignored.
+press 250 600
+wait 500
+# Short drag down: stays expanded.
+gesture pan 250 500 0 100 500
+wait 1000
+# Long drag down: collapses.
+gesture pan 250 450 0 300 500
+wait 1200
+# Expand, then drag about to the threshold (0.8 ≈ 175 pt) and release.
+press 250 757
+wait 1200
+gesture pan 250 450 0 150 600
+wait 1200
+gesture pan 250 450 0 220 600
+wait 1200
+# Interrupt the expand spring with a drag.
+press 250 757
+wait 200
+gesture pan 250 450 0 250 400
+wait 1200
+# Rapid expand/collapse cycle.
+press 250 757
+wait 700
+gesture pan 250 450 0 350 250
+wait 400
+press 250 757
+wait 700
+gesture pan 250 450 0 350 250
+wait 1200
+# End collapsed: expand and drag down once more.
+press 250 757
+wait 1200
+gesture pan 250 450 0 300 500
+wait 1200
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

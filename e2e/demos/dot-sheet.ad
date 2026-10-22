@@ -1,0 +1,43 @@
+# Dot Sheet — a tilted white card over a Skia sweep-gradient background; focusing
+# its multiline TextInput (tap on the card or "Start your Journey") springs the
+# card to full screen (top/left/size/rotate/radius/font size interpolated); a
+# chevron back button blurs the input and springs it back.
+# What this test covers: expanding via a tap on the card, typing multi-line text
+# with emoji while expanded, expanding via the bottom button in a fresh mount,
+# and a tap on the card while it is still springing open.
+# NOTE: the chevron back button (left 16, top safeTop) sits completely under the
+# demo's Close button, so collapsing the card is impossible (tapping it closes
+# the demo) — see report. Each path therefore closes the demo and reopens it.
+context platform=ios
+open "demos://animations/dot-sheet"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "One more thing" 10000
+wait 1000
+# Path 1: tap the tilted card itself (onTouchEnd -> focus when progress == 0).
+press 194 346
+wait 1500
+type "Hello Dot"
+wait 300
+type "\nsecond line ✨"
+wait 1000
+wait "text" "Hello Dot" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500
+# Path 2: fresh mount, expand from the bottom button, tap the card mid-spring.
+open "demos://animations/dot-sheet"
+wait "label=\"Close\"" 45000
+wait "text" "Start your Journey" 10000
+wait 800
+press "label=\"Start your Journey\""
+press 194 346
+wait 1500
+type "🚀"
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

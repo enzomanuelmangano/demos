@@ -1,0 +1,71 @@
+# MNIST — draw on a 28x28 Skia grid; every new cell runs a small neural network
+# (predict) on the UI thread, lighting the network graph and the 0-9/N/A
+# prediction row; the eraser clears the grid.
+# What this test covers: drawing a "1" (vertical stroke), erase; a "7" (top bar
+# + diagonal), erase; a "0" as four strokes; strokes that start inside and
+# leave the canvas (out-of-bounds cells must be ignored); a tap on a single
+# cell; dense scribbling over the whole grid (hundreds of touched cells, so
+# the surrounding-cells path and predict run with a large list); erasing
+# twice in a row and erasing an empty grid.
+# Grid spans x 61-341, y 437-717; the eraser is icon-only at (330,802).
+context platform=ios
+open "demos://animations/mnist"
+wait "label=\"Close\"" 10000
+wait 1500
+# "1"
+gesture pan 201 470 0 220 900
+wait 800
+press 330 802
+wait 600
+# "7"
+gesture pan 130 480 140 0 700
+wait 300
+gesture pan 270 480 -80 200 900
+wait 800
+press 330 802
+wait 600
+# "0" as four strokes.
+gesture pan 150 480 100 0 600
+wait 200
+gesture pan 250 480 0 190 700
+wait 200
+gesture pan 250 670 -100 0 600
+wait 200
+gesture pan 150 670 0 -190 700
+wait 800
+press 330 802
+wait 600
+# Single cell, then strokes leaving the canvas.
+press 201 577
+wait 400
+gesture pan 200 577 190 0 600
+wait 300
+gesture pan 200 577 0 230 600
+wait 300
+gesture pan 100 600 -90 -250 700
+wait 800
+press 330 802
+wait 600
+# Dense scribble over the whole grid.
+gesture pan 70 450 260 60 600
+wait 500
+gesture pan 330 520 -260 60 600
+wait 500
+gesture pan 70 600 260 60 600
+wait 500
+gesture pan 330 680 -260 20 600
+wait 500
+gesture pan 100 445 0 265 600
+wait 500
+gesture pan 200 445 0 265 600
+wait 500
+gesture pan 300 445 0 265 600
+wait 1500
+press 330 802
+wait 300
+press 330 802
+wait 300
+press 330 802
+wait 2500
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

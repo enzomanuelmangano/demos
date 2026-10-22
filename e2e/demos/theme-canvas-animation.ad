@@ -1,0 +1,59 @@
+# Theme Canvas Animation — Skia canvas with six colour dots; tapping one grows a
+# circular clip from it that reveals the new theme over the old one.
+# What this test covers: every dot (2x3 grid centred on screen, 70pt apart) with
+# the 1 s spring allowed to finish; re-tapping the selected dot (early return);
+# interrupting a reveal mid-flight by another dot (radius reset + spring callback
+# with isFinished=false); a rapid tap burst across dots; press-and-hold then
+# release on a dot (scale-down on touch start, tap on release).
+context platform=ios
+open "demos://animations/theme-canvas-animation"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1500
+# Each dot, letting the reveal complete. Grid: x 131/201/271, y 437/507.
+press 201 437
+wait 1300
+press 271 437
+wait 1300
+press 201 507
+wait 1300
+press 131 507
+wait 1300
+press 271 507
+wait 1300
+# Back to the first theme (index 0).
+press 131 437
+wait 1300
+# Same dot again: no-op.
+press 131 437
+wait 600
+# Interrupt mid-reveal.
+press 271 437
+wait 250
+press 131 507
+wait 200
+press 201 507
+wait 1400
+# Rapid burst across dots.
+press 131 437
+wait 80
+press 201 437
+wait 80
+press 271 437
+wait 80
+press 131 507
+wait 80
+press 201 507
+wait 80
+press 271 507
+wait 1500
+press 201 437 --count 5 --interval-ms 90
+wait 1500
+# Hold then release on a dot.
+longpress 271 507 700
+wait 1300
+longpress 131 437 400
+wait 1300
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

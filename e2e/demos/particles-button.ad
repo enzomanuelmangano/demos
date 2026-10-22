@@ -1,0 +1,36 @@
+# Particles Button — a 48pt round button: a press logs "pressed :)", springs a "+"
+# icon (rotate/fade) into a check, and fires a 20-particle Skia Atlas blast; it
+# springs back automatically and ignores presses while animating.
+# What this test covers: a single press with full settle (blast + check +
+# auto reset); presses during the animation (must be ignored by the
+# isAnimating guard); pressing right after the auto-reset finishes; a rapid
+# burst; a long press; taps beside the button (outside its hit area, no blast).
+# expect-log: pressed :)
+context platform=ios
+open "demos://animations/particles-button"
+wait "label=\"Close\"" 10000
+wait 2500
+press 201 437
+wait 2500
+# During the animation: ignored.
+press 201 437
+wait 200
+press 201 437
+wait 200
+press 201 437
+wait 2500
+# Rapid burst.
+press 201 437 --count 6 --interval-ms 80
+wait 2500
+longpress 201 437 900
+wait 2500
+# Beside the button.
+press 300 437
+wait 400
+press 201 600
+wait 800
+press 201 437
+wait 2500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

@@ -1,0 +1,49 @@
+# Audio Player — waveform scrubber: a 22 s linear "playback" fills the 50 bars,
+# the left pill shows the elapsed time (ReText from a worklet), and a pan on the
+# waveform cancels playback, scrubs, then resumes from the finger's position.
+# What this test covers: playback running on open; a tap in the middle
+# (jump to ~0:11 and resume); a scrub right-to-left back to the start; a scrub
+# past the right edge (clamped to 0:22, resume with a negative remaining time);
+# a scrub past the left edge (x < 0); a diagonal scrub (the waveform pan must win
+# over the app's pull-down close); rapid taps; and letting playback run to the end.
+context platform=ios
+open "demos://animations/audio-player"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "0:22" 30000
+wait 2000
+# Tap mid-waveform: jumps to ~0:11-0:13 and keeps playing.
+press 191 462
+wait 300
+# Scrub right to left back to the start.
+gesture pan 380 462 -350 0 800
+wait 300
+# Scrub past the right edge: clamps to the end; remaining time is negative.
+gesture pan 30 462 370 0 700
+wait 600
+wait "value=\"0:22\"" 8000
+# Scrub past the left edge (event.x < 0), then release.
+gesture pan 200 462 -199 0 900
+wait 1500
+# Diagonal scrub with a downward component, inside the waveform.
+gesture pan 100 450 200 50 600
+wait 400
+# (Elapsed-time text after a scrub is not asserted: under load a snapshot can
+# take seconds while playback keeps running; the end state 0:22 is.)
+# Rapid taps across the waveform.
+press 60 462
+wait 80
+press 330 462
+wait 80
+press 120 462
+wait 80
+press 250 462
+wait 80
+press 40 462
+wait 400
+# Let playback run to the end (~22 s).
+wait 23000
+wait "value=\"0:22\"" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

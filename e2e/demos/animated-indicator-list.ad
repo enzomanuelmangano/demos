@@ -1,0 +1,60 @@
+# Animated Indicator List — sectioned actor/film list with a horizontal header
+# row on top; scrolling slides the header row and stretches a black underline
+# to the current section (measured on the UI thread, interpolated per frame);
+# touching a header scrolls the list to that section.
+# What this test covers: header taps walking every section to the last one
+# (scrollToIndex + header row translation), slow manual scrolls back up through
+# section boundaries (indicator width/offset interpolation), a fast fling down
+# to the end of the list (clamped extrapolation), and rapid header taps that
+# interrupt an in-flight scrollToIndex.
+context platform=ios
+open "demos://animations/animated-indicator-list"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "AL PACINO" 30000
+wait "text" "The Irishman" 8000
+wait 1000
+# Tap AL PACINO: list jumps, header row slides left.
+press 234 90
+wait 1200
+wait "text" "LEONARDO DICAPRIO" 8000
+# Next header each time (second slot in the row).
+press 185 90
+wait 1200
+wait "text" "Home Alone" 8000
+press 185 90
+wait 1200
+wait "text" "BRAD PITT" 8000
+press 270 90
+wait 1200
+wait "text" "Fight Club" 8000
+# Slow manual scrolls back up across section boundaries (never past the top:
+# a pull-down at the top is the app's close gesture).
+gesture pan 200 300 0 300 900
+wait 600
+gesture pan 200 300 0 300 900
+wait 600
+gesture pan 200 300 0 250 900
+wait 800
+# Fling down to the end of the list.
+swipe 200 750 200 200
+swipe 200 750 200 200
+swipe 200 750 200 200
+wait 1500
+wait "text" "Benjamin Button" 8000
+# Back up a bit, then rapid header taps interrupting scrollToIndex.
+gesture pan 200 300 0 400 900
+wait 800
+press 185 90
+wait 120
+press 270 90
+wait 120
+press 185 90
+wait 120
+press 250 90
+wait 1500
+gesture pan 200 700 0 -300 600
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

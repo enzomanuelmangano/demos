@@ -1,0 +1,67 @@
+# Miles Bar Chart — 7 bars for a week's (random) miles; a paged horizontal list
+# of "week of <date>" labels under the chart drives the active week
+# (floor((offset + w/2) / w) in a derived value), and each bar springs its
+# height and colour to the new week's value, with a haptic per week change.
+# What this test covers: paging week by week through all 7 weeks and back,
+# a half drag released before the snap, slow drags held across the half-way
+# point (active index flips mid-drag, bars retarget mid-spring), hard flings
+# to both ends and rubber-band overscroll past them (index must stay within
+# the 7 weeks), and a fling stopped by a touch. Labels row: y ~522, hitSlop 100.
+context platform=ios
+open "demos://animations/miles-bar-chart"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "week of" 30000
+wait 1000
+# Week by week forward.
+swipe 330 540 70 540
+wait 900
+swipe 330 540 70 540
+wait 900
+swipe 330 540 70 540
+wait 900
+# Half drag, released before the snap point.
+gesture pan 300 540 -120 0 900
+wait 900
+# Held across the midpoint and back.
+gesture pan 300 540 -230 0 1500
+wait 900
+gesture pan 100 540 230 0 1500
+wait 900
+# Hard flings to the end, then overscroll past the last week.
+swipe 395 540 5 540
+wait 300
+swipe 395 540 5 540
+wait 300
+swipe 395 540 5 540
+wait 300
+swipe 395 540 5 540
+wait 1200
+gesture pan 395 540 -390 0 250
+wait 1200
+wait "text" "week of" 8000
+# Back to the first week and overscroll past it.
+swipe 5 540 395 540
+wait 300
+swipe 5 540 395 540
+wait 300
+swipe 5 540 395 540
+wait 300
+swipe 5 540 395 540
+wait 1200
+gesture pan 5 540 390 0 250
+wait 1200
+# Fling and stop it with a touch.
+swipe 395 540 5 540
+wait 120
+press 200 540
+wait 1000
+# Drags in the label's hitSlop area above/below the row.
+swipe 330 450 70 450
+wait 900
+swipe 70 610 330 610
+wait 900
+wait "text" "week of" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

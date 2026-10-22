@@ -1,0 +1,37 @@
+# Motion Blur — a "+" button appends random transaction cards ($ amount, address, emoji) to a 3-card stack; new cards pop in with a keyframe, older ones spring up and blur out (expo-blur intensity via useAnimatedProps) and leave with FadeOutUp.
+# What this test covers: the first three adds (no blur yet), the fourth add pushing the first card out (blur 0→50 and
+# exiting), steady adds letting each transition finish, a rapid burst of adds that overlaps many exiting
+# animations (EXITING_ITEMS_BUFFER=4 window), a very long burst, and a final settle with only three cards left.
+context platform=ios
+open "demos://animations/motion-blur"
+wait "label=\"Close\"" 40000
+wait 800
+# First three cards.
+press 201 552
+wait 700
+press 201 552
+wait 700
+press 201 552
+wait 900
+# Fourth: the first card blurs out and exits.
+press 201 552
+wait 1200
+# Steady adds.
+press 201 552
+wait 600
+press 201 552
+wait 600
+press 201 552
+wait 1000
+# Rapid burst overlapping the exiting animations.
+press 201 552 --count 8 --interval-ms 80
+wait 1500
+# Very long burst.
+press 201 552 --count 25 --interval-ms 50
+wait 2000
+# Single add after the storm.
+press 201 552
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

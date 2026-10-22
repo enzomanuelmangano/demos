@@ -1,0 +1,47 @@
+# Calendar Days — a tear-off calendar (31 pages, 3D rotateX flips with per-page
+# springs, depth shadows, face swap at 0.5) driven by a pan slider below it.
+# What this test covers: a slow drag through the first pages (one flip at a
+# time), a fast drag to the end (many pages flipping simultaneously), dragging
+# past both ends of the track (clamped), a fast return to day 1 (all pages
+# unflipping together), tiny back-and-forth drags across a single page
+# boundary (spring retargeted repeatedly), a fling-like quick drag mid-way,
+# and a tap on the track away from the thumb (must do nothing).
+# Thumb starts at (40,562); track spans x 40-362.
+context platform=ios
+open "demos://animations/calendar-days"
+wait "text" "ON THE" 10000
+wait 1500
+gesture pan 40 562 60 0 2000
+wait 1200
+gesture pan 100 562 262 0 400
+wait 1500
+# Past the end (clamped).
+gesture pan 362 562 30 0 300
+wait 800
+# Fast back to day 1 and past the start.
+gesture pan 362 562 -350 0 400
+wait 2000
+# Back and forth across one page boundary.
+gesture pan 40 562 12 0 300
+wait 150
+gesture pan 52 562 -10 0 300
+wait 150
+gesture pan 42 562 12 0 300
+wait 150
+gesture pan 54 562 -12 0 300
+wait 1500
+# Mid-way quick drags.
+gesture pan 42 562 160 0 200
+wait 300
+gesture pan 202 562 -80 0 200
+wait 300
+gesture pan 122 562 200 0 200
+wait 2000
+# Tap on the track far from the thumb.
+press 120 562
+wait 600
+gesture pan 322 562 -300 0 600
+wait 2000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

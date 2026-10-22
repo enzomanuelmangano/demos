@@ -1,0 +1,42 @@
+# Steps — a 3-step progress indicator: a green bar springs over 3 dots, a Back
+# button grows in from width 0 after step 1, and the right button turns into
+# "Finish" with a check icon on the last step (Finish wraps back to step 1).
+# What this test covers: Continue x2 to "Finish", Back to the middle, Finish
+# wrapping to the start (Back collapses), Back on the first step (clamped at 0,
+# and the zero-width Back must not be hittable), rapid Continue taps through
+# the wrap while springs/withTiming colours are mid-flight, rapid Back taps.
+context platform=ios
+open "demos://animations/steps"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait 1000
+# Continue: x=300 is on it in every state (Back takes x 20..108 when shown).
+press 300 780
+wait 800
+wait "label=\"Back\"" 3000
+press 300 780
+wait 800
+wait "label=\" Finish\"" 3000
+press "label=\"Back\""
+wait 800
+wait "label=\" Continue\"" 3000
+press 300 780
+wait 800
+# Finish wraps to step 1: Back collapses.
+press 300 780
+wait 1000
+wait "label=\" Continue\"" 3000
+# Where Back would be on step 1 (zero width): nothing should happen.
+press 64 780
+wait 800
+# Rapid Continue taps (7 = two wraps + 1) and rapid Back taps.
+press 300 780 --count 7 --interval-ms 120
+wait 1200
+press 64 780 --count 4 --interval-ms 120
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

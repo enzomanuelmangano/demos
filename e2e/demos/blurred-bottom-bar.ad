@@ -1,0 +1,47 @@
+# Blurred Bottom Bar — floating BlurView pill tab bar (Home/Explore/Camera/Settings)
+# over full-screen photo tabs with freezeOnBlur; active icon fades to full opacity.
+# What this test covers: each tab forwards and backwards, re-tapping the focused
+# tab (the pop-to-top branch of onTapIcon), long jumps, and rapid tapping
+# across tabs so the opacity timings are retargeted and frozen screens are
+# thawed in quick succession. Icons are unlabeled: tapped by position
+# (x 107/170/232/295, y 795).
+context platform=ios
+open "demos://animations/blurred-bottom-bar"
+wait "label=\"Close\"" 10000
+wait 1000
+press 170 795
+wait 700
+press 232 795
+wait 700
+press 295 795
+wait 700
+press 232 795
+wait 700
+press 170 795
+wait 700
+press 107 795
+wait 700
+# Re-tap the focused tab.
+press 107 795 --count 3
+wait 700
+# Long jumps.
+press 295 795
+wait 700
+press 107 795
+wait 700
+# Rapid switching.
+press 295 795
+wait 60
+press 170 795
+wait 60
+press 232 795
+wait 60
+press 107 795
+wait 60
+press 295 795
+wait 60
+press 170 795
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

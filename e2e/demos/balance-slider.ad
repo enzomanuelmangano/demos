@@ -1,0 +1,46 @@
+# Balance Slider — a Coffee/Milk split bar: dragging (or touching) moves the white picker, both boxes resize, the ReText percentages update, and past 33% / 72% the bars shrink while the labels spring up; every new value is reported to JS (console.log).
+# What this test covers: dragging to 0% and 100% (clamped, asserted on both percentage labels), touch-to-jump with
+# the overshoot-clamped spring, crossing the left (0.33) and right (0.72) shift thresholds both ways, a fast drag
+# end-to-end, a purely vertical drag (no new value is reported), and ending at an exact 50/50-ish middle.
+# expect-log: { leftPercentage: 0, rightPercentage: 1 }
+# expect-log: { leftPercentage: 1, rightPercentage: 0 }
+context platform=ios
+open "demos://animations/balance-slider"
+wait "label=\"Close\"" 40000
+wait "text" "COFFEE" 5000
+is exists "value=\"50%\""
+# Drag fully left: Coffee 0% / Milk 100%.
+gesture pan 201 445 -195 0 600
+wait 800
+is exists "value=\"0%\""
+is exists "value=\"100%\""
+# Drag fully right: Coffee 100% / Milk 0%.
+gesture pan 25 445 370 0 900
+wait 800
+is exists "value=\"100%\""
+is exists "value=\"0%\""
+# Touch-to-jump (spring) into the middle, then the left side, then the right side.
+press 201 445
+wait 700
+press 80 445
+wait 700
+press 330 445
+wait 700
+# Cross the shift thresholds slowly in both directions.
+gesture pan 330 445 -260 0 1500
+wait 500
+gesture pan 70 445 260 0 1500
+wait 500
+# A purely vertical drag: same x, nothing new reported.
+gesture pan 200 440 0 15 400
+wait 500
+# Fast drag end-to-end and back.
+gesture pan 25 445 370 0 150
+gesture pan 390 445 -380 0 150
+wait 800
+# Settle in the middle.
+press 201 445
+wait 1000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

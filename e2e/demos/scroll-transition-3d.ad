@@ -1,0 +1,41 @@
+# 3D Scroll Transition — an inverted, snapping FlatList counting down 99→0; each number is a Skia sweep-gradient masked by text that rotates on X with perspective, fades and blurs as it leaves the centre (windowSize=2, items mount/unmount constantly).
+# What this test covers: overscroll against the start (99), slow one-item drags in both directions with snapping,
+# releasing half-way (snap back), flings, a long burst of flings toward the end of the list (heavy mount/unmount
+# with blur), interrupting a fling with a new drag, and flinging back toward the start.
+context platform=ios
+open "demos://animations/scroll-transition-3d"
+wait "label=\"Close\"" 40000
+wait 1500
+# Overscroll against the start of the inverted list.
+swipe 200 700 200 300
+wait 1000
+# One item forward, slowly (inverted: drag down advances).
+gesture pan 200 330 0 221 900
+wait 1000
+gesture pan 200 330 0 221 900
+wait 1000
+# Back one item.
+gesture pan 200 650 0 -221 900
+wait 1000
+# Half an item and release: snaps.
+gesture pan 200 400 0 100 900
+wait 1000
+gesture pan 200 500 0 -100 900
+wait 1000
+# Flings forward.
+swipe 200 300 200 750
+wait 1500
+swipe 200 300 200 750
+wait 300
+# Interrupt the fling with a slow drag back.
+gesture pan 200 600 0 -150 600
+wait 1200
+# Long fling burst toward the end of the list.
+swipe 200 300 200 750 --count 20 --pause-ms 80
+wait 2500
+# Fling back toward the start.
+swipe 200 750 200 300 --count 12 --pause-ms 80
+wait 2500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

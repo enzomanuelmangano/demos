@@ -1,0 +1,64 @@
+# Action Tray — a "+" button opens a floating bottom tray that walks through three steps (Heading 1→2→3) with layout transitions and a springing content height; it closes by its x, the backdrop, a drag down past 100 pt, or finishing the steps.
+# What this test covers: open/close via the rotating "+" (backdrop tap), the tray's own close button, all three
+# steps with entering/exiting layout animations and the final "Accept 2" closing (step resets to Heading 1), a
+# short drag down that springs back, a long drag that closes, an upward drag (clamped to -50), rapid Continue
+# taps that race the layout transitions, and toggling while the open spring is mid-flight.
+context platform=ios
+open "demos://animations/action-tray"
+wait "label=\"Close\"" 40000
+wait 800
+# Open, then close via the backdrop (covers the "+").
+press 201 537
+wait 800
+wait "text" "Heading 1" 3000
+press 201 300
+wait 800
+# Open and close with the tray's own x.
+press 201 537
+wait 800
+press 355 672
+wait 800
+# Walk all three steps.
+press 201 537
+wait 800
+press "text=\"Continue\""
+wait "text" "Heading 2" 3000
+wait 700
+press "text=\"Accept 1\""
+wait "text" "Heading 3" 3000
+wait "text" "reactiive.io/demos" 3000
+wait 700
+# Accept 2 closes the tray and resets to step 0.
+press "text=\"Accept 2\""
+wait 1000
+wait "text" "Heading 1" 3000
+# Reopen: short drag down springs back, upward drag is limited, long drag closes.
+press 201 537
+wait 900
+gesture pan 200 680 0 60 400
+wait 800
+gesture pan 200 680 0 -150 400
+wait 800
+gesture pan 200 660 0 180 400
+wait 1000
+# Rapid Continue taps racing the layout transitions.
+press 201 537
+wait 800
+press "text=\"Continue\""
+wait 150
+press 201 795
+wait 150
+press 201 795
+wait 1500
+# Toggle while the open spring is mid-flight (second tap lands on the backdrop).
+press 201 537
+wait 120
+press 201 300
+wait 1000
+press 201 537
+wait 900
+press 201 300
+wait 1000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

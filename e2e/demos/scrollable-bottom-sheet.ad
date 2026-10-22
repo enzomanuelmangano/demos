@@ -1,0 +1,68 @@
+# Scrollable Bottom Sheet — a gradient button opens a bottom sheet with a paging
+# horizontal ScrollView of 3 pages (350/500/250pt); while scrolling, the sheet height
+# is interpolated between page heights on the UI thread.
+# What this test covers: open via the button, "Next Page" twice (sheet grows to
+# 500 then shrinks to 250) and the third page's "Close"; swiping between pages
+# by hand forwards and backwards (continuous height interpolation) and
+# over-scrolling both ends; dragging the sheet down < 100pt (snaps back) and
+# > 100pt (closes); closing via the backdrop tap; the toggle button pressed
+# rapidly (open/close mid-spring); re-opening after the 500ms scroll-reset.
+# Page buttons share a "Next Page" label across pages, so they are pressed by
+# position (page1 y716, page2 y641, page3 y766).
+context platform=ios
+open "demos://animations/scrollable-bottom-sheet"
+wait "label=\"Close\"" 10000
+wait 1000
+press 201 437
+wait "text" "Next Page" 3000
+wait 800
+press 201 716
+wait 1000
+press 201 641
+wait 1000
+press 201 766
+wait 1200
+# Swipe through the pages by hand.
+press 201 437
+wait 900
+gesture pan 330 716 -260 0 700
+wait 900
+gesture pan 330 641 -260 0 700
+wait 900
+gesture pan 330 766 -200 0 500
+wait 700
+gesture pan 70 766 260 0 700
+wait 900
+gesture pan 70 641 260 0 700
+wait 900
+gesture pan 70 716 200 0 500
+wait 700
+# Drag the sheet down a little (snaps back), then past 100pt (closes).
+gesture pan 201 600 0 60 500
+wait 900
+gesture pan 201 600 0 200 500
+wait 1200
+# Close via the backdrop.
+press 201 437
+wait 900
+press 201 250
+wait 1200
+# Rapid toggling of the opener.
+press 201 437
+wait 150
+press 201 437
+wait 150
+press 201 437
+wait 1200
+# Close from page 2 via drag, then reopen after the scroll reset.
+press 201 716
+wait 1000
+gesture pan 201 500 0 250 400
+wait 1200
+press 201 437
+wait 1000
+press 201 250
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

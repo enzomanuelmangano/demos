@@ -1,0 +1,48 @@
+# Sphere Waves — 2000 Fibonacci-sphere dots recorded into a Skia Picture every frame with wave-driven perspective and a hue-cycling gradient; tap right = new random "magic multiplier" (pushed to a history), tap left = step back in history; pinch changes the perspective distance and springs back on release.
+# What this test covers: several right taps (new patterns), left taps walking back through the history and past its
+# start (no-op), a right tap after going back (truncates the "future"), pinches in to 0.3 (closest the driver
+# allows; distance x2) and out to 3 (distance x0.05, extreme perspective), a tap right after a pinch while the
+# distance spring runs, and a rapid tap burst on both halves.
+context platform=ios
+open "demos://animations/sphere-waves"
+wait "label=\"Close\"" 40000
+wait 2000
+# Forward through three new patterns.
+press 300 437
+wait 900
+press 300 437
+wait 900
+press 300 437
+wait 900
+# Back through history and past the start.
+press 100 437
+wait 700
+press 100 437
+wait 700
+press 100 437
+wait 700
+press 100 437
+wait 700
+# Forward again after going back (truncates the future).
+press 300 437
+wait 900
+press 100 437
+wait 900
+# Pinch in, pinch out (extreme perspective), with the release spring.
+gesture pinch 0.3 201 437
+wait 1200
+gesture pinch 0.5 201 437
+wait 1200
+gesture pinch 3 201 437
+wait 300
+press 300 437
+wait 1200
+gesture pinch 2 201 437
+wait 1500
+# Rapid taps on both halves.
+press 300 437 --count 5 --interval-ms 100
+press 100 437 --count 5 --interval-ms 100
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

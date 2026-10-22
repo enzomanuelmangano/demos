@@ -1,0 +1,46 @@
+# Twodos Slide — "Slide to Unlock": a horizontal iOS ScrollView with native rubber-band
+# friction drives two rotating squares and a Skia squircle stroke that fills as the
+# progress reaches 1 (haptic at >= 1, debounced).
+# What this test covers: short drags right (partial stroke), long drags right
+# past the unlock threshold (progress >= 1, haptic, stroke complete) and the
+# bounce back; drags left (negative progress, squares rotate the other way
+# through 0deg); flings both ways; grabbing the slider again during the
+# bounce-back; repeated unlocks inside the 1s haptic debounce window.
+context platform=ios
+open "demos://animations/twodos-slide"
+wait "text" "Slide to Unlock" 10000
+wait 1000
+gesture pan 120 560 60 0 600
+wait 1000
+gesture pan 60 560 300 0 1200
+wait 1200
+gesture pan 40 560 340 0 400
+wait 1200
+# Leftwards (negative progress).
+gesture pan 360 560 -300 0 1200
+wait 1200
+gesture pan 380 560 -340 0 400
+wait 1200
+# Flings.
+gesture fling right 120 560 250
+wait 1000
+gesture fling left 300 560 250
+wait 1000
+# Re-grab during bounce-back.
+gesture pan 40 560 320 0 400
+wait 150
+gesture pan 100 560 250 0 500
+wait 150
+gesture pan 360 560 -300 0 400
+wait 1200
+# Repeated unlocks within the haptic debounce window.
+gesture pan 40 560 340 0 300
+wait 300
+gesture pan 40 560 340 0 300
+wait 300
+gesture pan 40 560 340 0 300
+wait 1500
+wait "text" "Slide to Unlock" 3000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

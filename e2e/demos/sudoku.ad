@@ -1,0 +1,81 @@
+# Sudoku — a medium puzzle (generated once per app session) on a 9x9 animated
+# board with a number pad: selecting a cell highlights row/col/box and equal
+# numbers, digits/backspace edit only non-given cells, "New Game" asks for
+# confirmation (Alert) and regenerates, and tapping the SUDOKU title solves the
+# board (backtracking), fires confetti + haptics and an Alert after 2s.
+# What this test covers: Start Game, selecting cells (given and empty — the
+# puzzle is random per launch, so edits on a given cell are expected no-ops),
+# entering every digit 1-9 into one cell, backspace, deselecting by re-tapping,
+# pad presses with no selection, rapid cell/pad taps, the solve shortcut with
+# the "Genius!" alert, restarting, and New Game cancel + confirm.
+context platform=ios
+open "demos://animations/sudoku"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "label=\"Start Game\"" 10000
+wait 800
+press "label=\"Start Game\""
+wait "label=\"New Game\"" 5000
+wait 1500
+# Cell (r,c) centre: x = 43 + 39.3c, y = 284 + 39.3r. Pad: 1-5 y=685, 6-9 y=741.
+press 43 284
+wait 400
+press 90 685
+press 146 685
+press 201 685
+press 257 685
+press 313 685
+press 90 741
+press 146 741
+press 201 741
+press 257 741
+wait 600
+press 313 741
+wait 600
+# Re-tap the same cell to deselect, then pad presses without a selection.
+press 43 284
+wait 400
+press 201 685
+press 313 741
+wait 600
+# Rapid selection across the board, entering digits as we go.
+press 358 618
+press 257 685
+press 201 441
+press 146 741
+press 82 520
+press 90 685
+wait 400
+press 313 741
+press 201 441
+press 313 741
+press 358 618
+press 313 741
+press 82 520
+press 313 741
+wait 800
+# Solve via the title (board must hold no wrong user digits), Alert after 2s.
+press 201 104
+wait "text" "Genius!" 8000
+press "label=\"OK\""
+wait 1500
+wait "label=\"Start Game\"" 5000
+press "label=\"Start Game\""
+wait "label=\"New Game\"" 5000
+wait 1200
+# New Game: cancel first, then confirm.
+press 201 184
+wait "label=\"Cancel\"" 8000
+press "label=\"Cancel\""
+wait 800
+press 201 184
+wait "label=\"Cancel\"" 8000
+press "role=\"button\" label=\"New Game\""
+wait 1500
+wait "label=\"Start Game\"" 5000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

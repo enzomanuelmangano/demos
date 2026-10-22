@@ -1,0 +1,61 @@
+# Stacked List — 50 blue cards in a FlatList whose positions come entirely from
+# one animated style per item: cards near the bottom edge pile into a scaled,
+# faded stack and unstack as you scroll (extended interpolation of opacity).
+# What this test covers: slow drags (cards leaving the stack one by one), a
+# held drag stopped mid-card, flings all the way to the end of the 50 cards
+# and overscroll there (extended opacity extrapolation, hidden/fully-visible
+# shortcut styles), slow drags back up, a fling stopped by a touch, and
+# another run to the end. Upward travel stays short of the top (pull-down at
+# the top is the app's close gesture).
+context platform=ios
+open "demos://animations/stacked-list"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1000
+gesture pan 200 700 0 -110 900
+wait 500
+gesture pan 200 700 0 -110 900
+wait 500
+gesture pan 200 700 0 -55 1200
+wait 800
+gesture pan 200 700 0 -300 700
+wait 600
+# Fling to the end (5.5k pt of content).
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 1500
+swipe 200 800 200 150
+wait 1500
+# Slow drags back up through the stack.
+gesture pan 200 300 0 220 900
+wait 500
+gesture pan 200 300 0 220 900
+wait 500
+# Fling back up and stop it with a touch.
+swipe 200 250 200 750
+wait 200
+press 200 450
+wait 800
+# And down to the end again.
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 200
+swipe 200 800 200 150
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

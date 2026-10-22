@@ -1,0 +1,44 @@
+# Atlas Sphere — a 40x84 grid of dots drawn with one Skia Atlas; touching the canvas
+# springs a progress value and every RSXform is rewritten each frame so dots near the
+# finger stay large and pull toward it (a "sphere" lens), far ones collapse.
+# What this test covers: a tap (begin + immediate touches-up), a long press in
+# place, slow pans across the whole canvas through the corners and edges
+# (dots hidden/unhidden as the lens moves), a pan that leaves the canvas,
+# fast repeated touches that reverse the 600ms/1000ms springs mid-flight,
+# and a final release so the grid settles back.
+context platform=ios
+open "demos://animations/atlas-sphere"
+wait "label=\"Close\"" 10000
+wait 1500
+press 200 470
+wait 1200
+longpress 200 470 1500
+wait 1200
+# Corners and edges.
+gesture pan 50 145 300 0 1200
+wait 300
+gesture pan 310 160 0 630 1500
+wait 300
+gesture pan 310 790 -260 0 1200
+wait 300
+gesture pan 50 795 0 -650 1500
+wait 300
+# Diagonal through the centre and out of the canvas.
+gesture pan 60 160 280 620 1500
+wait 1200
+gesture pan 200 470 190 380 800
+wait 1200
+# Fast repeated touches, reversing the springs.
+press 120 300
+wait 150
+press 280 650
+wait 150
+press 200 470 --count 4
+wait 300
+gesture pan 100 400 200 0 200
+wait 100
+gesture pan 300 500 -200 0 200
+wait 1500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

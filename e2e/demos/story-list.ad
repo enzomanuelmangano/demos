@@ -1,0 +1,58 @@
+# Story List — horizontal snapping ScrollView driving an absolutely-positioned stack
+# of 8 story cards (translateX/scale interpolated from the scroll offset).
+# What this test covers: paging forward one card at a time, a small drag that
+# must snap back to the same card, flinging through to the last card and
+# bouncing past the end, paging back to the first card and over-scrolling
+# past the start (interpolations with Extrapolation.CLAMP at both edges),
+# and reversing direction mid-momentum.
+context platform=ios
+open "demos://animations/story-list"
+wait "label=\"Close\"" 10000
+wait 1000
+gesture pan 330 437 -250 0 500
+wait 900
+gesture pan 330 437 -250 0 500
+wait 900
+# Small drag below the snap interval: should settle back.
+gesture pan 250 437 -40 0 600
+wait 900
+# Flings to the end, then bounce against the end edge.
+gesture fling left 250 437 200
+wait 600
+gesture fling left 250 437 200
+wait 600
+gesture fling left 250 437 200
+wait 600
+gesture fling left 250 437 200
+wait 600
+gesture fling left 250 437 200
+wait 600
+gesture fling left 250 437 200
+wait 1000
+gesture pan 330 437 -250 0 400
+wait 1000
+# Reverse mid-momentum.
+gesture fling right 150 437 200
+wait 120
+gesture fling left 250 437 200
+wait 1000
+# Back to the first card and over-scroll the start.
+gesture fling right 150 437 200
+wait 500
+gesture fling right 150 437 200
+wait 500
+gesture fling right 150 437 200
+wait 500
+gesture fling right 150 437 200
+wait 500
+gesture fling right 150 437 200
+wait 500
+gesture fling right 150 437 200
+wait 500
+gesture fling right 150 437 200
+wait 500
+gesture pan 80 437 250 0 400
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

@@ -1,0 +1,39 @@
+# Fourier Visualizer — draw a stroke; on release it is resampled, padded to a power of two, FFT'd into epicycles, and a chain of rotating circles redraws it over 20 s (Skia paths rebuilt in a UI-thread reaction).
+# What this test covers: a diagonal stroke, the clear button while the epicycles run, a new stroke started while a
+# previous reconstruction is mid-flight (onStart clears it), a long multi-segment-length stroke (thousands of FFT
+# points), a two-finger pan, a full 20 s reconstruction until onComplete hides the clear button, and finally a
+# very short stroke just past the pan slop (repro: a stroke that resamples to <= 1 point makes fft.js throw
+# "FFT size must be a power of two and bigger than 1"; the LogBox is then dismissed).
+context platform=ios
+open "demos://animations/fourier-visualizer"
+wait "label=\"Close\"" 40000
+wait 1000
+# Diagonal stroke, let the epicycles run, then clear.
+gesture pan 100 300 200 200 700
+wait 2500
+press 340 777
+wait 800
+# Start a new stroke while a reconstruction is running.
+gesture pan 80 600 240 -150 600
+wait 1500
+gesture pan 320 250 -220 300 600
+wait 2000
+# Long stroke across the whole canvas (many FFT points).
+gesture pan 30 180 340 600 1500
+wait 2500
+# Two-finger pan draws with the focal point.
+gesture pan 150 500 100 -80 600 --pointer-count 2
+wait 1500
+# A medium stroke left to complete its full 20 s reconstruction (onComplete fades it and hides clear).
+gesture pan 120 400 160 60 600
+wait 21500
+# Repro: a stroke barely past the pan activation slop.
+gesture pan 200 600 12 0 300
+wait 1500
+press 110 816
+wait 600
+press 370 811
+wait 600
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

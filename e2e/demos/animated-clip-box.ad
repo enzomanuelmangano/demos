@@ -1,0 +1,35 @@
+# Animated Clip Box — two cards whose Twitter circle springs open to flood the card while pressed (text colour interpolates black→white) and springs back on release.
+# What this test covers: a long hold on each card (spring to full radius, text turns white), quick taps that
+# release before the expand spring settles (press-out springs to r=30, below the 35 initial radius), a rapid tap
+# burst interrupting both springs, holding on the action title row, and the second (orange) card's colours.
+context platform=ios
+open "demos://animations/animated-clip-box"
+wait "label=\"Close\"" 40000
+wait "text" "Explore Demos" 10000
+wait "text" "Learn More" 3000
+# Hold the blue card long enough for the circle to cover it.
+longpress 200 230 1800
+wait 1200
+# Hold the orange card.
+longpress 200 510 1800
+wait 1200
+# Quick taps: release long before the expand spring settles.
+press 76 230
+wait 150
+press 76 510
+wait 1000
+# Rapid burst on both cards interrupts expand/collapse springs mid-flight.
+press 300 300 --count 8 --interval-ms 90
+press 300 580 --count 8 --interval-ms 90
+wait 1200
+# The action titles are their own pressables (no onPress) inside the card.
+press "text=\"Explore Demos\""
+wait 300
+press "text=\"Learn More\""
+wait 300
+longpress 90 666 1200
+wait 1200
+wait "text" "Explore Demos" 3000
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

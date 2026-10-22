@@ -1,0 +1,46 @@
+# Tab Navigation — a row of 4 tabs where the active one springs to 170pt wide
+# and reveals its label (cubic opacity + margin) while its icon slides left; the
+# others shrink to icon-only squares.
+# What this test covers: activating every tab by its (icon + label) accessible
+# name, re-tapping the active tab, jumping between the far ends, and rapid taps
+# on different tabs while the width springs are mid-flight (tabs move while
+# being tapped, so the burst uses fixed coordinates).
+context platform=ios
+open "demos://animations/tab-navigation"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "label=\" Accounts\"" 10000
+wait 800
+press "label=\" Home\""
+wait 900
+press "label=\" Payments\""
+wait 900
+press "label=\" Transfers\""
+wait 900
+# Re-tap the active tab (no state change).
+press "label=\" Transfers\""
+wait 700
+press "label=\" Accounts\""
+wait 900
+press "label=\" Transfers\""
+wait 900
+# Burst across the row while widths are animating.
+press 40 437
+wait 100
+press 360 437
+wait 100
+press 200 437
+wait 100
+press 300 437
+wait 100
+press 120 437
+wait 1500
+press "label=\" Home\""
+wait 1200
+wait "label=\" Home\"" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

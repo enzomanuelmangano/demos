@@ -1,0 +1,29 @@
+# Blur Circles — non-interactive Skia scene: a sweep-gradient circle and a
+# frosted "glass" circle wander around the centre, each driven by simplex
+# noise evaluated in a worklet off a 20 s ping-pong clock (withRepeat).
+# What this test covers: letting the noise-driven animation run for a long
+# stretch (worklet noise2D + clip rrect every frame), taps and sideways drags
+# on the canvas (must be ignored), and a short pull-down that starts the app's
+# close drag and is released early (card springs back while the canvas keeps
+# animating), then more run time before closing.
+context platform=ios
+open "demos://animations/blur-circles"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 5000
+press 201 437
+wait 300
+press 80 700
+wait 300
+gesture pan 100 600 200 0 500
+wait 400
+gesture pan 300 300 -200 -40 400
+wait 2000
+# Small pull-down: below the close threshold, the demo must stay open.
+gesture pan 201 500 0 60 600
+wait 1500
+wait "label=\"Close\"" 15000
+wait 6000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

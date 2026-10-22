@@ -1,0 +1,58 @@
+# Floating Modal — a "+" floating button that morphs (size, position, radius, icon rotation) into a centred "New" modal; the modal can be dragged and closes when pulled down far enough (scale < 0.95).
+# What this test covers: open via the FAB, close via the rotated "x", close by tapping the backdrop, drag up and
+# release (springs back, stays open), a small downward drag under the threshold (stays open), a long downward drag
+# (closes), a diagonal drag, pressing Done (no-op), toggling the FAB while the morph is mid-flight, and dragging
+# the closed FAB (ignored).
+context platform=ios
+open "demos://animations/floating-modal"
+wait "label=\"Close\"" 40000
+wait 800
+# Open, then close with the rotated "+" in the modal's corner.
+press 338 810
+wait 900
+wait "text" "New" 3000
+press 52 288
+wait 900
+# Open and close by tapping the backdrop.
+press 338 810
+wait 900
+press 200 760
+wait 900
+# Open; drag up and release: springs back and stays open.
+press 338 810
+wait 900
+gesture pan 200 420 0 -150 500
+wait 900
+# Small downward drag (under the close threshold): stays open.
+gesture pan 200 420 0 25 400
+wait 900
+# Diagonal drag up-right: stays open.
+gesture pan 200 420 80 -60 400
+wait 900
+# Done has no handler; pressing it must not break anything.
+press 200 578
+wait 600
+# Long downward drag: closes the modal.
+gesture pan 200 420 0 150 500
+wait 1000
+# Dragging the closed FAB is ignored.
+gesture pan 338 810 -100 -100 400
+wait 800
+# Toggle mid-morph: open then close before the timing settles, then reopen.
+press 338 810
+wait 150
+press 338 810
+wait 1000
+press 338 810
+wait 150
+press 200 760
+wait 1200
+# Rapid toggles on the FAB.
+press 338 810 --count 5 --interval-ms 100
+wait 1200
+# The burst ends opened (odd count), close with the backdrop.
+press 200 760
+wait 1000
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

@@ -1,0 +1,37 @@
+# Paper Folding — a sheet folded in three (three RN views with chained rotateX/translateY transforms over Skia shaded rects); tapping anywhere unfolds/folds it with a 1 s overdamped spring plus a triple haptic tick.
+# What this test covers: unfold and fold fully settled, re-tapping mid-spring (the target flips at progress 0.5, so a
+# tap before the halfway point re-targets the same end and one after reverses), a rapid tap burst, taps far from
+# the paper (the full-screen pressable), a long press, and ending folded.
+context platform=ios
+open "demos://animations/paper-folding"
+wait "label=\"Close\"" 40000
+wait 1000
+# Unfold, settle; fold, settle.
+press 201 437
+wait 1600
+press 201 437
+wait 1600
+# Unfold and tap again early (progress < 0.5: same target) then late (> 0.5: reverses).
+press 201 437
+wait 150
+press 201 437
+wait 600
+press 201 437
+wait 1600
+# Rapid burst.
+press 201 437 --count 7 --interval-ms 110
+wait 1800
+# Taps away from the paper still toggle.
+press 80 700
+wait 1600
+press 330 250
+wait 1600
+# Long press toggles on release.
+longpress 201 600 900
+wait 1600
+# Make sure it ends folded or unfolded without a stuck intermediate state.
+press 201 437
+wait 1600
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

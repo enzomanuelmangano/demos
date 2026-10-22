@@ -1,0 +1,62 @@
+# Smooth Dropdown — a stacked card deck (HEADER + 4 options) that springs open
+# into a vertical list; tapping an option logs it via onPick, tapping HEADER
+# toggles open/closed and rotates its chevron.
+# What this test covers: expand, pick every option (onPick logs each), collapse,
+# tapping the peeking edge of the collapsed stack, five quick open/close cycles, reopen + pick.
+# expect-log: label: 'Charts'
+# expect-log: label: 'Book'
+# expect-log: label: 'Calendar'
+# expect-log: label: 'Camera'
+context platform=ios
+open "demos://animations/smooth-dropdown"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "HEADER" 10000
+wait 800
+# Expand (collapsed header sits at y=399; expanded at y=229).
+press 200 399
+wait 1200
+press 200 314
+wait 400
+press 200 399
+wait 400
+press 200 484
+wait 400
+press 200 569
+wait 400
+# Collapse.
+press 200 229
+wait 1200
+# Collapsed: tap the peeking edge of the stacked cards behind HEADER.
+press 200 315
+wait 800
+# Five quick open/close cycles (header moves between y=399 and y=229).
+press 200 399
+wait 500
+press 200 229
+wait 500
+press 200 399
+wait 500
+press 200 229
+wait 500
+press 200 399
+wait 500
+press 200 229
+wait 500
+press 200 399
+wait 500
+press 200 229
+wait 500
+press 200 399
+wait 1200
+# Open: pick Charts again, then collapse.
+press 200 314
+wait 500
+press 200 229
+wait 1200
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

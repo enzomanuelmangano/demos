@@ -1,0 +1,42 @@
+# Notion QR Code — hundreds of avatar sprites (Skia Picture rebuilt per frame on
+# the UI thread from a sprite sheet) orbit on a rotating torus; the CONNECT
+# button springs them (Hungarian-matched) into the reactiive.io QR code and
+# back, with per-step haptics and a staggered rotation freeze.
+# What this test covers: torus -> QR, QR -> torus, toggling again mid-morph in
+# both directions (spring re-targeted while the stagger is running), a burst of
+# quick toggles, taps on the canvas away from the button (no-op), and a final
+# settle in the QR state then back.
+context platform=ios
+open "demos://animations/notion-qrcode"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "CONNECT" 10000
+wait 1500
+press 201 762
+wait 3000
+wait "text" "SHARE" 5000
+press 201 762
+wait 3000
+wait "text" "CONNECT" 5000
+press 201 762
+wait 600
+press 201 762
+wait 600
+press 201 762
+wait 3000
+press 201 762 --count 5 --interval-ms 150
+wait 3500
+press 201 437
+wait 1000
+press 100 300
+wait 1000
+press 201 762
+wait 3000
+press 201 762
+wait 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

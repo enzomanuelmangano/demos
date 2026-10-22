@@ -1,0 +1,52 @@
+# Blurred Scroll — vertical list of 10 Skia gradient cards; as a card scrolls
+# past the centre it blurs (layer Blur sigma interpolated per frame), tilts and
+# shrinks, so only the centred card is sharp.
+# What this test covers: slow item-by-item drags (blur 0.1 -> 40 -> 0.1 per
+# card), a held drag stopping half-way between two cards, flings to the end of
+# the list and overscroll past it, slow drags back up through every card, and
+# a fling interrupted by a touch. Upward travel stays short of the top: a
+# pull-down at the top of the list is the app's close gesture.
+context platform=ios
+open "demos://animations/blurred-scroll"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1500
+# One card at a time (~393pt each).
+gesture pan 200 650 0 -390 900
+wait 600
+gesture pan 200 650 0 -390 900
+wait 600
+# Stop half-way: maximum blur on the outgoing card.
+gesture pan 200 650 0 -200 1200
+wait 1000
+gesture pan 200 650 0 -190 900
+wait 600
+# Flings to the end, and overscroll past it.
+swipe 200 780 200 150
+wait 300
+swipe 200 780 200 150
+wait 300
+swipe 200 780 200 150
+wait 300
+swipe 200 780 200 150
+wait 1500
+swipe 200 780 200 150
+wait 1500
+# Fling back up and stop it with a touch.
+swipe 200 250 200 700
+wait 150
+press 200 437
+wait 800
+# Slow drags back up, card by card.
+gesture pan 200 250 0 390 900
+wait 600
+gesture pan 200 250 0 390 900
+wait 600
+gesture pan 200 250 0 300 900
+wait 800
+# And down again quickly.
+swipe 200 780 200 150
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

@@ -1,0 +1,43 @@
+# Loading Button — a pill that runs a fake 2s mutation: idle "Check Transaction"
+# -> "Analyzing Transaction" (Skia spinner, withRepeat rotation) -> alternately
+# "Transaction Safe" (check SVG) or "Transaction Unsafe" (lock SVG), then resets
+# to idle after 1.5s; width/colour animate with layout + CSS transition.
+# What this test covers: the success path, the error path, pressing repeatedly
+# while loading (must be ignored), pressing again right when the result shows
+# (a new mutation while the previous reset timer is still pending), and letting
+# everything settle back to idle.
+context platform=ios
+open "demos://animations/loading-button"
+wait "label=\"Close\"" 45000
+wait "text" "Check Transaction" 10000
+# Warm-up tap on empty space: the first touch of a test starts the XCTest
+# runner (several seconds), which must not eat into the 1.5s result window.
+press 200 780
+wait 800
+# 1st run -> success.
+press "label=\"Check Transaction\""
+wait "text" "Analyzing Transaction" 3000
+# A press while loading must be ignored (isLoading guard).
+press 200 437
+wait "text" "Transaction Safe" 5000
+wait "text" "Check Transaction" 5000
+wait 500
+# 2nd run -> error (thrown inside the mutation, caught by the handler).
+press "label=\"Check Transaction\""
+wait "text" "Analyzing Transaction" 3000
+wait "text" "Transaction Unsafe" 5000
+wait "text" "Check Transaction" 5000
+wait 500
+# 3rd run -> success, then press again while "Transaction Safe" is showing.
+press "label=\"Check Transaction\""
+wait "text" "Transaction Safe" 6000
+press 200 437
+wait 300
+press 200 437
+wait "text" "Transaction Unsafe" 8000
+wait "text" "Check Transaction" 8000
+wait 3000
+wait "text" "Check Transaction" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

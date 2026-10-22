@@ -1,0 +1,55 @@
+# Fluid Tab Interaction — a 3-segment control (Accounts / Deposits / Funds):
+# selecting a segment slides the white highlight there over 1 s, cross-fades
+# label colours, and pulses a BlurView over the moving highlight and over the
+# two labels involved (blur 0 -> 15 -> 0 through animated props).
+# What this test covers: each segment in turn with the 1 s timing settled,
+# jumping first <-> last (two cells), re-tapping the selected segment (early
+# return, no blur), switching again mid-transition (cancelAnimation on the
+# blur progress, translate retargeted), a rapid tap burst across all three,
+# and a press-and-hold. Segments at y 437: x 80 / 201 / 321.
+context platform=ios
+open "demos://animations/fluid-tab-interaction"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Deposits" 30000
+wait 1000
+press 201 437
+wait 1300
+press 321 437
+wait 1300
+press 80 437
+wait 1300
+press 321 437
+wait 1300
+# Same segment again.
+press 321 437
+wait 800
+# Mid-transition switches.
+press 80 437
+wait 300
+press 201 437
+wait 300
+press 321 437
+wait 1500
+# Rapid burst.
+press 80 437
+wait 80
+press 201 437
+wait 80
+press 321 437
+wait 80
+press 80 437
+wait 80
+press 321 437
+wait 80
+press 201 437
+wait 1500
+press 80 437 --count 4 --interval-ms 100
+wait 1500
+# Hold and release.
+longpress 321 437 800
+wait 1500
+wait "text" "Funds" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

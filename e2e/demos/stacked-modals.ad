@@ -1,0 +1,63 @@
+# Stacked Modals — a "+" button starts a chain of 7 alert-like modals; each Confirm/Dismiss stacks the next one on top (older ones spring back, shrink and fade); the last one's Dismiss removes only itself; tapping the backdrop clears the whole stack with staggered FadeOutDown.
+# What this test covers: the full 7-modal chain alternating Confirm/Dismiss (titles asserted), "You can dismiss me"
+# removing only itself (the 6th resurfaces), continuing from the resurfaced modal (the 7th comes back from the
+# memoized node cache), clearing everything via the backdrop, restarting the chain (cached nodes remount), fast
+# taps that stack modals while the springs are mid-flight, and a final backdrop clear.
+context platform=ios
+open "demos://animations/stacked-modals"
+wait "label=\"Close\"" 40000
+wait 800
+press 330 794
+wait "text" "Modals are fun!" 3000
+wait 500
+press "text=\"Confirm\""
+wait "text" "Stacked Modals are really fun!" 3000
+wait 500
+press "text=\"Dismiss\""
+wait "text" "Wait what?" 3000
+wait 500
+press "text=\"Confirm\""
+wait "text" "Are you sure?" 3000
+wait 500
+press "text=\"Dismiss\""
+wait "text" "Ok, you win." 3000
+wait 500
+press "text=\"Confirm\""
+wait "text" "...the past is always with you." 3000
+wait 500
+press "text=\"Confirm\""
+wait "text" "You can dismiss me" 3000
+wait 500
+# Dismiss on the last one removes only itself.
+press "text=\"Dismiss\""
+wait 1000
+wait "text" "...the past is always with you." 3000
+# Continue from the resurfaced 6th: the 7th comes back.
+press "text=\"Confirm\""
+wait "text" "You can dismiss me" 3000
+wait 600
+# Clear everything through the backdrop.
+press 200 200
+wait 1500
+# Restart the chain (cached nodes remount) and stack fast while springs run.
+press 330 794
+wait "text" "Modals are fun!" 3000
+press 310 509
+wait 150
+press 310 509
+wait 150
+press 231 509
+wait 150
+press 310 509
+wait 1200
+# Backdrop clears the whole stack (staggered exits).
+press 200 760
+wait 1500
+# Open and clear immediately.
+press 330 794
+wait 200
+press 200 200
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

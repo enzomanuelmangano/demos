@@ -1,0 +1,47 @@
+# Selectable Grid List — a 4-column FlatList of 50 photos with tap-to-toggle and drag-to-select ranges (pan computes the cell under the finger, auto-scrolls near the top), a check badge per cell and a floating "x N" counter (ReText) that resets the selection.
+# What this test covers: toggling one cell on/off/on, a horizontal range drag, a diagonal multi-row range drag,
+# re-dragging over an already selected range, the reset button (counter springs away), scrolling to the end of
+# the list and selecting there, a slow drag in the top row that auto-scrolls the list up while the range grows,
+# and a final reset.
+context platform=ios
+open "demos://animations/selectable-grid-list"
+wait "label=\"Close\"" 40000
+wait 2500
+# Toggle the first cell on, off, on.
+press 50 168
+wait 500
+press 50 168
+wait 500
+press 50 168
+wait 600
+# Range drag across the second row.
+gesture pan 150 270 200 0 900
+wait 700
+# Diagonal range across three rows (rows 3-4).
+gesture pan 60 370 250 150 900
+wait 700
+# Re-drag over the already selected second row (pending set filters the current one).
+gesture pan 350 270 -300 0 900
+wait 700
+# Reset with the floating counter button.
+press 334 822
+wait 900
+# Fast swipes scroll the list to its end.
+swipe 200 750 200 150
+wait 1200
+swipe 200 750 200 150
+wait 1500
+# Select in the last rows.
+press 150 780
+wait 500
+gesture pan 60 680 280 0 900
+wait 700
+# Slow drag along the top row: auto-scrolls the list up while the range keeps growing.
+gesture pan 60 190 280 0 3000
+wait 1500
+# Reset everything.
+press 334 822
+wait 1000
+wait "label=\"Close\"" 20000
+press "label=\"Close\""
+wait 1500

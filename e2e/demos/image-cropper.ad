@@ -1,0 +1,72 @@
+# Image Cropper — Skia crop grid over a remote photo: drag the grid, resize it from
+# any of the 4 corner dots (react-native-skia-gesture), Expand/Collapse with timing
+# animations, Crop opens a full-screen modal showing the FitBox-cropped region.
+# What this test covers: moving the grid and clamping it at the image edges;
+# growing from the bottom-right corner and shrinking below the minimum size
+# (width/3) where it must clamp; growing from the top-left corner (x/y move
+# too); Expand, Collapse and interrupting Expand with Collapse mid-timing;
+# Crop -> modal -> Back for a small, a moved and a full-size crop; rapid
+# Expand/Collapse toggling.
+context platform=ios
+open "demos://animations/image-cropper"
+wait "label=\"Crop\"" 15000
+wait 2000
+# Drag the grid around inside the image.
+gesture pan 67 268 120 100 600
+wait 500
+press "label=\"Crop\""
+wait "label=\"Back\"" 5000
+wait 800
+press "label=\"Back\""
+wait 1200
+# Expand + Collapse brings the grid to x=0,y=0 at the minimum size.
+press "label=\"Expand\""
+wait 600
+press "label=\"Collapse\""
+wait 600
+# Grow from the bottom-right corner dot (134,335), then shrink below minimum.
+gesture pan 134 335 100 100 700
+wait 500
+gesture pan 234 435 -200 -200 700
+wait 500
+# Fling the grid past the bottom-right edge: clamps to the image bounds.
+gesture pan 67 268 320 380 700
+wait 500
+# Grow from the top-left corner dot (268,468).
+gesture pan 268 468 -150 -150 700
+wait 500
+press "label=\"Crop\""
+wait "label=\"Back\"" 5000
+wait 800
+press "label=\"Back\""
+wait 1200
+# Full-size crop.
+press "label=\"Expand\""
+wait 600
+press "label=\"Crop\""
+wait "label=\"Back\"" 5000
+wait 800
+press "label=\"Back\""
+wait 1200
+# Interrupt Expand with Collapse, rapid toggling.
+press "label=\"Collapse\""
+wait 100
+press "label=\"Expand\""
+wait 80
+press "label=\"Collapse\""
+wait 80
+press "label=\"Expand\""
+wait 80
+press "label=\"Collapse\""
+wait 800
+# Grid now at the minimum size: move it to the opposite corner past the edges.
+gesture pan 67 268 -60 -80 500
+wait 500
+press "label=\"Crop\""
+wait "label=\"Back\"" 5000
+wait 800
+press "label=\"Back\""
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

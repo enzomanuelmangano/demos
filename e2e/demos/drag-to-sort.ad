@@ -1,0 +1,46 @@
+# Drag to Sort — a habit list (9 rows) reorderable by long-press (500 ms) and
+# drag; other rows slide to their new slots (positions map in a shared value),
+# dragging near the edges auto-scrolls the list (scrollTo on the UI thread),
+# and a release that changed the order logs the new order.
+# What this test covers: moving the top row down three slots, moving a row to
+# the bottom slot with a long hold at the bottom edge (auto-scroll path),
+# moving a row back to the top, a long-press released in place (no order
+# change), a plain quick drag that must scroll instead of picking a row up,
+# and dragging the last row up after scrolling to the end.
+# Rows are grabbed by their emoji icon: in some accessibility snapshots the
+# row title is merged into several container nodes and is not unique.
+# expect-log: newOrder
+context platform=ios
+open "demos://animations/drag-to-sort"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Meditation" 30000
+wait "text" "Every day" 8000
+wait 1000
+# Meditation -> Reading's slot.
+gesture drag "label=\"🧘\"" "label=\"📖\"" 800 800 300
+wait 1000
+# Coding -> bottom of the visible list, held at the edge.
+gesture drag "label=\"💻\"" "label=\"🚶\"" 700 800 1500
+wait 1200
+# Sleep back to the top.
+gesture drag "label=\"😴\"" "label=\"📖\"" 700 900 300
+wait 1000
+# Long-press released in place: no move, no log.
+longpress 150 520 900
+wait 800
+# Quick drag without hold: scrolls the list.
+gesture pan 200 700 0 -300 300
+wait 1200
+wait "text" "Playing Piano" 8000
+# Last row up a few slots.
+gesture drag "label=\"🎹\"" "label=\"🥗\"" 800 900 300
+wait 1200
+# Back up and one more swap near the top edge (lower-bound auto-scroll).
+gesture pan 200 300 0 200 400
+wait 1000
+gesture drag "label=\"😴\"" "label=\"🧘\"" 700 600 800
+wait 1200
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

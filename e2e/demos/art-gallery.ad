@@ -1,0 +1,86 @@
+# Art Gallery — a WebGPU photo mosaic: 10,000 photos in a 100x100 atlas, or a
+# famous painting rebuilt from those photos (picked from a SwiftUI menu:
+# movement > painter > painting, analysed and colour-matched on pick); pinch
+# zooms around the focal point (rubber band at 0.5x), pans clamp to the
+# canvas, past a threshold a pan snaps to the nearest photo cell (grid mode)
+# and fast swipes step cell to cell; a zoom-out button appears past 1.5x.
+# What this test covers: the default atlas, picking Mona Lisa and then a
+# painting by another painter (reset + re-analysis + shuffle haptics),
+# pinching in step by step to cell level, pans and swipes in every direction
+# while zoomed, a pinch-out below 1.2x (snap back), the zoom-out button, going
+# back to "Default" while zoomed, and taps that must not change anything.
+# (Double-tap-to-zoom is not exercised: injected taps are too far apart for
+# the 2-tap recogniser.) The menu button is the top-right "Choose a painting".
+context platform=ios
+open "demos://animations/art-gallery"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Gallery" 30000
+wait 2500
+# Atlas: pinch in a bit and pan around, then pinch out (snap back).
+gesture pinch 2 200 437
+wait 1200
+gesture pan 200 437 -150 0 400
+wait 800
+gesture pan 200 437 0 -150 400
+wait 800
+gesture pinch 0.5 200 437
+wait 1500
+# Pick Mona Lisa.
+press "label=\"Choose a painting\""
+wait 1200
+press "role=\"button\" label=\"Renaissance\""
+wait 1000
+press "role=\"button\" label=\"Leonardo da Vinci\""
+wait 1000
+press "role=\"button\" label=\"Mona Lisa\""
+wait 4000
+# Zoom in step by step towards cell level.
+gesture pinch 2.5 200 437
+wait 1200
+gesture pinch 2.5 200 437
+wait 1200
+gesture pinch 2.5 200 437
+wait 1500
+# Pans and fast swipes while zoomed (clamped, snapping in grid mode).
+gesture pan 200 437 -150 0 600
+wait 1000
+gesture pan 200 437 150 0 600
+wait 1000
+gesture pan 200 437 0 -150 600
+wait 1000
+gesture pan 200 437 0 150 600
+wait 1000
+gesture pan 200 437 -120 0 100
+wait 1000
+gesture pan 200 437 0 -120 100
+wait 1000
+gesture pan 200 437 120 0 100
+wait 1000
+# Single taps do nothing.
+press 200 437
+wait 600
+# Zoom-out button (bottom-right, unlabeled).
+press 358 806
+wait 1500
+# Another painting from another movement, then zoom in and back to Default.
+press "label=\"Choose a painting\""
+wait 1200
+press "role=\"button\" label=\"Impressionism\""
+wait 1200
+press "role=\"button\" label=\"Claude Monet\""
+wait 1200
+press "role=\"button\" label=\"Water Lilies\""
+wait 4000
+gesture pinch 2.5 200 437
+wait 1200
+gesture pan 200 437 -100 -100 500
+wait 1000
+# Back to Default while zoomed (springs back to 1x, atlas again).
+press "label=\"Choose a painting\""
+wait 1200
+press "role=\"button\" label=\"Default\""
+wait 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

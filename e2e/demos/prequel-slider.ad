@@ -1,0 +1,40 @@
+# Prequel Slider — a Prequel-style ruler slider (Skia tick paths, snapping spring per tick, haptic per tick) driving a GL "butterfly wave scrawler" shader transition over a remote photo, a donut progress ring and a blue→orange indicator colour.
+# What this test covers: slow drags through the transition, dragging to the far end (clamped, progress 1) and past it,
+# a fast fling whose snap spring (damping 10) overshoots the ends (progress slightly <0 / >1 into the shader,
+# donut and interpolateColor), grabbing the ruler mid-spring (cancelAnimation), tiny one-tick drags, and back to 0.
+context platform=ios
+open "demos://animations/prequel-slider"
+wait "label=\"Close\"" 40000
+wait 3000
+# Slow drag into the middle of the transition.
+gesture pan 350 765 -250 0 900
+wait 1200
+# Drag to the far end and past it (clamped).
+gesture pan 350 765 -300 0 900
+wait 1200
+# Fling back toward 0: the snap spring overshoots the start.
+gesture pan 100 765 280 0 120
+wait 1500
+# Fling to the end: overshoots progress 1.
+gesture pan 380 765 -360 0 120
+wait 1500
+# Fling, then grab mid-spring.
+gesture pan 90 765 290 0 120
+wait 150
+press 200 765
+wait 1000
+# One-tick nudges.
+gesture pan 200 765 -12 0 400
+wait 600
+gesture pan 200 765 -12 0 400
+wait 600
+gesture pan 200 765 12 0 400
+wait 600
+# Back to the start slowly and beyond.
+gesture pan 90 765 300 0 900
+wait 600
+gesture pan 90 765 300 0 900
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500
