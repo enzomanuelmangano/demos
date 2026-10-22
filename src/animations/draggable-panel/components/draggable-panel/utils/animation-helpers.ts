@@ -14,12 +14,13 @@ export const snapToCorner = (
   panelHeight: number,
   screenWidth: number,
   screenHeight: number,
+  // Where the top corners sit: below the demo's close and info buttons.
+  topMargin: number,
   velocityX: number = 0,
   velocityY: number = 0,
 ): SnapPosition => {
   'worklet';
   const margin = 30;
-  const topMargin = 80;
   const bottomMargin = 100;
 
   // Project position based on velocity for more natural flick behavior

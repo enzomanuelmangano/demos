@@ -13,11 +13,13 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   snapToCorner,
   useInitialPanelPosition,
 } from './utils/animation-helpers';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../../navigation/home/demo-close-button';
 
 import type {
   DerivedValue,
@@ -69,6 +71,8 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { top: safeTop } = useSafeAreaInsets();
+  const topMargin = safeTop + DEMO_BUTTON_ROW_HEIGHT;
   const initialPosition = useInitialPanelPosition(
     expandedWidth,
     expandedHeight,
@@ -79,15 +83,19 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
   const startX = useSharedValue(0);
   const startY = useSharedValue(0);
 
+  // Resizes around the panel's centre: the corner is picked from where the
+  // panel is, not from its top-left, which for a small panel at the old
+  // top-left is nearer the opposite corner.
   const snapWithDimensions = useCallback(
-    (width: number, height: number) => {
+    (fromWidth: number, fromHeight: number, width: number, height: number) => {
       const snapPosition = snapToCorner(
-        translateX.get(),
-        translateY.get(),
+        translateX.get() + (fromWidth - width) / 2,
+        translateY.get() + (fromHeight - height) / 2,
         width,
         height,
         screenWidth,
         screenHeight,
+        topMargin,
       );
 
       translateX.set(
@@ -97,15 +105,24 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
         withSpring(snapPosition.y, unwrapAnimatedValue(springConfig)),
       );
     },
-    [screenWidth, screenHeight, translateX, translateY, springConfig],
+    [
+      screenWidth,
+      screenHeight,
+      topMargin,
+      translateX,
+      translateY,
+      springConfig,
+    ],
   );
 
   const toggleCollapse = useCallback(() => {
     setIsCollapsed(prev => {
       const newIsCollapsed = !prev;
+      const oldWidth = prev ? collapsedWidth : expandedWidth;
+      const oldHeight = prev ? collapsedHeight : expandedHeight;
       const newWidth = newIsCollapsed ? collapsedWidth : expandedWidth;
       const newHeight = newIsCollapsed ? collapsedHeight : expandedHeight;
-      snapWithDimensions(newWidth, newHeight);
+      snapWithDimensions(oldWidth, oldHeight, newWidth, newHeight);
 
       return newIsCollapsed;
     });
@@ -140,6 +157,7 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
           currentHeight,
           screenWidth,
           screenHeight,
+          topMargin,
           event.velocityX,
           event.velocityY,
         );
@@ -170,6 +188,7 @@ export const DraggableControlPanel: FC<DraggableControlPanelProps> = ({
     expandedWidth,
     screenWidth,
     screenHeight,
+    topMargin,
     springConfig,
   ]);
 
