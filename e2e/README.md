@@ -16,7 +16,7 @@ DEVICE="iPhone 17 Pro" SESSION=e2e e2e/run-demos.sh snake sudoku
 - the app logs a JS error or warning while it runs. The runner reads React Native's lines from the simulator's unified log: `console.warn` lands at level `Df`, `console.error` and uncaught errors at `E`, faults at `F`;
 - a line it declares with `# expect-log: <text>` never shows up. Results and logs land in `/tmp/demos-e2e/<SESSION>/`.
 
-Set `DEV_URL` to the dev client URL (`exp+thank-you://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081`) to have the runner relaunch and reload the app if it dies mid-run; without it, a crash fails every demo after it.
+Set `DEV_URL` to the dev client URL, with the port Metro is actually on (`exp+thank-you://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081` for 8081), to have the runner relaunch and reload the app if it dies mid-run; without it, a crash fails every demo after it. This needs the dev client build, and the simulator must already have accepted iOS's prompt for that URL once.
 
 Several simulators can run at once with different `DEVICE` and `SESSION` values against the same Metro.
 

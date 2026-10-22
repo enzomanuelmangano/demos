@@ -53,14 +53,25 @@ agent-device close --session "$SESSION" >/dev/null 2>&1
 # a dead app is relaunched and reloaded from Metro.
 DEV_URL="${DEV_URL:-}"
 revive() {
+  # grep without -q reads to EOF: with pipefail, -q exiting early could fail
+  # the pipeline (SIGPIPE) and relaunch a healthy app.
   xcrun simctl spawn "$UDID" launchctl list 2>/dev/null |
-    grep -q "UIKitApplication:com.reactiive.app" && return
+    grep -F "UIKitApplication:com.reactiive.app[" >/dev/null && return
+  if [ -z "$DEV_URL" ]; then
+    echo "warning: the app is not running (set DEV_URL to relaunch it)" >&2
+    return
+  fi
   echo "warning: the app is not running; relaunching it" >&2
-  [ -n "$DEV_URL" ] || return
   xcrun simctl launch "$UDID" com.reactiive.app >/dev/null 2>&1
   sleep 3
-  xcrun simctl openurl "$UDID" "$DEV_URL" >/dev/null 2>&1
-  sleep 25
+  xcrun simctl openurl "$UDID" "$DEV_URL" || return
+  # Wait for the home rather than a fixed time: a cold bundle can be slow.
+  agent-device open com.reactiive.app --platform ios --udid "$UDID" \
+    --session "$SESSION" >/dev/null 2>&1
+  agent-device wait text "Sculptures" 90000 --platform ios --udid "$UDID" \
+    --session "$SESSION" >/dev/null 2>&1 ||
+    echo "warning: the home did not come back after the relaunch" >&2
+  agent-device close --session "$SESSION" >/dev/null 2>&1
 }
 
 go_home() {
