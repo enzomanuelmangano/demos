@@ -8,7 +8,7 @@ import {
 } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
-import { perfFlush, perfMark } from '../perf-log';
+import { PERF_LOG_ENABLED, perfFlush, perfMark } from '../perf-log';
 
 /**
  * The home's entrance, measured off an iPhone unlocking, icon by icon (each
@@ -138,7 +138,7 @@ export const useHomeIntro = (onTouchable: () => void) => {
     };
     perfMark('splash-hide');
     // Long enough for the intro to have played its first frames.
-    setTimeout(perfFlush, 3000);
+    if (PERF_LOG_ENABLED) setTimeout(perfFlush, 3000);
     SplashScreen.hideAsync().then(start, start);
   }, [frame, playing, started, released]);
 };

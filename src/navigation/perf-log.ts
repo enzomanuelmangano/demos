@@ -1,5 +1,3 @@
-import { File, Paths } from 'expo-file-system';
-
 /**
  * Launch timing for release builds, which have no console: build with
  * `EXPO_PUBLIC_PERF_LOG=1` and every mark is written, with React Native's own
@@ -9,7 +7,8 @@ import { File, Paths } from 'expo-file-system';
  * Read it from a simulator with:
  *   cat "$(xcrun simctl get_app_container booted com.reactiive.app data)/Library/Caches/perf-log.json"
  */
-const ENABLED = process.env.EXPO_PUBLIC_PERF_LOG === '1';
+export const PERF_LOG_ENABLED = process.env.EXPO_PUBLIC_PERF_LOG === '1';
+const ENABLED = PERF_LOG_ENABLED;
 
 const marks: Record<string, number> = {};
 // Wall-clock time of each mark, comparable with the time the app was
@@ -27,12 +26,19 @@ export const perfFlush = () => {
   const startup = (
     performance as unknown as { rnStartupTiming?: Record<string, number> }
   ).rnStartupTiming;
+  // Required here, not imported: with the flag off the module (and its
+  // native module) is never loaded on the launch path.
+  const { File, Paths } =
+    require('expo-file-system') as typeof import('expo-file-system');
+  // Timing is best effort: it must never take the app down.
   try {
-    new File(Paths.cache, 'perf-log.json').write(
-      JSON.stringify({ marks, wall, startup: { ...startup } }),
-    );
+    Promise.resolve(
+      new File(Paths.cache, 'perf-log.json').write(
+        JSON.stringify({ marks, wall, startup: { ...startup } }),
+      ),
+    ).catch(() => {});
   } catch {
-    // Timing is best effort: it must never take the app down.
+    // Same: a synchronous throw is swallowed too.
   }
 };
 
