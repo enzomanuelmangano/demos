@@ -2,7 +2,6 @@ import { StatusBar, StyleSheet } from 'react-native';
 
 import { memo, Suspense, useCallback, useEffect } from 'react';
 
-import { useFonts } from 'expo-font';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 import { Stack, useRouter } from 'expo-router';
@@ -12,8 +11,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ChoreographyProvider } from 'react-native-screen-choreography/expo-router';
 
+import { useDemoFonts } from '../src/navigation/fonts';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
+import { perfMark } from '../src/navigation/perf-log';
 import { useTouchIndicatorSync } from '../src/navigation/states/touches';
 import { Retray, RetrayThemes } from '../src/packages/retray';
 import { trays } from '../src/trays';
@@ -59,7 +60,11 @@ const demoScreenOptions = {
   contentStyle: { backgroundColor: 'transparent' },
 } as const;
 
+perfMark('root-layout-module');
+
 export default function RootLayout() {
+  // Start registering the demo fonts now; nothing here waits on them.
+  useDemoFonts();
   // Check for OTA updates
   useOta();
   // The "Show Touches" overlay, re-armed on launch (see the General tray).
@@ -95,55 +100,28 @@ export default function RootLayout() {
           <PressablesConfig
             globalHandlers={globalPressableHandlers}
             defaultProps={{ rippleColor: 'transparent' }}>
-            <FontsProvider>
-              <Retray.Theme theme={RetrayThemes.light}>
-                <Retray.Navigator screens={trays}>
-                  <QuickActionsProvider>
-                    <ChoreographyProvider>
-                      <Stack screenOptions={stackScreenOptions}>
-                        <Stack.Screen name="index" />
-                        <Stack.Screen
-                          name="launch"
-                          options={demoScreenOptions}
-                        />
-                        <Stack.Screen
-                          name="animations/[slug]"
-                          options={demoScreenOptions}
-                        />
-                      </Stack>
-                    </ChoreographyProvider>
-                  </QuickActionsProvider>
-                </Retray.Navigator>
-              </Retray.Theme>
-            </FontsProvider>
+            <Retray.Theme theme={RetrayThemes.light}>
+              <Retray.Navigator screens={trays}>
+                <QuickActionsProvider>
+                  <ChoreographyProvider>
+                    <Stack screenOptions={stackScreenOptions}>
+                      <Stack.Screen name="index" />
+                      <Stack.Screen name="launch" options={demoScreenOptions} />
+                      <Stack.Screen
+                        name="animations/[slug]"
+                        options={demoScreenOptions}
+                      />
+                    </Stack>
+                  </ChoreographyProvider>
+                </QuickActionsProvider>
+              </Retray.Navigator>
+            </Retray.Theme>
           </PressablesConfig>
         </GestureHandlerRootView>
       </KeyboardProvider>
     </Suspense>
   );
 }
-
-const FontsProvider = ({ children }: { children: React.ReactNode }) => {
-  const [fontsLoaded] = useFonts({
-    'SF-Pro-Rounded-Bold': require('../assets/fonts/SF-Pro-Rounded-Bold.otf'),
-    'SF-Pro-Rounded-Heavy': require('../assets/fonts/SF-Pro-Rounded-Heavy.otf'),
-    'SF-Compact-Rounded-Medium': require('../assets/fonts/SF-Compact-Rounded-Medium.otf'),
-    regular: require('../assets/fonts/regular.ttf'),
-    outfit: require('../assets/fonts/outfit.ttf'),
-    bold: require('../assets/fonts/bold.ttf'),
-    'AddingtonCF-Light': require('../assets/fonts/AddingtonCF-Light.otf'),
-    'FiraCode-Regular': require('../assets/fonts/FiraCode-Regular.ttf'),
-    FiraCodeMedium: require('../assets/fonts/FiraCode-Medium.ttf'),
-    'Honk-Regular': require('../assets/fonts/honk-regular.otf'),
-    'Honk-Bold': require('../assets/fonts/honk-bold.otf'),
-  });
-
-  if (!fontsLoaded) {
-    return null;
-  }
-
-  return <>{children}</>;
-};
 
 const globalPressableHandlers = {
   onPress: () => {

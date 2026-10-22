@@ -64,6 +64,7 @@ import {
   getAnimationMetadata,
 } from '../../animations/registry';
 import { useRetray } from '../../packages/retray';
+import { useDemoFonts } from '../fonts';
 import { useOnShakeEffect } from '../hooks/use-shake-gesture';
 import { HideCloseButtonAtom } from '../states/close-button';
 
@@ -276,6 +277,7 @@ const DemoLaunch = ({
   const { width, height } = dimensions;
   const backdrop = getIconBackdrop(slug);
   const AnimationComponent = getAnimationComponent(slug);
+  const fontsReady = useDemoFonts();
 
   // The launch is this screen's while it is here, and it tears it down when it
   // unmounts, after the close has landed on the icon — unless a tap during the
@@ -463,7 +465,7 @@ const DemoLaunch = ({
         style={[styles.card, { backgroundColor: backdrop }, cardStyle]}>
         <Animated.View
           style={[styles.content, { width, height }, contentStyle]}>
-          {mounted && AnimationComponent ? (
+          {mounted && fontsReady && AnimationComponent ? (
             <Animated.View
               onLayout={onContentLayout}
               style={[styles.fill, fadeStyle]}>
