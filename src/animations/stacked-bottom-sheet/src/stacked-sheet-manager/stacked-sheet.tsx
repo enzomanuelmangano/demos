@@ -94,7 +94,7 @@ const StackedSheet: FC<StackedSheetProps> = ({
       translateY.set(event.translationY);
     })
     .onEnd(event => {
-      if (event.translationY > -50) {
+      if (event.translationY > 50) {
         dismissItem();
       } else {
         translateY.set(withSpring(0));
