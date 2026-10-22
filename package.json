@@ -56,6 +56,7 @@
     "expo-build-properties": "~58.0.11",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.14",
+    "expo-file-system": "~58.0.10",
     "expo-font": "~58.0.9",
     "expo-glass-effect": "~58.0.4",
     "expo-haptics": "~58.0.7",

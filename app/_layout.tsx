@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ChoreographyProvider } from 'react-native-screen-choreography/expo-router';
 
+import { perfMark } from '../src/navigation/perf-log';
 import { useOta } from '../src/navigation/hooks/use-ota';
 import { useQuickActions } from '../src/navigation/hooks/use-quick-actions';
 import { useTouchIndicatorSync } from '../src/navigation/states/touches';
@@ -58,6 +59,8 @@ const demoScreenOptions = {
   gestureEnabled: false,
   contentStyle: { backgroundColor: 'transparent' },
 } as const;
+
+perfMark('root-layout-module');
 
 export default function RootLayout() {
   // Check for OTA updates
