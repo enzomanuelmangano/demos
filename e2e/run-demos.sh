@@ -43,6 +43,26 @@ fi
 # keeps running, so the loaded bundle survives.
 agent-device close --session "$SESSION" >/dev/null 2>&1
 
+# Back to the home between demos: a script that diverged before its own
+# close would leave its demo open, and every later deep link would stack on
+# top of it. Presses the shell's Close button (id xmark, never a demo's own
+# "Close") until none is left. `close` ends the session, not the app.
+go_home() {
+  if ! agent-device open com.reactiive.app --platform ios --udid "$UDID" \
+    --session "$SESSION" >/dev/null 2>&1; then
+    echo "warning: could not attach to the app to reset it" >&2
+    return
+  fi
+  for _ in $(seq 1 15); do
+    agent-device find 'id="xmark"' click --first --platform ios \
+      --udid "$UDID" --session "$SESSION" >/dev/null 2>&1 || break
+    sleep 1.5
+  done
+  agent-device close --session "$SESSION" >/dev/null 2>&1
+}
+
+go_home
+
 pass=0
 fail=0
 for script in "${scripts[@]}"; do
@@ -62,6 +82,8 @@ for script in "${scripts[@]}"; do
   kill "$stream" 2>/dev/null
   wait "$stream" 2>/dev/null
   stream=
+  # After the stream: closing the demo must not count against it.
+  go_home
 
   problems=()
   [ "$status" -ne 0 ] && problems+=("script diverged (see $OUT/$slug.test.txt)")
