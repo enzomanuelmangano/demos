@@ -47,7 +47,24 @@ agent-device close --session "$SESSION" >/dev/null 2>&1
 # close would leave its demo open, and every later deep link would stack on
 # top of it. Presses the shell's Close button (id xmark, never a demo's own
 # "Close") until none is left. `close` ends the session, not the app.
+# A crash (the simulator's haptics-as-audio fallback can abort the app) would
+# fail every demo after it. With DEV_URL set to the dev client URL, e.g.
+# exp+thank-you://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081,
+# a dead app is relaunched and reloaded from Metro.
+DEV_URL="${DEV_URL:-}"
+revive() {
+  xcrun simctl spawn "$UDID" launchctl list 2>/dev/null |
+    grep -q "UIKitApplication:com.reactiive.app" && return
+  echo "warning: the app is not running; relaunching it" >&2
+  [ -n "$DEV_URL" ] || return
+  xcrun simctl launch "$UDID" com.reactiive.app >/dev/null 2>&1
+  sleep 3
+  xcrun simctl openurl "$UDID" "$DEV_URL" >/dev/null 2>&1
+  sleep 25
+}
+
 go_home() {
+  revive
   if ! agent-device open com.reactiive.app --platform ios --udid "$UDID" \
     --session "$SESSION" >/dev/null 2>&1; then
     echo "warning: could not attach to the app to reset it" >&2
