@@ -84,15 +84,18 @@ const DropdownItem: FC<DropdownItemProps> = memo(
     // The background only flips at progress 0.5: kept out of the per-frame
     // style above so it isn't re-sent on every frame (zIndex is static).
     const rBackgroundStyle = useAnimatedStyle(() => {
+      const isCollapsed = progress.get() < 0.5;
       // if progress.value < 0.5, the dropdown is collapsed, so we use the collapsedBackgroundColor
       // otherwise, the dropdown is expanded, so we use the expandedBackgroundColor (which is the same as the main color)
       return {
-        backgroundColor:
-          progress.get() < 0.5
-            ? collapsedBackgroundColor
-            : expandedBackgroundColor,
+        backgroundColor: isCollapsed
+          ? collapsedBackgroundColor
+          : expandedBackgroundColor,
+        // Collapsed options are hidden behind the header (only their edge
+        // peeks out): they must not catch touches.
+        pointerEvents: isCollapsed && !isHeader ? 'none' : 'auto',
       };
-    }, [collapsedBackgroundColor, progress]);
+    }, [collapsedBackgroundColor, isHeader, progress]);
 
     const rContentStyle = useAnimatedStyle(() => {
       const opacity = interpolate(
