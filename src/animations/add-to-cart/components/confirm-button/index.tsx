@@ -58,14 +58,20 @@ const ConfirmButton: FC<ConfirmButtonProps> = memo(
     }, []);
 
     const rStyle = useAnimatedStyle(() => {
+      // Zero size alone isn't enough: a zero-size frame at the origin equals
+      // Fabric's empty layout, so a recycled native view never receives it
+      // and keeps its previous frame as a black box. Opacity 0 hides it (and
+      // takes it out of hit-testing) whatever frame it has.
       if (!layoutData.get()) {
         return {
           height: 0,
           width: 0,
+          opacity: 0,
         };
       }
 
       return {
+        opacity: 1,
         height: animatedHeight.get(),
         width: animatedWidth.get(),
         zIndex: 10,
