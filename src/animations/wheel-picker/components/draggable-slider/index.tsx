@@ -83,7 +83,7 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
   }, [spacePerLineProp]);
 
   const progressWidth = useDerivedValue(() => {
-    return Math.round(linesAmount * spacePerLine.get());
+    return linesAmount * spacePerLine.get();
   }, [linesAmount, spacePerLine]);
 
   const linesArray = useMemo(() => {
@@ -151,19 +151,26 @@ export const DraggableSlider: React.FC<DraggableSliderProps> = ({
       // });
     });
 
+  // When the spacing changes, keep the selected tick instead of the pixel
+  // offset: re-snapping the old offset against the new spacings lands on a
+  // different tick (e.g. 50 -> 20 when the spacing grows from 20 to 50).
+  // The spacing is itself animated, so the offset follows it frame by frame.
   useAnimatedReaction(
     () => {
       return spacePerLine.get();
     },
     (curr, prev) => {
-      if (curr !== prev) {
-        scrollOffset.set(
-          withTiming(snapPoint(clampedScrollOffset.get(), 10, spacings.get())),
-        );
-        clampedScrollOffset.set(
-          withTiming(snapPoint(clampedScrollOffset.get(), 10, spacings.get())),
-        );
-      }
+      if (prev === null || curr === prev) return;
+      const tickIndex = Math.round(
+        (ScreenWidth / 2 - clampedScrollOffset.get()) / (prev * snapEach),
+      );
+      const offset = clamp(
+        ScreenWidth / 2 - tickIndex * curr * snapEach,
+        -linesAmount * curr + ScreenWidth / 2,
+        ScreenWidth / 2,
+      );
+      scrollOffset.set(offset);
+      clampedScrollOffset.set(offset);
     },
   );
 
