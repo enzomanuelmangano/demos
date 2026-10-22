@@ -33,13 +33,10 @@ export const ColorCarousel = () => {
           width: '100%',
           aspectRatio: 1,
         }}>
-        <Carousel
-          items={data}
-          maxRenderedItems={MAX_RENDERED_ITEMS}
-          width={windowWidth}
-          activeIndex={activeIndex}
-        />
-        <Canvas style={[StyleSheet.absoluteFill, { zIndex: -1 }]}>
+        {/* Behind the carousel by render order: zIndex: -1 became a negative
+            layer zPosition on iOS, which put the canvas under the
+            container's background, so the gradient never showed. */}
+        <Canvas style={StyleSheet.absoluteFill}>
           <Rect x={0} y={0} width={windowWidth} height={windowWidth}>
             <RadialGradient
               c={vec(windowWidth / 2, windowWidth / 2)}
@@ -48,6 +45,12 @@ export const ColorCarousel = () => {
             />
           </Rect>
         </Canvas>
+        <Carousel
+          items={data}
+          maxRenderedItems={MAX_RENDERED_ITEMS}
+          width={windowWidth}
+          activeIndex={activeIndex}
+        />
       </View>
     </View>
   );

@@ -82,11 +82,16 @@ const App = () => {
         <PressableScale
           style={styles.button}
           onPress={() => {
-            toggleTimer();
             if (!isTimerEnabled) {
-              return circularSliderRef.current?.runTimer(animatedNumber.get());
+              // Switch to Stop only once the timer actually started (0 is
+              // rejected with an alert).
+              if (circularSliderRef.current?.runTimer(animatedNumber.get())) {
+                toggleTimer();
+              }
+              return;
             }
 
+            toggleTimer();
             circularSliderRef.current?.stopTimer();
             circularSliderRef.current?.resetTimer();
           }}>

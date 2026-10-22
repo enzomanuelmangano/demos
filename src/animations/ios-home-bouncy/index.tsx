@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { startAnimation } from './animations/bouncy';
+import { resetSpringConfigs, startAnimation } from './animations/bouncy';
 import { AppsList } from './screens/home';
 import { SpringCustomizer } from './screens/spring-customizer';
 
@@ -17,6 +17,7 @@ export const IosHomeBouncy = () => {
   // Trigger initial animation on mount
   useEffect(() => {
     startAnimation();
+    return resetSpringConfigs;
   }, []);
 
   const handleLongPress = () => {

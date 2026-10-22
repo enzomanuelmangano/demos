@@ -31,6 +31,8 @@ export const useDemoStackedSheet = () => {
 
   const { width: windowWidth } = useWindowDimensions();
 
+  const magicCount = useRef(0);
+
   const bottomSheetConfigs = useRef([
     {
       height: 140,
@@ -79,12 +81,14 @@ export const useDemoStackedSheet = () => {
               borderCurve: 'continuous',
             }}
             onPress={() => {
+              magicCount.current += 1;
               // Create a spam StackedSheet with a random key to prevent duplicates
               showStackedSheet({
                 // key is used to prevent duplicate StackedSheets
                 // Usually the title is used as key, but in this case
-                // we want to spam the same StackedSheet, so we use a random key
-                key: 'the-magic',
+                // we want to spam the same StackedSheet, so every push gets
+                // its own key (a fixed one collides as a duplicate React key)
+                key: `the-magic-${magicCount.current}`,
                 componentHeight: 300,
 
                 children: () => {
@@ -129,10 +133,15 @@ export const useDemoStackedSheet = () => {
   const increment = useRef(0);
 
   const onPress = useCallback(() => {
-    const componentConfig =
-      bottomSheetConfigs.current[
-        Math.min(increment.current++, bottomSheetConfigs.current.length - 1)
-      ];
+    // Read, then increment, as separate statements: React Compiler turns a
+    // postfix `increment.current++` inside an expression into a pre-increment,
+    // which skipped the first config.
+    const configIndex = Math.min(
+      increment.current,
+      bottomSheetConfigs.current.length - 1,
+    );
+    increment.current += 1;
+    const componentConfig = bottomSheetConfigs.current[configIndex];
 
     // Create a spam StackedSheet with a random key to prevent duplicates
     showStackedSheet({

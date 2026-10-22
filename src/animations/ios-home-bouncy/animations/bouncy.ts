@@ -23,20 +23,33 @@ export interface SpringConfig {
 export const BouncyProgressShared = makeMutable(0);
 
 // Spring configuration for opening animation
-export const OpeningSpringConfigShared = makeMutable<SpringConfig>({
+const DefaultOpeningSpringConfig: SpringConfig = {
   mass: 20,
   damping: 80,
   stiffness: 180,
-});
+};
+export const OpeningSpringConfigShared = makeMutable<SpringConfig>(
+  DefaultOpeningSpringConfig,
+);
 
 // Spring configuration for closing animation with more bounce
-export const ClosingSpringConfigShared = makeMutable<SpringConfig>({
+const DefaultClosingSpringConfig: SpringConfig = {
   mass: 1.4,
   damping: 18,
   stiffness: 100,
   restDisplacementThreshold: 0.001,
   restSpeedThreshold: 2,
-});
+};
+export const ClosingSpringConfigShared = makeMutable<SpringConfig>(
+  DefaultClosingSpringConfig,
+);
+
+// The configs are module-level, so they outlive the demo: put the defaults
+// back when it closes, or the customizer's values would persist.
+export const resetSpringConfigs = () => {
+  OpeningSpringConfigShared.set(DefaultOpeningSpringConfig);
+  ClosingSpringConfigShared.set(DefaultClosingSpringConfig);
+};
 
 /**
  * Starts the bouncy animation sequence

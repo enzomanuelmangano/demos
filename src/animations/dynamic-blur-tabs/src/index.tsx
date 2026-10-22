@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 
 // SDK 56: expo-router vendors its own react-navigation, so this demo's
 // standalone navigator can no longer nest into the router's container —
@@ -11,6 +11,7 @@ import {
 } from '@react-navigation/native';
 
 import { BottomTabBar } from './components/bottom-tab-bar';
+import { IsTabBarActive } from './components/bottom-tab-bar/states';
 import { ScreenNamesArray } from './constants/screens';
 import { ScrollableGradients } from './screens/scrollable-gradients';
 
@@ -33,6 +34,14 @@ export const App = () => {
     (props: BottomTabBarProps) => <BottomTabBar {...props} />,
     [],
   );
+
+  // IsTabBarActive is module-level, so it outlives the demo: without the
+  // reset, a demo closed while scrolled reopens with the collapsed pill.
+  useEffect(() => {
+    return () => {
+      IsTabBarActive.set(true);
+    };
+  }, []);
 
   return (
     <NavigationIndependentTree>

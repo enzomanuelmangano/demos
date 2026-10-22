@@ -26,7 +26,9 @@ export const SpringSliderContainer: FC<SpringSliderContainerProps> = ({
       stiffness: stiffness.get(),
     }),
     config => {
-      mutableConfig.set(config);
+      // Merge: the sliders only cover mass/damping/stiffness, and replacing
+      // the whole config dropped the closing spring's rest thresholds.
+      mutableConfig.set({ ...mutableConfig.get(), ...config });
     },
   );
 
