@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Image, StyleSheet } from 'react-native';
 
 import { memo } from 'react';
 
@@ -35,6 +35,9 @@ export const ListItem = memo(
       };
     });
 
+    // The filter goes on the container, not on the Image: on iOS a filter
+    // wraps the view's content in a SwiftUI host, and for an Image that host
+    // often never paints the bitmap, so avatars stayed blank until they moved.
     return (
       <Animated.View
         key={item}
@@ -50,13 +53,9 @@ export const ListItem = memo(
             borderCurve: 'continuous',
             zIndex,
           },
+          animatedStyle,
         ]}>
-        <Animated.Image
-          source={{ uri: item }}
-          // @@TODO: check react native styles for this
-          style={[styles.image, animatedStyle as any]}
-          resizeMode="cover"
-        />
+        <Image source={{ uri: item }} style={styles.image} resizeMode="cover" />
       </Animated.View>
     );
   },
