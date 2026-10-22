@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppItem } from './app-item';
 import { APPS_DATA as items } from './constants';
+import { DEMO_BUTTON_ROW_HEIGHT } from '../../../navigation/home/demo-close-button';
 import { useCustomNavigation } from '../navigation/expansion-provider';
 
 import type { RootStackParamList } from '../app-detail-screen';
@@ -71,7 +72,9 @@ export const AppsList = () => {
         style={[
           styles.gridContainer,
           {
-            paddingTop: safeTop + 4,
+            // Below the demo's close and info buttons, which sit over the
+            // top row otherwise.
+            paddingTop: safeTop + DEMO_BUTTON_ROW_HEIGHT,
             paddingHorizontal: layoutConfig.containerPadding,
             paddingBottom: 300,
           },
