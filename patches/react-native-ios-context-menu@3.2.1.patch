@@ -1,3 +1,21 @@
+diff --git a/node_modules/react-native-ios-context-menu/.bun-tag-61a44f9fb4e40629 b/.bun-tag-61a44f9fb4e40629
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+diff --git a/ios/RNIContextMenu/RNIMenuItem.swift b/ios/RNIContextMenu/RNIMenuItem.swift
+index 6c14152eb1debcb258aa48f8602a1a7e09fcd320..091d14ca8c1b3efd67bb33282d51d2107f7098ce 100644
+--- a/ios/RNIContextMenu/RNIMenuItem.swift
++++ b/ios/RNIContextMenu/RNIMenuItem.swift
+@@ -146,7 +146,9 @@ extension RNIMenuItem {
+     );
+     
+     #if swift(>=5.5)
+-    if #available(iOS 15.0, *),
++    // UIMenu.subtitle is iOS 16+ (only UIAction's is 15+); the 15.0 check
++    // fails to compile against the iOS 15.1 deployment target.
++    if #available(iOS 16.0, *),
+        let subtitle = self.menuSubtitle {
+       
+       menu.subtitle = subtitle;
 diff --git a/ios/RNIContextMenuButton/RNIContextMenuButtonViewManager.mm b/ios/RNIContextMenuButton/RNIContextMenuButtonViewManager.mm
 index 13db268ec83b59786076721f5d1c25b154e16124..2fba5fc801946dc54234f3d0a785620d67238edc 100644
 --- a/ios/RNIContextMenuButton/RNIContextMenuButtonViewManager.mm
