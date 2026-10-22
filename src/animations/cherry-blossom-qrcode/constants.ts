@@ -41,6 +41,9 @@ export const CANOPY_OUTER_RADIUS_FACTOR = 0.46;
 // Grid limits
 export const MAX_GRID_SIZE = 41;
 export const MAX_BLOCKS = MAX_GRID_SIZE * MAX_GRID_SIZE * 18;
+// Bytes a version 6 QR (41x41 modules) holds at error correction level M:
+// longer content needs a bigger grid than the scene and buffers are sized for.
+export const MAX_QR_CONTENT_LENGTH = 106;
 
 // Camera angles for 3D isometric view
 export const ISO_ANGLE_Y = 0.78;

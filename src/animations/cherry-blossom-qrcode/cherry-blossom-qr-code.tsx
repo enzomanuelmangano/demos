@@ -21,7 +21,11 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Canvas, CanvasRef } from 'react-native-webgpu';
 
-import { CONTAINER_BG, DEFAULT_QR_CONTENT } from './constants';
+import {
+  CONTAINER_BG,
+  DEFAULT_QR_CONTENT,
+  MAX_QR_CONTENT_LENGTH,
+} from './constants';
 import { CREEPER_BLAST_PATTERN } from './haptics';
 import { useWebGPU } from './hooks';
 import { isDemoClosing } from '../../navigation/home/launch-transition';
@@ -173,6 +177,7 @@ export const CherryBlossomQRCode = () => {
           style={styles.input}
           value={qrContent}
           onChangeText={setQrContent}
+          maxLength={MAX_QR_CONTENT_LENGTH}
           onBlur={handleInputBlur}
           placeholder="https://enzo.fyi"
           placeholderTextColor="#999"

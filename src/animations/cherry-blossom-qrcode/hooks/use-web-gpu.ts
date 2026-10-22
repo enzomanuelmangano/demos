@@ -163,7 +163,7 @@ export function useWebGPU({
       baseYBuffer,
     });
     blockDataRef.current = {
-      numBlocks: blockData.numBlocks,
+      numBlocks: Math.min(blockData.numBlocks, MAX_BLOCKS),
       gridSize: blockData.gridSize,
     };
     buffersDirtyRef.current = true;
@@ -200,7 +200,7 @@ export function useWebGPU({
     const qrMatrix = generateQRMatrix(qrContentRef.current);
     const blockData = generateBlockData(qrMatrix);
     blockDataRef.current = {
-      numBlocks: blockData.numBlocks,
+      numBlocks: Math.min(blockData.numBlocks, MAX_BLOCKS),
       gridSize: blockData.gridSize,
     };
 
@@ -561,17 +561,32 @@ function updateBuffers(
   },
 ) {
   const { types, positions, resistance, baseY } = blockData;
+  // Never write past the MAX_BLOCKS-sized buffers (the draw count is clamped
+  // the same way).
+  const count = Math.min(blockData.numBlocks, MAX_BLOCKS);
 
   // Upload only the blocks in use: the draw call covers `numBlocks`, so the
   // tail of each MAX_BLOCKS-sized buffer is never read.
-  device.queue.writeBuffer(buffers.typeBuffer, 0, new Uint32Array(types));
-  device.queue.writeBuffer(buffers.posBuffer, 0, new Float32Array(positions));
+  device.queue.writeBuffer(
+    buffers.typeBuffer,
+    0,
+    new Uint32Array(types.slice(0, count)),
+  );
+  device.queue.writeBuffer(
+    buffers.posBuffer,
+    0,
+    new Float32Array(positions.slice(0, count * 4)),
+  );
   device.queue.writeBuffer(
     buffers.resistanceBuffer,
     0,
-    new Float32Array(resistance),
+    new Float32Array(resistance.slice(0, count)),
   );
-  device.queue.writeBuffer(buffers.baseYBuffer, 0, new Float32Array(baseY));
+  device.queue.writeBuffer(
+    buffers.baseYBuffer,
+    0,
+    new Float32Array(baseY.slice(0, count)),
+  );
 }
 
 interface PipelineOptions {

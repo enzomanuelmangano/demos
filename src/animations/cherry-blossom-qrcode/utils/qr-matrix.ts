@@ -1,6 +1,6 @@
 import QRCode from 'qrcode';
 
-import { DEFAULT_QR_CONTENT } from '../constants';
+import { DEFAULT_QR_CONTENT, MAX_GRID_SIZE } from '../constants';
 
 /**
  * Generates a 2D boolean matrix from QR code content.
@@ -13,6 +13,9 @@ export function generateQRMatrix(content: string): boolean[][] {
     });
     const { modules } = qrCodeData;
     const { size } = modules;
+    // The input is capped in characters, but multi-byte text can still need
+    // a grid larger than the scene is framed and its buffers are sized for.
+    if (size > MAX_GRID_SIZE) return generateQRMatrix(DEFAULT_QR_CONTENT);
 
     const matrix: boolean[][] = [];
     for (let y = 0; y < size; y++) {
