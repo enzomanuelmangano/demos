@@ -1,0 +1,50 @@
+# Animated 3D Parallax — a 300pt card that tilts in 3D toward the finger (rotateX/Y from
+# the touch point) while its logo follows on a looser spring for a parallax lag.
+# What this test covers: a tap on each corner and the centre (onBegin sets the
+# touch, release springs back to centre); slow pans along both diagonals and
+# edges; a pan that leaves the card (interpolate extrapolates past 18deg since
+# the gesture is not cancelled outside); quick back-and-forth pans so the two
+# springs are retargeted mid-flight; settling to rest (spring tails near 0deg).
+context platform=ios
+open "demos://animations/animated-3d-parallax"
+wait "label=\"Close\"" 10000
+wait 1000
+# Corners and centre taps.
+press 70 305
+wait 700
+press 333 305
+wait 700
+press 70 570
+wait 700
+press 333 570
+wait 700
+press 201 437
+wait 700
+# Diagonals and edges.
+gesture pan 70 305 260 260 1200
+wait 1200
+gesture pan 333 305 -260 260 1200
+wait 1200
+gesture pan 70 300 260 0 900
+wait 1000
+gesture pan 70 580 260 0 900
+wait 1000
+gesture pan 60 300 0 280 900
+wait 1000
+# Leave the card while still touching.
+gesture pan 201 437 170 300 900
+wait 1200
+gesture pan 201 437 -170 -280 900
+wait 1200
+# Fast retargeting.
+gesture pan 100 437 200 0 150
+wait 60
+gesture pan 300 437 -200 0 150
+wait 60
+gesture pan 201 330 0 200 150
+wait 60
+press 333 570 --count 4
+wait 2500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

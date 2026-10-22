@@ -1,0 +1,66 @@
+# Clock Time Picker — an analog Skia clock beside a snapping list of 20 times
+# (1:00 pm .. 10:30 pm, 30 min apart); the scroll offset is interpolated into a
+# timestamp on the UI thread and the clock's hour/minute hands follow it
+# continuously (also between snap points).
+# What this test covers: stepping one slot at a time (hands sweep 30 min),
+# a drag held between two slots (minute hand mid-way), flings to the last
+# slot and overscroll past it (interpolation extends beyond the last time),
+# stepping back up, a fling stopped by a touch, and drags that start outside
+# the list (ignored). Never pulls down at the list's top (that is the app's
+# close gesture). List column: x ~266, rows 30pt, selected row y ~438.
+context platform=ios
+open "demos://animations/clock-time-picker"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "1:00 pm" 30000
+wait 1000
+# One slot at a time.
+gesture pan 266 480 0 -30 700
+wait 800
+gesture pan 266 480 0 -30 700
+wait 800
+gesture pan 266 480 0 -60 900
+wait 800
+# Held between two slots.
+gesture pan 266 480 0 -15 1500
+wait 800
+# A fling, then fast drags of three slots each to the end, then overscroll.
+swipe 266 490 266 390
+wait 600
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -90 300
+wait 400
+gesture pan 266 490 0 -100 500
+wait 1200
+wait "text" "10:30 pm" 8000
+# Back up a few slots.
+gesture pan 266 420 0 30 700
+wait 800
+gesture pan 266 420 0 60 700
+wait 800
+# Fling up and stop it with a touch.
+swipe 266 490 266 390
+wait 100
+press 266 438
+wait 800
+# Drags outside the list (on the clock / card): no scroll.
+gesture pan 135 437 0 -60 500
+wait 500
+gesture pan 300 600 -100 0 500
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

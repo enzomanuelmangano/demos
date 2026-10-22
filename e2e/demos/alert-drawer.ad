@@ -1,0 +1,48 @@
+# Alert Drawer — a red "Continue" pill that springs open into a white confirmation
+# card (width/height/padding/radius/background colour all interpolated from one
+# spring); Continue inside the card logs "Confirmed", Cancel / the x collapse it.
+# What this test covers: expand, Cancel; expand, the small x close button;
+# expand, Continue (logs Confirmed, card stays open), then Cancel; tapping
+# Continue while the card is still expanding (confirm path mid-spring);
+# rapid expand/collapse toggling so the spring reverses mid-flight.
+# expect-log: Confirmed
+context platform=ios
+open "demos://animations/alert-drawer"
+wait "text" "Continue" 10000
+wait 2500
+press "label=\"Continue\""
+wait "text" "Are you sure?" 3000
+wait 700
+press "label=\"Cancel\""
+wait 900
+press "label=\"Continue\""
+wait 900
+# Small x close button (unlabeled icon).
+press 340 338
+wait 900
+press "label=\"Continue\""
+wait 900
+press "label=\"Continue\""
+wait 500
+press "label=\"Continue\""
+wait 500
+press "label=\"Cancel\""
+wait 900
+# Continue again mid-expansion, then collapse mid-spring.
+press 201 562
+wait 120
+press 285 547
+wait 600
+press 120 547
+wait 150
+press 201 562
+wait 150
+press 120 547
+wait 150
+press 201 562
+wait 1000
+press "label=\"Cancel\""
+wait 1000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

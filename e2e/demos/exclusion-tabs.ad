@@ -1,0 +1,51 @@
+# Exclusion Tabs — four Skia tab boxes (Home, Changelog, Career, About) merged by a blur + alpha-threshold metaball layer; the active tab separates from its neighbours (±10 pt timing) and turns blue, others gooily merge.
+# What this test covers: activating each tab in order and in reverse, jumping between the far ends, re-tapping the
+# active tab, switching while the 300 ms separation timing is mid-flight, a rapid burst across all tabs, and taps in
+# the gaps / outside the boxes (Touchable.Path hit-testing: ignored).
+context platform=ios
+open "demos://animations/exclusion-tabs"
+wait "label=\"Close\"" 40000
+wait 1000
+# Every tab, left to right, then back.
+press 155 437
+wait 600
+press 255 437
+wait 600
+press 345 437
+wait 600
+press 255 437
+wait 600
+press 155 437
+wait 600
+press 60 437
+wait 600
+# Far ends.
+press 345 437
+wait 600
+press 60 437
+wait 600
+# Re-tap the active tab.
+press 60 437
+wait 500
+# Switch mid-flight.
+press 255 437
+wait 100
+press 155 437
+wait 100
+press 345 437
+wait 800
+# Rapid burst.
+press 60 437
+press 155 437
+press 255 437
+press 345 437
+press 60 437
+wait 1000
+# Outside the boxes: above the row and at the far left edge.
+press 200 380
+wait 400
+press 5 437
+wait 600
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

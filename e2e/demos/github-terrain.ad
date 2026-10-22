@@ -1,0 +1,47 @@
+# GitHub Terrain — a WebGPU (react-native-webgpu) instanced-cube render of a GitHub
+# contribution calendar: tapping springs between the flat grid and a 3D isometric
+# terrain, the switch springs between real and generated data; the JS render
+# loop stops when both springs settle and restarts on demand.
+# What this test covers: flat -> 3D -> flat with full settles; the data
+# switch both ways in each view; tapping again mid-spring (retarget, loop
+# already running); toggling the switch mid-view-spring; a rapid tap burst;
+# and closing/reopening the demo quickly so WebGPU init (50ms timeout +
+# async adapter/device) races the unmount cleanup.
+context platform=ios
+open "demos://animations/github-terrain"
+wait "label=\"Toggle real GitHub contribution data\"" 10000
+wait 3500
+press 201 437
+wait 2000
+press "label=\"Toggle real GitHub contribution data\""
+wait 2000
+press 201 437
+wait 2000
+press "label=\"Toggle real GitHub contribution data\""
+wait 2000
+# Retarget mid-spring and switch mid-spring.
+press 201 437
+wait 250
+press 201 437
+wait 250
+press "label=\"Toggle real GitHub contribution data\""
+wait 250
+press 201 437
+wait 2500
+press "label=\"Toggle real GitHub contribution data\""
+wait 1500
+# Rapid burst.
+press 201 437 --count 7 --interval-ms 80
+wait 2500
+# Close and reopen quickly (init vs cleanup race).
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500
+open "demos://animations/github-terrain"
+wait "label=\"Close\"" 10000
+wait 3000
+press 201 437
+wait 2500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

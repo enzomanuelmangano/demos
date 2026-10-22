@@ -1,0 +1,85 @@
+# Clerk Toast — Emil Kowalski-style stacked toasts: tapping any black row pushes
+# the next of 13 scripted toasts; up to 3 are visible, stacked from the bottom
+# (newest lowest), older ones collapse behind with fading content and shadows;
+# any toast swipes left to dismiss (> 50pt), and the 8th toast has an X that
+# clears the whole stack (FadeOutLeft exit staggered by stack id).
+# What this test covers: pushing three toasts, swipe-dismissing the newest
+# (stack re-springs), a short swipe that snaps back, pushing up to the
+# "clear everything" toast with many hidden toasts behind it (shadowOpacity
+# computed for ids > 3), clearing all with its X (staggered exits), pushing
+# again past the end of the list (index wraps), dismissing a toast in the
+# middle slot, scrolling the rows behind the toasts, and swiping the rest away.
+# Note: the first tap after mounting never shows its toast (see QA report);
+# assertions only use the newest toast, which shows either way.
+context platform=ios
+open "demos://animations/clerk-toast"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1000
+# Rows are unlabeled pressables: tap by position.
+press 200 300
+wait 700
+press 200 300
+wait 700
+press 200 300
+wait 1200
+wait "text" "It works with React Native and Expo!" 8000
+# Swipe the newest (bottom slot, y ~796) away. The first swipe on a fresh
+# stack does not dismiss the toast under the finger (see QA report), so swipe
+# twice; the second may also take an older one.
+gesture pan 300 796 -250 0 400
+wait 1200
+gesture pan 300 796 -250 0 400
+wait 1200
+wait absent "label=\"It works with React Native and Expo!\"" 8000
+# Short swipe: snaps back.
+gesture pan 300 796 -30 0 500
+wait 900
+# Up to the "clear everything" toast. Four taps, not five: the very first tap
+# of the session fired onPress twice (see QA report), so the list is one
+# ahead and "Actually, let's clear..." is now the newest (bottom) toast.
+press 200 420
+wait 500
+press 200 420
+wait 500
+press 200 420
+wait 500
+press 200 420
+wait 1200
+wait "text" "Actually, let's clear quickly everything" 8000
+# Its X (trailing pressable) clears the stack.
+press 347 796
+wait 2000
+wait absent "label=\"Actually, let's clear quickly everything\"" 8000
+# Past the end of the list: index wraps.
+press 200 300
+wait 500
+press 200 300
+wait 500
+press 200 300
+wait 500
+press 200 300
+wait 500
+press 200 300
+wait 1200
+wait "text" "Thanks for watching!" 8000
+# Dismiss the toast in the middle slot (y ~726).
+gesture pan 300 726 -250 0 400
+wait 1200
+# Scroll the rows behind the toasts and back.
+gesture pan 200 500 0 -300 600
+wait 800
+gesture pan 200 300 0 250 600
+wait 800
+# Swipe the rest away.
+gesture pan 300 796 -250 0 400
+wait 900
+gesture pan 300 796 -250 0 400
+wait 900
+gesture pan 300 796 -250 0 400
+wait 900
+gesture pan 300 796 -250 0 400
+wait 1200
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

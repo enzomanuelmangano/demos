@@ -1,0 +1,43 @@
+# Fractal Glass — a draggable orange circle (an invisible RN view drives cx/cy) seen through a 4x4 "fractal glass" panel: inside the panel it is blurred and alpha-masked by gradient tiles; a sun/moon button cross-fades the light/dark theme.
+# What this test covers: dragging the circle from above the panel into its centre, across tile seams, half in/half
+# out of every panel edge, back out, a fast fling, re-grabbing it after each move (pan context), and toggling the
+# theme (background + circle colour timings) once, back, and rapidly while dragging.
+context platform=ios
+open "demos://animations/fractal-glass"
+wait "label=\"Close\"" 40000
+wait 1200
+# From its start (180,270) into the middle of the glass.
+gesture pan 180 270 20 170 800
+wait 600
+# Across tile seams.
+gesture pan 200 440 -100 0 600
+gesture pan 100 440 200 0 900
+gesture pan 300 440 -100 -80 600
+wait 500
+# Straddle each panel edge (top y=287, bottom y=587, left x=40, right x=362).
+gesture pan 200 360 0 -80 500
+wait 300
+gesture pan 200 280 0 300 800
+wait 300
+gesture pan 200 580 -160 -140 700
+wait 300
+gesture pan 40 440 322 0 800
+wait 300
+# Back out above the panel and fast fling back into it.
+gesture pan 362 440 -180 -230 500
+wait 300
+gesture pan 182 210 20 230 120
+wait 600
+# Theme to dark and back.
+press 309 781
+wait 800
+press 309 781
+wait 800
+# Toggle to dark, drag during the cross-fade, rapid toggles.
+press 309 781
+gesture pan 202 440 -30 40 500
+press 309 781 --count 4 --interval-ms 120
+wait 1200
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

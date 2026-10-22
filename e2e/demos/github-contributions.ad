@@ -1,0 +1,39 @@
+# GitHub Contributions — a contribution calendar (~19 weeks x 7 days of
+# Animated.Views) in a full-screen PressableScale: a tap fills every square with
+# its level colour via a staggered (45ms per diagonal) withDelay+withSpring wave
+# (scale dip + interpolateColor), the next tap resets them with random delays.
+# What this test covers: the fill wave, the reset wave, toggling again while the
+# fill wave is still propagating (cancelAnimation + reset), several quick
+# toggles in a row, a long hold on the card, taps outside the calendar card
+# (the whole screen is the pressable), and a final settle.
+context platform=ios
+open "demos://animations/github-contributions"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "Mon" 10000
+wait 1000
+press 201 437
+wait 3500
+press 201 437
+wait 2500
+# Fill, then reset while the wave is still running.
+press 201 437
+wait 400
+press 201 437
+wait 2500
+# Quick toggles.
+press 201 437 --count 5 --interval-ms 150
+wait 3000
+# Taps outside the card.
+press 200 700
+wait 2000
+press 120 250
+wait 2500
+longpress 201 437 1500
+wait 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

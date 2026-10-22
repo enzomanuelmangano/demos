@@ -1,0 +1,60 @@
+# Email Demo — inbox list where the red button "deletes" the top email (all rows spring
+# up one slot, the new top row gets a springing blue highlight + shadow) and the green
+# button restores it; pressing past either end shakes the button.
+# What this test covers: deleting one at a time, rapid deletes through all 10
+# emails and past the end (delete-button shake, repeated so the shake is
+# cancelled and restarted), restoring one at a time and rapidly past zero
+# (restore-button shake), interleaved delete/restore so the per-row springs
+# (translateY, opacity, backgroundColor color spring, shadow springs) reverse
+# mid-flight, and scrolling the FlatList while rows are shifted.
+# Buttons are icon-only: restore (150,798), delete (252,798).
+context platform=ios
+open "demos://animations/email-demo"
+wait "text" "Welcome to our community" 10000
+wait 1000
+press 252 798
+wait 700
+press 252 798
+wait 700
+press 150 798
+wait 700
+# Rapid deletes through the whole list and past the end.
+press 252 798 --count 12
+wait 1500
+press 252 798
+wait 200
+press 252 798
+wait 1200
+# Restore one at a time, then rapidly past zero.
+press 150 798
+wait 600
+press 150 798
+wait 600
+press 150 798 --count 10
+wait 1500
+press 150 798
+wait 200
+press 150 798
+wait 1200
+# Interleave to reverse springs mid-flight.
+press 252 798
+wait 100
+press 150 798
+wait 100
+press 252 798
+wait 100
+press 252 798
+wait 100
+press 150 798
+wait 1500
+# Scroll the list with rows shifted, then restore.
+gesture pan 200 600 0 -350 500
+wait 1000
+gesture pan 200 300 0 350 500
+wait 1000
+press 150 798 --count 3
+wait 1500
+wait "text" "Welcome to our community" 3000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

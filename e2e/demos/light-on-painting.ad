@@ -1,0 +1,54 @@
+# Light on Painting — two night paintings (Vermeer, Hopper) relit in a single WebGPU fragment pass from baked depth/normal fields by a bulb hanging on a cord; drag the bulb (cord pays out/reels in, physics on the UI thread), swipe elsewhere to page between paintings, pinch to move the light in depth, double tap for a SwiftUI settings sheet.
+# What this test covers: dragging the bulb down (cord pays out) and back up (reels in to its minimum), a sideways
+# swing, paging to Nighthawks and rubber-banding past the last page, dragging the bulb over the second painting,
+# pinching the light nearer/farther (clamped Z), a short page drag below the commit fraction (settles back), a
+# slow committed drag back to the first painting, rubber-banding past the first page, and a fast swipe burst.
+# Not covered: the settings sheet — its double tap needs two taps inside 320 ms, which agent-device's taps miss.
+context platform=ios
+open "demos://animations/light-on-painting"
+wait "label=\"Close\"" 40000
+wait 3000
+# Bulb starts at (201,336): drag it down-right, it swings back under the anchor.
+gesture pan 201 336 80 150 800
+wait 1500
+# Reel it back up.
+gesture pan 201 497 0 -200 800
+wait 1500
+# Sideways swing.
+gesture pan 201 307 120 40 600
+wait 1500
+# Page to Nighthawks, then rubber-band past the last page.
+swipe 330 620 60 620
+wait 1500
+swipe 330 620 60 620
+wait 1500
+# Drag the bulb across the second painting.
+gesture pan 201 307 -120 120 900
+wait 1500
+# Pinch the light nearer and farther (Z clamped).
+gesture pinch 0.5 201 600
+wait 1000
+gesture pinch 2 201 600
+wait 1000
+gesture pinch 3 201 600
+wait 1000
+# Short page drag (below the commit fraction): settles back.
+gesture pan 150 650 60 0 900
+wait 1500
+# Slow committed drag back to the first painting, then rubber-band past it.
+gesture pan 60 650 300 0 900
+wait 1500
+swipe 60 620 340 620
+wait 1500
+# Fast swipe burst between the pages.
+swipe 330 620 60 620
+wait 200
+swipe 60 620 330 620
+wait 200
+swipe 330 620 60 620
+wait 200
+swipe 60 620 330 620
+wait 2000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

@@ -1,0 +1,52 @@
+# Time Machine — a drag-to-sort todo list (4 items, immediate pan) where every
+# reorder pushes a snapshot into a history (jotai atoms); pulling the screen down
+# opens the "time machine" (Skia star-field shader background, cards stacked in
+# a horizontal snapping list), swiping picks an older snapshot and pulling up
+# travels back to it.
+# What this test covers: reordering items (down past two rows, back up one),
+# a small drag released in place, pulling down to open the time machine, a pull
+# released below the threshold (springs back), swiping through history cards
+# and past the end, pulling up to close/travel, re-opening, and a fast flick
+# open/close.
+# NOTE: the history list reads event.contentOffset.y on a horizontal ScrollView,
+# so the stacked-card transforms and the selected snapshot never change and
+# swiping leaves the cards off-screen after closing — see report.
+context platform=ios
+open "demos://animations/time-machine"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "Buy groceries" 10000
+wait 1000
+# Reorder: first row down two rows, then the second row up one.
+gesture pan 220 331 0 220 800
+wait 1200
+gesture pan 220 401 0 -70 600
+wait 1200
+gesture pan 220 471 0 10 300
+wait 1000
+# Pull down less than the threshold (springs closed), then fully open.
+gesture pan 200 620 0 60 600
+wait 1200
+gesture pan 200 620 0 200 500
+wait 2000
+# Swipe through the history cards and beyond the last one.
+gesture pan 300 440 -220 0 500
+wait 1200
+gesture pan 300 440 -220 0 500
+wait 1200
+gesture pan 100 440 200 0 500
+wait 1200
+# Pull up: close the time machine (travel to the selected snapshot).
+gesture pan 200 700 0 -250 400
+wait 2500
+# Open again and close with a fast flick.
+gesture pan 200 500 0 200 150
+wait 1500
+gesture pan 200 700 0 -250 150
+wait 2500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

@@ -1,0 +1,49 @@
+# Interaction Appearance — a movie detail page (Skia image + blurred backdrop,
+# scrolling review) with a floating sun button that toggles light/dark theme;
+# while the button is held the page scales to 0.95 and a full-screen BlurView
+# fades in (module-level shared value), then the theme flips on release.
+# What this test covers: toggling dark and back with animations settled, a
+# long hold on the button (rescale + blur held, then release), scrolling the
+# review in dark mode and back, rapid toggles (blur/scale springs reversed
+# mid-flight), and a toggle while the scroll is still moving.
+# Button (unlabeled icon): x 338, y 776.
+context platform=ios
+open "demos://animations/interaction-appearance"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Past Lives" 30000
+wait 1000
+press 338 776
+wait 1200
+press 338 776
+wait 1200
+# Hold: content shrinks and blurs until release, then the theme flips.
+longpress 338 776 1500
+wait 1200
+# Scroll the review (dark), then back up a bit.
+gesture pan 200 600 0 -350 700
+wait 600
+swipe 200 700 200 150
+wait 1200
+gesture pan 200 300 0 250 700
+wait 600
+# Toggle while a fling is still moving.
+swipe 200 700 200 200
+wait 100
+press 338 776
+wait 1200
+# Rapid toggles.
+press 338 776
+wait 100
+press 338 776
+wait 100
+press 338 776
+wait 100
+press 338 776
+wait 1500
+press 338 776 --count 5 --interval-ms 120
+wait 1500
+wait "text" "Past Lives" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

@@ -1,0 +1,56 @@
+# Cuberto Slider — a 0..100 slider whose picker grows while dragged and whose purple balloon trails it on a spring, tilting toward the picker and showing the value.
+# What this test covers: starting at 0, a slow drag to the middle, overshooting the right end (clamped to 100),
+# overshooting the left end (clamped to 0), a fast back-and-forth drag series that makes the balloon spring lag and
+# swing, a quick tap on the picker (press-in/out springs only), and releasing mid-drag then resuming from the clamped value.
+context platform=ios
+open "demos://animations/cuberto-slider"
+wait "label=\"Close\"" 40000
+wait 1000
+is exists "value=\"0\""
+# Slow drag from 0 to roughly the middle.
+gesture pan 51 437 150 0 700
+wait 800
+# The picker now sits near x=171; drag far past the right end.
+gesture pan 171 437 225 0 500
+wait 1200
+is exists "value=\"100\""
+# Drag far past the left end.
+gesture pan 351 437 -345 0 500
+wait 1200
+is exists "value=\"0\""
+# Quick tap on the picker: only the grow/shrink springs run.
+press 51 437
+wait 600
+# Fast drags: the balloon spring lags far behind and swings; a fast fling stops short of the end at a
+# position that varies run to run, so afterwards sweep the track left to right to drive the picker to 100.
+gesture pan 51 437 340 0 150
+wait 1000
+gesture pan 330 437 -280 0 150
+wait 1000
+gesture pan 60 437 280 0 150
+wait 1500
+gesture pan 51 437 345 0 300
+gesture pan 81 437 315 0 300
+gesture pan 111 437 285 0 300
+gesture pan 141 437 255 0 300
+gesture pan 171 437 225 0 300
+gesture pan 201 437 195 0 300
+gesture pan 231 437 165 0 300
+gesture pan 261 437 135 0 300
+gesture pan 291 437 105 0 300
+gesture pan 321 437 75 0 300
+gesture pan 351 437 45 0 300
+wait 1200
+is exists "value=\"100\""
+gesture pan 351 437 -345 0 500
+wait 1200
+is exists "value=\"0\""
+# Partial drag, release, then grab it again where it stopped and drag past the left end.
+gesture pan 51 437 100 0 400
+wait 1200
+gesture pan 145 437 -120 0 400
+wait 1500
+is exists "value=\"0\""
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

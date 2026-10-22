@@ -1,0 +1,48 @@
+# Floating Bottom Bar — 5-tab react-navigation bar with a Skia "shader light" that springs under the active tab.
+# What this test covers: every tab in order and in reverse; long jumps
+# (first<->last) so the spring overshoots across several tabs; rapid taps on
+# different tabs to retarget the spring mid-flight; re-tapping the active tab.
+# Tabs are unlabeled icons, so they are tapped by position (centres at
+# x 63/132/201/270/338, y 807).
+context platform=ios
+open "demos://animations/floating-bottom-bar"
+wait "label=\"Close\"" 10000
+wait 1000
+press 132 807
+wait 600
+press 201 807
+wait 600
+press 270 807
+wait 600
+press 338 807
+wait 600
+press 270 807
+wait 600
+press 201 807
+wait 600
+press 132 807
+wait 600
+press 63 807
+wait 600
+# Long jumps.
+press 338 807
+wait 800
+press 63 807
+wait 800
+# Retarget the spring mid-flight.
+press 338 807
+wait 80
+press 132 807
+wait 80
+press 270 807
+wait 80
+press 63 807
+wait 80
+press 201 807
+wait 1000
+# Re-tap the active tab several times.
+press 201 807 --count 4
+wait 800
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

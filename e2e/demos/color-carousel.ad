@@ -1,0 +1,53 @@
+# Color Carousel — 20 colored cards in a horizontal snapping ScrollView with a
+# 3D coverflow (scale/rotateY/zIndex per item from the scroll offset) and a Skia
+# radial gradient that animates (withTiming) to the active card's accent color.
+# What this test covers: single-step drags left and right (snapToOffsets), a slow
+# drag released between snap points, hard flings to both ends including
+# overscroll past the null padding items (activeIndex outside the colors ->
+# background fallback), a fling reversed mid-momentum, and stepping back.
+context platform=ios
+open "demos://animations/color-carousel"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait 1500
+# One card to the left (next), then one back.
+gesture pan 330 437 -80 0 400
+wait 1000
+gesture pan 330 437 -80 0 400
+wait 1000
+gesture pan 70 437 80 0 400
+wait 1000
+# Slow drag that ends between two snap offsets.
+gesture pan 300 437 -120 0 1200
+wait 1200
+# Fling hard to the end and overscroll beyond the last color.
+gesture fling left 340 437 280
+wait 400
+gesture fling left 340 437 280
+wait 400
+gesture fling left 340 437 280
+wait 1500
+gesture pan 300 437 -250 0 300
+wait 1500
+# Fling back, then reverse direction while momentum is still running.
+gesture fling right 60 437 280
+wait 150
+gesture fling left 340 437 200
+wait 1500
+# Back to the very start and overscroll past the first color.
+gesture fling right 60 437 280
+wait 400
+gesture fling right 60 437 280
+wait 400
+gesture fling right 60 437 280
+wait 400
+gesture fling right 60 437 280
+wait 1500
+gesture pan 100 437 250 0 300
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

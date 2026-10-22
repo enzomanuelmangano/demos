@@ -1,0 +1,84 @@
+# iOS Home Bouncy — an iOS home grid whose icons replay an "app open" bounce
+# (withSequence of springs on a module-level makeMutable progress) on tap; a long
+# press opens a blurred modal "spring customizer" with Opening/Closing tabs
+# (Keyframe enter/exit) and Mass/Damping/Stiffness sliders writing the configs;
+# pulling the modal down dismisses it (and replays the bounce past 120pt).
+# What this test covers: replaying the bounce, re-tapping mid-sequence; long
+# press -> modal; Opening sliders driven to the extremes (mass 100, damping 1,
+# stiffness 500) and the bounce played with that config; Closing tab sliders
+# to damping 200 / stiffness 1 and played again; switching tabs back and
+# forth quickly (keyframes interrupted); a short pull that snaps back and a
+# long pull that dismisses; finally every slider dragged back near its default
+# (the configs are module-level and survive closing the demo).
+# Slider thumbs are dragged by position (rows y 269/375/479, track x 61-317);
+# restore drags add ~15pt for the pan activation slop.
+context platform=ios
+open "demos://animations/ios-home-bouncy"
+wait "label=\"Close\"" 10000
+wait 3000
+press 201 450
+wait 600
+press 201 450
+wait 3500
+# Customizer: Opening extremes.
+longpress 201 450 800
+wait "text" "Stiffness" 4000
+wait 800
+gesture pan 112 269 260 0 700
+wait 300
+gesture pan 162 375 -150 0 700
+wait 300
+gesture pan 153 479 230 0 700
+wait 500
+wait "text" "100.0" 2000
+wait "text" "500.0" 2000
+# Short pull: snaps back.
+gesture pan 201 600 0 50 500
+wait 900
+# Tabs back and forth quickly.
+press "label=\"Closing\""
+wait 150
+press "label=\"Opening\""
+wait 150
+press "label=\"Closing\""
+wait 900
+# Closing extremes.
+gesture pan 83 375 290 0 700
+wait 300
+gesture pan 112 479 -100 0 700
+wait 500
+wait "text" "200.0" 2000
+# Long pull: replays the bounce and dismisses.
+gesture pan 201 600 0 200 500
+wait 1500
+press 201 450
+wait 6000
+press 201 450
+wait 300
+press 201 450
+wait 6000
+# Restore everything near the defaults.
+longpress 201 450 800
+wait "text" "Stiffness" 4000
+wait 800
+gesture pan 317 269 -220 0 900
+wait 300
+gesture pan 61 375 113 0 900
+wait 300
+gesture pan 317 479 -180 0 900
+wait 300
+press "label=\"Closing\""
+wait 900
+gesture pan 317 375 -249 0 900
+wait 300
+gesture pan 61 479 63 0 900
+wait 300
+press "label=\"Opening\""
+wait 900
+gesture pan 201 600 0 200 500
+wait 1500
+press 201 450
+wait 3500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

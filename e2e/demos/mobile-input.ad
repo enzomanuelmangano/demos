@@ -1,0 +1,30 @@
+# Mobile Input — PIN lock screen (correct PIN 11111).
+# A wrong 5-digit PIN shakes the dots and the face turns sad; the keypad then
+# ignores digits until backspace clears the PIN. The right PIN makes it happy.
+# expect-log: { wrongPin: '12345' }
+# expect-log: onClear
+# expect-log: onCompleted
+context platform=ios
+open "demos://animations/mobile-input"
+wait "text" "Enter PIN Mode" 10000
+press "label=\"1\""
+press "label=\"2\""
+press "label=\"3\""
+press "label=\"4\""
+press "label=\"5\""
+wait 1200
+# A sixth digit after a wrong PIN must be ignored (still 5 dots, no crash).
+press "label=\"9\""
+wait 400
+# Backspace has no accessibility label: tap it by position.
+press 330 765
+wait 800
+press "label=\"1\""
+press "label=\"1\""
+press "label=\"1\""
+press "label=\"1\""
+press "label=\"1\""
+wait 1500
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

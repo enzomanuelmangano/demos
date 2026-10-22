@@ -1,0 +1,39 @@
+# Steddy Graph Interaction — a Light/Standard/Pro segmented control; switching springs
+# the selection pill and morphs a 27-point Skia score graph (withSpring on an array).
+# What this test covers: every segment in both directions, first<->last jumps,
+# re-tapping the selected segment, and very fast switching so the array spring
+# and the pill spring are retargeted mid-flight several times.
+context platform=ios
+open "demos://animations/steddy-graph-interaction"
+wait "text" "Standard" 10000
+press "text=\"Light\""
+wait 900
+press "text=\"Pro\""
+wait 900
+press "text=\"Standard\""
+wait 900
+press "text=\"Pro\""
+wait 900
+press "text=\"Light\""
+wait 900
+# Re-tap the selected segment.
+press "text=\"Light\""
+wait 500
+# Fast switching mid-spring.
+press "text=\"Pro\""
+wait 80
+press "text=\"Light\""
+wait 80
+press "text=\"Standard\""
+wait 80
+press "text=\"Pro\""
+wait 80
+press "text=\"Light\""
+wait 80
+press "text=\"Pro\""
+wait 1500
+press "text=\"Standard\""
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

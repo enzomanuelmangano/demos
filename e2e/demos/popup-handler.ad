@@ -1,0 +1,72 @@
+# Popup Handler — a draggable white dot; tapping it measures it on the UI thread and
+# opens a blurred popup menu (Top Left / Top Right / Bottom Left / Bottom Right)
+# anchored above/below and left/right of it; picking an option springs the dot
+# to that corner 800ms later.
+# What this test covers: open and dismiss by tapping the blurred backdrop;
+# every option, visiting all four corners so the menu is laid out in all four
+# alignments; dragging the dot to the middle and opening the menu there;
+# tapping the dot again during the 800ms delay; dragging the dot while its
+# corner spring is running; double-tapping the dot.
+# Menu rows are 54pt tall and their labels end with an icon glyph, so they are
+# pressed by position. The top-right dot is tapped at its lower-left (312,176)
+# because the floating dev-tools gear above it swallows taps near (338,150).
+context platform=ios
+open "demos://animations/popup-handler"
+wait "label=\"Close\"" 10000
+wait 2500
+# Open at top-left, dismiss on the backdrop.
+press 64 150
+wait "text" "Top Left" 3000
+wait 700
+press 220 650
+wait 900
+# Top-left -> Bottom Right (menu below-left of the dot).
+press 64 150
+wait 800
+press 108 376
+wait 2500
+# Bottom-right -> Bottom Left (menu above-right).
+press 338 778
+wait 800
+press 262 660
+wait 2500
+# Bottom-left -> Top Right (menu above-left).
+press 64 778
+wait 800
+press 108 606
+wait 2500
+# Top-right -> Top Left (menu below-right).
+press 312 176
+wait 800
+press 262 214
+wait 2500
+# Drag the dot to the middle, open the menu there, dismiss.
+gesture pan 64 150 136 300 700
+wait 600
+press 200 450
+wait 800
+press 60 300
+wait 900
+# Pick Bottom Right, then grab the dot during the 800ms delay.
+press 200 450
+wait 800
+press 168 568
+wait 300
+press 200 450
+wait 800
+press 60 300
+wait 1500
+# Dot is at bottom-right: pick Top Left and drag it while it springs.
+press 338 778
+wait 800
+press 262 552
+wait 950
+gesture pan 300 500 -100 100 400
+wait 1500
+press 64 150 --count 2
+wait 1200
+press 220 650
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

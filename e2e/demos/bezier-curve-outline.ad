@@ -1,0 +1,74 @@
+# Bezier Curve Outline — a chessboard square that, when tapped, springs along
+# a cubic Bezier path (sampled per point on the UI thread via
+# ContourMeasureIter) while growing 64 -> 180; "Outline Mode" (hold blurs the
+# screen, release cross-fades) reveals the path with 4 draggable control
+# points, and the square follows the edited curve.
+# What this test covers: run the square to the end and back; reverse it
+# mid-flight; enter outline mode and drag every control point (incl. to the
+# screen edges and onto each other, collapsing the curve), leave outline
+# mode and run the square along the edited path; a held Outline Mode press
+# (blur in/out); rapid outline toggles; and a run interrupted by a toggle.
+# Initial points: start (140,674), c1 (302,574), c2 (302,300), end (200,200).
+context platform=ios
+open "demos://animations/bezier-curve-outline"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "label=\"Outline Mode\"" 30000
+wait 1000
+# Square: start -> end, end -> start.
+press 140 674
+wait 2200
+press 200 200
+wait 2200
+# Reverse mid-flight.
+press 140 674
+wait 600
+press 220 450
+wait 2200
+# Outline mode: drag the control points.
+press "label=\"Outline Mode\""
+wait 1200
+gesture pan 302 574 -150 50 800
+wait 400
+gesture pan 302 300 -250 100 800
+wait 400
+gesture pan 200 200 150 -60 800
+wait 400
+gesture pan 140 674 200 100 800
+wait 400
+# Collapse: drag c1 onto the start point.
+gesture pan 152 624 188 150 800
+wait 400
+# Back to the square and run it along the edited curve.
+press "label=\"Outline Mode\""
+wait 1500
+press 340 774
+wait 2200
+press 350 140
+wait 2200
+# Outline again, restore a sensible curve.
+press "label=\"Outline Mode\""
+wait 1200
+gesture pan 340 774 -200 -100 800
+wait 400
+gesture pan 340 774 -40 -200 800
+wait 400
+press "label=\"Outline Mode\""
+wait 1500
+# Held press: blur in, release toggles.
+longpress 201 817 1200
+wait 1200
+longpress 201 817 1200
+wait 1200
+# Run the square and toggle mid-flight.
+press 140 674
+wait 400
+press "label=\"Outline Mode\""
+wait 300
+press "label=\"Outline Mode\""
+wait 300
+press "label=\"Outline Mode\""
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

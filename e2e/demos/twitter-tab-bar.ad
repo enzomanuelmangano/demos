@@ -1,0 +1,66 @@
+# Twitter Tab Bar — a Twitter-like bottom tab bar (Home/Search/Notifications/Message) that slides away while the Home feed scrolls down and returns on scroll up; the floating compose button spins into a "message" icon on the Message tab.
+# What this test covers: scrolling the feed down (bar + FAB hide) and up (they return), the FAB on Home (logs
+# 'message') and on Message (spun to the message icon, logs 'default'), every tab, switching tabs while the
+# 500 ms FAB spin is mid-flight, a long press on the FAB (highlight spring), scrolling to the end of the feed
+# and partway back up.
+# expect-log: { item: 'message' }
+# expect-log: { item: 'default' }
+context platform=ios
+open "demos://animations/twitter-tab-bar"
+wait "label=\"Close\"" 40000
+wait 800
+# FAB on Home: edit icon, selects 'message'.
+press 354 730
+wait 700
+# Scroll the feed down: bar and FAB hide.
+swipe 200 650 200 250
+wait 1200
+# Scroll up a little (slow, no fling, never reaching the top: a downward drag on a feed already at its top
+# dismisses the whole demo): they come back.
+gesture pan 200 300 0 150 600
+wait 1000
+# Every tab; on Message the FAB spins to the message icon.
+press 150 818
+wait 600
+press 251 818
+wait 600
+press 352 818
+wait 900
+press 354 730
+wait 700
+# Switch tabs while the 500 ms spin is mid-flight, back and forth.
+press 75 835
+wait 150
+press 352 818
+wait 150
+press 150 818
+wait 150
+press 352 818
+wait 900
+# Long press on the FAB: highlight spring, then 'default' on release.
+longpress 354 730 1200
+wait 800
+# Back to Home, scroll to the end and back to the top.
+press 75 835
+wait 800
+swipe 200 740 200 160
+wait 300
+swipe 200 740 200 160
+wait 300
+swipe 200 740 200 160
+wait 300
+swipe 200 740 200 160
+wait 1500
+gesture pan 200 300 0 400 600
+wait 400
+gesture pan 200 300 0 400 600
+wait 1500
+# Rapid tab burst.
+press 150 818
+press 251 818
+press 352 818
+press 75 835
+wait 1200
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

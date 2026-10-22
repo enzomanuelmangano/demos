@@ -1,0 +1,46 @@
+# Verification Code Face — 4 code boxes fed by an invisible number-pad input
+# (correct code 1111) with an animated face above: its eyes/head turn (3D
+# rotateY + translateX) as the code fills, the mouth/eyes paths morph to a sad
+# face on a wrong code (with shake) and a happy one on the right code; resets
+# after 1s.
+# What this test covers: progressive entry (face turns per digit), backspace
+# (face turns back), a wrong code (sad + shake), extra digits while the wrong
+# state shows, the correct code (happy), tapping the boxes to refocus, and a
+# second correct entry typed digit by digit.
+context platform=ios
+open "demos://animations/verification-code-face"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "label=\"Delete\"" 10000
+wait 800
+type "12"
+wait 800
+press "label=\"Delete\""
+wait 300
+press "label=\"Delete\""
+wait 800
+type "1234"
+type "9"
+wait 2000
+type "1111"
+wait 2000
+press 201 420
+wait 500
+type "1"
+wait 300
+type "1"
+wait 300
+type "1"
+wait 300
+press "label=\"Delete\""
+wait 500
+type "1"
+wait 300
+type "1"
+wait 2000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

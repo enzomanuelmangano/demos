@@ -1,0 +1,50 @@
+# Threads Holo Ticket — a 300x400 event ticket with a holographic Skia sheen (driven by Y rotation and the device rotation sensor); tap flips it 180° with a spring, horizontal drags spin it freely and release into a clamped decay.
+# What this test covers: tap-to-flip front→back (QR) and back, flipping again mid-spring, a slow drag through the
+# 90° edge (front/back swap), fast flings both ways (withDecay clamped to ±1080), tapping to stop a decay mid-spin
+# (cancelAnimation + snap to the nearest side), drags starting in the 50 pt hit slop outside the ticket, a vertical
+# drag (no rotation), and a rapid tap burst.
+context platform=ios
+open "demos://animations/threads-holo-ticket"
+wait "label=\"Close\"" 40000
+wait "text" "TUE 14 JAN" 10000
+wait 800
+# Flip to the back, and back to the front.
+press 201 437
+wait 900
+press 201 437
+wait 900
+# Flip and flip again mid-spring.
+press 201 437
+wait 200
+press 201 437
+wait 1000
+# Slow drag past the 90° edge.
+gesture pan 120 437 160 0 900
+wait 600
+gesture pan 280 437 -160 0 900
+wait 600
+# Fast flings both ways; tap to catch the decay mid-spin.
+gesture pan 100 500 250 0 120
+wait 400
+press 201 437
+wait 1000
+gesture pan 330 500 -280 0 120
+wait 1800
+gesture pan 100 500 260 0 100
+wait 300
+press 201 437
+wait 1200
+# Drags starting in the hit slop just outside the ticket.
+gesture pan 201 210 120 0 500
+wait 600
+gesture pan 370 560 -150 0 500
+wait 600
+# Vertical drag on the ticket: no horizontal translation.
+gesture pan 250 380 0 120 500
+wait 800
+# Rapid tap burst.
+press 201 437 --count 5 --interval-ms 120
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

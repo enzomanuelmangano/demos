@@ -1,0 +1,34 @@
+# Composable Text — a pill button whose label morphs "Use Max" <-> "Using Max"
+# per character: new letters spring in (custom entering: opacity + scale),
+# removed ones fade out, the rest slide with springified LinearTransitions,
+# the pill resizes with its own layout spring and the colour times 1 <-> 0.5.
+# What this test covers: toggling to "Using Max" and back with full settles;
+# toggling again before the layout springs settle (entering/exiting
+# letters interrupted); a burst of rapid taps so characters enter and exit
+# while previous layout animations are still running; ending on "Use Max".
+context platform=ios
+open "demos://animations/composable-text"
+wait "label=\"U s e   M a x\"" 10000
+wait 1500
+press "label=\"U s e   M a x\""
+wait "label=\"U s i n g   M a x\"" 3000
+wait 1000
+press "label=\"U s i n g   M a x\""
+wait "label=\"U s e   M a x\"" 3000
+wait 1000
+# Toggle before the springs settle.
+press 201 437
+wait 150
+press 201 437
+wait 150
+press 201 437
+wait 1500
+press 201 437
+wait 1500
+# Rapid burst (even count ends where it started).
+press 201 437 --count 8 --interval-ms 70
+wait 2000
+wait "label=\"U s e   M a x\"" 3000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

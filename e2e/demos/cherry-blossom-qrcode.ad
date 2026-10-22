@@ -1,0 +1,49 @@
+# Cherry Blossom QR — a WebGPU voxel cherry tree growing out of a QR code built from the text field (keyboard stays up); tap flattens/restores the tree for scanning, long press spawns a creeper that walks in, fuses, blows the tree apart and the tree rebuilds.
+# What this test covers: the hint text, tap to flatten and back, toggling flat mid-transition, a long press creeper
+# run through walk/fuse/blast/rebuild (~10 s), a second long press during the sequence (ignored), a long press
+# right after the rebuild, editing the QR content (new URL rebuilds the blocks, clearing it falls back to the
+# default content), and flattening with the new content.
+context platform=ios
+open "demos://animations/cherry-blossom-qrcode"
+wait "label=\"Close\"" 40000
+wait "text" "Long press to spawn a creeper" 10000
+wait 1500
+# Flatten and restore.
+press 201 230
+wait 1500
+press 201 230
+wait 1500
+# Toggle twice mid-transition.
+press 201 230
+wait 200
+press 201 230
+wait 1500
+# Creeper: walk 3.2 s, fuse 1.8 s, blast, rebuild 1.7 s.
+longpress 201 230 700
+wait 2000
+# A second long press while one is on its way is ignored.
+longpress 201 230 700
+wait 9000
+# Another run right after the rebuild, with a flatten tap during the walk.
+longpress 201 230 700
+wait 1000
+press 201 230
+wait 9000
+press 201 230
+wait 1500
+# Edit the QR content: a new URL regenerates every block.
+fill 201 534 "https://reactiive.io/demos/cherry"
+wait 2000
+# Empty content falls back to the default QR.
+fill 201 534 ""
+wait 2000
+fill 201 534 "hi"
+wait 2000
+# Flatten with the new content and back.
+press 201 230
+wait 1500
+press 201 230
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

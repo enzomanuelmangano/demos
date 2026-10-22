@@ -1,0 +1,79 @@
+# Draggable Panel — a floating "Spring Animations" panel that can be dragged
+# anywhere and, on release, springs (with the release velocity projected) to
+# the nearest of four corners; the spring used is picked in the panel
+# (Elegant / Springy / Super, colours interpolated), and the X collapses it to
+# a 64pt round button (layout transition, FadeIn/FadeOut) that is draggable
+# too and expands back on tap.
+# What this test covers: every spring type, drags to all four corners with
+# each spring, a short drag that snaps back to the same corner, a fast fling
+# across the screen (velocity projection), collapsing in a corner and
+# re-snapping to the collapsed size, dragging the collapsed button around and
+# expanding it, re-grabbing the panel mid-spring, and rapid option taps.
+# Expanded 280x150 corners: TL(30,80) TR(92,80) BL(30,624) BR(92,624);
+# inside: Elegant +58,+94, Springy +139,+94, Super +221,+94, X +244,+35.
+context platform=ios
+open "demos://animations/draggable-panel"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Spring Animations" 30000
+wait 1000
+# Springy, then drag BR -> TR.
+press 231 718
+wait 500
+gesture pan 200 660 0 -500 600
+wait 1500
+# Super (panel at TR), then drag TR -> BL.
+press 313 174
+wait 500
+gesture pan 200 115 -150 520 600
+wait 2000
+# Short drag: back to BL.
+gesture pan 120 660 40 -60 500
+wait 1500
+# Fast fling up-right with Super spring (velocity projected).
+gesture pan 120 660 120 -150 120
+wait 2000
+# Elegant, then back to BR.
+press 150 174
+wait 500
+gesture pan 200 115 0 520 600
+wait 1500
+# Re-grab mid-spring.
+gesture pan 200 660 -150 0 300
+wait 150
+gesture pan 120 660 120 0 300
+wait 1500
+# Wherever that landed (BL or BR), push it to BR.
+gesture pan 150 660 250 0 600
+wait 1500
+# Rapid option taps (panel at BR).
+press 231 718
+wait 80
+press 313 718
+wait 80
+press 150 718
+wait 80
+press 231 718
+wait 800
+# Collapse with X: the 64pt button snaps to the nearest corner for its new
+# size, which is bottom-left (centre 62,742).
+press 336 659
+wait 1500
+# Drag the collapsed button to BR, half-way up and back down (snaps BR), then
+# back to BL, and tap it to expand. (Top corners sit under the demo's Close
+# button / the debug gear, so they are avoided.)
+gesture pan 62 742 278 0 600
+wait 1500
+gesture pan 340 742 0 -200 600
+wait 1500
+gesture pan 340 742 -278 0 600
+wait 1500
+press 62 742
+wait 1500
+wait "text" "Spring Animations" 8000
+# Back to the bottom-right corner, clear of the demo's top buttons.
+gesture pan 200 660 150 0 600
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

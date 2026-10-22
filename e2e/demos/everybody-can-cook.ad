@@ -1,0 +1,34 @@
+# Everybody Can Cook — "Everybody / can cook." where every letter flips in 3D
+# (two stacked Animated.Texts, rotateX/translateY/opacity) with a staggered
+# withDelay+withSpring; tapping anywhere resets and replays the stagger.
+# What this test covers: the first play, a replay after the animation has
+# settled, taps in different spots of the full-screen pressable, a tap in the
+# middle of the stagger (reset to 0 while delayed springs are pending), and
+# a burst of rapid taps that repeatedly reset/restart all 18 letter springs.
+context platform=ios
+open "demos://animations/everybody-can-cook"
+wait "text" "E" 10000
+wait 1500
+press 201 437
+wait 1800
+press 201 437
+wait 1800
+press 100 250
+wait 1800
+press 300 700
+wait 1800
+# Interrupt mid-stagger.
+press 201 437
+wait 200
+press 201 437
+wait 1800
+# Rapid replay burst.
+press 201 437 --count 8 --interval-ms 60
+wait 2000
+press 201 437
+wait 300
+press 201 437
+wait 2000
+wait "label=\"Close\"" 5000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

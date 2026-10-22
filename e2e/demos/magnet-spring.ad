@@ -1,0 +1,49 @@
+# Magnet Spring — a dark "cheese" puck you drag around 8 fixed aluminium magnets laid on a golden-angle spiral; on release it springs (with the release velocity) to the nearest magnet, and each magnet swells as the puck approaches.
+# What this test covers: dragging from the centre magnet to each spiral magnet in turn and releasing slightly off
+# (nearest-magnet snapping), releasing half-way between two magnets, fast flings whose velocity overshoots the
+# spring, grabbing the puck mid-spring (context taken from the in-flight position), dragging it to the screen
+# edge, and bringing it back to the centre. Downward drags only ever start on a known puck position (a drag down
+# on empty screen would close the demo).
+context platform=ios
+open "demos://animations/magnet-spring"
+wait "label=\"Close\"" 40000
+wait 1000
+# Centre (201,437) → magnet (97,342), released a bit off.
+gesture pan 201 437 -95 -85 700
+wait 1000
+# → magnet (50,485).
+gesture pan 97 342 -40 135 700
+wait 1000
+# → magnet (218,635).
+gesture pan 50 485 160 140 700
+wait 1000
+# → magnet (352,605).
+gesture pan 218 635 125 -20 700
+wait 1000
+# → magnet (349,243).
+gesture pan 352 605 -10 -350 900
+wait 1000
+# → top magnet (111,104), dragged upward.
+gesture pan 349 243 -230 -130 900
+wait 1000
+# Back to the centre.
+gesture pan 111 104 85 330 900
+wait 1200
+# Release between the centre and (97,342), a bit closer to the latter: snaps there.
+gesture pan 201 437 -61 -52 700
+wait 1200
+# Fast fling up-right: released near (247,282), nearest is (349,243); the velocity overshoots the spring.
+gesture pan 97 342 150 -60 120
+wait 1500
+# Drag to the right screen edge and release: snaps back to (349,243).
+gesture pan 349 243 45 30 600
+wait 1500
+# Fling it left, then try to grab it while it is still springing and drag it horizontally (a miss is harmless:
+# only horizontal/upward drags are used once the puck position is no longer certain).
+gesture pan 349 243 -150 0 100
+wait 250
+gesture pan 230 300 -80 0 400
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

@@ -1,0 +1,40 @@
+# Bottom Bar Skia — 3-tab gooey Skia tab bar; a purple circle springs to the tapped tab
+# and the metaball notch follows (Blur + ColorMatrix layer), icons spring up/recolor.
+# What this test covers: each tab via the Skia-gesture Touchable.Rect hit areas
+# (x 67/201/335, y 830), first<->last long jumps, mid-flight retargeting of the
+# spring with fast alternating taps, rapid repeated taps on one tab, re-tap of
+# the active tab.
+context platform=ios
+open "demos://animations/bottom-bar-skia"
+wait "label=\"Close\"" 10000
+wait 1000
+press 201 830
+wait 900
+press 335 830
+wait 900
+press 201 830
+wait 900
+press 67 830
+wait 900
+# Long jumps across the whole bar.
+press 335 830
+wait 1000
+press 67 830
+wait 1000
+# Retarget the circle mid-spring.
+press 335 830
+wait 100
+press 67 830
+wait 100
+press 201 830
+wait 100
+press 335 830
+wait 1200
+# Rapid taps on one tab and re-tapping the active tab.
+press 67 830 --count 5
+wait 1000
+press 67 830
+wait 800
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

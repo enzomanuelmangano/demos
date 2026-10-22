@@ -1,0 +1,64 @@
+# Circular Carousel — a paged horizontal FlatList of 9 round photos laid on an
+# arc (translateY/opacity interpolated from the scroll offset); the SCALE switch
+# springs every item's scale output range (withSpring on an array) so the
+# centred photo grows and the sides shrink.
+# What this test covers: page-by-page drags through all 9 items to the end and
+# back, toggling Scale on mid-carousel (array spring while offset-driven
+# interpolation runs), scrolling while the spring is in flight, fast flings to
+# both ends (clamped extrapolation past the last item), toggling Scale off and
+# on rapidly, and a final scroll with Scale off.
+context platform=ios
+open "demos://animations/circular-carousel"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "SCALE" 30000
+wait "role=\"switch\" value=\"0\"" 8000
+wait 1500
+# Page through, one item at a time (LIST_ITEM_WIDTH ~100pt).
+gesture pan 300 700 -110 0 500
+wait 700
+gesture pan 300 700 -110 0 500
+wait 700
+gesture pan 300 700 -110 0 500
+wait 700
+# Scale on: springs the output ranges.
+press "role=\"switch\""
+wait 200
+wait "role=\"switch\" value=\"1\"" 8000
+# Scroll while the scale spring is still in flight.
+gesture pan 300 700 -110 0 400
+wait 800
+gesture pan 300 700 -110 0 500
+wait 700
+gesture pan 300 700 -110 0 500
+wait 700
+# Fling to the end and past it.
+swipe 350 700 30 700
+wait 600
+swipe 350 700 30 700
+wait 1200
+# Back to the start in one fling, then a couple of single pages.
+swipe 30 700 380 700
+wait 600
+swipe 30 700 380 700
+wait 1200
+gesture pan 300 700 -110 0 500
+wait 700
+# Rapid toggles: off/on/off/on with reversing springs.
+press "role=\"switch\""
+wait 150
+press "role=\"switch\""
+wait 150
+press "role=\"switch\""
+wait 1200
+wait "role=\"switch\" value=\"0\"" 8000
+gesture pan 300 700 -220 0 600
+wait 900
+gesture pan 100 700 220 0 600
+wait 900
+press "role=\"switch\""
+wait 1200
+wait "role=\"switch\" value=\"1\"" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

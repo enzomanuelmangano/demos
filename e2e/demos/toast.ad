@@ -1,0 +1,73 @@
+# Toast — a toast manager: each tap on TOAST! pushes the next scripted toast
+# (then "You can spam me!" ones) onto a stack at the bottom; older toasts scale
+# down behind the active one, the active one can be swiped left to dismiss
+# (> 50pt), and the "lazy" one auto-dismisses after 2.5 s.
+# What this test covers: stacking three toasts, swipe-dismissing the active one
+# (stack re-springs and re-indexes), a short swipe that snaps back, a rightward
+# swipe (ignored), the subtitle toast, the auto-dismissing toast disappearing
+# by itself, spam toasts (kept under the provider's 6-toast cap, which would
+# console.warn), and swiping the whole stack away.
+# Note: some taps push a toast that never shows (the first tap after mounting
+# never shows "I am a simple toast"; see the QA report), so assertions only
+# rely on toasts that show either way.
+context platform=ios
+open "demos://animations/toast"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "label=\"TOAST!\"" 30000
+wait 1000
+# The button is a pressto PressableScale: tap by position.
+press 201 427
+wait 700
+press 201 427
+wait 700
+press 201 427
+wait 1000
+wait "text" "You can swipe me" 8000
+# Swipe the active toast away (left, past 50pt). The first swipe on a fresh
+# stack is currently swallowed (see QA report), so swipe twice; the second one
+# may also take "Well, not so simple" with it.
+gesture pan 320 789 -250 0 400
+wait 1200
+gesture pan 320 789 -250 0 400
+wait 1200
+wait absent "label=\"You can swipe me\"" 8000
+# Short swipe: snaps back. Rightward swipe: ignored.
+gesture pan 300 789 -30 0 400
+wait 800
+gesture pan 150 789 120 0 400
+wait 800
+# Subtitle toast, then the auto-dismissing one (which of them shows depends on
+# the skipped-toast bug in the QA report, so no assertion on their text here),
+# each swiped or timed away to keep the stack under the provider's cap.
+press 201 427
+wait 1000
+gesture pan 320 789 -250 0 400
+wait 1000
+press 201 427
+wait 3500
+# Spam toasts: by now the scripted list is used up.
+press 201 427
+wait 300
+press 201 427
+wait 1000
+wait "text" "You can spam me!" 8000
+# Swipe the whole stack away, one toast at a time.
+gesture pan 320 789 -250 0 400
+wait 900
+gesture pan 320 789 -250 0 400
+wait 900
+gesture pan 320 789 -250 0 400
+wait 900
+gesture pan 320 789 -250 0 400
+wait 900
+gesture pan 320 789 -250 0 400
+wait 1200
+wait absent "label=\"You can spam me!\"" 8000
+# One more after the stack is empty: springs in from below again.
+press 201 427
+wait 1200
+wait "text" "You can spam me!" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

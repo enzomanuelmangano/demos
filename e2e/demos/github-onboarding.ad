@@ -1,0 +1,71 @@
+# GitHub Onboarding — 4 paged cat cards over a Skia gradient whose colours are
+# interpolated from the scroll progress; each badge rotates in Y and scales,
+# the title fades, and 4 pagination dots (tappable) track the page.
+# What this test covers: swiping page by page to the last card and back, an
+# overscroll swipe past both ends, tapping each dot (animated scrollToOffset),
+# jumping first<->last via dots, a dot tap interrupted by a swipe mid-scroll,
+# rapid dot taps, and a half-swipe released before the paging threshold.
+context platform=ios
+open "demos://animations/github-onboarding"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "LAZY DAY LOUNGER" 30000
+wait 1000
+# Page by page forward.
+swipe 330 450 60 450
+wait 900
+wait "text" "WHISKERED EXPLORER" 8000
+swipe 330 450 60 450
+wait 900
+wait "text" "CURIOUS KITTY GAZE" 8000
+swipe 330 450 60 450
+wait 900
+wait "text" "SLEEK FELINE IN REPOSE" 8000
+# Overscroll past the last page.
+swipe 330 450 60 450
+wait 900
+# Back to the first page.
+swipe 60 450 340 450
+wait 700
+swipe 60 450 340 450
+wait 700
+swipe 60 450 340 450
+wait 900
+wait "text" "LAZY DAY LOUNGER" 8000
+# Overscroll past the first page.
+swipe 60 450 340 450
+wait 900
+# Half swipe released early: should snap back to the same page.
+gesture pan 250 450 -80 0 800
+wait 900
+wait "text" "LAZY DAY LOUNGER" 8000
+# Dots (unlabeled, bottom: x 175/192/209/226, y 770).
+press 192 770
+wait 1000
+wait "text" "WHISKERED EXPLORER" 8000
+press 209 770
+wait 1000
+wait "text" "CURIOUS KITTY GAZE" 8000
+press 175 770
+wait 1000
+press 226 770
+wait 1200
+wait "text" "SLEEK FELINE IN REPOSE" 8000
+# Dot jump interrupted by a swipe.
+press 175 770
+wait 120
+swipe 330 450 60 450
+wait 1200
+# Rapid dot taps.
+press 192 770
+wait 80
+press 226 770
+wait 80
+press 175 770
+wait 80
+press 209 770
+wait 1500
+wait "text" "CURIOUS KITTY GAZE" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

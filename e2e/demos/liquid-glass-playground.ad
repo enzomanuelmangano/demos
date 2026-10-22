@@ -1,0 +1,42 @@
+# Liquid Glass Playground — a full-screen glass (liquid glass / blur) sheet over
+# a photo; dragging vertically moves it with 0.5 friction while progressive
+# haptics fire from a worklet (stronger with distance, de-duplicated at max),
+# and on release it springs back.
+# What this test covers: short and long drags up and down (light -> heavy
+# haptics, max-intensity latch and its reset), a drag that goes past max and
+# comes back within the same touch, a quick flick, a sideways drag (fails at
+# +10pt X), re-grabbing while the return spring is running, and taps.
+context platform=ios
+open "demos://animations/liquid-glass-playground"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1500
+gesture pan 200 450 0 -60 500
+wait 1000
+gesture pan 200 600 0 -400 1200
+wait 1200
+gesture pan 200 300 0 400 1200
+wait 1200
+# Past max and back within one touch (two-leg drag via a slow out-and-in).
+gesture pan 200 700 0 -560 1500
+wait 200
+gesture pan 200 200 0 560 1500
+wait 1200
+# Flick.
+gesture pan 200 600 0 -250 120
+wait 1200
+# Sideways: the pan fails, nothing moves.
+gesture pan 100 450 200 0 500
+wait 800
+# Re-grab during the return spring.
+gesture pan 200 600 0 -300 600
+wait 150
+gesture pan 200 450 0 150 600
+wait 1200
+press 200 450
+wait 300
+press 80 700
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

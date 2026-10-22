@@ -1,0 +1,51 @@
+# Snake — 10x10 wrapping snake game: a SnakeGame class moves on a 120ms
+# useFrameCallback tick, 4 simultaneous Fling gestures steer it, Skia draws the
+# snake/food, a 3-digit rolling score counts food, a blur + "Life goes on..."
+# button appear on game over (self collision only, walls wrap).
+# What this test covers: steering in all four directions with flings on the
+# board, a reverse fling (must be ignored by the 180-degree guard), long
+# straight runs so the snake wraps through every edge, bursts of quick
+# alternating flings (ping-pong swipes, retargeting direction many times per
+# second), diagonal swipes (two fling recognizers firing together), and
+# leaving the game running for a while (food/score updates if eaten).
+context platform=ios
+open "demos://animations/snake"
+wait "text" "Score" 10000
+wait 1500
+gesture fling up 201 520 120
+wait 900
+gesture fling left 260 470 120
+wait 900
+gesture fling down 201 420 120
+wait 900
+gesture fling right 140 470 120
+wait 900
+# Reverse of the current direction: ignored.
+gesture fling left 260 470 120
+wait 1500
+# Wrap through every edge.
+gesture fling up 201 520 120
+wait 1500
+gesture fling left 260 470 120
+wait 1500
+gesture fling down 201 420 120
+wait 1500
+# Bursts of alternating flings.
+swipe 150 470 260 470 --count 6 --pause-ms 50 --pattern ping-pong
+wait 800
+swipe 201 400 201 540 --count 6 --pause-ms 50 --pattern ping-pong
+wait 800
+# Diagonals.
+swipe 150 550 260 420
+wait 600
+swipe 260 420 150 550
+wait 600
+swipe 260 550 150 420
+wait 600
+gesture fling right 140 470 120
+wait 3000
+gesture fling down 201 420 120
+wait 2000
+wait "label=\"Close\"" 10000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

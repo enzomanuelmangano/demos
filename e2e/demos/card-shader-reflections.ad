@@ -1,0 +1,50 @@
+# Card Shader Reflections — a snapping horizontal carousel of four tilted payment cards (Metal, Silver, Gold, Platinum) each rendered by a heavy Skia runtime shader (brushed metal normals, environment reflection) whose rotate uniform follows the scroll; cards flip on Y and fade as they leave the centre.
+# What this test covers: paging one card at a time with slow drags through every card (centred title asserted),
+# overscrolling past both ends, a half drag that snaps back, fast flings across several cards (four shaders
+# animating at once), interrupting a fling with a new drag, and paging back to the first card.
+context platform=ios
+open "demos://animations/card-shader-reflections"
+wait "label=\"Close\"" 40000
+wait "text" "METAL" 10000
+wait 800
+# One card at a time.
+gesture pan 340 437 -295 0 900
+wait 1000
+wait "text" "SILVER" 6000
+gesture pan 340 437 -295 0 900
+wait 1000
+wait "text" "GOLD" 6000
+gesture pan 340 437 -295 0 900
+wait 1000
+wait "text" "PLATINUM" 6000
+# Overscroll past the last card.
+gesture pan 330 437 -200 0 600
+wait 1000
+wait "text" "PLATINUM" 6000
+# Half drag back: snaps back to Platinum.
+gesture pan 120 300 90 0 900
+wait 1000
+# Fast flings across the carousel and back, interrupting one.
+swipe 90 437 360 437
+wait 200
+gesture pan 140 300 120 0 400
+wait 1200
+swipe 360 437 60 437
+wait 1200
+swipe 60 437 360 437
+wait 400
+swipe 60 437 360 437
+wait 1500
+# Back to the start and overscroll it.
+gesture pan 110 300 260 0 600
+wait 300
+gesture pan 110 300 260 0 600
+wait 300
+gesture pan 110 300 260 0 600
+wait 300
+gesture pan 110 300 260 0 600
+wait 1200
+wait "text" "METAL" 3000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

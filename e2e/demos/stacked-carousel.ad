@@ -1,0 +1,96 @@
+# Stacked Carousel — 20 white cards in a 3D stack driven by an invisible snapping
+# horizontal FlatList: the front card scales up, lifts and fades out as the next
+# one tilts (rotateX) forward; a windowed 3-dot paginator springs along.
+# What this test covers: single-card swipes forwards and backwards, a short
+# drag that snaps back, flings through all 20 cards to the end (paginator
+# window shifting, far-card style short-circuits) and over-scrolling past the
+# last card, reversing mid-momentum, and flinging back past the first card.
+context platform=ios
+open "demos://animations/stacked-carousel"
+wait "label=\"Close\"" 10000
+wait 1500
+gesture pan 330 437 -200 0 500
+wait 900
+gesture pan 330 437 -200 0 500
+wait 900
+gesture pan 70 437 200 0 500
+wait 900
+# Short drag: snaps back.
+gesture pan 250 437 -60 0 600
+wait 900
+# Fling to the end.
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 500
+gesture fling left 340 437 250
+wait 1000
+gesture pan 350 437 -300 0 700
+wait 1200
+# Reverse mid-momentum.
+gesture fling right 60 437 250
+wait 120
+gesture fling left 340 437 250
+wait 1000
+# Back towards the start and past it.
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 400
+gesture pan 60 437 300 0 300
+wait 1200
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

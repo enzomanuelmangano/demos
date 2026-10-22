@@ -1,0 +1,34 @@
+# Online / Offline — two overlapping avatar stacks (4 online, 3 offline) in pill backgrounds; every tap anywhere moves a random avatar to the other group: it springs across (LinearTransition), its grayscale filter animates, and both pills resize (pills fade in/out when a group empties).
+# What this test covers: single taps with each transition fully settled, taps while the layout springs are still
+# running, a long burst that is likely to empty one group (the forced-direction branch, pill exiting/entering with
+# FadeOut/FadeIn), taps on and off the avatars (the whole screen is the pressable), and a long press.
+# Visual note: on a fresh open only the first online avatar is painted; the others stay blank until they move.
+context platform=ios
+open "demos://animations/online-offline"
+wait "label=\"Close\"" 40000
+wait 3000
+# Settled single moves.
+press 201 437
+wait 1200
+press 201 437
+wait 1200
+press 201 600
+wait 1200
+# Taps while the springs run.
+press 201 437
+wait 250
+press 201 437
+wait 250
+press 100 300
+wait 1500
+# Long burst: one of the groups is likely to empty and come back.
+press 201 650 --count 14 --interval-ms 120
+wait 2000
+press 201 650 --count 14 --interval-ms 300
+wait 2000
+# Long press still triggers onPress on release.
+longpress 300 437 900
+wait 1500
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

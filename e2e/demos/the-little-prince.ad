@@ -1,0 +1,41 @@
+# The Little Prince — text->image morph: a page of the rose/fox farewell set in Skia
+# glyphs (Atlas) flies together into the prince illustration; a corner FAB toggles
+# page <-> picture (spring progress + 240ms icon crossfade + Pulsar haptic
+# pattern), with a 400ms double-fire debounce.
+# What this test covers: toggling as soon as the FAB is available (sampling of
+# the image targets is deferred past first paint), full page->picture->page
+# morphs with settles, re-toggling mid-morph (spring reversed), taps inside
+# the 400ms debounce window (ignored), a burst of taps, taps on the page
+# itself (no effect).
+context platform=ios
+open "demos://animations/the-little-prince"
+wait "label=\"Switch between the text and the picture\"" 10000
+press "label=\"Switch between the text and the picture\""
+wait 2500
+press "label=\"Switch between the text and the picture\""
+wait 2500
+press "label=\"Switch between the text and the picture\""
+wait 2500
+press "label=\"Switch between the text and the picture\""
+wait 2500
+# Reverse mid-morph.
+press "label=\"Switch between the text and the picture\""
+wait 600
+press "label=\"Switch between the text and the picture\""
+wait 2500
+# Inside the debounce window: the second tap is ignored.
+press "label=\"Switch between the text and the picture\""
+wait 100
+press "label=\"Switch between the text and the picture\""
+wait 2500
+# Burst.
+press "label=\"Switch between the text and the picture\"" --count 6 --interval-ms 150
+wait 2500
+# Taps on the page.
+press 201 300
+wait 300
+press 120 600
+wait 800
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

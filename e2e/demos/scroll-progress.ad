@@ -1,0 +1,62 @@
+# Scroll Progress — article list with a bottom pill that shows reading time,
+# morphs into a live % progress bar while scrolling, and an up-arrow at the end.
+# What this test covers: initial "15 min" pill; partial scroll expands the bar
+# and shows a percentage; a tap
+# on the expanded bar is ignored; scrolling back mid-article; reaching the end shows the arrow, which
+# animates back to the top (reset path); interrupting the reset with a drag.
+context platform=ios
+open "demos://animations/scroll-progress"
+wait 2000
+wait "label=\"Close\"" 30000
+wait "text" "Introduction" 30000
+wait "text" "15 min" 8000
+# Partial scroll: pill expands to the % bar.
+gesture pan 200 600 0 -300 500
+wait 900
+wait "text" "%" 8000
+# Tap on the expanded bar: arrow handler bails out unless at END.
+press 200 789
+wait 400
+# Scroll back a bit (not past the top: a pull-down at the top is the
+# demo-close gesture). Still mid-article, so the bar stays expanded.
+gesture pan 200 300 0 150 600
+wait 900
+wait "text" "%" 8000
+# Fling to the end: progress clamps to 100% and the up-arrow appears.
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+wait 1500
+wait "text" "The Four Knights Game" 8000
+# Up-arrow has no accessibility label: tap by position. Scrolls back to top.
+press 201 789
+wait 1800
+wait "text" "Introduction" 8000
+wait "text" "15 min" 8000
+# Reset again, but interrupt the animated scroll with a drag mid-flight.
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+wait 1500
+press 201 789
+wait 150
+gesture pan 200 500 0 -200 300
+wait 1500
+wait "text" "%" 8000
+# Back to the end and a clean reset to the top.
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+swipe 200 700 200 150
+wait 1500
+press 201 789
+wait 1800
+wait "text" "Introduction" 8000
+wait "text" "15 min" 8000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

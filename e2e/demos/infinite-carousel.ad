@@ -1,0 +1,51 @@
+# Infinite Carousel — a circular (wrap-around) carousel of calculator cards driven
+# by a pan gesture (translateX starts at -500 laps), with rotateY/scale per item,
+# snap points, tap-to-centre via scrollToIndex, and a Skia background gradient
+# that animates to the active card's theme colour.
+# What this test covers: tapping right/left neighbour cards (scrollToIndex picks
+# the closest wrapped destination), small drags released under half a card (snap
+# back), drags of several cards, fast flings in both directions that wrap around
+# the list more than once, grabbing the carousel mid-spring (cancelAnimation),
+# taps fired during a running spring, and settling.
+context platform=ios
+open "demos://animations/infinite-carousel"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait 1500
+# Cards are ~84pt wide on y=437; centre card at x=201.
+press 297 437
+wait 1200
+press 105 437
+wait 1200
+press 380 437
+wait 1200
+# Small drag (snaps back), then a 3-card drag.
+gesture pan 201 437 -30 0 500
+wait 1000
+gesture pan 330 437 -250 0 800
+wait 1200
+gesture pan 70 437 250 0 800
+wait 1200
+# Fast flings: wrap the 10 themes more than once.
+gesture fling left 340 437 280
+wait 300
+gesture fling left 340 437 280
+wait 300
+gesture fling left 340 437 280
+wait 2000
+gesture fling right 60 437 280
+wait 200
+# Grab while the spring is still moving.
+gesture pan 201 437 60 0 300
+wait 1500
+# Taps during a running spring.
+press 297 437
+press 297 437
+press 105 437
+wait 2000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

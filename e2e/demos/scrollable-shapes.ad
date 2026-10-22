@@ -1,0 +1,50 @@
+# Scrollable Shapes — ~3000 points morphing between sphere, cube, torus and
+# heart, rotated and perspective-projected in a worklet every frame (recorded
+# into a Skia Picture with drawPoints), driven by an invisible paged
+# horizontal ScrollView; a paginator's dots stretch with the scroll.
+# What this test covers: paging through all four shapes and back, half
+# drags held between two shapes (mid-morph lerp while rotating), released
+# before the snap point, overscroll past the first and last shape (t clamped,
+# negative offsets), fast flings both ways, and a fling stopped by a touch;
+# plus letting the rotation run between steps.
+context platform=ios
+open "demos://animations/scrollable-shapes"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 2000
+swipe 330 450 60 450
+wait 1200
+swipe 330 450 60 450
+wait 1200
+swipe 330 450 60 450
+wait 1200
+# Past the last shape.
+gesture pan 380 450 -300 0 500
+wait 1200
+# Back to the first, then past it.
+swipe 60 450 340 450
+wait 1000
+swipe 60 450 340 450
+wait 1000
+swipe 60 450 340 450
+wait 1200
+gesture pan 20 450 300 0 500
+wait 1200
+# Half drag held mid-morph, released before the snap point.
+gesture pan 300 450 -190 0 2000
+wait 1200
+gesture pan 300 450 -100 0 1200
+wait 1200
+# Fast flings and a fling stopped by a touch.
+gesture pan 380 450 -360 0 120
+wait 1200
+gesture pan 20 450 360 0 120
+wait 1200
+swipe 380 450 20 450
+wait 100
+press 200 450
+wait 1500
+wait 2000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

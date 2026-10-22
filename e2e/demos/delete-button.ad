@@ -1,0 +1,59 @@
+# Delete Button — a gooey Skia button (blur + alpha-threshold layer): tapping
+# red "Delete" slides it left, turns it black "Confirm", and a round X button
+# oozes out to its right; tapping Confirm fires onConfirmDeletion (button stays
+# in confirm state), tapping X merges back to "Delete".
+# What this test covers: delete -> X -> delete cycles with springs settled,
+# Confirm taps, reversing mid-spring (X right after Delete, Delete right after
+# X), a rapid burst on Delete/Confirm, a touch that starts on the button and
+# drags off (no tap; press scale must recover), taps outside the shapes, and a
+# press-and-hold. Canvas 230x50 centred: Delete x~201, Confirm x~161, X x~276, y 437.
+context platform=ios
+open "demos://animations/delete-button"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1000
+press 201 437
+wait 1000
+press 161 437
+wait 800
+press 276 437
+wait 1000
+# Reverse mid-spring both ways.
+press 201 437
+wait 150
+press 276 437
+wait 1000
+press 201 437
+wait 1000
+press 276 437
+wait 150
+press 201 437
+wait 1000
+# Confirm twice more, then close.
+press 161 437
+wait 400
+press 161 437
+wait 400
+press 276 437
+wait 1000
+# Rapid burst on the button (Delete -> Confirm -> Confirm ...).
+press 190 437 --count 6 --interval-ms 90
+wait 1200
+press 276 437
+wait 1000
+# Touch that starts on the button and drags off: no tap fires.
+gesture pan 201 437 0 -150 600
+wait 1000
+gesture pan 201 437 150 0 600
+wait 1000
+# Taps outside the shapes but inside the canvas.
+press 95 420
+wait 400
+# Hold then release.
+longpress 201 437 800
+wait 1000
+press 276 437
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

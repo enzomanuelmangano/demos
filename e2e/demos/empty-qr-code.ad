@@ -1,0 +1,39 @@
+# Empty QR Code — a tilted rounded tile that cycles a big Skia letter
+# ("YOUR LOGO", one letter every 650 ms over a changing radial gradient);
+# tapping it springs it upright and larger (scale 1.4, rotate -10deg -> 0deg)
+# and fades the logo out to reveal a real QR code; tapping again reverses.
+# What this test covers: letting the letter/gradient cycle run (setInterval +
+# Skia text measured in a worklet), reveal and hide with springs settled,
+# reversing mid-spring, a rapid tap burst, a press-and-hold, taps outside the
+# tile (must not toggle), and the cycle continuing while the QR is shown.
+context platform=ios
+open "demos://animations/empty-qr-code"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 3000
+# Reveal the QR, then hide it.
+press 201 437
+wait 1500
+press 201 437
+wait 1500
+# Reverse mid-spring.
+press 201 437
+wait 150
+press 201 437
+wait 1500
+# Rapid burst (odd: ends revealed).
+press 201 437 --count 7 --interval-ms 90
+wait 2000
+# Taps outside the tile: no toggle.
+press 60 700
+wait 300
+press 340 250
+wait 300
+# Hold then release: hides.
+longpress 201 437 800
+wait 1500
+# Letters keep cycling.
+wait 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

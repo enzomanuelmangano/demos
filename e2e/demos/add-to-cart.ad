@@ -1,0 +1,64 @@
+# Add To Cart — 20 product rows; tapping a row's cart button morphs it into a
+# full-width "ADD TO CART" button over a bottom sheet; confirming bumps a red
+# count badge on that row, tapping the backdrop cancels.
+# What this test covers: open sheet + confirm (badge 1), confirm again (badge 2),
+# cancel via backdrop (count unchanged), cancel while the open spring is still
+# running, scroll to the end of the list and confirm on the last row, scroll back.
+context platform=ios
+open "demos://animations/add-to-cart"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "Item 0" 10000
+wait 1000
+# Item 1 cart button (unlabeled icon) -> sheet appears.
+press 341 243
+wait "text" "Payment Confirmation" 3000
+wait 700
+press 201 796
+wait 1200
+wait "label=\"1\"" 3000
+# Second purchase of the same row -> badge 2.
+press 341 243
+wait "text" "Payment Confirmation" 3000
+wait 700
+press 201 796
+wait 1200
+wait "label=\"2\"" 3000
+# Item 2: open then cancel by tapping the dimmed backdrop.
+press 341 348
+wait "text" "Payment Confirmation" 3000
+wait 700
+press 201 300
+wait 1200
+# Item 3: cancel 150ms into the open spring (interrupts the morph).
+press 341 453
+wait 150
+press 201 300
+wait 1200
+# Scroll to the end of the list (clamped), confirm on Item 19.
+gesture pan 200 700 0 -600 200
+wait 500
+gesture pan 200 700 0 -600 200
+wait 500
+gesture pan 200 700 0 -600 200
+wait 1500
+wait "text" "Item 19" 3000
+press 341 721
+wait "text" "Payment Confirmation" 3000
+wait 700
+press 201 796
+wait 1200
+# Back to the top; Item 1 still shows 2.
+gesture pan 200 200 0 600 200
+wait 500
+gesture pan 200 200 0 600 200
+wait 500
+gesture pan 200 200 0 600 200
+wait 1500
+wait "label=\"2\"" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

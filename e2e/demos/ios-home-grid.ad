@@ -1,0 +1,59 @@
+# iOS Home Grid — a 4x6 grid of gradient app icons; tapping one measures it
+# on the UI thread and expands it into a full-screen detail (custom
+# shared-element-like transition over a native stack); the detail is dismissed
+# by dragging it down past 300pt (it scales down with friction and the icon
+# springs back into place) or by its X button.
+# What this test covers: opening icons from different rows/columns, the
+# drag-to-dismiss path, a short drag released below the threshold (scale
+# springs back, detail stays), a slow long drag, tapping a second icon while
+# the first transition is still running, and repeated open/close cycles.
+# The detail's own X (top-right, under the debug-only dev-menu gear in this
+# build) is not tapped: the gear catches the touch in Debug.
+# Grid: x 54/152/250/348, rows y 110/208/306/404/502/600.
+context platform=ios
+open "demos://animations/ios-home-grid"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1500
+# Open, dismiss by dragging down fast past the threshold.
+press 152 208
+wait 1500
+gesture pan 200 300 0 420 350
+wait 1500
+# Another icon; short drag (springs back), then the real dismiss.
+press 250 306
+wait 1500
+gesture pan 200 300 0 150 500
+wait 1200
+gesture pan 200 250 0 450 300
+wait 1500
+# Bottom row, last column.
+press 348 600
+wait 1500
+# Slow long drag.
+gesture pan 200 250 0 450 1500
+wait 1500
+# First column, middle row.
+press 54 404
+wait 1500
+gesture pan 200 300 0 420 350
+wait 1500
+# Tap a second icon while the first transition is still running.
+press 152 502
+wait 150
+press 250 502
+wait 1500
+gesture pan 200 300 0 420 350
+wait 1500
+# Quick open/close cycles.
+press 348 404
+wait 900
+gesture pan 200 300 0 420 300
+wait 900
+press 54 600
+wait 900
+gesture pan 200 300 0 420 300
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

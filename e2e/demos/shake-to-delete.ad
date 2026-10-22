@@ -1,0 +1,55 @@
+# Shake To Delete — an iOS-like 4x6 grid of metallic app tiles: a long press
+# toggles "jiggle" mode (per-tile randomised withRepeat rotation/translate) and
+# shows "-" badges; tapping a badge stops the jiggle and removes that tile
+# (FadeOut + LinearTransition reflow).
+# What this test covers: entering jiggle mode, deleting a tile from the first
+# row and from the last row (reflow), toggling jiggle on/off with two long
+# presses, deleting while the jiggle is just starting, two badge taps in quick
+# succession (second lands while the first delete is pending), tapping badges
+# while not jiggling (must do nothing), and leaving jiggle mode off.
+# NOTE: isShaking is a module-level makeMutable, so closing the demo while
+# jiggling reopens it already jiggling; the first badge tap below normalises
+# that (it deletes a tile only if jiggling). See report.
+context platform=ios
+open "demos://animations/shake-to-delete"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait 1500
+# Normalise: tile 2's badge (works only if already jiggling).
+press 220 81
+wait 1200
+# Jiggle on, delete tile 2 (badge at tile centre -24,-25).
+longpress 148 300 800
+wait 1200
+press 124 81
+wait 1500
+# Jiggle on, delete a tile in the last row.
+longpress 148 300 800
+wait 1200
+press 124 561
+wait 1500
+# Toggle on and off with two long presses.
+longpress 244 394 800
+wait 1000
+longpress 244 394 800
+wait 1000
+# Not jiggling: badge taps must be ignored.
+press 220 177
+wait 500
+press 316 273
+wait 800
+# Jiggle on and delete immediately, then a second badge 100ms later.
+longpress 52 490 800
+press 220 177
+wait 100
+press 316 273
+wait 1500
+# Scrolling area below the grid (no ScrollView): tap empty space.
+press 200 750
+wait 800
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

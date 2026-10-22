@@ -1,0 +1,51 @@
+# Airbnb Slider — a price slider ($0..$4500) driving a rolling odometer: each
+# digit is a column of 0-9 springing on translateY, leading zeros fade out and
+# the "$" sign slides as the digit count changes (1 -> 4 digits).
+# What this test covers: drag to the max (clamped at $4500) and past it, back to
+# $0 and past the start (clamp, no negative price), a slow scrub through every
+# digit-count boundary (9->10, 99->100, 999->1000), fast back-and-forth flicks
+# that interrupt the digit springs, re-grabbing the thumb from a non-zero value,
+# and taps on the track (no jump expected: only the thumb is draggable).
+context platform=ios
+open "demos://animations/airbnb-slider"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "$" 10000
+wait 1000
+# Thumb starts at x=45 (track 45..357, y=480). Drag to the end and beyond.
+gesture pan 45 480 340 0 800
+wait 1000
+gesture pan 352 480 45 0 500
+wait 1000
+# All the way back past the start.
+gesture pan 357 480 -350 0 600
+wait 1000
+# Slow scrub from $0 across the 1/2/3/4-digit boundaries.
+gesture pan 45 480 5 0 800
+wait 600
+gesture pan 50 480 10 0 800
+wait 600
+gesture pan 60 480 40 0 1200
+wait 600
+gesture pan 100 480 200 0 3000
+wait 1000
+# Fast flicks back and forth (springs interrupted mid-roll).
+gesture pan 300 480 -200 0 150
+gesture pan 100 480 200 0 150
+gesture pan 300 480 -150 0 150
+wait 1200
+# Taps on the empty track away from the thumb.
+press 330 480
+wait 500
+press 60 480
+wait 800
+# Re-grab the thumb (now at x~150) and drag it back past the start ($0).
+gesture pan 150 480 -120 0 500
+wait 1000
+wait "text" "$" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

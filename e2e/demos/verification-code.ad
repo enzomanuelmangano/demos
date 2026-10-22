@@ -1,0 +1,50 @@
+# Verification Code — 5 code boxes fed by an invisible auto-focused number-pad
+# TextInput (correct code 11111). Digits flip in (FlipInXDown) and out, the
+# highlighted box follows the cursor, a wrong code turns the borders red and
+# shakes the row, the right code turns them green; both reset after 1s.
+# What this test covers: partial entry + backspace (FlipOutXDown exits), the
+# correct code, a wrong code (shake + red), typing more digits while the wrong
+# state is showing (length > 5 is ignored, then the 1s reset clears the input),
+# tapping the boxes to refocus, and a final correct entry.
+context platform=ios
+open "demos://animations/verification-code"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "Enter Code" 10000
+wait "label=\"Delete\"" 5000
+wait 800
+type "123"
+wait 800
+press "label=\"Delete\""
+wait 300
+press "label=\"Delete\""
+wait 800
+# "1" left in the input -> complete with four more ones = 11111 (correct).
+type "1111"
+wait 2000
+# Wrong code -> red + shake, then extra digits while it is still showing.
+type "12345"
+type "9"
+wait 2000
+# Refocus by tapping the code row, then a backspace on an empty input.
+press 201 356
+wait 500
+press "label=\"Delete\""
+wait 500
+type "1"
+wait 300
+type "1"
+wait 300
+type "1"
+wait 300
+type "1"
+wait 300
+type "1"
+wait 2000
+wait "text" "Enter Code" 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

@@ -1,0 +1,42 @@
+# Animated Count Text — an odometer-style number: each digit is a 0-9 column
+# sprung to its value; the shuffle button (bottom-right, unlabeled) picks a
+# random 1-6 digit number, so digit columns are added/removed with FadeIn /
+# FadeOut and the row re-centres with layout transitions.
+# What this test covers: single shuffles with the 1 s spring and 800 ms layout
+# transition allowed to settle; shuffles fired mid-spring and mid-layout
+# (entering/exiting digits interrupted); a long rapid burst of shuffles; a
+# press-and-hold on the PressableScale; and a final settle.
+context platform=ios
+open "demos://animations/animated-count-text"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1000
+# Shuffle button has no accessibility label: tap by position.
+press 340 762
+wait 1500
+press 340 762
+wait 1500
+press 340 762
+wait 1500
+# Mid-spring / mid-layout interruptions.
+press 340 762
+wait 300
+press 340 762
+wait 300
+press 340 762
+wait 300
+press 340 762
+wait 1500
+# Rapid burst: digit columns enter/exit while others are still animating.
+press 340 762 --count 12 --interval-ms 70
+wait 2000
+press 340 762 --count 8 --interval-ms 150
+wait 2000
+# Press and hold (scale-down), release fires one more shuffle.
+longpress 340 762 800
+wait 1500
+press 340 762
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

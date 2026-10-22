@@ -1,0 +1,54 @@
+# Fibonacci Shader Grid — a Skia runtime shader (XorDev-style phyllotaxis of
+# glowing dots) masked by a blurred circle and animated by a 20 s ping-pong
+# clock; a 2D pad below drives two uniforms: X = number of circles (5..175),
+# Y = the angle multiplier (1.2..3.6).
+# What this test covers: taps at the pad's four corners and centre (spring
+# with overshoot on both uniforms, incl. N briefly below its minimum), slow
+# drags along each axis, a drag that leaves the pad on every side (clamped
+# remap), a fast diagonal sweep, interrupting a spring with a new touch, and
+# letting the shader animate between steps. Pad: x 110..296, y 520..706.
+context platform=ios
+open "demos://animations/fibonacci-shader-grid"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 2000
+# Corners: (min N, min mul), (max, min), (max, max), (min, max), centre.
+press 114 524
+wait 1000
+press 292 524
+wait 1000
+press 292 702
+wait 1000
+press 114 702
+wait 1000
+press 203 613
+wait 1000
+# Slow drags along each axis.
+gesture pan 115 613 175 0 1500
+wait 600
+gesture pan 203 525 0 175 1500
+wait 600
+# Out of the pad on every side (values must clamp).
+gesture pan 203 613 -190 0 700
+wait 500
+gesture pan 203 613 190 0 700
+wait 500
+gesture pan 203 613 0 -150 700
+wait 500
+gesture pan 203 613 0 180 700
+wait 500
+# Fast diagonal sweep.
+gesture pan 115 525 175 175 150
+wait 800
+# Interrupt a spring with a new touch.
+press 114 524
+wait 120
+press 292 702
+wait 120
+press 203 613
+wait 1500
+# Let the shader run.
+wait 3000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

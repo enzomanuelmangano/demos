@@ -1,0 +1,64 @@
+# GL Transitions — notes app (masonry list + "Add note" modal) where every navigation
+# is covered by a Skia runtime-shader GL transition (DirectionalWarp) between two
+# makeImageFromView snapshots of the screen.
+# What this test covers: + opens the editor (prepareTransition snapshot);
+# saving an empty note shows the "Empty Note" alert; typing and saving runs
+# the warp, prepends the note to the list (FadeInDown + LinearTransition) and
+# goes back; opening and discarding with the X runs the transition without a
+# change; discarding after typing; scrolling the masonry list after notes
+# were added.
+# The Expo dev-menu floating gear sits on top of the + / save buttons
+# (362,142) and swallows those taps, so the script slowly drags it to the
+# bottom-right clamp (centre 361,793) first and slowly back at the end.
+context platform=ios
+open "demos://animations/gl-transitions"
+wait "text" "ADD NOTE" 10000
+wait 800
+gesture pan 361 110 0 740 2000
+wait 1500
+# Open the editor, try to save an empty note.
+press 362 142
+wait "text" "Create a new Note" 5000
+wait 800
+press 362 142
+wait "text" "Empty Note" 3000
+press "label=\"OK\""
+wait 600
+# Type and save: transition back with the new note on top.
+fill "editable=true" "Agent device note"
+wait 500
+press 362 142
+wait 3500
+wait "text" "Agent device note" 5000
+wait "text" "ADD NOTE" 3000
+# Open and discard with the X.
+press 362 142
+wait "text" "Create a new Note" 5000
+wait 800
+press 32 142
+wait 3500
+wait "text" "ADD NOTE" 3000
+# Type then discard.
+press 362 142
+wait "text" "Create a new Note" 5000
+wait 800
+fill "editable=true" "Discarded draft"
+wait 500
+press 32 142
+wait 3500
+wait "text" "ADD NOTE" 3000
+# Scroll the masonry list down and back.
+gesture pan 200 650 0 -450 500
+wait 800
+gesture pan 200 650 0 -450 500
+wait 800
+gesture pan 200 300 0 450 500
+wait 600
+gesture pan 200 300 0 450 500
+wait 1000
+# Put the dev-menu gear back where it was.
+gesture pan 361 793 0 -740 2000
+wait 1500
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

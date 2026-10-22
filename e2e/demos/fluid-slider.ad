@@ -1,0 +1,42 @@
+# Fluid Slider — a Skia metaball slider (blur + alpha-threshold colour matrix) whose picker bubble lifts off the track on a spring while sliding and shows 0..100 drawn with a Skia font.
+# What this test covers: tap-to-jump at several points of the track (onStart sets the picker), a slow drag across,
+# dragging past both ends (picker clamped to the radius, label clamped 0/100), fast back-and-forth drags that
+# interrupt the lift/drop spring, a long hold without moving (bubble stays lifted), and taps right at the track's ends.
+context platform=ios
+open "demos://animations/fluid-slider"
+wait "label=\"Close\"" 40000
+wait 1200
+# Tap-to-jump at a few points.
+press 100 438
+wait 700
+press 300 438
+wait 700
+press 200 438
+wait 700
+# Slow drag across most of the track.
+gesture pan 30 438 300 0 1200
+wait 800
+# Drag past the right end (clamps to 100), then past the left end (clamps to 0).
+gesture pan 200 438 200 0 600
+wait 800
+gesture pan 390 438 -385 0 600
+wait 800
+# Fast back-and-forth: lift/drop springs interrupted.
+gesture pan 30 438 340 0 150
+gesture pan 370 438 -340 0 150
+gesture pan 30 438 340 0 150
+wait 900
+# Hold still on the track: the bubble stays lifted, then drops on release.
+longpress 150 438 1500
+wait 900
+# The very ends of the track.
+press 13 438
+wait 500
+press 389 438
+wait 500
+# A drag that wanders vertically off the track keeps tracking x.
+gesture pan 100 438 150 120 700
+wait 1000
+wait "label=\"Close\"" 3000
+press "label=\"Close\""
+wait 1500

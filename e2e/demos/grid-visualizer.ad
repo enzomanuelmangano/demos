@@ -1,0 +1,41 @@
+# Grid Visualizer — a 35x50 Skia Atlas of dots; a number (initially 99) is turned into a text path and the dots inside it spring up/scale in staggered waves; each tap clears the grid (text=null) and 700 ms later shows a new random number.
+# What this test covers: the initial "99", a tap with the full clear→new-number cycle settled, a tap during the
+# 700 ms clear gap and one mid-wave (springs retargeted from mid-flight), a rapid burst whose overlapping
+# timeouts race each other, taps at the canvas corners, a tap outside the canvas (ignored), a long press and a
+# drag on the grid (tap fails, nothing changes), and a final settle.
+context platform=ios
+open "demos://animations/grid-visualizer"
+wait "label=\"Close\"" 40000
+wait 2500
+# Full cycle.
+press 201 440
+wait 3000
+# Tap again inside the 700 ms clear gap.
+press 201 440
+wait 300
+press 201 440
+wait 3000
+# Tap in the middle of the springing wave.
+press 201 440
+wait 1100
+press 201 440
+wait 3000
+# Rapid burst: overlapping clears and timeouts.
+press 201 440 --count 6 --interval-ms 100
+wait 3500
+# Corners of the canvas.
+press 60 285
+wait 1500
+press 340 600
+wait 3000
+# Outside the canvas: no gesture.
+press 201 720
+wait 1000
+# Long press and a drag: the tap fails/still fires on touches up; nothing should break.
+longpress 201 440 1200
+wait 2500
+gesture pan 120 400 150 80 500
+wait 3000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

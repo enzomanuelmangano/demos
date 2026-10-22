@@ -1,0 +1,44 @@
+# Fibonacci Shader — a Skia RuntimeEffect (SkSL) drawing N glowing points on a
+# Fibonacci sphere, animated by a ping-pong iTime; a slider sets N (5..350
+# iterations of the shader loop) and the wand button randomises the angle
+# multiplier.
+# What this test covers: dragging N to the maximum (heaviest shader: 350 loop
+# iterations per pixel) and holding it while time animates, past both ends of
+# the slider (clamp), a slow scrub, the wand button single + rapid presses
+# (uniform changes while N is high and low), and back to the minimum.
+context platform=ios
+open "demos://animations/fibonacci-shader"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "label=\"🪄\"" 10000
+wait 1500
+# Slider thumb starts at x=40 (track 40..361, y=583). Drag to max and beyond.
+gesture pan 40 583 345 0 900
+wait 1000
+gesture pan 345 583 50 0 400
+wait 2500
+press "label=\"🪄\""
+wait 1500
+press 310 722 --count 6 --interval-ms 150
+wait 2000
+# Slow scrub down to the middle, then past the start.
+gesture pan 361 583 -160 0 2500
+wait 1000
+press "label=\"🪄\""
+wait 1000
+gesture pan 200 583 -195 0 600
+wait 800
+gesture pan 45 583 -40 0 400
+wait 1000
+press "label=\"🪄\""
+wait 1500
+# Quick flicks on the thumb from the min.
+gesture pan 40 583 120 0 150
+gesture pan 140 583 -120 0 150
+wait 1500
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

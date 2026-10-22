@@ -1,0 +1,47 @@
+# Airbnb Flip Interaction — an Airbnb-style identity card that flips on Y (underdamped spring, backface hidden) between the "Reactiive / Verified" front and the stats back; the description below swaps pages with keyframe enter/exit animations under an animated BlurView whose intensity peaks mid-flip.
+# What this test covers: flip to the back (back page "Profile Overview" asserted) and to the front ("Identity
+# Verification"), flipping again while the spring is mid-flight and while it overshoots (blur intensity
+# interpolated outside its range by the overshoot), a rapid tap burst racing the page keyframes, tapping the
+# description (not a toggle), and scrolling the page.
+context platform=ios
+open "demos://animations/airbnb-flip-interaction"
+wait "label=\"Close\"" 40000
+wait "text" "Identity Verification" 10000
+wait 800
+# Flip to the back and back to the front, settled.
+press 201 222
+wait "text" "Profile Overview" 3000
+wait 1500
+press 201 222
+wait "text" "Identity Verification" 3000
+wait 1500
+# Re-flip mid-flight, then during the overshoot.
+press 201 222
+wait 200
+press 201 222
+wait 600
+press 201 222
+wait 900
+press 201 222
+wait 2000
+wait "text" "Identity Verification" 3000
+# Rapid burst (odd count: ends on the back).
+press 201 222 --count 5 --interval-ms 120
+wait 2500
+wait "text" "Profile Overview" 3000
+# Tapping the description does nothing.
+press 201 480
+wait 600
+wait "text" "Profile Overview" 3000
+# Scroll the page up and back.
+swipe 201 700 201 400
+wait 800
+swipe 201 400 201 700
+wait 800
+# Back to the front.
+press 201 222
+wait 2000
+wait "text" "Identity Verification" 3000
+wait "label=\"Close\"" 10000
+press "label=\"Close\""
+wait 1500

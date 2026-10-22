@@ -1,0 +1,56 @@
+# Metaball — two blurred, alpha-thresholded Skia circles at the screen centre;
+# dragging the top circle pulls a gooey blob off the other, and on release it
+# springs back to the centre and merges again.
+# What this test covers: slow drags up/down/sideways (stretching the blob until
+# the circles separate), a long drag towards each screen edge (layer clip grows
+# with the circle), a fast fling, re-grabbing the circle while its return spring
+# is in flight (new context from the mid-spring position), a rapid series of
+# short drags, and taps on/off the circle.
+context platform=ios
+open "demos://animations/metaball"
+wait 2000
+wait "label=\"Close\"" 30000
+wait 1500
+# Slow stretch upwards until the blobs separate, then release (spring home).
+gesture pan 201 437 0 -220 1500
+wait 1200
+# Down, left, right.
+gesture pan 201 437 0 250 1200
+wait 1200
+gesture pan 201 437 -170 0 900
+wait 1200
+gesture pan 201 437 170 30 900
+wait 1200
+# Towards the corners / edges.
+gesture pan 201 437 -190 -330 1000
+wait 1200
+gesture pan 201 437 190 380 1000
+wait 1200
+# Fast fling.
+gesture pan 201 437 150 -300 120
+wait 1200
+# Grab it again while it is springing back.
+gesture pan 201 437 0 -300 400
+wait 150
+gesture pan 201 340 130 -30 500
+wait 1200
+# Rapid short horizontal drags (a downward drag that misses the circle is the
+# app-wide close gesture, so these stay horizontal).
+gesture pan 201 437 80 0 150
+wait 60
+gesture pan 201 437 -80 0 150
+wait 60
+gesture pan 201 437 80 -40 150
+wait 60
+gesture pan 201 437 -80 -40 150
+wait 1500
+# Taps on the circle and on empty canvas.
+press 201 437
+wait 300
+press 60 700
+wait 300
+press 201 437 --count 4 --interval-ms 80
+wait 1000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500

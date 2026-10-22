@@ -1,0 +1,51 @@
+# Swipe Cards — Tinder-style stack of 9 photo cards with like/dislike/reset buttons.
+# What this test covers: a short drag released under the translation+velocity
+# threshold springs back; slow drags past width/3 swipe right and left; a fast
+# fling past the threshold; the heart and X buttons swipe the top card; rapid
+# repeated button taps run the stack to the end (pressing past the last card
+# must be a no-op); reset springs every card back with staggered timeouts and
+# is interrupted by a new swipe mid-flight; reset tapped twice in a row.
+context platform=ios
+open "demos://animations/swipe-cards"
+wait "label=\"Close\"" 10000
+wait 1500
+# Drag under the threshold, release: card springs back.
+gesture pan 200 380 60 0 600
+wait 800
+# Slow drags past the threshold in both directions.
+gesture pan 200 380 180 20 400
+wait 1000
+gesture pan 200 380 -180 -20 400
+wait 1000
+# Quick flick.
+gesture fling left 200 380 150
+wait 1000
+gesture fling right 200 380 150
+wait 1000
+# Buttons: heart (like), X (dislike) — unlabeled, tap by position.
+press 301 777
+wait 700
+press 101 777
+wait 700
+# Rapid taps run the stack out; extra taps past the last card do nothing.
+press 301 777 --count 6
+wait 1500
+press 101 777
+wait 500
+# Reset all cards, interrupt the staggered reset with a swipe.
+press 201 777
+wait 300
+gesture pan 200 380 180 0 300
+wait 1500
+press 201 777
+wait 100
+press 201 777
+wait 2000
+# Stack is back: swipe the top card again.
+gesture pan 200 380 -180 0 400
+wait 1000
+press 201 777
+wait 2000
+wait "label=\"Close\"" 3000
+press "role=\"button\" label=\"Close\" id=\"xmark\""
+wait 1500

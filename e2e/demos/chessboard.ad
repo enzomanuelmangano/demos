@@ -1,0 +1,48 @@
+# Chessboard — Lasker vs Thomas, London 1912, opened after 17...Kg1 with one move
+# left (18. Kd2#) on a react-native-chessboard board; delivering the mate by
+# dragging the king flips the player pills to WON/LOST, stops the clocks, plays
+# a Pulsar haptic pattern and, after 580ms, snapshots the board into a Skia
+# wave-shader "checkmate aura" with a GAME REVIEW card (Back / Replay).
+# What this test covers: illegal drags first (king to an occupied own square,
+# a black piece on White's turn, a drag released off the board — all must snap
+# back), then the mating drag Ke1-d2, the WON/LOST state, the aura + review
+# card, Replay (canned replay re-animates the move from START_FEN) and Back
+# (static reset), then mating again by hand.
+context platform=ios
+open "demos://animations/chessboard"
+wait "label=\"Close\"" 45000
+# Warm-up touch on the status bar: the first touch of a test can be lost while
+# the XCTest runner attaches.
+press 330 20
+wait 500
+wait "text" "lasker" 10000
+wait 1500
+# Squares are 50.25pt; a-file x=25, rank 1 y=605 (board top y=228).
+# Illegal: Ke1 onto its own bishop on e2.
+gesture pan 226 605 0 -50 600
+wait 1000
+# Illegal: Black's queen on e7 while White is to move.
+gesture pan 226 303 0 50 600
+wait 1000
+# King dragged off the board and released below it.
+gesture pan 226 605 0 120 600
+wait 1200
+# 18. Kd2#
+gesture pan 226 605 -50 -50 700
+wait "text" "WON" 5000
+wait "text" "LOST" 3000
+wait "text" "GAME REVIEW" 10000
+wait 1500
+press 293 811
+wait "text" "WON" 15000
+wait "text" "GAME REVIEW" 10000
+wait 1500
+press 108 811
+wait 2000
+# Mate again by hand after the reset.
+gesture pan 226 605 -50 -50 700
+wait "text" "WON" 5000
+wait 5000
+wait "label=\"Close\"" 15000
+press "role=\"button\" label=\"Close\""
+wait 1500
