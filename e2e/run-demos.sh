@@ -43,6 +43,20 @@ fi
 # keeps running, so the loaded bundle survives.
 agent-device close --session "$SESSION" >/dev/null 2>&1
 
+# Back to the home between demos: a script that diverged before its own
+# close would leave its demo open, and every later deep link would stack on
+# top of it. Closes whatever is open, one demo at a time.
+go_home() {
+  agent-device open com.reactiive.app --platform ios --udid "$UDID" \
+    --session "$SESSION" >/dev/null 2>&1
+  for _ in $(seq 1 30); do
+    agent-device find "Close" click --first --platform ios --udid "$UDID" \
+      --session "$SESSION" >/dev/null 2>&1 || break
+    sleep 1.5
+  done
+  agent-device close --session "$SESSION" >/dev/null 2>&1
+}
+
 pass=0
 fail=0
 for script in "${scripts[@]}"; do
@@ -57,6 +71,7 @@ for script in "${scripts[@]}"; do
   agent-device test "$script" --platform ios --udid "$UDID" --session "$SESSION" \
     --artifacts-dir "$OUT/artifacts/$slug" >"$OUT/$slug.test.txt" 2>&1
   status=$?
+  go_home
   # Let the last lines reach the file before the stream goes away.
   sleep 2
   kill "$stream" 2>/dev/null
