@@ -10,7 +10,10 @@ export class SnakeGame {
   private boardHeight: number;
   private snake: Coordinate[];
   private food: Coordinate | null;
+  // The direction of the next move (the pending turn, if any)...
   private direction: Directions;
+  // ...and the direction the snake actually moved last.
+  private movedDirection: Directions;
   private isGameOver: boolean;
   private score: number;
   private squareSize: number;
@@ -36,6 +39,7 @@ export class SnakeGame {
       },
     ];
     this.direction = Directions.RIGHT;
+    this.movedDirection = Directions.RIGHT;
     this.isGameOver = false;
     this.food = this.generateFood();
     this.score = 0;
@@ -84,6 +88,7 @@ export class SnakeGame {
 
     // Add the new head to the snake's body
     this.snake = [newHead, ...this.snake];
+    this.movedDirection = this.direction;
 
     // Check if the snake eats food
     if (this.food && newHead.x === this.food.x && newHead.y === this.food.y) {
@@ -129,13 +134,16 @@ export class SnakeGame {
   // Changes the direction of the snake
   public changeDirection(newDirection: Directions): void {
     'worklet';
-    // Prevent the snake from reversing
+    // Prevent the snake from reversing. Checked against the direction it
+    // actually moved, not the last requested one: two turns within one tick
+    // (e.g. UP then LEFT while moving RIGHT) would otherwise reverse it into
+    // itself. A later turn replaces a pending one, so at most one is queued.
+    const moved = this.movedDirection;
     if (
-      (this.direction === Directions.UP && newDirection === Directions.DOWN) ||
-      (this.direction === Directions.DOWN && newDirection === Directions.UP) ||
-      (this.direction === Directions.LEFT &&
-        newDirection === Directions.RIGHT) ||
-      (this.direction === Directions.RIGHT && newDirection === Directions.LEFT)
+      (moved === Directions.UP && newDirection === Directions.DOWN) ||
+      (moved === Directions.DOWN && newDirection === Directions.UP) ||
+      (moved === Directions.LEFT && newDirection === Directions.RIGHT) ||
+      (moved === Directions.RIGHT && newDirection === Directions.LEFT)
     ) {
       return;
     }
@@ -219,6 +227,7 @@ export class SnakeGame {
       },
     ];
     this.direction = Directions.RIGHT;
+    this.movedDirection = Directions.RIGHT;
     this.isGameOver = false;
     this.food = this.generateFood();
     this.score = 0;
