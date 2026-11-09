@@ -1,0 +1,45 @@
+// Animated Count Text: a number whose digits roll to their new value; the shuffle button picks
+// a random number of one to six digits. RN: src/animations/animated-count-text.
+use PressableScale from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// animated-count.tsx: TEXT_DIGIT_HEIGHT 55, TEXT_DIGIT_WIDTH 40, FONT_SIZE 50.
+fn digitsOf(n: number): number[] = n.toString().split("").map(c => "0123456789".indexOf(c))
+fn tenTo(d: number): number = match [1, 10, 100, 1000, 10000, 100000, 1000000].at(d) { case some(v) => v, case none => 1 }
+// index.tsx getRandomNumber(digits): uniform in [10^(digits-1), 10^digits - 1].
+fn randomNumber(seed: number, k: number): number = randomOf(seed, k, 1 + roll(seed, 2 * k, 6))
+fn randomOf(seed: number, k: number, d: number): number = tenTo(d - 1) + roll(seed, 2 * k + 1, tenTo(d) - tenTo(d - 1))
+
+// FadeIn / FadeOut 250 ms for a digit that comes or goes.
+keyframes digitIn
+  from opacity=0
+keyframes digitOut
+  to opacity=0
+
+component AnimatedCountText
+  props
+    env: DemoEnv
+  state value = 1
+  state shuffles = 0
+  action shuffle
+    haptic("selection")
+    value = randomNumber(env.seed, shuffles)
+    shuffles = shuffles + 1
+  view
+    column position="absolute" inset=0 background-color="#000000" align-items="center" justify-content="center"
+      testId="animated-count-text"
+      // The row resizes on LinearTransition.springify() (stiffness 100, damping 10, mass 1).
+      row -exact-layout-transition="-exact-spring(100, 10, 1)" testId="count" aria-label=`${value}`
+        for d, i in digitsOf(value) key=i
+          // Each place: a 40 x 55 window over the column 0…9, rolled to its digit by a spring
+          // (withSpring duration 1000, dampingRatio 0.9), resized over 800 ms.
+          column width=40 height=55 overflow="hidden" -exact-layout-transition="800ms ease"
+            animation="digitIn 250ms both" -exact-exit-animation="digitOut 250ms both"
+            column translate=`0px ${0 - 55 * d}px` transition="translate -exact-spring(39.5, 11.3, 1)"
+              for n in range(10) key=n
+                text `${n}` width=40 height=55 line-height="55px" text-align="center"
+                  font-size=50 font-weight=700 color="#ffffff" aria-hidden=true
+      button appearance="none" press=shuffle aria-label="Shuffle" testId="shuffle" class=PressableScale
+        position="absolute" right=30 bottom=80 width=64 height=64 border-radius=32 background-color="#ffffff"
+        display="flex" align-items="center" justify-content="center"
+        image "symbol:sf/shuffle" font-size=24 color="#000000"

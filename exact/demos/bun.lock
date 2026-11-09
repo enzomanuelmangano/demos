@@ -1,0 +1,19 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "demos",
+      "dependencies": {
+        "pressto": "workspace:*",
+      },
+    },
+    "packages/pressto": {
+      "name": "pressto",
+      "version": "0.7.0",
+    },
+  },
+  "packages": {
+    "pressto": ["pressto@workspace:packages/pressto"],
+  }
+}

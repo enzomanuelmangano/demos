@@ -1,0 +1,9 @@
+{
+  "name": "pressto",
+  "version": "0.7.0",
+  "private": true,
+  "description": "pressto's PressableScale, PressableOpacity and PressableWithoutFeedback for Exact, with the demos app's PressablesConfig (a selection haptic on every press).",
+  "exports": {
+    ".": "./pressto.contract"
+  }
+}

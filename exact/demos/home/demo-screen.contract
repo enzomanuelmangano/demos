@@ -1,0 +1,28 @@
+// A demo, opened out of its icon: the demo itself and the way out over it.
+// RN: src/navigation/home/demo-screen.tsx, demo-close-button.tsx.
+use Demo from "../demos.contract"
+use PortedDemo from "../demos/index.contract"
+use DemoEnv from "../demos/env.contract"
+
+component DemoScreen
+  props
+    demo: Demo
+    env: DemoEnv
+    close: action
+  view
+    column position="absolute" inset=0 background-color=demo.backdrop testId=`demo-${demo.slug}`
+      if demo.ported
+        PortedDemo(slug=demo.slug, env=env)
+      else
+        column flex=1 align-items="center" justify-content="center" padding=32
+          column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"
+            color-scheme="dark"
+            image demo.icon width=96 height=96 border-radius=21.5 corner-shape="squircle" aria-hidden=true
+            text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
+            text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
+      // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge.
+      button press=close aria-label="Close" testId="close" position="absolute"
+        top="env(safe-area-inset-top)" left=16
+        width=44 height=44 border-radius=22 backgroundMaterial="glass" color-scheme="dark"
+        display="flex" align-items="center" justify-content="center"
+        image "symbol:close" font-size=18 color="#ffffff"

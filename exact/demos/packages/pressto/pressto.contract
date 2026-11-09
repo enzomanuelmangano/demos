@@ -1,0 +1,20 @@
+// pressto 0.7.0 for Exact: the press feedback every demo's pressable uses.
+// RN: node_modules/pressto/src (DefaultPressableConfig: minScale 0.96, baseScale 1,
+// activeOpacity 0.5; timing 250 ms bezier(0.25, 0.1, 0.25, 1)) and the app's
+// PressablesConfig (app/_layout.tsx: a selection haptic on every press).
+//
+// The feedback is the host's (`:active`), so a press costs no round trip. Exact eases a
+// custom node's press over a fixed 120 ms, not pressto's 250 ms.
+
+// PressableScale: 0.96 while held.
+style PressableScale
+  :active
+    -exact-press-scale = 0.96
+
+// PressableOpacity: 0.5 while held.
+style PressableOpacity
+  :active
+    -exact-press-opacity = 0.5
+
+// The global onPress of the app's PressablesConfig: call it from each press action.
+// (A selection haptic, `Haptics.selectionAsync()`, on release as RN plays it.)

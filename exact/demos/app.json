@@ -1,0 +1,27 @@
+{
+  "$schema": "../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/scripts/app.schema.json",
+  "name": "Demos",
+  "short_name": "Demos",
+  "id": "com.reactiive.demos.exact",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "com.reactiive.demos.exact",
+    "name": "Demos"
+  },
+  "host": {
+    "web": {},
+    "ios": {
+      "minimumOS": "18.0",
+      "deviceFamily": [
+        "iphone"
+      ]
+    }
+  },
+  "deploy": {
+    "store": {
+      "web": "0",
+      "ios": "0"
+    }
+  }
+}

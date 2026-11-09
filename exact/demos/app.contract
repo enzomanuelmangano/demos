@@ -1,0 +1,52 @@
+// Demos on Exact: the launcher (an iOS SpringBoard of demo icons) and each demo, opened
+// out of its icon. RN: app/_layout.tsx, app/index.tsx, src/navigation/home/*.
+use Demo, allDemos from "./demos.contract"
+use Springboard from "./home/springboard.contract"
+use DemoScreen from "./home/demo-screen.contract"
+use DemoEnv from "./demos/env.contract"
+
+routes nav
+  home "/"
+    demo "/demo/:slug"
+
+shape Host
+  width: number
+  height: number
+  prefersReducedMotion: bool
+
+shape Time
+  seed: number
+
+fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slug)) {
+  case some(d) => d,
+  case none => Demo(slug=slug, name=slug, label=slug, icon="assets/app-icons/_placeholder.png", backdrop="#000000", inspiration="", unstable=false, ported=false)
+}
+
+component Demos
+  resource host = exactViewport() as shape Host
+  resource time = exactTime() as shape Time
+  derive env = DemoEnv(width=host.width, height=host.height, seed=time.seed, reducedMotion=host.prefersReducedMotion)
+  // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
+  state showUnstable = false persist
+  derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
+
+  action open(slug: string)
+    haptic("selection")
+    nav = push(nav, path("demo", slug))
+  action back
+    nav = back(nav)
+  action follow(url: string)
+    nav = go(nav, url)
+
+  view
+    main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow
+      width="100%" height="100%" background-color="#000000" color-scheme="dark" viewport-fit="cover"
+      for e in stack(nav) key=e.id
+        if e.name == "home"
+          column navigationKey=`${e.id}` navigationBar="none" position="absolute" inset=0
+            Springboard(demos=demos, open=open)
+        if e.name == "demo"
+          column navigationKey=`${e.id}` navigationBar="none" navigationPresentation="fullscreen"
+            navigationSource=`icon-${e.params.slug}` position="absolute" inset=0
+            background-color=demoOf(e.params.slug).backdrop
+            DemoScreen(demo=demoOf(e.params.slug), env=env, close=back)

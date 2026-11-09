@@ -1,0 +1,8 @@
+seed 2
+at "/demo/animated-count-text"
+
+test "the shuffle rolls a new number"
+  expect tree has "animated-count-text"
+  tap "shuffle"
+  clock settle
+  expect tree has "count"

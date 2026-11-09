@@ -1,0 +1,12 @@
+at "/demo/checkbox-interactions"
+
+test "a chip checks and unchecks"
+  expect tree has "checkbox-interactions"
+  expect tree missing "cuisine-3-check"
+  tap "cuisine-3"
+  clock settle
+  expect tree has "cuisine-3-check"
+  expect tree missing "cuisine-4-check"
+  tap "cuisine-3"
+  clock settle
+  expect tree missing "cuisine-3-check"
