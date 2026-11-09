@@ -67,7 +67,7 @@ component Steps
               text "Back" color="black" font-family="ui-rounded" font-weight=700 font-size=18
                 letter-spacing=0.5
         // styles.fill + continueButton: flex 1, #0c86f7.
-        view flex=1 -exact-layout-transition=stepSpring()
+        view display="flex" flex-direction="column" flex=1 -exact-layout-transition=stepSpring()
           button appearance="none" class=PressableScale press=onContinue testId="continue"
             flex=1 height=60 border-radius=30 corner-shape="squircle" background-color="#0c86f7"
             display="flex" flex-direction="row" align-items="center" justify-content="center"

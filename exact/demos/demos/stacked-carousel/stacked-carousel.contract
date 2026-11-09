@@ -57,12 +57,12 @@ component StackedCarousel
       // The cards: absolute, cardWidth × cardHeight at the centre, zIndex totalCards × 1000 -
       // index, pointerEvents none.
       for i in range(count()) key=i
-        view position="absolute" left=((env.width - cardW()) / 2) top=((env.height - cardH()) / 2)
+        view display="flex" flex-direction="column" position="absolute" left=((env.width - cardW()) / 2) top=((env.height - cardH()) / 2)
           width=cardW() height=cardH() z-index=(count() * 1000 - i) pointer-events="none"
           aria-hidden=true translate=`0px ${cardLift(rel(scroll, i))}px` scale=cardScale(rel(scroll, i))
           opacity=cardFade(rel(scroll, i)) perspective=600 testId=`card-${i}`
           // The rotate wrapper (flex 1): perspective 600, rotateX.
-          view flex=1 rotate=`x ${tiltOf(rel(scroll, i))}deg`
+          view display="flex" flex-direction="column" flex=1 rotate=`x ${tiltOf(rel(scroll, i))}deg`
             // styles.cardShadow: white, radius 25 continuous, boxShadow 0 0 5px 0
             // rgba(0, 0, 0, 0.05), overflow hidden; renderCard draws an empty flex 1 view.
             view flex=1 background-color="#ffffff" border-radius=25 corner-shape="squircle"

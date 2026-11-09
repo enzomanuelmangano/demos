@@ -71,14 +71,14 @@ component CircularCarousel
           for uri, i in photos() key=i
             // styles.container: aspectRatio 1, width LIST_ITEM_WIDTH; translateX
             // LIST_ITEM_WIDTH / 2 + LIST_ITEM_WIDTH, then translateY, then scale.
-            view width=itemWidth(env.width) height=itemWidth(env.width) flex-shrink=0
+            view display="flex" flex-direction="column" width=itemWidth(env.width) height=itemWidth(env.width) flex-shrink=0
               scroll-snap-align="start" testId=`photo-${i}`
               translate=`${itemWidth(env.width) * 1.5}px ${arcY(away(scroll, env.width, i), env.width)}px`
               scale=arcScale(away(scroll, env.width, i), scaleEnabled)
               opacity=arcOpacity(away(scroll, env.width, i))
               transition=(springing ? "scale -exact-spring(900, 120, 4)" : "none")
               // styles.imageContainer: margin 8, radius 100 continuous, boxShadow 0 0 10 10% black.
-              view flex=1 margin=8 border-radius=100 corner-shape="squircle"
+              view display="flex" flex-direction="column" flex=1 margin=8 border-radius=100 corner-shape="squircle"
                 box-shadow="0px 0px 10px rgba(0, 0, 0, 0.1)"
                 // styles.image: white 2 pt border, radius 100 continuous; expo-image covers.
                 image uri flex=1 border-radius=100 corner-shape="squircle" border-width=2

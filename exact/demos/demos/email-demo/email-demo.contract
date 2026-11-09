@@ -123,7 +123,7 @@ component EmailRow
     // radius 20 continuous, border 0.5 rgba(229,231,235,0.3), shadow 0 1 4 rgba(0,0,0,0.05).
     // translateY withSpring(-shifted · 110, { damping 30, stiffness 180, mass 1.5 }); opacity
     // withSpring(index >= shifted, { damping 26, stiffness 190, mass 1.4 }).
-    view height=itemHeight() margin-bottom=8 margin-left=12 margin-right=12 border-radius=20
+    view display="flex" flex-direction="column" height=itemHeight() margin-bottom=8 margin-left=12 margin-right=12 border-radius=20
       corner-shape="squircle" border-width=0.5 border-color="rgba(229, 231, 235, 0.3)"
       box-shadow="0px 1px 4px rgba(0, 0, 0, 0.05)"
       background-color=(on ? "rgba(59, 130, 246, 0.06)" : "transparent")
