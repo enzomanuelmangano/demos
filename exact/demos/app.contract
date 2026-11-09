@@ -8,6 +8,7 @@ use DemoEnv from "./demos/env.contract"
 routes nav
   home "/"
     demo "/demo/:slug"
+    open "/open"
 
 shape Host
   width: number
@@ -17,6 +18,9 @@ shape Host
 shape Time
   seed: number
 
+// A link `demos-exact://demo/<slug>` arrives as `/open?u=<the link, encoded>`: its path.
+fn linkPath(u: string): string = `/${u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://")}`
+
 fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slug)) {
   case some(d) => d,
   case none => Demo(slug=slug, name=slug, label=slug, icon="assets/app-icons/_placeholder.png", backdrop="#000000", inspiration="", unstable=false, ported=false)
@@ -25,7 +29,7 @@ fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slu
 component Demos
   resource host = exactViewport() as shape Host
   resource time = exactTime() as shape Time
-  derive env = DemoEnv(width=host.width, height=host.height, seed=time.seed, reducedMotion=host.prefersReducedMotion)
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, seed=time.seed, reducedMotion=host.prefersReducedMotion)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
@@ -36,7 +40,13 @@ component Demos
   action back
     nav = back(nav)
   action follow(url: string)
-    nav = go(nav, url)
+    let n = go(nav, url)
+    nav = top(n).name == "open" ? replace(n, linkPath(searchParam(top(n), "u"))) : n
+  // A cold link: the launch location is the /open route; it becomes what it names.
+  task opened when top(nav).name == "open" key=top(nav).id
+    after(1, redirect)
+  action redirect
+    nav = replace(nav, linkPath(searchParam(top(nav), "u")))
 
   view
     main testId="root" navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow

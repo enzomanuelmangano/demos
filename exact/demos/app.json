@@ -23,5 +23,11 @@
       "web": "0",
       "ios": "0"
     }
-  }
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "demos-exact",
+      "url": "/open?u=%s"
+    }
+  ]
 }

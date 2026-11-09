@@ -1,6 +1,7 @@
 // Checkbox Interactions: twenty "Italian" chips; a tap checks one, its check fades in and the
 // chip reflows. RN: src/animations/checkbox-interactions (src/index.tsx, components/checkbox.tsx).
 use PressableScale from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
 
 // FadeIn / FadeOut 150 ms on bezier(0.895, 0.03, 0.685, 0.22).
 keyframes checkIn
@@ -9,12 +10,14 @@ keyframes checkOut
   to opacity=0
 
 component CheckboxInteractions
+  props
+    env: DemoEnv
   state checked: number[] = []
   action toggle(i: number)
     haptic("selection")
     checked = checked.includes(i) ? checked.filter(c => c != i) : checked.concat([i])
   view
-    column position="absolute" inset=0 background-color="#0C0A0C" padding="56px 0 0 12px"
+    column position="absolute" inset=0 background-color="#0C0A0C" padding-top=(env.safeTop + demoButtonRow()) padding-left=12
       testId="checkbox-interactions"
       text "What are your favorite cuisines?" font-family="ui-rounded" font-weight=700 font-size=24
         color="#ffffff"

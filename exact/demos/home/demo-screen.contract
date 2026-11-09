@@ -9,20 +9,31 @@ component DemoScreen
     demo: Demo
     env: DemoEnv
     close: action
+  // A presented route keeps its own safe area clear (UIKit's sheet); RN's demos are full
+  // screen and pad their own top. The demo is drawn over the whole screen: its box reaches past
+  // the route's by what the route leaves at the top and the bottom.
+  state top = 0
+  state bottom = 0
+  action placed(w: number, h: number)
+    let g = frame("demo-route")
+    if not g.unavailable
+      top = g.y
+      bottom = max(0, env.height - g.y - g.height)
   view
-    column position="absolute" inset=0 background-color=demo.backdrop testId=`demo-${demo.slug}`
-      if demo.ported
-        PortedDemo(slug=demo.slug, env=env)
-      else
-        column flex=1 align-items="center" justify-content="center" padding=32
-          column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"
-            color-scheme="dark"
-            image demo.icon width=96 height=96 border-radius=21.5 corner-shape="squircle" aria-hidden=true
-            text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
-            text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
-      // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge.
-      button press=close aria-label="Close" testId="close" position="absolute"
-        top="env(safe-area-inset-top)" left=16
-        width=44 height=44 border-radius=22 backgroundMaterial="glass" color-scheme="dark"
-        display="flex" align-items="center" justify-content="center"
-        image "symbol:close" font-size=18 color="#ffffff"
+    column id="demo-route" position="absolute" inset=0 resize=placed testId=`demo-${demo.slug}`
+      column position="absolute" left=0 right=0 top=(0 - top) bottom=(0 - bottom) background-color=demo.backdrop
+        if demo.ported
+          PortedDemo(slug=demo.slug, env=DemoEnv(env, safeTop=top))
+        else
+          column flex=1 align-items="center" justify-content="center" padding=32
+            column align-items="center" gap=10 padding="28px 32px" border-radius=28 backgroundMaterial="regular"
+              color-scheme="dark"
+              image demo.icon width=96 height=96 border-radius=21.5 corner-shape="squircle" aria-hidden=true
+              text demo.name font-size=22 font-weight=700 color="#ffffff" text-align="center" margin-top=4
+              text "Not on Exact yet." font-size=15 color="#8e8e93" text-align="center" testId="not-ported"
+        // demo-close-button.tsx: the close role on liquid glass, 16 pt from the leading edge.
+        button press=close aria-label="Close" testId="close" position="absolute"
+          top=top left=16
+          width=44 height=44 border-radius=22 backgroundMaterial="glass" color-scheme="dark"
+          display="flex" align-items="center" justify-content="center"
+          image "symbol:close" font-size=18 color="#ffffff"

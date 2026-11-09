@@ -1,0 +1,37 @@
+// Stacked List: fifty cards that pile up, shrunk and faded, at the bottom of the screen as
+// they scroll in. RN: src/animations/stacked-list/index.tsx.
+use DemoEnv from "../env.contract"
+
+// index.tsx: ListItemHeight 100, Margin 10, ListMarginTop 70, NiceOffset 80.
+fn full(): number = 110
+fn clamp01(x: number): number = min(1, max(0, x))
+// distanceFromTop: how far the card's top is above the stack line (Extrapolation.EXTEND).
+fn visibleAmount(scroll: number, h: number, i: number): number = scroll + (h - 70 - 80) - i * 110
+// The card's on-screen y in the list's content (Extrapolation.CLAMP on [0, 110]).
+fn cardY(scroll: number, h: number, i: number): number = cardYOf(scroll + (h - 70 - 80) - 110, i * 110, clamp01(visibleAmount(scroll, h, i) / 110))
+fn cardYOf(stackY: number, baseY: number, t: number): number = stackY + (baseY - stackY) * t
+fn cardScale(v: number): number = 0.6 + 0.4 * clamp01(v / 110)
+// Opacity over [0, 36.7, 110] → [0.3, 0.4, 0.7], extended past both ends, held in [0, 1].
+fn cardOpacity(v: number): number = min(1, max(0, v < 110 / 3 ? 0.3 + 0.1 * v / (110 / 3) : 0.4 + 0.3 * (v - 110 / 3) / (110 * 2 / 3)))
+
+component StackedList
+  props
+    env: DemoEnv
+  state scroll = 0
+  action scrolled(x: number, y: number)
+    scroll = y
+  view
+    column position="absolute" inset=0 background-color="#ffffff" testId="stacked-list"
+      // The cards, drawn where the list's scroll puts them; the scroller under them is empty.
+      column position="absolute" left=0 right=0 top=70 bottom=0 overflow="hidden" pointer-events="none"
+        aria-hidden=true
+        for i in range(50) key=i
+          view position="absolute" top=0 left="2.5%" width="95%" height=100 border-radius=15
+            corner-shape="squircle" background-color="#51ACCC" z-index=(0 - i)
+            translate=`0px ${cardY(scroll, env.height, i) - scroll}px`
+            scale=cardScale(visibleAmount(scroll, env.height, i))
+            opacity=cardOpacity(visibleAmount(scroll, env.height, i))
+      // The FlatList: its content as tall as the cards (+ NiceOffset * 1.5), scrolled natively.
+      scroll position="absolute" top=0 left=0 width="100%" height="100%" scroll=scrolled
+        testId="stacked-list-scroll"
+        view height=(50 * 110 + 70 + 80 * 1.5) margin-top=70

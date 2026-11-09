@@ -73,7 +73,7 @@ fn allDemos(): Demo[] =
     Demo(slug="grid-visualizer", name="Grid Visualizer", label="Grid Visualizer", icon="assets/app-icons/grid-visualizer.png", backdrop="#010101", inspiration="https://x.com/alexwidua/status/1676280291411763213", unstable=true, ported=false),
     Demo(slug="record-button", name="Record Button", label="Record Button", icon="assets/app-icons/record-button.png", backdrop="#252525", inspiration="https://x.com/uuuntitleddd", unstable=false, ported=false),
     Demo(slug="geometry-button", name="Geometry Button", label="Geometry", icon="assets/app-icons/geometry-button.png", backdrop="#000000", inspiration="", unstable=false, ported=false),
-    Demo(slug="stacked-list", name="Stacked List", label="Stacked List", icon="assets/app-icons/stacked-list.png", backdrop="#f3f9fb", inspiration="", unstable=false, ported=false),
+    Demo(slug="stacked-list", name="Stacked List", label="Stacked List", icon="assets/app-icons/stacked-list.png", backdrop="#f3f9fb", inspiration="", unstable=false, ported=true),
     Demo(slug="wheel-picker", name="Wheel Picker", label="Wheel Picker", icon="assets/app-icons/wheel-picker.png", backdrop="#ffffff", inspiration="https://x.com/_Kavsoft/status/1769042151487549605", unstable=false, ported=false),
     Demo(slug="twodos-slide", name="Twodos Slide", label="Twodos Slide", icon="assets/app-icons/twodos-slide.png", backdrop="#ffffff", inspiration="https://x.com/AdamWhitcroft/status/1761864362392764531", unstable=false, ported=false),
     Demo(slug="infinite-carousel", name="Infinite Carousel", label="Infinite", icon="assets/app-icons/infinite-carousel.png", backdrop="#e0be95", inspiration="", unstable=false, ported=false),
