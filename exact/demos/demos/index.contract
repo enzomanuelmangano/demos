@@ -4,6 +4,7 @@ use AlertDrawer from "./alert-drawer/alert-drawer.contract"
 use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
 use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
+use BlurCircles from "./blur-circles/blur-circles.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
 use ComposableText from "./composable-text/composable-text.contract"
@@ -35,6 +36,8 @@ component PortedDemo
         AnimatedCountText(env=env)
       if slug == "animated-grid-list"
         AnimatedGridList(env=env)
+      if slug == "blur-circles"
+        BlurCircles()
       if slug == "checkbox-interactions"
         CheckboxInteractions(env=env)
       if slug == "circular-carousel"

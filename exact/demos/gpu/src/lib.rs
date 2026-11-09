@@ -17,13 +17,14 @@ pub mod shaders {
 }
 pub mod gfx;
 
+pub mod blur_circles;
 pub mod geometry_button;
 pub mod metaball;
 pub mod spiral;
 
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
-    surfaces: &[("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface), ("spiral", 0, spiral::surface)],
+    surfaces: &[("blur_circles", 0, blur_circles::surface), ("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface), ("spiral", 0, spiral::surface)],
     shaders: shaders::SHADERS,
 };
 

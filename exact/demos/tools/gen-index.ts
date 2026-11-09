@@ -1,12 +1,12 @@
-// Writes demos/index.contract: every demos/<slug>/<slug>.contract whose root component compiles
-// alone (tools/check-demo.ts), registered by slug.
+// Writes demos/index.contract: the demos tools/ported.txt lists (one slug a line: those
+// integrated and checked on the simulator), each registered by slug.
 //
-//   bun tools/gen-index.ts [--only slug,slug]   (default: every demo folder)
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+//   bun tools/gen-index.ts
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const APP = resolve(import.meta.dir, '..');
-const dirs = readdirSync(resolve(APP, 'demos'), { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name).sort();
+const dirs = readFileSync(resolve(APP, 'tools/ported.txt'), 'utf8').split('\n').map(s => s.trim()).filter(Boolean).sort();
 const rows = dirs.flatMap(slug => {
   const file = resolve(APP, `demos/${slug}/${slug}.contract`);
   if (!existsSync(file)) return [];
