@@ -1,0 +1,187 @@
+// Verification Code: five boxes over a hidden number field; each digit typed flips into its box.
+// The fifth digit checks the code (11111): green, or red with a shake; a second later the code
+// clears, its digits flipping out. RN: src/animations/verification-code (screens/verification-code,
+// components/verification-code/*, and email-demo/hooks/use-animated-shake.ts).
+//
+// A demo is not the app's root, so it has no timer (`task`): RN's setTimeout(reset, 1000) is
+// drawn by delayed transitions and keyframes (the digits leave and the borders return at
+// 1000 ms on the host), and the state catches up at the next keystroke.
+
+// The app's FiraCode-Regular (assets/fonts in the RN repo), under a family name of this demo's own
+// (two files may not declare one family).
+
+// index.tsx: correctCode 11111, so maxCodeLength 5.
+fn correctCode(): string = "11111"
+
+// A digit on screen. `leaving` flips it out; `late` waits the reset's 1000 ms first.
+shape Glyph
+  key: number
+  box: number
+  digit: number
+  leaving: bool
+  late: bool
+  leftAt: number
+
+fn digitAt(s: string, i: number): number = "0123456789".indexOf(s.slice(i, i + 1))
+fn statusOf(code: string): string = code == correctCode() ? "correct" : code.length == 5 ? "wrong" : "inProgress"
+
+// animated-code-number.tsx getColorByStatus: highlighted (the next box) white first, then
+// green when correct, red when wrong, else #2E2B2E.
+fn liveColor(code: string, status: string, i: number): string = i == code.length ? "#FFFFFF" : status == "correct" ? "#22bb33" : status == "wrong" ? "#bb2124" : "#2E2B2E"
+// After the reset: no code, so the first box is highlighted.
+fn resetColor(i: number): string = i == 0 ? "#FFFFFF" : "#2E2B2E"
+// The finished code's borders: from the colours at four digits (the last box highlighted) to the
+// status colour over 300 ms, held, then at 1000 ms to the reset colours over 300 ms.
+fn finishKeyframes(status: string, i: number): string = `${status == "correct" ? "correct" : "wrong"}${i == 0 ? "First" : i == 4 ? "Last" : "Middle"} 1300ms linear both`
+
+// borderColor: withTiming(colour): 300 ms on inOut(quad) (Reanimated's default curve, as its
+// cubic-bezier). 300 / 1300 = 23.0769%, 1000 / 1300 = 76.9231%.
+keyframes wrongFirst
+  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  23.0769% border-color="#bb2124" animation-timing-function="linear"
+  76.9231% border-color="#bb2124" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  100% border-color="#FFFFFF"
+keyframes wrongMiddle
+  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  23.0769% border-color="#bb2124" animation-timing-function="linear"
+  76.9231% border-color="#bb2124" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  100% border-color="#2E2B2E"
+keyframes wrongLast
+  0% border-color="#FFFFFF" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  23.0769% border-color="#bb2124" animation-timing-function="linear"
+  76.9231% border-color="#bb2124" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  100% border-color="#2E2B2E"
+keyframes correctFirst
+  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  23.0769% border-color="#22bb33" animation-timing-function="linear"
+  76.9231% border-color="#22bb33" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  100% border-color="#FFFFFF"
+keyframes correctMiddle
+  0% border-color="#2E2B2E" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  23.0769% border-color="#22bb33" animation-timing-function="linear"
+  76.9231% border-color="#22bb33" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  100% border-color="#2E2B2E"
+keyframes correctLast
+  0% border-color="#FFFFFF" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  23.0769% border-color="#22bb33" animation-timing-function="linear"
+  76.9231% border-color="#22bb33" animation-timing-function="cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+  100% border-color="#2E2B2E"
+
+// useAnimatedShake: withRepeat(withTiming(10, { duration 120, bezier(0.35, 0.7, 0.5, 0.7) }), 6,
+// reverse): six legs of 120 ms, each on the same curve (Reanimated does not invert it on the
+// way back, as CSS `alternate` would). Two names, so each wrong code restarts it.
+keyframes shakeA
+  0% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  16.6667% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  33.3333% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  50% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  66.6667% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  83.3333% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  100% translate="0px 0px"
+keyframes shakeB
+  0% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  16.6667% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  33.3333% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  50% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  66.6667% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  83.3333% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  100% translate="0px 0px"
+
+component VerificationCode
+  // `field` is the hidden input's text; `code` the digits shown this round.
+  state field = ""
+  state code = ""
+  state status = "inProgress"
+  state doneAt = 0
+  state glyphs: Glyph[] = []
+  state nextKey = 0
+  state shakes = 0
+  action focusField
+    focus("code-field")
+  action typed(v: string)
+    let now = performanceNow()
+    let finished = status != "inProgress"
+    // Within the second after a check RN's input is past maxLength: ignored.
+    if finished and now < doneAt + 1000
+      field = v
+    else
+      // After the reset RN's field is cleared: what was typed since is the new code.
+      let typedCode = finished ? (v.startsWith(field) ? v.slice(field.length) : "") : v
+      field = v
+      if typedCode.length <= 5
+        let before = finished ? "" : code
+        let next = statusOf(typedCode)
+        // Digits that leave (a delete), digits that stay (their value), digits that arrive;
+        // ones that left more than 1.5 s ago are gone.
+        let kept = glyphs.filter(g => not g.leaving or now < g.leftAt + (g.late ? 1000 : 0) + 500)
+        let updated = kept.map(g => g.leaving ? g : g.box >= typedCode.length ? Glyph(g, leaving=true, late=false, leftAt=now) : Glyph(g, digit=digitAt(typedCode, g.box)))
+        let added = range(5).filter(i => i >= before.length and i < typedCode.length).map(i => Glyph(key=nextKey + i, box=i, digit=digitAt(typedCode, i), leaving=false, late=false, leftAt=0))
+        let all = updated.concat(added)
+        // A checked code leaves at the reset, 1000 ms on.
+        glyphs = next == "inProgress" ? all : all.map(g => g.leaving ? g : Glyph(g, leaving=true, late=true, leftAt=now))
+        nextKey = nextKey + 5
+        code = typedCode
+        status = next
+        if next != "inProgress"
+          doneAt = now
+        if next == "wrong"
+          shakes = shakes + 1
+  view
+    // styles.container: black, centred.
+    column position="absolute" inset=0 background-color="#000000" align-items="center" justify-content="center"
+      testId="verification-code"
+      column width="100%"
+        // styles.headerText: white, 30, margin-bottom 30, margin-left 18.
+        text "Enter Code" color="#ffffff" font-size=30 margin-bottom=30 margin-left=18
+        // styles.codeContainer (100% wide) with the shake; a touch focuses the field.
+        row width="100%" padding-left=10 padding-right=10 box-sizing="border-box" press=focusField
+          animation=(shakes == 0 ? "none" : shakes % 2 == 1 ? "shakeA 720ms linear both" : "shakeB 720ms linear both")
+          testId="code"
+          for i in range(5) key=i
+            // VerificationCode codeContainer: flex 1, aspect ratio 0.95, centred.
+            view flex=1 aspect-ratio=0.95 display="flex" align-items="center" justify-content="center"
+              // AnimatedCodeNumber container: 80% × 90%, radius 20 (continuous), border 2. The
+              // perspective is FlipInXDown's perspective(500) about the digit's centre (the box's).
+              view position="relative" width="80%" height="90%" border-radius=20 corner-shape="squircle"
+                border-width=2 border-style="solid" perspective=500 testId=`box-${i}`
+                border-color=(status == "inProgress" ? liveColor(code, status, i) : resetColor(i))
+                transition="border-color 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+                animation=(status == "inProgress" ? "none" : finishKeyframes(status, i))
+                for g in glyphs.filter(g => g.box == i) key=g.key
+                  CodeDigit(digit=g.digit, leaving=g.leaving, late=g.late, testId=`digit-${i}`)
+      // The invisible TextInput: number pad, autofocus, 50 below the screen.
+      input id="code-field" value=field input=typed inputmode="numeric" autofocus=true
+        aria-label="Verification code" testId="code-field" position="absolute" bottom=-50 left=0
+        color="#000000" background-color="transparent" border="none"
+
+component CodeDigit
+  props
+    digit: number
+    leaving: bool
+    late: bool
+    testId: string
+  // Mounted folded; its first layout unfolds it (the entering animation's start).
+  state shown = false
+  action appear(w: number, h: number)
+    shown = true
+  // A digit that arrives already checked (the fifth) leaves only after it has arrived.
+  derive gone = leaving and shown
+  view
+    // FadeIn.duration(250) + FlipInXDown.duration(500) on bezier(0, 0.75, 0.5, 0.9):
+    // perspective(500) rotateX(-90deg → 0) translateY(the text's height → 0), the translate in
+    // the rotated frame (this node turns, the text inside moves). FiraCode 40 is 52.48 tall.
+    column position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+      resize=appear perspective=500
+      rotate=(shown ? "x 0deg" : "x -90deg") opacity=(shown ? 1 : 0)
+      transition="rotate 500ms cubic-bezier(0, 0.75, 0.5, 0.9), opacity 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+      column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
+        translate=(shown ? "0px 0px" : "0px 52.48px") transition="translate 500ms cubic-bezier(0, 0.75, 0.5, 0.9)"
+        // FadeOut.duration(250) + FlipOutXDown.duration(500) on bezier(0.6, 0.1, 0.4, 0.8):
+        // rotateX(0 → -90deg) translateY(0 → height), turned by the node above's perspective.
+        column width="100%" height="100%" display="flex" align-items="center" justify-content="center"
+          rotate=(gone ? "x -90deg" : "x 0deg") opacity=(gone ? 0 : 1)
+          transition=(late ? "rotate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8) 1000ms, opacity 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 1000ms" : "rotate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8), opacity 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955)")
+          // styles.text: white FiraCode 40.
+          text `${digit}` color="#ffffff" font-family="FiraCode-Regular" font-size=40 testId=testId
+            translate=(gone ? "0px 52.48px" : "0px 0px")
+            transition=(late ? "translate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8) 1000ms" : "translate 500ms cubic-bezier(0.6, 0.1, 0.4, 0.8)")

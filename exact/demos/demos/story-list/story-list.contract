@@ -1,0 +1,47 @@
+// Story List: a deck of eight story cards; scrolling sideways throws the front card off to the
+// left while the ones behind step forward and grow. RN: src/animations/story-list (index.tsx,
+// components/story-list/index.tsx, story-item.tsx).
+use DemoEnv from "../env.contract"
+
+// index.tsx stories: image_01…04, twice.
+fn storyImage(i: number): string = match ["image_01.png", "image_02.jpg", "image_03.jpg", "image_04.jpg"].at(i % 4) { case some(f) => `assets/demos/story-list/${f}`, case none => "assets/demos/story-list/image_01.png" }
+
+// story-item.tsx: interpolate(activeIndex, [i - 2, i - 1, i, i + 1], [a, b, c, d], CLAMP).
+fn piece(a: number, i: number, v0: number, v1: number, v2: number, v3: number): number = a <= i - 2 ? v0 : (a <= i - 1 ? v0 + (v1 - v0) * (a - (i - 2)) : (a <= i ? v1 + (v2 - v1) * (a - (i - 1)) : (a <= i + 1 ? v2 + (v3 - v2) * (a - i) : v3)))
+// translateX [70, 35, 0, -itemWidth - paddingLeft × 2]; scale [0.8, 0.9, 1, 1].
+fn storyX(a: number, i: number, w: number, pl: number): number = piece(a, i, 70, 35, 0, 0 - w - pl * 2)
+fn storyScale(a: number, i: number): number = piece(a, i, 0.8, 0.9, 1, 1)
+
+component StoryList
+  props
+    env: DemoEnv
+  // The ScrollView's contentOffset.x, read only by the cards' translate and scale.
+  state scroll = 0
+  action scrolled(x: number, y: number)
+    scroll = x
+  view
+    // styles.container: #2D3045, centred. storyItemDimensions: width × 0.7 by width.
+    column position="absolute" inset=0 background-color="#2D3045" align-items="center" justify-content="center"
+      testId="story-list"
+      column position="relative" width="100%" height=env.width
+        // The horizontal ScrollView: snapToInterval itemWidth, no indicator, bounces. Its
+        // content is ListPadding (window - item width) wider than the eight placeholders,
+        // which start at paddingLeft = (window - item width) / 4; the snap offsets are the
+        // multiples of itemWidth (scroll-padding-left takes paddingLeft back).
+        scroll position="absolute" top=0 left=0 width="100%" height="100%" overflow-x="scroll" overflow-y="hidden"
+          scrollbar-width="none" scroll-snap-type="x mandatory" scroll-padding-left=((env.width - env.width * 0.7) / 4)
+          scroll=scrolled testId="story-list-scroll"
+          row width=(env.width * 0.7 * 8 + env.width - env.width * 0.7) height=env.width
+            padding-left=((env.width - env.width * 0.7) / 4) flex-shrink=0
+            for i in range(8) key=i
+              view width=(env.width * 0.7) height=env.width flex-shrink=0 scroll-snap-align="start"
+        // The visual layer over it, untouchable: each card at paddingLeft, zIndex -index.
+        view position="absolute" inset=0 pointer-events="none" aria-hidden=true
+          for i in range(8) key=i
+            view position="absolute" top=0 left=((env.width - env.width * 0.7) / 4) width=(env.width * 0.7)
+              height=env.width z-index=(0 - i)
+              translate=`${storyX(scroll / (env.width * 0.7), i, env.width * 0.7, (env.width - env.width * 0.7) / 4)}px 0px`
+              scale=storyScale(scroll / (env.width * 0.7), i) testId=`story-${i}`
+              // The expo-image: cover, borderRadius 25 continuous.
+              image storyImage(i) width="100%" height="100%" object-fit="cover" border-radius=25
+                corner-shape="squircle" overflow="hidden"

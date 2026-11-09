@@ -1,0 +1,87 @@
+// Smooth Dropdown: a header card over a stack of four option cards; a tap on the header springs
+// them open into a list (its chevron turns), a tap on an option picks it.
+// RN: src/animations/smooth-dropdown (index.tsx, components/dropdown/index.tsx, dropdrop-item.tsx).
+use PressableScale from "pressto"
+
+shape DropdownOption
+  label: string
+  // The SF Symbol the AntDesign icon looks like.
+  icon: string
+
+// index.tsx options, with the header first (Dropdown's fullOptions = [header, ...options]).
+fn fullOptions(): DropdownOption[] = [
+  DropdownOption(label="Header", icon="symbol:sf/ellipsis"),
+  DropdownOption(label="Charts", icon="symbol:sf/chart.bar.fill"),
+  DropdownOption(label="Book", icon="symbol:sf/book.fill"),
+  DropdownOption(label="Calendar", icon="symbol:sf/calendar"),
+  DropdownOption(label="Camera", icon="symbol:sf/camera.fill")
+]
+
+// dropdown/index.tsx: DROP_DOWN_ITEM_HEIGHT 75, DROP_DOWN_ITEM_PADDING 10, four options:
+// fullDropDownExpandedHeight = (75 + 10) * 4 = 340.
+// dropdrop-item.tsx: bottom = interpolate(progress, [0, 1], [index * 15, 340 / 2 - index * (75 + 10)]).
+fn itemBottom(open: bool, i: number): number = open ? 340 / 2 - i * (75 + 10) : i * 15
+// scale = interpolate(progress, [0, 1], [1 - index * 0.05, 1]).
+fn itemScale(open: bool, i: number): number = open ? 1 : 1 - i * 0.05
+// Color('#1B1B1B').lighten(1 - (5 - index) / 5).hex(), worked out with the color package.
+fn collapsedColor(i: number): string = match ["#1B1B1B", "#202020", "#262626", "#2B2B2B", "#313131"].at(i) {
+  case some(c) => c,
+  case none => "#1B1B1B"
+}
+
+// progress = withSpring(isToggled ? 1 : 0): Reanimated 4's default spring (stiffness 900,
+// damping 120, mass 4; critically damped). Every per-frame value is linear in progress, so
+// each one rides the same spring on the host.
+// The background flips where progress crosses 0.5: (1 + u)e^-u = 0.5 at u = 1.678, over
+// sqrt(900 / 4) = 15 rad/s, is 112 ms into the spring either way: a step at 112 ms.
+
+component SmoothDropdown
+  state open = false
+  action pick(i: number)
+    haptic("selection")
+    if i == 0
+      open = not open
+  view
+    column position="absolute" inset=0 background-color="#000000" testId="smooth-dropdown"
+      // The Dropdown view: centred, with no size of its own (all its items are absolute), so
+      // each item's `bottom` is measured from the screen's centre line.
+      view position="absolute" left=0 right=0 top="50%" height=0
+        for o, i in fullOptions() key=i
+          DropdownItem(option=o, index=i, open=open, press=pick(i))
+
+component DropdownItem
+  props
+    option: DropdownOption
+    index: number
+    open: bool
+    press: action
+  derive isHeader = index == 0
+  view
+    // styles.item: absolute, 80% wide, 75 tall, padding 15, radius 10 (continuous);
+    // zIndex optionsLength - index. Collapsed options are behind the header: no touches.
+    button appearance="none" press=press class=PressableScale testId=(isHeader ? "dropdown-header" : `dropdown-${option.label.toLowerCase()}`)
+      aria-label=option.label aria-expanded=open
+      position="absolute" bottom=0 left="10%" width="80%" height=75 padding=15 box-sizing="border-box"
+      border-radius=10 corner-shape="squircle" z-index=(5 - index)
+      pointer-events=(open or isHeader ? "auto" : "none")
+      display="flex" flex-direction="row" align-items="stretch"
+      translate=`0px ${0 - itemBottom(open, index)}px` scale=itemScale(open, index)
+      background-color=(open ? "#1B1B1B" : collapsedColor(index))
+      transition="translate -exact-spring(900, 120, 4), scale -exact-spring(900, 120, 4), background-color 112ms step-end"
+      // styles.content: a row, opacity interpolate(progress, [0, 1], [isHeader ? 1 : 0, 1]).
+      row flex=1 align-items="center" opacity=(open or isHeader ? 1 : 0) transition="opacity -exact-spring(900, 120, 4)"
+        // styles.iconBox: 80% of the row's height, square, #0C0C0C, radius 10, margin-right 12.
+        view height="80%" aspect-ratio=1 background-color="#0C0C0C" border-radius=10 corner-shape="squircle"
+          margin-right=12 display="flex" align-items="center" justify-content="center"
+          image option.icon font-size=20 color="#ffffff" aria-hidden=true
+        // styles.title: white, 16, letter-spacing 1.2, uppercase.
+        text option.label.toUpperCase() color="#ffffff" font-size=16 letter-spacing=1.2
+        view flex=1
+        // styles.arrowBox: 80% tall, centred, margin-right 5. The header's chevron turns
+        // interpolate(progress, [0, 1], [0, PI / 2], CLAMP) on the same spring (no overshoot).
+        view height="80%" margin-right=5 display="flex" align-items="center" justify-content="center"
+          if isHeader
+            image "symbol:sf/chevron.forward" font-size=20 color="rgba(255,255,255,0.8)" aria-hidden=true
+              rotate=(open ? "90deg" : "0deg") transition="rotate -exact-spring(900, 120, 4)"
+          else
+            image "symbol:sf/arrow.forward" font-size=20 color="rgba(255,255,255,0.5)" aria-hidden=true

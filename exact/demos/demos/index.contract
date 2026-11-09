@@ -1,9 +1,24 @@
-// The demos ported to Exact, by slug. Each lives in demos/<slug>/.
+// The demos ported to Exact, by slug. Each lives in demos/<slug>/. Written by tools/gen-index.ts.
 use DemoEnv from "./env.contract"
+use AlertDrawer from "./alert-drawer/alert-drawer.contract"
+use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
-use Metaball from "./metaball/metaball.contract"
-use StackedList from "./stacked-list/stacked-list.contract"
+use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
+use CircularCarousel from "./circular-carousel/circular-carousel.contract"
+use ComposableText from "./composable-text/composable-text.contract"
+use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
+use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
+use FamilyNumberInput from "./family-number-input/family-number-input.contract"
+use GeometryButton from "./geometry-button/geometry-button.contract"
+use Metaball from "./metaball/metaball.contract"
+use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
+use OnlineOffline from "./online-offline/online-offline.contract"
+use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
+use StackedList from "./stacked-list/stacked-list.contract"
+use StoryList from "./story-list/story-list.contract"
+use TabNavigation from "./tab-navigation/tab-navigation.contract"
+use VerificationCode from "./verification-code/verification-code.contract"
 
 component PortedDemo
   props
@@ -11,11 +26,41 @@ component PortedDemo
     env: DemoEnv
   view
     column position="absolute" inset=0
+      if slug == "alert-drawer"
+        AlertDrawer(env=env)
+      if slug == "animated-clip-box"
+        AnimatedClipBox(env=env)
       if slug == "animated-count-text"
         AnimatedCountText(env=env)
-      if slug == "metaball"
-        Metaball()
-      if slug == "stacked-list"
-        StackedList(env=env)
+      if slug == "animated-grid-list"
+        AnimatedGridList(env=env)
       if slug == "checkbox-interactions"
         CheckboxInteractions(env=env)
+      if slug == "circular-carousel"
+        CircularCarousel(env=env)
+      if slug == "composable-text"
+        ComposableText()
+      if slug == "coverflow-carousel"
+        CoverflowCarousel(env=env)
+      if slug == "dynamic-tab-indicator"
+        DynamicTabIndicator(env=env)
+      if slug == "family-number-input"
+        FamilyNumberInput(env=env)
+      if slug == "geometry-button"
+        GeometryButton()
+      if slug == "metaball"
+        Metaball()
+      if slug == "miles-bar-chart"
+        MilesBarChart(env=env)
+      if slug == "online-offline"
+        OnlineOffline(env=env)
+      if slug == "smooth-dropdown"
+        SmoothDropdown()
+      if slug == "stacked-list"
+        StackedList(env=env)
+      if slug == "story-list"
+        StoryList(env=env)
+      if slug == "tab-navigation"
+        TabNavigation(env=env)
+      if slug == "verification-code"
+        VerificationCode()

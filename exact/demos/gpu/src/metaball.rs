@@ -43,10 +43,6 @@ struct Metaball {
     /// Whether a finger has moved a circle yet: until then both sit at the canvas's centre,
     /// whatever size the canvas is laid out at (RN reads the window's size once).
     touched: bool,
-    /// Whether a finger holds a circle, as last published (`exactSurface("metaball").held`):
-    /// the app refuses the demo's swipe-down close meanwhile, as RN's demo keeps a touch it
-    /// claimed (demo-screen.tsx CloseGesture).
-    published: Option<bool>,
     dirty: bool,
     gpu: Option<Gpu>,
 }
@@ -82,15 +78,6 @@ impl Surface for Metaball {
             "{{\"size\":[{},{}],\"first\":[{},{}],\"second\":[{},{}],\"touched\":{}}}",
             self.size.0, self.size.1, self.first.0, self.first.1, self.second.0.value, self.second.1.value, self.touched
         ))
-    }
-
-    fn published(&mut self) -> Option<String> {
-        let held = self.first_pan.tracking() || self.second_pan.tracking();
-        if self.published == Some(held) {
-            return None;
-        }
-        self.published = Some(held);
-        Some(format!("{{\"held\":{held}}}"))
     }
 
     fn wants_input(&self) -> bool {

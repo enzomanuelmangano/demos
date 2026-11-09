@@ -1,0 +1,53 @@
+// Composable Text: a "Use Max" pill whose letters spring in, fade out and slide to their new
+// places as it toggles to "Using Max". RN: src/animations/composable-text (index.tsx,
+// composable-text.tsx).
+use PressableScale from "pressto"
+
+// index.tsx Variants: base / active.
+fn labelOf(active: bool): string = active ? "Using Max" : "Use Max"
+fn colorOf(active: bool): string = active ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,1)"
+// composable-text.tsx buildKeys: a character and how many of it came before ('a-0', 'a-1').
+fn keyOf(text: string, c: string, i: number): string = `${c}-${text.slice(0, i).split(c).length - 1}`
+
+// CharacterEntering: opacity 0 → 1 and scale 0.5 → 1, each withSpring(CharacterSpringConfig
+// { mass: 0.3, damping: 12, stiffness: 80 }). An `animation` takes no spring, so the spring's
+// own curve from rest is sampled into `linear()` (48 steps over the 1171 ms it takes to reach
+// Reanimated's energy cutoff 6e-9; overdamped, so no overshoot).
+keyframes charIn
+  from opacity=0 scale=0.5
+  to opacity=1 scale=1
+// exiting: FadeOut.duration(200), Reanimated's default timing easing Easing.inOut(Easing.quad).
+keyframes charOut
+  to opacity=0
+
+fn charInRow(): string = "charIn 1171ms linear(0, 0.0581, 0.1742, 0.3005, 0.4181, 0.5207, 0.6072, 0.6792, 0.7384, 0.7868, 0.8264, 0.8587, 0.885, 0.9064, 0.9239, 0.938, 0.9496, 0.959, 0.9666, 0.9728, 0.9779, 0.982, 0.9854, 0.9881, 0.9903, 0.9921, 0.9936, 0.9948, 0.9958, 0.9965, 0.9972, 0.9977, 0.9981, 0.9985, 0.9988, 0.999, 0.9992, 0.9993, 0.9995, 0.9996, 0.9996, 0.9997, 0.9998, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 1)"
+
+component ComposableText
+  state active = false
+  // LayoutAnimationConfig skipEntering: the first letters do not spring in. They mount with
+  // the entering animation already over (a delay of minus its duration); after the first
+  // press the same animation (same name, so no restart for a letter that stays) runs whole
+  // for each new letter.
+  state pressed = false
+  action toggle
+    haptic("selection")
+    active = not active
+    pressed = true
+  view
+    column position="absolute" inset=0 background-color="#0c0c0c" align-items="center" justify-content="center"
+      testId="composable-text"
+      // PressableScale, layout LinearTransition.springify().mass(0.4).damping(12).stiffness(100).
+      button appearance="none" press=toggle class=PressableScale testId="toggle" aria-label=labelOf(active)
+        aria-pressed=active -exact-layout-transition="-exact-spring(100, 12, 0.4)"
+        // styles.textContainer: #181818, borderRadius 32 continuous, padding 16, paddingHorizontal 22;
+        // the same springify() layout as the button.
+        row background-color="#181818" border-radius=32 corner-shape="squircle" padding="16px 22px"
+          -exact-layout-transition="-exact-spring(100, 12, 0.4)" testId="label"
+          for c, i in labelOf(active).split("") key=keyOf(labelOf(active), c, i)
+            // styles.text: fontSize 24, bold; colour withTiming 200 ms linear. Each letter's
+            // layout: springify().mass(0.3).damping(12).stiffness(80).
+            text c font-size=24 font-weight=700 white-space="pre" color=colorOf(active)
+              transition="color 200ms linear" aria-hidden=true
+              -exact-layout-transition="-exact-spring(80, 12, 0.3)"
+              animation=(pressed ? `${charInRow()} both` : `${charInRow()} -1171ms both`)
+              -exact-exit-animation="charOut 200ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"

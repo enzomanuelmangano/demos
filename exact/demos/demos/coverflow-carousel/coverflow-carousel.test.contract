@@ -1,0 +1,8 @@
+at "/demo/coverflow-carousel"
+
+test "the strip scrolls through the covers"
+  expect tree has "coverflow-carousel"
+  expect tree has "cover-0"
+  tap "coverflow-list" drag -320 0
+  clock settle
+  expect tree has "cover-2"

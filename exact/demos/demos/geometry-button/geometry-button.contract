@@ -1,0 +1,11 @@
+// Geometry Button: fifty circles that fan out into a flower while pressed. RN:
+// src/animations/geometry-button (Skia). Drawn, pressed and sprung in Rust:
+// gpu/src/geometry_button.rs; the heavy haptic at the touch-down is the host's.
+
+component GeometryButton
+  view
+    column position="absolute" inset=0 background-color="#000000" align-items="center"
+      justify-content="center" testId="geometry-button"
+      // The canvas: size * 2 = 200 square (the view scales inside it, from 0.5 to 1).
+      canvas surface=geometry_button() width=200 height=200 touch-action="none"
+        -exact-press-haptic="impact-heavy" testId="geometry-canvas" aria-label="Press and hold"

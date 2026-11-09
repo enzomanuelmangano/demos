@@ -1,0 +1,132 @@
+// Animated Clip Box: two cards whose corner circle floods the card while held (the text turns
+// white with it) and shrinks back on release. RN: src/animations/animated-clip-box (index.tsx,
+// components/clip-box-button/index.tsx, expanded-circle.tsx).
+use DemoEnv from "../env.contract"
+
+// pressto's PressableOpacity (activeOpacity 0.5 while held). packages/pressto's own
+// `PressableOpacity` does not compile (`-exact-press-opacity` is refused in `:active`), so the
+// same press, as `:active` accepts it, is kept here.
+style ClipPressOpacity
+  :active
+    opacity=0.5
+
+// The radius `r` springs between three targets: initialRadius 35, boxWidth while held
+// (withSpring { damping 20, mass 1, stiffness 80 }), 30 after the release (withSpring
+// { damping 25, mass 1.2, stiffness 120 }). Phase 0 = never pressed, 1 = held, 2 = released.
+fn radiusOf(phase: number, boxWidth: number): number = phase == 1 ? boxWidth : (phase == 2 ? 30 : 35)
+fn springOf(phase: number): string = phase == 1 ? "-exact-spring(80, 20, 1)" : "-exact-spring(120, 25, 1.2)"
+
+// The colours follow `r`, clamped, in Reanimated's interpolateColor (RGB, gamma 2.2): the
+// small circle's from primaryColor at r = initialR to highlightColor at r = boxWidth / 2, the
+// text from black at r = 0 to white at r = boxWidth / 3 (progress = clamp(r / (boxWidth / 3))).
+// A hidden box translated by `r` px on the same spring is a drag timeline those colour
+// keyframes follow: host-driven, no commit per frame. Stops are gamma 2.2 mixes.
+keyframes blueCircle
+  0% background-color="#4BA2E4"
+  10% background-color="#53A6E5"
+  20% background-color="#5AAAE7"
+  30% background-color="#60ADE8"
+  40% background-color="#66B1E9"
+  50% background-color="#6BB5EB"
+  60% background-color="#71B8EC"
+  70% background-color="#76BBED"
+  80% background-color="#7ABFEE"
+  90% background-color="#7FC2F0"
+  100% background-color="#83C5F1"
+keyframes orangeCircle
+  0% background-color="#ED7D3A"
+  10% background-color="#EC7F40"
+  20% background-color="#EB8245"
+  30% background-color="#EA844A"
+  40% background-color="#E9864E"
+  50% background-color="#E88852"
+  60% background-color="#E78A56"
+  70% background-color="#E68C5A"
+  80% background-color="#E58E5D"
+  90% background-color="#E49061"
+  100% background-color="#E39264"
+keyframes inkToWhite
+  0% color="#000000"
+  10% color="#5A5A5A"
+  20% color="#7B7B7B"
+  30% color="#949494"
+  40% color="#A8A8A8"
+  50% color="#BABABA"
+  60% color="#CACACA"
+  70% color="#D9D9D9"
+  80% color="#E6E6E6"
+  90% color="#F3F3F3"
+  100% color="#FFFFFF"
+
+// AntDesign "twitter" (the vector-icons font's glyph, 512 units to the em, ascent 455 and
+// descent 81: a Text box 536 units tall).
+fn twitterPath(): string = "M330 72Q293 78 270 109Q244 142 251 183L252 190H250Q237 190 213 185Q119 166 56 93L51 88L48 94Q38 115 39 141Q40 168 54 190Q63 204 77 215L81 218H78Q61 218 42 208L38 206V210Q38 229 48 250Q67 290 110 301L116 303L111 304Q106 305 89 305H72L74 310Q87 345 121 361Q136 369 158 372H162L158 376Q138 390 114 400Q91 409 64 412Q58 413 40.5 413.5Q23 414 20 413L42 426Q81 446 128 453Q160 458 194 455Q261 449 315 416Q362 386 395.0 338.0Q428 290 439 233Q445 208 445 182V166L453 160Q472 145 487 124Q493 117 493.0 116.5Q493 116 483.5 119.5Q474 123 465 126Q440 132 439 131Q439 130 443 127Q455 119 466 105Q469 101 472.5 94.5Q476 88 478.5 83.0Q481 78 480 78Q479 78 473 81Q453 92 427 99L419 101L413 95Q386 70 347 70Q337 70 330 72Z"
+
+component AnimatedClipBox
+  props
+    env: DemoEnv
+  view
+    // styles.container: white, centred. boxWidth = window width × 0.9.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
+      testId="animated-clip-box"
+      ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=30, circleFrames="blueCircle",
+        primaryColor="#4BA2E4", actionTitle="Explore Demos", testId="explore",
+        description="Perfect for learning how React Native Reanimated works, prototyping a new idea, or creating a demo to share online.")
+      ClipBoxButton(boxWidth=env.width * 0.9, marginBottom=0, circleFrames="orangeCircle",
+        primaryColor="#ED7D3A", actionTitle="Learn More", testId="learn",
+        description="What if I tell you that this text is animated with React Native Reanimated?")
+
+component ClipBoxButton
+  props
+    boxWidth: number
+    marginBottom: number
+    circleFrames: string
+    primaryColor: string
+    actionTitle: string
+    description: string
+    testId: string
+  state phase = 0
+  action pressIn
+    phase = 1
+  action pressOut
+    phase = 2
+  action pressed
+    haptic("selection")
+  view
+    // styles.button: white, boxShadow 0 0 20 rgba(0,0,0,0.15), height 250, width boxWidth.
+    // circleMargin = boxWidth × 0.12; canvasAreaHeight = circleMargin × 2 + initialRadius.
+    column width=boxWidth height=250 margin-bottom=marginBottom background-color="#ffffff"
+      box-shadow="0px 0px 20px rgba(0, 0, 0, 0.15)" position="relative" timeline-scope="--r" testId=testId
+      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+        translate=`${radiusOf(phase, boxWidth)}px 0px` transition=`translate ${springOf(phase)}`
+        -exact-drag-timeline="--r x" testId=`${testId}-radius`
+      // The PressableOpacity over the whole card (onPressIn / onPressOut), clipping its circles.
+      button appearance="none" class=ClipPressOpacity position="absolute" inset=0 overflow="hidden"
+        pointerdown=pressIn pointerup=pressOut press=pressed testId=`${testId}-press` aria-label=actionTitle
+        // Main circle: height r × 2, aspectRatio 1, borderRadius 200 continuous, left = top =
+        // circleCenter - r / 2 - circleMargin / 2 (circleCenter = circleMargin + initialR / 2).
+        // Its frame moves on the radius's spring.
+        view position="absolute" left=(boxWidth * 0.12 / 2 + 17.5 - radiusOf(phase, boxWidth) / 2)
+          top=(boxWidth * 0.12 / 2 + 17.5 - radiusOf(phase, boxWidth) / 2)
+          width=(radiusOf(phase, boxWidth) * 2) height=(radiusOf(phase, boxWidth) * 2)
+          border-radius=200 corner-shape="squircle" background-color=primaryColor
+          -exact-layout-transition=springOf(phase) testId=`${testId}-circle`
+        // Secondary circle: initialR × 2 at circleMargin / 2, its colour on the timeline, the icon
+        // (AntDesign twitter, 40, white) centred.
+        view position="absolute" left=(boxWidth * 0.12 / 2) top=(boxWidth * 0.12 / 2) width=70 height=70
+          border-radius=200 corner-shape="squircle" align-items="center" justify-content="center"
+          background-color=primaryColor animation=`${circleFrames} 1s linear both` animation-timeline="--r"
+          animation-range=`35px ${boxWidth / 2}px`
+          svg width=40 height=(40 * 536 / 512) viewBox="0 0 512 536" aria-hidden=true
+            path d=twitterPath() fill="#ffffff"
+      // The description (fontSize 15) under the circle's area, untouchable.
+      column flex=1 margin-left=(boxWidth * 0.12 / 2) margin-right=(boxWidth * 0.12 / 2)
+        margin-top=(boxWidth * 0.12 * 2 + 35) pointer-events="none"
+        text description font-size=15 color="#000000" animation="inkToWhite 1s linear both"
+          animation-timeline="--r" animation-range=`0px ${boxWidth / 3}px` testId=`${testId}-description`
+      // The action: PressableOpacity, margin circleMargin / 2; text paddingVertical 5, bold.
+      button appearance="none" class=ClipPressOpacity press=pressed margin=(boxWidth * 0.12 / 2)
+        testId=`${testId}-action` display="flex" flex-direction="column" align-items="flex-start"
+        text actionTitle padding="5px 0px" font-size=14 font-weight=700 color="#000000"
+          animation="inkToWhite 1s linear both" animation-timeline="--r"
+          animation-range=`0px ${boxWidth / 3}px`

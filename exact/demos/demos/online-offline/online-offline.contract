@@ -1,0 +1,130 @@
+// Online / Offline: seven overlapping avatars in two pill-shaped groups, online in colour and
+// offline in grey; a tap anywhere moves a random one across, and everything springs to its place.
+// RN: src/animations/online-offline (index.tsx, components/online-to-offline/*).
+use PressableScale from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+shape Avatar
+  uri: string
+  offline: bool
+
+// index.tsx InitialItems (fetched at the displayed size: 40 pt avatars at 3x).
+fn initialItems(): Avatar[] = [
+  Avatar(uri="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&h=120&fit=crop", offline=false),
+  Avatar(uri="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&h=120&fit=crop", offline=false),
+  Avatar(uri="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&h=120&fit=crop", offline=false),
+  Avatar(uri="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&h=120&fit=crop", offline=false),
+  Avatar(uri="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&h=120&fit=crop", offline=true),
+  Avatar(uri="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&h=120&fit=crop", offline=true),
+  Avatar(uri="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&h=120&fit=crop", offline=true)
+]
+
+// index.tsx OnlineToOffline props: itemSize 40, gap 3.5, listPadding 2, listColor #EAEAEA,
+// sectionGap 12. utils.ts: overlap = gap * GAP_MULTIPLIER (4) = 14; a section is
+// itemSize + (n - 1) * (itemSize - overlap) wide (0 when empty); the gap between is sectionGap.
+fn sectionWidth(n: number): number = n == 0 ? 0 : 40 + (n - 1) * (40 - 14)
+fn offlineStart(online: number): number = sectionWidth(online) + 12
+fn listWidth(online: number, offline: number): number = offlineStart(online) + sectionWidth(offline)
+// calculateItemPosition: online at index * 26, offline from the offline section's start.
+fn itemLeft(online: number, index: number): number = index < online ? index * 26 : offlineStart(online) + (index - online) * 26
+
+// The items' order: online first, then offline (useListItems).
+fn ordered(items: Avatar[]): Avatar[] = items.filter(a => not a.offline).concat(items.filter(a => a.offline))
+fn indicesOf(items: Avatar[], offline: bool): number[] = range(items.length).filter(i => match items.at(i) { case some(a) => a.offline == offline, case none => false })
+fn pickIndex(xs: number[], k: number): number = match xs.at(k) { case some(i) => i, case none => 0 }
+fn withoutAt(items: Avatar[], i: number): Avatar[] = items.slice(0, i).concat(items.slice(i + 1))
+fn avatarAt(items: Avatar[], i: number): Avatar = match items.at(i) { case some(a) => a, case none => Avatar(uri="", offline=false) }
+// handleTouchEnd's insert position: after the last online item of what remains.
+fn lastOnlineEnd(items: Avatar[]): number = match indicesOf(items, false).at(-1) { case some(i) => i + 1, case none => 0 }
+
+// animations.ts LayoutTransition: LinearTransition.springify().mass(1).damping(20).stiffness(120).
+style Springy
+  -exact-layout-transition="-exact-spring(120, 20, 1)"
+
+// background-section.tsx FadeIn / FadeOut: 300 ms on inOut(quad) (Reanimated's default curve).
+keyframes sectionIn
+  from opacity=0
+keyframes sectionOut
+  to opacity=0
+
+component OnlineOffline
+  props
+    env: DemoEnv
+  state items: Avatar[] = initialItems()
+  state taps = 0
+  // LayoutAnimationConfig skipEntering: the sections fade in only when they come back after a
+  // tap emptied them, never at mount.
+  state onlineFades = false
+  state offlineFades = false
+  derive online = items.filter(a => not a.offline).length
+  derive offline = items.filter(a => a.offline).length
+  action move
+    haptic("selection")
+    // Math.random() > 0.5, then a random item of that side: roll(seed, k, n).
+    let toOffline = offline == 0 ? true : online == 0 ? false : roll(env.seed, 2 * taps, 2) == 1
+    if toOffline and online > 0
+      let i = pickIndex(indicesOf(items, false), roll(env.seed, 2 * taps + 1, online))
+      items = withoutAt(items, i).concat([Avatar(avatarAt(items, i), offline=true)])
+      if online == 1
+        onlineFades = true
+    else
+      if offline > 0
+        let i = pickIndex(indicesOf(items, true), roll(env.seed, 2 * taps + 1, offline))
+        let rest = withoutAt(items, i)
+        let at = lastOnlineEnd(rest)
+        items = rest.slice(0, at).concat([Avatar(avatarAt(items, i), offline=false)]).concat(rest.slice(at))
+        if offline == 1
+          offlineFades = true
+    taps = taps + 1
+  view
+    // The whole screen is the PressableScale (styles.container: white, flex 1, centred).
+    button appearance="none" press=move class=PressableScale aria-label="Move someone online or offline"
+      testId="online-offline" position="absolute" inset=0 background-color="#FFFFFF"
+      display="flex" flex-direction="column" justify-content="center"
+      // OnlineToOffline container: full width, 40 tall, the list centred in it.
+      row width="100%" height=40 align-items="center" justify-content="center"
+        view class=Springy position="relative" width=listWidth(online, offline) height=40 flex-shrink=0
+          testId="online-offline-list"
+          if online > 0
+            Section(left=0, width=sectionWidth(online), fades=onlineFades, testId="online-section")
+          if offline > 0
+            Section(left=offlineStart(online), width=sectionWidth(offline), fades=offlineFades,
+              testId="offline-section")
+          for a, i in ordered(items) key=a.uri
+            Item(uri=a.uri, offline=a.offline, left=itemLeft(online, i), z=items.length - i,
+              testId=`avatar-${indexOfUri(a.uri)}`)
+
+fn indexOfUri(uri: string): number = initialItems().map(a => a.uri).indexOf(uri)
+
+component Section
+  props
+    left: number
+    width: number
+    fades: bool
+    testId: string
+  view
+    // background-section.tsx: absolute, listPadding (2) around the section, radius 999,
+    // #EAEAEA, z-index 0.
+    view class=Springy position="absolute" left=(left - 2) width=(width + 4) top=-2 bottom=-2
+      border-radius=999 corner-shape="squircle" background-color="#EAEAEA" z-index=0 testId=testId
+      animation=(fades ? "sectionIn 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both" : "none")
+      -exact-exit-animation="sectionOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+
+component Item
+  props
+    uri: string
+    offline: bool
+    left: number
+    z: number
+    testId: string
+  view
+    // list-item.tsx: absolute, 40 × 40, radius 20 (continuous), border 3 #EAEAEA, clipped.
+    view class=Springy position="absolute" top=0 left=left width=40 height=40 box-sizing="border-box"
+      border-radius=20 corner-shape="squircle" border-width=3 border-style="solid" border-color="#EAEAEA"
+      overflow="hidden" z-index=z testId=testId
+      image uri width="100%" height="100%" object-fit="cover" aria-hidden=true
+      // filter: grayscale(p), p = withTiming(offline ? 1 : 0, 300 ms linear). grayscale(p) is
+      // the colour image mixed (1 - p) with its full greyscale, so it is that greyscale copy
+      // over the image at opacity p (a filter does not animate here; an opacity does).
+      image uri position="absolute" inset=0 width="100%" height="100%" object-fit="cover"
+        filter="grayscale(1)" aria-hidden=true opacity=(offline ? 1 : 0) transition="opacity 300ms linear"

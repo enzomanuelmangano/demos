@@ -1,7 +1,7 @@
 # Demos's native workspace: the hosts exact2 generates (web/, apple/), plus the app's own GPU
 # module (gpu/), where every demo the RN app draws with Skia or WebGPU is drawn with wgpu.
 [workspace]
-members = ["web", "apple", "gpu", "packages/reanimated", "packages/gesture-handler"]
+members = ["web", "apple", "gpu", "packages/reanimated", "packages/gesture-handler", "packages/skia"]
 resolver = "2"
 
 [workspace.package]

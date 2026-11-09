@@ -1,0 +1,15 @@
+at "/demo/alert-drawer"
+
+test "the pill opens the card; Cancel and the close button fold it back"
+  expect tree has "alert-drawer"
+  expect tree has "continue"
+  tap "continue"
+  clock settle
+  expect text "card-title" == "Are you sure?"
+  tap "cancel"
+  clock settle
+  tap "continue"
+  clock settle
+  tap "close-card"
+  clock settle
+  expect tree has "continue"

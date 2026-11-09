@@ -67,3 +67,8 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 - `cargo test -p demos-gpu` renders offscreen (`exact_gpu::fixture`; `EXACT_GPU_OUT=/tmp/x`
   writes PPMs): check positions there before a device build.
 - `Surface::agent()` answers the drive's state request: report the surface's state there.
+- Never let a surface publish state that changes route props (`closedby`, presentation)
+  during a gesture: the commit held the canvas's first frames ~1 s. Per-demo policy is
+  static (`ownsDrags` in app.contract).
+- Skia drawing goes through `packages/skia` (lyon tessellation + one MSAA pipeline): vello
+  was tried and fails on the iOS Simulator (no indirect dispatch), so don't reach for it.

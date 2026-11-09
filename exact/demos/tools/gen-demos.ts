@@ -7,7 +7,7 @@
 // AnimationMetadata), src/animations/inspirations.ts, assets/app-icons/*.png and
 // src/navigation/home/icon-colors.generated.ts. The order mirrors
 // src/navigation/home/demos.ts: registry order, reversed (newest first).
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const APP = resolve(import.meta.dir, '..');
@@ -29,9 +29,10 @@ const meta = literal(registry, 'export const AnimationMetadata: Record<string, A
 const inspirations = literal(src('src/animations/inspirations.ts'), 'export const AnimationInspirations: Record<string, InspirationData> = {', '} as const;');
 const colors = literal(src('src/navigation/home/icon-colors.generated.ts'), 'export const ICON_COLORS: Record<string, string> = {', '\n};') as unknown as Record<string, string>;
 
-// Demos ported to Exact: a folder under demos/ with a <slug>.contract.
-const ported = new Set(existsSync(resolve(APP, 'demos'))
-  ? readdirSync(resolve(APP, 'demos'), { withFileTypes: true }).filter(e => e.isDirectory()).map(e => e.name)
+// Demos ported to Exact: those demos/index.contract registers (`if slug == "<slug>"`).
+const portedIndex = resolve(APP, 'demos/index.contract');
+const ported = new Set(existsSync(portedIndex)
+  ? [...readFileSync(portedIndex, 'utf8').matchAll(/if slug == "([a-z0-9-]+)"/g)].map(m => m[1])
   : []);
 
 mkdirSync(resolve(APP, 'assets/app-icons'), { recursive: true });

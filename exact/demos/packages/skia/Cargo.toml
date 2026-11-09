@@ -1,0 +1,18 @@
+# @shopify/react-native-skia's drawing, for the Demos app's GPU surfaces: paths tessellated
+# by lyon and drawn by one wgpu pipeline (MSAA, gradients in the shader, stencil clips), on the
+# module's own device, with no compute and no indirect dispatch (the iOS Simulator has none).
+[package]
+name = "skia"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "react-native-skia's drawing on lyon and wgpu, for GPU surfaces"
+publish = false
+
+[lib]
+name = "skia"
+
+[dependencies]
+exact-gpu = { path = "../../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/gpu" }
+lyon = "1.0"
+bytemuck = { version = "1", features = ["derive"] }

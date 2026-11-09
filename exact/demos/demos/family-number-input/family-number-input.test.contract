@@ -1,0 +1,40 @@
+at "/demo/family-number-input"
+
+test "keys type a number with commas, backspace removes, a long press clears"
+  expect tree has "family-number-input"
+  expect tree has "char-digit-0"
+  expect tree missing "char-digit-1"
+  tap "key-1"
+  tap "key-2"
+  tap "key-3"
+  tap "key-4"
+  clock settle
+  expect tree has "char-digit-3"
+  expect tree has "char-comma-0"
+  tap "key--2"
+  clock settle
+  expect tree missing "char-digit-3"
+  expect tree missing "char-comma-0"
+  expect tree has "char-digit-2"
+  tap "key--2" contextmenu
+  clock settle
+  expect tree has "char-digit-0"
+  expect tree missing "char-digit-1"
+
+test "the number stops at eleven digits"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  tap "key-9"
+  clock settle
+  expect tree has "char-digit-10"
+  expect tree missing "char-digit-11"
+  expect tree has "char-comma-2"

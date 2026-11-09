@@ -1,0 +1,10 @@
+at "/demo/circular-carousel"
+
+test "the strip scrolls and the scale switch flips"
+  expect tree has "circular-carousel"
+  expect tree has "photo-0"
+  tap "circular-list" drag -200 0
+  clock settle
+  tap "scale-switch"
+  clock settle
+  expect tree has "photo-4"

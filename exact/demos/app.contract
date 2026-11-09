@@ -17,14 +17,19 @@ shape Host
 
 shape Time
   seed: number
+  epochAtZero: number
+  utcOffset: number
 
-// What a demo's GPU surface publishes while a finger holds something of its own: the demo's
-// swipe-down close waits (RN: a demo that claims a touch keeps it, demo-screen.tsx).
-shape Hold
-  held: bool
+// Demos whose drags own the whole screen: their swipe-down close is off (the close button
+// stays). RN lets a demo keep a touch it claimed (demo-screen.tsx CloseGesture); a route's
+// dismissal cannot ask the canvas mid-gesture, and switching it per touch costs a commit
+// that holds the canvas's first frames.
+fn ownsDrags(slug: string): bool = ["metaball"].includes(slug)
 
 // A link `demos-exact://demo/<slug>` arrives as `/open?u=<the link, encoded>`: its path.
-fn linkPath(u: string): string = `/${u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://")}`
+fn linkPath(u: string): string = linkRoute(u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://"))
+// `demo/x`, `/demo/x`, `///` or `` (the launcher): its non-empty segments under `/`.
+fn linkRoute(rest: string): string = `/${rest.split("/").filter(p => p != "").join("/")}`
 
 fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slug)) {
   case some(d) => d,
@@ -34,9 +39,7 @@ fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slu
 component Demos
   resource host = exactViewport() as shape Host
   resource time = exactTime() as shape Time
-  resource metaballHold = exactSurface("metaball") as shape Hold
-  derive holding = metaballHold.held
-  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, seed=time.seed, reducedMotion=host.prefersReducedMotion)
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
@@ -65,5 +68,5 @@ component Demos
         if e.name == "demo"
           column navigationKey=`${e.id}` navigationBar="none" navigationPresentation="fullscreen"
             navigationSource=`icon-${e.params.slug}` position="absolute" inset=0
-            background-color=demoOf(e.params.slug).backdrop closedby=(holding ? "none" : "closerequest")
+            background-color=demoOf(e.params.slug).backdrop closedby=(ownsDrags(e.params.slug) ? "none" : "closerequest")
             DemoScreen(demo=demoOf(e.params.slug), env=env, close=back)

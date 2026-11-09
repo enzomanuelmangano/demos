@@ -1,0 +1,86 @@
+// Miles Bar Chart: seven bars for the days of a week over a paged strip of week labels; paging
+// to another week springs every bar to that week's values, with a selection tick per week.
+// RN: src/animations/miles-bar-chart (src/index.tsx, src/constants.ts, src/components/weekly-chart/*).
+use DemoEnv, roll from "../env.contract"
+
+// The app's FiraCode-Regular (assets/fonts in the RN repo), under a family name of this demo's own
+// (two files may not declare one family).
+
+// constants.ts: seven weeks of seven days, each a Math.random() value (roll(seed, k, 10^6) / 10^6).
+fn dayValue(seed: number, week: number, day: number): number = roll(seed, week * 7 + day, 1000000) / 1000000
+fn dayLabels(): string[] = ["M", "T", "W", "T", "F", "S", "S"]
+fn dayLabel(d: number): string = match dayLabels().at(d) { case some(l) => l, case none => "" }
+
+// The week labels: `week of ${format(monday, 'd MMMM')}` from startOfWeek(now - 21 days,
+// { weekStartsOn: 1 }). Days are counted from 1970-01-01 (a Thursday).
+// DemoEnv carries no clock, so "today" is a fixed day here (2026-11-09, epoch day 20766):
+// the one line to change once the env hands a demo the date.
+// Today, as days since 1970-01-01 in the device's zone (RN: new Date()).
+fn todayDay(env: DemoEnv): number = floor((env.epoch + env.utcOffset * 60000) / 86400000)
+fn mondayOf(day: number): number = day - (day + 3) % 7
+fn firstMonday(env: DemoEnv): number = mondayOf(todayDay(env) - 21)
+// Howard Hinnant's civil-from-days: the day of the month and the month (1-12) of an epoch day.
+fn doeOf(day: number): number = (day + 719468) - floor((day + 719468) / 146097) * 146097
+fn yoeOf(doe: number): number = floor((doe - floor(doe / 1460) + floor(doe / 36524) - floor(doe / 146096)) / 365)
+fn doyOf(doe: number): number = doe - (365 * yoeOf(doe) + floor(yoeOf(doe) / 4) - floor(yoeOf(doe) / 100))
+fn mpOf(day: number): number = floor((5 * doyOf(doeOf(day)) + 2) / 153)
+fn dayOfMonth(day: number): number = doyOf(doeOf(day)) - floor((153 * mpOf(day) + 2) / 5) + 1
+fn monthIndex(day: number): number = mpOf(day) < 10 ? mpOf(day) + 2 : mpOf(day) - 10
+fn monthName(m: number): string = match ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"].at(m) {
+  case some(n) => n,
+  case none => ""
+}
+fn weekLabel(env: DemoEnv, week: number): string = `week of ${dayOfMonth(firstMonday(env) + week * 7)} ${monthName(monthIndex(firstMonday(env) + week * 7))}`
+
+// index.tsx activeIndex: floor((offset + width / 2) / width), held inside the data.
+fn activeOf(x: number, width: number): number = min(6, max(0, floor((x + width / 2) / width)))
+
+component MilesBarChart
+  props
+    env: DemoEnv
+  state active = 0
+  // Written only when the week changes, never per frame.
+  action scrolled(x: number, y: number)
+    let i = activeOf(x, env.width)
+    if i != active
+      haptic("selection")
+      active = i
+  view
+    // styles.container: #392F40, centred.
+    column position="absolute" inset=0 background-color="#392F40" align-items="center"
+      justify-content="center" testId="miles-bar-chart"
+      // WeeklyChart: width × 150, padding 0 48, gap 20, a row aligned to its bottom.
+      row width=env.width height=150 padding-left=48 padding-right=48 gap=20 align-items="flex-end"
+        box-sizing="border-box" testId="miles-chart"
+        for d in range(7) key=d
+          Bar(letter=dayLabel(d), value=dayValue(env.seed, active, d),
+            width=(env.width - 48 * 2 - 20 * 6) / 7, testId=`bar-${d}`)
+      // The 60-tall strip of week labels, a page per week (snapToInterval width, fast
+      // deceleration), its content padded 20 at the top. FlatList's hitSlop 100: the scroller
+      // reaches 100 past the strip above and below, with the labels where they were.
+      scroll width=env.width height=260 margin-top=-100 margin-bottom=-100 overflow-x="auto"
+        overflow-y="hidden" scroll-snap-type="x mandatory" scrollbar-width="none" scroll=scrolled
+        testId="miles-weeks"
+        row padding-top=120
+          for w in range(7) key=w
+            column width=env.width height=40 flex-shrink=0 align-items="center" justify-content="center"
+              scroll-snap-align="start"
+              text weekLabel(env, w) color="#ffffff" font-family="FiraCode-Regular" font-size=16
+                testId=`week-${w}`
+
+component Bar
+  props
+    letter: string
+    value: number
+    width: number
+    testId: string
+  view
+    column
+      // single-bar.tsx: height interpolate(progress, [0, 1], [150 / 5, 150]), colour
+      // rgba(255,255,255, 0.3 → 1) on the same withSpring({ dampingRatio: 1, duration: 500 }):
+      // bun tools/spring.ts 500 1. Radius 10 (continuous).
+      view width=width height=(30 + 120 * value) background-color=`rgba(255, 255, 255, ${0.3 + 0.7 * value})`
+        border-radius=10 corner-shape="squircle" testId=testId
+        transition="height -exact-spring(1087.7, 131.9, 4), background-color -exact-spring(1087.7, 131.9, 4)"
+      // styles.label: white FiraCode, margin-top 8, centred (RN's default 14).
+      text letter color="#ffffff" font-family="FiraCode-Regular" font-size=14 margin-top=8 text-align="center"

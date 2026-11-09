@@ -1,0 +1,99 @@
+// Coverflow Carousel: eleven photos on a paged horizontal strip; the centred one is full size
+// and the others shrink to slivers, squash and fan out to the sides as they leave the centre.
+// RN: src/animations/coverflow-carousel (index.tsx, constants.ts,
+// components/coverflow-carousel/index.tsx, carousel-item.tsx).
+use DemoEnv from "../env.contract"
+
+// constants.ts Images: the eleven Unsplash photos, w=640 q=80.
+fn photos(): string[] = [
+  "https://plus.unsplash.com/premium_photo-1676321688612-4451a8721435?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://plus.unsplash.com/premium_photo-1684508638760-72ad80c0055f?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://plus.unsplash.com/premium_photo-1686090448517-2f692cc45187?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1501876725168-00c445821c9e?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1514894780887-121968d00567?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://plus.unsplash.com/premium_photo-1671797352860-017c27c1b7ca?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1476469535352-80159d0af31d?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1513278974582-3e1b4a4fa21e?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+  "https://images.unsplash.com/photo-1453671424686-dfef17039343?q=80&w=640&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+]
+
+// coverflow-carousel/index.tsx: ItemWidth 160; paddingHorizontal round((windowWidth - 160) / 2).
+fn item(): number = 160
+fn sidePad(w: number): number = round((w - item()) / 2)
+// carousel-item.tsx: the input range is (index - 3 … index + 3) * itemWidth; `u` is the scroll's
+// place in items relative to this one, `a` its distance.
+fn rel(scroll: number, i: number): number = scroll / item() - i
+fn dist(u: number): number = max(u, 0 - u)
+// scaleX [0.1, 0.125, 0.2, 1, 0.2, 0.125, 0.1], CLAMP; width = round(itemWidth * scaleX).
+fn scaleX(a: number): number = a <= 1 ? 1 - 0.8 * a : (a <= 2 ? 0.2 - 0.075 * (a - 1) : (a <= 3 ? 0.125 - 0.025 * (a - 2) : 0.1))
+fn shownWidth(a: number): number = round(item() * scaleX(a))
+// scaleY [0.6, 0.8, 0.9, 1, 0.9, 0.8, 0.6], EXTEND (held in [0, 1] past where opacity is 0).
+fn scaleY(a: number): number = min(1, max(0, a <= 1 ? 1 - 0.1 * a : (a <= 2 ? 0.9 - 0.1 * (a - 1) : 0.8 - 0.2 * (a - 2))))
+// translateX [-1.9w, -w/0.93, -w/3.3, 0, w/3.3, w/0.93, 1.9w], EXTEND; scroll past an item
+// (u > 0) moves it left.
+fn shiftOf(a: number): number = a <= 1 ? item() / 3.3 * a : (a <= 2 ? item() / 3.3 + (item() / 0.93 - item() / 3.3) * (a - 1) : item() / 0.93 + (item() * 1.9 - item() / 0.93) * (a - 2))
+fn shiftX(u: number): number = u > 0 ? 0 - shiftOf(dist(u)) : shiftOf(dist(u))
+// borderRadius [25, 25, 25, 15, 25, 25, 25] (maxBorderRadius 25), held to half the width as
+// UIKit clamps a corner.
+fn radiusOf(a: number): number = min(a <= 1 ? 15 + 10 * a : 25, shownWidth(a) / 2)
+// opacity over [(index - 3) * w - 100, …inputRange, (index + 3) * w + 100] → [0, 1 … 1, 0], CLAMP.
+fn fade(a: number): number = a <= 3 ? 1 : max(0, 1 - (a - 3) * item() / 100)
+
+// A box takes no per-axis scale: scaleY is a rotation about the x axis, which (with no
+// perspective) draws the box `cos θ` as tall, so θ = acos(scaleY). Contract has no acos nor
+// sqrt: a series start refined by Newton's method (to well under a thousandth of a point).
+fn root1(y: number, x: number): number = (x + y / x) / 2
+fn sqrtOf(y: number): number = y <= 0 ? 0 : root1(y, root1(y, root1(y, root1(y, root1(y, root1(y, root1(y, (1 + y) / 2)))))))
+fn acosStep(s: number, t: number): number = t <= 0 ? 0 : t + (cos(t) - s) / sin(t)
+fn acosOf(s: number): number = s >= 1 ? 0 : acosStep(s, acosStep(s, acosStep(s, sqrtOf(2 * (1 - s)) * (1 + (1 - s) / 12))))
+fn squashDeg(s: number): number = acosOf(s) * 180 / 3.141592653589793
+
+component CoverflowCarousel
+  props
+    env: DemoEnv
+  state scroll = 0
+  action scrolled(x: number, y: number)
+    scroll = x
+  view
+    // index.tsx: white, centred; styles.coverflow height 250, centred.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
+      justify-content="center" testId="coverflow-carousel"
+      // The FlatList: paged at ItemWidth (snapToInterval 160, decelerationRate fast); its content
+      // padded by paddingHorizontal each side, the snap measured from that padding.
+      scroll width="100%" height=250 overflow-x="scroll" overflow-y="hidden" scrollbar-width="none"
+        scroll-snap-type="x mandatory" scroll-padding-left=sidePad(env.width) scroll=scrolled
+        testId="coverflow-list"
+        row width=(sidePad(env.width) * 2 + item() * 11) height=250 align-items="center"
+          padding-left=sidePad(env.width) box-sizing="border-box"
+          for uri, i in photos() key=i
+            CoverItem(uri=uri, i=i, u=rel(scroll, i))
+
+// carousel-item.tsx: a 160-wide cell, centring the image's animated view (width
+// round(160 * scaleX), 120 tall: the image's aspectRatio 4 / 3), which clips the 160 x 120 image
+// at its left edge with the interpolated radius, continuous corners.
+//
+// A width per frame is layout; the same window is two clips that only translate: the outer
+// clip's left edge is the window's left (shifted by `inset`), the inner's right edge its right
+// (shifted back by twice that), and the image is put back where the window starts.
+component CoverItem
+  props
+    uri: string
+    i: number
+    u: number
+  derive a = dist(u)
+  derive inset = (item() - shownWidth(dist(u))) / 2
+  view
+    view width=item() height=250 flex-shrink=0 align-items="center" justify-content="center"
+      scroll-snap-align="start" testId=`cover-${i}`
+      // transform [translateX, scaleY], opacity.
+      view width=item() height=120 opacity=fade(a) translate=`${shiftX(u)}px 0px`
+        rotate=`x ${squashDeg(scaleY(a))}deg`
+        view width=item() height=120 overflow="hidden" border-radius=radiusOf(a) corner-shape="squircle"
+          translate=`${inset}px 0px`
+          view width=item() height=120 overflow="hidden" border-radius=radiusOf(a) corner-shape="squircle"
+            translate=`${0 - 2 * inset}px 0px`
+            // expo-image contentFit cover, 160 wide at 4 / 3.
+            image uri width=item() height=120 object-fit="cover" translate=`${2 * inset}px 0px`
+              aria-hidden=true

@@ -21,7 +21,7 @@ use DemoEnv from "./demos/env.contract"
 component Check
   view
     column position="absolute" inset=0
-      ${name}(${takesEnv ? 'env=DemoEnv(width=420, height=912, safeTop=68, seed=1, reducedMotion=false)' : ''})
+      ${name}(${takesEnv ? 'env=DemoEnv(width=420, height=912, safeTop=68, epoch=1794268800000, utcOffset=60, seed=1, reducedMotion=false)' : ''})
 `);
 try {
   const r = spawnSync(process.execPath, ['exact.mjs', 'contract', 'build', scratch, '--json', '--errors-only'], { cwd: APP, encoding: 'utf8' });

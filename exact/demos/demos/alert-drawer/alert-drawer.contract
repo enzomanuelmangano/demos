@@ -1,0 +1,128 @@
+// Alert Drawer: a red Continue pill that, tapped, grows a white card around itself (an alert
+// with an icon, a title, a description and Cancel) and shrinks to the card's corner; Cancel or
+// the close button folds it back. RN: src/animations/alert-drawer (src/index.tsx,
+// src/components/alert-drawer/index.tsx, styles.ts).
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// fonts.ts 'Honk-Regular': assets/fonts/honk-regular.otf. Its one face: RN's fontWeight 'bold'
+// on it finds no bold face and draws this one, as here.
+
+// styles.ts: BUTTON_HEIGHT 50, BUTTON_WIDTH 0.82 w, MIN_BUTTON_WIDTH 0.4 w,
+// EXPANDED_CARD_WIDTH 0.9 w, EXPANDED_CARD_HEIGHT 300, ALERT_COLOR #f0212b.
+fn buttonWidth(w: number): number = w * 0.82
+fn minButtonWidth(w: number): number = w * 0.4
+fn cardWidth(w: number): number = w * 0.9
+// padding at progress 1: (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2.
+fn inset(w: number): number = (cardWidth(w) - buttonWidth(w)) / 2
+
+// progress = withSpring(isExpanded, { dampingRatio: 1, duration: 400 }):
+// bun tools/spring.ts 400 1. Every box that interpolates linearly on progress (left, width,
+// height, padding, bottom, radius, background) rides this spring.
+//
+// delayedProgress = progress²: the content's opacity and the extra paddingTop (10 · progress²).
+// A spring's square is no spring: it is the same spring's curve, squared, sampled every 25 ms
+// over its 600 ms as linear() stops (p(t) = 1 - e^(-ωt)(1 + ωt), ω = √(1699.6 / 4)); folding
+// back, 1 - (1 - p)² from 1 to 0.
+keyframes contentIn
+  from opacity=0
+  to opacity=1
+keyframes contentOut
+  from opacity=1
+  to opacity=0
+keyframes dropIn
+  from translate="0px 0px"
+  to translate="0px 10px"
+keyframes dropOut
+  from translate="0px 10px"
+  to translate="0px 0px"
+fn squaredIn(): string = "600ms linear(0, 0.009, 0.0759, 0.2093, 0.3725, 0.5301, 0.6629, 0.7657, 0.8409, 0.8939, 0.9301, 0.9545, 0.9706, 0.9811, 0.9879, 0.9923, 0.9952, 0.9969, 0.9981, 0.9988, 0.9992, 0.9995, 0.9997, 0.9998, 1) both"
+fn squaredOut(): string = "600ms linear(0, 0.1808, 0.4751, 0.7056, 0.8482, 0.9261, 0.9655, 0.9844, 0.9931, 0.997, 0.9987, 0.9995, 0.9998, 0.9999, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1) both"
+
+style Drawer
+  -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+
+component AlertDrawer
+  props
+    env: DemoEnv
+  state isExpanded = false
+  // Nothing plays before the first tap.
+  state toggles = 0
+  derive w = env.width
+  action toggleExpansion
+    haptic("selection")
+    isExpanded = not isExpanded
+    toggles = toggles + 1
+  // The pill: expanded, onConfirm (console.log('Confirmed') in src/index.tsx); else expands.
+  action pressMain
+    haptic("selection")
+    if not isExpanded
+      isExpanded = true
+      toggles = toggles + 1
+  view
+    // src/index.tsx: white, centred.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
+      justify-content="center" testId="alert-drawer"
+      // styles.container: EXPANDED_CARD_WIDTH x EXPANDED_CARD_HEIGHT.
+      column width=cardWidth(w) height=300 position="relative"
+        // styles.card (zIndex -1: under the pill): bottom 0, radius 50 continuous, shadow
+        // 0 2 30 10% black; left, width, height, radius, padding and colour on progress.
+        column class=Drawer position="absolute" bottom=0 left=(isExpanded ? 0 : inset(w))
+          width=(isExpanded ? cardWidth(w) : buttonWidth(w)) height=(isExpanded ? 300 : 50)
+          padding=(isExpanded ? inset(w) : 0) box-sizing="border-box"
+          // Radius 50 → 50 - padding: a radius does not animate here, so it is the expanded one
+          // throughout; collapsed it is clamped to the 25 of a 50-tall pill either way.
+          border-radius=(50 - inset(w)) corner-shape="squircle"
+          box-shadow="0px 2px 30px rgba(0, 0, 0, 0.1)"
+          background-color=(isExpanded ? "#FFFFFF" : "#FFFFFF00")
+          transition="background-color -exact-spring(1699.6, 164.9, 4)"
+          testId="card"
+          // styles.cardContentWrapper: flex 1, clipped, opacity delayedProgress.
+          column class=Drawer flex=1 overflow="hidden" opacity=(isExpanded ? 1 : 0)
+            animation=(toggles == 0 ? "none" : (isExpanded ? `contentIn ${squaredIn()}` : `contentOut ${squaredOut()}`))
+            testId="card-content"
+            // styles.cardContent; the top part drops by the extra paddingTop.
+            column flex=1
+              column animation=(toggles == 0 ? "none" : (isExpanded ? `dropIn ${squaredIn()}` : `dropOut ${squaredOut()}`))
+                translate=(isExpanded ? "0px 10px" : "0px 0px")
+                // styles.iconContainer: Ionicons alert-circle-outline 48, a spacer, the close.
+                row
+                  image "symbol:sf/exclamationmark.circle" font-size=48 color="#f0212b" aria-hidden=true
+                  view flex=1
+                  // styles.closeIconContainer 50 x 50; styles.closeButton 32, radius 16, #F8F8FA;
+                  // FontAwesome close 14 #A1A0A2.
+                  view width=50 height=50 align-items="center" justify-content="center"
+                    button appearance="none" class=PressableScale press=toggleExpansion
+                      aria-label="Close" testId="close-card" width=32 height=32 border-radius=16
+                      background-color="#F8F8FA" display="flex" align-items="center"
+                      justify-content="center"
+                      image "symbol:sf/xmark" font-size=14 color="#A1A0A2"
+                // styles.textContainer: marginTop 8, padding 8.
+                column margin-top=8 padding=8
+                  // styles.title: Honk 20 bold, letterSpacing 0.5.
+                  text "Are you sure?" font-family="Honk-Regular" font-size=20
+                    letter-spacing=0.5 color="#000000" testId="card-title"
+                  // styles.description: #999999, Honk 15, letterSpacing 0.5, marginTop 8.
+                  text "You haven't backed up your wallet yet. If you remove it, you could lose access forever. We suggest tapping Cancel and backing up your wallet first with a valid recovery method."
+                    font-family="Honk-Regular" font-size=15 letter-spacing=0.5 margin-top=8
+                    color="#999999"
+              // styles.button + styles.cancelButton: absolute, bottom 0, MIN_BUTTON_WIDTH x 50,
+              // radius 50 continuous, #dfdfdf, paddingHorizontal 20.
+              button appearance="none" class=PressableScale press=toggleExpansion testId="cancel"
+                position="absolute" left=0 bottom=0 width=minButtonWidth(w) height=50
+                border-radius=50 corner-shape="squircle" background-color="#dfdfdf"
+                padding-left=20 padding-right=20 display="flex" align-items="center"
+                justify-content="center" -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+                // styles.buttonLabel + cancelButtonLabel: Honk 16 bold, #111.
+                text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
+        // The pill (styles.button): right (EXPANDED_CARD_WIDTH - BUTTON_WIDTH) / 2; bottom
+        // padding; width BUTTON_WIDTH → MIN_BUTTON_WIDTH.
+        button appearance="none" class=PressableScale press=pressMain testId="continue"
+          position="absolute" right=inset(w) bottom=(isExpanded ? inset(w) : 0)
+          width=(isExpanded ? minButtonWidth(w) : buttonWidth(w)) height=50 border-radius=50
+          corner-shape="squircle" background-color="#f0212b" padding-left=20 padding-right=20
+          box-sizing="border-box" display="flex" align-items="center" justify-content="center"
+          -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
+          // styles.buttonLabel: white, Honk 16 bold.
+          text "Continue" font-family="Honk-Regular" font-size=16 color="#ffffff"
+            -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"

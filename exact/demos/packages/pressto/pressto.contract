@@ -14,7 +14,7 @@ style PressableScale
 // PressableOpacity: 0.5 while held.
 style PressableOpacity
   :active
-    -exact-press-opacity = 0.5
+    opacity = 0.5
 
 // The global onPress of the app's PressablesConfig: call it from each press action.
 // (A selection haptic, `Haptics.selectionAsync()`, on release as RN plays it.)
