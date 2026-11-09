@@ -91,7 +91,7 @@ component AlertDrawer
                   view flex=1
                   // styles.closeIconContainer 50 x 50; styles.closeButton 32, radius 16, #F8F8FA;
                   // FontAwesome close 14 #A1A0A2.
-                  view width=50 height=50 align-items="center" justify-content="center"
+                  view display="flex" flex-direction="column" width=50 height=50 align-items="center" justify-content="center"
                     button appearance="none" class=PressableScale press=toggleExpansion
                       aria-label="Close" testId="close-card" width=32 height=32 border-radius=16
                       background-color="#F8F8FA" display="flex" align-items="center"
@@ -110,7 +110,7 @@ component AlertDrawer
               // radius 50 continuous, #dfdfdf, paddingHorizontal 20.
               button appearance="none" class=PressableScale press=toggleExpansion testId="cancel"
                 position="absolute" left=0 bottom=0 width=minButtonWidth(w) height=50
-                border-radius=50 corner-shape="squircle" background-color="#dfdfdf"
+                border-radius=50 background-color="#dfdfdf"
                 padding-left=20 padding-right=20 display="flex" align-items="center"
                 justify-content="center" -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
                 // styles.buttonLabel + cancelButtonLabel: Honk 16 bold, #111.

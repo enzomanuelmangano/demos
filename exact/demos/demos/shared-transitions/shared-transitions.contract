@@ -118,7 +118,7 @@ component Cell
   view
     button appearance="none" class=PressableOpacity press=press aria-label=`Photo ${i + 1}`
       testId=`photo-${i}` display="flex" flex-direction="column" align-items="stretch"
-      view margin-left=(20 / 3) margin-top=(20 / 3) margin-right=(i % 2 == 1 ? 20 / 3 : 0)
+      view display="flex" flex-direction="column" margin-left=(20 / 3) margin-top=(20 / 3) margin-right=(i % 2 == 1 ? 20 / 3 : 0)
         align-items="flex-start"
         image thumbnail(i) width=(w / 2 - 10) height=(150 + 50 * (i % 3)) object-fit="cover"
           border-radius=10 corner-shape="squircle" flex-shrink=0 aria-hidden=true

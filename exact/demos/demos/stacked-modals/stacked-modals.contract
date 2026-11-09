@@ -106,7 +106,7 @@ component StackedModals
       testId="stacked-modals"
       // styles.button: PressableScale, 64 × 64, black, radius 32, absolute at bottom 48,
       // right 20 with marginHorizontal 20; Ionicons "add" 28 white.
-      view class=PressableScale position="absolute" bottom=48 right=20 margin-left=20 margin-right=20
+      view display="flex" flex-direction="column" class=PressableScale position="absolute" bottom=48 right=20 margin-left=20 margin-right=20
         width=64 height=64 border-radius=32 background-color="#000000" align-items="center"
         justify-content="center" press=open role="button" aria-label="Show a modal" testId="add"
         image "symbol:sf/plus" font-size=28 color="#ffffff" aria-hidden=true
@@ -177,12 +177,12 @@ component ModalContent
       // styles.buttonContainer: a row at the end, marginBottom 12, marginRight 12; each button
       // paddingHorizontal 12, paddingVertical 8; text #141414 bold.
       row justify-content="flex-end" margin-bottom=12 margin-right=12
-        view class=DismissPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+        view display="flex" flex-direction="column" class=DismissPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
           border-radius=8 corner-shape="squircle" background-color="rgba(213, 83, 74, 0)"
           align-items="center" justify-content="center" press=dismiss role="button"
           testId=`modal-${index}-dismiss`
           text "Dismiss" color="#141414" font-weight=700 font-size=14
-        view class=ConfirmPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+        view display="flex" flex-direction="column" class=ConfirmPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
           border-radius=8 corner-shape="squircle" background-color="rgba(80, 80, 80, 0)"
           align-items="center" justify-content="center" press=confirm role="button"
           testId=`modal-${index}-confirm`

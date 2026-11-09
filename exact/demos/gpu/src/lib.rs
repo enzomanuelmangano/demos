@@ -17,19 +17,24 @@ pub mod shaders {
 }
 pub mod gfx;
 
+pub mod animated_3d_parallax;
+pub mod balance_slider;
+pub mod blur_cards;
 pub mod blur_circles;
 pub mod bottom_bar_skia;
 pub mod cuberto_slider;
 pub mod floating_bottom_bar;
 pub mod fluid_slider;
 pub mod geometry_button;
+pub mod linear_sensors;
+pub mod magnet_spring;
 pub mod metaball;
 pub mod radar_chart;
 pub mod spiral;
 
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
-    surfaces: &[("blur_circles", 0, blur_circles::surface), ("bottom_bar_skia", 1, bottom_bar_skia::surface), ("cuberto_slider", 0, cuberto_slider::surface), ("floating_bottom_bar", 0, floating_bottom_bar::surface), ("fluid_slider", 0, fluid_slider::surface), ("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface), ("radar_chart", 10, radar_chart::surface), ("spiral", 0, spiral::surface)],
+    surfaces: &[("animated_3d_parallax", 0, animated_3d_parallax::surface), ("balance_slider", 0, balance_slider::surface), ("blur_cards", 1, blur_cards::surface), ("blur_circles", 0, blur_circles::surface), ("bottom_bar_skia", 1, bottom_bar_skia::surface), ("cuberto_slider", 0, cuberto_slider::surface), ("floating_bottom_bar", 0, floating_bottom_bar::surface), ("fluid_slider", 0, fluid_slider::surface), ("geometry_button", 0, geometry_button::surface), ("linear_sensors", 0, linear_sensors::surface), ("magnet_spring", 0, magnet_spring::surface), ("metaball", 0, metaball::surface), ("radar_chart", 10, radar_chart::surface), ("spiral", 0, spiral::surface)],
     shaders: shaders::SHADERS,
 };
 

@@ -1,0 +1,13 @@
+// Linear Sensors: a dark rounded square with the React logo that tilts in 3D as the phone
+// tilts, its shadow moving against the tilt. RN: src/animations/linear-sensors (index.tsx,
+// react-logo.tsx). Drawn in Rust: gpu/src/linear_sensors.rs, which reads the `gravity` sensor
+// (useAnimatedSensor ROTATION's roll and GRAVITY's z, { interval: 20 }, both follow from it).
+// A child may not send, so the root starts the feed while this demo is open:
+// `send … = startSensorInput(surface="linear_sensors", sensor="gravity", frequency=50)`
+// (@exact/motion, its `device.motion` grant); without it the square rests at the sensors'
+// zero reading (rotateX π/8, rotateY 0), as Reanimated's sensor value starts.
+
+component LinearSensors
+  view
+    canvas surface=linear_sensors() position="absolute" top=0 left=0 width="100%" height="100%"
+      testId="linear-sensors-canvas" aria-label="Tilt the phone"

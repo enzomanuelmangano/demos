@@ -1,0 +1,19 @@
+at "/demo/motion-blur"
+
+test "the + adds cards; only the last three stay"
+  expect tree has "motion-blur"
+  expect tree missing "item-1"
+  tap "add"
+  clock settle
+  expect tree has "item-1"
+  expect tree has "amount-1"
+  expect tree has "address-1"
+  tap "add"
+  tap "add"
+  clock settle
+  expect tree has "item-3"
+  tap "add"
+  clock settle
+  expect tree missing "item-1"
+  expect tree has "item-2"
+  expect tree has "item-4"

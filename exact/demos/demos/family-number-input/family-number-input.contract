@@ -62,7 +62,7 @@ component FamilyNumberInput
       // 7/3% left and bottom.
       row flex=1 flex-wrap="wrap" align-items="center" align-content="flex-start"
         for k, i in keys() key=i
-          view class=KeypadKey press=press(k) contextmenu=hold(k)
+          view display="flex" flex-direction="column" class=KeypadKey press=press(k) contextmenu=hold(k)
             width="30%" height="20%" margin-left="2.3333%" margin-bottom="2.3333%"
             align-items="center" justify-content="center" border-radius=20
             background-color="rgba(255, 255, 255, 0)" role="button"

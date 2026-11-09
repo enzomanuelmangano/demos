@@ -1,0 +1,16 @@
+// Balance Slider: a coffee / milk split dragged left and right; past a third or 72% the boxes
+// shrink and the labels rise. RN: src/animations/balance-slider (index.tsx,
+// components/balance-slider, text-label). The row (boxes, picker, labels, percentages), its pan
+// and springs are Rust: gpu/src/balance_slider.rs.
+use DemoEnv from "../env.contract"
+
+component BalanceSlider
+  props
+    env: DemoEnv
+  view
+    // styles.container: black, centred.
+    column position="absolute" inset=0 background-color="#000000" align-items="center"
+      justify-content="center" testId="balance-slider"
+      // <BalanceSlider width={windowWidth * 0.9} height={50} />.
+      canvas surface=balance_slider() width=(env.width * 0.9) height=50 flex-shrink=0
+        touch-action="none" testId="balance-canvas" aria-label="Coffee and milk balance"

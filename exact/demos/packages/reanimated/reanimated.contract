@@ -1,4 +1,4 @@
-// react-native-reanimated 4.5.1's springs and curves, for Contract transitions. A demo names
+// react-native-reanimated 4.7.1's springs and curves, for Contract transitions. A demo names
 // these instead of retyping numbers; `bun tools/spring.ts <ms> <ratio>` converts a duration spring.
 
 // withSpring()'s default (GentleSpringConfig): `-exact-spring(900, 120, 4)`.

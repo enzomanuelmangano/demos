@@ -529,7 +529,7 @@ component AppItem
             transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
             // styles.deleteButton: 20 × 20, rgba(255,255,255,0.8), radius 100; Ionicons "remove"
             // 12 black.
-            view class=PressableOpacity width=20 height=20 border-radius=100
+            view display="flex" flex-direction="column" class=PressableOpacity width=20 height=20 border-radius=100
               background-color="rgba(255, 255, 255, 0.8)" align-items="center" justify-content="center"
               press=remove role="button" aria-label="Delete" testId=`app-${id}-delete`
               image "symbol:sf/minus" font-size=12 color="#000000" aria-hidden=true

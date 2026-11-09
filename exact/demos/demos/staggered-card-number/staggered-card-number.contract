@@ -1,0 +1,93 @@
+// Staggered Card Number: a white card with a 16-digit card number; the eye button hides the first
+// 12 digits one after another (each slides down and fades out while a dot drops in from above),
+// and shows them again. RN: src/animations/staggered-card-number (index.tsx,
+// components/card-info/index.tsx, hideable-number.tsx).
+
+// index.tsx: <CardInfo cardNumber={2223000048400011} />, split into its digits.
+fn cardDigits(): string[] = "2223000048400011".split("")
+
+// HIDDEN_INDEXES: the first 12 digits toggle; the last four never move.
+fn toggles(i: number): bool = i < 12
+
+// HideableNumber: animationProgress = withDelay(index × HideableNumberHeight (25 ms),
+// withSpring(isHidden, { duration: 700, dampingRatio: 1 })): bun tools/spring.ts 700 1 is
+// -exact-spring(555.0, 94.2, 4), which a transition can't delay. So each transition samples that
+// spring every 25 ms over its 1050 ms (1.5 × duration, where Reanimated's energy reaches 6e-9),
+// as linear() stops: P(t) = 1 - e^(-ωt)(1 + ωt), ω = √(555 / 4).
+//   springCurve: P, the translates (interpolate(progress, [0, 1], …) is linear in it).
+//   cubeIn: P³, an opacity rising as progress³ (the dot) or (1 - progress)³ (the text).
+//   cubeOut: 1 - (1 - P)³, an opacity falling the same way.
+fn springCurve(): string = "linear(0, 0.0357, 0.1183, 0.2215, 0.3294, 0.4329, 0.5272, 0.6103, 0.6818, 0.7422, 0.7925, 0.8339, 0.8676, 0.895, 0.917, 0.9346, 0.9487, 0.9598, 0.9686, 0.9755, 0.9809, 0.9852, 0.9885, 0.9911, 0.9931, 0.9947, 0.9959, 0.9968, 0.9976, 0.9981, 0.9986, 0.9989, 0.9992, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 0.9999, 1)"
+fn cubeIn(): string = "linear(0, 0, 0.0017, 0.0109, 0.0357, 0.0811, 0.1466, 0.2274, 0.317, 0.4088, 0.4976, 0.5798, 0.6532, 0.7169, 0.7711, 0.8164, 0.8537, 0.8841, 0.9086, 0.9283, 0.9439, 0.9562, 0.9659, 0.9736, 0.9795, 0.9842, 0.9878, 0.9906, 0.9927, 0.9944, 0.9957, 0.9967, 0.9975, 0.9981, 0.9985, 0.9989, 0.9991, 0.9993, 0.9995, 0.9996, 0.9997, 0.9998, 1)"
+fn cubeOut(): string = "linear(0, 0.1034, 0.3145, 0.5281, 0.6984, 0.8176, 0.8943, 0.9408, 0.9678, 0.9829, 0.9911, 0.9954, 0.9977, 0.9988, 0.9994, 0.9997, 0.9999, 0.9999, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)"
+fn motion(opacityCurve: string, i: number): string = `opacity 1050ms ${opacityCurve} ${i * 25}ms, translate 1050ms ${springCurve()} ${i * 25}ms`
+
+// Octicons dot-fill and Feather eye / eye-off (@expo/vector-icons fonts, 512 units to the em),
+// in a box of the Text's line: ascent + descent + line gap (Octicons 450 + 68 + 46, Feather
+// 457 + 69 + 46).
+fn dotPath(): string = "M165.5 167.5Q203 130 256 130Q309 130 346.5 167.5Q384 205 384 258Q384 311 346.5 348.5Q309 386 256 386Q203 386 165.5 348.5Q128 311 128 258Q128 205 165.5 167.5Z"
+fn eyePath(): string = "M83 380Q164 457 257 457Q350 457 431 380Q483 330 511 275Q516 265 511 255Q505 245 495.5 229Q486 213 462 183.5Q438 154 410.5 131Q383 108 342 90.5Q301 73 257 73Q213 73 172 91Q131 109 103.5 131.5Q76 154 52 183.5Q28 213 18.5 229Q9 245 3 255Q-2 265 3 275Q31 330 83 380ZM467 265Q460 278 450.5 292.5Q441 307 420 330Q399 353 377 370.5Q355 388 322.5 401Q290 414 257 414Q181 414 112 349Q74 312 47 265Q54 252 63.5 237.5Q73 223 94 200Q115 177 137 159.5Q159 142 191.5 129Q224 116 257 116Q333 116 402 181Q440 218 467 265ZM226.5 295.5Q214 283 214 265Q214 247 226.5 234.5Q239 222 257 222Q275 222 287.5 234.5Q300 247 300 265Q300 283 287.5 295.5Q275 308 257 308Q239 308 226.5 295.5ZM197 205Q172 230 172 265Q172 300 197 325Q222 350 257 350Q292 350 317 325Q342 300 342 265Q342 230 317 205Q292 180 257 180Q222 180 197 205Z"
+fn eyeOffPath(): string = "M318 325Q327 315 321.5 302Q316 289 302 289Q293 289 287 296Q267 317 240 306Q213 295 213 267Q213 248 226 235Q237 226 231.5 212Q226 198 212 198Q203 198 197 204Q170 229 170 267Q170 302 195 327Q220 352 255 352Q292 352 318 325ZM467 265Q456 285 444.5 300Q433 315 428.5 321Q424 327 424 333Q424 348 438 353Q452 358 462 347Q490 314 510 275Q516 265 511 255Q506 246 498 232.5Q490 219 465.5 188.5Q441 158 414 134.5Q387 111 344.5 92Q302 73 257 73Q232 73 207 79Q191 83 191 99Q191 108 197 114.5Q203 121 212 121Q213 121 227.5 118.5Q242 116 257 116Q290 116 322 129Q354 142 376.5 159.5Q399 177 419.5 200Q440 223 450 237.5Q460 252 467 265ZM397 409Q409 399 404 384.5Q399 370 384 370Q377 370 371 375Q350 391 324.5 401Q299 411 265 414.5Q231 418 190.5 401.5Q150 385 112 349Q74 312 47 265Q84 201 143 155Q155 146 150 131.5Q145 117 130 117Q123 117 117 121Q46 176 4 255Q-2 265 3 275Q9 285 18.5 301Q28 317 52 346.5Q76 376 103.5 399Q131 422 172 439.5Q213 457 257 457Q335 456 397 409ZM37 15Q27 5 14 10.5Q1 16 1 30Q1 39 7 45L477 515Q487 525 500 519.5Q513 514 513 500Q513 491 507 485Z"
+
+// TouchableFeedback (pressto createAnimatedPressable): pressed, scale 1 → 0.9 and a
+// rgba(0,0,0,0 → 0.1) background, borderRadius 20.
+style CardPress
+  border-radius = 20
+  :active
+    -exact-press-scale = 0.9
+    background-color = "rgba(0,0,0,0.1)"
+
+component StaggeredCardNumber
+  state toggled = false
+  action onToggle
+    haptic("selection")
+    toggled = not toggled
+  view
+    // index.tsx container: #eaeaea, centred.
+    column position="absolute" inset=0 background-color="#eaeaea" align-items="center"
+      justify-content="center" testId="staggered-card-number"
+      // styles.container: white, radius 20 continuous, boxShadow 0 2 20 rgba(0,0,0,0.05), a
+      // row 80 tall, paddingTop 15, paddingBottom 10, paddingHorizontal 25, 90% wide.
+      row width="90%" height=80 box-sizing="border-box" padding-top=15 padding-bottom=10
+        padding-left=25 padding-right=25 background-color="#ffffff" border-radius=20
+        corner-shape="squircle" box-shadow="0px 2px 20px rgba(0, 0, 0, 0.05)" testId="card"
+        column
+          // styles.title: #787878, 17, weight 400.
+          text "Number" font-size=17 font-weight=400 color="#787878"
+          // styles.numbers: a row, marginTop 5; a gap of 8 after each group of four.
+          row margin-top=5
+            for d, i in cardDigits() key=i
+              column margin-right=(i != 0 and (i + 1) % 4 == 0 ? 8 : 0)
+                // HideableNumber: 11 × HideableNumberHeight (25), clipped.
+                view width=11 height=25 overflow="hidden" position="relative"
+                  // The dot (styles.box: absolute, 25 tall, centred): translateY -25 → 0,
+                  // opacity progress³. Octicons dot-fill 14 black, paddingTop 3.
+                  column position="absolute" left=0 top=0 height=25 justify-content="center"
+                    opacity=(toggled and toggles(i) ? 1 : 0)
+                    translate=(toggled and toggles(i) ? "0px 0px" : "0px -25px")
+                    transition=motion(toggled and toggles(i) ? cubeIn() : cubeOut(), i)
+                    aria-hidden=true testId=`dot-${i}`
+                    view padding-top=3
+                      svg width=14 height=(14 * 564 / 512) viewBox="0 0 512 564"
+                        path d=dotPath() fill="#000000"
+                  // The digit (styles.box): translateY 0 → 25, opacity (1 - progress)³.
+                  // styles.cardNumber: FiraCode-Regular 20.
+                  column position="absolute" left=0 top=0 height=25 justify-content="center"
+                    opacity=(toggled and toggles(i) ? 0 : 1)
+                    translate=(toggled and toggles(i) ? "0px 25px" : "0px 0px")
+                    transition=motion(toggled and toggles(i) ? cubeOut() : cubeIn(), i)
+                    text d font-family="FiraCode-Regular" font-size=20 color="#000000"
+                      testId=`digit-${i}`
+        // <View style={{ flex: 1 }} />
+        view flex=1
+        // styles.button: aspectRatio 1, height 100% (80 - 15 - 10 = 55), centred. Feather
+        // eye / eye-off 24 #38a27b.
+        button appearance="none" class=CardPress press=onToggle width=55 height=55
+          display="flex" align-items="center" justify-content="center"
+          aria-label=(toggled ? "Show number" : "Hide number") aria-pressed=toggled testId="toggle"
+          if toggled
+            svg width=24 height=(24 * 572 / 512) viewBox="0 0 512 572" aria-hidden=true testId="icon-eye"
+              path d=eyePath() fill="#38a27b"
+          else
+            svg width=24 height=(24 * 572 / 512) viewBox="0 0 512 572" aria-hidden=true testId="icon-eye-off"
+              path d=eyeOffPath() fill="#38a27b"

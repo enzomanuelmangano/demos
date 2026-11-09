@@ -353,6 +353,7 @@ dependencies = [
  "exact-gpu",
  "exact-gpu-reflect",
  "gesture-handler",
+ "miniz_oxide",
  "reanimated",
  "simplex-noise",
  "skia",

@@ -1,0 +1,4 @@
+at "/demo/linear-sensors"
+
+test "the square is there"
+  expect tree has "linear-sensors-canvas"

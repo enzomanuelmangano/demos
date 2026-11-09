@@ -1,0 +1,53 @@
+// Liquid Glass Playground: a full-screen photo under a full-screen pane of clear Liquid Glass
+// (radius 50); dragging pulls the pane up or down at half the finger's travel, and it springs
+// back on release. RN: src/animations/liquid-glass-playground (index.tsx, overlay.liquid.tsx,
+// the iOS 26 variant the liquid-glass resolver picks; haptics.ts).
+//
+// Not ported: haptics.ts's progressive haptics (an impact every 5 px of damped travel, its
+// strength on Easing.ease(distance / 30% of the window)). That is logic per move of the finger,
+// and the drag here is the host's, with no commit per frame.
+
+// The photo (index.tsx's Unsplash photo-1592330169142, w=2832: 2832 × 1593), its centre
+// 1200 × 1593: what contentFit cover shows of it on a portrait screen.
+fn photo(): string = "assets/demos/liquid-glass-playground/background.jpg"
+
+// HAPTIC_CONFIG.DRAG_FRICTION 0.5: the pane moves translationY × 0.5. The host drags a clear
+// box 1:1 (`pull`); the pane follows its vertical translate on the `--pull` timeline, mapped
+// linearly to half of it (−2000 → −1000 … 2000 → 1000, so 0 stays 0).
+keyframes followHalf
+  from translate="0px -1000px"
+  to translate="0px 1000px"
+
+component LiquidGlassPlayground
+  state panX = 0
+  state panY = 0
+  state boxHeight = 0
+  action geometry(bw: number, bh: number, pw: number, ph: number)
+    boxHeight = bh
+  // onEnd: translateY.set(withSpring(0, { duration: 600, dampingRatio: 1 })).
+  action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    panX = 0
+    panY = 0
+  view
+    // styles.container: absoluteFill, centred.
+    column position="absolute" inset=0 align-items="center" justify-content="center"
+      testId="liquid-glass-playground"
+      // styles.backgroundImage: 100% × 100%, contentFit cover.
+      image photo() position="absolute" left=0 top=0 width="100%" height="100%" object-fit="cover"
+        alt="Background photo" testId="photo"
+      // The drag's clip: full screen, as the RN container is.
+      view position="absolute" inset=0 overflow="hidden" timeline-scope="--pull"
+        // styles.glassView: absoluteFill, borderRadius 50 continuous, clipped, zIndex 2;
+        // GlassView glassEffectStyle "clear", tintColor rgba(0,0,0,0.5), not interactive.
+        view position="absolute" inset=0 border-radius=50 overflow="hidden"
+          backgroundMaterial="glass-clear" background-color="rgba(0,0,0,0.5)" pointer-events="none"
+          animation="followHalf 1s linear both" animation-timeline="--pull"
+          animation-range="-2000px 2000px" aria-hidden=true testId="glass"
+        // What the finger drags: clear, 1:1, back on bun tools/spring.ts 600 1.
+        box id="pull" width="100%" height="100%" position="relative" padding=0 border-width=0
+          margin=0 box-sizing="border-box" translate=`${panX}px ${panY}px`
+          transition="translate -exact-spring(755.4, 109.9, 4), scale -exact-spring(755.4, 109.9, 4)"
+          -exact-drag-timeline="--pull y" testId="pull"
+          box transformDragFor="pull" transformgeometry=geometry transformrelease=release
+            touch-action="none" position="absolute" left=0 top=0 width="100%" height="100%"
+            aria-label="Pull the glass" testId="pull-handle"

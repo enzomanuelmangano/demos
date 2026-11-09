@@ -1,0 +1,152 @@
+// Swipe Cards: a stack of nine photos; the top one follows the finger, tilts with it and is
+// thrown aside past a translation-and-velocity circle (or springs back); the stack below rises
+// one place. Three buttons under it: throw left, reset (the cards come back one after another)
+// and throw right. RN: src/animations/swipe-cards (index.tsx, constants.ts,
+// hooks/use-swipe-controls.ts, components/Card/index.tsx).
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+// constants.ts IMAGES: 01.jpg … 09.jpg.
+fn photo(i: number): string = `assets/demos/swipe-cards/0${i + 1}.jpg`
+fn count(): number = 9
+// index.tsx CENTRED_SLACK.
+fn centredSlack(): number = 40
+
+// The cards drawn last are on top (zIndex -index): 8 first, 0 last.
+fn order(): number[] = [8, 7, 6, 5, 4, 3, 2, 1, 0]
+fn numAt(xs: number[], i: number): number = match xs.at(i) { case some(v) => v, case none => 0 }
+fn setAt(xs: number[], i: number, v: number): number[] = range(xs.length).map(j => j == i ? v : numAt(xs, j))
+
+// Card/index.tsx: inputTranslationRange [-w/3, 0, w/3]; FLICK_DURATION 0.1 s, so the velocity
+// range is ±(w/3) / 0.1. The swipe triggers when normalizedTranslation² + normalizedVelocity²
+// reaches 1 (nextActiveIndex interpolated, clamped, to activeIndex + 1).
+fn swipes(w: number, x: number, vx: number): bool = x != 0 and (x / (w / 3)) * (x / (w / 3)) + (vx / (w / 3 / 0.1)) * (vx / (w / 3 / 0.1)) >= 1
+
+// rCardStyle: withTiming (300 ms, Reanimated's default Easing.inOut(Easing.quad)) of
+// opacity (index - activeIndex < 5 ? 1 : 0), translateY (index - activeIndex) × 23 and
+// scale 1 - 0.07 × (index - activeIndex).
+fn stackTiming(): string = "opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955), translate 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955), scale 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+
+// rotate: interpolate(translateX, [-w/3, 0, w/3], [-π/20, 0, π/20], CLAMP) = ±9°, on the
+// card's own drag timeline (its horizontal translate, held or springing).
+keyframes swipeTilt
+  from rotate=-9
+  to rotate=9
+
+// The stack's entering FadeIn: 300 ms on inOut(quad).
+keyframes swipeFadeIn
+  from opacity=0
+  to opacity=1
+
+component SwipeCards
+  props
+    env: DemoEnv
+  state activeIndex = 0
+  // Each card's translateX / translateY (RN's per-card shared values).
+  state panX = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  state panY = [0, 0, 0, 0, 0, 0, 0, 0, 0]
+  // reset(): each card springs back after index × 100 ms (setTimeout); a delay on its
+  // translate's transition while this is set.
+  state resetting = false
+  // The layer's width (transformgeometry, paired with the release; the card's travel uses
+  // the window's width as RN does).
+  state layerWidth = 0
+  derive w = env.width
+  action geometry(bw: number, bh: number, pw: number, ph: number)
+    layerWidth = pw
+  // maxCardTranslation = width × 1.5; swipeRight / swipeLeft: translateX withSpring(±max)
+  // (Reanimated 4's default spring), translateY left where it is, activeIndex + 1.
+  // Pan onFinalize on the active card: thrown by the sign of translationX, else both
+  // translates withSpring(0).
+  action release(i: number, x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    if i == activeIndex
+      if swipes(w, x, vx)
+        panX = setAt(panX, i, (x > 0 ? 1 : -1) * w * 1.5)
+        panY = setAt(panY, i, y)
+        activeIndex = activeIndex + 1
+      else
+        panX = setAt(panX, i, 0)
+        panY = setAt(panY, i, 0)
+      resetting = false
+  // The buttons: refs[activeIndex] (none past the ninth).
+  action swipeLeft
+    haptic("selection")
+    if activeIndex < count()
+      panX = setAt(panX, activeIndex, 0 - w * 1.5)
+      activeIndex = activeIndex + 1
+      resetting = false
+  action swipeRight
+    haptic("selection")
+    if activeIndex < count()
+      panX = setAt(panX, activeIndex, w * 1.5)
+      activeIndex = activeIndex + 1
+      resetting = false
+  // onReset: activeIndex 0 at once; every card springs home, index × 100 ms apart.
+  action onReset
+    haptic("selection")
+    activeIndex = 0
+    resetting = true
+    panX = range(count()).map(j => 0)
+    panY = range(count()).map(j => 0)
+  view
+    // styles.container: #242831, flex 1.
+    column position="absolute" inset=0 background-color="#242831" overflow="hidden"
+      testId="swipe-cards"
+      for i in order() key=i
+        // One layer per card, the size of the screen: its translate is the card's pan (the
+        // transform drag's target, under an untransformed, clipping parent). Inside it the RN
+        // layout again: flex 7 (the stack's box) over flex 2 (the buttons' row).
+        column position="absolute" inset=0 overflow="hidden" pointer-events="none"
+          timeline-scope="--tilt" aria-hidden=(i != activeIndex)
+          column id=`swipe-card-${i}` width="100%" height="100%" box-sizing="border-box"
+            position="relative" translate=`${numAt(panX, i)}px ${numAt(panY, i)}px`
+            transition=`translate -exact-spring(900, 120, 4) ${resetting ? i * 100 : 0}ms`
+            -exact-drag-timeline="--tilt x" testId=`card-${i}`
+            column flex=7
+              // The Animated.View: marginTop safeTop + DEMO_BUTTON_ROW_HEIGHT - CENTRED_SLACK,
+              // centred, flex 1.
+              column flex=1 margin-top=(env.safeTop + demoButtonRow() - centredSlack())
+                justify-content="center" align-items="center"
+                // The card: 90% × 75%.
+                view width="90%" height="75%" position="relative"
+                  column position="absolute" inset=0 opacity=(i - activeIndex < 5 ? 1 : 0)
+                    translate=`0px ${(i - activeIndex) * 23}px` scale=(1 - 0.07 * (i - activeIndex))
+                    transition=stackTiming()
+                    // Radius 25 continuous, clipped; the image covers it.
+                    column flex=1 border-radius=25 corner-shape="squircle" overflow="hidden"
+                      animation="swipeTilt 1s linear both" animation-timeline="--tilt"
+                      animation-range=`${0 - w / 3}px ${w / 3}px`
+                      column flex=1
+                        animation="swipeFadeIn 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+                        image photo(i) width="100%" height="100%" object-fit="cover"
+                          aria-hidden=true
+                  // The GestureDetector, on the active card only (onUpdate returns for others).
+                  if i == activeIndex
+                    view position="absolute" inset=0 pointer-events="auto" touch-action="none"
+                      transformDragFor=`swipe-card-${i}` transformgeometry=geometry
+                      transformrelease=release(i) aria-label="Swipe the card"
+                      testId="card-handle"
+            view flex=2
+      // styles.buttonsContainer: flex 2, a centred row (over the cards, as RN draws it).
+      column position="absolute" inset=0 pointer-events="none"
+        view flex=7
+        row flex=2 align-items="center" justify-content="center"
+          // styles.button: 80 tall, aspectRatio 1, #3A3D45, radius 40, boxShadow 0 4 0 10%
+          // black, marginHorizontal 20; AntDesign close 32 white.
+          column class=PressableScale pointer-events="auto" width=80 height=80 border-radius=40
+            background-color="#3A3D45" box-shadow="0px 4px 0px rgba(0, 0, 0, 0.1)"
+            margin-left=20 margin-right=20 align-items="center" justify-content="center"
+            press=swipeLeft role="button" aria-label="Dislike" testId="swipe-left"
+            image "symbol:sf/xmark" font-size=32 color="#ffffff" aria-hidden=true
+          // The reset: height 60, marginHorizontal 10; AntDesign reload 24.
+          column class=PressableScale pointer-events="auto" width=60 height=60 border-radius=40
+            background-color="#3A3D45" box-shadow="0px 4px 0px rgba(0, 0, 0, 0.1)"
+            margin-left=10 margin-right=10 align-items="center" justify-content="center"
+            press=onReset role="button" aria-label="Reset" testId="reset"
+            image "symbol:sf/arrow.clockwise" font-size=24 color="#ffffff" aria-hidden=true
+          // AntDesign heart 32.
+          column class=PressableScale pointer-events="auto" width=80 height=80 border-radius=40
+            background-color="#3A3D45" box-shadow="0px 4px 0px rgba(0, 0, 0, 0.1)"
+            margin-left=20 margin-right=20 align-items="center" justify-content="center"
+            press=swipeRight role="button" aria-label="Like" testId="swipe-right"
+            image "symbol:sf/heart.fill" font-size=32 color="#ffffff" aria-hidden=true

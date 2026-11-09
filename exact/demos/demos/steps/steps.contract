@@ -40,7 +40,7 @@ component Steps
         // styles.bar: absolute (no insets: Yoga puts it at the row's border edge, centred on the
         // row), #66e070, radius 100 continuous.
         view position="absolute" left=0 top=-10 height=30 width=barWidth(activeIndex)
-          background-color="#66e070" border-radius=100 corner-shape="squircle"
+          background-color="#66e070" border-radius=100
           -exact-layout-transition="-exact-spring(900, 120, 4)" testId="bar"
         // dot.tsx: dotSize, radius dotSize / 2 continuous; backgroundColor withTiming(white or
         // rgba(0,0,0,0.15), 200 ms) on Reanimated's default curve inOut(quad).
@@ -77,7 +77,7 @@ component Steps
               -exact-layout-transition=stepSpring()
               // rIconStyle: width 0 → ICON_WIDTH, opacity 0 → 1, marginRight 0 → ICON_MARGIN_RIGHT,
               // clipped; AntDesign check-circle 16 white.
-              view width=(activeIndex == 2 ? 22 : 0) margin-right=(activeIndex == 2 ? 6 : 0)
+              view display="flex" flex-direction="column" width=(activeIndex == 2 ? 22 : 0) margin-right=(activeIndex == 2 ? 6 : 0)
                 opacity=(activeIndex == 2 ? 1 : 0) overflow="hidden" align-items="center"
                 justify-content="center" transition=`opacity ${stepSpring()}`
                 -exact-layout-transition=stepSpring() testId="check"

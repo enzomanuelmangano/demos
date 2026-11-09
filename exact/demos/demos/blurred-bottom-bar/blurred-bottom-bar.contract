@@ -1,0 +1,60 @@
+// Blurred Bottom Bar: four full-screen photos behind a floating, blurred, bordered tab bar of
+// four icons over a dark gradient; the tab pressed shows its photo and its icon brightens.
+// RN: src/animations/blurred-bottom-bar (index.tsx, constants/screens.ts,
+// components/bottom-tab-bar.tsx, components/tab-bar-item.tsx).
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// index.tsx screens: Home 01.jpg, Explore 02.jpg, Camera 03.jpg, Settings 01.jpg; each an Image
+// of the window's size, resizeMode cover, on #000. The bottom tab navigator shows the focused
+// one with no transition.
+fn tabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Explore" : (i == 2 ? "Camera" : "Settings"))
+fn photo(i: number): string = i == 1 ? "assets/demos/blurred-bottom-bar/02.jpg" : (i == 2 ? "assets/demos/blurred-bottom-bar/03.jpg" : "assets/demos/blurred-bottom-bar/01.jpg")
+
+// tab-bar-item.tsx: MaterialIcons home / explore / camera-alt / settings, 25, white (512 units
+// to the em, a Text line of 512).
+fn homePath(): string = "M213 427H107V256H43L256 64L469 256H405V427H299V299H213Z"
+fn explorePath(): string = "M303 303 384 128 209 209 128 384ZM105.5 105.5Q168 43 256 43Q344 43 406.5 105.5Q469 168 469 256Q469 344 406.5 406.5Q344 469 256 469Q168 469 105.5 406.5Q43 344 43 256Q43 168 105.5 105.5ZM239.5 239.5Q246 233 256 233Q266 233 272.5 239.5Q279 246 279 256Q279 266 272.5 272.5Q266 279 256 279Q246 279 239.5 272.5Q233 266 233 256Q233 246 239.5 239.5Z"
+fn cameraPath(): string = "M180.5 331.5Q212 363 256 363Q300 363 331.5 331.5Q363 300 363 256Q363 212 331.5 180.5Q300 149 256 149Q212 149 180.5 180.5Q149 212 149 256Q149 300 180.5 331.5ZM192 43H320L359 85H427Q444 85 456.5 98Q469 111 469 128V384Q469 401 456.5 414Q444 427 427 427H85Q68 427 55.5 414Q43 401 43 384V128Q43 111 55.5 98Q68 85 85 85H153ZM208 304Q188 284 188 256Q188 228 208 208Q228 188 256 188Q284 188 304 208Q324 228 324 256Q324 284 304 304Q284 324 256 324Q228 324 208 304Z"
+fn settingsPath(): string = "M203 309Q225 331 256 331Q287 331 309 309Q331 287 331 256Q331 225 309 203Q287 181 256 181Q225 181 203 203Q181 225 181 256Q181 287 203 309ZM415 277 460 312Q467 317 462 326L419 400Q415 407 406 404L353 383Q332 398 317 404L309 460Q307 469 299 469H213Q205 469 203 460L195 404Q176 396 159 383L106 404Q97 407 93 400L50 326Q45 317 52 312L97 277Q96 270 96 256Q96 242 97 235L52 200Q45 195 50 186L93 112Q97 105 106 108L159 129Q180 114 195 108L203 52Q205 43 213 43H299Q307 43 309 52L317 108Q336 116 353 129L406 108Q415 105 419 112L462 186Q467 195 460 200L415 235Q416 242 416 256Q416 270 415 277Z"
+fn iconPath(i: number): string = i == 0 ? homePath() : (i == 1 ? explorePath() : (i == 2 ? cameraPath() : settingsPath()))
+
+component BlurredBottomBar
+  props
+    env: DemoEnv
+  state index = 0
+  // onTapIcon: navigation.navigate(nextScreen); focusedIndex.set(index).
+  action choose(i: number)
+    haptic("selection")
+    index = i
+  view
+    // index.tsx styles.container: #000.
+    column position="absolute" inset=0 background-color="#000000" overflow="hidden"
+      testId="blurred-bottom-bar"
+      image photo(index) position="absolute" left=0 top=0 width=env.width height=env.height
+        object-fit="cover" alt=tabName(index) testId=`screen-${index}`
+      // LinearGradient LINEAR_GRADIENT_COLORS, top to bottom, full width at the bottom,
+      // BOTTOM_BAR_HEIGHT (60) + safeBottom + 30 tall, pointerEvents none.
+      view position="absolute" left=0 right=0 bottom=0
+        height="calc(90px + env(safe-area-inset-bottom))" pointer-events="none" aria-hidden=true
+        background-image="linear-gradient(rgba(255,255,255,0), rgba(0,0,0,0.1), rgba(0,0,0,0.5), rgba(0,0,0,0.8))"
+        testId="gradient"
+      // localStyles.bottomContainer: absolute, left / right 15%, bottom safeBottom + 15, 60
+      // tall (border-box), border 1 rgb(216, 216, 216), radius 30 continuous, clipped.
+      // BlurView intensity 40 (iOS), tint default (UIBlurEffect .regular), background
+      // rgba(255,255,255,0.05); localStyles.container: a row, paddingHorizontal 15.
+      row position="absolute" left="15%" right="15%" bottom="calc(env(safe-area-inset-bottom) + 15px)"
+        height=60 box-sizing="border-box" border-width=1 border-style="solid"
+        border-color="rgb(216, 216, 216)" border-radius=30 corner-shape="squircle" overflow="hidden"
+        backgroundMaterial="regular" background-color="rgba(255,255,255,0.05)" padding-left=15
+        padding-right=15 role="tablist" testId="tab-bar"
+        for i in range(4) key=i
+          // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3) (300 ms inOut(quad));
+          // a PressableScale, flex 1, centred.
+          column flex=1 opacity=(i == index ? 1 : 0.3)
+            transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+            button appearance="none" class=PressableScale press=choose(i) flex=1 display="flex"
+              align-items="center" justify-content="center" role="tab" aria-selected=(i == index)
+              aria-label=tabName(i) testId=`tab-${i}`
+              svg width=25 height=25 viewBox="0 0 512 512" aria-hidden=true
+                path d=iconPath(i) fill="#ffffff"

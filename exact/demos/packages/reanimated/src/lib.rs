@@ -1,4 +1,4 @@
-//! react-native-reanimated 4.5.1, for GPU surfaces: what a worklet runs on the UI thread,
+//! react-native-reanimated 4.7.1, for GPU surfaces: what a worklet runs on the UI thread,
 //! stepped here on the host's frame clock. Ported line for line from
 //! node_modules/react-native-reanimated/src, so a demo's numbers carry over unchanged.
 //!
@@ -20,7 +20,7 @@ pub mod timing;
 pub use decay::Decay;
 pub use easing::Easing;
 pub use interpolate::{interpolate, interpolate_clamp, interpolate_color, Extrapolation};
-pub use spring::{Config as SpringConfig, Spring, GENTLE};
+pub use spring::{duration_config, Config as SpringConfig, Spring, GENTLE};
 pub use spring_array::SpringArray;
 pub use timing::Timing;
 

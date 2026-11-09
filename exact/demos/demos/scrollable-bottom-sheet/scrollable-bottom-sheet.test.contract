@@ -1,0 +1,28 @@
+at "/demo/scrollable-bottom-sheet"
+
+test "the button opens the sheet with three pages; the last page's button closes it"
+  expect tree has "scrollable-bottom-sheet"
+  expect tree has "sheet-handle"
+  tap "open"
+  clock settle
+  expect text "sheet-button-0" == "Next Page"
+  expect text "sheet-button-1" == "Next Page"
+  expect text "sheet-button-2" == "Close"
+  tap "sheet-button-0"
+  clock settle
+  tap "sheet-button-1"
+  clock settle
+  tap "sheet-button-2"
+  clock settle
+  expect tree has "open"
+
+test "the backdrop and the button close an open sheet"
+  tap "open"
+  clock settle
+  tap "backdrop" drag 0 0 from 20 120
+  clock settle
+  tap "open"
+  clock settle
+  tap "open"
+  clock settle
+  expect tree has "sheet"

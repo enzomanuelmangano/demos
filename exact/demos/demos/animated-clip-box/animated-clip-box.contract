@@ -113,7 +113,7 @@ component ClipBoxButton
           -exact-layout-transition=springOf(phase) testId=`${testId}-circle`
         // Secondary circle: initialR × 2 at circleMargin / 2, its colour on the timeline, the icon
         // (AntDesign twitter, 40, white) centred.
-        view position="absolute" left=(boxWidth * 0.12 / 2) top=(boxWidth * 0.12 / 2) width=70 height=70
+        view display="flex" flex-direction="column" position="absolute" left=(boxWidth * 0.12 / 2) top=(boxWidth * 0.12 / 2) width=70 height=70
           border-radius=200 corner-shape="squircle" align-items="center" justify-content="center"
           background-color=primaryColor animation=`${circleFrames} 1s linear both` animation-timeline="--r"
           animation-range=`35px ${boxWidth / 2}px`

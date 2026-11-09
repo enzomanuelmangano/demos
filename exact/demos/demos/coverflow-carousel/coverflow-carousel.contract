@@ -85,7 +85,7 @@ component CoverItem
   derive a = dist(u)
   derive inset = (item() - shownWidth(dist(u))) / 2
   view
-    view width=item() height=250 flex-shrink=0 align-items="center" justify-content="center"
+    view display="flex" flex-direction="column" width=item() height=250 flex-shrink=0 align-items="center" justify-content="center"
       scroll-snap-align="start" testId=`cover-${i}`
       // transform [translateX, scaleY], opacity.
       view width=item() height=120 opacity=fade(a) translate=`${shiftX(u)}px 0px`

@@ -1,0 +1,14 @@
+at "/demo/fluid-tab-interaction"
+
+test "a cell pressed takes the highlight"
+  expect tree has "segmented-control"
+  expect tree has "highlight"
+  expect text "label-0" == "Accounts"
+  expect text "label-1" == "Deposits"
+  expect text "label-2" == "Funds"
+  tap "cell-2"
+  clock settle
+  expect tree has "highlight"
+  tap "cell-1"
+  clock settle
+  expect text "label-1" == "Deposits"

@@ -1,6 +1,6 @@
 //! `withSpring(target, { duration, dampingRatio: 1 })` over a whole array of numbers, stepped
 //! together: the RN demos' spring-array.ts (src/animations/spiral/spring-array.ts), itself
-//! Reanimated 4.5's critically damped duration spring per element. The stiffness is solved per
+//! Reanimated 4.7's critically damped duration spring per element. The stiffness is solved per
 //! element (one solve for every element at rest), a velocity pointing away from the new target
 //! is dropped, and each element rests once its energy falls under 6e-9 of its start.
 

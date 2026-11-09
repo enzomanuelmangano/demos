@@ -1,0 +1,154 @@
+// Action Tray: a blue + button (it turns to ×) slides a white tray up from the bottom over a
+// dimmed backdrop; its Continue button steps through three headings, the content box growing
+// on a spring; a drag down, the close button or the backdrop closes it.
+// RN: src/animations/action-tray (index.tsx, constants/palette.ts,
+// components/ActionTray/index.tsx, components/ActionTray/Backdrop/index.tsx).
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// constants/palette.ts: primary #4290F6, background #FFF, surface #F1F1F4, text #B3B3B6.
+
+// Reanimated 4's default spring (withSpring with no config): translateY and the content height.
+fn gentle(): string = "-exact-spring(900, 120, 4)"
+// rotate: withSpring(opened ? 45 : 0, { dampingRatio: 0.8, duration: 500 }) →
+// bun tools/spring.ts 500 0.8.
+fn rotateSpring(): string = "-exact-spring(1672.7, 130.9, 4)"
+// Reanimated's withTiming / FadeIn / FadeOut default curve, Easing.inOut(Easing.quad).
+fn inOutQuad(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+
+// rContentHeight: interpolate(step, [0, 1, 2], [80, 200, 250]).
+fn contentHeight(step: number): number = step == 0 ? 80 : (step == 1 ? 200 : 250)
+fn titleOf(step: number): string = step == 0 ? "Heading 1" : (step == 1 ? "Heading 2" : "Heading 3")
+fn actionOf(step: number): string = step == 0 ? "Continue" : (step == 1 ? "Accept 1" : "Accept 2")
+
+keyframes trayFadeIn
+  from opacity=0
+  to opacity=1
+keyframes trayFadeOut
+  from opacity=1
+  to opacity=0
+
+// Each step's content: LinearTransition.easing(Easing.linear).duration(250), exiting FadeOut
+// (300 ms, inOut(quad)).
+style StepContent
+  -exact-layout-transition="250ms linear"
+  -exact-exit-animation="trayFadeOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+
+// The tray's children wrapper: layout={LinearTransition} (300 ms, inOut(quad)).
+style TrayContent
+  -exact-layout-transition="300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+
+component ActionTray
+  props
+    env: DemoEnv
+  state opened = false
+  state step = 0
+  // maxHeight = screenHeight × 0.6: translateY's closed value (and its start).
+  derive maxHeight = env.height * 0.6
+  // The layer's height (transformgeometry, paired with the release).
+  state layerHeight = 0
+  action geometry(bw: number, bh: number, pw: number, ph: number)
+    layerHeight = ph
+  // close(): the tray to maxHeight, isActionTrayOpened false, step 0.
+  action close
+    haptic("selection")
+    opened = false
+    step = 0
+  action closeQuietly
+    opened = false
+    step = 0
+  action toggleActionTray
+    haptic("selection")
+    if opened
+      opened = false
+      step = 0
+    else
+      opened = true
+  action next
+    haptic("selection")
+    if step == 2
+      opened = false
+      step = 0
+    else
+      step = step + 1
+  // Pan onEnd: translationY > 100 closes (onClose), else back to where it started.
+  action release(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    if y - (opened ? 0 : maxHeight) > 100
+      opened = false
+      step = 0
+  view
+    // styles.container: centred, #FFF, flex 1.
+    column position="absolute" inset=0 background-color="#FFF" align-items="center"
+      justify-content="center" testId="action-tray"
+      // styles.button: 50 × 50, #4290F6, radius 25, marginTop 200, centred; rotate 0 → 45°.
+      // MaterialCommunityIcons plus 25 #FFF.
+      column class=PressableScale width=50 height=50 border-radius=25 background-color="#4290F6"
+        margin-top=200 align-items="center" justify-content="center"
+        rotate=(opened ? 45 : 0) transition=`rotate ${rotateSpring()}`
+        press=toggleActionTray role="button" aria-label=(opened ? "Close the tray" : "Open the tray")
+        testId="toggle"
+        image "symbol:sf/plus" font-size=25 font-weight=600 color="#FFF" aria-hidden=true
+      // Backdrop: absoluteFill rgba(0,0,0,0.2), opacity withTiming(active ? 1 : 0), touchable
+      // only while active; onTouchStart closes.
+      view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.2)"
+        opacity=(opened ? 1 : 0) pointer-events=(opened ? "auto" : "none")
+        transition=`opacity 300ms ${inOutQuad()}` pointerdown=closeQuietly
+        aria-label="Close the tray" testId="backdrop"
+      // The tray's layer: its translate is RN's translateY (maxHeight closed, 0 open), the
+      // transform drag's target under an untransformed, clipping parent.
+      column position="absolute" inset=0 overflow="hidden" pointer-events="none"
+        column id="action-tray-layer" width="100%" height="100%" box-sizing="border-box"
+          position="relative" translate=`0px ${opened ? 0 : maxHeight}px`
+          transition=`translate ${gentle()}`
+          // styles.actionTrayContainer: centred, #FFF, continuous corners, bottom 30, 95%
+          // wide; styles.actionTray: padding 25. borderRadius interpolates 25 → 5 only past
+          // -maxHeight + 50, which translateY never reaches: 25.
+          column position="absolute" bottom=30 left="2.5%" width="95%" box-sizing="border-box"
+            padding=25 background-color="#FFF" border-radius=25 corner-shape="squircle"
+            testId="tray"
+            // The GestureDetector: the whole tray (its buttons keep their taps).
+            view position="absolute" inset=0 pointer-events="auto" touch-action="none"
+              transformDragFor="action-tray-layer" transformgeometry=geometry
+              transformrelease=release aria-label="Drag the tray down to close it"
+              testId="tray-handle"
+            column class=TrayContent
+              animation=`trayFadeIn 300ms ${inOutQuad()} both`
+              // styles.headingContainer: a centred row; headingText 20, weight 600.
+              row align-items="center"
+                text titleOf(step) font-size=20 font-weight=600 color="#000000" testId="title"
+                view flex=1
+                // styles.closeButton: 24 × 24, radius 20, #F1F1F4, hitSlop 8;
+                // MaterialCommunityIcons close-thick 15 #B3B3B6.
+                column class=PressableScale pointer-events="auto" width=24 height=24
+                  border-radius=20 background-color="#F1F1F4" align-items="center"
+                  justify-content="center" press=close role="button" aria-label="Close"
+                  testId="close"
+                  image "symbol:sf/xmark" font-size=15 font-weight=900 color="#B3B3B6"
+                    aria-hidden=true
+              // rContentStyle: height withSpring(80 | 200 | 250).
+              column height=contentHeight(step) transition=`height ${gentle()}` testId="content"
+                // styles.contentText: #B3B3B6, 16, weight 600, marginTop 15, marginBottom 25.
+                if step == 0
+                  text "Content here" class=StepContent font-size=16 font-weight=600
+                    color="#B3B3B6" margin-top=15 margin-bottom=25 testId="step-0"
+                if step == 1
+                  column class=StepContent flex=1
+                    animation=`trayFadeIn 300ms ${inOutQuad()} both` testId="step-1"
+                    text "You know what? I really don't know what to write here.\n\nI just want to make this text long enough to test the animation. So I am just typing some random words here.\nI hope this is enough."
+                      font-size=16 font-weight=600 color="#B3B3B6" margin-top=15 margin-bottom=25
+                if step == 2
+                  column class=StepContent flex=1
+                    animation=`trayFadeIn 300ms ${inOutQuad()} both` testId="step-2"
+                    column margin-top=15 margin-bottom=25
+                      text "Waaait a second! Actually I have something to say.\n\nIf you are reading this, you're probably searching for the source code!\n\nIf I'm right, you can find it here:"
+                        font-size=16 font-weight=600 color="#B3B3B6"
+                      // The nested Text: bold, rgba(0,0,0,0.5).
+                      text "reactiive.io/demos" font-size=16 font-weight=700
+                        color="rgba(0, 0, 0, 0.5)"
+              // styles.continueButton: #4290F6, radius 25 continuous, 55 tall, full width;
+              // buttonText #FFF 16 bold.
+              column class=PressableScale pointer-events="auto" height=55 width="100%"
+                border-radius=25 corner-shape="squircle" background-color="#4290F6"
+                align-items="center" justify-content="center" press=next role="button"
+                aria-label=actionOf(step) testId="continue"
+                text actionOf(step) font-size=16 font-weight=700 color="#FFF" testId="continue-label"

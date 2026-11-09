@@ -34,12 +34,46 @@ pub struct Spring {
     pub velocity: f64,
     /// False once at rest.
     pub running: bool,
+    /// `overshootClamping`: done the moment it leaves the span from its start to its target.
+    overshoot_clamping: bool,
+}
+
+/// `withSpring(to, { duration, dampingRatio, mass })`: the constants Reanimated solves when the
+/// animation starts (springUtils.ts `calculateNewStiffnessToMatchDuration`), from the distance
+/// `x0` (value − target) and the velocity `v0` it starts with: the stiffness whose energy falls
+/// to 6e-9 of its start by 1.5 × duration (bisection, as Reanimated's), damping 2ζ√(km).
+pub fn duration_config(x0: f64, v0: f64, duration_ms: f64, damping_ratio: f64, mass: f64) -> Config {
+    let threshold = 6e-9;
+    let energy = |x: f64, v: f64, k: f64| 0.5 * k * x * x + 0.5 * mass * v * v;
+    let diff = |k: f64| {
+        let settling = duration_ms * 1.5 / 1000.0;
+        let omega0 = (k / mass).sqrt() * damping_ratio;
+        let e = (-omega0 * settling).exp();
+        let xtk = (x0 + (v0 + x0 * omega0) * settling) * e;
+        let vtk = (x0 + (v0 + x0 * omega0) * settling) * e * -omega0 + (v0 + x0 * omega0) * e;
+        energy(xtk, vtk, k) / energy(x0, v0, k) - threshold
+    };
+    let precision = threshold * 1e-3;
+    let (mut lo, mut hi) = (f64::EPSILON, 8e3);
+    let direction = if diff(hi) >= diff(lo) { 1.0 } else { -1.0 };
+    let mut k = (lo + hi) / 2.0;
+    let mut left = 100;
+    while diff(k).abs() > precision && left > 0 {
+        left -= 1;
+        if diff(k) * direction < 0.0 {
+            lo = k;
+        } else {
+            hi = k;
+        }
+        k = (lo + hi) / 2.0;
+    }
+    Config { stiffness: k, damping: 2.0 * damping_ratio * (k * mass).sqrt(), mass }
 }
 
 impl Spring {
     /// At rest at `value`.
     pub fn at(value: f64) -> Spring {
-        Spring { config: GENTLE, from: value, to: value, v0: 0.0, t: 0.0, last_ms: None, energy0: 0.0, value, velocity: 0.0, running: false }
+        Spring { config: GENTLE, from: value, to: value, v0: 0.0, t: 0.0, last_ms: None, energy0: 0.0, value, velocity: 0.0, running: false, overshoot_clamping: false }
     }
 
     /// Held where the finger puts it.
@@ -47,8 +81,11 @@ impl Spring {
         *self = Spring::at(value);
     }
 
-    /// Off to `to` from where it is, at `velocity`.
+    /// Off to `to` from where it is, at `velocity`. As Reanimated's `onStart`, a velocity that
+    /// points away from `to` is dropped (only inertia toward the target is kept).
     pub fn to(&mut self, to: f64, velocity: f64, config: Config) {
+        let velocity = if (to > self.value && velocity < 0.0) || (to < self.value && velocity > 0.0) { 0.0 } else { velocity };
+        self.overshoot_clamping = false;
         let x0 = self.value - to;
         self.config = config;
         self.from = self.value;
@@ -62,6 +99,12 @@ impl Spring {
             self.value = to;
             self.velocity = 0.0;
         }
+    }
+
+    /// [`Spring::to`] with `overshootClamping: true`: it ends at `to` as soon as it passes it.
+    pub fn to_clamped(&mut self, to: f64, velocity: f64, config: Config) {
+        self.to(to, velocity, config);
+        self.overshoot_clamping = true;
     }
 
     /// `withSpring(to)` from a mapper (`useDerivedValue(() => withSpring(x.get()))`) when its
@@ -114,6 +157,12 @@ impl Spring {
         };
         self.value = self.to - x;
         self.velocity = v;
+        if self.overshoot_clamping && (self.value < self.from.min(self.to) || self.value > self.from.max(self.to)) {
+            self.value = self.to;
+            self.velocity = 0.0;
+            self.running = false;
+            return false;
+        }
         let energy = 0.5 * k * x * x + 0.5 * m * v * v;
         if self.energy0 <= 0.0 || energy / self.energy0 < 6e-9 {
             self.value = self.to;

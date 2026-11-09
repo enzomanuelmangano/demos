@@ -1,0 +1,100 @@
+// Dynamic Blur Tabs: a black grid of 100 random gradient squares under a dark blurred tab bar
+// of five icons; at the top of the scroll the bar is a full-width sheet over the home
+// indicator, once scrolled it springs into a floating pill. The other four tabs are empty.
+// RN: src/animations/dynamic-blur-tabs (src/index.tsx, constants/screens.ts,
+// hooks/use-bottom-bar-height.ts, screens/scrollable-gradients/index.tsx,
+// components/bottom-tab-bar/{index.tsx, states.ts, tab-bar-item.tsx}).
+use PressableScale from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// constants/screens.ts: MaterialIcons home, search, favorite, person, settings.
+fn tabIcon(i: number): string = match ["symbol:sf/house.fill", "symbol:sf/magnifyingglass", "symbol:sf/heart.fill", "symbol:sf/person.fill", "symbol:sf/gearshape.fill"].at(i) { case some(s) => s, case none => "" }
+fn tabName(i: number): string = match ["home", "search", "favorite", "person", "settings"].at(i) { case some(s) => s, case none => "" }
+
+// generateHarmonicColors: hue = random × 360, saturation 70 + random, lightness 40 + random ×
+// 20; three stops 30° apart. Math.random() is roll(seed, …), three draws a square.
+fn hueOf(seed: number, k: number): number = roll(seed, k * 3, 36000) / 100
+fn satOf(seed: number, k: number): number = 70 + roll(seed, k * 3 + 1, 1000) / 1000
+fn lightOf(seed: number, k: number): number = 40 + roll(seed, k * 3 + 2, 2000) / 100
+fn hsl(h: number, s: number, l: number): string = `hsl(${h}, ${s}%, ${l}%)`
+// The LinearGradient gets only `colors` (start and end are never passed): top to bottom.
+fn gradientOf(seed: number, k: number): string = `linear-gradient(180deg, ${hsl(hueOf(seed, k), satOf(seed, k), lightOf(seed, k))} 0%, ${hsl((hueOf(seed, k) + 30) % 360, satOf(seed, k), lightOf(seed, k))} 50%, ${hsl((hueOf(seed, k) + 60) % 360, satOf(seed, k), lightOf(seed, k))} 100%)`
+
+// use-bottom-bar-height.ts: BOTTOM_BAR_HEIGHT 70; the gradient is BOTTOM_BAR_HEIGHT + safeBottom
+// + 15 + LINEAR_GRADIENT_HEIGHT (100) tall.
+fn gradientHeight(): string = "calc(185px + env(safe-area-inset-bottom))"
+// rBarStyle at progress 1 (at the top) and 0 (scrolled): height BOTTOM_BAR_HEIGHT + safeBottom
+// + 15 → 70; bottom (paddingBottom - 2) -2 → safeBottom + 13.
+fn barHeight(active: bool): string = active ? "calc(85px + env(safe-area-inset-bottom))" : "70px"
+fn barBottom(active: bool): string = active ? "-2px" : "calc(env(safe-area-inset-bottom) + 13px)"
+// rBottomViewStyle: height safeBottom + 15 → 0.
+fn spacerHeight(active: bool): string = active ? "calc(15px + env(safe-area-inset-bottom))" : "0px"
+
+// progress = withSpring(IsTabBarActive ? 1 : 0): Reanimated 4's default spring, on every box
+// the bar's interpolations move.
+style BarMotion
+  -exact-layout-transition="-exact-spring(900, 120, 4)"
+
+component DynamicBlurTabs
+  props
+    env: DemoEnv
+  // states.ts IsTabBarActive: the scroll's offset is at (or above) the top.
+  state isTabBarActive = true
+  // The focused tab (focusedIndex), home at first.
+  state focusedIndex = 0
+  derive w = env.width
+  // The scroll handler writes only on a change.
+  action scrolled(x: number, y: number)
+    if (y <= 0) != isTabBarActive
+      isTabBarActive = y <= 0
+  action pick(i: number)
+    haptic("selection")
+    focusedIndex = i
+  view
+    column position="absolute" inset=0 background-color="black" overflow="hidden"
+      testId="dynamic-blur-tabs"
+      // ScrollableGradients: a FlatList of 100, four columns, black, contentContainer padding
+      // 4 and paddingTop safeTop; each cell padded 4 around a (width - 8 × 5) / 4 square with a
+      // 1 px rgba(255,255,255,0.2) border, radius 4 continuous.
+      scroll position="absolute" top=0 left=0 width="100%" height="100%" scroll=scrolled
+        testId="gradients"
+        row flex-wrap="wrap" padding=4 padding-top=env.safeTop
+          for k in range(100) key=k
+            view padding=4
+              view width=((w - 40) / 4) height=((w - 40) / 4) box-sizing="border-box"
+                border-width=1 border-style="solid" border-color="rgba(255, 255, 255, 0.2)"
+                border-radius=4 corner-shape="squircle" background-image=gradientOf(env.seed, k)
+                aria-hidden=true
+      // The other tabs render null: the navigator's DefaultTheme background, rgb(242, 242, 242).
+      if focusedIndex != 0
+        view position="absolute" inset=0 background-color="rgb(242, 242, 242)"
+          testId=`screen-${tabName(focusedIndex)}`
+      // LINEAR_GRADIENT_COLORS, top to bottom, at the bottom, untouchable.
+      view position="absolute" left=0 right=0 bottom=0 height=gradientHeight()
+        pointer-events="none" aria-hidden=true
+        background-image="linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(0, 0, 0, 0.1) 33.333%, rgba(0, 0, 0, 0.5) 66.667%, rgba(0, 0, 0, 0.8) 100%)"
+      // styles.bottomContainer: absolute, clipped, a rgba(216, 216, 216, 0.597) border,
+      // continuous corners. left/right 0 → 0.15 w, radius 20 → 0.15 w, borderWidth 0.6 → 1.
+      column class=BarMotion position="absolute" left=(isTabBarActive ? 0 : w * 0.15)
+        right=(isTabBarActive ? 0 : w * 0.15) bottom=barBottom(isTabBarActive)
+        height=barHeight(isTabBarActive) box-sizing="border-box"
+        border-radius=(isTabBarActive ? 20 : w * 0.15) corner-shape="squircle"
+        border-width=(isTabBarActive ? 0.6 : 1) border-style="solid"
+        border-color="rgba(216, 216, 216, 0.597)" overflow="hidden" testId="tab-bar"
+        // The BlurView: systemMaterialDark (intensity 70), rgba(255,255,255,0.05) over it,
+        // flex 1, paddingHorizontal 15 → 0.
+        column class=BarMotion flex=1 backgroundMaterial="material-dark"
+          padding-left=(isTabBarActive ? 15 : 0) padding-right=(isTabBarActive ? 15 : 0)
+          view position="absolute" inset=0 background-color="rgba(255, 255, 255, 0.05)"
+            pointer-events="none" aria-hidden=true
+          row class=BarMotion flex=1 role="tablist"
+            for i in range(5) key=i
+              // TabBarItem: flex 1, opacity withTiming(focused ? 1 : 0.3); PressableScale
+              // centred; MaterialIcons 25 white.
+              column class=BarMotion flex=1 opacity=(focusedIndex == i ? 1 : 0.3)
+                transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+                column class=PressableScale flex=1 align-items="center" justify-content="center"
+                  press=pick(i) role="tab" aria-selected=(focusedIndex == i)
+                  aria-label=tabName(i) testId=`tab-${tabName(i)}`
+                  image tabIcon(i) font-size=25 color="white" aria-hidden=true
+          view class=BarMotion height=spacerHeight(isTabBarActive)

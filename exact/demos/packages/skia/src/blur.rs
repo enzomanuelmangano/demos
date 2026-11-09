@@ -111,6 +111,14 @@ impl Blur {
     }
 }
 
+impl Blur {
+    /// The last [`Blur::run`]'s result, kept until the next run (a blur of something drawn
+    /// once, sampled every frame).
+    pub fn output(&self) -> Option<&wgpu::TextureView> {
+        self.a.as_ref()
+    }
+}
+
 fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Built {
     let module = device.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("skia blur"), source: wgpu::ShaderSource::Wgsl(SHADER.into()) });
     let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

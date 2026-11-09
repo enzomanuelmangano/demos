@@ -4,6 +4,7 @@ use Demo, allDemos from "./demos.contract"
 use Springboard from "./home/springboard.contract"
 use DemoScreen from "./home/demo-screen.contract"
 use DemoEnv from "./demos/env.contract"
+use startSensorInput, stopSensorInput, SensorInput from "@exact/motion"
 
 routes nav
   home "/"
@@ -24,7 +25,10 @@ shape Time
 // stays). RN lets a demo keep a touch it claimed (demo-screen.tsx CloseGesture); a route's
 // dismissal cannot ask the canvas mid-gesture, and switching it per touch costs a commit
 // that holds the canvas's first frames.
-fn ownsDrags(slug: string): bool = ["metaball"].includes(slug)
+fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "animated-3d-parallax"].includes(slug)
+
+// Demos whose GPU surface reads the gravity sensor while it shows (RN: useAnimatedSensor).
+fn tilts(slug: string): bool = slug == "linear-sensors"
 
 // A link `demos-exact://demo/<slug>` arrives as `/open?u=<the link, encoded>`: its path.
 fn linkPath(u: string): string = linkRoute(u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://"))
@@ -33,7 +37,7 @@ fn linkRoute(rest: string): string = `/${rest.split("/").filter(p => p != "").jo
 
 fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slug)) {
   case some(d) => d,
-  case none => Demo(slug=slug, name=slug, label=slug, icon="assets/app-icons/_placeholder.png", backdrop="#000000", inspiration="", unstable=false, ported=false)
+  case none => Demo(slug=slug, name=slug, label=slug, icon="assets/app-icons/_placeholder.png", backdrop="#000000", inspiration="", story="", actionLabel="", actionUrl="", unstable=false, ported=false)
 }
 
 component Demos
@@ -47,8 +51,16 @@ component Demos
   action open(slug: string)
     haptic("selection")
     nav = push(nav, path("demo", slug))
+  mutation sensors as shape SensorInput
   action back
+    if top(nav).name == "demo" and tilts(top(nav).params.slug)
+      send sensors = stopSensorInput(surface="linear_sensors", sensor="gravity")
     nav = back(nav)
+  // Linear Sensors' feed: the gravity sensor at 50 Hz (RN's interval 20), into its surface.
+  task tilt when top(nav).name == "demo" and tilts(top(nav).params.slug) key=top(nav).id
+    after(1, startTilt)
+  action startTilt
+    send sensors = startSensorInput(surface="linear_sensors", sensor="gravity", frequency=50)
   action follow(url: string)
     let n = go(nav, url)
     nav = top(n).name == "open" ? replace(n, linkPath(searchParam(top(n), "u"))) : n

@@ -11,7 +11,8 @@
 //! sRGB). Clips are stencil levels.
 //!
 //! Text is [`Font`] + [`Canvas::draw_text`] (glyph outlines filled as paths); SVG path strings
-//! are [`path_from_svg`]; `<FitBox>` is [`fit_box`].
+//! are [`path_from_svg`]; `<FitBox>` is [`fit_box`]. A `<Group transform>` with `perspective`,
+//! `rotateX` or `rotateY` is [`Matrix4`] (its plane's [`Matrix3`] inverted in a demo's shader).
 //!
 //! What a demo needs beyond this (Skia's image filters, runtime shaders) is its own wgpu pass.
 
@@ -23,11 +24,13 @@ pub use lyon::path::Path;
 
 pub mod blur;
 pub mod color;
+pub mod matrix4;
 pub mod render;
 pub mod svg;
 pub mod text;
 
 pub use color::Color;
+pub use matrix4::{Matrix3, Matrix4};
 pub use blur::Blur;
 pub use render::Renderer;
 pub use svg::path_from_svg;
@@ -509,6 +512,12 @@ pub fn add_rrect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f
 /// Appends a rect to a builder (`PathBuilder.addRect`).
 pub fn add_rect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32) {
     b.add_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), Winding::Positive);
+}
+
+/// Appends an oval to a builder (`<Oval x y width height>`, `PathBuilder.addOval`): the ellipse
+/// inscribed in the rect.
+pub fn add_oval(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32) {
+    b.add_ellipse(point(x + w / 2.0, y + h / 2.0), vector(w / 2.0, h / 2.0), lyon::math::Angle::radians(0.0), Winding::Positive);
 }
 
 /// Appends a circle to a builder (`PathBuilder.addCircle`).

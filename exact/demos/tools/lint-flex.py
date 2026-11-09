@@ -25,6 +25,9 @@ for f in sys.argv[1:] or glob.glob('demos/*/*.contract'):
     lines = open(f).read().split('\n')
     ns = nodes(lines)
     for k, (ind, li, tag, attrs) in enumerate(ns):
+        if tag in ('view', 'box') and 'display="flex"' not in attrs and 'display=(' not in attrs \
+                and re.search(r'(^|\s)(align-items|justify-content|flex-direction|gap|row-gap|column-gap|flex-wrap)=', attrs):
+            print(f'{f}:{li+1}: {tag} is not a flex container; its flex layout attributes do nothing')
         if not re.search(r'(^|\s)(flex=1|flex-grow=)', attrs): continue
         for pind, pli, ptag, pattrs in reversed(ns[:k]):
             if pind < ind:

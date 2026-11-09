@@ -2,7 +2,8 @@
 // RN registry (tools/gen-demos.ts), and each demo keeps its state in Contract.
 import type { Answer, Sources } from './app.contract.d.ts';
 
-export const grants = '';
+// Linear Sensors tilts its card with the gravity sensor (its feed goes straight to the GPU surface).
+export const grants = 'device.motion motionPurpose';
 
 const sources: Sources = {};
 export const answer: Answer = (source, args, store, storage, native) =>

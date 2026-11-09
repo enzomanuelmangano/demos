@@ -1,0 +1,15 @@
+at "/demo/swipe-cards"
+
+test "nine cards, the top one draggable; the buttons throw it and reset brings them back"
+  expect tree has "swipe-cards"
+  expect tree has "card-0"
+  expect tree has "card-8"
+  expect tree has "card-handle"
+  tap "swipe-right"
+  clock settle
+  expect tree has "card-handle"
+  tap "swipe-left"
+  clock settle
+  tap "reset"
+  clock settle
+  expect tree has "card-handle"

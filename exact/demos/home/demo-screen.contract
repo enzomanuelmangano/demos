@@ -14,6 +14,11 @@ component DemoScreen
   // the route's by what the route leaves at the top and the bottom.
   state top = 0
   state bottom = 0
+  action inspire
+    haptic("impact-light")
+    showModal("inspiration")
+  action follow
+    openURL(demo.actionUrl)
   action placed(w: number, h: number)
     let g = frame("demo-route")
     if not g.unavailable
@@ -37,3 +42,19 @@ component DemoScreen
           width=44 height=44 border-radius=22 backgroundMaterial="glass" color-scheme="dark"
           display="flex" align-items="center" justify-content="center"
           image "symbol:close" font-size=18 color="#ffffff"
+        // demo-inspiration.tsx: the info button mirroring the close button (16 pt from the
+        // trailing edge), when the demo credits someone; it opens the Inspiration sheet.
+        if demo.story != ""
+          button press=inspire aria-label="Inspiration" testId="inspiration" position="absolute"
+            top=top right=16 width=44 height=44 border-radius=22 backgroundMaterial="glass"
+            color-scheme="dark" display="flex" align-items="center" justify-content="center"
+            image "symbol:sf/info" font-size=18 color="#ffffff"
+      // The sheet, sized to its content (BottomSheet fitToContents): title2 bold, the story in
+      // body, the action as a large capsule button; inset 24.
+      dialog id="inspiration" aria-label="Inspiration" testId="inspiration-sheet"
+        column gap=16 padding="28px 24px 24px" align-items="stretch"
+          text "Inspiration" font="-exact-title2" font-weight=700
+          text demo.story font="-exact-body"
+          button press=follow buttonStyle="filled" commandfor="inspiration" command="close"
+            testId="inspiration-action" margin-top=8
+            text demo.actionLabel

@@ -147,6 +147,6 @@ component BottomProgress
         // it scrolls to the top (only at END).
         column class=PillMotion position="absolute" inset=0 opacity=(isEnd(progress) ? 1 : 0)
           transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
-          view class=PressableOpacity flex=1 align-items="center" justify-content="center" press=reset
+          view display="flex" flex-direction="column" class=PressableOpacity flex=1 align-items="center" justify-content="center" press=reset
             role="button" aria-label="Back to the top" testId="reset"
             image "symbol:sf/arrow.up" font-size=24 color="#9E9E9E" aria-hidden=true
