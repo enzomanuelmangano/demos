@@ -19,10 +19,11 @@ pub mod gfx;
 
 pub mod geometry_button;
 pub mod metaball;
+pub mod spiral;
 
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
-    surfaces: &[("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface)],
+    surfaces: &[("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface), ("spiral", 0, spiral::surface)],
     shaders: shaders::SHADERS,
 };
 

@@ -15,6 +15,7 @@ use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
+use Spiral from "./spiral/spiral.contract"
 use StackedList from "./stacked-list/stacked-list.contract"
 use StoryList from "./story-list/story-list.contract"
 use TabNavigation from "./tab-navigation/tab-navigation.contract"
@@ -56,6 +57,8 @@ component PortedDemo
         OnlineOffline(env=env)
       if slug == "smooth-dropdown"
         SmoothDropdown()
+      if slug == "spiral"
+        Spiral()
       if slug == "stacked-list"
         StackedList(env=env)
       if slug == "story-list"

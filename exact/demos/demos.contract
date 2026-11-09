@@ -134,7 +134,7 @@ fn allDemos(): Demo[] =
     Demo(slug="floating-bottom-bar", name="Floating Bottom Bar", label="Floating Bar", icon="assets/app-icons/floating-bottom-bar.png", backdrop="#ededef", inspiration="https://www.pinterest.it/pin/548594798370796215/", unstable=false, ported=false),
     Demo(slug="animated-grid-list", name="Animated Grid List", label="Grid List", icon="assets/app-icons/animated-grid-list.png", backdrop="#eeeeee", inspiration="", unstable=false, ported=true),
     Demo(slug="scroll-progress", name="Scroll Progress", label="Progress", icon="assets/app-icons/scroll-progress.png", backdrop="#111111", inspiration="https://x.com/jamesvclements/status/1602675302982975489", unstable=false, ported=false),
-    Demo(slug="spiral", name="Spiral", label="Spiral", icon="assets/app-icons/spiral.png", backdrop="#010101", inspiration="", unstable=false, ported=false),
+    Demo(slug="spiral", name="Spiral", label="Spiral", icon="assets/app-icons/spiral.png", backdrop="#010101", inspiration="", unstable=false, ported=true),
     Demo(slug="swipe-cards", name="Swipe Cards", label="Swipe Cards", icon="assets/app-icons/swipe-cards.png", backdrop="#252831", inspiration="https://apps.apple.com/app/tinder/id547702041", unstable=false, ported=false),
     Demo(slug="mobile-input", name="Mobile Input", label="Mobile Input", icon="assets/app-icons/mobile-input.png", backdrop="#1c274d", inspiration="https://dribbble.com/shots/7001875-Crypto-application", unstable=false, ported=false)
   ]

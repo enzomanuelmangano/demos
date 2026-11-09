@@ -18,10 +18,12 @@ pub use exact_gpu::wgpu;
 pub use lyon::math::{point, vector, Point, Vector};
 pub use lyon::path::Path;
 
+pub mod blur;
 pub mod color;
-mod render;
+pub mod render;
 
 pub use color::Color;
+pub use blur::Blur;
 pub use render::Renderer;
 
 use lyon::path::builder::BorderRadii;
