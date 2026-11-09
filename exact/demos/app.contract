@@ -18,6 +18,11 @@ shape Host
 shape Time
   seed: number
 
+// What a demo's GPU surface publishes while a finger holds something of its own: the demo's
+// swipe-down close waits (RN: a demo that claims a touch keeps it, demo-screen.tsx).
+shape Hold
+  held: bool
+
 // A link `demos-exact://demo/<slug>` arrives as `/open?u=<the link, encoded>`: its path.
 fn linkPath(u: string): string = `/${u.replaceAll("%3A", ":").replaceAll("%2F", "/").split("://").slice(1).join("://")}`
 
@@ -29,6 +34,8 @@ fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slu
 component Demos
   resource host = exactViewport() as shape Host
   resource time = exactTime() as shape Time
+  resource metaballHold = exactSurface("metaball") as shape Hold
+  derive holding = metaballHold.held
   derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, seed=time.seed, reducedMotion=host.prefersReducedMotion)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
@@ -58,5 +65,5 @@ component Demos
         if e.name == "demo"
           column navigationKey=`${e.id}` navigationBar="none" navigationPresentation="fullscreen"
             navigationSource=`icon-${e.params.slug}` position="absolute" inset=0
-            background-color=demoOf(e.params.slug).backdrop
+            background-color=demoOf(e.params.slug).backdrop closedby=(holding ? "none" : "closerequest")
             DemoScreen(demo=demoOf(e.params.slug), env=env, close=back)

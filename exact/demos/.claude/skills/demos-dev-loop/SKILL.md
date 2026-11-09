@@ -49,3 +49,21 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
   `entering`/`exiting` become `animation` + `-exact-exit-animation` with the same durations.
 - Performance first: per-frame motion runs on the host (transitions, keyframes, springs,
   drag/scroll timelines, `transformDragFor`) or in Rust on the GPU, never in a commit per frame.
+
+## Springs
+
+- Reanimated 4 `withSpring()` with no config: `-exact-spring(900, 120, 4)` (GentleSpringConfig).
+- `withSpring(v, { duration, dampingRatio })`: `bun tools/spring.ts <duration> <dampingRatio>`
+  prints the exact stiffness/damping/mass (Reanimated's own bisection, mass 4 by default).
+- `{ stiffness, damping, mass }` configs copy straight across; a missing key is Gentle's.
+- Layout `springify()` with no setters is the same default spring.
+
+## GPU surfaces (gpu/, packages/reanimated, packages/gesture-handler)
+
+- A `canvas` is a replaced element: `inset=0` leaves it 300×150. Give it `width`/`height`.
+- Gestures and motion live in the surface: `wants_input() -> true`, recognizers from
+  `gesture-handler`, animations from `reanimated`, `render()` returns true only while
+  something moves or a finger is down. No commit per frame.
+- `cargo test -p demos-gpu` renders offscreen (`exact_gpu::fixture`; `EXACT_GPU_OUT=/tmp/x`
+  writes PPMs): check positions there before a device build.
+- `Surface::agent()` answers the drive's state request: report the surface's state there.

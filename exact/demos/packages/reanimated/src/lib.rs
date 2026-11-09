@@ -1,0 +1,25 @@
+//! react-native-reanimated 4.5.1, for GPU surfaces: what a worklet runs on the UI thread,
+//! stepped here on the host's frame clock. Ported line for line from
+//! node_modules/react-native-reanimated/src, so a demo's numbers carry over unchanged.
+//!
+//! - [`spring`]: `withSpring` (animation/spring).
+//! - [`timing`]: `withTiming` (animation/timing.ts) and [`easing`]: `Easing` (Easing.ts, Bezier.ts).
+//! - [`decay`]: `withDecay` (animation/decay).
+//! - [`interpolate`]: `interpolate` and `Extrapolation` (interpolation.ts).
+
+#![deny(missing_docs)]
+
+pub mod decay;
+pub mod easing;
+pub mod interpolate;
+pub mod spring;
+pub mod timing;
+
+pub use decay::Decay;
+pub use easing::Easing;
+pub use interpolate::{interpolate, interpolate_clamp, Extrapolation};
+pub use spring::{Config as SpringConfig, Spring, GENTLE};
+pub use timing::Timing;
+
+/// The frame clock's longest step (`Math.min(…, 64)` in every animation's onFrame).
+pub const MAX_STEP_MS: f64 = 64.0;

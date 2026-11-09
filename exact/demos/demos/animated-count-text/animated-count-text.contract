@@ -28,14 +28,15 @@ component AnimatedCountText
   view
     column position="absolute" inset=0 background-color="#000000" align-items="center" justify-content="center"
       testId="animated-count-text"
-      // The row resizes on LinearTransition.springify() (stiffness 100, damping 10, mass 1).
-      row -exact-layout-transition="-exact-spring(100, 10, 1)" testId="count" aria-label=`${value}`
+      // The row resizes on LinearTransition.springify(): Reanimated 4's default spring.
+      row -exact-layout-transition="-exact-spring(900, 120, 4)" testId="count" aria-label=`${value}`
         for d, i in digitsOf(value) key=i
           // Each place: a 40 x 55 window over the column 0…9, rolled to its digit by a spring
-          // (withSpring duration 1000, dampingRatio 0.9), resized over 800 ms.
+          // (withSpring duration 1000, dampingRatio 0.9: bun tools/spring.ts 1000 0.9), resized
+          // over 800 ms.
           column width=40 height=55 overflow="hidden" -exact-layout-transition="800ms ease"
             animation="digitIn 250ms both" -exact-exit-animation="digitOut 250ms both"
-            column translate=`0px ${0 - 55 * d}px` transition="translate -exact-spring(39.5, 11.3, 1)"
+            column translate=`0px ${0 - 55 * d}px` transition="translate -exact-spring(333, 65.7, 4)"
               for n in range(10) key=n
                 text `${n}` width=40 height=55 line-height="55px" text-align="center"
                   font-size=50 font-weight=700 color="#ffffff" aria-hidden=true

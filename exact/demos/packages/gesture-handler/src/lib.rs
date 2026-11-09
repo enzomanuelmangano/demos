@@ -1,0 +1,282 @@
+//! react-native-gesture-handler's Pan and Tap, recognised from the pointer events a canvas
+//! that asks for input receives (exact-gpu's `InputEvent::Pointer`, in canvas points with the
+//! host's clock). A surface keeps one recognizer per gesture and asks it, per event, what the
+//! RNGH callbacks would have been told.
+//!
+//! What RNGH's iOS handlers do, kept here:
+//! - Pan begins once the finger has moved `min_distance` (RNGH's `minDist`, UIKit's ~10 pt
+//!   by default) and reports translation from where the finger went down, as `translationX/Y`.
+//! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate).
+//! - Tap ends within `max_duration_ms` (500) having moved less than `max_distance` (10).
+
+#![deny(missing_docs)]
+
+/// A pointer's phase, as exact-gpu's `PointerPhase` names it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Phase {
+    /// Down.
+    Down,
+    /// Move.
+    Move,
+    /// Up.
+    Up,
+    /// Cancelled by the platform.
+    Cancel,
+}
+
+/// What a recognizer says about an event.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Event {
+    /// Nothing for this gesture.
+    None,
+    /// `onBegin`: a finger it may claim is down at (x, y).
+    Begin {
+        /// Canvas x.
+        x: f32,
+        /// Canvas y.
+        y: f32,
+    },
+    /// `onStart`: the pan is active.
+    Start(Pan),
+    /// `onUpdate` / `onChange`.
+    Update(Pan),
+    /// `onEnd`: the finger lifted while active.
+    End(Pan),
+    /// `onFinalize` without activating (lifted or cancelled before the pan began).
+    Fail,
+    /// A tap's `onEnd` (success) at (x, y).
+    Tap {
+        /// Canvas x.
+        x: f32,
+        /// Canvas y.
+        y: f32,
+    },
+}
+
+/// A pan's payload (RNGH `PanGestureHandlerEventPayload`).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Pan {
+    /// `x`, `y`: the finger in the canvas.
+    pub x: f32,
+    /// See `x`.
+    pub y: f32,
+    /// `translationX/Y`: from where the finger went down.
+    pub translation_x: f32,
+    /// See `translation_x`.
+    pub translation_y: f32,
+    /// `changeX/Y`: since the last update.
+    pub change_x: f32,
+    /// See `change_x`.
+    pub change_y: f32,
+    /// `velocityX/Y`: points per second.
+    pub velocity_x: f32,
+    /// See `velocity_x`.
+    pub velocity_y: f32,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct Sample {
+    x: f32,
+    y: f32,
+    ms: f64,
+}
+
+/// A one-finger pan.
+#[derive(Clone, Debug)]
+pub struct PanGesture {
+    /// RNGH `minDist`.
+    pub min_distance: f32,
+    id: Option<u32>,
+    start: (f32, f32),
+    last: (f32, f32),
+    active: bool,
+    samples: Vec<Sample>,
+}
+
+impl Default for PanGesture {
+    fn default() -> Self {
+        PanGesture::new()
+    }
+}
+
+impl PanGesture {
+    /// `Gesture.Pan()`: activates after 10 pt of travel, as UIKit's pan does.
+    pub fn new() -> PanGesture {
+        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
+    }
+    /// `.minDistance(d)`.
+    pub fn min_distance(mut self, d: f32) -> PanGesture {
+        self.min_distance = d;
+        self
+    }
+    /// Whether a finger is down on this gesture.
+    pub fn tracking(&self) -> bool {
+        self.id.is_some()
+    }
+    /// Whether the pan is active.
+    pub fn active(&self) -> bool {
+        self.active
+    }
+
+    fn payload(&self, x: f32, y: f32) -> Pan {
+        let (vx, vy) = self.velocity();
+        Pan {
+            x,
+            y,
+            translation_x: x - self.start.0,
+            translation_y: y - self.start.1,
+            change_x: x - self.last.0,
+            change_y: y - self.last.1,
+            velocity_x: vx,
+            velocity_y: vy,
+        }
+    }
+
+    fn velocity(&self) -> (f32, f32) {
+        let Some(last) = self.samples.last() else { return (0.0, 0.0) };
+        let first = self.samples.iter().find(|s| last.ms - s.ms <= 100.0).unwrap_or(last);
+        let dt = (last.ms - first.ms) / 1000.0;
+        if dt <= 0.0 {
+            return (0.0, 0.0);
+        }
+        (((last.x - first.x) as f64 / dt) as f32, ((last.y - first.y) as f64 / dt) as f32)
+    }
+
+    fn sample(&mut self, x: f32, y: f32, ms: f64) {
+        self.samples.retain(|s| ms - s.ms <= 150.0);
+        self.samples.push(Sample { x, y, ms });
+    }
+
+    /// A pointer event; `claim` says whether a down here is this pan's (a hit test).
+    pub fn event(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64, claim: bool) -> Event {
+        match phase {
+            Phase::Down => {
+                if self.id.is_some() || !claim {
+                    return Event::None;
+                }
+                self.id = Some(id);
+                self.start = (x, y);
+                self.last = (x, y);
+                self.active = false;
+                self.samples.clear();
+                self.sample(x, y, ms);
+                if self.min_distance <= 0.0 {
+                    self.active = true;
+                    return Event::Start(self.payload(x, y));
+                }
+                Event::Begin { x, y }
+            }
+            Phase::Move => {
+                if self.id != Some(id) {
+                    return Event::None;
+                }
+                self.sample(x, y, ms);
+                let out = if self.active {
+                    Event::Update(self.payload(x, y))
+                } else {
+                    let (dx, dy) = (x - self.start.0, y - self.start.1);
+                    if (dx * dx + dy * dy).sqrt() >= self.min_distance {
+                        self.active = true;
+                        Event::Start(self.payload(x, y))
+                    } else {
+                        Event::None
+                    }
+                };
+                self.last = (x, y);
+                out
+            }
+            Phase::Up | Phase::Cancel => {
+                if self.id != Some(id) {
+                    return Event::None;
+                }
+                self.sample(x, y, ms);
+                self.id = None;
+                if self.active {
+                    self.active = false;
+                    Event::End(self.payload(x, y))
+                } else {
+                    Event::Fail
+                }
+            }
+        }
+    }
+}
+
+/// A single tap.
+#[derive(Clone, Debug)]
+pub struct TapGesture {
+    /// RNGH `maxDuration`.
+    pub max_duration_ms: f64,
+    /// RNGH `maxDist`.
+    pub max_distance: f32,
+    id: Option<u32>,
+    start: (f32, f32, f64),
+    failed: bool,
+}
+
+impl Default for TapGesture {
+    fn default() -> Self {
+        TapGesture { max_duration_ms: 500.0, max_distance: 10.0, id: None, start: (0.0, 0.0, 0.0), failed: false }
+    }
+}
+
+impl TapGesture {
+    /// A pointer event; `claim` says whether a down here is this tap's.
+    pub fn event(&mut self, id: u32, phase: Phase, x: f32, y: f32, ms: f64, claim: bool) -> Event {
+        match phase {
+            Phase::Down => {
+                if self.id.is_some() || !claim {
+                    return Event::None;
+                }
+                self.id = Some(id);
+                self.start = (x, y, ms);
+                self.failed = false;
+                Event::Begin { x, y }
+            }
+            Phase::Move => {
+                if self.id == Some(id) {
+                    let (dx, dy) = (x - self.start.0, y - self.start.1);
+                    if (dx * dx + dy * dy).sqrt() > self.max_distance {
+                        self.failed = true;
+                    }
+                }
+                Event::None
+            }
+            Phase::Up | Phase::Cancel => {
+                if self.id != Some(id) {
+                    return Event::None;
+                }
+                self.id = None;
+                if phase == Phase::Up && !self.failed && ms - self.start.2 <= self.max_duration_ms {
+                    Event::Tap { x, y }
+                } else {
+                    Event::Fail
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pan_starts_past_its_distance_and_reports_velocity() {
+        let mut pan = PanGesture::new();
+        assert!(matches!(pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true), Event::Begin { .. }));
+        assert_eq!(pan.event(1, Phase::Move, 4.0, 0.0, 16.0, true), Event::None);
+        assert!(matches!(pan.event(1, Phase::Move, 20.0, 0.0, 32.0, true), Event::Start(_)));
+        let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 48.0, true) else { panic!() };
+        assert_eq!(p.translation_x, 40.0);
+        assert!(p.velocity_x > 500.0, "{}", p.velocity_x);
+    }
+
+    #[test]
+    fn tap_fails_when_dragged() {
+        let mut tap = TapGesture::default();
+        tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        tap.event(1, Phase::Move, 30.0, 0.0, 50.0, true);
+        assert_eq!(tap.event(1, Phase::Up, 30.0, 0.0, 60.0, true), Event::Fail);
+    }
+}

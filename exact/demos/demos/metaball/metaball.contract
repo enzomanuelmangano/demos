@@ -1,0 +1,8 @@
+// Metaball: two circles that melt into one, each dragged by a finger; the second springs back.
+// RN: src/animations/metaball/index.tsx (Skia). Drawn, dragged and sprung in Rust: gpu/src/metaball.rs.
+
+component Metaball
+  view
+    canvas surface=metaball() position="absolute" top=0 left=0 width="100%" height="100%" touch-action="none"
+      background-color="#0A0A0A"
+      testId="metaball" aria-label="Two circles to drag apart and together"

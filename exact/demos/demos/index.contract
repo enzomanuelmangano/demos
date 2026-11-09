@@ -1,6 +1,7 @@
 // The demos ported to Exact, by slug. Each lives in demos/<slug>/.
 use DemoEnv from "./env.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
+use Metaball from "./metaball/metaball.contract"
 use StackedList from "./stacked-list/stacked-list.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 
@@ -12,6 +13,8 @@ component PortedDemo
     column position="absolute" inset=0
       if slug == "animated-count-text"
         AnimatedCountText(env=env)
+      if slug == "metaball"
+        Metaball()
       if slug == "stacked-list"
         StackedList(env=env)
       if slug == "checkbox-interactions"
