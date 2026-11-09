@@ -1,0 +1,16 @@
+// Fluid Slider: a blue bar whose round picker, dragged, rises out of it like a drop of liquid
+// and shows the value 0–100. RN: src/animations/fluid-slider (index.tsx,
+// components/fluid-slider). Drawn, dragged and sprung in Rust: gpu/src/fluid_slider.rs.
+use DemoEnv from "../env.contract"
+
+component FluidSlider
+  props
+    env: DemoEnv
+  view
+    // styles.container: #f8f9fa, centred.
+    column position="absolute" inset=0 background-color="#f8f9fa" align-items="center"
+      justify-content="center" testId="fluid-slider"
+      // <FluidSlider width={windowWidth} height={100} />: the canvas, its translateX drawn in
+      // the surface.
+      canvas surface=fluid_slider() width=env.width height=100 touch-action="none"
+        testId="fluid-slider-canvas" aria-label="Slider"

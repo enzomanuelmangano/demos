@@ -64,6 +64,24 @@ impl Spring {
         }
     }
 
+    /// `withSpring(to)` from a mapper (`useDerivedValue(() => withSpring(x.get()))`) when its
+    /// input changes: from where it is, at its velocity, its clock going on from the last frame
+    /// (Reanimated starts the new animation at that frame's timestamp), so a target that moves
+    /// every frame is still chased.
+    pub fn retarget(&mut self, to: f64, config: Config) {
+        if self.running && self.to == to && self.config == config {
+            return;
+        }
+        let last = if self.running { self.last_ms } else { None };
+        self.to(to, self.velocity, config);
+        self.last_ms = last;
+    }
+
+    /// Where it is going.
+    pub fn target(&self) -> f64 {
+        self.to
+    }
+
     /// Steps to the frame at `now_ms`; returns whether it still moves.
     pub fn step(&mut self, now_ms: f64) -> bool {
         if !self.running {

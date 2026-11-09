@@ -4,20 +4,37 @@ use AlertDrawer from "./alert-drawer/alert-drawer.contract"
 use AnimatedClipBox from "./animated-clip-box/animated-clip-box.contract"
 use AnimatedCountText from "./animated-count-text/animated-count-text.contract"
 use AnimatedGridList from "./animated-grid-list/animated-grid-list.contract"
+use AnimatedIndicatorList from "./animated-indicator-list/animated-indicator-list.contract"
 use BlurCircles from "./blur-circles/blur-circles.contract"
+use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
 use ComposableText from "./composable-text/composable-text.contract"
 use CoverflowCarousel from "./coverflow-carousel/coverflow-carousel.contract"
+use CubertoSlider from "./cuberto-slider/cuberto-slider.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
+use EmailDemo from "./email-demo/email-demo.contract"
+use EverybodyCanCook from "./everybody-can-cook/everybody-can-cook.contract"
 use FamilyNumberInput from "./family-number-input/family-number-input.contract"
+use FloatingBottomBar from "./floating-bottom-bar/floating-bottom-bar.contract"
+use FluidSlider from "./fluid-slider/fluid-slider.contract"
 use GeometryButton from "./geometry-button/geometry-button.contract"
+use GithubContributions from "./github-contributions/github-contributions.contract"
+use ImessageStack from "./imessage-stack/imessage-stack.contract"
 use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
+use RadarChart from "./radar-chart/radar-chart.contract"
+use ScrollProgress from "./scroll-progress/scroll-progress.contract"
+use ShakeToDelete from "./shake-to-delete/shake-to-delete.contract"
+use SharedTransitions from "./shared-transitions/shared-transitions.contract"
 use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
 use Spiral from "./spiral/spiral.contract"
+use SplitButton from "./split-button/split-button.contract"
+use StackedCarousel from "./stacked-carousel/stacked-carousel.contract"
 use StackedList from "./stacked-list/stacked-list.contract"
+use StackedModals from "./stacked-modals/stacked-modals.contract"
+use Steps from "./steps/steps.contract"
 use StoryList from "./story-list/story-list.contract"
 use TabNavigation from "./tab-navigation/tab-navigation.contract"
 use VerificationCode from "./verification-code/verification-code.contract"
@@ -36,8 +53,12 @@ component PortedDemo
         AnimatedCountText(env=env)
       if slug == "animated-grid-list"
         AnimatedGridList(env=env)
+      if slug == "animated-indicator-list"
+        AnimatedIndicatorList(env=env)
       if slug == "blur-circles"
         BlurCircles()
+      if slug == "bottom-bar-skia"
+        BottomBarSkia(env=env)
       if slug == "checkbox-interactions"
         CheckboxInteractions(env=env)
       if slug == "circular-carousel"
@@ -46,24 +67,54 @@ component PortedDemo
         ComposableText()
       if slug == "coverflow-carousel"
         CoverflowCarousel(env=env)
+      if slug == "cuberto-slider"
+        CubertoSlider()
       if slug == "dynamic-tab-indicator"
         DynamicTabIndicator(env=env)
+      if slug == "email-demo"
+        EmailDemo(env=env)
+      if slug == "everybody-can-cook"
+        EverybodyCanCook()
       if slug == "family-number-input"
         FamilyNumberInput(env=env)
+      if slug == "floating-bottom-bar"
+        FloatingBottomBar(env=env)
+      if slug == "fluid-slider"
+        FluidSlider(env=env)
       if slug == "geometry-button"
         GeometryButton()
+      if slug == "github-contributions"
+        GithubContributions(env=env)
+      if slug == "imessage-stack"
+        ImessageStack(env=env)
       if slug == "metaball"
         Metaball()
       if slug == "miles-bar-chart"
         MilesBarChart(env=env)
       if slug == "online-offline"
         OnlineOffline(env=env)
+      if slug == "radar-chart"
+        RadarChart(env=env)
+      if slug == "scroll-progress"
+        ScrollProgress(env=env)
+      if slug == "shake-to-delete"
+        ShakeToDelete(env=env)
+      if slug == "shared-transitions"
+        SharedTransitions(env=env)
       if slug == "smooth-dropdown"
         SmoothDropdown()
       if slug == "spiral"
         Spiral()
+      if slug == "split-button"
+        SplitButton()
+      if slug == "stacked-carousel"
+        StackedCarousel(env=env)
       if slug == "stacked-list"
         StackedList(env=env)
+      if slug == "stacked-modals"
+        StackedModals(env=env)
+      if slug == "steps"
+        Steps(env=env)
       if slug == "story-list"
         StoryList(env=env)
       if slug == "tab-navigation"

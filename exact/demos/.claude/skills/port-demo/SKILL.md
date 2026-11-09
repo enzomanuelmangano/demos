@@ -51,6 +51,11 @@ drawing with Contract boxes: it is Rust.
   `if slug == …` arm), `gpu/src/lib.rs` (`pub mod`, the `REGISTRY` row), a surface that
   holds touches publishes `{"held": bool}` and gets a `Hold` resource in `app.contract`.
 
+## Traps the compiler only catches in the whole app
+
+- `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
+  refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
+
 ## 4. Check
 
 `bun tools/check-demo.ts <slug>` prints `[]` (compiles the demo alone, before it is
@@ -58,3 +63,8 @@ registered; needs no build and touches nothing shared). Once registered:
 `bun exact.mjs contract build app.contract --json --errors-only` is `[]`; the demo's web
 test passes; `cargo test -p demos-gpu` for Rust. Then on the simulator (integrator):
 `demos-exact://demo/<slug>`, a real-time recording of each gesture, frames read back.
+
+## The Rust queue (demos a Contract port found need per-frame logic)
+
+the-little-prince (Skia Atlas glyph morph), animated-3d-parallax (two springs chasing the
+finger), magnet-spring (2D distance per frame to nine magnets).

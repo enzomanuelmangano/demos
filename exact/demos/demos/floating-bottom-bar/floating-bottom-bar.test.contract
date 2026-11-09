@@ -1,0 +1,9 @@
+at "/demo/floating-bottom-bar"
+
+test "the bar and its light are there; a tab is chosen"
+  expect tree has "tab-bar"
+  expect tree has "shader-light"
+  expect tree has "tab-4"
+  tap "tab-3"
+  clock settle
+  expect tree has "shader-light"

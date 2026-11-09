@@ -1,0 +1,152 @@
+// Scroll Progress: an article on chess openings with a pill floating at the bottom: at the top
+// it is a circle with the reading time; while scrolling it widens into a percentage and a
+// progress bar; at the end it shrinks to an up arrow that scrolls back to the top.
+// RN: src/animations/scroll-progress (index.tsx, constants.ts, section-content-list/index.tsx,
+// section-content-list/bottom-progress/index.tsx, progress-bar-area.tsx, collapsed-area.tsx,
+// utils/get-reading-time.ts).
+use PressableOpacity from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+shape Section
+  title: string
+  description: string
+
+fn s(title: string, description: string): Section = Section(title=title, description=description)
+// constants.ts sections.
+fn sections(): Section[] = [
+  s("Introduction", "Chess openings are the first few moves of a chess game. There are many different chess openings, and each one has its own set of ideas and strategies. Here are some of the most popular chess openings:"),
+  s("The Ruy Lopez", "his opening is named after the 16th-century Spanish bishop Ruy López de Segura. It starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Bb5, and it is known for its focus on controlling the center of the board and attacking the black king."),
+  s("The Sicilian Defense", "The Sicilian Defense: This opening is the most popular choice for Black, and it starts with the move 1.e4 c5. It is known for its aggressive nature and the many tactical possibilities it offers."),
+  s("The French Defense", "This opening is named after the French chess master André Danican Philidor, who popularized it in the 18th century. It starts with the moves 1.e4 e6, and it is known for its solid and defensive nature."),
+  s("The Italian Game", "This opening starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Bc4, and it is known for its focus on rapid development and control of the center."),
+  s("The Caro-Kann Defense", "This opening is named after the Austrian chess master Rudolf Spielmann, who popularized it in the 19th century. It starts with the moves 1.e4 c6, and it is known for its focus on controlling the center of the board."),
+  s("The Queen’s Gambit", "This opening is named after the 16th-century English queen Elizabeth I, who was known for her love of chess. It starts with the moves 1.d4 d5 2.c4, and it is known for its focus on controlling the center of the board."),
+  s("The Nimzo-Indian Defense", "This opening is named after the Indian chess master Aron Nimzowitsch, who popularized it in the 20th century. It starts with the moves 1.d4 Nf6 2.c4 e6, and it is known for its focus on controlling the center of the board."),
+  s("The King’s Gambit", "This opening is named after the 16th-century English king Henry VIII, who was known for his love of chess. It starts with the moves 1.e4 e5 2.f4, and it is known for its focus on controlling the center of the board."),
+  s("The King’s Indian Attack", "This opening is named after the 16th-century Indian king Shivaji, who was known for his love of chess. It starts with the moves 1.d4 Nf6 2.c4 g6, and it is known for its focus on controlling the center of the board."),
+  s("The Queen’s Indian Defense", "This opening is named after the 16th-century Indian queen Rani Lakshmibai, who was known for her love of chess. It starts with the moves 1.d4 Nf6 2.c4 e6, and it is known for its focus on controlling the center of the board."),
+  s("The Grünfeld Defense", "This opening is named after the 16th-century German chess master Samuel Loyd, who was known for his love of chess. It starts with the moves 1.d4 Nf6 2.c4 g6, and it is known for its focus on controlling the center of the board."),
+  s("The Benoni Defense", "This opening is named after the 16th-century South African chess master Benoni, who was known for his love of chess. It starts with the moves 1.d4 Nf6 2.c4 c5, and it is known for its focus on controlling the center of the board."),
+  s("The English Opening", "This opening is named after the 16th-century English chess master, who was known for his love of chess. It starts with the moves 1.c4 e5, and it is known for its focus on controlling the center of the board."),
+  s("The Four Knights Game", "This opening is named after the 16th-century English chess master, who was known for his love of chess. It starts with the moves 1.e4 e5 2.Nf3 Nc6 3.Nc3 Nf6, and it is known for its focus on controlling the center of the board."),
+]
+// getReadingTime: ceil(words / 200) per section (wordsPerMinute 200), summed: `${time} min`.
+fn readingTime(): string = `${sum(sections().map(x => ceil(x.description.split(" ").length / 200)))} min`
+
+// BottomProgressState: INITIAL at progress 0, END at 1, else EXPANDED.
+fn isInitial(p: number): bool = p == 0
+fn isEnd(p: number): bool = p == 1
+fn isExpanded(p: number): bool = p != 0 and p != 1
+// rAnimatedStyle: width withTiming(expanded ? 200 : 70, { duration: 500 }).
+fn pillWidth(p: number): number = isExpanded(p) ? 200 : 70
+// The percentage label: `${Math.round(progress × 100)}%`.
+fn percentOf(p: number): number = round(p * 100)
+
+// Reanimated's withTiming default curve, Easing.inOut(Easing.quad), as its cubic-bezier.
+// The pill's width (500 ms) moves every box inside it on the same curve, as Yoga relays
+// them out each frame.
+style PillMotion
+  -exact-layout-transition="500ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+
+component ScrollProgress
+  props
+    env: DemoEnv
+  // progress: clamp(y / max(1, contentHeight - viewHeight), 0, 1), the one value written per
+  // scroll frame (read by the bar's and the label strip's translate; the pill's state changes
+  // only at 0 and 1).
+  state progress = 0
+  // isResetting: set by the up arrow; scroll events leave progress alone until the scroll
+  // reaches 0 (the event at 0 is ignored too, as RN's reaction clears the flag after it).
+  state resetting = false
+  action scrolled(x: number, y: number, e: ScrollEvent)
+    if resetting
+      if y == 0
+        resetting = false
+    else
+      progress = min(max(y / max(1, e.scrollHeight - e.clientHeight), 0), 1)
+  // RN clears the flag on onBeginDrag (a drag interrupting the animated scroll); Exact's scroll
+  // has no drag-begin event: the end of that drag's scroll clears it.
+  action ended
+    resetting = false
+  action reset
+    haptic("selection")
+    if isEnd(progress)
+      resetting = true
+      scrollIntoView("scroll-progress-top", behavior="smooth")
+  view
+    // index.tsx styles.container: #111, flex 1.
+    column position="absolute" inset=0 background-color="#111111" testId="scroll-progress"
+      // The ScrollView: content padded safeTop + DEMO_BUTTON_ROW_HEIGHT at the top,
+      // safeBottom + 100 at the bottom, 32 at the sides.
+      scroll position="absolute" top=0 left=0 width="100%" height="100%" scroll=scrolled scrollend=ended testId="scroll-progress-scroll"
+        view id="scroll-progress-top" height=0
+        column padding-bottom="env(safe-area-inset-bottom)"
+          column padding-top=(env.safeTop + demoButtonRow()) padding-bottom=100 padding-left=32
+            padding-right=32
+            for x, i in sections() key=i
+              // styles.textContainer: marginBottom 20; title #EEE 20 bold, marginBottom 10;
+              // description #999 14.
+              column margin-bottom=20
+                text x.title color="#EEEEEE" font-size=20 font-weight=700 margin-bottom=10
+                text x.description color="#999999" font-size=14
+      // The top gradient: ['#111111', '#11111100'], safeTop + 16 tall, zIndex 10.
+      view position="absolute" left=0 right=0 top=0 height=(env.safeTop + 16) z-index=10
+        pointer-events="none" aria-hidden=true
+        background-image="linear-gradient(180deg, #111111 0%, rgba(17, 17, 17, 0) 100%)"
+      BottomProgress(left=((env.width - pillWidth(progress)) / 2), progress=progress, reset=reset)
+
+component BottomProgress
+  props
+    left: number
+    progress: number
+    reset: action
+  view
+    // styles.container: radius 40, height 70, the width above; absolute at bottom 50, centred,
+    // #222123, zIndex 100, a 0.5 border rgba(255,255,255,0.1).
+    column class=PillMotion position="absolute" bottom=50 left=left width=pillWidth(progress) height=70
+      box-sizing="border-box" border-radius=40 background-color="#222123" border-width=0.5
+      border-style="solid" border-color="rgba(255, 255, 255, 0.1)" z-index=100 testId="progress-pill"
+      // ProgressBarArea: flex 1, margin 5, #2E2D2E, paddingHorizontal 10, radius 40 continuous,
+      // a centred row; opacity withTiming(expanded ? 1 : 0).
+      row class=PillMotion flex=1 margin=5 padding-left=10 padding-right=10 border-radius=40
+        corner-shape="squircle" background-color="#2E2D2E" justify-content="center" align-items="center"
+        opacity=(isExpanded(progress) ? 1 : 0)
+        transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" testId="progress-bar-area"
+        // ReText: #9E9E9E, 15, width 50, centred. A text per frame is a layout per frame: every
+        // label 0%…100% is laid out once in a strip, clipped to one line and slid to the
+        // current one by a translate.
+        view class=PillMotion width=50 flex-shrink=0 overflow="hidden" position="relative"
+          aria-label=`${percentOf(progress)}%` testId="progress-percent"
+          text "0%" color="#9E9E9E" font-size=15 text-align="center" opacity=0 aria-hidden=true
+          column position="absolute" left=0 top=0 width=50 aria-hidden=true
+            translate=`0px ${0 - percentOf(progress) * 100 / 101}%`
+            for n in range(101) key=n
+              text `${n}%` color="#9E9E9E" font-size=15 text-align="center" width=50
+        // The bar: 5 tall, 70% wide, white, radius 40, clipping: the #1A1A1A track and the
+        // #9E9E9E fill, scaleX(progress) from its left (the same pixels as the fill slid in
+        // from the left by (progress - 1) × its width, clipped by the bar).
+        view class=PillMotion height=5 width="70%" background-color="#ffffff" border-radius=40
+          overflow="hidden" position="relative"
+          view class=PillMotion position="absolute" inset=0 background-color="#1A1A1A"
+          view class=PillMotion position="absolute" inset=0 background-color="#9E9E9E"
+            translate=`${(progress - 1) * 100}% 0px` testId="progress-fill"
+      // CollapsedArea: absoluteFill, margin 5, #2E2D2E, radius 40 continuous; opacity
+      // withTiming(INITIAL or END ? 1 : 0).
+      view class=PillMotion position="absolute" top=5 left=5 right=5 bottom=5 border-radius=40
+        corner-shape="squircle" background-color="#2E2D2E"
+        opacity=(isExpanded(progress) ? 0 : 1)
+        transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" testId="collapsed-area"
+        // The reading time, shown at INITIAL: #9E9E9E, marginHorizontal 5, one line, shrunk to
+        // fit (adjustsFontSizeToFit).
+        column class=PillMotion position="absolute" inset=0 align-items="center" justify-content="center"
+          opacity=(isInitial(progress) ? 1 : 0)
+          transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+          text readingTime() color="#9E9E9E" margin-left=5 margin-right=5 white-space="nowrap"
+            -exact-fit="shrink" testId="reading-time"
+        // The up arrow, shown at END: PressableOpacity, AntDesign arrow-up 24 #9E9E9E; pressed,
+        // it scrolls to the top (only at END).
+        column class=PillMotion position="absolute" inset=0 opacity=(isEnd(progress) ? 1 : 0)
+          transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+          view class=PressableOpacity flex=1 align-items="center" justify-content="center" press=reset
+            role="button" aria-label="Back to the top" testId="reset"
+            image "symbol:sf/arrow.up" font-size=24 color="#9E9E9E" aria-hidden=true

@@ -1,0 +1,21 @@
+at "/demo/stacked-modals"
+
+test "each answer stacks the next modal in front"
+  expect tree has "stacked-modals"
+  tap "add"
+  clock settle
+  expect tree has "modal-0"
+  tap "modal-0-confirm"
+  clock settle
+  expect tree has "modal-1"
+  expect tree has "modal-0"
+
+test "the backdrop clears them all"
+  tap "add"
+  clock settle
+  tap "modal-0-dismiss"
+  clock settle
+  tap "backdrop" drag 0 0 from 20 120
+  clock settle
+  expect tree missing "modal-0"
+  expect tree missing "modal-1"

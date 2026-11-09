@@ -10,6 +10,9 @@
 //! Gradients are evaluated per pixel in the shader, interpolated as Skia does (unpremultiplied
 //! sRGB). Clips are stencil levels.
 //!
+//! Text is [`Font`] + [`Canvas::draw_text`] (glyph outlines filled as paths); SVG path strings
+//! are [`path_from_svg`]; `<FitBox>` is [`fit_box`].
+//!
 //! What a demo needs beyond this (Skia's image filters, runtime shaders) is its own wgpu pass.
 
 #![deny(missing_docs)]
@@ -21,10 +24,14 @@ pub use lyon::path::Path;
 pub mod blur;
 pub mod color;
 pub mod render;
+pub mod svg;
+pub mod text;
 
 pub use color::Color;
 pub use blur::Blur;
 pub use render::Renderer;
+pub use svg::path_from_svg;
+pub use text::{match_system_font, Font, FontMetrics};
 
 use lyon::path::builder::BorderRadii;
 use lyon::path::Winding;
@@ -77,6 +84,32 @@ impl Matrix {
         let [a, b, c, d, ..] = self.0;
         (a * a + b * b).sqrt().max((c * c + d * d).sqrt())
     }
+}
+
+/// `rect(x, y, width, height)`.
+#[allow(missing_docs)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Rect {
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
+}
+
+impl Rect {
+    /// `rect(x, y, width, height)`.
+    pub const fn new(x: f32, y: f32, width: f32, height: f32) -> Rect {
+        Rect { x, y, width, height }
+    }
+}
+
+/// `<FitBox src dst>` with its default `fit="contain"`: `src` scaled uniformly to fit inside
+/// `dst`, centred (Skia's `fitRects` / `rect2rect` for "contain").
+pub fn fit_box(src: Rect, dst: Rect) -> Matrix {
+    let s = (dst.width / src.width).min(dst.height / src.height);
+    let tx = dst.x + (dst.width - src.width * s) / 2.0 - src.x * s;
+    let ty = dst.y + (dst.height - src.height * s) / 2.0 - src.y * s;
+    Matrix([s, 0.0, 0.0, s, tx, ty])
 }
 
 /// A gradient stop: an offset in 0…1 and its colour.
@@ -181,6 +214,10 @@ pub(crate) struct GpuPaint {
 pub(crate) enum Op {
     /// Indices `start..end`, drawn where the stencil equals `level`.
     Draw { start: u32, end: u32, level: u32 },
+    /// Indices `start..end`, drawn where the stencil equals `level`, each sample once (it steps
+    /// the stencil to `level + 1`; a `ClipOut` of the same indices steps it back): a stroke's
+    /// overlapping triangles cover a pixel once, as Skia's coverage does.
+    DrawOnce { start: u32, end: u32, level: u32 },
     /// Indices `start..end`, incrementing the stencil where it equals `level`.
     ClipIn { start: u32, end: u32, level: u32 },
     /// Indices `start..end`, decrementing the stencil where it equals `level + 1`.
@@ -281,6 +318,10 @@ impl Canvas {
     pub fn matrix(&self) -> Matrix {
         self.state.matrix
     }
+    /// Replaces the current transform (one taken from [`Canvas::matrix`]), without a save.
+    pub fn set_matrix(&mut self, m: Matrix) {
+        self.state.matrix = m;
+    }
 
     /// `<Path path paint>`.
     pub fn draw_path(&mut self, path: &Path, paint: &Paint) {
@@ -324,6 +365,12 @@ impl Canvas {
         let start = self.indices.len() as u32;
         self.emit(paint_index);
         let end = self.indices.len() as u32;
+        if paint.stroke.is_some() {
+            // Stroke triangles overlap at joins and crossings: blend each sample once.
+            self.ops.push(Op::DrawOnce { start, end, level: self.level });
+            self.ops.push(Op::ClipOut { start, end, level: self.level });
+            return;
+        }
         match self.ops.last_mut() {
             Some(Op::Draw { end: e, level, .. }) if *e == start && *level == self.level => *e = end,
             _ => self.ops.push(Op::Draw { start, end, level: self.level }),
@@ -457,6 +504,11 @@ pub fn path_builder() -> lyon::path::path::Builder {
 pub fn add_rrect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32, r: f32) {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Positive);
+}
+
+/// Appends a rect to a builder (`PathBuilder.addRect`).
+pub fn add_rect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32) {
+    b.add_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), Winding::Positive);
 }
 
 /// Appends a circle to a builder (`PathBuilder.addCircle`).

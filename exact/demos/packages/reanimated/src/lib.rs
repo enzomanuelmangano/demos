@@ -19,7 +19,7 @@ pub mod timing;
 
 pub use decay::Decay;
 pub use easing::Easing;
-pub use interpolate::{interpolate, interpolate_clamp, Extrapolation};
+pub use interpolate::{interpolate, interpolate_clamp, interpolate_color, Extrapolation};
 pub use spring::{Config as SpringConfig, Spring, GENTLE};
 pub use spring_array::SpringArray;
 pub use timing::Timing;

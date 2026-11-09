@@ -1,0 +1,149 @@
+// Email Demo: a list of ten emails; the red button deletes the top one (it fades out as the list
+// slides up a row and the next one is highlighted), the green one restores it, and either shakes
+// when there is nothing left to do. RN: src/animations/email-demo (index.tsx, constants.ts,
+// components/interactive-list, components/list-item, hooks/use-animated-shake.ts).
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+shape Email
+  imageUrl: string
+  title: string
+  subtitle: string
+
+// constants.ts INITIAL_ITEMS. The photos are drawn 45 points wide: Unsplash's own crop of each,
+// at 135 px (45 × 3) instead of 400.
+fn photo(id: string): string = `https://images.unsplash.com/photo-${id}?w=135&h=135&fit=crop&crop=faces`
+fn items(): Email[] = [
+  Email(imageUrl=photo("1557804506-669a67965ba0"), title="Welcome to our community", subtitle="Get started with your new account and explore amazing features."),
+  Email(imageUrl=photo("1472099645785-5658abf4ff4e"), title="Security verification required", subtitle="Please verify your identity to secure your account."),
+  Email(imageUrl=photo("1507003211169-0a1dd7228f2d"), title="Your order has been confirmed", subtitle="Thank you for your purchase. Order #12345 is being processed."),
+  Email(imageUrl=photo("1573496359142-b8d87734a5a2"), title="Team meeting reminder", subtitle="Don't forget about today's meeting at 2:00 PM."),
+  Email(imageUrl=photo("1500648767791-00dcc994a43e"), title="Payment successful", subtitle="Your payment of $29.99 has been processed successfully."),
+  Email(imageUrl=photo("1438761681033-6461ffad8d80"), title="New message from Sarah", subtitle="Hey! Are we still on for lunch tomorrow?"),
+  Email(imageUrl=photo("1519085360753-af0119f7cbe7"), title="Weekly newsletter", subtitle="Here are this week's top stories and updates."),
+  Email(imageUrl=photo("1534528741775-53994a69daeb"), title="Password reset request", subtitle="Click here to reset your password within 24 hours."),
+  Email(imageUrl=photo("1506794778202-cad84cf45f1d"), title="Event invitation", subtitle="You're invited to our annual conference next month."),
+  Email(imageUrl=photo("1517841905240-472988babdf9"), title="App update available", subtitle="Version 2.1 is now available with new features."),
+]
+
+// index.tsx: ITEM_HEIGHT 100, ITEM_MARGIN 10; the list shifts by itemHeight = 110 per erased item.
+fn itemHeight(): number = 100
+
+// use-animated-shake.ts: withRepeat(withTiming(10, { duration 120, bezier(0.35, 0.7, 0.5, 0.7) }),
+// 6, reverse): six legs of 120 ms, each on the same curve. Two names, so each shake restarts it.
+keyframes shakeA
+  0% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  16.6667% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  33.3333% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  50% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  66.6667% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  83.3333% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  100% translate="0px 0px"
+keyframes shakeB
+  0% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  16.6667% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  33.3333% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  50% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  66.6667% translate="0px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  83.3333% translate="10px 0px" animation-timing-function="cubic-bezier(0.35, 0.7, 0.5, 0.7)"
+  100% translate="0px 0px"
+fn shakeOf(n: number): string = n == 0 ? "none" : `${n % 2 == 1 ? "shakeA" : "shakeB"} 720ms linear both`
+
+component EmailDemo
+  props
+    env: DemoEnv
+  state erasedItems = 0
+  state restoreShakes = 0
+  state deleteShakes = 0
+  action onDelete
+    haptic("selection")
+    if erasedItems >= 10
+      deleteShakes = deleteShakes + 1
+    else
+      erasedItems = erasedItems + 1
+  action onRestore
+    haptic("selection")
+    if erasedItems <= 0
+      restoreShakes = restoreShakes + 1
+    else
+      erasedItems = erasedItems - 1
+  view
+    // styles.container: #f8fafc, flex 1.
+    column position="absolute" inset=0 background-color="#f8fafc" testId="email-demo"
+      // The FlatList: contentContainerStyle paddingTop safeTop + DEMO_BUTTON_ROW_HEIGHT,
+      // paddingBottom ITEM_HEIGHT + ITEM_MARGIN.
+      scroll position="absolute" top=0 left=0 width="100%" height="100%" testId="email-list"
+        column padding-top=(env.safeTop + demoButtonRow()) padding-bottom=110
+          for item, i in items() key=i
+            EmailRow(item=item, index=i, shifted=erasedItems)
+      // styles.topGradient: absolute, safeTop × 1.5 tall, rgba(248,250,252,1) → 0, over the list.
+      view position="absolute" top=0 left=0 right=0 height=(env.safeTop * 1.5) z-index=1
+        pointer-events="none"
+        background-image="linear-gradient(to bottom, rgba(248,250,252,1), rgba(248,250,252,0))"
+      // styles.bottomGradient: absolute, 150 tall, rgba(248,250,252,0) → 1.
+      view position="absolute" bottom=0 left=0 right=0 height=150 z-index=1 pointer-events="none"
+        background-image="linear-gradient(to bottom, rgba(248,250,252,0), rgba(248,250,252,1))"
+      // styles.buttonsContainer: absolute, bottom safeBottom + 10, marginHorizontal 20 %, a row
+      // spaced evenly, zIndex 2.
+      row position="absolute" left=0 right=0 bottom="calc(env(safe-area-inset-bottom) + 10px)"
+        margin-left="20%" margin-right="20%" justify-content="space-evenly" z-index=2
+        view animation=shakeOf(restoreShakes) testId="restore-shake"
+          // styles.floatingButton: 64, radius 32, shadow 0 4 8 rgba(0,0,0,0.15); #10b981;
+          // MaterialIcons restore 24 white.
+          button appearance="none" class=PressableScale press=onRestore testId="restore"
+            aria-label="Restore" width=64 height=64 border-radius=32 background-color="#10b981"
+            box-shadow="0px 4px 8px rgba(0, 0, 0, 0.15)" display="flex" align-items="center"
+            justify-content="center"
+            image "symbol:sf/clock.arrow.circlepath" font-size=24 color="white" aria-hidden=true
+        view animation=shakeOf(deleteShakes) testId="delete-shake"
+          // #ef4444; MaterialIcons delete 24 white.
+          button appearance="none" class=PressableScale press=onDelete testId="delete"
+            aria-label="Delete" width=64 height=64 border-radius=32 background-color="#ef4444"
+            box-shadow="0px 4px 8px rgba(0, 0, 0, 0.15)" display="flex" align-items="center"
+            justify-content="center"
+            image "symbol:sf/trash.fill" font-size=24 color="white" aria-hidden=true
+
+// interactive-list AnimatedListItem + styles.listContainerItem + list-item ListItem.
+//
+// The animated style wins over listContainerItem's white (Reanimated: animated styles override
+// static ones), so a card's background is the animated one from the start: rgba(59,130,246,0.06)
+// on the highlighted row (index == erased count), else transparent, withSpring { damping 25,
+// stiffness 200, mass 1.2 }. Its iOS layer shadow (shadowColor rgba(59,130,246,0.4),
+// shadowOpacity 0.15 / 0, shadowRadius 12 / 4, offset 6 / 1) has no shadowPath on a background
+// that is not opaque, so it follows the card's drawn content, as CSS's drop-shadow does (blur
+// 2 × shadowRadius, colour alpha 0.4 × 0.15); a filter has no transition, so it switches.
+component EmailRow
+  props
+    item: Email
+    index: number
+    shifted: number
+  derive on = index == shifted
+  view
+    // listContainerItem: height ITEM_HEIGHT, marginBottom ITEM_MARGIN - 2, marginHorizontal 12,
+    // radius 20 continuous, border 0.5 rgba(229,231,235,0.3), shadow 0 1 4 rgba(0,0,0,0.05).
+    // translateY withSpring(-shifted · 110, { damping 30, stiffness 180, mass 1.5 }); opacity
+    // withSpring(index >= shifted, { damping 26, stiffness 190, mass 1.4 }).
+    view height=itemHeight() margin-bottom=8 margin-left=12 margin-right=12 border-radius=20
+      corner-shape="squircle" border-width=0.5 border-color="rgba(229, 231, 235, 0.3)"
+      box-shadow="0px 1px 4px rgba(0, 0, 0, 0.05)"
+      background-color=(on ? "rgba(59, 130, 246, 0.06)" : "transparent")
+      filter=(on ? "drop-shadow(0px 6px 24px rgba(59, 130, 246, 0.06))" : "none")
+      translate=`0px ${0 - shifted * 110}px` opacity=(index >= shifted ? 1 : 0)
+      transition="translate -exact-spring(180, 30, 1.5), opacity -exact-spring(190, 26, 1.4), background-color -exact-spring(200, 25, 1.2)"
+      testId=`email-${index}`
+      // ListItem styles.container: a centred row, flex 1, padding 16 × 12.
+      row align-items="center" flex=1 padding-left=16 padding-right=16 padding-top=12
+        padding-bottom=12
+        // avatarContainer marginRight 12; the image itemHeight × 0.45, radius itemHeight × 0.225
+        // continuous, cover.
+        view margin-right=12
+          image item.imageUrl width=45 height=45 border-radius=22.5 corner-shape="squircle"
+            object-fit="cover" aria-hidden=true
+        // labelsContainer: flex 1, centred.
+        column flex=1 justify-content="center"
+          // titleText: #111827, 17, 600, letterSpacing -0.2, marginBottom 4, one line.
+          text item.title color="#111827" font-size=17 font-weight=600 letter-spacing=-0.2
+            margin-bottom=4 line-clamp=1 testId=`email-title-${index}`
+          // subtitleText: #6b7280, 15, letterSpacing -0.1, lineHeight 20, two lines.
+          text item.subtitle color="#6b7280" font-size=15 letter-spacing=-0.1 line-height=20
+            line-clamp=2

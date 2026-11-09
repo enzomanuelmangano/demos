@@ -1,0 +1,166 @@
+// GitHub Contributions: a GitHub-style contribution calendar (the last width × 0.9 / 3 days, a
+// random level each); a tap anywhere sweeps every square from grey to its green, squashing it on
+// the way, from the bottom-left to the top-right, and a second tap puts them back, each after a
+// random wait. RN: src/animations/github-contributions (index.tsx, contribution-data.tsx,
+// contribution-calendar/index.tsx, contribution-square.tsx, config/defaults.tsx, utils/*).
+use PressableScale from "pressto"
+use DemoEnv, roll from "../env.contract"
+
+// fonts.ts `regular`: assets/fonts/regular.ttf (Source Sans Pro Regular), the day labels' face,
+// under this demo's own family name.
+
+// contribution-data.tsx: days = floor(calendarWidth / 3), calendarWidth = window width × 0.9;
+// endDate = new Date() (the day the demo opened, local), startDate = endDate - (days - 1).
+fn dayCount(w: number): number = floor(w * 0.9 / 3)
+// Days since 1970-01-01, local (the epoch at launch shifted by the zone).
+fn today(env: DemoEnv): number = floor((env.epoch + env.utcOffset * 60000) / 86400000)
+// date-fns startOfWeek / endOfWeek { weekStartsOn: 1 }: 1970-01-01 was a Thursday (3, Monday 0).
+fn weekday(d: number): number = (d + 3) % 7
+fn firstDay(env: DemoEnv): number = today(env) - (dayCount(env.width) - 1)
+fn calendarStart(env: DemoEnv): number = firstDay(env) - weekday(firstDay(env))
+fn weekCount(env: DemoEnv): number = (today(env) + 6 - weekday(today(env)) - calendarStart(env) + 1) / 7
+// isInDataRange: `date >= startDate && date <= endDate`, where the range's ends come back from
+// `new Date('yyyy-MM-dd')` (UTC midnight) and each calendar day is a local midnight: east of UTC
+// the first day falls outside (an empty square), west of UTC the last one does.
+fn inRange(env: DemoEnv, d: number): bool = (d > firstDay(env) or (d == firstDay(env) and env.utcOffset <= 0)) and (d < today(env) or (d == today(env) and env.utcOffset >= 0))
+// Math.floor(Math.random() * 5) per day.
+fn levelOf(env: DemoEnv, d: number): number = roll(env.seed, d - firstDay(env), 5)
+
+// contribution-square.tsx: scale = interpolate(progress, [0, 0.5, 1], [1, 0.4, 1]) (extended),
+// backgroundColor = interpolateColor(progress, [0, 1], [level0, level colour], 'RGB') (clamped,
+// gamma 2.2). `progress` is a hidden box's translate (100 px per unit) on the square's spring:
+// a drag timeline the square's keyframes follow over progress -0.5 … 1.5 (the springs overshoot
+// to about 1.16 and -0.05), so no commit per frame. Stops at 25 % + 5 % per 0.1 of progress are
+// gamma 2.2 mixes; the scale is the interpolation's straight lines, extended.
+// COLOR_SCHEMES.github: level0 rgba(235, 237, 240), level1 rgba(155, 233, 168), level2
+// rgba(64, 196, 99), level3 rgba(48, 161, 78), level4 rgba(33, 110, 57).
+keyframes level0
+  0% background-color="#EBEDF0" scale=1.6
+  25% scale=1
+  50% scale=0.4
+  75% scale=1
+  100% background-color="#EBEDF0" scale=1.6
+keyframes level1
+  0% background-color="#EBEDF0" scale=1.6
+  25% background-color="#EBEDF0" scale=1
+  30% background-color="#E4EDEA"
+  35% background-color="#DEECE4"
+  40% background-color="#D7ECDD"
+  45% background-color="#CFEBD7"
+  50% background-color="#C8EBD0" scale=0.4
+  55% background-color="#C0EBC9"
+  60% background-color="#B7EAC1"
+  65% background-color="#AFEAB9"
+  70% background-color="#A5E9B1"
+  75% background-color="#9BE9A8" scale=1
+  100% background-color="#9BE9A8" scale=1.6
+keyframes level2
+  0% background-color="#EBEDF0" scale=1.6
+  25% background-color="#EBEDF0" scale=1
+  30% background-color="#E1E9E6"
+  35% background-color="#D6E5DC"
+  40% background-color="#CAE2D2"
+  45% background-color="#BEDEC6"
+  50% background-color="#B0DABA" scale=0.4
+  55% background-color="#A1D6AD"
+  60% background-color="#90D19E"
+  65% background-color="#7CCD8E"
+  70% background-color="#64C97B"
+  75% background-color="#40C463" scale=1
+  100% background-color="#40C463" scale=1.6
+keyframes level3
+  0% background-color="#EBEDF0" scale=1.6
+  25% background-color="#EBEDF0" scale=1
+  30% background-color="#E0E7E6"
+  35% background-color="#D5E0DB"
+  40% background-color="#C9DACF"
+  45% background-color="#BCD3C3"
+  50% background-color="#AECBB6" scale=0.4
+  55% background-color="#9EC4A7"
+  60% background-color="#8CBC97"
+  65% background-color="#77B384"
+  70% background-color="#5CAA6D"
+  75% background-color="#30A14E" scale=1
+  100% background-color="#30A14E" scale=1.6
+keyframes level4
+  0% background-color="#EBEDF0" scale=1.6
+  25% background-color="#EBEDF0" scale=1
+  30% background-color="#E0E4E5"
+  35% background-color="#D5DBDA"
+  40% background-color="#C8D1CE"
+  45% background-color="#BBC6C1"
+  50% background-color="#ADBBB2" scale=0.4
+  55% background-color="#9CAFA3"
+  60% background-color="#8AA191"
+  65% background-color="#74937C"
+  70% background-color="#578262"
+  75% background-color="#216E39" scale=1
+  100% background-color="#216E39" scale=1.6
+
+// startAnimation: withDelay(45 · (weekIndex + (6 - dayIndex)), withSpring(1, { mass 1.1,
+// damping 13, stiffness 150 })); resetAnimation: withDelay(Math.random() · 500, withSpring(0,
+// { mass 0.9, damping 10, stiffness 60 })). cancelAnimation first: the new delay holds the
+// square where it was.
+fn squareTransition(animating: bool, delay: number): string = animating ? `translate 0ms -exact-spring(150, 13, 1.1) ${delay}ms` : `translate 0ms -exact-spring(60, 10, 0.9) ${delay}ms`
+
+component GithubContributions
+  props
+    env: DemoEnv
+  state animating = false
+  // Each reset draws new random delays.
+  state resets = 0
+  derive weeks = weekCount(env)
+  derive start = calendarStart(env)
+  action toggleAnimation
+    haptic("selection")
+    if animating
+      resets = resets + 1
+    animating = not animating
+  view
+    // index.tsx styles.appContainer: #f7f7f7, centred, flex 1; the PressableScale over it is the
+    // same box.
+    column position="absolute" inset=0 background-color="#f7f7f7" align-items="center"
+      justify-content="center" testId="github-contributions"
+      button appearance="none" class=PressableScale press=toggleAnimation testId="calendar-press"
+        aria-label="Animate the contributions" flex=1 align-self="stretch" display="flex"
+        flex-direction="column" align-items="center" justify-content="center"
+        // styles.calendarContainer: white, radius 16 continuous, shadow 0 0 20 5 % black, padding 16.
+        column background-color="#ffffff" border-radius=16 corner-shape="squircle"
+          box-shadow="0px 0px 20px 0px rgba(0, 0, 0, 0.05)" padding=16 testId="calendar"
+          // styles.calendarGrid: a row, aligned to the top.
+          row align-items="flex-start"
+            // styles.dayLabelsContainer: marginRight 8. dayLabel: #656d76, `regular` 11, 14 tall,
+            // 25 wide, marginBottom 3, left-aligned (format 'EEE' from Monday).
+            column justify-content="flex-start" margin-right=8
+              for day in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] key=day
+                text day color="#656d76" font-family="regular" font-size=11
+                  height=14 margin-bottom=3 text-align="left" width=25
+            // styles.gridContainer: a row of weeks, each marginRight 3.
+            row align-items="flex-start" testId="grid"
+              for w in range(weeks) key=w
+                column margin-right=3
+                  for j in range(7) key=j
+                    if inRange(env, start + w * 7 + j)
+                      ContributionSquare(level=levelOf(env, start + w * 7 + j), animating=animating,
+                        delay=(animating ? 45 * (w + (6 - j)) : roll(env.seed, 100000 + resets * 1000 + w * 7 + j, 500000) / 1000),
+                        testId=`square-${w}-${j}`)
+                    else
+                      // styles.square + emptySquare: transparent.
+                      view width=14 height=14 margin-bottom=3 border-radius=2 corner-shape="squircle"
+                        background-color="transparent"
+
+// contribution-square.tsx styles.square: 14 × 14, radius 2 continuous, marginBottom 3.
+component ContributionSquare
+  props
+    level: number
+    animating: bool
+    delay: number
+    testId: string
+  view
+    view width=14 height=14 margin-bottom=3 position="relative" timeline-scope="--progress"
+      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+        translate=`${animating ? 100 : 0}px 0px` transition=squareTransition(animating, delay)
+        -exact-drag-timeline="--progress x"
+      view width=14 height=14 border-radius=2 corner-shape="squircle" background-color="#EBEDF0"
+        animation=`level${level} 1s linear both` animation-timeline="--progress"
+        animation-range="-50px 150px" testId=testId

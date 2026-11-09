@@ -1,0 +1,5 @@
+at "/demo/fluid-slider"
+
+test "the slider is there"
+  expect tree has "fluid-slider"
+  expect tree has "fluid-slider-canvas"

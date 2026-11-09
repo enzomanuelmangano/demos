@@ -1,0 +1,18 @@
+at "/demo/shared-transitions"
+
+test "the grid shows ten photos under the Home bar"
+  expect tree has "shared-transitions"
+  expect tree has "home-bar"
+  expect tree has "photo-0"
+  expect tree has "photo-9"
+  expect tree missing "details"
+
+test "a photo opens its details and Home goes back"
+  tap "photo-3"
+  clock settle
+  expect tree has "details"
+  expect text "details-title" == "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec"
+  tap "back"
+  clock settle
+  expect tree missing "details"
+  expect tree has "photo-3"

@@ -1,0 +1,16 @@
+at "/demo/shake-to-delete"
+
+test "a long press starts the jiggle and a badge deletes a tile"
+  expect tree has "shake-to-delete"
+  expect tree has "app-0"
+  tap "app-8-tile" contextmenu
+  clock settle
+  tap "app-9-delete"
+  clock settle
+  expect tree has "app-10"
+
+test "a second long press stops the jiggle"
+  tap "app-12-tile" contextmenu
+  tap "app-12-tile" contextmenu
+  clock settle
+  expect tree has "app-12"

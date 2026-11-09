@@ -1,0 +1,189 @@
+// Stacked Modals: a black + button opens a card; Confirm or Dismiss stacks the next card in
+// front, the older ones shrinking and rising behind it (three visible); the seventh's Dismiss
+// removes it, and a tap on the backdrop clears them all, each falling away in turn.
+// RN: src/animations/stacked-modals (index.tsx, hook.tsx, hooks/use-modal.tsx,
+// stacked-modal-manager/{constants.ts, hooks.ts, stacked-modal-provider.tsx, stacked-modal.tsx,
+// backdrop/index.tsx}).
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// hook.tsx onPress: the seven modals.
+fn titleOf(i: number): string = match ["Modals are fun!", "Stacked Modals are really fun!", "Wait what?", "Are you sure?", "Ok, you win.", "...the past is always with you.", "You can dismiss me"].at(i) { case some(t) => t, case none => "" }
+fn messageOf(i: number): string = match ["They're versatile, attention-grabbing, and when used appropriately, can significantly enhance the user experience.", "Yep, they are slightly tricky to get right.\n\nBy confirming you'll find the source code at reactiive.io/demos", "You might want to reconsider don't you?", "You might regret this for the rest of your life.", "You can go now, but remember...", "Just like the shadow that follows you everywhere.", "But you can also dismiss all the modals by tapping the backdrop"].at(i) { case some(t) => t, case none => "" }
+
+// A modal on the stack: serial × 10 + its index in the list (the serial keys it, so the
+// seventh shown again is a new card). The stack is newest first: its place is its id.
+fn modalOf(entry: number): number = entry % 10
+
+// constants.ts: MODAL_HEIGHT 200, MAX_VISIBLE_MODALS 3. hooks.ts bottomHeight =
+// min(id, MAX_VISIBLE_MODALS - 1) + 15 × id.
+fn bottomHeight(id: number): number = min(id, 2) + 15 * id
+
+// withCustomSpring: { mass 2.5, damping 100, stiffness 740 }.
+fn modalSpring(): string = "-exact-spring(740, 100, 2.5)"
+
+// On mount `bottom` springs from (windowHeight - 200) / 2 - 110 (bottomOffset) to its place
+// and baseOpacity from 0 to 1, on that spring (overdamped, ζ 1.16): its curve from rest,
+// 1 - (r₂e^{r₁t} - r₁e^{r₂t}) / (r₂ - r₁) with r = -9.80, -30.20, sampled every 25 ms over 1 s
+// (8e-5 of the travel left).
+keyframes modalIn
+  from translate="0px 110px" opacity=0
+  to translate="0px 0px" opacity=1
+fn modalInTiming(): string = "1000ms linear(0, 0.0671, 0.1992, 0.3401, 0.4679, 0.5762, 0.6649, 0.7361, 0.7927, 0.8374, 0.8726, 0.9002, 0.9218, 0.9388, 0.9521, 0.9625, 0.9706, 0.977, 0.982, 0.9859, 0.989, 0.9914, 0.9933, 0.9947, 0.9959, 0.9968, 0.9975, 0.998, 0.9984, 0.9988, 0.999, 0.9993, 0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9998, 0.9999, 0.9999, 1) both"
+
+// FadeOutDown.delay(60 × id): opacity to 0 and translateY 25, 300 ms on Reanimated's default
+// curve, Easing.inOut(Easing.quad), as its cubic-bezier.
+keyframes modalOut
+  to opacity=0 translate="0px 25px"
+
+// rContentStyle: opacity = isActiveStackedModalProgress ** 1.5, the progress springing to 1
+// for the front modal. A hidden box translated by progress × 100 px on the same spring is a
+// drag timeline these stops follow (host-driven, no commit per frame).
+// FadeOutDown. Not exact: RN delays each modal's 60 ms × its place in the stack; an exit
+// animation must be one literal declaration (and `class=` chooses between two), so they leave
+// together.
+style ModalOut
+  -exact-exit-animation="modalOut 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+
+keyframes contentPow
+  0% opacity=0
+  5% opacity=0.0112
+  10% opacity=0.0316
+  15% opacity=0.0581
+  20% opacity=0.0894
+  25% opacity=0.125
+  30% opacity=0.1643
+  35% opacity=0.2071
+  40% opacity=0.253
+  45% opacity=0.3019
+  50% opacity=0.3536
+  55% opacity=0.4079
+  60% opacity=0.4648
+  65% opacity=0.524
+  70% opacity=0.5857
+  75% opacity=0.6495
+  80% opacity=0.7155
+  85% opacity=0.7837
+  90% opacity=0.8538
+  95% opacity=0.9259
+  100% opacity=1
+
+// use-modal.tsx: createAnimatedPressable buttons, pressed: Dismiss from #d5534a00 to
+// #e14f4482, Confirm from #50505000 to #bababa9b; radius 8 continuous.
+style DismissPress
+  :active
+    background-color = "rgba(225, 79, 68, 0.5098)"
+style ConfirmPress
+  :active
+    background-color = "rgba(186, 186, 186, 0.6078)"
+
+component StackedModals
+  props
+    env: DemoEnv
+  state stack = []
+  state serial = 0
+  // The + button: showNextModal(modals) from the first.
+  action open
+    haptic("selection")
+    stack = [serial * 10].concat(stack)
+    serial = serial + 1
+  // Confirm and Dismiss both show the next modal (none after the seventh); the seventh's
+  // Dismiss first clears it (clearModal('modal7')).
+  action answer(entry: number, dismiss: bool)
+    haptic("selection")
+    let kept = (dismiss and modalOf(entry) == 6) ? stack.filter(e => modalOf(e) != 6) : stack
+    if modalOf(entry) + 1 < 7
+      stack = [serial * 10 + modalOf(entry) + 1].concat(kept)
+      serial = serial + 1
+    else
+      stack = kept
+  // Backdrop onTouchEnd: clearAllStackedModals.
+  action clearAll
+    stack = []
+  view
+    // index.tsx styles.container: #fefefe, flex 1.
+    column position="absolute" inset=0 background-color="#fefefe" overflow="hidden"
+      testId="stacked-modals"
+      // styles.button: PressableScale, 64 × 64, black, radius 32, absolute at bottom 48,
+      // right 20 with marginHorizontal 20; Ionicons "add" 28 white.
+      view class=PressableScale position="absolute" bottom=48 right=20 margin-left=20 margin-right=20
+        width=64 height=64 border-radius=32 background-color="#000000" align-items="center"
+        justify-content="center" press=open role="button" aria-label="Show a modal" testId="add"
+        image "symbol:sf/plus" font-size=28 color="#ffffff" aria-hidden=true
+      for entry, id in stack key=(entry - modalOf(entry)) / 10
+        Modal(entry=entry, id=id, width=env.width, height=env.height,
+          confirm=answer(entry, false), dismiss=answer(entry, true))
+      // Backdrop: absoluteFill, #0000006f, opacity withTiming(any modal ? 1 : 0), touchable only
+      // then.
+      view position="absolute" inset=0 background-color="rgba(0, 0, 0, 0.4353)"
+        opacity=(stack.length > 0 ? 1 : 0) pointer-events=(stack.length > 0 ? "auto" : "none")
+        transition="opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)" press=clearAll
+        aria-label="Close all" testId="backdrop"
+
+component Modal
+  props
+    entry: number
+    id: number
+    width: number
+    height: number
+    confirm: action
+    dismiss: action
+  view
+    // stacked-modal.tsx: absolute, windowWidth × 0.8 at left × 0.1, radius 35 continuous,
+    // boxShadow 0 0 10px rgba(0,0,0,0.03), zIndex 100 - id; bottom at (windowHeight -
+    // MODAL_HEIGHT) / 2 + bottomHeight (the rise below).
+    column position="absolute" left=(width * 0.1) width=(width * 0.8)
+      bottom=((height - 200) / 2) z-index=(100 - id) border-radius=35 corner-shape="squircle"
+      box-shadow="0px 0px 10px rgba(0, 0, 0, 0.03)" timeline-scope="--active"
+      class=ModalOut
+      testId=`modal-${modalOf(entry)}`
+      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
+        translate=`${id == 0 ? 100 : 0}px 0px` transition=`translate ${modalSpring()}`
+        -exact-drag-timeline="--active x"
+      // bottom: withCustomSpring(… + bottomHeight) as the id changes.
+      column translate=`0px ${0 - bottomHeight(id)}px` transition=`translate ${modalSpring()}`
+        // The mount: bottomOffset 110 and baseOpacity.
+        column animation=`modalIn ${modalInTiming()}`
+          // rVisibleContainerStyle: opacity withCustomSpring(id < 3 ? 1 : 0), translateY
+          // withCustomSpring(-id × 5), scale withCustomSpring(1 - id × 0.05); 0.8 w × 200,
+          // radius 10 continuous, white. rStackedModalStyle's layer shadow (RN's default
+          // shadowOffset 0, -3 and black) springs to radius max(10 - id, 2) (CSS blur twice
+          // that) and opacity id > 3 ? 0.1 - id × 0.01 : 0.08; it is the card's.
+          column width=(width * 0.8) height=200 border-radius=10 corner-shape="squircle"
+            background-color="#ffffff" opacity=(id < 3 ? 1 : 0) translate=`0px ${0 - id * 5}px`
+            scale=(1 - id * 0.05)
+            box-shadow=`0px -3px ${2 * max(10 - id, 2)}px rgba(0, 0, 0, ${id > 3 ? 0.1 - id * 0.01 : 0.08})`
+            transition=`opacity ${modalSpring()}, translate ${modalSpring()}, scale ${modalSpring()}, box-shadow ${modalSpring()}`
+            column flex=1 border-radius=10 corner-shape="squircle" overflow="hidden"
+              column flex=1 animation="contentPow 1s linear both" animation-timeline="--active"
+                animation-range="0px 100px"
+                // The content is rendered for id <= MAX_VISIBLE_MODALS × 1.5.
+                if id <= 4
+                  ModalContent(index=modalOf(entry), confirm=confirm, dismiss=dismiss)
+
+component ModalContent
+  props
+    index: number
+    confirm: action
+    dismiss: action
+  view
+    column flex=1
+      // styles.container: white, radius 12 continuous, flex 1, padding 16; header a row,
+      // marginBottom 8; title #333 18 bold; message #666 14, marginBottom 12.
+      column flex=1 background-color="#ffffff" border-radius=12 corner-shape="squircle" padding=16
+        row align-items="center" margin-bottom=8
+          text titleOf(index) color="#333333" font-size=18 font-weight=700
+        text messageOf(index) color="#666666" font-size=14 margin-bottom=12
+      // styles.buttonContainer: a row at the end, marginBottom 12, marginRight 12; each button
+      // paddingHorizontal 12, paddingVertical 8; text #141414 bold.
+      row justify-content="flex-end" margin-bottom=12 margin-right=12
+        view class=DismissPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+          border-radius=8 corner-shape="squircle" background-color="rgba(213, 83, 74, 0)"
+          align-items="center" justify-content="center" press=dismiss role="button"
+          testId=`modal-${index}-dismiss`
+          text "Dismiss" color="#141414" font-weight=700 font-size=14
+        view class=ConfirmPress padding-left=12 padding-right=12 padding-top=8 padding-bottom=8
+          border-radius=8 corner-shape="squircle" background-color="rgba(80, 80, 80, 0)"
+          align-items="center" justify-content="center" press=confirm role="button"
+          testId=`modal-${index}-confirm`
+          text "Confirm" color="#141414" font-weight=700 font-size=14

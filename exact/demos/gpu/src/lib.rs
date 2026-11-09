@@ -18,13 +18,18 @@ pub mod shaders {
 pub mod gfx;
 
 pub mod blur_circles;
+pub mod bottom_bar_skia;
+pub mod cuberto_slider;
+pub mod floating_bottom_bar;
+pub mod fluid_slider;
 pub mod geometry_button;
 pub mod metaball;
+pub mod radar_chart;
 pub mod spiral;
 
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
-    surfaces: &[("blur_circles", 0, blur_circles::surface), ("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface), ("spiral", 0, spiral::surface)],
+    surfaces: &[("blur_circles", 0, blur_circles::surface), ("bottom_bar_skia", 1, bottom_bar_skia::surface), ("cuberto_slider", 0, cuberto_slider::surface), ("floating_bottom_bar", 0, floating_bottom_bar::surface), ("fluid_slider", 0, fluid_slider::surface), ("geometry_button", 0, geometry_button::surface), ("metaball", 0, metaball::surface), ("radar_chart", 10, radar_chart::surface), ("spiral", 0, spiral::surface)],
     shaders: shaders::SHADERS,
 };
 

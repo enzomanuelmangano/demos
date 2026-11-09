@@ -72,3 +72,33 @@ mod tests {
         assert_eq!(interpolate(-3.0, &[0.0, 1.0], &[0.0, 10.0], Extrapolation::Identity), -3.0);
     }
 }
+
+/// `interpolateColor(value, input, output)` in its default RGB space (interpolateColor.ts):
+/// each channel interpolated (clamped) in a gamma-2.2 linear space, rounded back to 0…255;
+/// alpha linearly. Colours are `[r, g, b, a]`, channels 0…255 and alpha 0…1.
+pub fn interpolate_color(value: f64, input: &[f64], output: &[[f64; 4]]) -> [f64; 4] {
+    const GAMMA: f64 = 2.2;
+    let mut out = [0.0; 4];
+    let mut channel = [0.0; 8];
+    let n = output.len().min(channel.len());
+    for (k, slot) in out.iter_mut().enumerate() {
+        for (i, c) in output.iter().take(n).enumerate() {
+            channel[i] = if k < 3 { (c[k] / 255.0).powf(GAMMA) } else { c[k] };
+        }
+        let v = interpolate_clamp(value, &input[..n], &channel[..n]);
+        *slot = if k < 3 { (v.powf(1.0 / GAMMA) * 255.0).round() } else { v };
+    }
+    out
+}
+
+#[cfg(test)]
+mod color_tests {
+    use super::*;
+
+    #[test]
+    fn color_midpoint_is_gamma_corrected() {
+        let c = interpolate_color(0.5, &[0.0, 1.0], &[[0.0, 0.0, 0.0, 1.0], [255.0, 255.0, 255.0, 1.0]]);
+        // (0.5)^(1/2.2) × 255 = 186.
+        assert_eq!(c, [186.0, 186.0, 186.0, 1.0]);
+    }
+}

@@ -79,6 +79,7 @@ pub struct Renderer {
 struct Built {
     format: wgpu::TextureFormat,
     draw: wgpu::RenderPipeline,
+    draw_once: wgpu::RenderPipeline,
     clip_in: wgpu::RenderPipeline,
     clip_out: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
@@ -197,6 +198,11 @@ impl Renderer {
                     pass.set_stencil_reference(level);
                     pass.draw_indexed(start..end, 0, 0..1);
                 }
+                Op::DrawOnce { start, end, level } => {
+                    pass.set_pipeline(&built.draw_once);
+                    pass.set_stencil_reference(level);
+                    pass.draw_indexed(start..end, 0, 0..1);
+                }
                 Op::ClipIn { start, end, level } => {
                     pass.set_pipeline(&built.clip_in);
                     pass.set_stencil_reference(level);
@@ -270,6 +276,7 @@ fn build(device: &wgpu::Device, format: wgpu::TextureFormat) -> Built {
     Built {
         format,
         draw: pipeline("fs", Some(premultiplied), wgpu::ColorWrites::ALL, wgpu::CompareFunction::Equal, wgpu::StencilOperation::Keep),
+        draw_once: pipeline("fs", Some(premultiplied), wgpu::ColorWrites::ALL, wgpu::CompareFunction::Equal, wgpu::StencilOperation::IncrementClamp),
         clip_in: pipeline("clip", None, wgpu::ColorWrites::empty(), wgpu::CompareFunction::Equal, wgpu::StencilOperation::IncrementClamp),
         clip_out: pipeline("clip", None, wgpu::ColorWrites::empty(), wgpu::CompareFunction::Equal, wgpu::StencilOperation::DecrementClamp),
         layout,

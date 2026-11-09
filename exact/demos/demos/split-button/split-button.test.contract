@@ -1,0 +1,25 @@
+at "/demo/split-button"
+
+test "Start is there and the Google chip is not"
+  expect tree has "split-button"
+  expect text "start-label" == "Start"
+  expect tree missing "left-icon"
+
+test "Start splits into Apple and Google, and Google folds them back"
+  tap "right-press"
+  clock settle
+  expect tree has "left-icon"
+  expect tree has "right-icon"
+  expect tree missing "start-label"
+  tap "left-press"
+  clock settle
+  expect tree missing "left-icon"
+  expect text "start-label" == "Start"
+
+test "the Apple chip folds them back too"
+  tap "right-press"
+  clock settle
+  tap "right-press"
+  clock settle
+  expect tree missing "left-icon"
+  expect text "start-label" == "Start"

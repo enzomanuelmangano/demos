@@ -15,4 +15,5 @@ name = "skia"
 [dependencies]
 exact-gpu = { path = "../../../../../../../../.exact/exact2/94b8671f70fe2e25b307a40e7fce66dc27c9f802/gpu" }
 lyon = "1.0"
+ttf-parser = { version = "0.25", default-features = false, features = ["std", "variable-fonts", "gvar-alloc"] }
 bytemuck = { version = "1", features = ["derive"] }

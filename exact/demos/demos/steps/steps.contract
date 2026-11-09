@@ -1,0 +1,89 @@
+// Steps: three dots over a Back / Continue pair; Continue fills the dots one by one under a green
+// bar that springs to the active one, Back appears after the first step, and the last step turns
+// Continue into a Finish with a check. RN: src/animations/steps (src/index.tsx,
+// src/steps/dots/index.tsx, dots/dot.tsx, src/steps/step-buttons/index.tsx).
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// dots/index.tsx: count 3, dotSize 10, dotSpacing 20, externalSpacing = dotSpacing, bar height
+// dotSize + 20. activeWidth = (activeIndex + 1) · dotSize + activeIndex · dotSpacing +
+// externalSpacing, on withSpring() (the default spring).
+fn barWidth(i: number): number = (i + 1) * 10 + i * 20 + 20
+
+// step-buttons/index.tsx: BUTTON_HEIGHT 60, PADDING_HORIZONTAL 20, GAP 10,
+// BACK_BUTTON_WIDTH_RATIO 0.25, ICON_WIDTH 22, ICON_MARGIN_RIGHT 6.
+fn backWidth(w: number): number = (w - 20 * 2 - 10) * 0.25
+// SPRING_CONFIG { duration 250, dampingRatio 1.5 }: bun tools/spring.ts 250 1.5. Both progresses
+// (back: activeIndex > 0, icon: activeIndex == 2) ride it; every value interpolated on them
+// (width, marginRight, opacity) is linear in the progress, so each rides the same spring.
+fn stepSpring(): string = "-exact-spring(2011.7, 269.1, 4)"
+
+component Steps
+  props
+    env: DemoEnv
+  state activeIndex = 0
+  // increaseActiveIndex: (activeIndex + 1) % 3.
+  action onContinue
+    haptic("selection")
+    activeIndex = (activeIndex + 1) % 3
+  // decreaseActiveIndex: max(0, activeIndex - 1).
+  action onBack
+    haptic("selection")
+    activeIndex = max(0, activeIndex - 1)
+  view
+    // src/index.tsx styles.container: white, centred, content at the bottom, paddingBottom 64.
+    column position="absolute" inset=0 background-color="#fff" align-items="center"
+      justify-content="flex-end" padding-bottom=64 testId="steps"
+      // Dots: a row, paddingHorizontal externalSpacing / 2, gap dotSpacing.
+      row padding-left=10 padding-right=10 gap=20 align-items="center" position="relative"
+        testId="dots"
+        // styles.bar: absolute (no insets: Yoga puts it at the row's border edge, centred on the
+        // row), #66e070, radius 100 continuous.
+        view position="absolute" left=0 top=-10 height=30 width=barWidth(activeIndex)
+          background-color="#66e070" border-radius=100 corner-shape="squircle"
+          -exact-layout-transition="-exact-spring(900, 120, 4)" testId="bar"
+        // dot.tsx: dotSize, radius dotSize / 2 continuous; backgroundColor withTiming(white or
+        // rgba(0,0,0,0.15), 200 ms) on Reanimated's default curve inOut(quad).
+        for i in range(3) key=i
+          view width=10 height=10 border-radius=5 corner-shape="squircle"
+            background-color=(activeIndex >= i ? "white" : "rgba(0,0,0,0.15)")
+            transition="background-color 200ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+            testId=`dot-${i}`
+      // StepButtons styles.container: a row, BUTTON_HEIGHT, marginTop 48, paddingHorizontal 20,
+      // width 100 %.
+      row height=60 margin-top=48 padding-left=20 padding-right=20 align-self="stretch"
+        // rBackButtonStyle: width 0 → backButtonWidth, marginRight 0 → GAP, clipped.
+        view width=(activeIndex > 0 ? backWidth(env.width) : 0)
+          margin-right=(activeIndex > 0 ? 10 : 0) overflow="hidden"
+          -exact-layout-transition=stepSpring() testId="back-clip"
+          // rBackButtonInnerStyle: opacity 0 → 1.
+          view opacity=(activeIndex > 0 ? 1 : 0) transition=`opacity ${stepSpring()}`
+            // styles.button + backButton: rgba(0,0,0,0.08), radius 30 continuous, width
+            // backButtonWidth. backButtonLabel: black, SF-Pro-Rounded-Bold 18, letterSpacing 0.5.
+            button appearance="none" class=PressableScale press=onBack testId="back"
+              width=backWidth(env.width) height=60 border-radius=30 corner-shape="squircle"
+              background-color="rgba(0,0,0,0.08)" display="flex" flex-direction="row"
+              align-items="center" justify-content="center"
+              text "Back" color="black" font-family="ui-rounded" font-weight=700 font-size=18
+                letter-spacing=0.5
+        // styles.fill + continueButton: flex 1, #0c86f7.
+        view flex=1 -exact-layout-transition=stepSpring()
+          button appearance="none" class=PressableScale press=onContinue testId="continue"
+            flex=1 height=60 border-radius=30 corner-shape="squircle" background-color="#0c86f7"
+            display="flex" flex-direction="row" align-items="center" justify-content="center"
+            -exact-layout-transition=stepSpring()
+            // styles.labelContainer: a centred row (it moves with the button's resize).
+            row align-items="center" justify-content="center"
+              -exact-layout-transition=stepSpring()
+              // rIconStyle: width 0 → ICON_WIDTH, opacity 0 → 1, marginRight 0 → ICON_MARGIN_RIGHT,
+              // clipped; AntDesign check-circle 16 white.
+              view width=(activeIndex == 2 ? 22 : 0) margin-right=(activeIndex == 2 ? 6 : 0)
+                opacity=(activeIndex == 2 ? 1 : 0) overflow="hidden" align-items="center"
+                justify-content="center" transition=`opacity ${stepSpring()}`
+                -exact-layout-transition=stepSpring() testId="check"
+                image "symbol:sf/checkmark.circle" font-size=16 color="white" aria-hidden=true
+              // continueButtonLabel: white, SF-Pro-Rounded-Bold 18, letterSpacing 0.5. rightLabel:
+              // Finish on the last step.
+              text (activeIndex == 2 ? "Finish" : "Continue") color="white" font-family="ui-rounded"
+                font-weight=700 font-size=18 letter-spacing=0.5 -exact-layout-transition=stepSpring()
+                testId="continue-label"
