@@ -1,0 +1,23 @@
+// Telegram Theme Switch: a dark screen over a four-icon tab bar; the round button on the Search
+// tab switches the theme, revealing the new one in a circle from the button (or shrinking the old
+// one into it) while its moon turns into a sun. RN: src/animations/telegram-theme-switch
+// (index.tsx, components/switch-theme, components/bottom-tab-bar, components/theme-provider,
+// constants/, screens/, assets/switch-theme.json). The whole demo is one Rust surface, so the old
+// theme can be drawn again under the reveal's clip as RN's snapshot shows it: the screens, the tab
+// bar (pressto opacity, focus fades), the tap, the spring, and the Lottie evaluated from its file
+// (gpu/src/telegram_theme_switch.rs, gpu/src/telegram_lottie.rs). The surface posts each press's
+// selection haptic.
+use DemoEnv from "../env.contract"
+
+component TelegramThemeSwitch
+  props
+    env: DemoEnv
+  // The app's PressablesConfig onPress: Haptics.selectionAsync().
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+  view
+    // The tab bar's paddingBottom is safeBottom / 2.
+    canvas surface=telegram_theme_switch(env.safeBottom) message=heard position="absolute" top=0
+      left=0 width=env.width height=env.height touch-action="none" testId="telegram-theme-switch"
+      aria-label="Theme switch: tap the round button; the tabs below"

@@ -1,0 +1,4 @@
+at "/demo/telegram-theme-switch"
+
+test "the screen, the tab bar and the switch are there"
+  expect tree has "telegram-theme-switch"

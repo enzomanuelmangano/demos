@@ -703,6 +703,8 @@ pub fn border_ring_path(x: f32, y: f32, w: f32, h: f32, r: f32, width: f32) -> P
 
 /// What [`path_builder`] returns.
 pub type PathBuilder = lyon::path::path::Builder;
+/// The builder [`Canvas::draw_with`] and [`Canvas::clip_with`] hand out.
+pub type ScratchBuilder<'a> = lyon::path::builder::NoAttributes<lyon::path::path_buffer::Builder<'a>>;
 
 /// A path builder, for demos that build paths point by point (Skia's `PathBuilder`).
 pub fn path_builder() -> lyon::path::path::Builder {
@@ -776,6 +778,25 @@ pub fn add_svg_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::build
 pub fn add_rrect_hole<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Negative);
+}
+
+/// Appends a circle as sixteen cubic arcs of 22.5° (within 1e-7 r of the circle, where
+/// [`add_circle`]'s four cubics are 2e-4 r off: 0.19 pt on a 950 pt circle; Skia's `addCircle`
+/// is conics, exact). `hole` winds it the other way (an inverted clip with a rect around it).
+pub fn add_circle_fine<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32, hole: bool) {
+    const N: usize = 16;
+    let (cx, cy, r) = (cx as f64, cy as f64, r.abs() as f64);
+    let step = std::f64::consts::TAU / N as f64 * if hole { -1.0 } else { 1.0 };
+    let k = 4.0 / 3.0 * (step / 4.0).tan() * r;
+    let at = |a: f64| point((cx + r * a.cos()) as f32, (cy + r * a.sin()) as f32);
+    b.begin(at(0.0));
+    for i in 0..N {
+        let (a0, a1) = (step * i as f64, step * (i + 1) as f64);
+        let c1 = point((cx + r * a0.cos() - k * a0.sin()) as f32, (cy + r * a0.sin() + k * a0.cos()) as f32);
+        let c2 = point((cx + r * a1.cos() + k * a1.sin()) as f32, (cy + r * a1.sin() - k * a1.cos()) as f32);
+        b.cubic_bezier_to(c1, c2, at(a1));
+    }
+    b.end(true);
 }
 
 /// A path measured once, to be drawn trimmed every frame without allocating
@@ -975,6 +996,31 @@ mod path_tests {
         let bb = lyon::algorithms::aabb::bounding_box(half.iter());
         assert!((bb.max.x - 25.0).abs() < 0.01, "{bb:?}");
         assert_eq!(trim(&half, 0.5, 0.5).iter().count(), 0);
+    }
+
+    #[test]
+    fn a_fine_circle_stays_on_the_circle() {
+        let mut b = Path::builder();
+        add_circle_fine(&mut b, 10.0, 20.0, 950.0, false);
+        let p = b.build();
+        let mut worst: f64 = 0.0;
+        for e in p.iter() {
+            if let PathEvent::Cubic { from, ctrl1, ctrl2, to } = e {
+                let c = lyon::geom::CubicBezierSegment { from, ctrl1, ctrl2, to };
+                for k in 0..=32 {
+                    let q = c.sample(k as f32 / 32.0);
+                    let d = (((q.x - 10.0) as f64).powi(2) + ((q.y - 20.0) as f64).powi(2)).sqrt();
+                    worst = worst.max((d - 950.0).abs());
+                }
+            }
+        }
+        // f32 coordinates near 1000 carry 6e-5 of rounding.
+        assert!(worst < 2e-3, "{worst}");
+        // Clockwise on screen from (r, 0) (y down: through +y first); the hole the other way.
+        assert!(matches!(p.iter().nth(1), Some(PathEvent::Cubic { to, .. }) if to.y > 20.0));
+        let mut h = Path::builder();
+        add_circle_fine(&mut h, 0.0, 0.0, 1.0, true);
+        assert!(matches!(h.build().iter().nth(1), Some(PathEvent::Cubic { to, .. }) if to.y < 0.0));
     }
 
     #[test]
