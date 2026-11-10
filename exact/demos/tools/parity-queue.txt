@@ -11,7 +11,7 @@ floating-bottom-bar ported open:230e1914 icons pixel-identical, fades and spring
 animated-clip-box ported claimed:sim2
 theme-canvas-animation ported done:fb77570d (8-bit P3 surface via gfx::P3Layer: stills max 1-2 levels; spring audit line for line, floods on Reanimated's curve frame for frame; first flood after open 2-4 frames late, first haptic)
 add-to-cart todo claimed:r3-port (offline port; verify on device when done)
-bottom-bar-skia ported
+bottom-bar-skia ported claimed:sim1
 cuberto-slider ported
 metaball ported
 shared-transitions ported
