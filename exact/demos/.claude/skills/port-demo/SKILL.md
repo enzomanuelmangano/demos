@@ -187,6 +187,40 @@ One commit per haptic event, never per frame.
 - argent on the Exact app: `gesture-custom` calls return before the gesture has played out; put
   consecutive gestures in one `run-sequence` with `delayMs`, or the next Down catches a fling.
   Its `interpolate` also fills an Up → Down gap with moves (one call per gesture).
+- Yoga rounds a View's edges to the nearest device pixel but FLOORS a Text node's relative
+  left/top (`textRounding`): a label centred 0.833 pt into its row sits at 0.667, not 1.0
+  (measured by `nativeFabricUIManager.measure`: twodos-slide's label, telegram-theme-switch's
+  tab icons, fluid-tab-interaction, both 1 px low before). A Text's measured side is ceiled
+  after an epsilon, so an exact 13 or 28 measures 13.333 / 28.333. In Rust: floor the Text's
+  offset inside its parent (`text_grid`); in Contract: `position="relative"` back onto RN's px.
+- RN `fontWeight` is a UIFontWeight, which San Francisco draws at its named instance's `wght`:
+  '500' 510, '600' 590, '800' 860, '900' 1000 (`skia::match_ui_font` does it: `ui_weight`). At
+  the CSS number a semibold label was a hair heavy (expandable-mini-player's "Demo", max 44).
+- Subsetting an icon font with fontTools: keep `recalc_bounds = False` (and load with
+  `recalcBBoxes=False`). MaterialCommunityIcons' headers say xMin 0 where the outline starts
+  at 64 with lsb 0; CoreText shifts a glyph by lsb − xMin, so recalculated bounds moved every
+  icon 1.6 pt left.
+- iOS Fabric applies zIndex as the layer's zPosition, which hit-testing ignores: a later sibling
+  takes the touches over an earlier one even when it draws below it (fluid-tab-interaction:
+  the pill and the blur cell, zIndex 1, block the selected cell, zIndex 2; a held press there
+  doesn't scale it in RN).
+- Reanimated's `cancelAnimation(sv)` (and any assignment over a running animation) calls that
+  animation's callback with `finished = false`. A callback that ignores the flag runs its reset
+  then (fluid-tab-interaction: an interrupting press clears activeIndexes, so the second pulse
+  blurs no cell).
+- A bundled font with USE_TYPO_METRICS in a Contract `textarea`/`input`: the host sets the first
+  baseline at the typo ascender, UITextView at the hhea one (AddingtonCF: 461 / 2048 em lower,
+  16 px at 24 pt). Pad the field by the difference (dot-sheet).
+- Keyframes accept only sRGB `rgb()` colours (`color(display-p3 …)`, `oklch()` are BadValue): a
+  keyframed colour that ends outside sRGB clips. Fade a box of the exact P3 colour in over the
+  last stop on the same timeline (github-contributions levels 2–4).
+- `filter` neither transitions nor keyframes (`lower-keyframe-property`): an animated layer
+  shadow without a shadowPath (one that follows the content) can't spring in Contract
+  (email-demo's highlight).
+- A `transformDragFor` handle moved out from under the finger (by a counter-translation of its
+  ancestor) ends the host drag: keep the handle on the dragged layer and move only what is drawn
+  (action-tray's −50 clamp). RN's own clamps that freeze on "the last update above X" land
+  where the event cadence puts them (−43.3 on a slow argent drag): the limit is X.
 
 ## 4. Check
 
@@ -204,10 +238,11 @@ finger), magnet-spring (2D distance per frame to nine magnets).
 ## Parity debts (ported, with a known gap to revisit, likely in Rust)
 
 - Animated blur intensity (expo-blur `intensity` driven by Reanimated): Exact's materials and
-  `backdrop-filter` don't animate. staggered-card-number (per-digit blur), fluid-tab-interaction
-  (blur pulses). The fix is `skia::backdrop` (UIKit's partially animated blur, measured by
+  `backdrop-filter` don't animate. airbnb-flip-interaction (the description's pulse: its pages
+  would have to move into Rust with it). The fix is `skia::backdrop` (UIKit's partially animated blur, measured by
   `exact/parity-tools/blur-probe`): a Rust surface draws what is under the BlurView and runs the
   tint's chain at intensity / 100 (blurred-bottom-bar, dynamic-blur-tabs, bezier-curve-outline).
-- `border-radius` doesn't animate: alert-drawer (mid-spring radius).
+- `border-radius` doesn't animate: draw the body in Rust under the Contract content
+  (alert-drawer, dot-sheet: `alert_drawer_card.rs`, `dot_sheet_card.rs`).
 - liquid-glass-playground: progressive haptics every 5 px of drag (needs per-move logic).
 - stacked-modals: the 60 ms × index stagger on exit (an exit animation is one literal).
