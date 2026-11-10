@@ -68,7 +68,7 @@ component DotSheet
       column position="absolute" z-index=1 top=cardTop(env.height, env.safeTop, open)
         left=cardLeft(env.width, env.height, open) width=cardWidth(env.width, env.height, open)
         height=cardHeight(env.height, open) background-color="#ffffff" border-radius=(open ? 32 : 16)
-        corner-shape="squircle" box-shadow="0px 0px 20px rgba(193, 193, 193, 0.1)"
+        corner-shape="-exact-continuous" box-shadow="0px 0px 20px rgba(193, 193, 193, 0.1)"
         rotate=(open ? "0deg" : "-4deg") -exact-layout-transition=cardSpring()
         transition=`rotate ${cardSpring()}` press=tapCard testId="dot-card"
         // The multiline field: marginTop 16 → 24, fontSize 14 → 24.
