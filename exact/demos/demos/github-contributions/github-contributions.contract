@@ -26,108 +26,19 @@ fn inRange(env: DemoEnv, d: number): bool = (d > firstDay(env) or (d == firstDay
 // Math.floor(Math.random() * 5) per day.
 fn levelOf(env: DemoEnv, d: number): number = roll(env.seed, d - firstDay(env), 5)
 
-// contribution-square.tsx: scale = interpolate(progress, [0, 0.5, 1], [1, 0.4, 1]) (extended),
-// backgroundColor = interpolateColor(progress, [0, 1], [level0, level colour], 'RGB') (clamped,
-// gamma 2.2). `progress` is a hidden box's translate (100 px per unit) on the square's spring:
-// a drag timeline the square's keyframes follow over progress -0.5 … 1.5 (the springs overshoot
-// to about 1.16 and -0.05), so no commit per frame. Stops at 25 % + 5 % per 0.1 of progress are
-// gamma 2.2 mixes; the scale is the interpolation's straight lines, extended.
-// COLOR_SCHEMES.github: level0 rgba(235, 237, 240), level1 rgba(155, 233, 168), level2
-// rgba(64, 196, 99), level3 rgba(48, 161, 78), level4 rgba(33, 110, 57).
-keyframes level0
-  0% background-color="rgb(235, 237, 240)" scale=1.6
-  25% scale=1
-  50% scale=0.4
-  75% scale=1
-  100% background-color="rgb(235, 237, 240)" scale=1.6
-keyframes level1
-  0% background-color="rgb(235, 237, 240)" scale=1.6
-  25% background-color="rgb(235, 237, 240)" scale=1
-  30% background-color="rgb(226, 237, 234)"
-  35% background-color="rgb(219, 237, 227)"
-  40% background-color="rgb(210, 237, 220)"
-  45% background-color="rgb(200, 236, 213)"
-  50% background-color="rgb(191, 236, 206)" scale=0.4
-  55% background-color="rgb(180, 237, 198)"
-  60% background-color="rgb(169, 236, 189)"
-  65% background-color="rgb(158, 236, 181)"
-  70% background-color="rgb(144, 235, 172)"
-  75% background-color="rgb(129, 236, 162)" scale=1
-  100% background-color="rgb(129, 236, 162)" scale=1.6
-keyframes level2
-  0% background-color="rgb(235, 237, 240)" scale=1.6
-  25% background-color="rgb(235, 237, 240)" scale=1
-  30% background-color="rgb(223, 233, 230)"
-  35% background-color="rgb(210, 230, 219)"
-  40% background-color="rgb(196, 227, 209)"
-  45% background-color="rgb(182, 223, 196)"
-  50% background-color="rgb(165, 220, 183)" scale=0.4
-  55% background-color="rgb(146, 216, 169)"
-  60% background-color="rgb(123, 211, 153)"
-  65% background-color="rgb(93, 208, 136)"
-  70% background-color="rgb(44, 204, 114)"
-  75% background-color="rgb(0, 199, 86)" scale=1
-  100% background-color="rgb(0, 199, 86)" scale=1.6
-keyframes level3
-  0% background-color="rgb(235, 237, 240)" scale=1.6
-  25% background-color="rgb(235, 237, 240)" scale=1
-  30% background-color="rgb(222, 231, 230)"
-  35% background-color="rgb(210, 224, 219)"
-  40% background-color="rgb(197, 219, 206)"
-  45% background-color="rgb(182, 212, 194)"
-  50% background-color="rgb(167, 204, 180)" scale=0.4
-  55% background-color="rgb(148, 197, 165)"
-  60% background-color="rgb(126, 190, 148)"
-  65% background-color="rgb(99, 181, 128)"
-  70% background-color="rgb(57, 172, 102)"
-  75% background-color="rgb(0, 164, 66)" scale=1
-  100% background-color="rgb(0, 164, 66)" scale=1.6
-keyframes level4
-  0% background-color="rgb(235, 237, 240)" scale=1.6
-  25% background-color="rgb(235, 237, 240)" scale=1
-  30% background-color="rgb(223, 228, 229)"
-  35% background-color="rgb(212, 219, 218)"
-  40% background-color="rgb(198, 209, 206)"
-  45% background-color="rgb(184, 198, 193)"
-  50% background-color="rgb(170, 188, 177)" scale=0.4
-  55% background-color="rgb(151, 176, 162)"
-  60% background-color="rgb(132, 162, 144)"
-  65% background-color="rgb(107, 148, 122)"
-  70% background-color="rgb(73, 131, 95)"
-  75% background-color="rgb(0, 112, 50)" scale=1
-  100% background-color="rgb(0, 112, 50)" scale=1.6
-
-// Levels 2–4 end outside sRGB (their P3 greens' red is below 0: -70, -59, -35 of 255), and
-// keyframes take sRGB colours only, so their last stop is the clipped one. Over it, a box of the
-// exact P3 colour fades in across the last 0.1 of progress (70 % → 75 %, held through the
-// overshoot as interpolateColor clamps): at rest the square is RN's colour; every earlier stop
-// is in gamut.
-keyframes levelEnd
-  0% opacity=0
-  70% opacity=0
-  75% opacity=1
-  100% opacity=1
-fn levelColour(level: number): string = level == 2 ? "color(display-p3 0.251 0.7686 0.3882)" : (level == 3 ? "color(display-p3 0.1882 0.6314 0.3059)" : "color(display-p3 0.1294 0.4314 0.2235)")
-
-// startAnimation: withDelay(45 · (weekIndex + (6 - dayIndex)), withSpring(1, { mass 1.1,
-// damping 13, stiffness 150 })); resetAnimation: withDelay(Math.random() · 500, withSpring(0,
-// { mass 0.9, damping 10, stiffness 60 })). cancelAnimation first: the new delay holds the
-// square where it was.
-fn squareTransition(animating: bool, delay: number): string = animating ? `translate 0ms -exact-spring(150, 13, 1.1) ${delay}ms` : `translate 0ms -exact-spring(60, 10, 0.9) ${delay}ms`
+// The grid: every square and its animation in Rust (gpu/src/github_contributions.rs), one
+// character a calendar day, week by week from Monday: its level, or `.` outside the data's range.
+fn levelsOf(env: DemoEnv): string = range(weekCount(env) * 7).map(i => inRange(env, calendarStart(env) + i) ? `${levelOf(env, calendarStart(env) + i)}` : ".").join("")
 
 component GithubContributions
   props
     env: DemoEnv
-  state animating = false
-  // Each reset draws new random delays.
-  state resets = 0
+  // toggleAnimation's presses: the surface starts on an odd one and resets on an even one.
+  state presses = 0
   derive weeks = weekCount(env)
-  derive start = calendarStart(env)
   action toggleAnimation
     haptic("selection")
-    if animating
-      resets = resets + 1
-    animating = not animating
+    presses = presses + 1
   view
     // index.tsx styles.appContainer: #f7f7f7, centred, flex 1; the PressableScale over it is the
     // same box.
@@ -145,39 +56,10 @@ component GithubContributions
             // 25 wide, marginBottom 3, left-aligned (format 'EEE' from Monday).
             column justify-content="flex-start" margin-right=8
               for day in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] key=day
+                // (One device pixel lower: RN's ink sits there, measured; 0 diff once moved.)
                 text day color="color(display-p3 0.3961 0.4275 0.4627)" font-family="regular" font-size=11
-                  height=14 margin-bottom=3 text-align="left" width=25
-            // styles.gridContainer: a row of weeks, each marginRight 3.
-            row align-items="flex-start" testId="grid"
-              for w in range(weeks) key=w
-                column margin-right=3
-                  for j in range(7) key=j
-                    if inRange(env, start + w * 7 + j)
-                      ContributionSquare(level=levelOf(env, start + w * 7 + j), animating=animating,
-                        delay=(animating ? 45 * (w + (6 - j)) : roll(env.seed, 100000 + resets * 1000 + w * 7 + j, 500000) / 1000),
-                        testId=`square-${w}-${j}`)
-                    else
-                      // styles.square + emptySquare: transparent.
-                      view width=14 height=14 margin-bottom=3 border-radius=2 corner-shape="-exact-continuous"
-                        background-color="transparent"
-
-// contribution-square.tsx styles.square: 14 × 14, radius 2 continuous, marginBottom 3.
-component ContributionSquare
-  props
-    level: number
-    animating: bool
-    delay: number
-    testId: string
-  view
-    view width=14 height=14 margin-bottom=3 position="relative" timeline-scope="--progress"
-      view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
-        translate=`${animating ? 100 : 0}px 0px` transition=squareTransition(animating, delay)
-        -exact-drag-timeline="--progress x"
-      view width=14 height=14 border-radius=2 corner-shape="-exact-continuous" background-color="color(display-p3 0.9216 0.9294 0.9412)"
-        position="relative" animation=`level${level} 1s linear both` animation-timeline="--progress"
-        animation-range="-50px 150px" testId=testId
-        if level >= 2
-          view position="absolute" inset=0 border-radius=2 corner-shape="-exact-continuous"
-            background-color=levelColour(level) opacity=0 animation="levelEnd 1s linear both"
-            animation-timeline="--progress" animation-range="-50px 150px" pointer-events="none"
-            aria-hidden=true
+                  height=14 margin-bottom=3 text-align="left" width=25 position="relative" top=0.5
+            // styles.gridContainer: a row of weeks, each marginRight 3 (in the width), seven
+            // squares 14 tall each with marginBottom 3.
+            canvas surface=github_contributions(levelsOf(env), presses, env.seed) width=(weeks * 17)
+              height=119 pointer-events="none" testId="grid" aria-hidden=true
