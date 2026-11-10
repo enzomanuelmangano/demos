@@ -1,0 +1,56 @@
+// Wheel Picker: a big rounded number over a ruler of ticks dragged sideways under an orange
+// indicator, snapping with a bounce and a selection haptic per tick; the corner button spreads
+// the ticks apart or back. RN: src/animations/wheel-picker (index.tsx, components/animated-count/
+// index.ios.tsx, components/draggable-slider). The slider (its Skia ticks, gradient, pan, springs,
+// the indicator) is Rust: gpu/src/wheel_picker.rs, which posts each haptic and each new count. The
+// count is SwiftUI's numeric text, as RN's AnimatedCount (expo-ui Text with contentTransition
+// numericText): Exact's `-exact-content-transition="numeric"` draws it with that transition.
+use DemoEnv from "../env.contract"
+
+// pressto's press: progress withTiming 250 ms on bezier(0.25, 0.1, 0.25, 1), scale 1 → 0.96;
+// in from touch-down, out at the lift. The host's own :active press is set to no change.
+style NoHostPress
+  :active
+    -exact-press-scale = 1
+
+component WheelPicker
+  props
+    env: DemoEnv
+  state expanded = false
+  state count = "0"
+  state held = false
+  action heard(m: string)
+    if m == "haptic:selection"
+      haptic("selection")
+    if m.startsWith("count:")
+      count = m.slice(6)
+  action pressIn
+    held = true
+  action pressOut
+    held = false
+  action toggle
+    haptic("selection")
+    expanded = not expanded
+  view
+    // styles.container: white, flex 1, centred.
+    column position="absolute" inset=0 background-color="color(display-p3 1 1 1)" align-items="center"
+      justify-content="center" testId="wheel-picker"
+      // AnimatedCount's Host: maxDigits 10 × textDigitWidth 44 by textDigitHeight 80; the Text
+      // (bold, rounded, 65, monospacedDigit, black) centred in it (frame maxWidth, centre).
+      column width=440 height=80 flex-shrink=0 align-items="center" justify-content="center"
+        text count font-family="ui-rounded" font-weight=700 font-size=65 color="#000000"
+          font-variant-numeric="tabular-nums" text-align="center" -exact-content-transition="numeric"
+          testId="wheel-picker-count"
+      // DraggableSlider: ScreenWidth × scrollableAreaHeight 150, the indicator inside.
+      canvas surface=wheel_picker(expanded) message=heard width=env.width height=150 flex-shrink=0
+        touch-action="none" testId="wheel-picker-slider" aria-label="Drag the ruler to pick a number"
+    // styles.button: absolute, bottom 48, right 32, 64², radius 32, #111; MaterialCommunityIcons
+    // arrow-expand / arrow-collapse, 28, white (the font's own glyphs: 512 units, ascent 448).
+    button appearance="none" class=NoHostPress press=toggle pointerdown=pressIn pointerup=pressOut
+      position="absolute" bottom=48 right=32 width=64 height=64 border-radius=32 border="none"
+      background-color="color(display-p3 0.0667 0.0667 0.0667)" display="flex" align-items="center"
+      justify-content="center" scale=(held ? 0.96 : 1)
+      transition="scale 250ms cubic-bezier(0.25, 0.1, 0.25, 1)" testId="wheel-picker-toggle"
+      aria-label=(expanded ? "Collapse the ruler" : "Expand the ruler")
+      svg width=28 height=28 viewBox="0 0 512 512" aria-hidden=true
+        path d=(expanded ? "M416 66 320 162V85H277V235H427V192H350L446 96ZM85 277V320H162L66 416L96 446L192 350V427H235V277Z" : "M213 448V405H137L233 309L203 279L107 375V299H64V448ZM309 233 405 137V213H448V64H299V107H375L279 203Z") fill="#ffffff"

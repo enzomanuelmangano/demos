@@ -25,7 +25,7 @@ shape Time
 // stays). RN lets a demo keep a touch it claimed (demo-screen.tsx CloseGesture); a route's
 // dismissal cannot ask the canvas mid-gesture, and switching it per touch costs a commit
 // that holds the canvas's first frames.
-fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "animated-3d-parallax", "record-button", "sphere-waves", "skia-bottom-sheet", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker"].includes(slug)
+fn ownsDrags(slug: string): bool = ["metaball", "magnet-spring", "animated-3d-parallax", "record-button", "sphere-waves", "skia-bottom-sheet", "atlas-sphere", "floating-modal", "expandable-mini-player", "selectable-grid-list", "skia-color-picker", "duration-slider", "clock-time-picker", "wheel-picker"].includes(slug)
 
 // Demos whose GPU surface reads the gravity sensor while it shows (RN: useAnimatedSensor).
 fn tilts(slug: string): bool = slug == "linear-sensors"

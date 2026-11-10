@@ -55,6 +55,7 @@ pub mod spiral;
 pub mod steddy_graph_interaction;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
+pub mod wheel_picker;
 
 /// The module's surfaces and its reflected shaders.
 pub static REGISTRY: Registry = Registry {
@@ -97,6 +98,7 @@ pub static REGISTRY: Registry = Registry {
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
+        ("wheel_picker", 1, wheel_picker::surface),
     ],
     shaders: shaders::SHADERS,
 };
