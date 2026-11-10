@@ -59,6 +59,7 @@ pub fn surface() -> Box<dyn Surface> {
 
 fn modal() -> FloatingModal {
     FloatingModal {
+        down_y: 0.0,
         size: (0.0, 0.0),
         opened: false,
         progress: Timing::at(0.0),
@@ -87,6 +88,8 @@ enum Button {
 }
 
 struct FloatingModal {
+    /// Where the pan's finger went down (onEnd reads translationY even when it never activated).
+    down_y: f64,
     size: (f64, f64),
     opened: bool,
     progress: Timing,
@@ -207,6 +210,7 @@ impl Surface for FloatingModal {
             }
         }
         match self.pan.event(id, phase, x, y, at_ms, on_modal) {
+            Event::Begin { y: by, .. } => self.down_y = by as f64,
             Event::Start(p) | Event::Update(p) => {
                 // The pan activates: the button under the finger is cancelled.
                 if self.press.is_some_and(|(pid, _)| pid == id) {
@@ -218,7 +222,8 @@ impl Surface for FloatingModal {
                 }
             }
             Event::End(p) => self.finalize(p.translation_y as f64),
-            Event::Fail => self.finalize(0.0),
+            // RN's onEnd checks event.translationY even for a pan that never activated.
+            Event::Fail => self.finalize(y as f64 - self.down_y),
             _ => {}
         }
         if matches!(phase, gesture_handler::Phase::Up | gesture_handler::Phase::Cancel) && self.press.is_some_and(|(pid, _)| pid == id) {
