@@ -19,7 +19,7 @@ test "the third sheet's wand stacks the Spiral sheet"
   tap "sheet-button"
   clock settle
   expect tree has "sheet-wand-drawn"
-  tap "sheet-wand-drawn"
+  tap "sheet-wand"
   clock settle
   expect tree has "sheet-3"
   expect tree has "sheet-spiral"

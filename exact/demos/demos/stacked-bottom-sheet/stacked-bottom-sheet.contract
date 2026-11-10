@@ -85,8 +85,14 @@ component StackedBottomSheet
   // (gpu/src/timer.rs), as the iOS host ignores a transition's delay.
   state timerToken = 0
   state dragKey = -1
+  // Each swiped sheet's timer token. On the web the timer publishes its token instead of posting
+  // `dismissed` (gpu/src/timer.rs): a sheet swiped with a token the timer has fired is
+  // dismissed (gone 2), read from env.timers until the next action keeps it. (iOS: `gone`.)
+  state goneT = []
+  derive firedT = match range(timerToken + 1).filter(t => t > 0 and env.timers.includes(t)).at(-1) { case some(t) => t, case none => 0 }
+  derive vGone = range(gone.length).map(j => sheetNum(gone, j) == 1 and sheetNum(goneT, j) <= firedT ? 2 : sheetNum(gone, j))
   derive w = env.width
-  derive biggest = sheetBiggest(range(keys.length).filter(j => sheetNum(gone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))))
+  derive biggest = sheetBiggest(range(keys.length).filter(j => sheetNum(vGone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))))
 
   // showStackedSheet: the new sheet takes id 0, the rest one place back. The button (hook.tsx
   // onPress) shows the next config, the last one again past the seventh; the wand a 300 px
@@ -95,15 +101,16 @@ component StackedBottomSheet
     haptic("selection")
     let cfg = wand ? 7 : min(increment, 6)
     let now = performanceNow()
-    let keep = range(keys.length).filter(j => sheetNum(gone, j) == 0 or now < sheetNum(goneAt, j) + 250)
-    let hs = keep.filter(j => sheetNum(gone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))).concat([sheetHeightOf(cfg)])
+    let keep = range(keys.length).filter(j => sheetNum(vGone, j) == 0 or now < sheetNum(goneAt, j) + 250)
+    let hs = keep.filter(j => sheetNum(vGone, j) != 2).map(j => sheetHeightOf(sheetNum(cfgs, j))).concat([sheetHeightOf(cfg)])
     keys = keep.map(j => sheetNum(keys, j)).concat([serial])
     cfgs = keep.map(j => sheetNum(cfgs, j)).concat([cfg])
     mountB = keep.map(j => sheetNum(mountB, j)).concat([sheetBiggest(hs)])
-    gone = keep.map(j => sheetNum(gone, j)).concat([0])
+    gone = keep.map(j => sheetNum(vGone, j)).concat([0])
     goneY = keep.map(j => sheetNum(goneY, j)).concat([0])
     goneAt = keep.map(j => sheetNum(goneAt, j)).concat([0])
     goneL = keep.map(j => sheetNum(goneL, j)).concat([0])
+    goneT = keep.map(j => sheetNum(goneT, j)).concat([0])
     serial = serial + 1
     if not wand
       increment = increment + 1
@@ -116,11 +123,12 @@ component StackedBottomSheet
   // onDismiss); else translateY withSpring(0) (the layer's own spring home, which it follows).
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     let i = keys.indexOf(dragKey)
-    if i >= 0 and y > 50 and sheetNum(gone, i) == 0
+    if i >= 0 and y > 50 and sheetNum(vGone, i) == 0
       goneL = sheetSet(goneL, i, sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
-      gone = sheetSet(gone, i, 1)
+      gone = sheetSet(vGone, i, 1)
       goneY = sheetSet(goneY, i, y)
       goneAt = sheetSet(goneAt, i, performanceNow())
+      goneT = sheetSet(goneT, i, timerToken + 1)
       timerToken = timerToken + 1
       dragKey = -1
 
@@ -146,11 +154,11 @@ component StackedBottomSheet
           font-size=14 letter-spacing=1.2 text-transform="uppercase"
       // A dismissed sheet (onDismiss ran) has left RN's list: it is not drawn.
       for key, i in keys key=key
-        if sheetNum(gone, i) != 2
+        if sheetNum(vGone, i) != 2
           StackedSheetCard(env=env, sheetKey=key, cfg=sheetNum(cfgs, i),
-            id=(sheetNum(gone, i) >= 1 ? 0 : sheetNewer(gone, i)),
-            lift=(sheetNum(gone, i) >= 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(gone, i))),
-            mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(gone, i), goneY=sheetNum(goneY, i),
+            id=(sheetNum(vGone, i) >= 1 ? 0 : sheetNewer(vGone, i)),
+            lift=(sheetNum(vGone, i) >= 1 ? sheetNum(goneL, i) : sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), sheetNewer(vGone, i))),
+            mountBiggest=sheetNum(mountB, i), goneMode=sheetNum(vGone, i), goneY=sheetNum(goneY, i),
             dragged=(key == dragKey), magic=push(true))
       // The front sheet's GestureDetector: one drag layer (its vertical translate is the
       // timeline the sheet follows) under an untransformed, clipping parent.
@@ -159,7 +167,7 @@ component StackedBottomSheet
           position="relative" translate="0px 0px" transition=`translate ${sheetSpring()}`
           -exact-drag-timeline="--sheetSwipe y"
           for key, i in keys key=key
-            if sheetNum(gone, i) == 0 and sheetNewer(gone, i) == 0
+            if sheetNum(vGone, i) == 0 and sheetNewer(vGone, i) == 0
               view position="absolute" left=(w * 0.05)
                 bottom=(50 + sheetLift(biggest, sheetHeightOf(sheetNum(cfgs, i)), 0))
                 width=(w * 0.9) height=sheetHeightOf(sheetNum(cfgs, i)) pointer-events="auto"

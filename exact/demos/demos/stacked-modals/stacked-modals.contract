@@ -105,10 +105,14 @@ component StackedModals
   state leaveEnd = 0
   state leaveToken = 0
   state leaveMs = 0
+  // On the web the timer publishes its token instead of posting `cleared` (gpu/src/timer.rs):
+  // the leaving modals are gone once env.timers holds leaveToken. (Always false on iOS.)
+  derive leftWeb = leaveToken != 0 and env.timers.includes(leaveToken)
+  derive shownLeaving = leftWeb ? [] : leaving
   action clearAll
     let now = performanceNow()
-    let end = max(leaveEnd, now + 300 + 60 * max(0, stack.length - 1))
-    leaving = leaving.concat(stack.map((e, i) => [e, i]))
+    let end = max(leftWeb ? 0 : leaveEnd, now + 300 + 60 * max(0, stack.length - 1))
+    leaving = shownLeaving.concat(stack.map((e, i) => [e, i]))
     stack = []
     leaveEnd = end
     leaveMs = end - now
@@ -131,7 +135,7 @@ component StackedModals
       canvas surface=timer(leaveToken, leaveMs) message=cleared width=1 height=1 position="absolute"
         left=0 top=0 aria-hidden=true pointer-events="none"
       // One list, so a modal that starts leaving keeps its instance (no remount).
-      for pair in stack.map((e, i) => [e, i, 0]).concat(leaving.map(p => [leaveEntry(p), leaveId(p), 1])) key=(leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10
+      for pair in stack.map((e, i) => [e, i, 0]).concat(shownLeaving.map(p => [leaveEntry(p), leaveId(p), 1])) key=(leaveEntry(pair) - modalOf(leaveEntry(pair))) / 10
         Modal(entry=leaveEntry(pair), id=leaveId(pair), width=env.width, height=env.height,
           leaving=(leaveFlag(pair) == 1), confirm=answer(leaveEntry(pair), false),
           dismiss=answer(leaveEntry(pair), true))

@@ -85,7 +85,8 @@ component Toast
   state autoE = -1
   state autoThrow = 2500
   // The timers: a swipe's onDismiss (300 ms); the autodismiss's onDismiss (its 2500 ms timeout
-  // plus the 300 ms slide), the key it drops, and its delay. A token of 0 cancels (clearTimeout).
+  // plus the 300 ms slide), the key it drops, and its delay. A token of 0 cancels (clearTimeout);
+  // the autodismiss arms with -1, -2, … (`autoSerial`), never a token it used before.
   state swipeToken = 0
   state autoToken = 0
   state autoDrop = -1
@@ -93,37 +94,61 @@ component Toast
   // The toast that follows the drag layer (the front one when the drag began), and isSwiping.
   state dragKey = -1
   state swiping = false
+  // On the web the timers publish their tokens instead of posting `swipeDone` / `autoDone`
+  // (gpu/src/timer.rs; the autodismiss's tokens are negative, so the two never match): what
+  // they would have dropped is read from env.timers until the next action keeps it. On iOS
+  // env.timers is empty and each v-value is its state.
+  state goneT = []
+  state autoSerial = 0
+  derive swipeFired = match range(swipeToken + 1).filter(t => t > 0 and env.timers.includes(t)).at(-1) { case some(t) => t, case none => 0 }
+  derive autoFired = autoToken != 0 and env.timers.includes(autoToken) and autoDrop >= 0
+  derive vIdx = range(keys.length).filter(j => not (toastNum(gone, j) == 1 and toastNum(goneT, j) > 0 and toastNum(goneT, j) <= swipeFired) and not (autoFired and toastNum(keys, j) == autoDrop))
+  derive vKeys = vIdx.map(j => toastNum(keys, j))
+  derive vKinds = vIdx.map(j => toastNum(kinds, j))
+  derive vGone = vIdx.map(j => toastNum(gone, j))
+  derive vGoneX = vIdx.map(j => toastNum(goneX, j))
+  derive vGoneAt = vIdx.map(j => toastNum(goneAt, j))
+  derive vGoneK = vIdx.map(j => toastNum(goneK, j))
+  derive vGoneT = vIdx.map(j => toastNum(goneT, j))
+  derive vAutoKey = autoFired and autoKey == autoDrop ? -1 : autoKey
+  derive vAutoE = autoFired and autoKey == autoDrop ? -1 : autoE
+  derive vAutoDrop = autoFired ? -1 : autoDrop
   derive w = env.width
-  derive ai = keys.indexOf(autoKey)
-  derive front = toastFront(gone)
+  derive ai = vKeys.indexOf(vAutoKey)
+  derive front = toastFront(vGone)
 
   // A press: the next toast (index.tsx onPress; showToast refuses past six in the list).
   action showToast
     haptic("selection")
     let now = performanceNow()
-    let expired = autoE >= 0 and now >= autoE
-    let g1 = expired ? toastSet(gone, ai, 2) : gone
-    let at1 = expired ? toastSet(goneAt, ai, autoE) : goneAt
-    let k1 = expired ? toastSet(goneK, ai, 0) : goneK
-    let keep = range(keys.length).filter(j => toastNum(g1, j) == 0 or now < toastNum(at1, j) + 300)
+    autoKey = vAutoKey
+    autoE = vAutoE
+    autoDrop = vAutoDrop
+    let expired = vAutoE >= 0 and now >= vAutoE
+    let g1 = expired ? toastSet(vGone, ai, 2) : vGone
+    let at1 = expired ? toastSet(vGoneAt, ai, vAutoE) : vGoneAt
+    let k1 = expired ? toastSet(vGoneK, ai, 0) : vGoneK
+    let keep = range(vKeys.length).filter(j => toastNum(g1, j) == 0 or now < toastNum(at1, j) + 300)
     let nGone = keep.map(j => toastNum(g1, j))
     let kind = pressed < 5 ? pressed : 5
     pressed = pressed + 1
     if keep.length > 5
       // console.warn("Too many toasts"): the list is kept.
-      keys = keep.map(j => toastNum(keys, j))
-      kinds = keep.map(j => toastNum(kinds, j))
+      keys = keep.map(j => toastNum(vKeys, j))
+      kinds = keep.map(j => toastNum(vKinds, j))
       gone = nGone
-      goneX = keep.map(j => toastNum(goneX, j))
+      goneX = keep.map(j => toastNum(vGoneX, j))
       goneAt = keep.map(j => toastNum(at1, j))
       goneK = keep.map(j => toastNum(k1, j))
+      goneT = keep.map(j => toastNum(vGoneT, j))
     else
-      keys = keep.map(j => toastNum(keys, j)).concat([serial])
-      kinds = keep.map(j => toastNum(kinds, j)).concat([kind])
+      keys = keep.map(j => toastNum(vKeys, j)).concat([serial])
+      kinds = keep.map(j => toastNum(vKinds, j)).concat([kind])
       gone = nGone.concat([0])
-      goneX = keep.map(j => toastNum(goneX, j)).concat([0])
+      goneX = keep.map(j => toastNum(vGoneX, j)).concat([0])
       goneAt = keep.map(j => toastNum(at1, j)).concat([0])
       goneK = keep.map(j => toastNum(k1, j)).concat([0])
+      goneT = keep.map(j => toastNum(vGoneT, j)).concat([0])
       let newKey = serial
       serial = newKey + 1
       if kind == 4
@@ -133,14 +158,15 @@ component Toast
         autoThrow = 2500
         autoDrop = newKey
         autoMs = 2800
-        autoToken = autoToken + 1
+        autoToken = -1 - autoSerial
+        autoSerial = autoSerial + 1
       else
         if expired
           // Its withTiming already runs: its onDismiss still comes.
           autoKey = -1
           autoE = -1
         else
-          if autoE >= 0
+          if vAutoE >= 0
             // No longer id 0: the effect's cleanup clears the timeout.
             autoE = -1
             autoToken = 0
@@ -160,16 +186,27 @@ component Toast
   // onDismiss; else translateX withSpring(0). onFinalize: isSwiping false.
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
     let now = performanceNow()
-    let i = keys.indexOf(dragKey)
+    let i = vKeys.indexOf(dragKey)
     swiping = false
-    if i >= 0 and x < -50 and toastNum(gone, i) == 0
-      let nGone = toastSet(gone, i, 1)
+    keys = vKeys
+    kinds = vKinds
+    gone = vGone
+    goneX = vGoneX
+    goneAt = vGoneAt
+    goneK = vGoneK
+    goneT = vGoneT
+    autoKey = vAutoKey
+    autoE = vAutoE
+    autoDrop = vAutoDrop
+    if i >= 0 and x < -50 and toastNum(vGone, i) == 0
+      let nGone = toastSet(vGone, i, 1)
       let nl = toastLive(nGone)
-      let wasCounting = dragKey == autoKey and autoE >= 0
-      goneK = toastSet(goneK, i, toastNewer(gone, i))
+      let wasCounting = dragKey == vAutoKey and vAutoE >= 0
+      goneK = toastSet(vGoneK, i, toastNewer(vGone, i))
       gone = nGone
-      goneX = toastSet(goneX, i, x)
-      goneAt = toastSet(goneAt, i, now)
+      goneX = toastSet(vGoneX, i, x)
+      goneAt = toastSet(vGoneAt, i, now)
+      goneT = toastSet(vGoneT, i, swipeToken + 1)
       swipeToken = swipeToken + 1
       dragKey = -1
       if wasCounting
@@ -180,12 +217,13 @@ component Toast
       else
         // The self-dismissing one is id 0 again once the swiped one is gone (at 300 ms): its
         // 2.5 s timeout starts then, its onDismiss 300 ms after.
-        if autoKey >= 0 and nl == ai and nl >= 0
+        if vAutoKey >= 0 and nl == ai and nl >= 0
           autoE = now + 2800
           autoThrow = 2800
-          autoDrop = autoKey
+          autoDrop = vAutoKey
           autoMs = 3100
-          autoToken = autoToken + 1
+          autoToken = -1 - autoSerial
+          autoSerial = autoSerial + 1
 
   // onDismiss of a swiped toast: it leaves the list, the others take their new ids.
   action swipeDone(m: string)
@@ -197,6 +235,7 @@ component Toast
     goneX = keep.map(j => toastNum(goneX, j))
     goneAt = keep.map(j => toastNum(goneAt, j))
     goneK = keep.map(j => toastNum(goneK, j))
+    goneT = keep.map(j => toastNum(goneT, j))
 
   // onDismiss of the self-dismissed toast.
   action autoDone(m: string)
@@ -208,6 +247,7 @@ component Toast
     goneX = keep.map(j => toastNum(goneX, j))
     goneAt = keep.map(j => toastNum(goneAt, j))
     goneK = keep.map(j => toastNum(goneK, j))
+    goneT = keep.map(j => toastNum(goneT, j))
     if autoKey == autoDrop
       autoKey = -1
       autoE = -1
@@ -225,11 +265,11 @@ component Toast
         padding-right=25 padding-top=18 padding-bottom=18 testId="toast-button"
         text "Toast!" color="#ffffff" font-size=14 font-weight=700 letter-spacing=1.2
           text-transform="uppercase"
-      for key, i in keys key=key
-        ToastCard(env=env, toastKey=key, kind=toastNum(kinds, i),
-          k=toastId(gone, goneK, i), goneMode=toastNum(gone, i), goneX=toastNum(goneX, i),
+      for key, i in vKeys key=key
+        ToastCard(env=env, toastKey=key, kind=toastNum(vKinds, i),
+          k=toastId(vGone, vGoneK, i), goneMode=toastNum(vGone, i), goneX=toastNum(vGoneX, i),
           dragged=(key == dragKey), held=(key == dragKey and swiping),
-          counting=(key == autoKey and autoE >= 0), autoThrow=autoThrow)
+          counting=(key == vAutoKey and vAutoE >= 0), autoThrow=autoThrow)
       // The front toast's GestureDetector: one drag layer for the stack (its translate is the
       // timeline the dragged toast follows), under an untransformed, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none" z-index=2000
@@ -237,7 +277,7 @@ component Toast
           position="relative" translate="0px 0px" transition=`translate ${toastSpring()}`
           -exact-drag-timeline="--toastSwipe x"
           if front >= 0
-            for fk in [toastNum(keys, front)] key=fk
+            for fk in [toastNum(vKeys, front)] key=fk
               view position="absolute" left=(w * 0.05) bottom=50 width=(w * 0.9) height=70
                 pointer-events="auto" touch-action="none" transformDragFor="toast-drag"
                 transformgeometry=began(fk) transformrelease=released pointerdown=touched

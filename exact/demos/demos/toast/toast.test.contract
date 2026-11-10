@@ -14,6 +14,8 @@ test "each press stacks the next toast, the front one swipeable"
   expect tree has "toast-0"
 
 test "past the fifth the spam toast, and no more than six in the list"
+  // Each test starts on a fresh page: the fifth press is "And if you're lazy" (key 4).
+  tap "toast-button"
   tap "toast-button"
   tap "toast-button"
   tap "toast-button"
@@ -24,3 +26,16 @@ test "past the fifth the spam toast, and no more than six in the list"
   tap "toast-button"
   clock settle
   expect tree missing "toast-6"
+
+test "the fifth dismisses itself: 2.5 s, then its 300 ms slide"
+  tap "toast-button"
+  tap "toast-button"
+  tap "toast-button"
+  tap "toast-button"
+  tap "toast-button"
+  expect tree has "toast-4"
+  clock +2000
+  expect tree has "toast-4"
+  clock settle
+  expect tree missing "toast-4"
+  expect tree has "toast-3"

@@ -50,7 +50,14 @@ component PopupHandler
   derive w = env.width
   derive h = env.height
   derive topY = env.safeTop + demoButtonRow()
-  derive cy = placed ? py : topY
+  // On the web the timer publishes its token instead of posting `fired` (gpu/src/timer.rs): the
+  // fired reaction is read from env.timers until the next action keeps it. (Always false on iOS.)
+  derive webFired = timerToken != 0 and env.timers.includes(timerToken) and pendingAngle != angle
+  derive nowAngle = webFired ? pendingAngle : angle
+  derive nowPx = webFired ? (popupRight(pendingAngle) ? w - 64 - 32 : 32) : px
+  derive nowPy = webFired ? (popupBottom(pendingAngle) ? h - 64 - 64 : topY) : py
+  derive nowPlaced = webFired or placed
+  derive cy = nowPlaced ? nowPy : topY
   // BlurredPopupProvider popupStyle: listItemHeight 54 × 4 options; above when it would end
   // under 100 px from the bottom, right-aligned when under 200 px from the right (its `right`
   // is the node's width, 64, as RN writes it); 5 px apart.
@@ -60,26 +67,42 @@ component PopupHandler
 
   action began(bw: number, bh: number, pw: number, ph: number)
     // (A drag during a pending timer does not cancel it, as in RN.)
-    placed = placed
+    angle = nowAngle
+    px = nowPx
+    py = nowPy
+    placed = nowPlaced
   // Pan onUpdate: translate = context + translation; the circle stays where it is let go.
   action released(x: number, y: number, scale: number, vx: number, vy: number, vscale: number)
+    angle = nowAngle
     px = x
     py = y
     placed = true
   // TouchablePopupHandler's Tap (onTouchesUp): measure, showPopup, a selection haptic.
   action openPopup
     haptic("selection")
-    pageX = px
+    angle = nowAngle
+    px = nowPx
+    py = nowPy
+    placed = nowPlaced
+    pageX = nowPx
     pageY = cy
     open = true
     shown = true
   // close(): the menu fades (200 ms), the blur 100 ms later (300 ms).
   action close
+    angle = nowAngle
+    px = nowPx
+    py = nowPy
+    placed = nowPlaced
     open = false
   // A row (PressableOpacity): close(), then 800 ms later selectedAngle; its reaction springs
   // the circle to the corner.
   action pick(a: number)
     haptic("selection")
+    angle = nowAngle
+    px = nowPx
+    py = nowPy
+    placed = nowPlaced
     open = false
     pendingAngle = a
     timerToken = timerToken + 1
@@ -103,7 +126,7 @@ component PopupHandler
       // is a layer the size of the screen, under an untransformed, clipping parent.
       column position="absolute" inset=0 overflow="hidden" pointer-events="none"
         column id="popup-drag" width="100%" height="100%" box-sizing="border-box"
-          position="relative" translate=`${px}px ${cy}px`
+          position="relative" translate=`${nowPx}px ${cy}px`
           transition=`translate ${popupSpring()}`
           // The white circle (radius size / 2, continuous).
           view position="absolute" left=0 top=0 width=64 height=64 border-radius=32 corner-shape="-exact-continuous"

@@ -16,6 +16,10 @@ shape Host
   height: number
   prefersReducedMotion: bool
 
+// The web's `timer` surfaces: the token each live one last fired (gpu/src/timer.rs).
+shape Timers
+  fired: number[]
+
 shape Time
   seed: number
   epochAtZero: number
@@ -48,7 +52,8 @@ fn demoOf(slug: string): Demo = match first(allDemos().filter(d => d.slug == slu
 component Demos
   resource host = exactViewport() as shape Host
   resource time = exactTime() as shape Time
-  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion)
+  resource timers = exactSurface("timer") as shape Timers
+  derive env = DemoEnv(width=host.width, height=host.height, safeTop=0, safeBottom=0, epoch=time.epochAtZero, utcOffset=time.utcOffset, seed=time.seed, reducedMotion=host.prefersReducedMotion, timers=timers.fired)
   // "Show Unstable" (the General tray): the work-in-progress demos are listed only with it on.
   state showUnstable = false persist
   derive demos = showUnstable ? allDemos() : allDemos().filter(d => not d.unstable)
