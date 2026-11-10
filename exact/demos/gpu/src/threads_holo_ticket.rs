@@ -748,6 +748,7 @@ impl Surface for ThreadsHoloTicket {
         ))
     }
 
+    /// RN's flip is Gesture.Tap onStart / onEnd with its own spring, not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         match *event {
             InputEvent::Pointer { id, phase, x, y, at_ms, .. } => self.pointer(id, gfx::phase(phase), x as f64, y as f64, at_ms),

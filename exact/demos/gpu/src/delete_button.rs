@@ -218,6 +218,7 @@ impl Surface for DeleteButton {
         ))
     }
 
+    /// RN drives these presses with Skia Touchables (onStart / onEnd / onTap) and default withSpring(0.95), not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);

@@ -59,7 +59,7 @@
 //! | card enter opacity, translateY | FadeInDown.delay(i × 100): withDelay(i × 100, withTiming(1 / 0, 300 ms, inOut(quad))) from 0 / 25 (no delay at i = 0) | `enter`, same timing and curve, from the frame the card mounts |
 //! | card exit opacity, translateY | FadeOutDown: withTiming(0 / 25, 300 ms, inOut(quad)) | `exit`, same |
 //! | card layout | LinearTransition (300 ms inOut(quad)) | never triggered (no card keeps its column) |
-//! | button press scale | pressto PressableScale: withTiming(1 → 0.96, 250 ms, bezier(0.25, 0.1, 0.25, 1)) while held; onPress at a lift inside | `Press`, same |
+//! | button press scale | pressto PressableScale: withTiming(1 → 0.96, 250 ms, bezier(0.25, 0.1, 0.25, 1)) while held; onPress at a lift inside | `pressto::Pressable` |
 //! | progress | withTiming(1, { duration 1500, easing linear }), set to 0 at its end | `Run::progress` |
 //! | goBack | setTimeout 1000 ms after runTransition resolved | at the transition's start + 1000 ms |
 //! | present / dismiss | UIKit cover vertical (UIModalPresentationCurrentContext) | 500 ms, critically damped spring (`gfx::spring_to`); NOT measured |
@@ -71,6 +71,7 @@ use std::rc::Rc;
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::Phase;
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Spring, Timing};
 use skia::blur::GRAPHITE_FORMAT;
 use skia::{Canvas, Color, Font, Paint, Renderer};
@@ -122,9 +123,6 @@ const TRANSITION_MS: f64 = 1500.0;
 const BACK_MS: f64 = 1000.0;
 /// The cover-vertical presentation and dismissal (UIKit's; not measured).
 const PRESENT_MS: f64 = 500.0;
-/// pressto.
-const PRESS_MS: f64 = 250.0;
-const PRESS_SCALE: f32 = 0.96;
 /// UIColor.placeholderTextColor (light): #3C3C43 at 0.3.
 const PLACEHOLDER_RGBA: [f32; 4] = [60.0 / 255.0, 60.0 / 255.0, 67.0 / 255.0, 0.3];
 
@@ -306,36 +304,6 @@ struct Card {
     enter_at: f64,
     delay: f64,
     exit_at: f64,
-}
-
-/// A PressableScale: its press progress and the finger on it.
-#[derive(Default)]
-struct Press {
-    progress: Timing,
-    finger: Option<u32>,
-}
-
-impl Press {
-    fn down(&mut self, id: u32) {
-        self.finger = Some(id);
-        self.progress
-            .to(1.0, PRESS_MS, Easing::bezier(0.25, 0.1, 0.25, 1.0));
-    }
-
-    /// The finger lifts or is taken: whether it was this press's.
-    fn up(&mut self, id: u32) -> bool {
-        if self.finger != Some(id) {
-            return false;
-        }
-        self.finger = None;
-        self.progress
-            .to(0.0, PRESS_MS, Easing::bezier(0.25, 0.1, 0.25, 1.0));
-        true
-    }
-
-    fn scale(&self) -> f32 {
-        1.0 - (1.0 - PRESS_SCALE) * self.progress.value as f32
-    }
 }
 
 /// Which screen shows.
@@ -597,9 +565,10 @@ struct GlTransitions {
     layout: Layout,
     home: Home,
     scroll: UiScroll,
-    plus: Press,
-    close: Press,
-    check: Press,
+    /// The PressableScales (the shared pressto machine).
+    plus: Pressable,
+    close: Pressable,
+    check: Pressable,
     route: Route,
     present: Spring,
     /// The presentation's first frame.
@@ -634,9 +603,9 @@ impl GlTransitions {
                 width: 0.0,
             },
             scroll: UiScroll::new(0.0, 0.0, 1.0, ui_scroll::NORMAL, ui_scroll::Snap::Free),
-            plus: Press::default(),
-            close: Press::default(),
-            check: Press::default(),
+            plus: Pressable::new(),
+            close: Pressable::new(),
+            check: Pressable::new(),
             route: Route::Home,
             present: Spring::at(0.0),
             present_at: None,
@@ -734,7 +703,7 @@ impl GlTransitions {
             );
         }
         // The + (PressableScale about its centre).
-        let k = self.plus.scale();
+        let k = self.plus.scale() as f32;
         c.save();
         c.translate(l.plus_x + BUTTON / 2.0, row + BUTTON / 2.0);
         c.scale(k, k);
@@ -784,7 +753,7 @@ impl GlTransitions {
         let row = l.add_row;
         // The close.
         if let Some(icons) = self.icons.as_ref() {
-            let k = self.close.scale();
+            let k = self.close.scale() as f32;
             c.save();
             c.translate(ADD_PAD + BUTTON / 2.0, row + BUTTON / 2.0);
             c.scale(k, k);
@@ -793,7 +762,7 @@ impl GlTransitions {
             c.restore();
         }
         // The check.
-        let k = self.check.scale();
+        let k = self.check.scale() as f32;
         c.save();
         c.translate(l.check_x + BUTTON / 2.0, row + BUTTON / 2.0);
         c.scale(k, k);
@@ -1075,9 +1044,11 @@ impl Surface for GlTransitions {
             // UIKit holds touches during a presentation; the canvas (zIndex 10) takes them during
             // a transition. A finger already down is let go.
             if matches!(phase, Phase::Up | Phase::Cancel) {
-                self.plus.up(id);
-                self.close.up(id);
-                self.check.up(id);
+                for p in [&mut self.plus, &mut self.close, &mut self.check] {
+                    if p.finger() == Some(id) {
+                        p.cancel();
+                    }
+                }
                 if self.route == Route::Home {
                     self.scroll.input(id, Phase::Cancel, y, x, at_ms, true);
                 }
@@ -1087,48 +1058,39 @@ impl Surface for GlTransitions {
         match self.route {
             Route::Home => {
                 let scroll = self.scroll.offset as f32;
-                if phase == Phase::Down
-                    && self.plus.finger.is_none()
-                    && !self.scroll.moving()
-                    && l.on_plus(x, y, scroll)
-                {
-                    self.plus.down(id);
+                if phase == Phase::Down && !self.scroll.moving() {
+                    self.plus.pointer_down(id, l.on_plus(x, y, scroll));
                 }
                 // The ScrollView: vertical, so its axis is fed as the crate's x.
                 self.scroll.input(id, phase, y, x, at_ms, true);
-                if self.scroll.dragging() && self.plus.finger == Some(id) {
+                if self.scroll.dragging() && self.plus.finger() == Some(id) {
                     // The scroll took the touch: no press.
-                    self.plus.up(id);
+                    self.plus.cancel();
                 }
-                if matches!(phase, Phase::Up | Phase::Cancel)
-                    && self.plus.up(id)
-                    && phase == Phase::Up
-                    && l.on_plus(x, y, scroll)
-                {
-                    // prepareTransition (the snapshot), then navigate('AddNote').
-                    self.posted.push("haptic:selection".into());
-                    self.snap_first = true;
+                if phase != Phase::Down {
+                    if let Some(PressEvent::Press(press)) = self.plus.pointer(id, phase, l.on_plus(x, y, scroll)) {
+                        // prepareTransition (the snapshot), then navigate('AddNote').
+                        self.posted.extend(press.global_message().map(String::from));
+                        self.snap_first = true;
+                    }
                 }
             }
             Route::AddNote => {
                 if phase == Phase::Down {
-                    if self.close.finger.is_none() && l.on_close(x, y) {
-                        self.close.down(id);
-                    } else if self.check.finger.is_none() && l.on_check(x, y) {
-                        self.check.down(id);
+                    if !self.close.pointer_down(id, l.on_close(x, y)) {
+                        self.check.pointer_down(id, l.on_check(x, y));
                     }
+                    return;
                 }
-                if matches!(phase, Phase::Up | Phase::Cancel) {
-                    if self.close.up(id) && phase == Phase::Up && l.on_close(x, y) {
-                        self.posted.push("haptic:selection".into());
-                        self.run_transition(false);
-                    } else if self.check.up(id) && phase == Phase::Up && l.on_check(x, y) {
-                        self.posted.push("haptic:selection".into());
-                        if self.text.is_empty() {
-                            self.posted.push("alert".into());
-                        } else {
-                            self.run_transition(true);
-                        }
+                if let Some(PressEvent::Press(press)) = self.close.pointer(id, phase, l.on_close(x, y)) {
+                    self.posted.extend(press.global_message().map(String::from));
+                    self.run_transition(false);
+                } else if let Some(PressEvent::Press(press)) = self.check.pointer(id, phase, l.on_check(x, y)) {
+                    self.posted.extend(press.global_message().map(String::from));
+                    if self.text.is_empty() {
+                        self.posted.push("alert".into());
+                    } else {
+                        self.run_transition(true);
                     }
                 }
             }
@@ -1159,7 +1121,7 @@ impl Surface for GlTransitions {
         }
         let mut moving = false;
         for p in [&mut self.plus, &mut self.close, &mut self.check] {
-            moving |= p.progress.step(now);
+            moving |= p.step(now);
         }
         moving |= self.scroll.step(now);
 
@@ -1305,9 +1267,9 @@ impl Surface for GlTransitions {
         };
         skia::render::fullscreen_pass(encoder, "gl transitions", target, pipeline, &gpu.bind);
         moving
-            || self.plus.finger.is_some()
-            || self.close.finger.is_some()
-            || self.check.finger.is_some()
+            || self.plus.is_pressed()
+            || self.close.is_pressed()
+            || self.check.is_pressed()
             || self.snap_first
     }
 }

@@ -181,6 +181,7 @@ impl Surface for SphereWaves {
         ))
     }
 
+    /// RN's tap is Gesture.Tap (maxDuration 500), not pressto: not `pressto::Pressable`.
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);

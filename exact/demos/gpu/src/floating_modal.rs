@@ -345,6 +345,25 @@ mod tests {
     use exact_gpu::{fixture, PointerKind, PointerPhase};
 
     #[test]
+    fn the_plus_presses_only_when_lifted_inside_it() {
+        // pressto's BaseButton: onPress needs pointerInside at the lift (shouldCancelWhenOutside
+        // false keeps the press on while the finger is off it, but lifting there presses nothing).
+        let pointer = |phase, x: f32, y: f32, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms };
+        let mut m = modal();
+        m.size = (420.0, 912.0);
+        m.input(&pointer(PointerPhase::Down, 356.0, 848.0, 0.0));
+        assert!(m.plus_press.is_pressed());
+        m.input(&pointer(PointerPhase::Up, 300.0, 848.0, 80.0));
+        assert!(!m.plus_press.is_pressed());
+        assert!(m.messages().is_empty());
+        assert!(!m.opened);
+        m.input(&pointer(PointerPhase::Down, 356.0, 848.0, 200.0));
+        m.input(&pointer(PointerPhase::Up, 360.0, 850.0, 1500.0));
+        assert_eq!(m.messages(), vec!["press".to_string()]);
+        assert!(m.opened);
+    }
+
+    #[test]
     fn it_opens_drags_and_closes() {
         let gpu = match fixture::device() {
             Ok(gpu) => gpu,
