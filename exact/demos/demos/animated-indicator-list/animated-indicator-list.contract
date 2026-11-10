@@ -72,7 +72,7 @@ component AnimatedIndicatorList
       row id="header-row" flex-shrink=0 intersect=measureHeaders translate=`${0 - interp(scroll, xs)}px 0px`
         for name, i in headers() key=name
           // MeasureableAnimatedView: padding 20; onTouchStart selects the header.
-          view id=`header-${i}` flex-shrink=0 padding=20 press=select(i) role="button"
+          view id=`header-${i}` flex-shrink=0 padding=20 pointerdown=select(i) role="button"
             aria-label=name testId=`header-${i}`
             // fontSize 14, bold, uppercase, letterSpacing 1.
             text name font-size=14 font-weight=700 text-transform="uppercase" letter-spacing=1

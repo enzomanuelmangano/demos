@@ -734,7 +734,7 @@ mod tests {
     }
 
     /// `PRINCE_DUMP=/tmp/prince.json cargo test -p demos-gpu prince_dump`: the layout and targets
-    /// at a window and stream, for tools/prince-parity.ts to recompute with RN's own code.
+    /// at a window and stream, for exact/parity-tools/prince-parity.ts to recompute with RN's own code.
     #[test]
     fn prince_dump() {
         let Ok(path) = std::env::var("PRINCE_DUMP") else { return };

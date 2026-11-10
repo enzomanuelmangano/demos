@@ -34,8 +34,9 @@ component AnimatedCountText
           // Each place: a 40 x 55 window over the column 0…9, rolled to its digit by a spring
           // (withSpring duration 1000, dampingRatio 0.9: bun tools/spring.ts 1000 0.9), resized
           // over 800 ms.
-          column width=40 height=55 overflow="hidden" -exact-layout-transition="800ms ease"
-            animation="digitIn 250ms both" -exact-exit-animation="digitOut 250ms both"
+          column width=40 height=55 overflow="hidden" -exact-layout-transition="800ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+            animation="digitIn 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
+            -exact-exit-animation="digitOut 250ms cubic-bezier(0.455, 0.03, 0.515, 0.955) both"
             column translate=`0px ${0 - 55 * d}px` transition="translate -exact-spring(333, 65.7, 4)"
               for n in range(10) key=n
                 text `${n}` width=40 height=55 line-height="55px" text-align="center"

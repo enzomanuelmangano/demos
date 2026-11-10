@@ -12,7 +12,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{interpolate_color, Easing, Spring, SpringConfig, Timing, GENTLE};
+use reanimated::{duration_config, interpolate_color, Easing, Spring, Timing, GENTLE};
 use skia::{fit_box, Canvas, Color, Paint, Path, Rect, Renderer};
 
 use crate::{gfx, shaders};
@@ -27,8 +27,6 @@ const PAD: f32 = 15.0;
 const TABS: usize = 3;
 const ICON_SIZE: f32 = 30.0;
 const PURPLE: u32 = 0x7E6CE2;
-/// DurationConfig as withSpring: tools/spring.ts 400 1.
-const ICON_SPRING: SpringConfig = SpringConfig { stiffness: 1699.6, damping: 164.9, mass: 4.0 };
 const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// svg-icons: HOME_ICON, SEARCH_ICON, USER_ICON and their FitBox `src` (square).
@@ -102,7 +100,12 @@ impl Surface for BottomBarSkia {
                 if let Some(bar) = self.placed {
                     for i in [old, index] {
                         let active = i == index;
-                        self.rise[i].to(rise_of(bar, active), self.rise[i].velocity, ICON_SPRING);
+                        // withSpring(…, { duration: 400, dampingRatio: 1 }): Reanimated solves the
+                        // stiffness from where the icon is and how fast it moves at each start.
+                        let to = rise_of(bar, active);
+                        let (p, v) = (self.rise[i].value, self.rise[i].velocity);
+                        let v = if (to > p && v < 0.0) || (to < p && v > 0.0) { 0.0 } else { v };
+                        self.rise[i].to(to, v, duration_config(p - to, v, 400.0, 1.0, 4.0));
                         self.tint[i].to(if active { 1.0 } else { 0.0 }, 400.0, Easing::timing_default());
                     }
                 }

@@ -24,9 +24,10 @@ fn barWidth(w: number): number = w * 0.95
 fn tabWidth(w: number): number = (barWidth(w) - 0.1 * barWidth(w)) / 5
 
 // AnimatedOpacityView: withTiming(activeIndex === index ? 1 : 0.5), 300 ms inOut(quad), where
-// activeIndex is the bar's withSpring(currentIndex): the tab left fades at once, the tab
-// chosen only once the spring has come to rest on it (the default spring rests after 833 ms).
-fn fade(active: bool): string = active ? "opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 833ms" : "opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+// activeIndex is the bar's withSpring(currentIndex). The style re-runs on every frame of that
+// spring and restarts the timing each time, so neither tab gets past inOut(quad)'s flat start
+// (the tab left only drifts to ~0.9) until the spring rests (833 ms): both fade then.
+fn fade(active: bool): string = "opacity 300ms cubic-bezier(0.455, 0.03, 0.515, 0.955) 833ms"
 
 component FloatingBottomBar
   props
