@@ -139,6 +139,17 @@ One commit per haptic event, never per frame.
 - UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
   activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s and
   not after a 100 ms rest: `ui_scroll::uiscroll_release`. Below that it stops under the finger.
+- UIScrollView bounce and deceleration (measured with `tools/scroll-probe`, a bare UIScrollView
+  logging contentOffset per display frame; drive it with argent at y 0.6): the bounce is critically
+  damped at 0.01088/ms from a start velocity of 0.00797 × the overshoot toward the edge (plus the
+  banded content velocity), not from rest; UIKit projects a fling (v − 0.00988) / −ln(rate) and
+  stops when the velocity falls to 0.00988 pt/ms; a target RN's snapToInterval moves after a
+  still lift glides at λ = 0.01464 (~300 ms), not at the deceleration rate. `ui_scroll` does all
+  of it. A still lift below ~335 pt/s reports velocity 0 to willEndDragging, so snapToInterval
+  rounds. Measure a new scroll question with the probe before guessing: RN's recordings can't.
+- Icon fonts drawn in Rust (`draw_text` of an AntDesign / Entypo glyph): TextKit sets the glyph
+  half the font's hhea lineGap below box top + ascender (twodos-slide's check was 5.6 px high).
+  Add `font.metrics().leading / 2` to the top before `gfx::baseline`.
 - SwiftUI views RN draws with @expo/ui (numeric text, …) are exact through the app's native
   module (`modules/apple/Demos.swift`, a hyphenated tag in app.json `modules`): `rolling-count`
   is AnimatedCount's Text. The web shows an empty box: test it with `expect tree has`.
