@@ -25,8 +25,8 @@
 //!   simultaneous (RNGH's `shouldRecognizeSimultaneouslyWithGestureRecognizer` answers NO for a
 //!   non-RNGH recognizer that is not a `Gesture.Native` dummy), so each drag is one or the
 //!   other. A UIScrollView that can only scroll vertically does not begin on a drag that sets
-//!   off sideways, which the pan then takes; a drag that sets off vertically scrolls the list
-//!   (RN's e2e script: vertical swipes scroll to the end, sideways and diagonal pans select).
+//!   off sideways, which the pan then takes; a drag that sets off 30° or more off the
+//!   horizontal scrolls the list (measured on RN: 20° and 27° select, 35° and 45° scroll).
 //!   The scroll is UIScrollView's: 1:1 under the finger, rubber-banded past the ends
 //!   (`(1 - 1 / (x · 0.55 / d + 1)) · d`), a fling decelerating at 0.998 per ms
 //!   (`UIScrollView.DecelerationRate.normal`), bouncing back at the ends.
@@ -354,7 +354,10 @@ impl Surface for SelectableGrid {
             }
         }
         if let Event::Start(e) = event {
-            if e.translation_y.abs() > e.translation_x.abs() {
+            // Measured on RN (sim, slow straight drags from a cell): 20° and 27° off the
+            // horizontal select, 35° and 45° scroll; the UIScrollView takes a drag whose
+            // vertical travel is at least tan 30° of its sideways one when the pan activates.
+            if e.translation_y.abs() >= e.translation_x.abs() * 0.5773502691896258 {
                 // The UIScrollView began: the pan fails (onFinalize), the list scrolls from here.
                 self.pending = None;
                 self.start = None;
