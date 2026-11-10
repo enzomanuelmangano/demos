@@ -1,0 +1,5 @@
+at "/demo/threads-holo-ticket"
+
+test "the ticket's canvas is there"
+  expect tree has "threads-holo-ticket"
+  expect tree has "threads-holo-ticket-canvas"

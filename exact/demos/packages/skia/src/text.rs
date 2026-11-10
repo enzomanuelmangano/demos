@@ -234,10 +234,27 @@ impl Font {
         Rect::new(l, t, r - l, b - t)
     }
 
+    /// [`Font::advance_width`] with RN's `letterSpacing` (Core Text's `NSKern`): measured with
+    /// Core Text, a non-zero kern keeps the font's tracking and pair kerning and adds `spacing`
+    /// after every glyph, the last one included (the line's typographic width).
+    pub fn advance_width_spaced(&self, text: &str, spacing: f32) -> f32 {
+        let mut n = 0;
+        let width = self.layout(text, |_, _| n += 1);
+        width + spacing * n as f32
+    }
+
     /// Every glyph of `text` with its pen x, its outline (font units, y up) handed to `f`.
-    fn each(&self, text: &str, mut f: impl FnMut(f32, &Path)) {
+    fn each(&self, text: &str, f: impl FnMut(f32, &Path)) {
+        self.each_spaced(text, 0.0, f);
+    }
+
+    /// [`Font::each`] with `spacing` added after each glyph ([`Font::advance_width_spaced`]).
+    fn each_spaced(&self, text: &str, spacing: f32, mut f: impl FnMut(f32, &Path)) {
         let mut glyphs = self.glyphs.borrow_mut();
+        let mut index = 0;
         self.layout(text, |g, pen| {
+            let pen = pen + spacing * index as f32;
+            index += 1;
             let path = glyphs.entry(g.0).or_insert_with(|| {
                 let mut b = Outline { b: Path::builder(), open: false };
                 self.face.outline_glyph(g, &mut b)?;
@@ -563,6 +580,17 @@ impl Canvas {
         let saved = self.matrix();
         let u = font.units;
         font.each(text, |pen, path| {
+            self.set_matrix(Matrix([u, 0.0, 0.0, -u, x + pen, y]).then(saved));
+            self.draw_path(path, paint);
+        });
+        self.set_matrix(saved);
+    }
+
+    /// [`Canvas::draw_text`] with RN's `letterSpacing` ([`Font::advance_width_spaced`]).
+    pub fn draw_text_spaced(&mut self, text: &str, x: f32, y: f32, font: &Font, paint: &Paint, spacing: f32) {
+        let saved = self.matrix();
+        let u = font.units;
+        font.each_spaced(text, spacing, |pen, path| {
             self.set_matrix(Matrix([u, 0.0, 0.0, -u, x + pen, y]).then(saved));
             self.draw_path(path, paint);
         });

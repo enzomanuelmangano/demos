@@ -69,6 +69,7 @@ pub mod telegram_lottie;
 pub mod telegram_theme_switch;
 pub mod the_little_prince;
 pub mod theme_canvas_animation;
+pub mod threads_holo_ticket;
 pub mod timer;
 pub mod twodos_slide;
 pub mod wheel_picker;
@@ -125,6 +126,7 @@ pub static REGISTRY: Registry = Registry {
         ("telegram_theme_switch", 1, telegram_theme_switch::surface),
         ("the_little_prince", 2, the_little_prince::surface),
         ("theme_canvas_animation", 0, theme_canvas_animation::surface),
+        ("threads_holo_ticket", 0, threads_holo_ticket::surface),
         ("timer", 2, timer::surface),
         ("twodos_slide", 0, twodos_slide::surface),
         ("wheel_picker", 1, wheel_picker::surface),
