@@ -30,7 +30,7 @@ radar-chart ported
 image-cropper todo claimed:r3-port (offline port; verify on device when done)
 selectable-grid-list ported
 animated-count-text ported
-qr-code-generator unregistered (ported by R3f, verify on device then register)
+qr-code-generator unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
 popup-handler ported
 twitter-tab-bar ported
 circular-carousel ported
@@ -61,7 +61,7 @@ staggered-card-number ported
 stacked-bottom-sheet ported
 gl-transitions ported
 prequel-slider ported
-empty-qr-code unregistered (ported by R3f, verify on device then register)
+empty-qr-code unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
 infinite-carousel todo
 twodos-slide ported
 wheel-picker ported
@@ -87,7 +87,7 @@ alert-drawer ported
 motion-blur ported
 delete-button ported
 dynamic-blur-tabs ported
-snake unregistered (ported by R3f, verify on device then register)
+snake unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
 expandable-mini-player ported
 bezier-curve-outline ported
 tab-navigation ported
@@ -102,7 +102,7 @@ shake-to-delete ported
 composable-text ported
 card-shader-reflections ported
 clock-time-picker ported
-sudoku unregistered (ported by R3f, verify on device then register)
+sudoku unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
 particles-button ported
 magnet-spring ported
 ios-home-grid todo
@@ -117,9 +117,9 @@ blur-cards ported
 calendar-days todo
 sphere-waves ported
 scrollable-shapes ported
-notion-qrcode unregistered (ported by R3f, verify on device then register)
+notion-qrcode unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
 github-terrain todo
-cherry-blossom-qrcode unregistered (ported by R3f, verify on device then register)
+cherry-blossom-qrcode unregistered (ported by R3f, verify on device then register; rename its .test.contract.pending back)
 art-gallery todo
 the-little-prince ported
 light-on-painting ported
