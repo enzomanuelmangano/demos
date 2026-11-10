@@ -22,7 +22,13 @@ const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    Box::new(Spiral::default())
+    // pressto's PressableWithoutFeedback (absoluteFill) is RNGH's BaseButton: onPress at the
+    // finger's lift unless cancelled, however long it was held or far it moved
+    // (shouldCancelWhenOutside: false, and the button covers the screen).
+    let mut tap = TapGesture::default();
+    tap.max_duration_ms = f64::INFINITY;
+    tap.max_distance = f32::INFINITY;
+    Box::new(Spiral { tap, ..Default::default() })
 }
 
 fn positions(angle: f64, count: usize) -> Vec<f64> {
@@ -273,5 +279,12 @@ mod tests {
         let (c, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms)).unwrap();
         c.save("spiral-settled");
         assert!(!moving);
+        // BaseButton's onPress: a press held 900 ms that wandered 80 pt still turns it.
+        let at = |phase, x, at_ms| InputEvent::Pointer { id: 2, phase, x, y: 400.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
+        s.input(&at(exact_gpu::PointerPhase::Down, 100.0, ms));
+        s.input(&at(exact_gpu::PointerPhase::Move, 180.0, ms + 400.0));
+        s.input(&at(exact_gpu::PointerPhase::Up, 180.0, ms + 900.0));
+        let (_, moving) = fixture::render(&gpu, s.as_mut(), &frame(ms + 950.0)).unwrap();
+        assert!(moving, "a long press turns the spiral");
     }
 }
