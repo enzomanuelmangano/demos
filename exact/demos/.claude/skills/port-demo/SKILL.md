@@ -354,6 +354,13 @@ One commit per haptic event, never per frame.
   (argent's recordings are resampled to 30 fps: compare two values in one frame, never frame
   times), and delay the follower (`animation` delay; a retargetable fade is one 0 → 1 keyframe
   pair with a computed `linear()` of RN's values from the current one: stacked-modals' backdrop).
+- Reanimated `withTiming` re-run toward the SAME target (a `useAnimatedStyle` whose input moves
+  every frame) keeps the running timing's start and start value (timing.ts onStart): it is not
+  restarted. floating-bottom-bar: `withTiming(activeIndex === i ? 1 : 0.5)` fades the tab left
+  out at once, and the tab chosen only once the spring rests exactly on its index (833 ms at 60 Hz).
+- A mapper's `withSpring` retarget (`useDerivedValue(() => withSpring(x))`) inherits the running
+  velocity but measures its rest against `getEnergy(x0, config.velocity = 0)`: the inherited
+  velocity is not in the initial energy (`reanimated::Spring::retarget` does this).
 - RN's ReText is a TextInput: UITextField centres the line a device pixel above where a Text
   would sit (scroll-progress' percentage).
 - The demo screen is UIKit's `.overFullScreen` presentation (the home stays beneath). Contract

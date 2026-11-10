@@ -1,73 +1,32 @@
 // Floating Bottom Bar: a black floating tab bar of five icons; a light hangs over the selected
 // one and springs to the tab pressed. RN: src/animations/floating-bottom-bar (index.tsx,
-// components/bottom-tab-bar/index.tsx, animated-opacity-view, shader-light). The light is Skia:
-// gpu/src/floating_bottom_bar.rs draws it; its spring and the bar are here.
-use PressablesConfig, pressNone, pressDown, pressUp, pressableScale, pressTransition from "pressto"
+// components/bottom-tab-bar/index.tsx, animated-opacity-view, shader-light). The bar's body is
+// here; its icons, their pressto presses and fades, and the Skia light with its spring are
+// gpu/src/floating_bottom_bar.rs (one canvas over the body): the tab chosen fades in on the frame
+// the light's spring rests and the tab left fades out at once (withTiming keeps its start while
+// its target holds), which needs the spring's own frames.
 use DemoEnv from "../env.contract"
 
-// The icons' glyphs (@expo/vector-icons fonts, 512 units to the em), in a box of the Text's
-// line: ascent + descent + line gap. Octicons home / person (ascent 450, descent 68, gap 46),
-// Feather bookmark (457, 69, 46), Ionicons add-circle-outline / settings-sharp (454, 71, 46).
-fn homePath(): string = "M221 23Q236 11 256 11Q276 11 291 23Q291 23 333 56.5Q375 90 417 124L459 158Q480 174 480 201V426Q480 449 463.5 465.5Q447 482 424 482H312Q302 482 295 475Q288 468 288 458V290H224V458Q224 468 217 475Q210 482 200 482H88Q65 482 48.5 465.5Q32 449 32 426V201Q32 174 53 158ZM261 61Q259 59 256 59Q253 59 251 61Q251 61 209 94.5Q167 128 125 162L83 195Q80 198 80 201V426Q80 434 88 434H176V266Q176 256 183 249Q190 242 200 242H312Q322 242 329 249Q336 256 336 266V434H424Q432 434 432 426V201Q432 198 429 195Z"
-fn bookmarkPath(): string = "M427 457V116Q427 89 408 70.5Q389 52 363 52H149Q123 52 104 70.5Q85 89 85 116V457Q85 470 97 476Q109 482 119 474L256 377L393 474Q403 482 415 476Q427 470 427 457ZM128 116Q128 107 134.5 100.5Q141 94 149 94H363Q371 94 377.5 100.5Q384 107 384 116V416L268 333Q256 324 244 333L128 416Z"
-fn addCirclePath(): string = "M241 55Q256 54 269 55Q351 60 407 119Q452 167 462 234Q464 244 464 262Q464 280 462 290Q454 345 421 388Q405 411 382 427Q339 460 284 468Q274 470 256 470Q238 470 228 468Q173 460 130 427Q107 411 91 388Q58 345 50 290Q48 280 48 262Q48 244 50 234Q58 180 91 136Q107 114 130 97Q181 59 241 55ZM284 88Q278 87 261.5 86.5Q245 86 240 87Q212 90 193 98Q149 115 119.5 151Q90 187 82 235Q81 244 81 262Q81 280 82 289Q89 332 114 366Q139 400 178 420Q214 438 256 438Q298 438 334 420Q372 400 397 366.5Q422 333 430 290Q431 281 431 262.5Q431 244 430 235Q420 175 378 135Q338 98 284 88ZM248 169Q248 169 248 169Q253 165 259.5 166.5Q266 168 270 174Q272 177 272 211Q272 211 272 246H306H340L344 248Q352 253 352 262Q352 271 344 276Q341 278 307 278Q307 278 272 278V313Q272 347 270 350Q265 358 256 358Q247 358 242 350Q240 347 240 313Q240 313 240 278H205Q171 278 168 276Q160 271 160 262Q160 253 167 249Q167 249 171 246H205H240V211Q240 177 242 174Q244 171 248 169Z"
-fn personPath(): string = "M338 260Q385 283 415 327Q445 371 448 425Q448 426 448 427Q448 436 441 443.5Q434 451 424 451Q414 451 407 444Q400 437 400 427Q397 370 355.5 330Q314 290 256 290Q198 290 156.5 330Q115 370 112 427Q112 437 105 443Q98 449 88 449Q78 449 71 442Q64 435 64 425Q67 371 97 327Q127 283 174 260Q128 222 128 162Q128 109 165.5 71.5Q203 34 256 34Q309 34 346.5 71.5Q384 109 384 162Q384 222 338 260ZM312.5 218.5Q336 195 336 162Q336 129 312.5 105.5Q289 82 256 82Q223 82 199.5 105.5Q176 129 176 162Q176 195 199.5 218.5Q223 242 256 242Q289 242 312.5 218.5Z"
-fn settingsPath(): string = "M203 35 206 32H256H306L309 35Q312 37 312.5 39Q313 41 318 71L322 102L332 107Q342 112 351 118L361 125L390 113Q415 103 420.5 102Q426 101 430 104Q433 107 456 148Q475 181 478 187.5Q481 194 478 198Q477 201 452 220L428 239V243Q429 269 428 278L427 285L452 304Q476 322 477 324Q481 328 479 334Q479 337 455 378Q436 410 431.5 416Q427 422 423 422Q420 422 391 411L361 399L351 405Q341 412 332 417L322 422L318 453Q314 478 313 482.5Q312 487 308 490Q305 492 256 492Q207 492 204 490Q200 487 199 482.5Q198 478 194 453L190 422L179 417Q169 411 160 405L151 399L122 411Q97 421 91.5 422Q86 423 82 420Q79 417 56 376Q37 343 34 337Q31 331 33 326Q35 324 59 305L84 285V281Q83 255 84 246L85 239L62 222Q40 204 37 202Q31 196 32 190Q33 187 57 146Q76 114 80.5 108Q85 102 89 102Q92 102 121 113L151 125L161 119Q171 112 180 107L190 103L194 72Q198 42 199 39.5Q200 37 203 35ZM275 184Q275 184 275 184Q268 183 260 182Q232 181 209 197.5Q186 214 179 242Q173 262 179 282Q182 296 190 308Q200 321 215 331Q238 345 265 342Q282 339 297 331Q312 321 322 308Q330 296 333 282Q338 263 334 244Q329 225 317 211Q300 190 275 184Z"
-fn iconPath(i: number): string = i == 0 ? homePath() : (i == 1 ? bookmarkPath() : (i == 2 ? addCirclePath() : (i == 3 ? personPath() : settingsPath())))
-fn tabName(i: number): string = i == 0 ? "Home" : (i == 1 ? "Bookmark" : (i == 2 ? "Add" : (i == 3 ? "Profile" : "Settings")))
-fn iconAscent(i: number): number = i == 1 ? 457 : (i == 2 or i == 4 ? 454 : 450)
-fn iconDescent(i: number): number = i == 1 ? 69 : (i == 2 or i == 4 ? 71 : 68)
-fn iconLine(i: number): number = iconAscent(i) + iconDescent(i) + 46
-
-// tabBarWidth = screenWidth × 0.95; singleTabWidth = (tabBarWidth − 0.1 × tabBarWidth) / 5.
+// tabBarWidth = screenWidth × 0.95.
 fn barWidth(w: number): number = w * 0.95
-fn tabWidth(w: number): number = (barWidth(w) - 0.1 * barWidth(w)) / 5
-
-// AnimatedOpacityView: withTiming(activeIndex === index ? 1 : 0.5), 300 ms inOut(quad), where
-// activeIndex is the bar's withSpring(currentIndex). The style re-runs on every frame of that
-// spring and restarts the timing each time, so neither tab gets past inOut(quad)'s flat start
-// (the tab left only drifts to ~0.9) until the spring rests (833 ms): both fade then.
-fn fade(active: bool): string = "opacity 300ms linear(0 0%, 0.00151 2.74878%, 0.00604 5.49756%, 0.0136 8.24634%, 0.02418 10.99512%, 0.03778 13.7439%, 0.0544 16.49267%, 0.07405 19.24145%, 0.09671 21.99023%, 0.1224 24.73901%, 0.15112 27.48779%, 0.18285 30.23657%, 0.21761 32.98535%, 0.25539 35.73413%, 0.29619 38.48291%, 0.34001 41.23169%, 0.38686 43.98047%, 0.43672 46.72924%, 0.48961 49.47802%, 0.54354 52.2268%, 0.59235 54.85316%, 0.64645 57.95563%, 0.69338 60.8449%, 0.73407 63.53561%, 0.77779 66.66788%, 0.81433 69.53109%, 0.84486 72.14835%, 0.87639 75.1389%, 0.90151 77.80834%, 0.92617 80.78685%, 0.94466 83.3656%, 0.96167 86.15639%, 0.97606 89.0596%, 0.98697 91.92756%, 0.99411 94.57274%, 0.9986 97.3515%, 1 100%) 833ms"
 
 component FloatingBottomBar
   props
     env: DemoEnv
   inject
-    pressto: PressablesConfig
     pressablesOnPress: action
-  // pressto: the pressed pressable (its key) and the press parity.
-  state pressing = pressNone()
-  action pressIn(key: number)
-    pressing = pressDown(pressing, key)
-  action pressOut
-    pressing = pressUp(pressing)
-  state index = 0
-  // navigation.navigate(screenName).
-  action choose(i: number)
-    pressablesOnPress()
-    index = i
+  // pressto's global onPress (the selection haptic) for a tab press.
+  action heard(m: string)
+    if m == "haptic:selection"
+      pressablesOnPress()
   view
     // The navigator's screens: plain Views on DefaultTheme's background, rgb(242, 242, 242).
     column position="absolute" inset=0 background-color="rgb(242, 242, 242)" testId="floating-bottom-bar"
       // styles.container: absolute, centred, at the bottom inset, tabBarWidth × 65, black,
-      // radius 20 continuous, a row with paddingHorizontal 5% (of the screen, its parent).
-      row position="absolute" left=((env.width - barWidth(env.width)) / 2) bottom="env(safe-area-inset-bottom)"
-        width=barWidth(env.width) height=65 box-sizing="border-box" padding-left=(0.05 * env.width)
-        padding-right=(0.05 * env.width) background-color="#000000" border-radius=20 corner-shape="-exact-continuous"
+      // radius 20 continuous.
+      view position="absolute" left=((env.width - barWidth(env.width)) / 2) bottom="env(safe-area-inset-bottom)"
+        width=barWidth(env.width) height=65 background-color="#000000" border-radius=20 corner-shape="-exact-continuous"
         testId="tab-bar"
-        // The ShaderLight: absolute at left 0.05 × tabBarWidth, zIndex 10, 65 tall, one tab
-        // wide; translateX selectedAnimatedIndex × singleTabWidth on withSpring() (Gentle).
-        canvas surface=floating_bottom_bar() position="absolute" top=0 left=(0.05 * barWidth(env.width))
-          width=tabWidth(env.width) height=65 z-index=10 pointer-events="none" aria-hidden=true
-          translate=`${index * tabWidth(env.width)}px 0px` transition="translate -exact-spring(900, 120, 4)"
-          testId="shader-light"
-        for i in range(5) key=i
-          // styles.iconContainer: flex 1, centred; PressableScale.
-          button appearance="none" press=choose(i) flex=1 height="100%" display="flex"
-            align-items="center" justify-content="center" opacity=(i == index ? 1 : 0.5)
-            pointerdown=pressIn(i) pointerup=pressOut scale=pressableScale(pressing, i, pressto)
-            transition=`${fade(i == index)}, ${pressTransition("scale", pressto)}` aria-pressed=(i == index) testId=`tab-${i}`
-            aria-label=tabName(i)
-            // size 24, white.
-            svg width=24 height=(24 * iconLine(i) / 512) viewBox=`0 0 512 ${iconLine(i)}` aria-hidden=true
-              path d=iconPath(i) fill="#ffffff"
+        canvas surface=floating_bottom_bar() message=heard position="absolute" left=0 top=0
+          width=barWidth(env.width) height=65 touch-action="none" testId="tab-bar-canvas"
+          aria-label="Tabs: Home, Bookmark, Add, Profile, Settings"

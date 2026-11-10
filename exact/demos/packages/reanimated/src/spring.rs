@@ -118,6 +118,15 @@ impl Spring {
         let last = if self.running { self.last_ms } else { None };
         self.to(to, self.velocity, config);
         self.last_ms = last;
+        // spring.ts onStart: `initialEnergy = getEnergy(x0, config.velocity, …)`; the inherited
+        // velocity moves the spring but is not in the energy its rest is measured against.
+        let x0 = self.from - to;
+        self.energy0 = 0.5 * config.stiffness * x0 * x0;
+        self.running = self.energy0 > 0.0;
+        if !self.running {
+            self.value = to;
+            self.velocity = 0.0;
+        }
     }
 
     /// Where it is going.
