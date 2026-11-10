@@ -469,7 +469,10 @@ fn masonry(
             wrap(f, text, w - 2.0 * CARD_PAD, &mut lines);
         }
         let n = lines.len().max(1) as f32;
-        let h = 2.0 * CARD_PAD + ceil_grid(n * CARD_LINE, s);
+        // The Text's box: TextKit measures the lines a hair over n × lineHeight and Fabric rounds
+        // the box up, so it is one device pixel taller (RN capture: 5, 6 and 7 line notes are
+        // 451, 523 and 595 px at one threshold where n × 24 + 30 gives 450, 522, 594).
+        let h = 2.0 * CARD_PAD + ceil_grid(n * CARD_LINE, s) + 1.0 / s;
         let (left, top) = (grid(x0, s), grid(cursor[col], s));
         cards.push(Card {
             text: text.clone(),
@@ -1652,7 +1655,7 @@ mod tests {
         let mut s = surface();
         bind(&mut s, "", false);
         let (_, ms) = render_to(&gpu, &mut s, 0.0, 2400.0);
-        // A drag up scrolls the list (a slow lift: no fling).
+        // A drag up scrolls the list (a slow lift: no fling), in 15 pt moves.
         s.input(&pointer(PointerPhase::Down, 200.0, 700.0, ms));
         for i in 1..=20 {
             s.input(&pointer(
@@ -1672,7 +1675,9 @@ mod tests {
             .trim_end_matches('}')
             .parse()
             .unwrap();
-        assert!((280.0..=300.0).contains(&scroll), "{agent}");
+        // UIScrollView's drag begins on the second move past its 10 pt hysteresis (30 pt here,
+        // ui_scroll) and follows from there: 300 − 30.
+        assert!((scroll - 270.0).abs() < 0.01, "{agent}");
         // The + scrolled away: a tap there scrolls nothing and opens nothing.
         let row = SAFE_TOP as f32 + 56.0;
         tap(&mut s, W - 40.0, row + 24.0, ms + 10.0);
