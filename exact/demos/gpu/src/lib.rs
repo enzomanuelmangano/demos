@@ -34,6 +34,7 @@ pub mod cuberto_slider;
 pub mod delete_button;
 pub mod dot_sheet;
 pub mod duration_slider;
+pub mod exclusion_tabs;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
 pub mod floating_bottom_bar;
@@ -79,6 +80,7 @@ pub static REGISTRY: Registry = Registry {
         ("delete_button", 0, delete_button::surface),
         ("dot_sheet", 0, dot_sheet::surface),
         ("duration_slider", 0, duration_slider::surface),
+        ("exclusion_tabs", 0, exclusion_tabs::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),
         ("floating_bottom_bar", 0, floating_bottom_bar::surface),
