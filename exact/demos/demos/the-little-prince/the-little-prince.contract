@@ -6,8 +6,8 @@
 // launch's seed). The button and its icon crossfade are here; the surface posts `tick` at the
 // morph haptic pattern's beats.
 //
-// RN debounces a toggle within 400 ms of the last (a double-fired press); a press here fires
-// once, so there is no debounce.
+// RN ignores a toggle within 400 ms of the last one (text-image-morph.tsx), real double taps
+// included: so does `toggle`.
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
@@ -23,9 +23,13 @@ component TheLittlePrince
   props
     env: DemoEnv
   state revealed = false
+  state lastToggle = -1000000
   action toggle
     haptic("selection")
-    revealed = not revealed
+    let now = performanceNow()
+    if now - lastToggle >= 400
+      lastToggle = now
+      revealed = not revealed
   action heard(m: string)
     if m == "tick"
       haptic("impact-light")

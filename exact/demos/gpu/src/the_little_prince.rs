@@ -50,7 +50,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{duration_config, Spring};
+use reanimated::Spring;
 use skia::{Canvas, Color, Font, Images, Paint, Rect, Renderer, RsXform};
 
 
@@ -583,9 +583,9 @@ impl Surface for Prince {
         if let Some(was) = self.revealed {
             if was != revealed {
                 let to = if revealed { 1.0 } else { 0.0 };
-                let v = self.progress.velocity;
-                let config = duration_config(self.progress.value - to, v, DURATION_MS, 1.0, 4.0);
-                self.progress.to(to, v, config);
+                // withSpring's onStart: a velocity pointing away from the target is dropped
+                // before the duration config is solved with it.
+                crate::gfx::spring_to(&mut self.progress, to, DURATION_MS, 1.0);
                 self.ticks = Some((None, 0));
             }
         } else if revealed {
