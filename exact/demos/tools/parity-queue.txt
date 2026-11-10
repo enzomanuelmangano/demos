@@ -9,7 +9,7 @@ scroll-progress ported open:3d498955 pill+titles pixel-exact; host rounds a Text
 animated-grid-list ported open:toggle starts the cards' 700 ms layout transitions ~130 ms late and snaps the photo to 64 on frame 1 (host layout-transition, RN animates all together); tilt spring keeps a reversing velocity (engine.rs inherits, Reanimated zeroes). Stills, close button, tilt anchor fixed in 62f78e2f
 floating-bottom-bar ported open:230e1914 icons pixel-identical, fades and spring as Reanimated times them (A/B same structure); the light sits 0.35 px right of RN (both edges, unexplained by Yoga rounding)
 animated-clip-box ported claimed:sim2
-theme-canvas-animation ported
+theme-canvas-animation ported claimed:sim1
 add-to-cart todo claimed:r3-port (offline port; verify on device when done)
 bottom-bar-skia ported
 cuberto-slider ported
