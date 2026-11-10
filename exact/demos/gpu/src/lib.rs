@@ -22,6 +22,7 @@ pub mod gooey;
 pub mod ui_scroll;
 
 pub mod animated_3d_parallax;
+pub mod alert_drawer_card;
 pub mod atlas_button;
 pub mod atlas_sphere;
 pub mod audio_player;
@@ -91,6 +92,7 @@ pub mod wheel_picker;
 pub static REGISTRY: Registry = Registry {
     surfaces: &[
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
+        ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),

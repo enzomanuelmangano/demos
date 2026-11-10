@@ -1,7 +1,8 @@
 // Alert Drawer: a red Continue pill that, tapped, grows a white card around itself (an alert
 // with an icon, a title, a description and Cancel) and shrinks to the card's corner; Cancel or
 // the close button folds it back. RN: src/animations/alert-drawer (src/index.tsx,
-// src/components/alert-drawer/index.tsx, styles.ts).
+// src/components/alert-drawer/index.tsx, styles.ts). The card's body, whose radius interpolates
+// with the spring, is a Rust surface: gpu/src/alert_drawer_card.rs.
 use PressableScale from "pressto"
 use DemoEnv from "../env.contract"
 
@@ -63,6 +64,10 @@ component AlertDrawer
     // src/index.tsx: white, centred.
     column position="absolute" inset=0 background-color="#ffffff" align-items="center"
       justify-content="center" testId="alert-drawer"
+      // The card's body (radius 50 − padding, colour, shadow) on RN's spring:
+      // gpu/src/alert_drawer_card.rs, under the container (the card's zIndex -1).
+      canvas surface=alert_drawer_card(isExpanded) position="absolute" top=0 left=0 width="100%"
+        height="100%" pointer-events="none" aria-hidden=true testId="card-body"
       // styles.container: EXPANDED_CARD_WIDTH x EXPANDED_CARD_HEIGHT.
       column width=cardWidth(w) height=300 position="relative"
         // styles.card (zIndex -1: under the pill): bottom 0, radius 50 continuous, shadow
@@ -70,12 +75,7 @@ component AlertDrawer
         column class=Drawer position="absolute" bottom=0 left=(isExpanded ? 0 : inset(w))
           width=(isExpanded ? cardWidth(w) : buttonWidth(w)) height=(isExpanded ? 300 : 50)
           padding=(isExpanded ? inset(w) : 0) box-sizing="border-box"
-          // Radius 50 → 50 - padding: a radius does not animate here, so it is the expanded one
-          // throughout; collapsed it is clamped to the 25 of a 50-tall pill either way.
-          border-radius=(50 - inset(w)) corner-shape="-exact-continuous"
-          box-shadow="0px 2px 30px rgba(0, 0, 0, 0.1)"
-          background-color=(isExpanded ? "#FFFFFF" : "#FFFFFF00")
-          transition="background-color -exact-spring(1699.5858, 164.9042, 4)"
+          // Its body (radius, colour, shadow) is the surface above; this box holds the content.
           testId="card"
           // styles.cardContentWrapper: flex 1, clipped, opacity delayedProgress.
           column class=Drawer flex=1 overflow="hidden" opacity=(isExpanded ? 1 : 0)
@@ -111,7 +111,7 @@ component AlertDrawer
               button appearance="none" class=PressableScale press=toggleExpansion testId="cancel"
                 position="absolute" left=0 bottom=0 width=minButtonWidth(w) height=50
                 border-radius=50 background-color="#dfdfdf"
-                padding-left=20 padding-right=20 display="flex" align-items="center"
+                padding-left=20 padding-right=20 box-sizing="border-box" display="flex" align-items="center"
                 justify-content="center" -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
                 // styles.buttonLabel + cancelButtonLabel: Honk 16 bold, #111.
                 text "Cancel" font-family="Honk-Regular" font-size=16 color="#111111"
@@ -123,6 +123,8 @@ component AlertDrawer
           corner-shape="-exact-continuous" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20
           box-sizing="border-box" display="flex" align-items="center" justify-content="center"
           -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
-          // styles.buttonLabel: white, Honk 16 bold.
+          // styles.buttonLabel: white, Honk 16 bold. Yoga floors a Text's position where Exact
+          // rounds it: 1 px left (measured against the RN capture).
           text "Continue" font-family="Honk-Regular" font-size=16 color="#ffffff"
+            position="relative" left=-0.3333
             -exact-layout-transition="-exact-spring(1699.5858, 164.9042, 4)"
