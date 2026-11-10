@@ -184,7 +184,7 @@ impl Surface for SphereWaves {
     fn input(&mut self, event: &InputEvent) {
         let InputEvent::Pointer { id, phase, x, y, at_ms, .. } = *event else { return };
         let phase = gfx::phase(phase);
-        // Gesture.Simultaneous(tap, pinch).
+        // Gesture.Simultaneous(tap, pinch); the tap is a bare Gesture.Tap(): 500 ms, any distance.
         if let Event::Tap { x, .. } = self.tap.event(id, phase, x, y, at_ms, true) {
             // onEnd: scheduleOnRN(lightHapticFeedback).
             self.posted.push("haptic:selection".into());

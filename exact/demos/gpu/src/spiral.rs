@@ -25,9 +25,7 @@ pub fn surface() -> Box<dyn Surface> {
     // pressto's PressableWithoutFeedback (absoluteFill) is RNGH's BaseButton: onPress at the
     // finger's lift unless cancelled, however long it was held or far it moved
     // (shouldCancelWhenOutside: false, and the button covers the screen).
-    let mut tap = TapGesture::default();
-    tap.max_duration_ms = f64::INFINITY;
-    tap.max_distance = f32::INFINITY;
+    let tap = TapGesture::default().max_duration(f64::INFINITY);
     Box::new(Spiral { tap, ..Default::default() })
 }
 

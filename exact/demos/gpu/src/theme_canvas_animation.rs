@@ -39,8 +39,9 @@ static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let mut tap = TapGesture::default();
-    tap.max_distance = f32::INFINITY;
+    // react-native-skia-gesture's onTap is a plain Gesture.Tap(): RNGH's iOS default, 500 ms and
+    // no distance limit (the crate's default).
+    let tap = TapGesture::default();
     Box::new(Theme { font: Font::new(OUTFIT, FONT_SIZE), scales: std::array::from_fn(|_| Spring::at(1.0)), tap, ..Default::default() })
 }
 

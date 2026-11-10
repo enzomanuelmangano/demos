@@ -27,7 +27,10 @@
 //! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate), only
 //!   from samples where the finger moved: UIKit hears no `touchesMoved` from a finger at rest, so a drag held still keeps its last velocity at the lift (measured on the RN app:
 //!   a ruler dragged at ~100 pt/s, held 600 ms, then lifted still flings one more tick).
-//! - Tap ends within `max_duration_ms` (500) having moved less than `max_distance` (10).
+//! - Tap is RNGH's iOS `RNBetterTapGestureRecognizer`: it ends within `max_duration_ms` (500,
+//!   `defaultMaxDuration`) and has no distance limit unless one is set (`maxDist`, `maxDeltaX`,
+//!   `maxDeltaY` are NaN by default, RNTapHandler.m), measured in the window from touch-down.
+//!   `maxDist` is a radius, `maxDeltaX`/`maxDeltaY` bound each axis on its own.
 //! - Pinch is two fingers: it starts when one of them moves while both are down, and its
 //!   `scale` is their distance over the distance when the second came down (UIKit's
 //!   `UIPinchGestureRecognizer.scale`, 1 at the start); it ends when either lifts.
@@ -264,8 +267,10 @@ impl PanGesture {
 pub struct TapGesture {
     /// RNGH `maxDuration`.
     pub max_duration_ms: f64,
-    /// RNGH `maxDist`.
+    /// RNGH `maxDist` (a radius); infinite (RNGH's NaN) by default.
     pub max_distance: f32,
+    /// RNGH `maxDeltaX`, `maxDeltaY`: |dx|, |dy| each; infinite by default.
+    pub max_delta: (f32, f32),
     id: Option<u32>,
     start: (f32, f32, f64),
     failed: bool,
@@ -273,14 +278,24 @@ pub struct TapGesture {
 
 impl Default for TapGesture {
     fn default() -> Self {
-        TapGesture { max_duration_ms: 500.0, max_distance: 10.0, id: None, start: (0.0, 0.0, 0.0), failed: false }
+        TapGesture { max_duration_ms: 500.0, max_distance: f32::INFINITY, max_delta: (f32::INFINITY, f32::INFINITY), id: None, start: (0.0, 0.0, 0.0), failed: false }
     }
 }
 
 impl TapGesture {
-    /// `.maxDistance(d)` (or `.maxDeltaX(d).maxDeltaY(d)`, as a radius): moving farther fails it.
+    /// `.maxDist(d)`: moving farther than `d` from touch-down fails it.
     pub fn max_distance(mut self, d: f32) -> TapGesture {
         self.max_distance = d;
+        self
+    }
+    /// `.maxDeltaX(dx).maxDeltaY(dy)`: moving farther than `dx` across or `dy` down fails it.
+    pub fn max_delta(mut self, dx: f32, dy: f32) -> TapGesture {
+        self.max_delta = (dx, dy);
+        self
+    }
+    /// `.maxDuration(ms)`: a tap held longer fails.
+    pub fn max_duration(mut self, ms: f64) -> TapGesture {
+        self.max_duration_ms = ms;
         self
     }
     /// A pointer event; `claim` says whether a down here is this tap's.
@@ -298,7 +313,8 @@ impl TapGesture {
             Phase::Move => {
                 if self.id == Some(id) {
                     let (dx, dy) = (x - self.start.0, y - self.start.1);
-                    if (dx * dx + dy * dy).sqrt() > self.max_distance {
+                    // shouldFailUnderCustomCriteria: each test only when its limit is set.
+                    if dx.abs() > self.max_delta.0 || dy.abs() > self.max_delta.1 || (dx * dx + dy * dy).sqrt() > self.max_distance {
                         self.failed = true;
                     }
                 }
@@ -484,10 +500,43 @@ mod tests {
     }
 
     #[test]
-    fn tap_fails_when_dragged() {
+    fn tap_has_no_distance_limit_by_default() {
+        // RNGH's iOS Tap: maxDist / maxDeltaX / maxDeltaY are NaN unless set.
         let mut tap = TapGesture::default();
+        tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        tap.event(1, Phase::Move, 300.0, 200.0, 50.0, true);
+        assert_eq!(tap.event(1, Phase::Up, 300.0, 200.0, 60.0, true), Event::Tap { x: 300.0, y: 200.0 });
+    }
+
+    #[test]
+    fn tap_fails_after_500_ms() {
+        let mut tap = TapGesture::default();
+        tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        assert_eq!(tap.event(1, Phase::Up, 0.0, 0.0, 500.0, true), Event::Tap { x: 0.0, y: 0.0 });
+        tap.event(1, Phase::Down, 0.0, 0.0, 1000.0, true);
+        assert_eq!(tap.event(1, Phase::Up, 0.0, 0.0, 1501.0, true), Event::Fail);
+        let mut held = TapGesture::default().max_duration(f64::INFINITY);
+        held.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        assert_eq!(held.event(1, Phase::Up, 0.0, 0.0, 5000.0, true), Event::Tap { x: 0.0, y: 0.0 });
+    }
+
+    #[test]
+    fn tap_fails_past_max_dist() {
+        let mut tap = TapGesture::default().max_distance(10.0);
         tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
         tap.event(1, Phase::Move, 30.0, 0.0, 50.0, true);
         assert_eq!(tap.event(1, Phase::Up, 30.0, 0.0, 60.0, true), Event::Fail);
+    }
+
+    #[test]
+    fn tap_max_delta_bounds_each_axis() {
+        // .maxDeltaX(5).maxDeltaY(5): a 4.5 pt diagonal (6.4 pt away) still taps; 5.5 across fails.
+        let mut tap = TapGesture::default().max_delta(5.0, 5.0);
+        tap.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        tap.event(1, Phase::Move, 4.5, 4.5, 50.0, true);
+        assert_eq!(tap.event(1, Phase::Up, 4.5, 4.5, 60.0, true), Event::Tap { x: 4.5, y: 4.5 });
+        tap.event(1, Phase::Down, 0.0, 0.0, 100.0, true);
+        tap.event(1, Phase::Move, 5.5, 0.0, 150.0, true);
+        assert_eq!(tap.event(1, Phase::Up, 5.5, 0.0, 160.0, true), Event::Fail);
     }
 }

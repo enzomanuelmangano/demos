@@ -107,7 +107,7 @@ fn grid() -> SelectableGrid {
         last_pending: None,
         down: (0.0, 0.0),
         pan: PanGesture::new(),
-        tap: TapGesture::default().max_distance(5.0),
+        tap: TapGesture::default().max_delta(5.0, 5.0),
         active: [false; ITEMS],
         border: std::array::from_fn(|_| Timing::at(0.0)),
         badge: std::array::from_fn(|_| Timing::at(0.0)),

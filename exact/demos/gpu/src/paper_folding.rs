@@ -43,9 +43,9 @@ const LAYER: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let mut tap = TapGesture::default();
-    tap.max_duration_ms = f64::INFINITY;
-    tap.max_distance = f32::INFINITY;
+    // pressto's PressableWithoutFeedback is RNGH's BaseButton: onPress at the lift however long
+    // it was held (no maxDuration) or far it moved (no distance limit, the crate's default).
+    let tap = TapGesture::default().max_duration(f64::INFINITY);
     Box::new(PaperFolding { tap, ..Default::default() })
 }
 

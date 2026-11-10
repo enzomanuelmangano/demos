@@ -81,8 +81,9 @@ static HELVETICA_BOLD: &[u8] = include_bytes!("../fonts/helvetica-bold-subset.tt
 
 /// The demo's surface.
 pub fn surface() -> Box<dyn Surface> {
-    let mut tap = TapGesture::default();
-    tap.max_distance = f32::INFINITY;
+    // react-native-skia-gesture's onTap is a plain Gesture.Tap(): RNGH's iOS default, 500 ms and
+    // no distance limit (the crate's default).
+    let tap = TapGesture::default();
     let font = Font::new(HELVETICA_BOLD, FONT_SIZE);
     let widths = font.as_ref().map_or((0.0, 0.0), |f| (f.measure_text(DELETE).width, f.measure_text(CONFIRM).width));
     Box::new(DeleteButton {

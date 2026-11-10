@@ -78,7 +78,7 @@ pub fn surface() -> Box<dyn Surface> {
         tapped: Spring::at(1.0),
         // Gesture.Tap() with no maxDist: RNGH's iOS tap has none by default (NaN; only
         // maxDuration 500 ms), so a tap that moved 25 pt still expands (measured on RN).
-        tap: TapGesture::default().max_distance(f32::INFINITY),
+        tap: TapGesture::default(),
         pan: PanGesture::new(),
         pan_enabled: false,
         tab: None,
