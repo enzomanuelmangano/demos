@@ -127,7 +127,7 @@ fn visualizer() -> FourierVisualizer {
         pressing: None,
         inside: false,
         posted: Vec::new(),
-        icon: Font::new(MATERIAL, ICON),
+        icon: Font::new(MATERIAL, ICON).map(Font::with_ui_layout),
         canvas: Canvas::default(),
         renderer: Renderer::default(),
         button: Canvas::default(),

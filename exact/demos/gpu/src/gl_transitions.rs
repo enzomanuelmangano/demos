@@ -174,16 +174,16 @@ fn ceil_grid(v: f32, scale: f32) -> f32 {
     ((v * scale - 1e-3).ceil()) / scale
 }
 
-/// A UIKit font's line height (UIFont.lineHeight: hhea ascender + descender + lineGap).
+/// An RN Text's line height: hhea ascender + descender (RN's NSLayoutManager leaves the lineGap
+/// out: exact/parity-tools/text-probe).
 fn natural(font: &Font) -> f32 {
     gfx::line_height(font)
 }
 
-/// The baseline of a vector-icon glyph in a box of its line height whose top is `top`: TextKit
-/// puts half the font's lineGap above the ascender.
+/// The baseline of a vector-icon glyph in a box of its line height whose top is `top`: the
+/// hhea ascender below it (TextKit's line fragment starts at the box top).
 fn icon_baseline(font: &Font, top: f32) -> f32 {
-    let m = font.metrics();
-    top + m.leading / 2.0 - m.ascent
+    top - font.metrics().ascent
 }
 
 /// The demo's fonts (None where the system face can't be read: the web).
@@ -642,7 +642,7 @@ impl GlTransitions {
             snap_first: false,
             ease: Easing::timing_default(),
             fonts: Fonts::new(),
-            icons: match (Font::new(ANTDESIGN, 24.0), Font::new(ANTDESIGN, 32.0)) {
+            icons: match (Font::new(ANTDESIGN, 24.0).map(Font::with_ui_layout), Font::new(ANTDESIGN, 32.0).map(Font::with_ui_layout)) {
                 (Some(small), Some(large)) => Some(Icons { small, large }),
                 _ => None,
             },

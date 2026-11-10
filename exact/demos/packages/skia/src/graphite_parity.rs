@@ -599,14 +599,22 @@ fn text_probe() {
                 "0.23" => 500.0,
                 _ => 400.0,
             };
-            match_ui_font(size, weight).unwrap()
+            if std::env::var("TEXT_PROBE_SKIA").is_ok() { match_system_font(size, weight).unwrap() } else { match_ui_font(size, weight).unwrap() }
+        } else if std::env::var("TEXT_PROBE_SKIA").is_ok() {
+            let p = ["gpu/fonts/", "assets/fonts/"].iter().map(|d| format!("{root}{d}{}", f[0])).find(|p| std::path::Path::new(p).exists()).unwrap();
+            Font::new(Box::leak(std::fs::read(p).unwrap().into_boxed_slice()), size).unwrap()
         } else {
             let p = ["gpu/fonts/", "assets/fonts/"].iter().map(|d| format!("{root}{d}{}", f[0])).find(|p| std::path::Path::new(p).exists()).unwrap();
             Font::new(Box::leak(std::fs::read(p).unwrap().into_boxed_slice()), size).unwrap().with_ui_layout()
         };
         let mut c = Canvas::default();
         c.begin(3.0);
-        c.draw_text(&text, 0.0, -font.metrics().ascent, &font, &white());
+        let colored = f.len() > 6;
+        let fg = if colored { Color::hex(u32::from_str_radix(f[5], 16).unwrap()) } else { Color::WHITE };
+        if colored {
+            c.draw_rect(-10.0, -10.0, 1000.0, 1000.0, &Paint::fill(Color::hex(u32::from_str_radix(f[6], 16).unwrap())));
+        }
+        c.draw_text(&text, 0.0, -font.metrics().ascent, &font, &Paint::fill(fg));
         let format = wgpu::TextureFormat::Rgba8Unorm;
         let tex = gpu.device.create_texture(&wgpu::TextureDescriptor {
             label: None,
@@ -624,6 +632,14 @@ fn text_probe() {
         r.draw(&gpu.device, &gpu.queue, &mut enc, &c, &view, format, w, h, wgpu::Color::TRANSPARENT);
         gpu.queue.submit([enc.finish()]);
         let px = fixture::read(&gpu, &tex).unwrap();
+        if colored {
+            // Written for the screenshot comparison (tools: the probe's composite).
+            let name = format!("probe-{}-{}", f[0].replace('.', "_"), f[4].replace('.', "_"));
+            if let Ok(dir) = std::env::var("TEXT_PROBE_OUT") {
+                std::fs::write(format!("{dir}/{name}.ppm"), px.ppm()).unwrap();
+            }
+            continue;
+        }
         let diff = |dx: i32, dy: i32| {
             let (mut max, mut sum) = (0u32, 0u64);
             for y in 0..h as i32 {

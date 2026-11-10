@@ -41,7 +41,7 @@ static FIRA_CODE_MEDIUM: &[u8] = include_bytes!("../fonts/fira-code-medium.ttf")
 pub fn surface() -> Box<dyn Surface> {
     let base = (-HEIGHT / 2.0 + 10.0) as f64;
     Box::new(BalanceSlider {
-        font: Font::new(FIRA_CODE_MEDIUM, FONT_SIZE),
+        font: Font::new(FIRA_CODE_MEDIUM, FONT_SIZE).map(Font::with_ui_layout),
         percents: (0..=100).map(|p| format!("{p}%")).collect(),
         box_height: Spring::at(1.0),
         label_y: Spring::at(base),

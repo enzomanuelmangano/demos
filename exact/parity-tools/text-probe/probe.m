@@ -92,10 +92,21 @@ static UIFont *fontFor(NSString *name, CGFloat size) {
         [text appendFormat:@"%C", [raw characterAtIndex:i]];
       }
     }
-    NSAttributedString *as = [[NSAttributedString alloc] initWithString:text attributes:@{NSFontAttributeName : font, NSForegroundColorAttributeName : UIColor.whiteColor}];
+    // Optional colours: the text's and a backdrop view's, sRGB hex (default white on none).
+    UIColor *(^hex)(NSString *) = ^UIColor *(NSString *h) {
+      unsigned v = (unsigned)strtoul(h.UTF8String, NULL, 16);
+      return [UIColor colorWithRed:((v >> 16) & 255) / 255.0 green:((v >> 8) & 255) / 255.0 blue:(v & 255) / 255.0 alpha:1];
+    };
+    UIColor *fg = f.count > 5 ? hex(f[5]) : UIColor.whiteColor;
+    NSAttributedString *as = [[NSAttributedString alloc] initWithString:text attributes:@{NSFontAttributeName : font, NSForegroundColorAttributeName : fg}];
     CGRect b = [as boundingRectWithSize:CGSizeMake(10000, 10000) options:NSStringDrawingUsesLineFragmentOrigin context:nil];
     // RN rounds the measured box up to whole device pixels.
     CGSize size = CGSizeMake(ceil(b.size.width * s) / s, ceil(b.size.height * s) / s);
+    if (f.count > 6) {
+      UIView *bg = [[UIView alloc] initWithFrame:CGRectMake([f[3] doubleValue] - 4, [f[4] doubleValue] - 4, size.width + 8, size.height + 8)];
+      bg.backgroundColor = hex(f[6]);
+      [vc.view addSubview:bg];
+    }
     TextView *v = [[TextView alloc] initWithFrame:CGRectMake([f[3] doubleValue], [f[4] doubleValue], size.width, size.height)];
     v.opaque = NO;
     v.backgroundColor = UIColor.clearColor;
