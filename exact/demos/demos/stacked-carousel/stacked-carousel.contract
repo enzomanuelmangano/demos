@@ -1,117 +1,20 @@
 // Stacked Carousel: twenty white cards in a pile; a horizontal swipe pages through them, the
 // front card lifting up, growing and fading out while the ones behind tilt forward and rise
 // into its place; a paginator of dots follows. RN: src/animations/stacked-carousel (index.tsx,
-// components/stacked-carousel/index.tsx, components/paginator/index.tsx).
+// components/stacked-carousel/index.tsx, components/paginator/index.tsx). The FlatList
+// (snapToInterval with disableIntervalMomentum: one page per fling at most), the cards and the
+// paginator it drives are Rust: gpu/src/stacked_carousel.rs, gpu/shaders/stacked_carousel.wgsl.
 use DemoEnv from "../env.contract"
-
-// index.tsx: 20 items, cardWidth 320, cardHeight 200, stackOffset 12, paginatorVisibleDots 3,
-// paginatorDotSize 10, paginatorSpacing 10.
-fn cardW(): number = 320
-fn cardH(): number = 200
-fn stackOffset(): number = 12
-fn count(): number = 20
-
-// The scroll in pages relative to card i: u = scrollX / cardWidth - i. AnimatedCard's
-// extendedInputRange is (index - 2 … index + 2) * cardWidth, i.e. u = -2 … 2.
-fn rel(scroll: number, i: number): number = scroll / cardW() - i
-fn lerp(a: number, b: number, t: number): number = a + (b - a) * t
-// scale [0.7, 0.8, 1, 1.5, 1.5], CLAMP.
-fn scaleOf(u: number): number = u <= -2 ? 0.7 : (u <= -1 ? lerp(0.7, 0.8, u + 2) : (u <= 0 ? lerp(0.8, 1, u + 1) : (u <= 1 ? lerp(1, 1.5, u) : 1.5)))
-// translateY [65, 35, 0, -100, -100], CLAMP.
-fn liftOf(u: number): number = u <= -2 ? 65 : (u <= -1 ? lerp(65, 35, u + 2) : (u <= 0 ? lerp(35, 0, u + 1) : (u <= 1 ? lerp(0, -100, u) : -100)))
-// opacity [0.2, 0.8, 1, -1, -2], EXTEND (a negative opacity draws nothing: held at 0).
-fn fadeOf(u: number): number = max(0, u <= -1 ? 0.2 + 0.6 * (u + 2) : (u <= 0 ? lerp(0.8, 1, u + 1) : (u <= 1 ? lerp(1, -1, u) : -1 - (u - 1))))
-// FAR_RIGHT_CARD_STYLE (scrollX <= (index - 3) * cardWidth): translateY 65, scale 0.7,
-// opacity 0; FAR_LEFT_CARD_STYLE (scrollX >= (index + 1) * cardWidth): -100, 1.5, 0.
-fn cardScale(u: number): number = u <= -3 ? 0.7 : (u >= 1 ? 1.5 : scaleOf(u))
-fn cardLift(u: number): number = u <= -3 ? 65 : (u >= 1 ? -100 : liftOf(u))
-fn cardFade(u: number): number = u <= -3 ? 0 : (u >= 1 ? 0 : fadeOf(u))
-// rRotateStyle: rotateX floor(interpolate [45, 30, 0, 0, 0], CLAMP) deg, 45 at u <= -2, 0 at
-// u >= 0; perspective 600.
-fn tiltOf(u: number): number = u <= -2 ? 45 : (u >= 0 ? 0 : floor(u <= -1 ? lerp(45, 30, u + 2) : lerp(30, 0, u + 1)))
-
-// Paginator: currentIndex = round(scrollX / cardWidth); a window of visibleDots (3) from
-// max(currentIndex - 1, 0), shifted back to end at pagesAmount.
-fn pageOf(scroll: number): number = round(scroll / cardW())
-fn windowStart(current: number): number = min(max(current - 1, 0), count() - 3)
-fn dotShown(i: number, current: number): bool = i >= windowStart(current) and i < windowStart(current) + 3
-// containerAnimatedStyle: translateX = centerOffset - currentPosition, with dotFullWidth 25,
-// totalWidth 19 × 10 + 25, totalSpacing 19 × 10, currentPosition currentIndex × 20 + 12.5.
-fn rowShift(current: number): number = ((count() - 1) * 10 + 25 + (count() - 1) * 10) / 2 - (current * (10 + 10) + 25 / 2)
 
 component StackedCarousel
   props
     env: DemoEnv
-  state scroll = 0
   // useAnimatedReaction on round(currentPageIndex): a selection haptic each time it changes.
-  action scrolled(x: number, y: number)
-    if pageOf(x) != pageOf(scroll)
+  action buzz(text: string)
+    if text == "haptic:selection"
       haptic("selection")
-    scroll = x
   view
-    // index.tsx styles.container: #eeeeee, the carousel centred. The carousel's own box holds
-    // only absolute children (its height is its paddingVertical 40), so its centre is the
-    // screen's.
-    column position="absolute" inset=0 background-color="#eeeeee" overflow="hidden"
-      testId="stacked-carousel"
-      // The cards: absolute, cardWidth × cardHeight at the centre, zIndex totalCards × 1000 -
-      // index, pointerEvents none.
-      for i in range(count()) key=i
-        view display="flex" flex-direction="column" position="absolute" left=((env.width - cardW()) / 2) top=((env.height - cardH()) / 2)
-          width=cardW() height=cardH() z-index=(count() * 1000 - i) pointer-events="none"
-          aria-hidden=true translate=`0px ${cardLift(rel(scroll, i))}px` scale=cardScale(rel(scroll, i))
-          opacity=cardFade(rel(scroll, i)) perspective=600 testId=`card-${i}`
-          // The rotate wrapper (flex 1): perspective 600, rotateX.
-          view display="flex" flex-direction="column" flex=1 rotate=`x ${tiltOf(rel(scroll, i))}deg`
-            // styles.cardShadow: white, radius 25 continuous, boxShadow 0 0 5px 0
-            // rgba(0, 0, 0, 0.05), overflow hidden; renderCard draws an empty flex 1 view.
-            view flex=1 background-color="#ffffff" border-radius=25 corner-shape="-exact-continuous"
-              box-shadow="0px 0px 5px 0px rgba(0, 0, 0, 0.05)" overflow="hidden"
-      // The invisible FlatList over the cards: screenWidth × (cardHeight + stackOffset × 6),
-      // zIndex 1000, centred; snapToInterval cardWidth (offsets i × cardWidth, the last ones
-      // clamped to the end), decelerationRate fast (the host's for a snapping scroller); content
-      // padded left (screenWidth - cardWidth) / 2 and top stackOffset × 3 (no right padding).
-      // The snap areas are markers at i × cardWidth from the content's start: the iOS host snaps
-      // an area's own start, without scroll-padding, so the padded items can't be the areas.
-      scroll position="absolute" left=0 top=((env.height - cardH() - stackOffset() * 6) / 2)
-        width=env.width height=(cardH() + stackOffset() * 6) z-index=1000 overflow-x="scroll"
-        overflow-y="hidden" scrollbar-width="none" scroll-snap-type="x mandatory"
-        scroll=scrolled testId="stacked-carousel-list"
-        row position="relative" width=((env.width - cardW()) / 2 + cardW() * count())
-          height=(cardH() + stackOffset() * 6) padding-left=((env.width - cardW()) / 2)
-          padding-top=(stackOffset() * 3) box-sizing="border-box" align-items="flex-start"
-          for i in range(count()) key=i
-            view width=cardW() height=cardH() flex-shrink=0
-          for i in range(count()) key=i
-            view position="absolute" left=(i * cardW()) top=0 width=cardW() height=1
-              scroll-snap-align="start" pointer-events="none" aria-hidden=true
-      // The paginator's box: screenWidth wide, from cardHeight below the carousel's top to its
-      // bottom (a negative height, held at 0); paginatorContainer is 40 tall at that box's
-      // bottom, overflow hidden, so its centre is 140 below the screen's.
-      Paginator(top=(env.height / 2 + 120), current=pageOf(scroll), page=(scroll / cardW()))
-
-// paginator/index.tsx: SpringConfig { damping 15, stiffness 100, mass 0.5 } on the row's
-// translateX and each dot's scale.
-component Paginator
-  props
-    top: number
-    current: number
-    page: number
-  view
-    row position="absolute" left=0 right=0 top=top height=40 align-items="center"
-      justify-content="center" overflow="hidden" pointer-events="none" aria-hidden=true
-      testId="paginator"
-      // styles.dotsContainer: a centred row. The springs { stiffness 100, damping 15, mass 0.5 }
-      // have ζ 1.06 ≥ 1: Reanimated runs them critically damped (damping 2√(k·m) = 14.14).
-      row flex-shrink=0 align-items="center" justify-content="center"
-        translate=`${rowShift(current)}px 0px` transition="translate -exact-spring(100, 14.1422, 0.5)"
-        for i in range(count()) key=i
-          // AnimatedDot: marginRight spacing (10); opacity withTiming(500 ms linear) to 1 when
-          // currentPageIndex == index, 0.75 when in the window, else 0; scale springs to 1
-          // when currentPageIndex == index, else 0.75.
-          view flex-shrink=0 margin-right=10
-            opacity=(page == i ? 1 : (dotShown(i, current) ? 0.75 : 0))
-            scale=(page == i ? 1 : 0.75)
-            transition="opacity 500ms linear, scale -exact-spring(100, 14.1422, 0.5)" testId=`dot-${i}`
-            // styles.dot: 10 × 10, rgba(0, 0, 0, 0.15), fully round.
-            view width=10 height=10 border-radius=9999 background-color="rgba(0, 0, 0, 0.15)"
+    // index.tsx styles.container: #eeeeee (the canvas draws it), the carousel centred.
+    column position="absolute" inset=0 background-color="#eeeeee" testId="stacked-carousel"
+      canvas surface=stacked_carousel() message=buzz position="absolute" top=0 left=0 width=env.width
+        height=env.height touch-action="none" aria-label="Cards" testId="stacked-carousel-list"

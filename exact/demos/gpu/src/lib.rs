@@ -61,6 +61,7 @@ pub mod skia_color_picker;
 pub mod slide_to_reveal;
 pub mod sphere_waves;
 pub mod spiral;
+pub mod stacked_carousel;
 pub mod steddy_graph_interaction;
 pub mod story_list;
 pub mod swipe_cards;
@@ -117,6 +118,7 @@ pub static REGISTRY: Registry = Registry {
         ("slide_to_reveal", 0, slide_to_reveal::surface),
         ("sphere_waves", 0, sphere_waves::surface),
         ("spiral", 0, spiral::surface),
+        ("stacked_carousel", 0, stacked_carousel::surface),
         ("steddy_graph_interaction", 1, steddy_graph_interaction::surface),
         ("story_list", 0, story_list::surface),
         ("swipe_cards", 4, swipe_cards::surface),

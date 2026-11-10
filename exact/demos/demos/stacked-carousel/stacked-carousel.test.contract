@@ -1,10 +1,5 @@
 at "/demo/stacked-carousel"
 
-test "the pile pages under a swipe"
+test "the cards and the paginator are one scrolling canvas"
   expect tree has "stacked-carousel"
-  expect tree has "card-0"
-  expect tree has "dot-0"
-  tap "stacked-carousel-list" drag -320 0
-  clock settle
-  expect tree has "card-1"
-  expect tree has "paginator"
+  expect tree has "stacked-carousel-list"
