@@ -82,12 +82,13 @@ use Steps from "./steps/steps.contract"
 use StoryList from "./story-list/story-list.contract"
 use SwipeCards from "./swipe-cards/swipe-cards.contract"
 use TabNavigation from "./tab-navigation/tab-navigation.contract"
+use TelegramThemeSwitch from "./telegram-theme-switch/telegram-theme-switch.contract"
 use TheLittlePrince from "./the-little-prince/the-little-prince.contract"
 use ThemeCanvasAnimation from "./theme-canvas-animation/theme-canvas-animation.contract"
 use Toast from "./toast/toast.contract"
 use TwitterTabBar from "./twitter-tab-bar/twitter-tab-bar.contract"
-use VerificationCode from "./verification-code/verification-code.contract"
 use TwodosSlide from "./twodos-slide/twodos-slide.contract"
+use VerificationCode from "./verification-code/verification-code.contract"
 use WheelPicker from "./wheel-picker/wheel-picker.contract"
 
 component PortedDemo
@@ -260,6 +261,8 @@ component PortedDemo
         SwipeCards(env=env)
       if slug == "tab-navigation"
         TabNavigation(env=env)
+      if slug == "telegram-theme-switch"
+        TelegramThemeSwitch(env=env)
       if slug == "the-little-prince"
         TheLittlePrince(env=env)
       if slug == "theme-canvas-animation"
@@ -268,9 +271,9 @@ component PortedDemo
         Toast(env=env)
       if slug == "twitter-tab-bar"
         TwitterTabBar(env=env)
+      if slug == "twodos-slide"
+        TwodosSlide()
       if slug == "verification-code"
         VerificationCode()
       if slug == "wheel-picker"
-      if slug == "twodos-slide"
-        TwodosSlide()
         WheelPicker(env=env)

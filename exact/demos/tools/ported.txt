@@ -80,10 +80,11 @@ steps
 story-list
 swipe-cards
 tab-navigation
+telegram-theme-switch
 the-little-prince
 theme-canvas-animation
 toast
 twitter-tab-bar
-verification-code
 twodos-slide
+verification-code
 wheel-picker
