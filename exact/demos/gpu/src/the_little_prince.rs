@@ -5,8 +5,10 @@
 //! The whole window, #f7f4ec; the button that toggles it is the Contract's (the input).
 //!
 //! - The atlas (useTexture, at 1× as RN Skia's offscreen surface): every distinct letter in a
-//!   40 pt cell (cols = ⌈√n⌉), drawn in Newsreader 30 (its default instance, wght 400, opsz
-//!   18) in #1c1a17 at (3, 28.8) of its cell.
+//!   40 pt cell (cols = ⌈√n⌉), drawn in Newsreader 30 at wght 400, opsz 12: the instance
+//!   RN Skia's Core Text font takes on iOS (measured on RN's page: its glyph positions and
+//!   line breaks match opsz 12 to 0.5 px; the file's default, opsz 18, is 6.6 px off), in
+//!   #1c1a17 at (3, 28.8) of its cell.
 //! - The page (buildLayout): margins width × 0.09 and height × 0.13, letters at 0.48 scale,
 //!   advances (not ink) × 0.48, lines 30 × 0.48 × 1.55 apart, paragraphs indented by three
 //!   spaces, words wrapped, stopping at the bottom margin. A letter's point is its cell's centre.
@@ -693,12 +695,13 @@ mod tests {
         assert!(((p * 255.0).round() / 255.0 - p).abs() > 1e-4, "{p}");
     }
 
-    /// Core Text's advances (CTFontGetAdvancesForGlyphs on Newsreader.ttf at 30, optical size
-    /// "none" as Skia's SkCTFontCreateExactCopy asks), f32 as Skia keeps them.
+    /// The advances RN Skia lays the page out with on iOS: Newsreader at 30 on its opsz 12
+    /// instance (Core Text's default optical size; RN's glyph positions and line breaks match it
+    /// to 0.5 px, the opsz 18 default instance is 6.6 px off), f32 as Skia keeps them.
     #[test]
     fn advances_are_core_texts() {
         let font = Font::new(NEWSREADER, FONT_SIZE).unwrap();
-        for (c, ct) in [('o', 15.135f64), ('Y', 19.904999999999998), ('u', 15.344999999999999), (' ', 6.66), ('—', 20.37), ('“', 11.865)] {
+        for (c, ct) in [('o', 17.07f64), ('Y', 21.72), ('u', 17.61), (' ', 7.305), ('—', 20.955), ('“', 13.215)] {
             assert_eq!(core_text_advance(&font, c), ct as f32 as f64, "{c}");
         }
         let mut buf = [0u8; 4];

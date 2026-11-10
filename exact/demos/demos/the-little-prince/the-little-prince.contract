@@ -39,9 +39,9 @@ component TheLittlePrince
       // #efe7d6, crossfading (opacity, scale 1 → 0.85 / 0.85 → 1) as `face` moves.
       button appearance="none" press=toggle class=PressableScale position="absolute"
         right=(env.width * 0.09 - 16) bottom=(env.width * 0.09 - 16) width=80 height=80 padding=16
-        border="none" background-color="transparent" aria-label="Switch between the text and the picture"
+        box-sizing="border-box" border="none" background-color="transparent" aria-label="Switch between the text and the picture"
         testId="prince-toggle"
-        view position="relative" width=48 height=48 border-radius=24 corner-shape="squircle"
+        view position="relative" width=48 height=48 border-radius=24 corner-shape="-exact-continuous"
           background-color="#1c1a17"
           view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
             opacity=(revealed ? 0 : 1) scale=(revealed ? 0.85 : 1)
