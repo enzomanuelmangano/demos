@@ -72,7 +72,7 @@ component AlertDrawer
           padding=(isExpanded ? inset(w) : 0) box-sizing="border-box"
           // Radius 50 → 50 - padding: a radius does not animate here, so it is the expanded one
           // throughout; collapsed it is clamped to the 25 of a 50-tall pill either way.
-          border-radius=(50 - inset(w)) corner-shape="squircle"
+          border-radius=(50 - inset(w)) corner-shape="-exact-continuous"
           box-shadow="0px 2px 30px rgba(0, 0, 0, 0.1)"
           background-color=(isExpanded ? "#FFFFFF" : "#FFFFFF00")
           transition="background-color -exact-spring(1699.6, 164.9, 4)"
@@ -120,7 +120,7 @@ component AlertDrawer
         button appearance="none" class=PressableScale press=pressMain testId="continue"
           position="absolute" right=inset(w) bottom=(isExpanded ? inset(w) : 0)
           width=(isExpanded ? minButtonWidth(w) : buttonWidth(w)) height=50 border-radius=50
-          corner-shape="squircle" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20
+          corner-shape="-exact-continuous" background-color="color(display-p3 0.9412 0.1294 0.1686)" padding-left=20 padding-right=20
           box-sizing="border-box" display="flex" align-items="center" justify-content="center"
           -exact-layout-transition="-exact-spring(1699.6, 164.9, 4)"
           // styles.buttonLabel: white, Honk 16 bold.
