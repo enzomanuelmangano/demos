@@ -234,10 +234,10 @@ mod tests {
         assert!(!lit(&img, 105, 100), "above {:?}", img.at(105, 100));
         let pointer = |phase, x, y, at_ms| InputEvent::Pointer { id: 1, phase, x, y, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 228.0, 10.0));
-        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation: 130 pt of travel
-        // translate it 120.
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation (a pan that begins 90 ms or more after touch-down): 130 pt
+        // of travel translate it 120.
         for i in 1..=11 {
-            s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 228.0 - (12.0 * i as f32).min(130.0), 10.0 + 16.0 * i as f64));
+            s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 228.0 - (12.0 * i as f32).min(130.0), 100.0 + 8.0 * i as f64));
         }
         let (img, _) = fixture::render(&gpu, &mut s, &frame(200.0)).unwrap();
         img.save("metaball-dragged");
@@ -250,9 +250,9 @@ mod tests {
         assert!(!lit(&img, 20, 168), "beside the bridge {:?}", img.at(20, 168));
         // The lift at another point than the last move: circleGesture has no onEnd.
         s.input(&pointer(exact_gpu::PointerPhase::Down, 105.0, 108.0, 400.0));
-        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 96.0, 416.0));
-        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 86.0, 424.0));
-        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 78.0, 432.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 96.0, 496.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Move, 105.0, 86.0, 504.0));
+        s.input(&pointer(exact_gpu::PointerPhase::Up, 105.0, 78.0, 512.0));
         assert_eq!(s.first, (105.0, 96.0));
     }
 

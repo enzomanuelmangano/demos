@@ -401,9 +401,11 @@ mod tests {
         assert_eq!(&full.at(2 * 52, 2 * 870)[..3], &[0x0D, 0x0D, 0x0D]);
         assert_eq!(&full.at(2 * 210, 2 * 72)[..3], &[0x76, 0x76, 0x76]);
 
-        // Drag down 310 (RNGH on iOS leaves UIKit's 10 pt hysteresis out: translation 300) and
-        // let go: progress 0.67 < 0.8, it collapses.
+        // Drag down 310 (RNGH on iOS leaves UIKit's 10 pt hysteresis out of a pan that begins
+        // 90 ms or more after touch-down: translation 300) and let go: progress 0.67 < 0.8, it
+        // collapses.
         s.input(&pointer(PointerPhase::Down, 210.0, 400.0, ms));
+        ms += 90.0;
         for k in 1..=16 {
             ms += 16.0;
             s.input(&pointer(PointerPhase::Move, 210.0, 400.0 + (20.0 * k as f32).min(310.0), ms));

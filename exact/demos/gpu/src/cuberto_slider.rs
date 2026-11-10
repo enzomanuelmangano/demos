@@ -226,9 +226,9 @@ mod tests {
         assert!(purple(img.at(100, 180)), "balloon {:?}", img.at(100, 180));
         let pointer = |phase, x, at_ms| InputEvent::Pointer { id: 1, phase, x, y: 200.0, dx: 0.0, dy: 0.0, kind: exact_gpu::PointerKind::Touch, buttons: 1, at_ms };
         s.input(&pointer(PointerPhase::Down, 50.0, 0.0));
-        let mut ms = 0.0;
-        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation: 160 pt of travel
-        // translate the picker 150.
+        let mut ms = 100.0;
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation (a pan that begins 90 ms or more after touch-down): 160 pt of
+        // travel translate the picker 150.
         for i in 1..=10 {
             s.input(&pointer(PointerPhase::Move, 50.0 + 16.0 * i as f32, ms));
             ms += 16.0;

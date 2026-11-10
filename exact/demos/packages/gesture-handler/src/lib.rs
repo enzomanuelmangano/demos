@@ -4,16 +4,26 @@
 //! RNGH callbacks would have been told.
 //!
 //! What RNGH's iOS handlers do, kept here:
-//! - Pan begins once the finger has moved `min_distance` (RNGH's `minDist`, UIKit's 10 pt
-//!   hysteresis by default) and reports `translationX/Y` without that hysteresis, as RNGH on
-//!   iOS does. A plain `Gesture.Pan()` is UIKit's pan, whose translation leaves out exactly the
-//!   10 pt along the direction it set off in: at activation it is the travel past 10 pt, not 0
-//!   and not the travel from touch-down. Measured on the RN app (iPhone Air sim, argent moves):
-//!   104.5 pt → 94.3 (wheel-picker, 5.2 pt moves), 140 → 130.2 (3.5 pt moves), 99.95 → 90.1
-//!   (floating-modal, whose moves cross 10 pt only at 14.3). RNGH's custom criteria (`minDist`
-//!   here) instead `setTranslation(.zero)` at activation (RNPanHandler.m): from that point. The
-//!   demo screen's close Pan (activeOffsetY 10, failOffsetX ±30) does not delay a demo's pan:
-//!   horizontal and vertical drags measured the same.
+//! - Pan begins on the first move `min_distance` or more from touch-down (RNGH's `minDist`,
+//!   UIKit's 10 pt hysteresis by default). A plain `Gesture.Pan()` is UIKit's own
+//!   UIPanGestureRecognizer: RNGH (RNPanHandler.m) adds nothing to it without custom criteria
+//!   (`failOffset*` alone is none) and reports `translationInView:` of the window. Its translation
+//!   depends on when that move comes (exact/parity-tools/pan-probe, iOS 27 Simulator, a bare
+//!   recognizer; argent moves of 2 to 15.6 pt, 0.6 and 2 s drags, and a single 12 pt move at
+//!   10 to 130 ms):
+//!   - from about 90 ms after touch-down, the pan begins inside that move and the translation
+//!     leaves out exactly the 10 pt along the direction it set off in (2.00 at a 12 pt begin;
+//!     140 pt → 130.00 at every move size in 2 s drags). Agent-measured on the RN app (slow
+//!     drags): 104.5 → 94.3, 140 → 130.2, 99.95 → 90.1;
+//!   - earlier, UIKit defers it to the next update and zeroes the translation at the finger
+//!     (0.00 at a 12 pt begin at 30, 50, 70 ms; 0.6 s drags of 140 pt: 126.00, 129.67, 126.00,
+//!     124.33 for 2, 3.5, 7, 15.6 pt moves). Not modelled: twice (moves 12 pt at ~12 ms and at
+//!     ~88 ms) the deferred pan began only at the next move, and once a 110 ms move zeroed.
+//!   RNGH's custom criteria (`minDist` here) instead `setTranslation(.zero)` at activation
+//!   (RNPanHandler.m): from that point. The demo screen's close Pan (activeOffsetY 10,
+//!   failOffsetX ±30) does not delay a demo's pan. The RN Debug app loses more on fast drags
+//!   (swipe-cards: 113 for 140 pt in 0.6 s, 127.9 in 2 s): its busy main thread, not RN's
+//!   rule; parity follows UIKit (Release).
 //! - Velocity is points per second, from the last 100 ms of samples (UIKit's estimate), only
 //!   from samples where the finger moved: UIKit hears no `touchesMoved` from a finger at rest, so a drag held still keeps its last velocity at the lift (measured on the RN app:
 //!   a ruler dragged at ~100 pt/s, held 600 ms, then lifted still flings one more tick).
@@ -94,6 +104,10 @@ struct Sample {
     ms: f64,
 }
 
+/// UIKit's pan: a begin this soon after touch-down (ms) zeroes the translation at the finger;
+/// a later one leaves out the hysteresis along the set-off (pan-probe: 83 ms zeroed, 97 ms did not).
+pub const UIKIT_DEFERRED_BEGIN_MS: f64 = 90.0;
+
 /// A one-finger pan.
 #[derive(Clone, Debug)]
 pub struct PanGesture {
@@ -101,6 +115,8 @@ pub struct PanGesture {
     pub min_distance: f32,
     id: Option<u32>,
     start: (f32, f32),
+    /// The touch-down's time.
+    down_ms: f64,
     origin: (f32, f32),
     /// `.min_distance(d)` was set: RNGH's custom criteria, translation from the activation.
     custom: bool,
@@ -118,7 +134,7 @@ impl Default for PanGesture {
 impl PanGesture {
     /// `Gesture.Pan()`: activates after 10 pt of travel, as UIKit's pan does.
     pub fn new() -> PanGesture {
-        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), origin: (0.0, 0.0), custom: false, last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
+        PanGesture { min_distance: 10.0, id: None, start: (0.0, 0.0), down_ms: 0.0, origin: (0.0, 0.0), custom: false, last: (0.0, 0.0), active: false, samples: Vec::with_capacity(16) }
     }
     /// The former opt-in, now the only behaviour: a no-op kept so callers written against it
     /// still build (swipe_cards); drop the call.
@@ -187,6 +203,7 @@ impl PanGesture {
                 }
                 self.id = Some(id);
                 self.start = (x, y);
+                self.down_ms = ms;
                 self.origin = (x, y);
                 self.last = (x, y);
                 self.active = false;
@@ -209,7 +226,8 @@ impl PanGesture {
                     let (dx, dy) = (x - self.start.0, y - self.start.1);
                     if (dx * dx + dy * dy).sqrt() >= self.min_distance {
                         self.active = true;
-                        self.origin = if self.custom {
+                        self.origin = if self.custom || ms - self.down_ms < UIKIT_DEFERRED_BEGIN_MS {
+                            // RNGH's setTranslation(.zero), or UIKit's deferred begin.
                             (x, y)
                         } else {
                             // UIKit: the touch-down point moved 10 pt along the set-off.
@@ -402,9 +420,9 @@ mod tests {
         let mut pan = PanGesture::new();
         assert!(matches!(pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true), Event::Begin { .. }));
         assert_eq!(pan.event(1, Phase::Move, 4.0, 0.0, 16.0, true), Event::None);
-        let Event::Start(p) = pan.event(1, Phase::Move, 20.0, 0.0, 32.0, true) else { panic!() };
+        let Event::Start(p) = pan.event(1, Phase::Move, 20.0, 0.0, 132.0, true) else { panic!() };
         assert_eq!(p.translation_x, 10.0, "the travel past UIKit's 10 pt hysteresis");
-        let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 48.0, true) else { panic!() };
+        let Event::End(p) = pan.event(1, Phase::Up, 40.0, 0.0, 148.0, true) else { panic!() };
         assert_eq!(p.translation_x, 30.0);
         assert!(p.velocity_x > 500.0, "{}", p.velocity_x);
         // RNGH's custom criteria zero the translation where the pan activates.
@@ -412,6 +430,28 @@ mod tests {
         pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
         let Event::Start(p) = pan.event(1, Phase::Move, 0.0, 20.0, 16.0, true) else { panic!() };
         assert_eq!(p.translation_y, 0.0);
+    }
+
+    #[test]
+    fn uikit_zeroes_a_pan_that_begins_early() {
+        // pan-probe: a 12 pt move 30 to 83 ms after touch-down begins at 0; from ~97 ms at 2.
+        for (ms, want) in [(30.0, 0.0), (70.0, 0.0), (97.0, 2.0), (130.0, 2.0)] {
+            let mut pan = PanGesture::new();
+            pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+            let Event::Start(p) = pan.event(1, Phase::Move, 12.0, 0.0, ms, true) else { panic!() };
+            assert_eq!(p.translation_x, want, "{ms} ms");
+            let Event::Update(p) = pan.event(1, Phase::Move, 60.0, 0.0, ms + 250.0, true) else { panic!() };
+            assert_eq!(p.translation_x, 48.0 + want, "{ms} ms");
+        }
+        // 0.6 s drags of 140 pt (probe): 7 pt moves begin at 14 pt after ~66 ms → 126.
+        let mut pan = PanGesture::new();
+        pan.event(1, Phase::Down, 0.0, 0.0, 0.0, true);
+        let mut last = Event::None;
+        for i in 1..=20 {
+            last = pan.event(1, Phase::Move, i as f32 * 7.0, 0.0, i as f64 * 30.0, true);
+        }
+        let Event::Update(p) = last else { panic!() };
+        assert_eq!(p.translation_x, 126.0);
     }
 
     #[test]

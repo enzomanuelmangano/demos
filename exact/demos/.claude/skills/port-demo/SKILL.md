@@ -134,16 +134,23 @@ One commit per haptic event, never per frame.
   need that offset by hand (the box is Contract's).
 - `-exact-exit-animation` must be one literal declaration (no `${…}`), or the web target
   refuses it. Write the curve out (`cubic-bezier(0.455, 0.03, 0.515, 0.955)` is inOut(quad)).
-- RNGH's iOS Pan (measured: wheel-picker, floating-modal): a plain `Gesture.Pan()` is UIKit's
-  pan, whose `translationX/Y` leaves out exactly the 10 pt hysteresis along the direction it set
-  off in (104.5 → 94.3, 140 → 130.2, 99.95 → 90.1 pt), not the travel from touch-down and not 0
-  at activation; custom criteria (`minDist`, active offsets) `setTranslation(.zero)` at
-  activation instead. A finger at rest sends no moves, so the lift's `velocityX/Y` is the last
-  move's (a drag held still still flings a snapPoint one tick on). The gesture-handler crate's
-  `PanGesture` does all of it (`.min_distance(d)` is the custom-criteria case);
-  react-native-skia-gesture is an RNGH Pan underneath. The demo screen's close Pan (activeOffsetY
-  10, failOffsetX ±30) does not change a demo pan's activation, horizontal or vertical. A Rust
-  UIScrollView zeroes the velocity after a rest itself (`ui_scroll::release_velocity`).
+- RNGH's iOS Pan: a plain `Gesture.Pan()` is UIKit's UIPanGestureRecognizer untouched (RNPanHandler.m
+  adds nothing without custom criteria; `failOffset*` alone is none) and reports
+  `translationInView:` of the window, so a view's own transform plays no part. It begins on the first
+  move 10 pt or more from touch-down, and its translation depends on when (exact/parity-tools/pan-probe,
+  a bare recognizer): from ~90 ms after touch-down it leaves out exactly the 10 pt along the set-off
+  (a 12 pt begin reads 2; slow drags: 140 → 130 at any move size; RN's wheel-picker 104.5 → 94.3,
+  floating-modal 99.95 → 90.1); earlier, UIKit defers the begin a frame and zeroes the translation at
+  the finger (12 pt at 30-83 ms reads 0; 0.6 s drags of 140 pt: 124.3-129.7 by move size). Custom
+  criteria (`minDist`, active offsets) `setTranslation(.zero)` at activation instead. A finger at
+  rest sends no moves, so the lift's `velocityX/Y` is the last move's (a drag held still still flings
+  a snapPoint one tick on). The gesture-handler crate's `PanGesture` does all of it
+  (`.min_distance(d)` is the custom-criteria case; a test that wants the 10 pt left out moves 90 ms
+  or more after its down). The RN Debug app loses more on fast drags (swipe-cards: 113 for 140 pt in
+  0.6 s, 127.9 in 2 s): its busy main thread; parity follows UIKit (Release). react-native-skia-gesture
+  is an RNGH Pan underneath. The demo screen's close Pan (activeOffsetY 10, failOffsetX ±30) does not
+  change a demo pan's activation. A Rust UIScrollView zeroes the velocity after a rest itself
+  (`ui_scroll::release_velocity`).
 - UIScrollView (measured, selectable-grid-list's FlatList): the drag is 1:1 from the pan's
   activation; at the lift it decelerates (0.998/ms) only from a finger faster than ~335 pt/s and
   not after a 100 ms rest: `ui_scroll::uiscroll_release`. Below that it stops under the finger.

@@ -279,10 +279,11 @@ mod tests {
         let finger = |s: &mut Box<dyn Surface>, phase, y: f32, at_ms| {
             s.input(&InputEvent::Pointer { id: 1, phase, x: 210.0, y, dx: 0.0, dy: 0.0, kind: PointerKind::Touch, buttons: 1, at_ms })
         };
-        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation: 410 pt of travel.
+        // RNGH on iOS leaves UIKit's 10 pt hysteresis out of the translation (a pan that begins 90 ms or more after touch-down): 410 pt
+        // of travel.
         finger(&mut s, PointerPhase::Down, 800.0, 0.0);
         for i in 1..=21 {
-            finger(&mut s, PointerPhase::Move, 800.0 - (20.0 * i as f32).min(410.0), 16.0 * i as f64);
+            finger(&mut s, PointerPhase::Move, 800.0 - (20.0 * i as f32).min(410.0), 90.0 + 14.0 * i as f64);
         }
         assert!(s.agent("{}").unwrap().starts_with("{\"translateY\":-400.00"), "{}", s.agent("{}").unwrap());
         let (dragged, held) = fixture::render(&gpu, s.as_mut(), &frame(400.0)).unwrap();
