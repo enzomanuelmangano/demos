@@ -294,6 +294,23 @@ One commit per haptic event, never per frame.
 - A Core Animation layer moved by translateY (a Keyframe on a View of text) is its backing store
   resampled at the fractional offset, not glyphs re-rasterised: pre-render such a layer and
   sample it bilinearly (airbnb's pages).
+- An RN Skia `<Canvas>` is cleared TRANSPARENT (a `backgroundColor` in its style is the View's),
+  and Core Animation colour-matches its Display P3 surface per pixel UNPREMULTIPLIED before it
+  blends over that View: an AA edge or a glow keeps its colour's sRGB hue. Converting the
+  premultiplied (or pre-blended) P3 value instead gave spiral's cyan glow up to 10 levels of red
+  RN has not. Compose `p3_to_srgb(rgb / a) * a + view × (1 − a)`.
+- A Group `layer` with an image filter is a layer in the surface's space, encoded Display P3:
+  gradients mix there and the blur mixes P3 values (an sRGB-encoded blur of a saturated colour is
+  up to 18 levels off). `Renderer::p3 = true` keeps a packages/skia target in P3 (gradients stay,
+  other colours are converted); convert once at the end. Skia sizes such a layer to the filter's
+  input, the device clip outset by the blur's `ceil(3σ)` (when the content has no bounds), so what
+  lies just off screen glows into the edges: draw the layer that much larger (spiral).
+- A path of many small `addCircle`s (spiral's 1641) is one Graphite path, a 4× MSAA union: the
+  sub-pixel circles take quarter coverages. Instanced analytic circles overstate them (a r 0.6 px
+  dot lit 4 pixels): draw RN's path with `draw_with` + `skia::add_circle` (~1.7 ms CPU a frame).
+- iOS Graphite rounds each gradient value to 8 bits in P3: on saturated cyan one P3 level of red
+  is ~11 sRGB levels, so a sweep's seam can step a few pixels apart from RN's (sub-level float
+  arithmetic, not a model error).
 
 ## 4. Check
 
