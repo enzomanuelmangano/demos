@@ -26,6 +26,7 @@ pub mod airbnb_flip_card;
 pub mod airbnb_flip_pages;
 pub mod alert_drawer_card;
 pub mod animated_3d_parallax;
+pub mod animated_clip_box;
 pub mod atlas_button;
 pub mod atlas_sphere;
 pub mod audio_player;
@@ -108,6 +109,7 @@ pub static REGISTRY: Registry = Registry {
         ("airbnb_flip_pages", 2, airbnb_flip_pages::surface),
         ("alert_drawer_card", 1, alert_drawer_card::surface),
         ("animated_3d_parallax", 0, animated_3d_parallax::surface),
+        ("animated_clip_box", 1, animated_clip_box::surface),
         ("atlas_button", 1, atlas_button::surface),
         ("atlas_sphere", 0, atlas_sphere::surface),
         ("audio_player", 1, audio_player::surface),

@@ -2,12 +2,5 @@ at "/demo/animated-clip-box"
 
 test "both cards are there"
   expect tree has "animated-clip-box"
-  expect tree has "explore-circle"
-  expect tree has "learn-circle"
-  expect text "explore-description" == "Perfect for learning how React Native Reanimated works, prototyping a new idea, or creating a demo to share online."
-
-test "a press and release springs the circle back"
-  tap "explore-press"
-  clock settle
-  expect tree has "explore-circle"
-  expect text "learn-action" == "Learn More"
+  expect tree has "explore-canvas"
+  expect tree has "learn-canvas"

@@ -174,6 +174,10 @@ One commit per haptic event, never per frame.
   `gpu/images/<slug>/` and `include_bytes!` them (coverflow, circular-carousel: ~1 MB total).
 - packages/skia: a continuous rrect with r ≥ half its side (a continuous circle or pill) leaves a
   1-sample AA crack one pixel inside its extremes (reported; circular-carousel's rings show it).
+  Measured (animated-clip-box, a 70 pt view, borderRadius 200 continuous): Core Animation draws
+  a continuous square whose radius reaches half its side as a true circle (mean coverage error
+  0.006 against one); packages/skia's overlap path is flatter, with a thin lens and a white row
+  at the top. Draw such a view with `draw_circle`.
 - Icon fonts drawn in Rust (`draw_text` of an AntDesign / Entypo glyph): TextKit sets the glyph
   half the font's hhea lineGap below box top + ascender (twodos-slide's check was 5.6 px high).
   Add `font.metrics().leading / 2` to the top before `gfx::baseline`.
