@@ -23,12 +23,15 @@ component StackedList
   view
     column position="absolute" inset=0 background-color="#ffffff" testId="stacked-list"
       // The cards, drawn where the list's scroll puts them; the scroller under them is empty.
-      column position="absolute" left=0 right=0 top=70 bottom=0 overflow="hidden" pointer-events="none"
+      // The FlatList clips at its own top (the screen's), not at ListMarginTop: a card scrolled
+      // up stays visible over the first 70 pt, so the layer spans the whole list and each card
+      // sits ListMarginTop (70) below its content y.
+      column position="absolute" left=0 right=0 top=0 bottom=0 overflow="hidden" pointer-events="none"
         aria-hidden=true
         for i in range(50) key=i
           view position="absolute" top=0 left="2.5%" width="95%" height=100 border-radius=15
             corner-shape="-exact-continuous" background-color="color(display-p3 0.3176 0.6745 0.8)" z-index=(0 - i)
-            translate=`0px ${cardY(scroll, env.height, i) - scroll}px`
+            translate=`0px ${70 + cardY(scroll, env.height, i) - scroll}px`
             scale=cardScale(visibleAmount(scroll, env.height, i))
             opacity=cardOpacity(visibleAmount(scroll, env.height, i))
       // The FlatList: its content as tall as the cards (+ NiceOffset * 1.5), scrolled natively.
