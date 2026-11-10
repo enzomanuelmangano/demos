@@ -52,10 +52,14 @@ component DotSheet
       // (an in-flow box paints under a positioned sibling, whatever the order).
       column flex=1 position="relative" align-items="center" justify-content="center"
         // TextKit's lines (hhea 2099 + 358 over 2048, no lineGap) as explicit px line-heights, each
-        // text moved back onto RN's pixels (measured against the RN capture).
-        text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
-          line-height="33.591796875px" position="relative" top=0.6667 left=-0.3333 color="#000000"
-          role="heading"
+        // text moved back onto RN's pixels (measured against the RN capture). RN's Text draws in its
+        // view's drawRect, so ink past its frame (its side ceiled to the pixel grid) is cut: the title's
+        // "g" loses its last row there.
+        // The clip is RN's frame (rows 550-651 on the iPhone Air); the line sits a point lower in
+        // Exact's box than in TextKit's, so the text moves down a point inside it.
+        view height=33.6667 overflow="hidden" position="relative" top=-0.3333 left=-0.3333
+          text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
+            line-height="33.591796875px" position="relative" top=1 color="#000000" role="heading"
         text "This animation is inspired by Dot and made with React Native." color="#6c6c6c"
           font-family="AddingtonCF-Light" font-size=18 letter-spacing=-0.5 line-height="21.5947265625px"
           position="relative" top=0.3333 margin-top=12 max-width="60%"
