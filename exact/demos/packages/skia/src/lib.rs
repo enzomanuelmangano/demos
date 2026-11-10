@@ -302,6 +302,8 @@ pub struct Canvas {
     saved: Vec<State>,
     fill: FillTessellator,
     stroke: StrokeTessellator,
+    /// The path a shape draw ([`Canvas::draw_circle`], …) is built into, kept between draws.
+    scratch: lyon::path::PathBuffer,
     buffers: VertexBuffers<Point, u32>,
 }
 
@@ -318,6 +320,7 @@ impl Default for Canvas {
             fill: FillTessellator::new(),
             stroke: StrokeTessellator::new(),
             buffers: VertexBuffers::new(),
+            scratch: lyon::path::PathBuffer::new(),
         }
     }
 }
@@ -448,19 +451,31 @@ impl Canvas {
 
     /// `<Circle cx cy r paint>`.
     pub fn draw_circle(&mut self, cx: f32, cy: f32, r: f32, paint: &Paint) {
-        let mut b = Path::builder();
-        b.add_circle(point(cx, cy), r, Winding::Positive);
-        self.draw_path(&b.build(), paint);
+        self.draw_with(paint, |b| add_circle(b, cx, cy, r));
+    }
+
+    /// Draws the path `build` appends to a builder, built in a buffer the canvas keeps (no
+    /// allocation once warm): the same geometry as building a [`Path`] and [`Canvas::draw_path`].
+    pub fn draw_with(&mut self, paint: &Paint, build: impl FnOnce(&mut lyon::path::builder::NoAttributes<lyon::path::path_buffer::Builder<'_>>)) {
+        let mut buffer = std::mem::take(&mut self.scratch);
+        buffer.clear();
+        {
+            let mut b = lyon::path::builder::NoAttributes::wrap(buffer.builder());
+            build(&mut b);
+            b.build();
+        }
+        self.draw_path_events(buffer.get(0).iter(), paint);
+        self.scratch = buffer;
     }
 
     /// `<Rect x y width height paint>`.
     pub fn draw_rect(&mut self, x: f32, y: f32, w: f32, h: f32, paint: &Paint) {
-        self.draw_path(&rect_path(x, y, w, h), paint);
+        self.draw_with(paint, |b| add_rect(b, x, y, w, h));
     }
 
     /// `<RoundedRect x y width height r paint>`.
     pub fn draw_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, paint: &Paint) {
-        self.draw_path(&rrect_path(x, y, w, h, r), paint);
+        self.draw_with(paint, |b| add_rrect(b, x, y, w, h, r));
     }
 
     /// `<Fill color>`: the whole canvas (under the current clip).
@@ -474,12 +489,17 @@ impl Canvas {
 
     /// `<Group clip={path}>` (until the matching restore): later draws only inside `path`.
     pub fn clip_path(&mut self, path: &Path) {
+        self.clip_events(path.iter());
+    }
+
+    /// [`Canvas::clip_path`] of a path given as its events.
+    pub fn clip_events<I: IntoIterator<Item = lyon::path::PathEvent>>(&mut self, path: I) {
         let tolerance = 0.2 / self.state.matrix.max_scale().max(1e-3);
         self.buffers.vertices.clear();
         self.buffers.indices.clear();
         if self
             .fill
-            .tessellate_path(path, &FillOptions::tolerance(tolerance).with_fill_rule(FillRule::NonZero), &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()))
+            .tessellate(path, &FillOptions::tolerance(tolerance).with_fill_rule(FillRule::NonZero), &mut BuffersBuilder::new(&mut self.buffers, |v: FillVertex| v.position()))
             .is_err()
         {
             return;
@@ -494,7 +514,20 @@ impl Canvas {
 
     /// A rounded-rect clip.
     pub fn clip_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) {
-        self.clip_path(&rrect_path(x, y, w, h, r));
+        self.clip_with(|b| add_rrect(b, x, y, w, h, r));
+    }
+
+    /// A clip to the path `build` appends, built in the canvas's kept buffer (no allocation).
+    pub fn clip_with(&mut self, build: impl FnOnce(&mut lyon::path::builder::NoAttributes<lyon::path::path_buffer::Builder<'_>>)) {
+        let mut buffer = std::mem::take(&mut self.scratch);
+        buffer.clear();
+        {
+            let mut b = lyon::path::builder::NoAttributes::wrap(buffer.builder());
+            build(&mut b);
+            b.build();
+        }
+        self.clip_events(buffer.get(0).iter());
+        self.scratch = buffer;
     }
 
     fn emit(&mut self, paint: u32, to_image: Option<Matrix>) {
@@ -601,7 +634,7 @@ pub fn continuous_radius(w: f32, h: f32, r: f32) -> f32 {
 
 /// Appends a rounded rect with continuous corners (RN's `borderRadius` + `borderCurve:
 /// 'continuous'`, iOS's squircle) to a builder, clockwise from the top edge.
-pub fn add_continuous_rrect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32, r: f32) {
+pub fn add_continuous_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     let r = continuous_radius(w, h, r);
     if r <= 0.0 {
         add_rect(b, x, y, w, h);
@@ -637,12 +670,12 @@ pub fn continuous_rrect_path(x: f32, y: f32, w: f32, h: f32, r: f32) -> Path {
 impl Canvas {
     /// A view with `borderRadius` and `borderCurve: 'continuous'`: [`continuous_rrect_path`].
     pub fn draw_continuous_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32, paint: &Paint) {
-        self.draw_path(&continuous_rrect_path(x, y, w, h, r), paint);
+        self.draw_with(paint, |b| add_continuous_rrect(b, x, y, w, h, r));
     }
 
     /// A continuous rounded-rect clip (`overflow: 'hidden'` on a continuous view).
     pub fn clip_continuous_rrect(&mut self, x: f32, y: f32, w: f32, h: f32, r: f32) {
-        self.clip_path(&continuous_rrect_path(x, y, w, h, r));
+        self.clip_with(|b| add_continuous_rrect(b, x, y, w, h, r));
     }
 }
 
@@ -672,31 +705,31 @@ pub fn path_builder() -> lyon::path::path::Builder {
 }
 
 /// Appends a rounded rect to a builder (`PathBuilder.addRRect`).
-pub fn add_rrect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32, r: f32) {
+pub fn add_rrect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, r: f32) {
     let r = r.min(w / 2.0).min(h / 2.0).max(0.0);
     b.add_rounded_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), &BorderRadii::new(r), Winding::Positive);
 }
 
 /// Appends a rect to a builder (`PathBuilder.addRect`).
-pub fn add_rect(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32) {
+pub fn add_rect<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32) {
     b.add_rectangle(&lyon::math::Box2D::new(point(x, y), point(x + w, y + h)), Winding::Positive);
 }
 
 /// Appends an oval to a builder (`<Oval x y width height>`, `PathBuilder.addOval`): the ellipse
 /// inscribed in the rect.
-pub fn add_oval(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32) {
+pub fn add_oval<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32) {
     b.add_ellipse(point(x + w / 2.0, y + h / 2.0), vector(w / 2.0, h / 2.0), lyon::math::Angle::radians(0.0), Winding::Positive);
 }
 
 /// Appends a circle to a builder (`PathBuilder.addCircle`).
-pub fn add_circle(b: &mut lyon::path::path::Builder, cx: f32, cy: f32, r: f32) {
+pub fn add_circle<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, cx: f32, cy: f32, r: f32) {
     b.add_circle(point(cx, cy), r, Winding::Positive);
 }
 
 /// Appends an arc of the oval inscribed in a rect (`PathBuilder.addArc(oval, startAngle,
 /// sweepAngle)`): a new contour from `start_deg`, sweeping `sweep_deg` (degrees, clockwise on
 /// screen as Skia's), as cubic Béziers.
-pub fn add_arc(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32, start_deg: f32, sweep_deg: f32) {
+pub fn add_arc<B: lyon::path::traits::PathBuilder>(b: &mut lyon::path::builder::NoAttributes<B>, x: f32, y: f32, w: f32, h: f32, start_deg: f32, sweep_deg: f32) {
     let arc = lyon::geom::Arc {
         center: point(x + w / 2.0, y + h / 2.0),
         radii: vector(w / 2.0, h / 2.0),
