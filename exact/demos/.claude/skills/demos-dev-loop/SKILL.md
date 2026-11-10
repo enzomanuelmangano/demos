@@ -28,6 +28,9 @@ bun exact.mjs ios --run --sim $EXACT_SIM                         # native build 
 
 ## Machine rules
 
+- Several agents share this tree: never run `cargo fmt` (it rewrites every file), `git stash`,
+  or `git checkout`/`restore` on files you didn't write. Format only your own files
+  (`rustfmt gpu/src/<slug>.rs`); commit only your own hunks.
 - Simulators: this app uses only `$EXACT_SIM`. Never touch "Exact Try (Air)" (D3273441…),
   "RN Ref (Air)" (FF41FAED…) nor the patterns-exact agents' iPhone Air (4F281EA4…).
 - `bun exact.mjs feedback` is `never`; never run `share` (it publishes a link).
