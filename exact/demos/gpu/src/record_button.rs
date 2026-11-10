@@ -16,7 +16,7 @@
 //!   continuous, "Scroll" (18, white) centred. Behind: #252525 (styles.list, the TopScreen).
 //! - The button (90 × 40, bottom 40 of the TopScreen, centred): pressto's PressableScale (scale
 //!   0.96 while pressed, withTiming 250 ms bezier(0.25, 0.1, 0.25, 1); a scroll that starts
-//!   cancels the press), inside it scale withSpring(activated ? 1.1 : 1) (Gentle). The canvas:
+//!   cancels the press; the shared `pressto::Pressable`), inside it scale withSpring(activated ? 1.1 : 1) (Gentle). The canvas:
 //!   two stroked paths (#ed4e3c, 1, round caps) drawn to `end = progress`: getRightLinePath and
 //!   its mirror; a RoundedRect (r 20) at opacity withTiming(activated ? 1 : 0). The label
 //!   "Record" (16): opacity progress, white 600 once activated, else #ed4e3c 500, centred.
@@ -28,10 +28,10 @@
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
 use gesture_handler::Phase;
+use pressto::{PressEvent, Pressable};
 use reanimated::{interpolate, Easing, Extrapolation, Spring, Timing, GENTLE};
 use skia::{path_from_svg, Canvas, Color, Font, Matrix, Paint, Path, Renderer};
 
-use crate::floating_modal::press_easing;
 use crate::gfx;
 use crate::ui_scroll::{Snap, UiScroll, FAST};
 
@@ -62,8 +62,7 @@ impl RecordButton {
             activated: false,
             fill: Timing::at(0.0),
             grow: Spring::at(1.0),
-            press: Timing::at(0.0),
-            finger: None,
+            press: Pressable::new(),
             posted: Vec::new(),
             right,
             left,
@@ -106,10 +105,8 @@ struct RecordButton {
     fill: Timing,
     /// rContainerStyle's scale.
     grow: Spring,
-    /// pressto's press (0 → 1 while pressed).
-    press: Timing,
-    /// The finger on the button.
-    finger: Option<u32>,
+    /// The PressableScale (the shared pressto machine).
+    press: Pressable,
     posted: Vec<String>,
     right: Path,
     left: Path,
@@ -220,7 +217,7 @@ impl Surface for RecordButton {
     }
 
     fn agent(&mut self, _request: &str) -> Option<String> {
-        let held = self.scroll.as_ref().is_some_and(|s| s.dragging()) || self.finger.is_some();
+        let held = self.scroll.as_ref().is_some_and(|s| s.dragging()) || self.press.is_pressed();
         Some(format!(
             "{{\"offset\":{:.2},\"progress\":{:.3},\"activated\":{},\"held\":{held}}}",
             self.offset(),
@@ -249,9 +246,9 @@ impl Surface for RecordButton {
         let (bx, by) = self.button();
         let on_button = (bx..=bx + WIDTH as f64).contains(&(x as f64))
             && (by..=by + HEIGHT as f64).contains(&(y as f64));
-        if phase == Phase::Down && on_button && self.finger.is_none() {
-            self.finger = Some(id);
-            self.press.to(1.0, 250.0, press_easing());
+        let mut press = None;
+        if phase == Phase::Down {
+            self.press.pointer(id, phase, on_button);
         }
         // The list scrolls along y; inverted, a finger moving down raises the offset, so the
         // scroll model (whose content moves against the finger's x) is fed −y.
@@ -264,9 +261,7 @@ impl Surface for RecordButton {
         if now && !was {
             // onScrollBeginDrag; the scroll cancels the press (pressto under a ScrollView).
             self.snapping = self.progress() < 0.9;
-            if self.finger.take().is_some() {
-                self.press.to(0.0, 250.0, press_easing());
-            }
+            self.press.cancel();
         }
         if self.scroll.as_mut().is_some_and(|s| s.take_drag_end())
             && self.progress() > 0.97
@@ -278,15 +273,14 @@ impl Surface for RecordButton {
                 s.scroll_to(h);
             }
         }
-        if self.finger == Some(id) && matches!(phase, Phase::Up | Phase::Cancel) {
-            self.finger = None;
-            self.press.to(0.0, 250.0, press_easing());
-            if phase == Phase::Up && on_button {
-                // onButtonPress: scrollToIndex({ index: 0 }); the app's press haptic.
-                self.posted.push("haptic:selection".into());
-                if let Some(s) = self.scroll.as_mut() {
-                    s.scroll_to(0.0);
-                }
+        if phase != Phase::Down {
+            press = self.press.pointer(id, phase, on_button);
+        }
+        if let Some(PressEvent::Press(press)) = press {
+            // onButtonPress: scrollToIndex({ index: 0 }); the app's press haptic.
+            self.posted.extend(press.global_message().map(String::from));
+            if let Some(s) = self.scroll.as_mut() {
+                s.scroll_to(0.0);
             }
         }
         self.react();
@@ -347,12 +341,7 @@ impl Surface for RecordButton {
 
         // The button, in the TopScreen.
         if by + (HEIGHT as f64) * 1.1 > 0.0 {
-            let s = (interpolate(
-                self.press.value,
-                &[0.0, 1.0],
-                &[1.0, 0.96],
-                Extrapolation::Extend,
-            ) * self.grow.value) as f32;
+            let s = (self.press.scale() * self.grow.value) as f32;
             c.save();
             c.translate(bx as f32 + WIDTH / 2.0, by as f32 + HEIGHT / 2.0);
             c.scale(s, s);
@@ -404,7 +393,7 @@ impl Surface for RecordButton {
             ph,
             wgpu::Color::BLACK,
         );
-        moving || self.finger.is_some() || self.scroll.as_ref().is_some_and(|s| s.moving())
+        moving || self.press.is_animating() || self.scroll.as_ref().is_some_and(|s| s.moving())
     }
 }
 

@@ -27,7 +27,8 @@
 //! - PressableScale: scale 0.96 while pressed (250 ms, bezier(0.25, 0.1, 0.25, 1)) about the
 //!   animated frame's centre; a press inside posts the app's selection haptic and runs
 //!   handlePress: ignored while isLoading; else status loading, 2000 ms later success (even
-//!   calls) or error, isLoading false, and 1500 ms after that reset() (idle). As in RN, a press
+//!   calls) or error, isLoading false, and 1500 ms after that reset() (idle). The press is the
+//!   shared `pressto::Pressable`. As in RN, a press
 //!   during the outcome starts again and the earlier reset timer still fires.
 //!
 //! Loading Button's ActivityIndicator (src/animations/loading-button/components/loading-button/
@@ -48,7 +49,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, InputEvent, Surface, SurfaceError, Value};
-use gesture_handler::Phase;
+use pressto::{PressEvent, Pressable};
 use reanimated::{Easing, Timing};
 use skia::{fit_box, path_from_svg, Canvas, Color, Font, Paint, Path, Rect, Renderer};
 
@@ -103,8 +104,8 @@ struct LoadingButton {
     fade: Timing,
     /// The pill's Yoga frame (x, width), as last drawn.
     yoga: (f64, f64),
-    press: Timing,
-    finger: Option<u32>,
+    /// The PressableScale (the shared pressto machine).
+    press: Pressable,
     /// The pending timers: armed (None until the next frame stamps them), then due at.
     settle_at: Option<Option<f64>>,
     reset_at: Option<Option<f64>>,
@@ -166,8 +167,7 @@ impl LoadingButton {
                 t
             },
             yoga: (0.0, 0.0),
-            press: Timing::at(0.0),
-            finger: None,
+            press: Pressable::new(),
             settle_at: None,
             reset_at: None,
             posted: Vec::new(),
@@ -278,7 +278,7 @@ impl Surface for LoadingButton {
     fn agent(&mut self, _request: &str) -> Option<String> {
         Some(format!(
             "{{\"status\":{},\"loadingOpacity\":{},\"iconOpacity\":{},\"pill\":[{:.2},{:.2}],\"held\":{}}}",
-            self.status, self.loading.value, self.icon.value, self.yoga.0, self.yoga.1, self.finger.is_some()
+            self.status, self.loading.value, self.icon.value, self.yoga.0, self.yoga.1, self.press.is_pressed()
         ))
     }
 
@@ -287,20 +287,9 @@ impl Surface for LoadingButton {
         let (ox, ow) = self.yoga;
         let top = self.top();
         let inside = (ox..=ox + ow).contains(&(x as f64)) && (top..=top + PILL_H).contains(&(y as f64));
-        match gfx::phase(phase) {
-            Phase::Down if inside && self.finger.is_none() => {
-                self.finger = Some(id);
-                self.press.to(1.0, 250.0, press_easing());
-            }
-            Phase::Up | Phase::Cancel if self.finger == Some(id) => {
-                self.finger = None;
-                self.press.to(0.0, 250.0, press_easing());
-                if gfx::phase(phase) == Phase::Up && inside {
-                    self.posted.push("haptic:selection".into());
-                    self.handle_press();
-                }
-            }
-            _ => {}
+        if let Some(PressEvent::Press(press)) = self.press.pointer(id, gfx::phase(phase), inside) {
+            self.posted.extend(press.global_message().map(String::from));
+            self.handle_press();
         }
     }
 
@@ -372,7 +361,7 @@ impl Surface for LoadingButton {
         let (from, to, at) = self.background;
         let bg = p3(self.background_now(from, to, at));
         let fade = self.fade.value as f32;
-        let press = (1.0 - 0.04 * self.press.value) as f32;
+        let press = self.press.scale() as f32;
         let title = TITLES[status as usize];
         let text_top = self.title.as_ref().map(|f| {
             let m = f.metrics();
@@ -404,7 +393,7 @@ impl Surface for LoadingButton {
         c.restore();
         let (pw, ph) = frame.pixels();
         self.renderer.draw(device, queue, encoder, &self.canvas, target, format, pw, ph, wgpu::Color::WHITE);
-        moving || self.finger.is_some()
+        moving || self.press.is_animating()
     }
 }
 
