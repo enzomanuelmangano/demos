@@ -1,0 +1,81 @@
+// Dot Sheet: a blurred rose-and-white sweep behind "One more thing"; a small tilted white card
+// grows to a full sheet with a text field when it (or "Start your Journey") is pressed, and
+// shrinks back from the chevron. Inspired by Dot. RN: src/animations/dot-sheet (src/index.tsx,
+// components/card-input.tsx, components/background-gradient.tsx). The background is Skia,
+// drawn once in Rust: gpu/src/dot_sheet.rs; the rest is here.
+use PressableScale from "pressto"
+use DemoEnv, demoButtonRow from "../env.contract"
+
+font "AddingtonCF-Light" = "assets/fonts/AddingtonCF-Light.otf"
+
+// card-input.tsx: progress = withSpring(focused ? 1 : 0, { duration: 800, dampingRatio: 1 }).
+fn cardSpring(): string = "-exact-spring(424.9, 82.5, 4)"
+// potentialHeaderHeight.
+fn header(): number = 52
+fn cardHeight(h: number, open: bool): number = open ? h : h / 2.8
+fn cardWidth(w: number, h: number, open: bool): number = open ? w - 2 : h / 2.8 * (3 / 4)
+fn cardTop(h: number, safeTop: number, open: bool): number = open ? safeTop + demoButtonRow() + header() : (h - h / 2.8) / 2 + 35
+fn cardLeft(w: number, h: number, open: bool): number = open ? 1 : (w - h / 2.8 * (3 / 4)) / 2
+
+component DotSheet
+  props
+    env: DemoEnv
+  state open = false
+  // onFocus / onBlur of the field drive the card.
+  action opened
+    open = true
+  action closed
+    open = false
+  // The card's onTouchEnd: focus while it rests closed.
+  action tapCard
+    if not open
+      focus("dot-input")
+  action start
+    haptic("selection")
+    focus("dot-input")
+  action back
+    haptic("selection")
+    blur("dot-input")
+  view
+    column position="absolute" inset=0 testId="dot-sheet"
+      // <BackgroundGradient style={{ height: '100%', position: 'absolute' }} />.
+      canvas surface=dot_sheet() position="absolute" top=0 left=0 width="100%" height="100%"
+        aria-hidden=true testId="dot-sheet-canvas"
+      // styles.fillCenter, then styles.fill.
+      column flex=1 align-items="center" justify-content="center"
+        text "One more thing" font-family="AddingtonCF-Light" font-size=28 letter-spacing=-0.5
+          color="#000000" role="heading"
+        text "This animation is inspired by Dot and made with React Native." color="#6c6c6c"
+          font-family="AddingtonCF-Light" font-size=18 letter-spacing=-0.5 margin-top=12 max-width="60%"
+          text-align="center"
+      column flex=1
+      // The back button: top = safe area + DEMO_BUTTON_ROW_HEIGHT, left 16, 32 square, its
+      // opacity the progress; it blurs the field.
+      button appearance="none" press=back class=PressableScale position="absolute"
+        top=(env.safeTop + demoButtonRow()) left=16 width=32 height=32 border="none" padding=0
+        background-color="transparent" display="flex" align-items="center" justify-content="center"
+        opacity=(open ? 1 : 0) transition=`opacity ${cardSpring()}` aria-label="Back" testId="dot-back"
+        image "symbol:sf/chevron.backward" font-size=24 color="#323232" aria-hidden=true
+      // The bottom button: safe bottom + 16, centred, 85% wide, 52 tall, radius 30.
+      button appearance="none" press=start class=PressableScale position="absolute"
+        bottom="calc(env(safe-area-inset-bottom) + 16px)" left="7.5%" width="85%" height=52
+        border="none" border-radius=30 background-color="rgba(55, 55, 55, 0.2)" display="flex"
+        align-items="center" justify-content="center" testId="dot-start"
+        text "Start your Journey" color="#ffffff" font-size=16 font-weight=700
+      // The card (zIndex 1): top, left, width, height, radius and rotate all interpolate the
+      // progress: from (h / 2.8 × 3/4) × h / 2.8 centred 35 below the middle at -4° and radius
+      // 16, to the window's width less 2 and its height, below the header, upright, radius 32.
+      column position="absolute" z-index=1 top=cardTop(env.height, env.safeTop, open)
+        left=cardLeft(env.width, env.height, open) width=cardWidth(env.width, env.height, open)
+        height=cardHeight(env.height, open) background-color="#ffffff" border-radius=(open ? 32 : 16)
+        corner-shape="squircle" box-shadow="0px 0px 20px rgba(193, 193, 193, 0.1)"
+        rotate=(open ? "0deg" : "-4deg") -exact-layout-transition=cardSpring()
+        transition=`rotate ${cardSpring()}` press=tapCard testId="dot-card"
+        // The multiline field: marginTop 16 → 24, fontSize 14 → 24.
+        textarea id="dot-input" placeholder="Hello there 👋" autocorrect="off" autocapitalize="none"
+          focus=opened blur=closed font-family="AddingtonCF-Light" font-size=(open ? 24 : 14)
+          margin="0px 12px 0px 16px" margin-top=(open ? 24 : 16) flex=1 min-height=0
+          background-color="transparent" border="none" padding=0 color="#000000" outline="none"
+          resize="none" aria-label="Note" testId="dot-input"
+          ::placeholder
+            color="#b4b4b4"

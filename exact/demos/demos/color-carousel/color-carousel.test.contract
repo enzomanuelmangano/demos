@@ -1,0 +1,6 @@
+at "/demo/color-carousel"
+
+test "the glow and the strip are there"
+  expect tree has "color-carousel-canvas"
+  expect tree has "color-carousel-list"
+  expect tree has "color-item-23"

@@ -524,3 +524,68 @@ pub fn add_oval(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f3
 pub fn add_circle(b: &mut lyon::path::path::Builder, cx: f32, cy: f32, r: f32) {
     b.add_circle(point(cx, cy), r, Winding::Positive);
 }
+
+/// Appends an arc of the oval inscribed in a rect (`PathBuilder.addArc(oval, startAngle,
+/// sweepAngle)`): a new contour from `start_deg`, sweeping `sweep_deg` (degrees, clockwise on
+/// screen as Skia's), as cubic Béziers.
+pub fn add_arc(b: &mut lyon::path::path::Builder, x: f32, y: f32, w: f32, h: f32, start_deg: f32, sweep_deg: f32) {
+    let arc = lyon::geom::Arc {
+        center: point(x + w / 2.0, y + h / 2.0),
+        radii: vector(w / 2.0, h / 2.0),
+        start_angle: lyon::math::Angle::degrees(start_deg),
+        sweep_angle: lyon::math::Angle::degrees(sweep_deg),
+        x_rotation: lyon::math::Angle::radians(0.0),
+    };
+    b.begin(arc.from());
+    arc.for_each_cubic_bezier(&mut |c| {
+        b.cubic_bezier_to(c.ctrl1, c.ctrl2, c.to);
+    });
+    b.end(false);
+}
+
+/// `<Path path start end>`: the part of `path` between the fractions `start` and `end` of its
+/// length (Skia's trim path effect, `SkTrimPathEffect` in normal mode), as a new path; empty
+/// when `end <= start`.
+pub fn trim(path: &Path, start: f32, end: f32) -> Path {
+    let (start, end) = (start.clamp(0.0, 1.0), end.clamp(0.0, 1.0));
+    let mut b = Path::builder();
+    if end > start {
+        let measurements = lyon::algorithms::measure::PathMeasurements::from_path(path, 0.01);
+        let mut sampler = measurements.create_sampler(path, lyon::algorithms::measure::SampleType::Normalized);
+        sampler.split_range(start..end, &mut b);
+    }
+    b.build()
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+
+    #[test]
+    fn trim_keeps_the_first_part_of_a_line() {
+        let mut b = Path::builder();
+        b.begin(point(0.0, 0.0));
+        b.line_to(point(100.0, 0.0));
+        b.end(false);
+        let half = trim(&b.build(), 0.0, 0.25);
+        let bb = lyon::algorithms::aabb::bounding_box(half.iter());
+        assert!((bb.max.x - 25.0).abs() < 0.01, "{bb:?}");
+        assert_eq!(trim(&half, 0.5, 0.5).iter().count(), 0);
+    }
+
+    #[test]
+    fn a_quarter_arc_ends_where_skia_ends_it() {
+        let mut b = Path::builder();
+        add_arc(&mut b, 0.0, 0.0, 20.0, 20.0, 0.0, 90.0);
+        let p = b.build();
+        let bb = lyon::algorithms::aabb::bounding_box(p.iter());
+        // From (20, 10) clockwise on screen to (10, 20).
+        assert!((bb.min.x - 10.0).abs() < 0.01 && (bb.max.y - 20.0).abs() < 0.01, "{bb:?}");
+    }
+}
+
+/// `path.transform(m)` / `PathBuilder.transform(m)`: `path` with every point mapped by `m`.
+pub fn transform_path(path: &Path, m: &Matrix) -> Path {
+    let [a, b, c, d, e, f] = m.0;
+    path.clone().transformed(&lyon::math::Transform::new(a, b, c, d, e, f))
+}

@@ -1,0 +1,35 @@
+// Color Carousel: a paged strip of twenty colour cards that grow, turn in perspective and come
+// forward as they near the middle, over a radial glow that eases to the centred card's colour.
+// RN: src/animations/color-carousel (index.tsx, constants.ts, components/carousel/index.tsx,
+// carousel-item.tsx). The glow and the cards (their transforms, zIndex, shadows) are Rust:
+// gpu/src/color_carousel.rs. The scroll is a native scroller here, its offset the canvas's one
+// input; nothing else reads it.
+use DemoEnv from "../env.contract"
+
+// `[null, null, ...colors, null, null]`; MAX_RENDERED_ITEMS = 5 per window width.
+fn items(): number = 24
+fn itemWidth(w: number): number = w / 5
+
+component ColorCarousel
+  props
+    env: DemoEnv
+  state scroll = 0
+  action scrolled(x: number, y: number)
+    scroll = x
+  view
+    // styles.container: #111111 (BACKGROUND_COLOR), centred.
+    column position="absolute" inset=0 background-color="#111111" align-items="center"
+      justify-content="center" testId="color-carousel"
+      // width 100%, aspectRatio 1: the canvas under the carousel (StyleSheet.absoluteFill).
+      view position="relative" width=env.width height=env.width flex-shrink=0
+        canvas surface=color_carousel(scroll) position="absolute" top=0 left=0 width=env.width
+          height=env.width aria-hidden=true testId="color-carousel-canvas"
+        // The horizontal ScrollView: snapToOffsets at every item (index × itemWidth), no
+        // indicator; its cells are drawn by the canvas.
+        scroll position="absolute" top=0 left=0 width=env.width height=env.width overflow-x="scroll"
+          overflow-y="hidden" scrollbar-width="none" scroll-snap-type="x mandatory" scroll=scrolled
+          aria-label="Colours" testId="color-carousel-list"
+          row width=(items() * itemWidth(env.width)) height=env.width
+            for i in range(items()) key=i
+              view width=itemWidth(env.width) height=env.width flex-shrink=0 scroll-snap-align="start"
+                testId=`color-item-${i}`

@@ -1,0 +1,69 @@
+// Record Button: a dark page that scrolls down to reveal a second one, where a red "Record"
+// outline draws itself from the bottom as the page comes in, fills, grows and buzzes once it
+// is fully there. Inspired by @uuuntitleddd. RN: src/animations/record-button (index.tsx,
+// components/record-button/index.tsx, create-skia-line.ts). The button's Skia canvas (the
+// outline drawn to `progress`, the fill's fade) is Rust: gpu/src/record_button.rs; the pages,
+// the scroll, the text and the press are here.
+//
+// The inverted FlatList is a column [top page, home page] opened at its end: RN's offset y is
+// the window's height less the scroller's scrollTop.
+use PressableScale from "pressto"
+use DemoEnv from "../env.contract"
+
+// progress = interpolate(offset, [h × 0.08, h × 0.2], [0, 1], CLAMP).
+fn progressOf(offset: number, h: number): number = min(1, max(0, (offset - h * 0.08) / (h * 0.2 - h * 0.08)))
+// rMainPageStyle: borderRadius = interpolate(offset, [0, 0.1], [0, 35], CLAMP).
+fn radiusOf(offset: number): number = min(35, max(0, offset * 350))
+
+component RecordButton
+  props
+    env: DemoEnv
+  state offset = 0
+  state activated = false
+  // onScroll; `activated` is progress > 0.98, with a light impact as it turns on.
+  action scrolled(x: number, y: number)
+    let o = max(0, env.height - y)
+    offset = o
+    let on = progressOf(o, env.height) > 0.98
+    if on and not activated
+      haptic("impact-light")
+    activated = on
+  // snapToInterval={WindowHeight}: where the scroll rests between the pages, the nearer one.
+  action settle
+    if offset > 0.5 and offset < env.height - 0.5
+      if offset >= env.height / 2
+        scrollIntoView("record-top-page", behavior="smooth")
+      else
+        scrollIntoView("record-home-page", behavior="smooth")
+  // onButtonPress: scrollToIndex({ index: 0 }), animated.
+  action press
+    haptic("selection")
+    scrollIntoView("record-home-page", behavior="smooth")
+  view
+    // styles.list: #252525, bounces false, no indicator.
+    scroll position="absolute" top=0 left=0 width="100%" height="100%" background-color="#252525" overflow-y="scroll"
+      scrollbar-width="none" overscroll-behavior="none" scrollTop=env.height scroll=scrolled
+      scrollend=settle testId="record-button"
+      column width="100%"
+        // The TopScreen: #252525, the button 40 above its bottom, centred.
+        column id="record-top-page" position="relative" width="100%" height=env.height flex-shrink=0
+          background-color="#252525" align-items="center" justify-content="center"
+          button appearance="none" press=press class=PressableScale position="absolute" bottom=40
+            left=((env.width - 90) / 2) width=90 height=40 border="none" padding=0
+            background-color="transparent" aria-label="Record" testId="record-press"
+            // rContainerStyle: scale withSpring(activated ? 1.1 : 1).
+            view position="relative" width=90 height=40 scale=(activated ? 1.1 : 1)
+              transition="scale -exact-spring(900, 120, 4)"
+              canvas surface=record_button(progressOf(offset, env.height)) position="absolute" top=0
+                left=0 width=90 height=40 aria-hidden=true testId="record-canvas"
+              // The label: fontSize 16, opacity progress; white 600 once activated, else the
+              // button's colour at 500.
+              view position="absolute" inset=0 display="flex" align-items="center" justify-content="center"
+                text "Record" font-size=16 color=(activated ? "#ffffff" : "#ed4e3c")
+                  font-weight=(activated ? 600 : 500) opacity=progressOf(offset, env.height)
+                  testId="record-label"
+        // The HomeScreen: #191919, rounded 35 (continuous) once it moves.
+        column id="record-home-page" width="100%" height=env.height flex-shrink=0
+          background-color="#191919" border-radius=radiusOf(offset) corner-shape="squircle"
+          align-items="center" justify-content="center"
+          text "Scroll" font-size=18 color="#ffffff"

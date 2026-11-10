@@ -1,0 +1,65 @@
+// Loading Button: "Check Transaction" turns into a spinner and "Analyzing Transaction", then
+// into a check and "Transaction Safe" (or a lock and "Transaction Unsafe", every other time),
+// and back after 1.5 s. Inspired by @lochieaxon. RN: src/animations/loading-button (index.tsx,
+// components/loading-button/index.tsx, activity-indicator.tsx). The indicator is Skia, drawn in
+// Rust (gpu/src/loading_button.rs) from the status, and keeps index.tsx's two timers (a demo
+// may own no task): it posts "settle" 2 s after the status turns loading and "reset" 1.5 s
+// after the outcome. The button and its text are here.
+use PressableScale from "pressto"
+
+// Reanimated's withTiming / FadeIn default curve, Easing.inOut(Easing.quad).
+fn inOutQuad(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
+// The status as the surface takes it: idle 0, loading 1, success 2, error 3.
+fn code(status: string): number = status == "loading" ? 1 : (status == "success" ? 2 : (status == "error" ? 3 : 0))
+// colorFromStatusMap, and Color(c).lighten(0.6).hex() for the background.
+fn activeColor(status: string): string = status == "success" ? "#5BC682" : (status == "error" ? "#CD5454" : "#47A1E6")
+fn lightColor(status: string): string = status == "success" ? "#DCF3E4" : (status == "error" ? "#F4DADA" : "#E6F2FC")
+fn titleOf(status: string): string = status == "loading" ? "Analyzing Transaction" : (status == "success" ? "Transaction Safe" : (status == "error" ? "Transaction Unsafe" : "Check Transaction"))
+
+keyframes titleIn
+  from opacity=0
+  to opacity=1
+
+component LoadingButton
+  // useMutation's status and isLoading; `calls` is i.current (even: safe, odd: unsafe).
+  state status = "idle"
+  state busy = false
+  state calls = 0
+  action press
+    haptic("selection")
+    if not busy
+      busy = true
+      status = "loading"
+  // The indicator's timers: the mutation resolving, then the timeout's reset().
+  action heard(m: string)
+    if m == "settle"
+      status = calls % 2 == 0 ? "success" : "error"
+      calls = calls + 1
+      busy = false
+    if m == "reset"
+      status = "idle"
+      busy = false
+  view
+    // styles.container: white, centred.
+    column position="absolute" inset=0 background-color="#ffffff" align-items="center"
+      justify-content="center" testId="loading-button"
+      // PressableScale layout={LinearTransition.springify()}: Reanimated's default spring.
+      button appearance="none" press=press class=PressableScale border="none" padding=0
+        background-color="transparent" -exact-layout-transition="-exact-spring(900, 120, 4)"
+        aria-label=titleOf(status) testId="loading-button-press"
+        // A row, paddingHorizontal 12, 40 tall, radius 16 continuous, its background the
+        // lightened colour (transition: 'backgroundColor 200ms').
+        row align-items="center" padding="0px 12px" height=40 border-radius=16 corner-shape="squircle"
+          background-color=lightColor(status) transition="background-color 200ms ease"
+          -exact-layout-transition=`200ms ${inOutQuad()}`
+          // The indicator's box: width, height 0 → 20 and marginRight 0 → 6 on withTiming
+          // (200 ms), clipping the 20 pt canvas.
+          view width=(status == "idle" ? 0 : 20) height=(status == "idle" ? 0 : 20)
+            margin-right=(status == "idle" ? 0 : 6) overflow="hidden" flex-shrink=0
+            -exact-layout-transition=`200ms ${inOutQuad()}`
+            canvas surface=loading_button(code(status)) message=heard width=20 height=20 aria-hidden=true
+              testId="loading-indicator"
+          // styles.title: 14, bold, the status's colour; entering FadeIn.
+          text titleOf(status) font-size=14 font-weight=700 color=activeColor(status) white-space="nowrap"
+            animation=`titleIn 300ms ${inOutQuad()} both` -exact-layout-transition=`200ms ${inOutQuad()}`
+            testId="loading-title"

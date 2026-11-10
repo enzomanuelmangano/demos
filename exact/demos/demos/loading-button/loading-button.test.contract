@@ -1,0 +1,7 @@
+at "/demo/loading-button"
+
+test "a press starts the check"
+  expect text "loading-title" == "Check Transaction"
+  tap "loading-button-press"
+  expect text "loading-title" == "Analyzing Transaction"
+  expect tree has "loading-indicator"
