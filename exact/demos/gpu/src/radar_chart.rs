@@ -13,7 +13,7 @@
 
 use exact_gpu::wgpu;
 use exact_gpu::{Frame, Surface, SurfaceError, Value};
-use reanimated::{Spring, SpringConfig};
+use reanimated::Spring;
 use skia::{point, Canvas, Color, Font, Paint, Path, Renderer};
 
 /// Object.keys of the data's values: generateRandomDataChart builds `{ [key]: v, ...acc }`
@@ -23,7 +23,6 @@ const N: usize = 5;
 const SETS: usize = 2;
 const STROKE_WIDTH: f32 = 2.0;
 const LAYERS: usize = 5;
-const PROGRESS: SpringConfig = SpringConfig { stiffness: 1087.7, damping: 131.9, mass: 4.0 };
 static OUTFIT: &[u8] = include_bytes!("../fonts/outfit.ttf");
 
 /// The demo's surface.
@@ -95,8 +94,9 @@ impl Surface for RadarChart {
             self.current = [self.values(0), self.values(1)];
         }
         self.target = next;
+        // progress.set(0); progress.set(withSpring(1, { duration: 500, dampingRatio: 1 })).
         self.progress = Spring::at(0.0);
-        self.progress.to(1.0, 0.0, PROGRESS);
+        crate::gfx::spring_to(&mut self.progress, 1.0, 500.0, 1.0);
         Ok(())
     }
 
