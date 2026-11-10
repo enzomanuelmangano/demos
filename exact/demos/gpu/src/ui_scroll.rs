@@ -210,7 +210,15 @@ impl UiScroll {
                 let rest = self.pan.rest_ms(at_ms);
                 self.release(uiscroll_release(p.velocity_x, rest), release_velocity(p.velocity_x, rest));
             }
-            Event::Fail => self.release(0.0, 0.0),
+            // A touch that never dragged: UIKit calls no scrollViewWillEndDragging, so RN's snap
+            // never runs and a caught scroll rests where it is; only one past an end bounces back.
+            Event::Fail => {
+                if self.bounces && (self.offset < 0.0 || self.offset > self.max) {
+                    self.release(0.0, 0.0);
+                } else {
+                    self.state = State::Idle;
+                }
+            }
             _ => {}
         }
         if was_dragging && !self.dragging() {
