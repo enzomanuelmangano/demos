@@ -71,7 +71,13 @@ One commit per haptic event, never per frame.
   finger) does NOT drive its `animation-timeline` keyframes: they jump to the end. For
   state-driven motion use state-triggered keyframes that sample the RN curve densely enough that
   the linear segments stay under 0.5 px / 1 colour level off the real curve (check numerically),
-  or move it to Rust. Release-after-drag: being verified (swipe-cards).
+  or move it to Rust. Release-after-drag is fine (swipe-cards verified): only never-dragged
+  boxes are affected. Keyframes cap at ~21-33 stops.
+- Exact easings: `cubic-bezier(0.455, 0.03, 0.515, 0.955)` is only CLOSE to Reanimated's
+  inOut(quad). Exact: two keyframe halves, ease-in half `cubic-bezier(1/3, 0, 2/3, 1/3)` (y = s²)
+  and ease-out half `cubic-bezier(1/3, 2/3, 2/3, 1)`, with the value linear in progress inside
+  each half. Any polynomial easing of degree ≤ 3 is an exact cubic Bézier this way; out(cubic)
+  = 1-(1-t)³ is `cubic-bezier(1/3, 1, 2/3, 1)`.
 - Corners: RN `borderCurve: 'continuous'` = `corner-shape="-exact-continuous"` (CALayer
   cornerCurve .continuous), pills and circles included: CA draws it unclamped at min(r, w/2, h/2),
   so a continuous pill's ends are flatter than a semicircle. `squircle` is the CSS superellipse,
