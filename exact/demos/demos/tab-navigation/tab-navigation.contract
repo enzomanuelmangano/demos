@@ -25,35 +25,76 @@ fn minTabWidth(w: number): number = (w - 10 * 2 - 10 * 3 - 170) / 3
 // (bun tools/spring.ts 400 1).
 fn tabSpring(): string = "-exact-spring(1699.6, 164.9, 4)"
 
-// The label's opacity is progress ** 3. A hidden box translated by progress × 100 px on the
-// tab's spring is a drag timeline these stops follow (host-driven, no commit per frame).
-keyframes labelCube
-  0% opacity=0
-  10% opacity=0.001
-  20% opacity=0.008
-  30% opacity=0.027
-  40% opacity=0.064
-  50% opacity=0.125
-  60% opacity=0.216
-  70% opacity=0.343
-  80% opacity=0.512
-  90% opacity=0.729
-  100% opacity=1
+// The label's opacity is progress ** 3, progress the tab's critically damped spring
+// (ω = √(k/m) = 20.6 /s: 1 − (1 + ωt)·e^(−ωt)), sampled over the 600 ms it takes to settle
+// (the stops placed adaptively so the linear segments stay within 0.003 of the curve:
+// under one colour level); labelOff is its way back (1 − progress) ** 3.
+keyframes labelOn
+  0% opacity=0.0000
+  3.125% opacity=0.0002
+  6.25% opacity=0.0060
+  7.812% opacity=0.0160
+  9.375% opacity=0.0336
+  10.94% opacity=0.0601
+  12.5% opacity=0.0957
+  14.06% opacity=0.1397
+  15.62% opacity=0.1905
+  18.75% opacity=0.3055
+  21.87% opacity=0.4258
+  25% opacity=0.5397
+  28.13% opacity=0.6401
+  31.25% opacity=0.7242
+  34.38% opacity=0.7920
+  37.5% opacity=0.8451
+  40.62% opacity=0.8858
+  43.75% opacity=0.9165
+  46.88% opacity=0.9394
+  50% opacity=0.9562
+  56.25% opacity=0.9774
+  62.5% opacity=0.9885
+  75% opacity=0.9971
+  100% opacity=0.9998
+keyframes labelOff
+  0% opacity=1.0000
+  0.3906% opacity=0.9966
+  0.7812% opacity=0.9869
+  1.562% opacity=0.9515
+  2.344% opacity=0.8994
+  3.125% opacity=0.8360
+  6.25% opacity=0.5483
+  7.812% opacity=0.4188
+  9.375% opacity=0.3107
+  10.94% opacity=0.2250
+  12.5% opacity=0.1597
+  14.06% opacity=0.1114
+  15.62% opacity=0.0765
+  17.19% opacity=0.0519
+  18.75% opacity=0.0348
+  21.87% opacity=0.0152
+  25% opacity=0.0064
+  37.5% opacity=0.0002
+  50% opacity=0.0000
+  100% opacity=0.0000
 
 component TabNavigation
   props
     env: DemoEnv
   state activeTabIndex = 0
+  // The tab that was active before the last change (-1: none yet): its label fades out.
+  state previousTabIndex = -1
   action choose(i: number)
     haptic("selection")
-    activeTabIndex = i
+    if i != activeTabIndex
+      previousTabIndex = activeTabIndex
+      activeTabIndex = i
   view
     // src/index.tsx styles.container: white, centred.
     column position="absolute" inset=0 background-color="#ffffff" align-items="center" justify-content="center"
       testId="tab-navigation"
-      row width=env.width gap=10 padding="0px 10px"
+      row width=env.width box-sizing="border-box" gap=10 padding="0px 10px"
         for tab, i in [TabData(label="Accounts", icon="user-add"), TabData(label="Home", icon="home"), TabData(label="Payments", icon="wallet"), TabData(label="Transfers", icon="swap")] key=i
           Tab(label=tab.label, icon=tab.icon, minWidth=minTabWidth(env.width), isActive=(i == activeTabIndex),
+            wasActive=(i == previousTabIndex), changed=(previousTabIndex >= 0),
             press=choose(i), testId=`tab-${i}`)
 
 component Tab
@@ -62,6 +103,8 @@ component Tab
     icon: string
     minWidth: number
     isActive: bool
+    wasActive: bool
+    changed: bool
     press: action
     testId: string
   view
@@ -69,10 +112,7 @@ component Tab
       // styles.container: #f1f1f1, borderRadius 15 continuous, height 60, justifyContent center;
       // width interpolate(progress, [0, 1], [minWidth, maxWidth 170]) on the progress spring.
       column width=(isActive ? 170 : minWidth) height=60 justify-content="center" background-color="#f1f1f1"
-        border-radius=15 corner-shape="squircle" timeline-scope="--tab" -exact-layout-transition=tabSpring()
-        view position="absolute" left=0 top=0 width=0 height=0 pointer-events="none" aria-hidden=true
-          translate=`${isActive ? 100 : 0}px 0px` transition=`translate ${tabSpring()}`
-          -exact-drag-timeline="--tab x"
+        border-radius=15 corner-shape="-exact-continuous" -exact-layout-transition=tabSpring()
         // styles.innerContainer: row, centred, overflow hidden, width 100%.
         row align-items="center" justify-content="center" overflow="hidden" width="100%"
           -exact-layout-transition=tabSpring()
@@ -86,5 +126,6 @@ component Tab
           // styles.label: fontSize 16, weight 500, zIndex 100, one line; marginLeft from 0 to 15.
           text label font-size=16 font-weight=500 z-index=100 white-space="nowrap" line-clamp=1
             color="#000000" margin-left=(isActive ? 15 : 0) -exact-layout-transition=tabSpring()
-            animation="labelCube 1s linear both" animation-timeline="--tab" animation-range="0px 100px"
+            opacity=(isActive ? 1 : 0)
+            animation=(changed and isActive ? "labelOn 600ms linear both" : (wasActive ? "labelOff 600ms linear both" : "none"))
             testId=`${testId}-label`

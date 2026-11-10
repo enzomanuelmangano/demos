@@ -30,52 +30,18 @@ fn twitterInOutQuad(): string = "cubic-bezier(0.455, 0.03, 0.515, 0.955)"
 
 // floatingProgress = withTiming(Message ? 1 : 0, { duration: 500 }) on inOut(quad); the button
 // follows it: rotate [0, 1] → [0, 2π], scale [0, 0.5, 1] → [1, 1.2, 1]; the edit icon shown
-// while progress <= 0.5, the message icon past it. The progress is sampled every 25 ms of its
-// 500 (linear between samples), so the curve is the eased one, not a per-segment ease.
+// while progress <= 0.5, the message icon past it. inOut(quad) is 2t² then 1 − 2(1 − t)²: each
+// half is exactly a cubic Bézier (a quadratic raised: y = s² is cubic-bezier(⅓, 0, ⅔, ⅓)), and
+// rotate and scale are linear in the progress within each half, so these two segments are the
+// curve itself.
 keyframes twitterSpinOn
-  0% rotate=0.000 scale=1.0000
-  5% rotate=1.800 scale=1.0020
-  10% rotate=7.200 scale=1.0080
-  15% rotate=16.200 scale=1.0180
-  20% rotate=28.800 scale=1.0320
-  25% rotate=45.000 scale=1.0500
-  30% rotate=64.800 scale=1.0720
-  35% rotate=88.200 scale=1.0980
-  40% rotate=115.200 scale=1.1280
-  45% rotate=145.800 scale=1.1620
-  50% rotate=180.000 scale=1.2000
-  55% rotate=214.200 scale=1.1620
-  60% rotate=244.800 scale=1.1280
-  65% rotate=271.800 scale=1.0980
-  70% rotate=295.200 scale=1.0720
-  75% rotate=315.000 scale=1.0500
-  80% rotate=331.200 scale=1.0320
-  85% rotate=343.800 scale=1.0180
-  90% rotate=352.800 scale=1.0080
-  95% rotate=358.200 scale=1.0020
-  100% rotate=360.000 scale=1.0000
+  0% rotate=0 scale=1 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.3333)"
+  50% rotate=180 scale=1.2 animation-timing-function="cubic-bezier(0.3333, 0.6667, 0.6667, 1)"
+  100% rotate=360 scale=1
 keyframes twitterSpinOff
-  0% rotate=360.000 scale=1.0000
-  5% rotate=358.200 scale=1.0020
-  10% rotate=352.800 scale=1.0080
-  15% rotate=343.800 scale=1.0180
-  20% rotate=331.200 scale=1.0320
-  25% rotate=315.000 scale=1.0500
-  30% rotate=295.200 scale=1.0720
-  35% rotate=271.800 scale=1.0980
-  40% rotate=244.800 scale=1.1280
-  45% rotate=214.200 scale=1.1620
-  50% rotate=180.000 scale=1.2000
-  55% rotate=145.800 scale=1.1620
-  60% rotate=115.200 scale=1.1280
-  65% rotate=88.200 scale=1.0980
-  70% rotate=64.800 scale=1.0720
-  75% rotate=45.000 scale=1.0500
-  80% rotate=28.800 scale=1.0320
-  85% rotate=16.200 scale=1.0180
-  90% rotate=7.200 scale=1.0080
-  95% rotate=1.800 scale=1.0020
-  100% rotate=0.000 scale=1.0000
+  0% rotate=360 scale=1 animation-timing-function="cubic-bezier(0.3333, 0, 0.6667, 0.3333)"
+  50% rotate=180 scale=1.2 animation-timing-function="cubic-bezier(0.3333, 0.6667, 0.6667, 1)"
+  100% rotate=0 scale=1
 keyframes twitterEditIcon
   0% opacity=1
   50% opacity=1
