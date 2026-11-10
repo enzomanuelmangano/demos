@@ -33,13 +33,15 @@ pub fn surface() -> Box<dyn Surface> {
     Box::new(BlurredBottomBar::default())
 }
 
+/// The photo's index, the window's size, the rows, the first row, the photo's height.
+type Strip = (usize, (u32, u32), Image, u32, f32);
+
 #[derive(Default)]
 struct BlurredBottomBar {
     /// photo, x, y, window width, window height, gradient height.
     inputs: [f64; 6],
-    /// The rows of the photo the canvas shows, cut when the photo or the window changes:
-    /// (index, window size, the rows, the first row, the photo's height).
-    strip: Option<(usize, (u32, u32), Image, u32, f32)>,
+    /// The rows of the photo the canvas shows, cut when the photo or the window changes.
+    strip: Option<Strip>,
     images: Option<(usize, Images)>,
     canvas: Canvas,
     renderer: Renderer,

@@ -32,6 +32,7 @@ pub mod clock_time_picker;
 pub mod color_carousel;
 pub mod cuberto_slider;
 pub mod dot_sheet;
+pub mod dynamic_blur_tabs;
 pub mod duration_slider;
 pub mod expandable_mini_player;
 pub mod fibonacci_shader;
@@ -77,6 +78,7 @@ pub static REGISTRY: Registry = Registry {
         ("color_carousel", 1, color_carousel::surface),
         ("cuberto_slider", 0, cuberto_slider::surface),
         ("dot_sheet", 0, dot_sheet::surface),
+        ("dynamic_blur_tabs", 7, dynamic_blur_tabs::surface),
         ("duration_slider", 0, duration_slider::surface),
         ("expandable_mini_player", 1, expandable_mini_player::surface),
         ("fibonacci_shader", 1, fibonacci_shader::surface),

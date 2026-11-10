@@ -345,6 +345,47 @@ static UIColor *p3(double r, double g, double b, double a) {
     }
     NSArray *r = [[d stringForKey:@"bar"] componentsSeparatedByString:@","];
     [self effect:style fraction:f frame:CGRectMake([r[0] doubleValue], [r[1] doubleValue], [r[2] doubleValue], [r[3] doubleValue]) in:root];
+  } else if ([pattern isEqual:@"grid"]) {
+    // dynamic-blur-tabs: black; the FlatList's squares (-squares: "y0;RRGGBB,RRGGBB,RRGGBB;…",
+    // the first row's top in points, then each square's three P3 stops), a LinearGradient each
+    // (top to bottom) and RN's own 1 pt rgba(255,255,255,0.2) border (circular corners, r 4);
+    // the bottom LinearGradient (-gradient points); the effect over -bar.
+    root.backgroundColor = UIColor.blackColor;
+    NSArray *parts = [[d stringForKey:@"squares"] componentsSeparatedByString:@";"];
+    double y0 = [parts[0] doubleValue];
+    double size = (b.size.width - 40) / 4, cell = size + 8;
+    for (NSUInteger k = 1; k < parts.count; k++) {
+      NSArray *hex = [parts[k] componentsSeparatedByString:@","];
+      NSMutableArray *colors = [NSMutableArray array];
+      for (NSString *h in hex) {
+        unsigned v = 0;
+        [[NSScanner scannerWithString:h] scanHexInt:&v];
+        [colors addObject:p3(((v >> 16) & 255) / 255.0, ((v >> 8) & 255) / 255.0, (v & 255) / 255.0, 1)];
+      }
+      NSUInteger i = k - 1;
+      CGRect r = CGRectMake(4 + (i % 4) * cell + 4, y0 + (i / 4) * cell + 4, size, size);
+      GradientView *g = [[GradientView alloc] initWithFrame:r];
+      g.colors = colors;
+      [root addSubview:g];
+      CAShapeLayer *ring = [CAShapeLayer layer];
+      CGMutablePathRef path = CGPathCreateMutable();
+      CGPathAddRoundedRect(path, NULL, r, 4, 4);
+      CGPathAddRoundedRect(path, NULL, CGRectInset(r, 1, 1), 3, 3);
+      ring.path = path;
+      ring.fillRule = kCAFillRuleEvenOdd;
+      ring.fillColor = [UIColor colorWithRed:1 green:1 blue:1 alpha:0.2].CGColor;
+      CGPathRelease(path);
+      [root.layer addSublayer:ring];
+    }
+    double gh = [d doubleForKey:@"gradient"];
+    GradientView *g = [[GradientView alloc] initWithFrame:CGRectMake(0, b.size.height - gh, b.size.width, gh)];
+    g.opaque = NO;
+    g.backgroundColor = UIColor.clearColor;
+    g.colors = @[ [UIColor colorWithRed:1 green:1 blue:1 alpha:0], [UIColor colorWithRed:0 green:0 blue:0 alpha:0.1],
+                  [UIColor colorWithRed:0 green:0 blue:0 alpha:0.5], [UIColor colorWithRed:0 green:0 blue:0 alpha:0.8] ];
+    [root addSubview:g];
+    NSArray *r = [[d stringForKey:@"bar"] componentsSeparatedByString:@","];
+    [self effect:style fraction:f frame:CGRectMake([r[0] doubleValue], [r[1] doubleValue], [r[2] doubleValue], [r[3] doubleValue]) in:root];
   } else if ([pattern isEqual:@"patches"]) {
     // 24 colour patches (6 rows × 4), each 105 × 152 pt; an effect view per patch, inset 40 pt.
     NSArray *cs = @[ @[@255,@0,@0], @[@0,@255,@0], @[@0,@0,@255], @[@255,@255,@0],
