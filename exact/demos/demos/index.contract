@@ -19,6 +19,7 @@ use BlurCircles from "./blur-circles/blur-circles.contract"
 use BlurredBottomBar from "./blurred-bottom-bar/blurred-bottom-bar.contract"
 use BlurredScroll from "./blurred-scroll/blurred-scroll.contract"
 use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
+use CalendarDays from "./calendar-days/calendar-days.contract"
 use CardShaderReflections from "./card-shader-reflections/card-shader-reflections.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
 use CherryBlossomQrcode from "./cherry-blossom-qrcode/cherry-blossom-qrcode.contract"
@@ -151,6 +152,8 @@ component PortedDemo
         BlurredScroll(env=env)
       if slug == "bottom-bar-skia"
         BottomBarSkia(env=env)
+      if slug == "calendar-days"
+        CalendarDays(env=env)
       if slug == "card-shader-reflections"
         CardShaderReflections()
       if slug == "checkbox-interactions"

@@ -16,6 +16,7 @@ blur-circles
 blurred-bottom-bar
 blurred-scroll
 bottom-bar-skia
+calendar-days
 checkbox-interactions
 circular-carousel
 clerk-toast
