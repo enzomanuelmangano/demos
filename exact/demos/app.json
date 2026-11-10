@@ -42,5 +42,11 @@
   },
   "data": [
     "slug"
-  ]
+  ],
+  "commands": {
+    "phone": [
+      "bun",
+      "tools/phone.mjs"
+    ]
+  }
 }

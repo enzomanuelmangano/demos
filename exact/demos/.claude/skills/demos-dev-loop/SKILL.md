@@ -15,6 +15,13 @@ bun exact.mjs test web 'demos/**/*.test.contract' app.test.contract
 bun exact.mjs ios --run --sim $EXACT_SIM                         # native build + launch
 ```
 
+## On a physical iPhone
+
+- `bun exact.mjs phone [<udid|name>] [--run]`: a development build signed with this Mac's Apple
+  Development identity (wildcard profile W3N4N47454.*), installed with devicectl. The phone must be
+  connected, unlocked, paired, Developer Mode on. `share` cannot build this app (expo/exact#30:
+  production + a Swift package + the app's own native tags).
+
 ## Hot reload first
 
 - Keep one development build installed on your simulator. An edit to any `.contract`, to
