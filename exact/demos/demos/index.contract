@@ -1,6 +1,7 @@
 // The demos ported to Exact, by slug. Each lives in demos/<slug>/. Written by tools/gen-index.ts.
 use DemoEnv from "./env.contract"
 use ActionTray from "./action-tray/action-tray.contract"
+use AddToCart from "./add-to-cart/add-to-cart.contract"
 use AirbnbFlipInteraction from "./airbnb-flip-interaction/airbnb-flip-interaction.contract"
 use AlertDrawer from "./alert-drawer/alert-drawer.contract"
 use Animated3dParallax from "./animated-3d-parallax/animated-3d-parallax.contract"
@@ -20,6 +21,7 @@ use BlurredScroll from "./blurred-scroll/blurred-scroll.contract"
 use BottomBarSkia from "./bottom-bar-skia/bottom-bar-skia.contract"
 use CardShaderReflections from "./card-shader-reflections/card-shader-reflections.contract"
 use CheckboxInteractions from "./checkbox-interactions/checkbox-interactions.contract"
+use CherryBlossomQrcode from "./cherry-blossom-qrcode/cherry-blossom-qrcode.contract"
 use CircularCarousel from "./circular-carousel/circular-carousel.contract"
 use ClerkToast from "./clerk-toast/clerk-toast.contract"
 use ClockTimePicker from "./clock-time-picker/clock-time-picker.contract"
@@ -33,6 +35,7 @@ use DurationSlider from "./duration-slider/duration-slider.contract"
 use DynamicBlurTabs from "./dynamic-blur-tabs/dynamic-blur-tabs.contract"
 use DynamicTabIndicator from "./dynamic-tab-indicator/dynamic-tab-indicator.contract"
 use EmailDemo from "./email-demo/email-demo.contract"
+use EmptyQrCode from "./empty-qr-code/empty-qr-code.contract"
 use EverybodyCanCook from "./everybody-can-cook/everybody-can-cook.contract"
 use ExclusionTabs from "./exclusion-tabs/exclusion-tabs.contract"
 use ExpandableMiniPlayer from "./expandable-mini-player/expandable-mini-player.contract"
@@ -48,6 +51,7 @@ use FractalGlass from "./fractal-glass/fractal-glass.contract"
 use GeometryButton from "./geometry-button/geometry-button.contract"
 use GithubContributions from "./github-contributions/github-contributions.contract"
 use GlTransitions from "./gl-transitions/gl-transitions.contract"
+use ImageCropper from "./image-cropper/image-cropper.contract"
 use ImessageStack from "./imessage-stack/imessage-stack.contract"
 use LightOnPainting from "./light-on-painting/light-on-painting.contract"
 use LinearSensors from "./linear-sensors/linear-sensors.contract"
@@ -58,11 +62,13 @@ use Metaball from "./metaball/metaball.contract"
 use MilesBarChart from "./miles-bar-chart/miles-bar-chart.contract"
 use MobileInput from "./mobile-input/mobile-input.contract"
 use MotionBlur from "./motion-blur/motion-blur.contract"
+use NotionQrCode from "./notion-qrcode/notion-qrcode.contract"
 use OnlineOffline from "./online-offline/online-offline.contract"
 use PaperFolding from "./paper-folding/paper-folding.contract"
 use ParticlesButton from "./particles-button/particles-button.contract"
 use PopupHandler from "./popup-handler/popup-handler.contract"
 use PrequelSlider from "./prequel-slider/prequel-slider.contract"
+use QrCodeGenerator from "./qr-code-generator/qr-code-generator.contract"
 use RadarChart from "./radar-chart/radar-chart.contract"
 use RecordButton from "./record-button/record-button.contract"
 use ScrollProgress from "./scroll-progress/scroll-progress.contract"
@@ -75,6 +81,7 @@ use SkiaBottomSheet from "./skia-bottom-sheet/skia-bottom-sheet.contract"
 use SkiaColorPicker from "./skia-color-picker/skia-color-picker.contract"
 use SlideToReveal from "./slide-to-reveal/slide-to-reveal.contract"
 use SmoothDropdown from "./smooth-dropdown/smooth-dropdown.contract"
+use Snake from "./snake/snake.contract"
 use SphereWaves from "./sphere-waves/sphere-waves.contract"
 use Spiral from "./spiral/spiral.contract"
 use SplitButton from "./split-button/split-button.contract"
@@ -86,6 +93,7 @@ use StaggeredCardNumber from "./staggered-card-number/staggered-card-number.cont
 use SteddyGraphInteraction from "./steddy-graph-interaction/steddy-graph-interaction.contract"
 use Steps from "./steps/steps.contract"
 use StoryList from "./story-list/story-list.contract"
+use Sudoku from "./sudoku/sudoku.contract"
 use SwipeCards from "./swipe-cards/swipe-cards.contract"
 use TabNavigation from "./tab-navigation/tab-navigation.contract"
 use TelegramThemeSwitch from "./telegram-theme-switch/telegram-theme-switch.contract"
@@ -106,6 +114,8 @@ component PortedDemo
     column position="absolute" inset=0
       if slug == "action-tray"
         ActionTray(env=env)
+      if slug == "add-to-cart"
+        AddToCart(env=env)
       if slug == "airbnb-flip-interaction"
         AirbnbFlipInteraction(env=env)
       if slug == "alert-drawer"
@@ -144,6 +154,8 @@ component PortedDemo
         CardShaderReflections()
       if slug == "checkbox-interactions"
         CheckboxInteractions(env=env)
+      if slug == "cherry-blossom-qrcode"
+        CherryBlossomQrcode(env=env)
       if slug == "circular-carousel"
         CircularCarousel(env=env)
       if slug == "clerk-toast"
@@ -170,6 +182,8 @@ component PortedDemo
         DynamicTabIndicator(env=env)
       if slug == "email-demo"
         EmailDemo(env=env)
+      if slug == "empty-qr-code"
+        EmptyQrCode(env=env)
       if slug == "everybody-can-cook"
         EverybodyCanCook()
       if slug == "exclusion-tabs"
@@ -200,6 +214,8 @@ component PortedDemo
         GithubContributions(env=env)
       if slug == "gl-transitions"
         GlTransitions(env=env)
+      if slug == "image-cropper"
+        ImageCropper(env=env)
       if slug == "imessage-stack"
         ImessageStack(env=env)
       if slug == "light-on-painting"
@@ -220,6 +236,8 @@ component PortedDemo
         MobileInput(env=env)
       if slug == "motion-blur"
         MotionBlur(env=env)
+      if slug == "notion-qrcode"
+        NotionQrCode(env=env)
       if slug == "online-offline"
         OnlineOffline(env=env)
       if slug == "paper-folding"
@@ -230,6 +248,8 @@ component PortedDemo
         PopupHandler(env=env)
       if slug == "prequel-slider"
         PrequelSlider(env=env)
+      if slug == "qr-code-generator"
+        QrCodeGenerator(env=env)
       if slug == "radar-chart"
         RadarChart(env=env)
       if slug == "record-button"
@@ -254,6 +274,8 @@ component PortedDemo
         SlideToReveal(env=env)
       if slug == "smooth-dropdown"
         SmoothDropdown()
+      if slug == "snake"
+        Snake(env=env)
       if slug == "sphere-waves"
         SphereWaves()
       if slug == "spiral"
@@ -276,6 +298,8 @@ component PortedDemo
         Steps(env=env)
       if slug == "story-list"
         StoryList(env=env)
+      if slug == "sudoku"
+        Sudoku(env=env)
       if slug == "swipe-cards"
         SwipeCards(env=env)
       if slug == "tab-navigation"

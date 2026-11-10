@@ -95,3 +95,11 @@ card-shader-reflections
 threads-holo-ticket
 light-on-painting
 gl-transitions
+add-to-cart
+cherry-blossom-qrcode
+empty-qr-code
+image-cropper
+notion-qrcode
+qr-code-generator
+snake
+sudoku
