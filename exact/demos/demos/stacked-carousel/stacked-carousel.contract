@@ -68,17 +68,23 @@ component StackedCarousel
             view flex=1 background-color="#ffffff" border-radius=25 corner-shape="-exact-continuous"
               box-shadow="0px 0px 5px 0px rgba(0, 0, 0, 0.05)" overflow="hidden"
       // The invisible FlatList over the cards: screenWidth × (cardHeight + stackOffset × 6),
-      // zIndex 1000, centred; snapToInterval cardWidth, decelerationRate fast; content padded
-      // left (screenWidth - cardWidth) / 2 and top stackOffset × 3 (no right padding).
+      // zIndex 1000, centred; snapToInterval cardWidth (offsets i × cardWidth, the last ones
+      // clamped to the end), decelerationRate fast (the host's for a snapping scroller); content
+      // padded left (screenWidth - cardWidth) / 2 and top stackOffset × 3 (no right padding).
+      // The snap areas are markers at i × cardWidth from the content's start: the iOS host snaps
+      // an area's own start, without scroll-padding, so the padded items can't be the areas.
       scroll position="absolute" left=0 top=((env.height - cardH() - stackOffset() * 6) / 2)
         width=env.width height=(cardH() + stackOffset() * 6) z-index=1000 overflow-x="scroll"
         overflow-y="hidden" scrollbar-width="none" scroll-snap-type="x mandatory"
-        scroll-padding-left=((env.width - cardW()) / 2) scroll=scrolled testId="stacked-carousel-list"
-        row width=((env.width - cardW()) / 2 + cardW() * count()) height=(cardH() + stackOffset() * 6)
-          padding-left=((env.width - cardW()) / 2) padding-top=(stackOffset() * 3) box-sizing="border-box"
-          align-items="flex-start"
+        scroll=scrolled testId="stacked-carousel-list"
+        row position="relative" width=((env.width - cardW()) / 2 + cardW() * count())
+          height=(cardH() + stackOffset() * 6) padding-left=((env.width - cardW()) / 2)
+          padding-top=(stackOffset() * 3) box-sizing="border-box" align-items="flex-start"
           for i in range(count()) key=i
-            view width=cardW() height=cardH() flex-shrink=0 scroll-snap-align="start"
+            view width=cardW() height=cardH() flex-shrink=0
+          for i in range(count()) key=i
+            view position="absolute" left=(i * cardW()) top=0 width=cardW() height=1
+              scroll-snap-align="start" pointer-events="none" aria-hidden=true
       // The paginator's box: screenWidth wide, from cardHeight below the carousel's top to its
       // bottom (a negative height, held at 0); paginatorContainer is 40 tall at that box's
       // bottom, overflow hidden, so its centre is 140 below the screen's.
